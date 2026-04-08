@@ -1,0 +1,239 @@
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ─── Auth (NextAuth Prisma Adapter) ──────────────────────────────────────────
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ─── Core Models ─────────────────────────────────────────────────────────────
+
+model User {
+  id    String  @id @default(cuid())
+  email String  @unique
+  emailVerified DateTime?
+  name  String?
+  image String?
+
+  // Stripe billing
+  stripeCustomerId       String?   @unique
+  stripeSubscriptionId   String?   @unique
+  stripePriceId          String?
+  stripeCurrentPeriodEnd DateTime?
+
+  // Preferences
+  timezone      String  @default("UTC")
+  reminderTime  String? // HH:MM format
+  onboardingDone Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  accounts     Account[]
+  sessions     Session[]
+  entries      Entry[]
+  tasks        Task[]
+  goals        Goal[]
+  weeklyReports WeeklyReport[]
+  lifeMapAreas LifeMapArea[]
+}
+
+/// A nightly voice brain dump session. Contains the raw transcript and
+/// everything Claude extracted from it.
+model Entry {
+  id     String @id @default(cuid())
+  userId String
+
+  // Audio
+  audioUrl      String? // Supabase Storage URL
+  audioDuration Int?    // seconds
+
+  // Content
+  transcript  String  @db.Text
+  summary     String? @db.Text
+  mood        Mood?
+  energy      Int?    // 1–10
+  themes      String[] // e.g. ["work", "health", "relationships"]
+  wins        String[] // things that went well today
+  blockers    String[] // things in the way
+
+  // Claude's raw JSON response — kept for reprocessing / debugging
+  rawAnalysis Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks Task[]
+
+  @@index([userId, createdAt])
+}
+
+/// A concrete action item — either captured from an Entry or created manually.
+model Task {
+  id          String  @id @default(cuid())
+  userId      String
+  entryId     String? // null if created manually
+  goalId      String? // optional link to a Goal
+
+  title       String
+  description String?   @db.Text
+  dueDate     DateTime?
+  priority    Priority  @default(MEDIUM)
+  status      TaskStatus @default(TODO)
+  completedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entry Entry? @relation(fields: [entryId], references: [id])
+  goal  Goal?  @relation(fields: [goalId], references: [id])
+
+  @@index([userId, status])
+  @@index([userId, dueDate])
+}
+
+/// A medium-to-long-term objective. Tasks roll up into Goals;
+/// Goals are organised under LifeMapAreas.
+model Goal {
+  id          String  @id @default(cuid())
+  userId      String
+  areaId      String? // optional link to a LifeMapArea
+
+  title       String
+  description String?   @db.Text
+  targetDate  DateTime?
+  status      GoalStatus @default(ACTIVE)
+  progress    Int        @default(0) // 0–100 percent
+  milestones  Json?      // [{title, done, dueDate}]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  area  LifeMapArea? @relation(fields: [areaId], references: [id])
+  tasks Task[]
+
+  @@index([userId, status])
+}
+
+/// Auto-generated weekly digest synthesising all entries for that week.
+model WeeklyReport {
+  id        String   @id @default(cuid())
+  userId    String
+  weekStart DateTime // Monday 00:00 UTC
+  weekEnd   DateTime // Sunday 23:59 UTC
+
+  summary     String   @db.Text
+  wins        String[]
+  challenges  String[]
+  nextActions String[]
+  moodAvg     Float?
+  energyAvg   Float?
+  entryCount  Int      @default(0)
+
+  // Raw Claude output for auditing
+  rawData Json?
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, weekStart])
+}
+
+/// A named life domain in the user's personal "life map".
+/// Examples: Health, Career, Relationships, Finance, Learning, Fun.
+model LifeMapArea {
+  id     String @id @default(cuid())
+  userId String
+
+  name        String
+  description String? @db.Text
+  color       String? // hex, e.g. "#6366F1"
+  icon        String? // lucide icon name or emoji
+  sortOrder   Int     @default(0)
+
+  // Self-assessment score 1–10, updated from weekly reflections
+  currentScore Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  goals Goal[]
+
+  @@index([userId, sortOrder])
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+  CANCELLED
+}
+
+enum GoalStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+  ABANDONED
+}
+
+enum Mood {
+  GREAT
+  GOOD
+  NEUTRAL
+  LOW
+  ROUGH
+}
