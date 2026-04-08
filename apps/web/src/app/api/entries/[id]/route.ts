@@ -19,8 +19,8 @@ export async function GET(
       tasks: {
         select: {
           id: true,
-          title: true,
-          description: true,
+          text: true,
+          
           dueDate: true,
           priority: true,
           status: true,
