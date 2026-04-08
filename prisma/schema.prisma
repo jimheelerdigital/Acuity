@@ -34,15 +34,21 @@ model Entry {
   user          User     @relation(fields: [userId], references: [id])
   audioUrl      String?
   duration      Int?
+  audioDuration Int?
   transcript    String?
   summary       String?
   mood          String?
   moodScore     Int?
+  energy        Int?
   themes        String[]
+  wins          String[]
+  blockers      String[]
   rawExtraction Json?
+  rawAnalysis   Json?
   status        String   @default("PENDING")
   entryDate     DateTime @default(now())
   createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
   tasks         Task[]
 }
 
@@ -52,7 +58,9 @@ model Task {
   user         User      @relation(fields: [userId], references: [id])
   entryId      String?
   entry        Entry?    @relation(fields: [entryId], references: [id])
-  text         String
+  text         String?
+  title        String?
+  description  String?
   status       String    @default("OPEN")
   priority     String    @default("MEDIUM")
   dueDate      DateTime?
@@ -70,6 +78,7 @@ model Goal {
   lifeArea      String    @default("PERSONAL")
   status        String    @default("ACTIVE")
   targetDate    DateTime?
+  progress      Int       @default(0)
   progressNotes Json[]
   entryRefs     String[]
   createdAt     DateTime  @default(now())
@@ -99,7 +108,11 @@ model LifeMapArea {
   id            String    @id @default(cuid())
   userId        String
   user          User      @relation(fields: [userId], references: [id])
-  area          String
+  area          String    @default("")
+  name          String?
+  color         String?
+  icon          String?
+  sortOrder     Int       @default(0)
   score         Int       @default(5)
   summary       String?
   activeGoals   Int       @default(0)

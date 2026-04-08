@@ -32,6 +32,7 @@ export async function GET() {
 
   const dtos: EntryDTO[] = entries.map((e) => ({
     ...e,
+    transcript: e.transcript ?? "",
     mood: e.mood as EntryDTO["mood"],
     createdAt: e.createdAt.toISOString(),
   }));

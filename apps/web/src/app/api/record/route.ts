@@ -145,6 +145,7 @@ export async function POST(req: NextRequest) {
         data: extraction.tasks.map((t) => ({
           userId,
           entryId: entry.id,
+          text: t.title,
           title: t.title,
           description: t.description ?? null,
           priority: t.priority,

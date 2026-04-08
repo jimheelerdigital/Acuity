@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { MOOD_EMOJI, MOOD_LABELS } from "@acuity/shared";
-import type { Entry, Mood } from "@prisma/client";
+import type { Entry } from "@prisma/client";
+import type { Mood } from "@acuity/shared";
 
 type EntryCardProps = {
   entry: Pick<
