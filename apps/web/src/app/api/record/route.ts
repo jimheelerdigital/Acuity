@@ -18,7 +18,7 @@
 import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 
-import { authOptions } from "@/lib/auth";
+import { getAuthOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { extractFromTranscript, transcribeAudio } from "@/lib/pipeline";
 import {
@@ -33,7 +33,7 @@ export const maxDuration = 120; // Whisper + Claude can be slow
 
 export async function POST(req: NextRequest) {
   // ── 1. Auth ────────────────────────────────────────────────────────────────
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession(getAuthOptions());
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

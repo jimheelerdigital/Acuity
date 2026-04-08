@@ -2,14 +2,14 @@ import type { Entry, Task, Goal } from "@prisma/client";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 
-import { authOptions } from "@/lib/auth";
+import { getAuthOptions } from "@/lib/auth";
 import { RecordButton } from "./record-button";
 import { EntryCard } from "./entry-card";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession(getAuthOptions());
   if (!session?.user?.id) redirect("/auth/signin");
 
   const userId = session.user.id;

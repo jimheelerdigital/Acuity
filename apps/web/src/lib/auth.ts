@@ -1,87 +1,96 @@
 import { PrismaAdapter } from "@auth/prisma-adapter";
+import { PrismaClient } from "@prisma/client";
 import { type NextAuthOptions } from "next-auth";
 import EmailProvider from "next-auth/providers/email";
 import GoogleProvider from "next-auth/providers/google";
 
-import { prisma } from "@/lib/prisma";
 import { DEFAULT_LIFE_AREAS } from "@acuity/shared";
 
-export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma) as NextAuthOptions["adapter"],
+/**
+ * Returns NextAuth options with prisma lazily imported.
+ * Never call this at module scope — only inside request handlers or
+ * async server functions, so prisma is never instantiated at build time.
+ */
+export function getAuthOptions(): NextAuthOptions {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { prisma } = require("@/lib/prisma") as { prisma: PrismaClient };
 
-  providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-      authorization: {
-        params: {
-          prompt: "consent",
-          access_type: "offline",
-          response_type: "code",
-        },
-      },
-    }),
+  return {
+    adapter: PrismaAdapter(prisma) as NextAuthOptions["adapter"],
 
-    EmailProvider({
-      server: {
-        host: process.env.EMAIL_SERVER_HOST,
-        port: Number(process.env.EMAIL_SERVER_PORT),
-        auth: {
-          user: process.env.EMAIL_SERVER_USER,
-          pass: process.env.EMAIL_SERVER_PASSWORD,
+    providers: [
+      GoogleProvider({
+        clientId: process.env.GOOGLE_CLIENT_ID!,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+        authorization: {
+          params: {
+            prompt: "consent",
+            access_type: "offline",
+            response_type: "code",
+          },
         },
+      }),
+
+      EmailProvider({
+        server: {
+          host: process.env.EMAIL_SERVER_HOST,
+          port: Number(process.env.EMAIL_SERVER_PORT),
+          auth: {
+            user: process.env.EMAIL_SERVER_USER,
+            pass: process.env.EMAIL_SERVER_PASSWORD,
+          },
+        },
+        from: process.env.EMAIL_FROM,
+        sendVerificationRequest: async ({ identifier: email, url, provider }) => {
+          const { createTransport } = await import("nodemailer");
+          const transport = createTransport(provider.server);
+          await transport.sendMail({
+            to: email,
+            from: provider.from,
+            subject: "Sign in to Acuity",
+            text: `Sign in to Acuity\n\nClick the link below to sign in:\n${url}\n\nThis link expires in 24 hours.\n\nIf you didn't request this, you can safely ignore this email.`,
+            html: magicLinkHtml(url),
+          });
+        },
+      }),
+    ],
+
+    session: {
+      strategy: "database",
+      maxAge: 30 * 24 * 60 * 60,
+    },
+
+    pages: {
+      signIn: "/auth/signin",
+      verifyRequest: "/auth/verify",
+      error: "/auth/error",
+    },
+
+    callbacks: {
+      async session({ session, user }) {
+        if (session.user) {
+          session.user.id = user.id;
+        }
+        return session;
       },
-      from: process.env.EMAIL_FROM,
-      // Custom magic link email template
-      sendVerificationRequest: async ({ identifier: email, url, provider }) => {
-        const { createTransport } = await import("nodemailer");
-        const transport = createTransport(provider.server);
-        await transport.sendMail({
-          to: email,
-          from: provider.from,
-          subject: "Sign in to Acuity",
-          text: `Sign in to Acuity\n\nClick the link below to sign in:\n${url}\n\nThis link expires in 24 hours.\n\nIf you didn't request this, you can safely ignore this email.`,
-          html: magicLinkHtml(url),
+    },
+
+    events: {
+      async createUser({ user }) {
+        await prisma.lifeMapArea.createMany({
+          data: DEFAULT_LIFE_AREAS.map((area, index) => ({
+            userId: user.id,
+            area: area.name,
+            name: area.name,
+            color: area.color,
+            icon: area.icon,
+            sortOrder: index,
+          })),
         });
       },
-    }),
-  ],
-
-  session: {
-    strategy: "database",
-    maxAge: 30 * 24 * 60 * 60, // 30 days
-  },
-
-  pages: {
-    signIn: "/auth/signin",
-    verifyRequest: "/auth/verify",
-    error: "/auth/error",
-  },
-
-  callbacks: {
-    async session({ session, user }) {
-      if (session.user) {
-        session.user.id = user.id;
-      }
-      return session;
     },
-  },
-
-  events: {
-    /** Seed default life map areas on first sign-up */
-    async createUser({ user }) {
-      await prisma.lifeMapArea.createMany({
-        data: DEFAULT_LIFE_AREAS.map((area, index) => ({
-          userId: user.id,
-          name: area.name,
-          color: area.color,
-          icon: area.icon,
-          sortOrder: index,
-        })),
-      });
-    },
-  },
-};
+  };
+}
 
 // ─── Email template ───────────────────────────────────────────────────────────
 

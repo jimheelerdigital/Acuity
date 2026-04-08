@@ -1,14 +1,14 @@
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 
-export const dynamic = "force-dynamic";
-
-import { authOptions } from "@/lib/auth";
+import { getAuthOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import type { EntryDTO } from "@acuity/shared";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession(getAuthOptions());
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
