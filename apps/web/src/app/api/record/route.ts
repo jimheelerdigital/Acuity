@@ -27,6 +27,7 @@ import {
   type RecordResponse,
 } from "@acuity/shared";
 
+export const dynamic = "force-dynamic";
 export const runtime = "nodejs"; // need fs/Buffer APIs
 export const maxDuration = 120; // Whisper + Claude can be slow
 

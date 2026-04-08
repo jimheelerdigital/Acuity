@@ -2,6 +2,8 @@ import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 
+export const dynamic = "force-dynamic";
+
 import { authOptions } from "@/lib/auth";
 import { APP_NAME, APP_TAGLINE } from "@acuity/shared";
 
