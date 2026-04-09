@@ -21,8 +21,20 @@ export async function GET(req: NextRequest) {
       ...(all ? {} : { status: { not: "DONE" } }),
     },
     include: { entry: { select: { entryDate: true } } },
-    orderBy: [{ priority: "desc" }, { createdAt: "desc" }],
+    orderBy: { createdAt: "desc" },
   });
+
+  const priorityOrder: Record<string, number> = {
+    URGENT: 0,
+    HIGH: 1,
+    MEDIUM: 2,
+    LOW: 3,
+  };
+
+  tasks.sort(
+    (a, b) =>
+      (priorityOrder[a.priority] ?? 9) - (priorityOrder[b.priority] ?? 9)
+  );
 
   return NextResponse.json({ tasks });
 }
