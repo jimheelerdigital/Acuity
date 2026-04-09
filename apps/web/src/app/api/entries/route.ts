@@ -23,22 +23,36 @@ export async function GET() {
       transcript: true,
       summary: true,
       mood: true,
+      moodScore: true,
       energy: true,
       themes: true,
       wins: true,
       blockers: true,
+      rawAnalysis: true,
       audioUrl: true,
       audioDuration: true,
+      status: true,
       createdAt: true,
     },
   });
 
-  const dtos: EntryDTO[] = entries.map((e) => ({
-    ...e,
-    transcript: e.transcript ?? "",
-    mood: e.mood as EntryDTO["mood"],
-    createdAt: e.createdAt.toISOString(),
-  }));
+  const dtos: EntryDTO[] = entries.map((e) => {
+    const insights =
+      e.rawAnalysis &&
+      typeof e.rawAnalysis === "object" &&
+      "insights" in (e.rawAnalysis as Record<string, unknown>)
+        ? ((e.rawAnalysis as Record<string, unknown>).insights as string[])
+        : [];
+
+    return {
+      ...e,
+      transcript: e.transcript ?? "",
+      mood: e.mood as EntryDTO["mood"],
+      moodScore: e.moodScore ?? null,
+      insights,
+      createdAt: e.createdAt.toISOString(),
+    };
+  });
 
   return NextResponse.json({ entries: dtos });
 }

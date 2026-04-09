@@ -4,6 +4,7 @@ export type Priority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
 export type TaskStatus = "TODO" | "IN_PROGRESS" | "DONE" | "CANCELLED";
 export type GoalStatus = "ACTIVE" | "PAUSED" | "COMPLETED" | "ABANDONED";
 export type Mood = "GREAT" | "GOOD" | "NEUTRAL" | "LOW" | "ROUGH";
+export type EntryStatus = "PENDING" | "PROCESSING" | "COMPLETE" | "FAILED";
 
 // ─── API Payloads ─────────────────────────────────────────────────────────────
 
@@ -15,18 +16,7 @@ export interface RecordUploadRequest {
   durationSeconds?: number;
 }
 
-/** Shape of the Claude extraction result stored in Entry.rawAnalysis */
-export interface ExtractionResult {
-  summary: string;
-  mood: Mood;
-  energy: number; // 1–10
-  themes: string[];
-  wins: string[];
-  blockers: string[];
-  tasks: ExtractedTask[];
-  goals: ExtractedGoal[];
-}
-
+/** Shape of a single extracted task from Claude */
 export interface ExtractedTask {
   title: string;
   description?: string;
@@ -34,16 +24,34 @@ export interface ExtractedTask {
   dueDate?: string; // ISO date string
 }
 
+/** Shape of a single extracted goal from Claude */
 export interface ExtractedGoal {
   title: string;
   description?: string;
   targetDate?: string; // ISO date string
 }
 
+/** Shape of the Claude extraction result stored in Entry.rawAnalysis */
+export interface ExtractionResult {
+  summary: string;
+  mood: Mood;
+  /** Numeric mood score 1–10 (ROUGH=1–2, LOW=3–4, NEUTRAL=5–6, GOOD=7–8, GREAT=9–10) */
+  moodScore: number;
+  energy: number; // 1–10
+  themes: string[];
+  wins: string[];
+  blockers: string[];
+  /** 2–4 reflective observations or actionable recommendations */
+  insights: string[];
+  tasks: ExtractedTask[];
+  goals: ExtractedGoal[];
+}
+
 /** Response from /api/record */
 export interface RecordResponse {
   entryId: string;
-  transcript: string;
+  status: EntryStatus;
+  transcript: string | null;
   extraction: ExtractionResult;
   tasksCreated: number;
 }
@@ -55,12 +63,15 @@ export interface EntryDTO {
   transcript: string;
   summary: string | null;
   mood: Mood | null;
+  moodScore: number | null;
   energy: number | null;
   themes: string[];
   wins: string[];
   blockers: string[];
+  insights: string[];
   audioUrl: string | null;
   audioDuration: number | null;
+  status: string;
   createdAt: string;
 }
 

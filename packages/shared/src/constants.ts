@@ -74,5 +74,5 @@ export const WHISPER_LANGUAGE = "en"; // set to undefined for auto-detect
 
 // ─── Claude ───────────────────────────────────────────────────────────────────
 
-export const CLAUDE_MODEL = "claude-sonnet-4-6";
+export const CLAUDE_MODEL = "claude-sonnet-4-5-20251001";
 export const CLAUDE_MAX_TOKENS = 2048;
