@@ -3,7 +3,6 @@
     "name": "Acuity",
     "slug": "acuity",
     "version": "1.0.0",
-    "owner": "acuity",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "acuity",
@@ -13,7 +12,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#09090B"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.acuity.app",
@@ -27,7 +28,11 @@
         "backgroundColor": "#09090B"
       },
       "package": "com.acuity.app",
-      "permissions": ["RECORD_AUDIO"]
+      "permissions": [
+        "RECORD_AUDIO",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ]
     },
     "plugins": [
       "expo-router",
@@ -42,9 +47,13 @@
       "typedRoutes": true
     },
     "extra": {
+      "router": {
+        "origin": false
+      },
       "eas": {
-        "projectId": "YOUR_EAS_PROJECT_ID"
+        "projectId": "0e49fcba-f9f9-4c8a-b3e9-33f271fc0f8c"
       }
-    }
+    },
+    "owner": "keypicksem"
   }
 }
