@@ -780,40 +780,25 @@ export function LandingPage() {
           <div className="flex flex-col lg:flex-row lg:items-center lg:gap-16">
             {/* Left content */}
             <div className="flex-1 max-w-xl">
-              {/* Social proof badge */}
               <Reveal>
-                <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white/80 backdrop-blur px-4 py-1.5 text-sm text-zinc-600 shadow-sm">
-                  <span>Loved by early users</span>
-                  <span>⭐</span>
-                  <span className="text-zinc-300">|</span>
-                  <Link
-                    href="/auth/signin"
-                    className="font-medium text-zinc-900 hover:underline"
-                  >
-                    Join the waitlist
-                  </Link>
-                </div>
-              </Reveal>
-
-              <Reveal delay={1}>
                 <h1 className="text-5xl font-extrabold tracking-tight sm:text-6xl lg:text-7xl leading-[1.05]">
                   <Typewriter text="Meet Acuity." />
                 </h1>
-                <p className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl leading-[1.15]">
-                  <Typewriter text="Turn " delay={600} />
-                  <span className="text-red-400">
-                    <Typewriter text="chaos" delay={850} />
-                  </span>
-                  <Typewriter text=" into " delay={1100} />
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 to-teal-400 animate-gradient-shift">
-                    <Typewriter text="clarity." delay={1400} />
-                  </span>
+              </Reveal>
+
+              <Reveal delay={1}>
+                <p className="mt-4 text-2xl font-bold tracking-tight sm:text-3xl lg:text-4xl leading-snug">
+                  Turn{" "}
+                  <span className="text-red-400">chaos</span>{" "}
+                  into{" "}
+                  <span className="text-emerald-500">clarity</span>.
                 </p>
               </Reveal>
 
               <Reveal delay={2}>
-                <p className="mt-6 text-lg text-zinc-500 leading-relaxed max-w-md">
-                  The daily debrief that decodes your mental patterns.
+                <p className="mt-5 text-base text-zinc-400 leading-relaxed max-w-sm">
+                  Speak for 60 seconds before bed. Wake up to your tasks extracted,
+                  goals tracked, and patterns decoded — automatically.
                 </p>
               </Reveal>
 
@@ -821,31 +806,20 @@ export function LandingPage() {
                 <div className="mt-8 flex flex-col sm:flex-row gap-3">
                   <Link
                     href="/auth/signin"
-                    className="group inline-flex items-center justify-center gap-2 rounded-xl bg-zinc-900 px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-zinc-700 hover:shadow-xl hover:shadow-zinc-900/20 active:scale-95"
+                    className="rounded-xl bg-zinc-900 px-7 py-3.5 text-sm font-semibold text-white transition hover:bg-zinc-700 hover:shadow-xl hover:shadow-zinc-900/10 active:scale-95"
                   >
-                    <svg
-                      className="h-5 w-5 transition-transform group-hover:scale-110"
-                      fill="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
-                    </svg>
-                    Download on App Store
+                    Start 14-Day Free Trial
                   </Link>
-                  <Link
-                    href="/auth/signin"
-                    className="group inline-flex items-center justify-center gap-2 rounded-xl bg-zinc-900 px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-zinc-700 hover:shadow-xl hover:shadow-zinc-900/20 active:scale-95"
+                  <a
+                    href="#how-it-works"
+                    className="rounded-xl border border-zinc-200 px-7 py-3.5 text-sm font-semibold text-zinc-600 transition hover:border-zinc-300 hover:bg-white active:scale-95"
                   >
-                    <svg
-                      className="h-5 w-5 transition-transform group-hover:scale-110"
-                      fill="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path d="M3.609 1.814L13.792 12 3.61 22.186a.996.996 0 0 1-.61-.92V2.734a1 1 0 0 1 .609-.92zm10.89 10.893l2.302 2.302-10.937 6.333 8.635-8.635zm3.199-1.6l2.651 1.535c.9.521.9 1.196 0 1.717l-2.651 1.535-2.535-2.535 2.535-2.253zM5.864 2.658L16.8 8.991l-2.302 2.302-8.634-8.635z" />
-                    </svg>
-                    Get it on Google Play
-                  </Link>
+                    See how it works
+                  </a>
                 </div>
+                <p className="mt-3 text-xs text-zinc-400">
+                  No credit card required
+                </p>
               </Reveal>
             </div>
 
