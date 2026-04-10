@@ -568,6 +568,63 @@ export function LandingPage() {
         </div>
       </section>
 
+      {/* ───── COMPARISON ───── */}
+      <section className="px-6 py-24 sm:py-32 bg-white">
+        <div className="mx-auto max-w-5xl">
+          <Reveal>
+            <p className="text-center text-xs font-semibold uppercase tracking-widest text-zinc-400 mb-3">
+              Why $19/month is a no-brainer
+            </p>
+          </Reveal>
+
+          <Reveal delay={1}>
+            <div className="mt-10 overflow-x-auto rounded-2xl border border-zinc-200 shadow-sm">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-zinc-100 bg-zinc-50">
+                    <th className="px-5 py-3 font-semibold text-zinc-900">Alternative</th>
+                    <th className="px-5 py-3 font-semibold text-zinc-900">Cost</th>
+                    <th className="px-5 py-3 font-semibold text-zinc-900">What&apos;s missing</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-100">
+                  {comparisons.map((row) => (
+                    <tr
+                      key={row.alt}
+                      className="transition-colors duration-200 hover:bg-zinc-50"
+                    >
+                      <td className="px-5 py-3.5 font-medium text-zinc-800 whitespace-nowrap">
+                        {row.alt}
+                      </td>
+                      <td className="px-5 py-3.5 text-zinc-500 whitespace-nowrap">
+                        {row.cost}
+                      </td>
+                      <td className="px-5 py-3.5 text-zinc-500">
+                        {row.missing}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Reveal>
+
+          <Reveal delay={2}>
+            <div className="mt-10 flex flex-col items-center gap-3 text-center">
+              <p className="text-sm font-bold text-zinc-900">
+                1/8th the cost of a single therapy session
+              </p>
+              <p className="text-sm font-bold text-zinc-900">
+                1/26th the cost of a life coach
+              </p>
+              <p className="text-sm font-bold text-zinc-900">
+                The only option that requires zero effort and produces structured output
+              </p>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
       {/* ───── STATS TICKER ───── */}
       <section className="py-12 px-6 border-y border-zinc-200/60 bg-white/50 backdrop-blur">
         <div className="mx-auto max-w-5xl">
@@ -1060,6 +1117,34 @@ export function LandingPage() {
 /* ═══════════════════════════════════════════
    Data
    ═══════════════════════════════════════════ */
+
+const comparisons = [
+  {
+    alt: "Therapy",
+    cost: "$150–300/session",
+    missing: "Once a week, can't track daily patterns",
+  },
+  {
+    alt: "Life coach",
+    cost: "$500+/month",
+    missing: "Not available at 10pm when you need to decompress",
+  },
+  {
+    alt: "Notion/journaling",
+    cost: "Free but costs time",
+    missing: "Requires effort, produces no insights",
+  },
+  {
+    alt: "Voice memos",
+    cost: "Free",
+    missing: "Raw audio, zero structure, nothing extracted",
+  },
+  {
+    alt: "Day One/Reflectly",
+    cost: "$3–10/month",
+    missing: "Requires writing, no AI extraction, no task management",
+  },
+];
 
 const stats = [
   { value: 2847, suffix: "+", prefix: "", label: "Brain dumps recorded" },
