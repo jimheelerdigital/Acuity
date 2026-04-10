@@ -569,7 +569,7 @@ function NeuralBrainMap() {
               y1={from.y}
               x2={to.x}
               y2={to.y}
-              stroke={isLit && areaNode ? areaNode.color : "#3F3F46"}
+              stroke={isLit && areaNode ? areaNode.color : "#D4D4D8"}
               strokeWidth={isLit ? "1.5" : "0.5"}
               opacity={isLit ? 0.5 : 0.15}
               className="transition-all duration-700"
@@ -613,7 +613,7 @@ function NeuralBrainMap() {
                 cx={node.x}
                 cy={node.y}
                 r={isLit ? node.r : isArea ? node.r * 0.5 : 1}
-                fill={isLit ? node.color : "#52525B"}
+                fill={isLit ? node.color : "#D4D4D8"}
                 className="transition-all duration-500"
                 opacity={isLit ? 1 : 0.3}
               />
@@ -637,7 +637,7 @@ function NeuralBrainMap() {
                   textAnchor="middle"
                   fontSize="11"
                   fontWeight={isLit ? "600" : "400"}
-                  fill={isLit ? "#FAFAFA" : "#52525B"}
+                  fill={isLit ? "#18181B" : "#A1A1AA"}
                   className="transition-all duration-500"
                 >
                   {node.label}
@@ -1195,26 +1195,19 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* ───── LIFE MATRIX — FULL WIDTH IMMERSIVE ───── */}
-      <section className="relative px-6 py-28 sm:py-36 bg-zinc-900 overflow-hidden">
-        {/* Background glow effects */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-violet-600/10 blur-[120px]" />
-          <div className="absolute top-1/4 left-1/4 w-[300px] h-[300px] rounded-full bg-blue-600/8 blur-[80px] animate-blob-drift" />
-          <div className="absolute bottom-1/4 right-1/4 w-[250px] h-[250px] rounded-full bg-emerald-600/8 blur-[80px] animate-blob-drift-2" />
-        </div>
-
+      {/* ───── LIFE MATRIX ───── */}
+      <section className="relative px-6 py-24 sm:py-32 overflow-hidden">
         <div className="relative mx-auto max-w-6xl">
           {/* Header */}
           <Reveal>
             <div className="text-center mb-16">
-              <p className="text-xs font-semibold uppercase tracking-widest text-violet-400 mb-4">
+              <p className="text-xs font-semibold uppercase tracking-widest text-violet-600 mb-4">
                 Life Matrix
               </p>
-              <h2 className="text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
+              <h2 className="text-4xl font-bold tracking-tight text-zinc-900 sm:text-5xl lg:text-6xl">
                 Your mind has patterns.
                 <br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-indigo-400">
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-500 to-indigo-500">
                   We decode them.
                 </span>
               </h2>
@@ -1223,15 +1216,22 @@ export function LandingPage() {
 
           {/* Brain visualization + area cards */}
           <div className="flex flex-col lg:flex-row lg:items-center lg:gap-16">
-            {/* Left: Neural brain map */}
+            {/* Left: Neural brain map with pulsing purple backdrop */}
             <div className="flex-1 flex justify-center mb-12 lg:mb-0">
-              <NeuralBrainMap />
+              <div className="relative">
+                {/* Pulsing purple glow behind animation */}
+                <div className="absolute inset-0 -inset-x-8 -inset-y-8 rounded-full bg-violet-400/15 blur-[80px] animate-pulse-slow" />
+                <div className="absolute inset-4 rounded-full bg-violet-500/10 blur-[50px] animate-pulse" />
+                <div className="relative">
+                  <NeuralBrainMap />
+                </div>
+              </div>
             </div>
 
-            {/* Right: Area cards that light up */}
+            {/* Right: Copy + area cards */}
             <div className="flex-1 max-w-md">
               <Reveal delay={1}>
-                <p className="text-zinc-400 text-base leading-relaxed mb-8">
+                <p className="text-zinc-500 text-base leading-relaxed mb-8">
                   Every nightly debrief illuminates another region of your mental map.
                   Over weeks, Acuity connects the dots you can&apos;t see — revealing how
                   your health affects your career, how relationships shape your mood,
@@ -1242,29 +1242,26 @@ export function LandingPage() {
               <div className="grid grid-cols-2 gap-3">
                 {MATRIX_AREAS.map((area, i) => (
                   <Reveal key={area.label} delay={Math.min(i + 1, 5) as 1 | 2 | 3 | 4 | 5}>
-                    <div className="group rounded-xl border border-zinc-800 bg-zinc-800/50 backdrop-blur p-4 transition-all duration-300 hover:border-zinc-700 hover:bg-zinc-800">
+                    <div className="group rounded-xl border border-zinc-200 bg-white p-4 shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-0.5">
                       <div className="flex items-center gap-2.5 mb-2">
                         <div
-                          className="h-2.5 w-2.5 rounded-full transition-shadow duration-300 group-hover:shadow-lg"
-                          style={{
-                            backgroundColor: area.color,
-                            boxShadow: `0 0 0 0 ${area.color}`,
-                          }}
+                          className="h-2.5 w-2.5 rounded-full"
+                          style={{ backgroundColor: area.color }}
                         />
-                        <span className="text-sm font-semibold text-white">
+                        <span className="text-sm font-semibold text-zinc-900">
                           {area.label}
                         </span>
                       </div>
-                      <div className="h-1 w-full rounded-full bg-zinc-700 overflow-hidden">
+                      <div className="h-1 w-full rounded-full bg-zinc-100 overflow-hidden">
                         <div
-                          className="h-full rounded-full transition-all duration-1000 group-hover:w-full"
+                          className="h-full rounded-full transition-all duration-1000"
                           style={{
                             backgroundColor: area.color,
                             width: `${area.target}%`,
                           }}
                         />
                       </div>
-                      <p className="mt-2 text-xs text-zinc-500">
+                      <p className="mt-2 text-xs text-zinc-400">
                         {area.target}/100
                       </p>
                     </div>
