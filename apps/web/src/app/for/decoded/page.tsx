@@ -41,7 +41,7 @@ export default function DecodedPage() {
           <Reveal delay={2}>
             <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
               <PulsingCTA href={SIGNIN}>
-                Start Free &mdash; Decode Your Patterns
+                Sign Up for the Waitlist &mdash; Get Your First Month Free
               </PulsingCTA>
               <a
                 href="#how-it-works"
@@ -233,7 +233,7 @@ export default function DecodedPage() {
       {/* ───── FINAL CTA ───── */}
       <CTABanner
         headline="Your patterns are already running. Start seeing them tonight."
-        buttonText="Start Free — Start Decoding Tonight"
+        buttonText="Sign Up for the Waitlist — Get Your First Month Free"
         utmCampaign={UTM}
       />
 

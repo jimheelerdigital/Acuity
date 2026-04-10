@@ -369,7 +369,7 @@ export function LandingNav() {
           href="/auth/signin"
           className="rounded-full bg-zinc-900 px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-700 hover:shadow-lg hover:shadow-zinc-900/20 active:scale-95"
         >
-          Sign In
+          Join the Waitlist
         </Link>
       </div>
     </nav>
@@ -468,7 +468,7 @@ export function PricingSection({
                 <span className="text-zinc-400">/month</span>
               </p>
               <p className="mt-2 text-sm text-zinc-400">
-                First month completely free &middot; no card required
+                First month completely free &middot; no credit card required
               </p>
 
               <ul className="mt-8 space-y-3 text-sm text-zinc-600">
@@ -496,7 +496,7 @@ export function PricingSection({
                 href={signinUrl}
                 className="mt-8 block w-full rounded-xl bg-zinc-900 py-3.5 text-center text-sm font-semibold text-white transition hover:bg-zinc-700 hover:shadow-xl hover:shadow-zinc-900/20 active:scale-95"
               >
-                Start Free — Get Your First Month Free
+                Sign Up for the Waitlist — Get Your First Month Free
               </Link>
             </div>
           </div>
@@ -558,7 +558,7 @@ export function HowItWorksSection({ steps }: { steps: HowItWorksStep[] }) {
 export function CTABanner({
   headline,
   subheadline,
-  buttonText = "Start Free — Get Your First Month Free",
+  buttonText = "Sign Up for the Waitlist — Get Your First Month Free",
   utmCampaign,
 }: {
   headline: string;
@@ -577,7 +577,7 @@ export function CTABanner({
 
           <div className="relative">
             <p className="text-sm font-medium text-violet-400 mb-4 uppercase tracking-wider">
-              Limited time offer &mdash; first month completely free
+              Join the waitlist &mdash; get your first month completely free
             </p>
             <h2 className="text-3xl font-bold sm:text-5xl tracking-tight">
               {headline}
@@ -595,7 +595,7 @@ export function CTABanner({
                 {buttonText}
               </Link>
               <span className="text-sm text-zinc-500">
-                Then $19/month &middot; cancel anytime
+                Then $19/month &middot; no credit card required
               </span>
             </div>
           </div>
@@ -951,7 +951,7 @@ export function UrgencyBadge() {
   return (
     <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 border border-emerald-200 px-4 py-2 text-sm font-medium text-emerald-700">
       <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-      Limited time offer &mdash; first month completely free
+      Sign up for the waitlist &mdash; get your first month free
     </div>
   );
 }

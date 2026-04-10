@@ -1093,7 +1093,7 @@ export function LandingPage() {
             href="/auth/signin"
             className="rounded-full bg-zinc-900 px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-700 hover:shadow-lg hover:shadow-zinc-900/20 active:scale-95"
           >
-            Download App
+            Join the Waitlist
           </Link>
         </div>
       </nav>
@@ -1133,7 +1133,7 @@ export function LandingPage() {
                     href="/auth/signin"
                     className="rounded-xl bg-zinc-900 px-7 py-3.5 text-sm font-semibold text-white transition hover:bg-zinc-700 hover:shadow-xl hover:shadow-zinc-900/10 active:scale-95"
                   >
-                    Start 14-Day Free Trial
+                    Sign Up for the Waitlist
                   </Link>
                   <a
                     href="#how-it-works"
@@ -1557,7 +1557,7 @@ export function LandingPage() {
               href="/auth/signin"
               className="inline-flex items-center gap-2 rounded-xl bg-zinc-900 px-8 py-4 text-sm font-semibold text-white transition hover:bg-zinc-700 hover:shadow-xl hover:shadow-zinc-900/10 active:scale-95"
             >
-              Start Your 14-Day Free Trial
+              Sign Up for the Waitlist — Get Your First Month Free
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
               </svg>
@@ -1671,7 +1671,7 @@ export function LandingPage() {
                   <span className="text-zinc-400">/month</span>
                 </p>
                 <p className="mt-2 text-sm text-zinc-400">
-                  14-day free trial &middot; no card required
+                  Join the waitlist &middot; no credit card required
                 </p>
 
                 <ul className="mt-8 space-y-3 text-sm text-zinc-600">
@@ -1699,7 +1699,7 @@ export function LandingPage() {
                   href="/auth/signin"
                   className="mt-8 block w-full rounded-xl bg-zinc-900 py-3.5 text-center text-sm font-semibold text-white transition hover:bg-zinc-700 hover:shadow-xl hover:shadow-zinc-900/20 active:scale-95"
                 >
-                  Start Free Trial
+                  Sign Up for the Waitlist — Get Your First Month Free
                 </Link>
               </div>
             </div>
@@ -1717,7 +1717,7 @@ export function LandingPage() {
 
             <div className="relative">
               <p className="text-sm font-medium text-violet-400 mb-4 uppercase tracking-wider">
-                14-day free trial · no card required
+                Join the waitlist · no credit card required
               </p>
               <h2 className="text-3xl font-bold sm:text-5xl tracking-tight">
                 Your first debrief takes
@@ -1735,7 +1735,7 @@ export function LandingPage() {
                   href="/auth/signin"
                   className="rounded-xl bg-white px-8 py-4 text-sm font-bold text-zinc-900 shadow-lg shadow-white/10 transition hover:shadow-xl hover:shadow-white/20 hover:-translate-y-0.5 active:scale-95"
                 >
-                  Start Your 14-Day Free Trial
+                  Sign Up for the Waitlist — Get Your First Month Free
                 </Link>
                 <span className="text-sm text-zinc-500">
                   Then $19/month · cancel anytime

@@ -43,7 +43,7 @@ export default function TherapyPage() {
           <Reveal delay={2}>
             <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
               <PulsingCTA href={SIGNIN}>
-                Start Free &mdash; Get Your First Month Free
+                Sign Up for the Waitlist &mdash; Get Your First Month Free
               </PulsingCTA>
               <a
                 href="#how-it-works"

@@ -43,7 +43,7 @@ export default function FoundersPage() {
           <Reveal delay={2}>
             <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
               <PulsingCTA href={SIGNIN}>
-                Start your debrief tonight &mdash; First month free
+                Sign Up for the Waitlist &mdash; Get Your First Month Free
               </PulsingCTA>
               <a
                 href="#how-it-works"
@@ -334,7 +334,7 @@ export default function FoundersPage() {
       {/* ───── FINAL CTA ───── */}
       <CTABanner
         headline="You track your MRR. Your burn rate. Your pipeline. Start tracking what's actually running your business — your mind."
-        buttonText="Start your debrief tonight — First month free"
+        buttonText="Sign Up for the Waitlist — Get Your First Month Free"
         utmCampaign={UTM}
       />
 

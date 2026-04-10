@@ -41,7 +41,7 @@ export default function SleepPage() {
           <Reveal delay={2}>
             <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
               <PulsingCTA href={SIGNIN}>
-                Empty your head tonight &mdash; First month free
+                Sign Up for the Waitlist &mdash; Get Your First Month Free
               </PulsingCTA>
               <a
                 href="#how-it-works"
@@ -233,7 +233,7 @@ export default function SleepPage() {
       <CTABanner
         headline="Your brain has been waiting for somewhere to put all of this."
         subheadline="Tonight. 60 seconds. See what happens."
-        buttonText="Start Free — Empty Your Head Tonight"
+        buttonText="Sign Up for the Waitlist — Get Your First Month Free"
         utmCampaign={UTM}
       />
 

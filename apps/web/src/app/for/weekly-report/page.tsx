@@ -41,7 +41,7 @@ export default function WeeklyReportPage() {
           <Reveal delay={2}>
             <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
               <PulsingCTA href={SIGNIN}>
-                Get your first weekly report free &mdash; Start tonight
+                Sign Up for the Waitlist &mdash; Get Your First Month Free
               </PulsingCTA>
               <a
                 href="#how-it-works"
@@ -290,7 +290,7 @@ export default function WeeklyReportPage() {
       {/* ───── FINAL CTA ───── */}
       <CTABanner
         headline="Your first report arrives Sunday. Start recording tonight."
-        buttonText="Get your first report free — Start tonight"
+        buttonText="Sign Up for the Waitlist — Get Your First Month Free"
         utmCampaign={UTM}
       />
 
