@@ -432,37 +432,22 @@ const MATRIX_AREAS = [
   { label: "Growth", color: "#22C55E", target: 71 },
 ];
 
-/* Hexagonal brain map — 6 area nodes in a hex ring + center, curved connections */
-const HEX_CENTER = { x: 200, y: 190 };
-const HEX_RADIUS = 130;
-const HEX_AREAS = MATRIX_AREAS.map((area, i) => {
+/* Radar matrix — nodes positioned at their score distance from center */
+const RC = { x: 200, y: 200 }; // radar center
+const R_MAX = 130; // max radius
+const R_LEVELS = 4;
+
+function radarPt(i: number, r: number) {
   const angle = -Math.PI / 2 + (i * 2 * Math.PI) / 6;
   return {
-    ...area,
-    x: HEX_CENTER.x + HEX_RADIUS * Math.cos(angle),
-    y: HEX_CENTER.y + HEX_RADIUS * Math.sin(angle),
+    x: RC.x + r * Math.cos(angle),
+    y: RC.y + r * Math.sin(angle),
   };
-});
-
-/* Adjacent pairs around the hex ring + each node to center */
-const HEX_CONNECTIONS: [number, number][] = [
-  [0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 0], // ring
-  [0, 3], [1, 4], [2, 5], // cross connections
-];
-
-function curvedPath(x1: number, y1: number, x2: number, y2: number): string {
-  const mx = (x1 + x2) / 2;
-  const my = (y1 + y2) / 2;
-  // Offset control point toward center for a nice curve
-  const cx = mx + (HEX_CENTER.y - my) * 0.15;
-  const cy = my - (HEX_CENTER.x - mx) * 0.15;
-  return `M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`;
 }
 
 function NeuralBrainMap() {
   const [litCount, setLitCount] = useState(0);
   const [pulseIdx, setPulseIdx] = useState(-1);
-  const [showCross, setShowCross] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const started = useRef(false);
   const timeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -492,165 +477,148 @@ function NeuralBrainMap() {
     timeoutsRef.current = [];
     setLitCount(0);
     setPulseIdx(-1);
-    setShowCross(false);
 
-    // Light up nodes one at a time around the hex
     for (let i = 0; i < 6; i++) {
       const t = setTimeout(() => {
         setLitCount(i + 1);
         setPulseIdx(i);
-        const t2 = setTimeout(() => setPulseIdx(-1), 500);
-        timeoutsRef.current.push(t2);
-      }, i * 500);
+      }, i * 600);
       timeoutsRef.current.push(t);
     }
 
-    // After all lit, show cross connections
-    const crossT = setTimeout(() => setShowCross(true), 6 * 500 + 300);
-    timeoutsRef.current.push(crossT);
-
-    // Hold, then reset
+    // Hold, then reset and loop
     const resetT = setTimeout(() => {
-      setShowCross(false);
-      setLitCount(0);
       setPulseIdx(-1);
-      const loopT = setTimeout(() => runCycle(), 600);
+      setLitCount(0);
+      const loopT = setTimeout(() => runCycle(), 800);
       timeoutsRef.current.push(loopT);
-    }, 6 * 500 + 4000);
+    }, 6 * 600 + 4000);
     timeoutsRef.current.push(resetT);
   }
 
+  // Build data polygon from revealed scores
+  const polyPoints = MATRIX_AREAS.map((area, i) => {
+    if (i >= litCount) return radarPt(i, 0);
+    return radarPt(i, (area.target / 100) * R_MAX);
+  });
+  const polyStr = polyPoints.map((p) => `${p.x},${p.y}`).join(" ");
+
   return (
-    <div ref={ref} className="relative w-[340px] h-[380px] sm:w-[400px] sm:h-[420px]">
-      <svg viewBox="0 0 400 380" className="w-full h-full">
-        {/* Ring connections (curved) — light up as adjacent nodes appear */}
-        {HEX_CONNECTIONS.slice(0, 6).map(([a, b], i) => {
-          const from = HEX_AREAS[a];
-          const to = HEX_AREAS[b];
-          const isLit = a < litCount && b < litCount;
+    <div ref={ref} className="relative w-[360px] h-[400px] sm:w-[420px] sm:h-[440px]">
+      <svg viewBox="0 0 400 400" className="w-full h-full">
+        {/* Grid rings */}
+        {Array.from({ length: R_LEVELS }).map((_, lvl) => {
+          const r = ((lvl + 1) / R_LEVELS) * R_MAX;
+          const pts = Array.from({ length: 6 })
+            .map((_, j) => { const p = radarPt(j, r); return `${p.x},${p.y}`; })
+            .join(" ");
           return (
-            <path
-              key={`ring-${i}`}
-              d={curvedPath(from.x, from.y, to.x, to.y)}
-              fill="none"
-              stroke={isLit ? "#A78BFA" : "#E4E4E7"}
-              strokeWidth={isLit ? "2" : "0.5"}
-              opacity={isLit ? 0.5 : 0.2}
-              className="transition-all duration-700"
-            />
+            <polygon key={lvl} points={pts} fill="none" stroke="#E4E4E7" strokeWidth="0.5" />
           );
         })}
 
-        {/* Cross connections — appear after all nodes lit */}
-        {HEX_CONNECTIONS.slice(6).map(([a, b], i) => {
-          const from = HEX_AREAS[a];
-          const to = HEX_AREAS[b];
+        {/* Spokes */}
+        {MATRIX_AREAS.map((_, i) => {
+          const p = radarPt(i, R_MAX);
           return (
-            <path
-              key={`cross-${i}`}
-              d={curvedPath(from.x, from.y, to.x, to.y)}
-              fill="none"
-              stroke="#A78BFA"
-              strokeWidth="1.5"
-              strokeDasharray="6 4"
-              opacity={showCross ? 0.35 : 0}
-              className="transition-all duration-1000"
-            />
+            <line key={i} x1={RC.x} y1={RC.y} x2={p.x} y2={p.y} stroke="#E4E4E7" strokeWidth="0.5" />
           );
         })}
 
-        {/* Spokes to center — appear with each node */}
-        {HEX_AREAS.map((area, i) => {
-          const isLit = i < litCount;
-          return (
-            <line
-              key={`spoke-${i}`}
-              x1={area.x}
-              y1={area.y}
-              x2={HEX_CENTER.x}
-              y2={HEX_CENTER.y}
-              stroke={isLit ? area.color : "#E4E4E7"}
-              strokeWidth={isLit ? "1" : "0.3"}
-              opacity={isLit ? 0.25 : 0.1}
-              className="transition-all duration-700"
-            />
-          );
-        })}
-
-        {/* Center node */}
-        <circle
-          cx={HEX_CENTER.x}
-          cy={HEX_CENTER.y}
-          r={litCount > 0 ? "6" : "3"}
-          fill={litCount > 0 ? "#7C3AED" : "#D4D4D8"}
-          className="transition-all duration-500"
-        />
+        {/* Data polygon — connects score positions */}
         {litCount > 0 && (
-          <circle
-            cx={HEX_CENTER.x}
-            cy={HEX_CENTER.y}
-            r="12"
-            fill="none"
+          <polygon
+            points={polyStr}
+            fill="#7C3AED"
+            fillOpacity="0.08"
             stroke="#7C3AED"
-            strokeWidth="1"
-            opacity="0.3"
-            className="animate-pulse"
+            strokeWidth="1.5"
+            strokeLinejoin="round"
+            className="transition-all duration-600"
           />
         )}
 
-        {/* Area nodes */}
-        {HEX_AREAS.map((area, i) => {
+        {/* Center dot */}
+        <circle cx={RC.x} cy={RC.y} r="3" fill="#D4D4D8" />
+
+        {/* Area nodes — positioned at score distance */}
+        {MATRIX_AREAS.map((area, i) => {
           const isLit = i < litCount;
           const isPulsing = pulseIdx === i;
+          const scoreR = (area.target / 100) * R_MAX;
+          const nodeP = isLit ? radarPt(i, scoreR) : radarPt(i, 0);
+          const labelP = radarPt(i, R_MAX + 24);
 
           return (
             <g key={area.label}>
-              {/* Glow */}
-              {isLit && (
-                <circle
-                  cx={area.x}
-                  cy={area.y}
-                  r="22"
-                  fill={area.color}
-                  opacity="0.1"
-                  className="transition-opacity duration-700"
-                />
-              )}
-              {/* Pulse ring */}
+              {/* Pulsing dot on active node */}
               {isPulsing && (
+                <>
+                  <circle
+                    cx={nodeP.x}
+                    cy={nodeP.y}
+                    r="18"
+                    fill="none"
+                    stroke={area.color}
+                    strokeWidth="2"
+                    className="animate-pulse-ring"
+                  />
+                  <circle
+                    cx={nodeP.x}
+                    cy={nodeP.y}
+                    r="12"
+                    fill={area.color}
+                    opacity="0.12"
+                  />
+                </>
+              )}
+              {/* Soft glow when revealed */}
+              {isLit && !isPulsing && (
                 <circle
-                  cx={area.x}
-                  cy={area.y}
-                  r="18"
-                  fill="none"
-                  stroke={area.color}
-                  strokeWidth="2"
-                  className="animate-pulse-ring"
+                  cx={nodeP.x}
+                  cy={nodeP.y}
+                  r="10"
+                  fill={area.color}
+                  opacity="0.08"
                 />
               )}
-              {/* Node */}
+              {/* Node dot */}
               <circle
-                cx={area.x}
-                cy={area.y}
-                r={isLit ? "8" : "4"}
-                fill={isLit ? area.color : "#E4E4E7"}
+                cx={isLit ? nodeP.x : RC.x}
+                cy={isLit ? nodeP.y : RC.y}
+                r={isLit ? "6" : "0"}
+                fill={area.color}
                 stroke="white"
-                strokeWidth={isLit ? "2.5" : "0"}
-                className="transition-all duration-500"
+                strokeWidth="2"
+                className="transition-all duration-600 ease-out"
               />
-              {/* Label */}
+              {/* Label — always at outer edge */}
               <text
-                x={area.x}
-                y={area.y < HEX_CENTER.y - 40 ? area.y - 18 : area.y > HEX_CENTER.y + 40 ? area.y + 24 : area.x < HEX_CENTER.x ? area.x - 18 : area.x + 18}
-                textAnchor={area.x < HEX_CENTER.x - 40 ? "end" : area.x > HEX_CENTER.x + 40 ? "start" : "middle"}
+                x={labelP.x}
+                y={labelP.y}
+                textAnchor="middle"
                 dominantBaseline="middle"
                 fontSize="12"
                 fontWeight={isLit ? "600" : "400"}
-                fill={isLit ? "#18181B" : "#A1A1AA"}
+                fill={isLit ? "#18181B" : "#D4D4D8"}
                 className="transition-all duration-500"
               >
                 {area.label}
               </text>
+              {/* Score number — appears below label */}
+              {isLit && (
+                <text
+                  x={labelP.x}
+                  y={labelP.y + 15}
+                  textAnchor="middle"
+                  fontSize="11"
+                  fontWeight="700"
+                  fill={area.color}
+                  className="transition-opacity duration-500"
+                >
+                  {area.target}
+                </text>
+              )}
             </g>
           );
         })}
