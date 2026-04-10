@@ -432,9 +432,40 @@ const MATRIX_AREAS = [
   { label: "Growth", color: "#22C55E", target: 71 },
 ];
 
-function AnimatedMatrix() {
-  const [activeIndex, setActiveIndex] = useState(-1);
-  const [scores, setScores] = useState([0, 0, 0, 0, 0, 0]);
+/* Brain neural map nodes — positioned to form a brain silhouette shape */
+const BRAIN_NODES = [
+  // Area nodes (the 6 life areas, placed around a brain shape)
+  { id: "health", x: 200, y: 65, label: "Health", color: "#14B8A6", r: 8 },
+  { id: "wealth", x: 330, y: 120, label: "Wealth", color: "#F59E0B", r: 7 },
+  { id: "career", x: 310, y: 250, label: "Career", color: "#3B82F6", r: 8 },
+  { id: "relationships", x: 90, y: 250, label: "Relationships", color: "#F43F5E", r: 7 },
+  { id: "spirituality", x: 70, y: 120, label: "Spirituality", color: "#A855F7", r: 7 },
+  { id: "growth", x: 200, y: 310, label: "Growth", color: "#22C55E", r: 8 },
+  // Internal connection nodes (smaller, form the neural network inside)
+  { id: "n1", x: 150, y: 120, label: "", color: "#7C3AED", r: 3 },
+  { id: "n2", x: 250, y: 120, label: "", color: "#7C3AED", r: 3 },
+  { id: "n3", x: 200, y: 160, label: "", color: "#7C3AED", r: 4 },
+  { id: "n4", x: 140, y: 190, label: "", color: "#7C3AED", r: 3 },
+  { id: "n5", x: 260, y: 190, label: "", color: "#7C3AED", r: 3 },
+  { id: "n6", x: 200, y: 230, label: "", color: "#7C3AED", r: 3 },
+];
+
+const BRAIN_EDGES: [number, number][] = [
+  // Area-to-internal connections
+  [0, 6], [0, 7], [0, 8],   // Health → internal
+  [1, 7], [1, 10],           // Wealth → internal
+  [2, 10], [2, 11],          // Career → internal
+  [3, 9], [3, 11],           // Relationships → internal
+  [4, 6], [4, 9],            // Spirituality → internal
+  [5, 11], [5, 9], [5, 10],  // Growth → internal
+  // Internal mesh
+  [6, 8], [7, 8], [8, 9], [8, 10], [8, 11], [9, 11], [10, 11], [6, 9], [7, 10],
+];
+
+function NeuralBrainMap() {
+  const [litNodes, setLitNodes] = useState<Set<number>>(new Set());
+  const [litEdges, setLitEdges] = useState<Set<number>>(new Set());
+  const [pulseNode, setPulseNode] = useState(-1);
   const ref = useRef<HTMLDivElement>(null);
   const started = useRef(false);
   const timeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -450,7 +481,7 @@ function AnimatedMatrix() {
           obs.unobserve(el);
         }
       },
-      { threshold: 0.2 }
+      { threshold: 0.15 }
     );
     obs.observe(el);
     return () => {
@@ -462,179 +493,159 @@ function AnimatedMatrix() {
   function runCycle() {
     timeoutsRef.current.forEach(clearTimeout);
     timeoutsRef.current = [];
-    setActiveIndex(-1);
-    setScores([0, 0, 0, 0, 0, 0]);
+    setLitNodes(new Set());
+    setLitEdges(new Set());
+    setPulseNode(-1);
 
-    // Reveal one area at a time
-    MATRIX_AREAS.forEach((area, i) => {
+    // Light up each area node sequentially, with its connected edges
+    const areaIndices = [0, 1, 2, 3, 4, 5]; // The 6 area nodes
+    areaIndices.forEach((nodeIdx, step) => {
       const t = setTimeout(() => {
-        setActiveIndex(i);
-        setScores((prev) => {
-          const next = [...prev];
-          next[i] = area.target;
+        setPulseNode(nodeIdx);
+        setLitNodes((prev) => {
+          const next = new Set(prev);
+          next.add(nodeIdx);
+          // Also light connected internal nodes
+          BRAIN_EDGES.forEach(([a, b]) => {
+            if (a === nodeIdx) next.add(b);
+            if (b === nodeIdx) next.add(a);
+          });
           return next;
         });
-      }, i * 700);
+        setLitEdges((prev) => {
+          const next = new Set(prev);
+          BRAIN_EDGES.forEach(([a, b], edgeIdx) => {
+            if (a === nodeIdx || b === nodeIdx) next.add(edgeIdx);
+          });
+          return next;
+        });
+        // Clear pulse after a moment
+        const t2 = setTimeout(() => setPulseNode(-1), 400);
+        timeoutsRef.current.push(t2);
+      }, step * 600);
       timeoutsRef.current.push(t);
     });
 
-    // Hold fully revealed, then reset and loop
-    const holdTime = MATRIX_AREAS.length * 700 + 3000;
+    // Light remaining internal edges
     const t = setTimeout(() => {
-      setActiveIndex(-1);
-      setScores([0, 0, 0, 0, 0, 0]);
-      setTimeout(() => runCycle(), 600);
-    }, holdTime);
+      setLitEdges(new Set(BRAIN_EDGES.map((_, i) => i)));
+      setLitNodes(new Set(BRAIN_NODES.map((_, i) => i)));
+    }, areaIndices.length * 600 + 200);
     timeoutsRef.current.push(t);
+
+    // Hold, then reset
+    const resetT = setTimeout(() => {
+      setLitNodes(new Set());
+      setLitEdges(new Set());
+      setPulseNode(-1);
+      setTimeout(() => runCycle(), 800);
+    }, areaIndices.length * 600 + 4000);
+    timeoutsRef.current.push(resetT);
   }
 
-  const cx = 150;
-  const cy = 150;
-  const maxR = 110;
-  const levels = 4;
-  const n = 6;
-  const angleStep = (2 * Math.PI) / n;
-  const startAngle = -Math.PI / 2;
-
-  const pt = (i: number, r: number) => ({
-    x: cx + r * Math.cos(startAngle + i * angleStep),
-    y: cy + r * Math.sin(startAngle + i * angleStep),
-  });
-
-  const polyPts = scores
-    .map((s, i) => {
-      const r = (s / 100) * maxR;
-      const p = pt(i, r);
-      return `${p.x},${p.y}`;
-    })
-    .join(" ");
-
   return (
-    <div ref={ref} className="relative w-[340px] h-[340px] sm:w-[400px] sm:h-[400px]">
-      <svg viewBox="0 0 300 300" className="w-full h-full">
-        {/* Grid rings */}
-        {Array.from({ length: levels }).map((_, lvl) => {
-          const r = ((lvl + 1) / levels) * maxR;
-          const pts = Array.from({ length: n })
-            .map((_, j) => { const p = pt(j, r); return `${p.x},${p.y}`; })
-            .join(" ");
-          return (
-            <polygon
-              key={lvl}
-              points={pts}
-              fill="none"
-              stroke="#E4E4E7"
-              strokeWidth="0.5"
-            />
-          );
-        })}
+    <div ref={ref} className="relative w-[360px] h-[380px] sm:w-[420px] sm:h-[420px]">
+      <svg viewBox="0 0 400 380" className="w-full h-full">
+        <defs>
+          {MATRIX_AREAS.map((area) => (
+            <radialGradient key={area.label} id={`glow-${area.label}`}>
+              <stop offset="0%" stopColor={area.color} stopOpacity="0.3" />
+              <stop offset="100%" stopColor={area.color} stopOpacity="0" />
+            </radialGradient>
+          ))}
+        </defs>
 
-        {/* Spokes */}
-        {MATRIX_AREAS.map((_, i) => {
-          const p = pt(i, maxR);
+        {/* Edges / neural pathways */}
+        {BRAIN_EDGES.map(([a, b], i) => {
+          const from = BRAIN_NODES[a];
+          const to = BRAIN_NODES[b];
+          const isLit = litEdges.has(i);
+          // Use the color of whichever endpoint is an area node
+          const areaNode = a < 6 ? BRAIN_NODES[a] : b < 6 ? BRAIN_NODES[b] : null;
           return (
             <line
               key={i}
-              x1={cx}
-              y1={cy}
-              x2={p.x}
-              y2={p.y}
-              stroke="#E4E4E7"
-              strokeWidth="0.5"
+              x1={from.x}
+              y1={from.y}
+              x2={to.x}
+              y2={to.y}
+              stroke={isLit && areaNode ? areaNode.color : "#3F3F46"}
+              strokeWidth={isLit ? "1.5" : "0.5"}
+              opacity={isLit ? 0.5 : 0.15}
+              className="transition-all duration-700"
             />
           );
         })}
 
-        {/* Data polygon */}
-        {scores.some((s) => s > 0) && (
-          <polygon
-            points={polyPts}
-            fill="#7C3AED"
-            fillOpacity="0.08"
-            stroke="#7C3AED"
-            strokeWidth="1.5"
-            strokeLinejoin="round"
-            className="transition-all duration-700 ease-out"
-          />
-        )}
-
-        {/* Nodes + labels */}
-        {MATRIX_AREAS.map((area, i) => {
-          const isRevealed = scores[i] > 0;
-          const isActive = activeIndex === i;
-          const scoreR = (scores[i] / 100) * maxR;
-          const nodeP = pt(i, isRevealed ? scoreR : 0);
-          const labelP = pt(i, maxR + 20);
+        {/* Nodes */}
+        {BRAIN_NODES.map((node, i) => {
+          const isLit = litNodes.has(i);
+          const isPulsing = pulseNode === i;
+          const isArea = i < 6;
 
           return (
-            <g key={area.label}>
-              {/* Active pulse ring */}
-              {isActive && (
+            <g key={node.id}>
+              {/* Area glow */}
+              {isArea && isLit && (
                 <circle
-                  cx={nodeP.x}
-                  cy={nodeP.y}
-                  r="12"
+                  cx={node.x}
+                  cy={node.y}
+                  r="24"
+                  fill={`url(#glow-${node.label})`}
+                  className="transition-opacity duration-700"
+                  opacity={isLit ? 1 : 0}
+                />
+              )}
+              {/* Pulse ring */}
+              {isPulsing && isArea && (
+                <circle
+                  cx={node.x}
+                  cy={node.y}
+                  r="16"
                   fill="none"
-                  stroke={area.color}
-                  strokeWidth="1.5"
+                  stroke={node.color}
+                  strokeWidth="2"
                   className="animate-pulse-ring"
                 />
               )}
-              {/* Soft glow when revealed */}
-              {isRevealed && (
+              {/* Node circle */}
+              <circle
+                cx={node.x}
+                cy={node.y}
+                r={isLit ? node.r : isArea ? node.r * 0.5 : 1}
+                fill={isLit ? node.color : "#52525B"}
+                className="transition-all duration-500"
+                opacity={isLit ? 1 : 0.3}
+              />
+              {isArea && isLit && (
                 <circle
-                  cx={nodeP.x}
-                  cy={nodeP.y}
-                  r="8"
-                  fill={area.color}
-                  opacity="0.12"
-                  className="transition-all duration-700"
+                  cx={node.x}
+                  cy={node.y}
+                  r={node.r}
+                  fill="none"
+                  stroke={node.color}
+                  strokeWidth="2"
+                  opacity="0.4"
+                  className="transition-all duration-500"
                 />
               )}
-              {/* Node dot */}
-              <circle
-                cx={isRevealed ? nodeP.x : cx}
-                cy={isRevealed ? nodeP.y : cy}
-                r={isRevealed ? "5" : "0"}
-                fill={area.color}
-                stroke="white"
-                strokeWidth="2"
-                className="transition-all duration-700 ease-out"
-              />
               {/* Label */}
-              <text
-                x={labelP.x}
-                y={labelP.y}
-                textAnchor="middle"
-                dominantBaseline="middle"
-                fontSize="11"
-                fontWeight={isRevealed ? "600" : "400"}
-                fill={isRevealed ? "#18181B" : "#D4D4D8"}
-                className="transition-all duration-500"
-              >
-                {area.label}
-              </text>
-              {/* Score */}
-              {isRevealed && (
+              {isArea && (
                 <text
-                  x={labelP.x}
-                  y={labelP.y + 13}
+                  x={node.x}
+                  y={node.y + (node.y < 200 ? -18 : 22)}
                   textAnchor="middle"
-                  fontSize="9"
-                  fontWeight="600"
-                  fill={area.color}
-                  className="transition-opacity duration-500"
-                  opacity={isRevealed ? 1 : 0}
+                  fontSize="11"
+                  fontWeight={isLit ? "600" : "400"}
+                  fill={isLit ? "#FAFAFA" : "#52525B"}
+                  className="transition-all duration-500"
                 >
-                  {scores[i]}
+                  {node.label}
                 </text>
               )}
             </g>
           );
         })}
-
-        {/* Center */}
-        <circle cx={cx} cy={cy} r="3" fill="#18181B" />
       </svg>
     </div>
   );
@@ -1184,51 +1195,82 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* ───── LIFE MATRIX VISUALIZATION ───── */}
-      <section className="px-6 py-24 sm:py-32">
-        <div className="mx-auto max-w-6xl">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:gap-20">
-            {/* Left: Animated radar chart */}
+      {/* ───── LIFE MATRIX — FULL WIDTH IMMERSIVE ───── */}
+      <section className="relative px-6 py-28 sm:py-36 bg-zinc-900 overflow-hidden">
+        {/* Background glow effects */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-violet-600/10 blur-[120px]" />
+          <div className="absolute top-1/4 left-1/4 w-[300px] h-[300px] rounded-full bg-blue-600/8 blur-[80px] animate-blob-drift" />
+          <div className="absolute bottom-1/4 right-1/4 w-[250px] h-[250px] rounded-full bg-emerald-600/8 blur-[80px] animate-blob-drift-2" />
+        </div>
+
+        <div className="relative mx-auto max-w-6xl">
+          {/* Header */}
+          <Reveal>
+            <div className="text-center mb-16">
+              <p className="text-xs font-semibold uppercase tracking-widest text-violet-400 mb-4">
+                Life Matrix
+              </p>
+              <h2 className="text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
+                Your mind has patterns.
+                <br />
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-indigo-400">
+                  We decode them.
+                </span>
+              </h2>
+            </div>
+          </Reveal>
+
+          {/* Brain visualization + area cards */}
+          <div className="flex flex-col lg:flex-row lg:items-center lg:gap-16">
+            {/* Left: Neural brain map */}
             <div className="flex-1 flex justify-center mb-12 lg:mb-0">
-              <AnimatedMatrix />
+              <NeuralBrainMap />
             </div>
 
-            {/* Right: Copy */}
-            <div className="flex-1 max-w-lg">
-              <Reveal>
-                <p className="text-xs font-semibold uppercase tracking-widest text-violet-600 mb-3">
-                  Life Matrix
-                </p>
-                <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-                  The more you share,
-                  <br />
-                  the sharper it gets.
-                </h2>
-              </Reveal>
+            {/* Right: Area cards that light up */}
+            <div className="flex-1 max-w-md">
               <Reveal delay={1}>
-                <p className="mt-6 text-lg text-zinc-500 leading-relaxed">
-                  Every debrief maps another dimension of your life.
-                  Over weeks, Acuity builds a living matrix of how you think,
-                  what drives you, and where you get stuck.
+                <p className="text-zinc-400 text-base leading-relaxed mb-8">
+                  Every nightly debrief illuminates another region of your mental map.
+                  Over weeks, Acuity connects the dots you can&apos;t see — revealing how
+                  your health affects your career, how relationships shape your mood,
+                  and what actually drives your growth.
                 </p>
               </Reveal>
-              <Reveal delay={2}>
-                <div className="mt-8 space-y-4">
-                  {matrixFeatures.map((f, i) => (
-                    <div key={i} className="flex items-start gap-3">
-                      <div className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-violet-100">
-                        <svg className="h-3.5 w-3.5 text-violet-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                        </svg>
+
+              <div className="grid grid-cols-2 gap-3">
+                {MATRIX_AREAS.map((area, i) => (
+                  <Reveal key={area.label} delay={Math.min(i + 1, 5) as 1 | 2 | 3 | 4 | 5}>
+                    <div className="group rounded-xl border border-zinc-800 bg-zinc-800/50 backdrop-blur p-4 transition-all duration-300 hover:border-zinc-700 hover:bg-zinc-800">
+                      <div className="flex items-center gap-2.5 mb-2">
+                        <div
+                          className="h-2.5 w-2.5 rounded-full transition-shadow duration-300 group-hover:shadow-lg"
+                          style={{
+                            backgroundColor: area.color,
+                            boxShadow: `0 0 0 0 ${area.color}`,
+                          }}
+                        />
+                        <span className="text-sm font-semibold text-white">
+                          {area.label}
+                        </span>
                       </div>
-                      <div>
-                        <p className="text-sm font-semibold text-zinc-900">{f.title}</p>
-                        <p className="text-sm text-zinc-500">{f.desc}</p>
+                      <div className="h-1 w-full rounded-full bg-zinc-700 overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-1000 group-hover:w-full"
+                          style={{
+                            backgroundColor: area.color,
+                            width: `${area.target}%`,
+                          }}
+                        />
                       </div>
+                      <p className="mt-2 text-xs text-zinc-500">
+                        {area.target}/100
+                      </p>
                     </div>
-                  ))}
-                </div>
-              </Reveal>
+                  </Reveal>
+                ))}
+              </div>
             </div>
           </div>
         </div>
