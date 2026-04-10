@@ -1150,8 +1150,8 @@ export function PainSection({ points }: { points: string[] }) {
       <div className="mx-auto max-w-5xl">
         <div className="grid gap-6 sm:grid-cols-3">
           {points.map((point, i) => (
-            <Reveal key={i} delay={Math.min(i + 1, 3) as 1 | 2 | 3}>
-              <div className="group rounded-2xl bg-zinc-900 p-8 text-white transition-all duration-300 hover:shadow-xl hover:-translate-y-1 hover:shadow-zinc-900/20">
+            <Reveal key={i} delay={Math.min(i + 1, 3) as 1 | 2 | 3} className="h-full">
+              <div className="h-full group rounded-2xl bg-zinc-900 p-8 text-white transition-all duration-300 hover:shadow-xl hover:-translate-y-1 hover:shadow-zinc-900/20">
                 <div className="h-10 w-10 rounded-xl bg-violet-600/20 flex items-center justify-center mb-5">
                   <svg
                     className="h-5 w-5 text-violet-400"
