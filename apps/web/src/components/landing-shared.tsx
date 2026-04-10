@@ -344,7 +344,7 @@ export function LandingNav() {
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
         <div className="flex items-center gap-8">
           <Link href="/" className="flex items-center gap-2 group">
-            <img src="/acuity-logo.png" alt="Acuity logo" width={28} height={28} className="h-7 w-7" />
+            <img src="/acuity-logo.png" alt="Acuity logo" width={36} height={36} className="h-9 w-9" />
             <span className="text-lg font-bold tracking-tight">Acuity</span>
           </Link>
           <div className="hidden sm:flex items-center gap-6 text-sm text-zinc-500">
@@ -385,7 +385,7 @@ export function Footer() {
         <div className="flex flex-col gap-8 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <div className="flex items-center gap-2">
-              <img src="/acuity-logo.png" alt="Acuity logo" width={28} height={28} className="h-7 w-7" />
+              <img src="/acuity-logo.png" alt="Acuity logo" width={36} height={36} className="h-9 w-9" />
               <span className="text-lg font-bold tracking-tight">Acuity</span>
             </div>
             <p className="mt-2 text-sm text-zinc-400 max-w-xs">
