@@ -18,7 +18,7 @@ export default async function InsightsPage() {
         <section className="mb-12">
           <h1 className="text-2xl font-bold text-zinc-900 mb-1">Life Matrix</h1>
           <p className="text-sm text-zinc-500 mb-6">
-            Your mind, mapped — across every area of life.
+            Your life, decoded — across every area.
           </p>
           <LifeMap />
         </section>

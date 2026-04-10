@@ -143,7 +143,7 @@ export default function InsightsTab() {
         <View className="mb-6">
           <Text className="text-2xl font-bold text-zinc-900">Insights</Text>
           <Text className="text-sm text-zinc-500 mt-1">
-            Your mind, mapped.
+            Your life, decoded.
           </Text>
         </View>
 

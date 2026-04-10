@@ -1,7 +1,7 @@
 // ─── App ──────────────────────────────────────────────────────────────────────
 
 export const APP_NAME = "Acuity";
-export const APP_TAGLINE = "Your mind, mapped.";
+export const APP_TAGLINE = "The daily debrief that turns chaos into clarity.";
 
 // ─── Recording ────────────────────────────────────────────────────────────────
 

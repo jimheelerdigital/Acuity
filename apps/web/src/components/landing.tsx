@@ -805,20 +805,22 @@ export function LandingPage() {
 
               <Reveal delay={1}>
                 <h1 className="text-5xl font-extrabold tracking-tight sm:text-6xl lg:text-7xl leading-[1.05]">
-                  <Typewriter text="Meet Acuity." />
-                  <br />
-                  <span className="block mt-1">
-                    <Typewriter text="Your mind," delay={600} />
+                  Meet{" "}
+                  <span className="font-display italic bg-gradient-to-r from-violet-600 to-indigo-500 bg-clip-text text-transparent animate-gradient-shift inline-block">
+                    Acuity
                   </span>
-                  <span className="block mt-1 text-transparent bg-clip-text bg-gradient-to-r from-violet-500 to-indigo-400 animate-gradient-shift">
-                    <Typewriter text="mapped." delay={1100} />
-                  </span>
+                  .
                 </h1>
               </Reveal>
 
               <Reveal delay={2}>
-                <p className="mt-6 text-lg text-zinc-500 leading-relaxed max-w-md">
-                  The daily debrief that turns chaos into clarity. Decode your mental patterns.
+                <p className="mt-6 text-xl sm:text-2xl font-semibold text-zinc-700 leading-snug max-w-md">
+                  The daily debrief that turns{" "}
+                  <span className="text-red-400">chaos</span> into{" "}
+                  <span className="text-emerald-500">clarity</span>.
+                </p>
+                <p className="mt-2 text-lg text-zinc-400">
+                  Decode your mental patterns.
                 </p>
               </Reveal>
 
@@ -1429,7 +1431,7 @@ export function LandingPage() {
                 </span>
               </div>
               <p className="mt-2 text-sm text-zinc-400 max-w-xs">
-                Your mind, mapped.
+                The daily debrief that turns chaos into clarity.
               </p>
             </div>
 

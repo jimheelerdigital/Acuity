@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Playfair_Display } from "next/font/google";
 import "./globals.css";
 
 import { Providers } from "@/components/providers";
@@ -11,9 +11,15 @@ const inter = Inter({
   display: "swap",
 });
 
+const playfair = Playfair_Display({
+  subsets: ["latin"],
+  variable: "--font-playfair",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: "Acuity",
-  description: "Your mind, mapped.",
+  description: "The daily debrief that turns chaos into clarity.",
 };
 
 export default function RootLayout({
@@ -22,7 +28,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={inter.variable}>
+    <html lang="en" className={`${inter.variable} ${playfair.variable}`}>
       <body className="bg-[#FAFAF7] text-zinc-900 antialiased">
         <Providers>
           <NavBar />

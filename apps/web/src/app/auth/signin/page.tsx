@@ -51,7 +51,7 @@ function SignInForm() {
         </div>
         <h1 className="text-2xl font-bold text-zinc-900">Sign in to Acuity</h1>
         <p className="mt-1.5 text-sm text-zinc-500">
-          Your mind, mapped.
+          The daily debrief that turns chaos into clarity.
         </p>
       </div>
 
