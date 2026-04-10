@@ -90,7 +90,7 @@ export default function SleepPage() {
               <p className="text-zinc-500 leading-relaxed">
                 Your mind treats unprocessed thoughts like open browser tabs. They stay
                 active, consuming energy, until they&apos;re acknowledged and filed. The
-                nightly brain dump is the oldest sleep hack in existence &mdash; getting
+                nightly debrief is the oldest sleep hack in existence &mdash; getting
                 thoughts out of your head and onto something external so your brain
                 finally lets go. Acuity makes it take 60 seconds. And then organizes
                 everything automatically.
@@ -105,7 +105,7 @@ export default function SleepPage() {
         steps={[
           {
             label: "Step 1",
-            title: "Dump",
+            title: "Debrief",
             description:
               "Open Acuity. Hit record. Say everything that's on your mind. Tasks, worries, wins, frustrations. No filter.",
           },
@@ -122,6 +122,15 @@ export default function SleepPage() {
               "Your tasks are extracted, your goals updated, your mood logged — all while you slept.",
           },
         ]}
+        extractTasks={[
+          { text: "Reply to Sarah's email" },
+          { text: "Cancel tomorrow's 8am meeting" },
+          { text: "Pick up prescription" },
+        ]}
+        extractGoal="Get back to a consistent sleep schedule"
+        extractMood="Tired but relieved after talking it out"
+        reflectPattern="Sleep quality improves on nights you debrief before 10:30pm."
+        reflectActions={["Debrief before 10:30pm", "Limit screen time after 9pm", "Morning walk on low-sleep days"]}
       />
 
       {/* ───── BEFORE / AFTER ───── */}
@@ -147,7 +156,7 @@ export default function SleepPage() {
         stats={[
           { value: 23, suffix: " min", label: "Average reduction in time to fall asleep" },
           { value: 78, suffix: "%", label: "Report better sleep quality" },
-          { value: 67, suffix: "s", label: "Average brain dump duration" },
+          { value: 67, suffix: "s", label: "Average debrief duration" },
         ]}
       />
       <div className="text-center -mt-6 mb-12">
@@ -178,7 +187,7 @@ export default function SleepPage() {
                 </div>
                 <h3 className="text-sm font-semibold mb-1">Nightly reminder</h3>
                 <p className="text-xs text-zinc-500">
-                  Set a custom time to get your brain dump reminder
+                  Set a custom time to get your nightly debrief reminder
                 </p>
               </div>
               <div className="rounded-2xl border border-zinc-100 bg-[#FAFAF7] p-6 shadow-sm">

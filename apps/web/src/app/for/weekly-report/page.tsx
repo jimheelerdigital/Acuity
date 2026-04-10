@@ -8,6 +8,7 @@ import {
   Reveal,
   PulsingCTA,
   UrgencyBadge,
+  HowItWorksSection,
   ReportPreview,
   RevealCards,
   LifeMatrixShowcase,
@@ -81,50 +82,38 @@ export default function WeeklyReportPage() {
         </div>
       </section>
 
-      {/* ───── HOW THE REPORT IS BUILT ───── */}
-      <section id="how-it-works" className="px-6 py-24 sm:py-32 bg-white">
-        <div className="mx-auto max-w-3xl">
-          <Reveal>
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl text-center mb-14">
-              How the report is built
-            </h2>
-          </Reveal>
-
-          <div className="space-y-6">
-            {[
-              "Every night you record a 60-second brain dump",
-              "AI extracts mood, themes, tasks, goals, insights",
-              "7 days of entries are synthesized",
-              "Claude writes your weekly narrative",
-              "Delivered every Sunday morning",
-            ].map((step, i) => (
-              <Reveal key={i} delay={Math.min(i + 1, 5) as 1 | 2 | 3 | 4 | 5}>
-                <div className="flex items-center gap-4">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-violet-100 text-violet-600 font-bold text-sm shrink-0">
-                    {i + 1}
-                  </div>
-                  <p className="text-zinc-600">{step}</p>
-                  {i < 4 && (
-                    <svg
-                      className="h-5 w-5 text-zinc-300 ml-auto hidden sm:block"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth={2}
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M13 7l5 5m0 0l-5 5m5-5H6"
-                      />
-                    </svg>
-                  )}
-                </div>
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* ───── HOW IT WORKS ───── */}
+      <HowItWorksSection
+        steps={[
+          {
+            label: "Step 1",
+            title: "Record",
+            description:
+              "Every night, open Acuity and speak for 60 seconds. Your wins, your worries, your reflections — no structure needed.",
+          },
+          {
+            label: "Step 2",
+            title: "Extract",
+            description:
+              "AI extracts mood, themes, tasks, goals, and insights from your stream of consciousness — building the raw material for your report.",
+          },
+          {
+            label: "Step 3",
+            title: "Report",
+            description:
+              "Every Sunday, 7 days of entries are synthesized into a 400-word narrative about your week — delivered to you automatically.",
+          },
+        ]}
+        extractTasks={[
+          { text: "Revisit quarterly goals" },
+          { text: "Follow up on investor intro" },
+          { text: "Plan weekend with family" },
+        ]}
+        extractGoal="Write the Q2 strategy memo"
+        extractMood="Reflective and purposeful"
+        reflectPattern="Your highest energy days follow mornings with exercise and no meetings before 10am."
+        reflectActions={["Protect morning focus blocks", "Review weekly report every Sunday", "Track energy vs output"]}
+      />
 
       {/* ───── WHAT THE REPORT REVEALS ───── */}
       <section className="px-6 py-24 sm:py-32">
@@ -201,7 +190,7 @@ export default function WeeklyReportPage() {
                 score: 92,
                 color: "#3B82F6",
                 insight:
-                  "Work appears in 91% of your brain dumps — the only area that spikes on weekends.",
+                  "Work appears in 91% of your debriefs — the only area that spikes on weekends.",
               },
               {
                 label: "Growth",

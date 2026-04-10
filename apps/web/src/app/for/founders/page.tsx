@@ -75,7 +75,7 @@ export default function FoundersPage() {
         <div className="mx-auto max-w-3xl">
           <Reveal>
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl text-center mb-4">
-              What Acuity extracts from a founder brain dump
+              What Acuity extracts from a founder debrief
             </h2>
             <p className="text-center text-zinc-500 mb-12">
               From a single 60-second recording, Acuity automatically extracts:
@@ -134,8 +134,41 @@ export default function FoundersPage() {
         </div>
       </section>
 
+      {/* ───── HOW IT WORKS ───── */}
+      <HowItWorksSection
+        steps={[
+          {
+            label: "Step 1",
+            title: "Debrief",
+            description:
+              "End your day in 60 seconds. Hit record, speak freely about wins, blockers, decisions, and what's on your mind. No app to configure.",
+          },
+          {
+            label: "Step 2",
+            title: "Extract",
+            description:
+              "AI pulls every action item, goal, decision, and concern — organized by priority. Your scattered thoughts become a structured operating system.",
+          },
+          {
+            label: "Step 3",
+            title: "Report",
+            description:
+              "Every Sunday, get a performance report: task completion, goal progress, energy trends, decision patterns, and one key insight you missed.",
+          },
+        ]}
+        extractTasks={[
+          { text: "Follow up with lead investor", checked: true },
+          { text: "Review Q2 hiring plan" },
+          { text: "Prep board deck for Friday" },
+        ]}
+        extractGoal="Close Series A by end of month"
+        extractMood="Focused but running on fumes"
+        reflectPattern="Decision quality drops on days with 5+ meetings. Best calls happen on mornings with deep work blocks."
+        reflectActions={["Cap meetings at 4/day", "Protect Monday mornings", "Delegate investor updates"]}
+      />
+
       {/* ───── WEEKLY PERFORMANCE REPORT ───── */}
-      <section id="how-it-works" className="px-6 py-24 sm:py-32">
+      <section className="px-6 py-24 sm:py-32">
         <div className="mx-auto max-w-3xl">
           <Reveal>
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl text-center mb-4">

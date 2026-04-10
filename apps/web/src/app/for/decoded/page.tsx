@@ -33,7 +33,7 @@ export default function DecodedPage() {
           </Reveal>
           <Reveal delay={1}>
             <p className="mt-6 text-lg text-zinc-500 leading-relaxed max-w-2xl mx-auto">
-              Acuity listens to your nightly brain dump and decodes your subconscious
+              Acuity listens to your nightly debrief and decodes your subconscious
               &mdash; surfacing the emotional patterns, recurring thoughts, and hidden
               themes that are quietly shaping everything you do.
             </p>
@@ -116,6 +116,15 @@ export default function DecodedPage() {
               "Your Life Matrix and weekly report surface what your conscious mind couldn't see — specific, named patterns with dates, frequencies, and context.",
           },
         ]}
+        extractTasks={[
+          { text: "Mentioned career change again" },
+          { text: "Avoided talking about relationship" },
+          { text: "Energy higher after solo time" },
+        ]}
+        extractGoal="Figure out what I actually want next"
+        extractMood="Restless but self-aware"
+        reflectPattern="You mention feeling 'stuck' 3x per week — always tied to career, never relationships."
+        reflectActions={["Explore what 'stuck' means for you", "Notice when energy peaks", "Track which topics you avoid"]}
       />
 
       {/* ───── LIFE MATRIX ───── */}
@@ -167,7 +176,7 @@ export default function DecodedPage() {
                 score: 92,
                 color: "#3B82F6",
                 insight:
-                  "Work appears in 91% of your brain dumps — the only area that spikes on weekends.",
+                  "Work appears in 91% of your debriefs — the only area that spikes on weekends.",
               },
               {
                 label: "Growth",
@@ -204,7 +213,7 @@ export default function DecodedPage() {
         testimonials={[
           {
             quote:
-              "Day 23: Acuity told me I'd mentioned my job in 21 of 23 brain dumps but only mentioned my family 4 times. I hadn't realized how consumed I'd become.",
+              "Day 23: Acuity told me I'd mentioned my job in 21 of 23 debriefs but only mentioned my family 4 times. I hadn't realized how consumed I'd become.",
             name: "Alex R.",
             role: "Consultant",
           },

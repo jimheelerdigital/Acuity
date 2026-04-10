@@ -507,7 +507,7 @@ export function PricingSection({
 }
 
 /* ═══════════════════════════════════════════
-   How It Works section
+   How It Works section — with phone mockups
    ═══════════════════════════════════════════ */
 
 export interface HowItWorksStep {
@@ -516,10 +516,225 @@ export interface HowItWorksStep {
   description: string;
 }
 
-export function HowItWorksSection({ steps }: { steps: HowItWorksStep[] }) {
+/* Animated waveform bars inside the Record phone */
+function WaveformVisualizer() {
+  return (
+    <div className="flex items-center justify-center gap-[3px] h-10">
+      {Array.from({ length: 20 }).map((_, i) => (
+        <div
+          key={i}
+          className="wave-bar w-[3px] rounded-full bg-red-400"
+          style={{ animationDelay: `${i * 0.07}s` }}
+        />
+      ))}
+    </div>
+  );
+}
+
+/* Cascading task list — items appear one by one */
+function CascadingTasks({ tasks }: { tasks: { text: string; checked?: boolean }[] }) {
+  const [visibleCount, setVisibleCount] = useState(0);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          tasks.forEach((_, i) => {
+            setTimeout(() => setVisibleCount((c) => c + 1), (i + 1) * 400);
+          });
+          obs.unobserve(el);
+        }
+      },
+      { threshold: 0.3 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [tasks]);
+
+  return (
+    <div ref={ref} className="space-y-2">
+      {tasks.map((task, i) => (
+        <div
+          key={task.text}
+          className="flex items-center gap-2 text-xs text-zinc-600 transition-all duration-500"
+          style={{
+            opacity: i < visibleCount ? 1 : 0,
+            transform: i < visibleCount ? "translateX(0)" : "translateX(20px)",
+          }}
+        >
+          <div
+            className={`h-3.5 w-3.5 rounded border shrink-0 flex items-center justify-center transition-colors duration-300 ${
+              task.checked ? "border-emerald-500 bg-emerald-500" : "border-zinc-300"
+            }`}
+          >
+            {task.checked && (
+              <svg className="h-2.5 w-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            )}
+          </div>
+          {task.text}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* Animated mood bars */
+function MoodBars({ heights, color }: { heights: number[]; color: string }) {
+  const [visible, setVisible] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisible(true);
+          obs.unobserve(el);
+        }
+      },
+      { threshold: 0.3 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
+  return (
+    <div ref={ref} className="flex items-end gap-1 h-full">
+      {heights.map((h, i) => (
+        <div
+          key={i}
+          className={`flex-1 rounded-sm mood-bar transition-all duration-1000 ${color}`}
+          style={{
+            height: visible ? `${h}%` : "4%",
+            transitionDelay: `${i * 80}ms`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+/* Phone mockup for Step 1: Record */
+function RecordPhone() {
+  return (
+    <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-zinc-200 p-2 shadow-xl">
+      <div className="h-full w-full rounded-[2rem] bg-[#FAFAF7] p-5 flex flex-col overflow-hidden">
+        <div className="text-xs text-zinc-500 font-medium mb-auto">Recording</div>
+        <div className="flex flex-col items-center justify-center flex-1 gap-4">
+          <div className="relative flex items-center justify-center">
+            <div className="absolute h-20 w-20 rounded-full bg-red-500/20 animate-pulse-ring" />
+            <div className="absolute h-24 w-24 rounded-full bg-red-500/10 animate-pulse-ring" style={{ animationDelay: "0.5s" }} />
+            <div className="relative h-16 w-16 rounded-full bg-red-500 flex items-center justify-center shadow-lg shadow-red-500/30">
+              <svg className="h-7 w-7 text-white" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
+                <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
+              </svg>
+            </div>
+          </div>
+          <WaveformVisualizer />
+          <div className="text-xl font-bold text-zinc-900 font-mono">0:47</div>
+          <div className="text-xs text-zinc-500">Speak freely...</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* Phone mockup for Step 2: Extract */
+interface ExtractPhoneProps {
+  tasks: { text: string; checked?: boolean }[];
+  goal: string;
+  mood: string;
+}
+
+function ExtractPhone({ tasks, goal, mood }: ExtractPhoneProps) {
+  return (
+    <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-zinc-200 p-2 shadow-xl">
+      <div className="h-full w-full rounded-[2rem] bg-[#FAFAF7] p-5 flex flex-col overflow-hidden">
+        <div className="text-xs text-zinc-500 font-medium mb-3">AI Extraction</div>
+        <div className="space-y-2.5 flex-1">
+          <div className="rounded-xl border border-zinc-200 bg-white p-3 shadow-sm">
+            <div className="text-[10px] text-zinc-400 uppercase tracking-wider mb-1.5">Tasks</div>
+            <CascadingTasks tasks={tasks} />
+          </div>
+          <div className="rounded-xl border border-violet-200 bg-violet-50 p-3">
+            <div className="text-[10px] text-violet-600 uppercase tracking-wider mb-1">Goal</div>
+            <div className="text-xs text-zinc-600">&ldquo;{goal}&rdquo;</div>
+          </div>
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3">
+            <div className="text-[10px] text-emerald-600 uppercase tracking-wider mb-1">Mood</div>
+            <div className="text-xs text-zinc-600">{mood}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* Phone mockup for Step 3: Reflect */
+interface ReflectPhoneProps {
+  pattern: string;
+  actions: string[];
+}
+
+function ReflectPhone({ pattern, actions }: ReflectPhoneProps) {
+  return (
+    <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-zinc-200 p-2 shadow-xl">
+      <div className="h-full w-full rounded-[2rem] bg-[#FAFAF7] p-5 flex flex-col overflow-hidden">
+        <div className="text-xs text-zinc-500 font-medium mb-3">Weekly Report</div>
+        <div className="space-y-2.5 flex-1">
+          <div className="rounded-xl border border-zinc-200 bg-white p-3 shadow-sm">
+            <div className="text-[10px] text-zinc-400 uppercase tracking-wider mb-2">Mood this week</div>
+            <div className="h-10">
+              <MoodBars heights={[50, 60, 45, 75, 70, 85, 80]} color="bg-violet-400" />
+            </div>
+          </div>
+          <div className="rounded-xl border border-zinc-200 bg-white p-3 shadow-sm">
+            <div className="text-[10px] text-zinc-400 uppercase tracking-wider mb-1">Pattern</div>
+            <div className="text-xs text-zinc-600">{pattern}</div>
+          </div>
+          <div className="rounded-xl border border-zinc-200 bg-white p-3 shadow-sm">
+            <div className="text-[10px] text-zinc-400 uppercase tracking-wider mb-1">Top 3 Actions</div>
+            <div className="space-y-1 text-xs text-zinc-600">
+              {actions.map((a, i) => (
+                <div key={i}>{i + 1}. {a}</div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* Full How It Works section with phone mockups */
+export interface HowItWorksConfig {
+  steps: HowItWorksStep[];
+  extractTasks: { text: string; checked?: boolean }[];
+  extractGoal: string;
+  extractMood: string;
+  reflectPattern: string;
+  reflectActions: string[];
+}
+
+export function HowItWorksSection({ steps, ...phoneProps }: HowItWorksConfig) {
+  const {
+    extractTasks = [{ text: "Send proposal to client" }, { text: "Buy groceries" }, { text: "Call mom" }],
+    extractGoal = "Ship the beta this week",
+    extractMood = "Energized but slightly anxious",
+    reflectPattern = "Best mood on days you exercised. Worst on days with meetings after 6pm.",
+    reflectActions = ["Block mornings for deep work", "No meetings after 5pm", "Exercise before noon"],
+  } = phoneProps;
+
   return (
     <section id="how-it-works" className="px-6 py-24 sm:py-32">
-      <div className="mx-auto max-w-5xl">
+      <div className="mx-auto max-w-6xl">
         <Reveal>
           <div className="text-center mb-14">
             <h2 className="text-3xl font-bold tracking-tight sm:text-5xl">
@@ -531,20 +746,66 @@ export function HowItWorksSection({ steps }: { steps: HowItWorksStep[] }) {
           </div>
         </Reveal>
 
-        <div className="grid gap-8 sm:grid-cols-3">
-          {steps.map((step, i) => (
-            <Reveal key={step.label} delay={Math.min(i + 1, 3) as 1 | 2 | 3}>
-              <div className="group rounded-2xl border border-zinc-100 bg-white p-8 shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-                <div className="inline-flex items-center justify-center h-12 w-12 rounded-xl bg-violet-100 text-violet-600 font-bold text-lg mb-5 transition-transform duration-300 group-hover:scale-110">
-                  {i + 1}
+        <div className="space-y-16 sm:space-y-20">
+          {/* Step 1: Record */}
+          <div className="flex flex-col gap-8 lg:items-center lg:flex-row">
+            <div className="flex-1">
+              <Reveal>
+                <div className="inline-flex items-center gap-2 rounded-full bg-zinc-100 px-3 py-1 text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-4">
+                  Step 1
                 </div>
-                <h3 className="text-xl font-bold mb-3">{step.title}</h3>
-                <p className="text-sm text-zinc-500 leading-relaxed">
-                  {step.description}
+                <h3 className="text-3xl font-bold sm:text-4xl">{steps[0]?.title || "Record"}</h3>
+                <p className="mt-4 text-lg text-zinc-500 leading-relaxed max-w-md">
+                  {steps[0]?.description || "Hit record. Speak freely for 60 seconds about your day, your worries, your wins — whatever comes to mind."}
                 </p>
-              </div>
-            </Reveal>
-          ))}
+              </Reveal>
+            </div>
+            <div className="flex-1 flex justify-center">
+              <Reveal delay={1}>
+                <RecordPhone />
+              </Reveal>
+            </div>
+          </div>
+
+          {/* Step 2: Extract */}
+          <div className="flex flex-col gap-8 lg:items-center lg:flex-row-reverse">
+            <div className="flex-1">
+              <Reveal>
+                <div className="inline-flex items-center gap-2 rounded-full bg-zinc-100 px-3 py-1 text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-4">
+                  Step 2
+                </div>
+                <h3 className="text-3xl font-bold sm:text-4xl">{steps[1]?.title || "Extract"}</h3>
+                <p className="mt-4 text-lg text-zinc-500 leading-relaxed max-w-md">
+                  {steps[1]?.description || "AI transcribes and extracts tasks, goals, mood, themes, and insights from your stream of consciousness."}
+                </p>
+              </Reveal>
+            </div>
+            <div className="flex-1 flex justify-center">
+              <Reveal delay={1}>
+                <ExtractPhone tasks={extractTasks} goal={extractGoal} mood={extractMood} />
+              </Reveal>
+            </div>
+          </div>
+
+          {/* Step 3: Reflect */}
+          <div className="flex flex-col gap-8 lg:items-center lg:flex-row">
+            <div className="flex-1">
+              <Reveal>
+                <div className="inline-flex items-center gap-2 rounded-full bg-zinc-100 px-3 py-1 text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-4">
+                  Step 3
+                </div>
+                <h3 className="text-3xl font-bold sm:text-4xl">{steps[2]?.title || "Reflect"}</h3>
+                <p className="mt-4 text-lg text-zinc-500 leading-relaxed max-w-md">
+                  {steps[2]?.description || "Get a weekly narrative report showing patterns in your life, so you can course-correct before the next week starts."}
+                </p>
+              </Reveal>
+            </div>
+            <div className="flex-1 flex justify-center">
+              <Reveal delay={1}>
+                <ReflectPhone pattern={reflectPattern} actions={reflectActions} />
+              </Reveal>
+            </div>
+          </div>
         </div>
       </div>
     </section>

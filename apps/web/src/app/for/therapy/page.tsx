@@ -35,7 +35,7 @@ export default function TherapyPage() {
           </Reveal>
           <Reveal delay={1}>
             <p className="mt-6 text-lg text-zinc-500 leading-relaxed max-w-2xl mx-auto">
-              Acuity listens to your 60-second nightly brain dump, tracks your emotional
+              Acuity listens to your 60-second nightly debrief, tracks your emotional
               patterns, and writes your weekly mental health report &mdash; for less than
               the cost of one therapy copay.
             </p>
@@ -98,6 +98,15 @@ export default function TherapyPage() {
               "Every Sunday, receive a 400-word narrative about your emotional week — your wins, your spirals, your blind spots.",
           },
         ]}
+        extractTasks={[
+          { text: "Journal about the argument" },
+          { text: "Schedule therapist follow-up" },
+          { text: "Try the breathing exercise" },
+        ]}
+        extractGoal="Process the anxiety around work changes"
+        extractMood="Anxious but hopeful"
+        reflectPattern="Anxiety spikes on Sundays. Calm returns after Monday therapy sessions."
+        reflectActions={["Discuss Sunday anxiety pattern", "Add wind-down ritual", "Track sleep vs mood"]}
       />
 
       {/* ───── COMPARISON TABLE ───── */}
@@ -168,7 +177,7 @@ export default function TherapyPage() {
             icon: "lock",
             title: "Private and encrypted",
             description:
-              "Your brain dumps are yours alone. End-to-end encryption keeps your thoughts completely private.",
+              "Your debriefs are yours alone. End-to-end encryption keeps your thoughts completely private.",
           },
         ]}
       />
