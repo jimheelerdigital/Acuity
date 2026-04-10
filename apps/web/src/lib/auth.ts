@@ -104,6 +104,10 @@ export function getAuthOptions(): NextAuthOptions {
             sortOrder: index,
           })),
         });
+        // Initialize user memory
+        await prisma.userMemory.create({
+          data: { userId: user.id },
+        }).catch(() => {}); // ignore if already exists
       },
     },
   };

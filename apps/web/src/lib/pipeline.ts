@@ -1,6 +1,7 @@
 /**
  * The Acuity extraction pipeline:
  *   Audio → Supabase Storage → Whisper (transcription) → Claude (extraction) → Prisma
+ *   + Memory update → Life Map update
  */
 
 import Anthropic from "@anthropic-ai/sdk";
@@ -13,9 +14,13 @@ import {
   WHISPER_LANGUAGE,
   WHISPER_MODEL,
   type ExtractionResult,
+  type LifeAreaMention,
+  type LifeAreaMentions,
   type Mood,
   type Priority,
 } from "@acuity/shared";
+
+import { LIFE_AREA_EXTRACTION_SCHEMA } from "./prompts/lifemap";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -77,7 +82,7 @@ export async function transcribeAudio(
 
 // ─── Step 3: Extract ─────────────────────────────────────────────────────────
 
-const EXTRACTION_SYSTEM_PROMPT = `You are Acuity's extraction engine. Your job is to analyse a user's nightly voice brain dump and return a structured JSON object. Be empathetic, precise, and actionable.
+const EXTRACTION_SYSTEM_PROMPT = `You are Acuity's extraction engine. Your job is to analyse a user's nightly voice debrief and return a structured JSON object. Be empathetic, precise, and actionable.
 
 Return ONLY valid JSON matching this exact schema — no markdown, no prose:
 
@@ -86,10 +91,10 @@ Return ONLY valid JSON matching this exact schema — no markdown, no prose:
   "mood": "GREAT" | "GOOD" | "NEUTRAL" | "LOW" | "ROUGH",
   "moodScore": <integer 1–10, where ROUGH=1-2, LOW=3-4, NEUTRAL=5-6, GOOD=7-8, GREAT=9-10>,
   "energy": <integer 1–10>,
-  "themes": ["theme1", "theme2"],          // up to 5 short theme labels
-  "wins": ["win1", "win2"],                // things that went well today
-  "blockers": ["blocker1"],                // obstacles or frustrations
-  "insights": ["insight1", "insight2"],     // 2-4 reflective observations or actionable recommendations
+  "themes": ["theme1", "theme2"],
+  "wins": ["win1", "win2"],
+  "blockers": ["blocker1"],
+  "insights": ["insight1", "insight2"],
   "tasks": [
     {
       "title": "action item",
@@ -104,7 +109,15 @@ Return ONLY valid JSON matching this exact schema — no markdown, no prose:
       "description": "optional detail",
       "targetDate": "YYYY-MM-DD" | null
     }
-  ]
+  ],
+  "lifeAreaMentions": {
+    "health": { "mentioned": bool, "score": 1-10, "themes": [], "people": [], "goals": [], "sentiment": "positive"|"negative"|"neutral" },
+    "wealth": { ... },
+    "relationships": { ... },
+    "spirituality": { ... },
+    "career": { ... },
+    "growth": { ... }
+  }
 }
 
 Guidelines:
@@ -113,13 +126,19 @@ Guidelines:
 - Only include goals if the user expressed a clear medium-to-long term aspiration
 - Keep theme labels short (1-3 words)
 - Insights should be reflective observations the user might not have noticed, or concrete next-step recommendations
-- moodScore should be a nuanced score that reflects the overall emotional tone, not just a direct map from the mood label
-- Today's date context will be provided in the user message`;
+- moodScore should be a nuanced score that reflects the overall emotional tone
+- Today's date context will be provided in the user message
+${LIFE_AREA_EXTRACTION_SCHEMA}`;
 
 export async function extractFromTranscript(
   transcript: string,
-  todayISO: string
+  todayISO: string,
+  memoryContext?: string
 ): Promise<ExtractionResult> {
+  const contextBlock = memoryContext
+    ? `Here is what you know about this user from their entire history with Acuity:\n${memoryContext}\n\nUse these historical patterns to enrich your extraction — for example, if a goal has been mentioned multiple times before, note it as recurring rather than new.\n\n`
+    : "";
+
   const message = await anthropic.messages.create({
     model: CLAUDE_MODEL,
     max_tokens: CLAUDE_MAX_TOKENS,
@@ -127,7 +146,7 @@ export async function extractFromTranscript(
     messages: [
       {
         role: "user",
-        content: `Today's date: ${todayISO}\n\nBrain dump transcript:\n\n${transcript}`,
+        content: `${contextBlock}Today's date: ${todayISO}\n\nDaily debrief transcript:\n\n${transcript}`,
       },
     ],
   });
@@ -135,7 +154,6 @@ export async function extractFromTranscript(
   const rawText =
     message.content[0].type === "text" ? message.content[0].text : "";
 
-  // Strip any accidental markdown code fences
   const jsonText = rawText
     .replace(/^```(?:json)?\n?/m, "")
     .replace(/\n?```$/m, "")
@@ -143,7 +161,6 @@ export async function extractFromTranscript(
 
   const parsed = JSON.parse(jsonText) as ExtractionResult;
 
-  // Validate + coerce
   return {
     summary: String(parsed.summary ?? ""),
     mood: validateMood(parsed.mood),
@@ -164,6 +181,7 @@ export async function extractFromTranscript(
       description: g.description ? String(g.description) : undefined,
       targetDate: g.targetDate ?? undefined,
     })),
+    lifeAreaMentions: validateLifeAreaMentions(parsed.lifeAreaMentions),
   };
 }
 
@@ -184,7 +202,6 @@ export async function processEntry({
 }) {
   const { prisma } = await import("@/lib/prisma");
 
-  // ── PENDING → PROCESSING ──────────────────────────────────────────────────
   await prisma.entry.update({
     where: { id: entryId },
     data: { status: "PROCESSING" },
@@ -206,13 +223,20 @@ export async function processEntry({
       throw new Error("Transcript too short — no speech detected");
     }
 
-    // ── Extract ───────────────────────────────────────────────────────────
+    // ── Build memory context ──────────────────────────────────────────────
+    const { buildMemoryContext } = await import("@/lib/memory");
+    const memoryContext = await buildMemoryContext(userId);
+
+    // ── Extract with memory context ───────────────────────────────────────
     const todayISO = new Date().toISOString().split("T")[0];
-    const extraction = await extractFromTranscript(transcript, todayISO);
+    const extraction = await extractFromTranscript(
+      transcript,
+      todayISO,
+      memoryContext || undefined
+    );
 
     // ── Persist everything in one transaction ─────────────────────────────
     const result = await prisma.$transaction(async (tx) => {
-      // Update the Entry with all extracted data → COMPLETE
       const entry = await tx.entry.update({
         where: { id: entryId },
         data: {
@@ -231,7 +255,6 @@ export async function processEntry({
         },
       });
 
-      // Create extracted Tasks
       let tasksCreated = 0;
       if (extraction.tasks.length > 0) {
         const { count } = await tx.task.createMany({
@@ -248,7 +271,6 @@ export async function processEntry({
         tasksCreated = count;
       }
 
-      // Create extracted Goals (deduplicate by title)
       for (const g of extraction.goals) {
         const existing = await tx.goal.findFirst({
           where: { userId, title: { equals: g.title, mode: "insensitive" } },
@@ -265,7 +287,6 @@ export async function processEntry({
         }
       }
 
-      // Fetch the tasks we just created so we can return them
       const tasks = await tx.task.findMany({
         where: { entryId },
         orderBy: { createdAt: "asc" },
@@ -274,9 +295,17 @@ export async function processEntry({
       return { entry, tasks, tasksCreated, extraction };
     });
 
+    // ── Post-transaction: update memory + life map (non-fatal) ────────────
+    try {
+      const { updateUserMemory, updateLifeMap } = await import("@/lib/memory");
+      await updateUserMemory(userId, result.entry, extraction);
+      await updateLifeMap(userId, extraction.lifeAreaMentions);
+    } catch (err) {
+      console.error("[pipeline] memory/lifemap update failed (non-fatal):", err);
+    }
+
     return result;
   } catch (err) {
-    // ── Any failure → FAILED ──────────────────────────────────────────────
     await prisma.entry
       .update({
         where: { id: entryId },
@@ -309,4 +338,52 @@ function ensureStringArray(value: unknown): string[] {
 
 function clamp(n: number, min: number, max: number): number {
   return Math.min(Math.max(n, min), max);
+}
+
+const VALID_SENTIMENTS = ["positive", "negative", "neutral"] as const;
+
+function validateLifeAreaMentions(
+  raw: unknown
+): LifeAreaMentions | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+
+  const keys: (keyof LifeAreaMentions)[] = [
+    "health",
+    "wealth",
+    "relationships",
+    "spirituality",
+    "career",
+    "growth",
+  ];
+
+  const result: Record<string, LifeAreaMention> = {};
+
+  for (const key of keys) {
+    const val = (raw as Record<string, unknown>)[key];
+    if (!val || typeof val !== "object") {
+      result[key] = {
+        mentioned: false,
+        score: 5,
+        themes: [],
+        people: [],
+        goals: [],
+        sentiment: "neutral",
+      };
+      continue;
+    }
+
+    const v = val as Record<string, unknown>;
+    result[key] = {
+      mentioned: Boolean(v.mentioned),
+      score: clamp(Number(v.score ?? 5), 1, 10),
+      themes: ensureStringArray(v.themes),
+      people: ensureStringArray(v.people),
+      goals: ensureStringArray(v.goals),
+      sentiment: VALID_SENTIMENTS.includes(v.sentiment as any)
+        ? (v.sentiment as "positive" | "negative" | "neutral")
+        : "neutral",
+    };
+  }
+
+  return result as LifeAreaMentions;
 }

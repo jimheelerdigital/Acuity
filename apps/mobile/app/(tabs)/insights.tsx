@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { MOOD_EMOJI, type EntryDTO } from "@acuity/shared";
+import { MOOD_EMOJI, DEFAULT_LIFE_AREAS, type EntryDTO } from "@acuity/shared";
 import { api } from "@/lib/api";
 
 type Report = {
@@ -28,6 +28,28 @@ type Report = {
   status: string;
 };
 
+type LifeMapAreaData = {
+  id: string;
+  area: string;
+  name: string | null;
+  color: string | null;
+  score: number;
+  trend: string | null;
+  weeklyDelta: number | null;
+  mentionCount: number;
+  insightSummary: string | null;
+  topThemes: string[];
+  baselineScore: number;
+};
+
+type MemoryData = {
+  totalEntries: number;
+  firstEntryDate: string | null;
+  recurringThemes: any[];
+  recurringPeople: any[];
+  recurringGoals: any[];
+};
+
 const MOOD_COLORS: Record<string, string> = {
   GREAT: "#22C55E",
   GOOD: "#86EFAC",
@@ -39,18 +61,24 @@ const MOOD_COLORS: Record<string, string> = {
 export default function InsightsTab() {
   const [entries, setEntries] = useState<EntryDTO[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
+  const [areas, setAreas] = useState<LifeMapAreaData[]>([]);
+  const [memory, setMemory] = useState<MemoryData | null>(null);
+  const [expandedArea, setExpandedArea] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [generating, setGenerating] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
-      const [entriesRes, reportsRes] = await Promise.all([
+      const [entriesRes, reportsRes, lifeMapRes] = await Promise.all([
         api.get<{ entries: EntryDTO[] }>("/api/entries"),
         api.get<{ reports: Report[] }>("/api/weekly"),
+        api.get<{ areas: LifeMapAreaData[]; memory: MemoryData }>("/api/lifemap"),
       ]);
       setEntries(entriesRes.entries?.slice(0, 7) ?? []);
       setReports(reportsRes.reports ?? []);
+      setAreas(lifeMapRes.areas ?? []);
+      setMemory(lifeMapRes.memory ?? null);
     } catch {
       // silent
     } finally {
@@ -63,9 +91,14 @@ export default function InsightsTab() {
     fetchData();
   }, [fetchData]);
 
-  const onRefresh = useCallback(() => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    fetchData();
+    try {
+      await api.post("/api/lifemap/refresh", {});
+    } catch {
+      // silent
+    }
+    await fetchData();
   }, [fetchData]);
 
   const generateReport = async () => {
@@ -88,14 +121,14 @@ export default function InsightsTab() {
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 bg-zinc-950 items-center justify-center" edges={["top"]}>
+      <SafeAreaView className="flex-1 bg-[#FAFAF7] items-center justify-center" edges={["top"]}>
         <ActivityIndicator color="#7C3AED" />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-zinc-950" edges={["top"]}>
+    <SafeAreaView className="flex-1 bg-[#FAFAF7]" edges={["top"]}>
       <ScrollView
         contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
         refreshControl={
@@ -106,17 +139,124 @@ export default function InsightsTab() {
           />
         }
       >
+        {/* Header */}
         <View className="mb-6">
-          <Text className="text-2xl font-bold text-zinc-50">Insights</Text>
-          <Text className="text-sm text-zinc-400 mt-1">
-            Patterns across your sessions
+          <Text className="text-2xl font-bold text-zinc-900">Insights</Text>
+          <Text className="text-sm text-zinc-500 mt-1">
+            Your mind, mapped.
           </Text>
         </View>
 
+        {/* Memory stats */}
+        {memory && memory.totalEntries > 0 && (
+          <View className="mb-4">
+            <Text className="text-xs text-zinc-400">
+              {memory.totalEntries} debrief{memory.totalEntries === 1 ? "" : "s"}
+              {memory.firstEntryDate &&
+                ` · tracking since ${new Date(memory.firstEntryDate).toLocaleDateString("en-US", { month: "short", year: "numeric" })}`}
+            </Text>
+          </View>
+        )}
+
+        {/* Life Map area cards — 2 column grid */}
+        {areas.length > 0 && (
+          <View className="mb-6">
+            <Text className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">
+              Life Map
+            </Text>
+            <View className="flex-row flex-wrap gap-3">
+              {areas.map((area) => {
+                const config = DEFAULT_LIFE_AREAS.find((a) => a.name === area.area);
+                const isExpanded = expandedArea === area.area;
+                const score100 = area.score * 10;
+                const diff = score100 - area.baselineScore;
+
+                return (
+                  <Pressable
+                    key={area.id}
+                    onPress={() =>
+                      setExpandedArea(isExpanded ? null : area.area)
+                    }
+                    className="rounded-2xl border border-zinc-200 bg-white p-4"
+                    style={{ width: "48%" }}
+                  >
+                    {/* Color top bar */}
+                    <View
+                      className="h-1 w-10 rounded-full mb-3"
+                      style={{ backgroundColor: config?.color ?? "#71717A" }}
+                    />
+                    <Text className="text-sm font-semibold text-zinc-900 mb-1">
+                      {area.name ?? area.area}
+                    </Text>
+                    {/* Score bar */}
+                    <View className="h-1.5 w-full rounded-full bg-zinc-100 mb-2">
+                      <View
+                        className="h-full rounded-full"
+                        style={{
+                          width: `${score100}%`,
+                          backgroundColor: config?.color ?? "#71717A",
+                        }}
+                      />
+                    </View>
+                    <View className="flex-row items-baseline gap-1">
+                      <Text className="text-lg font-bold text-zinc-900">
+                        {score100}
+                      </Text>
+                      <Text className="text-xs text-zinc-400">/100</Text>
+                      {area.trend && (
+                        <Text
+                          className={`text-xs font-medium ml-1 ${
+                            area.trend === "up"
+                              ? "text-emerald-600"
+                              : area.trend === "down"
+                              ? "text-red-500"
+                              : "text-zinc-400"
+                          }`}
+                        >
+                          {area.trend === "up" ? "↑" : area.trend === "down" ? "↓" : "→"}
+                        </Text>
+                      )}
+                    </View>
+
+                    {/* Expanded detail */}
+                    {isExpanded && (
+                      <View className="mt-3 pt-3 border-t border-zinc-100">
+                        {area.insightSummary && (
+                          <Text className="text-xs text-zinc-600 leading-relaxed mb-2">
+                            {area.insightSummary}
+                          </Text>
+                        )}
+                        {area.topThemes.length > 0 && (
+                          <View className="flex-row flex-wrap gap-1 mb-2">
+                            {area.topThemes.slice(0, 3).map((theme) => (
+                              <View
+                                key={theme}
+                                className="rounded-full bg-zinc-100 px-2 py-0.5"
+                              >
+                                <Text className="text-[10px] text-zinc-500">
+                                  {theme}
+                                </Text>
+                              </View>
+                            ))}
+                          </View>
+                        )}
+                        <Text className="text-[10px] text-zinc-400">
+                          {diff > 0 ? "+" : ""}
+                          {diff} vs baseline · {area.mentionCount} mentions
+                        </Text>
+                      </View>
+                    )}
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+        )}
+
         {/* Mood chart */}
         {moodEntries.length > 0 ? (
-          <View className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4 mb-6">
-            <Text className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-4">
+          <View className="rounded-2xl border border-zinc-200 bg-white p-4 mb-6">
+            <Text className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-4">
               Mood Trend
             </Text>
             <View className="flex-row items-end gap-2" style={{ height: 120 }}>
@@ -148,7 +288,7 @@ export default function InsightsTab() {
                         }}
                       />
                     </View>
-                    <Text className="text-xs text-zinc-600">
+                    <Text className="text-xs text-zinc-400">
                       {MOOD_EMOJI[entry.mood ?? "NEUTRAL"] ?? day}
                     </Text>
                   </View>
@@ -157,12 +297,12 @@ export default function InsightsTab() {
             </View>
           </View>
         ) : (
-          <View className="rounded-2xl border border-dashed border-zinc-800 p-6 items-center mb-6">
-            <Ionicons name="bar-chart-outline" size={32} color="#52525B" />
-            <Text className="text-sm font-medium text-zinc-400 mt-2">
+          <View className="rounded-2xl border border-dashed border-zinc-300 p-6 items-center mb-6">
+            <Ionicons name="bar-chart-outline" size={32} color="#A1A1AA" />
+            <Text className="text-sm font-medium text-zinc-500 mt-2">
               No mood data yet
             </Text>
-            <Text className="text-xs text-zinc-600 mt-1 text-center">
+            <Text className="text-xs text-zinc-400 mt-1 text-center">
               Record sessions to see your mood trend.
             </Text>
           </View>
@@ -172,7 +312,7 @@ export default function InsightsTab() {
         <Pressable
           onPress={generateReport}
           disabled={generating}
-          className="rounded-2xl bg-violet-600 py-4 items-center mb-6"
+          className="rounded-2xl bg-zinc-900 py-4 items-center mb-6"
           style={({ pressed }) => ({
             opacity: pressed || generating ? 0.7 : 1,
           })}
@@ -193,10 +333,9 @@ export default function InsightsTab() {
 
         {/* Latest report */}
         {latestReport ? (
-          <View className="rounded-2xl border border-zinc-800 bg-zinc-900 overflow-hidden">
-            {/* Header */}
-            <View className="px-4 py-3 border-b border-zinc-800">
-              <Text className="text-xs text-zinc-500">
+          <View className="rounded-2xl border border-zinc-200 bg-white overflow-hidden">
+            <View className="px-4 py-3 border-b border-zinc-100">
+              <Text className="text-xs text-zinc-400">
                 {new Date(latestReport.weekStart).toLocaleDateString("en-US", {
                   month: "short",
                   day: "numeric",
@@ -207,44 +346,41 @@ export default function InsightsTab() {
                   day: "numeric",
                 })}
               </Text>
-              <Text className="text-xs text-zinc-600 mt-0.5">
+              <Text className="text-xs text-zinc-400 mt-0.5">
                 {latestReport.entryCount} entries ·{" "}
                 {latestReport.tasksOpened} tasks ·{" "}
                 {latestReport.tasksClosed} closed
               </Text>
             </View>
 
-            {/* Narrative */}
             {latestReport.narrative && (
-              <View className="px-4 py-3 border-b border-zinc-800">
-                <Text className="text-sm text-zinc-300 leading-relaxed">
+              <View className="px-4 py-3 border-b border-zinc-100">
+                <Text className="text-sm text-zinc-600 leading-relaxed">
                   {latestReport.narrative}
                 </Text>
               </View>
             )}
 
-            {/* Mood arc */}
             {latestReport.moodArc && (
-              <View className="px-4 py-3 border-b border-zinc-800">
-                <Text className="text-xs font-semibold text-zinc-500 mb-1">
+              <View className="px-4 py-3 border-b border-zinc-100">
+                <Text className="text-xs font-semibold text-zinc-400 mb-1">
                   Mood Arc
                 </Text>
-                <Text className="text-sm text-zinc-400">
+                <Text className="text-sm text-zinc-500">
                   {latestReport.moodArc}
                 </Text>
               </View>
             )}
 
-            {/* Insights */}
             {latestReport.insightBullets.length > 0 && (
-              <View className="px-4 py-3 border-b border-zinc-800">
-                <Text className="text-xs font-semibold text-violet-400 mb-2">
+              <View className="px-4 py-3 border-b border-zinc-100">
+                <Text className="text-xs font-semibold text-violet-600 mb-2">
                   Insights
                 </Text>
                 {latestReport.insightBullets.map((bullet, i) => (
                   <View key={i} className="flex-row gap-2 mb-1.5">
-                    <Text className="text-violet-400 text-sm">-</Text>
-                    <Text className="text-sm text-zinc-300 flex-1">
+                    <Text className="text-violet-500 text-sm">-</Text>
+                    <Text className="text-sm text-zinc-600 flex-1">
                       {bullet}
                     </Text>
                   </View>
@@ -252,19 +388,18 @@ export default function InsightsTab() {
               </View>
             )}
 
-            {/* Themes */}
             {latestReport.topThemes.length > 0 && (
               <View className="px-4 py-3">
-                <Text className="text-xs font-semibold text-zinc-500 mb-2">
+                <Text className="text-xs font-semibold text-zinc-400 mb-2">
                   Top Themes
                 </Text>
                 <View className="flex-row flex-wrap gap-1.5">
                   {latestReport.topThemes.map((theme) => (
                     <View
                       key={theme}
-                      className="rounded-full bg-zinc-800 px-2.5 py-1"
+                      className="rounded-full bg-zinc-100 px-2.5 py-1"
                     >
-                      <Text className="text-xs text-zinc-400">{theme}</Text>
+                      <Text className="text-xs text-zinc-500">{theme}</Text>
                     </View>
                   ))}
                 </View>
@@ -272,12 +407,12 @@ export default function InsightsTab() {
             )}
           </View>
         ) : (
-          <View className="rounded-2xl border border-dashed border-zinc-800 p-8 items-center">
-            <Ionicons name="bulb-outline" size={40} color="#52525B" />
-            <Text className="text-sm font-medium text-zinc-400 mt-3">
+          <View className="rounded-2xl border border-dashed border-zinc-300 p-8 items-center">
+            <Ionicons name="bulb-outline" size={40} color="#A1A1AA" />
+            <Text className="text-sm font-medium text-zinc-500 mt-3">
               No weekly report yet
             </Text>
-            <Text className="text-xs text-zinc-600 mt-1 text-center px-4">
+            <Text className="text-xs text-zinc-400 mt-1 text-center px-4">
               Record at least 3 sessions, then tap Generate Weekly Report.
             </Text>
           </View>

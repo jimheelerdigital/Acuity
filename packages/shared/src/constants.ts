@@ -20,13 +20,15 @@ export const SUPPORTED_AUDIO_TYPES = [
 // ─── Life Map defaults ────────────────────────────────────────────────────────
 
 export const DEFAULT_LIFE_AREAS = [
-  { name: "Health & Fitness", color: "#22C55E", icon: "heart-pulse" },
-  { name: "Career & Work", color: "#6366F1", icon: "briefcase" },
-  { name: "Relationships", color: "#F43F5E", icon: "users" },
-  { name: "Finance", color: "#F59E0B", icon: "trending-up" },
-  { name: "Learning & Growth", color: "#3B82F6", icon: "book-open" },
-  { name: "Fun & Creativity", color: "#A855F7", icon: "sparkles" },
+  { name: "Health", key: "health", color: "#14B8A6", icon: "heart-pulse" },
+  { name: "Wealth", key: "wealth", color: "#F59E0B", icon: "trending-up" },
+  { name: "Relationships", key: "relationships", color: "#F43F5E", icon: "users" },
+  { name: "Spirituality", key: "spirituality", color: "#A855F7", icon: "sparkles" },
+  { name: "Career", key: "career", color: "#3B82F6", icon: "briefcase" },
+  { name: "Growth", key: "growth", color: "#22C55E", icon: "book-open" },
 ] as const;
+
+export type LifeAreaKey = (typeof DEFAULT_LIFE_AREAS)[number]["key"];
 
 // ─── Mood labels ──────────────────────────────────────────────────────────────
 

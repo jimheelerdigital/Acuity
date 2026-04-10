@@ -42,8 +42,8 @@ model VerificationToken {
 }
 
 model User {
-  id                     String    @id @default(cuid())
-  email                  String    @unique
+  id                     String       @id @default(cuid())
+  email                  String       @unique
   emailVerified          DateTime?
   name                   String?
   image                  String?
@@ -51,12 +51,12 @@ model User {
   stripeCustomerId       String?
   stripeSubscriptionId   String?
   stripeCurrentPeriodEnd DateTime?
-  subscriptionStatus     String    @default("TRIAL")
+  subscriptionStatus     String       @default("TRIAL")
   trialEndsAt            DateTime?
-  timezone               String    @default("America/Chicago")
-  reminderTime           String    @default("21:00")
+  timezone               String       @default("America/Chicago")
+  reminderTime           String       @default("21:00")
   pushToken              String?
-  createdAt              DateTime  @default(now())
+  createdAt              DateTime     @default(now())
   accounts               Account[]
   sessions               Session[]
   entries                Entry[]
@@ -64,6 +64,7 @@ model User {
   goals                  Goal[]
   weeklyReports          WeeklyReport[]
   lifemapAreas           LifeMapArea[]
+  memory                 UserMemory?
 }
 
 model Entry {
@@ -143,17 +144,67 @@ model WeeklyReport {
 }
 
 model LifeMapArea {
-  id            String    @id @default(cuid())
-  userId        String
-  user          User      @relation(fields: [userId], references: [id])
-  area          String    @default("")
-  name          String?
-  color         String?
-  icon          String?
-  sortOrder     Int       @default(0)
-  score         Int       @default(5)
-  summary       String?
-  activeGoals   Int       @default(0)
-  lastMentioned DateTime?
-  updatedAt     DateTime  @updatedAt
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id])
+  area            String    @default("")
+  name            String?
+  color           String?
+  icon            String?
+  sortOrder       Int       @default(0)
+  score           Int       @default(5)
+  summary         String?
+  activeGoals     Int       @default(0)
+  lastMentioned   DateTime?
+  trend           String?   // "up", "down", "stable"
+  weeklyDelta     Int?
+  monthlyDelta    Int?
+  mentionCount    Int       @default(0)
+  topThemes       String[]
+  insightSummary  String?
+  historicalHigh  Int       @default(0)
+  historicalLow   Int       @default(100)
+  baselineScore   Int       @default(50)
+  updatedAt       DateTime  @updatedAt
+}
+
+model UserMemory {
+  id        String @id @default(cuid())
+  userId    String @unique
+  user      User   @relation(fields: [userId], references: [id])
+
+  // Compressed lifetime summary per area (AI-generated, updated incrementally)
+  healthSummary        String?
+  wealthSummary        String?
+  relationshipSummary  String?
+  spiritualitySummary  String?
+  careerSummary        String?
+  growthSummary        String?
+
+  // Lifetime mention counts per area
+  healthMentions       Int @default(0)
+  wealthMentions       Int @default(0)
+  relationshipMentions Int @default(0)
+  spiritualityMentions Int @default(0)
+  careerMentions       Int @default(0)
+  growthMentions       Int @default(0)
+
+  // Recurring patterns detected across all time
+  recurringThemes Json[] // { area, theme, firstSeen, count, lastSeen }
+  recurringPeople Json[] // { name, area, sentiment, mentionCount }
+  recurringGoals  Json[] // { goal, area, firstMentioned, status, mentionCount }
+
+  // Baseline scores (lifetime average, updated slowly)
+  healthBaseline       Int @default(50)
+  wealthBaseline       Int @default(50)
+  relationshipBaseline Int @default(50)
+  spiritualityBaseline Int @default(50)
+  careerBaseline       Int @default(50)
+  growthBaseline       Int @default(50)
+
+  // Total entries processed
+  totalEntries   Int       @default(0)
+  firstEntryDate DateTime?
+  lastCompressed DateTime?
+  lastUpdated    DateTime  @updatedAt
 }

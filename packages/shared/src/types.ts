@@ -31,6 +31,26 @@ export interface ExtractedGoal {
   targetDate?: string; // ISO date string
 }
 
+/** Life area mention extracted from a brain dump */
+export interface LifeAreaMention {
+  mentioned: boolean;
+  score: number; // 1–10
+  themes: string[];
+  people: string[];
+  goals: string[];
+  sentiment: "positive" | "negative" | "neutral";
+}
+
+/** All 6 life areas keyed by area name */
+export interface LifeAreaMentions {
+  health: LifeAreaMention;
+  wealth: LifeAreaMention;
+  relationships: LifeAreaMention;
+  spirituality: LifeAreaMention;
+  career: LifeAreaMention;
+  growth: LifeAreaMention;
+}
+
 /** Shape of the Claude extraction result stored in Entry.rawAnalysis */
 export interface ExtractionResult {
   summary: string;
@@ -45,6 +65,8 @@ export interface ExtractionResult {
   insights: string[];
   tasks: ExtractedTask[];
   goals: ExtractedGoal[];
+  /** Life area analysis for Life Map (may be absent for old entries) */
+  lifeAreaMentions?: LifeAreaMentions;
 }
 
 /** Response from /api/record */
