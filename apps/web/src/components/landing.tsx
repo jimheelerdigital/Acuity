@@ -798,18 +798,17 @@ export function LandingPage() {
               <Reveal delay={1}>
                 <h1 className="text-5xl font-extrabold tracking-tight sm:text-6xl lg:text-7xl leading-[1.05]">
                   <Typewriter text="Meet Acuity." />
-                  <br />
-                  <span className="block mt-1">
-                    <Typewriter text="Turn " delay={600} />
-                    <span className="text-red-400">
-                      <Typewriter text="chaos" delay={850} />
-                    </span>
-                    <Typewriter text=" into" delay={1100} />
+                </h1>
+                <p className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl leading-[1.15]">
+                  <Typewriter text="Turn " delay={600} />
+                  <span className="text-red-400">
+                    <Typewriter text="chaos" delay={850} />
                   </span>
-                  <span className="block mt-1 text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 to-teal-400 animate-gradient-shift">
+                  <Typewriter text=" into " delay={1100} />
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 to-teal-400 animate-gradient-shift">
                     <Typewriter text="clarity." delay={1400} />
                   </span>
-                </h1>
+                </p>
               </Reveal>
 
               <Reveal delay={2}>
