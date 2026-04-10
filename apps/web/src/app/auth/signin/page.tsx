@@ -46,9 +46,7 @@ function SignInForm() {
   return (
     <>
       <div className="text-center mb-8">
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-zinc-900 text-white">
-          <span className="text-xl">✦</span>
-        </div>
+        <img src="/apple-touch-icon.png" alt="Acuity" className="mx-auto mb-4 h-12 w-12 rounded-xl" />
         <h1 className="text-2xl font-bold text-zinc-900">Sign in to Acuity</h1>
         <p className="mt-1.5 text-sm text-zinc-500">
           The daily debrief that turns chaos into clarity.
