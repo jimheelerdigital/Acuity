@@ -675,6 +675,161 @@ const matrixFeatures = [
 ];
 
 /* ═══════════════════════════════════════════
+   Animated growth chart
+   ═══════════════════════════════════════════ */
+
+const GROWTH_LINES = [
+  { label: "Health", color: "#14B8A6", points: [32, 35, 38, 42, 40, 48, 52, 55, 60, 58, 65, 72] },
+  { label: "Career", color: "#3B82F6", points: [28, 30, 35, 33, 40, 45, 50, 55, 58, 62, 68, 75] },
+  { label: "Relationships", color: "#F43F5E", points: [45, 42, 48, 50, 52, 55, 53, 60, 65, 68, 72, 78] },
+  { label: "Growth", color: "#22C55E", points: [20, 25, 28, 35, 38, 42, 48, 52, 58, 63, 70, 80] },
+  { label: "Wealth", color: "#F59E0B", points: [40, 38, 42, 44, 45, 48, 50, 53, 55, 58, 62, 65] },
+  { label: "Spirituality", color: "#A855F7", points: [15, 18, 22, 25, 30, 35, 38, 42, 45, 50, 55, 60] },
+];
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+function GrowthChart() {
+  const [progress, setProgress] = useState(0);
+  const ref = useRef<HTMLDivElement>(null);
+  const started = useRef(false);
+  const frameRef = useRef(0);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !started.current) {
+          started.current = true;
+          animate();
+          obs.unobserve(el);
+        }
+      },
+      { threshold: 0.3 }
+    );
+    obs.observe(el);
+    return () => {
+      obs.disconnect();
+      cancelAnimationFrame(frameRef.current);
+    };
+  }, []);
+
+  function animate() {
+    setProgress(0);
+    const start = performance.now();
+    const duration = 3000;
+    function tick(now: number) {
+      const p = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - p, 3);
+      setProgress(eased);
+      if (p < 1) {
+        frameRef.current = requestAnimationFrame(tick);
+      }
+    }
+    frameRef.current = requestAnimationFrame(tick);
+  }
+
+  const w = 800;
+  const h = 300;
+  const padL = 40;
+  const padR = 20;
+  const padT = 20;
+  const padB = 40;
+  const chartW = w - padL - padR;
+  const chartH = h - padT - padB;
+  const numPoints = 12;
+
+  function toPath(points: number[]): string {
+    const visibleCount = Math.floor(progress * numPoints) + 1;
+    const partialProgress = (progress * numPoints) % 1;
+
+    return points.slice(0, visibleCount).map((val, i) => {
+      const x = padL + (i / (numPoints - 1)) * chartW;
+      let y = padT + chartH - (val / 100) * chartH;
+      // Partial last point
+      if (i === visibleCount - 1 && i > 0 && visibleCount <= numPoints) {
+        const prevY = padT + chartH - (points[i - 1] / 100) * chartH;
+        y = prevY + (y - prevY) * partialProgress;
+      }
+      return `${i === 0 ? "M" : "L"} ${x} ${y}`;
+    }).join(" ");
+  }
+
+  return (
+    <div ref={ref} className="rounded-2xl border border-zinc-200 bg-[#FAFAF7] p-6 overflow-hidden">
+      {/* Legend */}
+      <div className="flex flex-wrap gap-4 mb-4 justify-center">
+        {GROWTH_LINES.map((line) => (
+          <div key={line.label} className="flex items-center gap-1.5">
+            <div className="h-2 w-2 rounded-full" style={{ backgroundColor: line.color }} />
+            <span className="text-xs text-zinc-500">{line.label}</span>
+          </div>
+        ))}
+      </div>
+
+      <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-auto">
+        {/* Y-axis grid lines */}
+        {[0, 25, 50, 75, 100].map((val) => {
+          const y = padT + chartH - (val / 100) * chartH;
+          return (
+            <g key={val}>
+              <line x1={padL} y1={y} x2={w - padR} y2={y} stroke="#E4E4E7" strokeWidth="0.5" />
+              <text x={padL - 8} y={y + 3} textAnchor="end" fontSize="9" fill="#A1A1AA">
+                {val}
+              </text>
+            </g>
+          );
+        })}
+
+        {/* X-axis month labels */}
+        {MONTHS.map((month, i) => {
+          const x = padL + (i / (numPoints - 1)) * chartW;
+          return (
+            <text key={month} x={x} y={h - 10} textAnchor="middle" fontSize="9" fill="#A1A1AA">
+              {month}
+            </text>
+          );
+        })}
+
+        {/* Growth lines */}
+        {GROWTH_LINES.map((line) => (
+          <path
+            key={line.label}
+            d={toPath(line.points)}
+            fill="none"
+            stroke={line.color}
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            opacity="0.8"
+          />
+        ))}
+
+        {/* Dots at the current leading edge */}
+        {progress > 0 && GROWTH_LINES.map((line) => {
+          const visibleCount = Math.min(Math.floor(progress * numPoints) + 1, numPoints);
+          const idx = visibleCount - 1;
+          const x = padL + (idx / (numPoints - 1)) * chartW;
+          const y = padT + chartH - (line.points[idx] / 100) * chartH;
+          return (
+            <circle
+              key={line.label}
+              cx={x}
+              cy={y}
+              r="3"
+              fill={line.color}
+              stroke="white"
+              strokeWidth="1.5"
+            />
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════
    Feature icon SVGs (replace emojis)
    ═══════════════════════════════════════════ */
 
@@ -1280,11 +1435,11 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* ───── TRACK PROGRESS ───── */}
+      {/* ───── TRACK PROGRESS — ANIMATED GROWTH CHART ───── */}
       <section className="px-6 py-24 sm:py-32 bg-white">
-        <div className="mx-auto max-w-6xl">
+        <div className="mx-auto max-w-5xl">
           <Reveal>
-            <div className="text-center mb-16">
+            <div className="text-center mb-12">
               <p className="text-xs font-semibold uppercase tracking-widest text-violet-600 mb-4">
                 Track Progress
               </p>
@@ -1293,58 +1448,15 @@ export function LandingPage() {
                 <br />
                 <span className="text-zinc-400">Automatically.</span>
               </h2>
+              <p className="mt-4 text-zinc-500 text-base max-w-lg mx-auto">
+                Every area of your life trends upward over time. No manual logging — just talk, and watch the lines climb.
+              </p>
             </div>
           </Reveal>
 
-          <div className="grid gap-6 sm:grid-cols-3">
-            <Reveal delay={1}>
-              <div className="rounded-2xl border border-zinc-200 bg-[#FAFAF7] p-6 transition-all duration-300 hover:shadow-md hover:-translate-y-0.5">
-                <div className="h-10 w-10 rounded-xl bg-violet-100 flex items-center justify-center mb-4">
-                  <svg className="h-5 w-5 text-violet-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-semibold text-zinc-900 mb-2">Weekly score tracking</h3>
-                <p className="text-sm text-zinc-500 leading-relaxed">
-                  Your Life Matrix scores update after every debrief. Watch your
-                  health, career, relationships, and more trend upward over weeks
-                  and months — with no manual logging.
-                </p>
-              </div>
-            </Reveal>
-
-            <Reveal delay={2}>
-              <div className="rounded-2xl border border-zinc-200 bg-[#FAFAF7] p-6 transition-all duration-300 hover:shadow-md hover:-translate-y-0.5">
-                <div className="h-10 w-10 rounded-xl bg-emerald-100 flex items-center justify-center mb-4">
-                  <svg className="h-5 w-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.746 3.746 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-semibold text-zinc-900 mb-2">Pattern recognition</h3>
-                <p className="text-sm text-zinc-500 leading-relaxed">
-                  Acuity remembers everything. It notices that you sleep worse after
-                  late meetings, that your mood dips mid-week, and that exercise
-                  consistently lifts your energy by 30%.
-                </p>
-              </div>
-            </Reveal>
-
-            <Reveal delay={3}>
-              <div className="rounded-2xl border border-zinc-200 bg-[#FAFAF7] p-6 transition-all duration-300 hover:shadow-md hover:-translate-y-0.5">
-                <div className="h-10 w-10 rounded-xl bg-blue-100 flex items-center justify-center mb-4">
-                  <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0118 16.5h-2.25m-7.5 0h7.5m-7.5 0l-1 3m8.5-3l1 3m0 0l.5 1.5m-.5-1.5h-9.5m0 0l-.5 1.5m.75-9l3-3 2.148 2.148A12.061 12.061 0 0116.5 7.605" />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-semibold text-zinc-900 mb-2">Personalized coaching</h3>
-                <p className="text-sm text-zinc-500 leading-relaxed">
-                  The longer you use Acuity, the smarter it gets. By month three,
-                  your weekly reports include specific, data-backed guidance on
-                  exactly where to focus next.
-                </p>
-              </div>
-            </Reveal>
-          </div>
+          <Reveal delay={1}>
+            <GrowthChart />
+          </Reveal>
         </div>
       </section>
 
