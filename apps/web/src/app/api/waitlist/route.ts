@@ -6,6 +6,7 @@ export const dynamic = "force-dynamic";
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function POST(req: NextRequest) {
+  console.log("RESEND_API_KEY exists:", !!process.env.RESEND_API_KEY);
   try {
     const body = await req.json();
     const email = (body.email ?? "").trim().toLowerCase();
