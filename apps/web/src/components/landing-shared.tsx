@@ -371,7 +371,7 @@ export function LandingNav() {
           </div>
         </div>
         <Link
-          href="/waitlist"
+          href="/waitlist?utm_campaign=nav"
           className="rounded-full bg-zinc-900 px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-700 hover:shadow-lg hover:shadow-zinc-900/20 active:scale-95"
         >
           Join the waitlist &mdash; first month free

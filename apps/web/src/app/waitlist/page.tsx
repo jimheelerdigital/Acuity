@@ -25,7 +25,7 @@ export default function WaitlistPage() {
     setErrorMsg("");
 
     const params = new URLSearchParams(window.location.search);
-    const source = params.get("utm_campaign") || undefined;
+    const source = params.get("utm_campaign") || "waitlist";
 
     try {
       const res = await fetch("/api/waitlist", {
