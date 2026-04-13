@@ -18,17 +18,35 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "Acuity — The daily debrief that turns chaos into clarity",
+  title: {
+    default: "Acuity — AI Journaling App | Nightly Voice Brain Dump",
+    template: "%s | Acuity",
+  },
   description:
-    "Speak for 60 seconds. AI extracts your tasks, tracks your goals, decodes your mental patterns, and writes your weekly report — automatically.",
+    "The AI journaling app that turns a 60-second nightly voice brain dump into extracted tasks, mood tracking, mental pattern detection, and weekly AI reports.",
   metadataBase: new URL("https://getacuity.io"),
   alternates: {
     canonical: "https://getacuity.io",
   },
   openGraph: {
+    type: "website",
     url: "https://getacuity.io",
     siteName: "Acuity",
-    images: [{ url: "/web-app-manifest-512x512.png" }],
+    title: "Acuity — AI Journaling App | Nightly Voice Brain Dump",
+    description:
+      "The AI journaling app that turns a 60-second nightly voice brain dump into extracted tasks, mood tracking, mental pattern detection, and weekly AI reports.",
+    images: [{ url: "/og-image.jpg", width: 1200, height: 1200, alt: "Acuity — AI journaling app" }],
+  },
+  twitter: {
+    card: "summary",
+    title: "Acuity — AI Journaling App | Nightly Voice Brain Dump",
+    description:
+      "Turn a 60-second nightly voice brain dump into tasks, mood tracking, pattern detection, and weekly AI reports.",
+    images: ["/og-image.jpg"],
+  },
+  robots: {
+    index: true,
+    follow: true,
   },
 };
 
