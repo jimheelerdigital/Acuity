@@ -27,7 +27,7 @@ export default async function UpgradePage() {
         {/* Pricing card */}
         <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm mb-6">
           <div className="flex items-baseline gap-1 mb-6">
-            <span className="text-3xl font-bold text-zinc-900">$19</span>
+            <span className="text-3xl font-bold text-zinc-900">$12.99</span>
             <span className="text-sm text-zinc-400">/month</span>
           </div>
 

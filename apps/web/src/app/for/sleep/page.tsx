@@ -248,7 +248,7 @@ export default function SleepPage() {
 
       {/* ───── PRICING ───── */}
       <PricingSection
-        headline="Better sleep for $19/month"
+        headline="Better sleep for $12.99/month"
         subheadline="One plan. Everything included. Cancel anytime."
         utmCampaign={UTM}
       />

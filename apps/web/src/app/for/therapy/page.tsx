@@ -135,7 +135,7 @@ export default function TherapyPage() {
           <ComparisonTable
             headers={["Therapy", "Acuity"]}
             rows={[
-              { feature: "Cost", values: ["$150/session", "$19/month"] },
+              { feature: "Cost", values: ["$150/session", "$12.99/month"] },
               { feature: "Frequency", values: ["Once a week", "Every single night"] },
               {
                 feature: "Memory",
@@ -215,7 +215,7 @@ export default function TherapyPage() {
           },
           {
             quote:
-              "At $19/month it's the most affordable mental health tool I've ever used. And the most consistent.",
+              "At $12.99/month it's the most affordable mental health tool I've ever used. And the most consistent.",
             name: "Jamie L.",
             role: "Teacher",
           },

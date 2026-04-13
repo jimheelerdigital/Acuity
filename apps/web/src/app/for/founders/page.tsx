@@ -280,7 +280,7 @@ export default function FoundersPage() {
           <ComparisonTable
             headers={["Executive Coach", "Therapy", "Acuity"]}
             rows={[
-              { feature: "Cost", values: ["$500+/month", "$600+/month", "$19/month"] },
+              { feature: "Cost", values: ["$500+/month", "$600+/month", "$12.99/month"] },
               {
                 feature: "Availability",
                 values: ["Scheduled", "Scheduled", "Every night"],
@@ -374,7 +374,7 @@ export default function FoundersPage() {
 
       {/* ───── PRICING ───── */}
       <PricingSection
-        headline="$19/month for a personal performance system"
+        headline="$12.99/month for a personal performance system"
         subheadline="One plan. Everything included. Cancel anytime."
         utmCampaign={UTM}
       />

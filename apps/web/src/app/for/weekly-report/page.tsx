@@ -286,7 +286,7 @@ export default function WeeklyReportPage() {
 
       {/* ───── PRICING ───── */}
       <PricingSection
-        headline="One report alone is worth $19/month."
+        headline="One report alone is worth $12.99/month."
         subheadline="52 weekly reports a year. A Life Matrix that grows smarter every week. A complete record of your inner life."
         utmCampaign={UTM}
       />

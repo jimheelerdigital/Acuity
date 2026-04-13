@@ -468,7 +468,7 @@ export function PricingSection({
               </div>
               <p className="mt-4 flex items-baseline gap-1">
                 <span className="text-5xl font-extrabold">
-                  <AnimatedCounter prefix="$" target={19} duration={1500} />
+                  $12.99
                 </span>
                 <span className="text-zinc-400">/month</span>
               </p>
@@ -860,7 +860,7 @@ export function CTABanner({
                 {buttonText}
               </Link>
               <span className="text-sm text-zinc-500">
-                Then $19/month &middot; no credit card required
+                Then $12.99/month &middot; no credit card required
               </span>
             </div>
           </div>
