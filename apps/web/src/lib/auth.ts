@@ -49,8 +49,8 @@ export function getAuthOptions(): NextAuthOptions {
                 identifier: email,
                 url,
               }) => {
-                const { resend } = await import("@/lib/resend");
-                await resend.emails.send({
+                const { getResendClient } = await import("@/lib/resend");
+                await getResendClient().emails.send({
                   from: process.env.EMAIL_FROM ?? "Acuity <noreply@getacuity.io>",
                   to: email,
                   subject: "Sign in to Acuity",

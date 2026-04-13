@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { resend } from "@/lib/resend";
+import { getResendClient } from "@/lib/resend";
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +43,7 @@ export async function POST(req: NextRequest) {
     });
 
     // Send emails in parallel (non-blocking — don't fail the request if email fails)
+    const resend = getResendClient();
     const notificationEmail = resend.emails.send({
       from: "Acuity <noreply@getacuity.io>",
       to: "keenan@heelerdigital.com",
