@@ -105,7 +105,7 @@ export default function WaitlistPage() {
                   You&apos;re in!
                 </p>
                 <p className="mt-2 text-sm text-emerald-600">
-                  Check your inbox for a confirmation from noreply@getacuity.io
+                  Check your inbox for a confirmation from hello@getacuity.io
                 </p>
               </div>
             ) : status === "already" ? (

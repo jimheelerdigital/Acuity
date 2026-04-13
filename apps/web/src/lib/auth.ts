@@ -44,14 +44,14 @@ export function getAuthOptions(): NextAuthOptions {
                   pass: process.env.RESEND_API_KEY ?? "",
                 },
               },
-              from: process.env.EMAIL_FROM ?? "Acuity <noreply@getacuity.io>",
+              from: process.env.EMAIL_FROM ?? "Acuity <hello@getacuity.io>",
               sendVerificationRequest: async ({
                 identifier: email,
                 url,
               }) => {
                 const { getResendClient } = await import("@/lib/resend");
                 await getResendClient().emails.send({
-                  from: process.env.EMAIL_FROM ?? "Acuity <noreply@getacuity.io>",
+                  from: process.env.EMAIL_FROM ?? "Acuity <hello@getacuity.io>",
                   to: email,
                   subject: "Sign in to Acuity",
                   html: magicLinkHtml(url),

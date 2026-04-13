@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
     // Send emails in parallel (non-blocking — don't fail the request if email fails)
     const resend = getResendClient();
     const notificationEmail = resend.emails.send({
-      from: "Acuity <noreply@getacuity.io>",
+      from: "Acuity <hello@getacuity.io>",
       to: "keenan@heelerdigital.com",
       subject: `New Acuity waitlist signup — ${email}`,
       html: [
@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
     });
 
     const welcomeEmail = resend.emails.send({
-      from: "Acuity <noreply@getacuity.io>",
+      from: "Acuity <hello@getacuity.io>",
       to: email,
       subject: "You're on the Acuity waitlist — here's what's coming",
       html: buildWelcomeEmail(name),
@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({
-      message: "You're in! Check your inbox for a confirmation from noreply@getacuity.io",
+      message: "You're in! Check your inbox for a confirmation from hello@getacuity.io",
       success: true,
     });
   } catch (err) {
