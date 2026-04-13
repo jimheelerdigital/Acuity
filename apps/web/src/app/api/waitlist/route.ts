@@ -6,35 +6,44 @@ export const dynamic = "force-dynamic";
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function POST(req: NextRequest) {
-  console.log("RESEND_API_KEY exists:", !!process.env.RESEND_API_KEY);
+  console.log("[waitlist] POST hit");
+  console.log("[waitlist] RESEND_API_KEY exists:", !!process.env.RESEND_API_KEY);
+
   try {
     const body = await req.json();
     const email = (body.email ?? "").trim().toLowerCase();
     const name = (body.name ?? "").trim() || null;
     const source = body.source || null;
+    console.log("[waitlist] parsed body:", { email, name, source });
 
     if (!email || !EMAIL_REGEX.test(email)) {
+      console.log("[waitlist] invalid email, returning 400");
       return NextResponse.json(
         { error: "Please enter a valid email address." },
         { status: 400 },
       );
     }
 
+    console.log("[waitlist] importing prisma...");
     const { prisma } = await import("@/lib/prisma");
+    console.log("[waitlist] prisma imported");
 
     // Check for duplicate
     const existing = await prisma.waitlist.findUnique({ where: { email } });
-    if (existing) {
-      return NextResponse.json(
-        { message: "You're already on the list! We'll be in touch soon.", alreadyExists: true },
-        { status: 200 },
-      );
-    }
+    console.log("[waitlist] duplicate check:", existing ? "EXISTS" : "NEW");
 
-    // Create record
-    await prisma.waitlist.create({
-      data: { email, name, source },
-    });
+    let alreadyExists = false;
+
+    if (existing) {
+      alreadyExists = true;
+    } else {
+      // Create record
+      console.log("[waitlist] creating record...");
+      await prisma.waitlist.create({
+        data: { email, name, source },
+      });
+      console.log("[waitlist] record created");
+    }
 
     const totalCount = await prisma.waitlist.count();
     const timestamp = new Date().toLocaleString("en-US", {
@@ -42,44 +51,51 @@ export async function POST(req: NextRequest) {
       dateStyle: "full",
       timeStyle: "short",
     });
+    console.log("[waitlist] total count:", totalCount);
 
-    // Send emails in parallel (non-blocking — don't fail the request if email fails)
+    // Send emails — await them so they complete before the response is returned
+    console.log("[waitlist] initializing Resend client...");
     const resend = getResendClient();
-    const notificationEmail = resend.emails.send({
-      from: "Acuity <hello@getacuity.io>",
-      to: "keenan@heelerdigital.com",
-      subject: `New Acuity waitlist signup — ${email}`,
-      html: [
-        `<p><strong>Name:</strong> ${name || "Not provided"}</p>`,
-        `<p><strong>Email:</strong> ${email}</p>`,
-        `<p><strong>Source:</strong> ${source || "Direct"}</p>`,
-        `<p><strong>Time:</strong> ${timestamp}</p>`,
-        `<p><strong>Total waitlist count:</strong> ${totalCount}</p>`,
-      ].join("\n"),
-    });
+    console.log("[waitlist] Resend client ready, sending emails...");
 
-    const welcomeEmail = resend.emails.send({
-      from: "Acuity <hello@getacuity.io>",
-      to: email,
-      subject: "You're on the Acuity waitlist — here's what's coming",
-      html: buildWelcomeEmail(name),
-    });
+    try {
+      const [notifResult, welcomeResult] = await Promise.allSettled([
+        resend.emails.send({
+          from: "Acuity <hello@getacuity.io>",
+          to: "keenan@heelerdigital.com",
+          subject: `New Acuity waitlist signup — ${email}`,
+          html: [
+            `<p><strong>Name:</strong> ${name || "Not provided"}</p>`,
+            `<p><strong>Email:</strong> ${email}</p>`,
+            `<p><strong>Source:</strong> ${source || "Direct"}</p>`,
+            `<p><strong>Time:</strong> ${timestamp}</p>`,
+            `<p><strong>Total waitlist count:</strong> ${totalCount}</p>`,
+          ].join("\n"),
+        }),
+        resend.emails.send({
+          from: "Acuity <hello@getacuity.io>",
+          to: email,
+          subject: "You're on the Acuity waitlist — here's what's coming",
+          html: buildWelcomeEmail(name),
+        }),
+      ]);
 
-    // Fire and forget — log errors but don't fail the request
-    Promise.allSettled([notificationEmail, welcomeEmail]).then((results) => {
-      results.forEach((r, i) => {
-        if (r.status === "rejected") {
-          console.error(`Waitlist email ${i} failed:`, r.reason);
-        }
-      });
-    });
+      console.log("[waitlist] notification email result:", JSON.stringify(notifResult));
+      console.log("[waitlist] welcome email result:", JSON.stringify(welcomeResult));
+    } catch (emailErr) {
+      console.error("[waitlist] email sending threw:", emailErr);
+    }
 
+    console.log("[waitlist] done, returning response");
     return NextResponse.json({
-      message: "You're in! Check your inbox for a confirmation from hello@getacuity.io",
+      message: alreadyExists
+        ? "You're already on the list! We'll be in touch soon."
+        : "You're in! Check your inbox for a confirmation from hello@getacuity.io",
+      alreadyExists,
       success: true,
     });
   } catch (err) {
-    console.error("Waitlist POST error:", err);
+    console.error("[waitlist] TOP-LEVEL ERROR:", err);
     return NextResponse.json(
       { error: "Something went wrong. Please try again." },
       { status: 500 },
