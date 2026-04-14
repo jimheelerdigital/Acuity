@@ -51,6 +51,12 @@ export default function WaitlistPage() {
       } else {
         setStatus("success");
         setCount((c) => (c !== null ? c + 1 : c));
+        if (typeof fbq !== "undefined") {
+          fbq("track", "Lead", {
+            content_name: "waitlist_signup",
+            content_category: source,
+          });
+        }
       }
     } catch {
       setStatus("error");

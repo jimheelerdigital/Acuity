@@ -1,9 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export function UpgradeButton() {
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (typeof fbq !== "undefined") {
+      fbq("track", "InitiateCheckout");
+    }
+  }, []);
 
   const handleUpgrade = async () => {
     setLoading(true);

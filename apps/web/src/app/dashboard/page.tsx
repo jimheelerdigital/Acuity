@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 
 import { getAuthOptions } from "@/lib/auth";
-import { TrackCompleteRegistration } from "@/components/meta-pixel-events";
+import { TrackCompleteRegistration, TrackPurchase } from "@/components/meta-pixel-events";
 import { RecordButton } from "./record-button";
 import { EntryCard } from "./entry-card";
 
@@ -44,6 +44,7 @@ export default async function DashboardPage() {
   return (
     <div className="min-h-screen">
       <TrackCompleteRegistration />
+      <TrackPurchase />
       <main className="mx-auto max-w-5xl px-6 py-10 animate-fade-in">
         {/* Greeting */}
         <div className="mb-8 text-center sm:text-left">

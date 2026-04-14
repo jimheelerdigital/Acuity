@@ -15,8 +15,8 @@ function SignInForm() {
 
   const handleGoogle = async () => {
     setLoading("google");
-    if (typeof window !== "undefined" && window.fbq) {
-      window.fbq("track", "Lead");
+    if (typeof fbq !== "undefined") {
+      fbq("track", "CompleteRegistration");
     }
     await signIn("google", { callbackUrl });
   };
@@ -25,8 +25,8 @@ function SignInForm() {
     e.preventDefault();
     if (!email.trim()) return;
     setLoading("email");
-    if (typeof window !== "undefined" && window.fbq) {
-      window.fbq("track", "Lead");
+    if (typeof fbq !== "undefined") {
+      fbq("track", "CompleteRegistration");
     }
     await signIn("email", { email, callbackUrl, redirect: false });
     setLoading(null);
