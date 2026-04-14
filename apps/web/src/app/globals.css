@@ -72,6 +72,17 @@
 }
 .animate-ticker { animation: ticker 30s linear infinite; }
 
+/* Fix mobile text highlight/selection artifacts on gradient and animated text */
+.bg-clip-text {
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+.bg-clip-text::selection,
+.bg-clip-text::-moz-selection {
+  background: rgba(139, 92, 246, 0.3);
+  -webkit-text-fill-color: white;
+}
+
 /* Scroll-reveal base */
 .reveal {
   opacity: 0;

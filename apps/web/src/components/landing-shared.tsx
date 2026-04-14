@@ -138,11 +138,12 @@ export function HeroHeadline({ text }: { text: string }) {
       {words.map((word, i) => (
         <span
           key={i}
-          className="inline-block mr-[0.3em] transition-all duration-500"
+          className="inline-block mr-[0.3em] transition-all duration-500 selection:bg-transparent"
           style={{
             opacity: i < visibleCount ? 1 : 0,
             transform: i < visibleCount ? "translateY(0)" : "translateY(20px)",
             transitionDelay: `${i * 60}ms`,
+            WebkitTapHighlightColor: "transparent",
           }}
         >
           {word}
