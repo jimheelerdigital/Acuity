@@ -82,6 +82,15 @@ export async function POST(req: NextRequest) {
 
       console.log("[waitlist] notification email result:", JSON.stringify(notifResult));
       console.log("[waitlist] welcome email result:", JSON.stringify(welcomeResult));
+
+      // Mark step 1 (confirmation email) as sent for the drip sequence
+      if (welcomeResult.status === "fulfilled" && !alreadyExists) {
+        await prisma.waitlist.update({
+          where: { email },
+          data: { emailSequenceStep: 1 },
+        });
+        console.log("[waitlist] emailSequenceStep set to 1");
+      }
     } catch (emailErr) {
       console.error("[waitlist] email sending threw:", emailErr);
     }

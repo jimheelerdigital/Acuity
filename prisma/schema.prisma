@@ -210,9 +210,11 @@ model UserMemory {
 }
 
 model Waitlist {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  source    String?
-  createdAt DateTime @default(now())
+  id                String   @id @default(cuid())
+  email             String   @unique
+  name              String?
+  source            String?
+  createdAt         DateTime @default(now())
+  emailSequenceStep Int      @default(0)
+  unsubscribed      Boolean  @default(false)
 }
