@@ -132,6 +132,25 @@ async function main() {
     process.exit(1);
   }
 
+  // Validate the key format
+  console.log(`API key prefix: ${apiKey.slice(0, 8)}...`);
+  console.log(`FROM: ${FROM}`);
+  console.log(`TO: ${TO}`);
+  console.log();
+
+  if (!apiKey.startsWith("re_")) {
+    console.error(
+      "ERROR: RESEND_API_KEY does not start with 're_'. The value in .env is not a valid Resend API key."
+    );
+    console.error(
+      "The production app works because Vercel has the correct key. Update RESEND_API_KEY in your .env file."
+    );
+    console.error(
+      "You can find it at https://resend.com/api-keys or copy it from Vercel env vars."
+    );
+    process.exit(1);
+  }
+
   const resend = new Resend(apiKey);
 
   const emails = [
@@ -156,15 +175,20 @@ async function main() {
         subject: `[TEST ${email.step}/5] ${email.subject}`,
         html: email.html,
       });
-      console.log(`  ✓ Sent (id: ${result.data?.id})`);
+
+      if (result.error) {
+        console.error(`  ✗ Resend error:`, JSON.stringify(result.error));
+      } else {
+        console.log(`  ✓ Sent (id: ${result.data?.id})`);
+      }
     } catch (err) {
-      console.error(`  ✗ Failed:`, err);
+      console.error(`  ✗ Exception:`, err);
     }
     // Small delay between sends to preserve inbox order
     await new Promise((r) => setTimeout(r, 2000));
   }
 
-  console.log("\nAll 5 emails sent to", TO);
+  console.log("\nDone. All emails attempted to", TO);
 }
 
 main();
