@@ -44,3 +44,4 @@ apps/mobile/dist/
 .vscode/
 .idea/
 *.swp
+.vercel
