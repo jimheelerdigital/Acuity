@@ -52,7 +52,7 @@ function SignInForm() {
   return (
     <>
       <div className="text-center mb-8">
-        <img src="/AcuityLogo.png" alt="Acuity logo" className="mx-auto mb-4" style={{ width: 48, height: 48 }} />
+        <img src="/AcuityLogo.png" alt="Acuity logo" className="mx-auto mb-4" style={{ width: 32, height: 32 }} />
         <h1 className="text-2xl font-bold text-zinc-900">Sign in to Acuity</h1>
         <p className="mt-1.5 text-sm text-zinc-500">
           Brain dump daily. Get your life back.

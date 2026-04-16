@@ -74,7 +74,7 @@ export default function WaitlistPage() {
               src="/AcuityLogo.png"
               alt="Acuity logo"
               className="shrink-0"
-              style={{ width: 36, height: 36 }}
+              style={{ width: 24, height: 24 }}
             />
             <span className="text-lg font-bold tracking-tight">Acuity</span>
           </Link>

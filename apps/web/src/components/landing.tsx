@@ -1061,7 +1061,7 @@ export function LandingPage() {
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-8">
             <Link href="/" className="flex items-center gap-2 group">
-              <img src="/AcuityLogoDark.png" alt="Acuity logo" className="shrink-0" style={{ width: 36, height: 36 }} />
+              <img src="/AcuityLogoDark.png" alt="Acuity logo" className="shrink-0" style={{ width: 24, height: 24 }} />
               <span className="text-lg font-bold tracking-tight">Acuity</span>
             </Link>
             <div className="hidden sm:flex items-center gap-6 text-sm text-[#A0A0B8]">
@@ -1801,7 +1801,7 @@ export function LandingPage() {
           <div className="flex flex-col gap-8 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <div className="flex items-center gap-2">
-                <img src="/AcuityLogoDark.png" alt="Acuity logo" className="shrink-0" style={{ width: 36, height: 36 }} />
+                <img src="/AcuityLogoDark.png" alt="Acuity logo" className="shrink-0" style={{ width: 24, height: 24 }} />
                 <span className="text-lg font-bold tracking-tight">
                   Acuity
                 </span>
