@@ -1,28 +1,26 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Nightly Debrief App for Founders — AI Productivity Journal",
+  title: "Acuity for Founders — The 60-Second Nightly Debrief for High Performers",
   description:
-    "The executive brain dump app for founders and high performers. 60-second nightly debrief that extracts tasks, tracks goals, and writes your weekly report.",
-  alternates: {
-    canonical: "https://getacuity.io/for/founders",
-  },
+    "Every night you go to bed with 40 unfinished thoughts. Acuity captures every task, tracks every goal, and writes your weekly debrief automatically. Built for founders and executives.",
+  alternates: { canonical: "https://getacuity.io/for/founders" },
   openGraph: {
-    title: "Nightly Debrief App for Founders — AI Productivity Journal",
+    title: "Acuity for Founders — The 60-Second Nightly Debrief for High Performers",
     description:
-      "The executive brain dump app for founders and high performers. 60-second nightly debrief that extracts tasks, tracks goals, and writes your weekly report.",
+      "Acuity captures every task, tracks every goal, and writes your weekly debrief automatically. Built for founders and executives.",
     url: "https://getacuity.io/for/founders",
-    images: [{ url: "/og-image.jpg", width: 1200, height: 1200, alt: "Acuity — AI journaling app" }],
+    siteName: "Acuity",
+    images: [{ url: "/og-image.jpg", width: 1200, height: 1200 }],
   },
   twitter: {
     card: "summary",
-    title: "Nightly Debrief App for Founders — AI Productivity Journal",
+    title: "Acuity for Founders — The 60-Second Nightly Debrief for High Performers",
     description:
-      "60-second nightly debrief for founders. AI extracts tasks, tracks goals, and writes your weekly performance report.",
-    images: ["/og-image.jpg"],
+      "Acuity captures every task, tracks every goal, and writes your weekly debrief automatically. Built for founders.",
   },
 };
 
-export default function FoundersLayout({ children }: { children: React.ReactNode }) {
+export default function Layout({ children }: { children: React.ReactNode }) {
   return children;
 }

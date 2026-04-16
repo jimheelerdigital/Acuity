@@ -1,28 +1,26 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Join the Waitlist — Early Access + First Month Free",
+  title: "Join the Acuity Waitlist — First Month Free",
   description:
-    "Be first in line for Acuity. Get early access to the AI journaling app that turns your nightly voice brain dump into tasks, insights, and weekly reports.",
-  alternates: {
-    canonical: "https://getacuity.io/waitlist",
-  },
+    "Be first in line for Acuity, the AI journaling app that turns 60-second nightly voice brain dumps into extracted tasks, mood tracking, pattern detection, and weekly AI reports. First month free.",
+  alternates: { canonical: "https://getacuity.io/waitlist" },
   openGraph: {
-    title: "Join the Acuity Waitlist — Early Access + First Month Free",
+    title: "Join the Acuity Waitlist — First Month Free",
     description:
-      "Be first in line for Acuity. Get early access to the AI journaling app that turns your nightly voice brain dump into tasks, insights, and weekly reports.",
+      "Be first in line for Acuity, the AI journaling app that turns nightly voice brain dumps into tasks, mood tracking, and weekly AI reports.",
     url: "https://getacuity.io/waitlist",
-    images: [{ url: "/og-image.jpg", width: 1200, height: 1200, alt: "Acuity — AI journaling app" }],
+    siteName: "Acuity",
+    images: [{ url: "/og-image.jpg", width: 1200, height: 1200 }],
   },
   twitter: {
     card: "summary",
-    title: "Join the Acuity Waitlist — Early Access + First Month Free",
+    title: "Join the Acuity Waitlist — First Month Free",
     description:
-      "Be first in line for Acuity. AI journaling that turns a 60-second voice brain dump into tasks, insights, and weekly reports.",
-    images: ["/og-image.jpg"],
+      "Be first in line for Acuity. 60-second nightly voice brain dumps turned into tasks, mood tracking, and weekly AI reports.",
   },
 };
 
-export default function WaitlistLayout({ children }: { children: React.ReactNode }) {
+export default function Layout({ children }: { children: React.ReactNode }) {
   return children;
 }

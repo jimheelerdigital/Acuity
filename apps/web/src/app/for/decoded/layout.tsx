@@ -1,28 +1,26 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "AI Pattern Detection Journal — Understand Your Mental Patterns",
+  title: "Acuity Decoded — Reveal the Subconscious Patterns Running Your Life",
   description:
-    "The subconscious pattern app that reveals what drives your decisions and emotions. AI detects recurring themes, blind spots, and hidden patterns over time.",
-  alternates: {
-    canonical: "https://getacuity.io/for/decoded",
-  },
+    "Most people have no idea what's driving their moods, decisions, and habits. Acuity reveals the patterns you can't see from the inside with AI-powered mental pattern detection.",
+  alternates: { canonical: "https://getacuity.io/for/decoded" },
   openGraph: {
-    title: "AI Pattern Detection Journal — Understand Your Mental Patterns",
+    title: "Acuity Decoded — Reveal the Subconscious Patterns Running Your Life",
     description:
-      "The subconscious pattern app that reveals what drives your decisions and emotions. AI detects recurring themes, blind spots, and hidden patterns over time.",
+      "Acuity reveals the patterns you can't see from the inside with AI-powered mental pattern detection.",
     url: "https://getacuity.io/for/decoded",
-    images: [{ url: "/og-image.jpg", width: 1200, height: 1200, alt: "Acuity — AI journaling app" }],
+    siteName: "Acuity",
+    images: [{ url: "/og-image.jpg", width: 1200, height: 1200 }],
   },
   twitter: {
     card: "summary",
-    title: "AI Pattern Detection Journal — Decode Your Mind",
+    title: "Acuity Decoded — Reveal the Subconscious Patterns Running Your Life",
     description:
-      "Reveal the subconscious patterns driving your decisions. AI detects recurring themes, blind spots, and hidden patterns over time.",
-    images: ["/og-image.jpg"],
+      "Acuity reveals the patterns you can't see from the inside with AI-powered mental pattern detection.",
   },
 };
 
-export default function DecodedLayout({ children }: { children: React.ReactNode }) {
+export default function Layout({ children }: { children: React.ReactNode }) {
   return children;
 }
