@@ -234,7 +234,7 @@ export function PulsingCTA({
    Landing nav "Who it's for" dropdown
    ═══════════════════════════════════════════ */
 
-const DROPDOWN_ITEMS = [
+const DROPDOWN_FEATURED = [
   {
     href: "/for/therapy",
     title: "The Overthinker",
@@ -260,6 +260,35 @@ const DROPDOWN_ITEMS = [
     title: "The Builder",
     description: "The 60-second nightly debrief for founders and high performers.",
   },
+];
+
+const DROPDOWN_MENTAL_HEALTH = [
+  { href: "/for/anxiety", label: "Anxiety" },
+  { href: "/for/adhd", label: "ADHD" },
+  { href: "/for/burnout", label: "Burnout" },
+  { href: "/for/grief", label: "Grief" },
+  { href: "/for/overthinkers", label: "Overthinkers" },
+  { href: "/for/chronic-pain", label: "Chronic Pain" },
+];
+
+const DROPDOWN_LIFESTYLE = [
+  { href: "/for/remote-workers", label: "Remote Workers" },
+  { href: "/for/new-parents", label: "New Parents" },
+  { href: "/for/students", label: "Students" },
+  { href: "/for/couples", label: "Couples" },
+  { href: "/for/introverts", label: "Introverts" },
+  { href: "/for/career-change", label: "Career Change" },
+  { href: "/for/athletes", label: "Athletes" },
+];
+
+const DROPDOWN_PROFESSIONALS = [
+  { href: "/for/entrepreneurs", label: "Entrepreneurs" },
+  { href: "/for/managers", label: "Managers" },
+  { href: "/for/freelancers", label: "Freelancers" },
+  { href: "/for/creatives", label: "Creatives" },
+  { href: "/for/nurses", label: "Nurses" },
+  { href: "/for/teachers", label: "Teachers" },
+  { href: "/for/therapists", label: "Therapists" },
 ];
 
 function LandingWhoItsFor() {
@@ -318,24 +347,80 @@ function LandingWhoItsFor() {
       </button>
 
       <div
-        className={`absolute left-0 top-full mt-2 w-72 rounded-lg border border-white/10 bg-[#13131F] shadow-lg transition-all duration-200 origin-top ${
+        className={`absolute left-0 top-full mt-2 w-[640px] rounded-xl border border-white/10 bg-[#13131F] shadow-2xl transition-all duration-200 origin-top ${
           open
             ? "opacity-100 scale-y-100 translate-y-0"
             : "opacity-0 scale-y-95 -translate-y-1 pointer-events-none"
         }`}
       >
-        <div className="py-1.5">
-          {DROPDOWN_ITEMS.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={close}
-              className="block px-4 py-3 transition-all duration-150 border-l-2 border-transparent hover:border-violet-500 hover:bg-white/5"
-            >
-              <div className="text-sm font-medium text-white">{item.title}</div>
-              <div className="text-xs text-[#A0A0B8] mt-0.5 leading-snug">{item.description}</div>
-            </Link>
-          ))}
+        <div className="flex">
+          {/* Featured column */}
+          <div className="w-[280px] border-r border-white/5 py-3">
+            <div className="px-4 pb-2">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-[#7C5CFC]">Featured</span>
+            </div>
+            {DROPDOWN_FEATURED.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={close}
+                className="block px-4 py-2.5 transition-all duration-150 border-l-2 border-transparent hover:border-violet-500 hover:bg-white/5"
+              >
+                <div className="text-sm font-medium text-white">{item.title}</div>
+                <div className="text-xs text-[#A0A0B8] mt-0.5 leading-snug">{item.description}</div>
+              </Link>
+            ))}
+          </div>
+
+          {/* Categories columns */}
+          <div className="flex-1 py-3 px-4">
+            <div className="grid grid-cols-3 gap-x-4">
+              {/* Mental Health */}
+              <div>
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-[#7C5CFC] block mb-2">Mental Health</span>
+                {DROPDOWN_MENTAL_HEALTH.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={close}
+                    className="block py-1.5 text-sm text-[#A0A0B8] transition hover:text-white"
+                  >
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
+
+              {/* Lifestyle */}
+              <div>
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-[#7C5CFC] block mb-2">Lifestyle</span>
+                {DROPDOWN_LIFESTYLE.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={close}
+                    className="block py-1.5 text-sm text-[#A0A0B8] transition hover:text-white"
+                  >
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
+
+              {/* Professionals */}
+              <div>
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-[#7C5CFC] block mb-2">Professionals</span>
+                {DROPDOWN_PROFESSIONALS.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={close}
+                    className="block py-1.5 text-sm text-[#A0A0B8] transition hover:text-white"
+                  >
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
