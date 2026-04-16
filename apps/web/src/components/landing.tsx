@@ -1838,8 +1838,7 @@ export function LandingPage() {
 
           <div className="mt-8 pt-6 border-t border-white/10 text-center">
             <p className="text-xs text-[#A0A0B8]">
-              Built with{" "}
-              <span className="font-medium text-[#A0A0B8]">Claude</span>
+              &copy; {new Date().getFullYear()} Acuity. All rights reserved.
             </p>
           </div>
         </div>
