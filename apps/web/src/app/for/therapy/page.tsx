@@ -41,14 +41,14 @@ export default function TherapyPage() {
           <Reveal delay={1}>
             <p className="mt-6 text-lg text-[#A0A0B8] leading-relaxed max-w-2xl mx-auto">
               Acuity listens to your 60-second nightly debrief, tracks your emotional
-              patterns, and writes your weekly mental health report &mdash; for less than
+              patterns, and writes your weekly mental health report — for less than
               the cost of one therapy copay.
             </p>
           </Reveal>
           <Reveal delay={2}>
             <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
               <PulsingCTA href={WAITLIST}>
-                Join the waitlist &mdash; first month free
+                Join the waitlist — first month free
               </PulsingCTA>
               <a
                 href="#how-it-works"
@@ -218,7 +218,7 @@ export default function TherapyPage() {
                 ))}
               </div>
               <blockquote className="text-base sm:text-lg text-[#A0A0B8] leading-relaxed italic">
-                &ldquo;I stopped going to therapy because of the cost. Acuity gives me the pattern recognition I was getting in sessions — at a fraction of the price.&rdquo;
+                "I stopped going to therapy because of the cost. Acuity gives me the pattern recognition I was getting in sessions — at a fraction of the price."
               </blockquote>
               <div className="mt-6 flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#7C5CFC]/20 text-sm font-bold text-[#7C5CFC]">S</div>

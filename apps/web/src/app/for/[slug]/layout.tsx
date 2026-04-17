@@ -8,6 +8,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   return {
     title: page.title,
     description: page.metaDescription,
+    robots: { index: false, follow: false },
     alternates: { canonical: `https://getacuity.io/for/${params.slug}` },
     openGraph: {
       title: page.title,

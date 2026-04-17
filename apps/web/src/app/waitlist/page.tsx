@@ -108,7 +108,7 @@ export default function WaitlistPage() {
               <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-8 text-center">
                 <div className="text-3xl mb-3">🎉</div>
                 <p className="text-lg font-semibold text-emerald-800">
-                  You&apos;re in!
+                  You're in!
                 </p>
                 <p className="mt-2 text-sm text-emerald-600">
                   Check your inbox for a confirmation from hello@getacuity.io
@@ -117,10 +117,10 @@ export default function WaitlistPage() {
             ) : status === "already" ? (
               <div className="rounded-2xl border border-violet-200 bg-violet-50 p-8 text-center">
                 <p className="text-lg font-semibold text-violet-800">
-                  You&apos;re already on the list!
+                  You're already on the list!
                 </p>
                 <p className="mt-2 text-sm text-violet-600">
-                  We&apos;ll be in touch soon.
+                  We'll be in touch soon.
                 </p>
               </div>
             ) : (

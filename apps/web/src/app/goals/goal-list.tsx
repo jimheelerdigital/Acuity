@@ -102,7 +102,7 @@ export function GoalList() {
           )}
         </h1>
         <p className="text-sm text-zinc-500">
-          What you&apos;re working toward.
+          What you're working toward.
         </p>
       </div>
 
@@ -111,7 +111,7 @@ export function GoalList() {
           <div className="text-3xl mb-3">🎯</div>
           <p className="text-sm font-medium text-zinc-500">No goals yet</p>
           <p className="mt-1 text-xs text-zinc-400">
-            Mention a goal in your daily debrief and we&apos;ll track it here.
+            Mention a goal in your daily debrief and we'll track it here.
           </p>
         </div>
       ) : (

@@ -186,7 +186,7 @@ export default function BlogPostPage({ params }: Props) {
               href="/waitlist?utm_campaign=blog"
               className="inline-flex items-center gap-2 rounded-full bg-[#7C5CFC] px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-95"
             >
-              Join the waitlist &mdash; first month free
+              Join the waitlist — first month free
             </Link>
             <p className="mt-3 text-xs text-[#A0A0B8]">
               No credit card required &middot; Cancel anytime

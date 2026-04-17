@@ -334,7 +334,7 @@ function LandingWhoItsFor() {
         onClick={() => setOpen((o) => !o)}
         className="flex items-center gap-1 transition hover:text-white relative after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-0 after:bg-violet-500 after:transition-all hover:after:w-full"
       >
-        Who it&apos;s for
+        Who it's for
         <svg
           className={`h-3.5 w-3.5 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
           fill="none"
@@ -466,7 +466,7 @@ export function LandingNav() {
           href="/waitlist?utm_campaign=nav"
           className="rounded-full bg-[#7C5CFC] px-5 py-2 text-sm font-medium text-white transition hover:bg-[#6B4FE0] hover:shadow-lg hover:shadow-[#7C5CFC]/20 active:scale-95"
         >
-          Join the waitlist &mdash; first month free
+          Join the waitlist — first month free
         </Link>
       </div>
     </nav>
@@ -605,7 +605,7 @@ export function PricingSection({
                 href={waitlistUrl}
                 className="mt-8 block w-full rounded-full bg-[#7C5CFC] py-3.5 text-center text-sm font-semibold text-white transition hover:bg-[#6B4FE0] hover:shadow-xl hover:shadow-[#7C5CFC]/20 active:scale-95"
               >
-                Join the waitlist &mdash; first month free
+                Join the waitlist — first month free
               </Link>
             </div>
           </div>
@@ -774,7 +774,7 @@ function ExtractPhone({ tasks, goal, mood }: ExtractPhoneProps) {
           </div>
           <div className="rounded-xl border border-[#7C5CFC]/30 bg-[#7C5CFC]/10 p-3">
             <div className="text-[10px] text-violet-600 uppercase tracking-wider mb-1">Goal</div>
-            <div className="text-xs text-[#A0A0B8]">&ldquo;{goal}&rdquo;</div>
+            <div className="text-xs text-[#A0A0B8]">"{goal}"</div>
           </div>
           <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3">
             <div className="text-[10px] text-emerald-600 uppercase tracking-wider mb-1">Mood</div>
@@ -945,7 +945,7 @@ export function CTABanner({
 
           <div className="relative">
             <p className="text-sm font-medium text-violet-400 mb-4 uppercase tracking-wider">
-              Join the waitlist &mdash; get your first month completely free
+              Join the waitlist — get your first month completely free
             </p>
             <h2 className="text-3xl font-bold sm:text-5xl tracking-tight">
               {headline}
@@ -1017,7 +1017,7 @@ export function TestimonialsSection({
                   ))}
                 </div>
                 <blockquote className="text-sm leading-relaxed text-[#A0A0B8]">
-                  &ldquo;{t.quote}&rdquo;
+                  "{t.quote}"
                 </blockquote>
                 <figcaption className="mt-5 flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#1E1E2E] text-sm font-bold text-[#A0A0B8] transition-colors group-hover:bg-[#7C5CFC]/20 group-hover:text-[#7C5CFC]">
@@ -1352,7 +1352,7 @@ export function MidPageCTA({
             onClick={trackInitiateCheckout}
             className="inline-flex items-center gap-2 rounded-full bg-[#7C5CFC] px-8 py-4 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] hover:shadow-xl hover:shadow-[#7C5CFC]/10 active:scale-95"
           >
-            Join the waitlist &mdash; first month free
+            Join the waitlist — first month free
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
             </svg>
@@ -1606,7 +1606,7 @@ export function ReportPreview({
 
         <div className="mb-4">
           <p className="text-sm text-[#A0A0B8] italic leading-relaxed">
-            &ldquo;{narrative}&rdquo;
+            "{narrative}"
           </p>
         </div>
 
@@ -1749,10 +1749,10 @@ export function StickyCTA({ utmCampaign }: { utmCampaign: string }) {
           onClick={trackInitiateCheckout}
           className="block w-full rounded-full bg-[#7C5CFC] py-3.5 text-center text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98]"
         >
-          Join the waitlist &mdash; first month free
+          Join the waitlist — first month free
         </Link>
         <p className="mt-1.5 text-center text-xs text-[#A0A0B8]">
-          Early access &mdash; limited spots at founding member pricing
+          Early access — limited spots at founding member pricing
         </p>
       </div>
     </div>

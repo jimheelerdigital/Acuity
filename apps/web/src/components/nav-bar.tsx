@@ -102,7 +102,7 @@ function WhoItsForDropdown() {
               : "text-zinc-500 hover:text-zinc-900 hover:bg-white/60"
           }`}
         >
-          Who it&apos;s for
+          Who it's for
           <svg
             className={`h-3.5 w-3.5 transition-transform duration-200 ${
               open ? "rotate-180" : ""
@@ -169,7 +169,7 @@ function WhoItsForDropdown() {
               : "text-zinc-500 hover:text-zinc-900 hover:bg-white/60"
           }`}
         >
-          Who it&apos;s for
+          Who it's for
           <svg
             className={`h-3.5 w-3.5 transition-transform duration-200 ${
               mobileOpen ? "rotate-180" : ""

@@ -40,13 +40,13 @@ export default function WeeklyReportPage() {
           <Reveal delay={1}>
             <p className="mt-6 text-lg text-[#A0A0B8] leading-relaxed max-w-2xl mx-auto">
               From your own voice notes. Your wins. Your patterns. What you said
-              you&apos;d do versus what actually happened.
+              you'd do versus what actually happened.
             </p>
           </Reveal>
           <Reveal delay={2}>
             <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
               <PulsingCTA href={WAITLIST}>
-                Join the waitlist &mdash; first month free
+                Join the waitlist — first month free
               </PulsingCTA>
               <a
                 href="#how-it-works"
@@ -162,7 +162,7 @@ export default function WeeklyReportPage() {
               </h2>
               <p className="mt-4 text-[#A0A0B8] text-base max-w-xl mx-auto">
                 Across Health, Wealth, Relationships, Spirituality, Career, and Growth
-                &mdash; Acuity tracks your scores over time and surfaces the patterns
+                — Acuity tracks your scores over time and surfaces the patterns
                 that weekly reports reveal.
               </p>
             </div>
@@ -237,7 +237,7 @@ export default function WeeklyReportPage() {
             </h2>
             <p className="mt-6 text-lg text-[#A0A0B8] leading-relaxed">
               The first weekly report shows you last week. The twelfth shows you who
-              you&apos;ve been for three months &mdash; the patterns that repeat, the
+              you've been for three months — the patterns that repeat, the
               growth that compounds, the blind spots that finally become visible. This
               is the product that gets more valuable the longer you use it.
             </p>

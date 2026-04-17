@@ -155,7 +155,7 @@ export default function VoiceJournalingPage() {
             Voice journaling is the practice of recording yourself speaking freely — about your day, your feelings, your plans, whatever is on your mind — instead of writing it down. You open an app, hit record, and talk for anywhere from 60 seconds to a few minutes. No editing. No formatting. Just an unfiltered stream of consciousness captured in your own voice.
           </p>
           <p className="text-base text-[#A0A0B8] leading-[1.8] mb-5">
-            Think of it as a <strong className="text-white">nightly brain dump</strong>. Everything rattling around in your head — tasks you forgot, feelings you haven&apos;t processed, wins you didn&apos;t celebrate — gets emptied into a recording. Your brain can finally stop holding onto it all.
+            Think of it as a <strong className="text-white">nightly brain dump</strong>. Everything rattling around in your head — tasks you forgot, feelings you haven't processed, wins you didn't celebrate — gets emptied into a recording. Your brain can finally stop holding onto it all.
           </p>
           <p className="text-base text-[#A0A0B8] leading-[1.8] mb-5">
             Traditional journaling asks you to sit down with a notebook or open a blank document and <em>write</em>. For many people, that friction is enough to kill the habit before it starts. Voice journaling removes that barrier entirely. You already know how to talk. You do it all day. Voice journaling just gives you a place to do it intentionally.
@@ -166,20 +166,20 @@ export default function VoiceJournalingPage() {
             Why Voice Journaling Works Better Than Writing for Most People
           </h2>
           <p className="text-base text-[#A0A0B8] leading-[1.8] mb-5">
-            The average person types about 40 words per minute. They speak at 130 to 150 words per minute. That&apos;s a 3x difference — and it matters more than you&apos;d think. When you write, your brain is constantly filtering, editing, and second-guessing. When you speak, thoughts flow more naturally and you capture things you&apos;d never bother typing out.
+            The average person types about 40 words per minute. They speak at 130 to 150 words per minute. That's a 3x difference — and it matters more than you'd think. When you write, your brain is constantly filtering, editing, and second-guessing. When you speak, thoughts flow more naturally and you capture things you'd never bother typing out.
           </p>
           <p className="text-base text-[#A0A0B8] leading-[1.8] mb-5">
-            This isn&apos;t just anecdotal. Research in cognitive psychology shows that verbal expression activates different neural pathways than written expression. Speaking engages areas of the brain associated with <Link href="/blog/journaling-for-mental-health" className="text-[#7C5CFC] hover:underline">emotional regulation</Link> and social cognition — the same circuits you use when talking to a friend or a therapist. Writing, by contrast, tends to engage more analytical, sequential processing.
+            This isn't just anecdotal. Research in cognitive psychology shows that verbal expression activates different neural pathways than written expression. Speaking engages areas of the brain associated with <Link href="/blog/journaling-for-mental-health" className="text-[#7C5CFC] hover:underline">emotional regulation</Link> and social cognition — the same circuits you use when talking to a friend or a therapist. Writing, by contrast, tends to engage more analytical, sequential processing.
           </p>
           <p className="text-base text-[#A0A0B8] leading-[1.8] mb-5">
-            The result: voice journaling often produces more honest, emotionally rich entries. People say things out loud that they&apos;d never write down. The absence of a visual record being formed in real time removes the inner editor that makes written journaling feel performative.
+            The result: voice journaling often produces more honest, emotionally rich entries. People say things out loud that they'd never write down. The absence of a visual record being formed in real time removes the inner editor that makes written journaling feel performative.
           </p>
 
           <h3 className="text-xl font-semibold mt-8 mb-3 text-white">
             The speed advantage
           </h3>
           <p className="text-base text-[#A0A0B8] leading-[1.8] mb-5">
-            A 60-second voice journal entry contains roughly 130-150 words of content — the equivalent of a half-page of written journaling. That&apos;s a meaningful <Link href="/blog/brain-dump-before-bed" className="text-[#7C5CFC] hover:underline">brain dump before bed</Link> captured in the time it takes to brush your teeth. For people who say they &ldquo;don&apos;t have time to journal,&rdquo; voice journaling removes that excuse entirely.
+            A 60-second voice journal entry contains roughly 130-150 words of content — the equivalent of a half-page of written journaling. That's a meaningful <Link href="/blog/brain-dump-before-bed" className="text-[#7C5CFC] hover:underline">brain dump before bed</Link> captured in the time it takes to brush your teeth. For people who say they "don't have time to journal," voice journaling removes that excuse entirely.
           </p>
 
           <h3 className="text-xl font-semibold mt-8 mb-3 text-white">
@@ -193,7 +193,7 @@ export default function VoiceJournalingPage() {
             The accessibility advantage
           </h3>
           <p className="text-base text-[#A0A0B8] leading-[1.8] mb-5">
-            Voice journaling works for people who struggle with written journaling due to dyslexia, ADHD, physical limitations, or simply hating to type. It works while you&apos;re lying in bed, walking the dog, or sitting in a parked car after work. All you need is your voice and a recording device — which is already in your pocket.
+            Voice journaling works for people who struggle with written journaling due to dyslexia, ADHD, physical limitations, or simply hating to type. It works while you're lying in bed, walking the dog, or sitting in a parked car after work. All you need is your voice and a recording device — which is already in your pocket.
           </p>
 
           {/* ──── Mid-article CTA ──── */}
@@ -208,7 +208,7 @@ export default function VoiceJournalingPage() {
               href="/waitlist?utm_campaign=voice-journaling-guide"
               className="inline-flex items-center gap-2 rounded-full bg-[#7C5CFC] px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-95"
             >
-              Join the waitlist &mdash; first month free
+              Join the waitlist — first month free
             </Link>
           </div>
 
@@ -220,13 +220,13 @@ export default function VoiceJournalingPage() {
             The therapeutic benefits of talking through problems are well-documented. Cognitive behavioral therapy, talk therapy, and even venting to a friend all leverage the same mechanism: <strong className="text-white">verbal processing</strong> — the act of converting internal experience into spoken language.
           </p>
           <p className="text-base text-[#A0A0B8] leading-[1.8] mb-5">
-            When you speak a feeling or thought aloud, you engage Broca&apos;s area (language production) alongside the prefrontal cortex (executive function) and the limbic system (emotion). This cross-brain activation is what makes talking about problems feel cathartic — you&apos;re literally integrating emotional and rational processing in real time.
+            When you speak a feeling or thought aloud, you engage Broca's area (language production) alongside the prefrontal cortex (executive function) and the limbic system (emotion). This cross-brain activation is what makes talking about problems feel cathartic — you're literally integrating emotional and rational processing in real time.
           </p>
           <p className="text-base text-[#A0A0B8] leading-[1.8] mb-5">
-            Research by Dr. Matthew Lieberman at UCLA showed that putting feelings into words — a process he calls &ldquo;affect labeling&rdquo; — reduces activity in the amygdala, the brain&apos;s threat-detection center. In plain language: <strong className="text-white">naming your emotions makes them less overwhelming</strong>. Voice journaling is structured affect labeling you can do every night, without needing a therapist present.
+            Research by Dr. Matthew Lieberman at UCLA showed that putting feelings into words — a process he calls "affect labeling" — reduces activity in the amygdala, the brain's threat-detection center. In plain language: <strong className="text-white">naming your emotions makes them less overwhelming</strong>. Voice journaling is structured affect labeling you can do every night, without needing a therapist present.
           </p>
           <p className="text-base text-[#A0A0B8] leading-[1.8] mb-5">
-            James Pennebaker&apos;s expressive writing research found that journaling about emotional experiences for just 15-20 minutes over four consecutive days led to measurable improvements in immune function, fewer doctor visits, and reduced anxiety. Voice journaling delivers the same benefits in a fraction of the time — because speaking is faster and more emotionally accessible than writing.
+            James Pennebaker's expressive writing research found that journaling about emotional experiences for just 15-20 minutes over four consecutive days led to measurable improvements in immune function, fewer doctor visits, and reduced anxiety. Voice journaling delivers the same benefits in a fraction of the time — because speaking is faster and more emotionally accessible than writing.
           </p>
 
           {/* ──── How to Start ──── */}
@@ -234,42 +234,42 @@ export default function VoiceJournalingPage() {
             How to Start a Voice Journaling Habit
           </h2>
           <p className="text-base text-[#A0A0B8] leading-[1.8] mb-5">
-            The best journaling habit is the one you actually maintain. Here&apos;s a practical framework for making voice journaling a <Link href="/blog/nightly-journaling-habit" className="text-[#7C5CFC] hover:underline">nightly habit</Link> that sticks:
+            The best journaling habit is the one you actually maintain. Here's a practical framework for making voice journaling a <Link href="/blog/nightly-journaling-habit" className="text-[#7C5CFC] hover:underline">nightly habit</Link> that sticks:
           </p>
 
           <h3 className="text-xl font-semibold mt-8 mb-3 text-white">
             1. Pick a trigger moment
           </h3>
           <p className="text-base text-[#A0A0B8] leading-[1.8] mb-5">
-            Attach your voice journal to something you already do every night. The most popular trigger is right before bed — after you&apos;ve brushed your teeth, when you&apos;re lying in bed with your phone. Other good triggers: right after dinner, during your evening walk, or the moment you sit in your car after the gym.
+            Attach your voice journal to something you already do every night. The most popular trigger is right before bed — after you've brushed your teeth, when you're lying in bed with your phone. Other good triggers: right after dinner, during your evening walk, or the moment you sit in your car after the gym.
           </p>
 
           <h3 className="text-xl font-semibold mt-8 mb-3 text-white">
             2. Set a timer for 60 seconds
           </h3>
           <p className="text-base text-[#A0A0B8] leading-[1.8] mb-5">
-            Don&apos;t try to record a 10-minute monologue. A 60-second entry is enough to capture the essential thoughts and feelings from your day. The constraint actually helps — it removes the pressure to be comprehensive and encourages you to lead with what matters most. If you have more to say, keep going. But 60 seconds is the minimum viable brain dump.
+            Don't try to record a 10-minute monologue. A 60-second entry is enough to capture the essential thoughts and feelings from your day. The constraint actually helps — it removes the pressure to be comprehensive and encourages you to lead with what matters most. If you have more to say, keep going. But 60 seconds is the minimum viable brain dump.
           </p>
 
           <h3 className="text-xl font-semibold mt-8 mb-3 text-white">
-            3. Don&apos;t think about what to say
+            3. Don't think about what to say
           </h3>
           <p className="text-base text-[#A0A0B8] leading-[1.8] mb-5">
-            The biggest mistake people make with voice journaling is trying to prepare what they&apos;ll say. Don&apos;t. Hit record and start talking — even if the first five seconds are &ldquo;I don&apos;t know what to say today.&rdquo; Your brain will fill the space. The unplanned, stream-of-consciousness entries are usually the most valuable ones.
+            The biggest mistake people make with voice journaling is trying to prepare what they'll say. Don't. Hit record and start talking — even if the first five seconds are "I don't know what to say today." Your brain will fill the space. The unplanned, stream-of-consciousness entries are usually the most valuable ones.
           </p>
 
           <h3 className="text-xl font-semibold mt-8 mb-3 text-white">
             4. Make it non-negotiable for 7 days
           </h3>
           <p className="text-base text-[#A0A0B8] leading-[1.8] mb-5">
-            Commit to one week. Not a month, not a year — seven days. Research on habit formation shows that a short, intense commitment period is more effective than an open-ended &ldquo;I&apos;ll try to do this every day.&rdquo; After seven days, most people are hooked because they&apos;ve felt the benefit of clearing their head before sleep.
+            Commit to one week. Not a month, not a year — seven days. Research on habit formation shows that a short, intense commitment period is more effective than an open-ended "I'll try to do this every day." After seven days, most people are hooked because they've felt the benefit of clearing their head before sleep.
           </p>
 
           <h3 className="text-xl font-semibold mt-8 mb-3 text-white">
             5. Review weekly, not daily
           </h3>
           <p className="text-base text-[#A0A0B8] leading-[1.8] mb-5">
-            Don&apos;t re-listen to every entry. The act of speaking is the therapy. But once a week, glance at your transcripts or AI-generated summary (if your app provides one) to spot patterns. You&apos;ll notice recurring themes, unresolved tasks, and emotional trends that are invisible day-to-day but obvious over seven entries. This is where voice journaling becomes more than venting — it becomes <Link href="/blog/journaling-for-productivity" className="text-[#7C5CFC] hover:underline">a productivity system</Link> and a self-awareness tool.
+            Don't re-listen to every entry. The act of speaking is the therapy. But once a week, glance at your transcripts or AI-generated summary (if your app provides one) to spot patterns. You'll notice recurring themes, unresolved tasks, and emotional trends that are invisible day-to-day but obvious over seven entries. This is where voice journaling becomes more than venting — it becomes <Link href="/blog/journaling-for-productivity" className="text-[#7C5CFC] hover:underline">a productivity system</Link> and a self-awareness tool.
           </p>
 
           {/* ──── Voice vs Written ──── */}
@@ -277,13 +277,13 @@ export default function VoiceJournalingPage() {
             Voice Journaling vs. Written Journaling
           </h2>
           <p className="text-base text-[#A0A0B8] leading-[1.8] mb-5">
-            Neither approach is universally &ldquo;better.&rdquo; They serve different purposes and suit different people. Here&apos;s an honest comparison:
+            Neither approach is universally "better." They serve different purposes and suit different people. Here's an honest comparison:
           </p>
           <div className="my-6 overflow-x-auto">
             <table className="w-full text-sm text-left">
               <thead>
                 <tr className="border-b border-white/10 text-white/60">
-                  <th className="pb-3 pr-6 font-medium">&nbsp;</th>
+                  <th className="pb-3 pr-6 font-medium"> </th>
                   <th className="pb-3 pr-6 font-medium">Voice Journaling</th>
                   <th className="pb-3 font-medium">Written Journaling</th>
                 </tr>
@@ -340,14 +340,14 @@ export default function VoiceJournalingPage() {
             Trying to sound articulate
           </h3>
           <p className="text-base text-[#A0A0B8] leading-[1.8] mb-5">
-            Your voice journal is for you, not an audience. Ramble. Repeat yourself. Say &ldquo;um&rdquo; and &ldquo;like.&rdquo; Trails of thought that go nowhere are fine — they&apos;re often where the real insight lives. The moment you start trying to sound polished, you lose the honesty that makes voice journaling valuable.
+            Your voice journal is for you, not an audience. Ramble. Repeat yourself. Say "um" and "like." Trails of thought that go nowhere are fine — they're often where the real insight lives. The moment you start trying to sound polished, you lose the honesty that makes voice journaling valuable.
           </p>
 
           <h3 className="text-xl font-semibold mt-8 mb-3 text-white">
             Making entries too long
           </h3>
           <p className="text-base text-[#A0A0B8] leading-[1.8] mb-5">
-            Longer isn&apos;t better. A focused 60-second entry every night beats a meandering 15-minute entry once a week. Consistency is what builds the habit and generates the data. Keep it short so you actually do it tomorrow.
+            Longer isn't better. A focused 60-second entry every night beats a meandering 15-minute entry once a week. Consistency is what builds the habit and generates the data. Keep it short so you actually do it tomorrow.
           </p>
 
           <h3 className="text-xl font-semibold mt-8 mb-3 text-white">
@@ -361,7 +361,7 @@ export default function VoiceJournalingPage() {
             Re-listening to every entry
           </h3>
           <p className="text-base text-[#A0A0B8] leading-[1.8] mb-5">
-            The primary value of voice journaling is the act of speaking, not the recording. You don&apos;t need to re-listen to every entry — that turns a 60-second habit into a 10-minute chore. Let AI handle the transcription and analysis. Review the summary once a week and move on.
+            The primary value of voice journaling is the act of speaking, not the recording. You don't need to re-listen to every entry — that turns a 60-second habit into a 10-minute chore. Let AI handle the transcription and analysis. Review the summary once a week and move on.
           </p>
 
           {/* ──── Tools and Methods ──── */}
@@ -369,28 +369,28 @@ export default function VoiceJournalingPage() {
             Voice Journaling Tools and Methods
           </h2>
           <p className="text-base text-[#A0A0B8] leading-[1.8] mb-5">
-            You can voice journal with anything that records audio — your phone&apos;s built-in voice memo app, a dedicated recorder, even a smart speaker. But the experience (and the value you extract) varies dramatically based on what happens <em>after</em> you record.
+            You can voice journal with anything that records audio — your phone's built-in voice memo app, a dedicated recorder, even a smart speaker. But the experience (and the value you extract) varies dramatically based on what happens <em>after</em> you record.
           </p>
 
           <h3 className="text-xl font-semibold mt-8 mb-3 text-white">
             Basic: Phone voice memos
           </h3>
           <p className="text-base text-[#A0A0B8] leading-[1.8] mb-5">
-            Free, always available, zero learning curve. The downside: your entries pile up as unlabeled audio files. No transcription, no analysis, no way to search or spot patterns. Works for getting started but you&apos;ll quickly outgrow it.
+            Free, always available, zero learning curve. The downside: your entries pile up as unlabeled audio files. No transcription, no analysis, no way to search or spot patterns. Works for getting started but you'll quickly outgrow it.
           </p>
 
           <h3 className="text-xl font-semibold mt-8 mb-3 text-white">
             Intermediate: Transcription apps
           </h3>
           <p className="text-base text-[#A0A0B8] leading-[1.8] mb-5">
-            Apps like Otter.ai or built-in phone transcription can convert your recordings to text. This makes entries searchable and readable. But you&apos;re still doing all the analysis yourself — reading through transcripts to find patterns, manually tracking your mood, creating your own task lists.
+            Apps like Otter.ai or built-in phone transcription can convert your recordings to text. This makes entries searchable and readable. But you're still doing all the analysis yourself — reading through transcripts to find patterns, manually tracking your mood, creating your own task lists.
           </p>
 
           <h3 className="text-xl font-semibold mt-8 mb-3 text-white">
             Advanced: AI voice journaling apps
           </h3>
           <p className="text-base text-[#A0A0B8] leading-[1.8] mb-5">
-            This is where voice journaling gets genuinely powerful. AI-powered voice journaling apps like Acuity don&apos;t just transcribe — they <em>understand</em>. After you record a 60-second entry, AI automatically extracts tasks you mentioned, tracks goals you referenced, scores your mood, detects recurring emotional patterns, and generates a <Link href="/blog/weekly-review-template" className="text-[#7C5CFC] hover:underline">weekly narrative report</Link> that reads like a therapist&apos;s session notes. Your nightly brain dump becomes structured life intelligence — a Life Matrix that scores your wellbeing across Health, Wealth, Relationships, Spirituality, Career, and Growth.
+            This is where voice journaling gets genuinely powerful. AI-powered voice journaling apps like Acuity don't just transcribe — they <em>understand</em>. After you record a 60-second entry, AI automatically extracts tasks you mentioned, tracks goals you referenced, scores your mood, detects recurring emotional patterns, and generates a <Link href="/blog/weekly-review-template" className="text-[#7C5CFC] hover:underline">weekly narrative report</Link> that reads like a therapist's session notes. Your nightly brain dump becomes structured life intelligence — a Life Matrix that scores your wellbeing across Health, Wealth, Relationships, Spirituality, Career, and Growth.
           </p>
 
           {/* ──── Who Voice Journaling Is For ──── */}
@@ -398,14 +398,14 @@ export default function VoiceJournalingPage() {
             Who Voice Journaling Is For
           </h2>
           <p className="text-base text-[#A0A0B8] leading-[1.8] mb-5">
-            Voice journaling isn&apos;t for everyone — but it&apos;s for more people than you&apos;d expect. It&apos;s especially effective for:
+            Voice journaling isn't for everyone — but it's for more people than you'd expect. It's especially effective for:
           </p>
           <ul className="list-disc list-inside text-[#A0A0B8] space-y-2 mb-5 ml-2">
             <li><strong className="text-white">Overwhelmed professionals</strong> who have too many thoughts racing through their head at night and need a fast way to clear them</li>
             <li><strong className="text-white">People with ADHD</strong> who find written journaling tedious or impossible to sustain but can talk freely without losing focus</li>
             <li><strong className="text-white">Therapy-goers</strong> who want to track emotional patterns between sessions without the effort of a mood diary</li>
             <li><strong className="text-white">Founders and operators</strong> who need a nightly debrief to extract action items and maintain clarity across dozens of competing priorities</li>
-            <li><strong className="text-white">Anyone who&apos;s tried journaling before and quit</strong> — if writing didn&apos;t work, talking might</li>
+            <li><strong className="text-white">Anyone who's tried journaling before and quit</strong> — if writing didn't work, talking might</li>
           </ul>
 
           {/* ──── FAQ ──── */}
@@ -460,7 +460,7 @@ export default function VoiceJournalingPage() {
               href="/waitlist?utm_campaign=voice-journaling-guide"
               className="inline-flex items-center gap-2 rounded-full bg-[#7C5CFC] px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-95"
             >
-              Join the waitlist &mdash; first month free
+              Join the waitlist — first month free
             </Link>
             <p className="mt-3 text-xs text-[#A0A0B8]">
               No credit card required &middot; Cancel anytime

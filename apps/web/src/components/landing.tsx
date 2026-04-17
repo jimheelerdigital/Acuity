@@ -87,7 +87,7 @@ function WhoItsForDropdown() {
         onClick={() => setOpen((o) => !o)}
         className="flex items-center gap-1 transition hover:text-white relative after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-0 after:bg-violet-500 after:transition-all hover:after:w-full"
       >
-        Who it&apos;s for
+        Who it's for
         <svg
           className={`h-3.5 w-3.5 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
           fill="none"
@@ -1169,7 +1169,7 @@ export function LandingPage() {
                         Top Insight
                       </div>
                       <div className="text-xs text-[#A0A0B8]">
-                        You mention &ldquo;sleep&rdquo; 4x this week. Consider a
+                        You mention "sleep" 4x this week. Consider a
                         wind-down routine.
                       </div>
                     </div>
@@ -1206,7 +1206,7 @@ export function LandingPage() {
                   <div className="h-full w-full rounded-[1.5rem] bg-[#13131F] p-4 flex flex-col gap-3 overflow-hidden">
                     <div className="flex items-center justify-between">
                       <div className="text-xs text-[#A0A0B8] font-medium">
-                        Today&apos;s Debrief
+                        Today's Debrief
                       </div>
                       <div className="flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 text-[10px] text-emerald-600">
                         <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -1238,7 +1238,7 @@ export function LandingPage() {
                         Goal Detected
                       </div>
                       <div className="text-xs text-[#A0A0B8]">
-                        &ldquo;Launch MVP by end of month&rdquo;
+                        "Launch MVP by end of month"
                       </div>
                     </div>
                   </div>
@@ -1443,7 +1443,7 @@ export function LandingPage() {
                             Goal
                           </div>
                           <div className="text-xs text-[#A0A0B8]">
-                            &ldquo;Ship the beta this week&rdquo;
+                            "Ship the beta this week"
                           </div>
                         </div>
                         <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3">
@@ -1630,7 +1630,7 @@ export function LandingPage() {
                     ))}
                   </div>
                   <blockquote className="text-sm leading-relaxed text-[#A0A0B8]">
-                    &ldquo;{t.quote}&rdquo;
+                    "{t.quote}"
                   </blockquote>
                   <figcaption className="mt-5 flex items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#1E1E2E] text-sm font-bold text-[#A0A0B8] transition-colors group-hover:bg-[#7C5CFC]/20 group-hover:text-[#7C5CFC]">
@@ -1850,10 +1850,10 @@ export function LandingPage() {
             onClick={trackInitiateCheckout}
             className="block w-full rounded-full bg-[#7C5CFC] py-3.5 text-center text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98]"
           >
-            Join the waitlist &mdash; first month free
+            Join the waitlist — first month free
           </Link>
           <p className="mt-1.5 text-center text-xs text-[#A0A0B8]">
-            Early access &mdash; limited spots at founding member pricing
+            Early access — limited spots at founding member pricing
           </p>
         </div>
       </div>

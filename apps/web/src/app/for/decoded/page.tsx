@@ -38,13 +38,13 @@ export default function DecodedPage() {
           </Reveal>
           <Reveal delay={1}>
             <p className="mt-6 text-lg text-[#A0A0B8] leading-relaxed max-w-2xl mx-auto">
-              Most people have no idea what&apos;s actually driving their moods, decisions, and habits. Acuity reveals the patterns you can&apos;t see from the inside.
+              Most people have no idea what's actually driving their moods, decisions, and habits. Acuity reveals the patterns you can't see from the inside.
             </p>
           </Reveal>
           <Reveal delay={2}>
             <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
               <PulsingCTA href={WAITLIST}>
-                Join the waitlist &mdash; first month free
+                Join the waitlist — first month free
               </PulsingCTA>
               <a
                 href="#how-it-works"
@@ -178,7 +178,7 @@ export default function DecodedPage() {
                 Life Matrix
               </p>
               <h2 className="text-3xl font-bold tracking-tight sm:text-5xl">
-                Your Life Matrix. Built from everything you&apos;ve ever said.
+                Your Life Matrix. Built from everything you've ever said.
               </h2>
             </div>
           </Reveal>
@@ -249,7 +249,7 @@ export default function DecodedPage() {
             <p className="mt-6 text-lg text-[#A0A0B8] leading-relaxed">
               Most users describe receiving their first weekly report as the moment
               Acuity became real. Not because it told them something new. Because it
-              showed them something they already knew &mdash; but had never seen
+              showed them something they already knew — but had never seen
               clearly.
             </p>
           </Reveal>

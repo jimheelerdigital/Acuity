@@ -61,7 +61,7 @@ export default function PersonaLandingPage({ params }: { params: { slug: string 
           <Reveal delay={2}>
             <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
               <PulsingCTA href={WAITLIST}>
-                Join the waitlist &mdash; first month free
+                Join the waitlist — first month free
               </PulsingCTA>
               <a
                 href="#how-it-works"
@@ -191,7 +191,7 @@ export default function PersonaLandingPage({ params }: { params: { slug: string 
                 ))}
               </div>
               <blockquote className="text-base sm:text-lg text-[#A0A0B8] leading-relaxed italic mb-6">
-                &ldquo;{page.testimonial.quote}&rdquo;
+                "{page.testimonial.quote}"
               </blockquote>
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#7C5CFC]/20 text-sm font-bold text-[#7C5CFC]">
@@ -244,7 +244,7 @@ export default function PersonaLandingPage({ params }: { params: { slug: string 
                 href={WAITLIST}
                 className="block w-full rounded-full bg-[#7C5CFC] py-3.5 text-center text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-95"
               >
-                Join the waitlist &mdash; first month free
+                Join the waitlist — first month free
               </Link>
             </div>
           </Reveal>
@@ -268,7 +268,7 @@ export default function PersonaLandingPage({ params }: { params: { slug: string 
                   href={WAITLIST}
                   className="rounded-full bg-[#7C5CFC] px-8 py-4 text-sm font-bold text-white transition hover:bg-[#6B4FE0] hover:-translate-y-0.5 active:scale-95"
                 >
-                  Join the waitlist &mdash; first month free
+                  Join the waitlist — first month free
                 </Link>
                 <span className="text-sm text-[#A0A0B8]">
                   Then $12.99/month &middot; no credit card required

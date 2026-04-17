@@ -39,7 +39,7 @@ export default function SleepPage() {
           </Reveal>
           <Reveal delay={1}>
             <p className="mt-6 text-lg text-[#A0A0B8] leading-relaxed max-w-2xl mx-auto">
-              Racing thoughts at night aren&apos;t a sleep problem — they&apos;re an
+              Racing thoughts at night aren't a sleep problem — they're an
               unprocessed thoughts problem. Acuity gives you 60 seconds to get it all
               out before bed.
             </p>
@@ -47,7 +47,7 @@ export default function SleepPage() {
           <Reveal delay={2}>
             <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
               <PulsingCTA href={WAITLIST}>
-                Join the waitlist &mdash; first month free
+                Join the waitlist — first month free
               </PulsingCTA>
               <a
                 href="#how-it-works"
@@ -72,13 +72,13 @@ export default function SleepPage() {
         <div className="mx-auto max-w-2xl text-center">
           <Reveal>
             <div className="space-y-4 text-xl sm:text-2xl font-medium text-[#A0A0B8] leading-relaxed">
-              <p className="text-white">It&apos;s 11pm.</p>
+              <p className="text-white">It's 11pm.</p>
               <p className="text-white">You should be asleep.</p>
               <p>
-                Instead you&apos;re running through everything you said today,
+                Instead you're running through everything you said today,
               </p>
-              <p>everything you didn&apos;t finish,</p>
-              <p>everything you&apos;re worried about tomorrow.</p>
+              <p>everything you didn't finish,</p>
+              <p>everything you're worried about tomorrow.</p>
               <p className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-indigo-400 font-bold text-2xl sm:text-3xl pt-4">
                 Sound familiar?
               </p>
@@ -93,12 +93,12 @@ export default function SleepPage() {
           <Reveal>
             <div className="rounded-2xl border border-white/10 bg-[#13131F] p-8 sm:p-12 shadow-sm">
               <h2 className="text-2xl font-bold tracking-tight sm:text-3xl mb-4">
-                Why your brain won&apos;t stop.
+                Why your brain won't stop.
               </h2>
               <p className="text-[#A0A0B8] leading-relaxed">
                 Your mind treats unprocessed thoughts like open browser tabs. They stay
-                active, consuming energy, until they&apos;re acknowledged and filed. The
-                nightly debrief is the oldest sleep hack in existence &mdash; getting
+                active, consuming energy, until they're acknowledged and filed. The
+                nightly debrief is the oldest sleep hack in existence — getting
                 thoughts out of your head and onto something external so your brain
                 finally lets go. Acuity makes it take 60 seconds. And then organizes
                 everything automatically.
@@ -192,7 +192,7 @@ export default function SleepPage() {
             </h2>
             <p className="mt-6 text-lg text-[#A0A0B8] leading-relaxed">
               The most powerful version of Acuity is as a nightly ritual. Same time
-              every night &mdash; right before you put your phone down. 60 seconds.
+              every night — right before you put your phone down. 60 seconds.
               Everything out. Lights off.
             </p>
           </Reveal>

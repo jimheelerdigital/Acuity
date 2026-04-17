@@ -48,7 +48,7 @@ export default function FoundersPage() {
           <Reveal delay={2}>
             <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
               <PulsingCTA href={WAITLIST}>
-                Join the waitlist &mdash; first month free
+                Join the waitlist — first month free
               </PulsingCTA>
               <a
                 href="#how-it-works"
@@ -291,13 +291,13 @@ export default function FoundersPage() {
               The longer you use it, the smarter it gets about you.
             </h2>
             <p className="mt-6 text-lg text-zinc-400 leading-relaxed">
-              After 90 days, Acuity has processed everything you&apos;ve said about your
+              After 90 days, Acuity has processed everything you've said about your
               business, your team, your goals, and your mental state. It knows your
-              patterns better than your co-founder. It remembers every goal you&apos;ve
-              set, every concern you&apos;ve voiced, every decision you&apos;ve been
+              patterns better than your co-founder. It remembers every goal you've
+              set, every concern you've voiced, every decision you've been
               avoiding.{" "}
               <span className="text-white font-semibold">
-                That&apos;s your competitive advantage.
+                That's your competitive advantage.
               </span>
             </p>
           </Reveal>
@@ -342,7 +342,7 @@ export default function FoundersPage() {
               </span>
             </h2>
             <p className="mt-4 text-lg text-[#A0A0B8] mb-8">
-              That&apos;s the total time investment. In return:
+              That's the total time investment. In return:
             </p>
           </Reveal>
 
