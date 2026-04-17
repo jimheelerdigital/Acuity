@@ -481,7 +481,7 @@ export function Footer() {
   return (
     <footer className="border-t border-white/10 px-6 py-12 bg-[#0A0A0F]">
       <div className="mx-auto max-w-5xl">
-        <div className="flex flex-col gap-8 sm:flex-row sm:items-start sm:justify-between">
+        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <div className="flex items-center gap-2">
               <img src="/AcuityLogoDark.png" alt="Acuity logo" className="shrink-0" style={{ width: 24, height: 24 }} />
@@ -491,15 +491,27 @@ export function Footer() {
               Brain dump daily. Get your life back.
             </p>
           </div>
-          <div className="flex items-center gap-6 text-sm text-[#A0A0B8]">
-            <a href="#" className="transition hover:text-white">Terms</a>
-            <a href="#" className="transition hover:text-white">Privacy</a>
-            <a href="#" className="transition hover:text-white">Contact</a>
+          <div>
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-white/50 mb-3">Product</h3>
+            <ul className="space-y-2 text-sm text-[#A0A0B8]">
+              <li><a href="/" className="transition hover:text-white">Home</a></li>
+              <li><a href="/waitlist" className="transition hover:text-white">Join Waitlist</a></li>
+            </ul>
           </div>
-          <div className="flex items-center gap-4 text-sm text-[#A0A0B8]">
-            <a href="#" className="transition hover:text-white">Twitter/X</a>
-            <a href="#" className="transition hover:text-white">Instagram</a>
-            <a href="#" className="transition hover:text-white">TikTok</a>
+          <div>
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-white/50 mb-3">Learn</h3>
+            <ul className="space-y-2 text-sm text-[#A0A0B8]">
+              <li><a href="/voice-journaling" className="transition hover:text-white">Voice Journaling Guide</a></li>
+              <li><a href="/blog" className="transition hover:text-white">Blog</a></li>
+            </ul>
+          </div>
+          <div>
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-white/50 mb-3">Company</h3>
+            <ul className="space-y-2 text-sm text-[#A0A0B8]">
+              <li><a href="#" className="transition hover:text-white">Terms</a></li>
+              <li><a href="#" className="transition hover:text-white">Privacy</a></li>
+              <li><a href="#" className="transition hover:text-white">Contact</a></li>
+            </ul>
           </div>
         </div>
         <div className="mt-8 pt-6 border-t border-white/10 text-center">

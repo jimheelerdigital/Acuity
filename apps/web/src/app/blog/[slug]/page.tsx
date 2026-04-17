@@ -38,30 +38,57 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 function BlogJsonLd({ post }: { post: NonNullable<ReturnType<typeof getPostBySlug>> }) {
   const schema = {
     "@context": "https://schema.org",
-    "@type": "BlogPosting",
-    headline: post.title,
-    description: post.metaDescription,
-    datePublished: post.publishedAt,
-    dateModified: post.updatedAt,
-    author: {
-      "@type": "Organization",
-      name: "Acuity",
-      url: "https://getacuity.io",
-    },
-    publisher: {
-      "@type": "Organization",
-      name: "Acuity",
-      url: "https://getacuity.io",
-      logo: {
-        "@type": "ImageObject",
-        url: "https://getacuity.io/AcuityLogo.png",
+    "@graph": [
+      {
+        "@type": "BlogPosting",
+        headline: post.title,
+        description: post.metaDescription,
+        datePublished: post.publishedAt,
+        dateModified: post.updatedAt,
+        author: {
+          "@type": "Organization",
+          name: "Acuity",
+          url: "https://getacuity.io",
+        },
+        publisher: {
+          "@type": "Organization",
+          name: "Acuity",
+          url: "https://getacuity.io",
+          logo: {
+            "@type": "ImageObject",
+            url: "https://getacuity.io/AcuityLogo.png",
+          },
+        },
+        mainEntityOfPage: {
+          "@type": "WebPage",
+          "@id": `https://getacuity.io/blog/${post.slug}`,
+        },
+        keywords: post.targetKeyword,
       },
-    },
-    mainEntityOfPage: {
-      "@type": "WebPage",
-      "@id": `https://getacuity.io/blog/${post.slug}`,
-    },
-    keywords: post.targetKeyword,
+      {
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          {
+            "@type": "ListItem",
+            position: 1,
+            name: "Home",
+            item: "https://getacuity.io",
+          },
+          {
+            "@type": "ListItem",
+            position: 2,
+            name: "Blog",
+            item: "https://getacuity.io/blog",
+          },
+          {
+            "@type": "ListItem",
+            position: 3,
+            name: post.title,
+            item: `https://getacuity.io/blog/${post.slug}`,
+          },
+        ],
+      },
+    ],
   };
 
   return (

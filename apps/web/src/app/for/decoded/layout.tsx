@@ -4,6 +4,7 @@ export const metadata: Metadata = {
   title: "Acuity Decoded — Reveal the Subconscious Patterns Running Your Life",
   description:
     "Most people have no idea what's driving their moods, decisions, and habits. Acuity reveals the patterns you can't see from the inside with AI-powered mental pattern detection.",
+  robots: { index: false, follow: false },
   alternates: { canonical: "https://getacuity.io/for/decoded" },
   openGraph: {
     title: "Acuity Decoded — Reveal the Subconscious Patterns Running Your Life",

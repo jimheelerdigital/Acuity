@@ -8,6 +8,7 @@ import { NavBar } from "@/components/nav-bar";
 import { GoogleAnalytics } from "@/components/google-analytics";
 
 const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
+const GOOGLE_SITE_VERIFICATION = process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION;
 
 const inter = Inter({
   subsets: ["latin"],
@@ -39,10 +40,10 @@ export const metadata: Metadata = {
     title: "Acuity — AI Journaling App | Nightly Voice Brain Dump",
     description:
       "The AI journaling app that turns a 60-second nightly voice brain dump into extracted tasks, mood tracking, mental pattern detection, and weekly AI reports.",
-    images: [{ url: "/og-image.jpg", width: 1200, height: 1200, alt: "Acuity — AI journaling app" }],
+    images: [{ url: "/og-image.jpg", width: 1200, height: 630, alt: "Acuity — AI voice journaling app for nightly brain dumps" }],
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: "Acuity — AI Journaling App | Nightly Voice Brain Dump",
     description:
       "Turn a 60-second nightly voice brain dump into tasks, mood tracking, pattern detection, and weekly AI reports.",
@@ -59,9 +60,27 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const organizationJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: "Acuity",
+    url: "https://getacuity.io",
+    logo: "https://getacuity.io/AcuityLogo.png",
+    description:
+      "AI journaling app that turns a 60-second nightly voice brain dump into extracted tasks, mood tracking, mental pattern detection, and weekly AI reports.",
+    sameAs: [],
+  };
+
   return (
     <html lang="en" className={`${inter.variable} ${playfair.variable}`}>
       <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+        />
+        {GOOGLE_SITE_VERIFICATION && (
+          <meta name="google-site-verification" content={GOOGLE_SITE_VERIFICATION} />
+        )}
         <Script
           src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
           strategy="afterInteractive"
