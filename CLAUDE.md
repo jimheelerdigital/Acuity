@@ -2,6 +2,47 @@
 
 You're working inside the **WAT framework** (Workflows, Agents, Tools). This architecture separates concerns so that probabilistic AI handles reasoning while deterministic code handles execution. That separation is what makes this system reliable.
 
+## Commit Message Standards
+
+Every commit Claude Code makes in this repo must follow this format:
+
+```
+<type>: <one-line summary in imperative mood, 50-72 chars>
+
+<body: 2-4 sentences explaining WHAT changed and WHY, not HOW>
+
+- <bullet 1: specific file or area affected>
+- <bullet 2: specific file or area affected>
+- <bullet 3: any notable side effects, migrations, or follow-ups needed>
+```
+
+**Rules:**
+- `<type>` must be one of: `feat`, `fix`, `refactor`, `perf`, `docs`, `style`, `test`, `chore`, `seo`, `content`
+- Summary line is imperative mood ("Add sitemap" not "Added sitemap" or "Adds sitemap")
+- Body explains the user-visible or business-visible impact, not implementation details. Someone reading this in a Slack #deploys channel should understand what shipped without opening the diff.
+- Bullets list the actual files or systems touched (e.g., `apps/web/src/app/sitemap.ts`, "Stripe webhook handler", "blog post rendering pipeline")
+- If the commit fixes a specific issue or user-reported bug, reference it by name in the body
+- Never write vague messages like "Update code", "Fix stuff", "Changes", or "WIP"
+- If multiple unrelated changes are bundled, split them into separate commits
+
+**Example good commit message:**
+
+```
+seo: Remove ad landing pages from sitemap and add noindex meta
+
+Meta ad landers at /for/* were being indexed and diluting SEO signal toward the pillar content. This ships noindex headers on those pages and removes them from the sitemap, while keeping the pillar /voice-journaling page and blog posts indexable.
+
+- apps/web/src/app/sitemap.ts: removed /for/* routes
+- apps/web/src/app/for/[slug]/page.tsx: added robots noindex,nofollow metadata
+- Verified build passes and /for/anxiety no longer appears in sitemap.xml
+```
+
+**Example bad commit message (never produce this):**
+
+```
+Update site
+```
+
 ## The WAT Architecture
 
 **Layer 1: Workflows (The Instructions)**
