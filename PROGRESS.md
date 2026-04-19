@@ -57,6 +57,10 @@
 - **2026-04-19** — **Inngest migration: recording duration hard cap set at 120s server-side, not 180s.** Enforced as a `413 Payload Too Large` in `/api/record` whenever `durationSeconds > 120`. Web client cap also moves from 60s → 120s to match mobile. Rationale: product spec is explicit about the 30–120s range; Acuity's positioning ("60 seconds in") is contradicted by a 180s ceiling. The cap is primarily for UX/product fit + cost control, NOT for Hobby viability (at 120s audio, Whisper typically completes in 3–7s, well inside Hobby's 10s per-step ceiling). Corrected `INNGEST_MIGRATION_PLAN.md` §12 framing accordingly — the genuine Hobby argument is that every *outer* API route (the handlers the client calls) becomes <2s by offloading work to Inngest steps.
 - **2026-04-19** — **Inngest migration: retry budgets split by function type.** User-interactive functions (`processEntryFn`, `refreshLifeMapFn`) use `retries: 2` → worst-case user-visible latency ~3 min. Background/scheduled functions (`generateWeeklyReportFn`, `day14AuditCronFn`) use `retries: 3` → worst-case ~14 min but no user is watching, so patience for vendor outages wins. Locks `INNGEST_MIGRATION_PLAN.md` §0 decision 3 / §3.1–§3.4. Note: Inngest SDK controls backoff timing internally (exponential with jitter); `retries` count is the only user-facing knob.
 - **2026-04-19** — **Inngest migration: paywall PR interleaving approved.** Paywall PRs 1–7 (from `IMPLEMENTATION_PLAN_PAYWALL.md` §5.8) can run in parallel with Inngest PRs 1–6. Paywall PR 8 (Day 14 cron) is the hard join point — it depends on Inngest being complete in production. Locks `INNGEST_MIGRATION_PLAN.md` §0 decision 4.
+- **2026-04-19** — **Inngest migration: env var names standardized.** `INNGEST_EVENT_KEY` + `INNGEST_SIGNING_KEY` (the SDK's conventional names — no prefix, no custom casing). Plus the feature-flag env var `ENABLE_INNGEST_PIPELINE` (string `"1"` = on, anything else = off). All three added to `.env.example` + `turbo.json` `globalEnv` array in PR 1.
+- **2026-04-19** — **Inngest migration: account owner is `jim@heelerdigital.com`.** Inngest Cloud account created under the Heeler Digital email so the account has the right home long-term. Not tied to a personal email.
+- **2026-04-19** — **Inngest migration: PARTIAL entry UX is toast-only for v1** (Claude Code recommended default). An entry that succeeded on the happy path but whose memory or lifemap update failed gets `Entry.status = PARTIAL` + a client-side toast: *"Your entry is saved, but Life Matrix updates will catch up shortly."* No manual retry action. Rationale: the next successful entry re-triggers the memory/lifemap update path; a manual "refresh failed updates" button adds UI noise for a 1%-or-less case that self-heals. Revisit once we see it in production.
+- **2026-04-19** — **Inngest migration: observability tooling deferred.** Inngest's own dashboard is sufficient for run-level visibility in v1. Add Sentry / Datadog post-launch if our-code-path errors aren't traceable enough from Vercel logs + Inngest dashboard alone.
 
 ---
 
@@ -108,6 +112,7 @@
 ## Done
 
 ### 2026-04-19
+- **Inngest migration PR 1 (bootstrap) shipped.** Installs `inngest@^4.2.4` in the web workspace; creates `apps/web/src/inngest/client.ts` (singleton Inngest client, app id `"acuity"`), `apps/web/src/inngest/functions/hello-world.ts` (one trivial smoke-test function triggered by `test/hello` event), `apps/web/src/app/api/inngest/route.ts` (App Router handler that wraps `serve()` from `inngest/next` and exports `GET`/`POST`/`PUT`, gated by the `ENABLE_INNGEST_PIPELINE === "1"` feature flag — returns 503 otherwise so the route is safely inert by default); adds `INNGEST_EVENT_KEY`, `INNGEST_SIGNING_KEY`, `ENABLE_INNGEST_PIPELINE` to `.env.example` and to `turbo.json` `globalEnv`. Note: Inngest v4 (current) dropped the `EventSchemas`/`fromRecord<T>` typed-events API from v3 — the plan doc's client.ts example uses the v3 pattern. For PR 1 the client is untyped; typed events will come back when the full function suite lands (we can use per-function typed `event.data` or wait for a v5 Standard-Schema approach). The v4 `createFunction` signature is 2 args with `triggers: [{ event }]` in opts; updated accordingly. Typecheck passes; only remaining TS error in the tree is the pre-existing `lib/pipeline.ts:388` cast (AUDIT.md §3.8 adjacent — not touched in this PR). Manual setup steps for Jim checklisted in the new "Inngest Cloud Setup" section above.
 - **Inngest migration plan** written to `./INNGEST_MIGRATION_PLAN.md`. Covers: current sync flow vs proposed async flow (diagrammed), Inngest setup (account + SDK + `/api/inngest` route + env vars), four function definitions (`processEntryFn` with 8 retryable steps, `generateWeeklyReportFn`, `refreshLifeMapFn`, `day14AuditCronFn` stub) + an `onFailure` catch-all, refactors of `/api/record` and `/api/weekly` to thin enqueue-and-return-202 shapes, client-side polling loop (recommended over Supabase Realtime for v1 — Realtime needs RLS which is blocked on Supabase access), `Entry.status` extended to `QUEUED | TRANSCRIBING | EXTRACTING | PERSISTING | COMPLETE | PARTIAL | FAILED` + new `errorMessage`/`partialReason`/`inngestRunId`/`audioPath` columns, feature-flag cutover via `ENABLE_INNGEST_PIPELINE` env var, "proven" criteria (7 days + 100 entries + forced-failure verification) before removing sync path, 10-PR migration sequence each testable in isolation, rollback plan (flip flag to 0 + cleanup query for orphaned QUEUED entries), and a §12 Hobby-viability check that walks every `/api/**` route — verdict: **Hobby is viable post-migration** if we enforce a 180s max server-side recording duration (keeps the transcribe step under Hobby's 10s per-step ceiling). Cost estimate: ~13.6K Inngest steps/month at 50-user beta scale, well within the 50K free tier; crossover to the $20/mo paid tier at ~180 users. Eight open questions flagged — none blocking for PR 1 (Inngest bootstrap with no behavior change).
 - **Admin prerequisites verified against prod.** Linked repo to Vercel (`vercel link` → `keypicksems-projects/acuity-web` after switching to Keenan's Vercel login), pulled production env vars to `apps/web/.env.local` (gitignored correctly — `.env.*` rule in `.gitignore:14`). Ran `npx prisma db push` against prod Supabase: schema synced in 22.89s, no destructive-change warnings (the `isAdmin` column is nullable with a default). Verified via Prisma query against prod DB: User table has 2 rows (`jim@heelerdigital.com` + `keenan@heelerdigital.com`), both currently `isAdmin: false`. Jim flips his own flag manually via Supabase SQL editor. Separately: investigated the `/api/cron/waitlist-drip` invocation path (see Parked / Deferred above) — no scheduler wired anywhere.
 - **Critical security fixes: admin auth (Next Up S1) + cron fail-closed (Next Up S6)** shipped on branch `fix/critical-security-admin-cron`. **Admin auth:** removed hardcoded `"acuity-admin-2026"` password from `apps/web/src/app/api/admin/dashboard/route.ts` and from the client page; added `isAdmin Boolean @default(false)` column to the `User` model in `prisma/schema.prisma` (not yet pushed — manual `prisma db push` step required). The API route now gates on NextAuth session + `isAdmin` lookup (401 if unauthenticated, 403 if not admin). The `/admin/dashboard` page is now a server component that `getServerSession`s, looks up `isAdmin`, and redirects to `/auth/signin` if logged out or `/dashboard` if logged in but not admin. UI moved to a new `admin-dashboard-client.tsx`; the old password form + sessionStorage cache are gone. **Cron fail-closed:** `/api/cron/waitlist-drip` returns 500 "Cron not configured" when `CRON_SECRET` env var is unset, 401 if header doesn't match. Grepped for other cron/admin-token fail-open patterns — none found (only one cron route exists in the repo). Branch pushed to GitHub but PR not opened yet (pending review of diff by Jim).
@@ -161,7 +166,7 @@ S9. Rename `apps/web/src/lib/supabase.ts` → `supabase.server.ts` with `server-
 3. Get web app running locally (`npm install` → `npm run dev`)
 4. Push pending Prisma schema changes (`UserMemory`, `Waitlist`)
 5. Verify Stripe webhook is live and pointed at `https://getacuity.io/api/stripe/webhook`.
-6. **Inngest setup — migrate AI pipeline to background jobs.** HARD PREREQUISITE for the paywall plan below; Day 14 cron cannot ship reliably without it. **Plan:** `INNGEST_MIGRATION_PLAN.md` (2026-04-19) — 10 PRs, first is a no-behavior-change bootstrap. Resolve the §14 open questions before starting PR 2.
+6. **Inngest setup — migrate AI pipeline to background jobs.** HARD PREREQUISITE for the paywall plan below; Day 14 cron cannot ship reliably without it. **Plan:** `INNGEST_MIGRATION_PLAN.md` (2026-04-19) — 10 PRs, first is a no-behavior-change bootstrap. All §14 open questions resolved 2026-04-19. **Status:** PR 1 (bootstrap) shipped. PR 2 (define `processEntryFn` unwired) is next, gated on the "Inngest Cloud Setup" checklist above being completed.
 
 ### Paywall soft-transition implementation (from `IMPLEMENTATION_PLAN_PAYWALL.md` §5.8, rev 3)
 
@@ -183,6 +188,57 @@ Executes AFTER Inngest migration (step 6) is green on staging:
 17. Decide Apple IAP strategy; implement RevenueCat if chosen.
 18. EAS iOS build → TestFlight.
 19. App Store Connect listing prep (privacy policy — include PostHog as sub-processor; App Privacy questionnaire; screenshots; description; permissions strings).
+
+---
+
+## Inngest Cloud Setup (action items — check off as completed)
+
+PR 1 (code) is shipped, but Inngest doesn't do anything in production until this list is done.
+
+**1. Create the Inngest Cloud account**
+- [ ] Sign up at https://app.inngest.com/sign-up using `jim@heelerdigital.com`.
+- [ ] Accept the terms; no credit card required for the Free tier.
+
+**2. Create the Acuity app**
+- [ ] Apps → + New App → name it `acuity` (must match `new Inngest({ id: "acuity" })` in `apps/web/src/inngest/client.ts`; renaming orphans history).
+- [ ] Two environments should exist automatically: **Production** and a **Branch/Preview** environment. If only Production exists, create a Branch environment under the Environments tab — Inngest routes events by environment keyed off our deployment URL.
+
+**3. Grab the keys from each environment**
+
+Inngest dashboard → Apps → `acuity` → pick the environment → Settings → Keys.
+
+Paste the values below as you collect them so future sessions can confirm which env matches which key. **Never commit populated values** — the gitleaks hook will block it.
+
+_Production:_
+- `INNGEST_EVENT_KEY` = ______________________________
+- `INNGEST_SIGNING_KEY` = ______________________________
+
+_Branch / Preview:_
+- `INNGEST_EVENT_KEY` = ______________________________
+- `INNGEST_SIGNING_KEY` = ______________________________
+
+**4. Push the env vars into Vercel**
+
+```
+vercel env add INNGEST_EVENT_KEY      production
+vercel env add INNGEST_SIGNING_KEY    production
+vercel env add INNGEST_EVENT_KEY      preview
+vercel env add INNGEST_SIGNING_KEY    preview
+```
+
+Leave `ENABLE_INNGEST_PIPELINE` **unset** or set to anything other than `"1"` until we're ready to activate. While unset, `/api/inngest` returns 503 "Inngest pipeline not enabled" on every invocation — the endpoint is safely inert.
+
+**5. Register the deployment with Inngest**
+- [ ] After a Vercel deploy with the three keys set, Inngest dashboard → Apps → `acuity` → Sync should auto-detect the `/api/inngest` handler. If it doesn't, trigger manual sync with the deployment URL.
+
+**6. Flip the feature flag to activate (when ready for the smoke test)**
+- [ ] `vercel env add ENABLE_INNGEST_PIPELINE production` → value `1`, redeploy.
+- [ ] Send a test event from Inngest dashboard → Events → Send Event → name `test/hello`, data `{"message": "hello world"}`.
+- [ ] Confirm the `hello-world` function run appears in the dashboard with the "log-greeting" step completed and the return value `{ ok: true, greeting: "Hello from Inngest: hello world" }`.
+
+**7. Local dev**
+
+For local development, set `ENABLE_INNGEST_PIPELINE=1` and either `INNGEST_DEV=1` (points events at the dev server) or copy the preview-env keys into `.env.local`. Run `npx inngest-cli@latest dev -u http://localhost:3000/api/inngest` in a second terminal — the dev UI is at http://localhost:8288.
 
 ---
 

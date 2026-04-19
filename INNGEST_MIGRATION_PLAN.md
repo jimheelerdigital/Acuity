@@ -1311,23 +1311,17 @@ The Whisper + Claude costs are **the same as today** — Inngest doesn't touch t
 
 ## 14. Open Questions
 
-Items needing your input before implementation. None are blocking for PR 1 (which just bootstraps Inngest with no behavior change).
+**All eight original §14 questions resolved 2026-04-19.** See `PROGRESS.md` Decisions Made entries for the full rationale.
 
-Four questions from rev 1 resolved 2026-04-19 and moved to §0 decisions:
+Resolved:
 - ~~Client completion mechanism — polling vs Realtime~~ → §0 decision 1 (polling).
 - ~~Max recording duration enforced server-side~~ → §0 decision 2 (120s).
 - ~~Retry budget for Claude calls~~ → §0 decision 3 (split: 2 for user-interactive, 3 for background).
 - ~~Paywall PR interleaving~~ → §0 decision 4 (approved).
-
-Still open:
-
-1. **Inngest environment naming.** Match Vercel's `Production` + `Preview` convention, or something else? Recommendation: match. Decision needed before PR 1.
-
-2. **Who owns the Inngest account?** If this will live under Heeler Digital long-term, create the account with `jim@heelerdigital.com` (not a personal email). Decision needed before PR 1.
-
-3. **`PARTIAL` entry UX — is the warning toast sufficient, or do we want a "refresh failed updates" manual action on the entry page?** Recommendation: toast-only for v1; the next successful entry triggers memory/lifemap catch-up anyway. Decision needed before PR 5.
-
-4. **Observability.** Inngest dashboard covers run-level visibility. Do we want Sentry/Datadog for errors from our code paths? Not blocking the migration — can be added anytime. Decision deferred.
+- ~~Inngest env var naming~~ → `INNGEST_EVENT_KEY` + `INNGEST_SIGNING_KEY` + `ENABLE_INNGEST_PIPELINE` (SDK convention).
+- ~~Inngest account owner~~ → `jim@heelerdigital.com`.
+- ~~`PARTIAL` entry UX~~ → toast-only for v1; revisit once we see it in production.
+- ~~Observability~~ → deferred; Inngest dashboard sufficient for v1. Sentry/Datadog post-launch if needed.
 
 ---
 
