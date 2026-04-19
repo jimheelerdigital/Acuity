@@ -8,14 +8,11 @@
 ---
 
 ## Current Focus
-- `vercel env pull` → local env, Prisma `db push`, then Inngest migration as the gate to the paywall PR.
-- Still waiting on most third-party service access (see Blockers).
+- Inngest migration (`INNGEST_MIGRATION_PLAN.md`) — the gate to the Day 14 audit cron and the move to Heeler Digital Hobby. Resolve §14 open questions, then ship PR 1 (bootstrap, no behavior change).
+- Jim flips his own `isAdmin` row in Supabase SQL editor to unlock `/admin/dashboard` post-deploy.
 
 ## Blockers / Waiting On
-- Vercel access (needed to pull env vars via `vercel env pull`)
-- Supabase access (for schema push + data access)
-- Stripe, Anthropic, OpenAI, Resend, Expo/EAS, Cloudflare, Meta Business Suite access
-- Keenan to add Jimmy as collaborator on all connected services
+- Keenan to add Jimmy as a proper collaborator on Vercel (currently using Keenan's login as a workaround), Supabase, Stripe, Anthropic, OpenAI, Resend, Expo/EAS, Cloudflare, Meta Business Suite.
 
 ## Open Decisions
 - **Apple IAP strategy** — RevenueCat + Apple IAP, or iOS as log-in-only companion. Blocks any iOS App Store submission.
@@ -62,7 +59,7 @@
 ## Known Issues / Tech Debt
 - `CLAUDE.md` is a generic WAT-framework template, not project-specific. Replace or remove when we have real context to put there.
 - AI pipeline runs inside Vercel serverless request (10s timeout). Whisper + Claude extraction can exceed this. Needs Inngest migration.
-- Prisma schema changes pending `npx prisma db push` — `UserMemory` + `Waitlist` models not yet in production DB.
+- ~~Prisma schema changes pending `npx prisma db push`~~ — done 2026-04-19; `UserMemory`, `Waitlist`, and the new `User.isAdmin` column are live in prod.
 - Stripe webhook endpoint needs to point to `https://getacuity.io/api/stripe/webhook`.
 - Model references in specs are stale (`claude-sonnet-4-5`, `claude-opus-4-6`). Current is `claude-sonnet-4-6` / `claude-opus-4-7`. Needs global update in prompts/calls.
 - Mobile app built with Expo SDK 54, EAS configured, not yet on TestFlight.
@@ -98,9 +95,17 @@
 
 ---
 
+## Parked / Deferred
+
+- **Waitlist drip email sequence (2026-04-19 — parked).** The four follow-up emails in `apps/web/src/lib/drip-emails.ts` (steps 2–5: days 2, 5, 10, 14) are built and `emailSequenceStep` tracking is wired, but nothing invokes `/api/cron/waitlist-drip`: no `vercel.json`, no GitHub Action, no external scheduler. Verified by grep — the only references to the route in source are the handler itself and its console.error log. The security fix (fail-closed auth on the route) stays shipped; what's parked is wiring a scheduler. Rationale: email copy references *"doors opening soon"* / *"We're putting the final touches"* / Day-14 launch framing that presumes a launch date which does not exist today. Reactivating the drip before a real launch date sends promises we can't keep and trains Resend's deliverability model that we send unsubstantiated urgency. Wire this up when the launch date is real — at that point also migrate the scheduler to an Inngest cron (see `INNGEST_MIGRATION_PLAN.md` §12) rather than a fresh `vercel.json` cron.
+
+---
+
 ## Done
 
 ### 2026-04-19
+- **Inngest migration plan** written to `./INNGEST_MIGRATION_PLAN.md`. Covers: current sync flow vs proposed async flow (diagrammed), Inngest setup (account + SDK + `/api/inngest` route + env vars), four function definitions (`processEntryFn` with 8 retryable steps, `generateWeeklyReportFn`, `refreshLifeMapFn`, `day14AuditCronFn` stub) + an `onFailure` catch-all, refactors of `/api/record` and `/api/weekly` to thin enqueue-and-return-202 shapes, client-side polling loop (recommended over Supabase Realtime for v1 — Realtime needs RLS which is blocked on Supabase access), `Entry.status` extended to `QUEUED | TRANSCRIBING | EXTRACTING | PERSISTING | COMPLETE | PARTIAL | FAILED` + new `errorMessage`/`partialReason`/`inngestRunId`/`audioPath` columns, feature-flag cutover via `ENABLE_INNGEST_PIPELINE` env var, "proven" criteria (7 days + 100 entries + forced-failure verification) before removing sync path, 10-PR migration sequence each testable in isolation, rollback plan (flip flag to 0 + cleanup query for orphaned QUEUED entries), and a §12 Hobby-viability check that walks every `/api/**` route — verdict: **Hobby is viable post-migration** if we enforce a 180s max server-side recording duration (keeps the transcribe step under Hobby's 10s per-step ceiling). Cost estimate: ~13.6K Inngest steps/month at 50-user beta scale, well within the 50K free tier; crossover to the $20/mo paid tier at ~180 users. Eight open questions flagged — none blocking for PR 1 (Inngest bootstrap with no behavior change).
+- **Admin prerequisites verified against prod.** Linked repo to Vercel (`vercel link` → `keypicksems-projects/acuity-web` after switching to Keenan's Vercel login), pulled production env vars to `apps/web/.env.local` (gitignored correctly — `.env.*` rule in `.gitignore:14`). Ran `npx prisma db push` against prod Supabase: schema synced in 22.89s, no destructive-change warnings (the `isAdmin` column is nullable with a default). Verified via Prisma query against prod DB: User table has 2 rows (`jim@heelerdigital.com` + `keenan@heelerdigital.com`), both currently `isAdmin: false`. Jim flips his own flag manually via Supabase SQL editor. Separately: investigated the `/api/cron/waitlist-drip` invocation path (see Parked / Deferred above) — no scheduler wired anywhere.
 - **Critical security fixes: admin auth (Next Up S1) + cron fail-closed (Next Up S6)** shipped on branch `fix/critical-security-admin-cron`. **Admin auth:** removed hardcoded `"acuity-admin-2026"` password from `apps/web/src/app/api/admin/dashboard/route.ts` and from the client page; added `isAdmin Boolean @default(false)` column to the `User` model in `prisma/schema.prisma` (not yet pushed — manual `prisma db push` step required). The API route now gates on NextAuth session + `isAdmin` lookup (401 if unauthenticated, 403 if not admin). The `/admin/dashboard` page is now a server component that `getServerSession`s, looks up `isAdmin`, and redirects to `/auth/signin` if logged out or `/dashboard` if logged in but not admin. UI moved to a new `admin-dashboard-client.tsx`; the old password form + sessionStorage cache are gone. **Cron fail-closed:** `/api/cron/waitlist-drip` returns 500 "Cron not configured" when `CRON_SECRET` env var is unset, 401 if header doesn't match. Grepped for other cron/admin-token fail-open patterns — none found (only one cron route exists in the repo). Branch pushed to GitHub but PR not opened yet (pending review of diff by Jim).
 - **Security audit (public-beta readiness)** written to `./SECURITY_AUDIT.md`. Scope: RLS, API authorization/IDOR, service-role key exposure, audio bucket access, admin dashboard, NextAuth hardening, rate limiting, PII in logs, client-bundle leakage, account deletion. Three 🔴 CRITICAL findings block any public signup: (1) admin dashboard password `"acuity-admin-2026"` is hardcoded in source in a public repo (`apps/web/src/app/api/admin/dashboard/route.ts:4`) and the dashboard exposes real waitlist PII; (2) RLS status is unverifiable from the repo (no `supabase/` folder, no SQL policies, Prisma bypasses RLS via service-role connection) — needs live Supabase inspection before opening signups; (3) no account-deletion path anywhere in the codebase — GDPR Art. 17 / CCPA §1798.105 non-compliant the moment real signups start, and cascade is broken on six child relations so even a manual user delete would leave orphan rows. Also: `/api/cron/waitlist-drip` is fail-open if `CRON_SECRET` is unset (🟠), zero rate limiting anywhere (🟠), waitlist route logs PII to Vercel logs on every signup (🟠), admin-notification email HTML-injects user-supplied `name` (🟡), audio bucket state unconfirmed + signed URLs stored in DB expire after 1h with no re-sign route (🟠). Good news: every per-user API route enforces ownership correctly (no IDOR), service-role key is server-only today, no secrets in the client bundle, NextAuth defaults (HttpOnly/SameSite/Secure cookies, CSRF double-submit) are preserved. Full §11 prioritized fix list in the doc.
 - **Credential leak audit** written to `./CREDENTIAL_LEAK_AUDIT.md`. Scope: `apps/web/.env.local.save` at commit `799a635` (2026-04-13, public repo). Findings: exactly one credential had a populated value — the Supabase DB password `KeenanJim525$` for project `rohjfcenylmfnqoyoirn`, appearing twice in raw connection strings prepended to line 1. Every other key in the file was an empty placeholder. No other `.env*` file has ever been committed besides `.env.example` (clean). `.gitignore` pattern `.env.local` is a literal match and does NOT cover `.env.local.save` — root cause. Recommended replacement: `.env` + `.env.*` + `!.env.example`. Full per-key classification + rotation order in the doc. Rotation queued in Next Up; Jim + Keenan do it manually.
@@ -152,7 +157,7 @@ S9. Rename `apps/web/src/lib/supabase.ts` → `supabase.server.ts` with `server-
 3. Get web app running locally (`npm install` → `npm run dev`)
 4. Push pending Prisma schema changes (`UserMemory`, `Waitlist`)
 5. Verify Stripe webhook is live and pointed at `https://getacuity.io/api/stripe/webhook`.
-6. **Inngest setup — migrate AI pipeline to background jobs.** HARD PREREQUISITE for the paywall plan below; Day 14 cron cannot ship reliably without it.
+6. **Inngest setup — migrate AI pipeline to background jobs.** HARD PREREQUISITE for the paywall plan below; Day 14 cron cannot ship reliably without it. **Plan:** `INNGEST_MIGRATION_PLAN.md` (2026-04-19) — 10 PRs, first is a no-behavior-change bootstrap. Resolve the §14 open questions before starting PR 2.
 
 ### Paywall soft-transition implementation (from `IMPLEMENTATION_PLAN_PAYWALL.md` §5.8, rev 3)
 
@@ -186,6 +191,7 @@ Executes AFTER Inngest migration (step 6) is green on staging:
 - Meta Pixel ID: `5752790988087389` — installed on landing pages.
 - **`CREDENTIAL_LEAK_AUDIT.md` (2026-04-19)** is the per-key audit for the `.env.local.save` leak at commit `799a635`. Only one credential had a populated value (Supabase DB password); it has been rotated. The 23 other keys in the file were empty placeholders — no rotation needed on those. Residual concern (project ref exposure) accepted per 2026-04-18 decision.
 - **`AUDIT.md` (2026-04-17)** is the authoritative current-state-of-the-codebase document. Read it before changing anything non-trivial. It catalogs architecture, per-feature build state, bugs, schema concerns, TestFlight blockers, and dependency drift, all with file:line references.
+- **`INNGEST_MIGRATION_PLAN.md` (2026-04-19)** is the plan for moving the AI pipeline from synchronous Vercel functions to Inngest background jobs. Hard prerequisite for the Day 14 audit cron in the paywall PR (`IMPLEMENTATION_PLAN_PAYWALL.md` §5.1) and for moving the project off Vercel Pro onto Hobby. Read §11 for the 10-PR ship sequence (PR 1 is a no-behavior-change bootstrap), §12 for the Hobby-viability check per-route, and §14 for the 8 open questions that need Jim's input before PR 2.
 - **`IMPLEMENTATION_PLAN_PAYWALL.md` (2026-04-18, rev 3)** is the execution-ready plan for the soft-transition paywall. All pre-flight questions resolved. Includes: exact `entitlementsFor()` rule (§3), file-by-file change list (§1), new schema models (§2 + §7 additions: `LifeAudit`, `Memoir`, `degraded` col, `trialEndsAtExtendedBy` on User), Life Audit few-shot prompt (§4.1), `/upgrade` page with `{{PRICE_PER_MONTH}}` template (§4.2), post-trial email (§4.3), rollback plan with hard-coded degraded closing paragraph (§7.3), PostHog event schema (§8), Vitest full-matrix coverage (§9), and deferred items including iOS App Privacy declarations (§10). **Inngest migration is a hard prerequisite** — do not start the paywall work until Inngest is shipped. Read §5.8 for the full sequenced ship order.
 - **Three trial-length values don't agree today** (flagged in the paywall plan §0.3): Stripe checkout uses 7 days, `/upgrade` page copy says 14 days, schema default is `"TRIAL"` with `trialEndsAt` null. Decision says 14 days is canonical.
 - **The Day 14 Life Audit does not exist** in code (only in marketing copy). Must be built as part of the paywall PR so the soft transition has a place to live.
