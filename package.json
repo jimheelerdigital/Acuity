@@ -15,10 +15,12 @@
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
-    "format": "prettier --write \"**/*.{ts,tsx,md,json}\""
+    "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",
+    "prepare": "husky"
   },
   "devDependencies": {
     "@turbo/gen": "^1.13.0",
+    "husky": "^9.1.7",
     "prettier": "^3.3.0",
     "prisma": "^5.22.0",
     "turbo": "^2.0.0",

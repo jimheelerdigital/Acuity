@@ -1,0 +1,9 @@
+#!/usr/bin/env sh
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo "error: gitleaks not found on PATH."
+  echo "install it before committing: brew install gitleaks (macOS) or see https://github.com/gitleaks/gitleaks#installing"
+  exit 1
+fi
+
+gitleaks protect --staged --redact --no-banner --config .gitleaks.toml
