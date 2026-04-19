@@ -75,7 +75,14 @@ model Entry {
   id            String   @id @default(cuid())
   userId        String
   user          User     @relation(fields: [userId], references: [id])
+  // DEPRECATED: use audioPath. Will remove in Inngest PR 4 once the sync
+  // path is retired. Sync path writes a signed URL here; async path leaves
+  // this null and writes the object path to audioPath instead.
   audioUrl      String?
+  // Supabase Storage object path, e.g. "voice-entries/${userId}/${entryId}.webm".
+  // Not a URL — callers sign on demand via SECURITY_AUDIT.md §4 endpoint
+  // (to be built). Populated by the async pipeline (ENABLE_INNGEST_PIPELINE=1).
+  audioPath     String?
   duration      Int?
   audioDuration Int?
   transcript    String?
@@ -88,7 +95,26 @@ model Entry {
   blockers      String[]
   rawExtraction Json?
   rawAnalysis   Json?
-  status        String   @default("PENDING")
+  // Valid status values (enforced by app code, not schema — we keep this a
+  // String for flexibility across Postgres versions):
+  //   QUEUED       — Inngest event dispatched, not yet running (async path)
+  //   TRANSCRIBING — Whisper step in progress
+  //   EXTRACTING   — Claude extraction step in progress
+  //   PERSISTING   — DB transaction + memory/lifemap updates in progress
+  //   COMPLETE     — all steps succeeded
+  //   PARTIAL      — transcript exists but downstream step failed (recoverable)
+  //   FAILED       — unrecoverable; errorMessage populated
+  //   PENDING      — LEGACY: used by sync path until it's retired (Inngest PR 4)
+  //   PROCESSING   — LEGACY: sync path intermediate state, same retirement
+  status        String   @default("QUEUED")
+  // User-safe error copy surfaced by onFailure handler when status=FAILED.
+  errorMessage  String?
+  // Narrows PARTIAL state — e.g. "extract-failed", "memory-update-failed",
+  // "lifemap-update-failed". Always null unless status === "PARTIAL".
+  partialReason String?
+  // Cross-reference into Inngest's run dashboard for observability. Written
+  // by processEntryFn's first step. Null for sync-path entries.
+  inngestRunId  String?
   entryDate     DateTime @default(now())
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
