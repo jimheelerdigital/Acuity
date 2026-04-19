@@ -179,6 +179,7 @@ Executes AFTER Inngest migration (step 6) is green on staging:
 
 ## Notes for Future Sessions
 
+- **Git workflow (set 2026-04-19):** default is to commit and push directly to `main`. Run `git pull --ff-only origin main` at the start of every session before making changes. Only create branches or open PRs when Jim explicitly asks for one.
 - This repo is a Turborepo monorepo: `apps/web` (Next.js), `apps/mobile` (Expo), `packages/shared` (types/utils), `prisma/` (DB schema).
 - Production domain is `getacuity.io` — deployed via Vercel (GitHub integration).
 - Waitlist is live and collecting.
