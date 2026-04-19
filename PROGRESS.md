@@ -101,6 +101,8 @@
 ## Done
 
 ### 2026-04-19
+- **Critical security fixes: admin auth (Next Up S1) + cron fail-closed (Next Up S6)** shipped on branch `fix/critical-security-admin-cron`. **Admin auth:** removed hardcoded `"acuity-admin-2026"` password from `apps/web/src/app/api/admin/dashboard/route.ts` and from the client page; added `isAdmin Boolean @default(false)` column to the `User` model in `prisma/schema.prisma` (not yet pushed — manual `prisma db push` step required). The API route now gates on NextAuth session + `isAdmin` lookup (401 if unauthenticated, 403 if not admin). The `/admin/dashboard` page is now a server component that `getServerSession`s, looks up `isAdmin`, and redirects to `/auth/signin` if logged out or `/dashboard` if logged in but not admin. UI moved to a new `admin-dashboard-client.tsx`; the old password form + sessionStorage cache are gone. **Cron fail-closed:** `/api/cron/waitlist-drip` returns 500 "Cron not configured" when `CRON_SECRET` env var is unset, 401 if header doesn't match. Grepped for other cron/admin-token fail-open patterns — none found (only one cron route exists in the repo). Branch pushed to GitHub but PR not opened yet (pending review of diff by Jim).
+- **Security audit (public-beta readiness)** written to `./SECURITY_AUDIT.md`. Scope: RLS, API authorization/IDOR, service-role key exposure, audio bucket access, admin dashboard, NextAuth hardening, rate limiting, PII in logs, client-bundle leakage, account deletion. Three 🔴 CRITICAL findings block any public signup: (1) admin dashboard password `"acuity-admin-2026"` is hardcoded in source in a public repo (`apps/web/src/app/api/admin/dashboard/route.ts:4`) and the dashboard exposes real waitlist PII; (2) RLS status is unverifiable from the repo (no `supabase/` folder, no SQL policies, Prisma bypasses RLS via service-role connection) — needs live Supabase inspection before opening signups; (3) no account-deletion path anywhere in the codebase — GDPR Art. 17 / CCPA §1798.105 non-compliant the moment real signups start, and cascade is broken on six child relations so even a manual user delete would leave orphan rows. Also: `/api/cron/waitlist-drip` is fail-open if `CRON_SECRET` is unset (🟠), zero rate limiting anywhere (🟠), waitlist route logs PII to Vercel logs on every signup (🟠), admin-notification email HTML-injects user-supplied `name` (🟡), audio bucket state unconfirmed + signed URLs stored in DB expire after 1h with no re-sign route (🟠). Good news: every per-user API route enforces ownership correctly (no IDOR), service-role key is server-only today, no secrets in the client bundle, NextAuth defaults (HttpOnly/SameSite/Secure cookies, CSRF double-submit) are preserved. Full §11 prioritized fix list in the doc.
 - **Credential leak audit** written to `./CREDENTIAL_LEAK_AUDIT.md`. Scope: `apps/web/.env.local.save` at commit `799a635` (2026-04-13, public repo). Findings: exactly one credential had a populated value — the Supabase DB password `KeenanJim525$` for project `rohjfcenylmfnqoyoirn`, appearing twice in raw connection strings prepended to line 1. Every other key in the file was an empty placeholder. No other `.env*` file has ever been committed besides `.env.example` (clean). `.gitignore` pattern `.env.local` is a literal match and does NOT cover `.env.local.save` — root cause. Recommended replacement: `.env` + `.env.*` + `!.env.example`. Full per-key classification + rotation order in the doc. Rotation queued in Next Up; Jim + Keenan do it manually.
 
 ### 2026-04-18
@@ -127,6 +129,23 @@
 ---
 
 ## Next Up (Priority Order)
+
+### 🔴 Security — must ship before ANY public signup (from SECURITY_AUDIT.md §11)
+
+~~S1.~~ ✅ **DONE 2026-04-19** — admin dashboard now gates on NextAuth session + `isAdmin` flag. Branch `fix/critical-security-admin-cron` pushed, PR pending review. Follow-ups required: (a) `npx prisma db push` once Supabase access is restored, (b) manually `UPDATE "User" SET "isAdmin" = true WHERE email = 'jim@heelerdigital.com';` for Jimmy's own account.
+S2. **Verify Supabase RLS live.** Confirm RLS enabled + policies shipped on `User`, `Account`, `Session`, `VerificationToken`, `Entry`, `Task`, `Goal`, `WeeklyReport`, `LifeMapArea`, `UserMemory`, `Waitlist`. Screenshot and paste into a follow-up doc.
+S3. **Ship account deletion.** New `DELETE /api/user/me` that purges every user-scoped table in a transaction + deletes the Supabase Storage `voice-entries/${userId}/*` prefix + archives the Stripe customer. Add `onDelete: Cascade` on the six child relations so the transaction works.
+S4. **Audio bucket privacy.** Confirm `voice-entries` bucket is private. Add storage RLS scoped to `${userId}/` prefix. Store object path (not signed URL) in `Entry.audioUrl`; add authenticated route that re-signs on demand with ≤5-min TTL.
+
+### 🟠 Security — must ship before public beta launch
+
+S5. Rate limiting (`@upstash/ratelimit`) on `/api/record`, `/api/weekly`, `/api/lifemap/refresh`, `/api/auth/signin` (email), `/api/waitlist`.
+~~S6.~~ ✅ **DONE 2026-04-19** — `/api/cron/waitlist-drip` is now fail-closed. `CRON_SECRET` must be set in Vercel Production or the route returns 500 (verify env var exists).
+S7. Strip PII-logging `console.log` calls from `/api/waitlist/route.ts` (lines 9, 10, 17, 27, 29, 33, 41, 45, 54, 57, 59, 83, 84, 93, 95, 99, 102, 111).
+S8. HTML-escape `name`/`email`/`source` in the waitlist admin-notification email template.
+S9. Rename `apps/web/src/lib/supabase.ts` → `supabase.server.ts` with `server-only` import.
+
+### Infrastructure / paywall path (pre-existing)
 
 1. Purge `apps/web/.env.local.save` from git history (BFG or `git filter-repo`); force-push. Hygiene only — rotation is the actual fix because the repo was public.
 2. Pull env vars from Vercel (`vercel env pull`).
