@@ -5,6 +5,24 @@
 **Scope:** Planning only. No code changes.
 **Companion docs:** `AUDIT.md` (§3.3, §3.8, §4 call out the current sync-pipeline failure modes); `SECURITY_AUDIT.md` (§4 audio bucket hygiene aligns with the refactor here); `IMPLEMENTATION_PLAN_PAYWALL.md` §5.1, §5.8 (Day 14 audit cron depends on this).
 
+**Changelog:**
+- **rev 2 (2026-04-19)** — Four §14 open questions resolved by Jim: (1) polling confirmed as the v1 completion mechanism, Realtime deferred post-launch; (2) server-side recording duration hard cap set at **120s**, not 180s (aligns with the product spec's 30–120s range and the "60 seconds in" thesis; web moves from 60s client-side cap to 120s to match mobile); (3) retry budget split by function type — user-interactive functions (`processEntryFn`, `refreshLifeMapFn`) use 2 retries for ~3-min worst-case user-visible latency, background/scheduled functions (`generateWeeklyReportFn`, `day14AuditCronFn`) use 3 retries for better vendor-outage tolerance; (4) paywall PR interleaving approved — paywall PRs 1–7 run in parallel with Inngest PRs 1–6, paywall PR 8 (Day 14 cron) is the join point after Inngest is proven in prod. §12 also rewritten after Jim flagged that the prior draft conflated the 120s cap's Hobby-fit justification with its real rationale (UX consistency + cost); accurate framing below.
+
+---
+
+## 0. Decisions Locked (2026-04-19)
+
+| # | Decision | Captured in |
+|---|---|---|
+| 1 | **Client completion mechanism: polling.** Supabase Realtime deferred until post-launch; revisit only if polling cost scales poorly. | §6 |
+| 2 | **Recording duration hard cap: 120s, enforced server-side in `/api/record`.** Web client cap moves from 60s to 120s to match mobile. | §4.1, §12.3 |
+| 3 | **Retry budgets split by function type.** User-interactive: `retries: 2` (`processEntryFn`, `refreshLifeMapFn`). Background/scheduled: `retries: 3` (`generateWeeklyReportFn`, `day14AuditCronFn`). | §3.1–§3.4 |
+| 4 | **Paywall PR interleaving approved.** Paywall PRs 1–7 and Inngest PRs 1–6 run interleaved; paywall PR 8 is the join point. | §14.8 (struck) |
+
+Remaining open questions (§14) are implementation details that don't block PR 1.
+
+---
+
 **Why this migration exists:**
 
 1. **Reliability.** `/api/record` currently runs Whisper + Claude extraction + Prisma transaction + memory update + Life Map update inside a single Vercel function with `export const maxDuration = 120` (Pro-only). A mid-call failure leaves entries stuck in `PROCESSING`; partial failures silently swallow memory/lifemap errors (`lib/pipeline.ts:216`, `:304`). No retries. No dead-letter queue.
@@ -273,7 +291,8 @@ export const processEntryFn = inngest.createFunction(
   {
     id: "process-entry",
     name: "Process nightly entry",
-    retries: 3,                       // Inngest default is 3; explicit here for clarity
+    retries: 2,                       // USER-INTERACTIVE: 2 retries caps user-visible latency
+                                      // at ~3 min worst case. See §0 decision 3.
     concurrency: {
       key: "event.data.userId",
       limit: 1,                       // one in-flight entry per user; serializes
@@ -425,10 +444,11 @@ export const processEntryFn = inngest.createFunction(
 
 **Status transitions written by this function:** `QUEUED` (written by `/api/record`) → `TRANSCRIBING` → `EXTRACTING` → `PERSISTING` → `COMPLETE` or `PARTIAL` or `FAILED`.
 
-**Retry behavior:**
-- Transient errors (5xx from OpenAI / Anthropic, network blips) → Inngest auto-retries the failed step up to 3× with exponential backoff (1m, 3m, 9m).
+**Retry behavior (`retries: 2` per §0 decision 3):**
+- Transient errors (5xx from OpenAI / Anthropic, network blips) → Inngest auto-retries the failed step up to **2×** with exponential backoff + jitter. In practice the first retry fires around 30s and the second around 2 min, bounding user-visible latency at roughly **3 min worst case** (first attempt + both retries).
 - `NonRetriableError` (e.g. transcript too short, 4xx from Anthropic) → step fails immediately; Inngest marks the run failed; entry → FAILED.
-- On function failure (all retries exhausted), Inngest fires an `inngest/function.failed` event. We register a catch-all `onFailure` handler (see §7) that sets `Entry.status = FAILED` and stores the last error.
+- On function failure (all retries exhausted), Inngest fires an `inngest/function.failed` event. We register a catch-all `onFailure` handler (see §3.5) that sets `Entry.status = FAILED` and stores the last error.
+- **Note:** Inngest SDK controls backoff timing via its internal exponential-with-jitter policy; `retries` is the only user-facing knob. The 30s / 2-min figures above are typical-case estimates from the default policy, not configured values.
 
 **Concurrency guard:** `concurrency.key = event.data.userId, limit = 1` means a second entry from the same user queues behind the first. Prevents races on `UserMemory` (which is updated incrementally).
 
@@ -441,7 +461,9 @@ export const generateWeeklyReportFn = inngest.createFunction(
   {
     id: "generate-weekly-report",
     name: "Generate weekly report",
-    retries: 3,
+    retries: 3,                       // BACKGROUND: 3 retries tolerates longer vendor outages
+                                      // (worst case ~14 min wait). No user is watching a spinner.
+                                      // See §0 decision 3.
     concurrency: { key: "event.data.userId", limit: 1 },
   },
   { event: "weekly/requested" },
@@ -491,7 +513,8 @@ export const refreshLifeMapFn = inngest.createFunction(
   {
     id: "refresh-life-map",
     name: "Refresh life map",
-    retries: 3,
+    retries: 2,                       // USER-INTERACTIVE: the user tapped the refresh button
+                                      // and is watching the LifeMap UI. See §0 decision 3.
     concurrency: { key: "event.data.userId", limit: 1 },
     debounce: {
       key: "event.data.userId",
@@ -523,7 +546,12 @@ export const refreshLifeMapFn = inngest.createFunction(
 
 ```ts
 export const day14AuditCronFn = inngest.createFunction(
-  { id: "day-14-audit-cron", name: "Day 14 Life Audit generator" },
+  {
+    id: "day-14-audit-cron",
+    name: "Day 14 Life Audit generator",
+    retries: 3,                       // BACKGROUND / SCHEDULED: no user watching.
+                                      // See §0 decision 3.
+  },
   { cron: "0 22 * * *" }, // daily at 22:00 UTC; real scheduling is per-user (§IMPLEMENTATION_PLAN_PAYWALL §5.1)
   async ({ step, logger }) => {
     // Stubbed for Inngest migration PR. Real implementation lands in the paywall PR.
@@ -613,6 +641,17 @@ export async function POST(req: NextRequest) {
   }
   const durationSeconds = formData.get("durationSeconds")
     ? Number(formData.get("durationSeconds")) : undefined;
+
+  // 3b. Server-side recording duration cap (§0 decision 2)
+  //     Product spec: 30-120s range. Acuity positioning: "60 seconds in."
+  //     Client-side caps (mobile 120s, web 120s post-migration) are UX — the
+  //     server enforces this as the hard invariant regardless of client.
+  if (typeof durationSeconds === "number" && durationSeconds > 120) {
+    return NextResponse.json(
+      { error: "Recordings are capped at 120 seconds." },
+      { status: 413 }
+    );
+  }
 
   // 4. Create Entry QUEUED
   const { prisma } = await import("@/lib/prisma");
@@ -757,16 +796,16 @@ The Inngest function's `debounce` handles request coalescing. Client polls `GET 
 | **Server-Sent Events (SSE) from Next.js** | Simple server-push. | Hobby's 10s execution limit breaks the stream within 10s; requires Edge runtime + fluid compute, which is paid territory. Defeats the point of going to Hobby. |
 | **Inngest → webhook → push notification** | Best UX; user can close the app and get notified. | Requires push infrastructure (Expo push tokens, APNS setup) which is v2 per PROGRESS.md. Doesn't help web. |
 
-### 6.2 Recommendation: Polling — with caveats
+### 6.2 Decision: Polling (locked — §0 decision 1)
 
-**Ship polling as the v1 completion mechanism.** Rationale:
+**Ship polling as the v1 completion mechanism.** Confirmed 2026-04-19. Rationale:
 
 - It unblocks the migration without depending on RLS (blocked on Supabase access).
 - Same client code for web + mobile — lowest-complexity implementation.
 - Typical entry processing takes 10–30s; 2s polling is a tolerable perceived latency.
 - Polling cost is negligible: 15 polls × 50 users × 30 entries/month ≈ 22.5K requests/month, well under Hobby's bandwidth ceiling.
 
-**Revisit when:** we want to ship push notifications (v2) — at that point push covers mobile and we can add Supabase Realtime for web if polling UX feels dated. Don't try to fix polling first with Realtime-web — one transport at a time.
+**Revisit post-launch** if polling cost scales poorly (e.g., at 500+ users the poll volume + Vercel function-invocation count warrants Supabase Realtime for bandwidth). Not a migration-scope concern.
 
 ### 6.3 Client polling loop (web + mobile, same logic)
 
@@ -963,7 +1002,7 @@ No API key needed in dev mode. Set `INNGEST_DEV=1` to force dev mode even if oth
 - `process-entry.fn.test.ts` — mock Prisma + Anthropic + OpenAI clients. Verify:
   - Happy path: all 8 steps run, entry ends COMPLETE.
   - Whisper throws once → step retries → succeeds → entry COMPLETE.
-  - Whisper throws 3× → step exhausted → run fails → `onFailure` fires → entry FAILED.
+  - Whisper throws 3× (initial + 2 retries) → step exhausted → run fails → `onFailure` fires → entry FAILED.
   - Transcript <10 chars → `NonRetriableError` → entry FAILED immediately (no retry).
   - Memory step fails → entry PARTIAL, rest of pipeline unaffected.
 - `generate-weekly-report.fn.test.ts` — similar matrix.
@@ -1134,16 +1173,69 @@ Each PR is testable in isolation; merging any subset leaves the product in a wor
 
 ## 12. Hobby Viability Check
 
-Vercel Hobby plan limits: **10-second function execution**, **100 GB bandwidth/mo**, **1 cron per project**, **100 GB-hours function execution/mo**, free.
+### 12.1 Execution model — what actually runs where
 
-### 12.1 Post-migration per-route execution budget
+Jim flagged that the prior draft of this section was muddled about where Inngest steps execute. Correcting now, with citations to Inngest's own docs:
 
-Every route under `apps/web/src/app/api/**` with its expected post-migration execution time:
+- Inngest's execution model is **"your functions run on your own compute, in any environment, including serverless."** Inngest itself is the orchestrator/queue — it does not run your step code.
+- **Each `step.run()` call is a separate HTTP request** to our `/api/inngest` handler. Inngest re-invokes the endpoint with the event payload plus the persisted state of completed steps; the SDK memoizes those and runs the next unexecuted step.
+- Because each step invocation is an HTTP call landing on our Vercel deployment, **our platform's function timeout applies to each individual step**, not to the whole pipeline.
+
+**Implications on Vercel Hobby (10s per function invocation):**
+
+- Each `step.run()` body must complete in under 10s.
+- The overall pipeline can run for hours across many step invocations — Inngest's free tier allows up to **2 hours per step** and up to **1000 steps per function**, so Inngest is never the binding constraint for us; Vercel is.
+- A step that takes >10s on Hobby will 504 from Vercel, which Inngest treats as a transient failure and retries. Retries don't help if the step is consistently slow — they just delay the eventual FAILED.
+- The `/api/record`, `/api/weekly`, `/api/lifemap/refresh` POST handlers themselves (the ones the client calls) become <2s operations. That part isn't affected by Inngest at all — it's just that the handler offloads work instead of doing it inline.
+
+### 12.2 Per-step execution times — the thing that actually determines Hobby fit
+
+| Function | Step | Expected time | Fits Hobby 10s? |
+|---|---|---|---|
+| processEntry | download-audio (≤3MB at 120s cap) | 1–2s | ✅ |
+| processEntry | transcribe (Whisper-1, ≤120s audio) | 3–7s typical; rare tail to ~10s under OpenAI load | ⚠️ mostly ✅, occasional risk |
+| processEntry | build-memory-context | <1s | ✅ |
+| processEntry | extract (Claude Opus, ~1500 output tokens) | 4–9s | ✅ |
+| processEntry | persist-entry (Prisma transaction) | <1s | ✅ |
+| processEntry | update-user-memory | <1s | ✅ |
+| processEntry | update-life-map | <1s | ✅ |
+| processEntry | maybe-compress-memory (Claude, every 10 entries) | 5–10s | ⚠️ close to ceiling |
+| generateWeeklyReport | load-week-context | <1s | ✅ |
+| generateWeeklyReport | claude-synthesize | 4–9s | ✅ |
+| generateWeeklyReport | parse + persist | <1s | ✅ |
+| refreshLifeMap | maybe-compress-memory | 5–10s | ⚠️ |
+| refreshLifeMap | generate-insights | 5–10s | ⚠️ |
+
+Three steps sit close to the 10s ceiling in the long-tail: **transcribe** (rare), **maybe-compress-memory** (regular), **generate-insights** (regular). These are all Claude-shaped calls where variance is driven by vendor latency + prompt/response size, not by our recording length.
+
+**Mitigations if any step consistently breaches 10s on Hobby:**
+
+- **Streaming the Claude response** via the Anthropic SDK's streaming mode — TTFT is very fast and the function can return once the response is parsed, not once the last byte is received. Not required for v1.
+- **Shorter prompts** for compress-memory — the existing prompt in `buildCompressionPrompt` pulls 20 recent entries; trimming to 10 would cut call time meaningfully without harming compression quality.
+- **Accept occasional FAILED** on tail latency and rely on Inngest's 2 retries (§3.1 decision) — a second attempt often lands inside 10s because vendor latency is independent across calls. A FAILED entry is always recoverable via the `/api/entries/[id]/retry` route (PR 8).
+- **If compress-memory is regularly over 10s:** move the "every 10 entries" trigger out of `processEntryFn` entirely and into a separate scheduled compression job, decoupled from user-facing latency. Future refactor — not needed for v1.
+
+**Bandwidth:** at 50 users × 30 entries/month × ≤3MB/audio (120s cap) = ~4.5GB/month upload + negligible JSON traffic. Under 5% of Hobby's 100GB/mo ceiling.
+
+**Cron limit:** Vercel Hobby allows 1 cron per project. Inngest handles all our scheduled work — Day 14 audit cron + waitlist drip (when reactivated) — so Vercel Cron needs 0 slots.
+
+### 12.3 The 120s recording cap — why (not Hobby fit)
+
+Jim correctly pushed back on the prior draft here. The 120s cap is **not primarily a Hobby-fit decision**. At 120s audio, Whisper transcription typically completes in 3–7s — well inside Hobby's ceiling. The cap exists for two independent reasons:
+
+1. **UX and product fit.** Product spec calls for a 30–120s range; the positioning copy is *"60 seconds in."* A 180s cap contradicts the product thesis. Web currently caps at 60s client-side, mobile at 120s — web moves to 120s to match mobile, and both align with the product-spec ceiling.
+2. **Cost control.** Longer audio → more Whisper seconds billed, longer transcripts → more Claude input tokens in the extract step. A 120s cap is a natural unit-economics ceiling.
+
+The cap is enforced server-side in `/api/record` (§4.1) as a hard invariant, independent of client version.
+
+### 12.4 Per-route execution budget (the part that isn't changed by Inngest)
+
+Every route under `apps/web/src/app/api/**` with expected post-migration execution time. These are the handlers the client calls; they do not run Inngest steps, they enqueue them.
 
 | Route | Method | Expected post-migration time | Hobby? |
 |---|---|---|---|
 | `/api/auth/[...nextauth]` | GET/POST | <2s (OAuth redirects + DB session write) | ✅ |
-| `/api/record` | POST | <2s (auth, upload to Supabase ≤25MB, one Inngest `send()`, return) | ✅ |
+| `/api/record` | POST | <2s (auth, upload ≤3MB to Supabase, one Inngest `send()`, return 202) | ✅ |
 | `/api/entries` | GET | <1s (one Prisma query, LIMIT 30) | ✅ |
 | `/api/entries/[id]` | GET | <1s (one Prisma query with include) | ✅ |
 | `/api/entries/[id]/retry` | POST | <1s (Prisma read + Inngest send) | ✅ (new in PR 8) |
@@ -1156,53 +1248,26 @@ Every route under `apps/web/src/app/api/**` with its expected post-migration exe
 | `/api/lifemap/history` | GET | <1s (8-week fetch + in-memory aggregation) | ✅ |
 | `/api/stripe/checkout` | POST | 1–2s (Stripe API call) | ✅ |
 | `/api/stripe/webhook` | POST | <1s (Stripe sig verify + Prisma update) | ✅ |
-| `/api/waitlist` | POST | 2–4s (Prisma + two Resend sends in parallel) | ✅ (sends are parallel; `Promise.allSettled`) |
+| `/api/waitlist` | POST | 2–4s (Prisma + two Resend sends via `Promise.allSettled`) | ✅ |
 | `/api/waitlist/count` | GET | <1s | ✅ |
-| `/api/cron/waitlist-drip` | GET | Currently parked. When reactivated: migrate to Inngest cron so it's not route-bound. | ⏸ parked |
+| `/api/cron/waitlist-drip` | GET | Currently parked. When reactivated: migrate to Inngest cron (not a Vercel cron route). | ⏸ parked |
 | `/api/admin/dashboard` | GET | <1s (5 parallel Prisma queries) | ✅ |
 | `/api/admin/cleanup` | POST | <2s (sweep query) | ✅ (new in PR 8) |
-| `/api/inngest` | GET/POST/PUT | Per-invocation 60s ceiling set in `maxDuration`. **Every step ≤10s?** See §12.2 | ⚠️ depends on steps |
+| `/api/inngest` | GET/POST/PUT | Per-invocation runs one Inngest step. See §12.2 for the actual binding constraint. | ⚠️ depends on the step — see §12.2 |
 
-### 12.2 Inngest function step-level ceiling on Hobby
+### 12.5 Verdict
 
-The `/api/inngest` route invokes each Inngest step as one HTTP request. Hobby caps each request at 10 seconds. Each individual `step.run()` must complete in under 10s.
+**Hobby is viable post-migration.** Two things to know:
 
-| Function | Step | Expected time | Fits Hobby 10s? |
-|---|---|---|---|
-| processEntry | download-audio (25MB max) | 1–3s | ✅ |
-| processEntry | transcribe (Whisper, 60s audio) | 5–10s typical, **up to ~15s for 2-min audio** | ⚠️ see below |
-| processEntry | build-memory-context | <1s | ✅ |
-| processEntry | extract (Claude Opus, ~1500 output tokens) | 4–9s | ✅ |
-| processEntry | persist-entry | <1s | ✅ |
-| processEntry | update-user-memory | <1s | ✅ |
-| processEntry | update-life-map | <1s | ✅ |
-| processEntry | maybe-compress-memory (Claude) | 5–10s | ⚠️ close to ceiling |
-| generateWeeklyReport | load-week-context | <1s | ✅ |
-| generateWeeklyReport | claude-synthesize | 4–9s | ✅ |
-| generateWeeklyReport | parse + persist | <1s | ✅ |
-| refreshLifeMap | maybe-compress-memory | 5–10s | ⚠️ |
-| refreshLifeMap | generate-insights | 5–10s | ⚠️ |
+1. **Every route the client calls** (the "outer" API surface — `/api/record`, `/api/weekly`, `/api/lifemap/refresh`, etc.) finishes well inside Hobby's 10s ceiling because Inngest takes the long work out of the request path. **This is the core Hobby-viability argument**, not the recording cap.
+2. **The inner `/api/inngest` handler** runs each step within Hobby's 10s ceiling. Three steps have tail-latency risk (transcribe, compress-memory, generate-insights) — rarely on transcribe, regularly within budget on the others. If any becomes a reliability problem in production, the mitigations in §12.2 apply, ordered by cost. None require Pro.
 
-**The tight cases are the Claude calls (transcribe, compress-memory, insights) on long inputs.** Mitigations:
+**Cron:** Inngest-scheduled, which invokes our `/api/inngest` endpoint the same way event-triggered functions do. Hobby serves `/api/inngest` fine. Vercel Cron is not used.
 
-- **Audio length cap:** `SUPPORTED_AUDIO_TYPES` + `MAX_AUDIO_BYTES` — currently 25MB. Enforce a *duration* cap too (90s in the web recorder, 120s mobile). Whisper on 90s audio reliably finishes in <8s.
-- **Claude streaming:** use the Anthropic SDK's streaming mode for long responses. Streaming cuts perceived TTFT and typically completes inside 10s for the response lengths we need. **Not required for v1** — current non-streaming calls fit the budget with margin at typical lengths.
-- **If any step consistently exceeds 10s on Hobby:** either (a) split into sub-steps (e.g. chunk long audio — overkill), or (b) bump only that route to Pro via `@vercel/config` per-route overrides — but "bump just this route to Pro" still means a Pro subscription.
-
-**Bandwidth:** at 50 users × 30 entries/month × 2MB/audio = 3GB/month upload + negligible JSON traffic. Well under 100GB/mo.
-
-**Cron limit:** Vercel Hobby allows 1 cron per project. Inngest handles all our crons (Day 14 audit + re-activated waitlist-drip if/when); Vercel Cron needs 0.
-
-### 12.3 Verdict
-
-**Hobby is viable post-migration for the typical case** (60–90s recordings, standard-length weekly reports). Two asterisks:
-
-1. **Recording duration cap at 90s** (already close to current UX — mobile tab caps at 120s, web at 60s per the recorder component). Enforce the cap server-side as well in `/api/record`.
-2. **Whisper transcription of the rare long recording is the one step that can breach 10s.** Mitigation: the cap above. If a user really wants longer recordings, that's when Pro justifies itself.
-
-**Other than that: every `/api/**` route finishes in <2s post-migration.** The Day 14 cron, the record pipeline, the weekly report pipeline, and the lifemap refresh all run in Inngest's infrastructure, not Vercel's — Vercel's only job is to invoke individual <10s steps.
-
-**One caveat for Hobby-specific testing:** Vercel Hobby does *not* support custom cron schedules; Inngest cron is our cron. Verify in Preview that `day14AuditCronFn` actually fires on schedule from Inngest (which invokes our `/api/inngest` endpoint — Hobby can serve this).
+**Expect to see these in production logs** once Inngest is live:
+- Occasional 504s on the `/api/inngest` route from long Claude calls — these are Inngest retries in progress, not user-visible failures.
+- `Entry.status = FAILED` entries at a low rate (~1%) from exhausted retries. The retry endpoint (PR 8) makes these recoverable.
+- No 504s on the outer API routes — those all return in under 2s by design.
 
 ---
 
@@ -1248,21 +1313,21 @@ The Whisper + Claude costs are **the same as today** — Inngest doesn't touch t
 
 Items needing your input before implementation. None are blocking for PR 1 (which just bootstraps Inngest with no behavior change).
 
-1. **Supabase Realtime for client updates — ship it later, or commit now?** Recommendation: ship polling in PR 5, revisit only if user-perceived latency is a complaint. Realtime depends on RLS being live (S2 in PROGRESS.md), which depends on Supabase access you still need from Keenan. Decision needed before PR 5.
+Four questions from rev 1 resolved 2026-04-19 and moved to §0 decisions:
+- ~~Client completion mechanism — polling vs Realtime~~ → §0 decision 1 (polling).
+- ~~Max recording duration enforced server-side~~ → §0 decision 2 (120s).
+- ~~Retry budget for Claude calls~~ → §0 decision 3 (split: 2 for user-interactive, 3 for background).
+- ~~Paywall PR interleaving~~ → §0 decision 4 (approved).
 
-2. **Max recording duration enforced server-side.** Today the web recorder caps at 60s and mobile at 120s, but nothing on the server prevents a larger upload (just the 25MB size cap). Recommendation: enforce `durationSeconds <= 180` in `/api/record` to keep transcribe step under the Hobby 10s ceiling. Decision needed before PR 4.
+Still open:
 
-3. **Retry budget for Claude calls.** Inngest default is 3 retries at 1m/3m/9m. Is that right for user-facing latency? At 3 retries with a ~15s typical Claude call, worst-case pipeline-visible latency is ~14 minutes (9m backoff + 5m of cumulative processing). Most users would think "it failed and I'll try later," which is fine — the final error lands as `Entry.status = FAILED` with a message. Alternative: drop to 2 retries at 30s/2m, so max time to FAILED is ~3 min. Decision needed before PR 2.
+1. **Inngest environment naming.** Match Vercel's `Production` + `Preview` convention, or something else? Recommendation: match. Decision needed before PR 1.
 
-4. **Inngest environment naming.** Match Vercel's `Production` + `Preview` convention, or something else? Recommendation: match. Decision needed before PR 1.
+2. **Who owns the Inngest account?** If this will live under Heeler Digital long-term, create the account with `jim@heelerdigital.com` (not a personal email). Decision needed before PR 1.
 
-5. **Who owns the Inngest account?** If this will live under Heeler Digital long-term, create the account with `jim@heelerdigital.com` (not a personal email). Decision needed before PR 1.
+3. **`PARTIAL` entry UX — is the warning toast sufficient, or do we want a "refresh failed updates" manual action on the entry page?** Recommendation: toast-only for v1; the next successful entry triggers memory/lifemap catch-up anyway. Decision needed before PR 5.
 
-6. **`PARTIAL` entry UX — is the warning toast sufficient, or do we want a "refresh failed updates" manual action on the entry page?** Recommendation: toast-only for v1; the next successful entry triggers memory/lifemap catch-up anyway. Decision needed before PR 5.
-
-7. **Observability.** Inngest dashboard covers run-level visibility. Do we want Sentry/Datadog for errors from our code paths? Not blocking the migration — can be added anytime. Decision deferred.
-
-8. **Paywall PR interleaving.** `IMPLEMENTATION_PLAN_PAYWALL.md` §5.8 step 1 sets `trialEndsAt` and step 4 builds the Life Audit generator. Neither depends on Inngest being in production — but step 8 (Day 14 cron) hard-requires it. Sequence: Inngest migration PRs 1-6 complete → paywall PRs 1-7 can run in parallel on top → paywall PR 8 (cron) uses Inngest's scheduled functions. Agreed? Decision needed before PR 7.
+4. **Observability.** Inngest dashboard covers run-level visibility. Do we want Sentry/Datadog for errors from our code paths? Not blocking the migration — can be added anytime. Decision deferred.
 
 ---
 
