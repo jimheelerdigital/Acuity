@@ -9,12 +9,22 @@ dist/
 build/
 out/
 
-# Env files
+# Env files — ignore everything .env*, track only .env.example
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*
+!.env.example
+
+# Secrets / keys / OAuth tokens
+*.pem
+*.p12
+*.key
+credentials.json
+token.json
+google-services.json
+GoogleService-Info.plist
+
+# Terraform state with secrets
+*.tfvars
 
 # Prisma
 prisma/migrations/

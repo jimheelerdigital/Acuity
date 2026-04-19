@@ -1,0 +1,94 @@
+# gitleaks config for Acuity
+# Stack: Next.js, Expo, Prisma, Supabase, Stripe, Anthropic, OpenAI, Resend, Google OAuth, NextAuth
+#
+# Extends gitleaks' built-in default rules (AWS, GitHub, generic private keys, Stripe, etc.)
+# and layers stack-specific patterns on top.
+#
+# Docs: https://github.com/gitleaks/gitleaks/blob/master/config/gitleaks.toml
+
+title = "Acuity gitleaks config"
+
+[extend]
+useDefault = true
+
+# ---------------------------------------------------------------------------
+# Custom rules
+# ---------------------------------------------------------------------------
+
+[[rules]]
+id = "aws-access-key-id-strict"
+description = "AWS Access Key ID (strict prefix match)"
+regex = '''\b(?:AKIA|ASIA|ABIA|ACCA)[0-9A-Z]{16}\b'''
+keywords = ["AKIA", "ASIA", "ABIA", "ACCA"]
+tags = ["key", "aws"]
+
+[[rules]]
+id = "anthropic-api-key"
+description = "Anthropic API key"
+regex = '''sk-ant-[A-Za-z0-9_-]{32,}'''
+keywords = ["sk-ant-"]
+tags = ["key", "anthropic"]
+
+[[rules]]
+id = "resend-api-key"
+description = "Resend API key"
+regex = '''\bre_[A-Za-z0-9]{20,}\b'''
+keywords = ["re_"]
+tags = ["key", "resend"]
+
+[[rules]]
+id = "supabase-service-role-jwt"
+description = "Supabase service role / anon JWT"
+regex = '''eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}'''
+keywords = ["eyJ"]
+tags = ["key", "supabase", "jwt"]
+
+[[rules]]
+id = "postgres-connection-string-with-password"
+description = "Postgres connection string containing an inline password"
+regex = '''postgres(?:ql)?:\/\/[^:\/\s]+:[^@\/\s]{4,}@[^\/\s]+'''
+keywords = ["postgres://", "postgresql://"]
+tags = ["secret", "database", "postgres"]
+
+[[rules]]
+id = "nextauth-secret-literal"
+description = "NEXTAUTH_SECRET assigned a literal base64/hex value"
+regex = '''(?i)NEXTAUTH_SECRET\s*=\s*["']?[A-Za-z0-9+/=_-]{24,}["']?'''
+keywords = ["NEXTAUTH_SECRET"]
+tags = ["secret", "nextauth"]
+
+[[rules]]
+id = "google-oauth-client-secret"
+description = "Google OAuth client secret (GOCSPX- prefix)"
+regex = '''GOCSPX-[A-Za-z0-9_-]{20,}'''
+keywords = ["GOCSPX-"]
+tags = ["key", "google", "oauth"]
+
+[[rules]]
+id = "expo-access-token"
+description = "Expo / EAS access token"
+regex = '''\b(?:expo|eas)[_-]?(?:access[_-]?)?token\s*[:=]\s*["']?[A-Za-z0-9_-]{32,}["']?'''
+keywords = ["expo_token", "eas_token", "expo-token", "eas-token", "EXPO_TOKEN", "EAS_ACCESS_TOKEN"]
+tags = ["key", "expo", "eas"]
+
+# ---------------------------------------------------------------------------
+# Allowlist
+# ---------------------------------------------------------------------------
+
+[allowlist]
+description = "Files and patterns that should never trigger a finding"
+
+paths = [
+  '''\.env\.example$''',
+  '''package-lock\.json$''',
+  '''yarn\.lock$''',
+  '''pnpm-lock\.yaml$''',
+  '''\.gitleaks\.toml$''',
+]
+
+regexes = [
+  # Obvious placeholders found in docs / templates.
+  # Note: AWS's documented test key AKIAIOSFODNN7EXAMPLE is NOT allowlisted —
+  # we want the hook to block it (that's how we verify the hook works).
+  '''(?i)(your[_-]?(?:api[_-]?)?key[_-]?here|example[_-]?key|placeholder|changeme|xxxxxxxxxxxx)''',
+]
