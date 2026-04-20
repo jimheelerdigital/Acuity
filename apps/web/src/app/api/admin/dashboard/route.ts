@@ -24,12 +24,17 @@ export async function GET() {
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
+  const monthStart = new Date();
+  monthStart.setUTCDate(1);
+  monthStart.setUTCHours(0, 0, 0, 0);
+
   const [
     totalSignups,
     signupsBySource,
     signupsOverTime,
     recentSignups,
     emailStepCounts,
+    aiSpendResult,
   ] = await Promise.all([
     // Total waitlist signups
     prisma.waitlist.count(),
@@ -65,6 +70,13 @@ export async function GET() {
       GROUP BY "emailSequenceStep"
       ORDER BY "emailSequenceStep" ASC
     `,
+
+    // AI spend this month
+    prisma.$queryRaw<{ total: bigint | null }[]>`
+      SELECT COALESCE(SUM("costCents"), 0)::bigint as total
+      FROM "ClaudeCallLog"
+      WHERE "createdAt" >= ${monthStart}
+    `.catch(() => [{ total: BigInt(0) }]),
   ]);
 
   return NextResponse.json({
@@ -85,5 +97,6 @@ export async function GET() {
       step: r.emailSequenceStep,
       count: Number(r.count),
     })),
+    aiSpendCents: Number(aiSpendResult[0]?.total ?? 0),
   });
 }

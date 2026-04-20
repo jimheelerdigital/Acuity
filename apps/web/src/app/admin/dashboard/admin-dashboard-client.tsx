@@ -13,6 +13,7 @@ interface DashboardData {
     createdAt: string;
   }[];
   emailStepCounts: { step: number; count: number }[];
+  aiSpendCents?: number;
 }
 
 const STEP_LABELS: Record<number, string> = {
@@ -77,10 +78,34 @@ export default function AdminDashboardClient() {
   const maxSource = Math.max(...data.signupsBySource.map((s) => s.count), 1);
   const maxDaily = Math.max(...data.signupsOverTime.map((d) => d.count), 1);
 
+  const aiSpendDollars = ((data.aiSpendCents ?? 0) / 100).toFixed(2);
+  const overBudget = (data.aiSpendCents ?? 0) > 10000;
+
   return (
     <div className="min-h-screen bg-[#0A0A0F] px-4 py-10 text-white sm:px-8">
       <div className="mx-auto max-w-6xl">
         <h1 className="mb-8 text-2xl font-bold">Acuity Admin Dashboard</h1>
+
+        {/* ── AI SPEND ── */}
+        {overBudget && (
+          <div className="mb-4 rounded-xl bg-red-900/30 border border-red-500/40 px-5 py-3 text-sm text-red-300">
+            AI budget exceeded for the month. Content generation still running
+            &mdash; check logs at{" "}
+            <a
+              href="/admin/content-factory"
+              className="underline hover:text-red-200"
+            >
+              /admin/content-factory
+            </a>
+            .
+          </div>
+        )}
+        <div className="mb-6 rounded-xl bg-[#13131F] px-5 py-4 flex items-center justify-between">
+          <span className="text-sm text-white/60">AI spend this month</span>
+          <span className={`text-lg font-bold ${overBudget ? "text-red-400" : "text-white"}`}>
+            ${aiSpendDollars} / $100 budget
+          </span>
+        </div>
 
         {/* ── WAITLIST STATS ── */}
         <Section title="Waitlist Stats">

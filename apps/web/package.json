@@ -16,6 +16,7 @@
     "@acuity/shared": "*",
     "@anthropic-ai/sdk": "^0.27.0",
     "@auth/prisma-adapter": "^2.4.0",
+    "@google-analytics/data": "^5.2.1",
     "@prisma/client": "^5.16.0",
     "@supabase/supabase-js": "^2.44.0",
     "@upstash/ratelimit": "^2.0.8",

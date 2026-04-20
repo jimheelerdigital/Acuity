@@ -350,3 +350,68 @@ model Waitlist {
   emailSequenceStep Int      @default(0)
   unsubscribed      Boolean  @default(false)
 }
+
+// ─── Content Factory ──────────────────────────────────────────────────────────
+
+model ContentBriefing {
+  id          String         @id @default(cuid())
+  date        DateTime       @unique
+  redditTop   Json
+  twitterTop  Json
+  trendsData  Json
+  ga4Winners  Json
+  generatedAt DateTime       @default(now())
+  pieces      ContentPiece[]
+}
+
+model ContentPiece {
+  id               String            @id @default(cuid())
+  type             ContentType
+  title            String
+  body             String            @db.Text
+  hook             String
+  cta              String
+  targetKeyword    String?
+  predictedScore   Float
+  sourceBriefingId String?
+  sourceBriefing   ContentBriefing?  @relation(fields: [sourceBriefingId], references: [id])
+  status           ContentStatus     @default(PENDING_REVIEW)
+  reviewedAt       DateTime?
+  reviewedBy       String?
+  editNotes        String?
+  finalBody        String?           @db.Text
+  distributedAt    DateTime?
+  distributedUrl   String?
+  metrics          Json?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+}
+
+model ClaudeCallLog {
+  id           String   @id @default(cuid())
+  purpose      String
+  model        String
+  tokensIn     Int
+  tokensOut    Int
+  costCents    Int
+  durationMs   Int
+  success      Boolean
+  errorMessage String?
+  createdAt    DateTime @default(now())
+}
+
+enum ContentType {
+  BLOG
+  TWITTER
+  TIKTOK
+  AD_COPY
+  EMAIL
+}
+
+enum ContentStatus {
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+  EDITED
+  DISTRIBUTED
+}
