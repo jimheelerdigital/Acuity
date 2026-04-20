@@ -70,6 +70,45 @@ model User {
   lifemapAreas           LifeMapArea[]
   memory                 UserMemory?
   lifeAudits             LifeAudit[]
+  onboarding             UserOnboarding?
+}
+
+// 8-step post-signup onboarding flow. One row per user; survives
+// account deletion via cascade. Completed users are identified by
+// `completedAt != null` — the dashboard uses this to decide whether
+// to redirect new users into the flow. See apps/web/src/app/onboarding/
+// for the UI scaffold.
+model UserOnboarding {
+  id                     String    @id @default(cuid())
+  userId                 String    @unique
+  user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Last step the user reached. 1-indexed. When completedAt is set
+  // this also carries the final step number for auditing.
+  currentStep            Int       @default(1)
+  // Null until the user finishes step 8 (or hits Skip on the last
+  // skippable step). Non-null means "don't redirect into onboarding
+  // anymore".
+  completedAt            DateTime?
+  // Step 5 — mood baseline (one of GREAT|GOOD|NEUTRAL|LOW|ROUGH).
+  // Seeds the Life Matrix starting scores so day-1 insights aren't
+  // drawing against a zero baseline.
+  moodBaseline           String?
+  // Step 6 — user's ranked importance for the 6 canonical life areas.
+  // Stored as Json: { CAREER: 3, HEALTH: 5, RELATIONSHIPS: 4, ... }
+  // where higher numbers = higher importance (1-5 scale).
+  lifeAreaPriorities     Json?
+  // Step 2 — where they found Acuity. Free-text, short list. Drives
+  // PostHog attribution (signupSource property on trial_started).
+  referralSource         String?
+  // Step 7 — expected weekly cadence. "DAILY" | "WEEKDAYS" | "WEEKLY"
+  // | "UNSURE". Informs the post-trial email copy + reminder default.
+  expectedUsageFrequency String?
+  // Step 4 — did the user grant microphone permission during the
+  // walkthrough? False doesn't block completion (they can grant later
+  // from Settings) but we track it so the dashboard can nudge.
+  microphoneGranted      Boolean   @default(false)
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
 }
 
 model Entry {

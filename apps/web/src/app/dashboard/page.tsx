@@ -15,6 +15,22 @@ export default async function DashboardPage() {
 
   const userId = session.user.id;
 
+  // Gate dashboard behind onboarding completion. New users (no row) or
+  // anyone whose row has completedAt=null gets routed to step 1. Existing
+  // users predating the 2026-04-19 onboarding rollout have no row either —
+  // acceptable: they'll see onboarding once and finish it.
+  {
+    const { prisma } = await import("@/lib/prisma");
+    const onboarding = await prisma.userOnboarding.findUnique({
+      where: { userId },
+      select: { completedAt: true, currentStep: true },
+    });
+    if (!onboarding || !onboarding.completedAt) {
+      const step = onboarding?.currentStep ?? 1;
+      redirect(`/onboarding?step=${step}`);
+    }
+  }
+
   type EntryWithCount = Awaited<ReturnType<typeof fetchEntries>>[number];
   let entries: EntryWithCount[] = [];
   let tasks: Task[] = [];
