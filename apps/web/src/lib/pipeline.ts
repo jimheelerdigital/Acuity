@@ -20,6 +20,7 @@ import {
   type Priority,
 } from "@acuity/shared";
 
+import { extensionForMimeType } from "./audio";
 import { LIFE_AREA_EXTRACTION_SCHEMA } from "./prompts/lifemap";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -66,9 +67,16 @@ export async function uploadAudio(
 export async function transcribeAudio(
   audioBuffer: Buffer,
   mimeType: string,
-  filename = "recording.webm"
+  filename?: string
 ): Promise<string> {
-  const file = await toFile(audioBuffer, filename, { type: mimeType });
+  // Whisper reads format from the filename extension, so we must feed
+  // it a name that matches the actual content. Default derived from
+  // the canonical MIME when the caller doesn't specify — audio/mp4
+  // → recording.m4a (NOT .mp4; Whisper's MP4 demuxer looks for video
+  // tracks and trips on audio-only files).
+  const resolvedFilename =
+    filename ?? `recording.${extensionForMimeType(mimeType)}`;
+  const file = await toFile(audioBuffer, resolvedFilename, { type: mimeType });
 
   const response = await openai.audio.transcriptions.create({
     file,

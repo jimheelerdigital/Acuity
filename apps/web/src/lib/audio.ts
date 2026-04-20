@@ -30,6 +30,27 @@ const CANONICAL_TYPES = new Set([
 ]);
 
 /**
+ * Canonical filename extension for a given MIME. Drives both the
+ * Supabase storage object path AND the filename we hand to Whisper's
+ * transcription endpoint — Whisper reads format from the extension,
+ * not the content-type header, and it's picky about MP4-container
+ * audio: `.mp4` sometimes fails because Whisper tries to demux video,
+ * whereas `.m4a` (the canonical extension for AAC-in-MP4) works
+ * reliably. So we always map audio/mp4 → `m4a`, not `mp4`.
+ */
+const MIME_TO_EXT: Record<string, string> = {
+  "audio/mp4": "m4a",
+  "audio/webm": "webm",
+  "audio/wav": "wav",
+  "audio/mpeg": "mp3",
+  "audio/ogg": "ogg",
+};
+
+export function extensionForMimeType(mime: string): string {
+  return MIME_TO_EXT[mime] ?? "webm";
+}
+
+/**
  * Strip codec params + lowercase + alias-map an incoming MIME to the
  * canonical form. Returns null if the input isn't any audio type we
  * recognize (caller should 415).
@@ -87,7 +108,7 @@ export async function uploadAudioBytes(
 ): Promise<string> {
   const { supabase } = await import("@/lib/supabase.server");
 
-  const ext = mimeType.split("/")[1]?.replace("x-m4a", "m4a") ?? "webm";
+  const ext = extensionForMimeType(mimeType);
   const objectPath = `${userId}/${entryId}.${ext}`;
 
   const { error } = await supabase.storage
@@ -120,3 +141,4 @@ export function mimeTypeFromAudioPath(path: string): string {
   };
   return map[ext] ?? "audio/webm";
 }
+

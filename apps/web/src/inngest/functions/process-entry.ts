@@ -5,7 +5,10 @@ import { toFile } from "openai/uploads";
 import { WHISPER_LANGUAGE, WHISPER_MODEL } from "@acuity/shared";
 
 import { inngest } from "@/inngest/client";
-import { mimeTypeFromAudioPath } from "@/lib/audio";
+import {
+  extensionForMimeType,
+  mimeTypeFromAudioPath,
+} from "@/lib/audio";
 
 type ProcessEntryEventData = {
   entryId: string;
@@ -126,8 +129,14 @@ export const processEntryFn = inngest.createFunction(
     await step.run("transcribe-and-persist-transcript", async () => {
       const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
       const buffer = Buffer.from(audioBase64, "base64");
-      const ext = mimeType.split("/")[1]?.replace("x-m4a", "m4a") ?? "webm";
-      const file = await toFile(buffer, `recording.${ext}`, { type: mimeType });
+      // Derive filename from the canonical MIME rather than the
+      // storage path. Pre-2026-04-20-afternoon entries were stored as
+      // `userId/entryId.mp4`; Whisper's MP4 demuxer trips on those
+      // (looks for a video track). extensionForMimeType maps
+      // audio/mp4 → "m4a" so we always hand Whisper a filename
+      // matching the actual container format.
+      const filename = `recording.${extensionForMimeType(mimeType)}`;
+      const file = await toFile(buffer, filename, { type: mimeType });
 
       const res = await openai.audio.transcriptions.create({
         file,
