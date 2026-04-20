@@ -99,24 +99,24 @@ export default function SignInScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-zinc-950 items-center justify-center px-6">
+    <SafeAreaView className="flex-1 bg-white dark:bg-[#1E1E2E] dark:bg-[#0B0B12] items-center justify-center px-6">
       <View className="h-16 w-16 rounded-2xl bg-violet-600 items-center justify-center mb-8">
         <Text className="text-3xl" style={{ color: "white" }}>
           A
         </Text>
       </View>
 
-      <Text className="text-2xl font-bold text-zinc-50 mb-1">
+      <Text className="text-2xl font-bold text-zinc-900 dark:text-zinc-50 mb-1">
         Sign in to Acuity
       </Text>
-      <Text className="text-sm text-zinc-400 mb-10 text-center">
+      <Text className="text-sm text-zinc-400 dark:text-zinc-500 mb-10 text-center">
         Your nightly brain dump, pattern recognition across your own words.
       </Text>
 
       <Pressable
         onPress={handleSignIn}
         disabled={loading}
-        className="w-full flex-row items-center justify-center gap-3 rounded-xl bg-white px-4 py-3.5"
+        className="w-full flex-row items-center justify-center gap-3 rounded-xl bg-white dark:bg-[#1E1E2E] px-4 py-3.5"
         style={({ pressed }) => ({ opacity: pressed || loading ? 0.7 : 1 })}
       >
         {loading ? (
@@ -124,7 +124,7 @@ export default function SignInScreen() {
         ) : (
           <Ionicons name="logo-google" size={18} color="#18181B" />
         )}
-        <Text className="text-sm font-semibold text-zinc-900">
+        <Text className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
           {loading ? "Signing in…" : "Continue with Google"}
         </Text>
       </Pressable>
@@ -136,10 +136,10 @@ export default function SignInScreen() {
         </Text>
       )}
 
-      <Text className="text-xs text-zinc-500 mt-10 text-center leading-relaxed">
+      <Text className="text-xs text-zinc-500 dark:text-zinc-400 mt-10 text-center leading-relaxed">
         By continuing you agree to the{"\n"}
-        <Text className="text-zinc-400">Terms of Service</Text> and{" "}
-        <Text className="text-zinc-400">Privacy Policy</Text>.
+        <Text className="text-zinc-400 dark:text-zinc-500">Terms of Service</Text> and{" "}
+        <Text className="text-zinc-400 dark:text-zinc-500">Privacy Policy</Text>.
       </Text>
     </SafeAreaView>
   );

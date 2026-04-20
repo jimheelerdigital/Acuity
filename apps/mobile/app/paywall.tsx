@@ -57,7 +57,7 @@ export default function PaywallScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-zinc-950" edges={["bottom"]}>
+    <SafeAreaView className="flex-1 bg-white dark:bg-[#1E1E2E] dark:bg-[#0B0B12]" edges={["bottom"]}>
       <ScrollView
         contentContainerStyle={{ flexGrow: 1, padding: 24, paddingBottom: 40 }}
       >
@@ -68,7 +68,7 @@ export default function PaywallScreen() {
           <Pressable
             onPress={() => router.back()}
             hitSlop={16}
-            className="h-8 w-8 items-center justify-center rounded-full bg-zinc-900"
+            className="h-8 w-8 items-center justify-center rounded-full bg-zinc-50 dark:bg-[#13131F] dark:bg-[#1E1E2E]"
           >
             <Ionicons name="close" size={18} color="#A1A1AA" />
           </Pressable>
@@ -80,24 +80,24 @@ export default function PaywallScreen() {
           <Ionicons name="arrow-forward" size={26} color="#A78BFA" />
         </View>
 
-        <Text className="text-3xl font-bold text-zinc-50 leading-tight">
+        <Text className="text-3xl font-bold text-zinc-900 dark:text-zinc-50 leading-tight">
           Month two is where the pattern deepens.
         </Text>
 
-        <Text className="mt-5 text-base leading-relaxed text-zinc-400">
+        <Text className="mt-5 text-base leading-relaxed text-zinc-400 dark:text-zinc-500">
           Your trial reached its end. Your entries, your Life Matrix, and
           your Day 14 Audit are still right where you left them — they
           don&rsquo;t go anywhere.
         </Text>
 
-        <Text className="mt-4 text-base leading-relaxed text-zinc-400">
+        <Text className="mt-4 text-base leading-relaxed text-zinc-400 dark:text-zinc-500">
           A subscription keeps new recordings, new weekly reports, and
           new insights flowing. Without one, the dashboard freezes
           where it is — no data loss, no cliff.
         </Text>
 
         {/* Value recap — short, no feature-matrix vibe */}
-        <View className="mt-8 rounded-2xl border border-zinc-800 bg-zinc-900 p-4 gap-3">
+        <View className="mt-8 rounded-2xl border border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-[#13131F] dark:bg-[#1E1E2E] p-4 gap-3">
           <ValueRow icon="mic-outline" text="Record new entries every night" />
           <ValueRow
             icon="analytics-outline"
@@ -136,7 +136,7 @@ export default function PaywallScreen() {
             disabled={opening}
             className="py-3 items-center"
           >
-            <Text className="text-zinc-500 text-sm">Remind me later</Text>
+            <Text className="text-zinc-500 dark:text-zinc-400 text-sm">Remind me later</Text>
           </Pressable>
 
           {/* Apple Review 3.1.3(b) Multiplatform Services compliance.
@@ -144,7 +144,7 @@ export default function PaywallScreen() {
               direct users to a specific purchase flow in IAP terms.
               "Continue on web" reads as a navigation affordance, not
               a sale. docs/APPLE_IAP_DECISION.md §6. */}
-          <Text className="text-[10px] text-zinc-600 text-center mt-4 leading-snug">
+          <Text className="text-[10px] text-zinc-600 dark:text-zinc-300 text-center mt-4 leading-snug">
             Subscriptions are managed through your Acuity web account.
             Manage or cancel any time at getacuity.io.
           </Text>
@@ -164,7 +164,7 @@ function ValueRow({
   return (
     <View className="flex-row items-center gap-3">
       <Ionicons name={icon} size={18} color="#A78BFA" />
-      <Text className="text-sm text-zinc-200 flex-1">{text}</Text>
+      <Text className="text-sm text-zinc-700 dark:text-zinc-200 flex-1">{text}</Text>
     </View>
   );
 }

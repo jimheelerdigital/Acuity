@@ -345,7 +345,7 @@ export default function RecordScreen() {
   // ────────────────────────────────────────────────────────────────
 
   return (
-    <SafeAreaView className="flex-1 bg-zinc-950" edges={["bottom"]}>
+    <SafeAreaView className="flex-1 bg-white dark:bg-[#1E1E2E] dark:bg-[#0B0B12]" edges={["bottom"]}>
       <View className="flex-1 items-center justify-center px-8">
         {state === "processing" ? (
           <ProcessingView
@@ -355,15 +355,15 @@ export default function RecordScreen() {
         ) : state === "uploading" ? (
           <View className="items-center gap-4">
             <ActivityIndicator size="large" color="#7C3AED" />
-            <Text className="text-zinc-400 text-sm">Uploading…</Text>
+            <Text className="text-zinc-400 dark:text-zinc-500 text-sm">Uploading…</Text>
           </View>
         ) : state === "error" ? (
           <View className="items-center gap-4 px-4">
             <Ionicons name="alert-circle-outline" size={48} color="#EF4444" />
-            <Text className="text-zinc-100 text-lg font-semibold text-center">
+            <Text className="text-zinc-800 dark:text-zinc-100 text-lg font-semibold text-center">
               Upload failed.
             </Text>
-            <Text className="text-zinc-400 text-sm text-center">
+            <Text className="text-zinc-400 dark:text-zinc-500 text-sm text-center">
               {error}
             </Text>
             <Pressable
@@ -377,10 +377,10 @@ export default function RecordScreen() {
           </View>
         ) : state === "timeout" ? (
           <View className="items-center gap-4 px-4">
-            <Text className="text-zinc-100 text-lg font-semibold text-center">
+            <Text className="text-zinc-800 dark:text-zinc-100 text-lg font-semibold text-center">
               Still working on it.
             </Text>
-            <Text className="text-zinc-400 text-sm text-center">
+            <Text className="text-zinc-400 dark:text-zinc-500 text-sm text-center">
               We saved your recording. Check your dashboard in a few minutes.
             </Text>
             <Pressable
@@ -396,14 +396,14 @@ export default function RecordScreen() {
           <View className="items-center gap-10">
             {/* Timer */}
             <View className="items-center gap-1">
-              <Text className="text-zinc-100 text-lg font-medium">
+              <Text className="text-zinc-800 dark:text-zinc-100 text-lg font-medium">
                 {state === "recording" ? "Recording" : "Ready"}
               </Text>
-              <Text className="text-zinc-300 text-5xl font-mono tabular-nums">
+              <Text className="text-zinc-600 dark:text-zinc-300 text-5xl font-mono tabular-nums">
                 {formatTime(state === "recording" ? elapsed : 0)}
               </Text>
               {state === "idle" && (
-                <Text className="text-zinc-500 text-xs mt-1">
+                <Text className="text-zinc-500 dark:text-zinc-400 text-xs mt-1">
                   Up to 2 minutes. Talk as long as you need.
                 </Text>
               )}
@@ -440,14 +440,14 @@ export default function RecordScreen() {
                 }
               >
                 {state === "recording" ? (
-                  <View className="h-10 w-10 rounded-md bg-white" />
+                  <View className="h-10 w-10 rounded-md bg-white dark:bg-[#1E1E2E]" />
                 ) : (
                   <Ionicons name="mic" size={44} color="#fff" />
                 )}
               </View>
             </Pressable>
 
-            <Text className="text-zinc-500 text-sm text-center">
+            <Text className="text-zinc-500 dark:text-zinc-400 text-sm text-center">
               {state === "recording"
                 ? "Tap to stop"
                 : "Tap to start your brain dump"}
@@ -506,10 +506,10 @@ function ProcessingView({
   return (
     <View className="w-full items-center">
       <ActivityIndicator size="large" color="#7C3AED" />
-      <Text className="mt-6 text-zinc-100 text-base font-semibold">
+      <Text className="mt-6 text-zinc-800 dark:text-zinc-100 text-base font-semibold">
         {steps[currentIndex]?.label ?? "Processing"}
       </Text>
-      <Text className="mt-1 text-zinc-500 text-xs">
+      <Text className="mt-1 text-zinc-500 dark:text-zinc-400 text-xs">
         {elapsedSeconds}s elapsed — usually under a minute
       </Text>
 
@@ -530,7 +530,7 @@ function ProcessingView({
               />
               <Text
                 className={`text-sm ${
-                  done || current ? "text-zinc-200" : "text-zinc-600"
+                  done || current ? "text-zinc-700 dark:text-zinc-200" : "text-zinc-600 dark:text-zinc-300"
                 }`}
               >
                 {step.label}

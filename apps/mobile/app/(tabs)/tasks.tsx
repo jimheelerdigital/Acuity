@@ -104,31 +104,31 @@ export default function TasksTab() {
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 bg-zinc-950 items-center justify-center" edges={["top"]}>
+      <SafeAreaView className="flex-1 bg-white dark:bg-[#1E1E2E] dark:bg-[#0B0B12] items-center justify-center" edges={["top"]}>
         <ActivityIndicator color="#7C3AED" />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-zinc-950" edges={["top"]}>
+    <SafeAreaView className="flex-1 bg-white dark:bg-[#1E1E2E] dark:bg-[#0B0B12]" edges={["top"]}>
       {/* Header */}
       <View className="px-5 pt-4 pb-2">
         <View className="flex-row items-baseline gap-2">
-          <Text className="text-2xl font-bold text-zinc-50">Tasks</Text>
+          <Text className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">Tasks</Text>
           {grouped.open.length > 0 && (
-            <Text className="text-sm text-zinc-500">
+            <Text className="text-sm text-zinc-500 dark:text-zinc-400">
               {grouped.open.length} open
             </Text>
           )}
         </View>
-        <Text className="text-sm text-zinc-400 mt-1">
+        <Text className="text-sm text-zinc-400 dark:text-zinc-500 mt-1">
           Actions extracted from your sessions
         </Text>
       </View>
 
       {/* Tabs */}
-      <View className="flex-row mx-5 mt-2 mb-3 rounded-xl bg-zinc-900 p-1">
+      <View className="flex-row mx-5 mt-2 mb-3 rounded-xl bg-zinc-50 dark:bg-[#13131F] dark:bg-[#1E1E2E] p-1">
         {tabs.map((tab) => (
           <Pressable
             key={tab.key}
@@ -139,7 +139,7 @@ export default function TasksTab() {
           >
             <Text
               className={`text-sm font-medium ${
-                activeTab === tab.key ? "text-zinc-50" : "text-zinc-500"
+                activeTab === tab.key ? "text-zinc-900 dark:text-zinc-50" : "text-zinc-500 dark:text-zinc-400"
               }`}
             >
               {tab.label}
@@ -198,7 +198,7 @@ function TaskCard({
     : null;
 
   return (
-    <View className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4">
+    <View className="rounded-2xl border border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-[#13131F] dark:bg-[#1E1E2E] p-4">
       <View className="flex-row items-start gap-3">
         <View
           className="mt-1.5 h-2.5 w-2.5 rounded-full"
@@ -208,8 +208,8 @@ function TaskCard({
           <Text
             className={`text-sm leading-snug ${
               tab === "completed"
-                ? "text-zinc-500 line-through"
-                : "text-zinc-200"
+                ? "text-zinc-500 dark:text-zinc-400 line-through"
+                : "text-zinc-700 dark:text-zinc-200"
             }`}
           >
             {label}
@@ -231,7 +231,7 @@ function TaskCard({
       </View>
 
       {/* Actions */}
-      <View className="flex-row justify-end gap-2 mt-3 pt-3 border-t border-zinc-800">
+      <View className="flex-row justify-end gap-2 mt-3 pt-3 border-t border-zinc-200 dark:border-white/10">
         {tab === "open" && (
           <>
             <ActionButton
@@ -331,10 +331,10 @@ function EmptyState({ tab }: { tab: Tab }) {
   return (
     <View className="mt-20 items-center">
       <Ionicons name={config.icon} size={48} color="#52525B" />
-      <Text className="text-base font-semibold text-zinc-300 mt-3">
+      <Text className="text-base font-semibold text-zinc-600 dark:text-zinc-300 mt-3">
         {config.title}
       </Text>
-      <Text className="text-sm text-zinc-500 mt-1 text-center px-8">
+      <Text className="text-sm text-zinc-500 dark:text-zinc-400 mt-1 text-center px-8">
         {config.desc}
       </Text>
     </View>

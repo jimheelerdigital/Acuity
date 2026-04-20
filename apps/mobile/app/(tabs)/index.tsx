@@ -65,14 +65,14 @@ export default function DashboardTab() {
   }).length;
 
   return (
-    <SafeAreaView className="flex-1 bg-zinc-950" edges={["top"]}>
+    <SafeAreaView className="flex-1 bg-white dark:bg-[#1E1E2E] dark:bg-[#0B0B12]" edges={["top"]}>
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
         {/* Greeting */}
         <View className="mb-6">
-          <Text className="text-2xl font-bold text-zinc-50">
+          <Text className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
             {greeting}, {firstName}.
           </Text>
-          <Text className="text-sm text-zinc-400 mt-1">
+          <Text className="text-sm text-zinc-400 dark:text-zinc-500 mt-1">
             {weekCount === 0
               ? "No sessions this week yet."
               : `${weekCount} session${weekCount === 1 ? "" : "s"} this week.`}
@@ -107,7 +107,7 @@ export default function DashboardTab() {
         </Pressable>
 
         {/* Recent sessions */}
-        <Text className="text-xs font-semibold uppercase tracking-widest text-zinc-500 mb-3">
+        <Text className="text-xs font-semibold uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mb-3">
           Recent sessions
         </Text>
 
@@ -116,10 +116,10 @@ export default function DashboardTab() {
             <ActivityIndicator color="#7C3AED" />
           </View>
         ) : entries && entries.length === 0 ? (
-          <View className="rounded-2xl border border-dashed border-zinc-800 p-6 items-center">
+          <View className="rounded-2xl border border-dashed border-zinc-200 dark:border-white/10 p-6 items-center">
             <Text className="text-3xl mb-2">🎙️</Text>
-            <Text className="text-sm text-zinc-400">No entries yet.</Text>
-            <Text className="text-xs text-zinc-600 mt-1">
+            <Text className="text-sm text-zinc-400 dark:text-zinc-500">No entries yet.</Text>
+            <Text className="text-xs text-zinc-600 dark:text-zinc-300 mt-1">
               Tap the record button to start.
             </Text>
           </View>
@@ -187,15 +187,15 @@ function EntryRow({
   return (
     <Pressable
       onPress={onPress}
-      className="rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3"
+      className="rounded-2xl border border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-[#13131F] dark:bg-[#1E1E2E] px-4 py-3"
       style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
     >
       <View className="flex-row items-center gap-3">
         <View className="flex-1">
           <View className="flex-row items-center gap-2">
-            <Text className="text-xs text-zinc-500">{dateLabel}</Text>
+            <Text className="text-xs text-zinc-500 dark:text-zinc-400">{dateLabel}</Text>
             {entry.mood && (
-              <Text className="text-xs text-zinc-400">
+              <Text className="text-xs text-zinc-400 dark:text-zinc-500">
                 · {MOOD_EMOJI[entry.mood] ?? ""} {MOOD_LABELS[entry.mood] ?? ""}
               </Text>
             )}
@@ -208,7 +208,7 @@ function EntryRow({
             )}
           </View>
           <Text
-            className="text-sm text-zinc-200 mt-1"
+            className="text-sm text-zinc-700 dark:text-zinc-200 mt-1"
             numberOfLines={2}
           >
             {entry.summary ?? entry.transcript ?? "(no summary)"}

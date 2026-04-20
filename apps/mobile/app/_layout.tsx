@@ -6,6 +6,7 @@ import { useEffect } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { AuthProvider, useAuth } from "@/contexts/auth-context";
+import { ThemeProvider, useTheme } from "@/contexts/theme-context";
 
 function AuthGate() {
   const { user, loading } = useAuth();
@@ -30,42 +31,59 @@ function AuthGate() {
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
-      <AuthProvider>
-        <StatusBar style="light" />
-        <AuthGate />
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="(auth)" />
-          <Stack.Screen
-            name="entry/[id]"
-            options={{
-              headerShown: true,
-              headerStyle: { backgroundColor: "#09090B" },
-              headerTintColor: "#FAFAFA",
-              headerTitleStyle: { fontWeight: "600" },
-              title: "Entry",
-            }}
-          />
-          <Stack.Screen
-            name="record"
-            options={{
-              headerShown: true,
-              headerStyle: { backgroundColor: "#09090B" },
-              headerTintColor: "#FAFAFA",
-              headerTitleStyle: { fontWeight: "600" },
-              title: "Brain dump",
-              presentation: "modal",
-            }}
-          />
-          <Stack.Screen
-            name="paywall"
-            options={{
-              headerShown: false,
-              presentation: "modal",
-            }}
-          />
-        </Stack>
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <ThemedApp />
+        </AuthProvider>
+      </ThemeProvider>
     </SafeAreaProvider>
+  );
+}
+
+function ThemedApp() {
+  const { resolved } = useTheme();
+  const isDark = resolved === "dark";
+  // Stack-screen header colors are one of the few places NativeWind
+  // className won't help — native header is styled by JS objects.
+  // Flip based on resolved theme so the chrome matches content.
+  const headerBg = isDark ? "#0B0B12" : "#FAFAF7";
+  const headerFg = isDark ? "#FAFAFA" : "#18181B";
+  return (
+    <>
+      <StatusBar style={isDark ? "light" : "dark"} />
+      <AuthGate />
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="(auth)" />
+        <Stack.Screen
+          name="entry/[id]"
+          options={{
+            headerShown: true,
+            headerStyle: { backgroundColor: headerBg },
+            headerTintColor: headerFg,
+            headerTitleStyle: { fontWeight: "600" },
+            title: "Entry",
+          }}
+        />
+        <Stack.Screen
+          name="record"
+          options={{
+            headerShown: true,
+            headerStyle: { backgroundColor: headerBg },
+            headerTintColor: headerFg,
+            headerTitleStyle: { fontWeight: "600" },
+            title: "Brain dump",
+            presentation: "modal",
+          }}
+        />
+        <Stack.Screen
+          name="paywall"
+          options={{
+            headerShown: false,
+            presentation: "modal",
+          }}
+        />
+      </Stack>
+    </>
   );
 }

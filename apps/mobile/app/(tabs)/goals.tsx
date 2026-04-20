@@ -80,24 +80,24 @@ export default function GoalsTab() {
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 bg-zinc-950 items-center justify-center" edges={["top"]}>
+      <SafeAreaView className="flex-1 bg-white dark:bg-[#1E1E2E] dark:bg-[#0B0B12] items-center justify-center" edges={["top"]}>
         <ActivityIndicator color="#7C3AED" />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-zinc-950" edges={["top"]}>
+    <SafeAreaView className="flex-1 bg-white dark:bg-[#1E1E2E] dark:bg-[#0B0B12]" edges={["top"]}>
       <View className="px-5 pt-4 pb-2">
         <View className="flex-row items-baseline gap-2">
-          <Text className="text-2xl font-bold text-zinc-50">Goals</Text>
+          <Text className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">Goals</Text>
           {goals.filter((g) => g.status === "ACTIVE").length > 0 && (
-            <Text className="text-sm text-zinc-500">
+            <Text className="text-sm text-zinc-500 dark:text-zinc-400">
               {goals.filter((g) => g.status === "ACTIVE").length} active
             </Text>
           )}
         </View>
-        <Text className="text-sm text-zinc-400 mt-1">
+        <Text className="text-sm text-zinc-400 dark:text-zinc-500 mt-1">
           What you&apos;re working toward
         </Text>
       </View>
@@ -105,10 +105,10 @@ export default function GoalsTab() {
       {goals.length === 0 ? (
         <View className="flex-1 items-center justify-center gap-3">
           <Ionicons name="trophy-outline" size={48} color="#52525B" />
-          <Text className="text-base font-semibold text-zinc-300">
+          <Text className="text-base font-semibold text-zinc-600 dark:text-zinc-300">
             No goals yet
           </Text>
-          <Text className="text-sm text-zinc-500 text-center px-10">
+          <Text className="text-sm text-zinc-500 dark:text-zinc-400 text-center px-10">
             Mention a goal in your brain dump and we&apos;ll track it here.
           </Text>
         </View>
@@ -136,7 +136,7 @@ export default function GoalsTab() {
                   className="h-2.5 w-2.5 rounded-full"
                   style={{ backgroundColor: area.color }}
                 />
-                <Text className="text-xs font-semibold uppercase tracking-widest text-zinc-500">
+                <Text className="text-xs font-semibold uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
                   {area.label}
                 </Text>
               </View>
@@ -154,7 +154,7 @@ function GoalCard({ goal }: { goal: Goal }) {
   const status = STATUS_STYLES[goal.status] ?? STATUS_STYLES.ACTIVE;
 
   return (
-    <View className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4 mb-2.5">
+    <View className="rounded-2xl border border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-[#13131F] dark:bg-[#1E1E2E] p-4 mb-2.5">
       {/* Status + target date */}
       <View className="flex-row items-center gap-2 mb-1.5">
         <View
@@ -174,7 +174,7 @@ function GoalCard({ goal }: { goal: Goal }) {
           </Text>
         </View>
         {goal.targetDate && (
-          <Text className="text-xs text-zinc-500">
+          <Text className="text-xs text-zinc-500 dark:text-zinc-400">
             Target{" "}
             {new Date(goal.targetDate).toLocaleDateString("en-US", {
               month: "short",
@@ -188,15 +188,15 @@ function GoalCard({ goal }: { goal: Goal }) {
       <Text
         className={`text-sm leading-snug ${
           goal.status === "COMPLETED" || goal.status === "ABANDONED"
-            ? "text-zinc-500 line-through"
-            : "text-zinc-200"
+            ? "text-zinc-500 dark:text-zinc-400 line-through"
+            : "text-zinc-700 dark:text-zinc-200"
         }`}
       >
         {goal.title}
       </Text>
 
       {goal.description && (
-        <Text className="text-xs text-zinc-500 mt-1" numberOfLines={2}>
+        <Text className="text-xs text-zinc-500 dark:text-zinc-400 mt-1" numberOfLines={2}>
           {goal.description}
         </Text>
       )}
@@ -209,7 +209,7 @@ function GoalCard({ goal }: { goal: Goal }) {
             style={{ width: `${goal.progress}%` }}
           />
         </View>
-        <Text className="text-xs font-medium text-zinc-500 w-8 text-right">
+        <Text className="text-xs font-medium text-zinc-500 dark:text-zinc-400 w-8 text-right">
           {goal.progress}%
         </Text>
       </View>
