@@ -287,6 +287,58 @@ export const processEntryFn = inngest.createFunction(
       }
     }
 
+    // Step 8: streak update. Non-fatal — a streak failure shouldn't
+    // downgrade the Entry. Worst case the user's streak sticks for a
+    // day and recovers on the next successful entry.
+    await step.run("update-streak", async () => {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          timezone: true,
+          lastSessionDate: true,
+          currentStreak: true,
+          longestStreak: true,
+          lastStreakMilestone: true,
+        },
+      });
+      if (!user) return;
+
+      const { computeStreakUpdate } = await import("@/lib/streak");
+      const now = new Date();
+      const update = computeStreakUpdate({
+        now,
+        timezone: user.timezone || "America/Chicago",
+        lastSessionDate: user.lastSessionDate,
+        currentStreak: user.currentStreak,
+        longestStreak: user.longestStreak,
+        lastStreakMilestone: user.lastStreakMilestone,
+      });
+
+      await prisma.user.update({
+        where: { id: userId },
+        data: {
+          lastSessionDate: now,
+          currentStreak: update.currentStreak,
+          longestStreak: update.longestStreak,
+          lastStreakMilestone: update.milestoneHit
+            ? update.milestoneHit
+            : undefined,
+        },
+      });
+
+      if (update.milestoneHit) {
+        const { track } = await import("@/lib/posthog");
+        await track(userId, "streak_milestone_hit", {
+          milestone: update.milestoneHit,
+          currentStreak: update.currentStreak,
+        });
+      }
+    }).catch((err) => {
+      logger.error("[process-entry] update-streak failed (non-fatal)", {
+        err,
+      });
+    });
+
     return {
       entryId,
       memoryOk,

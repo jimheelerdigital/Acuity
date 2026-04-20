@@ -72,7 +72,12 @@ export type AnalyticsEvent =
   | "onboarding_started"
   | "onboarding_step_completed"
   | "onboarding_completed"
-  | "onboarding_skipped";
+  | "onboarding_skipped"
+  // Streak milestone celebrations — fired exactly once per user per
+  // milestone (7/30/100) when currentStreak first crosses the mark.
+  // Monotonic via User.lastStreakMilestone; resetting to 0 and
+  // re-climbing doesn't re-fire the same milestone.
+  | "streak_milestone_hit";
 
 /**
  * Fire an analytics event. Safe on missing env config (no-op). Safe

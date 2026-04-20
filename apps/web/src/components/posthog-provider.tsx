@@ -2,7 +2,9 @@
 
 import posthog from "posthog-js";
 import { PostHogProvider as PostHogReactProvider } from "posthog-js/react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+
+import { readConsent } from "@/components/cookie-consent";
 
 /**
  * Client-side PostHog initialization. Mounted once in the root
@@ -16,15 +18,36 @@ import { useEffect } from "react";
  *   NEXT_PUBLIC_POSTHOG_HOST — optional proxy host. Defaults to
  *                              https://us.i.posthog.com.
  *
+ * CONSENT: PostHog counts as Analytics under our cookie banner. It
+ * will not initialize until the user has accepted analytics via
+ * CookieConsentBanner. Until then, PostHogReactProvider still mounts
+ * but posthog.capture() calls are no-ops because .init() never ran.
+ *
  * No-op when NEXT_PUBLIC_POSTHOG_KEY is unset — safe to ship without
  * PostHog provisioned (dev, staging, and the first production deploy
  * before the account is set up).
  */
 export function PostHogProvider({ children }: { children: React.ReactNode }) {
+  const [analyticsConsent, setAnalyticsConsent] = useState(false);
+
+  // Read consent on mount + react to user changes via the custom event
+  // dispatched from the banner. Keeps PostHog init and any subsequent
+  // revocation in sync without a page reload.
   useEffect(() => {
+    const sync = () => {
+      setAnalyticsConsent(readConsent()?.analytics === true);
+    };
+    sync();
+    window.addEventListener("acuity:consent-changed", sync);
+    return () => window.removeEventListener("acuity:consent-changed", sync);
+  }, []);
+
+  useEffect(() => {
+    if (!analyticsConsent) return;
     const key = process.env.NEXT_PUBLIC_POSTHOG_KEY;
     if (!key) return;
-    // Guard double-init (React StrictMode fires effects twice in dev).
+    // Guard double-init (React StrictMode fires effects twice in dev,
+    // plus this effect can re-run when consent toggles).
     if ((posthog as unknown as { __loaded?: boolean }).__loaded) return;
     posthog.init(key, {
       api_host:
@@ -47,10 +70,7 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
       capture_pageview: true,
     });
     (posthog as unknown as { __loaded?: boolean }).__loaded = true;
-  }, []);
+  }, [analyticsConsent]);
 
-  // If NEXT_PUBLIC_POSTHOG_KEY is unset, posthog.init never ran and
-  // PostHogProvider is a passive wrapper (no capture). Safe to always
-  // mount.
   return <PostHogReactProvider client={posthog}>{children}</PostHogReactProvider>;
 }

@@ -74,6 +74,25 @@ model User {
   // user explicitly picks via the toggle; we persist to the DB so the
   // preference survives across devices without relying on localStorage.
   theme                  String?
+  // Streak tracking — incremented by the Inngest process-entry pipeline
+  // after a successful recording persists. Day boundaries evaluated in
+  // the user's `timezone` via date-fns-tz (same-day = no change,
+  // next-calendar-day = +1, gap of 2+ days = reset to 1). Full rules in
+  // apps/web/src/lib/streak.ts.
+  currentStreak          Int          @default(0)
+  longestStreak          Int          @default(0)
+  lastSessionDate        DateTime?
+  // Highest milestone we've celebrated for this user (7, 30, 100). NULL
+  // means no milestone fired yet. Set once and monotonically increases —
+  // a user who drops from 100 back to 0 and climbs again gets a new
+  // milestone toast only if they exceed lastMilestone.
+  lastStreakMilestone    Int?
+  // Cookie/analytics consent record — stored as JSON so we can evolve
+  // the categories without a migration. Shape: { version:1, acceptedAt,
+  // analytics:boolean, marketing:boolean }. Null = user has never seen
+  // the banner or logged-in-from-another-device. Mirror of the
+  // localStorage record on the client.
+  cookieConsent          Json?
   createdAt              DateTime     @default(now())
   accounts               Account[]
   sessions               Session[]
@@ -85,6 +104,26 @@ model User {
   memory                 UserMemory?
   lifeAudits             LifeAudit[]
   onboarding             UserOnboarding?
+}
+
+// Tombstone for deleted accounts — closes the trial-reset exploit
+// documented as pentest T-07 in docs/PENTEST_RESULTS.md. On account
+// deletion we write this row BEFORE cascading the User delete so a
+// subsequent signup with the same email can be looked up and the
+// trial policy adjusted.
+//
+// Retention policy (see apps/web/src/lib/bootstrap-user.ts::issueTrial):
+//   - Seen within 90 days → 3-day re-trial
+//   - Seen >90 days ago   → fresh 14-day trial
+//   - Never seen          → fresh 14-day trial (first-timer)
+//
+// No FK to User (the point is that the User is gone). Email is the
+// only stable identifier.
+model DeletedUser {
+  email                String   @id
+  deletedAt            DateTime @default(now())
+  originalCreatedAt    DateTime
+  originalTrialEndedAt DateTime?
 }
 
 // 8-step post-signup onboarding flow. One row per user; survives

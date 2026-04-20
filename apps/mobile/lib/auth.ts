@@ -22,6 +22,9 @@ export type User = {
   // freshly-created users before the createUser event writes it,
   // or for users who existed before the 2026-04-20 backfill.
   trialEndsAt?: string | null;
+  currentStreak?: number;
+  longestStreak?: number;
+  lastStreakMilestone?: number | null;
 };
 
 // ─── Secure storage ────────────────────────────────────────────────

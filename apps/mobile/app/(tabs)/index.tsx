@@ -67,16 +67,34 @@ export default function DashboardTab() {
   return (
     <SafeAreaView className="flex-1 bg-white dark:bg-[#1E1E2E] dark:bg-[#0B0B12]" edges={["top"]}>
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
-        {/* Greeting */}
-        <View className="mb-6">
-          <Text className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
-            {greeting}, {firstName}.
-          </Text>
-          <Text className="text-sm text-zinc-400 dark:text-zinc-500 mt-1">
-            {weekCount === 0
-              ? "No sessions this week yet."
-              : `${weekCount} session${weekCount === 1 ? "" : "s"} this week.`}
-          </Text>
+        {/* Greeting row — profile icon top-right replaces the Profile
+            tab slot (which moved out of the bar when Entries was added). */}
+        <View className="mb-6 flex-row items-start justify-between">
+          <View className="flex-1 pr-3">
+            <Text className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+              {greeting}, {firstName}.
+            </Text>
+            <Text className="text-sm text-zinc-400 dark:text-zinc-500 mt-1">
+              {weekCount === 0
+                ? "No sessions this week yet."
+                : `${weekCount} session${weekCount === 1 ? "" : "s"} this week.`}
+            </Text>
+            {(user?.currentStreak ?? 0) >= 2 && (
+              <Text className="mt-2 text-sm font-semibold text-orange-500 dark:text-orange-400">
+                🔥 {user?.currentStreak}-day streak
+              </Text>
+            )}
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Open settings"
+            onPress={() => router.push("/(tabs)/profile")}
+            hitSlop={12}
+            className="h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-white dark:border-white/10 dark:bg-[#1E1E2E]"
+            style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+          >
+            <Ionicons name="settings-outline" size={18} color="#71717A" />
+          </Pressable>
         </View>
 
         <TrialBanner />
@@ -227,11 +245,22 @@ function greetingFor(now: Date): string {
   return "Good evening";
 }
 
+/**
+ * Previously the "Today" label would linger on yesterday's entries
+ * because the check used elapsed ms rather than calendar-day
+ * boundaries (if you recorded at 11pm and opened the app at 10am the
+ * next morning, 11 hours elapsed = still < 24hr = still "Today"). Now
+ * keyed on startOfDay comparison so the label flips at midnight.
+ */
 function formatShortDate(date: Date): string {
   const now = new Date();
-  const dayMs = 24 * 60 * 60 * 1000;
-  const diff = now.getTime() - date.getTime();
-  if (diff < dayMs) return "Today";
-  if (diff < 2 * dayMs) return "Yesterday";
+  const startOfDay = (d: Date) =>
+    new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const diffDays = Math.round(
+    (startOfDay(now) - startOfDay(date)) / (24 * 60 * 60 * 1000)
+  );
+  if (diffDays === 0) return "Today";
+  if (diffDays === 1) return "Yesterday";
+  if (diffDays > 1 && diffDays < 7) return `${diffDays} days ago`;
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 
 import { getAuthOptions } from "@/lib/auth";
 import { TrackCompleteRegistration, TrackPurchase } from "@/components/meta-pixel-events";
+import { WelcomeBackBanner } from "@/components/welcome-back-banner";
 import { RecordButton } from "./record-button";
 import { EntryCard } from "./entry-card";
 
@@ -36,8 +37,18 @@ export default async function DashboardPage() {
   let tasks: Task[] = [];
   let goals: Goal[] = [];
 
+  // Re-read user for streak + trial shape. Cheap single-row read.
+  const { prisma } = await import("@/lib/prisma");
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      createdAt: true,
+      trialEndsAt: true,
+      currentStreak: true,
+    },
+  });
+
   try {
-    const { prisma } = await import("@/lib/prisma");
     [entries, tasks, goals] = await Promise.all([
       fetchEntries(userId),
       prisma.task.findMany({
@@ -57,11 +68,37 @@ export default async function DashboardPage() {
 
   const greeting = getGreeting(session.user.name);
 
+  // Reduced-trial detection for the welcome-back banner (pentest T-07 fix):
+  // if trialEndsAt is within 7 days of createdAt, the user got the
+  // 3-day re-signup trial. 7 is a generous cutoff vs the 3-day actual —
+  // room for clock skew without leaking the 14-day standard trial into
+  // the banner.
+  const trialWindowDays =
+    user?.trialEndsAt && user?.createdAt
+      ? Math.round(
+          (user.trialEndsAt.getTime() - user.createdAt.getTime()) /
+            (24 * 60 * 60 * 1000)
+        )
+      : 14;
+  const reducedTrial = trialWindowDays <= 7;
+  const trialDaysLeft =
+    user?.trialEndsAt
+      ? Math.max(
+          0,
+          Math.ceil(
+            (user.trialEndsAt.getTime() - Date.now()) / (24 * 60 * 60 * 1000)
+          )
+        )
+      : 0;
+  const currentStreak = user?.currentStreak ?? 0;
+
   return (
     <div className="min-h-screen">
       <TrackCompleteRegistration />
       <TrackPurchase />
       <main className="mx-auto max-w-5xl px-6 py-10 animate-fade-in">
+        <WelcomeBackBanner reduced={reducedTrial} daysLeft={trialDaysLeft} />
+
         {/* Greeting */}
         <div className="mb-8 text-center sm:text-left">
           <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">{greeting}</h1>
@@ -70,6 +107,11 @@ export default async function DashboardPage() {
               ? "Record your first daily debrief to get started."
               : `${entries.length} session${entries.length === 1 ? "" : "s"} this week.`}
           </p>
+          {currentStreak >= 2 && (
+            <p className="mt-2 text-sm font-medium text-orange-600 dark:text-orange-400">
+              🔥 {currentStreak}-day streak
+            </p>
+          )}
         </div>
 
         {/* Record button */}

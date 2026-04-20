@@ -5,19 +5,17 @@ import { Pressable, View } from "react-native";
 import { useTheme } from "@/contexts/theme-context";
 
 /**
- * Tab bar with a raised center Record button. The center position is
- * a "virtual" tab — tapping it navigates to the /record modal instead
- * of switching into a tab. Achieved by overriding `tabBarButton` on a
- * placeholder screen (`record-placeholder.tsx`) that never actually
- * renders because we intercept the press.
+ * 5-slot tab bar with a raised center Record button:
  *
- * Order (5 slots):
- *   Home | Tasks | [Record] | Insights | Profile
+ *   Goals | Tasks | [🎙️ Home] | Insights | Entries
  *
- * Goals moved out of the bar (still a real screen, just `href:null`
- * so it doesn't occupy a slot). Kept in the tree because the goals
- * surface is still useful; add an entry point from Insights later if
- * we want it discoverable again.
+ * Center position is the big purple mic button. Tapping it navigates
+ * to the Home route (where the full Record-your-brain-dump card
+ * lives) — NOT the /record modal directly. Recording is initiated
+ * from Home, so the mic tab is just a shortcut there.
+ *
+ * Profile moved out of the tab bar. Accessed via a settings icon in
+ * the Home header (app/(tabs)/index.tsx).
  */
 export default function TabsLayout() {
   const { resolved } = useTheme();
@@ -47,12 +45,12 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen
-        name="index"
+        name="goals"
         options={{
-          title: "Home",
+          title: "Goals",
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
-              name={focused ? "home" : "home-outline"}
+              name={focused ? "trophy" : "trophy-outline"}
               size={22}
               color={color}
             />
@@ -76,12 +74,7 @@ export default function TabsLayout() {
         name="record-placeholder"
         options={{
           title: "",
-          tabBarButton: (props) => (
-            <RecordCenterButton
-              isDark={isDark}
-              accessibilityState={props.accessibilityState as { selected?: boolean } | undefined}
-            />
-          ),
+          tabBarButton: () => <RecordCenterButton isDark={isDark} />,
         }}
       />
       <Tabs.Screen
@@ -98,53 +91,52 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="profile"
+        name="entries"
         options={{
-          title: "Profile",
+          title: "Entries",
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
-              name={focused ? "person" : "person-outline"}
+              name={focused ? "journal" : "journal-outline"}
               size={22}
               color={color}
             />
           ),
         }}
       />
-      {/* Hidden from the bar — real screen, still accessible via router.push("/(tabs)/goals") */}
-      <Tabs.Screen name="goals" options={{ href: null }} />
+      {/* index = Home route. Hidden from the bar because the center
+          button navigates here; exposing it twice would be confusing. */}
+      <Tabs.Screen name="index" options={{ href: null }} />
+      {/* Profile moved to the Home header. Route stays live for links. */}
+      <Tabs.Screen name="profile" options={{ href: null }} />
     </Tabs>
   );
 }
 
 /**
- * Raised purple circle at the center of the tab bar. Slightly elevated
- * above the bar surface (marginTop negative) with shadow for lift.
- * Tapping opens the /record modal — skips the "record-placeholder"
- * tab screen entirely.
+ * Raised purple circle. 64px, -25px margin-top so it floats above the
+ * bar. 4px ring matching bar bg gives the "scooped out" visual
+ * without an actual clip-path on the tab bar (RN doesn't cleanly
+ * support that). Shadow for elevation.
+ *
+ * onPress routes to Home. Home has the Record-your-brain-dump card
+ * as its primary action; the user's next tap opens the /record modal.
  */
-function RecordCenterButton({
-  isDark,
-  accessibilityState,
-}: {
-  isDark: boolean;
-  accessibilityState?: { selected?: boolean };
-}) {
+function RecordCenterButton({ isDark }: { isDark: boolean }) {
   const router = useRouter();
-  const size = 62;
+  const size = 64;
   return (
     <View
       style={{
         flex: 1,
         alignItems: "center",
         justifyContent: "center",
-        marginTop: -22,
+        marginTop: -25,
       }}
     >
       <Pressable
         accessibilityRole="button"
-        accessibilityState={accessibilityState}
-        accessibilityLabel="Record a new brain dump"
-        onPress={() => router.push("/record")}
+        accessibilityLabel="Open Home to record a brain dump"
+        onPress={() => router.navigate("/(tabs)/")}
         style={({ pressed }) => ({
           width: size,
           height: size,
@@ -155,16 +147,14 @@ function RecordCenterButton({
           transform: [{ scale: pressed ? 0.94 : 1 }],
           shadowColor: "#7C3AED",
           shadowOffset: { width: 0, height: 6 },
-          shadowOpacity: isDark ? 0.6 : 0.4,
-          shadowRadius: 12,
-          elevation: 8,
-          // Thin ring matching tab bar bg so the button reads as
-          // "floating above" instead of "embedded in" the bar.
+          shadowOpacity: isDark ? 0.6 : 0.45,
+          shadowRadius: 14,
+          elevation: 10,
           borderWidth: 4,
           borderColor: isDark ? "#0B0B12" : "#FFFFFF",
         })}
       >
-        <Ionicons name="mic" size={26} color="#FFFFFF" />
+        <Ionicons name="mic" size={28} color="#FFFFFF" />
       </Pressable>
     </View>
   );

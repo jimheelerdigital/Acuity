@@ -7,24 +7,26 @@ import { DEFAULT_LIFE_AREAS } from "@acuity/shared";
  * clock, seeds the Life Matrix, creates the empty UserMemory, and
  * fires the trial_started PostHog event.
  *
- * Called from two places:
+ * Called from every signup path — web Google OAuth (via NextAuth
+ * events.createUser), web email/password, web magic link, mobile
+ * Google OAuth, mobile email/password, mobile magic link. Single
+ * chokepoint for trial issuance means the retention policy below
+ * applies uniformly.
  *
- *  1. `events.createUser` in apps/web/src/lib/auth.ts — fires when
- *     NextAuth's PrismaAdapter creates a User through the web's
- *     magic-link or Google-OAuth-via-callback flow.
+ * Trial-reset protection (pentest T-07 / docs/SECURITY_AUDIT.md F-24):
+ * Before setting trialEndsAt we consult the DeletedUser table. Users
+ * who deleted their account recently get a shorter "welcome back"
+ * trial instead of another full 14 days, to prevent farming fresh
+ * trials via delete+recreate cycles.
  *
- *  2. `POST /api/auth/mobile-callback` — fires when the mobile app's
- *     native Google OAuth flow lands an unknown Google identity. The
- *     mobile path bypasses NextAuth's adapter (we create the User row
- *     directly so we can issue a native JWT in the same roundtrip)
- *     which means the `events.createUser` hook never fires for mobile
- *     signups. Calling this helper restores parity.
+ * Retention policy:
+ *   - Never seen           → 14-day trial (first-timer; most users)
+ *   - Deleted > 90d ago    → 14-day trial (welcome back, genuine return)
+ *   - Deleted ≤ 90d ago    → 3-day trial (clearly hopping)
  *
  * Idempotent on LifeMapArea + UserMemory — both use createMany /
  * create with catch-swallow so a re-run against an existing user is
- * a no-op. `trialEndsAt` is always overwritten from now (only called
- * at first-signup, never re-called, but if we ever do we want the
- * clock to re-seed rather than leak an ancient trial date).
+ * a no-op.
  *
  * IMPLEMENTATION_PLAN_PAYWALL §1.6 + §8.3.
  */
@@ -36,8 +38,8 @@ export async function bootstrapNewUser(params: {
   const { prisma } = await import("@/lib/prisma");
   const { track } = await import("@/lib/posthog");
 
-  const TRIAL_MS = 14 * 24 * 60 * 60 * 1000;
-  const trialEndsAt = new Date(Date.now() + TRIAL_MS);
+  const trialDays = await trialDaysForEmail(email);
+  const trialEndsAt = new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000);
 
   await prisma.user.update({
     where: { id: userId },
@@ -49,6 +51,8 @@ export async function bootstrapNewUser(params: {
 
   await track(userId, "trial_started", {
     trialEndsAt: trialEndsAt.toISOString(),
+    trialDays,
+    reducedTrial: trialDays < 14,
     email,
   });
 
@@ -76,4 +80,30 @@ export async function bootstrapNewUser(params: {
     .catch(() => {
       // Ignore if already exists (UserMemory has a unique userId).
     });
+}
+
+/**
+ * Determine how many trial days to issue based on DeletedUser history.
+ * Exported separately so the (rare) admin-side flows + any future
+ * signup paths that don't go through bootstrapNewUser can share it.
+ */
+export async function trialDaysForEmail(
+  email: string | null
+): Promise<number> {
+  const STANDARD_TRIAL_DAYS = 14;
+  const REDUCED_TRIAL_DAYS = 3;
+  const LOOKBACK_DAYS = 90;
+
+  if (!email) return STANDARD_TRIAL_DAYS;
+
+  const { prisma } = await import("@/lib/prisma");
+  const normalized = email.toLowerCase().trim();
+  const deleted = await prisma.deletedUser.findUnique({
+    where: { email: normalized },
+  });
+  if (!deleted) return STANDARD_TRIAL_DAYS;
+
+  const daysSince =
+    (Date.now() - deleted.deletedAt.getTime()) / (24 * 60 * 60 * 1000);
+  return daysSince < LOOKBACK_DAYS ? REDUCED_TRIAL_DAYS : STANDARD_TRIAL_DAYS;
 }

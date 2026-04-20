@@ -74,7 +74,13 @@ export async function POST(req: NextRequest) {
   // session.user.id is still a real row (defensive against stale JWTs).
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, email: true, stripeCustomerId: true },
+    select: {
+      id: true,
+      email: true,
+      stripeCustomerId: true,
+      createdAt: true,
+      trialEndsAt: true,
+    },
   });
   if (!user) {
     return NextResponse.json({ error: "Account not found" }, { status: 404 });
@@ -107,9 +113,30 @@ export async function POST(req: NextRequest) {
   // VerificationToken has no FK to User — it's keyed on identifier (email)
   // and is NextAuth-managed. Hand-clean those.
   // The User row delete cascades everything else via the schema's
-  // onDelete: Cascade FK constraints (added in this PR).
+  // onDelete: Cascade FK constraints.
+  //
+  // DeletedUser tombstone (pentest T-07 fix): write the tombstone
+  // BEFORE the cascade inside the same transaction so a subsequent
+  // re-signup with the same email sees it and bootstrapNewUser picks
+  // the reduced-trial path via trialDaysForEmail. Upsert rather than
+  // create because the same email may have been deleted + restored +
+  // re-deleted — we just want the latest record.
   try {
+    const normalizedEmail = user.email.toLowerCase().trim();
     await prisma.$transaction(async (tx) => {
+      await tx.deletedUser.upsert({
+        where: { email: normalizedEmail },
+        create: {
+          email: normalizedEmail,
+          originalCreatedAt: user.createdAt,
+          originalTrialEndedAt: user.trialEndsAt ?? null,
+        },
+        update: {
+          deletedAt: new Date(),
+          originalCreatedAt: user.createdAt,
+          originalTrialEndedAt: user.trialEndsAt ?? null,
+        },
+      });
       await tx.verificationToken.deleteMany({
         where: { identifier: user.email },
       });

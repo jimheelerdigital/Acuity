@@ -39,6 +39,9 @@ export async function GET(req: NextRequest) {
       subscriptionStatus: true,
       trialEndsAt: true,
       timezone: true,
+      currentStreak: true,
+      longestStreak: true,
+      lastStreakMilestone: true,
     },
   });
 
