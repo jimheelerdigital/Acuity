@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 
 import { getAuthOptions } from "@/lib/auth";
+import { AccountDeletedBanner } from "@/components/account-deleted-banner";
 import { LandingPage } from "@/components/landing";
 
 export const dynamic = "force-dynamic";
@@ -88,6 +89,7 @@ export default async function HomePage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
+      <AccountDeletedBanner />
       <LandingPage />
     </>
   );

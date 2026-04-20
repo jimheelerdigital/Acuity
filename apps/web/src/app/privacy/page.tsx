@@ -242,9 +242,14 @@ export default function PrivacyPage() {
           <Section id="retention" title="4. How long we keep your data">
             <p>
               While your account is active, we keep your data for as long
-              as you use the service. When you delete your account
-              (settings &rarr; delete account &mdash; coming soon), we
-              hard-delete:
+              as you use the service. When you delete your account from{" "}
+              <a
+                href="/account"
+                className="underline hover:text-white"
+              >
+                Account &rarr; Delete account
+              </a>
+              , we immediately and permanently hard-delete:
             </p>
             <ul className="mt-3 list-disc space-y-2 pl-6">
               <li>
@@ -263,13 +268,19 @@ export default function PrivacyPage() {
               </li>
             </ul>
             <p className="mt-4">
-              Database backups are retained for up to 30 days for disaster
-              recovery, after which the deleted data is gone from those
-              backups too. Stripe customer records are retained as long
-              as legally required for tax and accounting purposes
-              (typically 7 years), at which point the email is redacted
-              from our records and only the financial transaction history
-              remains.
+              Deletion from our application database is immediate. We do
+              not maintain our own backup snapshots that would preserve
+              deleted data. Our infrastructure provider (Supabase)
+              maintains automated database backups for service reliability;
+              those backups age out per their provider-managed schedule
+              and are not under our direct control.
+            </p>
+            <p className="mt-4">
+              Stripe customer records, when applicable, are deleted via
+              Stripe&rsquo;s API at the same time as the account
+              deletion. Stripe may retain non-personal financial
+              transaction history independently as legally required for
+              tax and accounting purposes (typically 7 years).
             </p>
           </Section>
 

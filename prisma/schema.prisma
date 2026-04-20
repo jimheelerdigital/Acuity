@@ -74,7 +74,7 @@ model User {
 model Entry {
   id            String   @id @default(cuid())
   userId        String
-  user          User     @relation(fields: [userId], references: [id])
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   // DEPRECATED: use audioPath. Will remove in Inngest PR 4 once the sync
   // path is retired. Sync path writes a signed URL here; async path leaves
   // this null and writes the object path to audioPath instead.
@@ -124,9 +124,9 @@ model Entry {
 model Task {
   id           String    @id @default(cuid())
   userId       String
-  user         User      @relation(fields: [userId], references: [id])
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   entryId      String?
-  entry        Entry?    @relation(fields: [entryId], references: [id])
+  entry        Entry?    @relation(fields: [entryId], references: [id], onDelete: Cascade)
   text         String?
   title        String?
   description  String?
@@ -141,7 +141,7 @@ model Task {
 model Goal {
   id            String    @id @default(cuid())
   userId        String
-  user          User      @relation(fields: [userId], references: [id])
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   title         String
   description   String?
   lifeArea      String    @default("PERSONAL")
@@ -156,7 +156,7 @@ model Goal {
 model WeeklyReport {
   id              String   @id @default(cuid())
   userId          String
-  user            User     @relation(fields: [userId], references: [id])
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   weekStart       DateTime
   weekEnd         DateTime
   weekNumber      Int
@@ -186,7 +186,7 @@ model WeeklyReport {
 model LifeMapArea {
   id              String    @id @default(cuid())
   userId          String
-  user            User      @relation(fields: [userId], references: [id])
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   area            String    @default("")
   name            String?
   color           String?
@@ -211,7 +211,7 @@ model LifeMapArea {
 model UserMemory {
   id        String @id @default(cuid())
   userId    String @unique
-  user      User   @relation(fields: [userId], references: [id])
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Compressed lifetime summary per area (AI-generated, updated incrementally).
   // Renamed 2026-04-19 to align with the canonical 6-area vocabulary

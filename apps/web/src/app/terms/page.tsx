@@ -268,8 +268,11 @@ export default function TermsPage() {
 
           <Section id="termination" title="10. Termination">
             <p>
-              You can terminate your account at any time by deleting it
-              from settings (coming soon) or by emailing{" "}
+              You can terminate your account at any time from{" "}
+              <Link href="/account" className="underline hover:text-white">
+                Account &rarr; Delete account
+              </Link>
+              , or by emailing{" "}
               <a
                 href="mailto:hello@getacuity.io"
                 className="underline hover:text-white"
@@ -281,7 +284,8 @@ export default function TermsPage() {
               <Link href="/privacy" className="underline hover:text-white">
                 Privacy Policy
               </Link>{" "}
-              (immediate, with backups purged within 30 days).
+              (immediate from our application database; infrastructure
+              backups age out per the provider&rsquo;s schedule).
             </p>
             <p className="mt-4">
               We can terminate your account if you materially violate
