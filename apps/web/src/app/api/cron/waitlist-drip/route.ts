@@ -53,7 +53,12 @@ export async function GET(req: NextRequest) {
     if (!nextEmail) continue;
     if (daysSinceSignup < nextEmail.daysAfterSignup) continue;
 
-    const displayName = user.name || "Friend";
+    // Strip CR/LF to defend against header injection via a malicious
+    // waitlist name. HTML body escaping happens inside buildHtml
+    // (drip-emails.ts). Subject line doesn't need HTML escaping —
+    // Resend's SDK treats it as a header value — but must reject
+    // newlines.
+    const displayName = (user.name || "Friend").replace(/[\r\n]/g, " ");
     const subject = nextEmail.subject.replace("{name}", displayName);
 
     try {

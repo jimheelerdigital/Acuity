@@ -1,7 +1,15 @@
 /**
  * Waitlist drip email campaign — emails 2–5
  * Email 1 (confirmation) is sent immediately in the waitlist signup route.
+ *
+ * SECURITY_AUDIT.md §S8: every user-supplied value is routed through
+ * `escapeHtml` before interpolation. Each `email2..5` function accepts
+ * `name: string` and escapes it at the top before any template call
+ * embeds it — if you add new interpolations of user content to these
+ * templates, escape them the same way.
  */
+
+import { escapeHtml } from "@/lib/escape-html";
 
 function layout(content: string): string {
   return `<!DOCTYPE html>
@@ -79,7 +87,8 @@ function bullet(text: string): string {
    Email 2 — Day 2: What Acuity actually does
    ───────────────────────────────────────── */
 
-function email2(name: string): string {
+function email2(rawName: string): string {
+  const name = escapeHtml(rawName);
   return layout(`
           <!-- Headline -->
           <tr>
@@ -190,7 +199,8 @@ function email2(name: string): string {
    Email 3 — Day 5: The weekly report
    ───────────────────────────────────────── */
 
-function email3(name: string): string {
+function email3(rawName: string): string {
+  const name = escapeHtml(rawName);
   return layout(`
           <tr>
             <td style="padding-bottom:24px;">
@@ -285,7 +295,8 @@ function email3(name: string): string {
    Email 4 — Day 10: Urgency + founding member pricing
    ───────────────────────────────────────── */
 
-function email4(name: string): string {
+function email4(rawName: string): string {
+  const name = escapeHtml(rawName);
   return layout(`
           <tr>
             <td style="padding-bottom:24px;">
@@ -370,7 +381,8 @@ function email4(name: string): string {
    Email 5 — Day 14: Doors opening soon
    ───────────────────────────────────────── */
 
-function email5(name: string): string {
+function email5(rawName: string): string {
+  const name = escapeHtml(rawName);
   return layout(`
           <tr>
             <td style="padding-bottom:24px;">

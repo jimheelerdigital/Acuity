@@ -6,6 +6,7 @@ import {
   limiters,
   rateLimitedResponse,
 } from "@/lib/rate-limit";
+import { escapeHtml } from "@/lib/escape-html";
 import { safeLog } from "@/lib/safe-log";
 
 export const dynamic = "force-dynamic";
@@ -70,10 +71,10 @@ export async function POST(req: NextRequest) {
           to: "keenan@heelerdigital.com",
           subject: `New Acuity waitlist signup — ${email}`,
           html: [
-            `<p><strong>Name:</strong> ${name || "Not provided"}</p>`,
-            `<p><strong>Email:</strong> ${email}</p>`,
-            `<p><strong>Source:</strong> ${source || "Direct"}</p>`,
-            `<p><strong>Time:</strong> ${timestamp}</p>`,
+            `<p><strong>Name:</strong> ${escapeHtml(name) || "Not provided"}</p>`,
+            `<p><strong>Email:</strong> ${escapeHtml(email)}</p>`,
+            `<p><strong>Source:</strong> ${escapeHtml(source) || "Direct"}</p>`,
+            `<p><strong>Time:</strong> ${escapeHtml(timestamp)}</p>`,
             `<p><strong>Total waitlist count:</strong> ${totalCount}</p>`,
           ].join("\n"),
         }),
@@ -123,7 +124,8 @@ export async function POST(req: NextRequest) {
 }
 
 function buildWelcomeEmail(name: string | null): string {
-  const greeting = name ? `${name}, you're in.` : "You're in.";
+  const safeName = escapeHtml(name);
+  const greeting = safeName ? `${safeName}, you're in.` : "You're in.";
 
   return `<!DOCTYPE html>
 <html lang="en">
