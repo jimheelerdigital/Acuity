@@ -3,7 +3,6 @@
     "name": "Acuity",
     "slug": "acuity",
     "version": "0.1.0",
-    "sdkVersion": "54.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "acuity",
@@ -13,7 +12,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#09090B"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.heelerdigital.acuity",
@@ -33,6 +34,9 @@
       },
       "package": "com.heelerdigital.acuity",
       "permissions": [
+        "RECORD_AUDIO",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
         "RECORD_AUDIO",
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS"
@@ -56,7 +60,16 @@
         "origin": false
       },
       "apiUrl": "https://www.getacuity.io",
-      "googleIosClientId": "657670168959-l1qn5imd2ad8fdbp96pius9a6cpi5hdl.apps.googleusercontent.com"
+      "googleIosClientId": "657670168959-l1qn5imd2ad8fdbp96pius9a6cpi5hdl.apps.googleusercontent.com",
+      "eas": {
+        "projectId": "dc4dcfc3-54f4-44e8-bc84-dfcedb8ba533"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/dc4dcfc3-54f4-44e8-bc84-dfcedb8ba533"
     }
   }
 }
