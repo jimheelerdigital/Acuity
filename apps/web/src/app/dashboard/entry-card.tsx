@@ -77,7 +77,7 @@ export function EntryCard({ entry, taskCount }: EntryCardProps) {
               {entry.themes.map((t) => (
                 <span
                   key={t}
-                  className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs text-zinc-500 dark:bg-white/10 dark:text-zinc-300"
+                  className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs text-zinc-500 dark:text-zinc-400 dark:bg-white/10 dark:text-zinc-300"
                 >
                   {t}
                 </span>
@@ -138,7 +138,7 @@ function ChevronIcon({ expanded }: { expanded: boolean }) {
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
-      className={`shrink-0 text-zinc-400 transition-transform duration-300 ${expanded ? "rotate-180" : ""}`}
+      className={`shrink-0 text-zinc-400 dark:text-zinc-500 transition-transform duration-300 ${expanded ? "rotate-180" : ""}`}
     >
       <path d="m6 9 6 6 6-6" />
     </svg>

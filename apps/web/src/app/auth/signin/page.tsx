@@ -103,11 +103,11 @@ function SignInForm() {
 
       <p className="mt-6 text-center text-xs text-zinc-400 dark:text-zinc-500">
         By continuing you agree to our{" "}
-        <a href="/terms" className="underline hover:text-zinc-700">
+        <a href="/terms" className="underline hover:text-zinc-700 dark:hover:text-zinc-200">
           Terms
         </a>{" "}
         and{" "}
-        <a href="/privacy" className="underline hover:text-zinc-700">
+        <a href="/privacy" className="underline hover:text-zinc-700 dark:hover:text-zinc-200">
           Privacy Policy
         </a>
         .
