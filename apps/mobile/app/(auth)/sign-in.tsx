@@ -47,10 +47,40 @@ export default function SignInScreen() {
 
     if (!result.ok) {
       if (result.reason === "cancelled") return; // user tapped Cancel, no alert
-      const message =
+      const headline =
         result.reason === "no_token"
-          ? "Google didn't return a session. Try again."
-          : result.detail ?? "Something went wrong.";
+          ? "Google didn't return a session"
+          : result.detail ?? "Something went wrong";
+      // Temporary: dump the full diagnostic snapshot into the alert.
+      // TestFlight doesn't surface console.log anywhere we can read,
+      // so the only way to see what the flow actually produced is to
+      // put it on-screen. Pull this out once auth is stable.
+      const debugLines: string[] = [];
+      if (result.debug) {
+        const d = result.debug;
+        if (d.redirectUri) debugLines.push(`redirectUri: ${d.redirectUri}`);
+        if (d.responseType) debugLines.push(`responseType: ${d.responseType}`);
+        if (d.paramsKeys)
+          debugLines.push(`paramsKeys: [${d.paramsKeys.join(", ")}]`);
+        if (d.hasAuthentication !== undefined)
+          debugLines.push(`hasAuthentication: ${d.hasAuthentication}`);
+        if (d.hasAuthenticationIdToken !== undefined)
+          debugLines.push(
+            `hasAuthentication.idToken: ${d.hasAuthenticationIdToken}`
+          );
+        if (d.hasParamsIdToken !== undefined)
+          debugLines.push(`hasParams.id_token: ${d.hasParamsIdToken}`);
+        if (d.idTokenSource)
+          debugLines.push(`idTokenSource: ${d.idTokenSource}`);
+        if (d.callbackStatus !== undefined)
+          debugLines.push(`callbackStatus: ${d.callbackStatus}`);
+        if (d.callbackError)
+          debugLines.push(`callbackError: ${d.callbackError}`);
+      }
+      const message =
+        debugLines.length > 0
+          ? `${headline}\n\n${debugLines.join("\n")}`
+          : headline;
       Alert.alert("Sign-in failed", message);
       return;
     }

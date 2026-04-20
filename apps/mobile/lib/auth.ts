@@ -99,9 +99,34 @@ function apiBaseUrl(): string {
   );
 }
 
+/**
+ * Debug payload attached to failure results. Populated piecemeal as
+ * the signIn flow runs through prompt → token extraction → server
+ * callback. Temporary — exists to surface diagnostics on-device
+ * while we stabilize the auth flow, since TestFlight builds don't
+ * pipe console.log anywhere Jim can read. Remove once sign-in
+ * ships cleanly.
+ */
+export type AuthDebug = {
+  redirectUri?: string;
+  responseType?: string;
+  paramsKeys?: string[];
+  hasAuthentication?: boolean;
+  hasAuthenticationIdToken?: boolean;
+  hasParamsIdToken?: boolean;
+  idTokenSource?: "authentication.idToken" | "params.id_token" | "none";
+  callbackStatus?: number;
+  callbackError?: string;
+};
+
 export type SignInResult =
   | { ok: true; user: User }
-  | { ok: false; reason: "cancelled" | "no_token" | "server_error"; detail?: string };
+  | {
+      ok: false;
+      reason: "cancelled" | "no_token" | "server_error";
+      detail?: string;
+      debug?: AuthDebug;
+    };
 
 /**
  * React hook exposing the Google sign-in flow. Call the returned
@@ -200,12 +225,17 @@ export function useGoogleSignIn() {
   }, [response]);
 
   const signIn = async (): Promise<SignInResult> => {
+    // Accumulator — every failure return attaches this so the UI can
+    // surface a readable diagnostic. Temporary debug aid.
+    const debug: AuthDebug = { redirectUri };
+
     if (!iosClientId) {
       return {
         ok: false,
         reason: "server_error",
         detail:
           "Google iOS client id not configured. See docs/iOS_LAUNCH_CHECKLIST.md.",
+        debug,
       };
     }
 
@@ -219,22 +249,35 @@ export function useGoogleSignIn() {
         ok: false,
         reason: "server_error",
         detail: err instanceof Error ? err.message : "prompt failed",
+        debug,
       };
     }
 
+    debug.responseType = promptResult.type;
     // eslint-disable-next-line no-console
     console.log("[auth] promptAsync result type:", promptResult.type);
 
     if (promptResult.type === "cancel" || promptResult.type === "dismiss") {
-      return { ok: false, reason: "cancelled" };
+      return { ok: false, reason: "cancelled", debug };
     }
     if (promptResult.type !== "success") {
       return {
         ok: false,
         reason: "server_error",
         detail: `prompt type ${promptResult.type}`,
+        debug,
       };
     }
+
+    // Populate the debug snapshot from the success-shape response
+    // BEFORE reading tokens, so the alert shows the shape Google
+    // returned even when extraction later fails.
+    debug.paramsKeys = Object.keys(promptResult.params ?? {});
+    debug.hasAuthentication = Boolean(promptResult.authentication);
+    debug.hasAuthenticationIdToken = Boolean(
+      promptResult.authentication?.idToken
+    );
+    debug.hasParamsIdToken = Boolean(promptResult.params?.id_token);
 
     // The id token shows up in one of two places depending on whether
     // the iOS flow used the implicit-id_token variant or the
@@ -251,18 +294,17 @@ export function useGoogleSignIn() {
       promptResult.params?.id_token ??
       null;
 
+    debug.idTokenSource = promptResult.authentication?.idToken
+      ? "authentication.idToken"
+      : promptResult.params?.id_token
+        ? "params.id_token"
+        : "none";
+
     // eslint-disable-next-line no-console
-    console.log(
-      "[auth] idToken source:",
-      promptResult.authentication?.idToken
-        ? "authentication.idToken"
-        : promptResult.params?.id_token
-          ? "params.id_token"
-          : "NEITHER"
-    );
+    console.log("[auth] idToken source:", debug.idTokenSource);
 
     if (!idToken) {
-      return { ok: false, reason: "no_token" };
+      return { ok: false, reason: "no_token", debug };
     }
 
     try {
@@ -271,18 +313,21 @@ export function useGoogleSignIn() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ googleIdToken: idToken }),
       });
+      debug.callbackStatus = res.status;
       // eslint-disable-next-line no-console
       console.log("[auth] mobile-callback HTTP:", res.status);
       if (!res.ok) {
         const body = (await res.json().catch(() => ({}))) as {
           error?: string;
         };
+        debug.callbackError = body.error ?? `HTTP ${res.status}`;
         // eslint-disable-next-line no-console
         console.log("[auth] mobile-callback error body:", body);
         return {
           ok: false,
           reason: "server_error",
           detail: body.error ?? `HTTP ${res.status}`,
+          debug,
         };
       }
       const body = (await res.json()) as {
@@ -293,10 +338,13 @@ export function useGoogleSignIn() {
       await setStoredUser(body.user);
       return { ok: true, user: body.user };
     } catch (err) {
+      debug.callbackError =
+        err instanceof Error ? err.message : "network failure";
       return {
         ok: false,
         reason: "server_error",
         detail: err instanceof Error ? err.message : "network failure",
+        debug,
       };
     }
   };
