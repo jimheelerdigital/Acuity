@@ -18,6 +18,7 @@ import { NextResponse } from "next/server";
 
 import { getAuthOptions } from "@/lib/auth";
 import { inngest } from "@/inngest/client";
+import { requireEntitlement } from "@/lib/paywall";
 import {
   checkRateLimit,
   limiters,
@@ -35,6 +36,9 @@ export async function POST() {
 
   const rl = await checkRateLimit(limiters.expensiveAi, `user:${userId}`);
   if (!rl.success) return rateLimitedResponse(rl);
+
+  const gate = await requireEntitlement("canRefreshLifeMap", userId);
+  if (!gate.ok) return gate.response;
 
   const useInngest = process.env.ENABLE_INNGEST_PIPELINE === "1";
 

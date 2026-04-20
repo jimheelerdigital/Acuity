@@ -26,6 +26,7 @@ import { getAuthOptions } from "@/lib/auth";
 import { uploadAudioBytes } from "@/lib/audio";
 import { inngest } from "@/inngest/client";
 import { processEntry } from "@/lib/pipeline";
+import { requireEntitlement } from "@/lib/paywall";
 import {
   checkRateLimit,
   limiters,
@@ -50,6 +51,10 @@ export async function POST(req: NextRequest) {
   // ── 1b. Rate limit (expensive: Whisper + Claude) ────────────────────────
   const rl = await checkRateLimit(limiters.expensiveAi, `user:${userId}`);
   if (!rl.success) return rateLimitedResponse(rl);
+
+  // ── 1c. Paywall: canRecord (§IMPLEMENTATION_PLAN_PAYWALL §1.3) ─────────
+  const gate = await requireEntitlement("canRecord", userId);
+  if (!gate.ok) return gate.response;
 
   // ── 2. Parse + validate (shared between both paths) ─────────────────────
   let formData: FormData;

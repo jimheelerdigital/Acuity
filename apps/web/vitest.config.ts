@@ -8,6 +8,8 @@ export default defineConfig({
       // component / route. Vitest runs in Node, not Next.js, so we
       // short-circuit it to a no-op module for the test environment.
       "server-only": path.resolve(__dirname, "test/shims/server-only.ts"),
+      // Mirror the tsconfig `@/*` → `src/*` alias.
+      "@": path.resolve(__dirname, "src"),
     },
   },
   test: {
