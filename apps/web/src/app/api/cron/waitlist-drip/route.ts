@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getResendClient } from "@/lib/resend";
 import { DRIP_SEQUENCE } from "@/lib/drip-emails";
+import { safeLog } from "@/lib/safe-log";
 
 export const dynamic = "force-dynamic";
 
@@ -70,10 +71,10 @@ export async function GET(req: NextRequest) {
 
       sent++;
     } catch (err) {
-      console.error(
-        `[waitlist-drip] Failed to send email ${nextEmail.step} to ${user.email}:`,
-        err
-      );
+      safeLog.error("waitlist-drip.send_failed", err, {
+        step: nextEmail.step,
+        email: user.email,
+      });
       errors++;
     }
   }

@@ -6,6 +6,7 @@ import {
   limiters,
   rateLimitedResponse,
 } from "@/lib/rate-limit";
+import { safeLog } from "@/lib/safe-log";
 
 export const dynamic = "force-dynamic";
 
@@ -22,35 +23,27 @@ export async function POST(req: NextRequest) {
     const email = (body.email ?? "").trim().toLowerCase();
     const name = (body.name ?? "").trim() || null;
     const source = body.source || null;
-    console.log("[waitlist] parsed body:", { email, name, source });
 
     if (!email || !EMAIL_REGEX.test(email)) {
-      console.log("[waitlist] invalid email, returning 400");
       return NextResponse.json(
         { error: "Please enter a valid email address." },
         { status: 400 },
       );
     }
 
-    console.log("[waitlist] importing prisma...");
     const { prisma } = await import("@/lib/prisma");
-    console.log("[waitlist] prisma imported");
 
     // Check for duplicate
     const existing = await prisma.waitlist.findUnique({ where: { email } });
-    console.log("[waitlist] duplicate check:", existing ? "EXISTS" : "NEW");
 
     let alreadyExists = false;
 
     if (existing) {
       alreadyExists = true;
     } else {
-      // Create record
-      console.log("[waitlist] creating record...");
       await prisma.waitlist.create({
         data: { email, name, source },
       });
-      console.log("[waitlist] record created");
     }
 
     const totalCount = await prisma.waitlist.count();
@@ -59,12 +52,16 @@ export async function POST(req: NextRequest) {
       dateStyle: "full",
       timeStyle: "short",
     });
-    console.log("[waitlist] total count:", totalCount);
+
+    safeLog.info("waitlist.signup", {
+      email,
+      source,
+      alreadyExists,
+      totalCount,
+    });
 
     // Send emails — await them so they complete before the response is returned
-    console.log("[waitlist] initializing Resend client...");
     const resend = getResendClient();
-    console.log("[waitlist] Resend client ready, sending emails...");
 
     try {
       const [notifResult, welcomeResult] = await Promise.allSettled([
@@ -88,8 +85,11 @@ export async function POST(req: NextRequest) {
         }),
       ]);
 
-      console.log("[waitlist] notification email result:", JSON.stringify(notifResult));
-      console.log("[waitlist] welcome email result:", JSON.stringify(welcomeResult));
+      safeLog.info("waitlist.emails.sent", {
+        email,
+        notifStatus: notifResult.status,
+        welcomeStatus: welcomeResult.status,
+      });
 
       // Mark step 1 (confirmation email) as sent for the drip sequence
       if (welcomeResult.status === "fulfilled" && !alreadyExists) {
@@ -98,16 +98,14 @@ export async function POST(req: NextRequest) {
             where: { email },
             data: { emailSequenceStep: 1 },
           });
-          console.log("[waitlist] emailSequenceStep set to 1");
         } catch (stepErr) {
-          console.error("[waitlist] failed to update emailSequenceStep:", stepErr);
+          safeLog.error("waitlist.step1.update_failed", stepErr, { email });
         }
       }
     } catch (emailErr) {
-      console.error("[waitlist] email sending threw:", emailErr);
+      safeLog.error("waitlist.emails.threw", emailErr, { email });
     }
 
-    console.log("[waitlist] done, returning response");
     return NextResponse.json({
       message: alreadyExists
         ? "You're already on the list! We'll be in touch soon."
@@ -116,7 +114,7 @@ export async function POST(req: NextRequest) {
       success: true,
     });
   } catch (err) {
-    console.error("[waitlist] TOP-LEVEL ERROR:", err);
+    safeLog.error("waitlist.top_level_error", err);
     return NextResponse.json(
       { error: "Something went wrong. Please try again." },
       { status: 500 },
