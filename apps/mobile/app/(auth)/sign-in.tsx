@@ -70,6 +70,14 @@ export default function SignInScreen() {
           );
         if (d.hasParamsIdToken !== undefined)
           debugLines.push(`hasParams.id_token: ${d.hasParamsIdToken}`);
+        if (d.exchangeAttempted !== undefined)
+          debugLines.push(`exchangeAttempted: ${d.exchangeAttempted}`);
+        if (d.exchangeSuccess !== undefined)
+          debugLines.push(`exchangeSuccess: ${d.exchangeSuccess}`);
+        if (d.exchangeHasIdToken !== undefined)
+          debugLines.push(`exchange.hasIdToken: ${d.exchangeHasIdToken}`);
+        if (d.exchangeError)
+          debugLines.push(`exchangeError: ${d.exchangeError}`);
         if (d.idTokenSource)
           debugLines.push(`idTokenSource: ${d.idTokenSource}`);
         if (d.callbackStatus !== undefined)

@@ -114,7 +114,15 @@ export type AuthDebug = {
   hasAuthentication?: boolean;
   hasAuthenticationIdToken?: boolean;
   hasParamsIdToken?: boolean;
-  idTokenSource?: "authentication.idToken" | "params.id_token" | "none";
+  idTokenSource?: "authentication.idToken" | "params.id_token" | "exchange" | "none";
+  // Manual PKCE code-exchange diagnostics. Set when the flow reaches
+  // the explicit exchange call (see 2026-04-20 sign-in revision —
+  // Google's iOS code flow returns an auth code, not an id_token, so
+  // we exchange it ourselves at oauth2.googleapis.com/token).
+  exchangeAttempted?: boolean;
+  exchangeSuccess?: boolean;
+  exchangeHasIdToken?: boolean;
+  exchangeError?: string;
   callbackStatus?: number;
   callbackError?: string;
 };
@@ -178,14 +186,24 @@ export function useGoogleSignIn() {
     });
   }, [iosClientId]);
 
-  const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
+  // Google.useAuthRequest (not useIdTokenAuthRequest) — the debug
+  // overlay from c1a1803 revealed Google's iOS OAuth flow returns an
+  // authorization CODE, not an id_token. The Google provider's
+  // `useIdTokenAuthRequest` is supposed to auto-exchange the code via
+  // AccessTokenRequest, but in expo-auth-session@7.0.10 that exchange
+  // was silently failing — fullResult never carried authentication
+  // or id_token, only the raw `code` from the redirect.
+  //
+  // Solution: switch to useAuthRequest with shouldAutoExchangeCode:false
+  // (so the library doesn't burn the single-use code on a failing
+  // internal exchange) and perform the exchange explicitly below with
+  // AuthSession.exchangeCodeAsync. That gives us visibility into any
+  // Google token-endpoint errors.
+  const [request, response, promptAsync] = Google.useAuthRequest({
     iosClientId,
-    // The web client id is also accepted by /api/auth/mobile-callback's
-    // audience check as a fallback for Expo Go dev flows (no iOS
-    // entitlements available in Expo Go). For TestFlight/App Store
-    // builds the iosClientId above is authoritative.
     clientId: iosClientId,
     redirectUri,
+    shouldAutoExchangeCode: false,
   });
 
   // Log response transitions so Jim can read the Metro logs during
@@ -279,33 +297,78 @@ export function useGoogleSignIn() {
     );
     debug.hasParamsIdToken = Boolean(promptResult.params?.id_token);
 
-    // The id token shows up in one of two places depending on whether
-    // the iOS flow used the implicit-id_token variant or the
-    // code-exchange variant:
-    //   - params.id_token: implicit flow (web-style, rarely hit on iOS)
-    //   - authentication.idToken: code-exchange flow (the normal iOS path;
-    //     expo-auth-session's Google provider auto-exchanges the code
-    //     for an id_token after the redirect fires)
-    // Prefer authentication.idToken because it's the canonical post-
-    // exchange value; fall back to params.id_token in case a future
-    // expo-auth-session release flips the spread order in Google.js.
-    const idToken =
-      promptResult.authentication?.idToken ??
-      promptResult.params?.id_token ??
-      null;
-
-    debug.idTokenSource = promptResult.authentication?.idToken
-      ? "authentication.idToken"
-      : promptResult.params?.id_token
-        ? "params.id_token"
-        : "none";
-
-    // eslint-disable-next-line no-console
-    console.log("[auth] idToken source:", debug.idTokenSource);
-
-    if (!idToken) {
+    // Google's iOS OAuth flow returns an authorization code (PKCE).
+    // Exchange it for an id_token at Google's token endpoint. No
+    // client secret needed — iOS clients are public clients; PKCE's
+    // code_verifier is the proof of possession. `request.codeVerifier`
+    // is the value generated when useAuthRequest built the initial
+    // auth URL.
+    const code = promptResult.params?.code;
+    if (!code) {
+      // params.id_token fallback in case a future expo-auth-session
+      // release reintroduces the implicit-flow-on-iOS path.
+      const implicitIdToken = promptResult.params?.id_token;
+      if (implicitIdToken) {
+        debug.idTokenSource = "params.id_token";
+        return await callMobileCallback(implicitIdToken, debug);
+      }
+      debug.idTokenSource = "none";
       return { ok: false, reason: "no_token", debug };
     }
+
+    if (!request?.codeVerifier) {
+      debug.idTokenSource = "none";
+      debug.exchangeError = "missing codeVerifier — request not ready";
+      return { ok: false, reason: "no_token", debug };
+    }
+
+    debug.exchangeAttempted = true;
+    let exchangedIdToken: string | null = null;
+    try {
+      const tokenResult = await AuthSession.exchangeCodeAsync(
+        {
+          clientId: iosClientId,
+          code,
+          redirectUri: redirectUri ?? "",
+          extraParams: { code_verifier: request.codeVerifier },
+        },
+        { tokenEndpoint: "https://oauth2.googleapis.com/token" }
+      );
+      // TokenResponse exposes idToken via the `idToken` field
+      // (expo-auth-session camelCases the OIDC field names).
+      exchangedIdToken = tokenResult.idToken ?? null;
+      debug.exchangeSuccess = true;
+      debug.exchangeHasIdToken = Boolean(exchangedIdToken);
+    } catch (err) {
+      debug.exchangeSuccess = false;
+      debug.exchangeError =
+        err instanceof Error ? err.message : "exchange failed";
+      return {
+        ok: false,
+        reason: "server_error",
+        detail: debug.exchangeError,
+        debug,
+      };
+    }
+
+    if (!exchangedIdToken) {
+      debug.idTokenSource = "none";
+      return { ok: false, reason: "no_token", debug };
+    }
+
+    debug.idTokenSource = "exchange";
+    return await callMobileCallback(exchangedIdToken, debug);
+  };
+
+  /**
+   * POST the verified id_token to our server, store the session JWT
+   * on success. Extracted from the main flow so the implicit-flow
+   * fallback and the code-exchange path share one implementation.
+   */
+  const callMobileCallback = async (
+    idToken: string,
+    debug: AuthDebug
+  ): Promise<SignInResult> => {
 
     try {
       const res = await fetch(`${apiBaseUrl()}/api/auth/mobile-callback`, {
