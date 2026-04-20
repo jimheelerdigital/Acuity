@@ -107,6 +107,28 @@
 
 ---
 
+## Blocked on Inngest verification (2026-04-20)
+
+**Problem:** Production at `https://www.getacuity.io` is running a deploy from **Sun Apr 19 2026 16:32 EDT**, ~16 hours old. 29 commits have landed on `main` since then. None are in the live Production alias. Every newly-added route (`/api/inngest`, `/api/entries/[id]/audio`, `/api/user/delete`, `/account`, `/privacy`, `/terms`, `/api/life-audit` when it lands today) returns a **cached 404** at the www alias because it didn't exist when Vercel last crawled. Meanwhile routes that existed in the 15h-old build (`/api/weekly`, `/api/record`) respond correctly (401 / 405 as appropriate).
+
+**Diagnosis:**
+- `vercel ls --prod` shows the last Production deploy at 15h old. All more recent commits on origin/main have NOT triggered new Production deploys. Preview deploys are presumably still firing on non-main branches, but we haven't used branches in this workflow since 2026-04-19.
+- Local `npx next build` manifests include every missing route (e.g. `ƒ /api/inngest` shows in the build output). Code is correct.
+- Vercel edge cache is serving `x-matched-path: /404` for the missing routes (`x-vercel-cache: HIT`, `age: 53643s`) — that proves the alias is resolving to the stale build, not that the new build is broken.
+
+**Implication for Inngest smoke test:** The smoke test in Task 1 can't be executed until a fresh deploy lands. Code review says the route is correct:
+- `GET/PUT/POST /api/inngest` — gated by `ENABLE_INNGEST_PIPELINE === "1"` in `apps/web/src/app/api/inngest/route.ts`. With the flag unset (current state), every method returns 503. That's intentional so the endpoint is safely inert until Jim flips the flag.
+- **This is a pre-existing design decision that will need revisiting:** Inngest's `serve()` handler needs to respond to GET/PUT sync requests from Inngest Cloud so the app registers. If the flag is off, 503 blocks sync too. **Recommendation:** change the route so GET/PUT always respond (allowing Inngest Cloud to sync the function list) and only POST dispatching is flag-gated. Not fixing today because I can't verify the fix against a live environment — deferred until Jim triggers a Production deploy and we can iterate.
+
+**What Jim needs to do when back:**
+1. `vercel --prod` from the repo root (authenticated as `keypicksem` who owns the `acuity-web` project), OR redeploy from the Vercel dashboard → Deployments → "…" → Redeploy. The dashboard route is lower-risk; no local-build-vs-remote-build drift.
+2. Check GitHub ↔ Vercel integration on the Vercel dashboard → Project → Settings → Git. Confirm `main` is the production branch and auto-deploy is enabled.
+3. After the deploy, re-run the Task 1 smoke test: `curl -s https://www.getacuity.io/api/inngest` should return a 503 initially (flag off, by design). Then flip the route to allow GET/PUT-regardless-of-flag per the recommendation above — that's a one-file change and a fresh commit/deploy.
+
+No PROGRESS.md "Next Up" additions yet — this blocker blocks step 2 of the existing "Inngest Cloud Setup" checklist.
+
+---
+
 ## Parked / Deferred
 
 - **Waitlist drip email sequence (2026-04-19 — parked).** The four follow-up emails in `apps/web/src/lib/drip-emails.ts` (steps 2–5: days 2, 5, 10, 14) are built and `emailSequenceStep` tracking is wired, but nothing invokes `/api/cron/waitlist-drip`: no `vercel.json`, no GitHub Action, no external scheduler. Verified by grep — the only references to the route in source are the handler itself and its console.error log. The security fix (fail-closed auth on the route) stays shipped; what's parked is wiring a scheduler. Rationale: email copy references *"doors opening soon"* / *"We're putting the final touches"* / Day-14 launch framing that presumes a launch date which does not exist today. Reactivating the drip before a real launch date sends promises we can't keep and trains Resend's deliverability model that we send unsubstantiated urgency. Wire this up when the launch date is real — at that point also migrate the scheduler to an Inngest cron (see `INNGEST_MIGRATION_PLAN.md` §12) rather than a fresh `vercel.json` cron.
