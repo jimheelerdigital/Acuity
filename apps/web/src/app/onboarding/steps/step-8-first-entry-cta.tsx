@@ -65,19 +65,19 @@ export function Step8FirstEntryCta() {
 
   return (
     <div className="flex flex-col">
-      <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 sm:text-4xl">
+      <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-4xl">
         You&rsquo;re set. The mic is waiting.
       </h1>
 
-      <p className="mt-4 text-base leading-relaxed text-zinc-600">
+      <p className="mt-4 text-base leading-relaxed text-zinc-600 dark:text-zinc-300">
         One more thing and you&rsquo;re in the dashboard. Thirty seconds
         tonight is enough — whatever you record becomes the first
         data point of your first week.
       </p>
 
-      <div className="mt-4 rounded-2xl border border-zinc-200 bg-white p-4 text-sm text-zinc-500">
+      <div className="mt-4 rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-4 text-sm text-zinc-500 dark:text-zinc-400">
         <p>
-          <strong className="text-zinc-900">One tip.</strong> Don&rsquo;t
+          <strong className="text-zinc-900 dark:text-zinc-50">One tip.</strong> Don&rsquo;t
           plan what you&rsquo;re going to say. The whole loop works better
           when you talk like you&rsquo;re on a long drive and nobody&rsquo;s
           listening. We&rsquo;re not scoring the recording. The AI is
@@ -97,7 +97,7 @@ export function Step8FirstEntryCta() {
         <button
           onClick={() => complete(false)}
           disabled={isSubmitting}
-          className="rounded-full px-4 py-3 text-sm text-zinc-500 transition hover:text-zinc-900 disabled:opacity-40"
+          className="rounded-full px-4 py-3 text-sm text-zinc-500 dark:text-zinc-400 transition hover:text-zinc-900 disabled:opacity-40"
         >
           I&rsquo;ll start later
         </button>

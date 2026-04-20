@@ -22,14 +22,14 @@ export default function SupportPage() {
       <main className="mx-auto max-w-2xl">
         <Link
           href="/"
-          className="text-sm text-zinc-400 hover:text-zinc-200 transition"
+          className="text-sm text-zinc-400 dark:text-zinc-500 hover:text-zinc-200 transition"
         >
           ← Back to Acuity
         </Link>
 
         <h1 className="mt-8 text-4xl font-bold tracking-tight">Support</h1>
 
-        <p className="mt-6 text-base leading-relaxed text-zinc-300">
+        <p className="mt-6 text-base leading-relaxed text-zinc-300 dark:text-zinc-600">
           Need help? Email{" "}
           <a
             href="mailto:support@heelerdigital.com"
@@ -44,7 +44,7 @@ export default function SupportPage() {
           <h2 className="text-lg font-semibold text-zinc-100">
             Common questions
           </h2>
-          <div className="mt-4 space-y-5 text-sm leading-relaxed text-zinc-400">
+          <div className="mt-4 space-y-5 text-sm leading-relaxed text-zinc-400 dark:text-zinc-500">
             <div>
               <p className="font-semibold text-zinc-200">
                 How do I cancel my subscription?
@@ -109,19 +109,19 @@ export default function SupportPage() {
           <div className="flex flex-wrap gap-4 text-sm">
             <Link
               href="/privacy"
-              className="text-zinc-400 hover:text-zinc-200 transition"
+              className="text-zinc-400 dark:text-zinc-500 hover:text-zinc-200 transition"
             >
               Privacy Policy
             </Link>
             <Link
               href="/terms"
-              className="text-zinc-400 hover:text-zinc-200 transition"
+              className="text-zinc-400 dark:text-zinc-500 hover:text-zinc-200 transition"
             >
               Terms of Service
             </Link>
             <a
               href="mailto:support@heelerdigital.com"
-              className="text-zinc-400 hover:text-zinc-200 transition"
+              className="text-zinc-400 dark:text-zinc-500 hover:text-zinc-200 transition"
             >
               Email support
             </a>

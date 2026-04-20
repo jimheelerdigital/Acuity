@@ -12,11 +12,11 @@
 export function Step2ValueProp() {
   return (
     <div className="flex flex-col">
-      <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 sm:text-4xl">
+      <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-4xl">
         Here&rsquo;s the loop.
       </h1>
 
-      <p className="mt-3 text-base leading-relaxed text-zinc-500">
+      <p className="mt-3 text-base leading-relaxed text-zinc-500 dark:text-zinc-400">
         What you do. What Acuity does in return.
       </p>
 
@@ -51,13 +51,13 @@ function ValueCard({
   body: string;
 }) {
   return (
-    <div className="flex gap-4 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm transition hover:border-zinc-300 hover:shadow-md">
+    <div className="flex gap-4 rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-4 shadow-sm transition hover:border-zinc-300 dark:hover:border-white/20 hover:shadow-md">
       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#F3F0FF] text-[#7C5CFC]">
         {mark}
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold text-zinc-900">{title}</p>
-        <p className="mt-1 text-sm leading-relaxed text-zinc-500">{body}</p>
+        <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">{title}</p>
+        <p className="mt-1 text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">{body}</p>
       </div>
     </div>
   );

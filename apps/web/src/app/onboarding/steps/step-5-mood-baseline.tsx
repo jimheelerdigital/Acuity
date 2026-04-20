@@ -45,11 +45,11 @@ export function Step5MoodBaseline() {
 
   return (
     <div className="flex flex-col">
-      <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 sm:text-4xl">
+      <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-4xl">
         How&rsquo;s your baseline lately?
       </h1>
 
-      <p className="mt-4 text-base leading-relaxed text-zinc-600">
+      <p className="mt-4 text-base leading-relaxed text-zinc-600 dark:text-zinc-300">
         Not today specifically. The average of the last couple of weeks.
         One answer. Refine it later if it shifts.
       </p>
@@ -61,17 +61,17 @@ export function Step5MoodBaseline() {
             <button
               key={mood}
               onClick={() => setSelected(mood)}
-              className={`flex flex-col items-center gap-2 rounded-2xl border bg-white p-3 transition ${
+              className={`flex flex-col items-center gap-2 rounded-2xl border bg-white dark:bg-[#1E1E2E] p-3 transition ${
                 isSelected
                   ? "border-[#7C5CFC] bg-[#F7F5FF] shadow-sm"
-                  : "border-zinc-200 hover:border-zinc-300"
+                  : "border-zinc-200 dark:border-white/10 hover:border-zinc-300 dark:hover:border-white/20"
               }`}
               aria-pressed={isSelected}
             >
               <span className="text-2xl">{MOOD_EMOJI[mood]}</span>
               <span
                 className={`text-xs font-medium ${
-                  isSelected ? "text-[#5B3FD6]" : "text-zinc-600"
+                  isSelected ? "text-[#5B3FD6]" : "text-zinc-600 dark:text-zinc-300"
                 }`}
               >
                 {MOOD_LABELS[mood]}
@@ -88,14 +88,14 @@ export function Step5MoodBaseline() {
         {selected && (
           <p
             key={selected}
-            className="animate-fade-in text-sm text-zinc-500"
+            className="animate-fade-in text-sm text-zinc-500 dark:text-zinc-400"
           >
             {MOOD_HINTS[selected]}
           </p>
         )}
       </div>
 
-      <p className="mt-8 text-xs text-zinc-400">
+      <p className="mt-8 text-xs text-zinc-400 dark:text-zinc-500">
         No right answer. This shapes how we read your first week&rsquo;s
         entries against your own baseline instead of everyone else&rsquo;s.
       </p>

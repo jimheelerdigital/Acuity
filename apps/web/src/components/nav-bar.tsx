@@ -98,8 +98,8 @@ function WhoItsForDropdown() {
           onClick={() => setOpen((o) => !o)}
           className={`flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-medium transition-all duration-200 ${
             isForPage
-              ? "bg-white text-zinc-900 shadow-sm"
-              : "text-zinc-500 hover:text-zinc-900 hover:bg-white/60"
+              ? "bg-white dark:bg-[#1E1E2E] text-zinc-900 dark:text-zinc-50 shadow-sm"
+              : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 hover:bg-white/60"
           }`}
         >
           Who it's for
@@ -122,7 +122,7 @@ function WhoItsForDropdown() {
 
         {/* Dropdown panel */}
         <div
-          className={`absolute left-0 top-full mt-1 w-72 rounded-lg border border-zinc-200/60 bg-[#FAFAF7] shadow-lg transition-all duration-200 origin-top ${
+          className={`absolute left-0 top-full mt-1 w-72 rounded-lg border border-zinc-200 dark:border-white/10/60 bg-[#FAFAF7] shadow-lg transition-all duration-200 origin-top ${
             open
               ? "opacity-100 scale-y-100 translate-y-0"
               : "opacity-0 scale-y-95 -translate-y-1 pointer-events-none"
@@ -138,18 +138,18 @@ function WhoItsForDropdown() {
                   onClick={closeDropdown}
                   className={`block px-4 py-3 transition-all duration-150 border-l-2 ${
                     isActive
-                      ? "border-violet-500 bg-white/80"
+                      ? "border-violet-500 bg-white dark:bg-[#1E1E2E]/80"
                       : "border-transparent hover:border-violet-500 hover:bg-white/60"
                   }`}
                 >
                   <div
                     className={`text-sm font-medium ${
-                      isActive ? "text-zinc-900" : "text-zinc-700"
+                      isActive ? "text-zinc-900 dark:text-zinc-50" : "text-zinc-700 dark:text-zinc-200"
                     }`}
                   >
                     {item.title}
                   </div>
-                  <div className="text-xs text-zinc-400 mt-0.5 leading-snug">
+                  <div className="text-xs text-zinc-400 dark:text-zinc-500 mt-0.5 leading-snug">
                     {item.description}
                   </div>
                 </Link>
@@ -165,8 +165,8 @@ function WhoItsForDropdown() {
           onClick={() => setMobileOpen((o) => !o)}
           className={`flex w-full items-center justify-between rounded-lg px-3 py-1.5 text-sm font-medium transition-all duration-200 ${
             isForPage
-              ? "bg-white text-zinc-900 shadow-sm"
-              : "text-zinc-500 hover:text-zinc-900 hover:bg-white/60"
+              ? "bg-white dark:bg-[#1E1E2E] text-zinc-900 dark:text-zinc-50 shadow-sm"
+              : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 hover:bg-white/60"
           }`}
         >
           Who it's for
@@ -201,8 +201,8 @@ function WhoItsForDropdown() {
                   href={item.href}
                   className={`block rounded-md px-3 py-1.5 text-sm font-medium transition-all duration-200 ${
                     isActive
-                      ? "bg-white text-zinc-900 shadow-sm"
-                      : "text-zinc-500 hover:text-zinc-900 hover:bg-white/60"
+                      ? "bg-white dark:bg-[#1E1E2E] text-zinc-900 dark:text-zinc-50 shadow-sm"
+                      : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 hover:bg-white/60"
                   }`}
                 >
                   {item.title}
@@ -236,7 +236,7 @@ export function NavBar() {
     : user.email?.charAt(0).toUpperCase() ?? "?";
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-zinc-200/60 bg-[#FAFAF7]/80 backdrop-blur-md">
+    <nav className="sticky top-0 z-50 border-b border-zinc-200 dark:border-white/10/60 bg-[#FAFAF7]/80 backdrop-blur-md">
       <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-3">
         {/* Left: logo + dropdown + links */}
         <div className="flex items-center gap-6">
@@ -245,7 +245,7 @@ export function NavBar() {
             className="flex items-center gap-2 group"
           >
             <img src="/AcuityLogoDark.png" alt="Acuity logo" className="shrink-0" style={{ width: 24, height: 24 }} />
-            <span className="font-semibold text-zinc-900 hidden sm:block tracking-tight">
+            <span className="font-semibold text-zinc-900 dark:text-zinc-50 hidden sm:block tracking-tight">
               Acuity
             </span>
           </Link>
@@ -260,8 +260,8 @@ export function NavBar() {
                   href={link.href}
                   className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-all duration-200 ${
                     isActive
-                      ? "bg-white text-zinc-900 shadow-sm"
-                      : "text-zinc-500 hover:text-zinc-900 hover:bg-white/60"
+                      ? "bg-white dark:bg-[#1E1E2E] text-zinc-900 dark:text-zinc-50 shadow-sm"
+                      : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 hover:bg-white/60"
                   }`}
                 >
                   {link.label}
@@ -280,16 +280,16 @@ export function NavBar() {
               className="h-7 w-7 rounded-full ring-2 ring-white"
             />
           ) : (
-            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-zinc-200 text-xs font-medium text-zinc-600">
+            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-zinc-200 dark:bg-white/10 text-xs font-medium text-zinc-600 dark:text-zinc-300">
               {initials}
             </div>
           )}
-          <span className="text-sm text-zinc-600 hidden sm:block">
+          <span className="text-sm text-zinc-600 dark:text-zinc-300 hidden sm:block">
             {user.name ?? user.email}
           </span>
           <button
             onClick={() => signOut({ callbackUrl: "/" })}
-            className="text-sm text-zinc-400 hover:text-zinc-700 transition"
+            className="text-sm text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 transition"
           >
             Sign out
           </button>

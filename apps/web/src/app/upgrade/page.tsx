@@ -33,19 +33,19 @@ export default async function UpgradePage({
       <div className="w-full max-w-sm animate-fade-in">
         <div className="text-center mb-8">
           <div className="text-4xl mb-4">⚡</div>
-          <h1 className="text-2xl font-bold text-zinc-900 mb-2">
+          <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50 mb-2">
             Upgrade to {PLAN_PRO_NAME}
           </h1>
-          <p className="text-sm text-zinc-500 leading-relaxed">
+          <p className="text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed">
             Unlock the full power of your daily debriefs.
           </p>
         </div>
 
         {/* Pricing card */}
-        <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm mb-6">
+        <div className="rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-6 shadow-sm mb-6">
           <div className="flex items-baseline gap-1 mb-6">
-            <span className="text-3xl font-bold text-zinc-900">$12.99</span>
-            <span className="text-sm text-zinc-400">/month</span>
+            <span className="text-3xl font-bold text-zinc-900 dark:text-zinc-50">$12.99</span>
+            <span className="text-sm text-zinc-400 dark:text-zinc-500">/month</span>
           </div>
 
           <ul className="space-y-3 mb-6">
@@ -57,7 +57,7 @@ export default async function UpgradePage({
               "Mood trend insights",
               "Priority support",
             ].map((feature) => (
-              <li key={feature} className="flex items-center gap-2.5 text-sm text-zinc-600">
+              <li key={feature} className="flex items-center gap-2.5 text-sm text-zinc-600 dark:text-zinc-300">
                 <svg
                   width="16"
                   height="16"
@@ -78,14 +78,14 @@ export default async function UpgradePage({
 
           <UpgradeButton />
 
-          <p className="mt-3 text-center text-xs text-zinc-400">
+          <p className="mt-3 text-center text-xs text-zinc-400 dark:text-zinc-500">
             14-day free trial. Cancel anytime.
           </p>
         </div>
 
         <a
           href="/dashboard"
-          className="block text-center text-sm text-zinc-400 hover:text-zinc-700 transition"
+          className="block text-center text-sm text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 transition"
         >
           Back to dashboard
         </a>

@@ -66,11 +66,11 @@ export function Step6LifeAreaPriorities() {
 
   return (
     <div className="flex flex-col">
-      <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 sm:text-4xl">
+      <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-4xl">
         What matters most right now?
       </h1>
 
-      <p className="mt-4 text-base leading-relaxed text-zinc-600">
+      <p className="mt-4 text-base leading-relaxed text-zinc-600 dark:text-zinc-300">
         Pick three. In the order they matter. Your weekly reports
         lean on this to decide which threads to pull at first.
       </p>
@@ -90,8 +90,8 @@ export function Step6LifeAreaPriorities() {
                 isPicked
                   ? "border-[#7C5CFC] bg-[#F7F5FF] shadow-sm"
                   : isFull
-                    ? "cursor-not-allowed border-zinc-200 bg-zinc-50 opacity-50"
-                    : "border-zinc-200 bg-white hover:border-zinc-300 hover:shadow-sm"
+                    ? "cursor-not-allowed border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-[#13131F] opacity-50"
+                    : "border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] hover:border-zinc-300 dark:hover:border-white/20 hover:shadow-sm"
               }`}
             >
               {/* Rank badge in the top-right corner */}
@@ -106,12 +106,12 @@ export function Step6LifeAreaPriorities() {
               />
               <p
                 className={`text-sm font-semibold ${
-                  isPicked ? "text-[#5B3FD6]" : "text-zinc-900"
+                  isPicked ? "text-[#5B3FD6]" : "text-zinc-900 dark:text-zinc-50"
                 }`}
               >
                 {area.name}
               </p>
-              <p className="mt-1 text-xs text-zinc-500">
+              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
                 {AREA_SUBTITLE[area.enum]}
               </p>
             </button>
@@ -120,7 +120,7 @@ export function Step6LifeAreaPriorities() {
       </div>
 
       <div className="mt-6 flex items-center justify-between">
-        <p className="text-xs text-zinc-400">
+        <p className="text-xs text-zinc-400 dark:text-zinc-500">
           {count} of {REQUIRED_PICKS} picked
           {count > 0 && count < REQUIRED_PICKS && " — one more"}
           {count === REQUIRED_PICKS && " — you\u2019re set."}
@@ -128,7 +128,7 @@ export function Step6LifeAreaPriorities() {
         {count > 0 && (
           <button
             onClick={() => setPicks({})}
-            className="text-xs text-zinc-400 underline-offset-2 hover:underline"
+            className="text-xs text-zinc-400 dark:text-zinc-500 underline-offset-2 hover:underline"
           >
             Start over
           </button>

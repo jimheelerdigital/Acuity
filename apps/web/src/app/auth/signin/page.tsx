@@ -37,11 +37,11 @@ function SignInForm() {
     return (
       <div className="text-center">
         <div className="mb-4 text-4xl">📬</div>
-        <h2 className="text-xl font-semibold text-zinc-900 mb-2">
+        <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50 mb-2">
           Check your inbox
         </h2>
-        <p className="text-zinc-500 text-sm leading-relaxed">
-          We sent a sign-in link to <strong className="text-zinc-700">{email}</strong>.
+        <p className="text-zinc-500 dark:text-zinc-400 text-sm leading-relaxed">
+          We sent a sign-in link to <strong className="text-zinc-700 dark:text-zinc-200">{email}</strong>.
           <br />
           Click the link to continue.
         </p>
@@ -53,8 +53,8 @@ function SignInForm() {
     <>
       <div className="text-center mb-8">
         <img src="/AcuityLogo.png" alt="Acuity logo" className="mx-auto mb-4" style={{ width: 32, height: 32 }} />
-        <h1 className="text-2xl font-bold text-zinc-900">Sign in to Acuity</h1>
-        <p className="mt-1.5 text-sm text-zinc-500">
+        <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">Sign in to Acuity</h1>
+        <p className="mt-1.5 text-sm text-zinc-500 dark:text-zinc-400">
           Brain dump daily. Get your life back.
         </p>
       </div>
@@ -69,7 +69,7 @@ function SignInForm() {
       <button
         onClick={handleGoogle}
         disabled={loading !== null}
-        className="flex w-full items-center justify-center gap-3 rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm font-medium text-zinc-800 transition-all duration-200 hover:border-zinc-300 hover:shadow-sm disabled:opacity-50"
+        className="flex w-full items-center justify-center gap-3 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-4 py-3 text-sm font-medium text-zinc-800 dark:text-zinc-100 transition-all duration-200 hover:border-zinc-300 dark:hover:border-white/20 hover:shadow-sm disabled:opacity-50"
       >
         <GoogleIcon />
         {loading === "google" ? "Redirecting..." : "Continue with Google"}
@@ -77,9 +77,9 @@ function SignInForm() {
 
       {/* Divider */}
       <div className="my-5 flex items-center gap-3">
-        <div className="h-px flex-1 bg-zinc-200" />
-        <span className="text-xs text-zinc-400">or</span>
-        <div className="h-px flex-1 bg-zinc-200" />
+        <div className="h-px flex-1 bg-zinc-200 dark:bg-white/10" />
+        <span className="text-xs text-zinc-400 dark:text-zinc-500">or</span>
+        <div className="h-px flex-1 bg-zinc-200 dark:bg-white/10" />
       </div>
 
       {/* Magic link */}
@@ -90,7 +90,7 @@ function SignInForm() {
           onChange={(e) => setEmail(e.target.value)}
           placeholder="you@example.com"
           required
-          className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 placeholder-zinc-400 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 transition"
+          className="w-full rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-4 py-3 text-sm text-zinc-900 dark:text-zinc-50 placeholder-zinc-400 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 transition"
         />
         <button
           type="submit"
@@ -101,7 +101,7 @@ function SignInForm() {
         </button>
       </form>
 
-      <p className="mt-6 text-center text-xs text-zinc-400">
+      <p className="mt-6 text-center text-xs text-zinc-400 dark:text-zinc-500">
         By continuing you agree to our{" "}
         <a href="/terms" className="underline hover:text-zinc-700">
           Terms
@@ -119,7 +119,7 @@ function SignInForm() {
 export default function SignInPage() {
   return (
     <div className="flex min-h-screen items-center justify-center px-6">
-      <div className="w-full max-w-sm rounded-2xl border border-zinc-200 bg-white p-8 shadow-lg animate-fade-in">
+      <div className="w-full max-w-sm rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-8 shadow-lg animate-fade-in">
         <Suspense>
           <SignInForm />
         </Suspense>

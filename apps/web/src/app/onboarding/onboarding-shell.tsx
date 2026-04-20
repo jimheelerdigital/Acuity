@@ -183,13 +183,13 @@ export function OnboardingShell({
         <header className="mx-auto flex max-w-lg items-center justify-between px-6 pt-8 sm:pt-10">
           <div className="flex items-center gap-3">
             <ProgressDots current={step} total={totalSteps} />
-            <span className="text-xs font-medium text-zinc-400">
+            <span className="text-xs font-medium text-zinc-400 dark:text-zinc-500">
               {step} of {totalSteps}
             </span>
           </div>
           <button
             onClick={() => setShowSkipModal(true)}
-            className="rounded-lg px-2 py-1 text-xs text-zinc-400 transition hover:text-zinc-700"
+            className="rounded-lg px-2 py-1 text-xs text-zinc-400 dark:text-zinc-500 transition hover:text-zinc-700"
           >
             Skip for now
           </button>
@@ -208,7 +208,7 @@ export function OnboardingShell({
               <button
                 onClick={goBack}
                 disabled={isPending}
-                className="rounded-lg px-3 py-2 text-sm font-medium text-zinc-500 transition hover:text-zinc-900 disabled:opacity-40"
+                className="rounded-lg px-3 py-2 text-sm font-medium text-zinc-500 dark:text-zinc-400 transition hover:text-zinc-900 disabled:opacity-40"
               >
                 ← Back
               </button>
@@ -221,7 +221,7 @@ export function OnboardingShell({
                 <button
                   onClick={skipStep}
                   disabled={isPending}
-                  className="rounded-lg px-3 py-2 text-sm text-zinc-400 transition hover:text-zinc-700 disabled:opacity-40"
+                  className="rounded-lg px-3 py-2 text-sm text-zinc-400 dark:text-zinc-500 transition hover:text-zinc-700 disabled:opacity-40"
                 >
                   Skip this step
                 </button>
@@ -263,7 +263,7 @@ function ProgressDots({ current, total }: { current: number; total: number }) {
             className={`h-1.5 rounded-full transition-all duration-300 ${
               isFilled
                 ? "w-5 bg-[#7C5CFC]"
-                : "w-1.5 bg-zinc-200"
+                : "w-1.5 bg-zinc-200 dark:bg-white/10"
             }`}
           />
         );
@@ -289,13 +289,13 @@ function SkipModal({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl"
+        className="w-full max-w-sm rounded-2xl bg-white dark:bg-[#1E1E2E] p-6 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-lg font-semibold text-zinc-900">
+        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
           Skip the rest of onboarding?
         </h2>
-        <p className="mt-2 text-sm leading-relaxed text-zinc-500">
+        <p className="mt-2 text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
           You can always come back from your dashboard. We&rsquo;ll use defaults
           for the questions you didn&rsquo;t answer.
         </p>
@@ -310,7 +310,7 @@ function SkipModal({
           <button
             onClick={onClose}
             disabled={isPending}
-            className="rounded-lg bg-zinc-100 px-5 py-2.5 text-sm font-semibold text-zinc-900 transition hover:bg-zinc-200 disabled:opacity-50"
+            className="rounded-lg bg-zinc-100 dark:bg-white/10 px-5 py-2.5 text-sm font-semibold text-zinc-900 dark:text-zinc-50 transition hover:bg-zinc-200 dark:hover:bg-white/15 disabled:opacity-50"
           >
             Keep going
           </button>

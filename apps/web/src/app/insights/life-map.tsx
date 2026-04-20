@@ -118,7 +118,7 @@ export function LifeMap() {
   if (loading) {
     return (
       <div className="flex justify-center py-20">
-        <div className="h-6 w-6 animate-spin rounded-full border-2 border-zinc-200 border-t-violet-500" />
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-zinc-200 dark:border-white/10 border-t-violet-500" />
       </div>
     );
   }
@@ -135,13 +135,13 @@ export function LifeMap() {
       )}
       {/* Memory stats */}
       {memory && memory.totalEntries > 0 && (
-        <div className="mb-6 flex items-center gap-4 text-xs text-zinc-400">
+        <div className="mb-6 flex items-center gap-4 text-xs text-zinc-400 dark:text-zinc-500">
           <span>
             {memory.totalEntries} debrief{memory.totalEntries === 1 ? "" : "s"} processed
             {memory.firstEntryDate &&
               ` since ${new Date(memory.firstEntryDate).toLocaleDateString("en-US", { month: "short", year: "numeric" })}`}
           </span>
-          <span className="h-3 w-px bg-zinc-200" />
+          <span className="h-3 w-px bg-zinc-200 dark:bg-white/10" />
           <span>
             {memory.recurringThemes.filter((t: any) => t.count >= 2).length} recurring themes
           </span>
@@ -155,12 +155,12 @@ export function LifeMap() {
             <RadarChart areas={areas} onSelect={() => {}} selected={null} />
           </div>
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="rounded-2xl border border-zinc-200 bg-white px-8 py-6 text-center shadow-lg">
+            <div className="rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-8 py-6 text-center shadow-lg">
               <div className="text-3xl mb-3">🗺️</div>
-              <p className="text-sm font-semibold text-zinc-900 mb-1">
+              <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50 mb-1">
                 Record {3 - (memory?.totalEntries ?? 0)} more debrief{3 - (memory?.totalEntries ?? 0) === 1 ? "" : "s"} to unlock your Life Matrix
               </p>
-              <p className="text-xs text-zinc-400">
+              <p className="text-xs text-zinc-400 dark:text-zinc-500">
                 We need at least 3 sessions to map your life areas.
               </p>
             </div>
@@ -190,7 +190,7 @@ export function LifeMap() {
                   className={`rounded-xl border p-4 text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${
                     isActive
                       ? "border-violet-300 bg-violet-50/50 shadow-md"
-                      : "border-zinc-200 bg-white shadow-sm"
+                      : "border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] shadow-sm"
                   }`}
                 >
                   <div className="flex items-center justify-between mb-2">
@@ -202,14 +202,14 @@ export function LifeMap() {
                       {label}
                     </span>
                   </div>
-                  <p className="text-sm font-semibold text-zinc-900 mb-1">
+                  <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50 mb-1">
                     {area.name ?? area.area}
                   </p>
                   <div className="flex items-baseline gap-2">
-                    <span className="text-2xl font-bold text-zinc-900">
+                    <span className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
                       {area.score * 10}
                     </span>
-                    <span className="text-xs text-zinc-400">/100</span>
+                    <span className="text-xs text-zinc-400 dark:text-zinc-500">/100</span>
                     {area.weeklyDelta != null && area.weeklyDelta !== 0 && (
                       <span
                         className={`text-xs font-medium ${
@@ -222,7 +222,7 @@ export function LifeMap() {
                     )}
                   </div>
                   {area.mentionCount > 0 && (
-                    <p className="mt-1 text-[10px] text-zinc-400">
+                    <p className="mt-1 text-[10px] text-zinc-400 dark:text-zinc-500">
                       Range: {area.historicalLow}–{area.historicalHigh}
                     </p>
                   )}
@@ -236,7 +236,7 @@ export function LifeMap() {
             <button
               onClick={refresh}
               disabled={refreshing}
-              className="rounded-lg px-4 py-2 text-xs font-medium text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-700 disabled:opacity-50"
+              className="rounded-lg px-4 py-2 text-xs font-medium text-zinc-500 dark:text-zinc-400 transition hover:bg-zinc-100 dark:hover:bg-white/10 hover:text-zinc-700 disabled:opacity-50"
             >
               {refreshing ? "Refreshing insights..." : "Refresh insights"}
             </button>
@@ -460,21 +460,21 @@ function DetailPanel({
     .filter((s): s is number => s != null) ?? [];
 
   return (
-    <div className="mt-6 rounded-2xl border border-zinc-200 bg-white shadow-sm overflow-hidden animate-fade-in">
+    <div className="mt-6 rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] shadow-sm overflow-hidden animate-fade-in">
       {/* Header */}
-      <div className="px-6 py-4 border-b border-zinc-100 flex items-center justify-between">
+      <div className="px-6 py-4 border-b border-zinc-100 dark:border-white/5 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div
             className="h-3 w-3 rounded-full"
             style={{ backgroundColor: accentColor }}
           />
-          <h3 className="text-lg font-semibold text-zinc-900">
+          <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
             {area.name ?? area.area}
           </h3>
         </div>
         <button
           onClick={onClose}
-          className="text-zinc-400 hover:text-zinc-700 transition p-1"
+          className="text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 transition p-1"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M18 6 6 18M6 6l12 12" />
@@ -496,8 +496,8 @@ function DetailPanel({
         {/* Score vs baseline */}
         <div className="flex items-center gap-4">
           <div>
-            <span className="text-3xl font-bold text-zinc-900">{score100}</span>
-            <span className="text-sm text-zinc-400">/100</span>
+            <span className="text-3xl font-bold text-zinc-900 dark:text-zinc-50">{score100}</span>
+            <span className="text-sm text-zinc-400 dark:text-zinc-500">/100</span>
           </div>
           <div className="text-sm">
             <span
@@ -506,20 +506,20 @@ function DetailPanel({
                   ? "text-emerald-600"
                   : diff < 0
                   ? "text-red-500"
-                  : "text-zinc-500"
+                  : "text-zinc-500 dark:text-zinc-400"
               }`}
             >
               {diff > 0 ? "+" : ""}
               {diff}
             </span>{" "}
-            <span className="text-zinc-400">vs your baseline ({baseline})</span>
+            <span className="text-zinc-400 dark:text-zinc-500">vs your baseline ({baseline})</span>
           </div>
         </div>
 
         {/* Sparkline */}
         {scores.length > 1 && (
           <div>
-            <p className="text-xs font-medium text-zinc-400 mb-2">
+            <p className="text-xs font-medium text-zinc-400 dark:text-zinc-500 mb-2">
               Score over time
             </p>
             <Sparkline data={scores} color={accentColor} />
@@ -529,14 +529,14 @@ function DetailPanel({
         {/* Themes */}
         {area.topThemes.length > 0 && (
           <div>
-            <p className="text-xs font-medium text-zinc-400 mb-2">
+            <p className="text-xs font-medium text-zinc-400 dark:text-zinc-500 mb-2">
               Top themes
             </p>
             <div className="flex flex-wrap gap-1.5">
               {area.topThemes.map((theme) => (
                 <span
                   key={theme}
-                  className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs text-zinc-600"
+                  className="rounded-full bg-zinc-100 dark:bg-white/10 px-2.5 py-0.5 text-xs text-zinc-600 dark:text-zinc-300"
                 >
                   {theme}
                 </span>
@@ -548,14 +548,14 @@ function DetailPanel({
         {/* People */}
         {relatedPeople.length > 0 && (
           <div>
-            <p className="text-xs font-medium text-zinc-400 mb-2">
+            <p className="text-xs font-medium text-zinc-400 dark:text-zinc-500 mb-2">
               Key people
             </p>
             <div className="space-y-1.5">
               {relatedPeople.map((p: any) => (
                 <div key={p.name} className="flex items-center justify-between text-sm">
-                  <span className="text-zinc-700">{p.name}</span>
-                  <span className="text-xs text-zinc-400">
+                  <span className="text-zinc-700 dark:text-zinc-200">{p.name}</span>
+                  <span className="text-xs text-zinc-400 dark:text-zinc-500">
                     {p.mentionCount}x · {p.sentiment}
                   </span>
                 </div>
@@ -567,14 +567,14 @@ function DetailPanel({
         {/* Goals */}
         {relatedGoals.length > 0 && (
           <div>
-            <p className="text-xs font-medium text-zinc-400 mb-2">
+            <p className="text-xs font-medium text-zinc-400 dark:text-zinc-500 mb-2">
               Recurring goals
             </p>
             <div className="space-y-1.5">
               {relatedGoals.map((g: any) => (
                 <div key={g.goal} className="flex items-center justify-between text-sm">
-                  <span className="text-zinc-700">{g.goal}</span>
-                  <span className="text-xs text-zinc-400">
+                  <span className="text-zinc-700 dark:text-zinc-200">{g.goal}</span>
+                  <span className="text-xs text-zinc-400 dark:text-zinc-500">
                     {g.mentionCount}x
                   </span>
                 </div>
@@ -584,7 +584,7 @@ function DetailPanel({
         )}
 
         {/* Mention count */}
-        <p className="text-xs text-zinc-400 pt-2 border-t border-zinc-100">
+        <p className="text-xs text-zinc-400 dark:text-zinc-500 pt-2 border-t border-zinc-100 dark:border-white/5">
           Mentioned across {area.mentionCount} of {memory?.totalEntries ?? 0} total debriefs
         </p>
       </div>

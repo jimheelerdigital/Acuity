@@ -51,11 +51,11 @@ export function PaywallBanner({
     "/upgrade?src=paywall_redirect";
 
   return (
-    <div className="fixed inset-x-4 bottom-4 z-50 mx-auto max-w-md rounded-2xl border border-violet-200 bg-white p-5 shadow-xl sm:inset-x-auto sm:right-4">
-      <p className="text-sm font-semibold text-zinc-900">
+    <div className="fixed inset-x-4 bottom-4 z-50 mx-auto max-w-md rounded-2xl border border-violet-200 bg-white dark:bg-[#1E1E2E] p-5 shadow-xl sm:inset-x-auto sm:right-4">
+      <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
         Month 2 lives here.
       </p>
-      <p className="mt-1 text-sm text-zinc-600">
+      <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
         {message ??
           "Your trial has ended. Continue the journey — everything you wrote during the trial stays yours."}
       </p>
@@ -63,7 +63,7 @@ export function PaywallBanner({
         {onClose && (
           <button
             onClick={onClose}
-            className="rounded-lg px-3 py-1.5 text-sm text-zinc-500 transition hover:bg-zinc-100"
+            className="rounded-lg px-3 py-1.5 text-sm text-zinc-500 dark:text-zinc-400 transition hover:bg-zinc-100 dark:hover:bg-white/10"
           >
             Not now
           </button>

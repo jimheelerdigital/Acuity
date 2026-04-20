@@ -61,17 +61,17 @@ export function Step3MicrophonePermission() {
 
   return (
     <div className="flex flex-col">
-      <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 sm:text-4xl">
+      <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-4xl">
         Acuity needs your microphone.
       </h1>
 
-      <p className="mt-5 text-base leading-relaxed text-zinc-600">
+      <p className="mt-5 text-base leading-relaxed text-zinc-600 dark:text-zinc-300">
         Recording happens in your browser. Audio is uploaded encrypted,
         stored privately, and deleted on request. Only you and the
         transcription service ever hear it.
       </p>
 
-      <p className="mt-3 text-base leading-relaxed text-zinc-600">
+      <p className="mt-3 text-base leading-relaxed text-zinc-600 dark:text-zinc-300">
         Your browser will ask once, and remember your answer.
       </p>
 
@@ -86,7 +86,7 @@ export function Step3MicrophonePermission() {
         )}
 
         {state === "pending" && (
-          <div className="flex items-center gap-3 text-sm text-zinc-500">
+          <div className="flex items-center gap-3 text-sm text-zinc-500 dark:text-zinc-400">
             <Spinner />
             <span>Waiting for your browser&hellip;</span>
           </div>
@@ -122,7 +122,7 @@ export function Step3MicrophonePermission() {
             </p>
             <button
               onClick={requestMic}
-              className="mt-4 rounded-full border border-amber-300 bg-white px-5 py-2 text-sm font-semibold text-amber-900 transition hover:border-amber-400 hover:bg-amber-50"
+              className="mt-4 rounded-full border border-amber-300 bg-white dark:bg-[#1E1E2E] px-5 py-2 text-sm font-semibold text-amber-900 transition hover:border-amber-400 hover:bg-amber-50"
             >
               Try again
             </button>

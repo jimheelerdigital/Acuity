@@ -64,8 +64,8 @@ export default async function DashboardPage() {
       <main className="mx-auto max-w-5xl px-6 py-10 animate-fade-in">
         {/* Greeting */}
         <div className="mb-8 text-center sm:text-left">
-          <h1 className="text-2xl font-bold text-zinc-900">{greeting}</h1>
-          <p className="text-zinc-500 text-sm mt-1">
+          <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">{greeting}</h1>
+          <p className="text-zinc-500 dark:text-zinc-400 text-sm mt-1">
             {entries.length === 0
               ? "Record your first daily debrief to get started."
               : `${entries.length} session${entries.length === 1 ? "" : "s"} this week.`}
@@ -80,7 +80,7 @@ export default async function DashboardPage() {
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
           {/* Recent entries */}
           <section className="lg:col-span-2">
-            <h2 className="mb-4 text-xs font-semibold uppercase tracking-widest text-zinc-400">
+            <h2 className="mb-4 text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
               Recent sessions
             </h2>
             {entries.length === 0 ? (
@@ -106,7 +106,7 @@ export default async function DashboardPage() {
           <aside className="space-y-6">
             {/* Tasks */}
             <div>
-              <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-zinc-400">
+              <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
                 Open tasks
               </h2>
               {tasks.length === 0 ? (
@@ -121,12 +121,12 @@ export default async function DashboardPage() {
                   {tasks.map((t) => (
                     <div
                       key={t.id}
-                      className="rounded-xl border border-zinc-200 bg-white px-4 py-3 shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5"
+                      className="rounded-xl border border-zinc-200 bg-white px-4 py-3 shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 dark:border-white/10 dark:bg-[#1E1E2E] dark:shadow-none dark:hover:bg-[#24243A]"
                     >
-                      <p className="text-sm text-zinc-800 leading-snug">
+                      <p className="text-sm text-zinc-800 leading-snug dark:text-zinc-100">
                         {t.title ?? t.text}
                       </p>
-                      <p className="mt-1 text-xs text-zinc-400">
+                      <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">
                         {t.priority} · {t.status.replace("_", " ")}
                       </p>
                     </div>
@@ -137,7 +137,7 @@ export default async function DashboardPage() {
 
             {/* Goals */}
             <div>
-              <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-zinc-400">
+              <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
                 Active goals
               </h2>
               {goals.length === 0 ? (
@@ -152,12 +152,12 @@ export default async function DashboardPage() {
                   {goals.map((g) => (
                     <div
                       key={g.id}
-                      className="rounded-xl border border-zinc-200 bg-white px-4 py-3 shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5"
+                      className="rounded-xl border border-zinc-200 bg-white px-4 py-3 shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 dark:border-white/10 dark:bg-[#1E1E2E] dark:shadow-none dark:hover:bg-[#24243A]"
                     >
-                      <p className="text-sm text-zinc-800 leading-snug">
+                      <p className="text-sm text-zinc-800 leading-snug dark:text-zinc-100">
                         {g.title}
                       </p>
-                      <div className="mt-2 h-1.5 w-full rounded-full bg-zinc-100">
+                      <div className="mt-2 h-1.5 w-full rounded-full bg-zinc-100 dark:bg-white/10">
                         <div
                           className="h-1.5 rounded-full bg-violet-500 transition-all duration-700"
                           style={{ width: `${g.progress}%` }}
@@ -204,13 +204,13 @@ function EmptyState({
 }) {
   return (
     <div
-      className={`rounded-xl border border-dashed border-zinc-300 text-center ${compact ? "px-4 py-5" : "px-6 py-10"}`}
+      className={`rounded-xl border border-dashed border-zinc-300 text-center dark:border-white/10 ${compact ? "px-4 py-5" : "px-6 py-10"}`}
     >
       <div className={compact ? "text-2xl mb-1.5" : "text-3xl mb-2"}>
         {icon}
       </div>
-      <p className="text-sm font-medium text-zinc-500">{title}</p>
-      <p className="mt-1 text-xs text-zinc-400">{description}</p>
+      <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">{title}</p>
+      <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">{description}</p>
     </div>
   );
 }

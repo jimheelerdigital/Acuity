@@ -99,7 +99,7 @@ export default async function LifeAuditPage({
       <div className="mx-auto max-w-2xl">
         <Link
           href="/dashboard"
-          className="text-sm text-zinc-400 transition hover:text-zinc-900"
+          className="text-sm text-zinc-400 dark:text-zinc-500 transition hover:text-zinc-900"
         >
           &larr; Back to dashboard
         </Link>
@@ -108,14 +108,14 @@ export default async function LifeAuditPage({
           <p className="text-xs font-semibold uppercase tracking-widest text-violet-500">
             Day 14 Life Audit
           </p>
-          <h1 className="mt-3 text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl">
+          <h1 className="mt-3 text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-4xl">
             Your first fourteen days
           </h1>
-          <p className="mt-2 text-sm text-zinc-500">
+          <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
             {periodLabel} &middot; {audit.entryCount} entries
           </p>
           {audit.moodArc && (
-            <p className="mt-4 text-base italic text-zinc-600">
+            <p className="mt-4 text-base italic text-zinc-600 dark:text-zinc-300">
               {audit.moodArc}
             </p>
           )}
@@ -123,7 +123,7 @@ export default async function LifeAuditPage({
 
         {/* Narrative body — rendered as long-form prose with the
             closing stripped so we can soft-link it below. */}
-        <div className="prose prose-zinc max-w-none text-[17px] leading-[1.8] text-zinc-700">
+        <div className="prose prose-zinc max-w-none text-[17px] leading-[1.8] text-zinc-700 dark:text-zinc-200">
           {narrativeWithoutClosing.split(/\n\n+/).map((para, i) => (
             <p key={i} className="mb-5 whitespace-pre-line">
               {para}
@@ -134,8 +134,8 @@ export default async function LifeAuditPage({
         {/* Themes arc — render as three horizontal groups. Data, not
             prose, so bullets are fine here. */}
         {(starting.length > 0 || emerging.length > 0 || fading.length > 0) && (
-          <section className="mt-12 rounded-2xl border border-zinc-200 bg-white p-6">
-            <h2 className="text-sm font-semibold uppercase tracking-widest text-zinc-400">
+          <section className="mt-12 rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-6">
+            <h2 className="text-sm font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
               Themes across the fourteen days
             </h2>
             <dl className="mt-4 grid gap-4 sm:grid-cols-3">
@@ -149,7 +149,7 @@ export default async function LifeAuditPage({
         {/* Closing letter + "Continue it →" soft-link. Rendered as
             body copy, NOT a button, per §4.1. */}
         {closing && (
-          <section className="mt-12 border-t border-zinc-200 pt-12 text-[17px] leading-[1.8] text-zinc-700">
+          <section className="mt-12 border-t border-zinc-200 dark:border-white/10 pt-12 text-[17px] leading-[1.8] text-zinc-700 dark:text-zinc-200">
             <ClosingLetter text={closing} />
           </section>
         )}
@@ -162,23 +162,23 @@ function ThemeGroup({ label, themes }: { label: string; themes: string[] }) {
   if (themes.length === 0) {
     return (
       <div>
-        <dt className="text-xs font-semibold uppercase tracking-widest text-zinc-400">
+        <dt className="text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
           {label}
         </dt>
-        <dd className="mt-2 text-sm text-zinc-300">—</dd>
+        <dd className="mt-2 text-sm text-zinc-300 dark:text-zinc-600">—</dd>
       </div>
     );
   }
   return (
     <div>
-      <dt className="text-xs font-semibold uppercase tracking-widest text-zinc-400">
+      <dt className="text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
         {label}
       </dt>
       <dd className="mt-2 flex flex-wrap gap-1.5">
         {themes.map((t) => (
           <span
             key={t}
-            className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs text-zinc-600"
+            className="rounded-full bg-zinc-100 dark:bg-white/10 px-2.5 py-0.5 text-xs text-zinc-600 dark:text-zinc-300"
           >
             {t}
           </span>
@@ -262,12 +262,12 @@ function PendingAuditView({ status }: { status: string }) {
         <p className="text-xs font-semibold uppercase tracking-widest text-violet-500">
           Day 14 Life Audit
         </p>
-        <h1 className="mt-3 text-2xl font-bold tracking-tight text-zinc-900">
+        <h1 className="mt-3 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
           {isFailed
             ? "We hit a snag writing your audit."
             : "Your audit is almost ready."}
         </h1>
-        <p className="mt-3 text-sm text-zinc-500">
+        <p className="mt-3 text-sm text-zinc-500 dark:text-zinc-400">
           {isFailed
             ? "Support has been notified. Try refreshing this page in a few minutes — we retry automatically."
             : "Generation takes a few minutes. This page will update as soon as it's ready."}

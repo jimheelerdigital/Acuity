@@ -17,11 +17,11 @@
 export function Step7TrialExplanation() {
   return (
     <div className="flex flex-col">
-      <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 sm:text-4xl">
+      <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-4xl">
         How the trial works.
       </h1>
 
-      <p className="mt-4 text-base leading-relaxed text-zinc-600">
+      <p className="mt-4 text-base leading-relaxed text-zinc-600 dark:text-zinc-300">
         Fourteen days on us. Talk at it whenever. Miss a few nights —
         that&rsquo;s fine too. We&rsquo;re not trying to trap you in a streak.
       </p>
@@ -63,19 +63,19 @@ function TimelineRow({
 }) {
   return (
     <div
-      className={`rounded-2xl border bg-white p-4 shadow-sm transition-shadow hover:shadow-md ${
-        dim ? "border-zinc-200" : "border-zinc-200"
+      className={`rounded-2xl border bg-white dark:bg-[#1E1E2E] p-4 shadow-sm transition-shadow hover:shadow-md ${
+        dim ? "border-zinc-200 dark:border-white/10" : "border-zinc-200 dark:border-white/10"
       }`}
     >
       <p
         className={`text-[11px] font-semibold uppercase tracking-widest ${
-          dim ? "text-zinc-400" : "text-[#7C5CFC]"
+          dim ? "text-zinc-400 dark:text-zinc-500" : "text-[#7C5CFC]"
         }`}
       >
         {marker}
       </p>
-      <p className="mt-1.5 text-sm font-semibold text-zinc-900">{title}</p>
-      <p className="mt-2 text-sm leading-relaxed text-zinc-500">{body}</p>
+      <p className="mt-1.5 text-sm font-semibold text-zinc-900 dark:text-zinc-50">{title}</p>
+      <p className="mt-2 text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">{body}</p>
     </div>
   );
 }

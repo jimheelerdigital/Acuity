@@ -180,7 +180,7 @@ export function RecordButton() {
 
   return (
     <div className="w-full">
-      <div className="flex flex-col items-center gap-5 rounded-2xl border border-zinc-200 bg-white px-6 py-8 shadow-sm transition-shadow duration-300 hover:shadow-md">
+      <div className="flex flex-col items-center gap-5 rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-6 py-8 shadow-sm transition-shadow duration-300 hover:shadow-md">
         {/* Mic button */}
         <button
           onClick={handleClick}
@@ -190,7 +190,7 @@ export function RecordButton() {
             ${phase === "recording"
               ? "bg-red-500 hover:bg-red-400 scale-110 shadow-lg shadow-red-500/30"
               : isProcessing
-                ? "bg-zinc-200 cursor-wait"
+                ? "bg-zinc-200 dark:bg-white/10 cursor-wait"
                 : "bg-zinc-900 hover:scale-105 hover:shadow-xl hover:shadow-zinc-900/20 active:scale-95"
             }
           `}
@@ -203,7 +203,7 @@ export function RecordButton() {
           )}
 
           {phase === "recording" ? (
-            <span className="h-7 w-7 rounded-md bg-white" />
+            <span className="h-7 w-7 rounded-md bg-white dark:bg-[#1E1E2E]" />
           ) : isProcessing ? (
             <Spinner />
           ) : (
@@ -214,17 +214,17 @@ export function RecordButton() {
         {/* Label / timer */}
         {phase === "recording" ? (
           <div className="text-center">
-            <p className="text-2xl font-mono font-semibold text-zinc-900 tabular-nums">
+            <p className="text-2xl font-mono font-semibold text-zinc-900 dark:text-zinc-50 tabular-nums">
               {formatTime(elapsed)}
             </p>
-            <p className="text-xs text-zinc-400 mt-1">
+            <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-1">
               Tap to stop · {MAX_SECONDS - elapsed}s remaining
             </p>
           </div>
         ) : phase === "uploading" ? (
           <div className="w-full max-w-xs text-center space-y-3">
-            <p className="text-sm text-zinc-600">Uploading audio…</p>
-            <div className="h-1.5 w-full rounded-full bg-zinc-100 overflow-hidden">
+            <p className="text-sm text-zinc-600 dark:text-zinc-300">Uploading audio…</p>
+            <div className="h-1.5 w-full rounded-full bg-zinc-100 dark:bg-white/10 overflow-hidden">
               <div className="h-full rounded-full bg-violet-500 animate-pulse w-1/4" />
             </div>
           </div>
@@ -232,24 +232,24 @@ export function RecordButton() {
           <Stepper currentPhase={poll.phase} elapsedSeconds={poll.elapsedSeconds} />
         ) : phase === "idle" ? (
           <div className="text-center">
-            <p className="text-sm font-medium text-zinc-800">
+            <p className="text-sm font-medium text-zinc-800 dark:text-zinc-100">
               Start your daily debrief
             </p>
-            <p className="text-xs text-zinc-400 mt-0.5">
+            <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-0.5">
               Up to {MAX_SECONDS / 60} minutes
             </p>
           </div>
         ) : phase === "timeout" ? (
           <div className="text-center">
-            <p className="text-sm text-zinc-600">This is taking longer than expected.</p>
-            <p className="text-xs text-zinc-400 mt-1">
+            <p className="text-sm text-zinc-600 dark:text-zinc-300">This is taking longer than expected.</p>
+            <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-1">
               We&rsquo;ll have it ready when you check back. Tap the mic to record another.
             </p>
           </div>
         ) : phase === "error" ? (
           <div className="text-center">
             <p className="text-sm text-red-500">{error}</p>
-            <p className="text-xs text-zinc-400 mt-1">Tap the mic to try again</p>
+            <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-1">Tap the mic to try again</p>
           </div>
         ) : null}
       </div>
@@ -301,7 +301,7 @@ function Stepper({
                     ? "bg-emerald-500 border-emerald-500 text-white"
                     : active
                       ? "border-violet-500 text-violet-500 animate-pulse"
-                      : "border-zinc-200 text-zinc-300"
+                      : "border-zinc-200 dark:border-white/10 text-zinc-300 dark:text-zinc-600"
                 }`}
               >
                 {done ? "✓" : i + 1}
@@ -321,7 +321,7 @@ function Stepper({
           );
         })}
       </ol>
-      <p className="text-xs text-zinc-400 pl-8">
+      <p className="text-xs text-zinc-400 dark:text-zinc-500 pl-8">
         {elapsedSeconds}s elapsed
       </p>
     </div>
@@ -372,20 +372,20 @@ function ResultCard({
   const mood = extraction.mood;
 
   return (
-    <div className="mt-4 rounded-2xl border border-zinc-200 bg-white overflow-hidden shadow-sm animate-fade-in">
+    <div className="mt-4 rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] overflow-hidden shadow-sm animate-fade-in">
       {/* Header */}
       <div className="px-5 pt-5 pb-4 flex items-start justify-between gap-4">
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-lg">{MOOD_EMOJI[mood]}</span>
-            <span className="text-sm font-medium text-zinc-800">
+            <span className="text-sm font-medium text-zinc-800 dark:text-zinc-100">
               {MOOD_LABELS[mood]}
             </span>
-            <span className="text-xs text-zinc-400">
+            <span className="text-xs text-zinc-400 dark:text-zinc-500">
               · Energy {extraction.energy}/10
             </span>
           </div>
-          <p className="text-sm text-zinc-600 leading-relaxed">
+          <p className="text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed">
             {extraction.summary}
           </p>
         </div>
@@ -414,7 +414,7 @@ function ResultCard({
           {extraction.themes.map((t) => (
             <span
               key={t}
-              className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs text-zinc-500"
+              className="rounded-full bg-zinc-100 dark:bg-white/10 px-2.5 py-0.5 text-xs text-zinc-500 dark:text-zinc-400"
             >
               {t}
             </span>
@@ -424,29 +424,29 @@ function ResultCard({
 
       {/* Tasks */}
       {extraction.tasks.length > 0 && (
-        <div className="border-t border-zinc-100 px-5 py-4">
-          <p className="text-xs font-semibold uppercase tracking-widest text-zinc-400 mb-2.5">
+        <div className="border-t border-zinc-100 dark:border-white/5 px-5 py-4">
+          <p className="text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 mb-2.5">
             Extracted tasks ({tasksCreated})
           </p>
           <div className="space-y-2">
             {extraction.tasks.map((t, i) => (
               <div
                 key={i}
-                className="flex items-start gap-2.5 rounded-lg bg-zinc-50 px-3 py-2.5"
+                className="flex items-start gap-2.5 rounded-lg bg-zinc-50 dark:bg-[#13131F] px-3 py-2.5"
               >
                 <span
                   className="mt-0.5 h-2 w-2 shrink-0 rounded-full"
                   style={{ backgroundColor: PRIORITY_COLOR[t.priority] }}
                 />
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm text-zinc-700">{t.title}</p>
+                  <p className="text-sm text-zinc-700 dark:text-zinc-200">{t.title}</p>
                   {t.description && (
-                    <p className="text-xs text-zinc-400 mt-0.5">
+                    <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-0.5">
                       {t.description}
                     </p>
                   )}
                 </div>
-                <span className="shrink-0 text-xs text-zinc-400">
+                <span className="shrink-0 text-xs text-zinc-400 dark:text-zinc-500">
                   {t.priority}
                 </span>
               </div>
@@ -457,13 +457,13 @@ function ResultCard({
 
       {/* Insights */}
       {extraction.insights.length > 0 && (
-        <div className="border-t border-zinc-100 px-5 py-4">
-          <p className="text-xs font-semibold uppercase tracking-widest text-zinc-400 mb-2.5">
+        <div className="border-t border-zinc-100 dark:border-white/5 px-5 py-4">
+          <p className="text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 mb-2.5">
             Insights
           </p>
           <ul className="space-y-1.5">
             {extraction.insights.map((ins, i) => (
-              <li key={i} className="text-sm text-zinc-500 flex gap-2">
+              <li key={i} className="text-sm text-zinc-500 dark:text-zinc-400 flex gap-2">
                 <span className="text-violet-500 shrink-0">→</span>
                 {ins}
               </li>
@@ -473,7 +473,7 @@ function ResultCard({
       )}
 
       {/* Footer */}
-      <div className="border-t border-zinc-100 px-5 py-3 flex justify-end">
+      <div className="border-t border-zinc-100 dark:border-white/5 px-5 py-3 flex justify-end">
         <button
           onClick={onRecordAgain}
           className="text-sm text-violet-600 hover:text-violet-500 transition font-medium"
@@ -532,7 +532,7 @@ function MicIcon({ size = 16 }: { size?: number }) {
 function Spinner() {
   return (
     <svg
-      className="h-7 w-7 animate-spin text-zinc-500"
+      className="h-7 w-7 animate-spin text-zinc-500 dark:text-zinc-400"
       viewBox="0 0 24 24"
       fill="none"
     >

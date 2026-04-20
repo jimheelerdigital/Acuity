@@ -117,11 +117,11 @@ export function Step4PracticeRecording() {
 
   return (
     <div className="flex flex-col">
-      <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 sm:text-4xl">
+      <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-4xl">
         Let&rsquo;s make sure it works.
       </h1>
 
-      <p className="mt-4 text-base leading-relaxed text-zinc-600">
+      <p className="mt-4 text-base leading-relaxed text-zinc-600 dark:text-zinc-300">
         Ten seconds. Say anything — count to five, describe your morning,
         whatever. We&rsquo;re just testing the microphone. Nothing gets
         saved.
@@ -131,7 +131,7 @@ export function Step4PracticeRecording() {
         {state === "idle" && (
           <>
             <RecordButtonVisual onClick={start} />
-            <p className="mt-4 text-sm text-zinc-400">
+            <p className="mt-4 text-sm text-zinc-400 dark:text-zinc-500">
               Tap the circle when you&rsquo;re ready.
             </p>
           </>
@@ -143,10 +143,10 @@ export function Step4PracticeRecording() {
               onClick={stop}
               progress={Math.min(elapsed / MAX_SECONDS, 1)}
             />
-            <p className="mt-4 font-mono text-sm text-zinc-600">
+            <p className="mt-4 font-mono text-sm text-zinc-600 dark:text-zinc-300">
               {String(elapsed).padStart(2, "0")} / {MAX_SECONDS}
             </p>
-            <p className="mt-1 text-xs text-zinc-400">
+            <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">
               Tap to stop. Auto-stops at {MAX_SECONDS} seconds.
             </p>
           </>
@@ -171,7 +171,7 @@ export function Step4PracticeRecording() {
                 setState("idle");
                 setElapsed(0);
               }}
-              className="mt-4 text-sm text-zinc-500 underline-offset-2 hover:underline"
+              className="mt-4 text-sm text-zinc-500 dark:text-zinc-400 underline-offset-2 hover:underline"
             >
               Try once more
             </button>
@@ -193,7 +193,7 @@ export function Step4PracticeRecording() {
                 setState("idle");
                 setElapsed(0);
               }}
-              className="mt-4 rounded-full border border-amber-300 bg-white px-5 py-2 text-sm font-semibold text-amber-900 transition hover:border-amber-400 hover:bg-amber-50"
+              className="mt-4 rounded-full border border-amber-300 bg-white dark:bg-[#1E1E2E] px-5 py-2 text-sm font-semibold text-amber-900 transition hover:border-amber-400 hover:bg-amber-50"
             >
               Try again
             </button>
@@ -259,7 +259,7 @@ function StopButtonVisual({
           style={{ transition: "stroke-dashoffset 200ms linear" }}
         />
       </svg>
-      <span className="h-8 w-8 rounded-sm bg-white" />
+      <span className="h-8 w-8 rounded-sm bg-white dark:bg-[#1E1E2E]" />
     </button>
   );
 }
