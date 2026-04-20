@@ -7,9 +7,26 @@ import { UpgradeButton } from "./upgrade-button";
 
 export const dynamic = "force-dynamic";
 
-export default async function UpgradePage() {
+export default async function UpgradePage({
+  searchParams,
+}: {
+  searchParams?: { src?: string };
+}) {
   const session = await getServerSession(getAuthOptions());
   if (!session?.user?.id) redirect("/auth/signin");
+
+  // Analytics event — IMPLEMENTATION_PLAN_PAYWALL §8.3. The `src`
+  // query parameter carries the origin (life_audit_body_link |
+  // email_cta | mobile_profile | paywall_redirect |
+  // lifemap_interstitial | null → "direct").
+  try {
+    const { track } = await import("@/lib/posthog");
+    await track(session.user.id, "upgrade_page_viewed", {
+      source: searchParams?.src ?? "direct",
+    });
+  } catch {
+    // Don't block page render on analytics.
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center px-6">

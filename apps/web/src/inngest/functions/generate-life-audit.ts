@@ -99,6 +99,14 @@ export const generateLifeAuditFn = inngest.createFunction(
           userId,
           entryCount: entries.length,
         });
+
+        const { track } = await import("@/lib/posthog");
+        await track(userId, "life_audit_generated", {
+          lifeAuditId,
+          kind: "TRIAL_DAY_14",
+          entryCount: entries.length,
+          degraded: true,
+        });
       } catch (err) {
         safeLog.error("life-audit.degraded_fallback_failed", err, {
           lifeAuditId,
@@ -257,6 +265,18 @@ export const generateLifeAuditFn = inngest.createFunction(
           moodArc: parsed.moodArc,
           status: "COMPLETE",
         },
+      });
+    });
+
+    // Analytics event (IMPLEMENTATION_PLAN_PAYWALL §8.3). Fires on
+    // the COMPLETE transition only — not on QUEUED/GENERATING.
+    await step.run("track-generated", async () => {
+      const { track } = await import("@/lib/posthog");
+      await track(userId, "life_audit_generated", {
+        lifeAuditId,
+        kind: "TRIAL_DAY_14",
+        entryCount: loaded.entries.length,
+        degraded: false,
       });
     });
 

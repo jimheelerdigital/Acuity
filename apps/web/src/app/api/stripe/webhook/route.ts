@@ -37,14 +37,40 @@ export async function POST(req: NextRequest) {
       const userId = session.metadata?.userId;
       if (!userId) break;
 
-      await prisma.user.update({
+      const user = await prisma.user.update({
         where: { id: userId },
         data: {
           stripeCustomerId: session.customer as string,
           stripeSubscriptionId: session.subscription as string,
           subscriptionStatus: "PRO",
         },
+        select: { createdAt: true, trialEndsAt: true, email: true },
       });
+
+      // Analytics event (IMPLEMENTATION_PLAN_PAYWALL §8.3). Days-since-
+      // signup + days-into-trial are the retention signals we need to
+      // tell good-trial-convert from bad-trial-convert later.
+      try {
+        const { track } = await import("@/lib/posthog");
+        const now = Date.now();
+        const daysSinceSignup = Math.floor(
+          (now - user.createdAt.getTime()) / (24 * 60 * 60 * 1000)
+        );
+        const daysIntoTrial = user.trialEndsAt
+          ? Math.floor(
+              (now - (user.trialEndsAt.getTime() - 14 * 24 * 60 * 60 * 1000)) /
+                (24 * 60 * 60 * 1000)
+            )
+          : null;
+        await track(userId, "subscription_started", {
+          daysSinceSignup,
+          daysIntoTrial,
+          email: user.email,
+          source: session.metadata?.src ?? "direct",
+        });
+      } catch (err) {
+        console.warn("[stripe-webhook] subscription_started track failed:", err);
+      }
       break;
     }
 

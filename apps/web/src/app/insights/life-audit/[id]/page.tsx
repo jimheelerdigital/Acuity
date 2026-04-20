@@ -57,6 +57,19 @@ export default async function LifeAuditPage({
     return <PendingAuditView status={audit.status} />;
   }
 
+  // Fire analytics event on view (IMPLEMENTATION_PLAN_PAYWALL §8.3).
+  // Server-side fire for MVP — future refinement: send a
+  // time-on-page heartbeat from a client component once we want
+  // the `timeOnPageSeconds` property back.
+  try {
+    const { track } = await import("@/lib/posthog");
+    await track(session.user.id, "life_audit_viewed", {
+      lifeAuditId: audit.id,
+    });
+  } catch {
+    // Never block a page render on an analytics call.
+  }
+
   const themesArc: ThemesArc = (audit.themesArc as ThemesArc) ?? {};
   const starting = themesArc.starting ?? [];
   const emerging = themesArc.emerging ?? [];
