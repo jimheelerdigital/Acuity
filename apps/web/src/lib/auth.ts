@@ -1,8 +1,13 @@
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { PrismaClient } from "@prisma/client";
 import { type NextAuthOptions } from "next-auth";
+import CredentialsProvider from "next-auth/providers/credentials";
 import EmailProvider from "next-auth/providers/email";
 import GoogleProvider from "next-auth/providers/google";
+
+import { magicLinkEmail } from "@/emails/magic-link";
+import { verifyPassword } from "@/lib/passwords";
+import { checkRateLimit, limiters } from "@/lib/rate-limit";
 
 /**
  * Returns NextAuth options with prisma lazily imported.
@@ -29,6 +34,67 @@ export function getAuthOptions(): NextAuthOptions {
         },
       }),
 
+      // Email/password sign-in. The corresponding signup flow lives at
+      // POST /api/auth/signup (NextAuth's Credentials provider doesn't
+      // create users — authorize() only authenticates existing ones).
+      //
+      // Throws specific errors so the UI can distinguish between
+      // "wrong password" and "email not verified" cases. NextAuth
+      // surfaces these as error codes on the /auth/signin?error= URL.
+      CredentialsProvider({
+        id: "credentials",
+        name: "Email and password",
+        credentials: {
+          email: { label: "Email", type: "email" },
+          password: { label: "Password", type: "password" },
+        },
+        async authorize(creds) {
+          const email = typeof creds?.email === "string" ? creds.email.toLowerCase().trim() : "";
+          const password = typeof creds?.password === "string" ? creds.password : "";
+          if (!email || !password) return null;
+
+          // Per-email rate limit (5/hour) — prevents online password
+          // guessing against one account even if the attacker rotates
+          // IPs. Throws a specific error so the UI can message it.
+          const rl = await checkRateLimit(limiters.authByEmail, `credentials:${email}`);
+          if (!rl.success) {
+            throw new Error("RateLimited");
+          }
+
+          const user = await prisma.user.findUnique({
+            where: { email },
+            select: {
+              id: true,
+              email: true,
+              name: true,
+              image: true,
+              passwordHash: true,
+              emailVerified: true,
+            },
+          });
+          if (!user || !user.passwordHash) {
+            // Generic null — don't leak which half of the credential
+            // pair was wrong. Same response whether the user doesn't
+            // exist or only has a Google Account row.
+            return null;
+          }
+
+          const match = await verifyPassword(password, user.passwordHash);
+          if (!match) return null;
+
+          if (!user.emailVerified) {
+            throw new Error("EmailNotVerified");
+          }
+
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            image: user.image,
+          };
+        },
+      }),
+
       // Only register the email provider when the Resend API key is configured —
       // missing key would crash NextAuth init and block Google sign-in too.
       ...(process.env.RESEND_API_KEY
@@ -48,11 +114,12 @@ export function getAuthOptions(): NextAuthOptions {
                 url,
               }) => {
                 const { getResendClient } = await import("@/lib/resend");
+                const { subject, html } = magicLinkEmail(url);
                 await getResendClient().emails.send({
                   from: process.env.EMAIL_FROM ?? "Acuity <hello@getacuity.io>",
                   to: email,
-                  subject: "Sign in to Acuity",
-                  html: magicLinkHtml(url),
+                  subject,
+                  html,
                 });
               },
             }),
@@ -122,35 +189,3 @@ export function getAuthOptions(): NextAuthOptions {
   };
 }
 
-// ─── Email template ───────────────────────────────────────────────────────────
-
-function magicLinkHtml(url: string): string {
-  return `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-</head>
-<body style="background:#0D0D0F;margin:0;padding:40px 20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
-  <div style="max-width:480px;margin:0 auto;background:#18181B;border-radius:16px;padding:40px;border:1px solid #27272A;">
-    <div style="text-align:center;margin-bottom:32px;">
-      <div style="width:48px;height:48px;background:linear-gradient(135deg,#7C3AED,#4F46E5);border-radius:12px;margin:0 auto 16px;display:flex;align-items:center;justify-content:center;">
-        <span style="font-size:24px;">✦</span>
-      </div>
-      <h1 style="color:#FAFAFA;font-size:24px;font-weight:700;margin:0;">Sign in to Acuity</h1>
-    </div>
-    <p style="color:#A1A1AA;font-size:15px;line-height:1.6;margin:0 0 32px;">
-      Click the button below to sign in. This link expires in 24 hours and can only be used once.
-    </p>
-    <a href="${url}" style="display:block;background:linear-gradient(135deg,#7C3AED,#4F46E5);color:#FFFFFF;text-decoration:none;text-align:center;padding:14px 24px;border-radius:10px;font-weight:600;font-size:15px;margin-bottom:24px;">
-      Sign in to Acuity →
-    </a>
-    <p style="color:#52525B;font-size:13px;text-align:center;margin:0;">
-      If you didn't request this link, you can safely ignore this email.
-    </p>
-  </div>
-</body>
-</html>
-  `.trim();
-}

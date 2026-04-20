@@ -73,8 +73,16 @@ function buildLimiter(
 export const limiters = {
   /** Record, weekly, lifemap/refresh — Claude/Whisper-token-burning ops. */
   expensiveAi: buildLimiter("expensive-ai", 10, "1 h"),
-  /** NextAuth signin (both email + Google) — brute-force target. */
+  /** NextAuth signin (both email + Google) — brute-force target. IP-scoped. */
   auth: buildLimiter("auth", 5, "15 m"),
+  /**
+   * Credentials signin + signup + forgot-password — scoped by email so
+   * an attacker rotating IPs can't brute-force one account. 5 per hour
+   * is tight enough to stop online guessing, loose enough that a user
+   * mistyping their password doesn't permanently lock out. Per Jim's
+   * 2026-04-20 task spec.
+   */
+  authByEmail: buildLimiter("auth-by-email", 5, "1 h"),
   /** Public waitlist signups — spam + email-bomb target. */
   waitlist: buildLimiter("waitlist", 3, "1 h"),
   /** Account deletion — high-impact abuse target. */

@@ -46,6 +46,15 @@ model User {
   id                     String       @id @default(cuid())
   email                  String       @unique
   emailVerified          DateTime?
+  // bcrypt hash for email/password accounts. Null for OAuth-only users
+  // (Google sign-ins that never set a password). A user with a Google
+  // Account row AND a passwordHash has linked both auth methods.
+  passwordHash           String?
+  // Random token issued during the forgot-password flow. Cleared on
+  // use or on natural expiry. @unique so the lookup in the reset
+  // handler is indexed without a composite.
+  resetToken             String?      @unique
+  resetTokenExpires      DateTime?
   name                   String?
   image                  String?
   avatarUrl              String?
