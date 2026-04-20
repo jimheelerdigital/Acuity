@@ -3,7 +3,7 @@ import * as Google from "expo-auth-session/providers/google";
 import Constants from "expo-constants";
 import * as SecureStore from "expo-secure-store";
 import * as WebBrowser from "expo-web-browser";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 
 // Required for expo-auth-session on web + some Expo Go edge cases.
 // No-op on native iOS but safe to call anywhere.
@@ -127,6 +127,32 @@ export type SignInResult =
 export function useGoogleSignIn() {
   const iosClientId = googleIosClientId();
 
+  // Google's iOS OAuth clients only accept the reversed-client-ID scheme
+  // as a redirect URI at the token-exchange endpoint. expo-auth-session's
+  // Google provider defaults to `${bundleId}:/oauthredirect` which Google
+  // rejects with redirect_uri_mismatch on the code exchange — producing
+  // the silent "no id_token" symptom we hit post-first-build. The
+  // commented-out line in node_modules/expo-auth-session/build/providers/
+  // Google.js shows this exact format as the intended alternative.
+  //
+  // The matching scheme is registered in app.json's
+  // ios.infoPlist.CFBundleURLTypes. Any change to iosClientId requires
+  // updating that array too.
+  const redirectUri = useMemo(() => {
+    if (!iosClientId) return undefined;
+    // Client id looks like `12345-abc.apps.googleusercontent.com`; the
+    // reversed form is the client id with the domain moved to the front,
+    // lowercased, used as a custom URL scheme.
+    const clientSuffix = iosClientId.replace(
+      ".apps.googleusercontent.com",
+      ""
+    );
+    const reversed = `com.googleusercontent.apps.${clientSuffix}`;
+    return AuthSession.makeRedirectUri({
+      native: `${reversed}:/oauthredirect`,
+    });
+  }, [iosClientId]);
+
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
     iosClientId,
     // The web client id is also accepted by /api/auth/mobile-callback's
@@ -134,12 +160,21 @@ export function useGoogleSignIn() {
     // entitlements available in Expo Go). For TestFlight/App Store
     // builds the iosClientId above is authoritative.
     clientId: iosClientId,
+    redirectUri,
   });
 
   // Log response transitions so Jim can read the Metro logs during
   // first-build QA without having to re-instrument the screen. We log
   // every transition (not just failures) because the no_token branch
   // is opaque without seeing the prior steps.
+  // Log the computed redirectUri on first mount so build logs capture
+  // it. If this ever drifts from the registered CFBundleURLScheme or
+  // the Google OAuth client's expected format, we'll see it here.
+  useEffect(() => {
+    // eslint-disable-next-line no-console
+    console.log("[auth] redirectUri:", redirectUri);
+  }, [redirectUri]);
+
   useEffect(() => {
     if (!response) return;
     // eslint-disable-next-line no-console

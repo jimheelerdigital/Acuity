@@ -25,7 +25,8 @@
         "CFBundleURLTypes": [
           {
             "CFBundleURLSchemes": [
-              "com.googleusercontent.apps.657670168959-l1qn5imd2ad8fdbp96pius9a6cpi5hdl"
+              "com.googleusercontent.apps.657670168959-l1qn5imd2ad8fdbp96pius9a6cpi5hdl",
+              "acuity"
             ]
           }
         ]

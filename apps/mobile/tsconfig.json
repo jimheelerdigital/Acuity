@@ -3,19 +3,26 @@
   "compilerOptions": {
     "strict": true,
     "paths": {
-      "@/*": [
-        "./*"
-      ],
-      "@acuity/shared": [
-        "../../packages/shared/src/index.ts"
-      ]
-    }
+      "@/*": ["./*"],
+      "@acuity/shared": ["../../packages/shared/src/index.ts"],
+      "react": ["./node_modules/@types/react"],
+      "react/*": ["./node_modules/@types/react/*"]
+    },
+    // apps/web hoists @types/react@18 to the workspace root while
+    // apps/mobile needs @types/react@19 (SDK 54 + react-native 0.81).
+    // Lock type discovery to the local @types directory so tsc doesn't
+    // mix the two versions' ReactNode definitions (which include bigint
+    // in 19 but not 18 — a mismatch that surfaces as TS2786 on every
+    // Context.Provider use). Mirror of the metro.config.js resolver
+    // pattern that handles the runtime side.
+    "typeRoots": ["./node_modules/@types"]
   },
   "include": [
     "**/*.ts",
     "**/*.tsx",
     ".expo/types/**/*.d.ts",
     "expo-env.d.ts",
-    ".expo/types/**/*.ts"
+    ".expo/types/**/*.ts",
+    "nativewind-env.d.ts"
   ]
 }
