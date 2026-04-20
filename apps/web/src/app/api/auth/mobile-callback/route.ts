@@ -68,6 +68,7 @@ function expectedAudiences(): string[] {
 
 type TokenInfo = {
   aud?: string;
+  iss?: string;
   email?: string;
   email_verified?: string;
   name?: string;
@@ -76,6 +77,15 @@ type TokenInfo = {
   exp?: string;
   error_description?: string;
 };
+
+// Google's tokeninfo endpoint verifies the signature and issuer upstream,
+// but we double-check the `iss` claim as defense-in-depth in case the
+// upstream ever changes behavior or we ever swap providers. Both forms
+// are documented as valid by Google.
+const VALID_ISSUERS = new Set([
+  "accounts.google.com",
+  "https://accounts.google.com",
+]);
 
 export async function POST(req: NextRequest) {
   // ── Rate limit by IP (no user id pre-auth) ─────────────────────
@@ -147,6 +157,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       { error: "Google email not verified" },
       { status: 400 }
+    );
+  }
+
+  // Issuer check — reject anything not signed by accounts.google.com.
+  // Tokeninfo already validates upstream; this is defense-in-depth so
+  // a compromised tokeninfo mirror or a future provider swap can't
+  // slip through.
+  if (!info.iss || !VALID_ISSUERS.has(info.iss)) {
+    safeLog.info("mobile-callback.issuer.reject", {
+      iss: info.iss,
+      email,
+    });
+    return NextResponse.json(
+      { error: "Token issued by unexpected issuer" },
+      { status: 401 }
     );
   }
 

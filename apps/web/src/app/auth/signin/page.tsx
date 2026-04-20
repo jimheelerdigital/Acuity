@@ -1,39 +1,69 @@
 "use client";
 
+import Link from "next/link";
 import { signIn } from "next-auth/react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
+
+type Loading = "google" | "password" | "magic" | null;
 
 function SignInForm() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const callbackUrl = searchParams.get("callbackUrl") ?? "/dashboard";
-  const error = searchParams.get("error");
+  const urlError = searchParams.get("error");
+  const verified = searchParams.get("verified") === "1";
 
   const [email, setEmail] = useState("");
-  const [emailSent, setEmailSent] = useState(false);
-  const [loading, setLoading] = useState<"google" | "email" | null>(null);
+  const [password, setPassword] = useState("");
+  const [magicSent, setMagicSent] = useState(false);
+  const [loading, setLoading] = useState<Loading>(null);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const handleGoogle = async () => {
+    setFormError(null);
     setLoading("google");
-    if (typeof fbq !== "undefined") {
-      fbq("track", "CompleteRegistration");
-    }
+    if (typeof fbq !== "undefined") fbq("track", "CompleteRegistration");
     await signIn("google", { callbackUrl });
   };
 
-  const handleEmail = async (e: React.FormEvent) => {
+  const handlePassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim()) return;
-    setLoading("email");
-    if (typeof fbq !== "undefined") {
-      fbq("track", "CompleteRegistration");
-    }
-    await signIn("email", { email, callbackUrl, redirect: false });
+    setFormError(null);
+    if (!email.trim() || !password) return;
+    setLoading("password");
+    const result = await signIn("credentials", {
+      email: email.trim(),
+      password,
+      redirect: false,
+      callbackUrl,
+    });
     setLoading(null);
-    setEmailSent(true);
+    if (!result) {
+      setFormError("Something went wrong. Please try again.");
+      return;
+    }
+    if (result.error) {
+      setFormError(credentialsErrorMessages[result.error] ?? credentialsErrorMessages.Default);
+      return;
+    }
+    router.push(result.url ?? callbackUrl);
   };
 
-  if (emailSent) {
+  const handleMagic = async () => {
+    setFormError(null);
+    if (!email.trim()) {
+      setFormError("Enter your email first.");
+      return;
+    }
+    setLoading("magic");
+    if (typeof fbq !== "undefined") fbq("track", "CompleteRegistration");
+    await signIn("email", { email: email.trim(), callbackUrl, redirect: false });
+    setLoading(null);
+    setMagicSent(true);
+  };
+
+  if (magicSent) {
     return (
       <div className="text-center">
         <div className="mb-4 text-4xl">📬</div>
@@ -59,9 +89,15 @@ function SignInForm() {
         </p>
       </div>
 
-      {error && (
-        <div className="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
-          {errorMessages[error] ?? "Something went wrong. Please try again."}
+      {verified && (
+        <div className="mb-5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/40 dark:text-emerald-300">
+          Email verified — you can sign in now.
+        </div>
+      )}
+
+      {(urlError || formError) && (
+        <div className="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-900/40 dark:bg-red-950/40 dark:text-red-400">
+          {formError ?? nextAuthErrorMessages[urlError ?? ""] ?? "Something went wrong. Please try again."}
         </div>
       )}
 
@@ -82,24 +118,52 @@ function SignInForm() {
         <div className="h-px flex-1 bg-zinc-200 dark:bg-white/10" />
       </div>
 
-      {/* Magic link */}
-      <form onSubmit={handleEmail} className="space-y-3">
+      {/* Email + password */}
+      <form onSubmit={handlePassword} className="space-y-3">
         <input
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="you@example.com"
+          autoComplete="email"
           required
+          className="w-full rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-4 py-3 text-sm text-zinc-900 dark:text-zinc-50 placeholder-zinc-400 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 transition"
+        />
+        <input
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="Password"
+          autoComplete="current-password"
           className="w-full rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-4 py-3 text-sm text-zinc-900 dark:text-zinc-50 placeholder-zinc-400 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 transition"
         />
         <button
           type="submit"
-          disabled={loading !== null || !email.trim()}
+          disabled={loading !== null || !email.trim() || !password}
           className="w-full rounded-xl bg-zinc-900 px-4 py-3 text-sm font-semibold text-white transition-all duration-200 hover:bg-zinc-700 disabled:opacity-50 active:scale-[0.98]"
         >
-          {loading === "email" ? "Sending link..." : "Send magic link"}
+          {loading === "password" ? "Signing in..." : "Sign in"}
         </button>
       </form>
+
+      {/* Magic link */}
+      <button
+        type="button"
+        onClick={handleMagic}
+        disabled={loading !== null}
+        className="mt-3 w-full rounded-xl border border-zinc-200 dark:border-white/10 bg-transparent px-4 py-3 text-sm font-medium text-zinc-600 dark:text-zinc-300 transition hover:border-zinc-300 dark:hover:border-white/20 disabled:opacity-50"
+      >
+        {loading === "magic" ? "Sending link..." : "Email me a sign-in link"}
+      </button>
+
+      <div className="mt-5 flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400">
+        <Link href="/auth/forgot-password" className="hover:text-zinc-700 dark:hover:text-zinc-200">
+          Forgot password?
+        </Link>
+        <Link href="/auth/signup" className="font-semibold text-violet-600 dark:text-violet-400 hover:text-violet-500">
+          Create account →
+        </Link>
+      </div>
 
       <p className="mt-6 text-center text-xs text-zinc-400 dark:text-zinc-500">
         By continuing you agree to our{" "}
@@ -128,14 +192,29 @@ export default function SignInPage() {
   );
 }
 
-const errorMessages: Record<string, string> = {
+// NextAuth-native error codes (from ?error= in the URL on a failed
+// OAuth / magic-link callback).
+const nextAuthErrorMessages: Record<string, string> = {
   OAuthSignin: "Could not start Google sign-in. Please try again.",
   OAuthCallback: "Google sign-in failed. Please try again.",
   OAuthCreateAccount: "Could not create account. Please try again.",
   EmailCreateAccount: "Could not create account. Please try again.",
   EmailSignin: "Failed to send the magic link. Please try again.",
   SessionRequired: "You must be signed in to access that page.",
+  CredentialsSignin: "Incorrect email or password.",
   Default: "Something went wrong. Please try again.",
+};
+
+// Errors from our CredentialsProvider.authorize() (read off result.error
+// from signIn({ redirect: false }) — these are the string messages we
+// threw inside authorize()).
+const credentialsErrorMessages: Record<string, string> = {
+  CredentialsSignin: "Incorrect email or password.",
+  EmailNotVerified:
+    "Please verify your email. Check your inbox for the verification link.",
+  RateLimited:
+    "Too many sign-in attempts. Wait an hour before trying again.",
+  Default: "Incorrect email or password.",
 };
 
 function GoogleIcon() {
