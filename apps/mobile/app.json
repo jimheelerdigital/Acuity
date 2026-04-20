@@ -21,7 +21,14 @@
       "buildNumber": "1",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "Acuity uses your microphone to record your daily voice entries.",
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": [
+              "com.googleusercontent.apps.657670168959-l1qn5imd2ad8fdbp96pius9a6cpi5hdl"
+            ]
+          }
+        ]
       },
       "config": {
         "usesNonExemptEncryption": false

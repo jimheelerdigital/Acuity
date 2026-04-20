@@ -137,11 +137,30 @@ export function useGoogleSignIn() {
   });
 
   // Log response transitions so Jim can read the Metro logs during
-  // first-build QA without having to re-instrument the screen.
+  // first-build QA without having to re-instrument the screen. We log
+  // every transition (not just failures) because the no_token branch
+  // is opaque without seeing the prior steps.
   useEffect(() => {
-    if (response?.type && response.type !== "success") {
+    if (!response) return;
+    // eslint-disable-next-line no-console
+    console.log("[auth] Google response.type:", response.type);
+    if (response.type === "success") {
       // eslint-disable-next-line no-console
-      console.log("[auth] Google response:", response.type);
+      console.log(
+        "[auth] params keys:",
+        Object.keys(response.params ?? {}),
+        "authentication:",
+        response.authentication
+          ? {
+              hasIdToken: Boolean(response.authentication.idToken),
+              hasAccessToken: Boolean(response.authentication.accessToken),
+              tokenType: response.authentication.tokenType,
+            }
+          : null
+      );
+    } else if ("error" in response) {
+      // eslint-disable-next-line no-console
+      console.log("[auth] Google response error:", response.error);
     }
   }, [response]);
 
@@ -159,12 +178,17 @@ export function useGoogleSignIn() {
     try {
       promptResult = await promptAsync();
     } catch (err) {
+      // eslint-disable-next-line no-console
+      console.log("[auth] promptAsync threw:", err);
       return {
         ok: false,
         reason: "server_error",
         detail: err instanceof Error ? err.message : "prompt failed",
       };
     }
+
+    // eslint-disable-next-line no-console
+    console.log("[auth] promptAsync result type:", promptResult.type);
 
     if (promptResult.type === "cancel" || promptResult.type === "dismiss") {
       return { ok: false, reason: "cancelled" };
@@ -177,7 +201,31 @@ export function useGoogleSignIn() {
       };
     }
 
-    const idToken = promptResult.params?.id_token;
+    // The id token shows up in one of two places depending on whether
+    // the iOS flow used the implicit-id_token variant or the
+    // code-exchange variant:
+    //   - params.id_token: implicit flow (web-style, rarely hit on iOS)
+    //   - authentication.idToken: code-exchange flow (the normal iOS path;
+    //     expo-auth-session's Google provider auto-exchanges the code
+    //     for an id_token after the redirect fires)
+    // Prefer authentication.idToken because it's the canonical post-
+    // exchange value; fall back to params.id_token in case a future
+    // expo-auth-session release flips the spread order in Google.js.
+    const idToken =
+      promptResult.authentication?.idToken ??
+      promptResult.params?.id_token ??
+      null;
+
+    // eslint-disable-next-line no-console
+    console.log(
+      "[auth] idToken source:",
+      promptResult.authentication?.idToken
+        ? "authentication.idToken"
+        : promptResult.params?.id_token
+          ? "params.id_token"
+          : "NEITHER"
+    );
+
     if (!idToken) {
       return { ok: false, reason: "no_token" };
     }
@@ -188,10 +236,14 @@ export function useGoogleSignIn() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ googleIdToken: idToken }),
       });
+      // eslint-disable-next-line no-console
+      console.log("[auth] mobile-callback HTTP:", res.status);
       if (!res.ok) {
         const body = (await res.json().catch(() => ({}))) as {
           error?: string;
         };
+        // eslint-disable-next-line no-console
+        console.log("[auth] mobile-callback error body:", body);
         return {
           ok: false,
           reason: "server_error",

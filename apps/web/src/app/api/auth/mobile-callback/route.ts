@@ -105,11 +105,20 @@ export async function POST(req: NextRequest) {
       { cache: "no-store" }
     );
     info = (await res.json()) as TokenInfo;
+    // Log the tokeninfo shape on every call (keys only, no raw token
+    // fields) so the Vercel logs capture enough to diagnose audience
+    // mismatches without leaking credentials.
+    safeLog.info("mobile-callback.google.tokeninfo", {
+      httpStatus: res.status,
+      aud: info.aud,
+      emailVerified: info.email_verified,
+      hasEmail: Boolean(info.email),
+      hasSub: Boolean(info.sub),
+      exp: info.exp,
+      errorDescription: info.error_description,
+      expectedAudiences: expectedAudiences(),
+    });
     if (!res.ok || info.error_description) {
-      safeLog.info("mobile-callback.google.reject", {
-        status: res.status,
-        reason: info.error_description ?? "non-200 from tokeninfo",
-      });
       return NextResponse.json(
         { error: "Google token verification failed" },
         { status: 401 }
@@ -153,10 +162,17 @@ export async function POST(req: NextRequest) {
   if (!info.aud || !allowed.includes(info.aud)) {
     safeLog.info("mobile-callback.audience.reject", {
       aud: info.aud,
+      allowed,
       email,
     });
     return NextResponse.json(
-      { error: "Token issued for a different client" },
+      {
+        error: "Token issued for a different client",
+        // Include both sides in the response body so the mobile
+        // client's logs show the mismatch without needing server
+        // log access. Safe to expose: these are public client ids.
+        debug: { tokenAud: info.aud, expectedAudiences: allowed },
+      },
       { status: 401 }
     );
   }
