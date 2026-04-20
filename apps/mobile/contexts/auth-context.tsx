@@ -1,4 +1,14 @@
-import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import { AppState, type AppStateStatus } from "react-native";
+
 import {
   getStoredUser,
   setStoredUser,
@@ -24,16 +34,29 @@ const AuthContext = createContext<AuthState>({
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const appState = useRef(AppState.currentState);
 
   const refresh = useCallback(async () => {
     try {
-      // Try to get session from the API (cookie-based)
+      // Prefer the dedicated user-state endpoint. Falls back to
+      // NextAuth's /api/auth/session if /api/user/me is missing
+      // (older server deploy) or returns 401 (stale JWT).
+      try {
+        const data = await api.get<{ user?: User }>("/api/user/me");
+        if (data.user?.id) {
+          setUser(data.user);
+          await setStoredUser(data.user);
+          return;
+        }
+      } catch {
+        // fall through to session fallback
+      }
+
       const data = await api.get<{ user?: User }>("/api/auth/session");
       if (data.user?.id) {
         setUser(data.user);
         await setStoredUser(data.user);
       } else {
-        // Fall back to stored user
         const stored = await getStoredUser();
         setUser(stored);
       }
@@ -47,6 +70,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     refresh();
+  }, [refresh]);
+
+  // Foreground-refresh pattern (docs/APPLE_IAP_DECISION.md §5):
+  // when the user returns from Safari-based upgrade checkout, the
+  // server's subscriptionStatus may have changed. Re-fetch on any
+  // background→active transition so local state catches up without
+  // requiring a sign-out / sign-in cycle.
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (next: AppStateStatus) => {
+      const prev = appState.current;
+      appState.current = next;
+      if (prev.match(/inactive|background/) && next === "active") {
+        refresh();
+      }
+    });
+    return () => sub.remove();
   }, [refresh]);
 
   const signOut = useCallback(async () => {

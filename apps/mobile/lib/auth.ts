@@ -9,6 +9,10 @@ export type User = {
   email: string;
   image: string | null;
   subscriptionStatus?: string;
+  // ISO-8601 string — matches what /api/user/me returns. Null for
+  // freshly-created users before the createUser event writes it,
+  // or for users who existed before the 2026-04-20 backfill.
+  trialEndsAt?: string | null;
 };
 
 export async function getToken(): Promise<string | null> {

@@ -98,13 +98,18 @@ export default function ProfileTab() {
         {/* Menu */}
         <View className="gap-2">
           {subStatus !== "PRO" && (
+            // Copy deliberately avoids "Upgrade" / "Subscribe" / "$"
+            // per docs/APPLE_IAP_DECISION.md (Option C / App Store
+            // Review Guideline 3.1.1). Opens Safari (external
+            // browser), never an in-app WebView. The foreground-
+            // refresh hook in auth-context picks up the new
+            // subscriptionStatus when the user returns.
             <MenuItem
-              icon="star-outline"
-              label="Upgrade to Pro"
-              sublabel="Unlimited recordings & insights"
+              icon="globe-outline"
+              label="Manage plan on web"
+              sublabel="Opens your account in a browser"
               onPress={() => {
-                // Open upgrade URL in browser
-                const url = `${process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000"}/upgrade`;
+                const url = `${process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000"}/upgrade?src=mobile_profile`;
                 import("expo-linking").then((Linking) =>
                   Linking.openURL(url)
                 );
