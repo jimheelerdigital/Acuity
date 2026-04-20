@@ -13,13 +13,14 @@ type Goal = {
   createdAt: string;
 };
 
+// Canonical 6 areas — must match @acuity/shared `LIFE_AREAS`.
 const LIFE_AREAS: Record<string, { label: string; color: string }> = {
-  PERSONAL: { label: "Personal", color: "#A855F7" },
-  WORK: { label: "Work", color: "#6366F1" },
-  HEALTH: { label: "Health", color: "#22C55E" },
+  CAREER: { label: "Career", color: "#3B82F6" },
+  HEALTH: { label: "Health", color: "#14B8A6" },
   RELATIONSHIPS: { label: "Relationships", color: "#F43F5E" },
-  FINANCE: { label: "Finance", color: "#F59E0B" },
-  LEARNING: { label: "Learning", color: "#3B82F6" },
+  FINANCES: { label: "Finances", color: "#F59E0B" },
+  PERSONAL: { label: "Personal Growth", color: "#A855F7" },
+  OTHER: { label: "Other", color: "#71717A" },
 };
 
 const STATUS_STYLES: Record<string, { label: string; bg: string; text: string }> = {

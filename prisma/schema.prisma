@@ -213,21 +213,24 @@ model UserMemory {
   userId    String @unique
   user      User   @relation(fields: [userId], references: [id])
 
-  // Compressed lifetime summary per area (AI-generated, updated incrementally)
-  healthSummary        String?
-  wealthSummary        String?
-  relationshipSummary  String?
-  spiritualitySummary  String?
+  // Compressed lifetime summary per area (AI-generated, updated incrementally).
+  // Renamed 2026-04-19 to align with the canonical 6-area vocabulary
+  // in `@acuity/shared::LIFE_AREAS`. wealth → finances, spirituality →
+  // personal, relationship → relationships, growth → other.
   careerSummary        String?
-  growthSummary        String?
+  healthSummary        String?
+  relationshipsSummary String?
+  financesSummary      String?
+  personalSummary      String?
+  otherSummary         String?
 
   // Lifetime mention counts per area
-  healthMentions       Int @default(0)
-  wealthMentions       Int @default(0)
-  relationshipMentions Int @default(0)
-  spiritualityMentions Int @default(0)
   careerMentions       Int @default(0)
-  growthMentions       Int @default(0)
+  healthMentions       Int @default(0)
+  relationshipsMentions Int @default(0)
+  financesMentions     Int @default(0)
+  personalMentions     Int @default(0)
+  otherMentions        Int @default(0)
 
   // Recurring patterns detected across all time
   recurringThemes Json[] // { area, theme, firstSeen, count, lastSeen }
@@ -235,12 +238,12 @@ model UserMemory {
   recurringGoals  Json[] // { goal, area, firstMentioned, status, mentionCount }
 
   // Baseline scores (lifetime average, updated slowly)
-  healthBaseline       Int @default(50)
-  wealthBaseline       Int @default(50)
-  relationshipBaseline Int @default(50)
-  spiritualityBaseline Int @default(50)
   careerBaseline       Int @default(50)
-  growthBaseline       Int @default(50)
+  healthBaseline       Int @default(50)
+  relationshipsBaseline Int @default(50)
+  financesBaseline     Int @default(50)
+  personalBaseline     Int @default(50)
+  otherBaseline        Int @default(50)
 
   // Total entries processed
   totalEntries   Int       @default(0)

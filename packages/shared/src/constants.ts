@@ -17,15 +17,69 @@ export const SUPPORTED_AUDIO_TYPES = [
   "audio/ogg",
 ] as const;
 
-// ─── Life Matrix defaults ────────────────────────────────────────────────────────
+// ─── Life Areas (canonical 6 — reconciled 2026-04-19) ───────────────────────
+//
+// Source of truth: product spec. Three forms in the codebase, all derived
+// from the same enum:
+//
+//   `LifeArea`               UPPER_SNAKE_CASE enum stored on
+//                            `LifeMapArea.area` and `Goal.lifeArea`.
+//   `LIFE_AREA_PROMPT_KEYS`  lowercase form sent to/received from Claude
+//                            (extraction JSON keys, Compression prompt
+//                            output keys) and used as the suffix on
+//                            UserMemory column names (`${key}Summary`,
+//                            `${key}Mentions`, `${key}Baseline`).
+//   `LIFE_AREA_DISPLAY`      user-facing display string.
+//
+// Reconciliation notes:
+//   - `Wealth` → `FINANCES` (matches product spec / common UX vocabulary).
+//   - `Spirituality` removed; covered by `PERSONAL` (broader: purpose,
+//     values, personal growth, meaning).
+//   - `Growth` removed; the catch-all bucket is now `OTHER`.
+
+export const LIFE_AREAS = [
+  "CAREER",
+  "HEALTH",
+  "RELATIONSHIPS",
+  "FINANCES",
+  "PERSONAL",
+  "OTHER",
+] as const;
+
+export type LifeArea = (typeof LIFE_AREAS)[number];
+
+export const LIFE_AREA_DISPLAY: Record<LifeArea, string> = {
+  CAREER: "Career",
+  HEALTH: "Health",
+  RELATIONSHIPS: "Relationships",
+  FINANCES: "Finances",
+  PERSONAL: "Personal Growth",
+  OTHER: "Other",
+};
+
+export const LIFE_AREA_PROMPT_KEYS: Record<LifeArea, string> = {
+  CAREER: "career",
+  HEALTH: "health",
+  RELATIONSHIPS: "relationships",
+  FINANCES: "finances",
+  PERSONAL: "personal",
+  OTHER: "other",
+};
+
+export const LIFE_AREA_BY_PROMPT_KEY: Record<string, LifeArea> = Object.fromEntries(
+  Object.entries(LIFE_AREA_PROMPT_KEYS).map(([area, key]) => [
+    key,
+    area as LifeArea,
+  ])
+);
 
 export const DEFAULT_LIFE_AREAS = [
-  { name: "Health", key: "health", color: "#14B8A6", icon: "heart-pulse" },
-  { name: "Wealth", key: "wealth", color: "#F59E0B", icon: "trending-up" },
-  { name: "Relationships", key: "relationships", color: "#F43F5E", icon: "users" },
-  { name: "Spirituality", key: "spirituality", color: "#A855F7", icon: "sparkles" },
-  { name: "Career", key: "career", color: "#3B82F6", icon: "briefcase" },
-  { name: "Growth", key: "growth", color: "#22C55E", icon: "book-open" },
+  { enum: "CAREER" as LifeArea, key: "career", name: "Career", color: "#3B82F6", icon: "briefcase" },
+  { enum: "HEALTH" as LifeArea, key: "health", name: "Health", color: "#14B8A6", icon: "heart-pulse" },
+  { enum: "RELATIONSHIPS" as LifeArea, key: "relationships", name: "Relationships", color: "#F43F5E", icon: "users" },
+  { enum: "FINANCES" as LifeArea, key: "finances", name: "Finances", color: "#F59E0B", icon: "trending-up" },
+  { enum: "PERSONAL" as LifeArea, key: "personal", name: "Personal Growth", color: "#A855F7", icon: "sparkles" },
+  { enum: "OTHER" as LifeArea, key: "other", name: "Other", color: "#71717A", icon: "more-horizontal" },
 ] as const;
 
 export type LifeAreaKey = (typeof DEFAULT_LIFE_AREAS)[number]["key"];

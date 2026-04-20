@@ -48,12 +48,12 @@ type RecurringGoal = {
 };
 
 const AREA_KEYS: LifeAreaKey[] = [
-  "health",
-  "wealth",
-  "relationships",
-  "spirituality",
   "career",
-  "growth",
+  "health",
+  "relationships",
+  "finances",
+  "personal",
+  "other",
 ];
 
 // ─── Get or Create ───────────────────────────────────────────────────────────
@@ -168,12 +168,12 @@ export async function compressMemory(userId: string): Promise<void> {
   if (recentEntries.length === 0) return;
 
   const existingSummaries: Record<string, string | null> = {
-    health: memory.healthSummary,
-    wealth: memory.wealthSummary,
-    relationships: memory.relationshipSummary,
-    spirituality: memory.spiritualitySummary,
     career: memory.careerSummary,
-    growth: memory.growthSummary,
+    health: memory.healthSummary,
+    relationships: memory.relationshipsSummary,
+    finances: memory.financesSummary,
+    personal: memory.personalSummary,
+    other: memory.otherSummary,
   };
 
   const { system, user } = buildCompressionPrompt(
@@ -206,12 +206,12 @@ export async function compressMemory(userId: string): Promise<void> {
   await prisma.userMemory.update({
     where: { userId },
     data: {
-      healthSummary: parsed.health || memory.healthSummary,
-      wealthSummary: parsed.wealth || memory.wealthSummary,
-      relationshipSummary: parsed.relationships || memory.relationshipSummary,
-      spiritualitySummary: parsed.spirituality || memory.spiritualitySummary,
       careerSummary: parsed.career || memory.careerSummary,
-      growthSummary: parsed.growth || memory.growthSummary,
+      healthSummary: parsed.health || memory.healthSummary,
+      relationshipsSummary: parsed.relationships || memory.relationshipsSummary,
+      financesSummary: parsed.finances || memory.financesSummary,
+      personalSummary: parsed.personal || memory.personalSummary,
+      otherSummary: parsed.other || memory.otherSummary,
       lastCompressed: new Date(),
     },
   });
@@ -293,7 +293,7 @@ export async function updateLifeMap(
     if (!mention.mentioned) continue;
 
     const area = await prisma.lifeMapArea.findFirst({
-      where: { userId, area: areaConfig.name },
+      where: { userId, area: areaConfig.enum },
     });
     if (!area) continue;
 
@@ -385,15 +385,18 @@ export async function generateLifeMapInsights(
 
   // Map insight keys to area names
   const keyToName: Record<string, string> = {};
+  // Map prompt-key (lowercase, returned by Claude) → canonical enum
+  // ("CAREER", "FINANCES", …) which is what LifeMapArea.area stores.
+  const keyToEnum: Record<string, string> = {};
   for (const a of DEFAULT_LIFE_AREAS) {
-    keyToName[a.key] = a.name;
+    keyToEnum[a.key] = a.enum;
   }
 
   for (const [key, insight] of Object.entries(parsed)) {
-    const name = keyToName[key];
-    if (!name) continue;
+    const areaEnum = keyToEnum[key];
+    if (!areaEnum) continue;
     await prisma.lifeMapArea.updateMany({
-      where: { userId, area: name },
+      where: { userId, area: areaEnum },
       data: { insightSummary: insight },
     });
   }

@@ -156,7 +156,7 @@ export function LifeMap() {
           {/* Score cards */}
           <div className="mt-8 grid grid-cols-2 sm:grid-cols-3 gap-3">
             {areas.map((area) => {
-              const config = DEFAULT_LIFE_AREAS.find((a) => a.name === area.area);
+              const config = DEFAULT_LIFE_AREAS.find((a) => a.enum === area.area);
               const status = getStatus(area.score);
               const { label, color } = STATUS_LABELS[status];
               const isActive = selected === area.area;

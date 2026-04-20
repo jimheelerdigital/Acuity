@@ -41,14 +41,15 @@ export interface LifeAreaMention {
   sentiment: "positive" | "negative" | "neutral";
 }
 
-/** All 6 life areas keyed by area name */
+/** All 6 life areas keyed by area-prompt-key (lowercase form). See
+ *  `constants.ts::LIFE_AREA_PROMPT_KEYS` for the canonical mapping. */
 export interface LifeAreaMentions {
-  health: LifeAreaMention;
-  wealth: LifeAreaMention;
-  relationships: LifeAreaMention;
-  spirituality: LifeAreaMention;
   career: LifeAreaMention;
-  growth: LifeAreaMention;
+  health: LifeAreaMention;
+  relationships: LifeAreaMention;
+  finances: LifeAreaMention;
+  personal: LifeAreaMention;
+  other: LifeAreaMention;
 }
 
 /** Shape of the Claude extraction result stored in Entry.rawAnalysis */

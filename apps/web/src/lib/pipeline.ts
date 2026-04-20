@@ -111,12 +111,12 @@ Return ONLY valid JSON matching this exact schema — no markdown, no prose:
     }
   ],
   "lifeAreaMentions": {
-    "health": { "mentioned": bool, "score": 1-10, "themes": [], "people": [], "goals": [], "sentiment": "positive"|"negative"|"neutral" },
-    "wealth": { ... },
+    "career": { "mentioned": bool, "score": 1-10, "themes": [], "people": [], "goals": [], "sentiment": "positive"|"negative"|"neutral" },
+    "health": { ... },
     "relationships": { ... },
-    "spirituality": { ... },
-    "career": { ... },
-    "growth": { ... }
+    "finances": { ... },
+    "personal": { ... },
+    "other": { ... }
   }
 }
 
@@ -348,12 +348,12 @@ function validateLifeAreaMentions(
   if (!raw || typeof raw !== "object") return undefined;
 
   const keys: (keyof LifeAreaMentions)[] = [
-    "health",
-    "wealth",
-    "relationships",
-    "spirituality",
     "career",
-    "growth",
+    "health",
+    "relationships",
+    "finances",
+    "personal",
+    "other",
   ];
 
   const result: Record<string, LifeAreaMention> = {};

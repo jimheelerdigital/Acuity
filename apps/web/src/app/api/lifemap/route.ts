@@ -15,23 +15,24 @@ export async function GET() {
   const userId = session.user.id;
   const { prisma } = await import("@/lib/prisma");
 
-  // Ensure all 6 areas exist
+  // Ensure all 6 canonical areas exist (keyed on the UPPER_CASE enum
+  // value stored in LifeMapArea.area).
   const existing = await prisma.lifeMapArea.findMany({ where: { userId } });
-  const existingNames = new Set(existing.map((a) => a.area));
+  const existingEnums = new Set(existing.map((a) => a.area));
 
-  for (const area of DEFAULT_LIFE_AREAS) {
-    if (!existingNames.has(area.name)) {
-      await prisma.lifeMapArea.create({
-        data: {
-          userId,
-          area: area.name,
-          name: area.name,
-          color: area.color,
-          icon: area.icon,
-          sortOrder: DEFAULT_LIFE_AREAS.indexOf(area),
-        },
-      });
-    }
+  const missing = DEFAULT_LIFE_AREAS.filter((a) => !existingEnums.has(a.enum));
+  if (missing.length > 0) {
+    await prisma.lifeMapArea.createMany({
+      data: missing.map((a) => ({
+        userId,
+        area: a.enum,
+        name: a.name,
+        color: a.color,
+        icon: a.icon,
+        sortOrder: DEFAULT_LIFE_AREAS.indexOf(a),
+      })),
+      skipDuplicates: true,
+    });
   }
 
   const areas = await prisma.lifeMapArea.findMany({
@@ -51,12 +52,12 @@ export async function GET() {
       recurringThemes: memory.recurringThemes,
       recurringPeople: memory.recurringPeople,
       recurringGoals: memory.recurringGoals,
-      healthMentions: memory.healthMentions,
-      wealthMentions: memory.wealthMentions,
-      relationshipMentions: memory.relationshipMentions,
-      spiritualityMentions: memory.spiritualityMentions,
       careerMentions: memory.careerMentions,
-      growthMentions: memory.growthMentions,
+      healthMentions: memory.healthMentions,
+      relationshipsMentions: memory.relationshipsMentions,
+      financesMentions: memory.financesMentions,
+      personalMentions: memory.personalMentions,
+      otherMentions: memory.otherMentions,
     },
   });
 }

@@ -166,7 +166,7 @@ export default function InsightsTab() {
             </Text>
             <View className="flex-row flex-wrap gap-3">
               {areas.map((area) => {
-                const config = DEFAULT_LIFE_AREAS.find((a) => a.name === area.area);
+                const config = DEFAULT_LIFE_AREAS.find((a) => a.enum === area.area);
                 const isExpanded = expandedArea === area.area;
                 const score100 = area.score * 10;
                 const diff = score100 - area.baselineScore;

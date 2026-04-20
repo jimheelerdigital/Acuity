@@ -1,6 +1,8 @@
 /**
  * Claude prompts for Life Matrix memory compression, insight generation,
- * and life area extraction.
+ * and life area extraction. All prompts use the canonical 6-area
+ * vocabulary defined in `@acuity/shared` (`LIFE_AREAS`,
+ * `LIFE_AREA_PROMPT_KEYS`, `LIFE_AREA_DISPLAY`).
  */
 
 // ─── Memory Compression ─────────────────────────────────────────────────────
@@ -34,12 +36,12 @@ Your job: update each area summary to incorporate new information while preservi
 
 Return ONLY valid JSON — no markdown, no prose:
 {
-  "health": "updated summary",
-  "wealth": "updated summary",
-  "relationships": "updated summary",
-  "spirituality": "updated summary",
   "career": "updated summary",
-  "growth": "updated summary"
+  "health": "updated summary",
+  "relationships": "updated summary",
+  "finances": "updated summary",
+  "personal": "updated summary",
+  "other": "updated summary"
 }`,
     user: `Existing area summaries:\n${existing}\n\nRecent entries:\n${entries}`,
   };
@@ -72,12 +74,12 @@ Good: "Work appears in 91% of your dumps — the only area that spikes on weeken
 
 Return ONLY valid JSON:
 {
-  "health": "insight",
-  "wealth": "insight",
-  "relationships": "insight",
-  "spirituality": "insight",
   "career": "insight",
-  "growth": "insight"
+  "health": "insight",
+  "relationships": "insight",
+  "finances": "insight",
+  "personal": "insight",
+  "other": "insight"
 }`,
     user: `Full user context:\n${memoryContext}\n\nCurrent area scores:\n${areaData}`,
   };
@@ -87,12 +89,12 @@ Return ONLY valid JSON:
 
 export const LIFE_AREA_EXTRACTION_SCHEMA = `
 Also extract "lifeAreaMentions" — for each of these 6 areas assess whether it was mentioned:
+- career: work, job, projects, ambition, professional stress, wins, deadlines, boss, colleagues
 - health: body, energy, sleep, exercise, pain, illness, food, physical wellbeing
-- wealth: money, income, savings, financial stress, business, spending, investments
-- relationships: partner, family, friends, colleagues, conflict, connection, social
-- spirituality: purpose, meaning, gratitude, values, faith, presence, peace, meditation
-- career: work, job, projects, ambition, professional stress, wins, deadlines, boss
-- growth: learning, habits, reading, skills, improvement, courses, personal development
+- relationships: partner, family, friends, social, conflict, connection
+- finances: money, income, savings, financial stress, business, spending, investments
+- personal: purpose, meaning, values, gratitude, faith, presence, peace, learning, habits, reading, skills, personal growth
+- other: anything important that doesn't fit the above five
 
 For each area, return:
 {
@@ -104,5 +106,5 @@ For each area, return:
   "sentiment": "positive" | "negative" | "neutral"
 }
 
-Add this as "lifeAreaMentions" with keys: health, wealth, relationships, spirituality, career, growth.
+Add this as "lifeAreaMentions" with keys: career, health, relationships, finances, personal, other.
 If an area is not mentioned at all, set mentioned=false, score=5, and empty arrays.`;

@@ -94,7 +94,7 @@ export function getAuthOptions(): NextAuthOptions {
         await prisma.lifeMapArea.createMany({
           data: DEFAULT_LIFE_AREAS.map((area, index) => ({
             userId: user.id,
-            area: area.name,
+            area: area.enum,
             name: area.name,
             color: area.color,
             icon: area.icon,
