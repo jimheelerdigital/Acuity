@@ -68,7 +68,7 @@ export default function DashboardTab() {
     <SafeAreaView className="flex-1 bg-zinc-950" edges={["top"]}>
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
         {/* Greeting */}
-        <View className="mb-8">
+        <View className="mb-6">
           <Text className="text-2xl font-bold text-zinc-50">
             {greeting}, {firstName}.
           </Text>
@@ -78,6 +78,9 @@ export default function DashboardTab() {
               : `${weekCount} session${weekCount === 1 ? "" : "s"} this week.`}
           </Text>
         </View>
+
+        <TrialBanner />
+
 
         {/* Primary record CTA */}
         <Pressable
@@ -133,6 +136,41 @@ export default function DashboardTab() {
         )}
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+/**
+ * Shows a gentle banner when the user's 14-day trial is inside its
+ * last 7 days. No CTA, no urgency language — spec §3 asks for a
+ * quiet countdown, not a pressure tactic. Renders nothing for
+ * users on PRO, FREE (post-trial-but-not-subscribed — they see the
+ * paywall on attempted write), or with no trial date.
+ */
+function TrialBanner() {
+  const { user } = useAuth();
+  if (!user) return null;
+  if (user.subscriptionStatus !== "TRIAL") return null;
+  if (!user.trialEndsAt) return null;
+
+  const msLeft = new Date(user.trialEndsAt).getTime() - Date.now();
+  if (msLeft <= 0) return null; // expired — paywall handles
+  const daysLeft = Math.ceil(msLeft / (24 * 60 * 60 * 1000));
+  if (daysLeft > 7) return null; // only surface in the final week
+
+  return (
+    <View className="rounded-2xl border border-violet-600/30 bg-violet-900/20 px-4 py-3 mb-6 flex-row items-center gap-3">
+      <Ionicons name="time-outline" size={18} color="#A78BFA" />
+      <View className="flex-1">
+        <Text className="text-sm text-violet-200">
+          {daysLeft === 1
+            ? "Last day of your trial."
+            : `${daysLeft} day${daysLeft === 1 ? "" : "s"} left in your trial.`}
+        </Text>
+        <Text className="text-xs text-violet-400/80 mt-0.5">
+          Your Day 14 Life Audit is coming. Nothing disappears after.
+        </Text>
+      </View>
+    </View>
   );
 }
 

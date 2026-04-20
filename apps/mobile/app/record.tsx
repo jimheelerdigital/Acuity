@@ -1,6 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Audio, InterruptionModeIOS } from "expo-av";
-import * as WebBrowser from "expo-web-browser";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -262,26 +261,12 @@ export default function RecordScreen() {
           );
 
           if (res.status === 402) {
-            Alert.alert(
-              "Your trial has ended",
-              "Month 2 is where the pattern deepens. Continue the journey on the web?",
-              [
-                {
-                  text: "Not now",
-                  style: "cancel",
-                  onPress: () => router.back(),
-                },
-                {
-                  text: "Open web",
-                  onPress: () => {
-                    WebBrowser.openBrowserAsync(
-                      `${api.baseUrl()}/upgrade?src=mobile`
-                    );
-                    router.back();
-                  },
-                },
-              ]
-            );
+            // Route to the full native paywall screen. It handles
+            // the SFSafari handoff + "remind me later" dismissal.
+            // Using replace so a swipe-down on the paywall modal
+            // returns to the dashboard, not back here to the record
+            // screen in a stuck state.
+            router.replace("/paywall");
             return;
           }
 

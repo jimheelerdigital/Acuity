@@ -55,6 +55,13 @@ export default function RootLayout() {
               presentation: "modal",
             }}
           />
+          <Stack.Screen
+            name="paywall"
+            options={{
+              headerShown: false,
+              presentation: "modal",
+            }}
+          />
         </Stack>
       </AuthProvider>
     </SafeAreaProvider>
