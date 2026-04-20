@@ -23,7 +23,7 @@ import { MAX_AUDIO_BYTES } from "@acuity/shared";
 
 import { getAnySessionUserId } from "@/lib/mobile-auth";
 import { toClientError } from "@/lib/api-errors";
-import { uploadAudioBytes } from "@/lib/audio";
+import { normalizeAudioMimeType, uploadAudioBytes } from "@/lib/audio";
 import { inngest } from "@/inngest/client";
 import { processEntry } from "@/lib/pipeline";
 import { requireEntitlement } from "@/lib/paywall";
@@ -81,10 +81,15 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Strip codec params (e.g. "audio/webm;codecs=opus" → "audio/webm")
+  // Normalize MIME to one of the four canonical forms Supabase Storage
+  // accepts (webm/mp4/wav/mpeg/ogg). Maps iOS "audio/x-m4a" and Android
+  // "audio/aac" to "audio/mp4" so the bucket allowlist stays narrow.
+  // Clients still send whatever the OS reports; canonicalization is our
+  // job, not theirs. See lib/audio.ts::normalizeAudioMimeType for the
+  // full alias map.
   const rawMime = audioFile.type || "audio/webm";
-  const mimeType = rawMime.split(";")[0];
-  if (!mimeType.startsWith("audio/")) {
+  const mimeType = normalizeAudioMimeType(rawMime);
+  if (!mimeType) {
     return NextResponse.json(
       { error: `Unsupported audio type: ${rawMime}` },
       { status: 415 }

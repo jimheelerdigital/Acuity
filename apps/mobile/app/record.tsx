@@ -239,10 +239,17 @@ export default function RecordScreen() {
       setState("uploading");
 
       const form = new FormData();
+      // `audio/mp4` is the IANA-canonical MIME for AAC-in-MP4-container
+      // files (which is what Expo's Audio.Recording produces on iOS
+      // despite the .m4a extension). Explicitly setting it here aligns
+      // the client with the server's normalizer in apps/web/src/lib/
+      // audio.ts::normalizeAudioMimeType — even if iOS's native
+      // FormData overrides with "audio/x-m4a" on some builds, the
+      // server maps both to "audio/mp4" before Supabase ever sees it.
       form.append("audio", {
         uri,
         name: "recording.m4a",
-        type: "audio/m4a",
+        type: "audio/mp4",
       } as unknown as Blob);
       form.append("durationSeconds", String(duration));
 

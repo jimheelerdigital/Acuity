@@ -3,6 +3,56 @@ import type { Entry } from "@prisma/client";
 const STORAGE_BUCKET = "voice-entries";
 
 /**
+ * Map of incoming MIME variants to the canonical form Supabase Storage
+ * accepts. iOS's ExtAudio framework reports m4a files as `audio/x-m4a`,
+ * some Android recorders emit `audio/aac`, and browser MediaRecorder
+ * sends `audio/webm;codecs=opus`. We canonicalize server-side so the
+ * Supabase bucket's allowlist only needs to cover our four core types:
+ * webm, mp4, wav, mpeg.
+ *
+ * Anything that maps in here returns the canonical type. Anything that
+ * doesn't and isn't already canonical is treated as unsupported.
+ */
+const MIME_ALIAS_TO_CANONICAL: Record<string, string> = {
+  "audio/x-m4a": "audio/mp4",
+  "audio/m4a": "audio/mp4",
+  "audio/aac": "audio/mp4",
+  "audio/x-aac": "audio/mp4",
+  "audio/mp4a-latm": "audio/mp4",
+};
+
+const CANONICAL_TYPES = new Set([
+  "audio/webm",
+  "audio/mp4",
+  "audio/wav",
+  "audio/mpeg",
+  "audio/ogg",
+]);
+
+/**
+ * Strip codec params + lowercase + alias-map an incoming MIME to the
+ * canonical form. Returns null if the input isn't any audio type we
+ * recognize (caller should 415).
+ *
+ * Example flow:
+ *   "audio/webm;codecs=opus"  → "audio/webm"
+ *   "AUDIO/X-M4A"             → "audio/mp4"
+ *   "audio/aac"               → "audio/mp4"
+ *   "audio/mp4"               → "audio/mp4"
+ *   "application/octet-stream" → null
+ *   ""                        → null
+ */
+export function normalizeAudioMimeType(rawMime: string): string | null {
+  if (!rawMime) return null;
+  const base = rawMime.split(";")[0].trim().toLowerCase();
+  if (!base.startsWith("audio/")) return null;
+  const aliased = MIME_ALIAS_TO_CANONICAL[base];
+  if (aliased) return aliased;
+  if (CANONICAL_TYPES.has(base)) return base;
+  return null;
+}
+
+/**
  * Resolve the audio reference on an Entry. Prefers the new `audioPath`
  * (Supabase Storage object path; sign on demand). Falls back to the
  * legacy `audioUrl` (pre-signed URL from the sync pipeline, 1-hour TTL).
