@@ -56,6 +56,186 @@ export async function clearStoredUser(): Promise<void> {
   await SecureStore.deleteItemAsync(USER_KEY);
 }
 
+// ─── Public API base URL ──────────────────────────────────────────
+// Exported so auth-callback and forgot-password screens can call the
+// web API without duplicating the config-reading boilerplate.
+export function publicApiBaseUrl(): string {
+  return apiBaseUrl();
+}
+
+// ─── Email / password ─────────────────────────────────────────────
+
+export type PasswordSignInResult =
+  | { ok: true; user: User }
+  | { ok: false; reason: "InvalidCredentials" | "EmailNotVerified" | "RateLimited" | "NetworkError"; detail?: string };
+
+/**
+ * Sign in with email + password via /api/auth/mobile-login. On
+ * success the session JWT is stored in SecureStore just like the
+ * Google path; callers should then invoke AuthContext.refresh() to
+ * route to the tabs layout.
+ */
+export async function signInWithPassword(
+  email: string,
+  password: string
+): Promise<PasswordSignInResult> {
+  try {
+    const res = await fetch(`${apiBaseUrl()}/api/auth/mobile-login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+    const body = (await res.json().catch(() => ({}))) as {
+      error?: string;
+      sessionToken?: string;
+      user?: User;
+    };
+    if (!res.ok || !body.sessionToken || !body.user) {
+      const reason =
+        body.error === "EmailNotVerified"
+          ? "EmailNotVerified"
+          : res.status === 429
+          ? "RateLimited"
+          : "InvalidCredentials";
+      return { ok: false, reason, detail: body.error };
+    }
+    await setToken(body.sessionToken);
+    await setStoredUser(body.user);
+    return { ok: true, user: body.user };
+  } catch (err) {
+    return {
+      ok: false,
+      reason: "NetworkError",
+      detail: err instanceof Error ? err.message : "network failure",
+    };
+  }
+}
+
+export type PasswordSignUpResult =
+  | { ok: true; requiresVerification: boolean }
+  | { ok: false; reason: "AlreadyRegistered" | "WeakPassword" | "InvalidEmail" | "RateLimited" | "NetworkError"; message?: string };
+
+export async function signUpWithPassword(
+  email: string,
+  password: string,
+  name?: string
+): Promise<PasswordSignUpResult> {
+  try {
+    const res = await fetch(`${apiBaseUrl()}/api/auth/mobile-signup`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password, name: name ?? null }),
+    });
+    const body = (await res.json().catch(() => ({}))) as {
+      ok?: boolean;
+      requiresVerification?: boolean;
+      error?: string;
+      message?: string;
+    };
+    if (!res.ok) {
+      const reason =
+        body.error === "AlreadyRegistered"
+          ? "AlreadyRegistered"
+          : body.error === "WeakPassword"
+          ? "WeakPassword"
+          : body.error === "InvalidEmail"
+          ? "InvalidEmail"
+          : res.status === 429
+          ? "RateLimited"
+          : "NetworkError";
+      return { ok: false, reason, message: body.message };
+    }
+    return {
+      ok: true,
+      requiresVerification: body.requiresVerification ?? true,
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      reason: "NetworkError",
+      message: err instanceof Error ? err.message : "network failure",
+    };
+  }
+}
+
+export async function requestMagicLink(
+  email: string
+): Promise<{ ok: true } | { ok: false; reason: "RateLimited" | "InvalidEmail" | "NetworkError" }> {
+  try {
+    const res = await fetch(`${apiBaseUrl()}/api/auth/mobile-magic-link`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    if (!res.ok) {
+      if (res.status === 429) return { ok: false, reason: "RateLimited" };
+      if (res.status === 400) return { ok: false, reason: "InvalidEmail" };
+      return { ok: false, reason: "NetworkError" };
+    }
+    return { ok: true };
+  } catch {
+    return { ok: false, reason: "NetworkError" };
+  }
+}
+
+export async function requestPasswordReset(
+  email: string
+): Promise<{ ok: true } | { ok: false; reason: "RateLimited" | "InvalidEmail" | "NetworkError" }> {
+  try {
+    const res = await fetch(`${apiBaseUrl()}/api/auth/forgot-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    if (!res.ok) {
+      if (res.status === 429) return { ok: false, reason: "RateLimited" };
+      if (res.status === 400) return { ok: false, reason: "InvalidEmail" };
+      return { ok: false, reason: "NetworkError" };
+    }
+    return { ok: true };
+  } catch {
+    return { ok: false, reason: "NetworkError" };
+  }
+}
+
+/**
+ * Exchange a mobile-magic-link token for a session JWT. Called by
+ * the deep-link handler at app/auth-callback.tsx when iOS routes an
+ * acuity://auth-callback?token=… URL to the app.
+ */
+export async function completeMobileMagicLink(
+  token: string
+): Promise<PasswordSignInResult> {
+  try {
+    const res = await fetch(`${apiBaseUrl()}/api/auth/mobile-complete`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token }),
+    });
+    const body = (await res.json().catch(() => ({}))) as {
+      error?: string;
+      sessionToken?: string;
+      user?: User;
+    };
+    if (!res.ok || !body.sessionToken || !body.user) {
+      return {
+        ok: false,
+        reason: "InvalidCredentials",
+        detail: body.error,
+      };
+    }
+    await setToken(body.sessionToken);
+    await setStoredUser(body.user);
+    return { ok: true, user: body.user };
+  } catch (err) {
+    return {
+      ok: false,
+      reason: "NetworkError",
+      detail: err instanceof Error ? err.message : "network failure",
+    };
+  }
+}
+
 export async function signOut(): Promise<void> {
   // Mobile sign-out is local-only: the NextAuth JWT issued by
   // /api/auth/mobile-callback is a bearer token with no server-side

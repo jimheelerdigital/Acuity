@@ -17,8 +17,13 @@ function AuthGate() {
     if (loading) return;
 
     const inAuth = segments[0] === "(auth)";
+    // Deep-link handoff from the magic-link email. AuthGate must
+    // let the user stay on /auth-callback while the token-exchange
+    // runs — bouncing them back to sign-in mid-exchange would lose
+    // the token and drop them into an infinite loop.
+    const inAuthCallback = segments[0] === "auth-callback";
 
-    if (!user && !inAuth) {
+    if (!user && !inAuth && !inAuthCallback) {
       router.replace("/(auth)/sign-in");
     } else if (user && inAuth) {
       router.replace("/(tabs)");
@@ -55,6 +60,7 @@ function ThemedApp() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="(auth)" />
+        <Stack.Screen name="auth-callback" options={{ headerShown: false }} />
         <Stack.Screen
           name="entry/[id]"
           options={{

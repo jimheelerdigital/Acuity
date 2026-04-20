@@ -1,37 +1,44 @@
 import { Ionicons } from "@expo/vector-icons";
+import { Link } from "expo-router";
 import { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Pressable,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useAuth } from "@/contexts/auth-context";
-import { useGoogleSignIn } from "@/lib/auth";
+import {
+  requestMagicLink,
+  signInWithPassword,
+  useGoogleSignIn,
+} from "@/lib/auth";
+
+type Loading = "google" | "password" | "magic" | null;
 
 /**
- * Mobile sign-in screen. Google is the only path — magic-link email
- * was removed with the expo-auth-session migration (the NextAuth
- * email flow issues a web cookie + expects the user to click a link
- * back to the web; it can't cleanly hand off to a native JWT).
+ * Mobile sign-in. Three paths, all of which end with a session JWT
+ * in SecureStore and AuthContext.refresh() routing to the (tabs) layout:
  *
- * If Jim decides magic-link is worth keeping on mobile later, the
- * pattern is: POST the email to a new /api/auth/mobile-magic-link
- * endpoint that emails a deep-link-flavored URL
- * (acuity://auth-callback?code=…), the app catches it via
- * expo-linking, exchanges code for JWT at /api/auth/mobile-magic-link
- * /complete. Not cheap; not worth it until Google-only shows real
- * friction.
+ *   1. Continue with Google — PKCE flow via expo-auth-session.
+ *   2. Email + password — POST /api/auth/mobile-login.
+ *   3. Email me a link — POST /api/auth/mobile-magic-link, user taps
+ *      email link on this device → acuity://auth-callback?token=X →
+ *      app/auth-callback.tsx exchanges for a JWT.
  */
 export default function SignInScreen() {
   const { refresh } = useAuth();
-  const { signIn, ready, hasClientId } = useGoogleSignIn();
-  const [loading, setLoading] = useState(false);
+  const { signIn: googleSignIn, ready, hasClientId } = useGoogleSignIn();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState<Loading>(null);
+  const [magicSent, setMagicSent] = useState(false);
 
-  async function handleSignIn() {
+  async function handleGoogle() {
     if (!ready) {
       Alert.alert(
         "Not ready",
@@ -41,106 +48,198 @@ export default function SignInScreen() {
       );
       return;
     }
-    setLoading(true);
-    const result = await signIn();
-    setLoading(false);
+    setLoading("google");
+    const result = await googleSignIn();
+    setLoading(null);
 
     if (!result.ok) {
-      if (result.reason === "cancelled") return; // user tapped Cancel, no alert
-      const headline =
-        result.reason === "no_token"
-          ? "Google didn't return a session"
-          : result.detail ?? "Something went wrong";
-      // Temporary: dump the full diagnostic snapshot into the alert.
-      // TestFlight doesn't surface console.log anywhere we can read,
-      // so the only way to see what the flow actually produced is to
-      // put it on-screen. Pull this out once auth is stable.
-      const debugLines: string[] = [];
-      if (result.debug) {
-        const d = result.debug;
-        if (d.redirectUri) debugLines.push(`redirectUri: ${d.redirectUri}`);
-        if (d.responseType) debugLines.push(`responseType: ${d.responseType}`);
-        if (d.paramsKeys)
-          debugLines.push(`paramsKeys: [${d.paramsKeys.join(", ")}]`);
-        if (d.hasAuthentication !== undefined)
-          debugLines.push(`hasAuthentication: ${d.hasAuthentication}`);
-        if (d.hasAuthenticationIdToken !== undefined)
-          debugLines.push(
-            `hasAuthentication.idToken: ${d.hasAuthenticationIdToken}`
-          );
-        if (d.hasParamsIdToken !== undefined)
-          debugLines.push(`hasParams.id_token: ${d.hasParamsIdToken}`);
-        if (d.exchangeAttempted !== undefined)
-          debugLines.push(`exchangeAttempted: ${d.exchangeAttempted}`);
-        if (d.exchangeSuccess !== undefined)
-          debugLines.push(`exchangeSuccess: ${d.exchangeSuccess}`);
-        if (d.exchangeHasIdToken !== undefined)
-          debugLines.push(`exchange.hasIdToken: ${d.exchangeHasIdToken}`);
-        if (d.exchangeError)
-          debugLines.push(`exchangeError: ${d.exchangeError}`);
-        if (d.idTokenSource)
-          debugLines.push(`idTokenSource: ${d.idTokenSource}`);
-        if (d.callbackStatus !== undefined)
-          debugLines.push(`callbackStatus: ${d.callbackStatus}`);
-        if (d.callbackError)
-          debugLines.push(`callbackError: ${d.callbackError}`);
-      }
-      const message =
-        debugLines.length > 0
-          ? `${headline}\n\n${debugLines.join("\n")}`
-          : headline;
-      Alert.alert("Sign-in failed", message);
+      if (result.reason === "cancelled") return;
+      Alert.alert(
+        "Sign-in failed",
+        result.detail ?? "Please try again or use email."
+      );
       return;
     }
-
-    // Token already stored by signIn(); refresh AuthContext so the
-    // root layout's AuthGate routes us to (tabs).
     await refresh();
   }
 
+  async function handlePassword() {
+    if (!email.trim() || !password) return;
+    setLoading("password");
+    const result = await signInWithPassword(email.trim(), password);
+    setLoading(null);
+
+    if (!result.ok) {
+      Alert.alert(
+        "Sign-in failed",
+        result.reason === "EmailNotVerified"
+          ? "Please verify your email first. Check your inbox for the link."
+          : result.reason === "RateLimited"
+          ? "Too many attempts. Wait an hour before trying again."
+          : "Incorrect email or password."
+      );
+      return;
+    }
+    await refresh();
+  }
+
+  async function handleMagic() {
+    if (!email.trim()) {
+      Alert.alert("Enter your email", "We need somewhere to send the link.");
+      return;
+    }
+    setLoading("magic");
+    const result = await requestMagicLink(email.trim());
+    setLoading(null);
+
+    if (!result.ok) {
+      Alert.alert(
+        "Couldn't send link",
+        result.reason === "RateLimited"
+          ? "Too many attempts. Wait an hour before trying again."
+          : "Please check your email address and try again."
+      );
+      return;
+    }
+    setMagicSent(true);
+  }
+
+  if (magicSent) {
+    return (
+      <SafeAreaView className="flex-1 bg-white dark:bg-[#0B0B12] items-center justify-center px-6">
+        <Text className="text-4xl mb-4">📬</Text>
+        <Text className="text-xl font-bold text-zinc-900 dark:text-zinc-50 mb-2">
+          Check your inbox
+        </Text>
+        <Text className="text-sm text-zinc-500 dark:text-zinc-400 text-center leading-relaxed mb-6">
+          We sent a sign-in link to {email}. Open it on this device — it&apos;ll hand off to Acuity automatically.
+        </Text>
+        <Pressable
+          onPress={() => {
+            setMagicSent(false);
+            setLoading(null);
+          }}
+          className="px-4 py-2"
+        >
+          <Text className="text-violet-500 text-sm">Use a different email</Text>
+        </Pressable>
+      </SafeAreaView>
+    );
+  }
+
   return (
-    <SafeAreaView className="flex-1 bg-white dark:bg-[#1E1E2E] dark:bg-[#0B0B12] items-center justify-center px-6">
-      <View className="h-16 w-16 rounded-2xl bg-violet-600 items-center justify-center mb-8">
-        <Text className="text-3xl" style={{ color: "white" }}>
-          A
+    <SafeAreaView className="flex-1 bg-white dark:bg-[#0B0B12] px-6">
+      <View className="flex-1 justify-center">
+        <View className="h-16 w-16 rounded-2xl bg-violet-600 items-center justify-center mb-8 self-center">
+          <Text className="text-3xl" style={{ color: "white" }}>
+            A
+          </Text>
+        </View>
+
+        <Text className="text-2xl font-bold text-zinc-900 dark:text-zinc-50 mb-1 text-center">
+          Sign in to Acuity
         </Text>
-      </View>
+        <Text className="text-sm text-zinc-400 dark:text-zinc-500 mb-8 text-center">
+          Your nightly brain dump, pattern recognition across your own words.
+        </Text>
 
-      <Text className="text-2xl font-bold text-zinc-900 dark:text-zinc-50 mb-1">
-        Sign in to Acuity
-      </Text>
-      <Text className="text-sm text-zinc-400 dark:text-zinc-500 mb-10 text-center">
-        Your nightly brain dump, pattern recognition across your own words.
-      </Text>
+        {/* Google */}
+        <Pressable
+          onPress={handleGoogle}
+          disabled={loading !== null}
+          className="w-full flex-row items-center justify-center gap-3 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-4 py-3.5 mb-4"
+          style={({ pressed }) => ({ opacity: pressed || loading ? 0.7 : 1 })}
+        >
+          {loading === "google" ? (
+            <ActivityIndicator size="small" color="#A1A1AA" />
+          ) : (
+            <Ionicons name="logo-google" size={18} color="#A1A1AA" />
+          )}
+          <Text className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+            {loading === "google" ? "Signing in…" : "Continue with Google"}
+          </Text>
+        </Pressable>
 
-      <Pressable
-        onPress={handleSignIn}
-        disabled={loading}
-        className="w-full flex-row items-center justify-center gap-3 rounded-xl bg-white dark:bg-[#1E1E2E] px-4 py-3.5"
-        style={({ pressed }) => ({ opacity: pressed || loading ? 0.7 : 1 })}
-      >
-        {loading ? (
-          <ActivityIndicator size="small" color="#18181B" />
-        ) : (
-          <Ionicons name="logo-google" size={18} color="#18181B" />
+        {/* Divider */}
+        <View className="flex-row items-center gap-3 my-3">
+          <View className="h-px flex-1 bg-zinc-200 dark:bg-white/10" />
+          <Text className="text-xs text-zinc-400 dark:text-zinc-500">or</Text>
+          <View className="h-px flex-1 bg-zinc-200 dark:bg-white/10" />
+        </View>
+
+        {/* Email + password */}
+        <TextInput
+          value={email}
+          onChangeText={setEmail}
+          placeholder="you@example.com"
+          placeholderTextColor="#71717A"
+          autoCapitalize="none"
+          autoComplete="email"
+          keyboardType="email-address"
+          className="w-full rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-4 py-3 text-zinc-900 dark:text-zinc-50 mb-3"
+        />
+        <TextInput
+          value={password}
+          onChangeText={setPassword}
+          placeholder="Password"
+          placeholderTextColor="#71717A"
+          secureTextEntry
+          autoComplete="password"
+          className="w-full rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-4 py-3 text-zinc-900 dark:text-zinc-50 mb-3"
+        />
+        <Pressable
+          onPress={handlePassword}
+          disabled={loading !== null || !email.trim() || !password}
+          className="w-full rounded-xl bg-zinc-900 dark:bg-zinc-50 px-4 py-3.5 items-center"
+          style={({ pressed }) => ({
+            opacity:
+              pressed || loading !== null || !email.trim() || !password
+                ? 0.5
+                : 1,
+          })}
+        >
+          <Text className="text-sm font-semibold text-white dark:text-zinc-900">
+            {loading === "password" ? "Signing in…" : "Sign in"}
+          </Text>
+        </Pressable>
+
+        {/* Magic link */}
+        <Pressable
+          onPress={handleMagic}
+          disabled={loading !== null}
+          className="w-full rounded-xl border border-zinc-200 dark:border-white/10 px-4 py-3 mt-3 items-center"
+          style={({ pressed }) => ({
+            opacity: pressed || loading !== null ? 0.5 : 1,
+          })}
+        >
+          <Text className="text-sm font-medium text-zinc-600 dark:text-zinc-300">
+            {loading === "magic" ? "Sending link…" : "Email me a sign-in link"}
+          </Text>
+        </Pressable>
+
+        <View className="flex-row justify-between items-center mt-5">
+          <Link href="/(auth)/forgot-password" asChild>
+            <Pressable>
+              <Text className="text-xs text-zinc-500 dark:text-zinc-400">
+                Forgot password?
+              </Text>
+            </Pressable>
+          </Link>
+          <Link href="/(auth)/sign-up" asChild>
+            <Pressable>
+              <Text className="text-xs font-semibold text-violet-500">
+                Create account →
+              </Text>
+            </Pressable>
+          </Link>
+        </View>
+
+        {!hasClientId && (
+          <Text className="text-xs text-amber-400 mt-6 text-center leading-relaxed">
+            Google client ID not set. Development build only.
+          </Text>
         )}
-        <Text className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-          {loading ? "Signing in…" : "Continue with Google"}
-        </Text>
-      </Pressable>
-
-      {!hasClientId && (
-        <Text className="text-xs text-amber-400 mt-6 text-center leading-relaxed">
-          Google client ID not set. Development build only — populate
-          `extra.googleIosClientId` in app.json before TestFlight.
-        </Text>
-      )}
-
-      <Text className="text-xs text-zinc-500 dark:text-zinc-400 mt-10 text-center leading-relaxed">
-        By continuing you agree to the{"\n"}
-        <Text className="text-zinc-400 dark:text-zinc-500">Terms of Service</Text> and{" "}
-        <Text className="text-zinc-400 dark:text-zinc-500">Privacy Policy</Text>.
-      </Text>
+      </View>
     </SafeAreaView>
   );
 }
