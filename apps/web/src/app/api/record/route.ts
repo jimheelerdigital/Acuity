@@ -17,12 +17,11 @@
  *     for status transitions.
  */
 
-import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 
 import { MAX_AUDIO_BYTES } from "@acuity/shared";
 
-import { getAuthOptions } from "@/lib/auth";
+import { getAnySessionUserId } from "@/lib/mobile-auth";
 import { toClientError } from "@/lib/api-errors";
 import { uploadAudioBytes } from "@/lib/audio";
 import { inngest } from "@/inngest/client";
@@ -43,11 +42,10 @@ export const maxDuration = 120;
 
 export async function POST(req: NextRequest) {
   // ── 1. Auth ──────────────────────────────────────────────────────────────
-  const session = await getServerSession(getAuthOptions());
-  if (!session?.user?.id) {
+  const userId = await getAnySessionUserId(req);
+  if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const userId = session.user.id;
 
   // ── 1b. Rate limit (expensive: Whisper + Claude) ────────────────────────
   const rl = await checkRateLimit(limiters.expensiveAi, `user:${userId}`);

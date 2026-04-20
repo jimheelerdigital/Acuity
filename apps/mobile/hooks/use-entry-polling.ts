@@ -1,4 +1,7 @@
+import Constants from "expo-constants";
 import { useEffect, useRef, useState } from "react";
+
+import { getToken } from "@/lib/auth";
 
 /**
  * Mobile companion to apps/web/src/hooks/use-entry-polling.ts.
@@ -14,8 +17,16 @@ import { useEffect, useRef, useState } from "react";
  * useFocusEffect.
  */
 
-const BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000";
+function apiBaseUrl(): string {
+  const extra = Constants.expoConfig?.extra as
+    | { apiUrl?: string }
+    | undefined;
+  return (
+    process.env.EXPO_PUBLIC_API_URL ??
+    extra?.apiUrl ??
+    "https://www.getacuity.io"
+  );
+}
 
 export type PollStatus =
   | "idle"
@@ -106,8 +117,9 @@ export function useEntryPolling(
       }
 
       try {
-        const res = await fetch(`${BASE_URL}/api/entries/${entryId}`, {
-          credentials: "include",
+        const token = await getToken();
+        const res = await fetch(`${apiBaseUrl()}/api/entries/${entryId}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         });
         if (cancelled.current) return;
 

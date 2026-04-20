@@ -13,10 +13,9 @@
  *     completes (client polling lands in PR 5).
  */
 
-import { getServerSession } from "next-auth";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-import { getAuthOptions } from "@/lib/auth";
+import { getAnySessionUserId } from "@/lib/mobile-auth";
 import { inngest } from "@/inngest/client";
 import { requireEntitlement } from "@/lib/paywall";
 import {
@@ -27,12 +26,11 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export async function POST() {
-  const session = await getServerSession(getAuthOptions());
-  if (!session?.user?.id) {
+export async function POST(req: NextRequest) {
+  const userId = await getAnySessionUserId(req);
+  if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const userId = session.user.id;
 
   const rl = await checkRateLimit(limiters.expensiveAi, `user:${userId}`);
   if (!rl.success) return rateLimitedResponse(rl);

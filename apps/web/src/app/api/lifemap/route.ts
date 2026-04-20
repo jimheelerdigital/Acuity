@@ -1,18 +1,16 @@
-import { getServerSession } from "next-auth";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-import { getAuthOptions } from "@/lib/auth";
+import { getAnySessionUserId } from "@/lib/mobile-auth";
 import { DEFAULT_LIFE_AREAS } from "@acuity/shared";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
-  const session = await getServerSession(getAuthOptions());
-  if (!session?.user?.id) {
+export async function GET(req: NextRequest) {
+  const userId = await getAnySessionUserId(req);
+  if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const userId = session.user.id;
   const { prisma } = await import("@/lib/prisma");
 
   // Ensure all 6 canonical areas exist (keyed on the UPPER_CASE enum

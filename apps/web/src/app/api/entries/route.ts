@@ -1,21 +1,20 @@
-import { getServerSession } from "next-auth";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-import { getAuthOptions } from "@/lib/auth";
+import { getAnySessionUserId } from "@/lib/mobile-auth";
 import type { EntryDTO } from "@acuity/shared";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
-  const session = await getServerSession(getAuthOptions());
-  if (!session?.user?.id) {
+export async function GET(req: NextRequest) {
+  const userId = await getAnySessionUserId(req);
+  if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const { prisma } = await import("@/lib/prisma");
 
   const entries = await prisma.entry.findMany({
-    where: { userId: session.user.id },
+    where: { userId },
     orderBy: { createdAt: "desc" },
     take: 30,
     select: {

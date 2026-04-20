@@ -14,12 +14,11 @@
  */
 
 import Anthropic from "@anthropic-ai/sdk";
-import { getServerSession } from "next-auth";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 import { CLAUDE_MAX_TOKENS, CLAUDE_MODEL } from "@acuity/shared";
 
-import { getAuthOptions } from "@/lib/auth";
+import { getAnySessionUserId } from "@/lib/mobile-auth";
 import { inngest } from "@/inngest/client";
 import { requireEntitlement } from "@/lib/paywall";
 import {
@@ -30,16 +29,16 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
-  const session = await getServerSession(getAuthOptions());
-  if (!session?.user?.id) {
+export async function GET(req: NextRequest) {
+  const userId = await getAnySessionUserId(req);
+  if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const { prisma } = await import("@/lib/prisma");
 
   const reports = await prisma.weeklyReport.findMany({
-    where: { userId: session.user.id },
+    where: { userId },
     orderBy: { weekStart: "desc" },
     take: 10,
   });
@@ -47,12 +46,11 @@ export async function GET() {
   return NextResponse.json({ reports });
 }
 
-export async function POST() {
-  const session = await getServerSession(getAuthOptions());
-  if (!session?.user?.id) {
+export async function POST(req: NextRequest) {
+  const userId = await getAnySessionUserId(req);
+  if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const userId = session.user.id;
 
   const rl = await checkRateLimit(limiters.expensiveAi, `user:${userId}`);
   if (!rl.success) return rateLimitedResponse(rl);

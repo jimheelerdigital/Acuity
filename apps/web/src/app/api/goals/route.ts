@@ -1,20 +1,19 @@
-import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 
-import { getAuthOptions } from "@/lib/auth";
+import { getAnySessionUserId } from "@/lib/mobile-auth";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
-  const session = await getServerSession(getAuthOptions());
-  if (!session?.user?.id) {
+export async function GET(req: NextRequest) {
+  const userId = await getAnySessionUserId(req);
+  if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const { prisma } = await import("@/lib/prisma");
 
   const goals = await prisma.goal.findMany({
-    where: { userId: session.user.id },
+    where: { userId },
     orderBy: { createdAt: "desc" },
   });
 
@@ -22,8 +21,8 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await getServerSession(getAuthOptions());
-  if (!session?.user?.id) {
+  const userId = await getAnySessionUserId(req);
+  if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -39,7 +38,7 @@ export async function POST(req: NextRequest) {
 
   const goal = await prisma.goal.create({
     data: {
-      userId: session.user.id,
+      userId,
       title: body.title,
       description: body.description ?? null,
       targetDate: body.targetDate ? new Date(body.targetDate) : null,
@@ -51,8 +50,8 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  const session = await getServerSession(getAuthOptions());
-  if (!session?.user?.id) {
+  const userId = await getAnySessionUserId(req);
+  if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -67,7 +66,7 @@ export async function PATCH(req: NextRequest) {
   const { prisma } = await import("@/lib/prisma");
 
   const existing = await prisma.goal.findFirst({
-    where: { id: body.id, userId: session.user.id },
+    where: { id: body.id, userId },
   });
   if (!existing) {
     return NextResponse.json({ error: "Goal not found" }, { status: 404 });

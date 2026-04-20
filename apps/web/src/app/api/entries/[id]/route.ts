@@ -1,16 +1,15 @@
-import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 
-import { getAuthOptions } from "@/lib/auth";
+import { getAnySessionUserId } from "@/lib/mobile-auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const session = await getServerSession(getAuthOptions());
-  if (!session?.user?.id) {
+  const userId = await getAnySessionUserId(req);
+  if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -33,7 +32,7 @@ export async function GET(
     },
   });
 
-  if (!entry || entry.userId !== session.user.id) {
+  if (!entry || entry.userId !== userId) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 

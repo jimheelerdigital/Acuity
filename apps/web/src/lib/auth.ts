@@ -4,8 +4,6 @@ import { type NextAuthOptions } from "next-auth";
 import EmailProvider from "next-auth/providers/email";
 import GoogleProvider from "next-auth/providers/google";
 
-import { DEFAULT_LIFE_AREAS } from "@acuity/shared";
-
 /**
  * Returns NextAuth options with prisma lazily imported.
  * Never call this at module scope — only inside request handlers or
@@ -114,44 +112,11 @@ export function getAuthOptions(): NextAuthOptions {
 
     events: {
       async createUser({ user }) {
-        const { track } = await import("@/lib/posthog");
-        // Start the 14-day Acuity trial clock. `trialEndsAt` is the
-        // canonical trial timer — Stripe has no `trial_period_days`
-        // on the checkout (plan §1.5 decision). `subscriptionStatus`
-        // defaults to "TRIAL" on the schema; setting it explicitly
-        // here too in case a migration ever changes that default.
-        // IMPLEMENTATION_PLAN_PAYWALL §1.6.
-        const TRIAL_MS = 14 * 24 * 60 * 60 * 1000;
-        const trialEndsAt = new Date(Date.now() + TRIAL_MS);
-        await prisma.user.update({
-          where: { id: user.id },
-          data: {
-            subscriptionStatus: "TRIAL",
-            trialEndsAt,
-          },
-        });
-
-        // Kick off the paywall funnel.
-        // IMPLEMENTATION_PLAN_PAYWALL §8.3.
-        await track(user.id, "trial_started", {
-          trialEndsAt: trialEndsAt.toISOString(),
-          email: user.email ?? null,
-        });
-
-        await prisma.lifeMapArea.createMany({
-          data: DEFAULT_LIFE_AREAS.map((area, index) => ({
-            userId: user.id,
-            area: area.enum,
-            name: area.name,
-            color: area.color,
-            icon: area.icon,
-            sortOrder: index,
-          })),
-        });
-        // Initialize user memory
-        await prisma.userMemory.create({
-          data: { userId: user.id },
-        }).catch(() => {}); // ignore if already exists
+        // Trial clock + LifeMapArea seed + UserMemory + trial_started
+        // PostHog event. Shared with /api/auth/mobile-callback so the
+        // native OAuth path produces identical state; see lib/bootstrap-user.ts.
+        const { bootstrapNewUser } = await import("@/lib/bootstrap-user");
+        await bootstrapNewUser({ userId: user.id, email: user.email ?? null });
       },
     },
   };

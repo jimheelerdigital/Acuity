@@ -1,37 +1,36 @@
 /**
  * GET /api/user/me
  *
- * Thin "refresh my session state" endpoint for the mobile app's
- * foreground-refresh pattern (docs/APPLE_IAP_DECISION.md §5
- * implementation step 2). The mobile app calls this when returning
- * from Safari-based upgrade checkout so the local auth state picks
- * up the new subscriptionStatus without requiring a sign-out /
- * sign-in cycle.
+ * Thin "refresh my session state" endpoint. Called by both:
+ *   - Web components that need to tail-read subscription state
+ *     without fetching the whole user row.
+ *   - Mobile's foreground-refresh pattern (docs/APPLE_IAP_DECISION.md
+ *     §5 implementation step 2) after the user returns from Safari-
+ *     based upgrade checkout.
  *
- * Also useful on web for components that need to tail-read
- * subscription state without fetching the whole user row.
+ * Auth accepts EITHER a NextAuth web cookie OR a Bearer JWT in the
+ * Authorization header (mobile). See lib/mobile-auth.ts.
  *
  * Returns only the fields the client might legitimately need —
  * nothing sensitive (no Stripe IDs, no push tokens, no isAdmin).
  */
 
-import { getServerSession } from "next-auth";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-import { getAuthOptions } from "@/lib/auth";
+import { getAnySessionUserId } from "@/lib/mobile-auth";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-export async function GET() {
-  const session = await getServerSession(getAuthOptions());
-  if (!session?.user?.id) {
+export async function GET(req: NextRequest) {
+  const userId = await getAnySessionUserId(req);
+  if (!userId) {
     return NextResponse.json({ user: null }, { status: 401 });
   }
 
   const { prisma } = await import("@/lib/prisma");
   const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
+    where: { id: userId },
     select: {
       id: true,
       email: true,

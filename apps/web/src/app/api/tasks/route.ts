@@ -1,13 +1,12 @@
-import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 
-import { getAuthOptions } from "@/lib/auth";
+import { getAnySessionUserId } from "@/lib/mobile-auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
-  const session = await getServerSession(getAuthOptions());
-  if (!session?.user?.id) {
+  const userId = await getAnySessionUserId(req);
+  if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -17,7 +16,7 @@ export async function GET(req: NextRequest) {
 
   const tasks = await prisma.task.findMany({
     where: {
-      userId: session.user.id,
+      userId: userId,
       ...(all ? {} : { status: { not: "DONE" } }),
     },
     include: { entry: { select: { entryDate: true } } },
@@ -40,8 +39,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await getServerSession(getAuthOptions());
-  if (!session?.user?.id) {
+  const userId = await getAnySessionUserId(req);
+  if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -57,7 +56,7 @@ export async function POST(req: NextRequest) {
 
   const task = await prisma.task.create({
     data: {
-      userId: session.user.id,
+      userId: userId,
       text: body.title ?? body.text,
       title: body.title ?? body.text,
       description: body.description ?? null,
@@ -70,8 +69,8 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  const session = await getServerSession(getAuthOptions());
-  if (!session?.user?.id) {
+  const userId = await getAnySessionUserId(req);
+  if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -87,7 +86,7 @@ export async function PATCH(req: NextRequest) {
 
   // Verify ownership
   const existing = await prisma.task.findFirst({
-    where: { id: body.id, userId: session.user.id },
+    where: { id: body.id, userId: userId },
   });
   if (!existing) {
     return NextResponse.json({ error: "Task not found" }, { status: 404 });
