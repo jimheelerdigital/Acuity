@@ -91,6 +91,21 @@ export function getAuthOptions(): NextAuthOptions {
 
     events: {
       async createUser({ user }) {
+        // Start the 14-day Acuity trial clock. `trialEndsAt` is the
+        // canonical trial timer — Stripe has no `trial_period_days`
+        // on the checkout (plan §1.5 decision). `subscriptionStatus`
+        // defaults to "TRIAL" on the schema; setting it explicitly
+        // here too in case a migration ever changes that default.
+        // IMPLEMENTATION_PLAN_PAYWALL §1.6.
+        const TRIAL_MS = 14 * 24 * 60 * 60 * 1000;
+        await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            subscriptionStatus: "TRIAL",
+            trialEndsAt: new Date(Date.now() + TRIAL_MS),
+          },
+        });
+
         await prisma.lifeMapArea.createMany({
           data: DEFAULT_LIFE_AREAS.map((area, index) => ({
             userId: user.id,
