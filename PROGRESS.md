@@ -137,7 +137,42 @@ No PROGRESS.md "Next Up" additions yet — this blocker blocks step 2 of the exi
 
 ## Parked / Deferred
 
-- **Waitlist drip email sequence (2026-04-19 — parked).** The four follow-up emails in `apps/web/src/lib/drip-emails.ts` (steps 2–5: days 2, 5, 10, 14) are built and `emailSequenceStep` tracking is wired, but nothing invokes `/api/cron/waitlist-drip`: no `vercel.json`, no GitHub Action, no external scheduler. Verified by grep — the only references to the route in source are the handler itself and its console.error log. The security fix (fail-closed auth on the route) stays shipped; what's parked is wiring a scheduler. Rationale: email copy references *"doors opening soon"* / *"We're putting the final touches"* / Day-14 launch framing that presumes a launch date which does not exist today. Reactivating the drip before a real launch date sends promises we can't keep and trains Resend's deliverability model that we send unsubstantiated urgency. Wire this up when the launch date is real — at that point also migrate the scheduler to an Inngest cron (see `INNGEST_MIGRATION_PLAN.md` §12) rather than a fresh `vercel.json` cron.
+- **Waitlist drip email sequence (parked 2026-04-19 — updated with activation checklist 2026-04-20).** Templates + DB tracking + fail-closed route ready to go; scheduler + launch-specific copy are the activation work.
+
+  **Current state:**
+  - `apps/web/src/lib/drip-emails.ts` — 4 HTML email templates (emails 2-5 at days 2, 5, 10, 14).
+  - `Waitlist.emailSequenceStep` column — tracks per-user progress.
+  - `/api/waitlist` route — sends email 1 (welcome) inline on signup, bumps `emailSequenceStep` to 1.
+  - `/api/cron/waitlist-drip` route — iterates waitlist users, finds next due email per `daysAfterSignup` in `DRIP_SEQUENCE`, sends via Resend, bumps step. Fail-closed on missing `CRON_SECRET` (S6, 2026-04-19).
+  - **Scheduler: NONE.** No `vercel.json`, no GitHub Action, no Inngest cron — nothing invokes `/api/cron/waitlist-drip`. The drip never fires.
+
+  **Why parked, concretely:**
+  - Email 4 copy assumes the product is about to launch: *"putting the final touches"*, *"Your rate stays forever"*, *"Priority access before the public launch"*.
+  - Email 5 copy assumes launch is imminent: *"doors are opening soon"*, *"This is the last email before we open the doors"*, *"You'll be among the very first people to get access"*, *"Get ready. It's almost time."*
+  - Sending those templates to today's waitlist — with no launch date — trains Resend's deliverability model that we send unsubstantiated urgency and burns user trust when the promised "very soon" turns out to mean months. Email 2 (Day 2 — describes the product) and email 3 (Day 5 — the weekly report feature) are both launch-date-agnostic and could ship on their own.
+
+  **Activation checklist — when launch date is real, do these in order:**
+  1. **Decide launch date + price.** Price decision gate from `Open Decisions` above ($12.99 vs $19) must resolve first — email 4 hardcodes $12.99 right now (line 336 of drip-emails.ts, and again at line 353 in the "Price highlight" block). Grep + swap.
+  2. **Rewrite email 4 + email 5 copy** against the now-real date. Specifically:
+     - Email 4 line 312 (`"We're putting the final touches..."`): swap for a specific "Doors open MMM DD" sentence.
+     - Email 4 lines 335-338 (founding member benefits): no change needed — these still work.
+     - Email 5 line 398 (`"This is the last email before we open the doors"`): swap for "Launch is [N] days out" or similar.
+     - Email 5 line 451 (`"Get ready. It's almost time."`): still fine if the date is real.
+  3. **Decide send cadence:** the schedule is days 2, 5, 10, 14 after signup — fine. The ~5-day gap between email 2 and email 3 might want a refresh based on test-audience pacing feedback if you have any. If not, keep as-is.
+  4. **Wire the scheduler — pick one:**
+     - **(Recommended) Inngest cron.** Add a `waitlistDripFn` in `apps/web/src/inngest/functions/` with `triggers: [{ cron: "0 14 * * *" }]` (daily 2pm UTC = 9am CT, sensible for North American waitlist). Function body: port the logic from `/api/cron/waitlist-drip/route.ts`. Register in `/api/inngest/route.ts`. Requires `ENABLE_INNGEST_PIPELINE=1` in Vercel Production (which is the current target state anyway). No `CRON_SECRET` needed — Inngest handles auth. Retire the `/api/cron/waitlist-drip` route after the migration lands.
+     - **(Alternate) `vercel.json` cron.** Add `{ "crons": [{ "path": "/api/cron/waitlist-drip", "schedule": "0 14 * * *" }] }` at repo root. Keep the existing route. Requires `CRON_SECRET` to be set in Vercel Production — Vercel Cron auto-sends the right `Authorization: Bearer <CRON_SECRET>` header when the env var is present. Vercel Hobby allows 1 cron/project (this would be it); Pro allows 40.
+  5. **Add a `DRIP_WAITLIST_ENABLED` env flag gate** at the top of either the Inngest function or `/api/cron/waitlist-drip`: `if (process.env.DRIP_WAITLIST_ENABLED !== "1") return { skipped: "drip-disabled" }`. Provides a kill-switch separate from the cron itself; flip this to start/stop sends without touching the schedule.
+  6. **Test procedure:**
+     a. Seed 3 throwaway waitlist entries via psql with varying `createdAt` (1 day ago, 4 days ago, 9 days ago) and `emailSequenceStep = 1` (so they're due for emails 2, 3, 4 respectively).
+     b. Manually invoke the cron handler via curl (with CRON_SECRET) or Inngest dashboard → run the function.
+     c. Check Resend logs — three distinct emails should have gone out.
+     d. Check the DB — `emailSequenceStep` should be 2, 3, 4 respectively.
+     e. Invoke again — nothing should send (schedule not due for another 24h minimum, for the users who just advanced).
+     f. Clean up the three throwaway rows.
+  7. **Monitor the first real send:** Resend dashboard → check for bounces or complaints. If the first day shows > 2% complaint rate, pause via the `DRIP_WAITLIST_ENABLED` flag and investigate. Expected healthy complaint rate is < 0.3%.
+
+  **Pre-beta note:** nothing about the paywall or Inngest migration depends on the drip shipping. The drip is a marketing-funnel lever, not a product blocker. Fine to leave parked until launch week.
 
 ---
 
