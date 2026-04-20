@@ -23,6 +23,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { MAX_AUDIO_BYTES } from "@acuity/shared";
 
 import { getAuthOptions } from "@/lib/auth";
+import { toClientError } from "@/lib/api-errors";
 import { uploadAudioBytes } from "@/lib/audio";
 import { inngest } from "@/inngest/client";
 import { processEntry } from "@/lib/pipeline";
@@ -117,14 +118,14 @@ export async function POST(req: NextRequest) {
       );
     } catch (err) {
       const message = err instanceof Error ? err.message : "Upload failed";
+      console.error("[record] Upload failed:", err);
       await prisma.entry.update({
         where: { id: entry.id },
         data: { status: "FAILED", errorMessage: message },
       });
-      return NextResponse.json(
-        { error: message, entryId: entry.id, status: "FAILED" },
-        { status: 502 }
-      );
+      return toClientError(err, 502, {
+        extra: { entryId: entry.id, status: "FAILED" },
+      });
     }
 
     await prisma.entry.update({
@@ -173,11 +174,8 @@ export async function POST(req: NextRequest) {
     );
   } catch (err) {
     console.error("[record] Pipeline failed:", err);
-    const message =
-      err instanceof Error ? err.message : "Processing failed";
-    return NextResponse.json(
-      { error: message, entryId: entry.id, status: "FAILED" },
-      { status: 502 }
-    );
+    return toClientError(err, 502, {
+      extra: { entryId: entry.id, status: "FAILED" },
+    });
   }
 }

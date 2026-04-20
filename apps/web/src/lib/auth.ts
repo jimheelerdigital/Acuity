@@ -64,7 +64,30 @@ export function getAuthOptions(): NextAuthOptions {
 
     session: {
       strategy: "jwt",
+      // 30-day session token, refreshed on use (NextAuth default).
+      // SECURITY_AUDIT.md §6.1: reasonable for a consumer app with
+      // no financial-dashboard surface; revisit if we add high-risk
+      // actions (bulk deletes, data exports).
       maxAge: 30 * 24 * 60 * 60,
+      updateAge: 24 * 60 * 60, // refresh the token daily on active use
+    },
+    cookies: {
+      // NextAuth defaults are already correct (HttpOnly, SameSite=Lax,
+      // Secure=true in prod). Declaring them explicitly here makes
+      // the posture auditable in the repo, not just assumed from the
+      // library's defaults.
+      sessionToken: {
+        name:
+          process.env.NODE_ENV === "production"
+            ? "__Secure-next-auth.session-token"
+            : "next-auth.session-token",
+        options: {
+          httpOnly: true,
+          sameSite: "lax",
+          path: "/",
+          secure: process.env.NODE_ENV === "production",
+        },
+      },
     },
 
     pages: {
