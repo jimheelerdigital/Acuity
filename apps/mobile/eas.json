@@ -41,7 +41,7 @@
     "production": {
       "ios": {
         "appleId": "jim@heelerdigital.com",
-        "ascAppId": "",
+        "ascAppId": "6762633410",
         "bundleIdentifier": "com.heelerdigital.acuity"
       }
     }
