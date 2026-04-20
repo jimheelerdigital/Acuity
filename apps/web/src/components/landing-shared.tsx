@@ -508,9 +508,9 @@ export function Footer() {
           <div>
             <h3 className="text-xs font-semibold uppercase tracking-wider text-white/50 mb-3">Company</h3>
             <ul className="space-y-2 text-sm text-[#A0A0B8]">
-              <li><a href="#" className="transition hover:text-white">Terms</a></li>
-              <li><a href="#" className="transition hover:text-white">Privacy</a></li>
-              <li><a href="#" className="transition hover:text-white">Contact</a></li>
+              <li><a href="/terms" className="transition hover:text-white">Terms</a></li>
+              <li><a href="/privacy" className="transition hover:text-white">Privacy</a></li>
+              <li><a href="mailto:hello@getacuity.io" className="transition hover:text-white">Contact</a></li>
             </ul>
           </div>
         </div>
