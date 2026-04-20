@@ -17,16 +17,11 @@ import { createContext, useContext } from "react";
  *                         bundles the latest value into one
  *                         POST /api/onboarding/update call before
  *                         advancing.
- *   - `advanceNow`        escape hatch for steps that advance on
- *                         their own button (step 4 practice, step 8
- *                         Record-now CTA) rather than relying on the
- *                         shell's Continue row.
  */
 export interface OnboardingContextValue {
   step: number;
   setCanContinue: (value: boolean) => void;
   setCapturedData: (data: Record<string, unknown> | null) => void;
-  advanceNow: () => void;
 }
 
 export const OnboardingContext = createContext<OnboardingContextValue | null>(

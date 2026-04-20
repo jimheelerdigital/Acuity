@@ -155,23 +155,13 @@ export function OnboardingShell({
     });
   }, [router, step]);
 
-  // advanceNow is the escape hatch for steps that own their own primary
-  // button (step 4 "I heard myself, continue", step 8 "Record now"). It
-  // still runs through persistAndAdvance so answers get saved.
-  const advanceNow = useCallback(() => {
-    startTransition(() => {
-      void persistAndAdvance(Math.min(step + 1, totalSteps));
-    });
-  }, [persistAndAdvance, step, totalSteps]);
-
   const contextValue: OnboardingContextValue = useMemo(
     () => ({
       step,
       setCanContinue,
       setCapturedData,
-      advanceNow,
     }),
-    [advanceNow, setCapturedData, step]
+    [setCapturedData, step]
   );
 
   // Each time the user crosses into a new step, reset the continue
