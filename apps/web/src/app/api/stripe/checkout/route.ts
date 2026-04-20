@@ -19,6 +19,10 @@ export async function POST() {
     select: { stripeCustomerId: true, email: true },
   });
 
+  // Trial handled by Acuity's User.trialEndsAt, not Stripe. Subscription
+  // starts paid immediately on checkout completion — avoids the
+  // 14+7=21-day compound trial the old code created, and keeps the
+  // trial clock in one place (IMPLEMENTATION_PLAN_PAYWALL §1.5).
   const checkoutSession = await stripe.checkout.sessions.create({
     mode: "subscription",
     payment_method_types: ["card"],
@@ -30,9 +34,6 @@ export async function POST() {
         quantity: 1,
       },
     ],
-    subscription_data: {
-      trial_period_days: 7,
-    },
     success_url: `${process.env.NEXTAUTH_URL}/dashboard?upgraded=1`,
     cancel_url: `${process.env.NEXTAUTH_URL}/upgrade`,
     metadata: { userId: session.user.id },
