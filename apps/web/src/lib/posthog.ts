@@ -57,7 +57,22 @@ export type AnalyticsEvent =
   | "life_audit_viewed"
   | "upgrade_page_viewed"
   | "upgrade_page_cta_clicked"
-  | "subscription_started";
+  | "subscription_started"
+  // Onboarding flow — fired client-side from the 8-step walkthrough.
+  // `onboarding_started`        step 1 mount
+  // `onboarding_step_completed` after each step advance (sanitized step
+  //                             + any captured answer keys — moodBaseline,
+  //                             selected life-area enums, microphone
+  //                             granted boolean)
+  // `onboarding_completed`      natural finish on step 8
+  // `onboarding_skipped`        user tapped "Skip for now" in the
+  //                             top-right and confirmed — payload
+  //                             includes skippedAtStep so we can see
+  //                             where the drop clusters
+  | "onboarding_started"
+  | "onboarding_step_completed"
+  | "onboarding_completed"
+  | "onboarding_skipped";
 
 /**
  * Fire an analytics event. Safe on missing env config (no-op). Safe
