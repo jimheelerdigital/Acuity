@@ -9,7 +9,7 @@ import {
 
 import { MOOD_EMOJI, MOOD_LABELS, type EntryDTO, type TaskDTO } from "@acuity/shared";
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000";
+import { api } from "@/lib/api";
 
 type EntryDetail = EntryDTO & { tasks: TaskDTO[] };
 
@@ -19,9 +19,10 @@ export default function EntryDetailScreen() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`${API_URL}/api/entries/${id}`, { credentials: "include" })
-      .then((r) => r.json())
+    api
+      .get<{ entry: EntryDetail }>(`/api/entries/${id}`)
       .then((d) => setEntry(d.entry ?? null))
+      .catch(() => setEntry(null))
       .finally(() => setLoading(false));
   }, [id]);
 

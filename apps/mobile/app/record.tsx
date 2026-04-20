@@ -1,185 +1,560 @@
-import { Audio } from "expo-av";
+import { Ionicons } from "@expo/vector-icons";
+import { Audio, InterruptionModeIOS } from "expo-av";
+import * as WebBrowser from "expo-web-browser";
 import { useRouter } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  AppState,
+  type AppStateStatus,
   Pressable,
   Text,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000";
-const MAX_SECONDS = 600;
+import { useEntryPolling } from "@/hooks/use-entry-polling";
+import { api } from "@/lib/api";
+import { getToken } from "@/lib/auth";
 
-type State = "idle" | "recording" | "processing" | "done";
+/**
+ * Recording modal. One screen, one state machine. Consolidates the
+ * prior app/record.tsx + app/(tabs)/index.tsx recording code.
+ *
+ * Flow:
+ *   permission → idle → recording (with live level meter) →
+ *   uploading → processing (polling) → done (nav to entry detail)
+ *
+ * Error branches:
+ *   - permission denied: alert + back to tabs
+ *   - 402 (paywall): alert + open /upgrade in SFSafari
+ *   - 429 (rate limit): alert with retry-after
+ *   - upload network failure: retry up to 3× with exponential
+ *     backoff (2s, 4s, 8s), then surface an error UI with a retry
+ *     button
+ *   - audio interruption (phone call, Siri): Audio.setAudioModeAsync
+ *     with allowsRecordingIOS:true routes non-recording interruptions
+ *     to pause, but if interrupted mid-record we stop + upload what
+ *     we have rather than losing the whole take
+ *   - poll timeout: the server-side processing ran > 3min; we keep
+ *     the entry id and surface a "still working — check dashboard"
+ *     nudge rather than stranding the user on a spinner
+ *
+ * AppState handling: the polling hook already cancels on unmount
+ * cleanly, and the foreground-refresh in auth-context picks up any
+ * subscription status change after the user returns from Safari
+ * (paywall flow). No per-screen AppState listener needed for
+ * polling itself; expo-router keeps the screen mounted when the
+ * app backgrounds.
+ */
+
+const MAX_SECONDS = 120; // matches /api/record server cap
+const UPLOAD_RETRY_SCHEDULE_MS = [2000, 4000, 8000];
+
+type State =
+  | "idle"
+  | "recording"
+  | "uploading"
+  | "processing" // async path; polling driven by useEntryPolling
+  | "error"
+  | "timeout";
+
+type UploadResponse = {
+  entryId: string;
+  status?: string;
+};
 
 export default function RecordScreen() {
   const router = useRouter();
-  const [recordState, setRecordState] = useState<State>("idle");
+  const [state, setState] = useState<State>("idle");
   const [elapsed, setElapsed] = useState(0);
+  const [levels, setLevels] = useState<number[]>(Array(18).fill(0.05));
+  const [error, setError] = useState<string | null>(null);
+  const [polledEntryId, setPolledEntryId] = useState<string | null>(null);
+
   const recordingRef = useRef<Audio.Recording | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const appState = useRef(AppState.currentState);
 
-  // Request permission on mount
+  const poll = useEntryPolling(polledEntryId);
+
+  // Bridge polling terminal states → nav or error surface.
+  useEffect(() => {
+    if (!polledEntryId) return;
+    if (poll.status === "complete" || poll.status === "partial") {
+      // Route to the entry detail screen. router.replace so a back
+      // swipe from detail goes to the dashboard, not back to a
+      // post-record spinner.
+      router.replace(`/entry/${polledEntryId}`);
+    } else if (poll.status === "failed") {
+      setError(poll.entry?.errorMessage ?? "Processing failed.");
+      setState("error");
+    } else if (poll.status === "timeout") {
+      setState("timeout");
+    }
+  }, [poll.status, poll.entry, polledEntryId, router]);
+
+  // Set up audio mode on mount — routes non-recording interruptions
+  // (incoming call, Siri, alarm) to pause rather than crash the
+  // session. allowsRecordingIOS makes the OS grant foreground audio.
   useEffect(() => {
     Audio.requestPermissionsAsync();
     Audio.setAudioModeAsync({
       allowsRecordingIOS: true,
       playsInSilentModeIOS: true,
+      interruptionModeIOS: InterruptionModeIOS.DoNotMix,
+    }).catch(() => {
+      // Some older iOS versions + Expo Go can reject the mode; not
+      // fatal, recording will still start, just without clean
+      // interruption handling.
     });
   }, []);
 
+  // If the user backgrounds the app while polling, we just keep
+  // polling — it resumes in the background for a short while before
+  // iOS suspends the JS runtime. When they foreground, the poll
+  // resumes naturally. If they backgrounded during recording, the
+  // OS pauses the mic + reports an interruption; we stop cleanly.
+  useEffect(() => {
+    const sub = AppState.addEventListener(
+      "change",
+      (next: AppStateStatus) => {
+        const prev = appState.current;
+        appState.current = next;
+        if (
+          prev === "active" &&
+          (next === "background" || next === "inactive") &&
+          state === "recording"
+        ) {
+          // Stop and upload whatever we have so far — losing a
+          // backgrounded session would be worse than a short take.
+          stopRecording().catch(() => {});
+        }
+      }
+    );
+    return () => sub.remove();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
+
+  const cleanupTimer = () => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+  };
+
+  // Unmount: release mic if still held (e.g. user swipes the modal
+  // down mid-recording). Otherwise the red recording indicator
+  // persists until iOS reaps the process.
+  useEffect(() => {
+    return () => {
+      cleanupTimer();
+      const rec = recordingRef.current;
+      if (rec) {
+        rec.stopAndUnloadAsync().catch(() => {});
+        recordingRef.current = null;
+      }
+    };
+  }, []);
+
   const startRecording = async () => {
-    const { granted } = await Audio.getPermissionsAsync();
-    if (!granted) {
-      Alert.alert(
-        "Microphone access required",
-        "Go to Settings > Acuity > Microphone to enable access."
-      );
-      return;
+    setError(null);
+    setPolledEntryId(null);
+    const perm = await Audio.getPermissionsAsync();
+    if (!perm.granted) {
+      const req = await Audio.requestPermissionsAsync();
+      if (!req.granted) {
+        Alert.alert(
+          "Microphone access required",
+          "Enable Acuity's mic access in Settings → Acuity → Microphone, then tap record again.",
+          [{ text: "OK", onPress: () => router.back() }]
+        );
+        return;
+      }
     }
 
-    const recording = new Audio.Recording();
-    await recording.prepareToRecordAsync(
-      Audio.RecordingOptionsPresets.HIGH_QUALITY
-    );
-    await recording.startAsync();
-    recordingRef.current = recording;
-    setElapsed(0);
-    setRecordState("recording");
-
-    timerRef.current = setInterval(() => {
-      setElapsed((s) => {
-        if (s + 1 >= MAX_SECONDS) stopRecording();
-        return s + 1;
+    try {
+      const recording = new Audio.Recording();
+      await recording.prepareToRecordAsync({
+        ...Audio.RecordingOptionsPresets.HIGH_QUALITY,
+        isMeteringEnabled: true,
       });
-    }, 1000);
+      // Subscribe to metering updates for the level-bar visualization.
+      recording.setOnRecordingStatusUpdate((status) => {
+        if (!status.isRecording) return;
+        const meteringDb = status.metering ?? -60;
+        // Map -60..0 dB → 0..1. Apple's dB range is roughly -60 silent
+        // to 0 peak; clamp + normalize.
+        const normalized = Math.max(0, Math.min(1, (meteringDb + 60) / 60));
+        setLevels((prev) => {
+          const next = prev.slice(1);
+          next.push(Math.max(0.05, normalized));
+          return next;
+        });
+      });
+      await recording.startAsync();
+      recordingRef.current = recording;
+      setElapsed(0);
+      setState("recording");
+
+      timerRef.current = setInterval(() => {
+        setElapsed((s) => {
+          if (s + 1 >= MAX_SECONDS) {
+            // auto-stop; state transition happens in stopRecording
+            stopRecording().catch(() => {});
+          }
+          return s + 1;
+        });
+      }, 1000);
+    } catch (err) {
+      console.warn("[record] prepare failed:", err);
+      Alert.alert(
+        "Recording unavailable",
+        "Couldn't open the microphone. Try again or reload the app."
+      );
+    }
   };
 
   const stopRecording = async () => {
-    if (timerRef.current) clearInterval(timerRef.current);
+    cleanupTimer();
     const recording = recordingRef.current;
     if (!recording) return;
-
-    await recording.stopAndUnloadAsync();
-    const uri = recording.getURI();
     recordingRef.current = null;
-
+    try {
+      await recording.stopAndUnloadAsync();
+    } catch {
+      // stop can throw if already unloaded — ignore
+    }
+    const uri = recording.getURI();
     if (!uri) {
-      Alert.alert("Error", "No audio recorded.");
-      setRecordState("idle");
+      Alert.alert("Error", "No audio was captured.");
+      setState("idle");
       return;
     }
-
-    await uploadRecording(uri, elapsed);
+    await upload(uri, elapsed);
   };
 
-  const uploadRecording = async (uri: string, duration: number) => {
-    setRecordState("processing");
+  const upload = useCallback(
+    async (uri: string, duration: number) => {
+      setState("uploading");
 
-    const formData = new FormData();
-    // React Native FormData accepts { uri, name, type }
-    formData.append("audio", {
-      uri,
-      name: "recording.m4a",
-      type: "audio/m4a",
-    } as unknown as Blob);
-    formData.append("durationSeconds", String(duration));
+      const form = new FormData();
+      form.append("audio", {
+        uri,
+        name: "recording.m4a",
+        type: "audio/m4a",
+      } as unknown as Blob);
+      form.append("durationSeconds", String(duration));
 
-    try {
-      const res = await fetch(`${API_URL}/api/record`, {
-        method: "POST",
-        body: formData,
-        credentials: "include",
-      });
+      let attempt = 0;
+      const token = await getToken();
 
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error ?? `HTTP ${res.status}`);
+      while (attempt < UPLOAD_RETRY_SCHEDULE_MS.length + 1) {
+        try {
+          const res = await fetch(
+            `${api.baseUrl()}/api/record`,
+            {
+              method: "POST",
+              headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+              body: form,
+            }
+          );
+
+          if (res.status === 402) {
+            Alert.alert(
+              "Your trial has ended",
+              "Month 2 is where the pattern deepens. Continue the journey on the web?",
+              [
+                {
+                  text: "Not now",
+                  style: "cancel",
+                  onPress: () => router.back(),
+                },
+                {
+                  text: "Open web",
+                  onPress: () => {
+                    WebBrowser.openBrowserAsync(
+                      `${api.baseUrl()}/upgrade?src=mobile`
+                    );
+                    router.back();
+                  },
+                },
+              ]
+            );
+            return;
+          }
+
+          if (res.status === 429) {
+            const body = (await res.json().catch(() => ({}))) as {
+              retryAfter?: number;
+            };
+            const retry = Number(body.retryAfter ?? 60);
+            Alert.alert(
+              "Recording too frequently",
+              `Try again in ${Math.ceil(retry / 60)} minute${retry > 60 ? "s" : ""}.`,
+              [{ text: "OK", onPress: () => router.back() }]
+            );
+            return;
+          }
+
+          if (!res.ok) {
+            const body = await res.json().catch(() => ({}));
+            throw new Error(
+              (body as { error?: string }).error ?? `HTTP ${res.status}`
+            );
+          }
+
+          const body = (await res.json()) as UploadResponse;
+
+          // Async path — poll for completion.
+          if (res.status === 202 && body.entryId) {
+            setState("processing");
+            setPolledEntryId(body.entryId);
+            return;
+          }
+
+          // Sync path — the server returned an inline RecordResponse
+          // with the extraction already done. Nav straight to detail.
+          if (body.entryId) {
+            router.replace(`/entry/${body.entryId}`);
+            return;
+          }
+
+          throw new Error("Unexpected response shape");
+        } catch (err) {
+          attempt++;
+          if (attempt > UPLOAD_RETRY_SCHEDULE_MS.length) {
+            setError(err instanceof Error ? err.message : "Upload failed.");
+            setState("error");
+            return;
+          }
+          // Backoff then retry — mostly covers transient network
+          // drops (dead zone while walking, wifi-cellular handoff).
+          const wait = UPLOAD_RETRY_SCHEDULE_MS[attempt - 1];
+          await new Promise((r) => setTimeout(r, wait));
+        }
       }
-
-      setRecordState("done");
-      setTimeout(() => router.replace("/"), 1500);
-    } catch (err) {
-      Alert.alert(
-        "Upload failed",
-        err instanceof Error ? err.message : "Please try again."
-      );
-      setRecordState("idle");
-    }
-  };
+    },
+    [router]
+  );
 
   const handlePress = () => {
-    if (recordState === "recording") {
-      stopRecording();
-    } else if (recordState === "idle") {
-      startRecording();
+    if (state === "idle") startRecording();
+    else if (state === "recording") stopRecording();
+    else if (state === "error") {
+      setError(null);
+      setState("idle");
     }
   };
 
-  return (
-    <View className="flex-1 bg-zinc-950 items-center justify-center px-8">
-      {recordState === "processing" ? (
-        <View className="items-center gap-4">
-          <ActivityIndicator size="large" color="#7C3AED" />
-          <Text className="text-zinc-400 text-sm">
-            Transcribing and extracting…
-          </Text>
-        </View>
-      ) : recordState === "done" ? (
-        <View className="items-center gap-3">
-          <Text className="text-4xl">✅</Text>
-          <Text className="text-zinc-100 font-semibold text-lg">Done!</Text>
-          <Text className="text-zinc-400 text-sm">Redirecting…</Text>
-        </View>
-      ) : (
-        <View className="items-center gap-8">
-          <View className="items-center gap-2">
-            <Text className="text-zinc-100 text-xl font-semibold">
-              {recordState === "recording" ? "Recording…" : "Ready"}
-            </Text>
-            {recordState === "recording" && (
-              <Text className="text-zinc-400 text-2xl font-mono">
-                {formatTime(elapsed)}
-              </Text>
-            )}
-          </View>
+  // ────────────────────────────────────────────────────────────────
+  // Render
+  // ────────────────────────────────────────────────────────────────
 
-          {/* Record button */}
-          <Pressable
-            onPress={handlePress}
-            style={({ pressed }) => ({
-              opacity: pressed ? 0.7 : 1,
-              transform: [{ scale: pressed ? 0.95 : 1 }],
-            })}
-          >
-            <View
-              className={`h-24 w-24 rounded-full items-center justify-center ${
-                recordState === "recording" ? "bg-red-600" : "bg-violet-600"
-              }`}
+  return (
+    <SafeAreaView className="flex-1 bg-zinc-950" edges={["bottom"]}>
+      <View className="flex-1 items-center justify-center px-8">
+        {state === "processing" ? (
+          <ProcessingView
+            phase={poll.phase}
+            elapsedSeconds={poll.elapsedSeconds}
+          />
+        ) : state === "uploading" ? (
+          <View className="items-center gap-4">
+            <ActivityIndicator size="large" color="#7C3AED" />
+            <Text className="text-zinc-400 text-sm">Uploading…</Text>
+          </View>
+        ) : state === "error" ? (
+          <View className="items-center gap-4 px-4">
+            <Ionicons name="alert-circle-outline" size={48} color="#EF4444" />
+            <Text className="text-zinc-100 text-lg font-semibold text-center">
+              Upload failed.
+            </Text>
+            <Text className="text-zinc-400 text-sm text-center">
+              {error}
+            </Text>
+            <Pressable
+              onPress={handlePress}
+              className="mt-4 rounded-2xl bg-violet-600 px-6 py-3"
             >
-              {recordState === "recording" ? (
-                <View className="h-8 w-8 rounded bg-white" />
-              ) : (
-                <Text className="text-4xl">🎙️</Text>
+              <Text className="text-sm font-semibold text-white">
+                Try again
+              </Text>
+            </Pressable>
+          </View>
+        ) : state === "timeout" ? (
+          <View className="items-center gap-4 px-4">
+            <Text className="text-zinc-100 text-lg font-semibold text-center">
+              Still working on it.
+            </Text>
+            <Text className="text-zinc-400 text-sm text-center">
+              We saved your recording. Check your dashboard in a few minutes.
+            </Text>
+            <Pressable
+              onPress={() => router.back()}
+              className="mt-4 rounded-2xl bg-violet-600 px-6 py-3"
+            >
+              <Text className="text-sm font-semibold text-white">
+                Back to dashboard
+              </Text>
+            </Pressable>
+          </View>
+        ) : (
+          <View className="items-center gap-10">
+            {/* Timer */}
+            <View className="items-center gap-1">
+              <Text className="text-zinc-100 text-lg font-medium">
+                {state === "recording" ? "Recording" : "Ready"}
+              </Text>
+              <Text className="text-zinc-300 text-5xl font-mono tabular-nums">
+                {formatTime(state === "recording" ? elapsed : 0)}
+              </Text>
+              {state === "idle" && (
+                <Text className="text-zinc-500 text-xs mt-1">
+                  Up to 2 minutes. Talk as long as you need.
+                </Text>
               )}
             </View>
-          </Pressable>
 
-          <Text className="text-zinc-500 text-sm text-center">
-            {recordState === "recording"
-              ? "Tap to stop"
-              : "Tap to start your brain dump"}
-          </Text>
-        </View>
-      )}
+            {/* Level meter */}
+            <LevelMeter
+              levels={levels}
+              active={state === "recording"}
+            />
+
+            {/* Record / stop button */}
+            <Pressable
+              onPress={handlePress}
+              style={({ pressed }) => ({
+                opacity: pressed ? 0.8 : 1,
+                transform: [{ scale: pressed ? 0.95 : 1 }],
+              })}
+            >
+              <View
+                className={`h-28 w-28 rounded-full items-center justify-center ${
+                  state === "recording" ? "bg-red-600" : "bg-violet-600"
+                }`}
+                style={
+                  state === "idle"
+                    ? {
+                        shadowColor: "#7C3AED",
+                        shadowOffset: { width: 0, height: 0 },
+                        shadowOpacity: 0.5,
+                        shadowRadius: 24,
+                        elevation: 12,
+                      }
+                    : undefined
+                }
+              >
+                {state === "recording" ? (
+                  <View className="h-10 w-10 rounded-md bg-white" />
+                ) : (
+                  <Ionicons name="mic" size={44} color="#fff" />
+                )}
+              </View>
+            </Pressable>
+
+            <Text className="text-zinc-500 text-sm text-center">
+              {state === "recording"
+                ? "Tap to stop"
+                : "Tap to start your brain dump"}
+            </Text>
+
+            {/* Progress bar when recording */}
+            {state === "recording" && (
+              <View className="w-48 h-1 rounded-full bg-zinc-800">
+                <View
+                  className="h-1 rounded-full bg-red-500"
+                  style={{ width: `${(elapsed / MAX_SECONDS) * 100}%` }}
+                />
+              </View>
+            )}
+          </View>
+        )}
+      </View>
+    </SafeAreaView>
+  );
+}
+
+function LevelMeter({ levels, active }: { levels: number[]; active: boolean }) {
+  return (
+    <View className="flex-row items-end gap-1 h-16">
+      {levels.map((lvl, i) => (
+        <View
+          key={i}
+          className={`w-1.5 rounded-full ${active ? "bg-violet-500" : "bg-zinc-800"}`}
+          style={{
+            height: `${Math.max(6, lvl * 100)}%`,
+            opacity: active ? 1 : 0.3,
+          }}
+        />
+      ))}
+    </View>
+  );
+}
+
+function ProcessingView({
+  phase,
+  elapsedSeconds,
+}: {
+  phase: string | null;
+  elapsedSeconds: number;
+}) {
+  const steps: { key: string; label: string }[] = [
+    { key: "QUEUED", label: "Saving your recording" },
+    { key: "TRANSCRIBING", label: "Transcribing" },
+    { key: "EXTRACTING", label: "Extracting insights" },
+    { key: "PERSISTING", label: "Almost done" },
+  ];
+  const currentIndex = Math.max(
+    0,
+    steps.findIndex((s) => s.key === phase)
+  );
+  return (
+    <View className="w-full items-center">
+      <ActivityIndicator size="large" color="#7C3AED" />
+      <Text className="mt-6 text-zinc-100 text-base font-semibold">
+        {steps[currentIndex]?.label ?? "Processing"}
+      </Text>
+      <Text className="mt-1 text-zinc-500 text-xs">
+        {elapsedSeconds}s elapsed — usually under a minute
+      </Text>
+
+      <View className="mt-8 w-full max-w-xs gap-2">
+        {steps.map((step, i) => {
+          const done = i < currentIndex;
+          const current = i === currentIndex;
+          return (
+            <View key={step.key} className="flex-row items-center gap-3">
+              <View
+                className={`h-4 w-4 rounded-full ${
+                  done
+                    ? "bg-violet-500"
+                    : current
+                      ? "bg-violet-500/40 border border-violet-500"
+                      : "bg-zinc-800"
+                }`}
+              />
+              <Text
+                className={`text-sm ${
+                  done || current ? "text-zinc-200" : "text-zinc-600"
+                }`}
+              >
+                {step.label}
+              </Text>
+            </View>
+          );
+        })}
+      </View>
     </View>
   );
 }
 
 function formatTime(seconds: number): string {
-  const m = Math.floor(seconds / 60).toString().padStart(2, "0");
+  const m = Math.floor(seconds / 60)
+    .toString()
+    .padStart(2, "0");
   const s = (seconds % 60).toString().padStart(2, "0");
   return `${m}:${s}`;
 }

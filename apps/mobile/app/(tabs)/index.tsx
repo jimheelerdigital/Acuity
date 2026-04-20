@@ -1,12 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Audio } from "expo-av";
-import * as Linking from "expo-linking";
-import { useEffect, useRef, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
-  Animated,
-  Easing,
   Pressable,
   ScrollView,
   Text,
@@ -14,548 +10,190 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import {
-  MOOD_EMOJI,
-  MOOD_LABELS,
-  PRIORITY_COLOR,
-  type ExtractionResult,
-} from "@acuity/shared";
+import { MOOD_EMOJI, MOOD_LABELS, type EntryDTO } from "@acuity/shared";
 
-import {
-  useEntryPolling,
-  type PolledEntry,
-} from "@/hooks/use-entry-polling";
+import { useAuth } from "@/contexts/auth-context";
+import { api } from "@/lib/api";
 
-const BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000";
-const MAX_SECONDS = 120;
+/**
+ * Home tab — the dashboard. Record button is the primary action.
+ * Tapping it opens /record as a modal (see app/_layout.tsx stack
+ * config). Recent sessions below are tap-to-open-detail.
+ *
+ * Prior to this task, index.tsx held the full recording flow. That
+ * was confusing on two axes: (1) users had no landing surface to
+ * orient themselves after sign-in — the app dropped them straight
+ * onto a record button; (2) we had two recording screens in the
+ * tree (app/record.tsx + app/(tabs)/index.tsx) with duplicated
+ * state-machine code. Consolidating into one /record modal + a
+ * proper dashboard fixes both.
+ */
 
-type RecordState =
-  | "idle"
-  | "recording"
-  | "uploading"
-  | "processing" // async: Inngest pipeline
-  | "done"
-  | "timeout";
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
-type Result = {
-  entryId: string;
-  extraction: ExtractionResult;
-  tasksCreated: number;
-  partial?: boolean;
-};
+export default function DashboardTab() {
+  const { user } = useAuth();
+  const router = useRouter();
+  const [entries, setEntries] = useState<EntryDTO[] | null>(null);
+  const [loading, setLoading] = useState(true);
 
-const STEPPER_PHASES: { key: string; label: string }[] = [
-  { key: "QUEUED", label: "Saving your recording" },
-  { key: "TRANSCRIBING", label: "Transcribing" },
-  { key: "EXTRACTING", label: "Extracting insights" },
-  { key: "PERSISTING", label: "Almost done" },
-];
-
-export default function RecordTab() {
-  const [state, setState] = useState<RecordState>("idle");
-  const [elapsed, setElapsed] = useState(0);
-  const [result, setResult] = useState<Result | null>(null);
-  const [polledEntryId, setPolledEntryId] = useState<string | null>(null);
-  const recordingRef = useRef<Audio.Recording | null>(null);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-
-  const poll = useEntryPolling(polledEntryId);
-
-  // Bridge polling terminal states into the main RecordState.
-  useEffect(() => {
-    if (!polledEntryId) return;
-    if (poll.status === "complete" && poll.entry) {
-      setResult(polledEntryToResult(poll.entry, false));
-      setState("done");
-    } else if (poll.status === "partial" && poll.entry) {
-      setResult(polledEntryToResult(poll.entry, true));
-      setState("done");
-    } else if (poll.status === "failed") {
-      Alert.alert(
-        "Processing failed",
-        poll.entry?.errorMessage ?? "We couldn't process your recording."
-      );
-      setState("idle");
-      setPolledEntryId(null);
-    } else if (poll.status === "timeout") {
-      setState("timeout");
-    }
-  }, [poll.status, poll.entry, polledEntryId]);
-
-  // Pulse animation
-  useEffect(() => {
-    if (state === "idle") {
-      const loop = Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.15,
-            duration: 1200,
-            easing: Easing.inOut(Easing.ease),
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 1200,
-            easing: Easing.inOut(Easing.ease),
-            useNativeDriver: true,
-          }),
-        ])
-      );
-      loop.start();
-      return () => loop.stop();
-    } else {
-      pulseAnim.setValue(1);
-    }
-  }, [state, pulseAnim]);
-
-  // Mic permission
-  useEffect(() => {
-    Audio.requestPermissionsAsync();
-    Audio.setAudioModeAsync({
-      allowsRecordingIOS: true,
-      playsInSilentModeIOS: true,
-    });
-  }, []);
-
-  // Clean up on unmount — extra belt-and-suspenders for Expo's tab
-  // switches, which don't always unmount but do suspend state updates.
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-      if (recordingRef.current) {
-        recordingRef.current.stopAndUnloadAsync().catch(() => {});
-      }
-    };
-  }, []);
-
-  const startRecording = async () => {
-    const { granted } = await Audio.getPermissionsAsync();
-    if (!granted) {
-      Alert.alert(
-        "Microphone access required",
-        "Go to Settings > Acuity > Microphone to enable access."
-      );
-      return;
-    }
-
-    setResult(null);
-    setPolledEntryId(null);
-    const recording = new Audio.Recording();
-    await recording.prepareToRecordAsync(
-      Audio.RecordingOptionsPresets.HIGH_QUALITY
-    );
-    await recording.startAsync();
-    recordingRef.current = recording;
-    setElapsed(0);
-    setState("recording");
-
-    timerRef.current = setInterval(() => {
-      setElapsed((s) => {
-        if (s + 1 >= MAX_SECONDS) {
-          stopRecording();
-        }
-        return s + 1;
-      });
-    }, 1000);
-  };
-
-  const stopRecording = async () => {
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-    const recording = recordingRef.current;
-    if (!recording) return;
-
-    await recording.stopAndUnloadAsync();
-    const uri = recording.getURI();
-    recordingRef.current = null;
-
-    if (!uri) {
-      Alert.alert("Error", "No audio recorded.");
-      setState("idle");
-      return;
-    }
-
-    await uploadRecording(uri, elapsed);
-  };
-
-  const uploadRecording = async (uri: string, duration: number) => {
-    setState("uploading");
-
-    const formData = new FormData();
-    formData.append("audio", {
-      uri,
-      name: "recording.m4a",
-      type: "audio/m4a",
-    } as unknown as Blob);
-    formData.append("durationSeconds", String(duration));
-
+  const load = useCallback(async () => {
     try {
-      const res = await fetch(`${BASE_URL}/api/record`, {
-        method: "POST",
-        credentials: "include",
-        body: formData,
-      });
-
-      // Paywall rejection — trial expired or post-trial-free. Open
-      // web /upgrade in the system browser (IAP not implemented; per
-      // 2026-04-18 decision the mobile flow uses the web checkout
-      // until IAP lands).
-      if (res.status === 402) {
-        Alert.alert(
-          "Your trial has ended",
-          "Month 2 is where the pattern deepens. Continue the journey?",
-          [
-            { text: "Not now", style: "cancel", onPress: () => setState("idle") },
-            {
-              text: "Continue",
-              onPress: () => {
-                Linking.openURL(`${BASE_URL}/upgrade?src=mobile_profile`);
-                setState("idle");
-              },
-            },
-          ]
-        );
-        return;
-      }
-
-      // Rate-limited.
-      if (res.status === 429) {
-        const body = await res.json().catch(() => ({ retryAfter: 60 }));
-        const retry = Number((body as { retryAfter?: number }).retryAfter ?? 60);
-        Alert.alert(
-          "Recording too frequently",
-          `Try again in ${Math.ceil(retry / 60)} minute${retry > 60 ? "s" : ""}.`
-        );
-        setState("idle");
-        return;
-      }
-
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(
-          (body as { error?: string }).error ?? `HTTP ${res.status}`
-        );
-      }
-
-      const body = (await res.json()) as {
-        entryId: string;
-        status?: string;
-        extraction?: ExtractionResult;
-        tasksCreated?: number;
-      };
-
-      // Async path: 202 → start polling.
-      if (res.status === 202 && body.entryId) {
-        setState("processing");
-        setPolledEntryId(body.entryId);
-        return;
-      }
-
-      // Sync path: 201 with inline RecordResponse.
-      if (body.extraction) {
-        setResult({
-          entryId: body.entryId,
-          extraction: body.extraction,
-          tasksCreated: body.tasksCreated ?? 0,
-        });
-        setState("done");
-        return;
-      }
-
-      throw new Error("Unexpected response shape");
-    } catch (err) {
-      Alert.alert(
-        "Upload failed",
-        err instanceof Error ? err.message : "Please try again."
-      );
-      setState("idle");
+      const data = await api.get<{ entries: EntryDTO[] }>("/api/entries");
+      setEntries(data.entries ?? []);
+    } catch {
+      setEntries([]);
+    } finally {
+      setLoading(false);
     }
-  };
+  }, []);
 
-  const handlePress = () => {
-    if (state === "recording") {
-      stopRecording();
-    } else if (state === "idle" || state === "done" || state === "timeout") {
-      setState("idle");
-      setResult(null);
-      setPolledEntryId(null);
-      startRecording();
-    }
-  };
+  // Refresh on every focus — a completed recording routes back here
+  // via router.back() and the list should reflect the new entry
+  // immediately rather than showing stale cache.
+  useFocusEffect(
+    useCallback(() => {
+      setLoading(true);
+      load();
+    }, [load])
+  );
+
+  const firstName = user?.name?.split(" ")[0] ?? "there";
+  const greeting = greetingFor(new Date());
+  const weekCount = (entries ?? []).filter((e) => {
+    return new Date(e.createdAt).getTime() > Date.now() - WEEK_MS;
+  }).length;
 
   return (
     <SafeAreaView className="flex-1 bg-zinc-950" edges={["top"]}>
-      {state === "done" && result ? (
-        <ResultCard result={result} onNewRecording={handlePress} />
-      ) : state === "processing" ? (
-        <ProcessingView
-          currentPhase={poll.phase}
-          elapsedSeconds={poll.elapsedSeconds}
-        />
-      ) : (
-        <View className="flex-1 items-center justify-center px-8">
-          {state === "uploading" ? (
-            <View className="items-center gap-4">
-              <ActivityIndicator size="large" color="#7C3AED" />
-              <Text className="text-zinc-400 text-sm">Uploading audio...</Text>
-            </View>
-          ) : state === "timeout" ? (
-            <View className="items-center gap-4">
-              <Text className="text-zinc-100 text-lg font-semibold text-center">
-                Still processing — we&rsquo;ll save your progress.
-              </Text>
-              <Text className="text-zinc-500 text-sm text-center">
-                Check back from your dashboard in a few minutes.
-              </Text>
-              <Pressable
-                onPress={handlePress}
-                className="mt-4 rounded-2xl bg-violet-600 py-3 px-6"
-              >
-                <Text className="text-sm font-semibold text-white">
-                  Record another
-                </Text>
-              </Pressable>
-            </View>
-          ) : (
-            <View className="items-center gap-8">
-              <View className="items-center gap-2">
-                <Text className="text-zinc-100 text-xl font-semibold">
-                  {state === "recording" ? "Recording..." : "Ready to record"}
-                </Text>
-                {state === "recording" ? (
-                  <Text className="text-zinc-400 text-3xl font-mono">
-                    {formatTime(elapsed)}
-                  </Text>
-                ) : (
-                  <Text className="text-zinc-500 text-sm">Up to 2 minutes</Text>
-                )}
-              </View>
-
-              <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-                <Pressable
-                  onPress={handlePress}
-                  style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
-                >
-                  <View
-                    className={`h-32 w-32 rounded-full items-center justify-center ${
-                      state === "recording" ? "bg-red-600" : "bg-violet-600"
-                    }`}
-                    style={
-                      state === "idle"
-                        ? {
-                            shadowColor: "#7C3AED",
-                            shadowOffset: { width: 0, height: 0 },
-                            shadowOpacity: 0.5,
-                            shadowRadius: 24,
-                            elevation: 12,
-                          }
-                        : undefined
-                    }
-                  >
-                    {state === "recording" ? (
-                      <View className="h-10 w-10 rounded bg-white" />
-                    ) : (
-                      <Ionicons name="mic" size={48} color="#fff" />
-                    )}
-                  </View>
-                </Pressable>
-              </Animated.View>
-
-              <Text className="text-zinc-500 text-sm text-center">
-                {state === "recording" ? "Tap to stop" : "Tap to start your brain dump"}
-              </Text>
-
-              {state === "recording" && (
-                <View className="w-48 h-1 rounded-full bg-zinc-800">
-                  <View
-                    className="h-1 rounded-full bg-red-500"
-                    style={{ width: `${(elapsed / MAX_SECONDS) * 100}%` }}
-                  />
-                </View>
-              )}
-            </View>
-          )}
+      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
+        {/* Greeting */}
+        <View className="mb-8">
+          <Text className="text-2xl font-bold text-zinc-50">
+            {greeting}, {firstName}.
+          </Text>
+          <Text className="text-sm text-zinc-400 mt-1">
+            {weekCount === 0
+              ? "No sessions this week yet."
+              : `${weekCount} session${weekCount === 1 ? "" : "s"} this week.`}
+          </Text>
         </View>
-      )}
+
+        {/* Primary record CTA */}
+        <Pressable
+          onPress={() => router.push("/record")}
+          className="rounded-3xl bg-violet-600 py-8 items-center justify-center mb-10"
+          style={({ pressed }) => ({
+            opacity: pressed ? 0.85 : 1,
+            shadowColor: "#7C3AED",
+            shadowOffset: { width: 0, height: 0 },
+            shadowOpacity: 0.4,
+            shadowRadius: 20,
+            elevation: 8,
+          })}
+        >
+          <View className="h-16 w-16 rounded-full bg-violet-500 items-center justify-center mb-3">
+            <Ionicons name="mic" size={32} color="#fff" />
+          </View>
+          <Text className="text-white font-semibold text-base">
+            Record your brain dump
+          </Text>
+          <Text className="text-violet-200 text-xs mt-1">
+            Up to 2 minutes
+          </Text>
+        </Pressable>
+
+        {/* Recent sessions */}
+        <Text className="text-xs font-semibold uppercase tracking-widest text-zinc-500 mb-3">
+          Recent sessions
+        </Text>
+
+        {loading ? (
+          <View className="py-8 items-center">
+            <ActivityIndicator color="#7C3AED" />
+          </View>
+        ) : entries && entries.length === 0 ? (
+          <View className="rounded-2xl border border-dashed border-zinc-800 p-6 items-center">
+            <Text className="text-3xl mb-2">🎙️</Text>
+            <Text className="text-sm text-zinc-400">No entries yet.</Text>
+            <Text className="text-xs text-zinc-600 mt-1">
+              Tap the record button to start.
+            </Text>
+          </View>
+        ) : (
+          <View className="gap-2">
+            {(entries ?? []).slice(0, 10).map((entry) => (
+              <EntryRow
+                key={entry.id}
+                entry={entry}
+                onPress={() => router.push(`/entry/${entry.id}`)}
+              />
+            ))}
+          </View>
+        )}
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
-function ProcessingView({
-  currentPhase,
-  elapsedSeconds,
+function EntryRow({
+  entry,
+  onPress,
 }: {
-  currentPhase: string | null;
-  elapsedSeconds: number;
+  entry: EntryDTO;
+  onPress: () => void;
 }) {
-  const currentIndex = Math.max(
-    0,
-    STEPPER_PHASES.findIndex((p) => p.key === currentPhase)
-  );
+  const date = new Date(entry.createdAt);
+  const dateLabel = formatShortDate(date);
+  const isPartial = entry.status === "PARTIAL";
   return (
-    <View className="flex-1 items-center justify-center px-8">
-      <ActivityIndicator size="large" color="#7C3AED" />
-      <Text className="mt-4 text-zinc-400 text-sm">
-        {STEPPER_PHASES[currentIndex]?.label ?? "Processing"}
-      </Text>
-      <Text className="mt-2 text-zinc-600 text-xs">
-        {elapsedSeconds}s elapsed
-      </Text>
-    </View>
-  );
-}
-
-function polledEntryToResult(entry: PolledEntry, partial: boolean): Result {
-  const raw = (entry.rawAnalysis ?? {}) as Partial<ExtractionResult>;
-  const extraction: ExtractionResult = {
-    summary: entry.summary ?? raw.summary ?? "",
-    mood: (entry.mood as ExtractionResult["mood"]) ?? raw.mood ?? "NEUTRAL",
-    moodScore: entry.moodScore ?? raw.moodScore ?? 5,
-    energy: entry.energy ?? raw.energy ?? 5,
-    themes: entry.themes ?? raw.themes ?? [],
-    wins: entry.wins ?? raw.wins ?? [],
-    blockers: entry.blockers ?? raw.blockers ?? [],
-    insights: raw.insights ?? [],
-    tasks: raw.tasks ?? [],
-    goals: raw.goals ?? [],
-    lifeAreaMentions: raw.lifeAreaMentions,
-  };
-  return {
-    entryId: entry.id,
-    extraction,
-    tasksCreated: extraction.tasks.length,
-    partial,
-  };
-}
-
-function ResultCard({
-  result,
-  onNewRecording,
-}: {
-  result: Result;
-  onNewRecording: () => void;
-}) {
-  const { extraction } = result;
-  const moodEmoji = MOOD_EMOJI[extraction.mood] ?? "";
-  const moodLabel = MOOD_LABELS[extraction.mood] ?? extraction.mood;
-
-  return (
-    <ScrollView
-      className="flex-1"
-      contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
+    <Pressable
+      onPress={onPress}
+      className="rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3"
+      style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
     >
-      <View className="items-center mb-6">
-        <Text className="text-4xl mb-2">{result.partial ? "⚠️" : "✅"}</Text>
-        <Text className="text-xl font-bold text-zinc-50">
-          {result.partial ? "Saved (Partial)" : "Session Complete"}
-        </Text>
-      </View>
-
-      {result.partial && (
-        <View className="rounded-2xl border border-amber-700/50 bg-amber-900/20 p-3 mb-4">
-          <Text className="text-xs text-amber-200">
-            Your entry is saved, but Life Matrix updates will catch up shortly.
-          </Text>
-        </View>
-      )}
-
-      <View className="flex-row justify-center gap-6 mb-6">
-        <View className="items-center">
-          <Text className="text-3xl">{moodEmoji}</Text>
-          <Text className="text-xs text-zinc-400 mt-1">{moodLabel}</Text>
-        </View>
-        <View className="items-center">
-          <Text className="text-3xl text-zinc-100">{extraction.moodScore}</Text>
-          <Text className="text-xs text-zinc-400 mt-1">Mood Score</Text>
-        </View>
-        <View className="items-center">
-          <Text className="text-3xl text-zinc-100">{extraction.energy}</Text>
-          <Text className="text-xs text-zinc-400 mt-1">Energy</Text>
-        </View>
-      </View>
-
-      <View className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4 mb-4">
-        <Text className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">
-          Summary
-        </Text>
-        <Text className="text-sm text-zinc-200 leading-relaxed">
-          {extraction.summary}
-        </Text>
-      </View>
-
-      {extraction.themes.length > 0 && (
-        <View className="flex-row flex-wrap gap-1.5 mb-4">
-          {extraction.themes.map((t) => (
-            <View key={t} className="rounded-full bg-zinc-800 px-3 py-1">
-              <Text className="text-xs text-zinc-400">{t}</Text>
-            </View>
-          ))}
-        </View>
-      )}
-
-      {extraction.tasks.length > 0 && (
-        <View className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4 mb-4">
-          <Text className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">
-            Extracted Tasks ({extraction.tasks.length})
-          </Text>
-          {extraction.tasks.map((task, i) => (
-            <View
-              key={i}
-              className={`flex-row items-start gap-2.5 ${
-                i > 0 ? "mt-2.5 pt-2.5 border-t border-zinc-800" : ""
-              }`}
-            >
-              <View
-                className="mt-1 h-2.5 w-2.5 rounded-full"
-                style={{
-                  backgroundColor: PRIORITY_COLOR[task.priority] ?? "#71717A",
-                }}
-              />
-              <View className="flex-1">
-                <Text className="text-sm text-zinc-200">{task.title}</Text>
-                <Text className="text-xs text-zinc-500 mt-0.5">
-                  {task.priority}
-                  {task.dueDate ? ` · Due ${task.dueDate}` : ""}
+      <View className="flex-row items-center gap-3">
+        <View className="flex-1">
+          <View className="flex-row items-center gap-2">
+            <Text className="text-xs text-zinc-500">{dateLabel}</Text>
+            {entry.mood && (
+              <Text className="text-xs text-zinc-400">
+                · {MOOD_EMOJI[entry.mood] ?? ""} {MOOD_LABELS[entry.mood] ?? ""}
+              </Text>
+            )}
+            {isPartial && (
+              <View className="rounded-full bg-amber-900/40 px-2 py-0.5">
+                <Text className="text-[10px] font-semibold text-amber-300">
+                  PARTIAL
                 </Text>
               </View>
-            </View>
-          ))}
-        </View>
-      )}
-
-      {extraction.insights.length > 0 && (
-        <View className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4 mb-6">
-          <Text className="text-xs font-semibold text-violet-400 uppercase tracking-wider mb-3">
-            Insights
+            )}
+          </View>
+          <Text
+            className="text-sm text-zinc-200 mt-1"
+            numberOfLines={2}
+          >
+            {entry.summary ?? entry.transcript ?? "(no summary)"}
           </Text>
-          {extraction.insights.map((insight, i) => (
-            <View key={i} className={`flex-row gap-2 ${i > 0 ? "mt-2" : ""}`}>
-              <Text className="text-violet-400 text-sm">-</Text>
-              <Text className="text-sm text-zinc-300 flex-1">{insight}</Text>
-            </View>
-          ))}
         </View>
-      )}
-
-      <Pressable
-        onPress={onNewRecording}
-        className="rounded-2xl bg-violet-600 py-4 items-center"
-        style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
-      >
-        <Text className="text-sm font-semibold text-white">Record Another</Text>
-      </Pressable>
-    </ScrollView>
+        <Ionicons name="chevron-forward" size={16} color="#52525B" />
+      </View>
+    </Pressable>
   );
 }
 
-function formatTime(seconds: number): string {
-  const m = Math.floor(seconds / 60)
-    .toString()
-    .padStart(2, "0");
-  const s = (seconds % 60).toString().padStart(2, "0");
-  return `${m}:${s}`;
+function greetingFor(now: Date): string {
+  const hour = now.getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
+
+function formatShortDate(date: Date): string {
+  const now = new Date();
+  const dayMs = 24 * 60 * 60 * 1000;
+  const diff = now.getTime() - date.getTime();
+  if (diff < dayMs) return "Today";
+  if (diff < 2 * dayMs) return "Yesterday";
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
