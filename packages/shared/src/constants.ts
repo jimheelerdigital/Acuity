@@ -137,3 +137,14 @@ export const WHISPER_LANGUAGE = "en"; // set to undefined for auto-detect
 // CLAUDE_FLAGSHIP_MODEL constant when those land.
 export const CLAUDE_MODEL = "claude-sonnet-4-6";
 export const CLAUDE_MAX_TOKENS = 2048;
+
+// Opus-4-7 is reserved for flagship long-form outputs where quality
+// matters more than cost: Day 14 Life Audit, Quarterly audits, Annual
+// memoir. Sonnet handles the per-entry extraction + weekly synthesis
+// + memory compression + lifemap insights.
+export const CLAUDE_FLAGSHIP_MODEL = "claude-opus-4-7";
+// Long-form Claude output budget. Day 14 Life Audit target is ~1000
+// words of narrative + a few hundred tokens of metadata; 4096 tokens
+// leaves headroom. Don't raise without measuring — longer tokens =
+// longer wall-clock = tighter per-step Hobby ceiling.
+export const CLAUDE_FLAGSHIP_MAX_TOKENS = 4096;

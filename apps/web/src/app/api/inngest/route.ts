@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { inngest } from "@/inngest/client";
 import { day14AuditCronFn } from "@/inngest/functions/day-14-audit-cron";
+import { generateLifeAuditFn } from "@/inngest/functions/generate-life-audit";
 import { generateWeeklyReportFn } from "@/inngest/functions/generate-weekly-report";
 import { helloWorldFn } from "@/inngest/functions/hello-world";
 import { processEntryFn } from "@/inngest/functions/process-entry";
@@ -22,6 +23,7 @@ const handler = serve({
     generateWeeklyReportFn,
     refreshLifeMapFn,
     day14AuditCronFn,
+    generateLifeAuditFn,
   ],
 });
 

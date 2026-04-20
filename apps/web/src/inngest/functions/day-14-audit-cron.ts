@@ -1,23 +1,18 @@
 /**
- * STUB: logs-only until the Life Audit generator lands in a paywall
- * PR. Real implementation will create a LifeAudit row with status
- * GENERATING, queue narrative generation, and handle the degraded
- * fallback per IMPLEMENTATION_PLAN_PAYWALL.md §7.3.
+ * Day 14 Life Audit cron. Fires daily at 22:00 UTC; finds every user
+ * whose trial ends in the next 24h and doesn't already have a Day 14
+ * audit in a non-terminal or COMPLETE state; seeds a LifeAudit row
+ * with status=QUEUED and dispatches the per-user generation event.
  *
- * Why ship a stub: this proves the scheduled-job primitive works
- * end-to-end (Inngest cron fires → our handler invoked → DB queried
- * → per-user event dispatch or log) before the paywall PR layers
- * real work on top. It's the "Inngest PR 6" proof point in
- * INNGEST_MIGRATION_PLAN.md §11.
+ * Invariant we rely on (IMPLEMENTATION_PLAN_PAYWALL §7.4): a user
+ * never hits the paywall without having read their Life Audit. The
+ * cron fires ~24h before trialEndsAt so the generator (background
+ * retries up to ~14 min) plus the degraded fallback in onFailure all
+ * fit within the window before enforcement activates.
  *
- * Schedule: daily at 22:00 UTC.
- * Budget: query users whose trialEndsAt falls in the next 24 hours
- *         AND who don't already have a TRIAL_DAY_14 LifeAudit row.
- * Action: safeLog one line per eligible user (hashed email, trial
- *         expiry). The real generator will replace this with a
- *         per-user `life-audit/day-14-due` event dispatch.
- * Retries: 3 (background — the cron has all day to run; missing a
- *         tick by a few minutes is fine).
+ * Retries: 3 (background). onFailure: logs only; individual
+ * per-user audits are handled by the generator's own retry + degraded
+ * fallback path.
  */
 
 import { inngest } from "@/inngest/client";
@@ -28,7 +23,7 @@ const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 export const day14AuditCronFn = inngest.createFunction(
   {
     id: "day-14-audit-cron",
-    name: "Day 14 Life Audit generator (stub)",
+    name: "Day 14 Life Audit dispatcher",
     triggers: [{ cron: "0 22 * * *" }],
     retries: 3,
   },
@@ -38,19 +33,18 @@ export const day14AuditCronFn = inngest.createFunction(
     const now = new Date();
     const expiresBy = new Date(now.getTime() + ONE_DAY_MS);
 
-    // Users whose trial ends in the next 24h, still in TRIAL status,
-    // and who we haven't already generated an audit for.
-    //
-    // `LifeAudit` model doesn't exist yet — when it lands (paywall
-    // PR), this query gains a `NOT EXISTS` clause / subquery. For
-    // now we assume every eligible user is "candidate" and the real
-    // code will dedupe.
+    // Users whose trial ends in the next 24h, status=TRIAL.
     const candidates = await prisma.user.findMany({
       where: {
         subscriptionStatus: "TRIAL",
         trialEndsAt: { gte: now, lt: expiresBy },
       },
-      select: { id: true, email: true, trialEndsAt: true },
+      select: {
+        id: true,
+        email: true,
+        createdAt: true,
+        trialEndsAt: true,
+      },
     });
 
     safeLog.info("day-14-audit-cron.tick", {
@@ -59,23 +53,70 @@ export const day14AuditCronFn = inngest.createFunction(
       candidateCount: candidates.length,
     });
 
+    let dispatched = 0;
+    let alreadyExists = 0;
+
     for (const user of candidates) {
-      safeLog.info("day-14-audit-cron.would_generate", {
+      // Skip if this user already has a non-terminal or COMPLETE
+      // audit (dedupe). Only re-dispatch if the prior attempt ended
+      // FAILED — in which case we want a fresh run with a fresh
+      // retry budget.
+      const existing = await prisma.lifeAudit.findFirst({
+        where: { userId: user.id, kind: "TRIAL_DAY_14" },
+        orderBy: { createdAt: "desc" },
+        select: { id: true, status: true },
+      });
+      if (existing && existing.status !== "FAILED") {
+        alreadyExists++;
+        continue;
+      }
+
+      const periodStart = user.createdAt;
+      const periodEnd = user.trialEndsAt ?? now;
+
+      const entryCount = await prisma.entry.count({
+        where: {
+          userId: user.id,
+          status: "COMPLETE",
+          entryDate: { gte: periodStart, lte: periodEnd },
+        },
+      });
+
+      const audit = await prisma.lifeAudit.create({
+        data: {
+          userId: user.id,
+          kind: "TRIAL_DAY_14",
+          periodStart,
+          periodEnd,
+          entryCount,
+          narrative: "",
+          closingLetter: "",
+          themesArc: {},
+          status: "QUEUED",
+        },
+      });
+
+      await inngest.send({
+        name: "life-audit/generation.requested",
+        data: { lifeAuditId: audit.id, userId: user.id },
+      });
+
+      safeLog.info("day-14-audit-cron.dispatched", {
         userId: user.id,
         email: user.email,
+        lifeAuditId: audit.id,
+        entryCount,
         trialEndsAt: user.trialEndsAt?.toISOString() ?? null,
       });
-      // STUB: real implementation will inngest.send({
-      //   name: "life-audit/day-14-due",
-      //   data: { userId: user.id, trialEndsAt: ... }
-      // }) per IMPLEMENTATION_PLAN_PAYWALL §3.4.
+
+      dispatched++;
     }
 
     return {
       scannedAt: now.toISOString(),
       candidates: candidates.length,
-      dispatched: 0, // always 0 in the stub
-      stub: true,
+      dispatched,
+      alreadyExists,
     };
   }
 );

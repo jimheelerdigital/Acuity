@@ -69,6 +69,7 @@ model User {
   weeklyReports          WeeklyReport[]
   lifemapAreas           LifeMapArea[]
   memory                 UserMemory?
+  lifeAudits             LifeAudit[]
 }
 
 model Entry {
@@ -250,6 +251,55 @@ model UserMemory {
   firstEntryDate DateTime?
   lastCompressed DateTime?
   lastUpdated    DateTime  @updatedAt
+}
+
+// Long-form flagship AI output — Day 14 Life Audit, Day 90 Quarterly
+// Audit, Day 365 Annual Audit. One row per audit per user per kind.
+// IMPLEMENTATION_PLAN_PAYWALL.md §2.2.
+model LifeAudit {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Valid kinds: "TRIAL_DAY_14" | "QUARTERLY_90" | "ANNUAL_365".
+  // Kept as String to avoid the Prisma-enum-vs-Postgres-version
+  // awkwardness flagged elsewhere in the schema.
+  kind            String
+  // Window of entries the audit covered. For TRIAL_DAY_14 this is
+  // the user's signup date through trialEndsAt.
+  periodStart     DateTime
+  periodEnd       DateTime
+  entryCount      Int
+  // The full audit narrative, including the closing "What comes next"
+  // section. Renders as body copy on the audit view.
+  narrative       String   @db.Text
+  // The Month-2 transition paragraph, duplicated out of `narrative`
+  // for easy re-render / copy-paste / future A/B testing. Matches
+  // §4.1's "Continue it →" closing.
+  closingLetter   String   @db.Text
+  // { starting: [...], emerging: [...], fading: [...] } — theme arc
+  // across the period.
+  themesArc       Json
+  // Per-area score change (UPPER_CASE area enum → delta). Optional;
+  // the degraded fallback may skip this.
+  lifeAreaDeltas  Json?
+  // One-sentence emotional trajectory, e.g. "Started rough but landed
+  // steady — the middle of week 2 was the turning point."
+  moodArc         String?
+  // Valid status: "QUEUED" | "GENERATING" | "COMPLETE" | "FAILED".
+  status          String   @default("QUEUED")
+  // User-safe error copy when status=FAILED.
+  errorMessage    String?
+  // Cross-reference into Inngest's run dashboard.
+  inngestRunId    String?
+  // True when the template-based fallback fired instead of a real
+  // Claude generation. Filtered out of quality metrics. Users never
+  // know they got the fallback — voice is matched to the few-shot.
+  // IMPLEMENTATION_PLAN_PAYWALL §7.3.
+  degraded        Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([userId, kind])
 }
 
 model Waitlist {
