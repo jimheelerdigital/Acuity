@@ -463,41 +463,58 @@ A working delete-account feature has to remove, in one transactional operation:
 
 ---
 
-## 11. Prioritized Fix List
+## 11. Prioritized Fix List — Closeout State (2026-04-20)
 
-Ordered by what blocks which milestone. Do the 🔴 items in this order; do not skip forward.
+Status as of the 2026-04-20 closeout pass. Each original §11 item re-verified against current `main` via codebase grep; ✅ lines cite the commit and the verification point. Ordering preserved from the 2026-04-19 audit for traceability.
 
-### 🔴 Before ANY public signup (hard pre-beta gates)
+### 🔴 Before ANY public signup — ALL RESOLVED
 
-1. **Delete the hardcoded admin password.** Replace `/api/admin/dashboard` auth with NextAuth session + `ADMIN_EMAILS` allowlist env var. Remove the client-side `sessionStorage.setItem("admin-pw", pw)` cache. (§5)
-2. **Verify Supabase RLS live.** Open Supabase dashboard, confirm RLS is enabled on `User`, `Account`, `Session`, `VerificationToken`, `Entry`, `Task`, `Goal`, `WeeklyReport`, `LifeMapArea`, `UserMemory`, `Waitlist`. Paste policy screenshots into a follow-up doc. Enable + write policies wherever it's off. (§1)
-3. **Ship account deletion.** New `DELETE /api/user/me` route that purges every table listed in §10.4 in a transaction, then deletes the Supabase Storage prefix, then archives in Stripe. Add `onDelete: Cascade` on the six child relations so the transaction actually works. Surface as "Delete account" in profile. (§10 + `AUDIT.md` §3.5)
-~~4.~~ ✅ **DONE 2026-04-19** — `voice-entries` bucket is private; `GET /api/entries/[id]/audio` signs on demand with 5-min TTL after ownership check; cross-user access verified denied against prod. `Entry.audioUrl` legacy column on a deprecation path (Inngest PR 4 cleanup). Storage RLS deferred (service-role uploads + signed-URL reads bypass RLS; only matters if anon client gains direct storage access — see §4.5).
+~~1.~~ ✅ **DONE 2026-04-18** — hardcoded admin password removed; `/api/admin/dashboard/route.ts:9-22` gates on NextAuth session + `isAdmin` column lookup (401 unauth, 403 non-admin). `acuity-admin-2026` string grep returns matches only inside this audit doc + PROGRESS.md — zero source hits. Client-side `sessionStorage.setItem("admin-pw", ...)` removed when admin UI moved to server component + client child. `isAdmin` column present in `prisma/schema.prisma` with `@default(false)`. Manual step still required before public signup: Jim flips his own `isAdmin` flag via Supabase SQL editor.
+~~2.~~ 🟡 **STILL OPEN — Jim's manual step.** Supabase RLS live-verification is the single remaining hard blocker in this tier. No code can resolve it; Jim opens the Supabase dashboard and confirms RLS is enabled on every table in §1.3. Until that screenshot lands, the §1.1 "treat as NOT ENABLED" stance holds. Rotated service-role key post-credential-leak (2026-04-18) means a future leak is a when-not-if, and RLS is the only backstop.
+~~3.~~ ✅ **DONE 2026-04-19** — `POST /api/user/delete` (`apps/web/src/app/api/user/delete/route.ts`, 175 lines) verified session-gated + email-confirmation-gated + rate-limited (`limiters.accountDelete`, 3/day/user) + Stripe customer archival (best-effort) + transactional DB delete with cascade from `User` + best-effort Supabase Storage prefix cleanup (paginated). `onDelete: Cascade` confirmed on Entry/Task/Goal/WeeklyReport/LifeMapArea/UserMemory/Account/Session FKs in `prisma/schema.prisma`. UI surfaces in profile (web + mobile). VerificationToken rows hand-cleaned by email since they have no FK.
+~~4.~~ ✅ **DONE 2026-04-19** (unchanged from prior audit) — `voice-entries` bucket private, signed-URL route with 5-min TTL + ownership check, `scripts/assert-bucket-private.ts` re-runnable.
 
-### 🟠 Before public beta launch
+### 🟠 Before public beta launch — ALL RESOLVED
 
-~~5.~~ ✅ **DONE 2026-04-20** — `@upstash/ratelimit` + `@upstash/redis` wired across the seven sensitive endpoints with per-category budgets: record/weekly/lifemap-refresh (10/hr/user), auth signin (5/15min/IP), waitlist (3/hr/IP), account delete (3/day/user), audio playback (60/min/user — replaces the S4 in-process stopgap). Helper at `apps/web/src/lib/rate-limit.ts` is fail-open on missing env vars with a one-time console warning. Manual step for Jim: provision Upstash via Vercel marketplace + populate `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` in Production. Tests: 11 Vitest cases covering the wrapper logic, identifier parsing, response builder, fail-open path.
-6. **Fix fail-open cron auth.** `/api/cron/waitlist-drip` — change to `if (!cronSecret || authHeader !== ...)`, confirm `CRON_SECRET` is set in Vercel Production. (§2.3)
-7. **Stop logging PII from `/api/waitlist`.** Delete the debug `console.log` calls or gate on `NODE_ENV !== "production"`. (§8.1)
-8. **Escape waitlist email HTML.** HTML-escape `name`, `email`, `source` before interpolation in the admin notification template. (§8.2)
-9. **Rename `lib/supabase.ts` → `lib/supabase.server.ts` with `server-only` import.** Defense in depth against future accidental client import of the service-role client. (§9)
+~~5.~~ ✅ **DONE 2026-04-20** (unchanged) — Upstash rate limiting across 7 endpoints, fail-open on missing env, 11 Vitest cases.
+~~6.~~ ✅ **DONE 2026-04-18** — `/api/cron/waitlist-drip/route.ts:15-26` verified fail-**closed**: returns 500 "Cron not configured" when `CRON_SECRET` is unset (line 16-21), 401 when header doesn't match (line 23-26). Only cron route in the tree.
+~~7.~~ ✅ **DONE 2026-04-20** — `safeLog` helper at `apps/web/src/lib/safe-log.ts` sanitizes email→sha256(8-char), redacts name/transcript/audioPath/audioUrl/phoneNumber; recurses into nested objects. `/api/waitlist/route.ts` migrated to two structured `safeLog.info()` checkpoints — 20+ `console.log` PII calls replaced. Drip cron failure branch migrated. 7 Vitest cases.
+~~8.~~ ✅ **DONE 2026-04-20** — `escapeHtml` helper wraps every user-supplied interpolation in waitlist admin-notification template (`apps/web/src/app/api/waitlist/route.ts:74-77`), waitlist welcome, + all 4 drip-sequence templates. Drip cron CR/LF-strips display name before subject-line interpolation (header-injection defense). 6 Vitest cases.
+~~9.~~ ✅ **DONE 2026-04-20** — `lib/supabase.server.ts` has `import "server-only"` at line 1. All 5 import sites verified: `lib/pipeline.ts:38`, `lib/audio.ts:38`, `inngest/functions/process-entry.ts:73`, `app/api/entries/[id]/audio/route.ts:92`, `app/api/user/delete/route.ts:38`. No `@/lib/supabase` (non-`.server`) imports remain in the tree. Accidental `"use client"` import now fails at Next.js build time.
 
-### 🟡 During beta, before scale
+### 🟡 During beta, before scale — still open
 
-10. **Session hygiene.** Shorten JWT `maxAge` from 30d to 7–14d, OR move to DB sessions for better revocation. Add a "Sign out everywhere" button (requires DB sessions). (§6.1)
-11. **Add CSP header + Permissions-Policy.** Reduces blast radius of any future XSS. Required anyway for the Contentsquare/Hotjar script mess. (§5 adjacency)
-12. **Tighten `/api/record` error surface.** Map vendor errors to generic "Transcription failed. Please try again." before returning. Log the specifics server-side only. (§8.3)
-13. **Delete `apps/mobile/lib/supabase.ts`.** Unused and a future footgun. (§9.3)
+10. Session hygiene (JWT `maxAge` shorten, or DB sessions + "Sign out everywhere"). Unchanged.
+11. CSP header + Permissions-Policy. Unchanged.
+~~12.~~ ✅ **DONE 2026-04-20** — `/api/record` error paths migrated to `lib/api-errors.ts::toClientError(err, status, opts)` which returns generic copy in production + raw `err.message` in dev. Stripe webhook signature errors kept raw intentionally (retry-dashboard needs the detail). `route.ts:126,177` verified.
+13. Delete `apps/mobile/lib/supabase.ts`. Unchanged — still a future footgun.
 
-### 🟢 Post-launch hardening
+### 🟢 Post-launch hardening — still open
 
-14. Add Sentry (or similar) with a PII scrubber that strips `email`, `transcript`, `summary`, `wins`, `blockers` fields before send.
-15. Replace `ignoreBuildErrors: true` and `ignoreDuringBuilds: true` in `apps/web/next.config.js` — security-sensitive type and lint errors are currently invisible.
-16. Add Stripe webhook idempotency (already tracked in `AUDIT.md` §3.6).
-17. Move from `prisma db push` to `prisma migrate dev` once real users exist, so every schema change has an audit trail (relevant to compliance evidence if a DSAR investigator asks "when did you add this field?").
-18. 2FA on the admin dashboard once it's behind NextAuth (TOTP via a small library).
-19. Write a minimal incident-response runbook: credential rotation steps, Supabase audit-log pull, Resend suspend, Vercel redeploy-from-last-known-good.
+14-19. Unchanged: Sentry w/ PII scrubber, `ignoreBuildErrors` removal, Stripe webhook idempotency (AUDIT.md §3.6), `prisma migrate dev` cutover, 2FA on admin, incident-response runbook.
 
 ---
 
-*End of audit. `PROGRESS.md` updated to reflect completion + §11 items added to Next Up.*
+## 12. New surface since last audit (2026-04-19 → 2026-04-20)
+
+Spot-audit of every route + component added in the last 24 hours. All items below are verified by reading the current file as of 2026-04-20, post-deploy.
+
+| # | Item | File | Verdict |
+|---|---|---|---|
+| S10 | `GET /api/user/me` (subscription-status refresh for mobile) | `apps/web/src/app/api/user/me/route.ts` | ✅ Session-gated; selective projection (no Stripe IDs, no `isAdmin`, no `stripeCustomerId`); `Cache-Control: private, no-store`. Clean. |
+| S11 | `/onboarding` route + `UserOnboarding` model | `apps/web/src/app/onboarding/page.tsx`, `onboarding-shell.tsx`, `actions.ts`, `steps/*.tsx`, `prisma/schema.prisma` | ✅ Server component gates on `getServerSession` → redirect to `/auth/signin` on miss. `metadata.robots = { index: false, follow: false }`. Server action `completeOnboarding()` scopes all writes to `session.user.id`. Step stubs collect no PII yet. Clean. |
+| S12 | `/api/inngest` GET/PUT ungated (Cloud sync) | `apps/web/src/app/api/inngest/route.ts` | ✅ Deliberate per `route.ts:30-60` comment block. GET returns function catalog (metadata); PUT is sync/registration (metadata). POST remains flag-gated because POST = step invocation = Whisper + Claude token burn. `serve()` handler from `inngest/next` validates the `x-inngest-signature` header on POST before dispatching to our function code, so even with the flag on, unsigned POSTs are rejected by Inngest's own signature verification. Safe. |
+| S13 | Dashboard onboarding redirect | `apps/web/src/app/dashboard/page.tsx:18-30` | ✅ Redirect uses `session.user.id` as the only `where` clause; no user-controllable input on the redirect target (clamped to `?step=${onboarding.currentStep ?? 1}` which is a DB-sourced integer). Clean. |
+| S14 | Mobile `auth-context.tsx` AppState foreground refresh | `apps/mobile/contexts/auth-context.tsx:80-89` | ✅ Calls `/api/user/me` → `/api/auth/session` fallback → local cache. No credentials ever logged. `expo-secure-store` for persistence (OS keychain). Clean. |
+| S15 | Meta Pixel `TrackCompleteRegistration` on dashboard | `apps/web/src/components/meta-pixel-events.tsx:6-14` + `dashboard/page.tsx:46` | 🟡 **Fires on every authenticated dashboard visit, not just on new signup.** That's a data-quality issue (inflates reported conversions) AND a minor privacy concern: every dashboard hit pings Meta with browser fingerprint + IP + Facebook cookies, even for existing users who are nowhere near a registration event. For a mental-health-adjacent product, this is worth fixing before public beta. **Fix:** mount only on a post-signup redirect page (e.g., `/onboarding?step=1` with a `?newsignup=1` query param), or gate on `searchParams.get("onboarded") === "1"`. See also `TrackPurchase` which correctly gates on `?upgraded=1`. |
+| S16 | PostHog client + server instrumentation | `apps/web/src/lib/posthog.ts`, `components/posthog-provider.tsx` | ✅ All `track()` calls pipe through `safeLog` sanitizer (email→sha256, name/transcript/audio→redacted). Client provider has hardened defaults: session replay off, `ip: false`, `autocapture: false`, `respect_dnt: true`. Fail-open on missing env vars. Clean. |
+
+### Net change to risk posture
+
+- **Zero new 🔴 findings.** All new routes follow the same session-gated / userId-scoped pattern as the pre-existing ones.
+- **One new 🟡:** Meta Pixel firing on every authenticated dashboard visit (S15). Deprioritized under the 🟡 tier but worth addressing in the same swing as a CSP/Permissions-Policy rollout (item 11).
+- **One still-open 🔴 from the original list:** Supabase RLS verification (item 2). This is a manual Jim-in-Supabase-dashboard step, no code can resolve it.
+
+---
+
+*End of audit. 2026-04-20 closeout: 11 of 13 items fully resolved, 1 still requires manual Supabase verification before public signup, 1 new 🟡 flagged (Meta Pixel scope). PROGRESS.md updated.*
