@@ -32,9 +32,12 @@
  *     longer would drift from web. Stay aligned for now.
  */
 
-import { encode } from "next-auth/jwt";
 import { NextRequest, NextResponse } from "next/server";
 
+import {
+  issueMobileSessionToken,
+  mobileSessionResponse,
+} from "@/lib/mobile-session";
 import { checkRateLimit, limiters, rateLimitedResponse } from "@/lib/rate-limit";
 import { safeLog } from "@/lib/safe-log";
 
@@ -42,7 +45,6 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const TOKEN_INFO_URL = "https://oauth2.googleapis.com/tokeninfo";
-const SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
 
 /**
  * Expected audience claims on the Google ID token. iOS OAuth clients
@@ -246,31 +248,17 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Issue NextAuth-compatible session JWT ──────────────────────
-  const secret = process.env.NEXTAUTH_SECRET;
-  if (!secret) {
-    console.error("[mobile-callback] NEXTAUTH_SECRET unset");
+  let sessionToken: string;
+  let expiresAt: string;
+  try {
+    ({ sessionToken, expiresAt } = await issueMobileSessionToken(user));
+  } catch (err) {
+    console.error("[mobile-callback]", err);
     return NextResponse.json(
       { error: "Server not configured" },
       { status: 503 }
     );
   }
-
-  const sessionToken = await encode({
-    token: {
-      // Match the web session shape (jwt callback sets `token.id` from
-      // user.id; session callback copies it to session.user.id).
-      id: user.id,
-      sub: user.id,
-      email: user.email,
-      name: user.name,
-      picture: user.image,
-    },
-    secret,
-    maxAge: SESSION_MAX_AGE_SECONDS,
-  });
-  const expiresAt = new Date(
-    Date.now() + SESSION_MAX_AGE_SECONDS * 1000
-  ).toISOString();
 
   safeLog.info("mobile-callback.success", {
     userId: user.id,
@@ -278,16 +266,7 @@ export async function POST(req: NextRequest) {
     wasCreated,
   });
 
-  return NextResponse.json({
-    sessionToken,
-    expiresAt,
-    user: {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      image: user.image,
-      subscriptionStatus: user.subscriptionStatus,
-      trialEndsAt: user.trialEndsAt ? user.trialEndsAt.toISOString() : null,
-    },
-  });
+  return NextResponse.json(
+    mobileSessionResponse({ sessionToken, expiresAt, user })
+  );
 }
