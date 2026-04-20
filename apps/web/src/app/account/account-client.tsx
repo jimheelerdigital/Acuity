@@ -55,6 +55,32 @@ export default function AccountClient({ email, name }: Props) {
           </div>
         </section>
 
+        {/* Privacy choices — entry point to re-open the cookie banner */}
+        <section className="mt-8 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-6">
+          <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
+            Privacy choices
+          </h2>
+          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+            Revisit what categories of cookies you&rsquo;ve accepted (analytics +
+            marketing). Strictly-necessary cookies for sign-in + recording are
+            always on — the app doesn&rsquo;t function without them.
+          </p>
+          <button
+            onClick={() => {
+              try {
+                window.localStorage.removeItem("acuity_consent");
+                window.dispatchEvent(new CustomEvent("acuity:consent-changed"));
+                window.location.reload();
+              } catch {
+                // ignore
+              }
+            }}
+            className="mt-4 rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-white/10 dark:bg-[#1E1E2E] dark:text-zinc-200 dark:hover:bg-white/5"
+          >
+            Manage cookie preferences
+          </button>
+        </section>
+
         {/* Danger zone */}
         <section className="mt-8 rounded-xl border border-red-200 bg-red-50/40 p-6 dark:border-red-900/40 dark:bg-red-950/20">
           <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
