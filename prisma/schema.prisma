@@ -60,6 +60,11 @@ model User {
   // Granted manually via direct DB update (UPDATE "User" SET "isAdmin" = true WHERE email = '...').
   // Not self-service. Gates /admin/dashboard + /api/admin/*.
   isAdmin                Boolean      @default(false)
+  // Color-scheme preference. Null (default) → follow system / localStorage
+  // whatever next-themes picks up. Set to "light" or "dark" when the
+  // user explicitly picks via the toggle; we persist to the DB so the
+  // preference survives across devices without relying on localStorage.
+  theme                  String?
   createdAt              DateTime     @default(now())
   accounts               Account[]
   sessions               Session[]

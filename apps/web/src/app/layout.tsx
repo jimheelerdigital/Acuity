@@ -72,7 +72,11 @@ export default function RootLayout({
   };
 
   return (
-    <html lang="en" className={`${inter.variable} ${playfair.variable}`}>
+    <html
+      lang="en"
+      className={`${inter.variable} ${playfair.variable}`}
+      suppressHydrationWarning
+    >
       <head>
         <script
           type="application/ld+json"
@@ -119,7 +123,7 @@ export default function RootLayout({
           />
         </noscript>
       </head>
-      <body className="bg-[#FAFAF7] text-zinc-900 antialiased">
+      <body className="bg-[#FAFAF7] text-zinc-900 antialiased dark:bg-[#0B0B12] dark:text-zinc-50">
         <Providers>
           <GoogleAnalytics />
           <NavBar />
