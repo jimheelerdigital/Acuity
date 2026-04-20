@@ -18,6 +18,11 @@ import { NextResponse } from "next/server";
 
 import { getAuthOptions } from "@/lib/auth";
 import { inngest } from "@/inngest/client";
+import {
+  checkRateLimit,
+  limiters,
+  rateLimitedResponse,
+} from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +32,9 @@ export async function POST() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const userId = session.user.id;
+
+  const rl = await checkRateLimit(limiters.expensiveAi, `user:${userId}`);
+  if (!rl.success) return rateLimitedResponse(rl);
 
   const useInngest = process.env.ENABLE_INNGEST_PIPELINE === "1";
 

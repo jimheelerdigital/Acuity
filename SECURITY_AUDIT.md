@@ -476,7 +476,7 @@ Ordered by what blocks which milestone. Do the 🔴 items in this order; do not 
 
 ### 🟠 Before public beta launch
 
-5. **Rate limiting everywhere.** `@upstash/ratelimit` or equivalent on `/api/record`, `/api/weekly`, `/api/lifemap/refresh`, `/api/auth/signin` (email), `/api/waitlist`. Budgets from §7. (§7)
+~~5.~~ ✅ **DONE 2026-04-20** — `@upstash/ratelimit` + `@upstash/redis` wired across the seven sensitive endpoints with per-category budgets: record/weekly/lifemap-refresh (10/hr/user), auth signin (5/15min/IP), waitlist (3/hr/IP), account delete (3/day/user), audio playback (60/min/user — replaces the S4 in-process stopgap). Helper at `apps/web/src/lib/rate-limit.ts` is fail-open on missing env vars with a one-time console warning. Manual step for Jim: provision Upstash via Vercel marketplace + populate `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` in Production. Tests: 11 Vitest cases covering the wrapper logic, identifier parsing, response builder, fail-open path.
 6. **Fix fail-open cron auth.** `/api/cron/waitlist-drip` — change to `if (!cronSecret || authHeader !== ...)`, confirm `CRON_SECRET` is set in Vercel Production. (§2.3)
 7. **Stop logging PII from `/api/waitlist`.** Delete the debug `console.log` calls or gate on `NODE_ENV !== "production"`. (§8.1)
 8. **Escape waitlist email HTML.** HTML-escape `name`, `email`, `source` before interpolation in the admin notification template. (§8.2)

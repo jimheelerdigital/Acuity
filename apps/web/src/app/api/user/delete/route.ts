@@ -29,6 +29,11 @@ import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 
 import { getAuthOptions } from "@/lib/auth";
+import {
+  checkRateLimit,
+  limiters,
+  rateLimitedResponse,
+} from "@/lib/rate-limit";
 import { stripe } from "@/lib/stripe";
 import { supabase } from "@/lib/supabase";
 
@@ -45,6 +50,10 @@ export async function POST(req: NextRequest) {
   }
   const userId = session.user.id;
   const sessionEmail = session.user.email;
+
+  // ── 1b. Rate limit (3 attempts per day per user) ────────────────────────
+  const rl = await checkRateLimit(limiters.accountDelete, `user:${userId}`);
+  if (!rl.success) return rateLimitedResponse(rl);
 
   // ── 2. Body validation ───────────────────────────────────────────────────
   const body = await req.json().catch(() => null);

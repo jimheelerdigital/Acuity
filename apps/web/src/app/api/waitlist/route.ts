@@ -1,13 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getResendClient } from "@/lib/resend";
+import {
+  checkRateLimit,
+  identifierFromRequest,
+  limiters,
+  rateLimitedResponse,
+} from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function POST(req: NextRequest) {
-  console.log("[waitlist] POST hit");
-  console.log("[waitlist] RESEND_API_KEY exists:", !!process.env.RESEND_API_KEY);
+  // Pre-auth rate limit — identifier is the caller's IP.
+  const identifier = identifierFromRequest(req, "waitlist");
+  const rl = await checkRateLimit(limiters.waitlist, identifier);
+  if (!rl.success) return rateLimitedResponse(rl);
 
   try {
     const body = await req.json();

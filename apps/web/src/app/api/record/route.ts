@@ -26,6 +26,11 @@ import { getAuthOptions } from "@/lib/auth";
 import { uploadAudioBytes } from "@/lib/audio";
 import { inngest } from "@/inngest/client";
 import { processEntry } from "@/lib/pipeline";
+import {
+  checkRateLimit,
+  limiters,
+  rateLimitedResponse,
+} from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -41,6 +46,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const userId = session.user.id;
+
+  // ── 1b. Rate limit (expensive: Whisper + Claude) ────────────────────────
+  const rl = await checkRateLimit(limiters.expensiveAi, `user:${userId}`);
+  if (!rl.success) return rateLimitedResponse(rl);
 
   // ── 2. Parse + validate (shared between both paths) ─────────────────────
   let formData: FormData;

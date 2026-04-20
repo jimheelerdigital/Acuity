@@ -6,10 +6,10 @@
  * on demand per playback request.
  *
  * Authorization model:
- *   - Session required (401 if missing).
- *   - Entry.userId must equal session.user.id (404 if mismatch — we
- *     deliberately do NOT return 403 so the response doesn't confirm
- *     the entry's existence to a stranger).
+ *   - Session required (404 if missing — we never disclose the entry's
+ *     existence to a stranger).
+ *   - Entry.userId must equal session.user.id (404 if mismatch, same
+ *     rationale).
  *
  * Returns:
  *   200 { url: string, expiresAt: string (ISO) }
@@ -18,48 +18,22 @@
  *   of expiry.
  *
  * Rate limiting:
- *   60 requests / 60s / user, enforced by the in-process limiter
- *   below. NOTE: serverless instances don't share memory; on Vercel
- *   the effective ceiling is per-instance, so a determined attacker
- *   can spread requests across cold starts. This is a stopgap until
- *   SECURITY_AUDIT.md S5 lands a proper Upstash-Redis-based
- *   rate-limit layer for the whole API surface.
+ *   60 requests / 60s / userId via Upstash Redis (S5). Fails open when
+ *   UPSTASH_REDIS_REST_URL is unset.
  */
 
 import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 
 import { getAuthOptions } from "@/lib/auth";
+import {
+  checkRateLimit,
+  limiters,
+  rateLimitedResponse,
+} from "@/lib/rate-limit";
 
 const STORAGE_BUCKET = "voice-entries";
 const SIGNED_URL_TTL_SECONDS = 5 * 60;
-
-// ── Rate limiter (in-process, per-user) ─────────────────────────────────
-// STOPGAP — see file header. Each Vercel instance has its own Map; in
-// practice the per-user-per-instance limit is closer to 60 * N where N
-// is the number of warm instances. Acceptable for legitimate playback
-// usage (ceiling well above any reasonable user behavior); not
-// acceptable as a security control for sustained abuse. S5 adds the
-// real layer.
-const RATE_LIMIT_REQUESTS = 60;
-const RATE_LIMIT_WINDOW_MS = 60_000;
-const userRequestTimes = new Map<string, number[]>();
-
-function consumeRateLimit(userId: string, now: number): boolean {
-  const window = now - RATE_LIMIT_WINDOW_MS;
-  const times = userRequestTimes.get(userId) ?? [];
-  // Drop expired entries from the front (window is FIFO ordered by push)
-  let i = 0;
-  while (i < times.length && times[i] < window) i++;
-  const recent = i === 0 ? times : times.slice(i);
-  if (recent.length >= RATE_LIMIT_REQUESTS) {
-    userRequestTimes.set(userId, recent); // keep the trim
-    return false;
-  }
-  recent.push(now);
-  userRequestTimes.set(userId, recent);
-  return true;
-}
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -76,15 +50,8 @@ export async function GET(
   const userId = session.user.id;
 
   // ── Rate limit ──────────────────────────────────────────────────────────
-  if (!consumeRateLimit(userId, Date.now())) {
-    return NextResponse.json(
-      { error: "Too many requests" },
-      {
-        status: 429,
-        headers: { "Retry-After": String(Math.ceil(RATE_LIMIT_WINDOW_MS / 1000)) },
-      }
-    );
-  }
+  const rl = await checkRateLimit(limiters.audioPlayback, `user:${userId}`);
+  if (!rl.success) return rateLimitedResponse(rl);
 
   // ── Ownership lookup ────────────────────────────────────────────────────
   const { prisma } = await import("@/lib/prisma");
