@@ -1,81 +1,154 @@
 "use client";
 
-// TODO: wire to persist UserOnboarding.lifeAreaPriorities as
-//   { CAREER: 3, HEALTH: 5, ... } on a 1-5 scale.
-//
-// Feeds the Life Matrix insight prompts: the weekly report weighting
-// can bias toward high-priority areas (if CAREER=5 and HEALTH=2, the
-// narrative should spend more words on career observations when both
-// show signal). Ask a copywriter before implementing the weighting —
-// it's easy to over-index on stated priorities and under-serve the
-// user's actual needs.
-//
-// UX: one row per area, each a 5-dot radio strip. No "Not important"
-// — every area is at least 1. Defaults to 3 ("neutral/interested")
-// for all areas; user drags the dots they care about.
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-import {
-  DEFAULT_LIFE_AREAS,
-  type LifeArea,
-} from "@acuity/shared";
+import { DEFAULT_LIFE_AREAS, type LifeArea } from "@acuity/shared";
 
-const LEVELS = [1, 2, 3, 4, 5] as const;
+import { useOnboarding } from "../onboarding-context";
+
+/**
+ * Step 6 — Life area priorities.
+ *
+ * Tap-to-select top-3-of-6 ranking. First tap assigns rank 1, second
+ * tap assigns rank 2, third assigns rank 3. Tapping a selected card
+ * deselects it and compacts the remaining ranks (so a 1-3-4 picks
+ * shifts to 1-2 after you deselect #2). Tapping an unselected card
+ * when three are already picked is a no-op — the user must deselect
+ * first. That's stricter than "replace the last one" but makes the
+ * interaction predictable.
+ *
+ * Persistence: { [LifeArea]: 1|2|3 } written to
+ * UserOnboarding.lifeAreaPriorities as Json. The weekly report + Day
+ * 14 Life Audit read this to bias narrative weight toward the areas
+ * the user said matter most, without over-indexing (see scaffold
+ * note — product call pending from copywriter).
+ *
+ * Forced step: Continue is disabled until exactly 3 areas are
+ * selected. No skip button for this step (not in the default
+ * skippableSteps list); the top-right "Skip for now" link is still
+ * available if the user really wants out.
+ */
+const REQUIRED_PICKS = 3;
+
+type Picks = Partial<Record<LifeArea, number>>;
 
 export function Step6LifeAreaPriorities() {
-  const [priorities, setPriorities] = useState<Record<string, number>>(() => {
-    // Default every area to "interested" (3)
-    const initial: Record<string, number> = {};
-    for (const a of DEFAULT_LIFE_AREAS) initial[a.enum] = 3;
-    return initial;
-  });
+  const { setCanContinue, setCapturedData } = useOnboarding();
+  const [picks, setPicks] = useState<Picks>({});
+
+  const count = useMemo(() => Object.keys(picks).length, [picks]);
+  const isReady = count === REQUIRED_PICKS;
+
+  useEffect(() => {
+    setCanContinue(isReady);
+    setCapturedData(isReady ? { lifeAreaPriorities: picks } : null);
+  }, [isReady, picks, setCanContinue, setCapturedData]);
+
+  function toggle(area: LifeArea) {
+    setPicks((prev) => {
+      const existing = prev[area];
+      if (existing !== undefined) {
+        // Deselect + compact the remaining ranks so they stay 1..n.
+        const next: Picks = {};
+        Object.entries(prev)
+          .filter(([k]) => k !== area)
+          .sort(([, a], [, b]) => (a ?? 0) - (b ?? 0))
+          .forEach(([k], i) => {
+            next[k as LifeArea] = i + 1;
+          });
+        return next;
+      }
+      // Adding a new pick. No-op if we're already at the cap.
+      if (Object.keys(prev).length >= REQUIRED_PICKS) return prev;
+      return { ...prev, [area]: Object.keys(prev).length + 1 };
+    });
+  }
 
   return (
-    <div className="animate-fade-in">
-      <h1 className="text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl">
-        Which of these matter most to you?
+    <div className="flex flex-col">
+      <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 sm:text-4xl">
+        What matters most right now?
       </h1>
-      <p className="mt-3 text-base text-zinc-500">
-        One dot means &ldquo;background attention&rdquo;. Five means &ldquo;this
-        is what I&rsquo;m here to work on&rdquo;.
+
+      <p className="mt-4 text-base leading-relaxed text-zinc-600">
+        Pick three. In the order they matter. Your weekly reports
+        lean on this to decide which threads to pull at first.
       </p>
 
-      <div className="mt-8 space-y-4">
+      <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3">
         {DEFAULT_LIFE_AREAS.map((area) => {
-          const current = priorities[area.enum] ?? 3;
+          const rank = picks[area.enum];
+          const isPicked = rank !== undefined;
+          const isFull = count >= REQUIRED_PICKS && !isPicked;
           return (
-            <div
+            <button
               key={area.enum}
-              className="flex items-center gap-4 rounded-xl border border-zinc-200 bg-white p-4"
+              onClick={() => toggle(area.enum)}
+              disabled={isFull}
+              aria-pressed={isPicked}
+              className={`relative flex flex-col items-start rounded-2xl border p-4 text-left transition ${
+                isPicked
+                  ? "border-[#7C5CFC] bg-[#F7F5FF] shadow-sm"
+                  : isFull
+                    ? "cursor-not-allowed border-zinc-200 bg-zinc-50 opacity-50"
+                    : "border-zinc-200 bg-white hover:border-zinc-300 hover:shadow-sm"
+              }`}
             >
-              <div className="flex-1">
-                <p className="text-sm font-semibold text-zinc-900">
-                  {area.name}
-                </p>
-              </div>
-              <div className="flex gap-1.5">
-                {LEVELS.map((level) => (
-                  <button
-                    key={level}
-                    onClick={() =>
-                      setPriorities((prev) => ({
-                        ...prev,
-                        [area.enum]: level,
-                      }))
-                    }
-                    className={`h-3 w-3 rounded-full transition ${
-                      current >= level
-                        ? "bg-violet-500"
-                        : "bg-zinc-200 hover:bg-zinc-300"
-                    }`}
-                    aria-label={`Set ${area.name} priority to ${level}`}
-                  />
-                ))}
-              </div>
-            </div>
+              {/* Rank badge in the top-right corner */}
+              {isPicked && (
+                <span className="absolute right-2.5 top-2.5 flex h-6 w-6 items-center justify-center rounded-full bg-[#7C5CFC] text-xs font-bold text-white">
+                  {rank}
+                </span>
+              )}
+              <div
+                className="mb-2 h-2 w-6 rounded-full"
+                style={{ backgroundColor: area.color }}
+              />
+              <p
+                className={`text-sm font-semibold ${
+                  isPicked ? "text-[#5B3FD6]" : "text-zinc-900"
+                }`}
+              >
+                {area.name}
+              </p>
+              <p className="mt-1 text-xs text-zinc-500">
+                {AREA_SUBTITLE[area.enum]}
+              </p>
+            </button>
           );
         })}
+      </div>
+
+      <div className="mt-6 flex items-center justify-between">
+        <p className="text-xs text-zinc-400">
+          {count} of {REQUIRED_PICKS} picked
+          {count > 0 && count < REQUIRED_PICKS && " — one more"}
+          {count === REQUIRED_PICKS && " — you\u2019re set."}
+        </p>
+        {count > 0 && (
+          <button
+            onClick={() => setPicks({})}
+            className="text-xs text-zinc-400 underline-offset-2 hover:underline"
+          >
+            Start over
+          </button>
+        )}
       </div>
     </div>
   );
 }
+
+/**
+ * Short subtitle per area — one plain phrase each, no jargon. The
+ * tone here has to match the landing page's "your own words" framing;
+ * "personal development" or "physical wellness" would feel like a
+ * corporate training module.
+ */
+const AREA_SUBTITLE: Record<LifeArea, string> = {
+  CAREER: "work, craft, ambition",
+  HEALTH: "body, sleep, energy",
+  RELATIONSHIPS: "partner, family, friends",
+  FINANCES: "money in, money out",
+  PERSONAL: "self, meaning, growth",
+  OTHER: "whatever doesn\u2019t fit above",
+};
