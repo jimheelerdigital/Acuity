@@ -3,6 +3,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { DEFAULT_LIFE_AREAS } from "@acuity/shared";
 
+import {
+  PaywallBanner,
+  parsePaywallResponse,
+} from "@/components/paywall-redirect";
+
 type Area = {
   id: string;
   area: string;
@@ -56,6 +61,9 @@ export function LifeMap() {
   const [selected, setSelected] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [paywall, setPaywall] = useState<
+    { message: string; redirect: string } | null
+  >(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -85,8 +93,14 @@ export function LifeMap() {
 
   const refresh = async () => {
     setRefreshing(true);
+    setPaywall(null);
     try {
-      await fetch("/api/lifemap/refresh", { method: "POST" });
+      const res = await fetch("/api/lifemap/refresh", { method: "POST" });
+      const paywallInfo = await parsePaywallResponse(res);
+      if (paywallInfo) {
+        setPaywall(paywallInfo);
+        return;
+      }
       await fetchData();
     } catch {
       // silent
@@ -111,6 +125,14 @@ export function LifeMap() {
 
   return (
     <div>
+      {paywall && (
+        <PaywallBanner
+          message={paywall.message}
+          redirect={paywall.redirect}
+          src="lifemap_interstitial"
+          onClose={() => setPaywall(null)}
+        />
+      )}
       {/* Memory stats */}
       {memory && memory.totalEntries > 0 && (
         <div className="mb-6 flex items-center gap-4 text-xs text-zinc-400">

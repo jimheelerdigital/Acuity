@@ -2,6 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import {
+  PaywallBanner,
+  parsePaywallResponse,
+} from "@/components/paywall-redirect";
+
 type Entry = {
   id: string;
   moodScore: number | null;
@@ -38,6 +43,9 @@ export function InsightsView() {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [paywall, setPaywall] = useState<
+    { message: string; redirect: string } | null
+  >(null);
 
   const fetchData = useCallback(async () => {
     const [entriesRes, reportsRes] = await Promise.all([
@@ -63,13 +71,21 @@ export function InsightsView() {
   const generateReport = async () => {
     setGenerating(true);
     setError(null);
+    setPaywall(null);
     try {
       const res = await fetch("/api/weekly", { method: "POST" });
+      const paywallInfo = await parsePaywallResponse(res);
+      if (paywallInfo) {
+        setPaywall(paywallInfo);
+        return;
+      }
       if (res.ok) {
         await fetchData();
       } else {
-        const data = await res.json();
-        setError(data.error ?? "Failed to generate report");
+        const data = await res.json().catch(() => ({}));
+        setError(
+          (data as { error?: string }).error ?? "Failed to generate report"
+        );
       }
     } catch {
       setError("Failed to generate report");
@@ -91,6 +107,13 @@ export function InsightsView() {
 
   return (
     <>
+      {paywall && (
+        <PaywallBanner
+          message={paywall.message}
+          redirect={paywall.redirect}
+          onClose={() => setPaywall(null)}
+        />
+      )}
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-zinc-900 mb-1">Insights</h1>
         <p className="text-sm text-zinc-500">
