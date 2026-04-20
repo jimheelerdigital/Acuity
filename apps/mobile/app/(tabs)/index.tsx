@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Audio } from "expo-av";
+import * as Linking from "expo-linking";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -19,30 +20,69 @@ import {
   PRIORITY_COLOR,
   type ExtractionResult,
 } from "@acuity/shared";
-import { api } from "@/lib/api";
 
+import {
+  useEntryPolling,
+  type PolledEntry,
+} from "@/hooks/use-entry-polling";
+
+const BASE_URL =
+  process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000";
 const MAX_SECONDS = 120;
 
 type RecordState =
   | "idle"
   | "recording"
-  | "transcribing"
-  | "extracting"
-  | "done";
+  | "uploading"
+  | "processing" // async: Inngest pipeline
+  | "done"
+  | "timeout";
 
 type Result = {
   entryId: string;
   extraction: ExtractionResult;
   tasksCreated: number;
+  partial?: boolean;
 };
+
+const STEPPER_PHASES: { key: string; label: string }[] = [
+  { key: "QUEUED", label: "Saving your recording" },
+  { key: "TRANSCRIBING", label: "Transcribing" },
+  { key: "EXTRACTING", label: "Extracting insights" },
+  { key: "PERSISTING", label: "Almost done" },
+];
 
 export default function RecordTab() {
   const [state, setState] = useState<RecordState>("idle");
   const [elapsed, setElapsed] = useState(0);
   const [result, setResult] = useState<Result | null>(null);
+  const [polledEntryId, setPolledEntryId] = useState<string | null>(null);
   const recordingRef = useRef<Audio.Recording | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  const poll = useEntryPolling(polledEntryId);
+
+  // Bridge polling terminal states into the main RecordState.
+  useEffect(() => {
+    if (!polledEntryId) return;
+    if (poll.status === "complete" && poll.entry) {
+      setResult(polledEntryToResult(poll.entry, false));
+      setState("done");
+    } else if (poll.status === "partial" && poll.entry) {
+      setResult(polledEntryToResult(poll.entry, true));
+      setState("done");
+    } else if (poll.status === "failed") {
+      Alert.alert(
+        "Processing failed",
+        poll.entry?.errorMessage ?? "We couldn't process your recording."
+      );
+      setState("idle");
+      setPolledEntryId(null);
+    } else if (poll.status === "timeout") {
+      setState("timeout");
+    }
+  }, [poll.status, poll.entry, polledEntryId]);
 
   // Pulse animation
   useEffect(() => {
@@ -70,13 +110,24 @@ export default function RecordTab() {
     }
   }, [state, pulseAnim]);
 
-  // Request mic permission
+  // Mic permission
   useEffect(() => {
     Audio.requestPermissionsAsync();
     Audio.setAudioModeAsync({
       allowsRecordingIOS: true,
       playsInSilentModeIOS: true,
     });
+  }, []);
+
+  // Clean up on unmount — extra belt-and-suspenders for Expo's tab
+  // switches, which don't always unmount but do suspend state updates.
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+      if (recordingRef.current) {
+        recordingRef.current.stopAndUnloadAsync().catch(() => {});
+      }
+    };
   }, []);
 
   const startRecording = async () => {
@@ -90,6 +141,7 @@ export default function RecordTab() {
     }
 
     setResult(null);
+    setPolledEntryId(null);
     const recording = new Audio.Recording();
     await recording.prepareToRecordAsync(
       Audio.RecordingOptionsPresets.HIGH_QUALITY
@@ -131,7 +183,7 @@ export default function RecordTab() {
   };
 
   const uploadRecording = async (uri: string, duration: number) => {
-    setState("transcribing");
+    setState("uploading");
 
     const formData = new FormData();
     formData.append("audio", {
@@ -142,21 +194,79 @@ export default function RecordTab() {
     formData.append("durationSeconds", String(duration));
 
     try {
-      // Simulate staged processing for UX
-      const transcribeTimeout = setTimeout(
-        () => setState("extracting"),
-        3000
-      );
+      const res = await fetch(`${BASE_URL}/api/record`, {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
 
-      const data = await api.upload<{
+      // Paywall rejection — trial expired or post-trial-free. Open
+      // web /upgrade in the system browser (IAP not implemented; per
+      // 2026-04-18 decision the mobile flow uses the web checkout
+      // until IAP lands).
+      if (res.status === 402) {
+        Alert.alert(
+          "Your trial has ended",
+          "Month 2 is where the pattern deepens. Continue the journey?",
+          [
+            { text: "Not now", style: "cancel", onPress: () => setState("idle") },
+            {
+              text: "Continue",
+              onPress: () => {
+                Linking.openURL(`${BASE_URL}/upgrade?src=mobile_profile`);
+                setState("idle");
+              },
+            },
+          ]
+        );
+        return;
+      }
+
+      // Rate-limited.
+      if (res.status === 429) {
+        const body = await res.json().catch(() => ({ retryAfter: 60 }));
+        const retry = Number((body as { retryAfter?: number }).retryAfter ?? 60);
+        Alert.alert(
+          "Recording too frequently",
+          `Try again in ${Math.ceil(retry / 60)} minute${retry > 60 ? "s" : ""}.`
+        );
+        setState("idle");
+        return;
+      }
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(
+          (body as { error?: string }).error ?? `HTTP ${res.status}`
+        );
+      }
+
+      const body = (await res.json()) as {
         entryId: string;
-        extraction: ExtractionResult;
-        tasksCreated: number;
-      }>("/api/record", formData);
+        status?: string;
+        extraction?: ExtractionResult;
+        tasksCreated?: number;
+      };
 
-      clearTimeout(transcribeTimeout);
-      setResult(data);
-      setState("done");
+      // Async path: 202 → start polling.
+      if (res.status === 202 && body.entryId) {
+        setState("processing");
+        setPolledEntryId(body.entryId);
+        return;
+      }
+
+      // Sync path: 201 with inline RecordResponse.
+      if (body.extraction) {
+        setResult({
+          entryId: body.entryId,
+          extraction: body.extraction,
+          tasksCreated: body.tasksCreated ?? 0,
+        });
+        setState("done");
+        return;
+      }
+
+      throw new Error("Unexpected response shape");
     } catch (err) {
       Alert.alert(
         "Upload failed",
@@ -169,33 +279,49 @@ export default function RecordTab() {
   const handlePress = () => {
     if (state === "recording") {
       stopRecording();
-    } else if (state === "idle" || state === "done") {
+    } else if (state === "idle" || state === "done" || state === "timeout") {
       setState("idle");
       setResult(null);
+      setPolledEntryId(null);
       startRecording();
     }
   };
-
-  const isProcessing = state === "transcribing" || state === "extracting";
 
   return (
     <SafeAreaView className="flex-1 bg-zinc-950" edges={["top"]}>
       {state === "done" && result ? (
         <ResultCard result={result} onNewRecording={handlePress} />
+      ) : state === "processing" ? (
+        <ProcessingView
+          currentPhase={poll.phase}
+          elapsedSeconds={poll.elapsedSeconds}
+        />
       ) : (
         <View className="flex-1 items-center justify-center px-8">
-          {isProcessing ? (
+          {state === "uploading" ? (
             <View className="items-center gap-4">
               <ActivityIndicator size="large" color="#7C3AED" />
-              <Text className="text-zinc-400 text-sm">
-                {state === "transcribing"
-                  ? "Transcribing..."
-                  : "Extracting insights..."}
+              <Text className="text-zinc-400 text-sm">Uploading audio...</Text>
+            </View>
+          ) : state === "timeout" ? (
+            <View className="items-center gap-4">
+              <Text className="text-zinc-100 text-lg font-semibold text-center">
+                Still processing — we&rsquo;ll save your progress.
               </Text>
+              <Text className="text-zinc-500 text-sm text-center">
+                Check back from your dashboard in a few minutes.
+              </Text>
+              <Pressable
+                onPress={handlePress}
+                className="mt-4 rounded-2xl bg-violet-600 py-3 px-6"
+              >
+                <Text className="text-sm font-semibold text-white">
+                  Record another
+                </Text>
+              </Pressable>
             </View>
           ) : (
             <View className="items-center gap-8">
-              {/* Status text */}
               <View className="items-center gap-2">
                 <Text className="text-zinc-100 text-xl font-semibold">
                   {state === "recording" ? "Recording..." : "Ready to record"}
@@ -205,19 +331,14 @@ export default function RecordTab() {
                     {formatTime(elapsed)}
                   </Text>
                 ) : (
-                  <Text className="text-zinc-500 text-sm">
-                    Up to 2 minutes
-                  </Text>
+                  <Text className="text-zinc-500 text-sm">Up to 2 minutes</Text>
                 )}
               </View>
 
-              {/* Mic button */}
               <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
                 <Pressable
                   onPress={handlePress}
-                  style={({ pressed }) => ({
-                    opacity: pressed ? 0.8 : 1,
-                  })}
+                  style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
                 >
                   <View
                     className={`h-32 w-32 rounded-full items-center justify-center ${
@@ -244,21 +365,15 @@ export default function RecordTab() {
                 </Pressable>
               </Animated.View>
 
-              {/* Helper text */}
               <Text className="text-zinc-500 text-sm text-center">
-                {state === "recording"
-                  ? "Tap to stop"
-                  : "Tap to start your brain dump"}
+                {state === "recording" ? "Tap to stop" : "Tap to start your brain dump"}
               </Text>
 
-              {/* Progress bar for recording */}
               {state === "recording" && (
                 <View className="w-48 h-1 rounded-full bg-zinc-800">
                   <View
                     className="h-1 rounded-full bg-red-500"
-                    style={{
-                      width: `${(elapsed / MAX_SECONDS) * 100}%`,
-                    }}
+                    style={{ width: `${(elapsed / MAX_SECONDS) * 100}%` }}
                   />
                 </View>
               )}
@@ -268,6 +383,53 @@ export default function RecordTab() {
       )}
     </SafeAreaView>
   );
+}
+
+function ProcessingView({
+  currentPhase,
+  elapsedSeconds,
+}: {
+  currentPhase: string | null;
+  elapsedSeconds: number;
+}) {
+  const currentIndex = Math.max(
+    0,
+    STEPPER_PHASES.findIndex((p) => p.key === currentPhase)
+  );
+  return (
+    <View className="flex-1 items-center justify-center px-8">
+      <ActivityIndicator size="large" color="#7C3AED" />
+      <Text className="mt-4 text-zinc-400 text-sm">
+        {STEPPER_PHASES[currentIndex]?.label ?? "Processing"}
+      </Text>
+      <Text className="mt-2 text-zinc-600 text-xs">
+        {elapsedSeconds}s elapsed
+      </Text>
+    </View>
+  );
+}
+
+function polledEntryToResult(entry: PolledEntry, partial: boolean): Result {
+  const raw = (entry.rawAnalysis ?? {}) as Partial<ExtractionResult>;
+  const extraction: ExtractionResult = {
+    summary: entry.summary ?? raw.summary ?? "",
+    mood: (entry.mood as ExtractionResult["mood"]) ?? raw.mood ?? "NEUTRAL",
+    moodScore: entry.moodScore ?? raw.moodScore ?? 5,
+    energy: entry.energy ?? raw.energy ?? 5,
+    themes: entry.themes ?? raw.themes ?? [],
+    wins: entry.wins ?? raw.wins ?? [],
+    blockers: entry.blockers ?? raw.blockers ?? [],
+    insights: raw.insights ?? [],
+    tasks: raw.tasks ?? [],
+    goals: raw.goals ?? [],
+    lifeAreaMentions: raw.lifeAreaMentions,
+  };
+  return {
+    entryId: entry.id,
+    extraction,
+    tasksCreated: extraction.tasks.length,
+    partial,
+  };
 }
 
 function ResultCard({
@@ -286,13 +448,21 @@ function ResultCard({
       className="flex-1"
       contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
     >
-      {/* Header */}
       <View className="items-center mb-6">
-        <Text className="text-4xl mb-2">✅</Text>
-        <Text className="text-xl font-bold text-zinc-50">Session Complete</Text>
+        <Text className="text-4xl mb-2">{result.partial ? "⚠️" : "✅"}</Text>
+        <Text className="text-xl font-bold text-zinc-50">
+          {result.partial ? "Saved (Partial)" : "Session Complete"}
+        </Text>
       </View>
 
-      {/* Mood & Energy */}
+      {result.partial && (
+        <View className="rounded-2xl border border-amber-700/50 bg-amber-900/20 p-3 mb-4">
+          <Text className="text-xs text-amber-200">
+            Your entry is saved, but Life Matrix updates will catch up shortly.
+          </Text>
+        </View>
+      )}
+
       <View className="flex-row justify-center gap-6 mb-6">
         <View className="items-center">
           <Text className="text-3xl">{moodEmoji}</Text>
@@ -308,7 +478,6 @@ function ResultCard({
         </View>
       </View>
 
-      {/* Summary */}
       <View className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4 mb-4">
         <Text className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">
           Summary
@@ -318,7 +487,6 @@ function ResultCard({
         </Text>
       </View>
 
-      {/* Themes */}
       {extraction.themes.length > 0 && (
         <View className="flex-row flex-wrap gap-1.5 mb-4">
           {extraction.themes.map((t) => (
@@ -329,7 +497,6 @@ function ResultCard({
         </View>
       )}
 
-      {/* Tasks */}
       {extraction.tasks.length > 0 && (
         <View className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4 mb-4">
           <Text className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">
@@ -345,8 +512,7 @@ function ResultCard({
               <View
                 className="mt-1 h-2.5 w-2.5 rounded-full"
                 style={{
-                  backgroundColor:
-                    PRIORITY_COLOR[task.priority] ?? "#71717A",
+                  backgroundColor: PRIORITY_COLOR[task.priority] ?? "#71717A",
                 }}
               />
               <View className="flex-1">
@@ -361,7 +527,6 @@ function ResultCard({
         </View>
       )}
 
-      {/* Insights */}
       {extraction.insights.length > 0 && (
         <View className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4 mb-6">
           <Text className="text-xs font-semibold text-violet-400 uppercase tracking-wider mb-3">
@@ -376,15 +541,12 @@ function ResultCard({
         </View>
       )}
 
-      {/* New recording button */}
       <Pressable
         onPress={onNewRecording}
         className="rounded-2xl bg-violet-600 py-4 items-center"
         style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
       >
-        <Text className="text-sm font-semibold text-white">
-          Record Another
-        </Text>
+        <Text className="text-sm font-semibold text-white">Record Another</Text>
       </Pressable>
     </ScrollView>
   );
