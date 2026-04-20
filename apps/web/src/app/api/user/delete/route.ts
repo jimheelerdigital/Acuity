@@ -35,7 +35,7 @@ import {
   rateLimitedResponse,
 } from "@/lib/rate-limit";
 import { stripe } from "@/lib/stripe";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase.server";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";

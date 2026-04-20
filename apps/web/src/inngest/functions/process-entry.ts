@@ -70,7 +70,7 @@ export const processEntryFn = inngest.createFunction(
   async ({ event, step, runId, logger }) => {
     const { entryId, userId } = event.data as ProcessEntryEventData;
     const { prisma } = await import("@/lib/prisma");
-    const { supabase } = await import("@/lib/supabase");
+    const { supabase } = await import("@/lib/supabase.server");
 
     // Step 0: link the Entry to this Inngest run (for observability).
     await step.run("record-run-id", async () => {

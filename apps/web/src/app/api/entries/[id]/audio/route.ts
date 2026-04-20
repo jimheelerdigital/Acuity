@@ -89,7 +89,7 @@ export async function GET(
   }
 
   // ── Sign on demand ──────────────────────────────────────────────────────
-  const { supabase } = await import("@/lib/supabase");
+  const { supabase } = await import("@/lib/supabase.server");
   const { data, error } = await supabase.storage
     .from(STORAGE_BUCKET)
     .createSignedUrl(entry.audioPath, SIGNED_URL_TTL_SECONDS);

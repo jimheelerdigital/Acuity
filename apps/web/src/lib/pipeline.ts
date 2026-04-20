@@ -35,7 +35,7 @@ export async function uploadAudio(
   entryId: string,
   mimeType: string
 ): Promise<string> {
-  const { supabase } = await import("@/lib/supabase");
+  const { supabase } = await import("@/lib/supabase.server");
 
   const ext = mimeType.split("/")[1]?.replace("x-m4a", "m4a") ?? "webm";
   const path = `${userId}/${entryId}.${ext}`;
