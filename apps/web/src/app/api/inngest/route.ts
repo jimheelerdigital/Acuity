@@ -5,6 +5,7 @@ import { inngest } from "@/inngest/client";
 import { generateWeeklyReportFn } from "@/inngest/functions/generate-weekly-report";
 import { helloWorldFn } from "@/inngest/functions/hello-world";
 import { processEntryFn } from "@/inngest/functions/process-entry";
+import { refreshLifeMapFn } from "@/inngest/functions/refresh-lifemap";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -14,7 +15,12 @@ export const maxDuration = 60;
 
 const handler = serve({
   client: inngest,
-  functions: [helloWorldFn, processEntryFn, generateWeeklyReportFn],
+  functions: [
+    helloWorldFn,
+    processEntryFn,
+    generateWeeklyReportFn,
+    refreshLifeMapFn,
+  ],
 });
 
 function flagOff() {

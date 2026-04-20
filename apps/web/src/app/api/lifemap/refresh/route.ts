@@ -1,7 +1,23 @@
+/**
+ * POST /api/lifemap/refresh
+ *
+ * Dual-path behavior (INNGEST_MIGRATION_PLAN.md §3.3 + §11 step 4):
+ *   - ENABLE_INNGEST_PIPELINE !== "1" (default): legacy sync path.
+ *     Runs compress-memory + generate-insights inline and returns
+ *     200 with the freshly-recomputed areas.
+ *   - ENABLE_INNGEST_PIPELINE === "1": async path. Dispatches an
+ *     `lifemap/refresh.requested` Inngest event and returns 202.
+ *     The function is debounced 10 minutes per user, so back-to-back
+ *     button-mashing collapses to one Claude pair. Client re-fetches
+ *     GET /api/lifemap to see the updated scores once the function
+ *     completes (client polling lands in PR 5).
+ */
+
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 
 import { getAuthOptions } from "@/lib/auth";
+import { inngest } from "@/inngest/client";
 
 export const dynamic = "force-dynamic";
 
@@ -10,9 +26,20 @@ export async function POST() {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-
   const userId = session.user.id;
 
+  const useInngest = process.env.ENABLE_INNGEST_PIPELINE === "1";
+
+  // ── Async path: dispatch event, return 202 ──────────────────────────────
+  if (useInngest) {
+    await inngest.send({
+      name: "lifemap/refresh.requested",
+      data: { userId },
+    });
+    return NextResponse.json({ status: "QUEUED" }, { status: 202 });
+  }
+
+  // ── Sync path (legacy): inline Claude calls, return 200 with areas ──────
   try {
     const { generateLifeMapInsights, compressMemory, getOrCreateUserMemory } =
       await import("@/lib/memory");
