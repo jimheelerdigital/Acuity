@@ -303,6 +303,7 @@ For local development, set `ENABLE_INNGEST_PIPELINE=1` and either `INNGEST_DEV=1
 ## Notes for Future Sessions
 
 - **Git workflow (set 2026-04-19):** default is to commit and push directly to `main`. Run `git pull --ff-only origin main` at the start of every session before making changes. Only create branches or open PRs when Jim explicitly asks for one.
+- **Deploy to prod via `./scripts/deploy-main.sh`** (temporary workaround set 2026-04-20). Vercel's GitHub auto-deploy webhook is not firing — pushes land on GitHub but Production doesn't rebuild. The script pushes + triggers `vercel --prod` in one step. Guards: current branch must be main, warns on dirty tree, refuses if local is behind origin. Supports `--dry-run`. Retire when Vercel auto-deploy is fixed; see "Blocked on Inngest verification" for the root-cause recovery path.
 - This repo is a Turborepo monorepo: `apps/web` (Next.js), `apps/mobile` (Expo), `packages/shared` (types/utils), `prisma/` (DB schema).
 - Production domain is `getacuity.io` — deployed via Vercel (GitHub integration).
 - Waitlist is live and collecting.
