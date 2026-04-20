@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { inngest } from "@/inngest/client";
 import { helloWorldFn } from "@/inngest/functions/hello-world";
+import { processEntryFn } from "@/inngest/functions/process-entry";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -12,7 +13,7 @@ export const maxDuration = 60;
 
 const handler = serve({
   client: inngest,
-  functions: [helloWorldFn],
+  functions: [helloWorldFn, processEntryFn],
 });
 
 function flagOff() {

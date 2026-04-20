@@ -2,23 +2,36 @@
  * POST /api/record
  *
  * Accepts multipart/form-data with:
- *   audio          — Blob | File (required)
+ *   audio           — Blob | File (required)
  *   durationSeconds — string (optional)
  *
- * Creates an Entry (PENDING), runs the full pipeline (upload → transcribe →
- * extract → persist), and returns the completed Entry with extracted data.
- * On failure the Entry status is set to FAILED.
+ * Dual-path behavior (INNGEST_MIGRATION_PLAN.md §11 PR 2):
+ *   - ENABLE_INNGEST_PIPELINE !== "1" (default): legacy sync path.
+ *     Runs the full pipeline inline (upload → Whisper → Claude → DB).
+ *     Returns 201 with the completed entry + extraction payload.
+ *     Requires Vercel Pro (maxDuration=120).
+ *   - ENABLE_INNGEST_PIPELINE === "1": async path.
+ *     Uploads audio to Supabase Storage, creates an Entry in QUEUED
+ *     status, dispatches an `entry/process.requested` Inngest event,
+ *     and returns 202 immediately. Client polls GET /api/entries/[id]
+ *     for status transitions.
  */
 
 import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 
+import { MAX_AUDIO_BYTES } from "@acuity/shared";
+
 import { getAuthOptions } from "@/lib/auth";
+import { uploadAudioBytes } from "@/lib/audio";
+import { inngest } from "@/inngest/client";
 import { processEntry } from "@/lib/pipeline";
-import { MAX_AUDIO_BYTES, SUPPORTED_AUDIO_TYPES } from "@acuity/shared";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+// Retained for the sync path. Once we flip ENABLE_INNGEST_PIPELINE=1 in
+// production and prove stability, the sync path is removed and this
+// maxDuration drops (Inngest PR 4). Hobby ignores values >10 anyway.
 export const maxDuration = 120;
 
 export async function POST(req: NextRequest) {
@@ -29,7 +42,7 @@ export async function POST(req: NextRequest) {
   }
   const userId = session.user.id;
 
-  // ── 2. Parse + validate ──────────────────────────────────────────────────
+  // ── 2. Parse + validate (shared between both paths) ─────────────────────
   let formData: FormData;
   try {
     formData = await req.formData();
@@ -71,13 +84,60 @@ export async function POST(req: NextRequest) {
 
   const audioBuffer = Buffer.from(await audioFile.arrayBuffer());
 
-  // ── 3. Create Entry (PENDING) ────────────────────────────────────────────
+  const useInngest = process.env.ENABLE_INNGEST_PIPELINE === "1";
+
+  // ── 3a. Async path — upload, create Entry QUEUED, dispatch event ────────
+  if (useInngest) {
+    const { prisma } = await import("@/lib/prisma");
+    const entry = await prisma.entry.create({
+      data: { userId, status: "QUEUED" },
+    });
+
+    let objectPath: string;
+    try {
+      objectPath = await uploadAudioBytes(
+        audioBuffer,
+        userId,
+        entry.id,
+        mimeType
+      );
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Upload failed";
+      await prisma.entry.update({
+        where: { id: entry.id },
+        data: { status: "FAILED", errorMessage: message },
+      });
+      return NextResponse.json(
+        { error: message, entryId: entry.id, status: "FAILED" },
+        { status: 502 }
+      );
+    }
+
+    await prisma.entry.update({
+      where: { id: entry.id },
+      data: {
+        audioPath: objectPath,
+        audioDuration: durationSeconds ?? null,
+      },
+    });
+
+    await inngest.send({
+      name: "entry/process.requested",
+      data: { entryId: entry.id, userId },
+    });
+
+    return NextResponse.json(
+      { entryId: entry.id, status: "QUEUED" },
+      { status: 202 }
+    );
+  }
+
+  // ── 3b. Sync path (legacy) — unchanged from pre-migration behavior ──────
   const { prisma } = await import("@/lib/prisma");
   const entry = await prisma.entry.create({
     data: { userId, status: "PENDING" },
   });
 
-  // ── 4. Run pipeline ──────────────────────────────────────────────────────
   try {
     const result = await processEntry({
       entryId: entry.id,

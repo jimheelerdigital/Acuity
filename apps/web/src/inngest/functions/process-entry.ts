@@ -1,0 +1,287 @@
+import { NonRetriableError } from "inngest";
+import OpenAI from "openai";
+import { toFile } from "openai/uploads";
+
+import { WHISPER_LANGUAGE, WHISPER_MODEL } from "@acuity/shared";
+
+import { inngest } from "@/inngest/client";
+import { mimeTypeFromAudioPath } from "@/lib/audio";
+
+type ProcessEntryEventData = {
+  entryId: string;
+  userId: string;
+};
+
+function truncateForUi(message: string, max = 160): string {
+  return message.length > max ? message.slice(0, max - 1) + "…" : message;
+}
+
+export const processEntryFn = inngest.createFunction(
+  {
+    id: "process-entry",
+    name: "Process nightly entry",
+    triggers: [{ event: "entry/process.requested" }],
+    // USER-INTERACTIVE (Decisions Made 2026-04-19): 2 retries bounds
+    // worst-case user-visible latency to roughly 3 minutes.
+    retries: 2,
+    // One in-flight run per user — serializes back-to-back recordings
+    // so UserMemory updates don't race.
+    concurrency: { key: "event.data.userId", limit: 1 },
+    // Belt-and-suspenders rate limit. HTTP-level rate limit (S5) still
+    // lives in the route.
+    throttle: { key: "event.data.userId", limit: 10, period: "1h" },
+    onFailure: async ({ event, error }) => {
+      // onFailure fires after all retries are exhausted. Map the failure
+      // to FAILED vs PARTIAL based on whether the transcript step made
+      // it through (transcript persists to Entry before extract runs).
+      const originalData = (event.data as { event?: { data?: unknown } })?.event
+        ?.data as ProcessEntryEventData | undefined;
+      const entryId = originalData?.entryId;
+      if (!entryId) return;
+
+      const { prisma } = await import("@/lib/prisma");
+      const existing = await prisma.entry.findUnique({
+        where: { id: entryId },
+        select: { status: true, transcript: true },
+      });
+      if (!existing) return;
+
+      const hasTranscript =
+        !!existing.transcript && existing.transcript.trim().length > 0;
+      const message = truncateForUi(error?.message ?? "Processing failed");
+
+      if (hasTranscript) {
+        await prisma.entry.update({
+          where: { id: entryId },
+          data: {
+            status: "PARTIAL",
+            partialReason: "extract-or-persist-failed",
+            errorMessage: message,
+          },
+        });
+      } else {
+        await prisma.entry.update({
+          where: { id: entryId },
+          data: { status: "FAILED", errorMessage: message },
+        });
+      }
+    },
+  },
+  async ({ event, step, runId, logger }) => {
+    const { entryId, userId } = event.data as ProcessEntryEventData;
+    const { prisma } = await import("@/lib/prisma");
+    const { supabase } = await import("@/lib/supabase");
+
+    // Step 0: link the Entry to this Inngest run (for observability).
+    await step.run("record-run-id", async () => {
+      await prisma.entry.update({
+        where: { id: entryId },
+        data: { inngestRunId: runId },
+      });
+    });
+
+    // Step 1: download audio from Supabase Storage.
+    const { audioBase64, mimeType } = await step.run(
+      "download-audio",
+      async () => {
+        const entry = await prisma.entry.findUniqueOrThrow({
+          where: { id: entryId },
+          select: { audioPath: true, userId: true },
+        });
+        if (entry.userId !== userId) {
+          throw new NonRetriableError(
+            `Entry ${entryId} does not belong to user ${userId}`
+          );
+        }
+        if (!entry.audioPath) {
+          throw new NonRetriableError(`Entry ${entryId} has no audioPath`);
+        }
+
+        await prisma.entry.update({
+          where: { id: entryId },
+          data: { status: "TRANSCRIBING" },
+        });
+
+        const { data, error } = await supabase.storage
+          .from("voice-entries")
+          .download(entry.audioPath);
+        if (error || !data) {
+          throw new Error(
+            `Audio download failed: ${error?.message ?? "no data"}`
+          );
+        }
+
+        const buffer = Buffer.from(await data.arrayBuffer());
+        return {
+          audioBase64: buffer.toString("base64"),
+          mimeType: mimeTypeFromAudioPath(entry.audioPath),
+        };
+      }
+    );
+
+    // Step 2: transcribe via Whisper + persist transcript immediately.
+    // Persisting here (vs. buffering until the final transaction) means
+    // an extract/persist failure later leaves a recoverable PARTIAL
+    // entry with the user's words intact.
+    await step.run("transcribe-and-persist-transcript", async () => {
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const buffer = Buffer.from(audioBase64, "base64");
+      const ext = mimeType.split("/")[1]?.replace("x-m4a", "m4a") ?? "webm";
+      const file = await toFile(buffer, `recording.${ext}`, { type: mimeType });
+
+      const res = await openai.audio.transcriptions.create({
+        file,
+        model: WHISPER_MODEL,
+        language: WHISPER_LANGUAGE,
+        response_format: "text",
+      });
+      const transcript = (res as unknown as string).trim();
+
+      if (transcript.length < 10) {
+        throw new NonRetriableError(
+          "Transcript too short — no speech detected"
+        );
+      }
+
+      await prisma.entry.update({
+        where: { id: entryId },
+        data: { transcript, status: "EXTRACTING" },
+      });
+    });
+
+    // Step 3: build memory context (Prisma read; sub-second).
+    const memoryContext = await step.run("build-memory-context", async () => {
+      const { buildMemoryContext } = await import("@/lib/memory");
+      return buildMemoryContext(userId);
+    });
+
+    // Step 4: extract structured data via Claude. Uses the exact same
+    // prompt + parser as the sync pipeline (`lib/pipeline.ts`).
+    const extraction = await step.run("extract", async () => {
+      const entry = await prisma.entry.findUniqueOrThrow({
+        where: { id: entryId },
+        select: { transcript: true },
+      });
+      const transcript = entry.transcript ?? "";
+      const { extractFromTranscript } = await import("@/lib/pipeline");
+      const todayISO = new Date().toISOString().split("T")[0];
+      return extractFromTranscript(
+        transcript,
+        todayISO,
+        memoryContext || undefined
+      );
+    });
+
+    // Step 5: persist extraction + create Tasks/Goals in one transaction.
+    await step.run("persist-extraction", async () => {
+      await prisma.entry.update({
+        where: { id: entryId },
+        data: { status: "PERSISTING" },
+      });
+
+      await prisma.$transaction(async (tx) => {
+        await tx.entry.update({
+          where: { id: entryId },
+          data: {
+            summary: extraction.summary,
+            mood: extraction.mood,
+            moodScore: extraction.moodScore,
+            energy: extraction.energy,
+            themes: extraction.themes,
+            wins: extraction.wins,
+            blockers: extraction.blockers,
+            rawAnalysis: extraction as unknown as object,
+            status: "COMPLETE",
+          },
+        });
+
+        if (extraction.tasks.length > 0) {
+          await tx.task.createMany({
+            data: extraction.tasks.map((t) => ({
+              userId,
+              entryId,
+              text: t.title,
+              title: t.title,
+              description: t.description ?? null,
+              priority: t.priority,
+              dueDate: t.dueDate ? new Date(t.dueDate) : null,
+            })),
+          });
+        }
+
+        for (const g of extraction.goals) {
+          const existing = await tx.goal.findFirst({
+            where: {
+              userId,
+              title: { equals: g.title, mode: "insensitive" },
+            },
+          });
+          if (!existing) {
+            await tx.goal.create({
+              data: {
+                userId,
+                title: g.title,
+                description: g.description ?? null,
+                targetDate: g.targetDate ? new Date(g.targetDate) : null,
+              },
+            });
+          }
+        }
+      });
+    });
+
+    // Steps 6 + 7: memory + lifemap enrichment. These fail-soft: a
+    // downstream failure downgrades Entry to PARTIAL rather than FAILED
+    // because the user's entry is already saved. A second entry from the
+    // same user re-triggers memory/lifemap via the normal code path.
+    let memoryOk = true;
+    try {
+      await step.run("update-user-memory", async () => {
+        const entry = await prisma.entry.findUniqueOrThrow({
+          where: { id: entryId },
+          select: { id: true, entryDate: true, themes: true },
+        });
+        const { updateUserMemory } = await import("@/lib/memory");
+        await updateUserMemory(userId, entry, extraction);
+      });
+    } catch (err) {
+      memoryOk = false;
+      logger.error("[process-entry] update-user-memory failed", { err });
+      await prisma.entry.update({
+        where: { id: entryId },
+        data: { status: "PARTIAL", partialReason: "memory-update-failed" },
+      });
+    }
+
+    let lifemapOk = true;
+    try {
+      await step.run("update-life-map", async () => {
+        const { updateLifeMap } = await import("@/lib/memory");
+        await updateLifeMap(userId, extraction.lifeAreaMentions);
+      });
+    } catch (err) {
+      lifemapOk = false;
+      logger.error("[process-entry] update-life-map failed", { err });
+      const cur = await prisma.entry.findUniqueOrThrow({
+        where: { id: entryId },
+        select: { status: true, partialReason: true },
+      });
+      // Don't clobber a pre-existing partialReason ("memory-update-failed").
+      if (cur.status === "COMPLETE") {
+        await prisma.entry.update({
+          where: { id: entryId },
+          data: {
+            status: "PARTIAL",
+            partialReason: "lifemap-update-failed",
+          },
+        });
+      }
+    }
+
+    return {
+      entryId,
+      memoryOk,
+      lifemapOk,
+    };
+  }
+);

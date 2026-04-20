@@ -30,6 +30,7 @@ export async function GET() {
       blockers: true,
       rawAnalysis: true,
       audioUrl: true,
+      audioPath: true,
       audioDuration: true,
       status: true,
       createdAt: true,

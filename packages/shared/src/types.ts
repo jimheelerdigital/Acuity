@@ -91,7 +91,14 @@ export interface EntryDTO {
   wins: string[];
   blockers: string[];
   insights: string[];
+  // Pre-signed URL from the legacy sync pipeline (1-hour TTL). Still
+  // populated on trial-era entries. Callers should prefer `audioPath` +
+  // a signed-on-demand helper; see `lib/audio.ts::getEntryAudioPath` on
+  // the server side.
   audioUrl: string | null;
+  // Supabase Storage object path populated by the async pipeline. Not a
+  // URL — clients must call a sign-on-demand endpoint before playback.
+  audioPath: string | null;
   audioDuration: number | null;
   status: string;
   createdAt: string;
