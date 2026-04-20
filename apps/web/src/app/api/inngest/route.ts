@@ -2,6 +2,7 @@ import { serve } from "inngest/next";
 import { NextRequest, NextResponse } from "next/server";
 
 import { inngest } from "@/inngest/client";
+import { generateWeeklyReportFn } from "@/inngest/functions/generate-weekly-report";
 import { helloWorldFn } from "@/inngest/functions/hello-world";
 import { processEntryFn } from "@/inngest/functions/process-entry";
 
@@ -13,7 +14,7 @@ export const maxDuration = 60;
 
 const handler = serve({
   client: inngest,
-  functions: [helloWorldFn, processEntryFn],
+  functions: [helloWorldFn, processEntryFn, generateWeeklyReportFn],
 });
 
 function flagOff() {

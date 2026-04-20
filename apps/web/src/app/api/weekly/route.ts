@@ -1,9 +1,26 @@
+/**
+ * GET  /api/weekly — return the last 10 reports for the signed-in user.
+ * POST /api/weekly — generate a new report for the last 7 days.
+ *
+ * Dual-path behavior (INNGEST_MIGRATION_PLAN.md §5 + §11 step 3):
+ *   - ENABLE_INNGEST_PIPELINE !== "1" (default): legacy sync path. Runs
+ *     the Claude synthesis inline and returns 201 with the completed
+ *     report. Subject to Vercel's function timeout.
+ *   - ENABLE_INNGEST_PIPELINE === "1": async path. Creates a
+ *     WeeklyReport in QUEUED status, dispatches an
+ *     `weekly-report/generation.requested` Inngest event, and returns
+ *     202 immediately. Client polls GET /api/weekly for status
+ *     transitions (QUEUED → GENERATING → COMPLETE / FAILED).
+ */
+
 import Anthropic from "@anthropic-ai/sdk";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 
+import { CLAUDE_MAX_TOKENS, CLAUDE_MODEL } from "@acuity/shared";
+
 import { getAuthOptions } from "@/lib/auth";
-import { CLAUDE_MODEL, CLAUDE_MAX_TOKENS } from "@acuity/shared";
+import { inngest } from "@/inngest/client";
 
 export const dynamic = "force-dynamic";
 
@@ -29,16 +46,18 @@ export async function POST() {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const userId = session.user.id;
 
   const { prisma } = await import("@/lib/prisma");
 
-  // Get entries from the last 7 days
+  // Shared setup — both paths need the same week window, entry/task/goal
+  // counts, and the minimum-entries gate.
   const weekAgo = new Date();
   weekAgo.setDate(weekAgo.getDate() - 7);
 
   const entries = await prisma.entry.findMany({
     where: {
-      userId: session.user.id,
+      userId,
       status: "COMPLETE",
       entryDate: { gte: weekAgo },
     },
@@ -52,20 +71,14 @@ export async function POST() {
     );
   }
 
-  // Get tasks from this week
   const tasks = await prisma.task.findMany({
-    where: {
-      userId: session.user.id,
-      createdAt: { gte: weekAgo },
-    },
+    where: { userId, createdAt: { gte: weekAgo } },
   });
-
   const tasksOpened = tasks.length;
   const tasksClosed = tasks.filter((t) => t.status === "DONE").length;
 
-  // Get goals that were progressed
   const goals = await prisma.goal.findMany({
-    where: { userId: session.user.id, status: "ACTIVE" },
+    where: { userId, status: "ACTIVE" },
   });
 
   const now = new Date();
@@ -73,10 +86,47 @@ export async function POST() {
   const weekEnd = new Date(now);
   const weekNumber = getWeekNumber(now);
 
-  // Create report placeholder
+  const useInngest = process.env.ENABLE_INNGEST_PIPELINE === "1";
+
+  // ── Async path: create placeholder, dispatch event, return 202 ──────────
+  if (useInngest) {
+    const report = await prisma.weeklyReport.create({
+      data: {
+        userId,
+        weekStart,
+        weekEnd,
+        weekNumber,
+        year: now.getFullYear(),
+        entryCount: entries.length,
+        tasksOpened,
+        tasksClosed,
+        goalsProgressed: goals
+          .filter((g) => g.progress > 0)
+          .map((g) => g.title),
+        status: "QUEUED",
+      },
+    });
+
+    await inngest.send({
+      name: "weekly-report/generation.requested",
+      data: {
+        reportId: report.id,
+        userId,
+        weekStart: weekStart.toISOString(),
+        weekEnd: weekEnd.toISOString(),
+      },
+    });
+
+    return NextResponse.json(
+      { reportId: report.id, status: "QUEUED" },
+      { status: 202 }
+    );
+  }
+
+  // ── Sync path (legacy): inline Claude call, return 201 on completion ────
   const report = await prisma.weeklyReport.create({
     data: {
-      userId: session.user.id,
+      userId,
       weekStart,
       weekEnd,
       weekNumber,
@@ -89,7 +139,6 @@ export async function POST() {
     },
   });
 
-  // Build prompt
   const entrySummaries = entries
     .map(
       (e, i) =>

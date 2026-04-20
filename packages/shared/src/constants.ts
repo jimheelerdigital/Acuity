@@ -76,5 +76,10 @@ export const WHISPER_LANGUAGE = "en"; // set to undefined for auto-detect
 
 // ─── Claude ───────────────────────────────────────────────────────────────────
 
-export const CLAUDE_MODEL = "claude-sonnet-4-5";
+// Sonnet-4-6 is the current default for extraction, weekly synthesis, memory
+// compression, and life-map insights — the "everything else" model per the
+// 2026-04-19 decision. Flagship work (Day 14 Life Audit, Quarterly audits —
+// not yet built) uses claude-opus-4-7 and should reference a separate
+// CLAUDE_FLAGSHIP_MODEL constant when those land.
+export const CLAUDE_MODEL = "claude-sonnet-4-6";
 export const CLAUDE_MAX_TOKENS = 2048;

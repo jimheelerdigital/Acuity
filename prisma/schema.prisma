@@ -169,7 +169,17 @@ model WeeklyReport {
   tasksClosed     Int      @default(0)
   goalsProgressed String[]
   entryCount      Int      @default(0)
-  status          String   @default("GENERATING")
+  // Valid status values (mirrors Entry.status vocabulary):
+  //   QUEUED     — async path: Inngest event dispatched, not yet running
+  //   GENERATING — Claude call in progress (sync path and async path)
+  //   COMPLETE   — narrative + insightBullets + moodArc + topThemes populated
+  //   FAILED     — unrecoverable; errorMessage populated
+  status          String   @default("QUEUED")
+  // User-safe error copy surfaced by onFailure handler when status=FAILED.
+  errorMessage    String?
+  // Cross-reference into Inngest's run dashboard; populated by
+  // generateWeeklyReportFn's first step.
+  inngestRunId    String?
   createdAt       DateTime @default(now())
 }
 
