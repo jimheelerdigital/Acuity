@@ -48,8 +48,20 @@ export async function POST(req: NextRequest) {
   }
 
   // ── 1b. Rate limit (expensive: Whisper + Claude) ────────────────────────
-  const rl = await checkRateLimit(limiters.expensiveAi, `user:${userId}`);
-  if (!rl.success) return rateLimitedResponse(rl);
+  // Three-layer cost cap stacked per user: 10/hr for burst control,
+  // 30/day to bound daily blast radius, 300/month as a monthly
+  // backstop. A compromised account running flat-out can burn at most
+  // ~$36/month of OpenAI + Anthropic credit before the daily/monthly
+  // caps slam shut. See lib/rate-limit.ts for the rationale behind
+  // each number.
+  for (const limiter of [
+    limiters.expensiveAi,
+    limiters.recordDaily,
+    limiters.recordMonthly,
+  ]) {
+    const rl = await checkRateLimit(limiter, `user:${userId}`);
+    if (!rl.success) return rateLimitedResponse(rl);
+  }
 
   // ── 1c. Paywall: canRecord (§IMPLEMENTATION_PLAN_PAYWALL §1.3) ─────────
   const gate = await requireEntitlement("canRecord", userId);

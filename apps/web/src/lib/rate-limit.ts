@@ -73,6 +73,24 @@ function buildLimiter(
 export const limiters = {
   /** Record, weekly, lifemap/refresh — Claude/Whisper-token-burning ops. */
   expensiveAi: buildLimiter("expensive-ai", 10, "1 h"),
+  /**
+   * Cost-cap ceiling on /api/record specifically. Stacks on top of
+   * the 10/hr expensiveAi limiter. Without this, a malicious/runaway
+   * client can still hit 240 records/day at 10/hr rolling — at ~$0.12
+   * of Whisper + Claude per entry that's $29/day/user of spend a
+   * single compromised account can burn. 30/day is generous enough
+   * for any real daily-debrief use (avg user will hit < 2), tight
+   * enough to bound a cost-bomb blast radius at ~$3.60/day. Key is
+   * `user:<userId>` so the cap follows the user across IPs.
+   */
+  recordDaily: buildLimiter("record-daily", 30, "1 d"),
+  /**
+   * Monthly ceiling. 300/month at ~$0.12 each = $36/user worst case,
+   * 3x the monthly subscription. A committed daily user records
+   * ~30/month; this is 10x their normal usage, firm enough to catch
+   * runaway automation before month-end billing surprises.
+   */
+  recordMonthly: buildLimiter("record-monthly", 300, "30 d"),
   /** NextAuth signin (both email + Google) — brute-force target. IP-scoped. */
   auth: buildLimiter("auth", 5, "15 m"),
   /**

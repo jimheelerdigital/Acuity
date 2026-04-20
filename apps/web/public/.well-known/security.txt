@@ -1,0 +1,6 @@
+Contact: mailto:jim@heelerdigital.com
+Expires: 2027-04-20T23:59:59.000Z
+Preferred-Languages: en
+Canonical: https://www.getacuity.io/.well-known/security.txt
+Policy: https://www.getacuity.io/privacy
+Acknowledgments: https://www.getacuity.io/support
