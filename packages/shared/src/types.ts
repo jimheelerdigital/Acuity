@@ -64,6 +64,15 @@ export interface ThemeWithSentiment {
   sentiment: ThemeSentiment;
 }
 
+/** Sub-goal the user hinted at while reflecting on an existing goal.
+ *  `parentGoalText` is the free-form text of the existing goal (fuzzy-
+ *  matched against Goal.title at persistence time). `suggestedAction`
+ *  is the concrete next step the user voiced. */
+export interface SubGoalSuggestion {
+  parentGoalText: string;
+  suggestedAction: string;
+}
+
 export interface ExtractionResult {
   summary: string;
   mood: Mood;
@@ -84,6 +93,9 @@ export interface ExtractionResult {
   insights: string[];
   tasks: ExtractedTask[];
   goals: ExtractedGoal[];
+  /** Sub-goal suggestions anchored to existing user goals. Persisted
+   *  as GoalSuggestion rows with status=PENDING. */
+  subGoalSuggestions?: SubGoalSuggestion[];
   /** Life area analysis for Life Matrix (may be absent for old entries) */
   lifeAreaMentions?: LifeAreaMentions;
 }

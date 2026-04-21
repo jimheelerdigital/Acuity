@@ -189,6 +189,7 @@ export const processEntryFn = inngest.createFunction(
       });
 
       const { recordThemesFromExtraction } = await import("@/lib/themes");
+      const { persistSubGoalSuggestions } = await import("@/lib/goals");
       await prisma.$transaction(async (tx) => {
         const entry = await tx.entry.update({
           where: { id: entryId },
@@ -265,6 +266,22 @@ export const processEntryFn = inngest.createFunction(
               },
             });
           }
+        }
+
+        // GoalSuggestion emission — runs after goal upserts so a new
+        // goal from this same entry is eligible as a parent. Orphan
+        // suggestions (no fuzzy parent match) are dropped inside the
+        // helper per spec.
+        if (
+          extraction.subGoalSuggestions &&
+          extraction.subGoalSuggestions.length > 0
+        ) {
+          await persistSubGoalSuggestions(
+            tx,
+            userId,
+            entryId,
+            extraction.subGoalSuggestions
+          );
         }
       });
     });

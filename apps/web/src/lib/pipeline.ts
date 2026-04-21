@@ -120,6 +120,12 @@ Return ONLY valid JSON matching this exact schema — no markdown, no prose:
       "targetDate": "YYYY-MM-DD" | null
     }
   ],
+  "subGoalSuggestions": [
+    {
+      "parentGoalText": "verbatim phrase matching an existing goal the user already has",
+      "suggestedAction": "the concrete next step the user mentioned under that goal"
+    }
+  ],
   "lifeAreaMentions": {
     "career": { "mentioned": bool, "score": 1-10, "themes": [], "people": [], "goals": [], "sentiment": "positive"|"negative"|"neutral" },
     "health": { ... },
@@ -134,6 +140,7 @@ Guidelines:
 - Extract only tasks the user explicitly mentioned wanting to do
 - Infer priority from urgency language ("need to", "ASAP", "important" → HIGH; "maybe", "someday" → LOW)
 - Only include goals if the user expressed a clear medium-to-long term aspiration
+- subGoalSuggestions: populate ONLY when the user references HOW they'll pursue an existing goal the memory context mentions. parentGoalText must match the phrasing of one of the user's existing goals. suggestedAction is the concrete next step. Skip if unsure — orphan suggestions get dropped.
 - Keep theme labels short (1-3 words). Per-theme sentiment reflects the user's emotional framing of that specific theme in this entry: POSITIVE if they expressed satisfaction/progress, NEGATIVE if strain/frustration, NEUTRAL if they mentioned it factually without strong valence. Up to 5 themes per entry.
 - Insights should be reflective observations the user might not have noticed, or concrete next-step recommendations
 - moodScore should be a nuanced score that reflects the overall emotional tone
@@ -217,6 +224,21 @@ export async function extractFromTranscript(
       description: g.description ? String(g.description) : undefined,
       targetDate: g.targetDate ?? undefined,
     })),
+    subGoalSuggestions: Array.isArray(parsed.subGoalSuggestions)
+      ? parsed.subGoalSuggestions
+          .filter(
+            (s): s is { parentGoalText: string; suggestedAction: string } =>
+              !!s &&
+              typeof s === "object" &&
+              typeof (s as { parentGoalText?: unknown }).parentGoalText === "string" &&
+              typeof (s as { suggestedAction?: unknown }).suggestedAction === "string"
+          )
+          .map((s) => ({
+            parentGoalText: s.parentGoalText.slice(0, 200),
+            suggestedAction: s.suggestedAction.slice(0, 200),
+          }))
+          .slice(0, 5)
+      : [],
     lifeAreaMentions: validateLifeAreaMentions(parsed.lifeAreaMentions),
   };
 }
@@ -273,6 +295,7 @@ export async function processEntry({
 
     // ── Persist everything in one transaction ─────────────────────────────
     const { recordThemesFromExtraction } = await import("@/lib/themes");
+    const { persistSubGoalSuggestions } = await import("@/lib/goals");
     const result = await prisma.$transaction(async (tx) => {
       const entry = await tx.entry.update({
         where: { id: entryId },
@@ -348,6 +371,19 @@ export async function processEntry({
             },
           });
         }
+      }
+
+      // Goal sub-goal suggestions — fuzzy-match parentGoalText against
+      // the user's existing goals, create GoalSuggestion rows. Runs
+      // AFTER the goal upserts above so a brand-new goal from this same
+      // entry is eligible as a suggestion's parent.
+      if (extraction.subGoalSuggestions && extraction.subGoalSuggestions.length > 0) {
+        await persistSubGoalSuggestions(
+          tx,
+          userId,
+          entryId,
+          extraction.subGoalSuggestions
+        );
       }
 
       const tasks = await tx.task.findMany({

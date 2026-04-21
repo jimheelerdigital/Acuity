@@ -9,7 +9,7 @@
  * entire user goal set, we return shaped output.
  */
 
-import type { Goal, Task } from "@prisma/client";
+import type { Goal, Task, Prisma, PrismaClient } from "@prisma/client";
 
 export const MAX_TREE_DEPTH = 4; // root = 0, so depth <= 4 == up to 5 levels
 
@@ -190,4 +190,123 @@ export function subtreeMaxDepth(
     return m;
   };
   return walk(goalId, 0);
+}
+
+/**
+ * Fuzzy-match an extraction's parentGoalText against the user's
+ * existing goal titles, then upsert a GoalSuggestion row for each
+ * mentioned sub-goal. Orphan suggestions (no matching parent) are
+ * dropped per spec.
+ *
+ * Match strategy: case-insensitive substring first (most robust for
+ * short goal titles), then token-set-overlap ≥ 60% (catches
+ * "get healthier" vs "health"). Not a real Levenshtein — the goal
+ * titles are short and free-form enough that substring + token
+ * overlap catches what users actually say.
+ */
+export async function persistSubGoalSuggestions(
+  tx: PrismaClient | Prisma.TransactionClient,
+  userId: string,
+  sourceEntryId: string,
+  suggestions: Array<{ parentGoalText: string; suggestedAction: string }>
+): Promise<number> {
+  if (!suggestions || suggestions.length === 0) return 0;
+
+  const userGoals = await tx.goal.findMany({
+    where: {
+      userId,
+      status: { in: ["NOT_STARTED", "IN_PROGRESS"] },
+    },
+    select: { id: true, title: true },
+  });
+  if (userGoals.length === 0) return 0;
+
+  let written = 0;
+  for (const s of suggestions) {
+    const matched = findBestGoalMatch(s.parentGoalText, userGoals);
+    if (!matched) continue;
+
+    // Dedupe against an existing PENDING suggestion with the same
+    // (parent, text). Users who re-mention the same sub-goal across
+    // multiple entries shouldn't see duplicate cards in the banner.
+    const existing = await tx.goalSuggestion.findFirst({
+      where: {
+        userId,
+        parentGoalId: matched.id,
+        status: "PENDING",
+        suggestedText: s.suggestedAction,
+      },
+      select: { id: true },
+    });
+    if (existing) continue;
+
+    await tx.goalSuggestion.create({
+      data: {
+        userId,
+        parentGoalId: matched.id,
+        suggestedText: s.suggestedAction,
+        sourceEntryId,
+      },
+    });
+    written += 1;
+  }
+  return written;
+}
+
+function findBestGoalMatch(
+  raw: string,
+  goals: Array<{ id: string; title: string }>
+): { id: string; title: string } | null {
+  const norm = (s: string) => s.toLowerCase().trim();
+  const target = norm(raw);
+  if (!target) return null;
+
+  // Substring — quickest, catches exact/near-exact references.
+  for (const g of goals) {
+    const t = norm(g.title);
+    if (t.includes(target) || target.includes(t)) {
+      return g;
+    }
+  }
+
+  // Token overlap — ignore short/common words so "get healthier" and
+  // "healthy lifestyle" match on the meaningful tokens.
+  const stop = new Set([
+    "a",
+    "an",
+    "the",
+    "to",
+    "of",
+    "and",
+    "or",
+    "for",
+    "get",
+    "be",
+    "is",
+    "in",
+    "on",
+    "my",
+  ]);
+  const tokenize = (s: string) =>
+    new Set(
+      s
+        .split(/[^a-z0-9]+/i)
+        .map((t) => t.toLowerCase())
+        .filter((t) => t.length >= 3 && !stop.has(t))
+    );
+  const t1 = tokenize(target);
+  if (t1.size === 0) return null;
+
+  let best: { id: string; title: string; overlap: number } | null = null;
+  for (const g of goals) {
+    const t2 = tokenize(g.title);
+    if (t2.size === 0) continue;
+    const inter = Array.from(t1).filter((x) => t2.has(x)).length;
+    const union = new Set([...t1, ...t2]).size;
+    const overlap = inter / union;
+    if (overlap >= 0.6 && (!best || overlap > best.overlap)) {
+      best = { id: g.id, title: g.title, overlap };
+    }
+  }
+  return best ? { id: best.id, title: best.title } : null;
 }
