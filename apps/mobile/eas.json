@@ -18,6 +18,7 @@
     "preview": {
       "distribution": "internal",
       "channel": "preview",
+      "autoIncrement": true,
       "env": {
         "EXPO_PUBLIC_API_URL": "https://www.getacuity.io"
       },
@@ -38,6 +39,13 @@
     }
   },
   "submit": {
+    "preview": {
+      "ios": {
+        "appleId": "jim@heelerdigital.com",
+        "ascAppId": "6762633410",
+        "bundleIdentifier": "com.heelerdigital.acuity"
+      }
+    },
     "production": {
       "ios": {
         "appleId": "jim@heelerdigital.com",
