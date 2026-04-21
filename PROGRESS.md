@@ -143,7 +143,32 @@ None.
 
 ---
 
-## Current Focus (updated 2026-04-21, pre-beta hardening pass 2)
+## Current Focus (updated 2026-04-21, mobile tab bar fix + production audit)
+- **Mobile bottom tab bar — raised center mic button definitively fixed** (file: `apps/mobile/app/(tabs)/_layout.tsx`). Regression root cause: missing `overflow: "visible"` on `tabBarStyle` clipped the top ~25px of the circle on iOS, making it read as a flat mic icon. Fix is a one-line addition plus code-level constants + a JSDoc warning so future edits don't remove it.
+  - Circle diameter: **64px** (constant `CIRCLE_SIZE`). Fill: **`#7C3AED`** (constant `BRAND_PURPLE`, matches light-mode active tint).
+  - Raised offset: **`marginTop: -26px`** (constant `RAISED_OFFSET`).
+  - Mic icon: **white (`#FFFFFF`), 28px**, Ionicons `mic`.
+  - Shadow: `shadowColor: #7C3AED`, offset `{0, 6}`, radius `14`, opacity `0.45` light / `0.6` dark, `elevation: 10`.
+  - Border: `4px` matching tab-bar bg (`#0B0B12` dark, `#FFFFFF` light) — creates the "scooped out" look without a real clip-path.
+  - **The critical bit:** `tabBarStyle.overflow: "visible"`. Without this iOS clips the raised portion. Inline JSDoc + file-top comment flag this so nobody removes it.
+  - Inactive tab tint bumped from zinc-500 (`#71717A`) to `rgba(255,255,255,0.62)` / `rgba(39,39,42,0.62)` so Goals/Tasks/Insights/Entries are visibly readable when inactive, not washed-out grey.
+  - Active tint unchanged: `#A78BFA` dark / `#7C3AED` light.
+  - Center button stays purple whether Home is active or not — primary action, not a navigation indicator.
+  - Commit `fix(mobile): prominent raised purple center mic button + pop on inactive tabs`.
+- **Production readiness audit — read-only pass, findings at `docs/PRODUCTION_AUDIT_2026-04-21.md`.** 10 parallel subagents covered auth + session, data access, input validation, payment + subscription, secrets, resilience, privacy + compliance, admin, mobile, observability. No code changed; this is a decision document.
+- **Production readiness audit — read-only pass, findings at `docs/PRODUCTION_AUDIT_2026-04-21.md`.** 10 parallel subagents covered auth + session, data access, input validation, payment + subscription, secrets, resilience, privacy + compliance, admin, mobile, observability. No code changed; this is a decision document.
+- **5 CRITICAL findings (must fix before public launch):**
+  - C1 Gmail plus-addressing bypasses the DeletedUser tombstone → unlimited free trials by varying the local-part (`alice+N@gmail.com`). Fix at `lib/bootstrap-user.ts:140`.
+  - C2 No Zero Data Retention agreement or header with Anthropic/OpenAI — raw transcripts + audio reach both providers without contractual data-minimization. Legal + trust risk for a mental-health-adjacent product.
+  - C3 GDPR data export missing 8 user tables: StateOfMeReport, UserMemory, CalendarConnection, HealthSnapshot, Account, GoalSuggestion, UserFeatureOverride, UserLifeDimension. Article 15 coverage gap.
+  - C4 Unbounded string columns (Goal.title/description, Task.title/description, Entry.transcript, admin ContentPiece.finalBody) — OOM + DB-bloat DoS vector.
+  - C5 `sentry.edge.config.ts` has no `beforeSend` PII scrub — middleware errors can leak plaintext email/cookies/auth headers to Sentry.
+- **12 HIGH findings.** Highlights: Inngest jobs not Sentry-instrumented (H1), RedFlag scanner is pull-only with no Slack/email alerts (H2), no IP-based signup rate limit enables farming (H3), 7 admin content-factory routes skip AdminAuditLog (H4), zero Zod coverage across ~41 mutations (H5), server-side PostHog track() bypasses cookie consent (H6). Full list in the audit doc.
+- **10 MEDIUM + 6 LOW/accepted** documented separately.
+- **No commits this pass.** Jim + Keenan decide which fixes to schedule.
+- **Already production-grade (confirmed):** auth + session layer, IDOR posture across ~81 routes, Stripe webhook signing + idempotency, audio privacy (signed URLs + private bucket), public share links (128-bit random + expiry + noindex), SQL injection surface (all $queryRaw parameterized), XSS surface, client+server+mobile PII scrubbing in Sentry, account delete end-to-end, client-side cookie-consent gating, RedFlag primitive, admin audit trail for 8 high-impact actions.
+
+## Previous Focus (2026-04-21, pre-beta hardening pass 2)
 - **Pre-beta hardening — 8 commits, 2026-04-21 afternoon batch 2:**
   1. `c801098` — **Feature flag system (Part 1).** FeatureFlag + UserFeatureOverride + AdminAuditLog schema; `lib/feature-flags.ts` evaluator with per-request cache; `scripts/seed-feature-flags.ts` seeds 13 flags; gates wired into 16 routes + 3 Inngest fns. Disabled features 404 (not 403 — don't leak existence).
   2. `21bfda2` — **Admin Feature Flags UI (Part 2).** New "Feature Flags" tab: inline toggle, rollout slider, tier dropdown, per-user override lookup + required audit reason. API at `/api/admin/feature-flags/*`.
@@ -171,7 +196,7 @@ None.
 - Manual provisioning (in order): Upstash marketplace integration → Inngest Cloud keys → PostHog account + keys → flip ENABLE_INNGEST_PIPELINE=1 in Production → verify end-to-end with a real test recording.
 - After the infrastructure is live, the remaining paywall work is UX copy (rewrite /upgrade per §4.2) + ghost-state chart annotations (§5.7) + Life Map interstitial (§5.5) + post-trial email (§4.3). No more schema migrations expected before beta.
 
-## Previous Focus
+## Previous Focus (2026-04-20)
 - **Manual steps for Jim to finish pre-beta infra** (2026-04-20):
   1. **Upstash Redis via Vercel marketplace** — add the integration for the `acuity-web` Vercel project. Auto-populates `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` in all environments. Until done, rate limiters fail-open with a one-time Vercel-log warning.
   2. **Inngest Cloud keys + ENABLE_INNGEST_PIPELINE** — per the "Inngest Cloud Setup" checklist. `INNGEST_EVENT_KEY` + `INNGEST_SIGNING_KEY` in Production; leave `ENABLE_INNGEST_PIPELINE` unset until the next Vercel deploy confirms Inngest Cloud has synced the acuity app.
