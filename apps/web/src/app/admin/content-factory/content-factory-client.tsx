@@ -74,7 +74,7 @@ const TABS = [
   "Today's Briefing",
 ] as const;
 
-const TYPE_ORDER = ["BLOG", "TWITTER", "TIKTOK", "AD_COPY", "EMAIL"];
+const TYPE_ORDER = ["BLOG", "TWITTER", "TIKTOK", "AD_COPY", "EMAIL", "REDDIT_DRAFT"];
 
 const TYPE_COLORS: Record<string, string> = {
   BLOG: "bg-blue-500/20 text-blue-400",
@@ -82,6 +82,7 @@ const TYPE_COLORS: Record<string, string> = {
   TIKTOK: "bg-pink-500/20 text-pink-400",
   AD_COPY: "bg-amber-500/20 text-amber-400",
   EMAIL: "bg-green-500/20 text-green-400",
+  REDDIT_DRAFT: "bg-[#FF4500]/20 text-[#FF6633]",
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -193,7 +194,7 @@ export default function ContentFactoryClient({
         setJobStatus({
           status: "QUEUED",
           currentStep: 0,
-          totalSteps: 11,
+          totalSteps: 12,
           stepLabel: "Queued…",
           errorMessage: null,
           piecesCreated: 0,
@@ -674,6 +675,10 @@ function ReviewQueue({
 function ReadyToPost({ pieces }: { pieces: ContentPiece[] }) {
   const [markingId, setMarkingId] = useState<string | null>(null);
   const [liveUrl, setLiveUrl] = useState("");
+  const [draftUsedId, setDraftUsedId] = useState<string | null>(null);
+  const [draftSubreddit, setDraftSubreddit] = useState("");
+  const [draftPostUrl, setDraftPostUrl] = useState("");
+  const [draftRewriteLevel, setDraftRewriteLevel] = useState(3);
   const sorted = groupByType(pieces);
 
   const copyToClipboard = (text: string) => {
@@ -699,6 +704,24 @@ function ReadyToPost({ pieces }: { pieces: ContentPiece[] }) {
     window.location.reload();
   };
 
+  const handleDraftUsed = async () => {
+    if (!draftUsedId) return;
+    await fetch("/api/admin/content-factory/mark-distributed", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        pieceId: draftUsedId,
+        distributedUrl: draftPostUrl || `reddit:${draftSubreddit}`,
+        metrics: { rewriteLevel: draftRewriteLevel },
+      }),
+    });
+    setDraftUsedId(null);
+    setDraftSubreddit("");
+    setDraftPostUrl("");
+    setDraftRewriteLevel(3);
+    window.location.reload();
+  };
+
   if (sorted.length === 0) {
     return (
       <div className="rounded-xl bg-[#13131F] p-12 text-center text-white/50">
@@ -707,20 +730,24 @@ function ReadyToPost({ pieces }: { pieces: ContentPiece[] }) {
     );
   }
 
-  // Group headers with copy-all buttons
   const types = [...new Set(sorted.map((p) => p.type))];
+  const SUBREDDIT_OPTIONS = [
+    "r/DecidingToBeBetter", "r/ADHD", "r/Journaling", "r/productivity",
+    "r/selfimprovement", "r/SideProject", "r/IMadeThis", "r/getdisciplined",
+  ];
 
   return (
     <div className="space-y-6">
       {types.map((type) => {
         const items = sorted.filter((p) => p.type === type);
+        const isReddit = type === "REDDIT_DRAFT";
         return (
           <div key={type}>
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-white/70">
-                {type} ({items.length})
+                {isReddit ? "Reddit Drafts for This Week" : type} ({items.length})
               </h3>
-              {items.length > 1 && (
+              {!isReddit && items.length > 1 && (
                 <button
                   onClick={() => copyAllByType(type)}
                   className="rounded-md bg-white/10 px-3 py-1 text-xs text-white/60 hover:text-white"
@@ -729,14 +756,24 @@ function ReadyToPost({ pieces }: { pieces: ContentPiece[] }) {
                 </button>
               )}
             </div>
+            {isReddit && (
+              <div className="mb-3 rounded-lg bg-amber-500/10 border border-amber-500/20 px-4 py-2">
+                <p className="text-xs text-amber-300/70">
+                  These are starting points, not finished posts. Rewrite in your own voice before posting.
+                </p>
+              </div>
+            )}
             <div className="space-y-3">
               {items.map((piece) => (
-                <div key={piece.id} className="rounded-xl bg-[#13131F] p-5">
+                <div
+                  key={piece.id}
+                  className={`rounded-xl p-5 ${isReddit ? "bg-amber-900/[0.06] border border-amber-500/10" : "bg-[#13131F]"}`}
+                >
                   <div className="flex items-center gap-2">
                     <span
                       className={`rounded-full px-2 py-0.5 text-xs font-medium ${TYPE_COLORS[piece.type] ?? "bg-white/10 text-white/60"}`}
                     >
-                      {piece.type}
+                      {isReddit ? "DRAFT" : piece.type}
                     </span>
                     <span className="text-xs text-white/40">
                       {piece.status === "EDITED" ? "Edited" : "Approved"}
@@ -746,21 +783,54 @@ function ReadyToPost({ pieces }: { pieces: ContentPiece[] }) {
                   <pre className="mt-2 whitespace-pre-wrap text-sm text-white/70">
                     {piece.finalBody || piece.body}
                   </pre>
-                  <div className="mt-3 flex gap-2">
-                    <button
-                      onClick={() =>
-                        copyToClipboard(piece.finalBody || piece.body)
-                      }
-                      className="rounded-md bg-[#7C5CFC] px-4 py-2 text-sm font-medium transition hover:bg-[#6B4DE6]"
-                    >
-                      Copy to clipboard
-                    </button>
-                    <button
-                      onClick={() => setMarkingId(piece.id)}
-                      className="rounded-md bg-white/10 px-3 py-2 text-sm text-white/70 hover:bg-white/20"
-                    >
-                      Mark as posted
-                    </button>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {isReddit ? (
+                      <>
+                        <button
+                          onClick={() =>
+                            copyToClipboard(
+                              `${piece.title}\n\nAngle: ${piece.cta.split(" | ")[1] ?? ""}`
+                            )
+                          }
+                          className="rounded-md bg-[#FF4500]/20 px-4 py-2 text-sm font-medium text-[#FF6633] transition hover:bg-[#FF4500]/30"
+                        >
+                          Copy hook
+                        </button>
+                        <button
+                          onClick={() =>
+                            copyToClipboard(
+                              `[REWRITE IN YOUR OWN VOICE]\n\n${piece.finalBody || piece.body}`
+                            )
+                          }
+                          className="rounded-md bg-white/10 px-4 py-2 text-sm text-white/70 hover:bg-white/20"
+                        >
+                          Copy structure
+                        </button>
+                        <button
+                          onClick={() => setDraftUsedId(piece.id)}
+                          className="rounded-md bg-amber-600/20 px-4 py-2 text-sm text-amber-300 hover:bg-amber-600/30"
+                        >
+                          I used this draft
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() =>
+                            copyToClipboard(piece.finalBody || piece.body)
+                          }
+                          className="rounded-md bg-[#7C5CFC] px-4 py-2 text-sm font-medium transition hover:bg-[#6B4DE6]"
+                        >
+                          Copy to clipboard
+                        </button>
+                        <button
+                          onClick={() => setMarkingId(piece.id)}
+                          className="rounded-md bg-white/10 px-3 py-2 text-sm text-white/70 hover:bg-white/20"
+                        >
+                          Mark as posted
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               ))}
@@ -769,7 +839,7 @@ function ReadyToPost({ pieces }: { pieces: ContentPiece[] }) {
         );
       })}
 
-      {/* Mark distributed modal */}
+      {/* Mark distributed modal (non-Reddit) */}
       {markingId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
           <div className="w-full max-w-md rounded-xl bg-[#13131F] p-6">
@@ -794,6 +864,86 @@ function ReadyToPost({ pieces }: { pieces: ContentPiece[] }) {
                 onClick={handleMarkDistributed}
                 disabled={!liveUrl}
                 className="rounded-md bg-[#7C5CFC] px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* "I used this draft" modal (Reddit only) */}
+      {draftUsedId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="w-full max-w-md rounded-xl bg-[#13131F] p-6">
+            <h3 className="text-lg font-semibold">I Used This Draft</h3>
+            <p className="mt-1 text-xs text-white/40">
+              This helps the AI learn what works and what needs improvement.
+            </p>
+            <div className="mt-4 space-y-3">
+              <div>
+                <label className="text-xs text-white/50">
+                  Which subreddit did you post to?
+                </label>
+                <select
+                  value={draftSubreddit}
+                  onChange={(e) => setDraftSubreddit(e.target.value)}
+                  className="mt-1 w-full rounded-lg bg-[#0A0A0F] p-3 text-sm text-white/90"
+                >
+                  <option value="">Select subreddit…</option>
+                  {SUBREDDIT_OPTIONS.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-white/50">
+                  Paste your final post URL
+                </label>
+                <input
+                  value={draftPostUrl}
+                  onChange={(e) => setDraftPostUrl(e.target.value)}
+                  placeholder="https://reddit.com/r/..."
+                  className="mt-1 w-full rounded-lg bg-[#0A0A0F] p-3 text-sm text-white/90"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-white/50">
+                  How much did you rewrite? (1 = barely changed, 5 = completely different)
+                </label>
+                <div className="mt-2 flex gap-2">
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <button
+                      key={n}
+                      onClick={() => setDraftRewriteLevel(n)}
+                      className={`h-9 w-9 rounded-lg text-sm font-medium transition ${
+                        draftRewriteLevel === n
+                          ? "bg-amber-500 text-black"
+                          : "bg-white/10 text-white/60 hover:bg-white/20"
+                      }`}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  setDraftUsedId(null);
+                  setDraftSubreddit("");
+                  setDraftPostUrl("");
+                  setDraftRewriteLevel(3);
+                }}
+                className="rounded-md bg-white/10 px-3 py-1.5 text-sm text-white/70"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDraftUsed}
+                disabled={!draftSubreddit}
+                className="rounded-md bg-amber-600 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
               >
                 Save
               </button>

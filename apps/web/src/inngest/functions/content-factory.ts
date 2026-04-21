@@ -39,7 +39,7 @@ async function updateJob(
     data,
   });
   console.log(
-    `[GenerationJob ${jobId}] step ${data.currentStep ?? "?"}/${11}: ${data.stepLabel ?? data.status ?? "update"}`
+    `[GenerationJob ${jobId}] step ${data.currentStep ?? "?"}/${12}: ${data.stepLabel ?? data.status ?? "update"}`
   );
 }
 
@@ -92,6 +92,7 @@ export const generateDailyFn = inngest.createFunction(
         generateTwitterPosts,
         generateTikTokScripts,
         generateAdCopy,
+        generateRedditDraft,
       } = await import("@/lib/content-factory/generate");
 
       const blog = await generateBlogPost(briefing);
@@ -129,9 +130,16 @@ export const generateDailyFn = inngest.createFunction(
         ads.push(...batch);
       }
 
-      // Step 10: Save to database
+      // Step 10: Reddit draft
       await updateJob(jobId, {
         currentStep: 10,
+        stepLabel: "Writing Reddit draft…",
+      });
+      const redditDrafts = await generateRedditDraft(briefing, 1);
+
+      // Step 11: Save to database
+      await updateJob(jobId, {
+        currentStep: 11,
         stepLabel: "Saving to database…",
       });
 
@@ -173,16 +181,25 @@ export const generateDailyFn = inngest.createFunction(
           predictedScore: a.predictedScore,
           sourceBriefingId: briefing.id,
         })),
+        ...redditDrafts.map((r) => ({
+          type: "REDDIT_DRAFT" as const,
+          title: r.title,
+          body: r.body,
+          hook: r.hook,
+          cta: `${r.subreddit} | ${r.angle} | ${r.dontMention}`,
+          predictedScore: r.predictedScore,
+          sourceBriefingId: briefing.id,
+        })),
       ];
 
       const created = await prisma.$transaction(
         pieces.map((p) => prisma.contentPiece.create({ data: p }))
       );
 
-      // Step 11: Done
+      // Step 12: Done
       await updateJob(jobId, {
         status: "SUCCESS",
-        currentStep: 11,
+        currentStep: 12,
         stepLabel: `Done! ${created.length} pieces created`,
         piecesCreated: created.length,
         completedAt: new Date(),

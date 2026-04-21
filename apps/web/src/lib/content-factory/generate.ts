@@ -242,6 +242,74 @@ Write ${count} ad copy variants, each using a different angle from: pain, benefi
   return JSON.parse(extractJson(raw));
 }
 
+// ─── Reddit drafts ──────────────────────────────────────────────────────────
+
+interface RedditDraftResult {
+  title: string;
+  body: string;
+  subreddit: string;
+  angle: string;
+  hook: string;
+  dontMention: string;
+  predictedScore: number;
+}
+
+export async function generateRedditDraft(
+  briefing: ContentBriefing,
+  count = 1
+): Promise<RedditDraftResult[]> {
+  const systemPrompt = `You are helping Keenan, founder of Acuity (a voice journaling app), write a Reddit post DRAFT.
+
+This is a draft. Keenan will rewrite it in his own voice before posting. Your job is to give him a strong starting point with a clear angle, not a finished post.
+
+CRITICAL RULES:
+- Never include promotional language
+- Never link to getacuity.io in the post body
+- Never say "check out this app" or "I built an app"
+- Use vulnerability and specific numbers in the hook
+- Pick ONE subreddit from: r/DecidingToBeBetter, r/ADHD, r/Journaling, r/productivity, r/selfimprovement, r/SideProject, r/IMadeThis, r/getdisciplined
+- Choose the subreddit based on the briefing's trending topics. If Reddit trends show ADHD content resonating, pick r/ADHD. If self-improvement is hot, pick r/DecidingToBeBetter.
+
+STRUCTURE (200-400 words):
+1. Hook: One sentence, specific number or visceral image. "I failed at X 17 times." or "It's 11:47 PM and my brain won't shut up."
+2. Context: What you tried and why it didn't stick (2-3 sentences, specific tools named)
+3. Turning point: What changed (2-3 sentences, the key insight)
+4. Result: What surprised you, what you learned (2-3 sentences, concrete observation)
+5. NO call to action at the end. Reddit hates CTAs.
+
+TONE:
+- First person, past-tense narrative
+- Casual, honest, slightly self-deprecating
+- Never use words like 'revolutionary', 'game-changer', 'journey', 'unlock'
+- Use specific nouns: 'Notion', 'Day One', 'Moleskine', 'therapist' — not generic 'apps' or 'tools'
+
+Respond as a JSON array of objects:
+[{
+  "title": "post title",
+  "subreddit": "r/SubredditName",
+  "angle": "2 sentences explaining the strategic angle",
+  "hook": "explains what the opening is designed to do",
+  "body": "the 200-400 word draft",
+  "dontMention": "Do not link Acuity in the post body. Only mention in comments if someone asks what app you use.",
+  "predictedScore": 0.0-1.0
+}]`;
+
+  const userPrompt = `Today's research briefing:
+
+Reddit trends: ${JSON.stringify(briefing.redditTop)}
+Top blog pages: ${JSON.stringify(briefing.ga4Winners)}
+
+Write ${count} Reddit post draft(s). Pick the subreddit that best matches today's trending topics. Each draft should use a different angle if count > 1.`;
+
+  const raw = await callClaude({
+    purpose: "generate-reddit-draft",
+    systemPrompt,
+    userPrompt,
+  });
+
+  return JSON.parse(extractJson(raw));
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function extractJson(raw: string): string {

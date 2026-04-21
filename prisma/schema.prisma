@@ -564,6 +564,7 @@ enum ContentType {
   TIKTOK
   AD_COPY
   EMAIL
+  REDDIT_DRAFT
 }
 
 enum ContentStatus {
@@ -580,7 +581,7 @@ model GenerationJob {
   id            String    @id @default(cuid())
   status        JobStatus @default(QUEUED)
   currentStep   Int       @default(0)
-  totalSteps    Int       @default(11)
+  totalSteps    Int       @default(12)
   stepLabel     String    @default("Queued…")
   errorMessage  String?
   piecesCreated Int       @default(0)

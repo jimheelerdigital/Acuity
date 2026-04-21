@@ -6,6 +6,7 @@ import TwitterPreview from "./TwitterPreview";
 import TikTokPreview from "./TikTokPreview";
 import AdCopyPreview from "./AdCopyPreview";
 import EmailPreview from "./EmailPreview";
+import RedditDraftPreview from "./RedditDraftPreview";
 
 export default function ContentPreview({ piece }: { piece: PreviewPiece }) {
   switch (piece.type) {
@@ -19,6 +20,8 @@ export default function ContentPreview({ piece }: { piece: PreviewPiece }) {
       return <AdCopyPreview piece={piece} />;
     case "EMAIL":
       return <EmailPreview piece={piece} />;
+    case "REDDIT_DRAFT":
+      return <RedditDraftPreview piece={piece} />;
     default:
       return (
         <pre className="whitespace-pre-wrap font-mono text-sm text-white/80">
