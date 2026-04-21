@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -13,6 +14,12 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { api } from "@/lib/api";
+import {
+  applyReminderSchedule,
+  getPermissionStatus,
+  requestNotificationPermission,
+  type PermissionStatus,
+} from "@/lib/notifications";
 
 /**
  * Mobile reminder preferences. Saves notificationTime / Days / Enabled
@@ -53,16 +60,22 @@ export default function RemindersScreen() {
   const [minute, setMinute] = useState(0);
   const [days, setDays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
   const [enabled, setEnabled] = useState(false);
+  const [permission, setPermission] =
+    useState<PermissionStatus>("undetermined");
 
   const load = useCallback(async () => {
     try {
-      const me = await api.get<{ user: Me }>("/api/user/me");
+      const [me, perm] = await Promise.all([
+        api.get<{ user: Me }>("/api/user/me"),
+        getPermissionStatus(),
+      ]);
       const u = me.user;
       const [h, m] = (u.notificationTime ?? "21:00").split(":").map(Number);
       if (Number.isFinite(h)) setHour(h);
       if (Number.isFinite(m)) setMinute(m);
       setDays(u.notificationDays ?? [0, 1, 2, 3, 4, 5, 6]);
       setEnabled(!!u.notificationsEnabled);
+      setPermission(perm);
     } catch {
       // silent — server defaults already populated via useState
     } finally {
@@ -85,17 +98,39 @@ export default function RemindersScreen() {
   const bumpMinute = (delta: number) =>
     setMinute((m) => (m + delta + 60) % 60);
 
+  const askPermission = async () => {
+    const next = await requestNotificationPermission();
+    setPermission(next);
+    if (next === "denied") {
+      Alert.alert(
+        "Notifications off",
+        Platform.OS === "ios"
+          ? "Enable in iOS Settings to get reminders."
+          : "Enable notifications in system settings to get reminders."
+      );
+    }
+  };
+
+  const openSettings = () => {
+    if (Platform.OS === "ios") Linking.openURL("app-settings:").catch(() => {});
+    else Linking.openSettings().catch(() => {});
+  };
+
   const save = async () => {
     setSaving(true);
     setSaved(false);
     try {
       const hh = String(hour).padStart(2, "0");
       const mm = String(minute).padStart(2, "0");
+      const time = `${hh}:${mm}`;
       await api.post("/api/account/notifications", {
-        notificationTime: `${hh}:${mm}`,
+        notificationTime: time,
         notificationDays: days,
         notificationsEnabled: enabled,
       });
+      // OS-level schedule. Cancel-then-reschedule handles both the
+      // "change time" and "toggle off" paths idempotently.
+      await applyReminderSchedule({ enabled, time, days });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch {
@@ -223,13 +258,22 @@ export default function RemindersScreen() {
           )}
         </View>
 
-        {Platform.OS === "ios" && enabled && (
-          <View className="mt-8 rounded-xl border border-amber-900/30 bg-amber-950/20 px-4 py-3">
-            <Text className="text-xs text-amber-300 leading-5">
-              <Ionicons name="information-circle-outline" size={13} /> OS
-              push notifications arrive in the next app update. Your
-              reminder preference is saved now.
+        {enabled && permission !== "granted" && (
+          <View className="mt-8 rounded-xl border border-violet-900/30 bg-violet-950/20 px-4 py-3">
+            <Text className="text-xs text-violet-300 leading-5">
+              <Ionicons name="information-circle-outline" size={13} />{" "}
+              {permission === "denied"
+                ? "Notifications are off in iOS Settings. Your preference is saved — we'll start firing as soon as you enable them."
+                : "Allow notifications to get reminders at the time above."}
             </Text>
+            <Pressable
+              onPress={permission === "denied" ? openSettings : askPermission}
+              className="mt-2 self-start rounded-full bg-violet-600 px-3 py-1.5"
+            >
+              <Text className="text-xs font-semibold text-white">
+                {permission === "denied" ? "Open Settings" : "Allow notifications"}
+              </Text>
+            </Pressable>
           </View>
         )}
       </ScrollView>

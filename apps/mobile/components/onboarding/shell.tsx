@@ -20,6 +20,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useAuth } from "@/contexts/auth-context";
 import { api } from "@/lib/api";
+import { applyReminderSchedule } from "@/lib/notifications";
 
 import { OnboardingContext, type OnboardingContextValue } from "./context";
 
@@ -79,6 +80,26 @@ export function OnboardingShell({
       // Non-fatal — the user can re-answer on a retry. Alerting here
       // would break the perceived "tap → move on" rhythm; if it
       // matters, the next step's own write will surface the error.
+    }
+
+    // Side-effect: if this step captured reminder prefs, apply them to
+    // the OS scheduler too. Idempotent (cancel-then-reschedule) so
+    // double-fires are harmless. Keeps the scheduling logic out of
+    // the step component itself — the step only knows its UI state;
+    // the shell bridges UI state → both the server and the OS.
+    if (
+      typeof data.notificationsEnabled === "boolean" &&
+      typeof data.notificationTime === "string" &&
+      Array.isArray(data.notificationDays)
+    ) {
+      applyReminderSchedule({
+        enabled: data.notificationsEnabled,
+        time: data.notificationTime,
+        days: data.notificationDays as number[],
+      }).catch(() => {
+        // Permission-denied + network errors are visible enough
+        // via the step UI itself; failure here shouldn't block nav.
+      });
     }
   }, [step]);
 

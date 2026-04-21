@@ -57,6 +57,12 @@
         {
           "microphonePermission": "Acuity uses your microphone to record your daily voice entries."
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#7C3AED"
+        }
       ]
     ],
     "experiments": {

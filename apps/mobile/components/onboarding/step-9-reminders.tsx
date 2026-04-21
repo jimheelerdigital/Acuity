@@ -1,5 +1,12 @@
 import { useEffect, useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Alert, Linking, Platform, Pressable, Text, View } from "react-native";
+
+import {
+  applyReminderSchedule,
+  getPermissionStatus,
+  requestNotificationPermission,
+  type PermissionStatus,
+} from "@/lib/notifications";
 
 import { useOnboarding } from "./context";
 
@@ -39,6 +46,14 @@ export function Step9Reminders() {
   const [minute, setMinute] = useState(DEFAULT_MINUTE);
   const [frequency, setFrequency] = useState<Frequency>("DAILY");
   const [custom, setCustom] = useState<number[]>([1, 2, 3, 4, 5]);
+  const [permission, setPermission] =
+    useState<PermissionStatus>("undetermined");
+
+  // Read current permission on mount so we can show the right affordance
+  // (Grant / Open Settings / nothing).
+  useEffect(() => {
+    getPermissionStatus().then(setPermission).catch(() => {});
+  }, []);
 
   const days =
     frequency === "DAILY"
@@ -49,6 +64,11 @@ export function Step9Reminders() {
 
   useEffect(() => {
     setCanContinue(true);
+    // Captured data is persisted by the shell on Continue. The OS-level
+    // scheduling (if permission granted) also happens on Continue — see
+    // onBeforeContinue via the useEffect below; we inform the shell of
+    // our intent here and fire the schedule call in an effect that runs
+    // when captured-data changes.
     setCapturedData({
       notificationTime: `${String(hour).padStart(2, "0")}:${String(
         minute
@@ -57,6 +77,34 @@ export function Step9Reminders() {
       notificationsEnabled: enabled,
     });
   }, [hour, minute, frequency, custom, enabled, setCanContinue, setCapturedData, days]);
+
+  const askPermission = async () => {
+    const next = await requestNotificationPermission();
+    setPermission(next);
+    if (next === "granted") {
+      // Preview schedule immediately so the user sees reminders start
+      // working without waiting for the Continue tap. The shell will
+      // also re-apply on Continue with the persisted server values;
+      // this is idempotent (cancel-then-reschedule).
+      const time = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+      applyReminderSchedule({ enabled, time, days }).catch(() => {});
+    } else if (next === "denied") {
+      Alert.alert(
+        "Notifications off",
+        Platform.OS === "ios"
+          ? "Enable in iOS Settings to get reminders. Your preference is still saved — we'll start firing as soon as you allow it."
+          : "Enable notifications in system settings to get reminders."
+      );
+    }
+  };
+
+  const openSettings = () => {
+    if (Platform.OS === "ios") {
+      Linking.openURL("app-settings:").catch(() => {});
+    } else {
+      Linking.openSettings().catch(() => {});
+    }
+  };
 
   const bumpHour = (d: number) => setHour((h) => (h + d + 24) % 24);
   const bumpMinute = (d: number) => setMinute((m) => (m + d + 60) % 60);
@@ -189,6 +237,27 @@ export function Step9Reminders() {
           )}
         </View>
       </View>
+
+      {/* Permission affordance — shows when enabled=true and OS
+          permission isn't granted yet. Hidden when the user has
+          explicitly turned reminders off. */}
+      {enabled && permission !== "granted" && (
+        <View className="mt-6 rounded-xl border border-violet-900/30 bg-violet-950/20 px-4 py-3">
+          <Text className="text-sm text-violet-300">
+            {permission === "denied"
+              ? "Notifications are off in iOS Settings. Turn them on to get reminders."
+              : "Let Acuity send you a reminder at the time above."}
+          </Text>
+          <Pressable
+            onPress={permission === "denied" ? openSettings : askPermission}
+            className="mt-2 self-start rounded-full bg-violet-600 px-4 py-2"
+          >
+            <Text className="text-xs font-semibold text-white">
+              {permission === "denied" ? "Open Settings" : "Allow notifications"}
+            </Text>
+          </Pressable>
+        </View>
+      )}
 
       <Text className="mt-8 text-xs text-zinc-400 dark:text-zinc-500">
         &ldquo;Not now&rdquo; is a fine answer — the Skip link covers
