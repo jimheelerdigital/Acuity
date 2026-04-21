@@ -230,7 +230,7 @@ function TaskCard({
       : null;
 
   return (
-    <div className="rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-5 py-4 shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
+    <div className="rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-5 py-4 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.04)] transition-all duration-200 hover:shadow-[0_1px_3px_rgba(0,0,0,0.06),0_8px_20px_rgba(0,0,0,0.08)] hover:-translate-y-0.5 dark:shadow-none dark:ring-1 dark:ring-white/5">
       <div className="flex items-start gap-3">
         {/* Check bubble — 26px tappable target doubles as priority indicator.
             On the Open tab this IS the complete action; on Completed it's a

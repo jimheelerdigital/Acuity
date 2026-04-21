@@ -38,7 +38,7 @@ export function EntryCard({ entry, taskCount }: EntryCardProps) {
   const isProcessing = entry.status === "PROCESSING" || entry.status === "PENDING";
 
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white overflow-hidden shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 dark:border-white/10 dark:bg-[#1E1E2E] dark:shadow-none dark:hover:bg-[#24243A]">
+    <div className="rounded-2xl border border-zinc-200 bg-white overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.04)] transition-all duration-200 hover:shadow-[0_1px_3px_rgba(0,0,0,0.06),0_8px_20px_rgba(0,0,0,0.08)] hover:-translate-y-0.5 dark:border-white/10 dark:bg-[#1E1E2E] dark:shadow-none dark:ring-1 dark:ring-white/5 dark:hover:bg-[#24243A]">
       <button
         onClick={() => setExpanded((v) => !v)}
         className="w-full text-left px-4 sm:px-5 py-4 flex items-start justify-between gap-3 min-h-[44px]"
