@@ -45,8 +45,7 @@ export async function bootstrapNewUser(params: {
     "@/lib/referrals"
   );
 
-  const trialDays = await trialDaysForEmail(email);
-  const trialEndsAt = new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000);
+  const baseTrialDays = await trialDaysForEmail(email);
 
   // Resolve a referrer ID if the signup flow passed a code. We look up
   // BEFORE the user.update below so a single write seeds both trial
@@ -55,6 +54,17 @@ export async function bootstrapNewUser(params: {
   if (referralCodeFromSignup) {
     referredById = await resolveReferrerByCode(prisma, referralCodeFromSignup);
   }
+
+  // Referred-user reward: an extra 30 days on top of the base trial
+  // when signup carried a valid ?ref=CODE. Pairs with the referrer-
+  // side reward that fires on trial→paid conversion (see
+  // recordReferralConversion). The bonus survives the "welcome back"
+  // reduced trial — 3 + 30 = 33 days — because the policy isn't
+  // about gating returning users from a longer run, it's about
+  // throttling trial farming via delete+recreate. A genuine referral
+  // signal wins.
+  const trialDays = baseTrialDays + (referredById ? 30 : 0);
+  const trialEndsAt = new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000);
 
   // Issue a referral code up-front. Retry-on-collision a few times —
   // 32^8 ≈ 10^12 codes, collisions are astronomically rare at beta

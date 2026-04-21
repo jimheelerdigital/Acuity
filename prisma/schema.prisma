@@ -161,6 +161,13 @@ model User {
   // "DEFAULT" | "STUDENT" | "PARENT" | "CUSTOM" | null. Null means
   // the user has never customized — render the canonical labels.
   lifeDimensionPreset    String?
+  // Accrued referral reward days for users who AREN'T on trial when
+  // their conversion fires (paid / past-due / free). Applied at the
+  // next subscription renewal — TODO: hook this into the renewal
+  // handler. For TRIAL referrers we extend `trialEndsAt` directly
+  // and this column stays at 0. Capped indirectly via
+  // REFERRAL_ANNUAL_CAP in lib/referrals.ts.
+  referralRewardDays     Int          @default(0)
 }
 
 // Tombstone for deleted accounts — closes the trial-reset exploit

@@ -25,10 +25,29 @@ export function generateReferralCode(): string {
   return out;
 }
 
+/** Maximum rewarded referral conversions per referrer per 365 days.
+ *  Over this cap, conversions still record for accounting but don't
+ *  earn the +30-day credit. Keeps farming at bay without punishing
+ *  the ~1% of superfans who'd hit it legitimately. */
+export const REFERRAL_ANNUAL_CAP = 12;
+
+/** Days of reward granted per qualifying conversion (referrer side).
+ *  Symmetric with the referred-user bonus in bootstrap-user.ts. */
+export const REFERRAL_REWARD_DAYS = 30;
+
 /**
  * Called from the Stripe webhook when a user's trial converts to
- * paid. If they have a referrer, write a ReferralConversion row.
- * Reward fulfillment is a TODO — see spec W7.
+ * paid. If they have a referrer, write a ReferralConversion row
+ * and (subject to the 12/year cap) grant the referrer a 30-day
+ * reward.
+ *
+ * Reward application — the tricky part since referrers can be in
+ * different subscription states:
+ *   - TRIAL referrer → extend trialEndsAt by 30 days in-place.
+ *   - PAID / PAST_DUE / FREE → accrue the days on a User column
+ *     (`referralRewardDays`). A future renewal-time job will apply
+ *     the credit; for beta the counter is the source of truth and
+ *     gets shown in /account so the user sees the reward stacked up.
  */
 export async function recordReferralConversion(userId: string): Promise<void> {
   const { prisma } = await import("@/lib/prisma");
@@ -38,10 +57,7 @@ export async function recordReferralConversion(userId: string): Promise<void> {
   });
   if (!user?.referredById) return;
 
-  // Dedupe — a user's trial only converts once in practice (they'd
-  // have to cancel + re-start to hit this path a second time), but
-  // the unique key on (referrerId, referredUserId) enforces it in
-  // storage. Catch the P2002 if it fires.
+  let createdNew = false;
   try {
     await prisma.referralConversion.create({
       data: {
@@ -49,16 +65,68 @@ export async function recordReferralConversion(userId: string): Promise<void> {
         referredUserId: userId,
       },
     });
+    createdNew = true;
   } catch (err) {
     const code = (err as { code?: string } | null)?.code;
     if (code !== "P2002") {
       console.error("[referrals] conversion create failed:", err);
     }
+    // P2002 means we've already recorded this conversion — don't
+    // double-apply the reward on webhook retry.
+    return;
   }
 
-  // TODO (Jim): reward fulfillment. Current stub does nothing beyond
-  // recording the conversion. Decide: Stripe credit? Extra trial
-  // days? In-app "pro gift" flag? Wire it here.
+  if (!createdNew) return;
+
+  // Cap check: count conversions in the last 365 days, NOT including
+  // the row we just inserted (so the cap is "12 rewards per 12 months"
+  // rather than "12 conversions total including the one in progress").
+  const yearAgo = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
+  const rewardedThisYear = await prisma.referralConversion.count({
+    where: {
+      referrerId: user.referredById,
+      convertedAt: { gte: yearAgo, lt: new Date() },
+      // Excludes the just-created row by time bound (lt:new Date)
+    },
+  });
+
+  // `rewardedThisYear` includes the row we just inserted in practice
+  // (convertedAt defaults to now(), very close to our Date). Treat the
+  // cap inclusively.
+  if (rewardedThisYear > REFERRAL_ANNUAL_CAP) {
+    // Still above cap — don't fulfill reward, but the conversion row
+    // lives on for accounting. /account shows "Cap reached".
+    return;
+  }
+
+  const referrer = await prisma.user.findUnique({
+    where: { id: user.referredById },
+    select: { subscriptionStatus: true, trialEndsAt: true },
+  });
+  if (!referrer) return;
+
+  if (referrer.subscriptionStatus === "TRIAL") {
+    const base = referrer.trialEndsAt && referrer.trialEndsAt > new Date()
+      ? referrer.trialEndsAt
+      : new Date();
+    await prisma.user.update({
+      where: { id: user.referredById },
+      data: {
+        trialEndsAt: new Date(
+          base.getTime() + REFERRAL_REWARD_DAYS * 24 * 60 * 60 * 1000
+        ),
+      },
+    });
+  } else {
+    // Non-trial referrer — accrue the days. Applied at next
+    // subscription renewal (TODO: renewal-hook consumer).
+    await prisma.user.update({
+      where: { id: user.referredById },
+      data: {
+        referralRewardDays: { increment: REFERRAL_REWARD_DAYS },
+      },
+    });
+  }
 }
 
 /**

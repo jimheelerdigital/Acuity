@@ -26,14 +26,24 @@ export async function GET(req: NextRequest) {
 
   const { prisma } = await import("@/lib/prisma");
 
-  const [user, signupCount, conversionCount] = await Promise.all([
-    prisma.user.findUnique({
-      where: { id: userId },
-      select: { referralCode: true },
-    }),
-    prisma.user.count({ where: { referredById: userId } }),
-    prisma.referralConversion.count({ where: { referrerId: userId } }),
-  ]);
+  const yearAgo = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
+  const [user, signupCount, conversionCount, conversionsLast365] =
+    await Promise.all([
+      prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          referralCode: true,
+          referralRewardDays: true,
+          subscriptionStatus: true,
+          trialEndsAt: true,
+        },
+      }),
+      prisma.user.count({ where: { referredById: userId } }),
+      prisma.referralConversion.count({ where: { referrerId: userId } }),
+      prisma.referralConversion.count({
+        where: { referrerId: userId, convertedAt: { gte: yearAgo } },
+      }),
+    ]);
 
   // Lazy-issue a code for users that predate the referral system
   // (pre-2026-04-21 signups). bootstrap-user issues on new signups.
@@ -57,11 +67,25 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  const { REFERRAL_ANNUAL_CAP, REFERRAL_REWARD_DAYS } = await import(
+    "@/lib/referrals"
+  );
+
   return NextResponse.json(
     {
       referralCode: code,
       signups: signupCount,
       conversions: conversionCount,
+      // Reward surface: how many rewardable slots remain in the current
+      // 365-day window + how many days the user has accrued (for non-
+      // trial referrers — TRIAL referrers see the extension applied
+      // to trialEndsAt directly, not here).
+      conversionsLast365: conversionsLast365,
+      annualCap: REFERRAL_ANNUAL_CAP,
+      rewardDaysPerConversion: REFERRAL_REWARD_DAYS,
+      rewardDaysAccrued: user?.referralRewardDays ?? 0,
+      subscriptionStatus: user?.subscriptionStatus ?? null,
+      trialEndsAt: user?.trialEndsAt?.toISOString() ?? null,
     },
     { headers: { "Cache-Control": "private, no-store, max-age=0" } }
   );

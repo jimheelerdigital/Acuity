@@ -558,6 +558,12 @@ function ReferralsSection() {
     referralCode: string | null;
     signups: number;
     conversions: number;
+    conversionsLast365: number;
+    annualCap: number;
+    rewardDaysPerConversion: number;
+    rewardDaysAccrued: number;
+    subscriptionStatus: string | null;
+    trialEndsAt: string | null;
   } | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -592,8 +598,10 @@ function ReferralsSection() {
         Referrals
       </h2>
       <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-        Share Acuity with someone who might want it. We&apos;ll track
-        sign-ups; rewards are coming soon.
+        Share Acuity with someone who might want it. They get an extra
+        30 days on their trial, and you get 30 days added to your
+        subscription when they convert to paid — up to{" "}
+        {data?.annualCap ?? 12} rewarded conversions per year.
       </p>
 
       <div className="mt-4">
@@ -617,7 +625,7 @@ function ReferralsSection() {
         </div>
       </div>
 
-      <dl className="mt-5 grid grid-cols-2 gap-4 text-sm">
+      <dl className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
         <div>
           <dt className="text-xs text-zinc-500 dark:text-zinc-400">People joined</dt>
           <dd className="mt-1 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
@@ -625,12 +633,38 @@ function ReferralsSection() {
           </dd>
         </div>
         <div>
-          <dt className="text-xs text-zinc-500 dark:text-zinc-400">Converted to paid</dt>
+          <dt className="text-xs text-zinc-500 dark:text-zinc-400">Converted</dt>
           <dd className="mt-1 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
             {data?.conversions ?? "—"}
           </dd>
         </div>
+        <div>
+          <dt className="text-xs text-zinc-500 dark:text-zinc-400">
+            Rewards this year
+          </dt>
+          <dd className="mt-1 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+            {data
+              ? `${Math.min(data.conversionsLast365, data.annualCap)}/${data.annualCap}`
+              : "—"}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-xs text-zinc-500 dark:text-zinc-400">
+            Bonus days accrued
+          </dt>
+          <dd className="mt-1 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+            {data?.rewardDaysAccrued ?? 0}
+          </dd>
+        </div>
       </dl>
+
+      {data && data.conversionsLast365 >= data.annualCap && (
+        <p className="mt-4 text-xs text-amber-600 dark:text-amber-400">
+          You&rsquo;ve hit the {data.annualCap}-per-year cap. Further
+          conversions still count toward your stats; rewards resume on
+          the anniversary of your earliest counted conversion.
+        </p>
+      )}
     </section>
   );
 }
