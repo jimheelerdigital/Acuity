@@ -10,10 +10,37 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { MOOD_EMOJI, MOOD_LABELS, type EntryDTO } from "@acuity/shared";
+import {
+  MOOD_EMOJI,
+  MOOD_LABELS,
+  type EntryDTO,
+  formatRelativeDate,
+  type ProgressionItemKey,
+} from "@acuity/shared";
 
+import { ProgressionChecklist } from "@/components/progression-checklist";
+import { RecommendedActivity } from "@/components/recommended-activity";
 import { useAuth } from "@/contexts/auth-context";
 import { api } from "@/lib/api";
+
+const HOME_ENTRY_LIMIT = 5;
+
+interface HomePayload {
+  progression:
+    | {
+        items: Array<{
+          key: ProgressionItemKey;
+          title: string;
+          description: string;
+          href: string;
+          completed: boolean;
+        }>;
+        completedCount: number;
+        totalVisibleCount: number;
+      }
+    | null;
+  dailyPrompt: string;
+}
 
 /**
  * Home tab — the dashboard. Record button is the primary action.
@@ -35,12 +62,17 @@ export default function DashboardTab() {
   const { user } = useAuth();
   const router = useRouter();
   const [entries, setEntries] = useState<EntryDTO[] | null>(null);
+  const [homeData, setHomeData] = useState<HomePayload | null>(null);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     try {
-      const data = await api.get<{ entries: EntryDTO[] }>("/api/entries");
-      setEntries(data.entries ?? []);
+      const [entriesData, home] = await Promise.all([
+        api.get<{ entries: EntryDTO[] }>("/api/entries"),
+        api.get<HomePayload>("/api/home").catch(() => null),
+      ]);
+      setEntries(entriesData.entries ?? []);
+      setHomeData(home);
     } catch {
       setEntries([]);
     } finally {
@@ -99,7 +131,6 @@ export default function DashboardTab() {
 
         <TrialBanner />
 
-
         {/* Primary record CTA */}
         <Pressable
           onPress={() => router.push("/record")}
@@ -124,10 +155,31 @@ export default function DashboardTab() {
           </Text>
         </Pressable>
 
+        {homeData?.progression && (
+          <ProgressionChecklist
+            items={homeData.progression.items}
+            completedCount={homeData.progression.completedCount}
+            totalVisibleCount={homeData.progression.totalVisibleCount}
+          />
+        )}
+
+        {homeData?.dailyPrompt && (
+          <RecommendedActivity prompt={homeData.dailyPrompt} />
+        )}
+
         {/* Recent sessions */}
-        <Text className="text-xs font-semibold uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mb-3">
-          Recent sessions
-        </Text>
+        <View className="mb-3 flex-row items-center justify-between">
+          <Text className="text-xs font-semibold uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
+            Recent sessions
+          </Text>
+          {entries && entries.length > HOME_ENTRY_LIMIT && (
+            <Pressable onPress={() => router.push("/(tabs)/entries")} hitSlop={8}>
+              <Text className="text-xs font-semibold text-violet-600 dark:text-violet-400">
+                View all →
+              </Text>
+            </Pressable>
+          )}
+        </View>
 
         {loading ? (
           <View className="py-8 items-center">
@@ -143,7 +195,7 @@ export default function DashboardTab() {
           </View>
         ) : (
           <View className="gap-2">
-            {(entries ?? []).slice(0, 10).map((entry) => (
+            {(entries ?? []).slice(0, HOME_ENTRY_LIMIT).map((entry) => (
               <EntryRow
                 key={entry.id}
                 entry={entry}
@@ -199,8 +251,7 @@ function EntryRow({
   entry: EntryDTO;
   onPress: () => void;
 }) {
-  const date = new Date(entry.createdAt);
-  const dateLabel = formatShortDate(date);
+  const dateLabel = formatRelativeDate(entry.createdAt);
   const isPartial = entry.status === "PARTIAL";
   return (
     <Pressable
@@ -243,24 +294,4 @@ function greetingFor(now: Date): string {
   if (hour < 12) return "Good morning";
   if (hour < 17) return "Good afternoon";
   return "Good evening";
-}
-
-/**
- * Previously the "Today" label would linger on yesterday's entries
- * because the check used elapsed ms rather than calendar-day
- * boundaries (if you recorded at 11pm and opened the app at 10am the
- * next morning, 11 hours elapsed = still < 24hr = still "Today"). Now
- * keyed on startOfDay comparison so the label flips at midnight.
- */
-function formatShortDate(date: Date): string {
-  const now = new Date();
-  const startOfDay = (d: Date) =>
-    new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-  const diffDays = Math.round(
-    (startOfDay(now) - startOfDay(date)) / (24 * 60 * 60 * 1000)
-  );
-  if (diffDays === 0) return "Today";
-  if (diffDays === 1) return "Yesterday";
-  if (diffDays > 1 && diffDays < 7) return `${diffDays} days ago`;
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }

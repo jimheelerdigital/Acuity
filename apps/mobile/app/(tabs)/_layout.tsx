@@ -136,7 +136,7 @@ function RecordCenterButton({ isDark }: { isDark: boolean }) {
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Open Home to record a brain dump"
-        onPress={() => router.navigate("/(tabs)/")}
+        onPress={() => router.navigate("/(tabs)")}
         style={({ pressed }) => ({
           width: size,
           height: size,
