@@ -1,12 +1,20 @@
 import type { Task, Goal } from "@prisma/client";
+import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
+
+import { pickDailyPrompt } from "@acuity/shared";
 
 import { getAuthOptions } from "@/lib/auth";
 import { TrackCompleteRegistration, TrackPurchase } from "@/components/meta-pixel-events";
 import { WelcomeBackBanner } from "@/components/welcome-back-banner";
+import { ProgressionChecklist } from "@/components/progression-checklist";
+import { RecommendedActivity } from "@/components/recommended-activity";
+import { computeProgressionState, type ProgressionState } from "@/lib/progression";
 import { RecordButton } from "./record-button";
 import { EntryCard } from "./entry-card";
+
+const HOME_ENTRY_LIMIT = 5;
 
 export const dynamic = "force-dynamic";
 
@@ -37,7 +45,8 @@ export default async function DashboardPage() {
   let tasks: Task[] = [];
   let goals: Goal[] = [];
 
-  // Re-read user for streak + trial shape. Cheap single-row read.
+  // Re-read user for streak + trial shape + progression state. Single
+  // row read; cheap.
   const { prisma } = await import("@/lib/prisma");
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -45,8 +54,24 @@ export default async function DashboardPage() {
       createdAt: true,
       trialEndsAt: true,
       currentStreak: true,
+      onboarding: { select: { progressionChecklist: true } },
     },
   });
+
+  const progression = user?.createdAt
+    ? await computeProgressionState({
+        userId,
+        createdAt: user.createdAt,
+        storedState:
+          (user.onboarding?.progressionChecklist as ProgressionState | null) ??
+          null,
+      })
+    : null;
+
+  const dailyPrompt = pickDailyPrompt(
+    userId,
+    new Date().toISOString().slice(0, 10)
+  );
 
   try {
     [entries, tasks, goals] = await Promise.all([
@@ -115,16 +140,37 @@ export default async function DashboardPage() {
         </div>
 
         {/* Record button */}
-        <div className="mb-12 mx-auto max-w-lg">
+        <div id="record" className="mb-10 mx-auto max-w-lg">
           <RecordButton />
         </div>
 
+        {progression && (
+          <ProgressionChecklist
+            items={progression.items}
+            completedCount={progression.completedCount}
+            totalVisibleCount={progression.totalVisibleCount}
+          />
+        )}
+
+        <RecommendedActivity prompt={dailyPrompt} />
+
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-          {/* Recent entries */}
+          {/* Recent entries — capped to 5 with "View all" link. Full list
+              lives on /entries. */}
           <section className="lg:col-span-2">
-            <h2 className="mb-4 text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
-              Recent sessions
-            </h2>
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
+                Recent sessions
+              </h2>
+              {entries.length > HOME_ENTRY_LIMIT && (
+                <Link
+                  href="/entries"
+                  className="text-xs font-medium text-violet-600 hover:text-violet-500 dark:text-violet-400"
+                >
+                  View all →
+                </Link>
+              )}
+            </div>
             {entries.length === 0 ? (
               <EmptyState
                 icon="🎙️"
@@ -133,7 +179,7 @@ export default async function DashboardPage() {
               />
             ) : (
               <div className="space-y-3">
-                {entries.map((e) => (
+                {entries.slice(0, HOME_ENTRY_LIMIT).map((e) => (
                   <EntryCard
                     key={e.id}
                     entry={e}

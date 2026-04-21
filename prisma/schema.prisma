@@ -160,6 +160,15 @@ model UserOnboarding {
   // walkthrough? False doesn't block completion (they can grant later
   // from Settings) but we track it so the dashboard can nudge.
   microphoneGranted      Boolean   @default(false)
+  // 14-day "Getting to know Acuity" discovery checklist. JSON shape:
+  //   { dismissedAt: ISO?,
+  //     items: { day1: ISO|null, day2: ISO|null, ..., day14: ISO|null } }
+  // Null = user hasn't interacted yet; auto-hydrated on first render.
+  // See apps/web/src/lib/progression.ts for the item definitions +
+  // auto-complete heuristics (Day 1 = any Entry exists, Day 7 = any
+  // WeeklyReport, Day 14 = any LifeAudit). Other days require manual
+  // tap because we don't have the signal to auto-detect.
+  progressionChecklist   Json?
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
 }

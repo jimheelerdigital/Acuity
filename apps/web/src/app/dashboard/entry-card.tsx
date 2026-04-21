@@ -1,7 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { MOOD_EMOJI, MOOD_LABELS } from "@acuity/shared";
+import {
+  MOOD_EMOJI,
+  MOOD_LABELS,
+  formatRelativeDate,
+} from "@acuity/shared";
 import type { Entry } from "@prisma/client";
 import type { Mood } from "@acuity/shared";
 
@@ -24,11 +28,10 @@ type EntryCardProps = {
 export function EntryCard({ entry, taskCount }: EntryCardProps) {
   const [expanded, setExpanded] = useState(false);
 
-  const date = new Date(entry.createdAt).toLocaleDateString("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  });
+  // Use the shared relative-date helper so "Just now / N min ago /
+  // Yesterday / Mon D" stays consistent with the mobile app and the
+  // /entries full-list page.
+  const date = formatRelativeDate(entry.createdAt);
 
   const moodKey = entry.mood as Mood | null;
   const isFailed = entry.status === "FAILED";
