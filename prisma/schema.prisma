@@ -248,6 +248,14 @@ model Entry {
   blockers      String[]
   rawExtraction Json?
   rawAnalysis   Json?
+  // OpenAI text-embedding-3-small output (1536 dims) on
+  // `summary + transcript`. Populated by the extraction pipeline
+  // post-Claude and by the backfill script. Null on legacy rows
+  // until backfill runs. Cosine similarity computed in app memory —
+  // no pgvector index. At 10k entries × 1536 dims × 4 bytes =
+  // ~60MB max per-user read, well under memory limits; if we blow
+  // past that we promote to pgvector.
+  embedding     Float[]
   // Valid status values (enforced by app code, not schema — we keep this a
   // String for flexibility across Postgres versions):
   //   QUEUED       — Inngest event dispatched, not yet running (async path)

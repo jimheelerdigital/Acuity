@@ -133,6 +133,11 @@ export const limiters = {
    * abuse target (link spam). 10/hr per user is fine.
    */
   shareLink: buildLimiter("share-link", 10, "1 h"),
+  /**
+   * Ask-Your-Past-Self. 10/day per user caps Claude Opus + OpenAI
+   * embedding spend worst-case at ~$0.60/user/day. Key: user:<userId>.
+   */
+  askPast: buildLimiter("ask-past", 10, "1 d"),
 } as const;
 
 export type LimiterName = keyof typeof limiters;

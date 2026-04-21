@@ -286,6 +286,30 @@ export const processEntryFn = inngest.createFunction(
       });
     });
 
+    // Embedding generation — fail-soft. Runs outside the transaction
+    // because OpenAI latency shouldn't block entry persistence; a
+    // missed embedding just means this entry won't show up in
+    // Ask-Your-Past-Self results until the backfill script catches it.
+    await step.run("embed-entry", async () => {
+      try {
+        const { buildEmbedText, embedText } = await import("@/lib/embeddings");
+        const entry = await prisma.entry.findUnique({
+          where: { id: entryId },
+          select: { summary: true, transcript: true },
+        });
+        if (!entry) return;
+        const text = buildEmbedText(entry);
+        if (!text) return;
+        const vec = await embedText(text);
+        await prisma.entry.update({
+          where: { id: entryId },
+          data: { embedding: vec },
+        });
+      } catch (err) {
+        console.warn("[process-entry] embedding failed (non-fatal):", err);
+      }
+    });
+
     // Steps 6 + 7: memory + lifemap enrichment. These fail-soft: a
     // downstream failure downgrades Entry to PARTIAL rather than FAILED
     // because the user's entry is already saved. A second entry from the
