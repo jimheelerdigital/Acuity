@@ -11,6 +11,7 @@ import {
 } from "recharts";
 import MetricCard from "../components/MetricCard";
 import ChartCard from "../components/ChartCard";
+import RefreshButton from "../components/RefreshButton";
 import { SkeletonMetric, SkeletonChart, SkeletonTable } from "../components/SkeletonCard";
 import { useTabData } from "./useTabData";
 
@@ -40,7 +41,7 @@ export default function AICostsTab({
   start: string;
   end: string;
 }) {
-  const { data, loading } = useTabData<AICostsData>("ai-costs", start, end);
+  const { data, loading, meta, refresh } = useTabData<AICostsData>("ai-costs", start, end);
   const [filterPurpose, setFilterPurpose] = useState("");
 
   if (loading || !data) {
@@ -65,9 +66,13 @@ export default function AICostsTab({
 
   return (
     <div className="space-y-6">
+      <div className="flex justify-end">
+        <RefreshButton computedAt={meta?.computedAt ?? null} onRefresh={refresh} loading={loading} />
+      </div>
+
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
         <MetricCard
-          label="Claude Spend (MTD)"
+          label="Claude Spend (Month-to-Date)"
           value={`$${mtdDollars}`}
           budgetBar={{
             current: data.mtdSpendCents,

@@ -1,6 +1,7 @@
 "use client";
 
 import MetricCard from "../components/MetricCard";
+import RefreshButton from "../components/RefreshButton";
 import { SkeletonMetric, SkeletonTable } from "../components/SkeletonCard";
 import { useTabData } from "./useTabData";
 
@@ -30,7 +31,7 @@ export default function RevenueTab({
   start: string;
   end: string;
 }) {
-  const { data, loading } = useTabData<RevenueData>("revenue", start, end);
+  const { data, loading, meta, refresh } = useTabData<RevenueData>("revenue", start, end);
 
   if (loading || !data) {
     return (
@@ -47,23 +48,27 @@ export default function RevenueTab({
 
   return (
     <div className="space-y-6">
+      <div className="flex justify-end">
+        <RefreshButton computedAt={meta?.computedAt ?? null} onRefresh={refresh} loading={loading} />
+      </div>
+
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
         <MetricCard
-          label="MRR"
+          label="Monthly Recurring Revenue (MRR)"
           value={`$${(data.mrrCents / 100).toFixed(0)}`}
         />
-        <MetricCard label="Paying Subs" value={data.payingSubs} />
+        <MetricCard label="Paying Subscribers" value={data.payingSubs} />
         <MetricCard label="Trial Users" value={data.trialUsers} />
         <MetricCard
           label="Churn Rate"
           value={`${data.churnRate}%`}
         />
         <MetricCard
-          label="Trial-to-Paid %"
+          label="Trial-to-Paid Conversion Rate"
           value={`${data.conversionRate}%`}
         />
         <MetricCard
-          label="ARPU"
+          label="Average Revenue Per User (ARPU)"
           value={
             data.payingSubs > 0
               ? `$${(data.mrrCents / data.payingSubs / 100).toFixed(2)}`
@@ -76,7 +81,7 @@ export default function RevenueTab({
       {data.pastDueUsers.length > 0 && (
         <div className="rounded-xl border border-red-500/20 bg-red-900/10 p-5">
           <h3 className="mb-3 text-sm font-medium text-red-400">
-            Past Due Users ({data.pastDueUsers.length})
+            Failed Payment Alerts ({data.pastDueUsers.length})
           </h3>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
@@ -124,7 +129,7 @@ export default function RevenueTab({
                 <tr className="border-b border-white/10 text-white/40">
                   <th className="pb-2 pr-4 font-medium">Email</th>
                   <th className="pb-2 pr-4 font-medium">Signup</th>
-                  <th className="pb-2 pr-4 font-medium">MRR</th>
+                  <th className="pb-2 pr-4 font-medium">Monthly Recurring Revenue</th>
                   <th className="pb-2 font-medium">Days Paying</th>
                 </tr>
               </thead>

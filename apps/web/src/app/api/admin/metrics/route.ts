@@ -2,8 +2,25 @@ import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 
 import { getAuthOptions } from "@/lib/auth";
+import { getCached, invalidateCachePrefix } from "@/lib/admin-cache";
 
 export const dynamic = "force-dynamic";
+
+// TTLs per tab (in milliseconds)
+const TAB_TTLS: Record<string, number> = {
+  overview: 5 * 60_000,
+  growth: 5 * 60_000,
+  engagement: 5 * 60_000,
+  revenue: 10 * 60_000,
+  funnel: 15 * 60_000,
+  ads: 15 * 60_000,
+  "ai-costs": 2 * 60_000,
+  "content-factory": 0, // no cache — needs to be live
+  "red-flags": 5 * 60_000,
+  users: 2 * 60_000,
+  "feature-flags": 1 * 60_000,
+  guide: Infinity, // static content
+};
 
 export async function GET(req: NextRequest) {
   const session = await getServerSession(getAuthOptions());
@@ -23,6 +40,7 @@ export async function GET(req: NextRequest) {
   const tab = req.nextUrl.searchParams.get("tab") ?? "overview";
   const startStr = req.nextUrl.searchParams.get("start");
   const endStr = req.nextUrl.searchParams.get("end");
+  const refresh = req.nextUrl.searchParams.get("refresh") === "true";
 
   const end = endStr ? new Date(endStr) : new Date();
   const start = startStr
@@ -38,41 +56,57 @@ export async function GET(req: NextRequest) {
   monthStart.setUTCDate(1);
   monthStart.setUTCHours(0, 0, 0, 0);
 
+  // Invalidate cache if refresh requested
+  if (refresh) {
+    invalidateCachePrefix(`tab:${tab}`);
+  }
+
+  const ttl = TAB_TTLS[tab] ?? 5 * 60_000;
+  const cacheKey = `tab:${tab}:${startStr}:${endStr}`;
+  const t0 = Date.now();
+
   try {
-    switch (tab) {
-      case "overview":
-        return NextResponse.json(
-          await getOverview(prisma, start, end, prevStart, prevEnd, monthStart)
-        );
-      case "growth":
-        return NextResponse.json(
-          await getGrowth(prisma, start, end, prevStart, prevEnd)
-        );
-      case "engagement":
-        return NextResponse.json(
-          await getEngagement(prisma, start, end, prevStart, prevEnd)
-        );
-      case "revenue":
-        return NextResponse.json(
-          await getRevenue(prisma, start, end, prevStart, prevEnd, monthStart)
-        );
-      case "funnel":
-        return NextResponse.json(await getFunnel(prisma, start, end));
-      case "ads":
-        return NextResponse.json(
-          await getAds(prisma, start, end, prevStart, prevEnd)
-        );
-      case "ai-costs":
-        return NextResponse.json(
-          await getAICosts(prisma, start, end, monthStart)
-        );
-      case "red-flags":
-        return NextResponse.json(await getRedFlags(prisma));
-      default:
-        return NextResponse.json({ error: "Unknown tab" }, { status: 400 });
-    }
+    const computeFn = async () => {
+      switch (tab) {
+        case "overview":
+          return getOverview(prisma, start, end, prevStart, prevEnd, monthStart);
+        case "growth":
+          return getGrowth(prisma, start, end, prevStart, prevEnd);
+        case "engagement":
+          return getEngagement(prisma, start, end, prevStart, prevEnd);
+        case "revenue":
+          return getRevenue(prisma, start, end, prevStart, prevEnd, monthStart);
+        case "funnel":
+          return getFunnel(prisma, start, end);
+        case "ads":
+          return getAds(prisma, start, end, prevStart, prevEnd);
+        case "ai-costs":
+          return getAICosts(prisma, start, end, monthStart);
+        case "red-flags":
+          return getRedFlags(prisma);
+        case "guide":
+          return getGuide();
+        default:
+          throw new Error("Unknown tab");
+      }
+    };
+
+    const { data, cached, computedAt } = await getCached(cacheKey, ttl, computeFn);
+    const durationMs = Date.now() - t0;
+
+    console.log(
+      `[metrics] tab=${tab} range=${startStr}..${endStr} cached=${cached} duration=${durationMs}ms`
+    );
+
+    return NextResponse.json({
+      ...data,
+      _meta: { cached, computedAt, durationMs },
+    });
   } catch (err) {
     console.error("[admin/metrics]", err);
+    if (err instanceof Error && err.message === "Unknown tab") {
+      return NextResponse.json({ error: "Unknown tab" }, { status: 400 });
+    }
     return NextResponse.json(
       { error: "Internal error" },
       { status: 500 }
@@ -214,7 +248,7 @@ async function getGrowth(
   prevStart: Date,
   prevEnd: Date
 ) {
-  const [signups, prevSignups, waitlistSignups, signupsOverTime, recentSignups] =
+  const [signups, prevSignups, waitlistSignups, signupsOverTime, recentSignups, d1Activated] =
     await Promise.all([
       prisma.user.count({
         where: { createdAt: { gte: start, lte: end } },
@@ -238,18 +272,17 @@ async function getGrowth(
         orderBy: { createdAt: "desc" },
         take: 20,
       }),
+      // D0 activation: users who have at least one entry within 24h of signup
+      prisma.$queryRaw<{ count: bigint }[]>`
+        SELECT COUNT(DISTINCT u.id)::bigint as count
+        FROM "User" u
+        INNER JOIN "Entry" e ON e."userId" = u.id
+          AND e."createdAt" <= u."createdAt" + interval '24 hours'
+        WHERE u."createdAt" >= ${start} AND u."createdAt" <= ${end}
+      `.catch(() => [{ count: BigInt(0) }]),
     ]);
 
-  // D1 activation: users who have at least one entry within 24h of signup
-  const d1Activated = await prisma.$queryRaw<{ count: bigint }[]>`
-    SELECT COUNT(DISTINCT u.id)::bigint as count
-    FROM "User" u
-    INNER JOIN "Entry" e ON e."userId" = u.id
-      AND e."createdAt" <= u."createdAt" + interval '24 hours'
-    WHERE u."createdAt" >= ${start} AND u."createdAt" <= ${end}
-  `.catch(() => [{ count: BigInt(0) }]);
-
-  const d1Rate =
+  const d0Rate =
     signups > 0
       ? (Number(d1Activated[0]?.count ?? 0) / signups) * 100
       : 0;
@@ -258,7 +291,7 @@ async function getGrowth(
     signups,
     prevSignups,
     waitlistSignups,
-    d1Rate: Math.round(d1Rate * 10) / 10,
+    d0Rate: Math.round(d0Rate * 10) / 10,
     signupsOverTime: signupsOverTime.map((r: { date: string; count: bigint }) => ({
       date: r.date,
       count: Number(r.count),
@@ -342,10 +375,15 @@ async function getEngagement(
       ? totalEntries / userCount / weeksInRange
       : 0;
 
+  const dauVal = Number(dau[0]?.count ?? 0);
+  const mauVal = Number(mau[0]?.count ?? 0);
+  const dauMauRatio = mauVal > 0 ? (dauVal / mauVal) * 100 : 0;
+
   return {
-    dau: Number(dau[0]?.count ?? 0),
+    dau: dauVal,
     wau: Number(wau[0]?.count ?? 0),
-    mau: Number(mau[0]?.count ?? 0),
+    mau: mauVal,
+    dauMauRatio: Math.round(dauMauRatio * 10) / 10,
     totalEntries,
     avgDuration: Math.round(avgDuration[0]?.avg ?? 0),
     avgPerUserPerWeek: Math.round(avgPerUserPerWeek * 10) / 10,
@@ -361,7 +399,7 @@ async function getRevenue(
   _prevEnd: Date,
   _monthStart: Date
 ) {
-  const [payingSubs, trialUsers, pastDueUsers, recentPaying] =
+  const [payingSubs, trialUsers, pastDueUsers, recentPaying, churnedInPeriod, trialConverted, trialTotal] =
     await Promise.all([
       prisma.user.count({
         where: {
@@ -394,32 +432,32 @@ async function getRevenue(
         orderBy: { createdAt: "desc" },
         take: 50,
       }),
+      prisma.user.count({
+        where: {
+          subscriptionStatus: "CANCELED",
+          updatedAt: { gte: start, lte: end },
+        },
+      }),
+      prisma.user.count({
+        where: {
+          createdAt: { gte: start, lte: end },
+          subscriptionStatus: "ACTIVE",
+        },
+      }),
+      prisma.user.count({
+        where: {
+          createdAt: { gte: start, lte: end },
+        },
+      }),
     ]);
 
   // Simple MRR estimate: $9.99/mo per paying sub (adjust as needed)
   const mrrCents = payingSubs * 999;
-  const churnedInPeriod = await prisma.user.count({
-    where: {
-      subscriptionStatus: "CANCELED",
-      updatedAt: { gte: start, lte: end },
-    },
-  });
   const churnRate =
     payingSubs + churnedInPeriod > 0
       ? (churnedInPeriod / (payingSubs + churnedInPeriod)) * 100
       : 0;
 
-  const trialConverted = await prisma.user.count({
-    where: {
-      createdAt: { gte: start, lte: end },
-      subscriptionStatus: "ACTIVE",
-    },
-  });
-  const trialTotal = await prisma.user.count({
-    where: {
-      createdAt: { gte: start, lte: end },
-    },
-  });
   const conversionRate =
     trialTotal > 0 ? (trialConverted / trialTotal) * 100 : 0;
 
@@ -622,4 +660,9 @@ async function getRedFlags(prisma: P) {
       resolvedAt: f.resolvedAt?.toISOString() ?? null,
     })),
   };
+}
+
+function getGuide() {
+  // Static content — cached with infinite TTL
+  return { guide: true };
 }

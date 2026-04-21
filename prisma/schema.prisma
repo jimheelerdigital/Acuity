@@ -169,6 +169,8 @@ model User {
   // and this column stays at 0. Capped indirectly via
   // REFERRAL_ANNUAL_CAP in lib/referrals.ts.
   referralRewardDays     Int          @default(0)
+
+  @@index([createdAt])
 }
 
 // Tombstone for deleted accounts — closes the trial-reset exploit
@@ -295,6 +297,8 @@ model Entry {
   updatedAt     DateTime @updatedAt
   tasks         Task[]
   themeMentions ThemeMention[]
+
+  @@index([userId, createdAt])
 }
 
 model Task {
@@ -423,6 +427,8 @@ model WeeklyReport {
   publicShareExpiresAt  DateTime?
   publicShareViewCount  Int      @default(0)
   createdAt       DateTime @default(now())
+
+  @@index([userId, createdAt])
 }
 
 model LifeMapArea {
@@ -588,6 +594,8 @@ model ContentPiece {
   metrics          Json?
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
+
+  @@index([type, status, createdAt])
 }
 
 model ClaudeCallLog {

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import MetricCard from "../components/MetricCard";
+import RefreshButton from "../components/RefreshButton";
 import { SkeletonMetric, SkeletonTable } from "../components/SkeletonCard";
 import { useTabData } from "./useTabData";
 
@@ -29,7 +30,7 @@ export default function AdsTab({
   start: string;
   end: string;
 }) {
-  const { data, loading } = useTabData<AdsData>("ads", start, end);
+  const { data, loading, meta, refresh } = useTabData<AdsData>("ads", start, end);
   const [saving, setSaving] = useState(false);
   const [weekStart, setWeekStart] = useState(() => {
     const d = new Date();
@@ -73,13 +74,17 @@ export default function AdsTab({
 
   return (
     <div className="space-y-6">
+      <div className="flex justify-end">
+        <RefreshButton computedAt={meta?.computedAt ?? null} onRefresh={refresh} loading={loading} />
+      </div>
+
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <MetricCard
           label="Total Ad Spend"
           value={`$${(data.totalSpendCents / 100).toFixed(2)}`}
         />
         <MetricCard
-          label="Blended CAC"
+          label="Blended Customer Acquisition Cost (CAC)"
           value={
             data.blendedCac > 0
               ? `$${(data.blendedCac / 100).toFixed(2)}`
@@ -97,7 +102,7 @@ export default function AdsTab({
       {data.byCampaign.length > 0 && (
         <div className="rounded-xl bg-[#13131F] p-5">
           <h3 className="mb-3 text-sm font-medium text-white/60">
-            Spend by Campaign
+            Customer Acquisition Cost (CAC) by Campaign
           </h3>
           <div className="space-y-2">
             {data.byCampaign.map((c) => {

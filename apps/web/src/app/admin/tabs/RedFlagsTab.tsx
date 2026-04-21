@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import RefreshButton from "../components/RefreshButton";
 import { SkeletonTable } from "../components/SkeletonCard";
 import { useTabData } from "./useTabData";
 
@@ -47,7 +48,7 @@ export default function RedFlagsTab({
   start: string;
   end: string;
 }) {
-  const { data, loading } = useTabData<RedFlagsData>("red-flags", start, end);
+  const { data, loading, meta, refresh } = useTabData<RedFlagsData>("red-flags", start, end);
   const [resolving, setResolving] = useState<string | null>(null);
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
 
@@ -78,17 +79,26 @@ export default function RedFlagsTab({
 
   if (visible.length === 0) {
     return (
-      <div className="rounded-xl bg-[#13131F] p-12 text-center">
-        <p className="text-lg font-medium text-green-400">All clear</p>
-        <p className="mt-1 text-sm text-white/40">
-          No active red flags. System is healthy.
-        </p>
+      <div className="space-y-4">
+        <div className="flex justify-end">
+          <RefreshButton computedAt={meta?.computedAt ?? null} onRefresh={refresh} loading={loading} />
+        </div>
+        <div className="rounded-xl bg-[#13131F] p-12 text-center">
+          <p className="text-lg font-medium text-green-400">All clear</p>
+          <p className="mt-1 text-sm text-white/40">
+            No active red flags. System is healthy.
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
+      <div className="flex justify-end">
+        <RefreshButton computedAt={meta?.computedAt ?? null} onRefresh={refresh} loading={loading} />
+      </div>
+
       {(["CRITICAL", "WARNING", "INFO"] as const).map((severity) => {
         const flags = grouped[severity];
         if (flags.length === 0) return null;

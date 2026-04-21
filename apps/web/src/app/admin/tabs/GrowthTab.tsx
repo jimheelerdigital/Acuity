@@ -10,6 +10,7 @@ import {
 } from "recharts";
 import MetricCard from "../components/MetricCard";
 import ChartCard from "../components/ChartCard";
+import RefreshButton from "../components/RefreshButton";
 import { SkeletonMetric, SkeletonChart } from "../components/SkeletonCard";
 import { useTabData } from "./useTabData";
 
@@ -17,7 +18,7 @@ interface GrowthData {
   signups: number;
   prevSignups: number;
   waitlistSignups: number;
-  d1Rate: number;
+  d0Rate: number;
   signupsOverTime: { date: string; count: number }[];
   recentSignups: {
     email: string;
@@ -33,7 +34,7 @@ export default function GrowthTab({
   start: string;
   end: string;
 }) {
-  const { data, loading } = useTabData<GrowthData>("growth", start, end);
+  const { data, loading, meta, refresh } = useTabData<GrowthData>("growth", start, end);
 
   if (loading || !data) {
     return (
@@ -50,6 +51,10 @@ export default function GrowthTab({
 
   return (
     <div className="space-y-6">
+      <div className="flex justify-end">
+        <RefreshButton computedAt={meta?.computedAt ?? null} onRefresh={refresh} loading={loading} />
+      </div>
+
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <MetricCard
           label="New Signups"
@@ -62,8 +67,8 @@ export default function GrowthTab({
           value={data.waitlistSignups}
         />
         <MetricCard
-          label="D1 Activation Rate"
-          value={`${data.d1Rate}%`}
+          label="Day 0 Activation Rate"
+          value={`${data.d0Rate}%`}
         />
         <MetricCard
           label="Referral Signups"

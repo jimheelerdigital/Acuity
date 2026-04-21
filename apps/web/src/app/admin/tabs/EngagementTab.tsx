@@ -1,6 +1,7 @@
 "use client";
 
 import MetricCard from "../components/MetricCard";
+import RefreshButton from "../components/RefreshButton";
 import { SkeletonMetric, SkeletonTable } from "../components/SkeletonCard";
 import { useTabData } from "./useTabData";
 
@@ -8,6 +9,7 @@ interface EngagementData {
   dau: number;
   wau: number;
   mau: number;
+  dauMauRatio: number;
   totalEntries: number;
   avgDuration: number;
   avgPerUserPerWeek: number;
@@ -21,7 +23,7 @@ export default function EngagementTab({
   start: string;
   end: string;
 }) {
-  const { data, loading } = useTabData<EngagementData>(
+  const { data, loading, meta, refresh } = useTabData<EngagementData>(
     "engagement",
     start,
     end
@@ -42,10 +44,18 @@ export default function EngagementTab({
 
   return (
     <div className="space-y-6">
+      <div className="flex justify-end">
+        <RefreshButton computedAt={meta?.computedAt ?? null} onRefresh={refresh} loading={loading} />
+      </div>
+
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
-        <MetricCard label="DAU" value={data.dau} />
-        <MetricCard label="WAU" value={data.wau} />
-        <MetricCard label="MAU" value={data.mau} />
+        <MetricCard label="Daily Active Users (DAU)" value={data.dau} />
+        <MetricCard label="Weekly Active Users (WAU)" value={data.wau} />
+        <MetricCard label="Monthly Active Users (MAU)" value={data.mau} />
+        <MetricCard
+          label="Daily/Monthly Active Users Ratio (DAU/MAU)"
+          value={`${data.dauMauRatio}%`}
+        />
         <MetricCard
           label="Avg Recordings/User/Week"
           value={data.avgPerUserPerWeek}
@@ -54,7 +64,6 @@ export default function EngagementTab({
           label="Avg Duration"
           value={data.avgDuration > 0 ? `${data.avgDuration}s` : "—"}
         />
-        <MetricCard label="Total Entries" value={data.totalEntries} />
       </div>
 
       {/* Silent trial users */}

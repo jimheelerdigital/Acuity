@@ -14,6 +14,7 @@ import {
 } from "recharts";
 import MetricCard from "../components/MetricCard";
 import ChartCard from "../components/ChartCard";
+import RefreshButton from "../components/RefreshButton";
 import RecentAdminActions from "../components/RecentAdminActions";
 import { SkeletonMetric, SkeletonChart } from "../components/SkeletonCard";
 import { useTabData } from "./useTabData";
@@ -46,7 +47,7 @@ export default function OverviewTab({
   start: string;
   end: string;
 }) {
-  const { data, loading } = useTabData<OverviewData>("overview", start, end);
+  const { data, loading, meta, refresh } = useTabData<OverviewData>("overview", start, end);
 
   if (loading || !data) {
     return (
@@ -69,6 +70,11 @@ export default function OverviewTab({
 
   return (
     <div className="space-y-6">
+      {/* Refresh */}
+      <div className="flex justify-end">
+        <RefreshButton computedAt={meta?.computedAt ?? null} onRefresh={refresh} loading={loading} />
+      </div>
+
       {/* Hero metrics */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
         <MetricCard
@@ -79,27 +85,27 @@ export default function OverviewTab({
           sparklineData={signupSparkline}
         />
         <MetricCard
-          label="Trial-to-Paid %"
+          label="Trial-to-Paid Conversion Rate"
           value={`${data.conversionRate}%`}
           currentValue={data.conversionRate}
           previousValue={data.prevConversionRate}
         />
         <MetricCard
-          label="Active Paying Subs"
+          label="Active Paying Subscribers"
           value={data.payingSubs}
           currentValue={data.payingSubs}
           previousValue={data.prevPayingSubs}
         />
         <MetricCard
-          label="MRR"
+          label="Monthly Recurring Revenue (MRR)"
           value={`$${((data.payingSubs * 999) / 100).toFixed(0)}`}
         />
         <MetricCard
-          label="Blended CAC"
+          label="Blended Customer Acquisition Cost (CAC)"
           value="—"
         />
         <MetricCard
-          label="Claude Spend (MTD)"
+          label="Claude Spend (Month-to-Date)"
           value={`$${aiDollars}`}
           budgetBar={{ current: data.aiSpendCents, max: 10000 }}
         />
@@ -145,7 +151,7 @@ export default function OverviewTab({
           )}
         </ChartCard>
 
-        <ChartCard title="AI Cost by Feature (MTD)">
+        <ChartCard title="AI Cost by Feature (Month-to-Date)">
           {data.aiByPurpose.length === 0 ? (
             <p className="text-sm text-white/40 py-12 text-center">
               Not enough data — comes online after AI calls are logged
