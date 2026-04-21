@@ -1,23 +1,20 @@
 /**
- * Shared HTML shell for transactional auth emails. Matches the dark
- * aesthetic of the app: #0D0D0F canvas, #18181B card, violet→indigo
- * brand gradient on CTAs. Table-free because modern email clients
- * render flex fine and the copy is short — verification link, reset
- * link, magic link — so we don't need enterprise-grade layout compat.
+ * Sends a test magic-link email to verify the logo renders correctly.
  *
- * Every caller passes pre-escaped copy. Do NOT interpolate unescaped
- * user input (names) into any arg: email clients render HTML entities
- * but not script, so this is XSS-safe only as long as the argument
- * list stays free of user-controlled strings. Right now the only
- * dynamic piece is the URL, which we construct server-side.
+ * Usage:
+ *   set -a && source apps/web/.env.local && set +a
+ *   npx tsx apps/web/scripts/send-test-magic-link.ts
  */
-export function emailLayout(opts: {
+
+import { Resend } from "resend";
+
+// Inline the email builder so we don't need tsconfig path aliases
+function emailLayout(opts: {
   title: string;
   preheader?: string;
   intro: string;
   ctaLabel: string;
   ctaUrl: string;
-  /** Optional paragraph below the CTA (e.g. "expires in 1 hour"). */
   footnote?: string;
 }): string {
   const { title, preheader, intro, ctaLabel, ctaUrl, footnote } = opts;
@@ -57,3 +54,40 @@ export function emailLayout(opts: {
 </html>
 `.trim();
 }
+
+async function main() {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.error("RESEND_API_KEY is not set. Run:\n  set -a && source apps/web/.env.local && set +a");
+    process.exit(1);
+  }
+
+  const resend = new Resend(apiKey);
+  const to = "keenan@heelerdigital.com";
+  const from = process.env.EMAIL_FROM ?? "Acuity <hello@getacuity.io>";
+
+  const html = emailLayout({
+    title: "Sign in to Acuity",
+    preheader: "Tap the button to sign in. No password needed.",
+    intro:
+      "Click the button below to sign in. This link expires in 24 hours and can only be used once.",
+    ctaLabel: "Sign in to Acuity",
+    ctaUrl: "https://www.getacuity.io/api/auth/callback/email?callbackUrl=%2F&token=test-token-for-logo-verification&email=keenan%40heelerdigital.com",
+  });
+
+  console.log(`Sending test magic-link email to ${to}...`);
+
+  const result = await resend.emails.send({
+    from,
+    to,
+    subject: "[TEST] Sign in to Acuity — verify logo",
+    html,
+  });
+
+  console.log("Sent!", JSON.stringify(result, null, 2));
+}
+
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

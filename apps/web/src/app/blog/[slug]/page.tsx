@@ -146,7 +146,7 @@ function BlogJsonLdStatic({
           url: "https://getacuity.io",
           logo: {
             "@type": "ImageObject",
-            url: "https://getacuity.io/AcuityLogo.png",
+            url: "https://www.getacuity.io/AcuityLogo.png",
           },
         },
         mainEntityOfPage: {
@@ -201,7 +201,7 @@ function BlogJsonLdDynamic({ post }: { post: DynamicPost }) {
           url: "https://getacuity.io",
           logo: {
             "@type": "ImageObject",
-            url: "https://getacuity.io/AcuityLogo.png",
+            url: "https://www.getacuity.io/AcuityLogo.png",
           },
         },
         mainEntityOfPage: {

@@ -69,7 +69,7 @@ export default function RootLayout({
     "@type": "Organization",
     name: "Acuity",
     url: "https://getacuity.io",
-    logo: "https://getacuity.io/AcuityLogo.png",
+    logo: "https://www.getacuity.io/AcuityLogo.png",
     description:
       "AI journaling app that turns a 60-second nightly voice brain dump into extracted tasks, mood tracking, mental pattern detection, and weekly AI reports.",
     sameAs: [],

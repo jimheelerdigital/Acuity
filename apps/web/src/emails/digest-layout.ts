@@ -41,9 +41,7 @@ export function digestLayout(opts: {
   <span style="display:none!important;opacity:0;color:transparent;height:0;width:0;overflow:hidden;">${opts.preheader}</span>
   <div style="max-width:560px;margin:0 auto;background:#18181B;border-radius:16px;overflow:hidden;border:1px solid #27272A;">
     <div style="padding:28px 32px 16px;">
-      <div style="width:36px;height:36px;background:linear-gradient(135deg,#7C3AED,#4F46E5);border-radius:9px;display:inline-flex;align-items:center;justify-content:center;margin-bottom:12px;">
-        <span style="color:#FFFFFF;font-size:18px;">✦</span>
-      </div>
+      <img src="https://www.getacuity.io/AcuityLogo.png" alt="Acuity" width="36" height="36" style="display:inline-block;width:36px;height:36px;margin-bottom:12px;" />
       <p style="margin:0;color:#71717A;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;font-weight:600;">${opts.kindLabel}</p>
       <h1 style="margin:4px 0 0;color:#FAFAFA;font-size:22px;font-weight:700;line-height:1.3;">${opts.title}</h1>
       <p style="margin:4px 0 0;color:#71717A;font-size:13px;">${opts.dateRange}</p>
