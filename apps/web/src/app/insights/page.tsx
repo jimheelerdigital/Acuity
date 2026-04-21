@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 
 import { getAuthOptions } from "@/lib/auth";
 import { ComparisonsCard } from "@/components/comparisons-card";
+import { HealthCorrelationsCard } from "@/components/health-correlations-card";
 import { UserInsightsCard } from "@/components/user-insights-card";
 
 import { InsightsView } from "./insights-view";
@@ -21,6 +22,8 @@ export default async function InsightsPage() {
         {/* Auto-flagged observations — top of the page so the user reads
             "here's what we noticed this week" before the full charts. */}
         <UserInsightsCard />
+
+        <HealthCorrelationsCard />
 
         <ComparisonsCard />
 

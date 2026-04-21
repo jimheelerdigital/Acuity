@@ -149,6 +149,12 @@ model User {
   referralConversionsAsReferrer ReferralConversion[] @relation("ReferrerConversions")
   referralConversionsAsReferred ReferralConversion[] @relation("ReferredConversions")
   dataExports            DataExport[]
+  healthSnapshots        HealthSnapshot[]
+  // Apple Health connection state. True once the user accepts the
+  // iOS HealthKit permission prompt; cleared when they revoke in
+  // Settings or toggle off from Profile → Connected apps. Null on
+  // Android / never-connected iOS accounts.
+  healthConnectedAt      DateTime?
 }
 
 // Tombstone for deleted accounts — closes the trial-reset exploit
@@ -860,4 +866,28 @@ enum FlagSeverity {
   CRITICAL
   WARNING
   INFO
+}
+
+// Daily HealthKit snapshot. One row per (userId, date). Written by
+// the mobile app's Background Fetch worker which pulls yesterday's
+// HealthKit aggregates each morning. All metrics nullable because
+// HealthKit data availability varies by device + user permissions.
+// Insights layer reads this to compute mood/sleep correlations.
+model HealthSnapshot {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Local calendar date the metrics belong to (YYYY-MM-DD in the
+  // user's timezone). Stored as DateTime with time=00:00:00 UTC so
+  // query ranges stay simple; the timezone context lives on User.
+  date           DateTime
+  sleepHours     Float?
+  steps          Int?
+  avgHRV         Float?   // milliseconds, HealthKit's HKQuantityTypeIdentifierHeartRateVariabilitySDNN
+  activeMinutes  Int?     // Apple's "Exercise minutes" ring equivalent
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([userId, date])
+  @@index([userId, date])
 }
