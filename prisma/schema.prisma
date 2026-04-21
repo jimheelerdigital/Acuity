@@ -247,6 +247,11 @@ model Task {
   user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   entryId      String?
   entry        Entry?    @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  // Optional goal anchor — a task is a leaf-level contributor in the
+  // Goal Tree. null means the task is not attached to any goal. Set
+  // by the suggestion-accept flow or manually from the goal detail.
+  goalId       String?
+  goal         Goal?     @relation(fields: [goalId], references: [id], onDelete: SetNull)
   text         String?
   title        String?
   description  String?
@@ -256,6 +261,8 @@ model Task {
   snoozedUntil DateTime?
   completedAt  DateTime?
   createdAt    DateTime  @default(now())
+
+  @@index([goalId])
 }
 
 model Goal {
@@ -289,9 +296,25 @@ model Goal {
   // from the detail view. Extraction pipeline respects this — won't
   // overwrite a user-edited goal with a later re-extraction.
   editedByUser    Boolean   @default(false)
+  // Self-referential parent for the Goal Progression Tree. null = root.
+  // App-layer enforces max depth = 4 and prevents cycles; a Prisma
+  // CHECK constraint isn't portable across Postgres versions and a
+  // runtime guard in the API covers the same cases.
+  parentGoalId    String?
+  parent          Goal?     @relation("GoalTree", fields: [parentGoalId], references: [id], onDelete: SetNull)
+  children        Goal[]    @relation("GoalTree")
+  // Materialized path for subtree queries: "/rootId/midId/" style.
+  // Recomputed on insert + on reparent. Null for legacy rows; the
+  // tree API tolerates null and treats them as root-level.
+  treePath        String?
+  // 0 = root. 1..4 = descendants. Enforced at the API layer.
+  depth           Int       @default(0)
   createdAt       DateTime  @default(now())
+  tasks           Task[]
+  suggestions     GoalSuggestion[]
 
   @@index([userId, status])
+  @@index([parentGoalId])
 }
 
 model WeeklyReport {
@@ -626,4 +649,34 @@ model ThemeMention {
   @@unique([themeId, entryId])
   @@index([themeId, createdAt])
   @@index([entryId])
+}
+
+// ─── Goal Progression Tree ───────────────────────────────────────────────────
+//
+// Extraction-pipeline-proposed sub-goals the user can accept, dismiss,
+// or edit-then-accept. parentGoalId may be null for top-level
+// suggestions (rare — the current extraction hook only emits
+// suggestions when it matches an existing goal, so parentGoalId is
+// usually non-null). Nullable to leave room for future flows.
+//
+// sourceEntryId keeps provenance so the suggestion UI can show "from
+// your Oct 15 entry" with a deep link.
+model GoalSuggestion {
+  id            String    @id @default(cuid())
+  userId        String
+  // null when the suggestion is free-floating. Non-null anchors it to
+  // a specific parent goal. onDelete: SetNull so deleting a parent goal
+  // doesn't lose the suggestion — it becomes a top-level proposal.
+  parentGoalId  String?
+  parentGoal    Goal?     @relation(fields: [parentGoalId], references: [id], onDelete: SetNull)
+  suggestedText String
+  sourceEntryId String?
+  // "PENDING" | "ACCEPTED" | "DISMISSED" — String for cross-version
+  // compatibility (same pattern as other status columns).
+  status        String    @default("PENDING")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([userId, status])
+  @@index([parentGoalId])
 }
