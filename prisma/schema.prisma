@@ -157,6 +157,7 @@ model User {
   healthConnectedAt      DateTime?
   stateOfMeReports       StateOfMeReport[]
   lifeDimensions         UserLifeDimension[]
+  calendarConnections    CalendarConnection[]
   // Preset template the user picked for their Life Matrix labels.
   // "DEFAULT" | "STUDENT" | "PARENT" | "CUSTOM" | null. Null means
   // the user has never customized — render the canonical labels.
@@ -948,6 +949,44 @@ model UserLifeDimension {
   updatedAt   DateTime @updatedAt
 
   @@unique([userId, area])
+  @@index([userId])
+}
+
+// Calendar integration stub. One row per connected calendar provider
+// per user. The OAuth flow, token storage, and event-read pipeline
+// ship post-beta — see docs/CALENDAR_INTEGRATION_PLAN.md — but the
+// table exists now so /account can surface the connect state and
+// writes stay compatible once the flows land.
+//
+// provider: "GOOGLE" | "OUTLOOK" | "APPLE" (CalDAV). String (not enum)
+// for cross-Postgres compatibility, same pattern as other status
+// columns. accessToken / refreshToken are nullable + intended to be
+// encrypted at rest by a KMS wrapper that lands with the OAuth flow.
+model CalendarConnection {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider     String
+  // Provider-side account identifier (google sub, outlook oid, apple
+  // principal URL). Unique per provider so the same user re-connecting
+  // the same account is a no-op upsert.
+  providerAccountId String
+  accessToken  String?  @db.Text
+  refreshToken String?  @db.Text
+  tokenExpiresAt DateTime?
+  // Last time we pulled events from this provider. Drives the
+  // "Last synced" copy in /account and lets the ingest cron decide
+  // when to re-fetch.
+  lastSyncedAt DateTime?
+  // When non-null, the connection is broken (revoked token, expired
+  // refresh, etc.) — /account shows a "Reconnect" CTA.
+  lastErrorAt  DateTime?
+  lastError    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([userId, provider])
+  @@unique([provider, providerAccountId])
   @@index([userId])
 }
 

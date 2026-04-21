@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import { ThemeToggle } from "@/components/theme-toggle";
 
+import { IntegrationsSection } from "./integrations-section";
 import { LifeDimensionsSection } from "./life-dimensions-section";
 
 interface Props {
@@ -91,6 +92,9 @@ export default function AccountClient({
           initialWeekly={weeklyEmailEnabled}
           initialMonthly={monthlyEmailEnabled}
         />
+
+        {/* Integrations (calendar stubs — foundation only) */}
+        <IntegrationsSection />
 
         {/* Data export */}
         <DataExportSection />
