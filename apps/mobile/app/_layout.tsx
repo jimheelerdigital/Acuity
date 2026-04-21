@@ -7,11 +7,23 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { AuthProvider, useAuth } from "@/contexts/auth-context";
 import { ThemeProvider, useTheme } from "@/contexts/theme-context";
+import { initSentry, setSentryUser } from "@/lib/sentry";
+
+// Sentry init at module scope — idempotent on re-import.
+initSentry();
 
 function AuthGate() {
   const { user, loading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+
+  // Tag Sentry with the current user id as soon as auth resolves.
+  useEffect(() => {
+    if (loading) return;
+    setSentryUser(
+      user ? { id: user.id, subscriptionStatus: user.subscriptionStatus } : null
+    );
+  }, [user, loading]);
 
   useEffect(() => {
     if (loading) return;

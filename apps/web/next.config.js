@@ -43,7 +43,7 @@ const CSP_DIRECTIVES = [
   "img-src 'self' data: blob: https: https://*.googleusercontent.com https://www.facebook.com https://*.google-analytics.com",
   "media-src 'self' blob:",
   // Connections — APIs called from the browser
-  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.posthog.com https://*.hotjar.com https://*.hotjar.io https://www.google-analytics.com https://api.stripe.com https://checkout.stripe.com https://r.stripe.com https://*.stripe.com https://www.facebook.com https://connect.facebook.net https://t.contentsquare.net https://oauth2.googleapis.com",
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.posthog.com https://*.hotjar.com https://*.hotjar.io https://www.google-analytics.com https://api.stripe.com https://checkout.stripe.com https://r.stripe.com https://*.stripe.com https://www.facebook.com https://connect.facebook.net https://t.contentsquare.net https://oauth2.googleapis.com https://*.sentry.io https://*.ingest.sentry.io",
   // Frames (Stripe Checkout embeds an iframe)
   "frame-src 'self' https://js.stripe.com https://checkout.stripe.com https://*.stripe.com https://www.facebook.com",
   "frame-ancestors 'none'",
@@ -111,4 +111,23 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig;
+// Wrap with Sentry when SENTRY_ORG + SENTRY_PROJECT are configured.
+// Without them, `withSentryConfig` would fail during build on uploading
+// source maps. Gate so local + preview builds without Sentry env don't
+// break. Required env vars documented in docs/ERROR_MONITORING.md.
+const { SENTRY_ORG, SENTRY_PROJECT, SENTRY_AUTH_TOKEN } = process.env;
+if (SENTRY_ORG && SENTRY_PROJECT && SENTRY_AUTH_TOKEN) {
+  const { withSentryConfig } = require("@sentry/nextjs");
+  module.exports = withSentryConfig(nextConfig, {
+    org: SENTRY_ORG,
+    project: SENTRY_PROJECT,
+    authToken: SENTRY_AUTH_TOKEN,
+    silent: !process.env.CI,
+    widenClientFileUpload: true,
+    tunnelRoute: "/monitoring",
+    disableLogger: true,
+    automaticVercelMonitors: false,
+  });
+} else {
+  module.exports = nextConfig;
+}
