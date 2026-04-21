@@ -42,11 +42,16 @@ export async function POST(req: NextRequest) {
     email?: unknown;
     password?: unknown;
     name?: unknown;
+    referralCode?: unknown;
   } | null;
 
   const email = typeof body?.email === "string" ? body.email.toLowerCase().trim() : "";
   const password = typeof body?.password === "string" ? body.password : "";
   const name = typeof body?.name === "string" && body.name.trim() ? body.name.trim().slice(0, 100) : null;
+  const referralCode =
+    typeof body?.referralCode === "string" && body.referralCode.trim().length > 0
+      ? body.referralCode.trim().slice(0, 16)
+      : null;
 
   if (!email || !EMAIL_RE.test(email)) {
     return NextResponse.json({ error: "InvalidEmail" }, { status: 400 });
@@ -112,7 +117,7 @@ export async function POST(req: NextRequest) {
     // Same bootstrap as Google OAuth signups. Trial clock + Life
     // Matrix + UserMemory + trial_started event.
     const { bootstrapNewUser } = await import("@/lib/bootstrap-user");
-    await bootstrapNewUser({ userId, email });
+    await bootstrapNewUser({ userId, email, referralCodeFromSignup: referralCode });
   }
 
   // Store the verification token. Reuse NextAuth's VerificationToken

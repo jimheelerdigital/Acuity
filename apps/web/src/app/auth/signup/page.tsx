@@ -1,18 +1,48 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 
 const PASSWORD_MIN = 12;
 
+/** localStorage key for the referral code so a user who clicked
+ *  /?ref=CODE and wandered through landing → signup doesn't lose
+ *  the attribution. Cleared on successful signup. */
+const REFERRAL_KEY = "acuity_ref_code";
+
 function SignUpForm() {
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [referralCode, setReferralCode] = useState<string | null>(null);
   const [loading, setLoading] = useState<"google" | "password" | null>(null);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Resolve ref code from (in order) query string → localStorage.
+  // Storing it in localStorage lets the ?ref= → sign-up flow survive
+  // a marketing landing detour without a server-side session.
+  useEffect(() => {
+    const fromQuery = searchParams?.get("ref");
+    if (fromQuery) {
+      try {
+        localStorage.setItem(REFERRAL_KEY, fromQuery.slice(0, 16));
+      } catch {
+        // Safari Private Mode may reject; non-fatal.
+      }
+      setReferralCode(fromQuery.slice(0, 16));
+      return;
+    }
+    try {
+      const stored = localStorage.getItem(REFERRAL_KEY);
+      if (stored) setReferralCode(stored);
+    } catch {
+      // ignore
+    }
+  }, [searchParams]);
 
   const handleGoogle = async () => {
     setError(null);
@@ -33,7 +63,12 @@ function SignUpForm() {
       const res = await fetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), password, name: name.trim() || null }),
+        body: JSON.stringify({
+          email: email.trim(),
+          password,
+          name: name.trim() || null,
+          referralCode: referralCode ?? undefined,
+        }),
       });
       if (!res.ok) {
         const body = (await res.json().catch(() => ({}))) as { error?: string; message?: string };
@@ -51,6 +86,13 @@ function SignUpForm() {
         return;
       }
       if (typeof fbq !== "undefined") fbq("track", "CompleteRegistration");
+      // Clear the stored code so a subsequent signup from the same
+      // browser doesn't mis-attribute.
+      try {
+        localStorage.removeItem(REFERRAL_KEY);
+      } catch {
+        // ignore
+      }
       setSent(true);
     } finally {
       setLoading(null);

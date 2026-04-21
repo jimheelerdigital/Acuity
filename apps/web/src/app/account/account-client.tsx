@@ -1,7 +1,7 @@
 "use client";
 
 import { signOut } from "next-auth/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { ThemeToggle } from "@/components/theme-toggle";
 
@@ -73,6 +73,9 @@ export default function AccountClient({
           initialDays={notificationDays}
           initialEnabled={notificationsEnabled}
         />
+
+        {/* Referrals */}
+        <ReferralsSection />
 
         {/* Appearance */}
         <section className="mt-8 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-6">
@@ -521,6 +524,95 @@ function SubscriptionSection({
       {error && (
         <p className="mt-3 text-xs text-red-600 dark:text-red-400">{error}</p>
       )}
+    </section>
+  );
+}
+
+/**
+ * Referrals section. Shows the user's unique share link, copy-to-
+ * clipboard affordance, and simple stats (signups via / conversions
+ * to paid). Reward fulfillment is stubbed server-side — Jim decides
+ * the reward type. This UI stays honest about that:
+ *   "Rewards coming soon" placeholder copy.
+ */
+function ReferralsSection() {
+  const [data, setData] = useState<{
+    referralCode: string | null;
+    signups: number;
+    conversions: number;
+  } | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/user/referrals")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((b) => setData(b))
+      .catch(() => {});
+  }, []);
+
+  const url =
+    typeof window !== "undefined" && data?.referralCode
+      ? `${window.location.origin}/?ref=${data.referralCode}`
+      : data?.referralCode
+        ? `https://www.getacuity.io/?ref=${data.referralCode}`
+        : null;
+
+  const copy = async () => {
+    if (!url) return;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // ignore — browser refused; user can select manually
+    }
+  };
+
+  return (
+    <section className="mt-8 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-6">
+      <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
+        Referrals
+      </h2>
+      <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+        Share Acuity with someone who might want it. We&apos;ll track
+        sign-ups; rewards are coming soon.
+      </p>
+
+      <div className="mt-4">
+        <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1.5">
+          Your share link
+        </label>
+        <div className="flex items-center gap-2">
+          <input
+            readOnly
+            value={url ?? "Loading…"}
+            className="flex-1 rounded-lg border border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-[#13131F] px-3 py-2 text-xs font-mono text-zinc-700 dark:text-zinc-200"
+            onClick={(e) => (e.target as HTMLInputElement).select()}
+          />
+          <button
+            onClick={copy}
+            disabled={!url}
+            className="rounded-lg bg-zinc-900 px-3 py-2 text-xs font-semibold text-white dark:bg-zinc-50 dark:text-zinc-900 hover:opacity-90 disabled:opacity-40"
+          >
+            {copied ? "Copied ✓" : "Copy"}
+          </button>
+        </div>
+      </div>
+
+      <dl className="mt-5 grid grid-cols-2 gap-4 text-sm">
+        <div>
+          <dt className="text-xs text-zinc-500 dark:text-zinc-400">People joined</dt>
+          <dd className="mt-1 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+            {data?.signups ?? "—"}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-xs text-zinc-500 dark:text-zinc-400">Converted to paid</dt>
+          <dd className="mt-1 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+            {data?.conversions ?? "—"}
+          </dd>
+        </div>
+      </dl>
     </section>
   );
 }

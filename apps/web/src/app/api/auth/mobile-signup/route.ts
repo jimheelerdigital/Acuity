@@ -45,7 +45,12 @@ export async function POST(req: NextRequest) {
     email?: unknown;
     password?: unknown;
     name?: unknown;
+    referralCode?: unknown;
   } | null;
+  const referralCode =
+    typeof body?.referralCode === "string" && body.referralCode.trim().length > 0
+      ? body.referralCode.trim().slice(0, 16)
+      : null;
 
   const email = typeof body?.email === "string" ? body.email.toLowerCase().trim() : "";
   const password = typeof body?.password === "string" ? body.password : "";
@@ -97,7 +102,7 @@ export async function POST(req: NextRequest) {
     userId = created.id;
 
     const { bootstrapNewUser } = await import("@/lib/bootstrap-user");
-    await bootstrapNewUser({ userId, email });
+    await bootstrapNewUser({ userId, email, referralCodeFromSignup: referralCode });
   }
 
   await prisma.verificationToken.create({

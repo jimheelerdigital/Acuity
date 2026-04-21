@@ -45,6 +45,9 @@ export async function GET(req: NextRequest) {
       notificationTime: true,
       notificationDays: true,
       notificationsEnabled: true,
+      weeklyEmailEnabled: true,
+      monthlyEmailEnabled: true,
+      referralCode: true,
       onboarding: { select: { completedAt: true, currentStep: true } },
     },
   });
@@ -52,6 +55,16 @@ export async function GET(req: NextRequest) {
   if (!user) {
     return NextResponse.json({ user: null }, { status: 404 });
   }
+
+  // Opportunistic lastSeenAt bump. Used by the onboarding smart-skip
+  // (W6) to decide if a user has genuinely abandoned. Fire-and-forget;
+  // a failed write shouldn't block the response.
+  void prisma.user
+    .update({
+      where: { id: userId },
+      data: { lastSeenAt: new Date() },
+    })
+    .catch(() => {});
 
   // Flatten the onboarding relation into top-level booleans the
   // mobile AuthGate can read without understanding the nested shape.

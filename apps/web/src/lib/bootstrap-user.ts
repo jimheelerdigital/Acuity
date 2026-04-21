@@ -33,19 +33,49 @@ import { DEFAULT_LIFE_AREAS } from "@acuity/shared";
 export async function bootstrapNewUser(params: {
   userId: string;
   email: string | null;
+  /** Optional ?ref=CODE value from the signup redirect. Attaches the
+   *  resulting User.referredById and, on trial→paid conversion later,
+   *  credits the referrer via ReferralConversion. */
+  referralCodeFromSignup?: string | null;
 }): Promise<void> {
-  const { userId, email } = params;
+  const { userId, email, referralCodeFromSignup } = params;
   const { prisma } = await import("@/lib/prisma");
   const { track } = await import("@/lib/posthog");
+  const { generateReferralCode, resolveReferrerByCode } = await import(
+    "@/lib/referrals"
+  );
 
   const trialDays = await trialDaysForEmail(email);
   const trialEndsAt = new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000);
+
+  // Resolve a referrer ID if the signup flow passed a code. We look up
+  // BEFORE the user.update below so a single write seeds both trial
+  // state and the referral attribution atomically.
+  let referredById: string | null = null;
+  if (referralCodeFromSignup) {
+    referredById = await resolveReferrerByCode(prisma, referralCodeFromSignup);
+  }
+
+  // Issue a referral code up-front. Retry-on-collision a few times —
+  // 32^8 ≈ 10^12 codes, collisions are astronomically rare at beta
+  // scale, but the loop guards a freak clash without failing signup.
+  let code = generateReferralCode();
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const existing = await prisma.user.findFirst({
+      where: { referralCode: code },
+      select: { id: true },
+    });
+    if (!existing) break;
+    code = generateReferralCode();
+  }
 
   await prisma.user.update({
     where: { id: userId },
     data: {
       subscriptionStatus: "TRIAL",
       trialEndsAt,
+      referralCode: code,
+      ...(referredById ? { referredById } : {}),
     },
   });
 
