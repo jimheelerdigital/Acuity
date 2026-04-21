@@ -257,9 +257,12 @@ export function InsightsView() {
       {/* Latest report */}
       {latestReport ? (
         <section>
-          <h2 className="mb-4 text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
-            Latest weekly report
-          </h2>
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
+              Latest weekly report
+            </h2>
+            <ShareReportButton reportId={latestReport.id} />
+          </div>
           <div className="rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] overflow-hidden shadow-sm">
             {/* Report header */}
             <div className="px-5 py-4 border-b border-zinc-100 dark:border-white/5">
@@ -357,6 +360,145 @@ export function InsightsView() {
             </p>
           </div>
         </section>
+      )}
+    </>
+  );
+}
+
+/**
+ * Share report button. Three states: idle → loading → shared (shows
+ * URL + copy/revoke). Keeps the modal small and in-place so the user
+ * doesn't lose report context to tap Share.
+ */
+function ShareReportButton({ reportId }: { reportId: string }) {
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [expiresAt, setExpiresAt] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const generate = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/weekly/${reportId}/share`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      });
+      if (res.ok) {
+        const body = await res.json();
+        setShareUrl(body.url);
+        setExpiresAt(body.expiresAt);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const revoke = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/weekly/${reportId}/share`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        setShareUrl(null);
+        setExpiresAt(null);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const copy = async () => {
+    if (!shareUrl) return;
+    await navigator.clipboard.writeText(shareUrl).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1800);
+  };
+
+  return (
+    <>
+      <button
+        onClick={() => {
+          setOpen(true);
+          if (!shareUrl) generate();
+        }}
+        className="rounded-full border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-3 py-1 text-xs font-semibold text-zinc-700 dark:text-zinc-200 hover:border-violet-300 dark:hover:border-violet-700/40 transition"
+      >
+        Share this report
+      </button>
+
+      {open && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setOpen(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl bg-white dark:bg-[#1E1E2E] border border-zinc-200 dark:border-white/10 p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
+              Share this report
+            </h3>
+            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+              Anyone with the link can view — no sign-in required. Link
+              expires in 30 days; you can revoke it anytime.
+            </p>
+
+            {loading && !shareUrl ? (
+              <div className="py-6 flex justify-center">
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-zinc-200 dark:border-white/10 border-t-violet-500" />
+              </div>
+            ) : shareUrl ? (
+              <div className="mt-4">
+                <div className="flex items-center gap-2">
+                  <input
+                    readOnly
+                    value={shareUrl}
+                    className="flex-1 rounded-lg border border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-[#13131F] px-3 py-2 text-xs font-mono text-zinc-700 dark:text-zinc-200"
+                    onClick={(e) => (e.target as HTMLInputElement).select()}
+                  />
+                  <button
+                    onClick={copy}
+                    className="rounded-lg bg-zinc-900 px-3 py-2 text-xs font-semibold text-white dark:bg-zinc-50 dark:text-zinc-900"
+                  >
+                    {copied ? "Copied ✓" : "Copy"}
+                  </button>
+                </div>
+                {expiresAt && (
+                  <p className="mt-2 text-[11px] text-zinc-500 dark:text-zinc-400">
+                    Expires{" "}
+                    {new Date(expiresAt).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
+                  </p>
+                )}
+                <div className="mt-5 flex justify-between">
+                  <button
+                    onClick={revoke}
+                    disabled={loading}
+                    className="text-xs font-medium text-red-600 dark:text-red-400 hover:text-red-500"
+                  >
+                    Revoke link
+                  </button>
+                  <button
+                    onClick={() => setOpen(false)}
+                    className="text-xs font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
+                  >
+                    Done
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <p className="mt-4 text-sm text-zinc-500 dark:text-zinc-400">
+                Couldn&apos;t generate a share link. Please try again.
+              </p>
+            )}
+          </div>
+        </div>
       )}
     </>
   );

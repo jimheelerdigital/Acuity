@@ -367,6 +367,12 @@ model WeeklyReport {
   // Cross-reference into Inngest's run dashboard; populated by
   // generateWeeklyReportFn's first step.
   inngestRunId    String?
+  // Public share link. When non-null, /shared/weekly/[publicShareId]
+  // renders a read-only view (no auth). Unique across all users so
+  // the URL can't be guessed from a user id + week offset.
+  publicShareId         String?  @unique
+  publicShareExpiresAt  DateTime?
+  publicShareViewCount  Int      @default(0)
   createdAt       DateTime @default(now())
 }
 
