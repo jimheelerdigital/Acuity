@@ -7,6 +7,37 @@
 
 ---
 
+## 2026-04-21 — Update all email templates to show the new Acuity logo
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** b0aefa1
+
+### In plain English (for Keenan)
+All emails from Acuity — magic link, password reset, verification, payment failed, data export ready, State of Me ready, weekly digest, monthly digest, and the waitlist drip sequence — now show the actual purple diamond Acuity logo instead of a placeholder "✦" character. A test script is included so you can send yourself a test magic link email to verify the logo looks right before going live.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/emails/layout.ts`: replaced inline `✦` gradient div with `<img src="https://www.getacuity.io/AcuityLogo.png">` (48x48). This is the shared shell for all transactional auth emails (magic-link, password-reset, verification, payment-failed, state-of-me-ready, data-export-ready).
+- `apps/web/src/emails/digest-layout.ts`: same replacement (36x36). Shared shell for weekly and monthly digest emails.
+- `apps/web/src/lib/drip-emails.ts`: updated logo URL from `getacuity.io` to `www.getacuity.io` for consistency (was already using AcuityLogo.png).
+- `apps/web/src/app/api/waitlist/route.ts`: same URL standardization for waitlist welcome email.
+- `apps/web/src/app/layout.tsx`, `voice-journaling/page.tsx`, `blog/[slug]/page.tsx`: standardized Schema.org `logo` URLs to use `www.getacuity.io`.
+- New script: `apps/web/scripts/send-test-magic-link.ts` — sends a test magic-link email to keenan@heelerdigital.com via Resend to verify logo rendering.
+
+### Manual steps needed
+- [ ] Run test email to verify logo: `set -a && source apps/web/.env.local && set +a && npx tsx apps/web/scripts/send-test-magic-link.ts` (Keenan — from home network)
+- [ ] Verify logo renders correctly in Gmail, Apple Mail, and mobile (Keenan)
+- [ ] Note: `AcuityLogo.png` is 8.1 MB — consider generating optimized versions (favicon, apple-touch-icon, og-image) for the missing icon files referenced in layout.tsx. The favicon-96x96.png, favicon.svg, favicon.ico, apple-touch-icon.png, and site.webmanifest files are referenced in `<head>` but don't exist in `apps/web/public/` yet. (Jimmy)
+
+### Notes
+- The old logo (`acuity-logo.png`, 762 KB, the glossy purple "A" app icon) is still in `apps/web/public/` but is no longer referenced anywhere in code. Safe to delete when convenient.
+- `acuity-logo copy.png` is also unused — appears to be a duplicate of the old logo.
+- The new logo (`AcuityLogo.png`, 8.1 MB) is a transparent-background PNG which renders well on the dark email backgrounds but is very large. For email performance, an optimized/compressed version would be ideal as a follow-up.
+- `AcuityLogo.png` and `AcuityLogoDark.png` appear to be identical files (same size, same visual). Could consolidate to one file if confirmed.
+- Favicon/apple-touch-icon/manifest files are declared in `layout.tsx` `<head>` but the actual files don't exist in `public/`. This doesn't break anything (browsers just get 404s and fall back) but should be addressed — generate proper icon sizes from the new logo.
+
+---
+
 ## 2026-04-21 — Admin dashboard: caching, readable labels, and Guide tab
 
 - **Requested by:** Keenan
