@@ -110,6 +110,32 @@ export async function PATCH(req: NextRequest) {
     case "dismiss":
       await prisma.task.delete({ where: { id: body.id } });
       return NextResponse.json({ success: true });
+    case "edit": {
+      const fields = body.fields as Record<string, unknown> | undefined;
+      if (!fields || typeof fields !== "object") {
+        return NextResponse.json({ error: "Missing fields" }, { status: 400 });
+      }
+      const VALID_PRIORITY = ["URGENT", "HIGH", "MEDIUM", "LOW"];
+      const update: Record<string, unknown> = {};
+      if (typeof fields.title === "string") {
+        update.title = fields.title.trim();
+        update.text = fields.title.trim();
+      }
+      if (typeof fields.description === "string" || fields.description === null) {
+        update.description = fields.description;
+      }
+      if (typeof fields.priority === "string") {
+        if (!VALID_PRIORITY.includes(fields.priority)) {
+          return NextResponse.json({ error: "Invalid priority" }, { status: 400 });
+        }
+        update.priority = fields.priority;
+      }
+      if (typeof fields.dueDate === "string" || fields.dueDate === null) {
+        update.dueDate = fields.dueDate ? new Date(fields.dueDate as string) : null;
+      }
+      data = update;
+      break;
+    }
     default:
       return NextResponse.json(
         { error: "Invalid action" },

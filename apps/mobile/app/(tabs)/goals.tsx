@@ -1,7 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Pressable,
   RefreshControl,
   SectionList,
   Text,
@@ -33,10 +35,10 @@ const LIFE_AREAS: Record<string, { label: string; color: string }> = {
 };
 
 const STATUS_STYLES: Record<string, { label: string; color: string }> = {
-  ACTIVE: { label: "Active", color: "#34D399" },
-  COMPLETED: { label: "Completed", color: "#A78BFA" },
-  PAUSED: { label: "Paused", color: "#FBBF24" },
-  ABANDONED: { label: "Archived", color: "#71717A" },
+  NOT_STARTED: { label: "Not started", color: "#71717A" },
+  IN_PROGRESS: { label: "In progress", color: "#34D399" },
+  ON_HOLD: { label: "On hold", color: "#FBBF24" },
+  COMPLETE: { label: "Complete", color: "#A78BFA" },
 };
 
 export default function GoalsTab() {
@@ -91,9 +93,9 @@ export default function GoalsTab() {
       <View className="px-5 pt-4 pb-2">
         <View className="flex-row items-baseline gap-2">
           <Text className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">Goals</Text>
-          {goals.filter((g) => g.status === "ACTIVE").length > 0 && (
+          {goals.filter((g) => g.status === "IN_PROGRESS").length > 0 && (
             <Text className="text-sm text-zinc-500 dark:text-zinc-400">
-              {goals.filter((g) => g.status === "ACTIVE").length} active
+              {goals.filter((g) => g.status === "IN_PROGRESS").length} in progress
             </Text>
           )}
         </View>
@@ -151,10 +153,14 @@ export default function GoalsTab() {
 
 function GoalCard({ goal }: { goal: Goal }) {
   const area = LIFE_AREAS[goal.lifeArea] ?? { label: goal.lifeArea, color: "#71717A" };
-  const status = STATUS_STYLES[goal.status] ?? STATUS_STYLES.ACTIVE;
+  const status = STATUS_STYLES[goal.status] ?? STATUS_STYLES.NOT_STARTED;
+  const router = useRouter();
 
   return (
-    <View className="rounded-2xl border border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-[#13131F] dark:bg-[#1E1E2E] p-4 mb-2.5">
+    <Pressable
+      onPress={() => router.push(`/goal/${goal.id}`)}
+      style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+      className="rounded-2xl border border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-[#13131F] dark:bg-[#1E1E2E] p-4 mb-2.5">
       {/* Status + target date */}
       <View className="flex-row items-center gap-2 mb-1.5">
         <View
@@ -187,7 +193,7 @@ function GoalCard({ goal }: { goal: Goal }) {
       {/* Title */}
       <Text
         className={`text-sm leading-snug ${
-          goal.status === "COMPLETED" || goal.status === "ABANDONED"
+          goal.status === "COMPLETE"
             ? "text-zinc-500 dark:text-zinc-400 line-through"
             : "text-zinc-700 dark:text-zinc-200"
         }`}
@@ -213,6 +219,6 @@ function GoalCard({ goal }: { goal: Goal }) {
           {goal.progress}%
         </Text>
       </View>
-    </View>
+    </Pressable>
   );
 }

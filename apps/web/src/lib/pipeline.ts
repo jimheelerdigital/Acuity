@@ -290,6 +290,20 @@ export async function processEntry({
               title: g.title,
               description: g.description ?? null,
               targetDate: g.targetDate ? new Date(g.targetDate) : null,
+              lastMentionedAt: new Date(),
+              entryRefs: [entryId],
+            },
+          });
+        } else {
+          const refs = Array.from(new Set([...(existing.entryRefs ?? []), entryId]));
+          await tx.goal.update({
+            where: { id: existing.id },
+            data: {
+              lastMentionedAt: new Date(),
+              entryRefs: refs,
+              ...(!existing.editedByUser && g.description
+                ? { description: g.description }
+                : {}),
             },
           });
         }

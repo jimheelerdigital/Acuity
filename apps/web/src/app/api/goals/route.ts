@@ -43,6 +43,9 @@ export async function POST(req: NextRequest) {
       description: body.description ?? null,
       targetDate: body.targetDate ? new Date(body.targetDate) : null,
       lifeArea: body.lifeArea ?? "PERSONAL",
+      // Manually-created goals are user-authored from the first keystroke,
+      // so they're immune to extraction overwrites from day one.
+      editedByUser: true,
     },
   });
 
@@ -76,16 +79,22 @@ export async function PATCH(req: NextRequest) {
 
   switch (body.action) {
     case "complete":
-      data = { status: "COMPLETED", progress: 100 };
+      data = { status: "COMPLETE", progress: 100, editedByUser: true };
       break;
     case "pause":
-      data = { status: "PAUSED" };
+      data = { status: "ON_HOLD", editedByUser: true };
       break;
     case "resume":
-      data = { status: "ACTIVE" };
+      data = { status: "IN_PROGRESS", editedByUser: true };
+      break;
+    case "start":
+      data = { status: "IN_PROGRESS", editedByUser: true };
       break;
     case "archive":
-      data = { status: "ABANDONED" };
+      // "Archive" was a legacy distinct state (ABANDONED) that the new
+      // 4-value vocab doesn't have. Collapsed into ON_HOLD — semantically
+      // "I'm not pursuing this right now" covers both pause and abandon.
+      data = { status: "ON_HOLD", editedByUser: true };
       break;
     case "progress":
       if (typeof body.progress !== "number" || body.progress < 0 || body.progress > 100) {
@@ -94,8 +103,43 @@ export async function PATCH(req: NextRequest) {
           { status: 400 }
         );
       }
-      data = { progress: body.progress };
+      data = { progress: body.progress, editedByUser: true };
       break;
+    case "edit": {
+      // Field-level edit from the goal detail view. Accepts any subset of
+      // { title, description, notes, status, progress, targetDate, lifeArea }.
+      // Validates status against the 4-value vocab and progress as 0..100.
+      const fields = body.fields as Record<string, unknown> | undefined;
+      if (!fields || typeof fields !== "object") {
+        return NextResponse.json({ error: "Missing fields object" }, { status: 400 });
+      }
+      const VALID_STATUS = ["NOT_STARTED", "IN_PROGRESS", "ON_HOLD", "COMPLETE"];
+      const update: Record<string, unknown> = { editedByUser: true };
+      if (typeof fields.title === "string") update.title = fields.title.trim();
+      if (typeof fields.description === "string" || fields.description === null)
+        update.description = fields.description;
+      if (typeof fields.notes === "string" || fields.notes === null)
+        update.notes = fields.notes;
+      if (typeof fields.status === "string") {
+        if (!VALID_STATUS.includes(fields.status)) {
+          return NextResponse.json({ error: "Invalid status" }, { status: 400 });
+        }
+        update.status = fields.status;
+        if (fields.status === "COMPLETE") update.progress = 100;
+      }
+      if (typeof fields.progress === "number") {
+        if (fields.progress < 0 || fields.progress > 100) {
+          return NextResponse.json({ error: "progress 0-100" }, { status: 400 });
+        }
+        update.progress = fields.progress;
+      }
+      if (typeof fields.targetDate === "string" || fields.targetDate === null) {
+        update.targetDate = fields.targetDate ? new Date(fields.targetDate as string) : null;
+      }
+      if (typeof fields.lifeArea === "string") update.lifeArea = fields.lifeArea;
+      data = update;
+      break;
+    }
     default:
       return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   }

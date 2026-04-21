@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
   const tasksClosed = tasks.filter((t) => t.status === "DONE").length;
 
   const goals = await prisma.goal.findMany({
-    where: { userId, status: "ACTIVE" },
+    where: { userId, status: { in: ["IN_PROGRESS", "NOT_STARTED"] } },
   });
 
   const now = new Date();

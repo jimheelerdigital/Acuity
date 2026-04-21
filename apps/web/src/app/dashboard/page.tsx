@@ -82,7 +82,7 @@ export default async function DashboardPage() {
         take: 10,
       }),
       prisma.goal.findMany({
-        where: { userId, status: "ACTIVE" },
+        where: { userId, status: { in: ["IN_PROGRESS", "NOT_STARTED"] } },
         orderBy: { createdAt: "desc" },
         take: 5,
       }),

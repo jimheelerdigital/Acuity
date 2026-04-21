@@ -1,0 +1,85 @@
+import { getServerSession } from "next-auth";
+import Link from "next/link";
+import { notFound, redirect } from "next/navigation";
+
+import { getAuthOptions } from "@/lib/auth";
+
+import { GoalDetail } from "./goal-detail";
+
+export const dynamic = "force-dynamic";
+
+export const metadata = {
+  title: "Goal — Acuity",
+  robots: { index: false, follow: false },
+};
+
+/**
+ * Goal detail view. Loads the goal + linked entries server-side, hands
+ * off to a client component for inline editing (title/description/status/
+ * progress/notes), "Add reflection" CTA, and the linked-entries list.
+ *
+ * Auth: cookie session only — mobile hits /api/goals/[id] directly and
+ * renders its own native screen, it never lands on this HTML page.
+ */
+export default async function GoalDetailPage({
+  params,
+}: {
+  params: { id: string };
+}) {
+  const session = await getServerSession(getAuthOptions());
+  if (!session?.user?.id) redirect(`/auth/signin?callbackUrl=/goals/${params.id}`);
+
+  const { prisma } = await import("@/lib/prisma");
+  const goal = await prisma.goal.findFirst({
+    where: { id: params.id, userId: session.user.id },
+  });
+  if (!goal) notFound();
+
+  const refs = Array.isArray(goal.entryRefs) ? goal.entryRefs.slice(0, 20) : [];
+  const linkedEntries =
+    refs.length > 0
+      ? await prisma.entry.findMany({
+          where: { id: { in: refs }, userId: session.user.id },
+          select: {
+            id: true,
+            summary: true,
+            createdAt: true,
+            mood: true,
+          },
+          orderBy: { createdAt: "desc" },
+        })
+      : [];
+
+  return (
+    <div className="min-h-screen">
+      <main className="mx-auto max-w-3xl px-6 py-10 animate-fade-in">
+        <Link
+          href="/goals"
+          className="mb-4 inline-block text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition"
+        >
+          ← Goals
+        </Link>
+        <GoalDetail
+          initialGoal={{
+            id: goal.id,
+            title: goal.title,
+            description: goal.description,
+            lifeArea: goal.lifeArea,
+            status: goal.status,
+            progress: goal.progress,
+            notes: goal.notes,
+            targetDate: goal.targetDate?.toISOString() ?? null,
+            lastMentionedAt: goal.lastMentionedAt?.toISOString() ?? null,
+            createdAt: goal.createdAt.toISOString(),
+          }}
+          linkedEntries={linkedEntries.map((e) => ({
+            id: e.id,
+            summary: e.summary,
+            mood: e.mood,
+            createdAt: e.createdAt.toISOString(),
+          }))}
+        />
+      </main>
+    </div>
+  );
+}

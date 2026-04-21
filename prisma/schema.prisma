@@ -64,8 +64,22 @@ model User {
   subscriptionStatus     String       @default("TRIAL")
   trialEndsAt            DateTime?
   timezone               String       @default("America/Chicago")
+  // DEPRECATED: superseded by notificationTime + notificationDays +
+  // notificationsEnabled (added 2026-04-20 alongside the onboarding
+  // notifications step). Left in place because a fresh schema diff
+  // without it would drop column data from any env where it was set
+  // manually; read paths should prefer `notificationTime`.
   reminderTime           String       @default("21:00")
   pushToken              String?
+  // HH:MM in the user's timezone. Combined with `notificationDays`
+  // to schedule the local reminder (mobile via expo-notifications)
+  // or the daily email (web, future).
+  notificationTime       String       @default("21:00")
+  // 0=Sunday..6=Saturday. Days the reminder fires. Empty array = no
+  // days active (same effect as notificationsEnabled=false, but
+  // preserves the preference the user last picked).
+  notificationDays       Int[]        @default([0, 1, 2, 3, 4, 5, 6])
+  notificationsEnabled   Boolean      @default(false)
   // Granted manually via direct DB update (UPDATE "User" SET "isAdmin" = true WHERE email = '...').
   // Not self-service. Gates /admin/dashboard + /api/admin/*.
   isAdmin                Boolean      @default(false)
@@ -104,6 +118,8 @@ model User {
   memory                 UserMemory?
   lifeAudits             LifeAudit[]
   onboarding             UserOnboarding?
+  demographics           UserDemographics?
+  userInsights           UserInsight[]
 }
 
 // Tombstone for deleted accounts — closes the trial-reset exploit
@@ -241,18 +257,39 @@ model Task {
 }
 
 model Goal {
-  id            String    @id @default(cuid())
-  userId        String
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title         String
-  description   String?
-  lifeArea      String    @default("PERSONAL")
-  status        String    @default("ACTIVE")
-  targetDate    DateTime?
-  progress      Int       @default(0)
-  progressNotes Json[]
-  entryRefs     String[]
-  createdAt     DateTime  @default(now())
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title           String
+  description     String?
+  lifeArea        String    @default("PERSONAL")
+  // Valid values (enforced by app code, kept as String for cross-version
+  // Postgres compatibility): NOT_STARTED | IN_PROGRESS | ON_HOLD | COMPLETE.
+  // Migrated 2026-04-20 from legacy values ACTIVE/COMPLETED/PAUSED/ABANDONED:
+  //   ACTIVE→IN_PROGRESS, COMPLETED→COMPLETE, PAUSED→ON_HOLD, ABANDONED→ON_HOLD.
+  // Default changed from ACTIVE to NOT_STARTED; goals extracted from entries
+  // are created NOT_STARTED (user flips to IN_PROGRESS from the detail view
+  // when they actually start working on it).
+  status          String    @default("NOT_STARTED")
+  targetDate      DateTime?
+  progress        Int       @default(0)
+  progressNotes   Json[]
+  entryRefs       String[]
+  // Free-form user-authored notes (detail view textarea). Keeps the
+  // AI-generated `description` separate from the reflection layer the
+  // user adds after creation.
+  notes           String?
+  // Last time any entry mentioned this goal (by title match during
+  // extraction). Drives the "stale 7+ days" tier-1 recommended activity
+  // surface so the user can refresh commitment.
+  lastMentionedAt DateTime?
+  // True once the user has edited title/description/status/progress/notes
+  // from the detail view. Extraction pipeline respects this — won't
+  // overwrite a user-edited goal with a later re-extraction.
+  editedByUser    Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+
+  @@index([userId, status])
 }
 
 model WeeklyReport {
@@ -476,4 +513,72 @@ enum ContentStatus {
   REJECTED
   EDITED
   DISTRIBUTED
+}
+
+// Optional demographic metadata collected during onboarding step 3.
+// All fields nullable — every field ships with a "Prefer not to say"
+// option so the user can proceed without sharing anything. Used for
+// analytics segmentation and tailored insight copy, not for gating.
+model UserDemographics {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // One of "18-24" | "25-34" | "35-44" | "45-54" | "55+"
+  ageRange       String?
+  // One of "Male" | "Female" | "Non-binary" | "Prefer not to say"
+  gender         String?
+  // ISO 3166-1 alpha-2 (e.g. "US", "GB"). IP-suggested default on the
+  // client, user can override.
+  country        String?
+  // Multi-select: any of "Career" | "Relationships" | "Mental health"
+  // | "Productivity" | "Curiosity" | "Other"
+  primaryReasons String[]
+  // One of "Student" | "Early career" | "Established career" | "Parent"
+  // | "Retired" | "In transition" | "Prefer not to say"
+  lifeStage      String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+// Weekly snapshot of each user's LifeMapArea scores. Written by the
+// snapshot-lifemap-history Inngest cron (weekly, Sunday 00:05 UTC).
+// Drives the Current/Trend toggle on the Insights radar — rendering the
+// "4 weeks ago" overlay polygon requires one snapshot per area per week.
+// No backfill; history starts the week this model ships.
+model LifeMapAreaHistory {
+  id         String   @id @default(cuid())
+  userId     String
+  // Which area (CAREER|HEALTH|...) — same vocabulary as LifeMapArea.area.
+  area       String
+  score      Int
+  // ISO date of the Sunday that begins the snapshot week (UTC midnight).
+  // Unique per (userId, area, weekStart) so re-runs are idempotent.
+  weekStart  DateTime
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, area, weekStart])
+  @@index([userId, weekStart])
+}
+
+// Auto-flagged observations — surfaces 1–3 at the top of Insights.
+// Generated by the weekly Inngest cron `compute-user-insights`.
+model UserInsight {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Short user-facing copy, e.g. "Your Health score dropped 2 points
+  // this week" or "You mentioned stress 3x more than last week".
+  observationText String
+  // "POSITIVE" | "NEUTRAL" | "CONCERNING" — drives the left-border tint
+  // and icon on the Insight card.
+  severity        String
+  // Area key if the observation is tied to a LifeMapArea row. Kept as
+  // a plain String (not FK) because observations can reference deleted
+  // or historical areas and shouldn't cascade-break.
+  linkedAreaId    String?
+  dismissedAt     DateTime?
+  createdAt       DateTime  @default(now())
+
+  @@index([userId, createdAt])
+  @@index([userId, dismissedAt])
 }

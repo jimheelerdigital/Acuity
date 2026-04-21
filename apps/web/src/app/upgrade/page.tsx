@@ -53,7 +53,7 @@ export default async function UpgradePage({
               "Unlimited recordings",
               "Weekly AI reports",
               "Goal tracking & progress",
-              "Life map analytics",
+              "Life Matrix analytics",
               "Mood trend insights",
               "Priority support",
             ].map((feature) => (

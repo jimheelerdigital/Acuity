@@ -24,6 +24,7 @@ export function TaskList() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<Tab>("open");
   const [acting, setActing] = useState<Set<string>>(new Set());
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
 
   const fetchTasks = useCallback(async () => {
     const res = await fetch("/api/tasks?all=1");
@@ -154,11 +155,144 @@ export function TaskList() {
               tab={activeTab}
               busy={acting.has(task.id)}
               onAction={act}
+              onEdit={() => setEditingTask(task)}
             />
           ))}
         </div>
       )}
+
+      {editingTask && (
+        <TaskEditModal
+          task={editingTask}
+          onClose={() => setEditingTask(null)}
+          onSaved={async () => {
+            setEditingTask(null);
+            await fetchTasks();
+          }}
+        />
+      )}
     </>
+  );
+}
+
+function TaskEditModal({
+  task,
+  onClose,
+  onSaved,
+}: {
+  task: Task;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [title, setTitle] = useState(task.title ?? task.text ?? "");
+  const [description, setDescription] = useState(task.description ?? "");
+  const [priority, setPriority] = useState(task.priority);
+  const [due, setDue] = useState(
+    task.dueDate ? new Date(task.dueDate).toISOString().slice(0, 10) : ""
+  );
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch("/api/tasks", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: task.id,
+          action: "edit",
+          fields: {
+            title: title.trim() || (task.title ?? task.text),
+            description: description.trim() || null,
+            priority,
+            dueDate: due || null,
+          },
+        }),
+      });
+      if (res.ok) onSaved();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-fade-in"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md rounded-2xl bg-white dark:bg-[#1E1E2E] border border-zinc-200 dark:border-white/10 p-6 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50 mb-4">
+          Edit task
+        </h2>
+
+        <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+          Title
+        </label>
+        <input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          className="w-full rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#13131F] px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-violet-500"
+        />
+
+        <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mt-3 mb-1">
+          Description
+        </label>
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          rows={3}
+          className="w-full rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#13131F] px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-violet-500 resize-none"
+        />
+
+        <div className="mt-3 grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+              Priority
+            </label>
+            <select
+              value={priority}
+              onChange={(e) => setPriority(e.target.value)}
+              className="w-full rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#13131F] px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-violet-500"
+            >
+              <option value="URGENT">Urgent</option>
+              <option value="HIGH">High</option>
+              <option value="MEDIUM">Medium</option>
+              <option value="LOW">Low</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+              Due date
+            </label>
+            <input
+              type="date"
+              value={due}
+              onChange={(e) => setDue(e.target.value)}
+              className="w-full rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#13131F] px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-violet-500"
+            />
+          </div>
+        </div>
+
+        <div className="mt-6 flex justify-end gap-2">
+          <button
+            onClick={onClose}
+            className="rounded-lg px-4 py-2 text-sm font-medium text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-white/5"
+          >
+            Cancel
+          </button>
+          <button
+            disabled={saving}
+            onClick={save}
+            className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500 disabled:opacity-40"
+          >
+            {saving ? "Saving…" : "Save"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -195,11 +329,13 @@ function TaskCard({
   tab,
   busy,
   onAction,
+  onEdit,
 }: {
   task: Task;
   tab: Tab;
   busy: boolean;
   onAction: (id: string, action: string) => void;
+  onEdit: () => void;
 }) {
   const label = task.title ?? task.text ?? "Untitled task";
   const priorityColor =
@@ -286,6 +422,15 @@ function TaskCard({
         <div className="flex shrink-0 gap-1.5">
           {tab === "open" && (
             <>
+              <ActionBtn
+                label="Edit"
+                title="Edit"
+                busy={busy}
+                onClick={onEdit}
+              >
+                <path d="M12 20h9" />
+                <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z" />
+              </ActionBtn>
               <ActionBtn
                 label="Snooze"
                 title="Snooze 24h"

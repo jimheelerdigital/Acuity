@@ -5,7 +5,7 @@ type RefreshLifeMapEventData = { userId: string };
 export const refreshLifeMapFn = inngest.createFunction(
   {
     id: "refresh-life-map",
-    name: "Refresh Life Map",
+    name: "Refresh Life Matrix",
     triggers: [{ event: "lifemap/refresh.requested" }],
     // USER-INTERACTIVE (Decisions Made 2026-04-19): the user tapped a
     // refresh button and is watching the LifeMap UI.

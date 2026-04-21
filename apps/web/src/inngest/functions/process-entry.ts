@@ -232,6 +232,25 @@ export const processEntryFn = inngest.createFunction(
                 title: g.title,
                 description: g.description ?? null,
                 targetDate: g.targetDate ? new Date(g.targetDate) : null,
+                lastMentionedAt: new Date(),
+                entryRefs: [entryId],
+              },
+            });
+          } else {
+            // Re-mention of an existing goal. Always bump lastMentionedAt +
+            // append this entryId. Respect editedByUser: we never clobber a
+            // user-authored title/description/status, but lastMentionedAt
+            // is observational metadata so it always updates.
+            const refs = Array.from(new Set([...(existing.entryRefs ?? []), entryId]));
+            await tx.goal.update({
+              where: { id: existing.id },
+              data: {
+                lastMentionedAt: new Date(),
+                entryRefs: refs,
+                // Only refill description if the user hasn't edited.
+                ...(!existing.editedByUser && g.description
+                  ? { description: g.description }
+                  : {}),
               },
             });
           }
