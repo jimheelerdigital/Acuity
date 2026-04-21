@@ -156,6 +156,11 @@ model User {
   // Android / never-connected iOS accounts.
   healthConnectedAt      DateTime?
   stateOfMeReports       StateOfMeReport[]
+  lifeDimensions         UserLifeDimension[]
+  // Preset template the user picked for their Life Matrix labels.
+  // "DEFAULT" | "STUDENT" | "PARENT" | "CUSTOM" | null. Null means
+  // the user has never customized — render the canonical labels.
+  lifeDimensionPreset    String?
 }
 
 // Tombstone for deleted accounts — closes the trial-reset exploit
@@ -899,6 +904,44 @@ model HealthSnapshot {
 
   @@unique([userId, date])
   @@index([userId, date])
+}
+
+// Per-user display overrides for the 6 canonical life areas. The
+// extraction pipeline + UserMemory + Goal.lifeArea + LifeMapArea.area
+// still speak the canonical LifeArea vocabulary (CAREER|HEALTH|...);
+// this table is purely a label/color/visibility override for the
+// Life Matrix UI. That keeps the data model coherent across users
+// while letting each person phrase their dimensions in their own
+// vocabulary (e.g. "Work & school" for a student, "Family & partner"
+// for a parent). When a user has zero rows here, the UI falls back
+// to the canonical DEFAULT_LIFE_AREAS.
+//
+// Promotion path to truly configurable dimensions:
+//   - Add a `key` column that replaces `area` (free-form slug).
+//   - Migrate extraction prompt to emit keys dynamically.
+//   - Widen UserMemory to a relational per-dimension row.
+// Out of scope for beta.
+model UserLifeDimension {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // One of the canonical LIFE_AREAS values (CAREER|HEALTH|...).
+  area        String
+  // User-chosen display label. "Work & school" instead of "Career", etc.
+  label       String
+  description String?
+  color       String?
+  icon        String?
+  sortOrder   Int      @default(0)
+  // False hides the dimension from the Life Matrix + radar + insights
+  // UI. Underlying extraction still runs against all 6 canonical areas
+  // (no data is lost if the user re-enables later).
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, area])
+  @@index([userId])
 }
 
 // Quarterly State-of-Me report. Triggered every 90 days from signup

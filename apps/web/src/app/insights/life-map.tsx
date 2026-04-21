@@ -60,6 +60,9 @@ export function LifeMap() {
   const [areas, setAreas] = useState<Area[]>([]);
   const [memory, setMemory] = useState<MemoryStats | null>(null);
   const [history, setHistory] = useState<HistoryArea[]>([]);
+  const [dimensionOverrides, setDimensionOverrides] = useState<
+    Record<string, { label: string; color: string | null; isActive: boolean }>
+  >({});
   const [selected, setSelected] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -74,10 +77,11 @@ export function LifeMap() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [mapRes, histRes, trendRes] = await Promise.all([
+      const [mapRes, histRes, trendRes, dimRes] = await Promise.all([
         fetch("/api/lifemap"),
         fetch("/api/lifemap/history"),
         fetch("/api/lifemap/trend"),
+        fetch("/api/account/life-dimensions"),
       ]);
       if (mapRes.ok) {
         const data = await mapRes.json();
@@ -94,6 +98,21 @@ export function LifeMap() {
           hasEnoughHistory: data.hasEnoughHistory,
           fourWeeksAgo: data.fourWeeksAgo,
         });
+      }
+      if (dimRes.ok) {
+        const data = await dimRes.json();
+        const overrides: Record<
+          string,
+          { label: string; color: string | null; isActive: boolean }
+        > = {};
+        for (const d of data.dimensions ?? []) {
+          overrides[d.area] = {
+            label: d.label,
+            color: d.color ?? null,
+            isActive: d.isActive ?? true,
+          };
+        }
+        setDimensionOverrides(overrides);
       }
     } catch {
       // silent
@@ -124,7 +143,18 @@ export function LifeMap() {
     }
   };
 
-  const selectedArea = areas.find((a) => a.area === selected);
+  const displayAreas: Area[] = areas
+    .map((a) => {
+      const ov = dimensionOverrides[a.area];
+      if (!ov) return a;
+      return { ...a, name: ov.label ?? a.name, color: ov.color ?? a.color };
+    })
+    .filter((a) => {
+      const ov = dimensionOverrides[a.area];
+      return !ov || ov.isActive !== false;
+    });
+
+  const selectedArea = displayAreas.find((a) => a.area === selected);
   const selectedHistory = history.find(
     (h) => h.name === selected
   );
@@ -221,7 +251,7 @@ export function LifeMap() {
 
           {/* Radar chart */}
           <RadarChart
-            areas={areas}
+            areas={displayAreas}
             onSelect={(name) => setSelected(selected === name ? null : name)}
             selected={selected}
             trendAreas={view === "trend" ? trend?.fourWeeksAgo : undefined}
@@ -229,8 +259,10 @@ export function LifeMap() {
 
           {/* Score cards */}
           <div className="mt-8 grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {areas.map((area) => {
+            {displayAreas.map((area) => {
+              const override = dimensionOverrides[area.area];
               const config = DEFAULT_LIFE_AREAS.find((a) => a.enum === area.area);
+              const colorOverride = override?.color ?? area.color ?? config?.color ?? "#71717A";
               const status = getStatus(area.score);
               const { label, color } = STATUS_LABELS[status];
               const isActive = selected === area.area;
@@ -248,7 +280,7 @@ export function LifeMap() {
                   <div className="flex items-center justify-between mb-2">
                     <div
                       className="h-2 w-2 rounded-full"
-                      style={{ backgroundColor: config?.color ?? "#71717A" }}
+                      style={{ backgroundColor: colorOverride }}
                     />
                     <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${color}`}>
                       {label}

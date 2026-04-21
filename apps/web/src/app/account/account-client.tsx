@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 
 import { ThemeToggle } from "@/components/theme-toggle";
 
+import { LifeDimensionsSection } from "./life-dimensions-section";
+
 interface Props {
   email: string;
   name: string | null;
@@ -77,6 +79,9 @@ export default function AccountClient({
           initialDays={notificationDays}
           initialEnabled={notificationsEnabled}
         />
+
+        {/* Life Matrix dimensions */}
+        <LifeDimensionsSection />
 
         {/* Referrals */}
         <ReferralsSection />
