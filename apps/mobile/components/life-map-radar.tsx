@@ -46,6 +46,10 @@ interface Props {
   /** Enum key of the currently selected axis; receives a larger
    *  node + pulse ring. Drives visual parity with the detail card. */
   selectedAreaKey?: string | null;
+  /** Optional ~4-weeks-ago snapshot. When provided, renders a dashed
+   *  grey overlay polygon behind the current polygon. Null per-area
+   *  values fall back to the current score (zero-delta for that axis). */
+  trendAreas?: Array<{ area: string; score: number | null }>;
 }
 
 export function LifeMapRadar({
@@ -57,6 +61,7 @@ export function LifeMapRadar({
   centerLabelColor = "#18181B",
   onAreaPress,
   selectedAreaKey,
+  trendAreas,
 }: Props) {
   const cx = size / 2;
   const cy = size / 2;
@@ -89,6 +94,28 @@ export function LifeMapRadar({
       return `${p.x},${p.y}`;
     })
     .join(" ");
+
+  // Trend overlay — per-axis ~4-weeks-ago score. Null = no data for
+  // that axis, collapse to the current score so the polygon remains
+  // closed (no weird zero-collapse toward center).
+  const trendPolyPoints = trendAreas
+    ? areaConfigs
+        .map((config, i) => {
+          const t = trendAreas.find((ta) => ta.area === config.enum);
+          const current = areas.find(
+            (a) => a.area === config.enum || a.area === config.name
+          );
+          const score10 =
+            t?.score != null
+              ? Math.max(0, Math.min(10, t.score / 10))
+              : current
+                ? current.score / 10
+                : 0;
+          const p = getPoint(i, score10 * maxR);
+          return `${p.x},${p.y}`;
+        })
+        .join(" ")
+    : null;
 
   return (
     <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
@@ -127,6 +154,19 @@ export function LifeMapRadar({
           />
         );
       })}
+
+      {/* Trend overlay polygon — drawn BEHIND the current polygon.
+          Dashed grey stroke = "4 weeks ago shape". */}
+      {trendPolyPoints && (
+        <Polygon
+          points={trendPolyPoints}
+          fill="none"
+          stroke="#A1A1AA"
+          strokeWidth={1}
+          strokeDasharray="4,3"
+          strokeOpacity={0.7}
+        />
+      )}
 
       {/* Data polygon — violet fill at 12% opacity, solid violet stroke */}
       <Polygon

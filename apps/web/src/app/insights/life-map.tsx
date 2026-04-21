@@ -54,6 +54,8 @@ function getStatus(score: number): keyof typeof STATUS_LABELS {
   return "struggling";
 }
 
+type TrendPoint = { area: string; score: number | null };
+
 export function LifeMap() {
   const [areas, setAreas] = useState<Area[]>([]);
   const [memory, setMemory] = useState<MemoryStats | null>(null);
@@ -64,12 +66,18 @@ export function LifeMap() {
   const [paywall, setPaywall] = useState<
     { message: string; redirect: string } | null
   >(null);
+  const [view, setView] = useState<"current" | "trend">("current");
+  const [trend, setTrend] = useState<{
+    hasEnoughHistory: boolean;
+    fourWeeksAgo: TrendPoint[];
+  } | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
-      const [mapRes, histRes] = await Promise.all([
+      const [mapRes, histRes, trendRes] = await Promise.all([
         fetch("/api/lifemap"),
         fetch("/api/lifemap/history"),
+        fetch("/api/lifemap/trend"),
       ]);
       if (mapRes.ok) {
         const data = await mapRes.json();
@@ -79,6 +87,13 @@ export function LifeMap() {
       if (histRes.ok) {
         const data = await histRes.json();
         setHistory(data.history);
+      }
+      if (trendRes.ok) {
+        const data = await trendRes.json();
+        setTrend({
+          hasEnoughHistory: data.hasEnoughHistory,
+          fourWeeksAgo: data.fourWeeksAgo,
+        });
       }
     } catch {
       // silent
@@ -168,11 +183,48 @@ export function LifeMap() {
         </div>
       ) : (
         <>
+          {/* Current / Trend toggle — disabled when we don't have 4+
+              weeks of data, with a tooltip explaining why. */}
+          <div className="mb-4 flex items-center justify-center gap-2">
+            <div className="inline-flex rounded-full bg-zinc-100 dark:bg-white/5 p-1">
+              {(["current", "trend"] as const).map((v) => {
+                const disabled = v === "trend" && !trend?.hasEnoughHistory;
+                return (
+                  <button
+                    key={v}
+                    disabled={disabled}
+                    onClick={() => setView(v)}
+                    title={
+                      disabled
+                        ? "Check back in a few weeks — we need 4+ weeks of data to show a trend."
+                        : undefined
+                    }
+                    className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                      view === v
+                        ? "bg-white dark:bg-[#1E1E2E] text-zinc-900 dark:text-zinc-50 shadow-sm"
+                        : disabled
+                          ? "text-zinc-300 dark:text-zinc-600 cursor-not-allowed"
+                          : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
+                    }`}
+                  >
+                    {v === "current" ? "Current" : "Trend"}
+                  </button>
+                );
+              })}
+            </div>
+            {view === "trend" && trend?.hasEnoughHistory && (
+              <span className="text-xs text-zinc-400 dark:text-zinc-500">
+                vs ~4 weeks ago
+              </span>
+            )}
+          </div>
+
           {/* Radar chart */}
           <RadarChart
             areas={areas}
             onSelect={(name) => setSelected(selected === name ? null : name)}
             selected={selected}
+            trendAreas={view === "trend" ? trend?.fourWeeksAgo : undefined}
           />
 
           {/* Score cards */}
@@ -263,10 +315,17 @@ function RadarChart({
   areas,
   onSelect,
   selected,
+  trendAreas,
 }: {
   areas: Area[];
   onSelect: (name: string) => void;
   selected: string | null;
+  /** Optional "~4 weeks ago" overlay polygon. When provided, renders
+   *  a light-grey polygon BEHIND the current-polygon so the user reads
+   *  today's shape against a prior baseline. Null entries mean "no
+   *  data for that axis" — treated as the current score so the overlay
+   *  doesn't distort the vertex at that axis (zero-delta). */
+  trendAreas?: Array<{ area: string; score: number | null }>;
 }) {
   const cx = 150;
   const cy = 150;
@@ -295,6 +354,26 @@ function RadarChart({
       return `${p.x},${p.y}`;
     })
     .join(" ");
+
+  // Overlay polygon — built from trendAreas (4wk-ago snapshot) keyed
+  // by the uppercase enum value; if any vertex has no data, fall back
+  // to the current value so the overlay stays a closed shape.
+  const trendPolyPoints = trendAreas
+    ? areaConfigs
+        .map((config, i) => {
+          const t = trendAreas.find((ta) => ta.area === config.enum);
+          const current = areas.find((a) => a.area === config.name);
+          const score10 =
+            t?.score != null
+              ? Math.max(0, Math.min(10, t.score / 10))
+              : current
+                ? current.score / 10
+                : 0;
+          const p = getPoint(i, score10 * maxR);
+          return `${p.x},${p.y}`;
+        })
+        .join(" ")
+    : null;
 
   return (
     <div className="flex justify-center">
@@ -334,6 +413,21 @@ function RadarChart({
             />
           );
         })}
+
+        {/* Trend overlay polygon — rendered BEHIND the current polygon
+            so today's shape reads on top of the baseline. Dashed stroke
+            signals "then, not now" without needing a legend. */}
+        {trendPolyPoints && (
+          <polygon
+            points={trendPolyPoints}
+            fill="none"
+            stroke="#A1A1AA"
+            strokeWidth="1"
+            strokeDasharray="4 3"
+            strokeOpacity="0.7"
+            className="transition-all duration-700"
+          />
+        )}
 
         {/* Data polygon */}
         <polygon

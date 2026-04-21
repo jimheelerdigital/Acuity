@@ -2,6 +2,8 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 
 import { getAuthOptions } from "@/lib/auth";
+import { UserInsightsCard } from "@/components/user-insights-card";
+
 import { InsightsView } from "./insights-view";
 import { LifeMap } from "./life-map";
 
@@ -14,6 +16,10 @@ export default async function InsightsPage() {
   return (
     <div className="min-h-screen">
       <main className="mx-auto max-w-4xl px-6 py-10 animate-fade-in">
+        {/* Auto-flagged observations — top of the page so the user reads
+            "here's what we noticed this week" before the full charts. */}
+        <UserInsightsCard />
+
         {/* Life Matrix */}
         <section className="mb-12">
           <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50 mb-1">Life Matrix</h1>

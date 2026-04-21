@@ -14,6 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { MOOD_EMOJI, DEFAULT_LIFE_AREAS, type EntryDTO } from "@acuity/shared";
 
 import { LifeMapRadar } from "@/components/life-map-radar";
+import { UserInsightsCard } from "@/components/user-insights-card";
 import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
 
@@ -72,18 +73,30 @@ export default function InsightsTab() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [view, setView] = useState<"current" | "trend">("current");
+  const [trend, setTrend] = useState<{
+    hasEnoughHistory: boolean;
+    fourWeeksAgo: Array<{ area: string; score: number | null }>;
+  } | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
-      const [entriesRes, reportsRes, lifeMapRes] = await Promise.all([
+      const [entriesRes, reportsRes, lifeMapRes, trendRes] = await Promise.all([
         api.get<{ entries: EntryDTO[] }>("/api/entries"),
         api.get<{ reports: Report[] }>("/api/weekly"),
         api.get<{ areas: LifeMapAreaData[]; memory: MemoryData }>("/api/lifemap"),
+        api
+          .get<{
+            hasEnoughHistory: boolean;
+            fourWeeksAgo: Array<{ area: string; score: number | null }>;
+          }>("/api/lifemap/trend")
+          .catch(() => null),
       ]);
       setEntries(entriesRes.entries?.slice(0, 7) ?? []);
       setReports(reportsRes.reports ?? []);
       setAreas(lifeMapRes.areas ?? []);
       setMemory(lifeMapRes.memory ?? null);
+      setTrend(trendRes);
     } catch {
       // silent
     } finally {
@@ -152,6 +165,8 @@ export default function InsightsTab() {
           </Text>
         </View>
 
+        <UserInsightsCard />
+
         {/* Memory stats */}
         {memory && memory.totalEntries > 0 && (
           <View className="mb-4">
@@ -165,22 +180,73 @@ export default function InsightsTab() {
 
         {/* Life Matrix radar — top-of-screen anchor for the six-axis view */}
         {areas.length > 0 && (
-          <View className="mb-6 items-center rounded-2xl border border-zinc-200 bg-white p-4 dark:border-white/10 dark:bg-[#1E1E2E]">
-            <Text className="self-start text-xs font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-2">
-              Life Matrix
-            </Text>
-            <LifeMapRadar
-              areas={areas.map((a) => ({ area: a.area, score: a.score }))}
-              size={300}
-              labelColor={isDark ? "#A1A1AA" : "#71717A"}
-              scoreColor={isDark ? "#71717A" : "#A1A1AA"}
-              gridColor={isDark ? "rgba(255,255,255,0.08)" : "#E4E4E7"}
-              centerLabelColor={isDark ? "#FAFAFA" : "#18181B"}
-              selectedAreaKey={expandedArea}
-              onAreaPress={(key) =>
-                setExpandedArea((prev) => (prev === key ? null : key))
-              }
-            />
+          <View className="mb-6 rounded-2xl border border-zinc-200 bg-white p-4 dark:border-white/10 dark:bg-[#1E1E2E]">
+            <View className="flex-row items-center justify-between mb-3">
+              <Text className="text-xs font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
+                Life Matrix
+              </Text>
+              {/* Current / Trend segmented toggle. Disabled when we
+                  don't have ~4 weeks of data yet. */}
+              <View className="flex-row rounded-full bg-zinc-100 dark:bg-white/5 p-0.5">
+                {(["current", "trend"] as const).map((v) => {
+                  const disabled = v === "trend" && !trend?.hasEnoughHistory;
+                  return (
+                    <Pressable
+                      key={v}
+                      disabled={disabled}
+                      onPress={() => setView(v)}
+                      onLongPress={
+                        disabled
+                          ? () =>
+                              Alert.alert(
+                                "Not enough history yet",
+                                "Check back in a few weeks — we need 4+ weeks of data to show a trend."
+                              )
+                          : undefined
+                      }
+                      style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+                      className={`rounded-full px-2.5 py-1 ${
+                        view === v
+                          ? "bg-white dark:bg-[#1E1E2E]"
+                          : "bg-transparent"
+                      }`}
+                    >
+                      <Text
+                        className={`text-xs font-semibold ${
+                          view === v
+                            ? "text-zinc-900 dark:text-zinc-50"
+                            : disabled
+                              ? "text-zinc-300 dark:text-zinc-600"
+                              : "text-zinc-500 dark:text-zinc-400"
+                        }`}
+                      >
+                        {v === "current" ? "Current" : "Trend"}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+            <View className="items-center">
+              <LifeMapRadar
+                areas={areas.map((a) => ({ area: a.area, score: a.score }))}
+                size={300}
+                labelColor={isDark ? "#A1A1AA" : "#71717A"}
+                scoreColor={isDark ? "#71717A" : "#A1A1AA"}
+                gridColor={isDark ? "rgba(255,255,255,0.08)" : "#E4E4E7"}
+                centerLabelColor={isDark ? "#FAFAFA" : "#18181B"}
+                selectedAreaKey={expandedArea}
+                onAreaPress={(key) =>
+                  setExpandedArea((prev) => (prev === key ? null : key))
+                }
+                trendAreas={view === "trend" ? trend?.fourWeeksAgo : undefined}
+              />
+            </View>
+            {view === "trend" && trend?.hasEnoughHistory && (
+              <Text className="mt-2 text-xs text-zinc-400 dark:text-zinc-500 text-center">
+                Dashed line = ~4 weeks ago
+              </Text>
+            )}
           </View>
         )}
         {areas.length === 0 && (
