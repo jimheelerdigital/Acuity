@@ -53,6 +53,7 @@ export default async function DashboardPage() {
       createdAt: true,
       trialEndsAt: true,
       currentStreak: true,
+      subscriptionStatus: true,
       onboarding: { select: { progressionChecklist: true } },
     },
   });
@@ -122,6 +123,26 @@ export default async function DashboardPage() {
       <TrackPurchase />
       <main className="mx-auto max-w-5xl px-6 py-10 animate-fade-in">
         <WelcomeBackBanner reduced={reducedTrial} daysLeft={trialDaysLeft} />
+
+        {user?.subscriptionStatus === "PAST_DUE" && (
+          <section className="mb-6 rounded-2xl border border-amber-300 dark:border-amber-900/40 bg-amber-50/60 dark:bg-amber-950/20 px-5 py-4 flex items-start gap-3">
+            <span className="text-lg leading-none">⚠️</span>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
+                Stripe couldn&apos;t charge your card
+              </p>
+              <p className="mt-1 text-xs text-amber-800/80 dark:text-amber-300/80">
+                Update your payment method to keep your subscription active. Nothing gets cut off right away — Stripe retries over the next couple of weeks.
+              </p>
+              <a
+                href="/account"
+                className="mt-2 inline-block text-xs font-semibold text-amber-900 dark:text-amber-100 underline"
+              >
+                Update in Account settings →
+              </a>
+            </div>
+          </section>
+        )}
 
         {/* Greeting */}
         <div className="mb-8 text-center sm:text-left">

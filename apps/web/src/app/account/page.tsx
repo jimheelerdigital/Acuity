@@ -25,6 +25,10 @@ export default async function AccountPage() {
       notificationTime: true,
       notificationDays: true,
       notificationsEnabled: true,
+      subscriptionStatus: true,
+      stripeCustomerId: true,
+      stripeCurrentPeriodEnd: true,
+      trialEndsAt: true,
     },
   });
 
@@ -35,6 +39,10 @@ export default async function AccountPage() {
       notificationTime={user?.notificationTime ?? "21:00"}
       notificationDays={user?.notificationDays ?? [0, 1, 2, 3, 4, 5, 6]}
       notificationsEnabled={user?.notificationsEnabled ?? false}
+      subscriptionStatus={user?.subscriptionStatus ?? "FREE"}
+      hasStripeCustomer={Boolean(user?.stripeCustomerId)}
+      periodEnd={user?.stripeCurrentPeriodEnd?.toISOString() ?? null}
+      trialEndsAt={user?.trialEndsAt?.toISOString() ?? null}
     />
   );
 }

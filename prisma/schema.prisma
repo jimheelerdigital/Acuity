@@ -108,6 +108,26 @@ model User {
   // localStorage record on the client.
   cookieConsent          Json?
   createdAt              DateTime     @default(now())
+  // Last time the user loaded a page / opened the app. Updated
+  // opportunistically from /api/user/me; not strongly durable.
+  // Drives the onboarding smart-skip ("abandoned 30+ days ago →
+  // silently mark complete") and future engagement signals.
+  lastSeenAt             DateTime?
+  // Unique short code (8 char, no ambiguous chars) the user shares
+  // via their /?ref= link. Generated lazily on first /account view
+  // or at signup — see lib/referrals.ts::generateReferralCode.
+  referralCode           String?      @unique
+  // ID of the user who referred them (if they signed up via a ?ref=
+  // link). Null for self-directed signups. SetNull on referrer
+  // delete so we don't lose the downstream graph.
+  referredById           String?
+  referredBy             User?        @relation("Referrals", fields: [referredById], references: [id], onDelete: SetNull)
+  referrals              User[]       @relation("Referrals")
+  // Subscription email toggles (W2). Default both on; unsubscribe
+  // link in any digest footer flips the relevant boolean via a
+  // token-based endpoint.
+  weeklyEmailEnabled     Boolean      @default(true)
+  monthlyEmailEnabled    Boolean      @default(true)
   accounts               Account[]
   sessions               Session[]
   entries                Entry[]
@@ -121,6 +141,9 @@ model User {
   demographics           UserDemographics?
   userInsights           UserInsight[]
   themes                 Theme[]
+  referralConversionsAsReferrer ReferralConversion[] @relation("ReferrerConversions")
+  referralConversionsAsReferred ReferralConversion[] @relation("ReferredConversions")
+  dataExports            DataExport[]
 }
 
 // Tombstone for deleted accounts — closes the trial-reset exploit
@@ -679,4 +702,53 @@ model GoalSuggestion {
 
   @@index([userId, status])
   @@index([parentGoalId])
+}
+
+// Idempotency record for Stripe webhook deliveries. Stripe retries
+// at-least-once semantics — same event.id can arrive multiple times.
+// We short-circuit on id collision so repeated deliveries don't
+// double-write subscription state.
+model StripeEvent {
+  id          String   @id  // stripe event.id, e.g. "evt_1TL…"
+  type        String
+  processedAt DateTime @default(now())
+}
+
+// One row per trial→paid conversion that had a referrer. Reward
+// fulfillment is a TODO (Jim picks the reward) — this table just
+// records the event so accounting stays clean when we wire rewards.
+// Unique per (referrer, referred) so repeated conversions from the
+// same user don't double-count.
+model ReferralConversion {
+  id              String   @id @default(cuid())
+  referrerId      String
+  referrer        User     @relation("ReferrerConversions", fields: [referrerId], references: [id], onDelete: Cascade)
+  referredUserId  String
+  referredUser    User     @relation("ReferredConversions", fields: [referredUserId], references: [id], onDelete: Cascade)
+  convertedAt     DateTime @default(now())
+
+  @@unique([referrerId, referredUserId])
+  @@index([referrerId])
+}
+
+// Async user-data export request (W3 GDPR). One row per request;
+// signed-URL expires after 24h; next request blocked by 7-day
+// server-side throttle — see apps/web/src/app/api/user/export route.
+model DataExport {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // "PENDING" | "PROCESSING" | "READY" | "FAILED" | "EXPIRED"
+  status        String   @default("PENDING")
+  // Signed Supabase URL to the zip in the user-exports bucket. Null
+  // until status=READY.
+  downloadUrl   String?
+  // After this instant the download link stops working. We still
+  // retain the row for audit even after the object is deleted.
+  expiresAt     DateTime?
+  errorMessage  String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId, createdAt])
 }

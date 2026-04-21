@@ -11,6 +11,10 @@ interface Props {
   notificationTime: string;
   notificationDays: number[];
   notificationsEnabled: boolean;
+  subscriptionStatus: string;
+  hasStripeCustomer: boolean;
+  periodEnd: string | null;
+  trialEndsAt: string | null;
 }
 
 export default function AccountClient({
@@ -19,6 +23,10 @@ export default function AccountClient({
   notificationTime,
   notificationDays,
   notificationsEnabled,
+  subscriptionStatus,
+  hasStripeCustomer,
+  periodEnd,
+  trialEndsAt,
 }: Props) {
   const [confirmOpen, setConfirmOpen] = useState(false);
 
@@ -50,6 +58,14 @@ export default function AccountClient({
             </div>
           </dl>
         </section>
+
+        {/* Subscription */}
+        <SubscriptionSection
+          status={subscriptionStatus}
+          hasStripeCustomer={hasStripeCustomer}
+          periodEnd={periodEnd}
+          trialEndsAt={trialEndsAt}
+        />
 
         {/* Reminders */}
         <RemindersSection
@@ -375,6 +391,136 @@ function RemindersSection({
           </span>
         )}
       </div>
+    </section>
+  );
+}
+
+const STATUS_LABELS: Record<string, { label: string; hint: string; tone: "default" | "warn" | "good" }> = {
+  PRO: { label: "Pro — active", hint: "Thanks for supporting Acuity.", tone: "good" },
+  TRIAL: { label: "14-day trial", hint: "You have full access during your trial.", tone: "default" },
+  PAST_DUE: {
+    label: "Payment needed",
+    hint: "Stripe couldn't charge your card. Update it to keep your subscription active.",
+    tone: "warn",
+  },
+  FREE: { label: "Read-only", hint: "Your trial has ended. Upgrade to keep generating new insights.", tone: "default" },
+};
+
+/**
+ * Subscription status block + Stripe Customer Portal entry. The
+ * actual cancel / plan-change / update-card UI is inside Stripe's
+ * hosted portal, so our job here is surface status + route.
+ */
+function SubscriptionSection({
+  status,
+  hasStripeCustomer,
+  periodEnd,
+  trialEndsAt,
+}: {
+  status: string;
+  hasStripeCustomer: boolean;
+  periodEnd: string | null;
+  trialEndsAt: string | null;
+}) {
+  const meta = STATUS_LABELS[status] ?? STATUS_LABELS.FREE;
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const openPortal = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/stripe/portal", { method: "POST" });
+      if (res.ok) {
+        const body = await res.json();
+        if (body.url) window.location.assign(body.url);
+      } else {
+        const body = await res.json().catch(() => ({}));
+        if (body.redirect) {
+          window.location.assign(body.redirect);
+        } else {
+          setError(body.detail ?? body.error ?? "Couldn't open portal.");
+        }
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const periodEndLabel = periodEnd
+    ? new Date(periodEnd).toLocaleDateString("en-US", {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      })
+    : null;
+  const trialEndLabel = trialEndsAt
+    ? new Date(trialEndsAt).toLocaleDateString("en-US", {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      })
+    : null;
+
+  return (
+    <section
+      className={`mt-8 rounded-xl border p-6 ${
+        meta.tone === "warn"
+          ? "border-amber-300 dark:border-amber-900/40 bg-amber-50/40 dark:bg-amber-950/20"
+          : "border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E]"
+      }`}
+    >
+      <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
+        Subscription
+      </h2>
+
+      <div className="mt-3 flex items-center gap-3">
+        <span
+          className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+            meta.tone === "good"
+              ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+              : meta.tone === "warn"
+                ? "bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
+                : "bg-zinc-100 text-zinc-700 dark:bg-white/5 dark:text-zinc-300"
+          }`}
+        >
+          {meta.label}
+        </span>
+        {status === "PRO" && periodEndLabel && (
+          <span className="text-xs text-zinc-500 dark:text-zinc-400">
+            Renews {periodEndLabel}
+          </span>
+        )}
+        {status === "TRIAL" && trialEndLabel && (
+          <span className="text-xs text-zinc-500 dark:text-zinc-400">
+            Ends {trialEndLabel}
+          </span>
+        )}
+      </div>
+
+      <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-300">{meta.hint}</p>
+
+      <div className="mt-5 flex flex-wrap gap-3">
+        {hasStripeCustomer ? (
+          <button
+            onClick={openPortal}
+            disabled={loading}
+            className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-white disabled:opacity-50"
+          >
+            {loading ? "Opening…" : "Manage subscription"}
+          </button>
+        ) : (
+          <a
+            href="/upgrade"
+            className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-violet-500"
+          >
+            {status === "TRIAL" ? "Subscribe early" : "Upgrade"}
+          </a>
+        )}
+      </div>
+      {error && (
+        <p className="mt-3 text-xs text-red-600 dark:text-red-400">{error}</p>
+      )}
     </section>
   );
 }
