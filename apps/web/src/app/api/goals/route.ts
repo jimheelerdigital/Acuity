@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getAnySessionUserId } from "@/lib/mobile-auth";
+import { enforceUserRateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +26,9 @@ export async function POST(req: NextRequest) {
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const limited = await enforceUserRateLimit("userWrite", userId);
+  if (limited) return limited;
 
   const body = await req.json().catch(() => null);
   if (!body?.title) {
@@ -57,6 +61,9 @@ export async function PATCH(req: NextRequest) {
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const limited = await enforceUserRateLimit("userWrite", userId);
+  if (limited) return limited;
 
   const body = await req.json().catch(() => null);
   if (!body?.id || !body?.action) {

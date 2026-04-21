@@ -107,6 +107,32 @@ export const limiters = {
   accountDelete: buildLimiter("account-delete", 3, "1 d"),
   /** Signed-URL issuance for audio playback — S4 stopgap replacement. */
   audioPlayback: buildLimiter("audio-playback", 60, "1 m"),
+  /**
+   * Generic per-user write cap for low-cost mutations (goal/task edits,
+   * onboarding progress writes, insight dismissals, etc). 30 writes
+   * per minute is well above any realistic human-driven rate and
+   * short enough that an abusive client's window resets quickly.
+   * Keyed `user:<userId>` so throttling follows the account.
+   */
+  userWrite: buildLimiter("user-write", 30, "1 m"),
+  /**
+   * Per-user cap on goal-tree reparent operations. Reparent walks the
+   * subtree + rewrites paths; it's the single most-expensive write on
+   * the Goals API. 20/min is a lot of reparents; anything above is
+   * almost certainly automated.
+   */
+  goalReparent: buildLimiter("goal-reparent", 20, "1 m"),
+  /**
+   * Data-export creation. Each export materializes audio + JSON for
+   * every row in the user's tree — expensive. Spec calls for 1/7d.
+   * Enforced both here (defensive) and in the route handler (primary).
+   */
+  dataExport: buildLimiter("data-export", 1, "7 d"),
+  /**
+   * Share-link generation on weekly reports. Not expensive but an
+   * abuse target (link spam). 10/hr per user is fine.
+   */
+  shareLink: buildLimiter("share-link", 10, "1 h"),
 } as const;
 
 export type LimiterName = keyof typeof limiters;
@@ -176,4 +202,25 @@ export function rateLimitedResponse(check: RateLimitCheck): Response {
  */
 export function isRateLimitConfigured(): boolean {
   return redis !== null;
+}
+
+/**
+ * Convenience helper for per-user write throttling. Returns a
+ * Response (429) when the limiter rejects, otherwise null. Callers:
+ *
+ *   const limited = await enforceUserRateLimit("userWrite", userId);
+ *   if (limited) return limited;
+ *
+ * Silently no-ops when Upstash isn't configured (fail-open) so dev
+ * and local Postgres-only runs still work.
+ */
+export async function enforceUserRateLimit(
+  name: LimiterName,
+  userId: string
+): Promise<Response | null> {
+  const limiter = limiters[name];
+  if (!limiter) return null;
+  const check = await checkRateLimit(limiter, `user:${userId}`);
+  if (!check.success) return rateLimitedResponse(check);
+  return null;
 }

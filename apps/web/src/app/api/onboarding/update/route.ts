@@ -23,6 +23,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getAnySessionUserId } from "@/lib/mobile-auth";
+import { enforceUserRateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -69,6 +70,9 @@ export async function POST(req: NextRequest) {
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const limited = await enforceUserRateLimit("userWrite", userId);
+  if (limited) return limited;
 
   const body = (await req.json().catch(() => null)) as Body | null;
   if (!body || typeof body.step !== "number") {

@@ -27,6 +27,7 @@ import {
   subtreeMaxDepth,
 } from "@/lib/goals";
 import { getAnySessionUserId } from "@/lib/mobile-auth";
+import { enforceUserRateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -43,6 +44,9 @@ export async function PATCH(
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const limited = await enforceUserRateLimit("goalReparent", userId);
+  if (limited) return limited;
 
   const body = (await req.json().catch(() => null)) as unknown;
   const parsed = BodySchema.safeParse(body);

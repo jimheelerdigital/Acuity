@@ -278,3 +278,45 @@ No regressions on prior items.
 ---
 
 *End of audit. See `PENTEST_RESULTS.md` for adversarial test outcomes and `SOC2_READINESS.md` for control-mapping gaps.*
+
+---
+
+## Part E — Rate Limiting coverage (refreshed 2026-04-21, W8)
+
+All configured limiters (`apps/web/src/lib/rate-limit.ts::limiters`):
+
+| Limiter           | Scope     | Budget       | Applied to                                                                 |
+| ----------------- | --------- | ------------ | -------------------------------------------------------------------------- |
+| expensiveAi       | user      | 10 / 1h      | /api/record (stacked with recordDaily + recordMonthly)                     |
+| recordDaily       | user      | 30 / 1d      | /api/record                                                                |
+| recordMonthly     | user      | 300 / 30d    | /api/record                                                                |
+| auth              | ip        | 5 / 15m      | NextAuth signin                                                            |
+| authByEmail       | email     | 5 / 1h       | /api/auth/signup, /api/auth/forgot-password, /api/auth/mobile-signup       |
+| waitlist          | ip        | 3 / 1h       | /api/waitlist                                                              |
+| accountDelete     | user      | 3 / 1d       | /api/user/delete                                                           |
+| audioPlayback     | user      | 60 / 1m      | signed-URL issuance                                                        |
+| **userWrite**     | user      | 30 / 1m      | /api/goals (POST+PATCH), /api/tasks (POST+PATCH), /api/onboarding/update,  |
+|                   |           |              | /api/goals/[id]/add-subgoal, /api/progression, /api/insights/observations, |
+|                   |           |              | /api/goals/suggestions                                                     |
+| **goalReparent**  | user      | 20 / 1m      | /api/goals/[id]/reparent (expensive subtree rewrite)                       |
+| **dataExport**    | user      | 1 / 7d       | /api/user/export (W3 data export)                                          |
+| **shareLink**     | user      | 10 / 1h      | /api/weekly/[id]/share                                                     |
+
+Bolded limiters were added 2026-04-21. Fail-open posture when Upstash
+isn't configured is unchanged — `redis` evaluates to null and
+`enforceUserRateLimit` no-ops. Production must have
+UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN set for any of this
+to actually enforce.
+
+Acknowledged gaps (not addressed this sprint):
+
+- Read endpoints are intentionally uncapped. Read-storm abuse is
+  bounded by Vercel per-function concurrency + DB pool size; no
+  single user can exhaust them meaningfully. If we see a noisy-reader
+  problem, add `userRead: 240/1m`.
+- /api/stripe/portal is not rate-limited. Stripe's session-creation
+  throttles upstream; doubling up would get in the way of legitimate
+  retries.
+- Inngest-triggered paths (process-entry, weekly report, observation
+  cron) are throttled by Inngest concurrency keys, not by this
+  module.

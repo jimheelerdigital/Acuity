@@ -15,6 +15,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "crypto";
 
 import { getAnySessionUserId } from "@/lib/mobile-auth";
+import { enforceUserRateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -36,6 +37,9 @@ export async function POST(
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const limited = await enforceUserRateLimit("shareLink", userId);
+  if (limited) return limited;
 
   const body = (await req.json().catch(() => ({}))) as {
     extendDays?: unknown;
