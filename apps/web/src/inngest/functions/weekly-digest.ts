@@ -17,6 +17,7 @@
  */
 
 import { inngest } from "@/inngest/client";
+import { isEnabledForAnon } from "@/lib/feature-flags";
 
 const SIX_DAYS_MS = 6 * 24 * 60 * 60 * 1000;
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
@@ -66,6 +67,11 @@ export const weeklyDigestFn = inngest.createFunction(
     retries: 2,
   },
   async ({ logger }) => {
+    if (!(await isEnabledForAnon("weekly_email_digest"))) {
+      logger.info("weekly-digest.disabled_by_flag");
+      return { skipped: "feature-flag-disabled" };
+    }
+
     const { prisma } = await import("@/lib/prisma");
     const { sendWeeklyDigest } = await import("@/emails/weekly-digest");
 

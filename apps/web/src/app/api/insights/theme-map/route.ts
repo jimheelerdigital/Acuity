@@ -26,6 +26,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
+import { gateFeatureFlag } from "@/lib/feature-flags";
 import { getAnySessionUserId } from "@/lib/mobile-auth";
 
 export const dynamic = "force-dynamic";
@@ -66,6 +67,8 @@ export async function GET(req: NextRequest) {
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const gated = await gateFeatureFlag(userId, "theme_evolution_map");
+  if (gated) return gated;
 
   const parsed = QuerySchema.safeParse({
     window: req.nextUrl.searchParams.get("window") ?? undefined,

@@ -14,6 +14,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "crypto";
 
+import { gateFeatureFlag } from "@/lib/feature-flags";
 import { getAnySessionUserId } from "@/lib/mobile-auth";
 import { enforceUserRateLimit } from "@/lib/rate-limit";
 
@@ -37,6 +38,8 @@ export async function POST(
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const gated = await gateFeatureFlag(userId, "public_share_links");
+  if (gated) return gated;
 
   const limited = await enforceUserRateLimit("shareLink", userId);
   if (limited) return limited;

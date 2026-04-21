@@ -30,6 +30,7 @@ import {
 } from "@acuity/shared";
 
 import { inngest } from "@/inngest/client";
+import { isEnabledForAnon } from "@/lib/feature-flags";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -105,6 +106,11 @@ export const computeUserInsightsFn = inngest.createFunction(
     retries: 2,
   },
   async ({ logger }) => {
+    if (!(await isEnabledForAnon("claude_ai_observations"))) {
+      logger.info("compute-user-insights.disabled_by_flag");
+      return { skipped: "feature-flag-disabled" };
+    }
+
     const { prisma } = await import("@/lib/prisma");
 
     const users = await prisma.user.findMany({

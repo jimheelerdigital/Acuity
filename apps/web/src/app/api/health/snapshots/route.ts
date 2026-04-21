@@ -14,6 +14,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
+import { gateFeatureFlag } from "@/lib/feature-flags";
 import { getAnySessionUserId } from "@/lib/mobile-auth";
 import { enforceUserRateLimit } from "@/lib/rate-limit";
 
@@ -36,6 +37,8 @@ export async function POST(req: NextRequest) {
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const gated = await gateFeatureFlag(userId, "apple_health_integration");
+  if (gated) return gated;
   const limited = await enforceUserRateLimit("userWrite", userId);
   if (limited) return limited;
 

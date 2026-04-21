@@ -30,6 +30,7 @@ import { z } from "zod";
 import { CLAUDE_FLAGSHIP_MODEL, CLAUDE_FLAGSHIP_MAX_TOKENS } from "@acuity/shared";
 
 import { cosine, embedText } from "@/lib/embeddings";
+import { gateFeatureFlag } from "@/lib/feature-flags";
 import { getAnySessionUserId } from "@/lib/mobile-auth";
 import { rateLimitedResponse, checkRateLimit, limiters } from "@/lib/rate-limit";
 
@@ -75,6 +76,9 @@ export async function POST(req: NextRequest) {
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const gated = await gateFeatureFlag(userId, "ask_your_past_self");
+  if (gated) return gated;
 
   // Daily cap — 10 questions per user per day via the askPast
   // limiter. Fail-open when Upstash isn't configured (local dev

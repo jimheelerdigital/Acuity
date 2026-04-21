@@ -1023,3 +1023,83 @@ model StateOfMeReport {
 
   @@index([userId, createdAt])
 }
+
+// ─── Feature flags ──────────────────────────────────────────────────────────
+//
+// Runtime-togglable gates for the 13 named features the admin can
+// enable/disable without a deploy. Evaluation order at lib/feature-
+// flags.ts::isEnabled is:
+//   1. UserFeatureOverride (user-specific force on/off)
+//   2. FeatureFlag.enabled  (global kill switch)
+//   3. rolloutPercentage    (deterministic hash(userId+key) < N)
+//   4. requiredTier         (null = anyone, "FREE" / "PRO" = plan check)
+//
+// Disabled features should 404 on the API + hide in the UI — never 403
+// (we don't want to leak the existence of a feature that's been pulled).
+model FeatureFlag {
+  id                 String   @id @default(cuid())
+  // Short, URL-safe slug. Referenced from code by exact string, so
+  // renames are a coordinated schema + code change.
+  key                String   @unique
+  // Human-readable name shown in the admin UI.
+  name               String
+  description        String?
+  enabled            Boolean  @default(false)
+  // 0..100. Only consulted when `enabled=true` and no user override
+  // applies. 100 = everyone passes; 0 = no one passes unless the
+  // global `enabled=true` AND `requiredTier` logic lets them through
+  // (in practice 0 is a kill switch).
+  rolloutPercentage  Int      @default(100)
+  // Null = no tier gate. "FREE" or "PRO" restricts to users whose
+  // User.subscriptionStatus matches the mapped tier.
+  requiredTier       String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([key])
+}
+
+// Per-user override — forces a flag on or off for one account,
+// bypassing rollout + tier logic. Used by admin "test this feature
+// on my own row" workflows and for rapidly un-blocking a single
+// affected user without flipping the global switch.
+//
+// No @relation to User — we want overrides to survive a Prisma
+// cascade on User delete because audit history should reference
+// the userId even after the account is gone. In practice the
+// admin UI cleans stale rows.
+model UserFeatureOverride {
+  id        String   @id @default(cuid())
+  userId    String
+  flagKey   String
+  enabled   Boolean
+  // Short human note — required by the admin UI — so we have a
+  // paper trail for "why is this user on feature X".
+  reason    String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, flagKey])
+  @@index([userId])
+  @@index([flagKey])
+}
+
+// Immutable audit log of every write an admin performs. Captures flag
+// toggles, user overrides, trial extensions, soft-deletes, and magic-
+// link resets. Never cascades on User delete — the admin's own row
+// going away shouldn't erase the historical record of what they did.
+//
+// `action` is a short machine slug (e.g. "feature_flag.toggle"). The
+// full event detail lives in `metadata` JSON. Use the helper at
+// lib/admin-audit.ts::logAdminAction so slugs stay consistent.
+model AdminAuditLog {
+  id            String   @id @default(cuid())
+  adminUserId   String
+  action        String
+  targetUserId  String?
+  metadata      Json?
+  createdAt     DateTime @default(now())
+
+  @@index([adminUserId, createdAt])
+  @@index([targetUserId])
+  @@index([createdAt])
+}

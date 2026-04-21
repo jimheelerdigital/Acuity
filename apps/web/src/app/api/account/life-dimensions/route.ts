@@ -18,6 +18,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
+import { gateFeatureFlag } from "@/lib/feature-flags";
 import { getAnySessionUserId } from "@/lib/mobile-auth";
 import { enforceUserRateLimit } from "@/lib/rate-limit";
 import {
@@ -58,6 +59,8 @@ export async function GET(req: NextRequest) {
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const gated = await gateFeatureFlag(userId, "configurable_life_matrix");
+  if (gated) return gated;
 
   const { prisma } = await import("@/lib/prisma");
   const [rows, user] = await Promise.all([
@@ -82,6 +85,8 @@ export async function PUT(req: NextRequest) {
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const gated = await gateFeatureFlag(userId, "configurable_life_matrix");
+  if (gated) return gated;
 
   const limited = await enforceUserRateLimit("userWrite", userId);
   if (limited) return limited;

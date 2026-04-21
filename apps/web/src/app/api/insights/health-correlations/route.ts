@@ -18,6 +18,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 
+import { gateFeatureFlag } from "@/lib/feature-flags";
 import { getAnySessionUserId } from "@/lib/mobile-auth";
 
 export const dynamic = "force-dynamic";
@@ -38,6 +39,8 @@ export async function GET(req: NextRequest) {
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const gated = await gateFeatureFlag(userId, "apple_health_integration");
+  if (gated) return gated;
 
   const { prisma } = await import("@/lib/prisma");
 

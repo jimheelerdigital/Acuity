@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { inngest } from "@/inngest/client";
+import { gateFeatureFlag } from "@/lib/feature-flags";
 import { getAnySessionUserId } from "@/lib/mobile-auth";
 
 export const dynamic = "force-dynamic";
@@ -20,6 +21,9 @@ export async function GET(req: NextRequest) {
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const gated = await gateFeatureFlag(userId, "state_of_me_report");
+  if (gated) return gated;
 
   const { prisma } = await import("@/lib/prisma");
   const reports = await prisma.stateOfMeReport.findMany({
@@ -43,6 +47,9 @@ export async function POST(req: NextRequest) {
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const gated = await gateFeatureFlag(userId, "state_of_me_report");
+  if (gated) return gated;
 
   const { prisma } = await import("@/lib/prisma");
 

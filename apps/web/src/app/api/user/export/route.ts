@@ -16,6 +16,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { inngest } from "@/inngest/client";
+import { gateFeatureFlag } from "@/lib/feature-flags";
 import { getAnySessionUserId } from "@/lib/mobile-auth";
 import { enforceUserRateLimit } from "@/lib/rate-limit";
 
@@ -29,6 +30,8 @@ export async function GET(req: NextRequest) {
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const gated = await gateFeatureFlag(userId, "data_export");
+  if (gated) return gated;
 
   const { prisma } = await import("@/lib/prisma");
   const latest = await prisma.dataExport.findFirst({
@@ -44,6 +47,8 @@ export async function POST(req: NextRequest) {
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const gated = await gateFeatureFlag(userId, "data_export");
+  if (gated) return gated;
 
   // Short-window rate limit (server-side check against recent rows).
   // The Upstash limiter is a defense-in-depth layer; the DB check is

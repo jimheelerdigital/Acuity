@@ -22,6 +22,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { buildGoalForest } from "@/lib/goals";
+import { gateFeatureFlag } from "@/lib/feature-flags";
 import { getAnySessionUserId } from "@/lib/mobile-auth";
 
 export const dynamic = "force-dynamic";
@@ -32,6 +33,8 @@ export async function GET(req: NextRequest) {
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const gated = await gateFeatureFlag(userId, "goal_progression_tree");
+  if (gated) return gated;
 
   const includeArchived = req.nextUrl.searchParams.get("includeArchived") === "1";
 

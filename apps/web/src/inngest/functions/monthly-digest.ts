@@ -9,6 +9,7 @@
  */
 
 import { inngest } from "@/inngest/client";
+import { isEnabledForAnon } from "@/lib/feature-flags";
 
 const TWENTY_FIVE_DAYS_MS = 25 * 24 * 60 * 60 * 1000;
 const SEND_HOUR_LOCAL = 9;
@@ -76,6 +77,11 @@ export const monthlyDigestFn = inngest.createFunction(
     retries: 2,
   },
   async ({ logger }) => {
+    if (!(await isEnabledForAnon("monthly_email_digest"))) {
+      logger.info("monthly-digest.disabled_by_flag");
+      return { skipped: "feature-flag-disabled" };
+    }
+
     const { prisma } = await import("@/lib/prisma");
     const { sendMonthlyDigest } = await import("@/emails/monthly-digest");
 
