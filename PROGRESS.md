@@ -7,12 +7,27 @@
 
 ---
 
-## Current Focus (updated 2026-04-21, pre-beta-freeze audit pass)
-- **Pre-beta-freeze audit + fix pass (4 commits, 2026-04-21 afternoon):**
-  1. `6eaebf7` — **sync-path auto-embed.** Ask-Your-Past-Self was only embedding entries on the async Inngest path; sync-path entries (ENABLE_INNGEST_PIPELINE unset) were silently skipping indexing. Added fail-soft embedding in `pipeline.ts` after the post-transaction memory/lifemap hook so both paths stay symmetrical.
-  2. `af4bde9` — **cleared long-standing TS2352.** `validateLifeAreaMentions()` cast through `unknown` per compiler hint. Web `npx tsc --noEmit` now passes clean.
-  3. `976db26` — **admin-gated `/api/test-sentry-error` smoke endpoint.** Jim hits this once per deploy with admin cookie to confirm the Sentry DSN + release + source-map upload delivered. `?kind=async` variant exercises unhandled-rejection capture too.
-  4. `e290511` — **rate-limited `/api/goals/[id]` DELETE.** Only Goals mutation that had no limiter; now wrapped with `userWrite` (30/min/user) to match POST + PATCH.
+## Current Focus (updated 2026-04-21, pre-beta hardening pass 2)
+- **Pre-beta hardening — 8 commits, 2026-04-21 afternoon batch 2:**
+  1. `c801098` — **Feature flag system (Part 1).** FeatureFlag + UserFeatureOverride + AdminAuditLog schema; `lib/feature-flags.ts` evaluator with per-request cache; `scripts/seed-feature-flags.ts` seeds 13 flags; gates wired into 16 routes + 3 Inngest fns. Disabled features 404 (not 403 — don't leak existence).
+  2. `21bfda2` — **Admin Feature Flags UI (Part 2).** New "Feature Flags" tab: inline toggle, rollout slider, tier dropdown, per-user override lookup + required audit reason. API at `/api/admin/feature-flags/*`.
+  3. `1d18aaf` — **Admin Users tab (Part 3).** Paginated metadata-only list, detail modal, 3 scoped actions (extend trial, password-reset magic link, delete account with email-match confirm). NO entries, transcripts, goals, tasks, audio, or AI observations visible. All writes hit AdminAuditLog.
+  4. `651860a` — **Stripe portal verified (Part 4).** Already wired at `/api/stripe/portal` + `/account`. Documented the Stripe-Dashboard one-time config (branding, cancellation flow, features, return URL) in `docs/STRIPE_PORTAL_SETUP.md` for Jim to run through.
+  5. `91317d2` — **Crisis resources (Part 5).** `/support/crisis` page (988, Crisis Text Line, IASP, SAMHSA) + persistent <CrisisFooter> on authenticated pages + /account Support & safety section + onboarding step 2 footnote. NO AI-based detection; passive resources only.
+  6. `1ec8d14` — **RLS verification (Part 6).** `scripts/verify-rls.ts` live-checked prod: 5/12 tables have RLS on, 7 are missing. Exact ALTER TABLE SQL in `docs/RLS_STATUS.md` for Jim to paste into Supabase SQL editor. App uses `postgres` role so RLS is defense-in-depth; in-route session checks remain the runtime gate.
+  7. `9b52501` — **AdminAuditLog panel on Overview.** Last 20 admin actions visible at a glance. Per-action renderer for flag toggles, override upserts/deletes, trial extensions, magic-link sends, account deletes.
+  8. (this commit) — **docs + PROGRESS.md.** `docs/TIER_STRUCTURE.md` placeholder for post-beta tier design; this entry.
+- **Manual steps Jim owes post-deploy:**
+  1. `npx prisma db push` — lands FeatureFlag + UserFeatureOverride + AdminAuditLog tables.
+  2. `set -a && source apps/web/.env.local && set +a && npx tsx scripts/seed-feature-flags.ts` — seeds 13 flags (apple_health_integration=OFF, calendar_integrations=OFF, state_of_me_report=PRO-tier, rest ON).
+  3. Paste the ALTER TABLE block from `docs/RLS_STATUS.md` into Supabase SQL editor to enable RLS on the 7 newer tables. Then re-run `npx tsx scripts/verify-rls.ts` to confirm.
+  4. Stripe Dashboard portal config per `docs/STRIPE_PORTAL_SETUP.md` (one-time, test mode then live).
+  5. Smoke-test `/api/test-sentry-error` (from the earlier audit commit) once signed in as admin.
+- **Earlier 2026-04-21 audit commits (still apply):**
+  - `6eaebf7` — sync-path auto-embed for Ask-Your-Past-Self
+  - `af4bde9` — web TS2352 cleared
+  - `976db26` — `/api/test-sentry-error` admin smoke endpoint
+  - `e290511` — `/api/goals/[id]` DELETE rate-limited
 - **Ask-Your-Past-Self activation (manual, Jim):** (1) `cd apps/web && npx prisma db push` to land the `Entry.embedding Float[]` column if not yet applied to prod; (2) confirm `OPENAI_API_KEY` is set in Vercel Production **and** `apps/web/.env.local`; (3) run `set -a && source apps/web/.env.local && set +a && npx tsx apps/web/scripts/backfill-entry-embeddings.ts` to backfill legacy entries. No pgvector extension needed — embeddings are `Float[]` and cosine similarity runs in app memory.
 - **Post-deploy verifications Jim owes the beta:** (a) hit `/api/test-sentry-error` once signed in as admin — confirm the error surfaces in Sentry dashboard within 30s with readable stack; (b) provision Sentry env vars in Vercel (SENTRY_DSN/ORG/PROJECT/AUTH_TOKEN) + EAS secret (EXPO_PUBLIC_SENTRY_DSN) per `docs/ERROR_MONITORING.md`; (c) mobile HealthKit client is intentionally deferred — the iOS entitlements, usage descriptions, and @kingstinct/react-native-healthkit plugin are all NOT in `apps/mobile/app.json` by design; server-side Apple Health tables, routes, and correlation card already ship and activate the moment a mobile client uploads HealthSnapshot rows.
 - **Vercel Production is not receiving auto-deploys from main** — see "Blocked on Inngest verification" below for full diagnosis. Triage this first when back: `vercel --prod` from the repo, or redeploy from the dashboard. Every paywall + security + Inngest PR from 2026-04-19 onward is on `main` but not live.
@@ -195,6 +210,20 @@ No PROGRESS.md "Next Up" additions yet — this blocker blocks step 2 of the exi
 ---
 
 ## Done
+
+### 2026-04-21 — afternoon pre-beta hardening batch 2 (8 commits)
+Feature flag system, admin-facing flag + user control panels, Stripe portal documentation, crisis resources, RLS verification, and an admin audit log. Every admin write path now records to AdminAuditLog with canonical slugs from `lib/admin-audit.ts::ADMIN_ACTIONS`.
+
+- **`c801098` (P1) Feature flag system.** Schema (FeatureFlag + UserFeatureOverride + AdminAuditLog), `lib/feature-flags.ts` (isEnabled + isEnabledForAnon + gateFeatureFlag + resetFeatureFlagCache), 13-flag seed script, gates in 16 routes + 3 Inngest crons. 404-on-disabled posture.
+- **`21bfda2` (P2) Admin Feature Flags tab.** PATCH API for enabled/rollout/tier; GET/POST/DELETE API for per-user overrides; tab UI with inline toggle, rollout slider, tier dropdown, user-lookup-by-email override panel with required reason.
+- **`1d18aaf` (P3) Admin Users tab.** Paginated list with search, detail modal that is deliberately metadata-only (no entries, transcripts, goals, tasks, audio, AI output), three actions: extend trial (1-90 days + reason), send password reset, delete account (email-match confirm). Writes AdminAuditLog.
+- **`651860a` (P4) Stripe portal documented.** Already wired (`/api/stripe/portal` + account-client.tsx:458). New `docs/STRIPE_PORTAL_SETUP.md` captures the Stripe Dashboard one-time config.
+- **`91317d2` (P5) Crisis resources.** `/support/crisis` static page with 4 resource cards + immediate-risk callout; persistent `<CrisisFooter>` mounted in root layout (authenticated-only via `useSession()`); /account Support & safety section; /support amber callout + footer link; onboarding step 2 footnote. Explicit product decision: NO AI-based crisis detection, passive only.
+- **`1ec8d14` (P6) RLS verification.** `scripts/verify-rls.ts` ran live against prod — result: 5/12 tables have RLS on, 7 are missing (Theme, ThemeMention, UserInsight, LifeMapAreaHistory, StateOfMeReport, HealthSnapshot, UserLifeDimension). Exact ALTER TABLE SQL emitted in `docs/RLS_STATUS.md`. App connects with the `postgres` role so RLS is defense-in-depth, not a runtime enforcement layer for our code.
+- **`9b52501` Admin audit feed on Overview.** New `/api/admin/audit?limit=N` endpoint + `RecentAdminActions` component. Shows last 20 admin writes with per-action detail (flag toggle result, rollout %, override target, trial extension days + reason, hashed email for deletes). Admin emails hydrated once, not N times.
+- **This commit (P7/docs).** `docs/TIER_STRUCTURE.md` placeholder capturing current vocabulary, requiredTier semantics, and open questions for post-beta tier design.
+
+**Session totals:** 8 commits on top of the morning's 4 audit-pass commits. Web `npx tsc --noEmit` clean. No deploys triggered (still waiting on Vercel auto-deploy per 2026-04-20 blocker). Mobile untouched.
 
 ### 2026-04-21 — afternoon pre-beta-freeze audit (4 commits)
 Audited today's 8 morning workstreams (Apple Health, Ask-Your-Past-Self, State of Me, Configurable Life Matrix, Referral Rewards, Mobile theme-map pinch-zoom, Calendar foundation, Goals ARCHIVED status) + the post-noon polish commits (recharts install, turbo.json env vars) for TODOs, ghost UI, missing error states, and broken integrations. Result: no ghost buttons, one functional gap, one TS cleanup, one observability verification gap, one rate-limit gap.
