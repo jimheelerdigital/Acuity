@@ -301,12 +301,28 @@ model Goal {
   description     String?
   lifeArea        String    @default("PERSONAL")
   // Valid values (enforced by app code, kept as String for cross-version
-  // Postgres compatibility): NOT_STARTED | IN_PROGRESS | ON_HOLD | COMPLETE.
-  // Migrated 2026-04-20 from legacy values ACTIVE/COMPLETED/PAUSED/ABANDONED:
-  //   ACTIVE→IN_PROGRESS, COMPLETED→COMPLETE, PAUSED→ON_HOLD, ABANDONED→ON_HOLD.
-  // Default changed from ACTIVE to NOT_STARTED; goals extracted from entries
-  // are created NOT_STARTED (user flips to IN_PROGRESS from the detail view
-  // when they actually start working on it).
+  // Postgres compatibility):
+  //   NOT_STARTED | IN_PROGRESS | ON_HOLD | COMPLETE | ARCHIVED
+  //
+  // Status semantics:
+  //   NOT_STARTED — extracted from an entry, user hasn't engaged yet
+  //   IN_PROGRESS — actively working
+  //   ON_HOLD     — paused intentionally, still in the main list
+  //   COMPLETE    — shipped
+  //   ARCHIVED    — user dismissed; hidden from main list + recommendations
+  //                 (W5 2026-04-21 — split from ON_HOLD because users kept
+  //                 conflating "paused for now" with "hide this from me")
+  //
+  // Migration history:
+  //   2026-04-20: ACTIVE→IN_PROGRESS, COMPLETED→COMPLETE,
+  //               PAUSED→ON_HOLD, ABANDONED→ON_HOLD.
+  //   2026-04-22: ARCHIVED added as a distinct 5th value. Pre-existing
+  //               ON_HOLD rows stay ON_HOLD (can't safely promote
+  //               without user intent); going forward Archive action
+  //               writes ARCHIVED.
+  //
+  // Default on extraction-created goals stays NOT_STARTED; users flip
+  // to IN_PROGRESS from the detail view when they actually start.
   status          String    @default("NOT_STARTED")
   targetDate      DateTime?
   progress        Int       @default(0)

@@ -50,6 +50,7 @@ const STATUS_OPTIONS: Array<{ value: string; label: string; color: string }> = [
   { value: "NOT_STARTED", label: "Not started", color: "#71717A" },
   { value: "IN_PROGRESS", label: "In progress", color: "#34D399" },
   { value: "ON_HOLD", label: "On hold", color: "#FBBF24" },
+  { value: "ARCHIVED", label: "Archived", color: "#52525B" },
   { value: "COMPLETE", label: "Complete", color: "#A78BFA" },
 ];
 

@@ -74,6 +74,11 @@ const STATUS_STYLES: Record<string, { label: string; bg: string; text: string }>
     bg: "bg-violet-50 dark:bg-violet-950/30",
     text: "text-violet-700 dark:text-violet-300",
   },
+  ARCHIVED: {
+    label: "Archived",
+    bg: "bg-zinc-100 dark:bg-white/5",
+    text: "text-zinc-400 dark:text-zinc-500",
+  },
 };
 
 export function GoalList() {
@@ -120,7 +125,7 @@ export function GoalList() {
   }, []);
 
   const performAction = useCallback(
-    async (goalId: string, action: "complete" | "archive" | "start") => {
+    async (goalId: string, action: "complete" | "archive" | "start" | "restore") => {
       await fetch("/api/goals", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -198,7 +203,7 @@ export function GoalList() {
             onChange={(e) => setIncludeArchived(e.target.checked)}
             className="rounded"
           />
-          Show archived (on hold)
+          Show archived
         </label>
       </div>
 
@@ -274,7 +279,7 @@ function GoalTreeNode({
   depth: number;
   expanded: Set<string>;
   onToggleExpand: (id: string) => void;
-  onAction: (id: string, action: "complete" | "archive" | "start") => void;
+  onAction: (id: string, action: "complete" | "archive" | "start" | "restore") => void;
   onDelete: (id: string) => void;
   onToggleTask: (id: string, currentStatus: string) => void;
   onAddSubgoal: (goal: Goal) => void;
@@ -419,7 +424,7 @@ function GoalActions({
   onAddSubgoal,
 }: {
   goal: Goal;
-  onAction: (id: string, action: "complete" | "archive" | "start") => void;
+  onAction: (id: string, action: "complete" | "archive" | "start" | "restore") => void;
   onDelete: (id: string) => void;
   onAddSubgoal: (goal: Goal) => void;
 }) {
@@ -475,12 +480,21 @@ function GoalActions({
               }}
             />
           )}
-          {goal.status !== "ON_HOLD" && (
+          {goal.status !== "ARCHIVED" && (
             <MenuItem
               label="Archive"
               onClick={() => {
                 setOpen(false);
                 onAction(goal.id, "archive");
+              }}
+            />
+          )}
+          {goal.status === "ARCHIVED" && (
+            <MenuItem
+              label="Restore"
+              onClick={() => {
+                setOpen(false);
+                onAction(goal.id, "restore");
               }}
             />
           )}

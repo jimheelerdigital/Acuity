@@ -71,6 +71,7 @@ const STATUS_STYLES: Record<string, { label: string; color: string }> = {
   IN_PROGRESS: { label: "In progress", color: "#34D399" },
   ON_HOLD: { label: "On hold", color: "#FBBF24" },
   COMPLETE: { label: "Complete", color: "#A78BFA" },
+  ARCHIVED: { label: "Archived", color: "#52525B" },
 };
 
 export default function GoalsTab() {
@@ -126,7 +127,7 @@ export default function GoalsTab() {
 
   const performAction = async (
     goalId: string,
-    action: "complete" | "archive" | "start"
+    action: "complete" | "archive" | "start" | "restore"
   ) => {
     try {
       await api.patch("/api/goals", { id: goalId, action });
@@ -615,7 +616,7 @@ function ActionSheet({
 }: {
   goal: TreeGoal;
   onClose: () => void;
-  onAction: (action: "start" | "complete" | "archive" | "delete") => void;
+  onAction: (action: "start" | "complete" | "archive" | "delete" | "restore") => void;
 }) {
   return (
     <Modal transparent animationType="fade" onRequestClose={onClose}>
@@ -635,11 +636,18 @@ function ActionSheet({
                 onPress={() => onAction("complete")}
               />
             )}
-            {goal.status !== "ON_HOLD" && (
+            {goal.status !== "ARCHIVED" && (
               <SheetRow
-                label="Archive (on hold)"
+                label="Archive"
                 icon="archive-outline"
                 onPress={() => onAction("archive")}
+              />
+            )}
+            {goal.status === "ARCHIVED" && (
+              <SheetRow
+                label="Restore"
+                icon="refresh-outline"
+                onPress={() => onAction("restore")}
               />
             )}
             <SheetRow

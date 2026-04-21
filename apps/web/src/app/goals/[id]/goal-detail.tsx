@@ -29,6 +29,7 @@ const STATUS_OPTIONS = [
   { value: "NOT_STARTED", label: "Not started" },
   { value: "IN_PROGRESS", label: "In progress" },
   { value: "ON_HOLD", label: "On hold" },
+  { value: "ARCHIVED", label: "Archived" },
   { value: "COMPLETE", label: "Complete" },
 ];
 

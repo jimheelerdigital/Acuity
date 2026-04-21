@@ -5,10 +5,12 @@
  * populated + tasks attached at leaves + calculated rollup progress.
  *
  * Query:
- *   includeArchived — '1' to include ON_HOLD/COMPLETE status in output.
- *                     Default excludes ON_HOLD (archived bucket).
- *                     COMPLETE goals always render so the user sees
- *                     their wins.
+ *   includeArchived — '1' to include ARCHIVED goals. Default excludes
+ *                     them — they're the "hide from me" bucket.
+ *                     ON_HOLD goals still render in the default view
+ *                     because "paused for now" is not the same as
+ *                     "hide this". COMPLETE always renders so the
+ *                     user sees their wins.
  *
  * Response shape:
  *   {
@@ -37,7 +39,7 @@ export async function GET(req: NextRequest) {
 
   const statusFilter = includeArchived
     ? undefined
-    : { not: "ON_HOLD" as const };
+    : { not: "ARCHIVED" as const };
 
   const [goals, tasks, pendingCount] = await Promise.all([
     prisma.goal.findMany({

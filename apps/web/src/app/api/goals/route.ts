@@ -98,10 +98,14 @@ export async function PATCH(req: NextRequest) {
       data = { status: "IN_PROGRESS", editedByUser: true };
       break;
     case "archive":
-      // "Archive" was a legacy distinct state (ABANDONED) that the new
-      // 4-value vocab doesn't have. Collapsed into ON_HOLD — semantically
-      // "I'm not pursuing this right now" covers both pause and abandon.
-      data = { status: "ON_HOLD", editedByUser: true };
+      // Archive is a distinct state again (2026-04-22). Hides the goal
+      // from the main tree + excludes it from recommended-activity picks.
+      // "Restore" re-surfaces by flipping back to IN_PROGRESS.
+      data = { status: "ARCHIVED", editedByUser: true };
+      break;
+    case "restore":
+      // Undo of archive — sends the goal back to IN_PROGRESS.
+      data = { status: "IN_PROGRESS", editedByUser: true };
       break;
     case "progress":
       if (typeof body.progress !== "number" || body.progress < 0 || body.progress > 100) {
@@ -120,7 +124,13 @@ export async function PATCH(req: NextRequest) {
       if (!fields || typeof fields !== "object") {
         return NextResponse.json({ error: "Missing fields object" }, { status: 400 });
       }
-      const VALID_STATUS = ["NOT_STARTED", "IN_PROGRESS", "ON_HOLD", "COMPLETE"];
+      const VALID_STATUS = [
+        "NOT_STARTED",
+        "IN_PROGRESS",
+        "ON_HOLD",
+        "COMPLETE",
+        "ARCHIVED",
+      ];
       const update: Record<string, unknown> = { editedByUser: true };
       if (typeof fields.title === "string") update.title = fields.title.trim();
       if (typeof fields.description === "string" || fields.description === null)
