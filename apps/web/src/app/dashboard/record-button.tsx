@@ -191,7 +191,7 @@ export function RecordButton() {
               ? "bg-red-500 hover:bg-red-400 scale-110 shadow-lg shadow-red-500/30"
               : isProcessing
                 ? "bg-zinc-200 dark:bg-white/10 cursor-wait"
-                : "bg-zinc-900 hover:scale-105 hover:shadow-xl hover:shadow-zinc-900/20 active:scale-95"
+                : "bg-violet-600 hover:bg-violet-500 hover:scale-105 hover:shadow-xl hover:shadow-violet-500/30 active:scale-95"
             }
           `}
         >
@@ -510,17 +510,20 @@ function extFromMime(mime: string): string {
 }
 
 function MicIcon({ size = 16 }: { size?: number }) {
+  // Explicit `stroke="#FFFFFF"` belt-and-suspenders: `stroke="currentColor"`
+  // + `className="text-white"` was producing white-on-white renders on
+  // some iOS Safari + light-mode combinations (bug report 2026-04-20).
+  // Hard-coding the stroke eliminates the dependency on inherited color.
   return (
     <svg
       width={size}
       height={size}
       viewBox="0 0 24 24"
       fill="none"
-      stroke="currentColor"
+      stroke="#FFFFFF"
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
-      className="text-white"
     >
       <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
       <path d="M19 10v2a7 7 0 0 1-14 0v-2" />

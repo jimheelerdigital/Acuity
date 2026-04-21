@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Tabs, useRouter } from "expo-router";
-import { Pressable, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 
 import { useTheme } from "@/contexts/theme-context";
 
@@ -129,7 +129,7 @@ function RecordCenterButton({ isDark }: { isDark: boolean }) {
       style={{
         flex: 1,
         alignItems: "center",
-        justifyContent: "center",
+        justifyContent: "flex-start",
         marginTop: -25,
       }}
     >
@@ -141,6 +141,11 @@ function RecordCenterButton({ isDark }: { isDark: boolean }) {
           width: size,
           height: size,
           borderRadius: size / 2,
+          // Hard-coded color (not theme-conditional) so the record
+          // CTA is always visually identifiable — Acuity's brand-primary
+          // action. Mic icon always white on this background; setting
+          // both values explicitly closes a light-mode bug where the
+          // inherited color was rendering white-on-white on iOS.
           backgroundColor: "#7C3AED",
           alignItems: "center",
           justifyContent: "center",
@@ -156,6 +161,18 @@ function RecordCenterButton({ isDark }: { isDark: boolean }) {
       >
         <Ionicons name="mic" size={28} color="#FFFFFF" />
       </Pressable>
+      <Text
+        // Label below the raised circle so users know this tab is
+        // "Home" (recording entry point) rather than a mystery icon.
+        style={{
+          marginTop: 6,
+          fontSize: 11,
+          fontWeight: "500",
+          color: isDark ? "#71717A" : "#A1A1AA",
+        }}
+      >
+        Home
+      </Text>
     </View>
   );
 }
