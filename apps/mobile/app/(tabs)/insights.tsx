@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -64,6 +65,7 @@ const MOOD_COLORS: Record<string, string> = {
 };
 
 export default function InsightsTab() {
+  const router = useRouter();
   const { resolved: resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
   const [entries, setEntries] = useState<EntryDTO[]>([]);
@@ -169,6 +171,28 @@ export default function InsightsTab() {
         <UserInsightsCard />
 
         <ComparisonsCard />
+
+        {/* Theme Map entry card — opens the dedicated force-graph screen. */}
+        <Pressable
+          onPress={() => router.push("/insights/theme-map")}
+          style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
+          className="mb-6 rounded-2xl border border-violet-900/30 bg-violet-950/10 p-4"
+        >
+          <View className="flex-row items-center justify-between">
+            <View className="flex-1 pr-3">
+              <Text className="text-[11px] font-semibold uppercase tracking-widest text-violet-400">
+                New
+              </Text>
+              <Text className="mt-1 text-base font-semibold text-zinc-900 dark:text-zinc-50">
+                Theme Map
+              </Text>
+              <Text className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                See the patterns your debriefs keep circling.
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="#A78BFA" />
+          </View>
+        </Pressable>
 
         {/* Memory stats */}
         {memory && memory.totalEntries > 0 && (

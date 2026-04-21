@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 
@@ -30,6 +31,41 @@ export default async function InsightsPage() {
             Your life, decoded — across every area.
           </p>
           <LifeMap />
+        </section>
+
+        {/* Theme Map entry point — links to the dedicated force-graph page. */}
+        <section className="mb-12">
+          <Link
+            href="/insights/theme-map"
+            className="group block rounded-2xl border border-zinc-200 dark:border-white/10 bg-gradient-to-br from-violet-50 to-white dark:from-violet-950/20 dark:to-[#1E1E2E] p-6 transition hover:border-violet-300 dark:hover:border-violet-700/40"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1">
+                <p className="text-xs font-semibold uppercase tracking-widest text-violet-600 dark:text-violet-400">
+                  New
+                </p>
+                <h2 className="mt-2 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+                  Theme Map
+                </h2>
+                <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                  See the patterns your debriefs keep circling back to —
+                  sized by how often, colored by how they feel.
+                </p>
+              </div>
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                className="mt-1 text-zinc-400 group-hover:text-violet-600 dark:group-hover:text-violet-400 transition"
+              >
+                <path d="M9 18l6-6-6-6" />
+              </svg>
+            </div>
+          </Link>
         </section>
 
         {/* Mood & Weekly Reports */}
