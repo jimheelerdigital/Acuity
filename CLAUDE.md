@@ -1,3 +1,55 @@
+## Progress Tracking Rules
+
+This repo uses the existing progress.md at the root as the single source of truth for code changes. Both cofounders ship through Claude Code. These rules apply to every session.
+
+### Before starting ANY task:
+1. Read progress.md at the root of the repo
+2. Note any unfinished manual steps from recent entries
+3. Summarize the current state in 2 sentences before proceeding
+
+### After completing ANY task:
+1. Commit all changes with a descriptive commit message
+2. Push to main
+3. Append a new entry to the TOP of the existing progress.md (do not replace the file — add the new entry above the most recent entry)
+
+### Entry format — use this exact structure:
+
+```
+## [DATE] — [Short title of what shipped]
+
+**Status:** SHIPPED TO MAIN | NEEDS DEPLOY | BLOCKED
+**Commit:** [commit hash]
+**Branch:** main
+
+### What shipped (business view)
+[2-3 sentences a non-technical cofounder can read. What does this mean for users? For revenue? For growth? Skip implementation details.]
+
+### What shipped (technical view)
+[2-3 sentences for the technical cofounder. What changed architecturally? What patterns were used? Any performance implications?]
+
+### Files changed
+- [file path]: [one-line description of change]
+- [file path]: [one-line description of change]
+
+### Manual steps required
+- [ ] [Action item — e.g., "Run npx prisma db push to add new table"]
+- [ ] [Action item — e.g., "Add STRIPE_WEBHOOK_SECRET to Vercel env vars"]
+(If none, write "None — fully automated.")
+
+### Risks / Watch for
+- [Anything that could break, any monitoring to check, any follow-up needed]
+(If none, write "None identified.")
+```
+
+### Rules:
+- NEVER skip the progress.md entry. It is as mandatory as the commit itself.
+- NEVER delete or rewrite existing entries. Only append new ones above the most recent.
+- Date format: YYYY-MM-DD
+- If a task spans multiple commits, write ONE entry covering all of them.
+- If manual steps from a PREVIOUS entry are still incomplete, note them in your new entry under "Manual steps required" with a reference back.
+
+---
+
 # Agent Instructions
 
 You're working inside the **WAT framework** (Workflows, Agents, Tools). This architecture separates concerns so that probabilistic AI handles reasoning while deterministic code handles execution. That separation is what makes this system reliable.
