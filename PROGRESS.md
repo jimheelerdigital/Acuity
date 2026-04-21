@@ -7,6 +7,49 @@
 
 ---
 
+## 2026-04-21 — Admin dashboard: caching, readable labels, and Guide tab
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** 27980a2
+
+### In plain English (for Keenan)
+The admin dashboard is now much faster — tabs load from cache instead of re-running every database query on every page view. All the confusing abbreviations like "DAU", "MRR", and "CAC" are spelled out in full so you don't need to remember what they stand for. There's a new "Guide" tab at the end of the tab bar that explains every single metric in the dashboard: what it measures, what a healthy number looks like, what counts as a red flag, and what to do about it. Every tab also has a small "Refresh" button in the top-right that shows when the data was last updated and lets you force-refresh when you want live numbers.
+
+### Technical changes (for Jimmy)
+- New file: `apps/web/src/lib/admin-cache.ts` — in-memory TTL cache with `getCached(key, ttlMs, fn)`, `invalidateCache(key)`, and `invalidateCachePrefix(prefix)`. No Redis dependency.
+- Modified `apps/web/src/app/api/admin/metrics/route.ts`:
+  - All tabs wrapped in `getCached` with per-tab TTLs (Overview 5min, Revenue 10min, Funnel/Ads 15min, AI Costs 2min, Content Factory 0/live, Feature Flags 1min, Guide infinite)
+  - Accepts `?refresh=true` to invalidate cache for that tab
+  - Added timing logs: `[metrics] tab=X range=Y cached=true/false duration=Xms`
+  - Revenue tab: parallelized 7 queries that were sequential
+  - Engagement tab: added DAU/MAU ratio calculation
+  - Growth tab: renamed d1Rate to d0Rate for accuracy
+  - New `getGuide()` handler (returns static content, infinite TTL)
+- Modified `apps/web/src/app/admin/tabs/useTabData.ts` — added `refresh()` callback and `_meta` response parsing (cached, computedAt, durationMs)
+- New file: `apps/web/src/app/admin/components/RefreshButton.tsx` — shows "Updated X ago", invalidates cache on click
+- New file: `apps/web/src/app/admin/tabs/GuideTab.tsx` — full Guide tab with sidebar nav, metric cards with healthy/red-flag/action sections
+- Modified all tab files (Overview, Growth, Engagement, Revenue, Funnel, Ads, AI Costs, Red Flags) — added RefreshButton, spelled out all abbreviation labels
+- Modified `apps/web/src/app/admin/admin-dashboard.tsx` — added Guide tab to TABS array and routing, hid time range selector for Guide tab
+- Modified `prisma/schema.prisma` — added 4 new indexes:
+  - `User(createdAt)`
+  - `Entry(userId, createdAt)` composite
+  - `WeeklyReport(userId, createdAt)` composite
+  - `ContentPiece(type, status, createdAt)` composite
+
+### Manual steps needed
+- [ ] `npx prisma db push` from home network (Keenan) — applies 4 new database indexes. No data migration, additive only.
+
+### Notes
+- DashboardSnapshot.date already has a unique constraint which implicitly creates an index, so no additional index was needed there.
+- The cache is in-memory and resets on every Vercel redeploy — this is intentional for v1. If data freshness becomes an issue at scale, consider Redis.
+- Revenue tab was running 7 sequential queries; now parallelized via Promise.all which should cut that tab's response time roughly in half.
+- "D1 Activation Rate" was renamed to "Day 0 Activation Rate" since the query checks for a recording within 24h of signup (i.e., same day), matching the metric definition in the Guide.
+- Content Factory tab is excluded from caching because it needs live data for the approve/reject workflow.
+- The Guide tab is fully static (no API data), cached with infinite TTL, and uses a sidebar with anchor links for quick navigation.
+
+---
+
 ## 2026-04-21 — Set up dual-audience progress tracking system
 
 - **Requested by:** Keenan
