@@ -37,6 +37,20 @@ export function Step2ValueProp() {
           body="Weekly narrative. Life Matrix across six areas. Patterns that are hard to spot from the inside. Quietly building, one entry at a time."
         />
       </div>
+
+      <p className="mt-8 text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
+        Acuity is a journaling tool, not a substitute for professional support.
+        If you&rsquo;re in crisis,{" "}
+        <a
+          href="/support/crisis"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline underline-offset-2 hover:text-zinc-700 dark:hover:text-zinc-200"
+        >
+          reach out to a hotline
+        </a>
+        .
+      </p>
     </div>
   );
 }

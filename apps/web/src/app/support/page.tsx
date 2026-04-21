@@ -131,6 +131,20 @@ export default function SupportPage() {
           </div>
         </section>
 
+        <section className="mt-12 rounded-lg border border-amber-500/20 bg-amber-500/5 p-5 text-sm leading-relaxed text-amber-100/90">
+          <p className="font-semibold text-amber-100">In crisis?</p>
+          <p className="mt-1 text-amber-100/80">
+            Acuity is a journaling tool, not a substitute for professional
+            support. If you or someone you know is in crisis, please reach out.{" "}
+            <Link
+              href="/support/crisis"
+              className="text-[#A78BFA] hover:underline"
+            >
+              Crisis resources →
+            </Link>
+          </p>
+        </section>
+
         <section className="mt-12 border-t border-white/10 pt-8">
           <div className="flex flex-wrap gap-4 text-sm">
             <Link
@@ -144,6 +158,12 @@ export default function SupportPage() {
               className="text-[#A0A0B8] transition hover:text-white"
             >
               Terms of Service
+            </Link>
+            <Link
+              href="/support/crisis"
+              className="text-[#A0A0B8] transition hover:text-white"
+            >
+              Crisis resources
             </Link>
             <a
               href="mailto:jim@heelerdigital.com"

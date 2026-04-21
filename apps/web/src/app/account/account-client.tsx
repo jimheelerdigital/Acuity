@@ -99,6 +99,24 @@ export default function AccountClient({
         {/* Data export */}
         <DataExportSection />
 
+        {/* Support & safety — crisis resources pointer */}
+        <section className="mt-8 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-6">
+          <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
+            Support &amp; safety
+          </h2>
+          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+            Acuity is a journaling tool, not a substitute for professional
+            support. If you&rsquo;re in crisis, please reach out to a hotline or
+            emergency service.
+          </p>
+          <a
+            href="/support/crisis"
+            className="mt-4 inline-flex rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-white/10 dark:bg-[#1E1E2E] dark:text-zinc-200 dark:hover:bg-white/5"
+          >
+            Crisis resources
+          </a>
+        </section>
+
         {/* Appearance */}
         <section className="mt-8 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-6">
           <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
