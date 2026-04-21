@@ -540,6 +540,7 @@ model ContentPiece {
   finalBody        String?           @db.Text
   distributedAt    DateTime?
   distributedUrl   String?
+  slug             String?           @unique
   metrics          Json?
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt

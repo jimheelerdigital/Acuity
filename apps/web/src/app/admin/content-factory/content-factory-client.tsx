@@ -409,8 +409,13 @@ function ReviewQueue({
       body: JSON.stringify({ pieceId }),
     });
     if (res.ok) {
+      const data = await res.json();
       const piece = sorted.find((p) => p.id === pieceId);
-      if (piece) onUpdate({ ...piece, status: "APPROVED" });
+      if (piece) {
+        // Blog posts auto-publish: status goes to DISTRIBUTED
+        const status = data.autoPublished ? "DISTRIBUTED" : "APPROVED";
+        onUpdate({ ...piece, status });
+      }
     }
   };
 
@@ -959,6 +964,21 @@ function ReadyToPost({ pieces }: { pieces: ContentPiece[] }) {
 
 function LivePerformance({ pieces }: { pieces: ContentPiece[] }) {
   const [sortBy, setSortBy] = useState<"signups" | "date">("signups");
+  const [unpublishing, setUnpublishing] = useState<string | null>(null);
+
+  const handleUnpublish = async (pieceId: string) => {
+    setUnpublishing(pieceId);
+    try {
+      await fetch("/api/admin/content-factory/unpublish", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pieceId }),
+      });
+      window.location.reload();
+    } finally {
+      setUnpublishing(null);
+    }
+  };
 
   const sorted = [...pieces].sort((a, b) => {
     if (sortBy === "signups") {
@@ -1007,6 +1027,7 @@ function LivePerformance({ pieces }: { pieces: ContentPiece[] }) {
                 Signups
               </button>
             </th>
+            <th className="px-5 py-3 font-medium"></th>
           </tr>
         </thead>
         <tbody>
@@ -1050,6 +1071,17 @@ function LivePerformance({ pieces }: { pieces: ContentPiece[] }) {
                 <td className="px-5 py-3 text-right">{m.clicks ?? "—"}</td>
                 <td className="px-5 py-3 text-right font-medium">
                   {m.signups ?? "—"}
+                </td>
+                <td className="px-5 py-3">
+                  {piece.type === "BLOG" && (
+                    <button
+                      onClick={() => handleUnpublish(piece.id)}
+                      disabled={unpublishing === piece.id}
+                      className="rounded-md bg-red-600/20 px-3 py-1 text-xs text-red-400 hover:bg-red-600/30 disabled:opacity-50"
+                    >
+                      {unpublishing === piece.id ? "…" : "Unpublish"}
+                    </button>
+                  )}
                 </td>
               </tr>
             );

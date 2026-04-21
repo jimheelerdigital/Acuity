@@ -2,6 +2,8 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { BLOG_POSTS } from "@/lib/blog-posts";
 
+export const revalidate = 300; // 5 minutes
+
 export const metadata: Metadata = {
   title: "Blog — Acuity",
   description:
@@ -15,7 +17,83 @@ export const metadata: Metadata = {
   },
 };
 
-export default function BlogIndex() {
+interface BlogCard {
+  slug: string;
+  title: string;
+  excerpt: string;
+  publishedAt: string;
+  readingTime: string;
+}
+
+async function getDynamicPosts(): Promise<BlogCard[]> {
+  try {
+    const { prisma } = await import("@/lib/prisma");
+    const pieces = await prisma.contentPiece.findMany({
+      where: {
+        type: "BLOG",
+        status: "DISTRIBUTED",
+        slug: { not: null },
+      },
+      orderBy: { distributedAt: "desc" },
+      select: {
+        slug: true,
+        title: true,
+        hook: true,
+        body: true,
+        distributedAt: true,
+      },
+    });
+
+    return pieces.map((p) => {
+      const wordCount = p.body.replace(/<[^>]+>/g, " ").split(/\s+/).length;
+      const readingTime = `${Math.max(1, Math.round(wordCount / 250))} min read`;
+      return {
+        slug: p.slug!,
+        title: p.title,
+        excerpt: p.hook,
+        publishedAt: (p.distributedAt ?? new Date()).toISOString(),
+        readingTime,
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
+export default async function BlogIndex() {
+  const dynamicPosts = await getDynamicPosts();
+
+  // Merge: static posts + dynamic posts, deduplicate by slug, sort newest first
+  const staticCards: BlogCard[] = BLOG_POSTS.map((post) => ({
+    slug: post.slug,
+    title: post.title,
+    excerpt: post.excerpt,
+    publishedAt: post.publishedAt,
+    readingTime: post.readingTime,
+  }));
+
+  const slugsSeen = new Set<string>();
+  const allPosts: BlogCard[] = [];
+
+  // Dynamic posts take priority (they may have the same slug as a static post)
+  for (const post of dynamicPosts) {
+    if (!slugsSeen.has(post.slug)) {
+      slugsSeen.add(post.slug);
+      allPosts.push(post);
+    }
+  }
+  for (const post of staticCards) {
+    if (!slugsSeen.has(post.slug)) {
+      slugsSeen.add(post.slug);
+      allPosts.push(post);
+    }
+  }
+
+  allPosts.sort(
+    (a, b) =>
+      new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
+  );
+
   return (
     <main className="pt-32 pb-24 px-6">
       <div className="mx-auto max-w-4xl">
@@ -28,7 +106,7 @@ export default function BlogIndex() {
         </p>
 
         <div className="grid gap-8 sm:grid-cols-2">
-          {BLOG_POSTS.map((post) => (
+          {allPosts.map((post) => (
             <Link
               key={post.slug}
               href={`/blog/${post.slug}`}
