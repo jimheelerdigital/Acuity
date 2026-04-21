@@ -7,6 +7,31 @@
 
 ---
 
+## 2026-04-21 — Set up dual-audience progress tracking system
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** ce9e88a
+
+### In plain English (for Keenan)
+Set up a system so every code change is automatically logged with both a plain-English summary for Keenan and a technical summary for Jimmy. From now on, every Claude Code session will read this progress log before starting and append a new entry when done. No more guessing what shipped or what manual steps are still pending.
+
+### Technical changes (for Jimmy)
+- Replaced truncated Progress Tracking Rules section at top of `CLAUDE.md` with the full version
+- Entry format: H2 date heading, requester/committer/hash metadata, four H3 subsections (plain English, technical changes, manual steps, notes)
+- Includes writing guides with good/bad examples for each section type
+- Adds requester identification rules (Keenan = business, Jimmy = technical) and manual step categories to always check (prisma db push, env vars, Vercel redeploy, Inngest resync)
+
+### Manual steps needed
+None.
+
+### Notes
+- This is the first entry using the new dual-audience format. All future entries follow this structure.
+- The previous version of the Progress Tracking Rules section was truncated (missing writing guides, requester identification, and manual step categories). This commit replaces it with the complete version.
+- progress.md itself was not reformatted — existing entries above "Current Focus" stay as-is. New entries go between this one and "Current Focus."
+
+---
+
 ## Current Focus (updated 2026-04-21, pre-beta hardening pass 2)
 - **Pre-beta hardening — 8 commits, 2026-04-21 afternoon batch 2:**
   1. `c801098` — **Feature flag system (Part 1).** FeatureFlag + UserFeatureOverride + AdminAuditLog schema; `lib/feature-flags.ts` evaluator with per-request cache; `scripts/seed-feature-flags.ts` seeds 13 flags; gates wired into 16 routes + 3 Inngest fns. Disabled features 404 (not 403 — don't leak existence).
