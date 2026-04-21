@@ -87,6 +87,9 @@ export default function AccountClient({
           initialMonthly={monthlyEmailEnabled}
         />
 
+        {/* Data export */}
+        <DataExportSection />
+
         {/* Appearance */}
         <section className="mt-8 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-6">
           <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
@@ -738,5 +741,138 @@ function PrefRow({
         />
       </button>
     </div>
+  );
+}
+
+type DataExportRow = {
+  id: string;
+  status: "PENDING" | "PROCESSING" | "READY" | "FAILED" | "EXPIRED";
+  downloadUrl: string | null;
+  expiresAt: string | null;
+  createdAt: string;
+  errorMessage: string | null;
+};
+
+/**
+ * "Download my data" section. POST triggers an async Inngest export;
+ * the user is emailed a signed link when ready. Status polls every
+ * 10 seconds while a PROCESSING job is outstanding.
+ */
+function DataExportSection() {
+  const [row, setRow] = useState<DataExportRow | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [requesting, setRequesting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const refresh = async () => {
+    try {
+      const res = await fetch("/api/user/export");
+      if (res.ok) {
+        const body = await res.json();
+        setRow(body.export);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    refresh();
+  }, []);
+
+  // Poll when a job is in flight.
+  useEffect(() => {
+    if (!row) return;
+    if (row.status !== "PENDING" && row.status !== "PROCESSING") return;
+    const t = setInterval(refresh, 10_000);
+    return () => clearInterval(t);
+  }, [row]);
+
+  const request = async () => {
+    setRequesting(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/user/export", { method: "POST" });
+      if (res.ok || res.status === 202) {
+        const body = await res.json();
+        setRow(body.export);
+      } else {
+        const body = await res.json().catch(() => ({}));
+        if (res.status === 429) {
+          setError(body.detail ?? "One export per 7 days.");
+          if (body.export) setRow(body.export);
+        } else {
+          setError(body.detail ?? body.error ?? `HTTP ${res.status}`);
+        }
+      }
+    } finally {
+      setRequesting(false);
+    }
+  };
+
+  const expiresAtDate = row?.expiresAt ? new Date(row.expiresAt) : null;
+  const isExpired =
+    expiresAtDate !== null && expiresAtDate.getTime() < Date.now();
+  const canRequest =
+    !row ||
+    row.status === "FAILED" ||
+    row.status === "EXPIRED" ||
+    isExpired ||
+    // More than 7 days since last successful READY — can re-request
+    (row.status === "READY" &&
+      Date.now() - new Date(row.createdAt).getTime() > 7 * 24 * 60 * 60 * 1000);
+
+  return (
+    <section className="mt-8 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-6">
+      <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
+        Download my data
+      </h2>
+      <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+        Get a zip of everything Acuity has stored for you — entries,
+        transcripts, goals, tasks, Life Matrix, weekly reports, audio
+        where retained. The link expires in 24 hours.
+      </p>
+
+      {loading ? (
+        <div className="mt-4 h-4 w-32 rounded bg-zinc-100 dark:bg-white/5 animate-pulse" />
+      ) : row && (row.status === "PENDING" || row.status === "PROCESSING") ? (
+        <div className="mt-4 flex items-center gap-3 text-sm text-zinc-500 dark:text-zinc-400">
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-200 dark:border-white/10 border-t-violet-500" />
+          Building your export — we&apos;ll email you the link when it&apos;s ready.
+        </div>
+      ) : row && row.status === "READY" && !isExpired && row.downloadUrl ? (
+        <div className="mt-4 flex items-center gap-3">
+          <a
+            href={row.downloadUrl}
+            className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white dark:bg-zinc-50 dark:text-zinc-900 hover:opacity-90"
+          >
+            Download zip
+          </a>
+          {expiresAtDate && (
+            <span className="text-xs text-zinc-500 dark:text-zinc-400">
+              Expires {expiresAtDate.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}
+            </span>
+          )}
+        </div>
+      ) : row && row.status === "FAILED" ? (
+        <p className="mt-3 text-xs text-red-600 dark:text-red-400">
+          Last export failed: {row.errorMessage ?? "unknown error"}. Try again.
+        </p>
+      ) : null}
+
+      {canRequest && (
+        <button
+          onClick={request}
+          disabled={requesting}
+          className="mt-4 rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-white/10 dark:bg-[#1E1E2E] dark:text-zinc-200 dark:hover:bg-white/5 disabled:opacity-40"
+        >
+          {requesting ? "Requesting…" : "Request data export"}
+        </button>
+      )}
+
+      {error && (
+        <p className="mt-3 text-xs text-red-600 dark:text-red-400">{error}</p>
+      )}
+    </section>
   );
 }
