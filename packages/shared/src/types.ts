@@ -53,13 +53,31 @@ export interface LifeAreaMentions {
 }
 
 /** Shape of the Claude extraction result stored in Entry.rawAnalysis */
+export type ThemeSentiment = "POSITIVE" | "NEUTRAL" | "NEGATIVE";
+
+/** Per-theme sentiment pair — new shape the extraction prompt returns
+ *  since the Theme Evolution Map landed (2026-04-20). Backward-compat:
+ *  older entries may only have `themes: string[]` in rawAnalysis; the
+ *  pipeline parser accepts both shapes and stamps NEUTRAL for legacy. */
+export interface ThemeWithSentiment {
+  label: string;
+  sentiment: ThemeSentiment;
+}
+
 export interface ExtractionResult {
   summary: string;
   mood: Mood;
   /** Numeric mood score 1–10 (ROUGH=1–2, LOW=3–4, NEUTRAL=5–6, GOOD=7–8, GREAT=9–10) */
   moodScore: number;
   energy: number; // 1–10
+  /** Legacy flat list. Still written to Entry.themes so readers that
+   *  haven't moved to the relational ThemeMention model keep working
+   *  (weekly reports, life audits, UserMemory.recurringThemes). */
   themes: string[];
+  /** Relational source of truth — written to ThemeMention rows by the
+   *  extraction pipeline. If a legacy extraction only returned strings,
+   *  each pair here has sentiment="NEUTRAL". */
+  themesDetailed: ThemeWithSentiment[];
   wins: string[];
   blockers: string[];
   /** 2–4 reflective observations or actionable recommendations */

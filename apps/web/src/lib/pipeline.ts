@@ -99,7 +99,9 @@ Return ONLY valid JSON matching this exact schema — no markdown, no prose:
   "mood": "GREAT" | "GOOD" | "NEUTRAL" | "LOW" | "ROUGH",
   "moodScore": <integer 1–10, where ROUGH=1-2, LOW=3-4, NEUTRAL=5-6, GOOD=7-8, GREAT=9-10>,
   "energy": <integer 1–10>,
-  "themes": ["theme1", "theme2"],
+  "themes": [
+    { "label": "short theme (1-3 words)", "sentiment": "POSITIVE" | "NEUTRAL" | "NEGATIVE" }
+  ],
   "wins": ["win1", "win2"],
   "blockers": ["blocker1"],
   "insights": ["insight1", "insight2"],
@@ -132,7 +134,7 @@ Guidelines:
 - Extract only tasks the user explicitly mentioned wanting to do
 - Infer priority from urgency language ("need to", "ASAP", "important" → HIGH; "maybe", "someday" → LOW)
 - Only include goals if the user expressed a clear medium-to-long term aspiration
-- Keep theme labels short (1-3 words)
+- Keep theme labels short (1-3 words). Per-theme sentiment reflects the user's emotional framing of that specific theme in this entry: POSITIVE if they expressed satisfaction/progress, NEGATIVE if strain/frustration, NEUTRAL if they mentioned it factually without strong valence. Up to 5 themes per entry.
 - Insights should be reflective observations the user might not have noticed, or concrete next-step recommendations
 - moodScore should be a nuanced score that reflects the overall emotional tone
 - Today's date context will be provided in the user message
@@ -169,12 +171,38 @@ export async function extractFromTranscript(
 
   const parsed = JSON.parse(jsonText) as ExtractionResult;
 
+  // Theme parsing accepts both the new { label, sentiment }[] shape and
+  // the legacy string[] shape. Legacy entries get NEUTRAL sentiment.
+  // Normalization (lowercase, plural-stem) is deferred to the
+  // persistence layer — ExtractionResult carries raw labels so Entry
+  // themes match what the user actually said.
+  const rawThemes: unknown[] = Array.isArray(parsed.themes) ? parsed.themes : [];
+  const themesDetailed = rawThemes
+    .slice(0, 5)
+    .map((t) => {
+      if (typeof t === "string") {
+        return { label: t, sentiment: "NEUTRAL" as const };
+      }
+      if (t && typeof t === "object" && typeof (t as { label?: unknown }).label === "string") {
+        const label = String((t as { label: unknown }).label);
+        const sent = String(
+          (t as { sentiment?: unknown }).sentiment ?? ""
+        ).toUpperCase();
+        const sentiment =
+          sent === "POSITIVE" || sent === "NEGATIVE" ? sent : "NEUTRAL";
+        return { label, sentiment: sentiment as "POSITIVE" | "NEGATIVE" | "NEUTRAL" };
+      }
+      return null;
+    })
+    .filter((t): t is { label: string; sentiment: "POSITIVE" | "NEGATIVE" | "NEUTRAL" } => t !== null);
+
   return {
     summary: String(parsed.summary ?? ""),
     mood: validateMood(parsed.mood),
     moodScore: clamp(Number(parsed.moodScore ?? 5), 1, 10),
     energy: clamp(Number(parsed.energy ?? 5), 1, 10),
-    themes: ensureStringArray(parsed.themes).slice(0, 5),
+    themes: themesDetailed.map((t) => t.label),
+    themesDetailed,
     wins: ensureStringArray(parsed.wins),
     blockers: ensureStringArray(parsed.blockers),
     insights: ensureStringArray(parsed.insights).slice(0, 4),
@@ -244,6 +272,7 @@ export async function processEntry({
     );
 
     // ── Persist everything in one transaction ─────────────────────────────
+    const { recordThemesFromExtraction } = await import("@/lib/themes");
     const result = await prisma.$transaction(async (tx) => {
       const entry = await tx.entry.update({
         where: { id: entryId },
@@ -262,6 +291,18 @@ export async function processEntry({
           status: "COMPLETE",
         },
       });
+
+      // Relational Theme + ThemeMention writes alongside the legacy
+      // Entry.themes String[]. Inside the same transaction so a mention
+      // write failure aborts the whole persist rather than leaving
+      // half-populated state.
+      await recordThemesFromExtraction(
+        tx,
+        userId,
+        entry.id,
+        entry.createdAt,
+        extraction.themesDetailed
+      );
 
       let tasksCreated = 0;
       if (extraction.tasks.length > 0) {

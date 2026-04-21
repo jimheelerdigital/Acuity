@@ -120,6 +120,7 @@ model User {
   onboarding             UserOnboarding?
   demographics           UserDemographics?
   userInsights           UserInsight[]
+  themes                 Theme[]
 }
 
 // Tombstone for deleted accounts — closes the trial-reset exploit
@@ -237,6 +238,7 @@ model Entry {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   tasks         Task[]
+  themeMentions ThemeMention[]
 }
 
 model Task {
@@ -581,4 +583,47 @@ model UserInsight {
 
   @@index([userId, createdAt])
   @@index([userId, dismissedAt])
+}
+
+// ─── Theme Evolution Map ─────────────────────────────────────────────────────
+//
+// Relational theme model laid down alongside the legacy Entry.themes
+// String[] column (which still feeds weekly reports, life audits, and
+// the user-insight cron). Powers the force-directed Theme Map graph
+// without paying a full-table scan on every read.
+//
+// One Theme row per distinct normalized name per user — see
+// apps/web/src/lib/themes.ts::normalizeThemeName for the canonicalization
+// rules (lowercase + trim + whitespace collapse + conservative plural
+// stemming). One ThemeMention per (theme, entry) pair; sentiment is
+// captured per-theme by the extraction prompt update that landed
+// alongside this model.
+model Theme {
+  id        String         @id @default(cuid())
+  userId    String
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  createdAt DateTime       @default(now())
+  mentions  ThemeMention[]
+
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+model ThemeMention {
+  id        String   @id @default(cuid())
+  themeId   String
+  theme     Theme    @relation(fields: [themeId], references: [id], onDelete: Cascade)
+  entryId   String
+  entry     Entry    @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  // "POSITIVE" | "NEUTRAL" | "NEGATIVE" — string for cross-Postgres
+  // compatibility, same pattern as Entry.status.
+  sentiment String   @default("NEUTRAL")
+  // Denormalized from Entry.createdAt so time-window queries on the
+  // Theme Map don't have to join Entry.
+  createdAt DateTime @default(now())
+
+  @@unique([themeId, entryId])
+  @@index([themeId, createdAt])
+  @@index([entryId])
 }

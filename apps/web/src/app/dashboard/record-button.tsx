@@ -342,6 +342,16 @@ function polledEntryToRecordResponse(entry: PolledEntry): RecordResponse {
     moodScore: entry.moodScore ?? raw.moodScore ?? 5,
     energy: entry.energy ?? raw.energy ?? 5,
     themes: entry.themes ?? raw.themes ?? [],
+    // rawAnalysis carries themesDetailed post-prompt-update. Legacy
+    // entries extracted before the change land here as undefined; fall
+    // back to flat themes mapped to NEUTRAL so downstream consumers
+    // never see `undefined`.
+    themesDetailed:
+      raw.themesDetailed ??
+      (entry.themes ?? raw.themes ?? []).map((label: string) => ({
+        label,
+        sentiment: "NEUTRAL" as const,
+      })),
     wins: entry.wins ?? raw.wins ?? [],
     blockers: entry.blockers ?? raw.blockers ?? [],
     insights: raw.insights ?? [],

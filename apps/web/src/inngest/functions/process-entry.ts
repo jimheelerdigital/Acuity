@@ -188,8 +188,9 @@ export const processEntryFn = inngest.createFunction(
         data: { status: "PERSISTING" },
       });
 
+      const { recordThemesFromExtraction } = await import("@/lib/themes");
       await prisma.$transaction(async (tx) => {
-        await tx.entry.update({
+        const entry = await tx.entry.update({
           where: { id: entryId },
           data: {
             summary: extraction.summary,
@@ -203,6 +204,16 @@ export const processEntryFn = inngest.createFunction(
             status: "COMPLETE",
           },
         });
+
+        // Theme Map: Theme + ThemeMention rows. Same transaction as the
+        // Entry write so a failure here aborts to PARTIAL cleanly.
+        await recordThemesFromExtraction(
+          tx,
+          userId,
+          entry.id,
+          entry.createdAt,
+          extraction.themesDetailed
+        );
 
         if (extraction.tasks.length > 0) {
           await tx.task.createMany({
