@@ -20,10 +20,9 @@
  * at their high-water mark for the dashboard redirect).
  */
 
-import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 
-import { getAuthOptions } from "@/lib/auth";
+import { getAnySessionUserId } from "@/lib/mobile-auth";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -63,8 +62,11 @@ type Body = {
 };
 
 export async function POST(req: NextRequest) {
-  const session = await getServerSession(getAuthOptions());
-  if (!session?.user?.id) {
+  // Symmetric auth: cookie session on web, Bearer JWT on mobile —
+  // mobile onboarding hits the same endpoint so both platforms
+  // share one write path (and one validation rule set).
+  const userId = await getAnySessionUserId(req);
+  if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -155,7 +157,7 @@ export async function POST(req: NextRequest) {
   const { prisma } = await import("@/lib/prisma");
 
   const existing = await prisma.userOnboarding.findUnique({
-    where: { userId: session.user.id },
+    where: { userId: userId },
     select: { currentStep: true, completedAt: true },
   });
 
@@ -169,9 +171,9 @@ export async function POST(req: NextRequest) {
   // dependency; any single failure short-circuits via await Promise.all.
   await Promise.all([
     prisma.userOnboarding.upsert({
-      where: { userId: session.user.id },
+      where: { userId: userId },
       create: {
-        userId: session.user.id,
+        userId: userId,
         currentStep: nextStep,
         ...onboardingUpdates,
       },
@@ -182,9 +184,9 @@ export async function POST(req: NextRequest) {
     }),
     Object.keys(demographicsUpdates).length > 0
       ? prisma.userDemographics.upsert({
-          where: { userId: session.user.id },
+          where: { userId: userId },
           create: {
-            userId: session.user.id,
+            userId: userId,
             ...(demographicsUpdates as Record<string, string | string[] | null>),
           },
           update: demographicsUpdates,
@@ -192,7 +194,7 @@ export async function POST(req: NextRequest) {
       : Promise.resolve(),
     Object.keys(userUpdates).length > 0
       ? prisma.user.update({
-          where: { id: session.user.id },
+          where: { id: userId },
           data: userUpdates,
         })
       : Promise.resolve(),

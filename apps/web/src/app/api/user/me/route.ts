@@ -45,6 +45,7 @@ export async function GET(req: NextRequest) {
       notificationTime: true,
       notificationDays: true,
       notificationsEnabled: true,
+      onboarding: { select: { completedAt: true, currentStep: true } },
     },
   });
 
@@ -52,8 +53,19 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ user: null }, { status: 404 });
   }
 
+  // Flatten the onboarding relation into top-level booleans the
+  // mobile AuthGate can read without understanding the nested shape.
+  // `onboardingCompleted` is the only flag that drives the redirect;
+  // `onboardingStep` helps the client resume where the user left off.
+  const { onboarding, ...rest } = user;
+  const flat = {
+    ...rest,
+    onboardingCompleted: Boolean(onboarding?.completedAt),
+    onboardingStep: onboarding?.currentStep ?? 1,
+  };
+
   return NextResponse.json(
-    { user },
+    { user: flat },
     {
       status: 200,
       headers: { "Cache-Control": "private, no-store, max-age=0" },

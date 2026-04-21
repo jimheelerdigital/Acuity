@@ -18,10 +18,9 @@
  * state during the flow; this one closes it out.
  */
 
-import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 
-import { getAuthOptions } from "@/lib/auth";
+import { getAnySessionUserId } from "@/lib/mobile-auth";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -32,8 +31,8 @@ type Body = {
 };
 
 export async function POST(req: NextRequest) {
-  const session = await getServerSession(getAuthOptions());
-  if (!session?.user?.id) {
+  const userId = await getAnySessionUserId(req);
+  if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -43,7 +42,7 @@ export async function POST(req: NextRequest) {
   const { prisma } = await import("@/lib/prisma");
 
   const existing = await prisma.userOnboarding.findUnique({
-    where: { userId: session.user.id },
+    where: { userId: userId },
     select: { completedAt: true, currentStep: true },
   });
 
@@ -57,9 +56,9 @@ export async function POST(req: NextRequest) {
     : 10;
 
   await prisma.userOnboarding.upsert({
-    where: { userId: session.user.id },
+    where: { userId: userId },
     create: {
-      userId: session.user.id,
+      userId: userId,
       currentStep: finalStep,
       completedAt: now,
     },

@@ -25,6 +25,16 @@ export type User = {
   currentStreak?: number;
   longestStreak?: number;
   lastStreakMilestone?: number | null;
+  // Flags flattened from UserOnboarding relation by /api/user/me.
+  // `false` when the row doesn't exist OR completedAt is null — both
+  // states route the user into the onboarding flow. `true` lets the
+  // AuthGate land the user on /(tabs) directly.
+  onboardingCompleted?: boolean;
+  // 1..10. When the user relaunches mid-flow we resume at this step.
+  onboardingStep?: number;
+  notificationTime?: string;
+  notificationDays?: number[];
+  notificationsEnabled?: boolean;
 };
 
 // ─── Secure storage ────────────────────────────────────────────────
