@@ -8,9 +8,18 @@ import { ThemeToggle } from "@/components/theme-toggle";
 interface Props {
   email: string;
   name: string | null;
+  notificationTime: string;
+  notificationDays: number[];
+  notificationsEnabled: boolean;
 }
 
-export default function AccountClient({ email, name }: Props) {
+export default function AccountClient({
+  email,
+  name,
+  notificationTime,
+  notificationDays,
+  notificationsEnabled,
+}: Props) {
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   return (
@@ -41,6 +50,13 @@ export default function AccountClient({ email, name }: Props) {
             </div>
           </dl>
         </section>
+
+        {/* Reminders */}
+        <RemindersSection
+          initialTime={notificationTime}
+          initialDays={notificationDays}
+          initialEnabled={notificationsEnabled}
+        />
 
         {/* Appearance */}
         <section className="mt-8 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-6">
@@ -88,8 +104,8 @@ export default function AccountClient({ email, name }: Props) {
           </h2>
           <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
             Permanently deletes your account and everything in it &mdash;
-            recordings, transcripts, tasks, goals, weekly reports, life
-            map, and your subscription. This cannot be undone.
+            recordings, transcripts, tasks, goals, weekly reports, Life
+            Matrix, and your subscription. This cannot be undone.
           </p>
           <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
             See our{" "}
@@ -212,5 +228,153 @@ function DeleteConfirmModal({
         </div>
       </div>
     </div>
+  );
+}
+
+const DAY_LABELS: Array<{ i: number; label: string }> = [
+  { i: 0, label: "S" },
+  { i: 1, label: "M" },
+  { i: 2, label: "T" },
+  { i: 3, label: "W" },
+  { i: 4, label: "T" },
+  { i: 5, label: "F" },
+  { i: 6, label: "S" },
+];
+
+/**
+ * Post-onboarding reminders editor. Same semantics as the onboarding
+ * step 9 — time, day pattern, master on/off. Saves via the same
+ * /api/onboarding/update endpoint (step=0 shorthand), which the
+ * endpoint's field router accepts without requiring step-range.
+ */
+function RemindersSection({
+  initialTime,
+  initialDays,
+  initialEnabled,
+}: {
+  initialTime: string;
+  initialDays: number[];
+  initialEnabled: boolean;
+}) {
+  const [time, setTime] = useState(initialTime);
+  const [days, setDays] = useState<number[]>(initialDays);
+  const [enabled, setEnabled] = useState(initialEnabled);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const toggleDay = (i: number) => {
+    setDays((prev) =>
+      prev.includes(i) ? prev.filter((d) => d !== i) : [...prev, i].sort()
+    );
+  };
+
+  const save = async () => {
+    setSaving(true);
+    setSaved(false);
+    try {
+      const res = await fetch("/api/account/notifications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          notificationTime: time,
+          notificationDays: days,
+          notificationsEnabled: enabled,
+        }),
+      });
+      if (res.ok) {
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2000);
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <section className="mt-8 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-6">
+      <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
+        Reminders
+      </h2>
+      <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+        When we nudge you to journal. Turn off entirely anytime.
+      </p>
+
+      <div className="mt-4 flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => setEnabled((v) => !v)}
+          aria-pressed={enabled}
+          className={`relative h-6 w-11 rounded-full transition ${
+            enabled ? "bg-violet-600" : "bg-zinc-300 dark:bg-white/10"
+          }`}
+        >
+          <span
+            className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all ${
+              enabled ? "left-[22px]" : "left-0.5"
+            }`}
+          />
+        </button>
+        <span className="text-sm text-zinc-700 dark:text-zinc-200">
+          {enabled ? "Reminders on" : "Reminders off"}
+        </span>
+      </div>
+
+      <div
+        className={`mt-5 space-y-5 transition-opacity ${
+          enabled ? "opacity-100" : "opacity-40 pointer-events-none"
+        }`}
+      >
+        <div>
+          <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1.5">
+            Time
+          </label>
+          <input
+            type="time"
+            value={time}
+            onChange={(e) => setTime(e.target.value || "21:00")}
+            className="rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#13131F] px-3 py-1.5 text-sm font-mono text-zinc-900 dark:text-zinc-100 outline-none focus:border-violet-500"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1.5">
+            Days
+          </label>
+          <div className="flex gap-1.5">
+            {DAY_LABELS.map((d) => {
+              const on = days.includes(d.i);
+              return (
+                <button
+                  key={d.i}
+                  type="button"
+                  onClick={() => toggleDay(d.i)}
+                  className={`h-8 w-8 rounded-full text-xs font-semibold transition ${
+                    on
+                      ? "bg-violet-600 text-white"
+                      : "bg-zinc-100 dark:bg-white/5 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-white/10"
+                  }`}
+                >
+                  {d.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-5 flex items-center gap-3">
+        <button
+          disabled={saving}
+          onClick={save}
+          className="rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-500 disabled:opacity-40"
+        >
+          {saving ? "Saving…" : "Save"}
+        </button>
+        {saved && (
+          <span className="text-xs text-emerald-600 dark:text-emerald-400">
+            Saved ✓
+          </span>
+        )}
+      </div>
+    </section>
   );
 }

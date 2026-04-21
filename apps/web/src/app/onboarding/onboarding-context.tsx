@@ -7,7 +7,7 @@ import { createContext, useContext } from "react";
  * persistence) and each step component (which owns its answer).
  *
  * Shape:
- *   - `step`              current step number (1-8), from the URL
+ *   - `step`              current step number (1-10), from the URL
  *   - `setCanContinue`    each step calls this in an effect to tell
  *                         the shell whether its Continue button
  *                         should be enabled (e.g. step 6 requires

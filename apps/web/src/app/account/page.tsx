@@ -18,10 +18,23 @@ export default async function AccountPage() {
     redirect("/auth/signin?callbackUrl=/account");
   }
 
+  const { prisma } = await import("@/lib/prisma");
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: {
+      notificationTime: true,
+      notificationDays: true,
+      notificationsEnabled: true,
+    },
+  });
+
   return (
     <AccountClient
       email={session.user.email}
       name={session.user.name ?? null}
+      notificationTime={user?.notificationTime ?? "21:00"}
+      notificationDays={user?.notificationDays ?? [0, 1, 2, 3, 4, 5, 6]}
+      notificationsEnabled={user?.notificationsEnabled ?? false}
     />
   );
 }

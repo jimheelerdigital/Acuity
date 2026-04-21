@@ -82,6 +82,6 @@ export default async function OnboardingPage({
 
 function clampStep(n: number): OnboardingStepNumber {
   if (!Number.isFinite(n) || n < 1) return 1;
-  if (n > 8) return 8;
+  if (n > 10) return 10;
   return n as OnboardingStepNumber;
 }

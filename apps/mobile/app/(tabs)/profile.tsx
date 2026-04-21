@@ -121,15 +121,10 @@ export default function ProfileTab() {
           <ThemeMenuItem />
 
           <MenuItem
-            icon="notifications-outline"
-            label="Notification settings"
-            sublabel="Push notifications"
-          />
-
-          <MenuItem
             icon="time-outline"
-            label="Reminder time"
-            sublabel="Daily brain dump reminder"
+            label="Reminders"
+            sublabel="When to nudge you to journal"
+            onPress={() => router.push("/reminders")}
           />
 
           <MenuItem

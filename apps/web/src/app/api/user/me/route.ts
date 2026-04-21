@@ -42,6 +42,9 @@ export async function GET(req: NextRequest) {
       currentStreak: true,
       longestStreak: true,
       lastStreakMilestone: true,
+      notificationTime: true,
+      notificationDays: true,
+      notificationsEnabled: true,
     },
   });
 

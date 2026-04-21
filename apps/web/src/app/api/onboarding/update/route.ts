@@ -5,11 +5,15 @@
  * step components as the user fills them in — so if they close the tab
  * mid-flow we don't lose their answers.
  *
- * Body shape: { step: 1-8, data: { ...stepFields } }
+ * Body shape: { step: 1-10, data: { ...stepFields } }
  *
- * Only fields that match the schema's UserOnboarding columns are
- * written. Any other key in `data` is ignored (defence against a
- * client that posts junk). Validation + coercion per-field below.
+ * Fields are routed across three tables:
+ *   - moodBaseline / lifeAreaPriorities / referralSource /
+ *     expectedUsageFrequency / microphoneGranted → UserOnboarding
+ *   - ageRange / gender / country / primaryReasons / lifeStage
+ *     → UserDemographics (upsert)
+ *   - notificationTime / notificationDays / notificationsEnabled
+ *     → User (update)
  *
  * Also bumps UserOnboarding.currentStep to `step` if it's higher than
  * the stored value (never rewinds — a user who back-navigates stays
@@ -33,6 +37,25 @@ const VALID_AREAS = [
   "PERSONAL",
   "OTHER",
 ] as const;
+const VALID_AGE_RANGES = ["18-24", "25-34", "35-44", "45-54", "55+"];
+const VALID_GENDERS = ["Male", "Female", "Non-binary", "Prefer not to say"];
+const VALID_REASONS = [
+  "Career",
+  "Relationships",
+  "Mental health",
+  "Productivity",
+  "Curiosity",
+  "Other",
+];
+const VALID_LIFE_STAGES = [
+  "Student",
+  "Early career",
+  "Established career",
+  "Parent",
+  "Retired",
+  "In transition",
+  "Prefer not to say",
+];
 
 type Body = {
   step?: number;
@@ -51,22 +74,21 @@ export async function POST(req: NextRequest) {
   }
 
   const step = Math.round(body.step);
-  if (step < 1 || step > 8) {
+  if (step < 1 || step > 10) {
     return NextResponse.json({ error: "step out of range" }, { status: 400 });
   }
 
   const raw = body.data ?? {};
-  const updates: Record<string, unknown> = {};
 
-  // moodBaseline — must be one of the 5 canonical Mood values.
+  // ─── UserOnboarding fields ─────────────────────────────────────────────
+  const onboardingUpdates: Record<string, unknown> = {};
+
   if (typeof raw.moodBaseline === "string") {
     if ((VALID_MOODS as readonly string[]).includes(raw.moodBaseline)) {
-      updates.moodBaseline = raw.moodBaseline;
+      onboardingUpdates.moodBaseline = raw.moodBaseline;
     }
   }
 
-  // lifeAreaPriorities — { [area]: rank } where each area is one of
-  // VALID_AREAS and rank is 1-3 (top-3 ranking). Unknown keys dropped.
   if (raw.lifeAreaPriorities && typeof raw.lifeAreaPriorities === "object") {
     const cleaned: Record<string, number> = {};
     for (const [k, v] of Object.entries(raw.lifeAreaPriorities)) {
@@ -76,26 +98,58 @@ export async function POST(req: NextRequest) {
         cleaned[k] = rank;
       }
     }
-    updates.lifeAreaPriorities = cleaned;
+    onboardingUpdates.lifeAreaPriorities = cleaned;
   }
 
-  // microphoneGranted — explicit boolean only; undefined leaves the
-  // previous value untouched.
   if (typeof raw.microphoneGranted === "boolean") {
-    updates.microphoneGranted = raw.microphoneGranted;
+    onboardingUpdates.microphoneGranted = raw.microphoneGranted;
   }
-
-  // referralSource — free-text, capped length. Kept so that if a
-  // future step surfaces a referral field (currently removed from the
-  // 8-step flow) the column still persists cleanly. Unknown-today is
-  // fine; a later step can write it without a migration.
   if (typeof raw.referralSource === "string") {
-    updates.referralSource = raw.referralSource.slice(0, 120);
+    onboardingUpdates.referralSource = raw.referralSource.slice(0, 120);
+  }
+  if (typeof raw.expectedUsageFrequency === "string") {
+    onboardingUpdates.expectedUsageFrequency = raw.expectedUsageFrequency.slice(0, 24);
   }
 
-  // expectedUsageFrequency — same treatment as referralSource.
-  if (typeof raw.expectedUsageFrequency === "string") {
-    updates.expectedUsageFrequency = raw.expectedUsageFrequency.slice(0, 24);
+  // ─── Demographics fields (step 3) ──────────────────────────────────────
+  const demographicsUpdates: Record<string, unknown> = {};
+  if (typeof raw.ageRange === "string" && VALID_AGE_RANGES.includes(raw.ageRange)) {
+    demographicsUpdates.ageRange = raw.ageRange;
+  } else if (raw.ageRange === null) {
+    demographicsUpdates.ageRange = null;
+  }
+  if (typeof raw.gender === "string" && VALID_GENDERS.includes(raw.gender)) {
+    demographicsUpdates.gender = raw.gender;
+  } else if (raw.gender === null) {
+    demographicsUpdates.gender = null;
+  }
+  if (typeof raw.country === "string" && raw.country.length <= 4) {
+    demographicsUpdates.country = raw.country.toUpperCase();
+  }
+  if (Array.isArray(raw.primaryReasons)) {
+    demographicsUpdates.primaryReasons = raw.primaryReasons
+      .filter((x): x is string => typeof x === "string" && VALID_REASONS.includes(x))
+      .slice(0, VALID_REASONS.length);
+  }
+  if (typeof raw.lifeStage === "string" && VALID_LIFE_STAGES.includes(raw.lifeStage)) {
+    demographicsUpdates.lifeStage = raw.lifeStage;
+  } else if (raw.lifeStage === null) {
+    demographicsUpdates.lifeStage = null;
+  }
+
+  // ─── Notification fields (step 9) ──────────────────────────────────────
+  const userUpdates: Record<string, unknown> = {};
+  if (typeof raw.notificationTime === "string" && /^\d{2}:\d{2}$/.test(raw.notificationTime)) {
+    userUpdates.notificationTime = raw.notificationTime;
+  }
+  if (Array.isArray(raw.notificationDays)) {
+    const days = raw.notificationDays
+      .map((d) => (typeof d === "number" ? Math.round(d) : NaN))
+      .filter((d) => Number.isFinite(d) && d >= 0 && d <= 6) as number[];
+    userUpdates.notificationDays = Array.from(new Set(days)).sort();
+  }
+  if (typeof raw.notificationsEnabled === "boolean") {
+    userUpdates.notificationsEnabled = raw.notificationsEnabled;
   }
 
   const { prisma } = await import("@/lib/prisma");
@@ -105,26 +159,44 @@ export async function POST(req: NextRequest) {
     select: { currentStep: true, completedAt: true },
   });
 
-  // Refuse to mutate a completed row — prevents a stale tab from
-  // clobbering state after the user finished in another session.
   if (existing?.completedAt) {
     return NextResponse.json({ ok: true, noop: true });
   }
 
   const nextStep = Math.max(step, existing?.currentStep ?? 1);
 
-  await prisma.userOnboarding.upsert({
-    where: { userId: session.user.id },
-    create: {
-      userId: session.user.id,
-      currentStep: nextStep,
-      ...updates,
-    },
-    update: {
-      currentStep: nextStep,
-      ...updates,
-    },
-  });
+  // Run the writes in parallel — different tables, no ordering
+  // dependency; any single failure short-circuits via await Promise.all.
+  await Promise.all([
+    prisma.userOnboarding.upsert({
+      where: { userId: session.user.id },
+      create: {
+        userId: session.user.id,
+        currentStep: nextStep,
+        ...onboardingUpdates,
+      },
+      update: {
+        currentStep: nextStep,
+        ...onboardingUpdates,
+      },
+    }),
+    Object.keys(demographicsUpdates).length > 0
+      ? prisma.userDemographics.upsert({
+          where: { userId: session.user.id },
+          create: {
+            userId: session.user.id,
+            ...(demographicsUpdates as Record<string, string | string[] | null>),
+          },
+          update: demographicsUpdates,
+        })
+      : Promise.resolve(),
+    Object.keys(userUpdates).length > 0
+      ? prisma.user.update({
+          where: { id: session.user.id },
+          data: userUpdates,
+        })
+      : Promise.resolve(),
+  ]);
 
   return NextResponse.json({ ok: true });
 }

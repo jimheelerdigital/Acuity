@@ -21,18 +21,20 @@ interface Props {
   step: number;
   totalSteps: number;
   /**
-   * Step numbers (1-8) where the user may bypass the step's answer
-   * without filling it in. Per spec: only step 3 (microphone
-   * permission — you can continue without granting) and step 5 (mood
-   * baseline — it's a soft signal). Others are either forced by
-   * interaction (step 4 practice recording, step 6 life-area picks)
-   * or natural dead-ends (steps 1, 2, 7, 8).
+   * Step numbers (1-10) where the user may bypass the step's answer
+   * without filling it in. After the 2026-04-20 10-step reorder:
+   *   - step 3 (demographics — all optional)
+   *   - step 4 (microphone — permission-granted is soft)
+   *   - step 6 (mood baseline)
+   *   - step 9 (notifications — "Not now" is fine)
+   * Others are interaction-forced (step 5 practice recording, step 7
+   * life-area picks) or dead-ends (1, 2, 8, 10).
    */
   skippableSteps?: number[];
   children: React.ReactNode;
 }
 
-const DEFAULT_SKIPPABLE = [3, 5];
+const DEFAULT_SKIPPABLE = [3, 4, 6, 9];
 
 /**
  * Shared chrome for the onboarding flow. Owns:

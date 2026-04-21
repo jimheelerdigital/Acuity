@@ -4,7 +4,7 @@
  * Marks the signed-in user's onboarding as finished. Called in two
  * scenarios:
  *
- *   1. Natural completion — the user reaches step 8 and taps "Record
+ *   1. Natural completion — the user reaches step 10 and taps "Record
  *      your first entry". `{ skipped: false }`.
  *   2. Skip-entire-flow — the user taps "Skip for now" in the top
  *      right and confirms the modal. `{ skipped: true, skippedAtStep }`
@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
   const now = new Date();
   const finalStep = skipped
     ? Math.max(existing?.currentStep ?? 1, Math.round(body.skippedAtStep ?? 1))
-    : 8;
+    : 10;
 
   await prisma.userOnboarding.upsert({
     where: { userId: session.user.id },
