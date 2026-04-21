@@ -3,7 +3,6 @@ import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 
-import { pickDailyPrompt } from "@acuity/shared";
 
 import { getAuthOptions } from "@/lib/auth";
 import { TrackCompleteRegistration, TrackPurchase } from "@/components/meta-pixel-events";
@@ -316,81 +315,13 @@ function getGreeting(name?: string | null): string {
 }
 
 /**
- * Mirror of /api/home's tiered recommendation selector. Lives here so
- * the server-rendered dashboard doesn't need to HTTP-fetch its own
- * endpoint just to read prisma.
- *
- * Tier 1 — stalest active goal (≥7 days since lastMentionedAt).
- * Tier 2 — recurring theme in last 5 entries.
- * Tier 3 — library fallback.
+ * Delegates to the shared pickRecommendation helper so /api/home and
+ * the server-rendered dashboard agree on the chosen prompt + tier.
+ * Kept as a thin wrapper because the dashboard already has prisma in
+ * scope — importing the helper keeps logic in one place.
  */
-async function pickHomeRecommendation(userId: string): Promise<{
-  tier: "GOAL" | "PATTERN" | "LIBRARY";
-  label: string;
-  text: string;
-  goalId?: string;
-}> {
+async function pickHomeRecommendation(userId: string) {
   const { prisma } = await import("@/lib/prisma");
-  const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
-
-  const cutoff = new Date(Date.now() - SEVEN_DAYS_MS);
-  const staleGoal = await prisma.goal.findFirst({
-    where: {
-      userId,
-      status: { in: ["NOT_STARTED", "IN_PROGRESS"] },
-      OR: [{ lastMentionedAt: null }, { lastMentionedAt: { lt: cutoff } }],
-    },
-    orderBy: [{ lastMentionedAt: "asc" }, { createdAt: "desc" }],
-    select: { id: true, title: true, createdAt: true, lastMentionedAt: true },
-  });
-
-  if (staleGoal) {
-    const sinceDate = staleGoal.lastMentionedAt ?? staleGoal.createdAt;
-    const days = Math.max(
-      1,
-      Math.round((Date.now() - sinceDate.getTime()) / (24 * 60 * 60 * 1000))
-    );
-    return {
-      tier: "GOAL",
-      label: "Building on your goals",
-      text: `You set "${staleGoal.title}" ${days} day${days === 1 ? "" : "s"} ago. What's one small thing you could do this week to get closer to it?`,
-      goalId: staleGoal.id,
-    };
-  }
-
-  const recentEntries = await prisma.entry.findMany({
-    where: { userId, status: "COMPLETE" },
-    orderBy: { createdAt: "desc" },
-    take: 5,
-    select: { themes: true },
-  });
-
-  if (recentEntries.length >= 3) {
-    const counts: Record<string, number> = {};
-    for (const e of recentEntries) {
-      const seen = new Set<string>();
-      for (const t of e.themes ?? []) {
-        const key = t.toLowerCase();
-        if (seen.has(key)) continue;
-        seen.add(key);
-        counts[key] = (counts[key] ?? 0) + 1;
-      }
-    }
-    const recurring = Object.entries(counts)
-      .filter(([, n]) => n >= 2)
-      .sort(([, a], [, b]) => b - a);
-    if (recurring.length > 0) {
-      return {
-        tier: "PATTERN",
-        label: "Based on your recent themes",
-        text: `You've mentioned "${recurring[0][0]}" a few times lately. What's underneath that?`,
-      };
-    }
-  }
-
-  return {
-    tier: "LIBRARY",
-    label: "Today's prompt",
-    text: pickDailyPrompt(userId, new Date().toISOString().slice(0, 10)),
-  };
+  const { pickRecommendation } = await import("@/lib/recommendation");
+  return pickRecommendation(prisma, userId);
 }
