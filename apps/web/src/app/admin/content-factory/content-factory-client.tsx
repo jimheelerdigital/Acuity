@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import ContentPreview from "@/components/content-factory/previews/ContentPreview";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -380,6 +381,7 @@ function ReviewQueue({
   const [editText, setEditText] = useState("");
   const [rejectId, setRejectId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
+  const [viewMode, setViewMode] = useState<"preview" | "raw">("preview");
   const sorted = groupByType(pieces);
 
   const toggleSelect = (id: string) => {
@@ -523,15 +525,46 @@ function ReviewQueue({
             {/* Expanded view */}
             {expandedId === piece.id && (
               <div className="mt-4 border-t border-white/10 pt-4">
+                {/* View toggle */}
+                {editingId !== piece.id && (
+                  <div className="mb-4 flex items-center gap-1 rounded-lg bg-[#0A0A0F] p-1 w-fit">
+                    {(["preview", "raw"] as const).map((mode) => (
+                      <button
+                        key={mode}
+                        onClick={() => setViewMode(mode)}
+                        className={`rounded-md px-3 py-1 text-xs font-medium transition ${
+                          viewMode === mode
+                            ? "bg-[#7C5CFC] text-white"
+                            : "text-white/40 hover:text-white/70"
+                        }`}
+                      >
+                        {mode === "preview" ? "Preview" : "Raw"}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
                 {editingId === piece.id ? (
+                  /* Split edit: preview left, editor right */
                   <div>
-                    <textarea
-                      value={editText}
-                      onChange={(e) => setEditText(e.target.value)}
-                      className="w-full rounded-lg bg-[#0A0A0F] p-3 font-mono text-sm text-white/90"
-                      rows={12}
-                    />
-                    <div className="mt-2 flex gap-2">
+                    <div className="flex gap-4">
+                      <div className="flex-1 min-w-0 overflow-auto max-h-[600px] rounded-lg border border-white/10 bg-white/[0.02] p-4">
+                        <p className="text-[10px] uppercase tracking-widest text-white/25 mb-3">Live Preview</p>
+                        <ContentPreview
+                          piece={{ ...piece, body: editText }}
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[10px] uppercase tracking-widest text-white/25 mb-3">Edit Content</p>
+                        <textarea
+                          value={editText}
+                          onChange={(e) => setEditText(e.target.value)}
+                          className="w-full rounded-lg bg-[#0A0A0F] p-3 font-mono text-sm text-white/90 border border-white/10"
+                          rows={20}
+                        />
+                      </div>
+                    </div>
+                    <div className="mt-3 flex gap-2">
                       <button
                         onClick={() => handleEdit(piece.id)}
                         className="rounded-md bg-[#7C5CFC] px-3 py-1.5 text-sm font-medium"
@@ -546,46 +579,54 @@ function ReviewQueue({
                       </button>
                     </div>
                   </div>
+                ) : viewMode === "preview" ? (
+                  <ContentPreview piece={piece} />
                 ) : (
-                  <pre className="whitespace-pre-wrap font-mono text-sm text-white/80">
-                    {piece.body}
-                  </pre>
+                  <>
+                    <pre className="whitespace-pre-wrap font-mono text-sm text-white/80">
+                      {piece.body}
+                    </pre>
+                    {piece.cta && (
+                      <p className="mt-3 text-sm text-white/50">
+                        <span className="font-medium text-white/70">CTA:</span>{" "}
+                        {piece.cta}
+                      </p>
+                    )}
+                    {piece.targetKeyword && (
+                      <p className="mt-1 text-sm text-white/50">
+                        <span className="font-medium text-white/70">Keyword:</span>{" "}
+                        {piece.targetKeyword}
+                      </p>
+                    )}
+                  </>
                 )}
-                {piece.cta && (
-                  <p className="mt-3 text-sm text-white/50">
-                    <span className="font-medium text-white/70">CTA:</span>{" "}
-                    {piece.cta}
-                  </p>
+
+                {/* Action buttons — always visible */}
+                {editingId !== piece.id && (
+                  <div className="mt-4 flex gap-2">
+                    <button
+                      onClick={() => handleApprove(piece.id)}
+                      className="rounded-md bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-500"
+                    >
+                      Approve
+                    </button>
+                    <button
+                      onClick={() => {
+                        setEditingId(piece.id);
+                        setEditText(piece.body);
+                      }}
+                      className="rounded-md bg-white/10 px-3 py-1.5 text-sm text-white/70 hover:bg-white/20"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => setRejectId(piece.id)}
+                      className="rounded-md bg-red-600/20 px-3 py-1.5 text-sm text-red-400 hover:bg-red-600/30"
+                    >
+                      Reject
+                    </button>
+                  </div>
                 )}
-                {piece.targetKeyword && (
-                  <p className="mt-1 text-sm text-white/50">
-                    <span className="font-medium text-white/70">Keyword:</span>{" "}
-                    {piece.targetKeyword}
-                  </p>
-                )}
-                <div className="mt-4 flex gap-2">
-                  <button
-                    onClick={() => handleApprove(piece.id)}
-                    className="rounded-md bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-500"
-                  >
-                    Approve
-                  </button>
-                  <button
-                    onClick={() => {
-                      setEditingId(piece.id);
-                      setEditText(piece.body);
-                    }}
-                    className="rounded-md bg-white/10 px-3 py-1.5 text-sm text-white/70 hover:bg-white/20"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => setRejectId(piece.id)}
-                    className="rounded-md bg-red-600/20 px-3 py-1.5 text-sm text-red-400 hover:bg-red-600/30"
-                  >
-                    Reject
-                  </button>
-                </div>
               </div>
             )}
           </div>
