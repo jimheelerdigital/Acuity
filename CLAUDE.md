@@ -12,41 +12,97 @@ This repo uses the existing progress.md at the root as the single source of trut
 2. Push to main
 3. Append a new entry to the TOP of the existing progress.md (do not replace the file — add the new entry above the most recent entry)
 
-### Entry format — use this exact structure:
+### Entry format — use this exact structure
 
-```
-## [DATE] — [Short title of what shipped]
+Each entry is a markdown section starting with an H2 heading. The format is:
 
-**Status:** SHIPPED TO MAIN | NEEDS DEPLOY | BLOCKED
-**Commit:** [commit hash]
-**Branch:** main
+H2 heading: "## [YYYY-MM-DD] — Short plain-English title"
 
-### What shipped (business view)
-[2-3 sentences a non-technical cofounder can read. What does this mean for users? For revenue? For growth? Skip implementation details.]
+Three bold metadata lines immediately below the heading:
+- **Requested by:** Keenan | Jimmy | Both
+- **Committed by:** Claude Code
+- **Commit hash:** abc1234
 
-### What shipped (technical view)
-[2-3 sentences for the technical cofounder. What changed architecturally? What patterns were used? Any performance implications?]
+Then four H3 subsections in this exact order:
 
-### Files changed
-- [file path]: [one-line description of change]
-- [file path]: [one-line description of change]
+H3: "### In plain English (for Keenan)"
+One or two sentences explaining what this change means for the business, the user, or the product. No jargon. No file names. What did the user experience change to? What does this enable the business to do? If this fixes a bug, what was the bug in plain terms?
 
-### Manual steps required
-- [ ] [Action item — e.g., "Run npx prisma db push to add new table"]
-- [ ] [Action item — e.g., "Add STRIPE_WEBHOOK_SECRET to Vercel env vars"]
-(If none, write "None — fully automated.")
+Example plain English: "Users can now see a progress bar when generating content, so they know the system is working instead of staring at a blank screen for 60 seconds."
 
-### Risks / Watch for
-- [Anything that could break, any monitoring to check, any follow-up needed]
-(If none, write "None identified.")
-```
+H3: "### Technical changes (for Jimmy)"
+Bullet list of the actual technical changes:
+- File names modified or created
+- Prisma schema changes (tables added, columns added, enums changed)
+- New API routes or Inngest functions
+- Libraries added or removed
+- Config or env changes
+- Any architectural decisions, for example "chose polling over SSE because of Vercel serverless limits"
 
-### Rules:
-- NEVER skip the progress.md entry. It is as mandatory as the commit itself.
-- NEVER delete or rewrite existing entries. Only append new ones above the most recent.
-- Date format: YYYY-MM-DD
-- If a task spans multiple commits, write ONE entry covering all of them.
-- If manual steps from a PREVIOUS entry are still incomplete, note them in your new entry under "Manual steps required" with a reference back.
+H3: "### Manual steps needed"
+Checkbox list of any manual actions still needed, or "None" if nothing is required:
+- [ ] Task 1 (who owns it — Keenan / Jimmy)
+- [ ] Task 2 (who owns it)
+
+H3: "### Notes"
+Context that future-us will need:
+- Gotchas discovered while implementing
+- Decisions made and why
+- Environment-specific issues
+- Anything that would save the next session from repeating a mistake
+
+Do NOT use the Notes section for marketing language. This is an internal log.
+
+### Identifying the requester
+- Keenan = business cofounder (handles marketing, admin dashboards, content, copy, customer acquisition)
+- Jimmy = technical cofounder (handles infrastructure, schema, bug fixes, mobile, API pipeline)
+- Both = shared decision made on a call or async
+- If the session prompter does not state who requested the change, ASK before proceeding
+
+### Manual step categories to always check
+- npx prisma db push (required after any schema change — Keenan must run from home network, work Mac blocks Supabase ports)
+- New env vars in Vercel (specify which ones and who adds them)
+- Vercel redeploy trigger (usually automatic on push, but required after env var changes)
+- Inngest app resync (usually automatic on next GET to /api/inngest, but flag if manual resync is needed)
+
+### Plain English section — writing guide
+The plain English section exists because Keenan does not read code. Write it the way you would explain the change to a smart friend who has never opened the repo.
+
+Good plain English examples:
+- "Users who cancel will now keep access through the end of their billing period instead of losing it immediately."
+- "The AI now generates one Reddit post draft per day alongside the other content types. The drafts are labeled clearly so they are never auto-posted."
+- "Fixed a bug where the weekly report was silently failing for users whose first recording was on a Sunday."
+
+Bad plain English (too technical):
+- "Refactored webhook handler to use idempotency keys"
+- "Added migration for GenerationJob schema"
+- "Updated Prisma client to v5.22"
+
+### Technical section — writing guide
+The technical section exists because Jimmy needs to know exactly what changed in the code without having to diff the commit. Be specific.
+
+Good technical examples:
+- "New Prisma model: GenerationJob (fields: id, status, currentStep, stepLabel, errorMessage, startedAt, completedAt)"
+- "Added apps/web/src/app/api/admin/content-factory/generate-status/[jobId]/route.ts"
+- "Modified generateDailyFn in apps/web/src/inngest/content-factory.ts to update GenerationJob rows after each step"
+
+Bad technical examples:
+- "Made generation better"
+- "Various improvements"
+- "Refactored some stuff"
+
+### Notes section — writing guide
+Use for context future-us will need. Decisions with reasoning. Gotchas that cost time.
+
+Good notes:
+- "Chose polling every 2s over SSE because Vercel serverless has a 10s limit on streaming connections"
+- "Inngest did not auto-register new functions until we triggered a redeploy — flag this for future similar work"
+- "GA4 service account keys blocked on Google Workspace org policy — used personal Gmail account instead"
+
+Bad notes:
+- "Delivered significant value to users"
+- "Exciting milestone for the team"
+- "Huge win"
 
 ---
 
