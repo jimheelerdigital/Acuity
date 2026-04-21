@@ -232,11 +232,16 @@ function TaskCard({
   return (
     <div className="rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-5 py-4 shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
       <div className="flex items-start gap-3">
-        {/* Priority dot */}
-        <span
-          className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full"
-          style={{ backgroundColor: priorityColor }}
-          title={task.priority}
+        {/* Check bubble — 26px tappable target doubles as priority indicator.
+            On the Open tab this IS the complete action; on Completed it's a
+            filled state; on Snoozed it's a muted placeholder. */}
+        <CheckBubble
+          tab={tab}
+          priorityColor={priorityColor}
+          priorityLabel={task.priority}
+          busy={busy}
+          onComplete={() => onAction(task.id, "complete")}
+          onReopen={() => onAction(task.id, "reopen")}
         />
 
         <div className="flex-1 min-w-0">
@@ -276,18 +281,11 @@ function TaskCard({
           )}
         </div>
 
-        {/* Actions */}
+        {/* Secondary actions — Complete lives on the bubble, so this row
+            only carries the non-primary affordances (snooze/dismiss/reopen). */}
         <div className="flex shrink-0 gap-1.5">
           {tab === "open" && (
             <>
-              <ActionBtn
-                label="Complete"
-                title="Mark complete"
-                busy={busy}
-                onClick={() => onAction(task.id, "complete")}
-              >
-                <path d="M20 6 9 17l-5-5" />
-              </ActionBtn>
               <ActionBtn
                 label="Snooze"
                 title="Snooze 24h"
@@ -318,20 +316,96 @@ function TaskCard({
               <path d="M20 20v-7a4 4 0 0 0-4-4H4" />
             </ActionBtn>
           )}
-          {tab === "completed" && (
-            <ActionBtn
-              label="Reopen"
-              title="Reopen"
-              busy={busy}
-              onClick={() => onAction(task.id, "reopen")}
-            >
-              <path d="M9 14 4 9l5-5" />
-              <path d="M20 20v-7a4 4 0 0 0-4-4H4" />
-            </ActionBtn>
-          )}
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * 26px circular check bubble. On the Open tab the bubble is the primary
+ * "complete" action — fills with a checkmark when clicked. On Completed it
+ * renders as a filled priority-colored circle with a white check (click to
+ * reopen). On Snoozed it's a dimmed ring. Hit target > 24px per W3.1 spec.
+ */
+function CheckBubble({
+  tab,
+  priorityColor,
+  priorityLabel,
+  busy,
+  onComplete,
+  onReopen,
+}: {
+  tab: Tab;
+  priorityColor: string;
+  priorityLabel: string;
+  busy: boolean;
+  onComplete: () => void;
+  onReopen: () => void;
+}) {
+  if (tab === "completed") {
+    return (
+      <button
+        onClick={onReopen}
+        disabled={busy}
+        title="Reopen"
+        aria-label="Reopen task"
+        className="mt-0.5 h-[26px] w-[26px] shrink-0 rounded-full flex items-center justify-center transition-all duration-150 hover:opacity-80 disabled:opacity-40"
+        style={{ backgroundColor: priorityColor }}
+      >
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="white"
+          strokeWidth="3"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M20 6 9 17l-5-5" />
+        </svg>
+      </button>
+    );
+  }
+
+  if (tab === "snoozed") {
+    return (
+      <span
+        title={priorityLabel}
+        className="mt-0.5 h-[26px] w-[26px] shrink-0 rounded-full border-2 border-dashed"
+        style={{ borderColor: priorityColor + "60" }}
+      />
+    );
+  }
+
+  // Open — primary complete action
+  return (
+    <button
+      onClick={onComplete}
+      disabled={busy}
+      title="Mark complete"
+      aria-label="Mark task complete"
+      className="group mt-0.5 h-[26px] w-[26px] shrink-0 rounded-full border-2 flex items-center justify-center transition-all duration-150 hover:scale-110 disabled:opacity-40"
+      style={{
+        borderColor: priorityColor,
+        backgroundColor: "transparent",
+      }}
+    >
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke={priorityColor}
+        strokeWidth="3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="opacity-0 group-hover:opacity-100 transition-opacity duration-150"
+      >
+        <path d="M20 6 9 17l-5-5" />
+      </svg>
+    </button>
   );
 }
 

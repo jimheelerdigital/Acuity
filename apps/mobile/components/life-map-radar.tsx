@@ -40,6 +40,12 @@ interface Props {
   gridColor?: string;
   /** Center "You" dot + label. */
   centerLabelColor?: string;
+  /** Tap handler — receives the enum key (e.g. "CAREER") of the
+   *  tapped axis. Omit to make the radar display-only. */
+  onAreaPress?: (areaKey: string) => void;
+  /** Enum key of the currently selected axis; receives a larger
+   *  node + pulse ring. Drives visual parity with the detail card. */
+  selectedAreaKey?: string | null;
 }
 
 export function LifeMapRadar({
@@ -49,6 +55,8 @@ export function LifeMapRadar({
   scoreColor = "#A1A1AA",
   gridColor = "#E4E4E7",
   centerLabelColor = "#18181B",
+  onAreaPress,
+  selectedAreaKey,
 }: Props) {
   const cx = size / 2;
   const cy = size / 2;
@@ -129,7 +137,9 @@ export function LifeMapRadar({
         strokeWidth={1.5}
       />
 
-      {/* Area nodes + axis labels */}
+      {/* Area nodes + axis labels. Each axis is tappable via its own
+          G wrapper so the touch target covers the node + label + score
+          text in one hit — fingers don't hit a 4px SVG circle. */}
       {areaConfigs.map((config, i) => {
         const area = areas.find(
           (a) => a.area === config.enum || a.area === config.name
@@ -138,13 +148,29 @@ export function LifeMapRadar({
         const nodeR = score * maxR;
         const nodeP = getPoint(i, nodeR);
         const labelP = getPoint(i, maxR + size * 0.06);
+        const isSelected =
+          selectedAreaKey !== null &&
+          selectedAreaKey !== undefined &&
+          (selectedAreaKey === config.enum || selectedAreaKey === config.name);
+        const handlePress = onAreaPress
+          ? () => onAreaPress(config.enum)
+          : undefined;
 
         return (
-          <G key={`node-${config.enum}`}>
+          <G key={`node-${config.enum}`} onPress={handlePress}>
+            {isSelected && (
+              <Circle
+                cx={nodeP.x}
+                cy={nodeP.y}
+                r={10}
+                fill={config.color}
+                fillOpacity={0.25}
+              />
+            )}
             <Circle
               cx={nodeP.x}
               cy={nodeP.y}
-              r={4.5}
+              r={isSelected ? 6 : 4.5}
               fill={config.color}
               stroke="white"
               strokeWidth={2}
@@ -154,8 +180,8 @@ export function LifeMapRadar({
               y={labelP.y}
               textAnchor="middle"
               fontSize={10}
-              fontWeight="500"
-              fill={labelColor}
+              fontWeight={isSelected ? "700" : "500"}
+              fill={isSelected ? config.color : labelColor}
             >
               {config.name}
             </SvgText>

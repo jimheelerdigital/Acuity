@@ -176,6 +176,10 @@ export default function InsightsTab() {
               scoreColor={isDark ? "#71717A" : "#A1A1AA"}
               gridColor={isDark ? "rgba(255,255,255,0.08)" : "#E4E4E7"}
               centerLabelColor={isDark ? "#FAFAFA" : "#18181B"}
+              selectedAreaKey={expandedArea}
+              onAreaPress={(key) =>
+                setExpandedArea((prev) => (prev === key ? null : key))
+              }
             />
           </View>
         )}

@@ -200,9 +200,14 @@ function TaskCard({
   return (
     <View className="rounded-2xl border border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-[#13131F] dark:bg-[#1E1E2E] p-4">
       <View className="flex-row items-start gap-3">
-        <View
-          className="mt-1.5 h-2.5 w-2.5 rounded-full"
-          style={{ backgroundColor: color }}
+        {/* 26px check bubble — on Open tab, bubble IS the primary
+            complete action (bigger tap target than an icon button). */}
+        <TaskBubble
+          tab={tab}
+          color={color}
+          busy={busy}
+          onComplete={() => onAction(task.id, "complete")}
+          onReopen={() => onAction(task.id, "reopen")}
         />
         <View className="flex-1">
           <Text
@@ -230,34 +235,27 @@ function TaskCard({
         </View>
       </View>
 
-      {/* Actions */}
-      <View className="flex-row justify-end gap-2 mt-3 pt-3 border-t border-zinc-200 dark:border-white/10">
-        {tab === "open" && (
-          <>
-            <ActionButton
-              label="Complete"
-              icon="checkmark"
-              color="#22C55E"
-              busy={busy}
-              onPress={() => onAction(task.id, "complete")}
-            />
-            <ActionButton
-              label="Snooze"
-              icon="time-outline"
-              color="#60A5FA"
-              busy={busy}
-              onPress={() => onAction(task.id, "snooze")}
-            />
-            <ActionButton
-              label="Dismiss"
-              icon="close"
-              color="#71717A"
-              busy={busy}
-              onPress={() => onAction(task.id, "dismiss")}
-            />
-          </>
-        )}
-        {tab === "snoozed" && (
+      {/* Secondary actions — complete lives on the bubble. */}
+      {tab === "open" && (
+        <View className="flex-row justify-end gap-2 mt-3 pt-3 border-t border-zinc-200 dark:border-white/10">
+          <ActionButton
+            label="Snooze"
+            icon="time-outline"
+            color="#60A5FA"
+            busy={busy}
+            onPress={() => onAction(task.id, "snooze")}
+          />
+          <ActionButton
+            label="Dismiss"
+            icon="close"
+            color="#71717A"
+            busy={busy}
+            onPress={() => onAction(task.id, "dismiss")}
+          />
+        </View>
+      )}
+      {tab === "snoozed" && (
+        <View className="flex-row justify-end gap-2 mt-3 pt-3 border-t border-zinc-200 dark:border-white/10">
           <ActionButton
             label="Reopen"
             icon="arrow-undo"
@@ -265,18 +263,91 @@ function TaskCard({
             busy={busy}
             onPress={() => onAction(task.id, "reopen")}
           />
-        )}
-        {tab === "completed" && (
-          <ActionButton
-            label="Reopen"
-            icon="arrow-undo"
-            color="#7C3AED"
-            busy={busy}
-            onPress={() => onAction(task.id, "reopen")}
-          />
-        )}
-      </View>
+        </View>
+      )}
     </View>
+  );
+}
+
+function TaskBubble({
+  tab,
+  color,
+  busy,
+  onComplete,
+  onReopen,
+}: {
+  tab: Tab;
+  color: string;
+  busy: boolean;
+  onComplete: () => void;
+  onReopen: () => void;
+}) {
+  if (tab === "completed") {
+    return (
+      <Pressable
+        onPress={onReopen}
+        disabled={busy}
+        hitSlop={6}
+        accessibilityRole="button"
+        accessibilityLabel="Reopen task"
+        style={({ pressed }) => ({
+          width: 26,
+          height: 26,
+          borderRadius: 13,
+          backgroundColor: color,
+          alignItems: "center",
+          justifyContent: "center",
+          opacity: pressed || busy ? 0.6 : 1,
+          marginTop: 2,
+        })}
+      >
+        <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+      </Pressable>
+    );
+  }
+
+  if (tab === "snoozed") {
+    return (
+      <View
+        style={{
+          width: 26,
+          height: 26,
+          borderRadius: 13,
+          borderWidth: 2,
+          borderStyle: "dashed",
+          borderColor: color + "80",
+          marginTop: 2,
+        }}
+      />
+    );
+  }
+
+  return (
+    <Pressable
+      onPress={onComplete}
+      disabled={busy}
+      hitSlop={8}
+      accessibilityRole="button"
+      accessibilityLabel="Mark task complete"
+      style={({ pressed }) => ({
+        width: 26,
+        height: 26,
+        borderRadius: 13,
+        borderWidth: 2,
+        borderColor: color,
+        backgroundColor: pressed ? color + "20" : "transparent",
+        alignItems: "center",
+        justifyContent: "center",
+        opacity: busy ? 0.4 : 1,
+        marginTop: 2,
+      })}
+    >
+      {({ pressed }) =>
+        pressed ? (
+          <Ionicons name="checkmark" size={16} color={color} />
+        ) : null
+      }
+    </Pressable>
   );
 }
 
