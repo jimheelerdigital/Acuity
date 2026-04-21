@@ -14,6 +14,7 @@ import {
 } from "recharts";
 import MetricCard from "../components/MetricCard";
 import ChartCard from "../components/ChartCard";
+import RecentAdminActions from "../components/RecentAdminActions";
 import { SkeletonMetric, SkeletonChart } from "../components/SkeletonCard";
 import { useTabData } from "./useTabData";
 
@@ -193,6 +194,9 @@ export default function OverviewTab({
           )}
         </ChartCard>
       </div>
+
+      {/* Recent admin actions (AdminAuditLog) */}
+      <RecentAdminActions />
 
       {/* Red flags summary */}
       {data.redFlags.length > 0 && (
