@@ -8,6 +8,7 @@ import { NavBar } from "@/components/nav-bar";
 import { GoogleAnalytics } from "@/components/google-analytics";
 import { CookieConsentBanner } from "@/components/cookie-consent";
 import { ConsentGatedTrackers } from "@/components/consent-gated-trackers";
+import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
 
 const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
 const GOOGLE_SITE_VERIFICATION = process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION;
@@ -102,6 +103,7 @@ export default function RootLayout({
           <ConsentGatedTrackers />
           <GoogleAnalytics />
           <NavBar />
+          <KeyboardShortcuts />
           {children}
           <CookieConsentBanner />
         </Providers>
