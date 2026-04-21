@@ -1,9 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as d3Force from "d3-force";
 import { useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  PanResponder,
   Pressable,
   ScrollView,
   Text,
@@ -22,12 +23,11 @@ import { api } from "@/lib/api";
  * synchronously to a fixed iteration count, then the node + edge
  * positions are rendered as react-native-svg primitives.
  *
- * No continuous physics + no drag in v1. Pinch-zoom is also out —
- * react-native-gesture-handler isn't in the bundle and the
- * onboarding/eas-rebuild cost isn't worth it for the first shipping
- * version. Users get tap-to-open-detail, which is the primary
- * affordance; "see the shape" works because we size the viewBox to
- * contain every node after the simulation settles.
+ * No continuous physics + no drag in v1. Pan + pinch-zoom + double-
+ * tap-reset land via PanResponder (built-in to React Native) rather
+ * than react-native-gesture-handler, to avoid an EAS rebuild right
+ * before beta. The transforms mutate the SVG viewBox at render time
+ * so there's no JS-thread layout thrash during gesture.
  *
  * Strategy-A choice (from the sprint spec): went with the d3-force
  * approach rather than Strategy B (ranked list). Rationale: d3-force
@@ -143,6 +143,98 @@ export default function ThemeMapScreen() {
   // square makes the force layout consistent across devices.
   const width = 340;
   const height = 340;
+
+  // ── Pan + pinch-zoom + double-tap reset ──────────────────────────
+  //
+  // Hand-rolled via PanResponder so we don't pull in
+  // react-native-gesture-handler (and the EAS rebuild) before beta.
+  // The SVG viewBox is the transform target — we recompute it from
+  // `scale` + `translate` each render instead of animating nodes
+  // individually. Tap-to-select still works because we only capture
+  // the responder when movement crosses TAP_SLOP; single quick touches
+  // fall through to the SVG <Circle onPress>.
+  const MIN_SCALE = 0.5;
+  const MAX_SCALE = 4;
+  const TAP_SLOP = 6; // px before a touch counts as a drag
+  const DOUBLE_TAP_MS = 280;
+
+  const [scale, setScale] = useState(1);
+  const [translate, setTranslate] = useState({ x: 0, y: 0 });
+
+  const gestureRef = useRef({
+    startScale: 1,
+    startTranslate: { x: 0, y: 0 },
+    startDist: 0,
+    lastTapAt: 0,
+  });
+
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => false,
+        onMoveShouldSetPanResponder: (_, g) => {
+          return (
+            Math.abs(g.dx) > TAP_SLOP ||
+            Math.abs(g.dy) > TAP_SLOP ||
+            g.numberActiveTouches >= 2
+          );
+        },
+        onPanResponderGrant: (evt) => {
+          gestureRef.current.startScale = scale;
+          gestureRef.current.startTranslate = { ...translate };
+          const touches = evt.nativeEvent.touches;
+          if (touches.length >= 2) {
+            const dx = touches[0].pageX - touches[1].pageX;
+            const dy = touches[0].pageY - touches[1].pageY;
+            gestureRef.current.startDist = Math.hypot(dx, dy) || 1;
+          }
+
+          const now = Date.now();
+          if (
+            now - gestureRef.current.lastTapAt < DOUBLE_TAP_MS &&
+            touches.length === 1
+          ) {
+            setScale(1);
+            setTranslate({ x: 0, y: 0 });
+            gestureRef.current.lastTapAt = 0;
+          } else {
+            gestureRef.current.lastTapAt = now;
+          }
+        },
+        onPanResponderMove: (evt, g) => {
+          const touches = evt.nativeEvent.touches;
+          if (touches.length >= 2) {
+            const dx = touches[0].pageX - touches[1].pageX;
+            const dy = touches[0].pageY - touches[1].pageY;
+            const dist = Math.hypot(dx, dy) || 1;
+            const next = Math.max(
+              MIN_SCALE,
+              Math.min(
+                MAX_SCALE,
+                gestureRef.current.startScale *
+                  (dist / gestureRef.current.startDist)
+              )
+            );
+            setScale(next);
+          } else {
+            setTranslate({
+              x: gestureRef.current.startTranslate.x + g.dx,
+              y: gestureRef.current.startTranslate.y + g.dy,
+            });
+          }
+        },
+        onPanResponderTerminationRequest: () => false,
+      }),
+    [scale, translate]
+  );
+
+  // Transform the static [0, 0, width, height] viewBox by our pan+zoom
+  // state. Translation is in screen px and gets converted to viewBox
+  // units by the scale factor. Positive tx drags content right.
+  const viewBoxX = -translate.x / scale;
+  const viewBoxY = -translate.y / scale;
+  const viewBoxW = width / scale;
+  const viewBoxH = height / scale;
 
   useEffect(() => {
     api
@@ -346,7 +438,12 @@ export default function ThemeMapScreen() {
               </Text>
             </View>
           ) : (
-            <Svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
+            <View {...panResponder.panHandlers}>
+            <Svg
+              width={width}
+              height={height}
+              viewBox={`${viewBoxX} ${viewBoxY} ${viewBoxW} ${viewBoxH}`}
+            >
               {/* Edges first so nodes render on top */}
               {layoutLinks.map((l, i) => {
                 const src = layoutNodes.find(
@@ -397,12 +494,18 @@ export default function ThemeMapScreen() {
                 );
               })}
             </Svg>
+            </View>
           )}
           {data && !empty && !sparse && (
             <View className="mt-3 self-stretch flex-row justify-between items-center">
               <Text className="text-[11px] text-zinc-400 dark:text-zinc-500">
                 {totalThemes} theme{totalThemes === 1 ? "" : "s"} ·{" "}
                 {data.meta.totalEntries} entries
+                {scale !== 1 || translate.x !== 0 || translate.y !== 0 ? (
+                  <Text> · double-tap to reset</Text>
+                ) : (
+                  <Text> · pinch to zoom</Text>
+                )}
               </Text>
               <View className="flex-row items-center gap-2">
                 <LegendDot color="rgb(226,75,74)" label="challenging" />
