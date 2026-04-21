@@ -506,5 +506,9 @@ function validateLifeAreaMentions(
     };
   }
 
-  return result as LifeAreaMentions;
+  // All 6 required keys are populated by the loop above (keys list is
+  // exactly the LifeAreaMentions keys). TS can't prove that from a loop
+  // over a wider Record, so go through unknown — matches the error's own
+  // suggested resolution.
+  return result as unknown as LifeAreaMentions;
 }
