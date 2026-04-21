@@ -403,6 +403,28 @@ export async function processEntry({
       console.error("[pipeline] memory/lifemap update failed (non-fatal):", err);
     }
 
+    // ── Embed for Ask-Your-Past-Self (non-fatal) ──────────────────────────
+    // Mirror of the process-entry.ts step.run("embed-entry") block so sync-
+    // path entries (ENABLE_INNGEST_PIPELINE unset) are still indexed for
+    // semantic search. Failures leave the entry un-embedded until the
+    // backfill script catches it.
+    try {
+      const { buildEmbedText, embedText } = await import("@/lib/embeddings");
+      const text = buildEmbedText({
+        summary: result.entry.summary,
+        transcript: result.entry.transcript,
+      });
+      if (text) {
+        const vec = await embedText(text);
+        await prisma.entry.update({
+          where: { id: entryId },
+          data: { embedding: vec },
+        });
+      }
+    } catch (err) {
+      console.warn("[pipeline] embedding failed (non-fatal):", err);
+    }
+
     return result;
   } catch (err) {
     await prisma.entry
