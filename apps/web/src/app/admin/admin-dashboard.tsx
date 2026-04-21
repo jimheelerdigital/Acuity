@@ -18,6 +18,7 @@ const AdsTab = dynamic(() => import("./tabs/AdsTab"));
 const AICostsTab = dynamic(() => import("./tabs/AICostsTab"));
 const ContentFactoryTab = dynamic(() => import("./tabs/ContentFactoryTab"));
 const RedFlagsTab = dynamic(() => import("./tabs/RedFlagsTab"));
+const FeatureFlagsTab = dynamic(() => import("./tabs/FeatureFlagsTab"));
 
 const TABS = [
   { key: "overview", label: "Overview" },
@@ -29,6 +30,7 @@ const TABS = [
   { key: "ai-costs", label: "AI Costs" },
   { key: "content-factory", label: "Content Factory" },
   { key: "red-flags", label: "Red Flags" },
+  { key: "feature-flags", label: "Feature Flags" },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
@@ -101,7 +103,8 @@ export default function AdminDashboard() {
   const startStr = start.toISOString();
   const endStr = end.toISOString();
 
-  const showTimeRange = activeTab !== "content-factory";
+  const showTimeRange =
+    activeTab !== "content-factory" && activeTab !== "feature-flags";
 
   return (
     <div className="min-h-screen bg-[#0A0A0F] px-4 py-6 text-white sm:px-8">
@@ -179,6 +182,7 @@ export default function AdminDashboard() {
           {activeTab === "red-flags" && (
             <RedFlagsTab start={startStr} end={endStr} />
           )}
+          {activeTab === "feature-flags" && <FeatureFlagsTab />}
         </div>
       </div>
     </div>
