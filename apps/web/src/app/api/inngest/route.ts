@@ -13,6 +13,10 @@ import { helloWorldFn } from "@/inngest/functions/hello-world";
 import { processEntryFn } from "@/inngest/functions/process-entry";
 import { computeUserInsightsFn } from "@/inngest/functions/compute-user-insights";
 import { generateDataExportFn } from "@/inngest/functions/generate-data-export";
+import {
+  generateStateOfMeFn,
+  stateOfMeAutoTickFn,
+} from "@/inngest/functions/generate-state-of-me";
 import { monthlyDigestFn } from "@/inngest/functions/monthly-digest";
 import { refreshLifeMapFn } from "@/inngest/functions/refresh-lifemap";
 import { cleanupGenerationJobsFn } from "@/inngest/functions/cleanup-generation-jobs";
@@ -46,6 +50,8 @@ const handler = serve({
     cleanupGenerationJobsFn,
     computeDailySnapshotFn,
     scanRedFlagsFn,
+    generateStateOfMeFn,
+    stateOfMeAutoTickFn,
   ],
 });
 

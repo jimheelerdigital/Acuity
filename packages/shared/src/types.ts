@@ -181,3 +181,65 @@ export interface WeeklyReportDTO {
   entryCount: number;
   createdAt: string;
 }
+
+// State of Me — quarterly long-form report structure. Stored as
+// StateOfMeReport.content JSON; rendered by the detail page + share
+// view. Aligns with the Claude Opus generation prompt in
+// apps/web/src/lib/prompts/state-of-me.ts.
+export interface StateOfMeThemeExcerpt {
+  theme: string;
+  mentions: number;
+  excerpt: string; // Representative ~200-char entry snippet
+  entryId: string | null; // Null on fallback-generated reports
+  sentiment: "POSITIVE" | "NEUTRAL" | "NEGATIVE";
+}
+
+export interface StateOfMeMoodArc {
+  narrative: string; // 1-2 sentence emotional trajectory
+  // Weekly mood averages for the period (0..10 scale).
+  weeklyMood: Array<{ weekStart: string; avg: number | null }>;
+}
+
+export interface StateOfMeLifeMatrixMovement {
+  area: string;
+  scoreStart: number;
+  scoreEnd: number;
+  delta: number;
+}
+
+export interface StateOfMeGoalStatus {
+  title: string;
+  status: string; // NOT_STARTED | IN_PROGRESS | ON_HOLD | COMPLETE | ARCHIVED
+  progress: number; // 0..100
+  verdict: string; // "shipped" | "stalled" | "steady" | "abandoned" (Claude-chosen)
+}
+
+export interface StateOfMeRelationship {
+  name: string;
+  mentionCount: number;
+  evolution: string; // 1-sentence description of how it changed
+}
+
+export interface StateOfMePattern {
+  /** Short observation worth surfacing — e.g. "You write longer
+   *  entries on weekends" or "Your goals stall around week 6." */
+  observation: string;
+  /** Optional short supporting quote from the entries. */
+  supporting?: string;
+}
+
+export interface StateOfMeContent {
+  headline: string; // 5-8 word title for the period
+  majorThemes: StateOfMeThemeExcerpt[];
+  emotionalArc: StateOfMeMoodArc;
+  lifeMatrixMovement: StateOfMeLifeMatrixMovement[];
+  goalsProgress: StateOfMeGoalStatus[];
+  keyRelationships: StateOfMeRelationship[];
+  patternsNoticed: StateOfMePattern[];
+  // 250-350 word reflection, second-person, warm, non-prescriptive.
+  closingReflection: string;
+  // "flagship" | "fallback" — fallback fires when Claude rejects
+  // or when the user has insufficient data; UI renders a slightly
+  // simpler layout in that case.
+  mode: "flagship" | "fallback";
+}

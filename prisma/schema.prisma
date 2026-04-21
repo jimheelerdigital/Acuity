@@ -155,6 +155,7 @@ model User {
   // Settings or toggle off from Profile → Connected apps. Null on
   // Android / never-connected iOS accounts.
   healthConnectedAt      DateTime?
+  stateOfMeReports       StateOfMeReport[]
 }
 
 // Tombstone for deleted accounts — closes the trial-reset exploit
@@ -898,4 +899,38 @@ model HealthSnapshot {
 
   @@unique([userId, date])
   @@index([userId, date])
+}
+
+// Quarterly State-of-Me report. Triggered every 90 days from signup
+// by a scheduled Inngest function, OR manually from /insights (rate-
+// limited to 1 per 30 days). Heavy Claude Opus 4.7 output — ~1,000
+// words of narrative + structured fields for the UI.
+//
+// Share link (publicShareId) mirrors the WeeklyReport pattern; a
+// 22-char random token enables the /shared/state-of-me/[publicId]
+// public read-only view.
+model StateOfMeReport {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Inclusive period the report covers — typically [signup + 90N, now].
+  periodStart     DateTime
+  periodEnd       DateTime
+  // Full content bundle. Schema lives in
+  // packages/shared/src/types.ts::StateOfMeContent — narrative
+  // reflection + themes + emotional arc + life-matrix delta + goals
+  // progress + key relationships + patterns-noticed + closing.
+  content         Json
+  // Valid: "QUEUED" | "GENERATING" | "COMPLETE" | "FAILED".
+  status          String   @default("QUEUED")
+  errorMessage    String?
+  inngestRunId    String?
+  degraded        Boolean  @default(false)
+  // Public share link — same shape as WeeklyReport's.
+  publicShareId        String?   @unique
+  publicShareExpiresAt DateTime?
+  publicShareViewCount Int       @default(0)
+  createdAt       DateTime @default(now())
+
+  @@index([userId, createdAt])
 }
