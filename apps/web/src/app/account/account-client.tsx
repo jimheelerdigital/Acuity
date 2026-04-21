@@ -15,6 +15,8 @@ interface Props {
   hasStripeCustomer: boolean;
   periodEnd: string | null;
   trialEndsAt: string | null;
+  weeklyEmailEnabled: boolean;
+  monthlyEmailEnabled: boolean;
 }
 
 export default function AccountClient({
@@ -27,6 +29,8 @@ export default function AccountClient({
   hasStripeCustomer,
   periodEnd,
   trialEndsAt,
+  weeklyEmailEnabled,
+  monthlyEmailEnabled,
 }: Props) {
   const [confirmOpen, setConfirmOpen] = useState(false);
 
@@ -76,6 +80,12 @@ export default function AccountClient({
 
         {/* Referrals */}
         <ReferralsSection />
+
+        {/* Email preferences */}
+        <EmailPrefsSection
+          initialWeekly={weeklyEmailEnabled}
+          initialMonthly={monthlyEmailEnabled}
+        />
 
         {/* Appearance */}
         <section className="mt-8 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-6">
@@ -614,5 +624,119 @@ function ReferralsSection() {
         </div>
       </dl>
     </section>
+  );
+}
+
+/**
+ * Email digest preferences. Two toggles:
+ *   - Weekly summary — Sunday 9am local (see weekly-digest.ts cron)
+ *   - Monthly reflection — 1st of month 9am local
+ *
+ * POSTs to /api/account/email-preferences which is userWrite-limited.
+ * Optimistic state with revert-on-failure.
+ */
+function EmailPrefsSection({
+  initialWeekly,
+  initialMonthly,
+}: {
+  initialWeekly: boolean;
+  initialMonthly: boolean;
+}) {
+  const [weekly, setWeekly] = useState(initialWeekly);
+  const [monthly, setMonthly] = useState(initialMonthly);
+  const [saving, setSaving] = useState(false);
+
+  const updatePref = async (
+    key: "weeklyEmailEnabled" | "monthlyEmailEnabled",
+    value: boolean,
+    setLocal: (v: boolean) => void
+  ) => {
+    const prior = key === "weeklyEmailEnabled" ? weekly : monthly;
+    setLocal(value);
+    setSaving(true);
+    try {
+      const res = await fetch("/api/account/email-preferences", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [key]: value }),
+      });
+      if (!res.ok) {
+        setLocal(prior); // revert
+      }
+    } catch {
+      setLocal(prior);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <section className="mt-8 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-6">
+      <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
+        Email digests
+      </h2>
+      <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+        Short summary emails on a regular cadence. Always unsubscribable
+        from any footer.
+      </p>
+
+      <div className="mt-5 space-y-4">
+        <PrefRow
+          label="Weekly summary email"
+          sub="Sundays, 9am in your local timezone"
+          checked={weekly}
+          disabled={saving}
+          onChange={(v) => updatePref("weeklyEmailEnabled", v, setWeekly)}
+        />
+        <PrefRow
+          label="Monthly reflection email"
+          sub="1st of each month, 9am local"
+          checked={monthly}
+          disabled={saving}
+          onChange={(v) => updatePref("monthlyEmailEnabled", v, setMonthly)}
+        />
+      </div>
+    </section>
+  );
+}
+
+function PrefRow({
+  label,
+  sub,
+  checked,
+  disabled,
+  onChange,
+}: {
+  label: string;
+  sub: string;
+  checked: boolean;
+  disabled: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <div>
+        <p className="text-sm font-medium text-zinc-800 dark:text-zinc-100">
+          {label}
+        </p>
+        <p className="text-xs text-zinc-500 dark:text-zinc-400">{sub}</p>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        disabled={disabled}
+        onClick={() => onChange(!checked)}
+        className={`relative h-6 w-11 rounded-full transition disabled:opacity-40 ${
+          checked ? "bg-violet-600" : "bg-zinc-300 dark:bg-white/10"
+        }`}
+      >
+        <span
+          className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all ${
+            checked ? "left-[22px]" : "left-0.5"
+          }`}
+        />
+      </button>
+    </div>
   );
 }

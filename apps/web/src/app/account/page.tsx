@@ -29,6 +29,8 @@ export default async function AccountPage() {
       stripeCustomerId: true,
       stripeCurrentPeriodEnd: true,
       trialEndsAt: true,
+      weeklyEmailEnabled: true,
+      monthlyEmailEnabled: true,
     },
   });
 
@@ -43,6 +45,8 @@ export default async function AccountPage() {
       hasStripeCustomer={Boolean(user?.stripeCustomerId)}
       periodEnd={user?.stripeCurrentPeriodEnd?.toISOString() ?? null}
       trialEndsAt={user?.trialEndsAt?.toISOString() ?? null}
+      weeklyEmailEnabled={user?.weeklyEmailEnabled ?? true}
+      monthlyEmailEnabled={user?.monthlyEmailEnabled ?? true}
     />
   );
 }

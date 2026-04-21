@@ -12,8 +12,10 @@ import { generateWeeklyReportFn } from "@/inngest/functions/generate-weekly-repo
 import { helloWorldFn } from "@/inngest/functions/hello-world";
 import { processEntryFn } from "@/inngest/functions/process-entry";
 import { computeUserInsightsFn } from "@/inngest/functions/compute-user-insights";
+import { monthlyDigestFn } from "@/inngest/functions/monthly-digest";
 import { refreshLifeMapFn } from "@/inngest/functions/refresh-lifemap";
 import { snapshotLifemapHistoryFn } from "@/inngest/functions/snapshot-lifemap-history";
+import { weeklyDigestFn } from "@/inngest/functions/weekly-digest";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -34,6 +36,8 @@ const handler = serve({
     generateDailyFn,
     snapshotLifemapHistoryFn,
     computeUserInsightsFn,
+    weeklyDigestFn,
+    monthlyDigestFn,
   ],
 });
 

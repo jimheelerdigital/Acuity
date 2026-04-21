@@ -128,6 +128,11 @@ model User {
   // token-based endpoint.
   weeklyEmailEnabled     Boolean      @default(true)
   monthlyEmailEnabled    Boolean      @default(true)
+  // Dedup keys for the weekly/monthly digest Inngest crons. Scan
+  // window uses (now - last*At < threshold) so a retried cron or
+  // overlap doesn't double-send. Null = never sent.
+  lastWeeklyDigestAt     DateTime?
+  lastMonthlyDigestAt    DateTime?
   accounts               Account[]
   sessions               Session[]
   entries                Entry[]
