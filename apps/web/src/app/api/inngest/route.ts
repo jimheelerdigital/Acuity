@@ -15,6 +15,7 @@ import { computeUserInsightsFn } from "@/inngest/functions/compute-user-insights
 import { generateDataExportFn } from "@/inngest/functions/generate-data-export";
 import { monthlyDigestFn } from "@/inngest/functions/monthly-digest";
 import { refreshLifeMapFn } from "@/inngest/functions/refresh-lifemap";
+import { cleanupGenerationJobsFn } from "@/inngest/functions/cleanup-generation-jobs";
 import { snapshotLifemapHistoryFn } from "@/inngest/functions/snapshot-lifemap-history";
 import { weeklyDigestFn } from "@/inngest/functions/weekly-digest";
 
@@ -40,6 +41,7 @@ const handler = serve({
     weeklyDigestFn,
     monthlyDigestFn,
     generateDataExportFn,
+    cleanupGenerationJobsFn,
   ],
 });
 

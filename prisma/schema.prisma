@@ -574,6 +574,28 @@ enum ContentStatus {
   DISTRIBUTED
 }
 
+// ─── Generation Job Tracking ─────────────────────────────────────────────────
+
+model GenerationJob {
+  id            String    @id @default(cuid())
+  status        JobStatus @default(QUEUED)
+  currentStep   Int       @default(0)
+  totalSteps    Int       @default(11)
+  stepLabel     String    @default("Queued…")
+  errorMessage  String?
+  piecesCreated Int       @default(0)
+  startedAt     DateTime  @default(now())
+  completedAt   DateTime?
+  triggeredBy   String?
+}
+
+enum JobStatus {
+  QUEUED
+  RUNNING
+  SUCCESS
+  FAILED
+}
+
 // Optional demographic metadata collected during onboarding step 3.
 // All fields nullable — every field ships with a "Prefer not to say"
 // option so the user can proceed without sharing anything. Used for

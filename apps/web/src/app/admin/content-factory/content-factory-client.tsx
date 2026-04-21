@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -47,11 +47,21 @@ interface GA4Winner {
   sessions: number;
 }
 
+interface JobStatus {
+  status: "QUEUED" | "RUNNING" | "SUCCESS" | "FAILED";
+  currentStep: number;
+  totalSteps: number;
+  stepLabel: string;
+  errorMessage: string | null;
+  piecesCreated: number;
+}
+
 interface Props {
   pendingPieces: ContentPiece[];
   readyPieces: ContentPiece[];
   distributedPieces: ContentPiece[];
   latestBriefing: ContentBriefing | null;
+  activeJobId?: string | null;
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -104,21 +114,101 @@ export default function ContentFactoryClient({
   readyPieces: initialReady,
   distributedPieces,
   latestBriefing,
+  activeJobId: initialJobId,
 }: Props) {
   const [tab, setTab] = useState(0);
   const [pending, setPending] = useState(initialPending);
   const [ready, setReady] = useState(initialReady);
-  const [generating, setGenerating] = useState(false);
+  const [jobId, setJobId] = useState<string | null>(initialJobId ?? null);
+  const [jobStatus, setJobStatus] = useState<JobStatus | null>(null);
+  const [stale, setStale] = useState(false);
+  const lastUpdateRef = useRef<number>(Date.now());
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const doneTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Poll job status
+  useEffect(() => {
+    if (!jobId) return;
+
+    const poll = async () => {
+      try {
+        const res = await fetch(
+          `/api/admin/content-factory/generate-status/${jobId}`
+        );
+        if (!res.ok) return;
+        const data: JobStatus = await res.json();
+        setJobStatus((prev) => {
+          if (
+            !prev ||
+            prev.currentStep !== data.currentStep ||
+            prev.status !== data.status
+          ) {
+            lastUpdateRef.current = Date.now();
+            setStale(false);
+          }
+          return data;
+        });
+
+        if (data.status === "SUCCESS") {
+          // Auto-hide after 3 seconds, then refresh
+          if (doneTimerRef.current) clearTimeout(doneTimerRef.current);
+          doneTimerRef.current = setTimeout(() => {
+            setJobId(null);
+            setJobStatus(null);
+            window.location.reload();
+          }, 3000);
+          if (pollRef.current) clearInterval(pollRef.current);
+        } else if (data.status === "FAILED") {
+          if (pollRef.current) clearInterval(pollRef.current);
+        } else {
+          // Check staleness
+          if (Date.now() - lastUpdateRef.current > 60000) {
+            setStale(true);
+          }
+        }
+      } catch {
+        // Network error — keep polling
+      }
+    };
+
+    // Initial fetch immediately
+    poll();
+    pollRef.current = setInterval(poll, 2000);
+
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+      if (doneTimerRef.current) clearTimeout(doneTimerRef.current);
+    };
+  }, [jobId]);
 
   const handleGenerateNow = async () => {
-    setGenerating(true);
     try {
-      await fetch("/api/admin/content-factory/generate-now", {
+      const res = await fetch("/api/admin/content-factory/generate-now", {
         method: "POST",
       });
-    } finally {
-      setGenerating(false);
+      const data = await res.json();
+      if (data.jobId) {
+        setJobId(data.jobId);
+        setJobStatus({
+          status: "QUEUED",
+          currentStep: 0,
+          totalSteps: 11,
+          stepLabel: "Queued…",
+          errorMessage: null,
+          piecesCreated: 0,
+        });
+        setStale(false);
+        lastUpdateRef.current = Date.now();
+      }
+    } catch {
+      // Network error
     }
+  };
+
+  const handleRetry = () => {
+    setJobId(null);
+    setJobStatus(null);
+    setStale(false);
   };
 
   return (
@@ -131,13 +221,21 @@ export default function ContentFactoryClient({
               AI-generated content for review and distribution
             </p>
           </div>
-          <button
-            onClick={handleGenerateNow}
-            disabled={generating}
-            className="rounded-lg bg-[#7C5CFC] px-4 py-2 text-sm font-medium transition hover:bg-[#6B4DE6] disabled:opacity-50"
-          >
-            {generating ? "Triggering..." : "Generate Now"}
-          </button>
+          {jobId && jobStatus ? (
+            <GenerationProgress
+              jobId={jobId}
+              status={jobStatus}
+              stale={stale}
+              onRetry={handleRetry}
+            />
+          ) : (
+            <button
+              onClick={handleGenerateNow}
+              className="rounded-lg bg-[#7C5CFC] px-4 py-2 text-sm font-medium transition hover:bg-[#6B4DE6]"
+            >
+              Generate Now
+            </button>
+          )}
         </div>
 
         {/* Tab bar */}
@@ -187,6 +285,79 @@ export default function ContentFactoryClient({
         {tab === 1 && <ReadyToPost pieces={ready} />}
         {tab === 2 && <LivePerformance pieces={distributedPieces} />}
         {tab === 3 && <TodaysBriefing briefing={latestBriefing} />}
+      </div>
+    </div>
+  );
+}
+
+// ─── Generation Progress ────────────────────────────────────────────────────
+
+function GenerationProgress({
+  jobId,
+  status,
+  stale,
+  onRetry,
+}: {
+  jobId: string;
+  status: JobStatus;
+  stale: boolean;
+  onRetry: () => void;
+}) {
+  const pct = Math.round((status.currentStep / status.totalSteps) * 100);
+
+  if (status.status === "FAILED") {
+    return (
+      <div className="flex items-center gap-3">
+        <div className="text-right">
+          <p className="text-sm font-medium text-red-400">Generation failed</p>
+          <p className="text-xs text-red-400/70">
+            {status.errorMessage ?? "Unknown error"}
+          </p>
+        </div>
+        <button
+          onClick={onRetry}
+          className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-500"
+        >
+          Try again
+        </button>
+      </div>
+    );
+  }
+
+  if (status.status === "SUCCESS") {
+    return (
+      <div className="flex items-center gap-3">
+        <div className="h-3 w-48 overflow-hidden rounded-full bg-white/10">
+          <div className="h-full w-full rounded-full bg-green-500 transition-all duration-300 ease-out" />
+        </div>
+        <span className="text-sm font-medium text-green-400">
+          {status.stepLabel}
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-3">
+      <div className="min-w-[200px]">
+        <div className="h-3 w-full overflow-hidden rounded-full bg-white/10">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-[#7C5CFC] to-[#9B7DFF] transition-all duration-300 ease-out"
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+        <div className="mt-1 flex items-center justify-between">
+          <p className="text-xs text-white/50">
+            {stale ? (
+              <span className="text-amber-400">
+                Taking longer than expected…
+              </span>
+            ) : (
+              status.stepLabel
+            )}
+          </p>
+          <p className="text-[10px] text-white/25">{jobId.slice(0, 8)}</p>
+        </div>
       </div>
     </div>
   );

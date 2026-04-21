@@ -13,13 +13,24 @@ export async function POST() {
   const { prisma } = await import("@/lib/prisma");
   const me = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { isAdmin: true },
+    select: { isAdmin: true, email: true },
   });
   if (!me?.isAdmin) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  await inngest.send({ name: "content-factory/generate.requested", data: {} });
+  const job = await prisma.generationJob.create({
+    data: {
+      status: "QUEUED",
+      stepLabel: "Queued…",
+      triggeredBy: me.email ?? session.user.id,
+    },
+  });
 
-  return NextResponse.json({ ok: true, message: "Generation triggered" });
+  await inngest.send({
+    name: "content-factory/generate.requested",
+    data: { jobId: job.id },
+  });
+
+  return NextResponse.json({ ok: true, jobId: job.id });
 }

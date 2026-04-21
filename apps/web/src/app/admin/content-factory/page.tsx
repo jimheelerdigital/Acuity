@@ -23,7 +23,9 @@ export default async function ContentFactoryPage() {
   }
 
   // Load all data server-side
-  const [pendingPieces, readyPieces, distributedPieces, latestBriefing] =
+  const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+
+  const [pendingPieces, readyPieces, distributedPieces, latestBriefing, activeJob] =
     await Promise.all([
       prisma.contentPiece.findMany({
         where: { status: "PENDING_REVIEW" },
@@ -40,6 +42,14 @@ export default async function ContentFactoryPage() {
       prisma.contentBriefing.findFirst({
         orderBy: { date: "desc" },
       }),
+      prisma.generationJob.findFirst({
+        where: {
+          status: { in: ["QUEUED", "RUNNING"] },
+          startedAt: { gte: tenMinutesAgo },
+        },
+        orderBy: { startedAt: "desc" },
+        select: { id: true },
+      }),
     ]);
 
   return (
@@ -52,6 +62,7 @@ export default async function ContentFactoryPage() {
           ? JSON.parse(JSON.stringify(latestBriefing))
           : null
       }
+      activeJobId={activeJob?.id ?? null}
     />
   );
 }
