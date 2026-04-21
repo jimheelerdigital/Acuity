@@ -156,7 +156,6 @@ None.
   - Center button stays purple whether Home is active or not — primary action, not a navigation indicator.
   - Commit `fix(mobile): prominent raised purple center mic button + pop on inactive tabs`.
 - **Production readiness audit — read-only pass, findings at `docs/PRODUCTION_AUDIT_2026-04-21.md`.** 10 parallel subagents covered auth + session, data access, input validation, payment + subscription, secrets, resilience, privacy + compliance, admin, mobile, observability. No code changed; this is a decision document.
-- **Production readiness audit — read-only pass, findings at `docs/PRODUCTION_AUDIT_2026-04-21.md`.** 10 parallel subagents covered auth + session, data access, input validation, payment + subscription, secrets, resilience, privacy + compliance, admin, mobile, observability. No code changed; this is a decision document.
 - **5 CRITICAL findings (must fix before public launch):**
   - C1 Gmail plus-addressing bypasses the DeletedUser tombstone → unlimited free trials by varying the local-part (`alice+N@gmail.com`). Fix at `lib/bootstrap-user.ts:140`.
   - C2 No Zero Data Retention agreement or header with Anthropic/OpenAI — raw transcripts + audio reach both providers without contractual data-minimization. Legal + trust risk for a mental-health-adjacent product.
