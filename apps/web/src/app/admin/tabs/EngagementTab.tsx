@@ -1,0 +1,99 @@
+"use client";
+
+import MetricCard from "../components/MetricCard";
+import { SkeletonMetric, SkeletonTable } from "../components/SkeletonCard";
+import { useTabData } from "./useTabData";
+
+interface EngagementData {
+  dau: number;
+  wau: number;
+  mau: number;
+  totalEntries: number;
+  avgDuration: number;
+  avgPerUserPerWeek: number;
+  silentTrialUsers: { id: string; email: string; lastSeenAt: string | null }[];
+}
+
+export default function EngagementTab({
+  start,
+  end,
+}: {
+  start: string;
+  end: string;
+}) {
+  const { data, loading } = useTabData<EngagementData>(
+    "engagement",
+    start,
+    end
+  );
+
+  if (loading || !data) {
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <SkeletonMetric key={i} />
+          ))}
+        </div>
+        <SkeletonTable />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+        <MetricCard label="DAU" value={data.dau} />
+        <MetricCard label="WAU" value={data.wau} />
+        <MetricCard label="MAU" value={data.mau} />
+        <MetricCard
+          label="Avg Recordings/User/Week"
+          value={data.avgPerUserPerWeek}
+        />
+        <MetricCard
+          label="Avg Duration"
+          value={data.avgDuration > 0 ? `${data.avgDuration}s` : "—"}
+        />
+        <MetricCard label="Total Entries" value={data.totalEntries} />
+      </div>
+
+      {/* Silent trial users */}
+      <div className="rounded-xl bg-[#13131F] p-5">
+        <h3 className="mb-3 text-sm font-medium text-white/60">
+          Silent Trial Users (0 recordings in 3+ days)
+        </h3>
+        {data.silentTrialUsers.length === 0 ? (
+          <p className="text-sm text-white/30 py-6 text-center">
+            All trial users are active
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-white/10 text-white/40">
+                  <th className="pb-2 pr-4 font-medium">Email</th>
+                  <th className="pb-2 font-medium">Last Seen</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.silentTrialUsers.map((u) => (
+                  <tr
+                    key={u.id}
+                    className="border-b border-white/5 text-white/70"
+                  >
+                    <td className="py-2 pr-4">{u.email}</td>
+                    <td className="py-2 whitespace-nowrap">
+                      {u.lastSeenAt
+                        ? new Date(u.lastSeenAt).toLocaleDateString()
+                        : "Never"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

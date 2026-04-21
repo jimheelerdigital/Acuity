@@ -790,3 +790,56 @@ model DataExport {
 
   @@index([userId, createdAt])
 }
+
+// ─── Admin Dashboard ─────────────────────────────────────────────────────────
+
+// Daily snapshot of key business metrics, computed by a 2 AM Inngest cron.
+// Lets the admin dashboard show historical trends without recomputing from
+// raw User/Entry tables for dates older than 7 days.
+model DashboardSnapshot {
+  id             String   @id @default(cuid())
+  date           DateTime @unique
+  mrr            Int      // cents
+  totalSubs      Int
+  dau            Int
+  wau            Int
+  mau            Int
+  signupsThisDay Int
+  aiCostCents    Int
+  metadata       Json     // flexible bucket for other metrics
+  createdAt      DateTime @default(now())
+}
+
+// Manual weekly ad spend input per campaign. Meta Marketing API automation
+// is a future enhancement — for now the operator enters spend from the
+// Meta Ads Manager each week.
+model MetaSpend {
+  id         String   @id @default(cuid())
+  weekStart  DateTime
+  campaign   String   // therapy | sleep | founders | decoded | weekly-report | main
+  spendCents Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([weekStart, campaign])
+}
+
+// System health issues detected by the 6-hourly red flag scanner.
+// Displayed on the Red Flags tab; operator can dismiss or resolve.
+model RedFlag {
+  id              String       @id @default(cuid())
+  severity        FlagSeverity
+  category        String       // webhook | inngest | payment | trial | email | ai_budget
+  title           String
+  description     String
+  affectedUserIds String[]
+  resolved        Boolean      @default(false)
+  resolvedAt      DateTime?
+  createdAt       DateTime     @default(now())
+}
+
+enum FlagSeverity {
+  CRITICAL
+  WARNING
+  INFO
+}

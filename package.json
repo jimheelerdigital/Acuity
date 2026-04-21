@@ -30,7 +30,8 @@
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
-    "ajv": "^8.18.0"
+    "ajv": "^8.18.0",
+    "recharts": "^3.8.1"
   },
   "engines": {
     "node": ">=20"

@@ -17,6 +17,8 @@ import { monthlyDigestFn } from "@/inngest/functions/monthly-digest";
 import { refreshLifeMapFn } from "@/inngest/functions/refresh-lifemap";
 import { cleanupGenerationJobsFn } from "@/inngest/functions/cleanup-generation-jobs";
 import { snapshotLifemapHistoryFn } from "@/inngest/functions/snapshot-lifemap-history";
+import { computeDailySnapshotFn } from "@/inngest/functions/compute-daily-snapshot";
+import { scanRedFlagsFn } from "@/inngest/functions/scan-red-flags";
 import { weeklyDigestFn } from "@/inngest/functions/weekly-digest";
 
 export const dynamic = "force-dynamic";
@@ -42,6 +44,8 @@ const handler = serve({
     monthlyDigestFn,
     generateDataExportFn,
     cleanupGenerationJobsFn,
+    computeDailySnapshotFn,
+    scanRedFlagsFn,
   ],
 });
 
