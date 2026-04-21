@@ -11,6 +11,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getAnySessionUserId } from "@/lib/mobile-auth";
+import { enforceUserRateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -60,6 +61,9 @@ export async function DELETE(
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const limited = await enforceUserRateLimit("userWrite", userId);
+  if (limited) return limited;
 
   const { prisma } = await import("@/lib/prisma");
   const existing = await prisma.goal.findFirst({
