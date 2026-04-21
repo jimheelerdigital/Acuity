@@ -7,7 +7,14 @@
 
 ---
 
-## Current Focus (updated 2026-04-20)
+## Current Focus (updated 2026-04-21, pre-beta-freeze audit pass)
+- **Pre-beta-freeze audit + fix pass (4 commits, 2026-04-21 afternoon):**
+  1. `6eaebf7` — **sync-path auto-embed.** Ask-Your-Past-Self was only embedding entries on the async Inngest path; sync-path entries (ENABLE_INNGEST_PIPELINE unset) were silently skipping indexing. Added fail-soft embedding in `pipeline.ts` after the post-transaction memory/lifemap hook so both paths stay symmetrical.
+  2. `af4bde9` — **cleared long-standing TS2352.** `validateLifeAreaMentions()` cast through `unknown` per compiler hint. Web `npx tsc --noEmit` now passes clean.
+  3. `976db26` — **admin-gated `/api/test-sentry-error` smoke endpoint.** Jim hits this once per deploy with admin cookie to confirm the Sentry DSN + release + source-map upload delivered. `?kind=async` variant exercises unhandled-rejection capture too.
+  4. `e290511` — **rate-limited `/api/goals/[id]` DELETE.** Only Goals mutation that had no limiter; now wrapped with `userWrite` (30/min/user) to match POST + PATCH.
+- **Ask-Your-Past-Self activation (manual, Jim):** (1) `cd apps/web && npx prisma db push` to land the `Entry.embedding Float[]` column if not yet applied to prod; (2) confirm `OPENAI_API_KEY` is set in Vercel Production **and** `apps/web/.env.local`; (3) run `set -a && source apps/web/.env.local && set +a && npx tsx apps/web/scripts/backfill-entry-embeddings.ts` to backfill legacy entries. No pgvector extension needed — embeddings are `Float[]` and cosine similarity runs in app memory.
+- **Post-deploy verifications Jim owes the beta:** (a) hit `/api/test-sentry-error` once signed in as admin — confirm the error surfaces in Sentry dashboard within 30s with readable stack; (b) provision Sentry env vars in Vercel (SENTRY_DSN/ORG/PROJECT/AUTH_TOKEN) + EAS secret (EXPO_PUBLIC_SENTRY_DSN) per `docs/ERROR_MONITORING.md`; (c) mobile HealthKit client is intentionally deferred — the iOS entitlements, usage descriptions, and @kingstinct/react-native-healthkit plugin are all NOT in `apps/mobile/app.json` by design; server-side Apple Health tables, routes, and correlation card already ship and activate the moment a mobile client uploads HealthSnapshot rows.
 - **Vercel Production is not receiving auto-deploys from main** — see "Blocked on Inngest verification" below for full diagnosis. Triage this first when back: `vercel --prod` from the repo, or redeploy from the dashboard. Every paywall + security + Inngest PR from 2026-04-19 onward is on `main` but not live.
 - After a fresh deploy: run the Task 1 Inngest smoke test (`curl https://www.getacuity.io/api/inngest`). Expect 503 until ENABLE_INNGEST_PIPELINE is flipped. Then optionally fix the 503-gates-GET/PUT-sync-too issue flagged in the blocker doc.
 - Manual provisioning (in order): Upstash marketplace integration → Inngest Cloud keys → PostHog account + keys → flip ENABLE_INNGEST_PIPELINE=1 in Production → verify end-to-end with a real test recording.
@@ -137,6 +144,17 @@ No PROGRESS.md "Next Up" additions yet — this blocker blocks step 2 of the exi
 
 ## Parked / Deferred
 
+- **Deferred-post-beta list (surfaced by 2026-04-21 pre-freeze audit):**
+  - **Apple Health mobile client.** Server-side (HealthSnapshot model, `/api/health/snapshots`, `/api/insights/health-correlations`, correlations card) is live. Mobile HealthKit native module (@kingstinct/react-native-healthkit), iOS entitlements/usage descriptions, and `lib/health-sync.ts` are deferred per `docs/APPLE_HEALTH_INTEGRATION.md` — requires EAS dev build on real iPhone to verify. Profile button is honest ("Arriving in the next app update") — no ghost UI.
+  - **Calendar integration (Google/Outlook/Apple).** Only the foundation shipped (`CalendarConnection` schema, `/api/integrations/calendar/connect` returns 501, /account cards render disabled with "Coming soon" copy). Full OAuth + ingestion pipeline in `docs/CALENDAR_INTEGRATION_PLAN.md`.
+  - **Referral reward consumer hook.** `lib/referrals.ts::recordReferralConversion` accrues reward days on `User.referralRewardDays` but the Stripe renewal webhook that consumes accrued days back into `trialEndsAt` extension is TODO (flagged inline). Non-blocking for beta — accrual works, so no referrer loses credit; the credit just doesn't redeem until the hook lands.
+  - **Ask-Your-Past-Self mobile UI.** Web-only per commit 19b91a5. Web has `/insights/ask`; mobile tab has no entry point. Users on mobile have to open the web app. Non-blocking because the feature is a bonus, not a primary flow.
+  - **Drag-to-reparent on mobile Goals tab.** Web /goals supports drag; mobile tab does not. `/api/goals/[id]/reparent` already accepts the write server-side, so the deferral is UI-only.
+  - **Static PNG mood-trend chart in weekly digest email.** Spec says PNG; shipped textual summary ("4 good, 2 neutral, 1 low") to avoid adding `@vercel/og` or node-canvas to the bundle pre-beta. Follow-up only if digest engagement signals need the image.
+  - **Sentry Session Replay.** Disabled in `sentry.client.config.ts` pending a masking allowlist — DOM content on journal pages is high-risk for transcript leaks. Errors + traces still capture normally.
+  - **Mobile `TS2786` dual-React error noise.** `apps/mobile/package.json` uses React 19.1 + @types/react 19.1, `apps/web` uses React 18.3 + @types/react 18.3. Metro's dual-resolution causes TS to see two JSX element contracts; runtime unaffected. Will resolve when we bump web to Next 15 + React 19.
+  - **`.env.local.save` git-history purge.** Hygiene only — Supabase password rotated 2026-04-18, so the residual git history doesn't grant fresh access. Run `git filter-repo` + force-push when convenient; not beta-blocking.
+
 - **Waitlist drip email sequence (parked 2026-04-19 — updated with activation checklist 2026-04-20).** Templates + DB tracking + fail-closed route ready to go; scheduler + launch-specific copy are the activation work.
 
   **Current state:**
@@ -177,6 +195,23 @@ No PROGRESS.md "Next Up" additions yet — this blocker blocks step 2 of the exi
 ---
 
 ## Done
+
+### 2026-04-21 — afternoon pre-beta-freeze audit (4 commits)
+Audited today's 8 morning workstreams (Apple Health, Ask-Your-Past-Self, State of Me, Configurable Life Matrix, Referral Rewards, Mobile theme-map pinch-zoom, Calendar foundation, Goals ARCHIVED status) + the post-noon polish commits (recharts install, turbo.json env vars) for TODOs, ghost UI, missing error states, and broken integrations. Result: no ghost buttons, one functional gap, one TS cleanup, one observability verification gap, one rate-limit gap.
+
+- **`6eaebf7` — sync-path auto-embed fix.** The Ask-Your-Past-Self feature's embed-entry step only existed in `process-entry.ts` (async Inngest path). Added the same fail-soft block at the end of `pipeline.ts::processEntry()` so sync-path entries get indexed too. Prevents a silent class of "entries invisible to semantic search" bugs when `ENABLE_INNGEST_PIPELINE` is unset.
+- **`af4bde9` — pre-existing TS2352 cleared.** `validateLifeAreaMentions()` return cast through `unknown`. Web `npx tsc --noEmit` now passes clean. Mobile still has TS2786 noise from React 18 vs 19 @types drift — deferred-post-beta.
+- **`976db26` — `/api/test-sentry-error` smoke endpoint.** NextAuth session + `isAdmin` gated. Throws a timestamped marker synchronously by default, or async via `?kind=async`. Gives Jim a one-call Sentry verification post-deploy.
+- **`e290511` — rate-limit `/api/goals/[id]` DELETE.** The only un-rate-limited Goals mutation. Wrapped with `userWrite` (30/min/user).
+
+**Audit verifications (no code changed):**
+- State of Me: cron registered in `inngest/route.ts:54`, scheduled `0 8 * * *` daily, POST manual trigger at `/api/state-of-me` with 30-day cooldown, UI button wired. Fully shipped.
+- Configurable Life Matrix: extraction prompt is hardcoded to canonical 6-area vocabulary by design — user labels are display-layer only (`life-map.tsx`). No accidental mixing; matches the 29db161 commit intent.
+- HealthKit entitlements / infoPlist / plugin all absent from `apps/mobile/app.json` — **intentional** per `docs/APPLE_HEALTH_INTEGRATION.md` (mobile client deferred). Not fixing until the native module ships.
+- Rate-limit coverage: `askPast` (10/day), `userWrite` (30/min), `goalReparent` (20/min), `shareLink` (10/hr), `dataExport` (1/7d) all wired. State-of-Me POST uses a custom Prisma-backed 30-day rate-check instead of the Upstash limiters (accepted — simpler given the monthly cadence).
+- Secret scan: no new committed secrets. `.env.local.save` from 2026-04-13 is already documented; Supabase password rotated 2026-04-18; residual is history-only hygiene.
+
+**Session totals:** 4 commits, all tiny scoped fixes. `cd apps/web && npx tsc --noEmit` clean. Mobile typecheck: only pre-existing dual-React TS2786 noise. No deploys triggered (Vercel auto-deploy still blocked per 2026-04-20 diagnosis — Jim runs `./scripts/deploy-main.sh` when back).
 
 ### 2026-04-20 — evening batch (7 commits, autonomous multi-task session)
 Jim stepped away for several hours with a 7-task queue. All committed + deployed individually via `./scripts/deploy-main.sh` (Vercel auto-deploy still broken per 2026-04-20 morning Task 1 blocker). One commit per task, typecheck + build run after each, pre-existing `lib/pipeline.ts:388` cast error left alone per AUDIT.md §3.8.
