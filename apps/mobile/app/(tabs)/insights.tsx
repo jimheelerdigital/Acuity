@@ -13,6 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { MOOD_EMOJI, DEFAULT_LIFE_AREAS, type EntryDTO } from "@acuity/shared";
 
+import { ComparisonsCard } from "@/components/comparisons-card";
 import { LifeMapRadar } from "@/components/life-map-radar";
 import { UserInsightsCard } from "@/components/user-insights-card";
 import { useTheme } from "@/contexts/theme-context";
@@ -166,6 +167,8 @@ export default function InsightsTab() {
         </View>
 
         <UserInsightsCard />
+
+        <ComparisonsCard />
 
         {/* Memory stats */}
         {memory && memory.totalEntries > 0 && (

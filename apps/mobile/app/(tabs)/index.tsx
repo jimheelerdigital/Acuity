@@ -40,6 +40,12 @@ interface HomePayload {
       }
     | null;
   dailyPrompt: string;
+  recommendation?: {
+    tier: "GOAL" | "PATTERN" | "LIBRARY";
+    label: string;
+    text: string;
+    goalId?: string;
+  };
 }
 
 /**
@@ -163,8 +169,14 @@ export default function DashboardTab() {
           />
         )}
 
-        {homeData?.dailyPrompt && (
-          <RecommendedActivity prompt={homeData.dailyPrompt} />
+        {(homeData?.recommendation?.text ?? homeData?.dailyPrompt) && (
+          <RecommendedActivity
+            prompt={
+              homeData?.recommendation?.text ?? (homeData?.dailyPrompt as string)
+            }
+            label={homeData?.recommendation?.label}
+            goalId={homeData?.recommendation?.goalId}
+          />
         )}
 
         {/* Recent sessions */}

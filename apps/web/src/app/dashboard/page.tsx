@@ -68,10 +68,10 @@ export default async function DashboardPage() {
       })
     : null;
 
-  const dailyPrompt = pickDailyPrompt(
-    userId,
-    new Date().toISOString().slice(0, 10)
-  );
+  // Recommendation selector — mirrors /api/home's 3-tier logic. Inline
+  // rather than fetch-self because this is server-rendered and the same
+  // prisma instance is already in scope.
+  const recommendation = await pickHomeRecommendation(userId);
 
   try {
     [entries, tasks, goals] = await Promise.all([
@@ -152,7 +152,11 @@ export default async function DashboardPage() {
           />
         )}
 
-        <RecommendedActivity prompt={dailyPrompt} />
+        <RecommendedActivity
+          prompt={recommendation.text}
+          label={recommendation.label}
+          goalId={recommendation.goalId}
+        />
 
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
           {/* Recent entries — capped to 5 with "View all" link. Full list
@@ -309,4 +313,84 @@ function getGreeting(name?: string | null): string {
   if (hour < 12) return `Good morning, ${firstName}`;
   if (hour < 17) return `Good afternoon, ${firstName}`;
   return `Good evening, ${firstName}`;
+}
+
+/**
+ * Mirror of /api/home's tiered recommendation selector. Lives here so
+ * the server-rendered dashboard doesn't need to HTTP-fetch its own
+ * endpoint just to read prisma.
+ *
+ * Tier 1 — stalest active goal (≥7 days since lastMentionedAt).
+ * Tier 2 — recurring theme in last 5 entries.
+ * Tier 3 — library fallback.
+ */
+async function pickHomeRecommendation(userId: string): Promise<{
+  tier: "GOAL" | "PATTERN" | "LIBRARY";
+  label: string;
+  text: string;
+  goalId?: string;
+}> {
+  const { prisma } = await import("@/lib/prisma");
+  const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
+  const cutoff = new Date(Date.now() - SEVEN_DAYS_MS);
+  const staleGoal = await prisma.goal.findFirst({
+    where: {
+      userId,
+      status: { in: ["NOT_STARTED", "IN_PROGRESS"] },
+      OR: [{ lastMentionedAt: null }, { lastMentionedAt: { lt: cutoff } }],
+    },
+    orderBy: [{ lastMentionedAt: "asc" }, { createdAt: "desc" }],
+    select: { id: true, title: true, createdAt: true, lastMentionedAt: true },
+  });
+
+  if (staleGoal) {
+    const sinceDate = staleGoal.lastMentionedAt ?? staleGoal.createdAt;
+    const days = Math.max(
+      1,
+      Math.round((Date.now() - sinceDate.getTime()) / (24 * 60 * 60 * 1000))
+    );
+    return {
+      tier: "GOAL",
+      label: "Building on your goals",
+      text: `You set "${staleGoal.title}" ${days} day${days === 1 ? "" : "s"} ago. What's one small thing you could do this week to get closer to it?`,
+      goalId: staleGoal.id,
+    };
+  }
+
+  const recentEntries = await prisma.entry.findMany({
+    where: { userId, status: "COMPLETE" },
+    orderBy: { createdAt: "desc" },
+    take: 5,
+    select: { themes: true },
+  });
+
+  if (recentEntries.length >= 3) {
+    const counts: Record<string, number> = {};
+    for (const e of recentEntries) {
+      const seen = new Set<string>();
+      for (const t of e.themes ?? []) {
+        const key = t.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        counts[key] = (counts[key] ?? 0) + 1;
+      }
+    }
+    const recurring = Object.entries(counts)
+      .filter(([, n]) => n >= 2)
+      .sort(([, a], [, b]) => b - a);
+    if (recurring.length > 0) {
+      return {
+        tier: "PATTERN",
+        label: "Based on your recent themes",
+        text: `You've mentioned "${recurring[0][0]}" a few times lately. What's underneath that?`,
+      };
+    }
+  }
+
+  return {
+    tier: "LIBRARY",
+    label: "Today's prompt",
+    text: pickDailyPrompt(userId, new Date().toISOString().slice(0, 10)),
+  };
 }
