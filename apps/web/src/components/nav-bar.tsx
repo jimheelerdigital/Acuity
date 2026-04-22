@@ -122,7 +122,7 @@ function WhoItsForDropdown() {
 
         {/* Dropdown panel */}
         <div
-          className={`absolute left-0 top-full mt-1 w-72 rounded-lg border border-zinc-200 dark:border-white/10/60 bg-[#FAFAF7] shadow-lg transition-all duration-200 origin-top ${
+          className={`absolute left-0 top-full mt-1 w-72 rounded-lg border border-zinc-200 dark:border-white/10 bg-[#FAFAF7] dark:bg-[#1E1E2E] shadow-lg transition-all duration-200 origin-top ${
             open
               ? "opacity-100 scale-y-100 translate-y-0"
               : "opacity-0 scale-y-95 -translate-y-1 pointer-events-none"
@@ -236,7 +236,7 @@ export function NavBar() {
     : user.email?.charAt(0).toUpperCase() ?? "?";
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-zinc-200 dark:border-white/10/60 bg-[#FAFAF7]/80 backdrop-blur-md">
+    <nav className="sticky top-0 z-50 border-b border-zinc-200 dark:border-white/10 bg-[#FAFAF7]/80 dark:bg-[#0B0B12]/80 backdrop-blur-md">
       <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-3">
         {/* Left: logo + dropdown + links */}
         <div className="flex items-center gap-6">
