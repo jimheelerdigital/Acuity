@@ -21,10 +21,22 @@ export async function GET(
       tasks: {
         select: {
           id: true,
-          text: true,
+          // `title` + `description` were missing here — caused the mobile
+          // Entry view's Tasks section to render card shells with empty
+          // bodies (priority + status pill only). `text` is a legacy
+          // Task field; both the mobile Entry card and TaskDTO consume
+          // `title`, so select that directly and drop `text` from the
+          // projection.
+          title: true,
+          description: true,
           dueDate: true,
           priority: true,
           status: true,
+          // goalId + groupId align the shape with TaskDTO / the full
+          // Task row so downstream consumers (including future deep-
+          // link-from-entry-to-goal) don't need a second query.
+          goalId: true,
+          groupId: true,
           entryId: true,
           createdAt: true,
         },

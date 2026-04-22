@@ -117,17 +117,32 @@ export default function EntryDetailScreen() {
       {/* Tasks */}
       {entry.tasks.length > 0 && (
         <Section title={`Tasks (${entry.tasks.length})`}>
-          {entry.tasks.map((t) => (
-            <View
-              key={t.id}
-              className="rounded-xl border border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-[#13131F] dark:bg-[#1E1E2E] px-4 py-3 mb-2"
-            >
-              <Text className="text-sm text-zinc-800 dark:text-zinc-100">{t.title}</Text>
-              <Text className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-                {t.priority} · {t.status.replace("_", " ")}
-              </Text>
-            </View>
-          ))}
+          {entry.tasks.map((t) => {
+            // Legacy rows may only have `text` (pre-title-field); newer
+            // rows have `title`. Read title first, fall back gracefully.
+            const label =
+              t.title ??
+              (t as { text?: string | null }).text ??
+              "Untitled task";
+            return (
+              <View
+                key={t.id}
+                className="rounded-xl border border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-[#13131F] dark:bg-[#1E1E2E] px-4 py-3 mb-2"
+              >
+                <Text className="text-sm text-zinc-800 dark:text-zinc-100">
+                  {label}
+                </Text>
+                {t.description && (
+                  <Text className="text-xs text-zinc-400 dark:text-zinc-500 mt-1 leading-relaxed">
+                    {t.description}
+                  </Text>
+                )}
+                <Text className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                  {t.priority} · {t.status.replace("_", " ")}
+                </Text>
+              </View>
+            );
+          })}
         </Section>
       )}
 
