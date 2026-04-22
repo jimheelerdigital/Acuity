@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { getAnySessionUserId } from "@/lib/mobile-auth";
 import { enforceUserRateLimit } from "@/lib/rate-limit";
+import { ensureDefaultTaskGroups } from "@/lib/task-groups";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,10 @@ export async function GET(req: NextRequest) {
   }
 
   const { prisma } = await import("@/lib/prisma");
+
+  // First /api/tasks GET per user seeds the 5 default TaskGroups so
+  // the sectioned-list UI has something to render immediately.
+  await ensureDefaultTaskGroups(prisma, userId);
 
   const all = req.nextUrl.searchParams.get("all") === "1";
 
@@ -58,6 +63,17 @@ export async function POST(req: NextRequest) {
 
   const { prisma } = await import("@/lib/prisma");
 
+  // Validate groupId belongs to this user if provided; silent-drop
+  // on mismatch rather than 403 so we don't leak group existence.
+  let groupId: string | null = null;
+  if (typeof body.groupId === "string" && body.groupId.length > 0) {
+    const owned = await prisma.taskGroup.findFirst({
+      where: { id: body.groupId, userId },
+      select: { id: true },
+    });
+    if (owned) groupId = owned.id;
+  }
+
   const task = await prisma.task.create({
     data: {
       userId: userId,
@@ -66,6 +82,7 @@ export async function POST(req: NextRequest) {
       description: body.description ?? null,
       priority: body.priority ?? "MEDIUM",
       dueDate: body.dueDate ? new Date(body.dueDate) : null,
+      groupId,
     },
   });
 
@@ -117,6 +134,33 @@ export async function PATCH(req: NextRequest) {
     case "dismiss":
       await prisma.task.delete({ where: { id: body.id } });
       return NextResponse.json({ success: true });
+    case "move": {
+      // Reassign a task to a different group (or ungroup with null).
+      // Body: { id, action: "move", groupId: string | null }
+      const rawGroupId = body.groupId as unknown;
+      if (rawGroupId === null) {
+        data = { groupId: null };
+        break;
+      }
+      if (typeof rawGroupId !== "string" || rawGroupId.length === 0) {
+        return NextResponse.json(
+          { error: "move requires groupId (string or null)" },
+          { status: 400 }
+        );
+      }
+      const targetGroup = await prisma.taskGroup.findFirst({
+        where: { id: rawGroupId, userId },
+        select: { id: true },
+      });
+      if (!targetGroup) {
+        return NextResponse.json(
+          { error: "Target group not found" },
+          { status: 404 }
+        );
+      }
+      data = { groupId: targetGroup.id };
+      break;
+    }
     case "edit": {
       const fields = body.fields as Record<string, unknown> | undefined;
       if (!fields || typeof fields !== "object") {

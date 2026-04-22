@@ -184,13 +184,25 @@ export const processEntryFn = inngest.createFunction(
         });
         if (goal) goalContext = goal;
       }
+      // Task groups: ensure defaults + fetch names for the prompt's
+      // group classifier enum. Same behavior as the sync pipeline.
+      const { ensureDefaultTaskGroups } = await import("@/lib/task-groups");
+      await ensureDefaultTaskGroups(prisma, userId);
+      const taskGroupRows = await prisma.taskGroup.findMany({
+        where: { userId },
+        orderBy: { order: "asc" },
+        select: { name: true },
+      });
+      const taskGroupNames = taskGroupRows.map((g) => g.name);
+
       const { extractFromTranscript } = await import("@/lib/pipeline");
       const todayISO = new Date().toISOString().split("T")[0];
       return extractFromTranscript(
         transcript,
         todayISO,
         memoryContext || undefined,
-        goalContext
+        goalContext,
+        taskGroupNames
       );
     });
 
@@ -230,16 +242,34 @@ export const processEntryFn = inngest.createFunction(
         );
 
         if (extraction.tasks.length > 0) {
+          // Resolve Claude-assigned groupName → TaskGroup.id for this
+          // user. Missing / unknown names fall back to the "Other" id.
+          const userGroups = await tx.taskGroup.findMany({
+            where: { userId },
+            select: { id: true, name: true },
+          });
+          const groupIdByName = new Map<string, string>();
+          for (const g of userGroups) {
+            groupIdByName.set(g.name.toLowerCase(), g.id);
+          }
+          const otherGroupId = groupIdByName.get("other") ?? null;
+
           await tx.task.createMany({
-            data: extraction.tasks.map((t) => ({
-              userId,
-              entryId,
-              text: t.title,
-              title: t.title,
-              description: t.description ?? null,
-              priority: t.priority,
-              dueDate: t.dueDate ? new Date(t.dueDate) : null,
-            })),
+            data: extraction.tasks.map((t) => {
+              const resolved = t.groupName
+                ? groupIdByName.get(t.groupName.trim().toLowerCase())
+                : undefined;
+              return {
+                userId,
+                entryId,
+                text: t.title,
+                title: t.title,
+                description: t.description ?? null,
+                priority: t.priority,
+                dueDate: t.dueDate ? new Date(t.dueDate) : null,
+                groupId: resolved ?? otherGroupId,
+              };
+            }),
           });
         }
 

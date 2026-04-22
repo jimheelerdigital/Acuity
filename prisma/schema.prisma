@@ -137,6 +137,7 @@ model User {
   sessions               Session[]
   entries                Entry[]
   tasks                  Task[]
+  taskGroups             TaskGroup[]
   goals                  Goal[]
   weeklyReports          WeeklyReport[]
   lifemapAreas           LifeMapArea[]
@@ -309,12 +310,40 @@ model Entry {
   @@index([goalId])
 }
 
+model TaskGroup {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name           String
+  icon           String
+  color          String
+  order          Int      @default(0)
+  isDefault      Boolean  @default(false)
+  // True when the row was seeded automatically on first-task-fetch for
+  // this user (vs. a group the user explicitly created from the
+  // Settings UI). Lets future UX distinguish "we guessed this for you"
+  // groups from "you made this" groups in the onboarding tooltip.
+  isAIGenerated  Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  tasks          Task[]
+
+  @@unique([userId, name])
+  @@index([userId, order])
+}
+
 model Task {
-  id           String    @id @default(cuid())
+  id           String     @id @default(cuid())
   userId       String
-  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   entryId      String?
-  entry        Entry?    @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  entry        Entry?     @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  // Optional group anchor. Set by the extraction pipeline's AI
+  // classification step, or manually from the task-list "Move to…"
+  // action. onDelete: SetNull so deleting a group turns its tasks
+  // into ungrouped rows rather than cascading them away.
+  groupId      String?
+  group        TaskGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
   // Optional goal anchor — a task is a leaf-level contributor in the
   // Goal Tree. null means the task is not attached to any goal. Set
   // by the suggestion-accept flow or manually from the goal detail.

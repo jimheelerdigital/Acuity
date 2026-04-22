@@ -151,11 +151,23 @@ export async function extractFromTranscript(
   transcript: string,
   todayISO: string,
   memoryContext?: string,
-  goalContext?: { title: string; description: string | null } | null
+  goalContext?: { title: string; description: string | null } | null,
+  taskGroupNames?: string[]
 ): Promise<ExtractionResult> {
   const contextBlock = memoryContext
     ? `Here is what you know about this user from their entire history with Acuity:\n${memoryContext}\n\nUse these historical patterns to enrich your extraction — for example, if a goal has been mentioned multiple times before, note it as recurring rather than new.\n\n`
     : "";
+
+  // Task group classification. When the user has TaskGroups set up
+  // (default 5 get seeded on first /api/tasks fetch), give the model
+  // that exact list as the allowed enum for each task's groupName.
+  // Empty list = classifier is disabled for this call; tasks extract
+  // without a groupName and land ungrouped until the user runs
+  // recategorize from the settings page.
+  const taskGroupsBlock =
+    taskGroupNames && taskGroupNames.length > 0
+      ? `The user's task groups (each extracted task MUST be classified into one of these, case-sensitive; fall back to "Other" when unsure): ${taskGroupNames.join(", ")}. Emit each task's chosen group as a "groupName" field alongside title/description/priority/dueDate.\n\n`
+      : "";
 
   // Goal context: when the user opens the recorder from a specific goal,
   // tell the extractor this entry is deliberately about that goal. The
@@ -177,7 +189,7 @@ export async function extractFromTranscript(
     messages: [
       {
         role: "user",
-        content: `${contextBlock}${goalBlock}Today's date: ${todayISO}\n\nDaily debrief transcript:\n\n${transcript}`,
+        content: `${contextBlock}${goalBlock}${taskGroupsBlock}Today's date: ${todayISO}\n\nDaily debrief transcript:\n\n${transcript}`,
       },
     ],
   });
@@ -232,6 +244,13 @@ export async function extractFromTranscript(
       description: t.description ? String(t.description) : undefined,
       priority: validatePriority(t.priority),
       dueDate: t.dueDate ?? undefined,
+      // Claude-assigned group name. Resolved to a TaskGroup.id at
+      // persist time via task-groups::resolveGroupName. Missing or
+      // unknown names fall back to "Other".
+      groupName:
+        typeof (t as { groupName?: unknown }).groupName === "string"
+          ? (t as { groupName: string }).groupName
+          : undefined,
     })),
     goals: (parsed.goals ?? []).map((g) => ({
       title: String(g.title),
@@ -314,13 +333,24 @@ export async function processEntry({
       if (goal) goalContext = goal;
     }
 
-    // ── Extract with memory + goal context ────────────────────────────────
+    // ── Ensure default TaskGroups exist + fetch names for the prompt ─────
+    const { ensureDefaultTaskGroups } = await import("@/lib/task-groups");
+    await ensureDefaultTaskGroups(prisma, userId);
+    const taskGroups = await prisma.taskGroup.findMany({
+      where: { userId },
+      orderBy: { order: "asc" },
+      select: { name: true },
+    });
+    const taskGroupNames = taskGroups.map((g) => g.name);
+
+    // ── Extract with memory + goal context + task groups ─────────────────
     const todayISO = new Date().toISOString().split("T")[0];
     const extraction = await extractFromTranscript(
       transcript,
       todayISO,
       memoryContext || undefined,
-      goalContext
+      goalContext,
+      taskGroupNames
     );
 
     // ── Persist everything in one transaction ─────────────────────────────
@@ -359,16 +389,36 @@ export async function processEntry({
 
       let tasksCreated = 0;
       if (extraction.tasks.length > 0) {
+        // Build a {lowercase name → id} map of this user's groups so we
+        // resolve Claude's `groupName` field to a TaskGroup.id without
+        // a per-task DB roundtrip. Missing / unknown names fall back
+        // to the "Other" group id (always seeded by default).
+        const userGroups = await tx.taskGroup.findMany({
+          where: { userId },
+          select: { id: true, name: true },
+        });
+        const groupIdByName = new Map<string, string>();
+        for (const g of userGroups) {
+          groupIdByName.set(g.name.toLowerCase(), g.id);
+        }
+        const otherGroupId = groupIdByName.get("other") ?? null;
+
         const { count } = await tx.task.createMany({
-          data: extraction.tasks.map((t) => ({
-            userId,
-            entryId,
-            text: t.title,
-            title: t.title,
-            description: t.description ?? null,
-            priority: t.priority,
-            dueDate: t.dueDate ? new Date(t.dueDate) : null,
-          })),
+          data: extraction.tasks.map((t) => {
+            const resolved = t.groupName
+              ? groupIdByName.get(t.groupName.trim().toLowerCase())
+              : undefined;
+            return {
+              userId,
+              entryId,
+              text: t.title,
+              title: t.title,
+              description: t.description ?? null,
+              priority: t.priority,
+              dueDate: t.dueDate ? new Date(t.dueDate) : null,
+              groupId: resolved ?? otherGroupId,
+            };
+          }),
         });
         tasksCreated = count;
       }

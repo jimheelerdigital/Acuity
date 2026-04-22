@@ -22,6 +22,11 @@ export interface ExtractedTask {
   description?: string;
   priority: Priority;
   dueDate?: string; // ISO date string
+  /** Claude-assigned group name from the user's existing TaskGroup set
+   *  (e.g. "Work", "Health"). Resolved to a TaskGroup.id at persist
+   *  time. Optional — absent for legacy extractions and when the model
+   *  isn't confident enough to pick one. */
+  groupName?: string;
 }
 
 /** Shape of a single extracted goal from Claude */

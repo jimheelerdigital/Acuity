@@ -3,10 +3,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActionSheetIOS,
   ActivityIndicator,
-  FlatList,
   Platform,
   Pressable,
   RefreshControl,
+  ScrollView,
   Text,
   TextInput,
   View,
@@ -25,25 +25,47 @@ type Task = {
   priority: string;
   dueDate: string | null;
   snoozedUntil: string | null;
+  groupId: string | null;
   createdAt: string;
   entry?: { entryDate: string } | null;
 };
 
+type TaskGroup = {
+  id: string;
+  name: string;
+  icon: string;
+  color: string;
+  order: number;
+  isDefault: boolean;
+  isAIGenerated: boolean;
+  taskCount: number;
+};
+
 type Tab = "open" | "snoozed" | "completed";
+
+const UNGROUPED_KEY = "__ungrouped__";
 
 export default function TasksTab() {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [groups, setGroups] = useState<TaskGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>("open");
   const [acting, setActing] = useState<Set<string>>(new Set());
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState("");
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
+    new Set()
+  );
 
-  const fetchTasks = useCallback(async () => {
+  const fetchAll = useCallback(async () => {
     try {
-      const data = await api.get<{ tasks: Task[] }>("/api/tasks?all=1");
-      setTasks(data.tasks ?? []);
+      const [tasksData, groupsData] = await Promise.all([
+        api.get<{ tasks: Task[] }>("/api/tasks?all=1"),
+        api.get<{ groups: TaskGroup[] }>("/api/task-groups"),
+      ]);
+      setTasks(tasksData.tasks ?? []);
+      setGroups(groupsData.groups ?? []);
     } catch {
       // silent
     } finally {
@@ -53,18 +75,16 @@ export default function TasksTab() {
   }, []);
 
   useEffect(() => {
-    fetchTasks();
-  }, [fetchTasks]);
+    fetchAll();
+  }, [fetchAll]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    fetchTasks();
-  }, [fetchTasks]);
+    fetchAll();
+  }, [fetchAll]);
 
   const act = useCallback(
-    async (id: string, action: string) => {
-      // Optimistic toggle for complete/reopen so the check lands instantly.
-      // The subsequent refetch reconciles with server truth.
+    async (id: string, action: string, extra?: Record<string, unknown>) => {
       if (action === "complete" || action === "reopen") {
         setTasks((prev) =>
           prev.map((t) =>
@@ -76,8 +96,8 @@ export default function TasksTab() {
       }
       setActing((prev) => new Set(prev).add(id));
       try {
-        await api.patch("/api/tasks", { id, action });
-        await fetchTasks();
+        await api.patch("/api/tasks", { id, action, ...extra });
+        await fetchAll();
       } finally {
         setActing((prev) => {
           const next = new Set(prev);
@@ -86,7 +106,7 @@ export default function TasksTab() {
         });
       }
     },
-    [fetchTasks]
+    [fetchAll]
   );
 
   const saveEdit = useCallback(
@@ -106,13 +126,12 @@ export default function TasksTab() {
           action: "edit",
           fields: { title: trimmed },
         });
-        await fetchTasks();
+        await fetchAll();
       } catch {
-        // fetch on failure will restore server truth
-        await fetchTasks();
+        await fetchAll();
       }
     },
-    [tasks, fetchTasks]
+    [tasks, fetchAll]
   );
 
   const beginEdit = useCallback((task: Task) => {
@@ -120,34 +139,86 @@ export default function TasksTab() {
     setEditingText(task.title ?? task.text ?? "");
   }, []);
 
-  const openRowMenu = useCallback(
+  const openMoveSheet = useCallback(
     (task: Task) => {
       if (Platform.OS !== "ios") return;
-      const options =
-        task.status === "DONE"
-          ? ["Reopen", "Delete", "Cancel"]
-          : task.status === "SNOOZED"
-            ? ["Reopen", "Mark complete", "Delete", "Cancel"]
-            : ["Snooze 24h", "Mark complete", "Delete", "Cancel"];
+      const options = [
+        ...groups.map((g) => g.name),
+        "Ungrouped",
+        "Cancel",
+      ];
       const cancelIndex = options.length - 1;
-      const destructiveIndex = options.indexOf("Delete");
       ActionSheetIOS.showActionSheetWithOptions(
         {
           options,
           cancelButtonIndex: cancelIndex,
-          destructiveButtonIndex: destructiveIndex,
+          title: "Move task to…",
         },
         (selected) => {
-          const choice = options[selected];
-          if (!choice || choice === "Cancel") return;
-          if (choice === "Delete") return act(task.id, "dismiss");
-          if (choice === "Reopen") return act(task.id, "reopen");
-          if (choice === "Mark complete") return act(task.id, "complete");
-          if (choice === "Snooze 24h") return act(task.id, "snooze");
+          if (selected === cancelIndex) return;
+          if (selected === groups.length) {
+            // Ungrouped
+            act(task.id, "move", { groupId: null });
+            return;
+          }
+          const target = groups[selected];
+          if (!target) return;
+          if (target.id === task.groupId) return;
+          act(task.id, "move", { groupId: target.id });
         }
       );
     },
-    [act]
+    [groups, act]
+  );
+
+  const openRowMenu = useCallback(
+    (task: Task) => {
+      if (Platform.OS !== "ios") return;
+      const actions: {
+        label: string;
+        run: () => void;
+        destructive?: boolean;
+      }[] = [];
+      if (task.status === "DONE") {
+        actions.push({ label: "Reopen", run: () => act(task.id, "reopen") });
+      } else if (task.status === "SNOOZED") {
+        actions.push({ label: "Reopen", run: () => act(task.id, "reopen") });
+        actions.push({
+          label: "Mark complete",
+          run: () => act(task.id, "complete"),
+        });
+      } else {
+        actions.push({
+          label: "Snooze 24h",
+          run: () => act(task.id, "snooze"),
+        });
+        actions.push({
+          label: "Mark complete",
+          run: () => act(task.id, "complete"),
+        });
+      }
+      actions.push({ label: "Move to…", run: () => openMoveSheet(task) });
+      actions.push({
+        label: "Delete",
+        destructive: true,
+        run: () => act(task.id, "dismiss"),
+      });
+      actions.push({ label: "Cancel", run: () => {} });
+
+      const labels = actions.map((a) => a.label);
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: labels,
+          cancelButtonIndex: labels.length - 1,
+          destructiveButtonIndex: actions.findIndex((a) => a.destructive),
+        },
+        (selected) => {
+          const chosen = actions[selected];
+          if (chosen) chosen.run();
+        }
+      );
+    },
+    [act, openMoveSheet]
   );
 
   const now = Date.now();
@@ -173,6 +244,33 @@ export default function TasksTab() {
 
   const current = grouped[activeTab];
 
+  // Group the active tab's tasks by their TaskGroup. Ungrouped tasks
+  // collect under a synthetic UNGROUPED_KEY so they still render.
+  const tasksByGroup = useMemo(() => {
+    const byGroup = new Map<string, Task[]>();
+    for (const t of current) {
+      const key = t.groupId ?? UNGROUPED_KEY;
+      const arr = byGroup.get(key) ?? [];
+      arr.push(t);
+      byGroup.set(key, arr);
+    }
+    return byGroup;
+  }, [current]);
+
+  const sortedGroups = useMemo(
+    () => [...groups].sort((a, b) => a.order - b.order),
+    [groups]
+  );
+
+  const toggleGroup = useCallback((id: string) => {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
   const tabs: { key: Tab; label: string; count: number }[] = [
     { key: "open", label: "Open", count: grouped.open.length },
     { key: "snoozed", label: "Snoozed", count: grouped.snoozed.length },
@@ -195,54 +293,8 @@ export default function TasksTab() {
       className="flex-1 bg-white dark:bg-[#0B0B12]"
       edges={["top"]}
     >
-      {/* Header */}
-      <View className="px-5 pt-4 pb-2">
-        <View className="flex-row items-baseline gap-2">
-          <Text className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
-            Tasks
-          </Text>
-          {grouped.open.length > 0 && (
-            <Text className="text-sm text-zinc-500 dark:text-zinc-400">
-              {grouped.open.length} open
-            </Text>
-          )}
-        </View>
-        <Text className="text-sm text-zinc-400 dark:text-zinc-500 mt-1">
-          Tap a task to edit, tap the circle to complete
-        </Text>
-      </View>
-
-      {/* Tabs */}
-      <View className="flex-row mx-5 mt-2 mb-2 rounded-xl bg-zinc-100 dark:bg-[#13131F] p-1">
-        {tabs.map((tab) => (
-          <Pressable
-            key={tab.key}
-            onPress={() => setActiveTab(tab.key)}
-            className={`flex-1 rounded-lg py-2 items-center ${
-              activeTab === tab.key
-                ? "bg-white dark:bg-[#1E1E2E]"
-                : ""
-            }`}
-          >
-            <Text
-              className={`text-sm font-medium ${
-                activeTab === tab.key
-                  ? "text-zinc-900 dark:text-zinc-50"
-                  : "text-zinc-500 dark:text-zinc-400"
-              }`}
-            >
-              {tab.label}
-              {tab.count > 0 ? ` ${tab.count}` : ""}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-
-      {/* Task list — flat, dividers between rows (no cards) */}
-      <FlatList
-        data={current}
-        keyExtractor={(t) => t.id}
-        contentContainerStyle={{ paddingTop: 4, paddingBottom: 24 }}
+      <ScrollView
+        contentContainerStyle={{ paddingTop: 4, paddingBottom: 32 }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -250,28 +302,214 @@ export default function TasksTab() {
             tintColor="#7C3AED"
           />
         }
-        ItemSeparatorComponent={() => (
-          <View className="h-px bg-zinc-100 dark:bg-white/5 ml-14" />
+      >
+        {/* Header */}
+        <View className="px-5 pt-4 pb-2">
+          <View className="flex-row items-baseline gap-2">
+            <Text className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+              Tasks
+            </Text>
+            {grouped.open.length > 0 && (
+              <Text className="text-sm text-zinc-500 dark:text-zinc-400">
+                {grouped.open.length} open
+              </Text>
+            )}
+          </View>
+          <Text className="text-sm text-zinc-400 dark:text-zinc-500 mt-1">
+            Tap the circle to complete, tap text to edit, long-press for more
+          </Text>
+        </View>
+
+        {/* Tabs */}
+        <View className="flex-row mx-5 mt-2 mb-3 rounded-xl bg-zinc-100 dark:bg-[#13131F] p-1">
+          {tabs.map((tab) => (
+            <Pressable
+              key={tab.key}
+              onPress={() => setActiveTab(tab.key)}
+              className={`flex-1 rounded-lg py-2 items-center ${
+                activeTab === tab.key ? "bg-white dark:bg-[#1E1E2E]" : ""
+              }`}
+            >
+              <Text
+                className={`text-sm font-medium ${
+                  activeTab === tab.key
+                    ? "text-zinc-900 dark:text-zinc-50"
+                    : "text-zinc-500 dark:text-zinc-400"
+                }`}
+              >
+                {tab.label}
+                {tab.count > 0 ? ` ${tab.count}` : ""}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+
+        {current.length === 0 ? (
+          <EmptyState tab={activeTab} />
+        ) : (
+          <View>
+            {sortedGroups.map((group) => {
+              const groupTasks = tasksByGroup.get(group.id) ?? [];
+              if (groupTasks.length === 0) return null;
+              const collapsed = collapsedGroups.has(group.id);
+              return (
+                <GroupSection
+                  key={group.id}
+                  group={group}
+                  tasks={groupTasks}
+                  collapsed={collapsed}
+                  onToggle={() => toggleGroup(group.id)}
+                  tab={activeTab}
+                  acting={acting}
+                  editingId={editingId}
+                  editingText={editingText}
+                  onEditChange={setEditingText}
+                  onEditBegin={beginEdit}
+                  onEditEnd={(id) => saveEdit(id, editingText)}
+                  onToggleComplete={(task) =>
+                    act(
+                      task.id,
+                      task.status === "DONE" ? "reopen" : "complete"
+                    )
+                  }
+                  onLongPress={openRowMenu}
+                />
+              );
+            })}
+
+            {/* Ungrouped section — only renders when there are ungrouped
+                tasks in the current tab. */}
+            {(() => {
+              const ungroupedTasks = tasksByGroup.get(UNGROUPED_KEY) ?? [];
+              if (ungroupedTasks.length === 0) return null;
+              const collapsed = collapsedGroups.has(UNGROUPED_KEY);
+              return (
+                <GroupSection
+                  key={UNGROUPED_KEY}
+                  group={{
+                    id: UNGROUPED_KEY,
+                    name: "Ungrouped",
+                    icon: "help-circle-outline",
+                    color: "#A1A1AA",
+                    order: 999,
+                    isDefault: false,
+                    isAIGenerated: false,
+                    taskCount: ungroupedTasks.length,
+                  }}
+                  tasks={ungroupedTasks}
+                  collapsed={collapsed}
+                  onToggle={() => toggleGroup(UNGROUPED_KEY)}
+                  tab={activeTab}
+                  acting={acting}
+                  editingId={editingId}
+                  editingText={editingText}
+                  onEditChange={setEditingText}
+                  onEditBegin={beginEdit}
+                  onEditEnd={(id) => saveEdit(id, editingText)}
+                  onToggleComplete={(task) =>
+                    act(
+                      task.id,
+                      task.status === "DONE" ? "reopen" : "complete"
+                    )
+                  }
+                  onLongPress={openRowMenu}
+                />
+              );
+            })()}
+          </View>
         )}
-        ListEmptyComponent={<EmptyState tab={activeTab} />}
-        renderItem={({ item }) => (
-          <TaskRow
-            task={item}
-            tab={activeTab}
-            busy={acting.has(item.id)}
-            isEditing={editingId === item.id}
-            editText={editingText}
-            onEditChange={setEditingText}
-            onEditBegin={() => beginEdit(item)}
-            onEditEnd={() => saveEdit(item.id, editingText)}
-            onToggle={() =>
-              act(item.id, item.status === "DONE" ? "reopen" : "complete")
-            }
-            onLongPress={() => openRowMenu(item)}
-          />
-        )}
-      />
+      </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function GroupSection({
+  group,
+  tasks,
+  collapsed,
+  onToggle,
+  tab,
+  acting,
+  editingId,
+  editingText,
+  onEditChange,
+  onEditBegin,
+  onEditEnd,
+  onToggleComplete,
+  onLongPress,
+}: {
+  group: TaskGroup;
+  tasks: Task[];
+  collapsed: boolean;
+  onToggle: () => void;
+  tab: Tab;
+  acting: Set<string>;
+  editingId: string | null;
+  editingText: string;
+  onEditChange: (next: string) => void;
+  onEditBegin: (task: Task) => void;
+  onEditEnd: (id: string) => void;
+  onToggleComplete: (task: Task) => void;
+  onLongPress: (task: Task) => void;
+}) {
+  return (
+    <View>
+      <Pressable
+        onPress={onToggle}
+        className="flex-row items-center justify-between px-4 py-2 mt-2 mb-0.5 bg-zinc-50 dark:bg-[#13131F]"
+      >
+        <View className="flex-row items-center gap-2">
+          <View
+            style={{
+              width: 8,
+              height: 8,
+              borderRadius: 4,
+              backgroundColor: group.color,
+            }}
+          />
+          <Ionicons
+            name={group.icon as never}
+            size={14}
+            color={group.color}
+          />
+          <Text className="text-xs font-semibold uppercase tracking-wider text-zinc-600 dark:text-zinc-300">
+            {group.name}
+          </Text>
+          <Text className="text-xs text-zinc-400 dark:text-zinc-500">
+            {tasks.length}
+          </Text>
+        </View>
+        <Ionicons
+          name={collapsed ? "chevron-forward" : "chevron-down"}
+          size={14}
+          color="#A1A1AA"
+        />
+      </Pressable>
+      {!collapsed &&
+        tasks.map((task, i) => (
+          <View
+            key={task.id}
+            style={
+              i === 0
+                ? undefined
+                : { borderTopWidth: 1, borderTopColor: "rgba(161,161,170,0.12)" }
+            }
+          >
+            <TaskRow
+              task={task}
+              tab={tab}
+              busy={acting.has(task.id)}
+              isEditing={editingId === task.id}
+              editText={editingText}
+              onEditChange={onEditChange}
+              onEditBegin={() => onEditBegin(task)}
+              onEditEnd={() => onEditEnd(task.id)}
+              onToggle={() => onToggleComplete(task)}
+              onLongPress={() => onLongPress(task)}
+            />
+          </View>
+        ))}
+    </View>
   );
 }
 
@@ -313,7 +551,6 @@ function TaskRow({
 
   useEffect(() => {
     if (isEditing) {
-      // Next tick so the TextInput is mounted before focus.
       const id = setTimeout(() => inputRef.current?.focus(), 0);
       return () => clearTimeout(id);
     }
@@ -332,10 +569,9 @@ function TaskRow({
       <Checkbox
         checked={isDone}
         busy={busy}
-        onPress={onToggle}
         muted={tab === "snoozed"}
+        onPress={onToggle}
       />
-
       <Pressable
         onPress={isEditing ? undefined : onEditBegin}
         onLongPress={onLongPress}
@@ -405,10 +641,6 @@ function TaskRow({
   );
 }
 
-/**
- * 22px circle, 2px border. Empty when unchecked, purple fill + white
- * check when checked. Muted (dashed) for snoozed items.
- */
 function Checkbox({
   checked,
   busy,
@@ -428,7 +660,9 @@ function Checkbox({
       hitSlop={10}
       accessibilityRole="checkbox"
       accessibilityState={{ checked, disabled: busy }}
-      accessibilityLabel={checked ? "Mark task incomplete" : "Mark task complete"}
+      accessibilityLabel={
+        checked ? "Mark task incomplete" : "Mark task complete"
+      }
       style={({ pressed }) => ({
         width: size,
         height: size,
@@ -443,9 +677,7 @@ function Checkbox({
         opacity: pressed || busy ? 0.5 : 1,
       })}
     >
-      {checked ? (
-        <Ionicons name="checkmark" size={14} color="#FFFFFF" />
-      ) : null}
+      {checked ? <Ionicons name="checkmark" size={14} color="#FFFFFF" /> : null}
     </Pressable>
   );
 }
@@ -455,7 +687,7 @@ function EmptyState({ tab }: { tab: Tab }) {
     open: {
       icon: "checkmark-done-outline" as const,
       title: "No tasks yet",
-      desc: "Record a session and they'll appear.",
+      desc: "Record a session and Acuity will extract them for you.",
     },
     snoozed: {
       icon: "time-outline" as const,
