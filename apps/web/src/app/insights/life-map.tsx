@@ -17,6 +17,7 @@ import {
   PaywallBanner,
   parsePaywallResponse,
 } from "@/components/paywall-redirect";
+import { DimensionDetailModal } from "./dimension-detail";
 
 type Area = {
   id: string;
@@ -74,6 +75,9 @@ export function LifeMap() {
     Record<string, { label: string; color: string | null; isActive: boolean }>
   >({});
   const [selected, setSelected] = useState<string | null>(null);
+  // Dimension drill-down modal: lowercase key of the dimension whose
+  // detail modal is currently open, or null if none.
+  const [detailKey, setDetailKey] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [paywall, setPaywall] = useState<
@@ -284,7 +288,12 @@ export function LifeMap() {
               return (
                 <button
                   key={area.id}
-                  onClick={() => setSelected(isActive ? null : area.area)}
+                  onClick={() => {
+                    // Area-card click opens the drill-down modal (new behavior).
+                    // Radar node click below still toggles `selected` for the
+                    // inline-highlight visual state on the radar itself.
+                    if (config?.key) setDetailKey(config.key);
+                  }}
                   className={`rounded-xl border p-4 text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${
                     isActive
                       ? "border-violet-300 bg-violet-50/50 shadow-md"
@@ -350,6 +359,17 @@ export function LifeMap() {
             />
           )}
         </>
+      )}
+
+      {/* Rich dimension drill-down modal. Opens when the user clicks
+          one of the score cards above. Fetches /api/lifemap/dimension/[key]
+          which returns Claude-synthesized insights + recent entries +
+          related goals + a reflection prompt. */}
+      {detailKey && (
+        <DimensionDetailModal
+          dimensionKey={detailKey}
+          onClose={() => setDetailKey(null)}
+        />
       )}
     </div>
   );

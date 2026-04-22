@@ -278,16 +278,19 @@ export default function InsightsTab() {
                 const config = DEFAULT_LIFE_AREAS.find(
                   (a) => a.enum === area.area
                 );
-                const isExpanded = expandedArea === area.area;
                 const score100 = area.score * 10;
-                const diff = score100 - area.baselineScore;
 
                 return (
                   <Pressable
                     key={area.id}
-                    onPress={() =>
-                      setExpandedArea(isExpanded ? null : area.area)
-                    }
+                    onPress={() => {
+                      // Route to the drill-down modal. Key is the
+                      // lowercase dimension identifier, which the
+                      // /api/lifemap/dimension/[key] endpoint expects.
+                      if (config?.key) {
+                        router.push(`/dimension/${config.key}`);
+                      }
+                    }}
                     className="rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-4"
                     style={{ width: "48%" }}
                   >
@@ -332,34 +335,6 @@ export default function InsightsTab() {
                         </Text>
                       )}
                     </View>
-
-                    {isExpanded && (
-                      <View className="mt-3 pt-3 border-t border-zinc-100 dark:border-white/5">
-                        {area.insightSummary && (
-                          <Text className="text-xs text-zinc-600 dark:text-zinc-300 leading-relaxed mb-2">
-                            {area.insightSummary}
-                          </Text>
-                        )}
-                        {area.topThemes.length > 0 && (
-                          <View className="flex-row flex-wrap gap-1 mb-2">
-                            {area.topThemes.slice(0, 3).map((theme) => (
-                              <View
-                                key={theme}
-                                className="rounded-full bg-zinc-100 dark:bg-white/10 px-2 py-0.5"
-                              >
-                                <Text className="text-[10px] text-zinc-500 dark:text-zinc-400">
-                                  {theme}
-                                </Text>
-                              </View>
-                            ))}
-                          </View>
-                        )}
-                        <Text className="text-[10px] text-zinc-400 dark:text-zinc-500">
-                          {diff > 0 ? "+" : ""}
-                          {diff} vs baseline · {area.mentionCount} mentions
-                        </Text>
-                      </View>
-                    )}
                   </Pressable>
                 );
               })}
