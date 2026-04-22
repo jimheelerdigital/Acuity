@@ -35,9 +35,10 @@ import {
  * replaced wholesale per the spec; pull from git history if the force
  * graph needs to come back as an advanced view later.
  *
- * Constellation entrance animation DEFERRED — see TODO in
- * components/theme-map/Constellation.tsx for the Reanimated 3 plan.
- * Current ship: static positions, data + sparklines + gating all wired.
+ * Constellation entrance animation SHIPS via Reanimated 3 (see
+ * components/theme-map/Constellation.tsx) matching the web keyframes
+ * one-to-one. `replayToken` bumps on time-chip change + pull-to-refresh
+ * so the orbital entrance plays fresh for the new data.
  */
 
 type SentimentBand = "positive" | "neutral" | "challenging";
@@ -80,6 +81,9 @@ export default function ThemeMapScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Bumped on time-chip change + pull-to-refresh so the Constellation
+  // replays its orbital entrance animation for the freshly-fetched data.
+  const [replayToken, setReplayToken] = useState(0);
 
   const fetchData = useCallback(async (win: TimeWindow) => {
     setLoading((prev) => prev || true);
@@ -105,6 +109,7 @@ export default function ThemeMapScreen() {
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
+    setReplayToken((t) => t + 1);
     fetchData(window_);
   }, [fetchData, window_]);
 
@@ -211,7 +216,10 @@ export default function ThemeMapScreen() {
             <View style={{ marginTop: 16 }}>
               <TimeChips
                 value={window_}
-                onChange={(next) => setWindow(next)}
+                onChange={(next) => {
+                  setWindow(next);
+                  setReplayToken((t) => t + 1);
+                }}
               />
             </View>
 
@@ -227,6 +235,7 @@ export default function ThemeMapScreen() {
               <Constellation
                 hero={{ id: heroTheme.id, name: heroTheme.name }}
                 planets={constellationThemes}
+                replayToken={replayToken}
               />
             ) : (
               <View
