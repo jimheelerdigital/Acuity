@@ -1106,113 +1106,171 @@ export function LandingPage() {
       <section className="relative pt-28 pb-16 sm:pt-36 sm:pb-24 overflow-hidden">
         <ParallaxOrbs />
 
-        <div className="relative mx-auto max-w-4xl px-6 text-center">
-          <Reveal>
-            <h1 className="text-5xl font-extrabold tracking-tight sm:text-6xl lg:text-7xl leading-[1.05]">
-              You have too much in your head.
-            </h1>
-          </Reveal>
+        <div className="relative mx-auto max-w-6xl px-6">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:gap-10">
+            {/* Left content — center on mobile, left on desktop */}
+            <div className="flex-1 max-w-xl text-center lg:text-left mx-auto lg:mx-0">
+              <Reveal>
+                <h1 className="text-5xl font-extrabold tracking-tight sm:text-6xl lg:text-7xl leading-[1.05]">
+                  You have too much in your head.
+                </h1>
+              </Reveal>
 
-          <Reveal delay={2}>
-            <p className="mt-6 text-base text-[#A0A0B8] leading-relaxed max-w-xl mx-auto">
-              Acuity is the daily debrief that turns what you&rsquo;re thinking about into what you&rsquo;re doing. Talk for 60 seconds, any time of day — it catches your tasks, tracks the goals you keep circling, and helps you monitor the patterns that keep you stuck.
-            </p>
-          </Reveal>
+              <Reveal delay={2}>
+                <p className="mt-5 text-base text-[#A0A0B8] leading-relaxed max-w-md mx-auto lg:mx-0">
+                  Acuity is the daily debrief that turns what you&rsquo;re thinking about into what you&rsquo;re doing. Talk for 60 seconds, any time of day — it catches your tasks, tracks the goals you keep circling, and helps you monitor the patterns that keep you stuck.
+                </p>
+              </Reveal>
 
-          <Reveal delay={3}>
-            <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
-              <Link
-                href="/waitlist?utm_campaign=home"
-                onClick={trackInitiateCheckout}
-                className="rounded-full bg-[#7C5CFC] px-7 py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] hover:shadow-xl hover:shadow-[#7C5CFC]/10 active:scale-95"
-              >
-                Join the waitlist — first month free
-              </Link>
-              <a
-                href="#how-it-works"
-                className="rounded-xl border border-white/10 px-7 py-3.5 text-sm font-semibold text-[#A0A0B8] transition hover:border-white/20 hover:bg-white/5 active:scale-95"
-              >
-                See how it works
-              </a>
+              <Reveal delay={3}>
+                <div className="mt-8 flex flex-col sm:flex-row items-center lg:items-start justify-center lg:justify-start gap-3">
+                  <Link
+                    href="/waitlist?utm_campaign=home"
+                    onClick={trackInitiateCheckout}
+                    className="rounded-full bg-[#7C5CFC] px-7 py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] hover:shadow-xl hover:shadow-[#7C5CFC]/10 active:scale-95"
+                  >
+                    Join the waitlist — first month free
+                  </Link>
+                  <a
+                    href="#how-it-works"
+                    className="rounded-xl border border-white/10 px-7 py-3.5 text-sm font-semibold text-[#A0A0B8] transition hover:border-white/20 hover:bg-white/5 active:scale-95"
+                  >
+                    See how it works
+                  </a>
+                </div>
+                <p className="mt-3 text-xs text-[#A0A0B8]">
+                  No credit card required
+                </p>
+              </Reveal>
             </div>
-            <p className="mt-3 text-xs text-[#A0A0B8]">
-              No credit card required
-            </p>
-          </Reveal>
 
-          {/* Animated flow visualization */}
-          <Reveal delay={3}>
-            <div className="mt-16 flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6">
-              {/* Step 1: Voice input */}
-              <div className="group relative w-56 rounded-2xl border border-white/10 bg-[#13131F] p-5 transition-all duration-500 hover:border-[#7C5CFC]/30 hover:shadow-lg hover:shadow-[#7C5CFC]/5">
-                <div className="flex items-center justify-center mb-3">
-                  <div className="relative flex items-center justify-center">
-                    <div className="absolute h-12 w-12 rounded-full bg-red-500/20 animate-pulse-ring" />
-                    <div className="relative h-10 w-10 rounded-full bg-red-500 flex items-center justify-center shadow-lg shadow-red-500/20">
-                      <svg className="h-5 w-5 text-white" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
-                        <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
-                      </svg>
+            {/* Right side: Enhanced animated phone mockups */}
+            <div className="flex-1 mt-14 lg:mt-0 flex justify-center lg:justify-end">
+              <div className="relative w-[320px] h-[540px] sm:w-[360px] sm:h-[600px]">
+                {/* Ambient glow behind phones */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] rounded-full bg-[#7C5CFC]/8 blur-[80px] animate-pulse-slow" />
+
+                {/* Phone 1 (back) — Weekly Report */}
+                <div className="absolute right-0 top-6 w-[200px] sm:w-[230px] h-[400px] sm:h-[450px] rounded-[2rem] bg-[#1E1E2E] p-2 shadow-2xl shadow-black/40 rotate-3 animate-float-delay">
+                  <div className="h-full w-full rounded-[1.5rem] bg-[#13131F] p-4 flex flex-col gap-2.5 overflow-hidden">
+                    {/* Status bar */}
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="text-[10px] text-[#A0A0B8]/60">9:41</div>
+                      <div className="flex gap-1">
+                        <div className="h-1.5 w-3 rounded-full bg-white/20" />
+                        <div className="h-1.5 w-1.5 rounded-full bg-white/20" />
+                      </div>
+                    </div>
+                    <div className="text-xs text-white font-semibold">
+                      Weekly Report
+                    </div>
+                    <div className="text-[10px] text-[#A0A0B8]/60">
+                      Apr 14 – Apr 20
+                    </div>
+                    <div className="rounded-xl border border-white/10 bg-[#1E1E2E] p-3 shadow-sm">
+                      <div className="text-[10px] text-[#A0A0B8] mb-2">
+                        Mood This Week
+                      </div>
+                      <div className="h-10">
+                        <MoodBars
+                          heights={[40, 55, 45, 70, 65, 80, 75]}
+                          color="bg-violet-400"
+                        />
+                      </div>
+                      <div className="flex justify-between mt-1">
+                        <span className="text-[8px] text-[#A0A0B8]/40">Mon</span>
+                        <span className="text-[8px] text-[#A0A0B8]/40">Sun</span>
+                      </div>
+                    </div>
+                    <div className="rounded-xl border border-[#7C5CFC]/20 bg-[#7C5CFC]/5 p-3 shadow-sm">
+                      <div className="text-[10px] text-violet-400 mb-1">
+                        Pattern Detected
+                      </div>
+                      <div className="text-[10px] text-[#A0A0B8] leading-relaxed">
+                        Best mood on days you exercised. Worst after meetings past 6 PM.
+                      </div>
+                    </div>
+                    <div className="rounded-xl border border-white/10 bg-[#1E1E2E] p-3 shadow-sm">
+                      <div className="text-[10px] text-[#A0A0B8] mb-1.5">
+                        Goals
+                      </div>
+                      <div className="space-y-1.5">
+                        <div>
+                          <div className="flex justify-between text-[10px] text-[#A0A0B8] mb-0.5">
+                            <span>Exercise</span>
+                            <span className="text-emerald-400">3/5</span>
+                          </div>
+                          <div className="h-1 rounded-full bg-white/10">
+                            <div className="h-full w-3/5 rounded-full bg-emerald-500" />
+                          </div>
+                        </div>
+                        <div>
+                          <div className="flex justify-between text-[10px] text-[#A0A0B8] mb-0.5">
+                            <span>Ship beta</span>
+                            <span className="text-violet-400">70%</span>
+                          </div>
+                          <div className="h-1 rounded-full bg-white/10">
+                            <div className="h-full w-[70%] rounded-full bg-violet-500" />
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
-                <p className="text-sm font-semibold text-white text-center">Talk</p>
-                <p className="mt-1 text-xs text-[#A0A0B8] text-center">60 seconds, any time</p>
-              </div>
 
-              {/* Arrow */}
-              <svg className="hidden sm:block h-5 w-5 text-white/20 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-              </svg>
-              <svg className="sm:hidden h-5 w-5 text-white/20 shrink-0 rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-              </svg>
-
-              {/* Step 2: Extraction */}
-              <div className="group relative w-56 rounded-2xl border border-white/10 bg-[#13131F] p-5 transition-all duration-500 hover:border-[#7C5CFC]/30 hover:shadow-lg hover:shadow-[#7C5CFC]/5">
-                <div className="space-y-1.5 mb-3">
-                  <div className="flex items-center gap-2 rounded-lg bg-[#1E1E2E] px-3 py-1.5 text-xs animate-fade-in-up" style={{ animationDelay: "1s" }}>
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                    <span className="text-[#A0A0B8]">Call the accountant</span>
-                  </div>
-                  <div className="flex items-center gap-2 rounded-lg bg-[#1E1E2E] px-3 py-1.5 text-xs animate-fade-in-up" style={{ animationDelay: "1.3s" }}>
-                    <span className="h-1.5 w-1.5 rounded-full bg-violet-400" />
-                    <span className="text-[#A0A0B8]">Mood: 7.2</span>
-                  </div>
-                  <div className="flex items-center gap-2 rounded-lg bg-[#1E1E2E] px-3 py-1.5 text-xs animate-fade-in-up" style={{ animationDelay: "1.6s" }}>
-                    <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
-                    <span className="text-[#A0A0B8]">Goal: ship the beta</span>
+                {/* Phone 2 (front) — Today's Debrief */}
+                <div className="absolute left-0 top-0 w-[200px] sm:w-[230px] h-[400px] sm:h-[450px] rounded-[2rem] bg-[#1E1E2E] p-2 shadow-2xl shadow-black/50 -rotate-3 z-10 animate-float">
+                  <div className="h-full w-full rounded-[1.5rem] bg-[#13131F] p-4 flex flex-col gap-2.5 overflow-hidden">
+                    {/* Status bar */}
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="text-[10px] text-[#A0A0B8]/60">10:14 PM</div>
+                      <div className="flex gap-1">
+                        <div className="h-1.5 w-3 rounded-full bg-white/20" />
+                        <div className="h-1.5 w-1.5 rounded-full bg-white/20" />
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs text-white font-semibold">
+                        Today&rsquo;s Debrief
+                      </div>
+                      <div className="flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 text-[9px] text-emerald-500">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        7.2
+                      </div>
+                    </div>
+                    <div className="rounded-xl border border-white/10 bg-[#1E1E2E] p-3 shadow-sm">
+                      <div className="text-[10px] text-[#A0A0B8] mb-2">
+                        Extracted Tasks
+                      </div>
+                      <CascadingTasks
+                        tasks={[
+                          { text: "Email Q2 report to team", checked: true },
+                          { text: "Call the accountant" },
+                          { text: "Book dentist for Thursday" },
+                        ]}
+                      />
+                    </div>
+                    <div className="rounded-xl border border-white/10 bg-[#1E1E2E] p-3 shadow-sm">
+                      <div className="text-[10px] text-[#A0A0B8] mb-1">
+                        Theme
+                      </div>
+                      <div className="text-[10px] text-[#A0A0B8]">
+                        Productive but stretched thin. Mentioned &ldquo;deadline&rdquo; 3x.
+                      </div>
+                    </div>
+                    <div className="rounded-xl border border-[#7C5CFC]/30 bg-[#7C5CFC]/10 p-3">
+                      <div className="text-[10px] text-violet-400 mb-1">
+                        Goal Tracked
+                      </div>
+                      <div className="text-[10px] text-[#A0A0B8]">
+                        &ldquo;Ship the beta&rdquo; — mentioned 4 of last 5 entries
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <p className="text-sm font-semibold text-white text-center">Extract</p>
-                <p className="mt-1 text-xs text-[#A0A0B8] text-center">Tasks, mood, goals</p>
-              </div>
-
-              {/* Arrow */}
-              <svg className="hidden sm:block h-5 w-5 text-white/20 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-              </svg>
-              <svg className="sm:hidden h-5 w-5 text-white/20 shrink-0 rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-              </svg>
-
-              {/* Step 3: Sunday report */}
-              <div className="group relative w-56 rounded-2xl border border-white/10 bg-[#13131F] p-5 transition-all duration-500 hover:border-[#7C5CFC]/30 hover:shadow-lg hover:shadow-[#7C5CFC]/5">
-                <div className="mb-3">
-                  <div className="rounded-lg bg-[#1E1E2E] p-3 text-xs text-[#A0A0B8] leading-relaxed animate-fade-in-up" style={{ animationDelay: "2s" }}>
-                    <span className="text-white font-medium">Your week:</span> You mentioned your VP in 4 of 5 entries. Mood averaged 6.1 on meeting-heavy days vs 8.3 without...
-                  </div>
-                  <div className="mt-1.5 flex gap-1">
-                    {[65, 45, 70, 55, 80, 75, 85].map((h, i) => (
-                      <div key={i} className="flex-1 rounded-sm bg-violet-500/60" style={{ height: `${h * 0.25}px` }} />
-                    ))}
-                  </div>
-                </div>
-                <p className="text-sm font-semibold text-white text-center">Reflect</p>
-                <p className="mt-1 text-xs text-[#A0A0B8] text-center">Sunday report</p>
               </div>
             </div>
-          </Reveal>
+          </div>
         </div>
       </section>
 
