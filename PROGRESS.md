@@ -7,6 +7,76 @@
 
 ---
 
+## 2026-04-22 — Theme Map mobile orbital entrance animation (Reanimated 3)
+
+- **Requested by:** Both
+- **Committed by:** Claude Code
+- **Commit hashes:** 9155ed5 (mobile orbital entrance). This PROGRESS entry on a followup commit.
+
+### In plain English (for Keenan)
+
+Phone app's Theme Map now matches the website's entrance animation. When a user opens the page with 10+ entries, the hero theme falls into place from above, then the 5 surrounding theme "planets" sweep into their positions on orbital arcs over about 6 seconds — same timing and motion grammar as web. After landing, the hero breathes subtly, planets pulse, and a ripple ring radiates out from the hero every 3 seconds.
+
+Two accessibility beats are wired: (1) if the user has "Reduce Motion" enabled in iOS Settings → Accessibility, the animation is skipped entirely and planets render at their landed positions immediately. (2) When the user pulls to refresh or taps a different time range, the entrance animation replays for the fresh data.
+
+Closes out the Reanimated TODO that yesterday's commit flagged. Mobile + web are now at full visual parity on this feature.
+
+### Technical changes (for Jimmy)
+
+**Single file rewrite:** `apps/mobile/components/theme-map/Constellation.tsx` (~620 LOC, replaces the static TODO version).
+
+Animation architecture:
+- **Per-element shared values** rather than a single timeline value. `heroProgress` + 5 `planetProgresses` (p1..p5) + `master` (linear 0→8000ms for labels/lines/legend) + `heroBreathe` + `planetBreathe` + `ripple`. Total 10 shared values.
+- **Polar math for orbital paths:** each planet's `useAnimatedProps` interpolates `angle` and `radius` across progress 0→1, then computes `cx = 175 + radius·cos(angle·π/180)` and `cy = 140 + radius·sin(…)`. The start/end angle spread (394° for planet A, 510° for B, etc.) gives each planet 1.5 revolutions — identical to the web CSS `rotate(X) translateX(R) rotate(-X)` chain at the numerical level.
+- **Easing.bezier(0.33, 0, 0.15, 1)** for all planet sweeps — matches the web `cubic-bezier(0.33, 0, 0.15, 1)` exactly. Hero fall uses `Easing.bezier(0.22, 1, 0.36, 1)`.
+- **Master clock for delayed fades:** labels (delays 4.0/4.6/5.2/5.8/5.8s), connection lines (6.2/6.4/6.6/6.8s), legend (7.0s). All staggered via `interpolate(master.value, [delay, delay+duration], [0, 1], CLAMP)`. Single timing animation + 10 interpolations — cheap.
+- **Continuous loops at 7s:** hero breathe (`withRepeat(withSequence(withTiming(1.07), withTiming(1)))`, 4s cycle), planet breathe (4.5s cycle, shared across all 5 planets — one shared value, five visual effects via `r = baseR * planetBreathe.value`), ripple ring (non-reverse `withRepeat(withTiming(1, 3000))` so each cycle restarts at r=32 instead of bouncing).
+- **Connection line draws:** stroke-dashoffset + strokeOpacity on `AnimatedLine`. Line lengths precomputed with `Math.hypot(dx, dy)` in a module constant so the `strokeDasharray` stays static and the `strokeDashoffset` interpolates from `length` → 0.
+
+**Reduce-motion behavior:**
+- `AccessibilityInfo.isReduceMotionEnabled()` checked on mount.
+- `AccessibilityInfo.addEventListener("reduceMotionChanged", …)` subscribes to changes so the behavior flips live if the user toggles the iOS setting while the screen is open.
+- When true: all shared values snap to end state (heroProgress=1, all planetProgresses=1, master=8000, breathes=1, ripple=0 — ripple off entirely to avoid any motion). No `withTiming`/`withRepeat` scheduled.
+
+**Replay logic:**
+- Parent `apps/mobile/app/insights/theme-map.tsx` owns new `replayToken` state. Bumped on time-chip change (existing `setWindow` handler) and on pull-to-refresh.
+- Constellation's animation `useEffect` depends on `[reduceMotion, replayToken]`. Each bump resets the 10 shared values to 0 and re-runs the entrance timeline — same code path as first mount.
+- `cancelAnimation` called on all 10 shared values in the effect's cleanup return so unmount or replay tears down running animations cleanly.
+
+**TypeScript typing gap:**
+react-native-svg v15's component prop types and `Animated.createAnimatedComponent`'s signature don't line up cleanly — the Animated variants reject `opacity` / `strokeOpacity` even though they work at runtime. Cast through `any` at construction:
+```ts
+const AnimatedCircle: any = Animated.createAnimatedComponent(Circle as any);
+```
+Runtime-correct; known upstream typing gap. Documented inline in the file.
+
+### Manual steps needed
+
+- [ ] Jim: `cd apps/mobile && eas update --channel preview` to bundle the animation into the next OTA. Consolidates with all prior mobile work (task editor modal, dimensionKey record param, theme-map redesign, etc.).
+- [ ] Vercel auto-deploys unchanged web.
+- [ ] No schema migration. The stacked `npx prisma db push` (Entry.goalId + TaskGroup + Task.groupId + Entry.dimensionContext from prior sessions) is still pending Keenan/Jim from home network — unchanged.
+
+### Notes
+
+**Why 10 shared values and not a single timeline.** I considered driving everything off one `master` shared value 0→8000ms and deriving every element's state via interpolate. Rejected because: (1) planets each need their own easing curve — mapping that through a single linear master value would require composing easings inside worklets, which is messy. (2) Per-planet progress makes replay trivial (reset 5 values vs. replaying a composed timeline). (3) `useAnimatedProps` with narrow shared-value dependencies regenerates less per-frame work than one widely-read master value. The master clock is still there for labels/lines/legend where it's a natural fit (staggered fades off a linear clock).
+
+**Planet breathing shares one shared value across all 5 planets.** Each planet's core uses `r = slot.core * planetBreathe.value`. The breathing becomes visually slightly synchronized across the 5 planets (they all pulse together). Spec doesn't require de-sync; ships synchronized. If beta users find it mechanical, the fix is 5 separate breathe shared values with staggered start phases.
+
+**Labels follow their planet's live cx/cy during the entrance sweep.** Their position is computed from the planet's progress (polar math) and their opacity is computed from master (fade-in stagger). So labels orbit in with their planet and fade into legibility shortly after landing — matches the web sequence.
+
+**Perf posture:**
+- All animation work runs on the UI thread via Reanimated worklets. Zero JS-bridge traffic during the entrance.
+- SVG primitives on iOS are backed by Core Animation layers — the Circle cx/cy/r updates compose trivially.
+- FPS budget: 10 shared values × ~60 reads/sec per animated component = plenty of headroom on iPhone 14 Pro tier.
+- Ripple is cheap: one shared value, one AnimatedCircle with r + opacity. Even on iPhone SE (A13) this is fine.
+
+**Follow-ups from the earlier theme-map entry still stand:**
+1. ~~Mobile orbital entrance animation~~ ← shipped this session.
+2. Theme detail bottom sheet wiring on both platforms (tap-hero / tap-planet / tap-card currently no-ops).
+3. `react-force-graph-2d` dep removal from apps/web/package.json (~500kb unused bundle).
+
+---
+
 ## 2026-04-22 — Theme Map mobile-first redesign (orbital constellation + sparkline cards)
 
 - **Requested by:** Both
