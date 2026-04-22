@@ -1111,7 +1111,7 @@ export function LandingPage() {
             {/* Left content — center on mobile, left on desktop */}
             <div className="flex-1 max-w-xl text-center mx-auto lg:mx-0">
               <Reveal>
-                <h1 className="text-[2.25rem] font-extrabold tracking-tight sm:text-5xl md:text-6xl lg:text-7xl leading-[1.05] whitespace-nowrap">
+                <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl lg:text-6xl xl:text-7xl leading-[1.05]">
                   You have too much in your head.
                 </h1>
               </Reveal>
