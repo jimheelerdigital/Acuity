@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PRIORITY_COLOR } from "@acuity/shared";
 
 type Task = {
@@ -25,6 +25,8 @@ export function TaskList() {
   const [activeTab, setActiveTab] = useState<Tab>("open");
   const [acting, setActing] = useState<Set<string>>(new Set());
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [inlineEditId, setInlineEditId] = useState<string | null>(null);
+  const [inlineEditText, setInlineEditText] = useState("");
 
   const fetchTasks = useCallback(async () => {
     const res = await fetch("/api/tasks?all=1");
@@ -41,6 +43,15 @@ export function TaskList() {
 
   const act = useCallback(
     async (id: string, action: string) => {
+      if (action === "complete" || action === "reopen") {
+        setTasks((prev) =>
+          prev.map((t) =>
+            t.id === id
+              ? { ...t, status: action === "complete" ? "DONE" : "OPEN" }
+              : t
+          )
+        );
+      }
       setActing((prev) => new Set(prev).add(id));
       try {
         const res = await fetch("/api/tasks", {
@@ -59,6 +70,40 @@ export function TaskList() {
     },
     [fetchTasks]
   );
+
+  const saveInlineEdit = useCallback(
+    async (id: string, nextTitle: string) => {
+      const trimmed = nextTitle.trim();
+      setInlineEditId(null);
+      setInlineEditText("");
+      const task = tasks.find((t) => t.id === id);
+      const original = task?.title ?? task?.text ?? "";
+      if (!trimmed || trimmed === original) return;
+      setTasks((prev) =>
+        prev.map((t) => (t.id === id ? { ...t, title: trimmed } : t))
+      );
+      try {
+        await fetch("/api/tasks", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id,
+            action: "edit",
+            fields: { title: trimmed },
+          }),
+        });
+        await fetchTasks();
+      } catch {
+        await fetchTasks();
+      }
+    },
+    [tasks, fetchTasks]
+  );
+
+  const beginInlineEdit = useCallback((task: Task) => {
+    setInlineEditId(task.id);
+    setInlineEditText(task.title ?? task.text ?? "");
+  }, []);
 
   const now = Date.now();
 
@@ -102,7 +147,6 @@ export function TaskList() {
 
   return (
     <>
-      {/* Header */}
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50 mb-1">
           Tasks
@@ -113,12 +157,11 @@ export function TaskList() {
           )}
         </h1>
         <p className="text-sm text-zinc-500 dark:text-zinc-400">
-          Actions extracted from your daily debriefs.
+          Click a task to edit, click the circle to complete.
         </p>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 rounded-xl bg-zinc-100 dark:bg-white/10 p-1 mb-6">
+      <div className="flex gap-1 rounded-xl bg-zinc-100 dark:bg-white/10 p-1 mb-4">
         {tabs.map((tab) => (
           <button
             key={tab.key}
@@ -131,11 +174,7 @@ export function TaskList() {
           >
             {tab.label}
             {tab.count > 0 && (
-              <span
-                className={`ml-1.5 text-xs ${
-                  activeTab === tab.key ? "text-zinc-400 dark:text-zinc-500" : "text-zinc-400 dark:text-zinc-500"
-                }`}
-              >
+              <span className="ml-1.5 text-xs text-zinc-400 dark:text-zinc-500">
                 {tab.count}
               </span>
             )}
@@ -143,22 +182,39 @@ export function TaskList() {
         ))}
       </div>
 
-      {/* Task list */}
       {current.length === 0 ? (
         <EmptyState tab={activeTab} />
       ) : (
-        <div className="space-y-3">
-          {current.map((task) => (
-            <TaskCard
+        <ul className="rounded-xl bg-white dark:bg-[#13131F] border border-zinc-200 dark:border-white/10 overflow-hidden">
+          {current.map((task, idx) => (
+            <li
               key={task.id}
-              task={task}
-              tab={activeTab}
-              busy={acting.has(task.id)}
-              onAction={act}
-              onEdit={() => setEditingTask(task)}
-            />
+              className={
+                idx === 0
+                  ? ""
+                  : "border-t border-zinc-100 dark:border-white/5"
+              }
+            >
+              <TaskRow
+                task={task}
+                tab={activeTab}
+                busy={acting.has(task.id)}
+                isEditing={inlineEditId === task.id}
+                editText={inlineEditText}
+                onEditChange={setInlineEditText}
+                onEditBegin={() => beginInlineEdit(task)}
+                onEditEnd={() => saveInlineEdit(task.id, inlineEditText)}
+                onToggle={() =>
+                  act(task.id, task.status === "DONE" ? "reopen" : "complete")
+                }
+                onOpenFullEdit={() => setEditingTask(task)}
+                onSnooze={() => act(task.id, "snooze")}
+                onReopen={() => act(task.id, "reopen")}
+                onDismiss={() => act(task.id, "dismiss")}
+              />
+            </li>
           ))}
-        </div>
+        </ul>
       )}
 
       {editingTask && (
@@ -172,6 +228,262 @@ export function TaskList() {
         />
       )}
     </>
+  );
+}
+
+function TaskRow({
+  task,
+  tab,
+  busy,
+  isEditing,
+  editText,
+  onEditChange,
+  onEditBegin,
+  onEditEnd,
+  onToggle,
+  onOpenFullEdit,
+  onSnooze,
+  onReopen,
+  onDismiss,
+}: {
+  task: Task;
+  tab: Tab;
+  busy: boolean;
+  isEditing: boolean;
+  editText: string;
+  onEditChange: (next: string) => void;
+  onEditBegin: () => void;
+  onEditEnd: () => void;
+  onToggle: () => void;
+  onOpenFullEdit: () => void;
+  onSnooze: () => void;
+  onReopen: () => void;
+  onDismiss: () => void;
+}) {
+  const label = task.title ?? task.text ?? "Untitled task";
+  const isDone = task.status === "DONE";
+  const priorityColor =
+    PRIORITY_COLOR[task.priority] ?? PRIORITY_COLOR.MEDIUM;
+  const showPriorityChip =
+    task.priority === "URGENT" || task.priority === "HIGH";
+  const dueDate = task.dueDate
+    ? new Date(task.dueDate).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      })
+    : null;
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (isEditing) inputRef.current?.focus();
+  }, [isEditing]);
+
+  return (
+    <div
+      className="group flex items-start gap-3 py-3 px-4 transition-opacity"
+      style={{ opacity: isDone ? 0.55 : 1 }}
+    >
+      <Checkbox
+        checked={isDone}
+        busy={busy}
+        muted={tab === "snoozed"}
+        onToggle={onToggle}
+      />
+
+      <div className="flex-1 min-w-0">
+        {isEditing ? (
+          <input
+            ref={inputRef}
+            value={editText}
+            onChange={(e) => onEditChange(e.target.value)}
+            onBlur={onEditEnd}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                onEditEnd();
+              } else if (e.key === "Escape") {
+                e.preventDefault();
+                onEditEnd();
+              }
+            }}
+            className="w-full bg-transparent text-sm leading-snug text-zinc-900 dark:text-zinc-100 outline-none border-b border-violet-500 py-0"
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={onEditBegin}
+            className={`text-left text-sm leading-snug w-full ${
+              isDone
+                ? "text-zinc-400 dark:text-zinc-500 line-through"
+                : "text-zinc-800 dark:text-zinc-100"
+            }`}
+          >
+            {label}
+          </button>
+        )}
+
+        {(showPriorityChip || dueDate || task.description) && !isEditing && (
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-zinc-400 dark:text-zinc-500">
+            {showPriorityChip && (
+              <span
+                className="rounded-full px-2 py-0.5 font-medium"
+                style={{
+                  backgroundColor: priorityColor + "18",
+                  color: priorityColor,
+                }}
+              >
+                {task.priority}
+              </span>
+            )}
+            {dueDate && (
+              <span className="text-amber-600">Due {dueDate}</span>
+            )}
+            {task.description && (
+              <span className="line-clamp-1 flex-1 min-w-0">
+                {task.description}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+
+      {!isEditing && (
+        <div className="shrink-0 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          {tab !== "completed" && (
+            <RowAction
+              title="Details"
+              aria="Open full edit"
+              onClick={onOpenFullEdit}
+              busy={busy}
+            >
+              <path d="M12 20h9" />
+              <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z" />
+            </RowAction>
+          )}
+          {tab === "open" && (
+            <>
+              <RowAction
+                title="Snooze 24h"
+                aria="Snooze"
+                onClick={onSnooze}
+                busy={busy}
+              >
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 6v6l4 2" />
+              </RowAction>
+              <RowAction
+                title="Delete"
+                aria="Delete"
+                onClick={onDismiss}
+                busy={busy}
+              >
+                <path d="M18 6 6 18M6 6l12 12" />
+              </RowAction>
+            </>
+          )}
+          {tab === "snoozed" && (
+            <RowAction
+              title="Reopen now"
+              aria="Reopen"
+              onClick={onReopen}
+              busy={busy}
+            >
+              <path d="M9 14 4 9l5-5" />
+              <path d="M20 20v-7a4 4 0 0 0-4-4H4" />
+            </RowAction>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * 22px circle, 2px border. Empty when unchecked, #7C3AED fill + white check
+ * when checked. Matches the mobile Tasks screen exactly.
+ */
+function Checkbox({
+  checked,
+  busy,
+  muted,
+  onToggle,
+}: {
+  checked: boolean;
+  busy: boolean;
+  muted?: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      disabled={busy}
+      aria-label={checked ? "Mark task incomplete" : "Mark task complete"}
+      aria-pressed={checked}
+      className="mt-0.5 shrink-0 flex items-center justify-center transition-all duration-150 hover:scale-110 disabled:opacity-40"
+      style={{
+        width: 22,
+        height: 22,
+        borderRadius: 11,
+        borderWidth: 2,
+        borderStyle: muted ? "dashed" : "solid",
+        borderColor: checked ? "#7C3AED" : "#A1A1AA",
+        backgroundColor: checked ? "#7C3AED" : "transparent",
+      }}
+    >
+      {checked ? (
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="white"
+          strokeWidth="3"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M20 6 9 17l-5-5" />
+        </svg>
+      ) : null}
+    </button>
+  );
+}
+
+function RowAction({
+  title,
+  aria,
+  busy,
+  onClick,
+  children,
+}: {
+  title: string;
+  aria: string;
+  busy: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={busy}
+      title={title}
+      aria-label={aria}
+      className="rounded-lg p-1.5 text-zinc-400 dark:text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10 hover:text-zinc-700 dark:hover:text-zinc-200 disabled:opacity-40"
+    >
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        {children}
+      </svg>
+    </button>
   );
 }
 
@@ -225,7 +537,7 @@ function TaskEditModal({
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50 mb-4">
-          Edit task
+          Task details
         </h2>
 
         <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">
@@ -300,8 +612,8 @@ function EmptyState({ tab }: { tab: Tab }) {
   const config = {
     open: {
       icon: "✅",
-      title: "No open tasks",
-      desc: "Record a session to extract tasks automatically.",
+      title: "No tasks yet",
+      desc: "Record a session and they'll appear.",
     },
     snoozed: {
       icon: "😴",
@@ -318,275 +630,12 @@ function EmptyState({ tab }: { tab: Tab }) {
   return (
     <div className="rounded-xl border border-dashed border-zinc-300 dark:border-white/10 px-6 py-16 text-center">
       <div className="text-3xl mb-3">{config.icon}</div>
-      <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">{config.title}</p>
-      <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">{config.desc}</p>
+      <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
+        {config.title}
+      </p>
+      <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">
+        {config.desc}
+      </p>
     </div>
-  );
-}
-
-function TaskCard({
-  task,
-  tab,
-  busy,
-  onAction,
-  onEdit,
-}: {
-  task: Task;
-  tab: Tab;
-  busy: boolean;
-  onAction: (id: string, action: string) => void;
-  onEdit: () => void;
-}) {
-  const label = task.title ?? task.text ?? "Untitled task";
-  const priorityColor =
-    PRIORITY_COLOR[task.priority] ?? PRIORITY_COLOR.MEDIUM;
-
-  const entryDate = task.entry?.entryDate
-    ? new Date(task.entry.entryDate).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-      })
-    : null;
-
-  const dueDate = task.dueDate
-    ? new Date(task.dueDate).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-      })
-    : null;
-
-  const snoozedUntil =
-    tab === "snoozed" && task.snoozedUntil
-      ? new Date(task.snoozedUntil).toLocaleString("en-US", {
-          month: "short",
-          day: "numeric",
-          hour: "numeric",
-          minute: "2-digit",
-        })
-      : null;
-
-  return (
-    <div className="rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-5 py-4 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.04)] transition-all duration-200 hover:shadow-[0_1px_3px_rgba(0,0,0,0.06),0_8px_20px_rgba(0,0,0,0.08)] hover:-translate-y-0.5 dark:shadow-none dark:ring-1 dark:ring-white/5">
-      <div className="flex items-start gap-3">
-        {/* Check bubble — 26px tappable target doubles as priority indicator.
-            On the Open tab this IS the complete action; on Completed it's a
-            filled state; on Snoozed it's a muted placeholder. */}
-        <CheckBubble
-          tab={tab}
-          priorityColor={priorityColor}
-          priorityLabel={task.priority}
-          busy={busy}
-          onComplete={() => onAction(task.id, "complete")}
-          onReopen={() => onAction(task.id, "reopen")}
-        />
-
-        <div className="flex-1 min-w-0">
-          <p
-            className={`text-sm leading-snug ${
-              tab === "completed"
-                ? "text-zinc-400 dark:text-zinc-500 line-through"
-                : "text-zinc-800 dark:text-zinc-100"
-            }`}
-          >
-            {label}
-          </p>
-
-          <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-zinc-400 dark:text-zinc-500">
-            <span
-              className="rounded-full px-2 py-0.5 font-medium"
-              style={{
-                backgroundColor: priorityColor + "18",
-                color: priorityColor,
-              }}
-            >
-              {task.priority}
-            </span>
-            {entryDate && <span>From {entryDate}</span>}
-            {dueDate && (
-              <span className="text-amber-600">Due {dueDate}</span>
-            )}
-            {snoozedUntil && (
-              <span className="text-blue-500">Until {snoozedUntil}</span>
-            )}
-          </div>
-
-          {task.description && (
-            <p className="mt-1.5 text-xs text-zinc-400 dark:text-zinc-500 line-clamp-2">
-              {task.description}
-            </p>
-          )}
-        </div>
-
-        {/* Secondary actions — Complete lives on the bubble, so this row
-            only carries the non-primary affordances (snooze/dismiss/reopen). */}
-        <div className="flex shrink-0 gap-1.5">
-          {tab === "open" && (
-            <>
-              <ActionBtn
-                label="Edit"
-                title="Edit"
-                busy={busy}
-                onClick={onEdit}
-              >
-                <path d="M12 20h9" />
-                <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z" />
-              </ActionBtn>
-              <ActionBtn
-                label="Snooze"
-                title="Snooze 24h"
-                busy={busy}
-                onClick={() => onAction(task.id, "snooze")}
-              >
-                <circle cx="12" cy="12" r="10" />
-                <path d="M12 6v6l4 2" />
-              </ActionBtn>
-              <ActionBtn
-                label="Dismiss"
-                title="Dismiss"
-                busy={busy}
-                onClick={() => onAction(task.id, "dismiss")}
-              >
-                <path d="M18 6 6 18M6 6l12 12" />
-              </ActionBtn>
-            </>
-          )}
-          {tab === "snoozed" && (
-            <ActionBtn
-              label="Reopen"
-              title="Reopen now"
-              busy={busy}
-              onClick={() => onAction(task.id, "reopen")}
-            >
-              <path d="M9 14 4 9l5-5" />
-              <path d="M20 20v-7a4 4 0 0 0-4-4H4" />
-            </ActionBtn>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/**
- * 26px circular check bubble. On the Open tab the bubble is the primary
- * "complete" action — fills with a checkmark when clicked. On Completed it
- * renders as a filled priority-colored circle with a white check (click to
- * reopen). On Snoozed it's a dimmed ring. Hit target > 24px per W3.1 spec.
- */
-function CheckBubble({
-  tab,
-  priorityColor,
-  priorityLabel,
-  busy,
-  onComplete,
-  onReopen,
-}: {
-  tab: Tab;
-  priorityColor: string;
-  priorityLabel: string;
-  busy: boolean;
-  onComplete: () => void;
-  onReopen: () => void;
-}) {
-  if (tab === "completed") {
-    return (
-      <button
-        onClick={onReopen}
-        disabled={busy}
-        title="Reopen"
-        aria-label="Reopen task"
-        className="mt-0.5 h-[26px] w-[26px] shrink-0 rounded-full flex items-center justify-center transition-all duration-150 hover:opacity-80 disabled:opacity-40"
-        style={{ backgroundColor: priorityColor }}
-      >
-        <svg
-          width="14"
-          height="14"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="white"
-          strokeWidth="3"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M20 6 9 17l-5-5" />
-        </svg>
-      </button>
-    );
-  }
-
-  if (tab === "snoozed") {
-    return (
-      <span
-        title={priorityLabel}
-        className="mt-0.5 h-[26px] w-[26px] shrink-0 rounded-full border-2 border-dashed"
-        style={{ borderColor: priorityColor + "60" }}
-      />
-    );
-  }
-
-  // Open — primary complete action
-  return (
-    <button
-      onClick={onComplete}
-      disabled={busy}
-      title="Mark complete"
-      aria-label="Mark task complete"
-      className="group mt-0.5 h-[26px] w-[26px] shrink-0 rounded-full border-2 flex items-center justify-center transition-all duration-150 hover:scale-110 disabled:opacity-40"
-      style={{
-        borderColor: priorityColor,
-        backgroundColor: "transparent",
-      }}
-    >
-      <svg
-        width="14"
-        height="14"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke={priorityColor}
-        strokeWidth="3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        className="opacity-0 group-hover:opacity-100 transition-opacity duration-150"
-      >
-        <path d="M20 6 9 17l-5-5" />
-      </svg>
-    </button>
-  );
-}
-
-function ActionBtn({
-  label,
-  title,
-  busy,
-  onClick,
-  children,
-}: {
-  label: string;
-  title: string;
-  busy: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={busy}
-      title={title}
-      aria-label={label}
-      className="rounded-lg p-1.5 text-zinc-400 dark:text-zinc-500 transition-all duration-200 hover:bg-zinc-100 dark:hover:bg-white/10 hover:text-zinc-700 dark:hover:text-zinc-200 disabled:opacity-40"
-    >
-      <svg
-        width="16"
-        height="16"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        {children}
-      </svg>
-    </button>
   );
 }

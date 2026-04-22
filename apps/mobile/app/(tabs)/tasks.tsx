@@ -1,11 +1,14 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  ActionSheetIOS,
   ActivityIndicator,
   FlatList,
+  Platform,
   Pressable,
   RefreshControl,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -34,6 +37,8 @@ export default function TasksTab() {
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>("open");
   const [acting, setActing] = useState<Set<string>>(new Set());
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState("");
 
   const fetchTasks = useCallback(async () => {
     try {
@@ -58,6 +63,17 @@ export default function TasksTab() {
 
   const act = useCallback(
     async (id: string, action: string) => {
+      // Optimistic toggle for complete/reopen so the check lands instantly.
+      // The subsequent refetch reconciles with server truth.
+      if (action === "complete" || action === "reopen") {
+        setTasks((prev) =>
+          prev.map((t) =>
+            t.id === id
+              ? { ...t, status: action === "complete" ? "DONE" : "OPEN" }
+              : t
+          )
+        );
+      }
       setActing((prev) => new Set(prev).add(id));
       try {
         await api.patch("/api/tasks", { id, action });
@@ -71,6 +87,67 @@ export default function TasksTab() {
       }
     },
     [fetchTasks]
+  );
+
+  const saveEdit = useCallback(
+    async (id: string, nextTitle: string) => {
+      const trimmed = nextTitle.trim();
+      setEditingId(null);
+      setEditingText("");
+      const task = tasks.find((t) => t.id === id);
+      const original = task?.title ?? task?.text ?? "";
+      if (!trimmed || trimmed === original) return;
+      setTasks((prev) =>
+        prev.map((t) => (t.id === id ? { ...t, title: trimmed } : t))
+      );
+      try {
+        await api.patch("/api/tasks", {
+          id,
+          action: "edit",
+          fields: { title: trimmed },
+        });
+        await fetchTasks();
+      } catch {
+        // fetch on failure will restore server truth
+        await fetchTasks();
+      }
+    },
+    [tasks, fetchTasks]
+  );
+
+  const beginEdit = useCallback((task: Task) => {
+    setEditingId(task.id);
+    setEditingText(task.title ?? task.text ?? "");
+  }, []);
+
+  const openRowMenu = useCallback(
+    (task: Task) => {
+      if (Platform.OS !== "ios") return;
+      const options =
+        task.status === "DONE"
+          ? ["Reopen", "Delete", "Cancel"]
+          : task.status === "SNOOZED"
+            ? ["Reopen", "Mark complete", "Delete", "Cancel"]
+            : ["Snooze 24h", "Mark complete", "Delete", "Cancel"];
+      const cancelIndex = options.length - 1;
+      const destructiveIndex = options.indexOf("Delete");
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options,
+          cancelButtonIndex: cancelIndex,
+          destructiveButtonIndex: destructiveIndex,
+        },
+        (selected) => {
+          const choice = options[selected];
+          if (!choice || choice === "Cancel") return;
+          if (choice === "Delete") return act(task.id, "dismiss");
+          if (choice === "Reopen") return act(task.id, "reopen");
+          if (choice === "Mark complete") return act(task.id, "complete");
+          if (choice === "Snooze 24h") return act(task.id, "snooze");
+        }
+      );
+    },
+    [act]
   );
 
   const now = Date.now();
@@ -104,18 +181,26 @@ export default function TasksTab() {
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 bg-white dark:bg-[#1E1E2E] dark:bg-[#0B0B12] items-center justify-center" edges={["top"]}>
+      <SafeAreaView
+        className="flex-1 bg-white dark:bg-[#0B0B12] items-center justify-center"
+        edges={["top"]}
+      >
         <ActivityIndicator color="#7C3AED" />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-white dark:bg-[#1E1E2E] dark:bg-[#0B0B12]" edges={["top"]}>
+    <SafeAreaView
+      className="flex-1 bg-white dark:bg-[#0B0B12]"
+      edges={["top"]}
+    >
       {/* Header */}
       <View className="px-5 pt-4 pb-2">
         <View className="flex-row items-baseline gap-2">
-          <Text className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">Tasks</Text>
+          <Text className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+            Tasks
+          </Text>
           {grouped.open.length > 0 && (
             <Text className="text-sm text-zinc-500 dark:text-zinc-400">
               {grouped.open.length} open
@@ -123,23 +208,27 @@ export default function TasksTab() {
           )}
         </View>
         <Text className="text-sm text-zinc-400 dark:text-zinc-500 mt-1">
-          Actions extracted from your sessions
+          Tap a task to edit, tap the circle to complete
         </Text>
       </View>
 
       {/* Tabs */}
-      <View className="flex-row mx-5 mt-2 mb-3 rounded-xl bg-zinc-50 dark:bg-[#13131F] dark:bg-[#1E1E2E] p-1">
+      <View className="flex-row mx-5 mt-2 mb-2 rounded-xl bg-zinc-100 dark:bg-[#13131F] p-1">
         {tabs.map((tab) => (
           <Pressable
             key={tab.key}
             onPress={() => setActiveTab(tab.key)}
             className={`flex-1 rounded-lg py-2 items-center ${
-              activeTab === tab.key ? "bg-zinc-800" : ""
+              activeTab === tab.key
+                ? "bg-white dark:bg-[#1E1E2E]"
+                : ""
             }`}
           >
             <Text
               className={`text-sm font-medium ${
-                activeTab === tab.key ? "text-zinc-900 dark:text-zinc-50" : "text-zinc-500 dark:text-zinc-400"
+                activeTab === tab.key
+                  ? "text-zinc-900 dark:text-zinc-50"
+                  : "text-zinc-500 dark:text-zinc-400"
               }`}
             >
               {tab.label}
@@ -149,11 +238,11 @@ export default function TasksTab() {
         ))}
       </View>
 
-      {/* Task list */}
+      {/* Task list — flat, dividers between rows (no cards) */}
       <FlatList
         data={current}
         keyExtractor={(t) => t.id}
-        contentContainerStyle={{ padding: 20, paddingTop: 0, gap: 10 }}
+        contentContainerStyle={{ paddingTop: 4, paddingBottom: 24 }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -161,15 +250,24 @@ export default function TasksTab() {
             tintColor="#7C3AED"
           />
         }
-        ListEmptyComponent={
-          <EmptyState tab={activeTab} />
-        }
+        ItemSeparatorComponent={() => (
+          <View className="h-px bg-zinc-100 dark:bg-white/5 ml-14" />
+        )}
+        ListEmptyComponent={<EmptyState tab={activeTab} />}
         renderItem={({ item }) => (
-          <TaskCard
+          <TaskRow
             task={item}
             tab={activeTab}
             busy={acting.has(item.id)}
-            onAction={act}
+            isEditing={editingId === item.id}
+            editText={editingText}
+            onEditChange={setEditingText}
+            onEditBegin={() => beginEdit(item)}
+            onEditEnd={() => saveEdit(item.id, editingText)}
+            onToggle={() =>
+              act(item.id, item.status === "DONE" ? "reopen" : "complete")
+            }
+            onLongPress={() => openRowMenu(item)}
           />
         )}
       />
@@ -177,205 +275,177 @@ export default function TasksTab() {
   );
 }
 
-function TaskCard({
+function TaskRow({
   task,
   tab,
   busy,
-  onAction,
+  isEditing,
+  editText,
+  onEditChange,
+  onEditBegin,
+  onEditEnd,
+  onToggle,
+  onLongPress,
 }: {
   task: Task;
   tab: Tab;
   busy: boolean;
-  onAction: (id: string, action: string) => void;
+  isEditing: boolean;
+  editText: string;
+  onEditChange: (next: string) => void;
+  onEditBegin: () => void;
+  onEditEnd: () => void;
+  onToggle: () => void;
+  onLongPress: () => void;
 }) {
   const label = task.title ?? task.text ?? "Untitled task";
-  const color = PRIORITY_COLOR[task.priority] ?? "#71717A";
+  const isDone = task.status === "DONE";
+  const priorityColor = PRIORITY_COLOR[task.priority] ?? "#71717A";
+  const showPriorityChip =
+    task.priority === "URGENT" || task.priority === "HIGH";
   const dueDate = task.dueDate
     ? new Date(task.dueDate).toLocaleDateString("en-US", {
         month: "short",
         day: "numeric",
       })
     : null;
+  const inputRef = useRef<TextInput | null>(null);
+
+  useEffect(() => {
+    if (isEditing) {
+      // Next tick so the TextInput is mounted before focus.
+      const id = setTimeout(() => inputRef.current?.focus(), 0);
+      return () => clearTimeout(id);
+    }
+  }, [isEditing]);
 
   return (
-    <View className="rounded-2xl border border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-[#13131F] dark:bg-[#1E1E2E] p-4">
-      <View className="flex-row items-start gap-3">
-        {/* 26px check bubble — on Open tab, bubble IS the primary
-            complete action (bigger tap target than an icon button). */}
-        <TaskBubble
-          tab={tab}
-          color={color}
-          busy={busy}
-          onComplete={() => onAction(task.id, "complete")}
-          onReopen={() => onAction(task.id, "reopen")}
-        />
-        <View className="flex-1">
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "flex-start",
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        opacity: isDone ? 0.55 : 1,
+      }}
+    >
+      <Checkbox
+        checked={isDone}
+        busy={busy}
+        onPress={onToggle}
+        muted={tab === "snoozed"}
+      />
+
+      <Pressable
+        onPress={isEditing ? undefined : onEditBegin}
+        onLongPress={onLongPress}
+        delayLongPress={350}
+        style={{ flex: 1, marginLeft: 12 }}
+      >
+        {isEditing ? (
+          <TextInput
+            ref={inputRef}
+            value={editText}
+            onChangeText={onEditChange}
+            onBlur={onEditEnd}
+            onSubmitEditing={onEditEnd}
+            returnKeyType="done"
+            blurOnSubmit
+            selectionColor="#7C3AED"
+            style={{
+              fontSize: 15,
+              lineHeight: 20,
+              color: "#18181B",
+              padding: 0,
+              margin: 0,
+            }}
+            className="dark:text-zinc-50"
+          />
+        ) : (
           <Text
-            className={`text-sm leading-snug ${
-              tab === "completed"
-                ? "text-zinc-500 dark:text-zinc-400 line-through"
-                : "text-zinc-700 dark:text-zinc-200"
-            }`}
+            style={{
+              fontSize: 15,
+              lineHeight: 20,
+              textDecorationLine: isDone ? "line-through" : "none",
+            }}
+            className={
+              isDone
+                ? "text-zinc-400 dark:text-zinc-500"
+                : "text-zinc-800 dark:text-zinc-100"
+            }
           >
             {label}
           </Text>
-          <View className="flex-row items-center gap-2 mt-1.5">
-            <View
-              className="rounded-full px-2 py-0.5"
-              style={{ backgroundColor: color + "20" }}
-            >
-              <Text style={{ color, fontSize: 11, fontWeight: "600" }}>
-                {task.priority}
-              </Text>
-            </View>
+        )}
+        {(showPriorityChip || dueDate) && !isEditing && (
+          <View className="flex-row items-center gap-2 mt-1">
+            {showPriorityChip && (
+              <View
+                className="rounded-full px-2 py-0.5"
+                style={{ backgroundColor: priorityColor + "20" }}
+              >
+                <Text
+                  style={{
+                    color: priorityColor,
+                    fontSize: 10,
+                    fontWeight: "600",
+                  }}
+                >
+                  {task.priority}
+                </Text>
+              </View>
+            )}
             {dueDate && (
               <Text className="text-xs text-amber-500">Due {dueDate}</Text>
             )}
           </View>
-        </View>
-      </View>
-
-      {/* Secondary actions — complete lives on the bubble. */}
-      {tab === "open" && (
-        <View className="flex-row justify-end gap-2 mt-3 pt-3 border-t border-zinc-200 dark:border-white/10">
-          <ActionButton
-            label="Snooze"
-            icon="time-outline"
-            color="#60A5FA"
-            busy={busy}
-            onPress={() => onAction(task.id, "snooze")}
-          />
-          <ActionButton
-            label="Dismiss"
-            icon="close"
-            color="#71717A"
-            busy={busy}
-            onPress={() => onAction(task.id, "dismiss")}
-          />
-        </View>
-      )}
-      {tab === "snoozed" && (
-        <View className="flex-row justify-end gap-2 mt-3 pt-3 border-t border-zinc-200 dark:border-white/10">
-          <ActionButton
-            label="Reopen"
-            icon="arrow-undo"
-            color="#7C3AED"
-            busy={busy}
-            onPress={() => onAction(task.id, "reopen")}
-          />
-        </View>
-      )}
+        )}
+      </Pressable>
     </View>
   );
 }
 
-function TaskBubble({
-  tab,
-  color,
+/**
+ * 22px circle, 2px border. Empty when unchecked, purple fill + white
+ * check when checked. Muted (dashed) for snoozed items.
+ */
+function Checkbox({
+  checked,
   busy,
-  onComplete,
-  onReopen,
-}: {
-  tab: Tab;
-  color: string;
-  busy: boolean;
-  onComplete: () => void;
-  onReopen: () => void;
-}) {
-  if (tab === "completed") {
-    return (
-      <Pressable
-        onPress={onReopen}
-        disabled={busy}
-        hitSlop={6}
-        accessibilityRole="button"
-        accessibilityLabel="Reopen task"
-        style={({ pressed }) => ({
-          width: 26,
-          height: 26,
-          borderRadius: 13,
-          backgroundColor: color,
-          alignItems: "center",
-          justifyContent: "center",
-          opacity: pressed || busy ? 0.6 : 1,
-          marginTop: 2,
-        })}
-      >
-        <Ionicons name="checkmark" size={16} color="#FFFFFF" />
-      </Pressable>
-    );
-  }
-
-  if (tab === "snoozed") {
-    return (
-      <View
-        style={{
-          width: 26,
-          height: 26,
-          borderRadius: 13,
-          borderWidth: 2,
-          borderStyle: "dashed",
-          borderColor: color + "80",
-          marginTop: 2,
-        }}
-      />
-    );
-  }
-
-  return (
-    <Pressable
-      onPress={onComplete}
-      disabled={busy}
-      hitSlop={8}
-      accessibilityRole="button"
-      accessibilityLabel="Mark task complete"
-      style={({ pressed }) => ({
-        width: 26,
-        height: 26,
-        borderRadius: 13,
-        borderWidth: 2,
-        borderColor: color,
-        backgroundColor: pressed ? color + "20" : "transparent",
-        alignItems: "center",
-        justifyContent: "center",
-        opacity: busy ? 0.4 : 1,
-        marginTop: 2,
-      })}
-    >
-      {({ pressed }) =>
-        pressed ? (
-          <Ionicons name="checkmark" size={16} color={color} />
-        ) : null
-      }
-    </Pressable>
-  );
-}
-
-function ActionButton({
-  label,
-  icon,
-  color,
-  busy,
+  muted,
   onPress,
 }: {
-  label: string;
-  icon: React.ComponentProps<typeof Ionicons>["name"];
-  color: string;
+  checked: boolean;
   busy: boolean;
+  muted?: boolean;
   onPress: () => void;
 }) {
+  const size = 22;
   return (
     <Pressable
       onPress={onPress}
       disabled={busy}
-      className="flex-row items-center gap-1.5 rounded-lg px-3 py-1.5"
+      hitSlop={10}
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked, disabled: busy }}
+      accessibilityLabel={checked ? "Mark task incomplete" : "Mark task complete"}
       style={({ pressed }) => ({
-        backgroundColor: color + "15",
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        borderWidth: 2,
+        borderStyle: muted ? "dashed" : "solid",
+        borderColor: checked ? "#7C3AED" : "#A1A1AA",
+        backgroundColor: checked ? "#7C3AED" : "transparent",
+        alignItems: "center",
+        justifyContent: "center",
+        marginTop: 1,
         opacity: pressed || busy ? 0.5 : 1,
       })}
     >
-      <Ionicons name={icon} size={14} color={color} />
-      <Text style={{ color, fontSize: 12, fontWeight: "600" }}>{label}</Text>
+      {checked ? (
+        <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+      ) : null}
     </Pressable>
   );
 }
@@ -384,8 +454,8 @@ function EmptyState({ tab }: { tab: Tab }) {
   const config = {
     open: {
       icon: "checkmark-done-outline" as const,
-      title: "No open tasks",
-      desc: "Record a brain dump to extract tasks automatically.",
+      title: "No tasks yet",
+      desc: "Record a session and they'll appear.",
     },
     snoozed: {
       icon: "time-outline" as const,
