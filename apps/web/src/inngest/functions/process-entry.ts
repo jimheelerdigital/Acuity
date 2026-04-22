@@ -165,19 +165,32 @@ export const processEntryFn = inngest.createFunction(
     });
 
     // Step 4: extract structured data via Claude. Uses the exact same
-    // prompt + parser as the sync pipeline (`lib/pipeline.ts`).
+    // prompt + parser as the sync pipeline (`lib/pipeline.ts`). When
+    // the entry was recorded from a goal card (Entry.goalId set), we
+    // fetch the goal and splice its title/description into the prompt
+    // so the extractor anchors the entry to it.
     const extraction = await step.run("extract", async () => {
       const entry = await prisma.entry.findUniqueOrThrow({
         where: { id: entryId },
-        select: { transcript: true },
+        select: { transcript: true, goalId: true },
       });
       const transcript = entry.transcript ?? "";
+      let goalContext: { title: string; description: string | null } | null =
+        null;
+      if (entry.goalId) {
+        const goal = await prisma.goal.findFirst({
+          where: { id: entry.goalId, userId },
+          select: { title: true, description: true },
+        });
+        if (goal) goalContext = goal;
+      }
       const { extractFromTranscript } = await import("@/lib/pipeline");
       const todayISO = new Date().toISOString().split("T")[0];
       return extractFromTranscript(
         transcript,
         todayISO,
-        memoryContext || undefined
+        memoryContext || undefined,
+        goalContext
       );
     });
 

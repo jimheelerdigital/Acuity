@@ -150,10 +150,24 @@ ${LIFE_AREA_EXTRACTION_SCHEMA}`;
 export async function extractFromTranscript(
   transcript: string,
   todayISO: string,
-  memoryContext?: string
+  memoryContext?: string,
+  goalContext?: { title: string; description: string | null } | null
 ): Promise<ExtractionResult> {
   const contextBlock = memoryContext
     ? `Here is what you know about this user from their entire history with Acuity:\n${memoryContext}\n\nUse these historical patterns to enrich your extraction — for example, if a goal has been mentioned multiple times before, note it as recurring rather than new.\n\n`
+    : "";
+
+  // Goal context: when the user opens the recorder from a specific goal,
+  // tell the extractor this entry is deliberately about that goal. The
+  // model should treat wins/blockers/tasks as belonging to this goal's
+  // surface area and prefer the goal's existing title/phrasing when
+  // describing it back in the summary.
+  const goalBlock = goalContext
+    ? `This entry is specifically about the user's existing goal titled: "${goalContext.title}"${
+        goalContext.description
+          ? `\nGoal description: ${goalContext.description}`
+          : ""
+      }\nAnchor wins/blockers/tasks/insights to this goal when they clearly belong to it, and reuse the goal's existing phrasing rather than inventing a new name.\n\n`
     : "";
 
   const message = await anthropic.messages.create({
@@ -163,7 +177,7 @@ export async function extractFromTranscript(
     messages: [
       {
         role: "user",
-        content: `${contextBlock}Today's date: ${todayISO}\n\nDaily debrief transcript:\n\n${transcript}`,
+        content: `${contextBlock}${goalBlock}Today's date: ${todayISO}\n\nDaily debrief transcript:\n\n${transcript}`,
       },
     ],
   });
@@ -251,12 +265,16 @@ export async function processEntry({
   audioBuffer,
   mimeType,
   durationSeconds,
+  goalId,
 }: {
   entryId: string;
   userId: string;
   audioBuffer: Buffer;
   mimeType: string;
   durationSeconds?: number;
+  /** Set when the recording was initiated from a goal detail/card. Passed
+   *  through to extraction so Claude anchors the entry to that goal. */
+  goalId?: string | null;
 }) {
   const { prisma } = await import("@/lib/prisma");
 
@@ -285,12 +303,24 @@ export async function processEntry({
     const { buildMemoryContext } = await import("@/lib/memory");
     const memoryContext = await buildMemoryContext(userId);
 
-    // ── Extract with memory context ───────────────────────────────────────
+    // ── Build goal context (when recording is goal-linked) ────────────────
+    let goalContext: { title: string; description: string | null } | null =
+      null;
+    if (goalId) {
+      const goal = await prisma.goal.findFirst({
+        where: { id: goalId, userId },
+        select: { title: true, description: true },
+      });
+      if (goal) goalContext = goal;
+    }
+
+    // ── Extract with memory + goal context ────────────────────────────────
     const todayISO = new Date().toISOString().split("T")[0];
     const extraction = await extractFromTranscript(
       transcript,
       todayISO,
-      memoryContext || undefined
+      memoryContext || undefined,
+      goalContext
     );
 
     // ── Persist everything in one transaction ─────────────────────────────

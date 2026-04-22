@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Audio, InterruptionModeIOS } from "expo-av";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -66,6 +66,14 @@ type UploadResponse = {
 
 export default function RecordScreen() {
   const router = useRouter();
+  // goalId set when the user opened the recorder from a goal detail or
+  // card via "Record about this goal". Forwarded to /api/record so the
+  // extraction pipeline knows this entry is specifically about that goal.
+  const params = useLocalSearchParams<{ goalId?: string }>();
+  const goalId =
+    typeof params.goalId === "string" && params.goalId.length > 0
+      ? params.goalId
+      : null;
   const [state, setState] = useState<State>("idle");
   const [elapsed, setElapsed] = useState(0);
   const [levels, setLevels] = useState<number[]>(Array(18).fill(0.05));
@@ -252,6 +260,9 @@ export default function RecordScreen() {
         type: "audio/mp4",
       } as unknown as Blob);
       form.append("durationSeconds", String(duration));
+      if (goalId) {
+        form.append("goalId", goalId);
+      }
 
       let attempt = 0;
       const token = await getToken();
@@ -328,7 +339,7 @@ export default function RecordScreen() {
         }
       }
     },
-    [router]
+    [router, goalId]
   );
 
   const handlePress = () => {

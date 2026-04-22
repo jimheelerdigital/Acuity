@@ -372,7 +372,7 @@ export default function GoalDetailScreen() {
 
           {/* Add reflection CTA */}
           <Pressable
-            onPress={() => router.push(`/record?goal=${encodeURIComponent(delta.title)}`)}
+            onPress={() => router.push(`/record?goalId=${encodeURIComponent(delta.id)}`)}
             className="mt-6 rounded-2xl border border-violet-900/30 bg-violet-950/20 px-4 py-4"
           >
             <Text className="text-xs font-semibold uppercase tracking-widest text-violet-400">

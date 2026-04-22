@@ -295,10 +295,18 @@ model Entry {
   entryDate     DateTime @default(now())
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  // Optional goal this entry is specifically "about" — set when the user
+  // taps "Record about this goal" from a goal card/detail. When present,
+  // the extraction pipeline splices the goal's title + description into
+  // the Claude prompt so the AI treats the entry as goal-contextualized.
+  // Null for standard recordings.
+  goalId        String?
+  goal          Goal?    @relation(fields: [goalId], references: [id], onDelete: SetNull)
   tasks         Task[]
   themeMentions ThemeMention[]
 
   @@index([userId, createdAt])
+  @@index([goalId])
 }
 
 model Task {
@@ -387,6 +395,7 @@ model Goal {
   depth           Int       @default(0)
   createdAt       DateTime  @default(now())
   tasks           Task[]
+  entries         Entry[]
   suggestions     GoalSuggestion[]
 
   @@index([userId, status])

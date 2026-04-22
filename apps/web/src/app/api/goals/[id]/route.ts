@@ -34,21 +34,31 @@ export async function GET(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
+  // Linked entries come from TWO sources, unioned:
+  //   1. Entry.goalId — explicit link set when the user tapped
+  //      "Record about this goal" and the recorder forwarded goalId.
+  //   2. Goal.entryRefs — legacy fuzzy match written by the extraction
+  //      pipeline when a transcript references an existing goal by title.
+  // Dedup is implicit via Prisma OR + id; sorted newest-first, cap at 20.
   const refs = Array.isArray(goal.entryRefs) ? goal.entryRefs.slice(0, 20) : [];
-  const linkedEntries =
-    refs.length > 0
-      ? await prisma.entry.findMany({
-          where: { id: { in: refs }, userId },
-          select: {
-            id: true,
-            summary: true,
-            createdAt: true,
-            mood: true,
-            themes: true,
-          },
-          orderBy: { createdAt: "desc" },
-        })
-      : [];
+  const linkedEntries = await prisma.entry.findMany({
+    where: {
+      userId,
+      OR: [
+        { goalId: goal.id },
+        ...(refs.length > 0 ? [{ id: { in: refs } }] : []),
+      ],
+    },
+    select: {
+      id: true,
+      summary: true,
+      createdAt: true,
+      mood: true,
+      themes: true,
+    },
+    orderBy: { createdAt: "desc" },
+    take: 20,
+  });
 
   return NextResponse.json({ goal, linkedEntries });
 }

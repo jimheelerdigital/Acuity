@@ -112,6 +112,23 @@ export async function POST(req: NextRequest) {
     ? Number(formData.get("durationSeconds"))
     : undefined;
 
+  // Optional — set when the user opens the recorder from a goal card
+  // or goal detail ("Record about this goal"). Validated to belong to
+  // this user before persisting; silently dropped if it doesn't match
+  // (defense in depth — a forged goalId would otherwise leak goal
+  // existence via a 403/404).
+  const rawGoalId = formData.get("goalId");
+  let goalId: string | null =
+    typeof rawGoalId === "string" && rawGoalId.length > 0 ? rawGoalId : null;
+  if (goalId) {
+    const { prisma } = await import("@/lib/prisma");
+    const owned = await prisma.goal.findFirst({
+      where: { id: goalId, userId },
+      select: { id: true },
+    });
+    if (!owned) goalId = null;
+  }
+
   const audioBuffer = Buffer.from(await audioFile.arrayBuffer());
 
   const useInngest = process.env.ENABLE_INNGEST_PIPELINE === "1";
@@ -120,7 +137,7 @@ export async function POST(req: NextRequest) {
   if (useInngest) {
     const { prisma } = await import("@/lib/prisma");
     const entry = await prisma.entry.create({
-      data: { userId, status: "QUEUED" },
+      data: { userId, status: "QUEUED", goalId },
     });
 
     let objectPath: string;
@@ -165,7 +182,7 @@ export async function POST(req: NextRequest) {
   // ── 3b. Sync path (legacy) — unchanged from pre-migration behavior ──────
   const { prisma } = await import("@/lib/prisma");
   const entry = await prisma.entry.create({
-    data: { userId, status: "PENDING" },
+    data: { userId, status: "PENDING", goalId },
   });
 
   try {
@@ -175,6 +192,7 @@ export async function POST(req: NextRequest) {
       audioBuffer,
       mimeType,
       durationSeconds,
+      goalId,
     });
 
     return NextResponse.json(
