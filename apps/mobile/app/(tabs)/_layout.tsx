@@ -68,6 +68,13 @@ export default function TabsLayout() {
         },
         tabBarActiveTintColor: activeTint,
         tabBarInactiveTintColor: inactiveTint,
+        // Force every slot's active/inactive background to transparent.
+        // Under Fabric on iOS, the default "transparent" from React
+        // Navigation's BottomTabItem has been observed to paint a faint
+        // grey box in the slot — most visible behind the absolutely-
+        // positioned record circle. Setting these explicitly stops it.
+        tabBarActiveBackgroundColor: "transparent",
+        tabBarInactiveBackgroundColor: "transparent",
       }}
     >
       <Tabs.Screen
@@ -102,7 +109,10 @@ export default function TabsLayout() {
           title: "",
           tabBarIcon: () => null,
           tabBarLabel: () => null,
-          tabBarItemStyle: { overflow: "visible" },
+          tabBarItemStyle: {
+            overflow: "visible",
+            backgroundColor: "transparent",
+          },
           tabBarButton: (props) => (
             <RecordCenterButton isDark={isDark} {...props} />
           ),
@@ -144,10 +154,6 @@ export default function TabsLayout() {
 }
 
 function RecordCenterButton({ isDark }: { isDark: boolean }) {
-  // Temporary log — Jim will remove in a follow-up commit after visual
-  // confirmation that the purple circle renders on device.
-  console.log("RC-BUTTON-RENDERED", { isDark });
-
   const router = useRouter();
   const [pressed, setPressed] = useState(false);
 
