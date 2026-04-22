@@ -12,7 +12,7 @@ export const metadata: Metadata = {
       "Your wins, your patterns, what you said you'd do versus what happened. A 400-word AI narrative of your week, every Sunday.",
     url: "https://getacuity.io/for/weekly-report",
     siteName: "Acuity",
-    images: [{ url: "/og-image.jpg", width: 1200, height: 1200 }],
+    images: [{ url: "/og-image.png", width: 1200, height: 630 }],
   },
   twitter: {
     card: "summary",

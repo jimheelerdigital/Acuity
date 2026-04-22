@@ -44,14 +44,14 @@ export const metadata: Metadata = {
     title: "Acuity — AI Journaling App | Nightly Voice Brain Dump",
     description:
       "The AI journaling app that turns a 60-second nightly voice brain dump into extracted tasks, mood tracking, mental pattern detection, and weekly AI reports.",
-    images: [{ url: "/og-image.jpg", width: 1200, height: 630, alt: "Acuity — AI voice journaling app for nightly brain dumps" }],
+    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "Acuity — AI voice journaling app for nightly brain dumps" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "Acuity — AI Journaling App | Nightly Voice Brain Dump",
     description:
       "Turn a 60-second nightly voice brain dump into tasks, mood tracking, pattern detection, and weekly AI reports.",
-    images: ["/og-image.jpg"],
+    images: ["/og-image.png"],
   },
   robots: {
     index: true,
@@ -94,7 +94,6 @@ export default function RootLayout({
             the body below, conditional on the user's cookie consent.
             GDPR / ePrivacy compliance + SOC 2 Privacy P2. */}
         <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
-        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
         <link rel="shortcut icon" href="/favicon.ico" />
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
         <link rel="manifest" href="/site.webmanifest" />

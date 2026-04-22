@@ -12,7 +12,7 @@ export const metadata: Metadata = {
       "Track your emotional patterns nightly with AI. Mood tracking, pattern detection, and weekly mental health reports for less than one therapy copay.",
     url: "https://getacuity.io/for/therapy",
     siteName: "Acuity",
-    images: [{ url: "/og-image.jpg", width: 1200, height: 1200 }],
+    images: [{ url: "/og-image.png", width: 1200, height: 630 }],
   },
   twitter: {
     card: "summary",

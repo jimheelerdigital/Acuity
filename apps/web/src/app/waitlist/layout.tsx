@@ -11,7 +11,7 @@ export const metadata: Metadata = {
       "Be first in line for Acuity, the AI journaling app that turns nightly voice brain dumps into tasks, mood tracking, and weekly AI reports.",
     url: "https://getacuity.io/waitlist",
     siteName: "Acuity",
-    images: [{ url: "/og-image.jpg", width: 1200, height: 1200 }],
+    images: [{ url: "/og-image.png", width: 1200, height: 630 }],
   },
   twitter: {
     card: "summary",

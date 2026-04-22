@@ -12,7 +12,7 @@ export const metadata: Metadata = {
       "Acuity captures every task, tracks every goal, and writes your weekly debrief automatically. Built for founders and executives.",
     url: "https://getacuity.io/for/founders",
     siteName: "Acuity",
-    images: [{ url: "/og-image.jpg", width: 1200, height: 1200 }],
+    images: [{ url: "/og-image.png", width: 1200, height: 630 }],
   },
   twitter: {
     card: "summary",

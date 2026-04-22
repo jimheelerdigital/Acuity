@@ -12,7 +12,7 @@ export const metadata: Metadata = {
       "Acuity reveals the patterns you can't see from the inside with AI-powered mental pattern detection.",
     url: "https://getacuity.io/for/decoded",
     siteName: "Acuity",
-    images: [{ url: "/og-image.jpg", width: 1200, height: 1200 }],
+    images: [{ url: "/og-image.png", width: 1200, height: 630 }],
   },
   twitter: {
     card: "summary",
