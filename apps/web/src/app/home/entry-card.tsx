@@ -1,6 +1,4 @@
-"use client";
-
-import { useState } from "react";
+import Link from "next/link";
 import {
   MOOD_EMOJI,
   MOOD_LABELS,
@@ -26,23 +24,17 @@ type EntryCardProps = {
 };
 
 export function EntryCard({ entry, taskCount }: EntryCardProps) {
-  const [expanded, setExpanded] = useState(false);
-
-  // Use the shared relative-date helper so "Just now / N min ago /
-  // Yesterday / Mon D" stays consistent with the mobile app and the
-  // /entries full-list page.
   const date = formatRelativeDate(entry.createdAt);
-
   const moodKey = entry.mood as Mood | null;
   const isFailed = entry.status === "FAILED";
   const isProcessing = entry.status === "PROCESSING" || entry.status === "PENDING";
 
   return (
-    <div className="rounded-2xl border border-zinc-200 bg-white overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.04)] transition-all duration-200 hover:shadow-[0_1px_3px_rgba(0,0,0,0.06),0_8px_20px_rgba(0,0,0,0.08)] hover:-translate-y-0.5 dark:border-white/10 dark:bg-[#1E1E2E] dark:shadow-none dark:ring-1 dark:ring-white/5 dark:hover:bg-[#24243A]">
-      <button
-        onClick={() => setExpanded((v) => !v)}
-        className="w-full text-left px-4 sm:px-5 py-4 flex items-start justify-between gap-3 min-h-[44px]"
-      >
+    <Link
+      href={`/entries/${entry.id}`}
+      className="block rounded-2xl border border-zinc-200 bg-white overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.04)] transition-all duration-200 hover:shadow-[0_1px_3px_rgba(0,0,0,0.06),0_8px_20px_rgba(0,0,0,0.08)] hover:-translate-y-0.5 dark:border-white/10 dark:bg-[#1E1E2E] dark:shadow-none dark:ring-1 dark:ring-white/5 dark:hover:bg-[#24243A]"
+    >
+      <div className="px-4 sm:px-5 py-4 flex items-start justify-between gap-3 min-h-[44px]">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1.5 flex-wrap">
             <span className="text-xs font-medium text-zinc-400 dark:text-zinc-500">{date}</span>
@@ -88,49 +80,13 @@ export function EntryCard({ entry, taskCount }: EntryCardProps) {
             </div>
           )}
         </div>
-        <ChevronIcon expanded={expanded} />
-      </button>
-
-      <div
-        className="overflow-hidden transition-all duration-300"
-        style={{ maxHeight: expanded ? "500px" : "0" }}
-      >
-        <div className="border-t border-zinc-100 px-4 sm:px-5 py-4 space-y-4 dark:border-white/5">
-          {entry.wins.length > 0 && (
-            <div>
-              <p className="text-xs font-medium text-emerald-600 mb-1.5 dark:text-emerald-400">Wins</p>
-              <ul className="space-y-1">
-                {entry.wins.map((w, i) => (
-                  <li key={i} className="text-sm text-zinc-600 flex gap-2 dark:text-zinc-300">
-                    <span className="text-emerald-500 shrink-0">✓</span>
-                    {w}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {entry.blockers.length > 0 && (
-            <div>
-              <p className="text-xs font-medium text-red-500 mb-1.5 dark:text-red-400">
-                Blockers
-              </p>
-              <ul className="space-y-1">
-                {entry.blockers.map((b, i) => (
-                  <li key={i} className="text-sm text-zinc-600 flex gap-2 dark:text-zinc-300">
-                    <span className="text-red-400 shrink-0">↳</span>
-                    {b}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
+        <ChevronRight />
       </div>
-    </div>
+    </Link>
   );
 }
 
-function ChevronIcon({ expanded }: { expanded: boolean }) {
+function ChevronRight() {
   return (
     <svg
       width="16"
@@ -141,9 +97,10 @@ function ChevronIcon({ expanded }: { expanded: boolean }) {
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
-      className={`shrink-0 text-zinc-400 dark:text-zinc-500 transition-transform duration-300 ${expanded ? "rotate-180" : ""}`}
+      className="shrink-0 text-zinc-300 dark:text-zinc-600"
+      aria-hidden="true"
     >
-      <path d="m6 9 6 6 6-6" />
+      <path d="m9 18 6-6-6-6" />
     </svg>
   );
 }

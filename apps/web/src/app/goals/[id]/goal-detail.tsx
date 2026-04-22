@@ -285,7 +285,7 @@ export function GoalDetail({
             {linkedEntries.map((e) => (
               <a
                 key={e.id}
-                href={`/entry/${e.id}`}
+                href={`/entries/${e.id}`}
                 className="block rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-4 py-3 hover:border-violet-300 dark:hover:border-violet-700/40 transition"
               >
                 <p className="text-xs text-zinc-400 dark:text-zinc-500 mb-1">
