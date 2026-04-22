@@ -37,7 +37,7 @@ export default async function UpgradePage({
             Upgrade to {PLAN_PRO_NAME}
           </h1>
           <p className="text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed">
-            Unlock the full power of your daily debriefs.
+            Keep what you built over the last 14 days.
           </p>
         </div>
 
@@ -50,11 +50,11 @@ export default async function UpgradePage({
 
           <ul className="space-y-3 mb-6">
             {[
-              "Unlimited recordings",
-              "Weekly AI reports",
-              "Goal tracking & progress",
-              "Life Matrix analytics",
-              "Mood trend insights",
+              "Unlimited nightly debriefs",
+              "Sunday report every week",
+              "Goals tracked across entries",
+              "Life Matrix across 6 areas",
+              "Mood scored nightly",
               "Priority support",
             ].map((feature) => (
               <li key={feature} className="flex items-center gap-2.5 text-sm text-zinc-600 dark:text-zinc-300">

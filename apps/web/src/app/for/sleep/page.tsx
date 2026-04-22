@@ -191,7 +191,7 @@ export default function SleepPage() {
               Make it your last habit before bed.
             </h2>
             <p className="mt-6 text-lg text-[#A0A0B8] leading-relaxed">
-              The most powerful version of Acuity is as a nightly ritual. Same time
+              Acuity works best as a nightly ritual. Same time
               every night — right before you put your phone down. 60 seconds.
               Everything out. Lights off.
             </p>

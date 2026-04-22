@@ -108,7 +108,7 @@ export default function WeeklyReportPage() {
             label: "Step 2",
             title: "Extract",
             description:
-              "AI extracts mood, themes, tasks, goals, and insights from your stream of consciousness — building the raw material for your report.",
+              "Your words become data. Tasks extracted, mood scored, goals tracked, themes tagged. All of it feeds into Sunday's report.",
           },
           {
             label: "Step 3",
@@ -232,7 +232,7 @@ export default function WeeklyReportPage() {
               Report 1 is interesting.
               <br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-500 to-indigo-500">
-                Report 12 is transformative.
+                Report 12 changes what you pay attention to.
               </span>
             </h2>
             <p className="mt-6 text-lg text-[#A0A0B8] leading-relaxed">

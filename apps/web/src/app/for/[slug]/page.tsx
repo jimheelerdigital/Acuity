@@ -128,7 +128,7 @@ export default function PersonaLandingPage({ params }: { params: { slug: string 
               {
                 step: "02",
                 title: "AI Extracts",
-                desc: "AI transcribes and extracts your tasks, mood, goals, themes, and insights — automatically.",
+                desc: "By morning, your tasks are on a list, your goals are tracked, and your mood is scored. You didn't type a word.",
               },
               {
                 step: "03",

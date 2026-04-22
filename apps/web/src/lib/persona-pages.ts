@@ -394,7 +394,7 @@ export const PERSONA_PAGES: PersonaPage[] = [
       name: "David & Leah W.",
       detail: "Both 36, married 8 years, two kids",
     },
-    ctaHeadline: "Understand yourself. Transform your relationship.",
+    ctaHeadline: "Understand yourself first. The relationship follows.",
     accentColor: "rose",
   },
   {

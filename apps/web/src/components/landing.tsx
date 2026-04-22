@@ -1112,13 +1112,13 @@ export function LandingPage() {
             <div className="flex-1 max-w-xl">
               <Reveal>
                 <h1 className="text-5xl font-extrabold tracking-tight sm:text-6xl lg:text-7xl leading-[1.05]">
-                  Brain dump daily. Get your life back.
+                  It&rsquo;s 10 PM and your brain won&rsquo;t shut off.
                 </h1>
               </Reveal>
 
               <Reveal delay={2}>
                 <p className="mt-5 text-base text-[#A0A0B8] leading-relaxed max-w-sm">
-                  60 seconds of talking. AI extracts your tasks, tracks your goals, logs your mood, and reveals the patterns in your own life.
+                  Speak whatever&rsquo;s on your mind before bed. Acuity turns it into tasks, tracks what&rsquo;s weighing on you, and every Sunday morning writes you a 400-word story of your week.
                 </p>
               </Reveal>
 
@@ -1413,8 +1413,8 @@ export function LandingPage() {
                   </div>
                   <h3 className="text-3xl font-bold sm:text-4xl">Extract</h3>
                   <p className="mt-4 text-lg text-[#A0A0B8] leading-relaxed max-w-md">
-                    AI transcribes and extracts tasks, goals, mood, themes, and
-                    insights from your stream of consciousness.
+                    By morning, your tasks are on a list, your goals are tracked,
+                    and your mood is scored. You didn&rsquo;t type a word.
                   </p>
                 </Reveal>
               </div>
@@ -1470,8 +1470,7 @@ export function LandingPage() {
                   </div>
                   <h3 className="text-3xl font-bold sm:text-4xl">Reflect</h3>
                   <p className="mt-4 text-lg text-[#A0A0B8] leading-relaxed max-w-md">
-                    Get a weekly narrative report showing patterns in your life,
-                    so you can course-correct before the next week starts.
+                    Every Sunday morning, a 400-word narrative of your week. What weighed on you, what moved, what you kept coming back to.
                   </p>
                 </Reveal>
               </div>
@@ -1742,7 +1741,7 @@ export function LandingPage() {
               { q: "Is this actually private?", a: "Your audio is deleted within 24 hours of transcription. We never sell your data." },
               { q: "Do I have to use it every night?", a: "No. But users who record 4+ times in week one get dramatically better results." },
               { q: "What if I don't know what to say?", a: "That's the point. Just talk. The AI figures out the rest." },
-              { q: "Is this just a journaling app?", a: "No. You don't write anything. You talk for 60 seconds and AI turns it into structured intelligence." },
+              { q: "Is this just a journaling app?", a: "No. You don't write anything. You talk for 60 seconds and by morning your tasks are extracted, your mood is scored, and every Sunday you get a written story of your week." },
             ].map((faq, i) => (
               <Reveal key={i} delay={Math.min(i + 1, 3) as 1 | 2 | 3}>
                 <div className="rounded-xl border border-white/10 bg-[#13131F] p-6">
@@ -1807,7 +1806,7 @@ export function LandingPage() {
                 </span>
               </div>
               <p className="mt-2 text-sm text-[#A0A0B8] max-w-xs">
-                Brain dump daily. Get your life back.
+                Your nightly shutdown ritual.
               </p>
             </div>
             <div>
@@ -1879,7 +1878,7 @@ const comparisons = [
   {
     alt: "Notion/journaling",
     cost: "Free but costs time",
-    missing: "Requires effort, produces no insights",
+    missing: "Requires effort, nobody reads it back to you",
   },
   {
     alt: "Voice memos",
@@ -1894,53 +1893,53 @@ const comparisons = [
 ];
 
 const stats = [
-  { value: 2847, suffix: "+", prefix: "", label: "Daily debriefs recorded" },
-  { value: 12, suffix: "k", prefix: "", label: "Tasks extracted" },
-  { value: 98, suffix: "%", prefix: "", label: "Said they sleep better" },
-  { value: 60, suffix: "s", prefix: "", label: "Average debrief time" },
+  { value: 60, suffix: "s", prefix: "", label: "Average nightly debrief" },
+  { value: 400, suffix: "", prefix: "", label: "Words in your Sunday report" },
+  { value: 6, suffix: "", prefix: "", label: "Life areas tracked weekly" },
+  { value: 14, suffix: "", prefix: "", label: "Days free, no card" },
 ];
 
 const tickerItems = [
-  "✦ Voice-first journaling",
-  "✦ AI task extraction",
-  "✦ Goal tracking",
-  "✦ Mood analytics",
-  "✦ Weekly insight reports",
-  "✦ Life Matrix dashboard",
+  "✦ 60-second nightly debrief",
+  "✦ Tasks pulled from your voice",
+  "✦ Goals tracked across entries",
+  "✦ Mood scored every night",
+  "✦ Sunday report on your phone",
+  "✦ Life Matrix across 6 areas",
   "✦ Works while you sleep",
-  "✦ 60-second habit",
+  "✦ No typing required",
 ];
 
 const featureData = [
   {
     iconKey: "mic" as const,
-    title: "Voice-first journaling",
-    desc: "No typing, no prompts. Just talk. Record up to 10 minutes of unfiltered thoughts every night.",
+    title: "The Nightly Debrief",
+    desc: "No typing, no prompts. Talk about your day for 60 seconds before bed. That's it.",
   },
   {
     iconKey: "tasks" as const,
-    title: "AI task extraction",
-    desc: "AI pulls actionable tasks from your ramblings and drops them into a clean to-do list.",
+    title: "Your To-Do List, Built While You Sleep",
+    desc: "Say \"I need to call the accountant\" at 10 PM. By morning it's on your task list.",
   },
   {
     iconKey: "target" as const,
-    title: "Goal tracking",
-    desc: "Surface recurring goals across entries and track your progress over time — automatically.",
+    title: "Goals That Remember",
+    desc: "Mention \"get back to the gym\" in week one and again in week four. Acuity notices and tracks it.",
   },
   {
     iconKey: "heart" as const,
-    title: "Mood analytics",
-    desc: "See your emotional arc over days and weeks. Spot trends before they become problems.",
+    title: "Your Mood, Scored Nightly",
+    desc: "See how you actually felt this week, not how you remember feeling. Mood scored from your own words.",
   },
   {
     iconKey: "chart" as const,
-    title: "Weekly insight reports",
-    desc: "Every Monday you get a digest: patterns, progress, blockers, and the top 3 actions for the week.",
+    title: "The Sunday Report",
+    desc: "Every Sunday morning, a 400-word narrative of your week lands on your phone. Patterns you missed, themes you repeated, where your energy went.",
   },
   {
     iconKey: "map" as const,
-    title: "Life Matrix",
-    desc: "A visual dashboard connecting your goals, moods, and tasks into one coherent picture of your life.",
+    title: "The Life Matrix",
+    desc: "Six areas of your life, scored every week. Career, health, relationships, finances, growth, purpose. See which ones are getting attention and which are starving.",
   },
 ];
 

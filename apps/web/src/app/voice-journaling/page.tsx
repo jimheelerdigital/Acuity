@@ -109,7 +109,7 @@ const jsonLd = {
           name: "What is the best voice journaling app?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "Acuity is a voice journaling app that combines AI transcription with automatic task extraction, mood tracking, mental pattern detection, and weekly AI reports. It turns a 60-second nightly brain dump into structured insights about your life, goals, and emotional patterns.",
+            text: "Acuity is a voice journaling app. Talk for 60 seconds before bed. By morning your tasks are extracted, your mood is scored, and every Sunday a 400-word narrative of your week lands on your phone. $12.99/month, first month free.",
           },
         },
       ],
@@ -445,7 +445,7 @@ export default function VoiceJournalingPage() {
             What is the best voice journaling app?
           </h3>
           <p className="text-base text-[#A0A0B8] leading-[1.8] mb-5">
-            Acuity is a voice journaling app that combines AI transcription with automatic task extraction, mood tracking, mental pattern detection, and weekly AI reports. It turns a 60-second nightly brain dump into structured insights about your life, goals, and emotional patterns. It costs $12.99/month with the first month free.
+            Acuity is a voice journaling app. Talk for 60 seconds before bed. By morning your tasks are extracted, your mood is scored, and every Sunday a 400-word narrative of your week lands on your phone. It costs $12.99/month with the first month free.
           </p>
 
           {/* ──── Bottom CTA ──── */}

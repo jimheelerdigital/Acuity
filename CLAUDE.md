@@ -106,6 +106,23 @@ Bad notes:
 
 ---
 
+## Sales Copy Rules
+
+Before writing or editing ANY customer-facing copy (landing pages, ad scripts, onboarding, paywalls, push notifications, emails, app store listings, blog CTAs, waitlist pages, /for/* landing pages, or anything else a user reads), read `docs/Acuity_SalesCopy.md` first.
+
+That file is the sales copy rubric. It defines voice, banned words, structural patterns, positioning rules, and a pre-ship checklist. Copy that fails the rubric is not shippable. The rubric overrides any default copywriting instincts.
+
+Key rules to internalize (read the full doc for details):
+- Acuity is a **shutdown ritual**, not a journal. Never use "journaling" in acquisition copy.
+- The hero conversion driver is the **weekly report**, not the daily recording.
+- **Under-claim the AI.** Never say "AI-powered" above the fold.
+- Use the customer's exact language. If the phrase can't be found in a Reddit thread, it doesn't belong.
+- Show artifacts (the weekly report, the memoir PDF), not mechanisms ("AI-powered pattern detection").
+- Run every sentence against Harry Dry's three rules: specific, falsifiable, unique.
+- Run the full pre-ship checklist (Section 9) before committing copy changes.
+
+---
+
 # Agent Instructions
 
 You're working inside the **WAT framework** (Workflows, Agents, Tools). This architecture separates concerns so that probabilistic AI handles reasoning while deterministic code handles execution. That separation is what makes this system reliable.

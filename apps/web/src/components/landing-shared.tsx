@@ -885,7 +885,7 @@ export function HowItWorksSection({ steps, ...phoneProps }: HowItWorksConfig) {
                 </div>
                 <h3 className="text-3xl font-bold sm:text-4xl">{steps[1]?.title || "Extract"}</h3>
                 <p className="mt-4 text-lg text-[#A0A0B8] leading-relaxed max-w-md">
-                  {steps[1]?.description || "AI transcribes and extracts tasks, goals, mood, themes, and insights from your stream of consciousness."}
+                  {steps[1]?.description || "By morning, your tasks are on a list, your goals are tracked, and your mood is scored. You didn\u2019t type a word."}
                 </p>
               </Reveal>
             </div>
@@ -1626,7 +1626,7 @@ export function ReportPreview({
           ))}
           <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[#13131F] to-transparent flex items-end justify-center pb-2">
             <span className="text-xs font-medium text-violet-600">
-              Unlock your full report
+              Read your full report
             </span>
           </div>
         </div>
@@ -1709,7 +1709,7 @@ export function FAQSection() {
     },
     {
       q: "Is this just a journaling app?",
-      a: "No. You don't write anything. You talk for 60 seconds and AI turns it into structured intelligence.",
+      a: "No. You don't write anything. You talk for 60 seconds and by morning your tasks are extracted, your mood is scored, and every Sunday you get a written story of your week.",
     },
   ];
 
