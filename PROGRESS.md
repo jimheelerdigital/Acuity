@@ -7,6 +7,78 @@
 
 ---
 
+## 2026-04-22 — Theme Map mobile-first redesign (orbital constellation + sparkline cards)
+
+- **Requested by:** Both
+- **Committed by:** Claude Code
+- **Commit hashes:** 30bdf29 (theme-map redesign). This PROGRESS entry on a followup commit.
+
+### In plain English (for Keenan)
+
+The Theme Map page got a full redesign on both web and phone. It's the page that shows users the themes Acuity has noticed across their recordings.
+
+Before: a force-directed physics graph with nodes and springs that most users couldn't read at a glance. The gating was also inconsistent — phone app showed it immediately; website required 10 entries.
+
+After: a calm "constellation" layout. One large hero circle in the center (the user's most-mentioned theme), 5 smaller "planet" circles around it in fixed positions (the next 5 themes), color-coded by sentiment (green = positive, red = challenging, gray = neutral). On web, the planets sweep into position with a 6-second orbital animation when the page first loads. Below the constellation: a card per theme with a 30-day sparkline of how often it's come up, a color dot indicating tone, and a short trend description ("Trending up", "Steadily positive", "Emerging ↑", "Fluctuating", etc.) derived from the sparkline shape.
+
+Users with fewer than 10 entries now see a lock screen on both platforms — a blurred preview of the constellation, a progress bar showing how close they are, and a "Record now" button.
+
+What's not shipped yet: the orbital animation on phone. It requires a different animation library than web uses (Reanimated 3 instead of CSS keyframes) and that work is ~2 hours on its own. Phone ships with the same layout + data + gating, just with the planets already in place instead of flying in. The animation is on the followup list with a detailed how-to comment in the code for next session.
+
+### Technical changes (for Jimmy)
+
+**Backend (apps/web/src/app/api/insights/theme-map/route.ts):**
+
+Extended the existing endpoint without breaking the prior response shape. New fields per theme:
+- `sentimentBand: "positive" | "neutral" | "challenging"` — banded from `avgSentiment` with ±0.33 thresholds.
+- `sparkline: number[]` — 30 daily mention-count buckets (fixed 30-day window regardless of the request's `window` param so cards stay visually comparable).
+- `firstMentionedDaysAgo: number` — integer.
+- `trendDescription: string` — derived in a new `deriveTrendDescription()` helper from sparkline slope + sentimentBand + mentionCount + firstMentionedDaysAgo. Rules: <7d first mention → "New theme"; <3 mentions with recent uptick → "Emerging ↑"; positive + non-declining → "Steadily positive"; last-half ≥ 1.5× first-half → "Trending up"; first-half > last-half → "Declining"; std-dev > mean → "Fluctuating"; else "Steady".
+
+New top-level fields: `totalMentions`, `topTheme`. `coOccurrences` + `meta` + the pre-existing per-theme fields unchanged for backward compat.
+
+No schema migration. Cache-Control header unchanged (private, max-age=300).
+
+**Web (apps/web):**
+
+New `components/theme-map/` folder (Constellation / ThemeCard / LockedState / TimeChips / SummaryStrip). Constellation uses CSS keyframes in an inline `<style jsx>` block that replicate the spec's orbital entrance verbatim — hero falls 1s w/ cubic-bezier(0.22, 1, 0.36, 1), then planets sweep in on staggered 540° orbits (delays 0.6 / 1.0 / 1.4 / 1.8 / 2.2s, durations 3.2 / 3.4 / 3.6 / 3.8 / 3.4s, easing cubic-bezier(0.33, 0, 0.15, 1)), labels stagger at 4.0-5.8s, connection-line stroke-dash draw at 6.2-6.8s, legend fade + hero ripple + breathing start at 7s. `@media (prefers-reduced-motion: reduce)` block disables every animation and renders planets at landed positions.
+
+Wholesale rewrite of `apps/web/src/app/insights/theme-map/theme-map-client.tsx` (was 761 LOC of force-graph). Container width dropped from `max-w-6xl` to `max-w-xl` in page.tsx for the mobile-first reading column. Window-chip changes remount the constellation via a `key` prop so entrance replays for new data. Sort toggle cycles frequency → alphabetical → recent.
+
+**Mobile (apps/mobile):**
+
+New `components/theme-map/` folder — RN-equivalent versions using react-native-svg + RN primitives. Full rewrite of `app/insights/theme-map.tsx`.
+
+Trade-off shipped honestly: **constellation orbital entrance animation deferred.** The Reanimated 3 worklet math to replicate the CSS `rotate+translate+counter-rotate` chain via shared-value `progress → angle, radius` + `useAnimatedProps` on SVG `cx/cy` is ~2 hours of implementation + tuning on its own. Per Jim's explicit escape clause in the task brief. TODO block in `Constellation.tsx` spells out the exact Reanimated plan for next session (shared-value sequencing, Easing.bezier values, AccessibilityInfo.isReduceMotionEnabled() branch, useFocusEffect cancelAnimation on blur). Current mobile ship: static constellation with correct landed positions, halos, glows, connection lines, legend — functional but no sweep.
+
+**Gating consistency** — both platforms now gate at `meta.totalEntries < 10` (const `UNLOCK_THRESHOLD = 10` in both clients). Was inconsistent before: web already gated at 10, mobile showed the force-graph immediately regardless of entry count.
+
+### Manual steps needed
+
+- [ ] No schema change this sprint. Stacked migration from prior sessions (Entry.goalId, TaskGroup + Task.groupId, Entry.dimensionContext) still pending Keenan/Jim's `npx prisma db push` from home network — no new fields to add.
+- [ ] Jim: `eas update --channel preview` to bundle the mobile theme-map redesign into the next OTA. Consolidates with earlier mobile work (task editor modal, dimension record param, etc.).
+- [ ] Vercel auto-deploy handles web if the Inngest blocker is clear, else `vercel --prod`.
+
+### Notes
+
+**Mockup file not accessible in this run.** The task brief referenced `/mnt/user-data/outputs/theme-map-mockup-v4.html` as authoritative for anything not explicitly specified. That path wasn't mounted for Claude Code. Every explicit value from the spec — SVG positions (175, 140 hero; 85, 80 / 280, 80 / etc. planets), halo + core radii, sentiment hex codes, keyframe durations + delays, cubic-bezier easing values, font sizes + letter-spacings, padding + border-radius — lands verbatim in the code. If the mockup changes a value after the fact, search by spec phrase in Constellation.tsx — keyframes are one-to-one with the spec lines.
+
+**Performance posture:**
+- Web animations are pure transform + opacity. No width/top/left layout-triggering properties. `transform-origin` set to the hero center (175px 140px) on each planet wrapper so the rotate+translate chain hits the GPU path.
+- Glows via SVG `<radialGradient>` halos (pre-rendered in `<defs>`) — only 3 of the 5 planet cores use CSS `filter: drop-shadow`, staying under the spec's ≤5-element ceiling.
+- Mobile static render = zero animation load, trivially 60fps.
+
+**The force-directed graph is gone on both platforms.** If we want it back as an "advanced view" toggle later, it's at the commit before 30bdf29 in git history. The prior web implementation was a dynamic-imported `react-force-graph-2d` — that dep is now unused; `package.json` cleanup is a followup.
+
+**Bottom-sheet detail views not wired.** Tap-hero / tap-planet / tap-card callbacks are no-ops. The existing `/insights/theme-detail.tsx` (web) and `/insights/theme/[id].tsx` (mobile) detail screens weren't touched — reachable via direct links but not triggered from the redesigned list/constellation surfaces. Lightweight followup.
+
+**Follow-ups worth scheduling in order of user-visible impact:**
+1. Mobile orbital entrance animation (Reanimated worklet per TODO in `Constellation.tsx`).
+2. Theme detail bottom sheet wiring on both platforms.
+3. `react-force-graph-2d` removal from `apps/web/package.json` — ~500kb bundle no longer loaded.
+
+---
+
 ## 2026-04-22 — Full website copy audit against sales rubric
 
 - **Requested by:** Keenan
