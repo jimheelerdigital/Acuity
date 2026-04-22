@@ -1112,13 +1112,13 @@ export function LandingPage() {
             <div className="flex-1 max-w-xl">
               <Reveal>
                 <h1 className="text-5xl font-extrabold tracking-tight sm:text-6xl lg:text-7xl leading-[1.05]">
-                  Brain dump daily. Get your life back.
+                  You have too much in your head.
                 </h1>
               </Reveal>
 
               <Reveal delay={2}>
                 <p className="mt-5 text-base text-[#A0A0B8] leading-relaxed max-w-sm">
-                  60 seconds of talking. AI extracts your tasks, tracks your goals, logs your mood, and reveals the patterns in your own life.
+                  Acuity is the daily debrief that turns what you&rsquo;re thinking about into what you&rsquo;re doing. Talk for 60 seconds, any time of day — it catches your tasks, tracks the goals you keep circling, and helps you monitor the patterns that keep you stuck.
                 </p>
               </Reveal>
 
