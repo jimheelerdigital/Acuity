@@ -82,7 +82,16 @@ function ThemedApp() {
     <>
       <StatusBar style={isDark ? "light" : "dark"} />
       <AuthGate />
-      <Stack screenOptions={{ headerShown: false }}>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          // Show just the chevron on native back buttons — no parent
+          // route label. Default behavior leaks "(tabs)" as the back
+          // label on detail screens pushed from a tab route.
+          headerBackButtonDisplayMode: "minimal",
+          headerBackTitle: "Back",
+        }}
+      >
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="onboarding" options={{ headerShown: false }} />
