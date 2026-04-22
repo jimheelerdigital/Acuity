@@ -14,7 +14,7 @@ const jsonLd = {
       "@type": "SoftwareApplication",
       name: "Acuity",
       description:
-        "Speak for 60 seconds before bed. Wake up to extracted tasks, mood trends, and a weekly narrative of your life written by AI.",
+        "AI journaling app that turns a 60-second nightly voice brain dump into extracted tasks, mood tracking, mental pattern detection, and weekly AI reports.",
       url: "https://getacuity.io",
       applicationCategory: "HealthApplication",
       operatingSystem: "Web, iOS, Android",
@@ -39,7 +39,7 @@ const jsonLd = {
           name: "What is Acuity?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "Acuity is a nightly shutdown ritual for your brain. Speak for 60 seconds before bed. By morning, your tasks are extracted, your mood is tracked, and every Sunday you get a 400-word narrative of your week.",
+            text: "Acuity is an AI journaling app where you speak freely for 60 seconds each night. AI automatically extracts your tasks, tracks your goals, detects mental patterns, and writes a weekly narrative report about your life.",
           },
         },
         {
@@ -47,7 +47,7 @@ const jsonLd = {
           name: "How does Acuity work?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "Open Acuity before bed. Hit record. Talk about your day for 60 seconds. By morning your tasks are pulled out, your mood is scored, and every Sunday a 400-word story of your week lands on your phone.",
+            text: "Open Acuity at night, hit record, and speak freely for 60 seconds. AI transcribes your voice, extracts tasks and goals, scores your mood, detects emotional patterns, and every Sunday delivers a written report about your week.",
           },
         },
         {

@@ -1112,13 +1112,13 @@ export function LandingPage() {
             <div className="flex-1 max-w-xl">
               <Reveal>
                 <h1 className="text-5xl font-extrabold tracking-tight sm:text-6xl lg:text-7xl leading-[1.05]">
-                  It&rsquo;s 10 PM and your brain won&rsquo;t shut off.
+                  Brain dump daily. Get your life back.
                 </h1>
               </Reveal>
 
               <Reveal delay={2}>
                 <p className="mt-5 text-base text-[#A0A0B8] leading-relaxed max-w-sm">
-                  Speak whatever&rsquo;s on your mind before bed. Acuity turns it into tasks, tracks what&rsquo;s weighing on you, and every Sunday morning writes you a 400-word story of your week.
+                  60 seconds of talking. AI extracts your tasks, tracks your goals, logs your mood, and reveals the patterns in your own life.
                 </p>
               </Reveal>
 
