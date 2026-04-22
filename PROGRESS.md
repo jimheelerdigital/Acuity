@@ -7,6 +7,111 @@
 
 ---
 
+## 2026-04-22 — Rich dimension detail + AI-grouped tasks (two deferred features shipped)
+
+- **Requested by:** Both
+- **Committed by:** Claude Code
+- **Commit hashes:** f5f57a8 (rich dimension detail — mobile + web), e45d2cf (task groups — schema + extraction + sectioned UI). This PROGRESS entry on a followup commit.
+
+### In plain English (for Keenan)
+
+Two features that had been sitting on the "next session" shelf are now live.
+
+1. **Tap a Life Matrix dimension → get a real drill-down.** Before: tapping Career or Health on the Insights screen just expanded the card slightly, showing a one-line summary. Now: it opens a full-screen view (modal on phone, side modal on web) with the score + change vs baseline, a 30-day trajectory bar chart, a 2-3 sentence AI-written "What's driving this" paragraph based on the user's actual recent entries about that dimension, the top themes for that area with positive/negative sentiment coloring, the 5 most recent entries mentioning it (tap to open), any goals tagged to that area, and a personalized reflection prompt with a "Record about this" button. The AI summary + prompt are one Claude call each, cached for an hour per dimension per user.
+
+2. **Tasks organized into groups.** Before: a flat list, impossible to scan once you had 10+ tasks. Now: tasks are grouped into Work / Personal / Health / Errands / Other by default. When Acuity's AI pulls tasks out of a recording, it automatically classifies each one into the right group. Sections are collapsible. Long-press a task on phone (or hover a row on web) to get "Move to…" — pick a different group. Everyone gets the 5 default groups seeded automatically on their first task fetch.
+
+**Still to ship:** the task-groups settings screen — rename a group, change its color, drag to reorder, add a new custom group, delete a group, and a "Re-run AI categorization" button for tasks that are currently ungrouped. All the backend endpoints for those exist, just no UI yet. Write-up in the Notes below.
+
+### Technical changes (for Jimmy)
+
+**Feature 1 — rich dimension detail (commit f5f57a8):**
+
+New endpoint `GET /api/lifemap/dimension/[key]`:
+- `key` = lowercase dimension key (career/health/relationships/finances/personal/other).
+- Returns: `{dimension, score, baseline, change, trajectory: [{date,score}], whatsDriving, topThemes: [{theme,count,sentiment}], recentEntries: [{id,createdAt,mood,excerpt}], relatedGoals: [{id,title,status,progress}], reflectionPrompt, _meta: {cached, computedAt}}`.
+- One Claude Opus 4.7 call per uncached fetch: system prompt instructs a warm/observational/non-prescriptive voice; user prompt contains ~6 recent dimension-relevant entries (400 chars each, ~2.5k total) + score + trend word. Returns both `whatsDriving` and `reflectionPrompt` in one JSON payload to save a round-trip.
+- Deterministic fallback copy when <2 recent dimension entries so empty states still render (per-dimension hand-crafted prompts in defaultPromptFor).
+- Cached per-user-per-dimension for 1 hour via the existing `getCached` helper in `lib/admin-cache.ts`. Rate-limited via the `expensiveAi` bucket (10/hour) to cap Claude spend on cache-busting.
+- Trajectory: groups last-30-day entries by date from Entry.rawAnalysis.lifeAreaMentions, averages each day's score.
+- topThemes: LifeMapArea.topThemes (pre-computed) joined with a single ThemeMention query for sentiment per theme label.
+- relatedGoals: Goal where lifeArea === dimension.enum AND status != ARCHIVED. Goal.lifeArea already existed (default PERSONAL), no migration needed.
+
+Mobile (apps/mobile/app/dimension/[key].tsx new modal route):
+- Registered in apps/mobile/app/_layout.tsx as `presentation: "modal"`. Dismissed via X or iOS swipe-down.
+- Sections: score hero → 30-day sparkline (bar-based, no react-native-svg) → "What's driving this" tinted by dimension color → top themes with sentiment-tinted chips → recent entries (tap → entry detail) → related goals (tap → goal detail) → reflection prompt card with "Record about this" button.
+- apps/mobile/app/(tabs)/insights.tsx: area-card onPress now navigates to `/dimension/[key]` instead of toggling an inline-expand. Dead inline-expand JSX + `diff` variable removed.
+
+Web (apps/web/src/app/insights/dimension-detail.tsx new):
+- `DimensionDetailModal` client component. Escape + click-outside dismiss. `md:grid-cols-2` lays out themes+entries | goals side by side on desktop.
+- life-map.tsx: new `detailKey` state; area-card onClick sets it; modal rendered conditionally at component tail.
+- Same bar sparkline pattern as mobile — no chart lib imported here; recharts still reserved for the larger trend view.
+
+Bugfix surfaced during scoping:
+- Theme model's human-readable field is `name` not `label` (schema.prisma:752) — the ThemeMention join uses `theme.name` accordingly.
+
+**Feature 2 — AI-grouped tasks (commit e45d2cf):**
+
+Schema:
+- New TaskGroup model (id, userId, name, icon, color, order, isDefault, isAIGenerated, createdAt, updatedAt). Unique (userId, name). Index (userId, order).
+- Task gains `groupId String?` + `group TaskGroup?` relation with `onDelete: SetNull`. User gains `taskGroups TaskGroup[]`.
+
+Seeding (apps/web/src/lib/task-groups.ts new):
+- `ensureDefaultTaskGroups(prisma, userId)` — idempotent (zero-check + createMany with skipDuplicates). Seeds 5 groups: Work (briefcase, #3B82F6), Personal (person, #7C3AED), Health (heart, #EF4444), Errands (cart, #F59E0B), Other (ellipsis-horizontal, #6B7280). Flagged `isDefault=true, isAIGenerated=true`.
+- `resolveGroupName` — case-insensitive name → id lookup with fallback to the user's "Other" group.
+
+Extraction pipeline changes (apps/web/src/lib/pipeline.ts + inngest/functions/process-entry.ts):
+- Both sync and async paths ensure default groups + fetch group names before the Claude call.
+- `extractFromTranscript` takes a new `taskGroupNames: string[]` parameter. Injects a prompt block: "The user's task groups (each extracted task MUST be classified into one of these, case-sensitive; fall back to "Other" when unsure): …" The Claude-returned task schema gains an optional `groupName` field.
+- Persist step builds an in-transaction {lowercase name → id} Map; each extracted task's groupName resolves to a groupId. Unknown / missing names fall back to the "Other" group id.
+- `ExtractedTask` type in packages/shared/src/types.ts gains optional `groupName: string`.
+
+New API endpoints (apps/web/src/app/api/task-groups/):
+- `GET /api/task-groups` — list user's groups with taskCount. Seeds defaults.
+- `POST /api/task-groups` — create user-authored group {name, icon, color}. Case-insensitive duplicate guard. Appends at max(order)+1.
+- `PATCH /api/task-groups/[id]` — partial updates: name / icon / color / order. Case-insensitive duplicate-name guard.
+- `DELETE /api/task-groups/[id]` — delete group. Optional `{moveTasksTo: <id>}` body reassigns tasks before delete; without it, tasks go ungrouped via SetNull cascade. Guards against deleting the user's last group.
+- `POST /api/task-groups/recategorize` — runs a single batched Claude classify over the user's currently-ungrouped (`groupId IS NULL, status != DONE`) tasks. Capped at 40 tasks per call. Rate-limited via `expensiveAi` (10/hour).
+
+Modified `/api/tasks`:
+- `GET` seeds default groups on first fetch.
+- `POST` accepts `groupId` (validated to belong to caller; silent-drop on mismatch to avoid existence-leak).
+- `PATCH` gains a new `move` action: `{id, action:"move", groupId: string | null}` reassigns or ungroups. Target-group ownership validated.
+
+Mobile UI (apps/mobile/app/(tabs)/tasks.tsx full rewrite):
+- ScrollView of `GroupSection` components; one per TaskGroup + an "Ungrouped" section for `groupId IS NULL` tasks.
+- Each section: color dot + Ionicons glyph + name + count header; tap to collapse/expand.
+- Long-press ActionSheetIOS on a task row: Snooze / Mark complete / Move to… / Delete. Move opens a secondary sheet listing all groups + "Ungrouped".
+- Inline title edit + optimistic checkbox toggle preserved from the prior Notes-style pass.
+
+Web UI (apps/web/src/app/tasks/task-list.tsx full rewrite):
+- Mirrors mobile: sectioned collapsible lists, Ungrouped section at bottom.
+- Row hover reveals: Move-to dropdown (absolute-positioned, lists all groups + Ungrouped), Details, Snooze, Delete.
+- Full-edit modal adds a Group `<select>`; changing it fires a separate `action:"move"` PATCH after the edit saves.
+
+### Manual steps needed
+
+- [ ] **`npx prisma db push` from home network.** REQUIRED before these commits can run in production. Adds Entry.goalId (from yesterday — also still pending) + TaskGroup model + Task.groupId + indexes + inverse relations on User and Goal. Keenan or Jim runs — work Macs block Supabase ports.
+- [ ] Jim: `cd apps/mobile && eas update --channel preview` to bundle the two new mobile screens (/dimension/[key] modal + the sectioned tasks UI) into one OTA.
+- [ ] Vercel auto-deploy handles the web changes if the auto-deploy Inngest blocker is resolved; otherwise `vercel --prod` from repo root.
+
+### Notes
+
+**Task groups settings page — DEFERRED to next session.** All backend endpoints exist and are production-ready. Missing UI:
+- Mobile: `apps/mobile/app/settings/task-groups.tsx` with rename (TextInput), icon picker (limited Ionicons set: briefcase, person, heart, cart, ellipsis-horizontal, book, home, leaf, flash, star), color palette (~8 hex swatches), up/down arrows for order (drag-reorder is a nicer-to-have), add-new button (opens modal with name/icon/color inputs), delete button (confirmation + optional "move tasks to…" picker), and a "Re-run AI categorization" button that POSTs to /api/task-groups/recategorize and shows the returned count.
+- Web: `apps/web/src/app/account/task-groups/page.tsx` — same fields, standard form patterns.
+- Estimated scope: 1.5-2hr, roughly 500 LOC across both platforms. No API work needed; just UI wiring.
+
+**Add-task manual button — DEFERRED.** The POST /api/tasks endpoint already accepts groupId. Neither task list exposes a "new task" button yet — tasks primarily come from the extraction pipeline which now classifies correctly. Worth adding alongside the settings screen so the two UI gaps close together.
+
+**Entry.goalId migration is stacked with TaskGroup migration.** Both landed in the schema but neither has been pushed to prod. A single `npx prisma db push` applies them both at once — no order dependency.
+
+**Claude cost profile for dimension detail:** 6 dimensions × N users × cache-miss rate = Claude calls per hour. With 1-hour cache, a typical user opening all 6 dimensions once a day hits Claude 6 times that day. Back-of-envelope: ~2.5k tokens in + ~500 tokens out per call × 6 dimensions × $0.003/1k in + $0.015/1k out ≈ $0.09/user/day worst case. For 100 active users, ~$270/month. Adjust cache TTL if this becomes meaningful; the 1-hour value is a first guess.
+
+**Task group classifier — batch in the extraction prompt, not a separate call.** We considered a dedicated classify-tasks Claude call post-extraction but the extraction call already has the full transcript and is already running. Adding a `groupName` enum field to the existing prompt cost ~20 extra tokens per task and adds no latency. The recategorize endpoint is a separate batched call specifically for the "fix historical ungrouped tasks" use case.
+
+---
+
 ## 2026-04-21 — Beta polish sprint 2: goal-contextualized recording, web parity, crisis tone, PRO spec
 
 - **Requested by:** Both
