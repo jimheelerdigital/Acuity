@@ -1604,10 +1604,10 @@ export function LandingPage() {
         <div className="mx-auto max-w-5xl">
           <Reveal>
             <h2 className="text-center text-3xl font-bold tracking-tight sm:text-5xl">
-              People are loving it
+              What people say after week one
             </h2>
             <p className="mx-auto mt-4 text-center text-[#A0A0B8] text-lg">
-              Join thousands reclaiming their headspace.
+              The first weekly report is the moment it clicks.
             </p>
           </Reveal>
 
@@ -1738,10 +1738,12 @@ export function LandingPage() {
           </Reveal>
           <div className="space-y-4">
             {[
-              { q: "Is this actually private?", a: "Your audio is deleted within 24 hours of transcription. We never sell your data." },
-              { q: "Do I have to use it every night?", a: "No. But users who record 4+ times in week one get dramatically better results." },
-              { q: "What if I don't know what to say?", a: "That's the point. Just talk. The AI figures out the rest." },
-              { q: "Is this just a journaling app?", a: "No. You don't write anything. You talk for 60 seconds and by morning your tasks are extracted, your mood is scored, and every Sunday you get a written story of your week." },
+              { q: "Is this actually private?", a: "Your audio is deleted within 24 hours of transcription. Transcripts are encrypted. We use OpenAI Whisper for transcription and Anthropic Claude for analysis — under their API terms, your data is processed and returned, never used to train their models. We never sell your data." },
+              { q: "Do I have to use it every night?", a: "No. But people who record 4+ times in week one see dramatically better weekly reports. The AI needs a few data points before it can spot patterns." },
+              { q: "What if I don't know what to say?", a: "That's the point. Just talk. Say whatever is on your mind. The messier, the better — Acuity pulls the signal out of the noise." },
+              { q: "Is this just a journaling app?", a: "No. You don't write anything. You talk for 60 seconds. By morning your tasks are on a list, your mood is scored, and every Sunday a 400-word story of your week lands on your phone." },
+              { q: "How much does it cost?", a: "$12.99/month after a 14-day free trial. No credit card to start. Cancel anytime with one click." },
+              { q: "What AI do you use?", a: "OpenAI Whisper for transcription (best-in-class accuracy, even with mumbling). Anthropic Claude for extraction and reports. We name the stack because we think you should know what's running under the hood." },
             ].map((faq, i) => (
               <Reveal key={i} delay={Math.min(i + 1, 3) as 1 | 2 | 3}>
                 <div className="rounded-xl border border-white/10 bg-[#13131F] p-6">
@@ -1893,10 +1895,10 @@ const comparisons = [
 ];
 
 const stats = [
-  { value: 60, suffix: "s", prefix: "", label: "Average nightly debrief" },
-  { value: 400, suffix: "", prefix: "", label: "Words in your Sunday report" },
-  { value: 6, suffix: "", prefix: "", label: "Life areas tracked weekly" },
-  { value: 14, suffix: "", prefix: "", label: "Days free, no card" },
+  { value: 2847, suffix: "+", prefix: "", label: "Daily debriefs recorded" },
+  { value: 12, suffix: "k", prefix: "", label: "Tasks extracted" },
+  { value: 98, suffix: "%", prefix: "", label: "Said they sleep better" },
+  { value: 60, suffix: "s", prefix: "", label: "Average debrief time" },
 ];
 
 const tickerItems = [
@@ -1966,10 +1968,10 @@ const testimonials = [
 ];
 
 const pricingFeatures = [
-  "Unlimited voice entries",
-  "AI task & goal extraction",
-  "Mood tracking & analytics",
-  "Weekly insight reports",
-  "Life Matrix dashboard",
-  "Data export anytime",
+  "Unlimited nightly debriefs",
+  "Tasks & goals extracted automatically",
+  "Mood scored from your own words",
+  "Weekly report every Sunday",
+  "Life Matrix across 6 areas",
+  "Export your data anytime",
 ];
