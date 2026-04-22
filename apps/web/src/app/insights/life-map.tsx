@@ -155,9 +155,9 @@ export function LifeMap() {
     });
 
   const selectedArea = displayAreas.find((a) => a.area === selected);
-  const selectedHistory = history.find(
-    (h) => h.name === selected
-  );
+  // History rows carry both `area` (enum) and `name` (title-case). Match
+  // on `area` since `selected` is now the enum in every code path.
+  const selectedHistory = history.find((h) => h.area === selected);
   const isLocked = !memory || memory.totalEntries < 3;
 
   if (loading) {
@@ -376,10 +376,14 @@ function RadarChart({
     };
   };
 
-  // Build polygon points from scores
+  // Build polygon points from scores. Match on the uppercase enum
+  // (CAREER / HEALTH / …) since that's what /api/lifemap returns in
+  // `areas[].area`. Previously compared against `config.name` ("Career")
+  // which always missed, collapsing the polygon to a single point at
+  // the center and producing the empty-hexagon regression.
   const polyPoints = areaConfigs
     .map((config, i) => {
-      const area = areas.find((a) => a.area === config.name);
+      const area = areas.find((a) => a.area === config.enum);
       const score = area ? area.score / 10 : 0;
       const r = score * maxR;
       const p = getPoint(i, r);
@@ -394,7 +398,7 @@ function RadarChart({
     ? areaConfigs
         .map((config, i) => {
           const t = trendAreas.find((ta) => ta.area === config.enum);
-          const current = areas.find((a) => a.area === config.name);
+          const current = areas.find((a) => a.area === config.enum);
           const score10 =
             t?.score != null
               ? Math.max(0, Math.min(10, t.score / 10))
@@ -471,20 +475,22 @@ function RadarChart({
           className="transition-all duration-700"
         />
 
-        {/* Area nodes + labels */}
+        {/* Area nodes + labels — keyed by the uppercase enum everywhere
+            so the same `selected` value works whether the user tapped
+            the radar or a score card (both now flow the enum). */}
         {areaConfigs.map((config, i) => {
-          const area = areas.find((a) => a.area === config.name);
+          const area = areas.find((a) => a.area === config.enum);
           const score = area ? area.score / 10 : 0;
           const nodeR = score * maxR;
           const nodeP = getPoint(i, nodeR);
           const labelP = getPoint(i, maxR + 18);
-          const isSelected = selected === config.name;
+          const isSelected = selected === config.enum;
 
           return (
             <g
-              key={config.name}
+              key={config.enum}
               className="cursor-pointer"
-              onClick={() => onSelect(config.name)}
+              onClick={() => onSelect(config.enum)}
             >
               {/* Pulse ring on selected */}
               {isSelected && (
@@ -565,7 +571,7 @@ function DetailPanel({
   history: HistoryArea | undefined;
   onClose: () => void;
 }) {
-  const config = DEFAULT_LIFE_AREAS.find((a) => a.name === area.area);
+  const config = DEFAULT_LIFE_AREAS.find((a) => a.enum === area.area);
   const accentColor = config?.color ?? "#71717A";
   const score100 = area.score * 10;
   const baseline = area.baselineScore;
