@@ -7,6 +7,67 @@
 
 ---
 
+## 2026-04-22 — Beta polish sprint: task editor UX, /account nav, universal record-about sheet
+
+- **Requested by:** Both
+- **Committed by:** Claude Code
+- **Commit hashes:** a592797 (task name opens editor), 163f6ec (nav link to /account), 7005923 (universal RecordSheet). This PROGRESS entry on a followup commit.
+
+### In plain English (for Keenan)
+
+Three pieces of beta-testing polish landed.
+
+1. **Tap a task to edit it.** Before: tapping a task name on the website put the cursor in an inline text box for rename-only; the pencil icon (hover-only on desktop) opened the full form. Users kept tapping the name to see the full task — now they get what they expect. Phone app gets the same: tap the task name → a full-screen sheet with all the fields (title / description / priority / due date / group). Long-press on phone still opens the snooze / delete / move-to menu.
+
+2. **Your avatar on the web header now links to settings.** Before: the little circle in the top-right did nothing. Now clicking it takes you to /account where all the settings already live (profile, billing, notifications, referrals, data export, privacy, appearance, delete account — more than mobile has, actually). The page was already built, just wasn't reachable from the nav.
+
+3. **"Record about this" finally works the way it looks like it should.** Before: tapping "Record about this" on a Life Matrix dimension's reflection prompt shipped you to Home to record, losing every bit of context about which dimension you were reflecting on. The resulting entry had no memory of what motivated it. Now: a recording sheet slides up right there, keeps you in place, and the entry is tagged with the dimension so the AI knows "this is specifically about your Career". Goal-based recording on phone already worked this way; now dimension-based recording matches.
+
+### Technical changes (for Jimmy)
+
+**Fix 1 — tap task name opens full editor (commit a592797):**
+- Mobile: new `apps/mobile/app/task/[id].tsx` modal route (registered in `app/_layout.tsx` with `presentation: "modal"`). Cancel / Save header, title + description TextInputs, 4-priority chip row, due-date text input (YYYY-MM-DD — native date picker needs @react-native-community/datetimepicker which isn't in the bundle), group picker chips (Ungrouped + all TaskGroups), Delete action. Wires to existing /api/tasks PATCH with action: "edit" for fields + action: "move" for group reassignment.
+- Mobile `app/(tabs)/tasks.tsx`: stripped all inline-edit state (editingId / editingText / saveEdit / beginEdit), stripped the TextInput branch + inline-edit useRef, added `openTaskEditor` callback that router.push's to `/task/${id}`. Tap on title text → open editor. Long-press still opens the ActionSheet.
+- Web `apps/web/src/app/tasks/task-list.tsx`: stripped inline-edit state + the `<input>` branch in TaskRow + the pencil "Details" hover icon. Tap text button now calls `onOpenFullEdit` which opens the existing TaskEditModal. Removed unused `useRef` import.
+
+**Fix 2 — /account discoverability (commit 163f6ec):**
+- Audit finding: web /account was already feature-complete (940 LOC, 12 sections covering Profile / Subscription + Stripe portal / Reminders / Life Matrix dimensions / Referrals / Weekly + Monthly email prefs / Calendar integrations / Data export / Support & safety / Appearance / Privacy choices / Delete account). Gap was discoverability — no nav link.
+- `apps/web/src/components/nav-bar.tsx`: wrapped the user avatar + name in `<Link href="/account">` matching the iOS Settings convention of tap-your-profile. The standalone Sign out button in the nav stays.
+- Intentionally NOT shipping the sub-route split Jim sketched in the spec (/account/profile, /account/appearance, etc.). The single sectioned page is simpler to scan and the split adds 6 files for no functional gain. Documented as a future style choice.
+
+**Fix 3 — universal RecordSheet (commit 7005923):**
+- Schema: `Entry.dimensionContext String?` — lowercase DEFAULT_LIFE_AREAS key. Nullable. Requires `prisma db push`.
+- Backend (sync + async paths):
+  - `/api/record` accepts a new `dimensionContext` FormData field. KNOWN_DIMENSIONS set filters unknown values rather than persisting (defense against forged inputs).
+  - `lib/pipeline.ts::extractFromTranscript` takes optional `dimensionContext: string | null`. Injects a "This entry is specifically about the user's {Area Name} life area…" block into the Claude prompt between the goal block and the task-groups block.
+  - `processEntry` + `inngest/functions/process-entry.ts` thread dimensionContext end-to-end (load from Entry on the async path, accept as param on the sync path).
+- Web (new component): `apps/web/src/components/record-sheet.tsx` — `<RecordSheet>` modal. Props: `{context: {type, id, label, description}, open, onClose, onRecordComplete}`. MediaRecorder + POST /api/record. Context types: goal / dimension / theme / entry-prompt / generic; goal sets goalId, dimension sets dimensionContext, others upload without extra context. Bottom sheet on mobile browsers, centered modal on desktop. Escape + backdrop-click prompt "Discard?" if mid-recording. 402 → /upgrade, 429 → friendly retry hint.
+- Wiring: `apps/web/src/app/insights/dimension-detail.tsx` "Record about this" now opens RecordSheet with type="dimension" + id=dimension.key + description=reflectionPrompt. Was a `<Link href="/home#record">` that navigated away. onRecordComplete also closes the dimension modal so the user lands back on /insights; next open of that dimension shows the new entry under "Recent entries".
+- Mobile wiring: extended existing `/record` modal route (already presentation:"modal" — same "sheet keeps user in place" semantics) to accept `dimensionKey` query param via useLocalSearchParams. Forwards as `dimensionContext` in the upload FormData. `apps/mobile/app/dimension/[key].tsx` "Record about this" now routes to `/record?dimensionKey=<key>`. No new mobile bottom-sheet component needed — the existing Expo Router modal achieved the same UX.
+
+### Manual steps needed
+
+- [ ] **`npx prisma db push` from home network.** Stacks with the previously-pending Entry.goalId + TaskGroup migrations. One pass applies all three schema deltas (Entry.goalId, TaskGroup model + Task.groupId, Entry.dimensionContext). Keenan or Jim — work Macs block Supabase ports.
+- [ ] Jim: consolidated `eas update --channel preview` covering the mobile changes from this sprint (new task editor modal + dimension-key record param).
+- [ ] Vercel auto-deploy handles web changes if the Inngest blocker is cleared, else `vercel --prod`.
+
+### Notes
+
+**Task groups settings page still deferred.** Yesterday's entry flagged this. Still not shipped — ship alongside an "add task manually" button. Endpoints exist.
+
+**RecordSheet callers not yet migrated:**
+- Web goal detail doesn't currently have a "Record about this goal" button at all; when it does, the RecordSheet is already ready (just pass `context.type="goal"`).
+- Both platforms' `recommended-activity.tsx` cards still navigate to /goal or /home. They already carry their own context via routing params so behavior isn't broken, just not sheet-based.
+- Theme / entry-prompt / generic context types are supported at the component level but have no callers.
+
+**UX equivalence on mobile:** Jim's spec asked for a "half-sheet modal that keeps user in place" and explicitly flagged the existing recorder routing as broken. On mobile, Expo Router's `presentation: "modal"` already provides the half-sheet + parent-preserved behavior — the /record modal sits on top of the dimension/goal detail screen, not replacing it. Extending /record with dimensionKey URL params (rather than building a parallel RecordSheet RN component) gives the same UX with less code. Web had to build the new component because its recording flow previously lived only on /home.
+
+**Stripe customer portal is already wired** on /account (verified during Fix 2 audit). No work needed.
+
+**Entry.dimensionContext prompt-injection is intentionally soft:** the block tells Claude to "weight that area's lifeAreaMentions accordingly" rather than forcing it. Users who record about Career but actually end up talking about their health should still get the extraction they deserve.
+
+---
+
 ## 2026-04-22 — Rich dimension detail + AI-grouped tasks (two deferred features shipped)
 
 - **Requested by:** Both
