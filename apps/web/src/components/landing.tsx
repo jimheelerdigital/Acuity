@@ -1109,21 +1109,21 @@ export function LandingPage() {
         <div className="relative mx-auto max-w-6xl px-6">
           <div className="flex flex-col lg:flex-row lg:items-center lg:gap-10">
             {/* Left content — center on mobile, left on desktop */}
-            <div className="flex-1 max-w-xl text-center lg:text-left mx-auto lg:mx-0">
+            <div className="flex-1 max-w-xl text-center mx-auto lg:mx-0">
               <Reveal>
-                <h1 className="text-5xl font-extrabold tracking-tight sm:text-6xl lg:text-7xl leading-[1.05]">
+                <h1 className="text-[2.25rem] font-extrabold tracking-tight sm:text-5xl md:text-6xl lg:text-7xl leading-[1.05] whitespace-nowrap">
                   You have too much in your head.
                 </h1>
               </Reveal>
 
               <Reveal delay={2}>
-                <p className="mt-5 text-base text-[#A0A0B8] leading-relaxed max-w-md mx-auto lg:mx-0">
+                <p className="mt-5 text-base text-[#A0A0B8] leading-relaxed max-w-md mx-auto">
                   Acuity is the daily debrief that turns what you&rsquo;re thinking about into what you&rsquo;re doing. Talk for 60 seconds, any time of day — it catches your tasks, tracks the goals you keep circling, and helps you monitor the patterns that keep you stuck.
                 </p>
               </Reveal>
 
               <Reveal delay={3}>
-                <div className="mt-8 flex flex-col sm:flex-row items-center lg:items-start justify-center lg:justify-start gap-3">
+                <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
                   <Link
                     href="/waitlist?utm_campaign=home"
                     onClick={trackInitiateCheckout}
