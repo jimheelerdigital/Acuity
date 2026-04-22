@@ -713,7 +713,7 @@ function LockedState({ entryCount }: { entryCount: number }) {
             : "Keep journaling — patterns will emerge."}
         </p>
         <Link
-          href="/dashboard"
+          href="/home"
           className="inline-block mt-5 rounded-full bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500"
         >
           Record today

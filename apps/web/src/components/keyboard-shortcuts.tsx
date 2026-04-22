@@ -7,7 +7,7 @@ import { useEffect } from "react";
  * Global keyboard shortcuts. Mount once at the app root (dashboard
  * layout). Shortcut table:
  *
- *   n   — start a new recording (/dashboard#record)
+ *   n   — start a new recording (/home#record)
  *   g   — jump to Goals
  *   i   — jump to Insights
  *   e   — jump to Entries list
@@ -51,7 +51,7 @@ export function KeyboardShortcuts() {
 
       if (key === "n") {
         e.preventDefault();
-        router.push("/dashboard#record");
+        router.push("/home#record");
       } else if (key === "g") {
         e.preventDefault();
         router.push("/goals");

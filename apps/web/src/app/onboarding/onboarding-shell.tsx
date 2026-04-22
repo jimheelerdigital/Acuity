@@ -153,7 +153,7 @@ export function OnboardingShell({
         // here next visit. Non-fatal.
       }
       trackClient("onboarding_skipped", { skippedAtStep: step });
-      router.push("/dashboard?onboarded=skip");
+      router.push("/home?onboarded=skip");
     });
   }, [router, step]);
 

@@ -62,7 +62,7 @@ export function RecommendedActivity({
     setHidden(true);
   };
 
-  const ctaHref = goalId ? `/goals/${goalId}` : "/dashboard#record";
+  const ctaHref = goalId ? `/goals/${goalId}` : "/home#record";
 
   return (
     <section className="mb-8 rounded-2xl border border-violet-200 bg-gradient-to-br from-violet-50 to-white p-5 shadow-sm dark:border-violet-900/30 dark:from-violet-950/20 dark:to-[#1E1E2E]">

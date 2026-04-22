@@ -10,7 +10,7 @@ type Loading = "google" | "password" | "magic" | null;
 function SignInForm() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const callbackUrl = searchParams.get("callbackUrl") ?? "/dashboard";
+  const callbackUrl = searchParams.get("callbackUrl") ?? "/home";
   const urlError = searchParams.get("error");
   const verified = searchParams.get("verified") === "1";
 

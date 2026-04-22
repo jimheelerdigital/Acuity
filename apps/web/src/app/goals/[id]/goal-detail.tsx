@@ -262,7 +262,7 @@ export function GoalDetail({
       <section>
         <button
           onClick={() =>
-            router.push(`/dashboard#record?goal=${encodeURIComponent(goal.title)}`)
+            router.push(`/home#record?goal=${encodeURIComponent(goal.title)}`)
           }
           className="w-full rounded-2xl border border-violet-200 dark:border-violet-900/30 bg-violet-50 dark:bg-violet-950/20 px-5 py-4 text-left transition hover:border-violet-300 dark:hover:border-violet-700/40"
         >

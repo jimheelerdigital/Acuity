@@ -48,7 +48,7 @@ function SignUpForm() {
     setError(null);
     setLoading("google");
     if (typeof fbq !== "undefined") fbq("track", "CompleteRegistration");
-    await signIn("google", { callbackUrl: "/dashboard" });
+    await signIn("google", { callbackUrl: "/home" });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

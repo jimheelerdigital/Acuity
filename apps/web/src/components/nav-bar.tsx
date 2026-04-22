@@ -6,7 +6,7 @@ import { signOut, useSession } from "next-auth/react";
 import { useState, useRef, useEffect, useCallback } from "react";
 
 const NAV_LINKS = [
-  { href: "/dashboard", label: "Dashboard" },
+  { href: "/home", label: "Home" },
   { href: "/tasks", label: "Tasks" },
   { href: "/goals", label: "Goals" },
   { href: "/insights", label: "Insights" },
@@ -241,7 +241,7 @@ export function NavBar() {
         {/* Left: logo + dropdown + links */}
         <div className="flex items-center gap-6">
           <Link
-            href="/dashboard"
+            href="/home"
             className="flex items-center gap-2 group"
           >
             <img src="/AcuityLogoDark.png" alt="Acuity logo" className="shrink-0" style={{ width: 24, height: 24 }} />

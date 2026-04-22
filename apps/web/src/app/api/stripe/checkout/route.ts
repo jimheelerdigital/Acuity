@@ -34,7 +34,7 @@ export async function POST() {
         quantity: 1,
       },
     ],
-    success_url: `${process.env.NEXTAUTH_URL}/dashboard?upgraded=1`,
+    success_url: `${process.env.NEXTAUTH_URL}/home?upgraded=1`,
     cancel_url: `${process.env.NEXTAUTH_URL}/upgrade`,
     metadata: { userId: session.user.id },
   });

@@ -45,7 +45,7 @@ export default async function OnboardingPage({
   });
 
   if (onboarding?.completedAt) {
-    redirect("/dashboard");
+    redirect("/home");
   }
 
   const requestedStep = Number(searchParams?.step ?? "1");

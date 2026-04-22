@@ -98,7 +98,7 @@ export default async function LifeAuditPage({
     <article className="min-h-screen bg-[#FAFAF7] px-6 py-16">
       <div className="mx-auto max-w-2xl">
         <Link
-          href="/dashboard"
+          href="/home"
           className="text-sm text-zinc-400 dark:text-zinc-500 transition hover:text-zinc-900"
         >
           &larr; Back to dashboard
@@ -273,7 +273,7 @@ function PendingAuditView({ status }: { status: string }) {
             : "Generation takes a few minutes. This page will update as soon as it's ready."}
         </p>
         <Link
-          href="/dashboard"
+          href="/home"
           className="mt-8 inline-block text-sm text-violet-600 underline underline-offset-4 transition hover:text-violet-900"
         >
           Back to dashboard

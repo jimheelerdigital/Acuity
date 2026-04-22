@@ -56,7 +56,7 @@ export function Step8FirstEntryCta() {
         throw new Error(`Completion failed (HTTP ${res.status})`);
       }
       trackClient("onboarding_completed", { finalStep: 8 });
-      router.push(`/dashboard${withRecord ? "?onboarded=1" : "?onboarded=done"}`);
+      router.push(`/home${withRecord ? "?onboarded=1" : "?onboarded=done"}`);
     } catch (err) {
       setIsSubmitting(false);
       setError(err instanceof Error ? err.message : "Something went wrong");

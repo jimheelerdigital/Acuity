@@ -81,7 +81,7 @@ const jsonLd = {
 
 export default async function HomePage() {
   const session = await getServerSession(getAuthOptions());
-  if (session) redirect("/dashboard");
+  if (session) redirect("/home");
 
   return (
     <>

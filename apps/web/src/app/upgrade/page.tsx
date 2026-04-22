@@ -84,7 +84,7 @@ export default async function UpgradePage({
         </div>
 
         <a
-          href="/dashboard"
+          href="/home"
           className="block text-center text-sm text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 transition"
         >
           Back to dashboard

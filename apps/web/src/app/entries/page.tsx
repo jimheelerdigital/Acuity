@@ -5,7 +5,7 @@ import Link from "next/link";
 import { formatRelativeDate } from "@acuity/shared";
 
 import { getAuthOptions } from "@/lib/auth";
-import { EntryCard } from "@/app/dashboard/entry-card";
+import { EntryCard } from "@/app/home/entry-card";
 
 export const dynamic = "force-dynamic";
 
@@ -47,10 +47,10 @@ export default async function EntriesPage() {
         <div className="mb-6 flex items-center justify-between">
           <div>
             <Link
-              href="/dashboard"
+              href="/home"
               className="text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition"
             >
-              ← Dashboard
+              ← Home
             </Link>
             <h1 className="mt-2 text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
               All entries
@@ -73,7 +73,7 @@ export default async function EntriesPage() {
               Record your first brain dump from the dashboard to see it here.
             </p>
             <Link
-              href="/dashboard"
+              href="/home"
               className="mt-5 inline-block rounded-full bg-violet-600 px-5 py-2 text-sm font-semibold text-white hover:bg-violet-500"
             >
               Go to dashboard
