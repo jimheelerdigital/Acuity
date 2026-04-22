@@ -266,6 +266,32 @@ export async function GET(req: NextRequest) {
   });
   const entryMap = new Map(entryRows.map((e) => [e.id, e]));
 
+  // ── Per-theme sparkline (last 30 days, daily buckets) ────────────
+  // Even when the window filter is shorter or longer, we render the
+  // card sparkline over a fixed 30-day window so visual comparison
+  // across themes stays meaningful.
+  const SPARKLINE_DAYS = 30;
+  const sparklineStart = new Date(
+    now.getTime() - SPARKLINE_DAYS * 24 * 60 * 60 * 1000
+  );
+  sparklineStart.setHours(0, 0, 0, 0);
+
+  const sparklineByTheme = new Map<string, number[]>();
+  for (const theme of topThemes) {
+    sparklineByTheme.set(theme.id, new Array(SPARKLINE_DAYS).fill(0));
+  }
+  for (const m of mentions) {
+    if (!topThemeIds.has(m.themeId)) continue;
+    if (m.createdAt < sparklineStart) continue;
+    const dayIdx = Math.floor(
+      (m.createdAt.getTime() - sparklineStart.getTime()) /
+        (24 * 60 * 60 * 1000)
+    );
+    if (dayIdx < 0 || dayIdx >= SPARKLINE_DAYS) continue;
+    const bucket = sparklineByTheme.get(m.themeId);
+    if (bucket) bucket[dayIdx] += 1;
+  }
+
   // Build the per-theme recentEntries list. Attach the sentiment of
   // the specific mention that bridged theme↔entry (not the entry's
   // overall sentiment).
@@ -299,21 +325,56 @@ export async function GET(req: NextRequest) {
     }
     const avgSentiment =
       t.mentionCount > 0 ? t.sentimentSum / t.mentionCount : 0;
+
+    // Sentiment band for the redesigned cards. Threshold picked so
+    // mostly-neutral themes don't drift positive/challenging on a
+    // single stray mention. ≥ +0.33 positive / ≤ -0.33 challenging.
+    const sentimentBand: "positive" | "neutral" | "challenging" =
+      avgSentiment >= 0.33
+        ? "positive"
+        : avgSentiment <= -0.33
+          ? "challenging"
+          : "neutral";
+
+    const sparkline = sparklineByTheme.get(t.id) ?? [];
+    const firstMentionedDaysAgo = Math.max(
+      0,
+      Math.floor(
+        (now.getTime() - t.firstMentionedAt.getTime()) /
+          (24 * 60 * 60 * 1000)
+      )
+    );
+    const trendDescription = deriveTrendDescription(
+      sparkline,
+      sentimentBand,
+      t.mentionCount,
+      firstMentionedDaysAgo
+    );
+
     return {
       id: t.id,
       name: t.name,
       mentionCount: t.mentionCount,
       avgSentiment,
+      sentimentBand,
       firstMentionedAt: t.firstMentionedAt.toISOString(),
       lastMentionedAt: t.lastMentionedAt.toISOString(),
+      firstMentionedDaysAgo,
+      sparkline,
+      trendDescription,
       recentEntries: Array.from(perEntry.values()),
     };
   });
+
+  const totalMentions = mentions.length;
+  const topTheme = themes.length > 0 ? themes[0].name : null;
 
   return NextResponse.json(
     {
       themes,
       coOccurrences,
+      totalMentions,
+      topTheme,
       meta: {
         windowStart: windowStart?.toISOString() ?? null,
         windowEnd: effectiveEnd.toISOString(),
@@ -323,4 +384,49 @@ export async function GET(req: NextRequest) {
     },
     { headers: { "Cache-Control": "private, max-age=300" } }
   );
+}
+
+/**
+ * Short human-readable trend label for a theme card. Rules (in order):
+ *   - First mention <7 days ago → "New theme"
+ *   - <3 mentions with uptick in the last 7d bucket → "Emerging ↑"
+ *   - Mostly positive sentiment and recent >= older → "Steadily positive"
+ *   - Last-7 count > first-7 count by ≥50% → "Trending up"
+ *   - Last-7 count < first-7 count → "Declining"
+ *   - High variance across the 30 days → "Fluctuating"
+ *   - Default → "Steady"
+ */
+function deriveTrendDescription(
+  sparkline: number[],
+  sentimentBand: "positive" | "neutral" | "challenging",
+  mentionCount: number,
+  firstMentionedDaysAgo: number
+): string {
+  if (firstMentionedDaysAgo < 7) return "New theme";
+
+  const n = sparkline.length;
+  if (n === 0) return "Steady";
+
+  const firstHalf = sparkline.slice(0, Math.floor(n / 2));
+  const lastHalf = sparkline.slice(Math.floor(n / 2));
+  const firstSum = firstHalf.reduce((a, b) => a + b, 0);
+  const lastSum = lastHalf.reduce((a, b) => a + b, 0);
+
+  if (mentionCount < 3 && lastSum > 0 && lastSum >= firstSum) {
+    return "Emerging ↑";
+  }
+  if (sentimentBand === "positive" && lastSum >= firstSum) {
+    return "Steadily positive";
+  }
+  if (firstSum > 0 && lastSum >= firstSum * 1.5) return "Trending up";
+  if (firstSum > 0 && lastSum < firstSum) return "Declining";
+
+  // Fluctuating detection — std-dev > mean when mean > 0.
+  const mean = sparkline.reduce((a, b) => a + b, 0) / n;
+  if (mean > 0) {
+    const variance =
+      sparkline.reduce((acc, v) => acc + (v - mean) ** 2, 0) / n;
+    if (Math.sqrt(variance) > mean) return "Fluctuating";
+  }
+  return "Steady";
 }

@@ -24,7 +24,7 @@ export default async function ThemeMapPage() {
 
   return (
     <div className="min-h-screen">
-      <main className="mx-auto max-w-6xl px-6 py-10">
+      <main className="mx-auto max-w-xl px-6 py-10">
         <ThemeMapClient />
       </main>
     </div>
