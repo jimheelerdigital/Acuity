@@ -5,6 +5,8 @@ import { useState } from "react";
 
 import { formatRelativeDate } from "@acuity/shared";
 
+import { RecordSheet } from "@/components/record-sheet";
+
 type Goal = {
   id: string;
   title: string;
@@ -57,6 +59,7 @@ export function GoalDetail({
   const [notesDraft, setNotesDraft] = useState(initialGoal.notes ?? "");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [recordOpen, setRecordOpen] = useState(false);
 
   const patch = async (fields: Record<string, unknown>) => {
     setSaving(true);
@@ -261,9 +264,7 @@ export function GoalDetail({
       {/* Add reflection CTA */}
       <section>
         <button
-          onClick={() =>
-            router.push(`/home#record?goal=${encodeURIComponent(goal.title)}`)
-          }
+          onClick={() => setRecordOpen(true)}
           className="w-full rounded-2xl border border-violet-200 dark:border-violet-900/30 bg-violet-50 dark:bg-violet-950/20 px-5 py-4 text-left transition hover:border-violet-300 dark:hover:border-violet-700/40"
         >
           <p className="text-xs font-semibold uppercase tracking-widest text-violet-600 dark:text-violet-400">
@@ -311,6 +312,21 @@ export function GoalDetail({
           Delete goal
         </button>
       </section>
+
+      <RecordSheet
+        open={recordOpen}
+        onClose={() => setRecordOpen(false)}
+        context={{
+          type: "goal",
+          id: goal.id,
+          label: goal.title,
+          description: goal.description ?? undefined,
+        }}
+        onRecordComplete={() => {
+          setRecordOpen(false);
+          router.refresh();
+        }}
+      />
     </article>
   );
 }
