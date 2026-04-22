@@ -273,20 +273,29 @@ export function NavBar() {
 
         {/* Right: user info */}
         <div className="flex items-center gap-3">
-          {user.image ? (
-            <img
-              src={user.image}
-              alt=""
-              className="h-7 w-7 rounded-full ring-2 ring-white"
-            />
-          ) : (
-            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-zinc-200 dark:bg-white/10 text-xs font-medium text-zinc-600 dark:text-zinc-300">
-              {initials}
-            </div>
-          )}
-          <span className="text-sm text-zinc-600 dark:text-zinc-300 hidden sm:block">
-            {user.name ?? user.email}
-          </span>
+          {/* Avatar is clickable → /account. Matches the iOS Settings
+              convention (tap your profile to manage account). Replaces
+              the prior no-op avatar image that confused beta testers. */}
+          <Link
+            href="/account"
+            aria-label="Account"
+            className="flex items-center gap-3 rounded-full transition hover:opacity-80"
+          >
+            {user.image ? (
+              <img
+                src={user.image}
+                alt=""
+                className="h-7 w-7 rounded-full ring-2 ring-white"
+              />
+            ) : (
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-zinc-200 dark:bg-white/10 text-xs font-medium text-zinc-600 dark:text-zinc-300">
+                {initials}
+              </div>
+            )}
+            <span className="text-sm text-zinc-600 dark:text-zinc-300 hidden sm:block">
+              {user.name ?? user.email}
+            </span>
+          </Link>
           <button
             onClick={() => signOut({ callbackUrl: "/" })}
             className="text-sm text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 transition"
