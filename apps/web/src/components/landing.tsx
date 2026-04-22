@@ -1106,146 +1106,113 @@ export function LandingPage() {
       <section className="relative pt-28 pb-16 sm:pt-36 sm:pb-24 overflow-hidden">
         <ParallaxOrbs />
 
-        <div className="relative mx-auto max-w-6xl px-6">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:gap-16">
-            {/* Left content */}
-            <div className="flex-1 max-w-xl">
-              <Reveal>
-                <h1 className="text-5xl font-extrabold tracking-tight sm:text-6xl lg:text-7xl leading-[1.05]">
-                  You have too much in your head.
-                </h1>
-              </Reveal>
+        <div className="relative mx-auto max-w-4xl px-6 text-center">
+          <Reveal>
+            <h1 className="text-5xl font-extrabold tracking-tight sm:text-6xl lg:text-7xl leading-[1.05]">
+              You have too much in your head.
+            </h1>
+          </Reveal>
 
-              <Reveal delay={2}>
-                <p className="mt-5 text-base text-[#A0A0B8] leading-relaxed max-w-sm">
-                  Acuity is the daily debrief that turns what you&rsquo;re thinking about into what you&rsquo;re doing. Talk for 60 seconds, any time of day — it catches your tasks, tracks the goals you keep circling, and helps you monitor the patterns that keep you stuck.
-                </p>
-              </Reveal>
+          <Reveal delay={2}>
+            <p className="mt-6 text-base text-[#A0A0B8] leading-relaxed max-w-xl mx-auto">
+              Acuity is the daily debrief that turns what you&rsquo;re thinking about into what you&rsquo;re doing. Talk for 60 seconds, any time of day — it catches your tasks, tracks the goals you keep circling, and helps you monitor the patterns that keep you stuck.
+            </p>
+          </Reveal>
 
-              <Reveal delay={3}>
-                <div className="mt-8 flex flex-col sm:flex-row gap-3">
-                  <Link
-                    href="/waitlist?utm_campaign=home"
-                    onClick={trackInitiateCheckout}
-                    className="rounded-full bg-[#7C5CFC] px-7 py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] hover:shadow-xl hover:shadow-[#7C5CFC]/10 active:scale-95"
-                  >
-                    Join the waitlist — first month free
-                  </Link>
-                  <a
-                    href="#how-it-works"
-                    className="rounded-xl border border-white/10 px-7 py-3.5 text-sm font-semibold text-[#A0A0B8] transition hover:border-white/20 hover:bg-white/5 active:scale-95"
-                  >
-                    See how it works
-                  </a>
-                </div>
-                <p className="mt-3 text-xs text-[#A0A0B8]">
-                  No credit card required
-                </p>
-              </Reveal>
+          <Reveal delay={3}>
+            <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
+              <Link
+                href="/waitlist?utm_campaign=home"
+                onClick={trackInitiateCheckout}
+                className="rounded-full bg-[#7C5CFC] px-7 py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] hover:shadow-xl hover:shadow-[#7C5CFC]/10 active:scale-95"
+              >
+                Join the waitlist — first month free
+              </Link>
+              <a
+                href="#how-it-works"
+                className="rounded-xl border border-white/10 px-7 py-3.5 text-sm font-semibold text-[#A0A0B8] transition hover:border-white/20 hover:bg-white/5 active:scale-95"
+              >
+                See how it works
+              </a>
             </div>
+            <p className="mt-3 text-xs text-[#A0A0B8]">
+              No credit card required
+            </p>
+          </Reveal>
 
-            {/* Right side: Animated phone mockups */}
-            <div className="flex-1 mt-12 lg:mt-0 flex justify-center lg:justify-end">
-              <div className="relative w-[320px] h-[580px] sm:w-[380px] sm:h-[640px]">
-                {/* Phone 1 (back) — floating — light theme matching app */}
-                <div className="absolute right-0 top-8 w-[220px] sm:w-[260px] h-[440px] sm:h-[500px] rounded-[2rem] bg-[#1E1E2E] p-2 shadow-2xl rotate-3 animate-float-delay">
-                  <div className="h-full w-full rounded-[1.5rem] bg-[#13131F] p-4 flex flex-col gap-3 overflow-hidden">
-                    <div className="text-xs text-[#A0A0B8] font-medium">
-                      Weekly Report
-                    </div>
-                    <div className="rounded-xl border border-white/10 bg-[#1E1E2E] p-3 shadow-sm">
-                      <div className="text-xs text-[#A0A0B8] mb-2">
-                        Mood Trend
-                      </div>
-                      <div className="h-12">
-                        <MoodBars
-                          heights={[40, 55, 45, 70, 65, 80, 75]}
-                          color="bg-violet-400"
-                        />
-                      </div>
-                    </div>
-                    <div className="rounded-xl border border-white/10 bg-[#1E1E2E] p-3 shadow-sm">
-                      <div className="text-xs text-[#A0A0B8] mb-1">
-                        Top Insight
-                      </div>
-                      <div className="text-xs text-[#A0A0B8]">
-                        You mention "sleep" 4x this week. Consider a
-                        wind-down routine.
-                      </div>
-                    </div>
-                    <div className="rounded-xl border border-white/10 bg-[#1E1E2E] p-3 shadow-sm">
-                      <div className="text-xs text-[#A0A0B8] mb-1">
-                        Goals Progress
-                      </div>
-                      <div className="space-y-2">
-                        <div>
-                          <div className="flex justify-between text-xs text-[#A0A0B8] mb-1">
-                            <span>Exercise</span>
-                            <span>3/5</span>
-                          </div>
-                          <div className="h-1.5 rounded-full bg-white/10">
-                            <div className="h-full w-3/5 rounded-full bg-emerald-500 transition-all duration-1000" />
-                          </div>
-                        </div>
-                        <div>
-                          <div className="flex justify-between text-xs text-[#A0A0B8] mb-1">
-                            <span>Reading</span>
-                            <span>5/7</span>
-                          </div>
-                          <div className="h-1.5 rounded-full bg-white/10">
-                            <div className="h-full w-5/6 rounded-full bg-violet-500 transition-all duration-1000" />
-                          </div>
-                        </div>
-                      </div>
+          {/* Animated flow visualization */}
+          <Reveal delay={3}>
+            <div className="mt-16 flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6">
+              {/* Step 1: Voice input */}
+              <div className="group relative w-56 rounded-2xl border border-white/10 bg-[#13131F] p-5 transition-all duration-500 hover:border-[#7C5CFC]/30 hover:shadow-lg hover:shadow-[#7C5CFC]/5">
+                <div className="flex items-center justify-center mb-3">
+                  <div className="relative flex items-center justify-center">
+                    <div className="absolute h-12 w-12 rounded-full bg-red-500/20 animate-pulse-ring" />
+                    <div className="relative h-10 w-10 rounded-full bg-red-500 flex items-center justify-center shadow-lg shadow-red-500/20">
+                      <svg className="h-5 w-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
+                        <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
+                      </svg>
                     </div>
                   </div>
                 </div>
+                <p className="text-sm font-semibold text-white text-center">Talk</p>
+                <p className="mt-1 text-xs text-[#A0A0B8] text-center">60 seconds, any time</p>
+              </div>
 
-                {/* Phone 2 (front) — floating — light theme matching app */}
-                <div className="absolute left-0 top-0 w-[220px] sm:w-[260px] h-[440px] sm:h-[500px] rounded-[2rem] bg-[#1E1E2E] p-2 shadow-2xl -rotate-3 z-10 animate-float">
-                  <div className="h-full w-full rounded-[1.5rem] bg-[#13131F] p-4 flex flex-col gap-3 overflow-hidden">
-                    <div className="flex items-center justify-between">
-                      <div className="text-xs text-[#A0A0B8] font-medium">
-                        Today's Debrief
-                      </div>
-                      <div className="flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 text-[10px] text-emerald-600">
-                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                        Good mood
-                      </div>
-                    </div>
-                    <div className="rounded-xl border border-white/10 bg-[#1E1E2E] p-3 shadow-sm">
-                      <div className="text-xs text-[#A0A0B8] mb-2">
-                        Extracted Tasks
-                      </div>
-                      <CascadingTasks
-                        tasks={[
-                          { text: "Email Q2 report to team", checked: true },
-                          { text: "Book dentist appointment" },
-                          { text: "Review PR #42" },
-                        ]}
-                      />
-                    </div>
-                    <div className="rounded-xl border border-white/10 bg-[#1E1E2E] p-3 shadow-sm">
-                      <div className="text-xs text-[#A0A0B8] mb-1">
-                        Key Theme
-                      </div>
-                      <div className="text-xs text-[#A0A0B8]">
-                        Feeling productive but stretched thin on side projects.
-                      </div>
-                    </div>
-                    <div className="rounded-xl border border-[#7C5CFC]/30 bg-[#7C5CFC]/10 p-3">
-                      <div className="text-xs text-violet-600 mb-1">
-                        Goal Detected
-                      </div>
-                      <div className="text-xs text-[#A0A0B8]">
-                        "Launch MVP by end of month"
-                      </div>
-                    </div>
+              {/* Arrow */}
+              <svg className="hidden sm:block h-5 w-5 text-white/20 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              </svg>
+              <svg className="sm:hidden h-5 w-5 text-white/20 shrink-0 rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              </svg>
+
+              {/* Step 2: Extraction */}
+              <div className="group relative w-56 rounded-2xl border border-white/10 bg-[#13131F] p-5 transition-all duration-500 hover:border-[#7C5CFC]/30 hover:shadow-lg hover:shadow-[#7C5CFC]/5">
+                <div className="space-y-1.5 mb-3">
+                  <div className="flex items-center gap-2 rounded-lg bg-[#1E1E2E] px-3 py-1.5 text-xs animate-fade-in-up" style={{ animationDelay: "1s" }}>
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                    <span className="text-[#A0A0B8]">Call the accountant</span>
+                  </div>
+                  <div className="flex items-center gap-2 rounded-lg bg-[#1E1E2E] px-3 py-1.5 text-xs animate-fade-in-up" style={{ animationDelay: "1.3s" }}>
+                    <span className="h-1.5 w-1.5 rounded-full bg-violet-400" />
+                    <span className="text-[#A0A0B8]">Mood: 7.2</span>
+                  </div>
+                  <div className="flex items-center gap-2 rounded-lg bg-[#1E1E2E] px-3 py-1.5 text-xs animate-fade-in-up" style={{ animationDelay: "1.6s" }}>
+                    <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+                    <span className="text-[#A0A0B8]">Goal: ship the beta</span>
                   </div>
                 </div>
+                <p className="text-sm font-semibold text-white text-center">Extract</p>
+                <p className="mt-1 text-xs text-[#A0A0B8] text-center">Tasks, mood, goals</p>
+              </div>
+
+              {/* Arrow */}
+              <svg className="hidden sm:block h-5 w-5 text-white/20 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              </svg>
+              <svg className="sm:hidden h-5 w-5 text-white/20 shrink-0 rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              </svg>
+
+              {/* Step 3: Sunday report */}
+              <div className="group relative w-56 rounded-2xl border border-white/10 bg-[#13131F] p-5 transition-all duration-500 hover:border-[#7C5CFC]/30 hover:shadow-lg hover:shadow-[#7C5CFC]/5">
+                <div className="mb-3">
+                  <div className="rounded-lg bg-[#1E1E2E] p-3 text-xs text-[#A0A0B8] leading-relaxed animate-fade-in-up" style={{ animationDelay: "2s" }}>
+                    <span className="text-white font-medium">Your week:</span> You mentioned your VP in 4 of 5 entries. Mood averaged 6.1 on meeting-heavy days vs 8.3 without...
+                  </div>
+                  <div className="mt-1.5 flex gap-1">
+                    {[65, 45, 70, 55, 80, 75, 85].map((h, i) => (
+                      <div key={i} className="flex-1 rounded-sm bg-violet-500/60" style={{ height: `${h * 0.25}px` }} />
+                    ))}
+                  </div>
+                </div>
+                <p className="text-sm font-semibold text-white text-center">Reflect</p>
+                <p className="mt-1 text-xs text-[#A0A0B8] text-center">Sunday report</p>
               </div>
             </div>
-          </div>
+          </Reveal>
         </div>
       </section>
 
