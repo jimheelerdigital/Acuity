@@ -7,6 +7,43 @@
 
 ---
 
+## 2026-04-21 — Replace OG image, favicons, and app icons with new logo
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** bf2703b
+
+### In plain English (for Keenan)
+When you share an Acuity link on Slack, Twitter, iMessage, or LinkedIn, the preview image now shows the new purple diamond logo with the "Acuity" wordmark and tagline — instead of the old glossy "A" icon. The browser tab icon (favicon) and phone home screen icon (apple-touch-icon) also now use the new logo. A PWA manifest was added so "Add to Home Screen" on mobile shows the correct icon and brand colors.
+
+### Technical changes (for Jimmy)
+- Generated new image assets from `AcuityLogo.png` using Python/Pillow:
+  - `apps/web/public/og-image.png` — 1200x630 Open Graph image (new logo + "Acuity" + tagline on #0D0A19 dark background with subtle purple radial glow)
+  - `apps/web/public/favicon.ico` — multi-resolution (16/32/48px)
+  - `apps/web/public/favicon-96x96.png` — 96x96 PNG favicon
+  - `apps/web/public/apple-touch-icon.png` — 180x180
+  - `apps/web/public/icon-512.png` — 512x512 PWA icon
+  - `apps/web/public/icon-192.png` — 192x192 PWA icon
+- Created `apps/web/public/site.webmanifest` with PWA metadata (name, icons, theme_color #7C5CFC, background_color #0D0A19)
+- Updated `apps/web/src/app/layout.tsx`: OG + Twitter image refs changed from `/og-image.jpg` to `/og-image.png`, removed dangling `favicon.svg` `<link>` reference
+- Updated 7 layout files to use `/og-image.png` with correct 1200x630 dimensions: `for/[slug]`, `for/decoded`, `for/therapy`, `for/founders`, `for/sleep`, `for/weekly-report`, `waitlist`
+
+### Manual steps needed
+- [ ] After Vercel deploy completes, force platforms to re-scrape the new OG image (Keenan):
+  - **Slack:** Paste any getacuity.io link in a channel, click the 3-dot menu on the preview → "Remove preview", then paste the link again
+  - **Twitter/X:** Visit https://cards-dev.twitter.com/validator and enter getacuity.io
+  - **Facebook/LinkedIn:** Visit https://developers.facebook.com/tools/debug/ and enter getacuity.io, click "Scrape Again"
+  - **iMessage:** iMessage caches aggressively — may take 24-48 hours to update naturally
+- [ ] Old image files still in `apps/web/public/` can be deleted when convenient: `og-image.jpg` (old OG), `acuity-logo.png` (old logo), `acuity-logo copy.png` (duplicate of old logo). Not referenced anywhere in code. (Jimmy or Keenan)
+
+### Notes
+- The old OG image (`og-image.jpg`, 162 KB) was the glossy "A" app icon at 1200x1200. The new one (`og-image.png`, 48 KB) is 1200x630 — the standard OG dimension that works on every platform without cropping.
+- The previous `/for/*` landing pages had OG dimensions set to 1200x1200 (square). Fixed to 1200x630 to match the actual image and prevent platform-side cropping.
+- `favicon.svg` was referenced in `<head>` but never existed. Removed the reference rather than generating an SVG — the PNG favicon at 96x96 covers all modern browsers.
+- Platform OG caches can persist for 1-7 days even after deploy. The manual re-scrape steps above force an immediate refresh.
+
+---
+
 ## 2026-04-21 — Update all email templates to show the new Acuity logo
 
 - **Requested by:** Keenan
