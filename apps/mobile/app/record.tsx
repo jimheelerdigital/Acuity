@@ -66,13 +66,24 @@ type UploadResponse = {
 
 export default function RecordScreen() {
   const router = useRouter();
-  // goalId set when the user opened the recorder from a goal detail or
-  // card via "Record about this goal". Forwarded to /api/record so the
-  // extraction pipeline knows this entry is specifically about that goal.
-  const params = useLocalSearchParams<{ goalId?: string }>();
+  // Context params — forwarded to /api/record so the extraction
+  // pipeline knows what this entry is about.
+  //   goalId        — set when opened from a goal detail / card
+  //                   ("Record about this goal").
+  //   dimensionKey  — lowercase key from DEFAULT_LIFE_AREAS; set when
+  //                   opened from a dimension detail's "Record about
+  //                   this" button. Persisted as Entry.dimensionContext.
+  const params = useLocalSearchParams<{
+    goalId?: string;
+    dimensionKey?: string;
+  }>();
   const goalId =
     typeof params.goalId === "string" && params.goalId.length > 0
       ? params.goalId
+      : null;
+  const dimensionKey =
+    typeof params.dimensionKey === "string" && params.dimensionKey.length > 0
+      ? params.dimensionKey
       : null;
   const [state, setState] = useState<State>("idle");
   const [elapsed, setElapsed] = useState(0);
@@ -263,6 +274,9 @@ export default function RecordScreen() {
       if (goalId) {
         form.append("goalId", goalId);
       }
+      if (dimensionKey) {
+        form.append("dimensionContext", dimensionKey);
+      }
 
       let attempt = 0;
       const token = await getToken();
@@ -339,7 +353,7 @@ export default function RecordScreen() {
         }
       }
     },
-    [router, goalId]
+    [router, goalId, dimensionKey]
   );
 
   const handlePress = () => {

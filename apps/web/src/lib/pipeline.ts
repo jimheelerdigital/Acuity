@@ -152,11 +152,29 @@ export async function extractFromTranscript(
   todayISO: string,
   memoryContext?: string,
   goalContext?: { title: string; description: string | null } | null,
-  taskGroupNames?: string[]
+  taskGroupNames?: string[],
+  dimensionContext?: string | null
 ): Promise<ExtractionResult> {
   const contextBlock = memoryContext
     ? `Here is what you know about this user from their entire history with Acuity:\n${memoryContext}\n\nUse these historical patterns to enrich your extraction — for example, if a goal has been mentioned multiple times before, note it as recurring rather than new.\n\n`
     : "";
+
+  // Life-dimension context: when the recorder was opened from a
+  // dimension detail's "Record about this" button, we tell the
+  // extractor which area this entry is about. Human-readable name
+  // lands in the prompt; the key stays in Entry.dimensionContext.
+  const DIMENSION_NAME_BY_KEY: Record<string, string> = {
+    career: "Career",
+    health: "Health",
+    relationships: "Relationships",
+    finances: "Finances",
+    personal: "Personal Growth",
+    other: "Other",
+  };
+  const dimensionBlock =
+    dimensionContext && DIMENSION_NAME_BY_KEY[dimensionContext]
+      ? `This entry is specifically about the user's ${DIMENSION_NAME_BY_KEY[dimensionContext]} life area. Weight that area's lifeAreaMentions entry accordingly, and anchor wins/blockers/themes/insights to it when they clearly belong.\n\n`
+      : "";
 
   // Task group classification. When the user has TaskGroups set up
   // (default 5 get seeded on first /api/tasks fetch), give the model
@@ -189,7 +207,7 @@ export async function extractFromTranscript(
     messages: [
       {
         role: "user",
-        content: `${contextBlock}${goalBlock}${taskGroupsBlock}Today's date: ${todayISO}\n\nDaily debrief transcript:\n\n${transcript}`,
+        content: `${contextBlock}${goalBlock}${dimensionBlock}${taskGroupsBlock}Today's date: ${todayISO}\n\nDaily debrief transcript:\n\n${transcript}`,
       },
     ],
   });
@@ -285,6 +303,7 @@ export async function processEntry({
   mimeType,
   durationSeconds,
   goalId,
+  dimensionContext,
 }: {
   entryId: string;
   userId: string;
@@ -294,6 +313,9 @@ export async function processEntry({
   /** Set when the recording was initiated from a goal detail/card. Passed
    *  through to extraction so Claude anchors the entry to that goal. */
   goalId?: string | null;
+  /** Set when the recording was initiated from a dimension detail's
+   *  "Record about this" button. Lowercase key from DEFAULT_LIFE_AREAS. */
+  dimensionContext?: string | null;
 }) {
   const { prisma } = await import("@/lib/prisma");
 
@@ -343,14 +365,15 @@ export async function processEntry({
     });
     const taskGroupNames = taskGroups.map((g) => g.name);
 
-    // ── Extract with memory + goal context + task groups ─────────────────
+    // ── Extract with memory + goal + dimension + task groups ─────────────
     const todayISO = new Date().toISOString().split("T")[0];
     const extraction = await extractFromTranscript(
       transcript,
       todayISO,
       memoryContext || undefined,
       goalContext,
-      taskGroupNames
+      taskGroupNames,
+      dimensionContext ?? null
     );
 
     // ── Persist everything in one transaction ─────────────────────────────

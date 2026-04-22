@@ -172,7 +172,11 @@ export const processEntryFn = inngest.createFunction(
     const extraction = await step.run("extract", async () => {
       const entry = await prisma.entry.findUniqueOrThrow({
         where: { id: entryId },
-        select: { transcript: true, goalId: true },
+        select: {
+          transcript: true,
+          goalId: true,
+          dimensionContext: true,
+        },
       });
       const transcript = entry.transcript ?? "";
       let goalContext: { title: string; description: string | null } | null =
@@ -202,7 +206,8 @@ export const processEntryFn = inngest.createFunction(
         todayISO,
         memoryContext || undefined,
         goalContext,
-        taskGroupNames
+        taskGroupNames,
+        entry.dimensionContext ?? null
       );
     });
 

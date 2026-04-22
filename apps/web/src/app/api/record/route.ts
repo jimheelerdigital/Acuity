@@ -129,6 +129,25 @@ export async function POST(req: NextRequest) {
     if (!owned) goalId = null;
   }
 
+  // Optional life-dimension context. Set when the recorder was opened
+  // from a dimension detail's "Record about this" button. Accepts the
+  // lowercase key from DEFAULT_LIFE_AREAS; unknown values are dropped
+  // rather than persisted so a forged input can't corrupt the column.
+  const rawDimensionContext = formData.get("dimensionContext");
+  const KNOWN_DIMENSIONS = new Set([
+    "career",
+    "health",
+    "relationships",
+    "finances",
+    "personal",
+    "other",
+  ]);
+  const dimensionContext: string | null =
+    typeof rawDimensionContext === "string" &&
+    KNOWN_DIMENSIONS.has(rawDimensionContext)
+      ? rawDimensionContext
+      : null;
+
   const audioBuffer = Buffer.from(await audioFile.arrayBuffer());
 
   const useInngest = process.env.ENABLE_INNGEST_PIPELINE === "1";
@@ -137,7 +156,7 @@ export async function POST(req: NextRequest) {
   if (useInngest) {
     const { prisma } = await import("@/lib/prisma");
     const entry = await prisma.entry.create({
-      data: { userId, status: "QUEUED", goalId },
+      data: { userId, status: "QUEUED", goalId, dimensionContext },
     });
 
     let objectPath: string;
@@ -182,7 +201,7 @@ export async function POST(req: NextRequest) {
   // ── 3b. Sync path (legacy) — unchanged from pre-migration behavior ──────
   const { prisma } = await import("@/lib/prisma");
   const entry = await prisma.entry.create({
-    data: { userId, status: "PENDING", goalId },
+    data: { userId, status: "PENDING", goalId, dimensionContext },
   });
 
   try {
@@ -193,6 +212,7 @@ export async function POST(req: NextRequest) {
       mimeType,
       durationSeconds,
       goalId,
+      dimensionContext,
     });
 
     return NextResponse.json(

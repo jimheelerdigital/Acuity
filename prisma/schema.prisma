@@ -303,6 +303,13 @@ model Entry {
   // Null for standard recordings.
   goalId        String?
   goal          Goal?    @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  // Optional life-dimension context. Set when the user opened the
+  // recorder from a dimension detail screen via "Record about this".
+  // Stored as the lowercase dimension key from DEFAULT_LIFE_AREAS
+  // ("career" / "health" / "relationships" / "finances" / "personal" /
+  // "other") so the extraction pipeline can splice the human-readable
+  // area name into the Claude prompt without a DB join. Nullable.
+  dimensionContext String?
   tasks         Task[]
   themeMentions ThemeMention[]
 

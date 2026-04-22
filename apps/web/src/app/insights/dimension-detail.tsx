@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { MOOD_EMOJI } from "@acuity/shared";
 
+import { RecordSheet } from "@/components/record-sheet";
+
 type DimensionDetail = {
   dimension: {
     key: string;
@@ -49,6 +51,7 @@ export function DimensionDetailModal({
 }) {
   const [data, setData] = useState<DimensionDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [recordOpen, setRecordOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -323,19 +326,39 @@ export function DimensionDetailModal({
               <p className="mb-3 text-base leading-relaxed text-zinc-900 dark:text-zinc-50">
                 {data.reflectionPrompt}
               </p>
-              {/* Web has no inline recorder yet; send the user home
-                  where the record entry-point lives. */}
-              <Link
-                href="/home#record"
-                onClick={onClose}
+              {/* Opens the universal RecordSheet modal layered over
+                  this one. Entry is tagged with dimensionContext so
+                  the extraction prompt knows which area to anchor. */}
+              <button
+                type="button"
+                onClick={() => setRecordOpen(true)}
                 className="inline-block rounded-xl bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500"
               >
                 Record about this
-              </Link>
+              </button>
             </div>
           </div>
         )}
       </div>
+
+      {data && (
+        <RecordSheet
+          open={recordOpen}
+          onClose={() => setRecordOpen(false)}
+          context={{
+            type: "dimension",
+            id: data.dimension.key,
+            label: data.dimension.name,
+            description: data.reflectionPrompt,
+          }}
+          onRecordComplete={() => {
+            // Close the dimension modal too so the user lands back on
+            // /insights; when they reopen the dimension a minute later
+            // their new entry will already appear in "Recent entries".
+            onClose();
+          }}
+        />
+      )}
     </div>
   );
 }

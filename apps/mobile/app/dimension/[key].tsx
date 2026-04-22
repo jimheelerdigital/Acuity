@@ -318,8 +318,13 @@ export default function DimensionDetailScreen() {
             </Text>
             <Pressable
               onPress={() => {
+                // Dismiss the dimension modal first, then open the
+                // recorder with the dimension key in the URL so the
+                // extraction pipeline gets Entry.dimensionContext set.
                 router.back();
-                router.push("/record");
+                router.push(
+                  `/record?dimensionKey=${encodeURIComponent(data.dimension.key)}`
+                );
               }}
               className="rounded-xl bg-violet-600 py-2.5 items-center"
               style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
