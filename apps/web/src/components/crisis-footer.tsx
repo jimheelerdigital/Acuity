@@ -47,28 +47,45 @@ export function CrisisFooter() {
   };
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-amber-500/20 bg-amber-50/95 px-4 py-2 text-xs text-amber-900 shadow-lg backdrop-blur dark:border-amber-500/30 dark:bg-amber-950/80 dark:text-amber-200">
+    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-violet-500/15 bg-[#FAFAF7]/95 px-4 py-1.5 text-[11px] text-zinc-600 backdrop-blur dark:border-violet-400/15 dark:bg-[#0B0B12]/95 dark:text-zinc-400">
       <div className="mx-auto flex max-w-5xl items-center justify-between gap-3">
-        <p>
-          <span className="font-semibold">In crisis?</span> Text or call{" "}
-          <a
-            href="tel:988"
-            className="underline underline-offset-2 hover:text-amber-700 dark:hover:text-amber-100"
+        <p className="flex items-center gap-1.5">
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="shrink-0 text-violet-500 dark:text-violet-400"
+            aria-hidden="true"
           >
-            988
-          </a>{" "}
-          — free, confidential, 24/7.{" "}
-          <Link
-            href="/support/crisis"
-            className="underline underline-offset-2 hover:text-amber-700 dark:hover:text-amber-100"
-          >
-            More resources
-          </Link>
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+          </svg>
+          <span>
+            Need to talk to someone? Call or text{" "}
+            <a
+              href="tel:988"
+              className="font-medium text-violet-600 underline underline-offset-2 hover:text-violet-500 dark:text-violet-400 dark:hover:text-violet-300"
+            >
+              988
+            </a>{" "}
+            anytime —{" "}
+            <Link
+              href="/support/crisis"
+              className="underline underline-offset-2 hover:text-zinc-800 dark:hover:text-zinc-200"
+            >
+              more resources
+            </Link>
+            .
+          </span>
         </p>
         <button
           onClick={dismiss}
-          aria-label="Dismiss crisis banner"
-          className="shrink-0 rounded-md px-2 py-1 text-amber-700/70 hover:bg-amber-500/10 hover:text-amber-900 dark:text-amber-300/70 dark:hover:text-amber-100"
+          aria-label="Dismiss support footer"
+          className="shrink-0 rounded-md px-1.5 text-zinc-400 hover:bg-zinc-500/10 hover:text-zinc-700 dark:text-zinc-500 dark:hover:text-zinc-300"
         >
           ×
         </button>
