@@ -1,6 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import {
+  CartesianGrid,
+  Legend,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { DEFAULT_LIFE_AREAS } from "@acuity/shared";
 
 import {
@@ -244,18 +254,22 @@ export function LifeMap() {
             </div>
             {view === "trend" && trend?.hasEnoughHistory && (
               <span className="text-xs text-zinc-400 dark:text-zinc-500">
-                vs ~4 weeks ago
+                last 8 weeks
               </span>
             )}
           </div>
 
-          {/* Radar chart */}
-          <RadarChart
-            areas={displayAreas}
-            onSelect={(name) => setSelected(selected === name ? null : name)}
-            selected={selected}
-            trendAreas={view === "trend" ? trend?.fourWeeksAgo : undefined}
-          />
+          {/* Current view = radar; Trend view = multi-line chart of each
+              dimension's weekly average score over the last 8 weeks. */}
+          {view === "trend" && trend?.hasEnoughHistory ? (
+            <TrendLineChart history={history} displayAreas={displayAreas} />
+          ) : (
+            <RadarChart
+              areas={displayAreas}
+              onSelect={(name) => setSelected(selected === name ? null : name)}
+              selected={selected}
+            />
+          )}
 
           {/* Score cards */}
           <div className="mt-8 grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -766,5 +780,116 @@ function Sparkline({ data, color }: { data: number[]; color: string }) {
         fill={color}
       />
     </svg>
+  );
+}
+
+// ─── Trend line chart ────────────────────────────────────────────────────────
+
+/**
+ * Replaces the radar when `view === "trend"`. Renders one colored line
+ * per life area over the last 8 weeks using `/api/lifemap/history` data
+ * that the parent already fetches. Null scores (weeks with no mention
+ * of that area) are left as gaps — recharts handles this when the
+ * `connectNulls` prop is false, which is the default.
+ */
+function TrendLineChart({
+  history,
+  displayAreas,
+}: {
+  history: HistoryArea[];
+  displayAreas: Area[];
+}) {
+  // Flatten history (per-area weeklyScores arrays) into a single array
+  // of {week, CAREER: 64, HEALTH: null, ...} records keyed by enum, in
+  // chronological order. Recharts expects a flat array with one entry
+  // per x-axis tick and numeric/null values for each series.
+  const weekKeys = new Set<string>();
+  for (const a of history) for (const w of a.weeklyScores) weekKeys.add(w.week);
+  const weeks = Array.from(weekKeys).sort();
+
+  const data = weeks.map((week) => {
+    const row: Record<string, string | number | null> = { week };
+    for (const config of DEFAULT_LIFE_AREAS) {
+      const areaHistory = history.find((h) => h.area === config.key);
+      const w = areaHistory?.weeklyScores.find((ws) => ws.week === week);
+      row[config.enum] = w?.score ?? null;
+    }
+    row.label = new Date(week).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    });
+    return row;
+  });
+
+  // Only show lines for areas currently visible on the user's matrix
+  // (respects per-user dimension activation overrides the parent applied).
+  const enabledEnums = new Set(displayAreas.map((a) => a.area));
+  const series = DEFAULT_LIFE_AREAS.filter((a) => enabledEnums.has(a.enum));
+
+  if (data.length === 0) {
+    return (
+      <div className="rounded-xl border border-dashed border-zinc-300 dark:border-white/10 px-6 py-12 text-center text-sm text-zinc-500 dark:text-zinc-400">
+        Not enough history yet — record a few more debriefs and the trend
+        lines will appear here.
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-[320px] w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart
+          data={data}
+          margin={{ top: 8, right: 16, left: -12, bottom: 0 }}
+        >
+          <CartesianGrid
+            stroke="#E4E4E7"
+            strokeDasharray="3 3"
+            vertical={false}
+          />
+          <XAxis
+            dataKey="label"
+            tick={{ fontSize: 11, fill: "#A1A1AA" }}
+            axisLine={{ stroke: "#E4E4E7" }}
+            tickLine={false}
+          />
+          <YAxis
+            domain={[0, 100]}
+            tick={{ fontSize: 11, fill: "#A1A1AA" }}
+            axisLine={{ stroke: "#E4E4E7" }}
+            tickLine={false}
+            width={32}
+          />
+          <Tooltip
+            contentStyle={{
+              background: "#1E1E2E",
+              border: "1px solid rgba(255,255,255,0.1)",
+              borderRadius: 8,
+              fontSize: 12,
+              color: "#FAFAFA",
+            }}
+            itemStyle={{ color: "#FAFAFA" }}
+            labelStyle={{ color: "#A1A1AA", marginBottom: 4 }}
+          />
+          <Legend
+            wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
+            iconType="circle"
+          />
+          {series.map((config) => (
+            <Line
+              key={config.enum}
+              type="monotone"
+              dataKey={config.enum}
+              name={config.name}
+              stroke={config.color}
+              strokeWidth={2}
+              dot={{ r: 3, strokeWidth: 0 }}
+              activeDot={{ r: 5 }}
+              connectNulls={false}
+            />
+          ))}
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
   );
 }
