@@ -7,6 +7,108 @@
 
 ---
 
+## 2026-04-21 — Beta polish sprint 2: goal-contextualized recording, web parity, crisis tone, PRO spec
+
+- **Requested by:** Both
+- **Committed by:** Claude Code
+- **Commit hashes:** daab95c (goal recording), 8fff129 (web header), 36de473 (web radar polygon), 33623d5 (web trend chart), 09b2404 (crisis footer), 7dfe030 (Dashboard→Home rename), a5f72c3 (PRO spec). Fix 7 (web insights parity) was already shipped by d1b49ae in the prior session.
+
+### In plain English (for Keenan)
+Big batch of beta polish. Some product, some visual, one decision document.
+
+1. **"Record about this goal" actually works now.** Tapping that button on a goal in the phone app used to dump you back at the Home tab to record — the recording had no idea it was supposed to be about that goal. Now tapping Record on a goal jumps straight into recording mode, and the AI that processes the recording knows which goal you were reflecting on. The entry shows up under "Linked entries" on the goal afterward. Web still doesn't have this button (web has no inline recorder yet) — that half will ship next session.
+
+2. **Dashboard is now called "Home" on the website.** Matches the phone app. Old `/dashboard` links still work — they redirect. If anyone bookmarked the old URL or clicks an old email link, it still lands them in the right place.
+
+3. **Web nav header is dark in dark mode.** Used to render in off-white cream even in dark mode, which clashed hard. Fixed.
+
+4. **Web Life Matrix actually shows a filled polygon.** The radar was showing an empty hexagon — grid and center dot, no data shape. Small bug in how the web radar matched area names to scores. Fixed.
+
+5. **Current / Trend toggle on web actually does something now.** Clicking Trend used to silently toggle a barely-visible dashed overlay that most users couldn't see. Now clicking Trend swaps the radar for a line chart showing each life area's score over the last 8 weeks, one colored line per area. Clicking Current brings back the radar.
+
+6. **Support footer redesigned.** The "In crisis? Text 988" banner at the bottom of authenticated pages used to look like an amber error banner. It now reads as a calm support line — thin violet top border, heart icon, smaller text, softer copy ("Need to talk to someone?"). Still has the 988 number and link to more resources.
+
+7. **Web Insights matches the phone app's layout.** Already shipped in the prior session — Life Matrix first, then a horizontal "Recent activity" strip, then Theme Map / Ask / State of Me cards, then Weekly Reports, and a collapsible "Metrics & observations" drawer at the bottom.
+
+8. **PRO tier spec documented.** We wrote down exactly what becomes paywalled after the 14-day trial ends (State of Me report, Apple Health, Ask Your Past Self, data export, custom Life Matrix dimensions beyond 6) and what stays free forever (core recording, default Life Matrix, goals + tasks, weekly/monthly digests, referrals). Nothing is gated yet — this is the spec for when we're ready to flip enforcement on.
+
+Two bigger items — rich dimension detail views and AI-grouped tasks — were out of scope for this session. Plans for both are written up in the Notes section so the next session picks up cleanly.
+
+### Technical changes (for Jimmy)
+
+**Fix 1 — goal-contextualized recording (commit daab95c):**
+- Schema: Entry.goalId String? + `goal Goal?` relation (onDelete: SetNull); inverse `Goal.entries`; @@index([goalId]).
+- Mobile: `app/goal/[id].tsx` record CTA routes to `/record?goalId=<id>` (was passing title as string); `app/record.tsx` reads goalId via useLocalSearchParams and appends to upload FormData.
+- Server: `/api/record` validates goalId belongs to caller (silent drop on mismatch to avoid existence-leak via 403/404) and persists on Entry on both sync and async paths. `lib/pipeline.ts::extractFromTranscript` accepts `goalContext: {title, description}`; injects a "This entry is specifically about …" block into the Claude user message, after memoryContext and before transcript. `inngest/functions/process-entry.ts` async path loads Entry.goalId → Goal → passes to extractFromTranscript.
+- Goal detail API: `/api/goals/[id]` unions linkedEntries from Entry.goalId ∪ Goal.entryRefs (Prisma OR), sorted newest-first, cap 20.
+- Requires `npx prisma db push` before this code deploys — see Manual steps.
+
+**Fix 2 — web header dark bg (commit 8fff129):**
+- `components/nav-bar.tsx`: added `dark:bg-[#0B0B12]/80` to `<nav>` and `dark:bg-[#1E1E2E]` to the "Who it's for" dropdown. Also cleaned up a pre-existing malformed `dark:border-white/10/60` Tailwind class → `dark:border-white/10`.
+
+**Fix 3 — web radar empty polygon (commit 36de473):**
+- `apps/web/src/app/insights/life-map.tsx`: polygon builder and three other lookups were doing `areas.find(a => a.area === config.name)` — but `a.area` is the enum ("CAREER") and `config.name` is the title-case display string ("Career"), so the match always missed, all scores defaulted to 0, and the polygon collapsed. Switched all lookups to `config.enum`. Also unified selection keys — radar onClick now emits `config.enum` matching what the score cards already emit, and history selection matches on `h.area` (enum) not `h.name` (title-case).
+
+**Fix 4 — web Trend line chart (commit 33623d5):**
+- `apps/web/src/app/insights/life-map.tsx`: new `TrendLineChart` subcomponent using recharts (already in the bundle — `recharts ^3.8.1`). Flattens the per-area weeklyScores arrays into a single chronological row array keyed by enum, renders one `<Line>` per enabled area in its brand color. `connectNulls: false` leaves gaps for weeks with no data. Replaces the radar entirely when `view === "trend"` (was previously just overlaying a dashed polygon on the same radar).
+
+**Fix 5 — crisis footer tone (commit 09b2404):**
+- `components/crisis-footer.tsx`: background switched from `bg-amber-50/95` to `bg-[#FAFAF7]/95` (light) + `bg-[#0B0B12]/95` (dark) with a `border-violet-500/15` top border. Heart SVG icon replaces the implicit warning tone. Copy: "In crisis?" → "Need to talk to someone?". Text shrunk to 11px, `py-2` → `py-1.5`. Dismissible behavior, localStorage key, authenticated gating all unchanged.
+
+**Fix 6 — Dashboard → Home rename (commit 7dfe030):**
+- `git mv apps/web/src/app/dashboard apps/web/src/app/home`. New `apps/web/src/app/dashboard/page.tsx` server-component redirect to `/home` for old bookmarks + email links.
+- `components/nav-bar.tsx`: NAV_LINKS label "Dashboard" → "Home"; hrefs /dashboard → /home; logo link target updated.
+- Swept all user-facing `/dashboard` references: `components/keyboard-shortcuts.tsx` (n = new recording), `components/recommended-activity.tsx`, `app/onboarding/page.tsx`, `app/onboarding/onboarding-shell.tsx` (skip redirect), `app/onboarding/steps/step-8-first-entry-cta.tsx`, `app/upgrade/page.tsx`, `app/entries/page.tsx` (back-link text too: "← Dashboard" → "← Home"), `app/goals/[id]/goal-detail.tsx`, `app/insights/theme-map/theme-map-client.tsx`, `app/insights/life-audit/[id]/page.tsx`, `app/page.tsx` (root session redirect), `app/auth/signup/page.tsx` + `signin/page.tsx` (callbackUrl), `app/api/stripe/checkout/route.ts` (success_url).
+- `middleware.ts` matcher adds `/home/:path*` while keeping `/dashboard/:path*` so the redirect route stays behind the next-auth gate.
+- `app/robots.ts` disallows both paths.
+- Admin surfaces intentionally NOT renamed (admin/dashboard/, admin-dashboard.tsx, "Admin Dashboard" headings, external Supabase/Stripe dashboard links).
+
+**Fix 7 — web insights parity (no code change, reference only):**
+- Verified web `/insights` section order already matches mobile after prior session's d1b49ae: Life Matrix → Timeline → Theme Map → Ask → State of Me → Weekly Reports → Metrics drawer. No commit needed.
+
+**Fix 10 — PRO tier spec (commit a5f72c3):**
+- New `docs/PRO_TIER_SPEC.md` documenting gated-post-trial vs always-free feature matrix. Flags open questions for Keenan (Ask rate, Theme Map gating, Claude observations per week, post-trial email copy). No code changes.
+
+**Fixes 8 + 9 — deferred, not shipped.** See Notes.
+
+### Manual steps needed
+
+- [ ] **Jim: `npx prisma db push`** to land the `Entry.goalId` column + index + `Goal.entries` relation. REQUIRED before commit daab95c ships, otherwise the record route writes to a column the DB doesn't know about and every goal-linked recording fails. **Jim or Keenan — whoever has home network access; work Macs block Supabase ports.**
+- [ ] Jim: one consolidated `eas update --channel preview` covering the mobile changes from this session (daab95c — goal record flow). Web fixes auto-deploy on Vercel.
+- [ ] Keenan: review `docs/PRO_TIER_SPEC.md` and answer the four open questions at the bottom before PRO gating lands.
+
+### Notes
+
+**Fix 8 — rich dimension detail view: DEFERRED to next session.**
+Scope cost is ~3-4 hours if done properly. Plan for when it's picked up:
+1. New endpoint `GET /api/lifemap/dimension/[key]` returning `{area, score, baselineDelta, trajectory30d: number[], topThemes: [{label, count, sentiment}], recentEntries: [{id, createdAt, mood, summary}], goals: [{id, title, status, progress}], drivingSummary: string, reflectionPrompt: string}`. Cache per-user-per-dimension for 1 hour via the existing admin-cache pattern (or a new `dimensionCache.ts` alongside it).
+2. Claude synthesis: two small calls — one for `drivingSummary` ("In 2-3 sentences, what's driving this user's [Career] score right now? Given these recent entries: …"), one for `reflectionPrompt` ("Suggest one reflection prompt this user could record about [Career]…"). Bundle both into a single `messages.create` call with a structured JSON response to save a round-trip.
+3. Mobile: new bottom-sheet component in `apps/mobile/components/dimension-detail.tsx`. Full-screen sheet, not a card expansion. Open via Pressable on the Life Matrix area detail card (replacing the current inline expand).
+4. Web: new `<DimensionDetailPanel>` modal/side-panel in `apps/web/src/app/insights/dimension-detail.tsx`. Hooked into the existing `DetailPanel` render path in `life-map.tsx`.
+5. Goal dimension tagging: `Goal.lifeArea` already exists (`String @default("PERSONAL")`). Use it for the "Goals in this area" section — no schema migration.
+6. Sparkline: reuse the existing `Sparkline` component in `life-map.tsx` — already built, tested, takes a `number[]`.
+
+**Fix 9 — tasks organized into AI-inferred groups: DEFERRED to next session.**
+Scope cost is ~4-5 hours. Plan:
+1. Schema:
+   - New `TaskGroup` model: id, userId, name, icon, color, order Int, isDefault Boolean, isAIGenerated Boolean, createdAt. Unique composite index on (userId, name).
+   - `Task.groupId String?` + `group TaskGroup?` relation (onDelete: SetNull). Index on [groupId].
+2. Seed on first task write (not on user creation — saves a write for users who never record): when `task.create`/`createMany` finds `taskGroup.count({where: {userId}}) === 0`, seed 5 defaults — Work (#3B82F6, briefcase), Personal (#A855F7, sparkles), Health (#14B8A6, heart-pulse), Errands (#F59E0B, list-checks), Other (#71717A, more-horizontal). Wrap in the same transaction as the first task insert so partial failures roll back.
+3. Extraction: extend the existing Claude extraction prompt with a `"groupHint"` field on each extracted task. Give Claude the user's group names + a short description of each in the system prompt. Post-extraction, map `groupHint` → existing TaskGroup.id by case-insensitive name match; fall back to "Other" if ambiguous. Cheaper than a second Claude call.
+4. UI:
+   - Mobile `tasks.tsx`: split the current FlatList into a SectionList grouped by TaskGroup.order. Collapsible sections via a per-group `openGroups: Set<string>` state. Empty groups hidden.
+   - Web `task-list.tsx`: same pattern using ul>li grouping.
+   - "Move to…" submenu on mobile long-press ActionSheet; web hover overflow menu.
+   - New `/tasks/groups` settings page (web) + modal (mobile) for rename / reorder / add / delete (empty only) / "Re-run AI categorization" button that hits `POST /api/tasks/groups/reclassify`.
+
+**Already-production-grade notes for this session:**
+- Entry.goalId persist path tested on both sync (`lib/pipeline.ts::processEntry`) and async (`inngest/functions/process-entry.ts`) paths — same goal-fetch + context-injection logic.
+- goalId validation silently drops mismatches rather than returning 403/404 — prevents enumeration attacks via the record endpoint.
+- Dashboard→Home rename preserves URL history via the `/dashboard` redirect shim — no broken-link surface.
+- Web header dark-mode fix also fixed a pre-existing `dark:border-white/10/60` typo that was silently producing no border in dark mode (Tailwind can't parse the triple slash).
+
+---
+
 ## 2026-04-21 — Beta testing UX pass: tasks, nav, insights + report features audit
 
 - **Requested by:** Both
