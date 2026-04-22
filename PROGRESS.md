@@ -7,6 +7,79 @@
 
 ---
 
+## 2026-04-23 — RLS gaps closed + empty mobile task cards fixed
+
+- **Requested by:** Both (Keenan flagged both issues from testing)
+- **Committed by:** Claude Code
+- **Commit hash:** 31be41e
+
+### In plain English (for Keenan)
+
+Two issues from your testing landed together.
+
+First, the Supabase security advisor was yelling about 18 database tables that weren't locked down properly and about sensitive fields (OAuth tokens, password hashes, Stripe IDs) being reachable by the wrong roles. Some of this was leftover from last Friday's first pass (we only did the 12 user-facing tables that week); the rest came from new tables that landed in the sprints since. All 38 public tables now have the same "deny everything except our own backend" policy and the sensitive columns are locked off from the anonymous + authenticated database roles. Advisor is clean. No app behavior changed — the fix only affects direct database access paths that our app never uses anyway.
+
+Second, the phone app's Entry detail page was showing `TASKS (4)` with four empty card shells — priority/status pill showing, but no task title or description. Root cause: the server endpoint that fetches an entry was quietly dropping the task title and description fields from its response. Fixed the server side to include them, and added a small fallback on the phone side so older tasks that only carry legacy field names still render something instead of blank.
+
+### Technical changes (for Jimmy)
+
+**Schema push**
+- `npx prisma db push` returned "The database is already in sync with the Prisma schema." All three stacked deltas (Entry.goalId, TaskGroup + Task.groupId, Entry.dimensionContext) were already applied to prod at some prior point. Nothing to do.
+
+**RLS migration (supabase/migrations/2026-04-23_rls_close_gaps.sql — new, idempotent)**
+
+Applied against prod via `psql "$DIRECT_URL" -v ON_ERROR_STOP=1 -f …` in a single transaction.
+
+Part 1 — `ENABLE ROW LEVEL SECURITY` on 18 tables that lacked it:
+AdminAuditLog, CalendarConnection, ClaudeCallLog, ContentBriefing, ContentPiece, DashboardSnapshot, DataExport, DeletedUser, FeatureFlag, GenerationJob, GoalSuggestion, MetaSpend, RedFlag, ReferralConversion, StripeEvent, TaskGroup, UserDemographics, UserFeatureOverride.
+
+Part 2 — `CREATE POLICY "Deny all for non-service" AS RESTRICTIVE FOR ALL USING (false)` on 26 tables. 18 newly-enabled above + 8 that had RLS on but no explicit policy (Account, HealthSnapshot, LifeMapAreaHistory, StateOfMeReport, Theme, ThemeMention, UserInsight, UserLifeDimension). Matches the existing RESTRICTIVE / cmd=ALL / qual=false pattern on the 12 user-data tables from commit 1ec8d14. `DROP POLICY IF EXISTS` precedes every CREATE POLICY so re-running is safe.
+
+Part 3 — `REVOKE ALL ON TABLE … FROM anon, authenticated` on Account, Session, VerificationToken, User, CalendarConnection. These hold OAuth access/refresh/id tokens, session tokens, password hashes, reset tokens, push tokens, and Stripe customer/subscription IDs — all server-issued secrets with zero legitimate anon/authenticated read path. Table-level REVOKE is required: column-level REVOKE is a no-op while a table-level GRANT still exists, which is why the advisor keeps flagging. With table-level privileges dropped, the sensitive columns no longer appear in `information_schema.column_privileges` for those roles.
+
+Verification queries:
+- `SELECT COUNT(*) FROM pg_tables WHERE schemaname='public' AND NOT rowsecurity` → 0 (was 18).
+- `SELECT COUNT(*) FROM pg_policies WHERE schemaname='public' AND policyname='Deny all for non-service'` → 38/38 tables.
+- `SELECT grantee, table_name, column_name FROM information_schema.column_privileges WHERE table_schema='public' AND grantee IN ('anon','authenticated') AND column_name IN ('refresh_token','access_token','id_token','sessionToken','token','passwordHash','resetToken','pushToken','stripeCustomerId','stripeSubscriptionId','accessToken','refreshToken')` → 0 rows (was 40+).
+- Smoke as postgres: `SELECT COUNT(*) FROM "User", "Task", "TaskGroup"` still returns rows (Prisma path unaffected).
+
+**Mobile empty task cards**
+
+Root cause, one sentence: the `/api/entries/[id]` route's Prisma `select` on the tasks relation omitted `title` and `description`, so the mobile Entry view received tasks with those fields undefined and rendered blank card bodies.
+
+Fix (apps/web/src/app/api/entries/[id]/route.ts:21-36):
+- Added `title: true`, `description: true`, `goalId: true`, `groupId: true` to the select.
+- Dropped the legacy `text` field from the select — both TaskDTO and the mobile consumer read `title`.
+
+Belt + suspenders (apps/mobile/app/entry/[id].tsx:120-144):
+- Label fallback `t.title ?? (t as any).text ?? "Untitled task"` so legacy rows that still only carry `text` don't regress to empty cards even if some historical task survives.
+- Rendered `description` below the title when present.
+
+No debug log was needed — traced by inspection (`grep -nE "Tasks"` → mobile render site → `{t.title}` → check the server select → missing).
+
+### Manual steps needed
+
+- [ ] Re-run Supabase Security Advisor in the dashboard to confirm `rls_disabled_in_public` and `sensitive_columns_exposed` are now clean. (We verified programmatically above; the advisor UI is the final word.)
+- [ ] Jim: next `eas update --channel preview` will bundle the mobile entry.tsx fallback + the (backend-side) fix for blank task cards. The server change alone restores task bodies on mobile because it's a data-layer fix — users don't need the OTA to see titles re-appear. The fallback is just hardening.
+- [ ] No prisma push needed (schema was already in sync).
+
+### Notes
+
+**Why the RLS gap existed.** The 2026-04-21 pass shipped with "all new tables should have RLS enabled at creation time. Add to the team's schema-change checklist" as a noted followup (docs/RLS_STATUS.md) — but there's no enforcement layer. Every table added since then (TaskGroup, GoalSuggestion, various content-factory tables) landed RLS-off because Prisma's `db push` doesn't emit `ALTER TABLE … ENABLE RLS` statements. Mitigation: the new migration file makes the baseline explicit + is idempotent, so re-running catches any future drift. Longer-term hardening would be a pre-deploy check that enumerates public tables and fails CI if any have `rowsecurity=false`.
+
+**Why `text` is still on the Task model.** Old entries (pre-title-field) wrote extracted-task names into `Task.text`. The extraction pipeline now writes `title`. Both columns are `String?`. We don't migrate legacy `text → title` in-place because tasks are cheap + most are either completed or dismissed; new tasks write correctly; the fallback on the mobile render covers any stragglers. Safe to drop the `text` column in a future cleanup once we verify zero non-null `text` rows exist with a null `title`.
+
+**Advisor-programmatic parity.** Without a connected Supabase MCP, I verified the advisor-equivalent state via direct SQL against `pg_tables`, `pg_policies`, and `information_schema.column_privileges`. The three queries cover the advisor's check surface for `rls_disabled_in_public` + `sensitive_columns_exposed`. If Keenan wants the dashboard UI to match, opening the advisor should now show zero findings for those two rules.
+
+**Followups still queued (unchanged from prior session):**
+1. Theme detail bottom sheet wiring on both platforms (tap-hero / tap-planet / tap-card still no-ops after the constellation redesign).
+2. `react-force-graph-2d` dep removal from apps/web/package.json (~500kb bundle unused since the theme-map rewrite).
+3. Task-groups settings page (rename / icon / color / reorder / add / delete / "Re-run AI categorization") on both platforms. Endpoints exist; UI is missing.
+4. Manual "Add task" button on both task lists (POST /api/tasks already accepts groupId; no UI entry point).
+5. Beta blockers from the 2026-04-21 production readiness audit (C1-C5 critical, H1-H12 high) still open — particularly C1 (Gmail plus-addressing trial bypass) and C2 (no ZDR agreement with Anthropic/OpenAI).
+
+---
+
 ## 2026-04-22 — Theme Map mobile orbital entrance animation (Reanimated 3)
 
 - **Requested by:** Both
