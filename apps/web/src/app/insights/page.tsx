@@ -9,6 +9,8 @@ import { UserInsightsCard } from "@/components/user-insights-card";
 
 import { InsightsView } from "./insights-view";
 import { LifeMap } from "./life-map";
+import { RecentTimeline } from "./recent-timeline";
+import { MetricsDrawer } from "./metrics-drawer";
 
 export const dynamic = "force-dynamic";
 
@@ -19,25 +21,22 @@ export default async function InsightsPage() {
   return (
     <div className="min-h-screen">
       <main className="mx-auto max-w-4xl px-6 py-10 animate-fade-in">
-        {/* Auto-flagged observations — top of the page so the user reads
-            "here's what we noticed this week" before the full charts. */}
-        <UserInsightsCard />
-
-        <HealthCorrelationsCard />
-
-        <ComparisonsCard />
-
-        {/* Life Matrix */}
-        <section className="mb-12">
-          <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50 mb-1">Life Matrix</h1>
+        {/* ─── 1. LIFE MATRIX — hero ─────────────────────────────── */}
+        <section className="mb-10">
+          <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50 mb-1">
+            Life Matrix
+          </h1>
           <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-6">
             Your life, decoded — across every area.
           </p>
           <LifeMap />
         </section>
 
-        {/* Theme Map entry point — links to the dedicated force-graph page. */}
-        <section className="mb-6">
+        {/* ─── 2. TIMELINE / RECENT ACTIVITY ───────────────────── */}
+        <RecentTimeline />
+
+        {/* ─── 3. THEME MAP ────────────────────────────────────── */}
+        <section className="mb-4">
           <Link
             href="/insights/theme-map"
             className="group block rounded-2xl border border-zinc-200 dark:border-white/10 bg-gradient-to-br from-violet-50 to-white dark:from-violet-950/20 dark:to-[#1E1E2E] p-6 transition hover:border-violet-300 dark:hover:border-violet-700/40"
@@ -45,7 +44,7 @@ export default async function InsightsPage() {
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1">
                 <p className="text-xs font-semibold uppercase tracking-widest text-violet-600 dark:text-violet-400">
-                  New
+                  Explore
                 </p>
                 <h2 className="mt-2 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
                   Theme Map
@@ -71,8 +70,8 @@ export default async function InsightsPage() {
           </Link>
         </section>
 
-        {/* Ask your past self — semantic search over the user's own entries. */}
-        <section className="mb-6">
+        {/* ─── 4. ASK YOUR PAST SELF ───────────────────────────── */}
+        <section className="mb-4">
           <Link
             href="/insights/ask"
             className="group block rounded-2xl border border-zinc-200 dark:border-white/10 bg-gradient-to-br from-indigo-50 to-white dark:from-indigo-950/20 dark:to-[#1E1E2E] p-6 transition hover:border-indigo-300 dark:hover:border-indigo-700/40"
@@ -80,7 +79,7 @@ export default async function InsightsPage() {
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1">
                 <p className="text-xs font-semibold uppercase tracking-widest text-indigo-600 dark:text-indigo-400">
-                  New
+                  Ask
                 </p>
                 <h2 className="mt-2 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
                   Ask your past self
@@ -106,8 +105,8 @@ export default async function InsightsPage() {
           </Link>
         </section>
 
-        {/* State of Me — quarterly flagship report. */}
-        <section className="mb-12">
+        {/* ─── 5. STATE OF ME ──────────────────────────────────── */}
+        <section className="mb-10">
           <Link
             href="/insights/state-of-me"
             className="group block rounded-2xl border border-zinc-200 dark:border-white/10 bg-gradient-to-br from-amber-50 to-white dark:from-amber-950/20 dark:to-[#1E1E2E] p-6 transition hover:border-amber-300 dark:hover:border-amber-700/40"
@@ -141,13 +140,20 @@ export default async function InsightsPage() {
           </Link>
         </section>
 
-        {/* Mood & Weekly Reports */}
-        <section>
+        {/* ─── 6. WEEKLY REPORT — below-fold ────────────────── */}
+        <section className="mb-10">
           <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50 mb-4">
             Mood & Weekly Reports
           </h2>
           <InsightsView />
         </section>
+
+        {/* ─── 7. METRICS & OBSERVATIONS — collapsible ──────── */}
+        <MetricsDrawer>
+          <UserInsightsCard />
+          <HealthCorrelationsCard />
+          <ComparisonsCard />
+        </MetricsDrawer>
       </main>
     </div>
   );
