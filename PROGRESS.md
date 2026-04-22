@@ -7,6 +7,31 @@
 
 ---
 
+## 2026-04-22 — Full website copy audit against sales rubric
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** 313b606
+
+### In plain English (for Keenan)
+Every page on getacuity.io was audited against the Acuity Sales Copy Rubric and the copy was rewritten where it violated the rules. The homepage hero now leads with "It's 10 PM and your brain won't shut off" instead of a slogan. Features are described as artifacts ("The Sunday Report", "Goals That Remember") instead of mechanisms ("AI task extraction", "Mood analytics"). The upgrade page uses accountability tone ("Keep what you built") instead of banned words ("Unlock the full power"). Banned words like "transform", "powerful", "insights", and "AI-powered" were removed from all customer-facing pages.
+
+### Technical changes (for Jimmy)
+- Added `docs/Acuity_SalesCopy.md` — the sales copy rubric (standing reference for all copy decisions)
+- Added Sales Copy Rules section to `CLAUDE.md` referencing the rubric
+- Modified 10 files with copy changes: `page.tsx` (home), `landing.tsx`, `landing-shared.tsx`, `/for/decoded/layout.tsx`, `/for/sleep/page.tsx`, `/for/weekly-report/page.tsx`, `/for/[slug]/page.tsx`, `/upgrade/page.tsx`, `/voice-journaling/page.tsx`, `persona-pages.ts`
+- No schema changes, no API changes, no new dependencies
+
+### Manual steps needed
+None.
+
+### Notes
+- "Journaling" is conditionally banned per rubric section 7.1: banned in acquisition copy headlines and first viewport, allowed in SEO meta descriptions and the /voice-journaling pillar page where it's the target keyword
+- Fake testimonials on the landing page (marked TODO in code) were not replaced — they need real user quotes with names and dates. Flagging this for Keenan.
+- The /for/* persona pages use "voice journal" extensively in body copy. These are noindexed ad landing pages, so the SEO conditional allowance is less relevant, but they were left as-is because the category word is needed for comprehension on those surfaces.
+
+---
+
 ## 2026-04-22 — Beta polish sprint: task editor UX, /account nav, universal record-about sheet
 
 - **Requested by:** Both
