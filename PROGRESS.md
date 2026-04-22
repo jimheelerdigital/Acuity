@@ -7,6 +7,96 @@
 
 ---
 
+## 2026-04-23 — Mobile vs web parity audit (read-only)
+
+- **Requested by:** Both (beta prep for Friday)
+- **Committed by:** Claude Code
+- **Commit hash:** 6cc40f0 (audit doc only — no code changes)
+- **Audit path:** `audits/2026-04-23_mobile_web_parity.md` (~340 lines)
+
+### In plain English (for Keenan)
+
+Walked every screen on the phone app and every page on the website, side by side, and wrote down what's shipped on one platform but missing or broken on the other. Bottom line: the website is mostly at parity, but there are three specific gaps that would be noticed by anyone testing the beta this Friday.
+
+Headline counts:
+- 48 features / surfaces audited
+- Web at full parity: **18**
+- Web partial or different-by-design: **4**
+- Web missing: **3** (all critical for beta)
+- Mobile-only by design, flagged NOT to port: **6** (tab-bar mic button, iOS long-press menus, pull-to-refresh gesture, etc.)
+- Web-only features (opposite direction, post-beta only): 8 (admin dashboard, data export, delete account, referrals, Ask Past Self, State of Me, Life Audit, crisis footer)
+
+No code changed in this run — this is the plan doc for the next two or three sessions.
+
+### The three critical gaps
+
+1. **Clicking a journal entry on the web goes nowhere.** The phone app has a full entry detail screen — you see the summary, themes, wins, blockers, tasks, and transcript. The website has no equivalent page. Beta users who click an entry card will get nothing. ~2-3 hr to build.
+
+2. **The "Record about this goal" button on a website goal page is broken.** It sends the user to the home page with a URL fragment that no longer does anything. The result: the recording lands with no goal context. The same infrastructure that works on mobile (`RecordSheet` with goal context) is already built on the web side but nothing is calling it with a goal yet. ~30 min to wire.
+
+3. **The entries list on the web has no search and no mood filter.** Once a user has 30+ entries, they can't find anything. The phone app has both. ~1-1.5 hr to add.
+
+Total to close all three: about 4 hours of focused web work. Recommended for next session.
+
+### Technical summary
+
+**Methodology:** full file walk of `apps/mobile/app/` (24 routes) + `apps/mobile/components/` (23 components) + `apps/web/src/app/` (28 authenticated pages + 16 public + 68 API routes) + `apps/web/src/components/` (40+ components). Direct file reads where parity was ambiguous. Every claim in the audit is backed by a file:line reference.
+
+**Key corrections during the audit:**
+- Initial assumption that web `/goals` might lack the tree + suggestions UX was wrong — `apps/web/src/app/goals/goal-list.tsx:86-237` has full parity with mobile (tree, AddSubgoalModal, SuggestionsBanner, SuggestionsModal). Corrected to ✅.
+- Web `/account` is actually MORE comprehensive than mobile Profile — 12 sections vs 5. The parity gap runs mobile-side on those, not web. Flagged for post-beta.
+
+**API surface diff:** zero mobile-calls-that-web-doesn't-serve. Every frontend gap has a server handler already. Nothing blocks on backend work.
+
+### Top 3-5 critical gaps for beta (ordered)
+
+1. **`apps/web/src/app/entries/[id]/page.tsx`** — NEW. Build the web entry detail page.
+   - Server component, Prisma fetch of entry + tasks (projection matches the 2026-04-23 fix in `/api/entries/[id]/route.ts`).
+   - Sections: date / mood / summary / themes / wins / blockers / tasks / transcript.
+   - Wrap `EntryCard` on `/home` and `/entries` with `<Link href="/entries/${entry.id}">` to make clicks navigate.
+
+2. **`apps/web/src/app/goals/[id]/goal-detail.tsx:265`** — swap button target.
+   - Currently: `router.push(\`/home#record?goal=${encodeURIComponent(goal.title)}\`)`.
+   - Replace with state+`<RecordSheet context={{type:"goal", id:goal.id, label:goal.title, description:goal.description}} …/>` — mirror the pattern in `apps/web/src/app/insights/dimension-detail.tsx:53-54,351-367`.
+
+3. **`apps/web/src/app/entries/page.tsx`** — convert to client component with search + mood filter state. Use `MOOD_EMOJI`/`MOOD_LABELS` from `@acuity/shared`; match mobile's filter chips (ALL / GREAT / GOOD / NEUTRAL / LOW / ROUGH). Search matches summary + themes + transcript, case-insensitive.
+
+4. (Nice-to-have, not blocker) **`recommended-activity.tsx` goal CTA → RecordSheet** on both platforms — currently navigates to goal page instead of opening the recorder in-place. ~30 min each.
+
+5. (Nice-to-have, not blocker) **`react-force-graph-2d`** — still in `apps/web/package.json` from the pre-theme-map-redesign era. ~500kb unused bundle. 15-min dep removal.
+
+### Manual steps needed
+
+- [ ] Next run: execute critical path items 1-3 above. ~4 hr total. Recommend shipping them as three separate commits for clean review.
+- [ ] No schema change. No prisma push. No OTA.
+
+### Notes
+
+**The audit is frozen in time.** It's dated 2026-04-23 and reflects the state of `main` at commit `428fb16^` (the commit just before the audit). If anyone pushes web changes between now and when the critical-path work starts, the gaps list should be re-checked — the file:line references in the audit doc will stay accurate (git history preserves them), but the parity counts could drift.
+
+**Confidence:** high. Every critical gap was verified by direct `grep` + targeted file read rather than left as inference. The goal-detail record-button bug was particularly worth verifying — `apps/web/src/app/goals/[id]/goal-detail.tsx:265` literally reads `router.push(\`/home#record?goal=${encodeURIComponent(goal.title)}\`)` which does not route through any RecordSheet and does not pass `goalId` to `/api/record`.
+
+**Followups that persist from prior sessions (unchanged):**
+1. Theme detail bottom-sheet wiring on both platforms (tap-hero / tap-planet / tap-card currently no-ops).
+2. `react-force-graph-2d` removal from apps/web/package.json.
+3. Task-groups settings page on both platforms.
+4. Manual "Add task" button on both task lists.
+5. Beta blockers from 2026-04-21 production readiness audit (C1-C5 critical, H1-H12 high).
+
+### Recommended next run
+
+Execute the three critical gaps in order — entry detail → goal-record wiring → entries search/filter. Ship as three separate commits. Total ~4 hr. That closes the mobile-vs-web parity story for beta.
+
+### Confirmation
+
+No code changes in this run. Only two files touched by commits authored this session:
+- `audits/2026-04-23_mobile_web_parity.md` (new)
+- `PROGRESS.md` (this entry)
+
+Typecheck not run (no code touched). EAS not run (no mobile code touched). Web build not run.
+
+---
+
 ## 2026-04-23 — RLS gaps closed + empty mobile task cards fixed
 
 - **Requested by:** Both (Keenan flagged both issues from testing)
