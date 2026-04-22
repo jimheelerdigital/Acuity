@@ -7,6 +7,72 @@
 
 ---
 
+## 2026-04-21 — Beta testing UX pass: tasks, nav, insights + report features audit
+
+- **Requested by:** Both
+- **Committed by:** Claude Code
+- **Commit hashes:** 73e696c (back button), e06ac58 (tasks), d1b49ae (insights), followup commit (this PROGRESS entry)
+
+### In plain English (for Keenan)
+Beta testers flagged four things. We fixed three of them and documented a decision on the fourth.
+
+1. **Tasks list** — both the phone app and the website. Tasks used to look like chunky cards. Now they look like the iOS Reminders app: a simple list with an empty circle on the left, the task text you can tap to rename, and a small priority tag if the task is High or Urgent. Tap the circle to check a task off (it fills in purple with a white check). Tap the text to edit the title right there without opening any popup. Long-press a task on mobile for snooze/delete options; hover a row on the web for the same.
+
+2. **Back button label** — on the phone app, opening a journal entry used to show "(tabs)" as the iOS back button label in the top-left corner. Now it just shows a chevron, no text. Applies everywhere in the app.
+
+3. **Insights page** — both platforms. The Life Matrix (six-area radar chart) is now the first thing you see, big and prominent. Below it is a new horizontal-scrolling "Recent activity" strip showing the last 7 days as emoji + date + summary cards (tap to open the entry). Below that: Theme Map, Ask Your Past Self, and State of Me cards (phone app got the last two for the first time). The long tables of charts and metrics are now tucked into a collapsible "Metrics & observations" drawer at the bottom.
+
+4. **Report features audit** — we looked at what was promised for digests and reports versus what actually ships. Emails send text summaries but no charts. Life Audit doesn't email the user when it completes. Life Timeline / Theme Evolution Map / Goal Progression Tree from the roadmap aren't implemented. Nothing fixed in this pass — all decisions documented in the Notes section below.
+
+### Technical changes (for Jimmy)
+
+**Fix 2 — back button (commit 73e696c):**
+- `apps/mobile/app/_layout.tsx`: root Stack screenOptions now sets `headerBackButtonDisplayMode: "minimal"` and `headerBackTitle: "Back"`. Cascades to all pushed detail screens (entry/[id], goal/[id], insights/theme-map, record modal).
+
+**Fix 1 — tasks UI (commit e06ac58):**
+- `apps/mobile/app/(tabs)/tasks.tsx`: full rewrite. FlatList with 1px dividers, no card chrome. 22px checkbox (transparent w/ grey border when open, #7C3AED fill + white checkmark when done). Inline TextInput on row-tap, saves on blur/submit via `action: "edit"` fields:{title}. Long-press opens `ActionSheetIOS` with Snooze/Complete/Delete. Optimistic toggle for complete/reopen.
+- `apps/web/src/app/tasks/task-list.tsx`: matching rewrite — flat list inside bordered container, inline `<input>` with Enter/Esc + blur-save. Retained full-field edit modal for description/priority/dueDate via per-row Details icon on hover.
+- No API changes — existing `/api/tasks` PATCH `action: "edit"` with `fields: {title, description, priority, dueDate}` already supported.
+
+**Fix 3 — insights redesign (commit d1b49ae):**
+- `apps/mobile/app/(tabs)/insights.tsx`: reordered sections. Life Matrix radar + Current/Trend toggle + area detail grid moved to top. New horizontal ScrollView timeline uses already-fetched `entries` state. Added Ask Your Past Self and State of Me link cards (previously web-only). Mood chart + UserInsightsCard + ComparisonsCard moved into a `metricsOpen` collapsible drawer. Timeline hides if fewer than 3 entries in last 7 days.
+- `apps/web/src/app/insights/page.tsx`: reordered sections to match mobile.
+- `apps/web/src/app/insights/recent-timeline.tsx`: NEW client component. Fetches `/api/entries`, filters to last 7 days, renders horizontal-scroll strip of mood/date/summary cards.
+- `apps/web/src/app/insights/metrics-drawer.tsx`: NEW client component. Collapsible drawer wrapping UserInsightsCard + HealthCorrelationsCard + ComparisonsCard.
+- No API changes — `/api/lifemap/trend` already exists and was wired to `trendAreas` prop on both radar components. The "broken toggle" concern in the brief was a false alarm; toggle is functional but the "Trend" button is (correctly) disabled when `hasEnoughHistory` is false, which is the case for most beta users.
+
+**Fix 4 — report features audit (no code commit):**
+- Findings documented in Notes below. No features shipped in this pass.
+
+### Manual steps needed
+- [ ] **Jim: publish one OTA update covering all three mobile fixes.** `cd apps/mobile && eas update --channel preview --message "beta UX pass: tasks, back button, insights redesign"`. Do not run it per-commit — bundle once so all three land together on device.
+- [ ] **Vercel auto-deploys web changes** on push to main (if auto-deploy is unblocked per PROGRESS 2026-04-20 Inngest triage). If not, run `vercel --prod` from repo root.
+- [ ] **Keenan / Jim decide** which report-audit gaps to schedule (see Notes). No prisma migration needed.
+
+### Notes
+
+**Gotchas discovered:**
+- React Native 0.81 + Fabric: `headerBackTitleVisible` is deprecated in native-stack 7.x — use `headerBackButtonDisplayMode: "minimal"` instead. Verified in `@react-navigation/native-stack/lib/typescript/src/types.d.ts:130` before writing the fix.
+- Expo Router's `<Tabs.Screen>` with `href: null` already triggers both `tabBarItemStyle: { display: 'none' }` and `tabBarButton: () => null` automatically (via `expo-router/build/layouts/TabsClient.js:33`) — no extra hiding needed for `index` and `profile` screens.
+- Web has no `/entries/[id]` route. The Timeline cards on web all link to `/entries` (the list) instead of individual entries. If we add a web entry-detail page later, update `recent-timeline.tsx` to per-entry hrefs.
+- The Current/Trend toggle on both platforms was already correctly wired before this pass — the `/api/lifemap/trend` endpoint returns a ~4-weeks-ago snapshot from `LifeMapAreaHistory` (or a transcript-derived fallback), and both radar components accept a `trendAreas` prop that renders a dashed overlay polygon. Toggle is correctly disabled when `hasEnoughHistory` is false.
+
+**Report features audit — explicit decisions per gap:**
+
+| Gap | Status | Decision | Est. cost |
+|---|---|---|---|
+| PNG chart generation in digest emails (`weekly-digest.ts` line 12 calls this out as "skipped this sprint") | STUB | **DEFER to post-beta engagement signals.** Needs `@vercel/og` or `node-canvas` in the bundle + image URL hosting. Noise vs. signal unclear until we see open-rate + CTR data. | 1-2 hr |
+| Life Audit completion email (Day 14) | MISSING | **SHIP NEXT SESSION.** Pattern exists in State of Me (`generate-state-of-me.ts:255-275` → `sendStateOfMeReadyEmail`). Unblocks the paywall-transition UX decision from 2026-04-17 ("users must arrive at Day 14 already holding the audit"). Small, high-leverage. | 30 min |
+| Full State of Me report content in email (currently ready-notification only) | PARTIAL | **DEFER.** Current pattern (email = CTA to view in-app) is consistent with the app-first experience. Revisit only if users complain. | 1 hr |
+| Life Timeline (full zoomable day/month/year view per ROADMAP.md §62-69) | MISSING | **Per ROADMAP — Sprint 3.** The insights timeline strip shipped in this pass is the first 7-day horizontal slice; full zoomable version stays on the roadmap. | 1-2 weeks |
+| Theme Evolution Map (Sprint 2 force-directed graph) | STUB | **Per ROADMAP — in progress, Sprint 2.** Route structure exists (`/insights/theme-map`), logic is the blocker. | 3-5 days |
+| Goal Progression Tree (Sprint 2 hierarchical goals) | MISSING | **Per ROADMAP — Sprint 2.** Schema change required (`Goal.parentGoalId`). | 5-7 days |
+| Monthly digest Life Timeline visual (heat strip / bubble chart) | STUB | **DEFER** — blocked on the same chart-in-email pipeline as the first row. Currently ships text summary only. | Same as row 1 |
+
+**Recommendation** — top of next session's queue: Life Audit completion email. 30 min of work that closes a paywall-transition UX gap.
+
+---
+
 ## 2026-04-21 — Replace OG image, favicons, and app icons with new logo
 
 - **Requested by:** Keenan
