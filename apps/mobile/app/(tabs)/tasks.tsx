@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "expo-router";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActionSheetIOS,
   ActivityIndicator,
@@ -8,7 +9,6 @@ import {
   RefreshControl,
   ScrollView,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -46,14 +46,13 @@ type Tab = "open" | "snoozed" | "completed";
 const UNGROUPED_KEY = "__ungrouped__";
 
 export default function TasksTab() {
+  const router = useRouter();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [groups, setGroups] = useState<TaskGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>("open");
   const [acting, setActing] = useState<Set<string>>(new Set());
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editingText, setEditingText] = useState("");
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
     new Set()
   );
@@ -109,35 +108,16 @@ export default function TasksTab() {
     [fetchAll]
   );
 
-  const saveEdit = useCallback(
-    async (id: string, nextTitle: string) => {
-      const trimmed = nextTitle.trim();
-      setEditingId(null);
-      setEditingText("");
-      const task = tasks.find((t) => t.id === id);
-      const original = task?.title ?? task?.text ?? "";
-      if (!trimmed || trimmed === original) return;
-      setTasks((prev) =>
-        prev.map((t) => (t.id === id ? { ...t, title: trimmed } : t))
-      );
-      try {
-        await api.patch("/api/tasks", {
-          id,
-          action: "edit",
-          fields: { title: trimmed },
-        });
-        await fetchAll();
-      } catch {
-        await fetchAll();
-      }
+  // Tap on a task's title text opens the full editor modal at
+  // /task/[id]. Replaces the prior inline TextInput rename — beta
+  // testers found tap-to-rename confusing when they were trying to
+  // view task details. Long-press still opens the action sheet.
+  const openTaskEditor = useCallback(
+    (task: Task) => {
+      router.push(`/task/${task.id}`);
     },
-    [tasks, fetchAll]
+    [router]
   );
-
-  const beginEdit = useCallback((task: Task) => {
-    setEditingId(task.id);
-    setEditingText(task.title ?? task.text ?? "");
-  }, []);
 
   const openMoveSheet = useCallback(
     (task: Task) => {
@@ -361,11 +341,7 @@ export default function TasksTab() {
                   onToggle={() => toggleGroup(group.id)}
                   tab={activeTab}
                   acting={acting}
-                  editingId={editingId}
-                  editingText={editingText}
-                  onEditChange={setEditingText}
-                  onEditBegin={beginEdit}
-                  onEditEnd={(id) => saveEdit(id, editingText)}
+                  onOpenEditor={openTaskEditor}
                   onToggleComplete={(task) =>
                     act(
                       task.id,
@@ -401,11 +377,7 @@ export default function TasksTab() {
                   onToggle={() => toggleGroup(UNGROUPED_KEY)}
                   tab={activeTab}
                   acting={acting}
-                  editingId={editingId}
-                  editingText={editingText}
-                  onEditChange={setEditingText}
-                  onEditBegin={beginEdit}
-                  onEditEnd={(id) => saveEdit(id, editingText)}
+                  onOpenEditor={openTaskEditor}
                   onToggleComplete={(task) =>
                     act(
                       task.id,
@@ -430,13 +402,9 @@ function GroupSection({
   onToggle,
   tab,
   acting,
-  editingId,
-  editingText,
-  onEditChange,
-  onEditBegin,
-  onEditEnd,
   onToggleComplete,
   onLongPress,
+  onOpenEditor,
 }: {
   group: TaskGroup;
   tasks: Task[];
@@ -444,13 +412,9 @@ function GroupSection({
   onToggle: () => void;
   tab: Tab;
   acting: Set<string>;
-  editingId: string | null;
-  editingText: string;
-  onEditChange: (next: string) => void;
-  onEditBegin: (task: Task) => void;
-  onEditEnd: (id: string) => void;
   onToggleComplete: (task: Task) => void;
   onLongPress: (task: Task) => void;
+  onOpenEditor: (task: Task) => void;
 }) {
   return (
     <View>
@@ -499,13 +463,9 @@ function GroupSection({
               task={task}
               tab={tab}
               busy={acting.has(task.id)}
-              isEditing={editingId === task.id}
-              editText={editingText}
-              onEditChange={onEditChange}
-              onEditBegin={() => onEditBegin(task)}
-              onEditEnd={() => onEditEnd(task.id)}
               onToggle={() => onToggleComplete(task)}
               onLongPress={() => onLongPress(task)}
+              onOpenEditor={() => onOpenEditor(task)}
             />
           </View>
         ))}
@@ -517,24 +477,16 @@ function TaskRow({
   task,
   tab,
   busy,
-  isEditing,
-  editText,
-  onEditChange,
-  onEditBegin,
-  onEditEnd,
   onToggle,
   onLongPress,
+  onOpenEditor,
 }: {
   task: Task;
   tab: Tab;
   busy: boolean;
-  isEditing: boolean;
-  editText: string;
-  onEditChange: (next: string) => void;
-  onEditBegin: () => void;
-  onEditEnd: () => void;
   onToggle: () => void;
   onLongPress: () => void;
+  onOpenEditor: () => void;
 }) {
   const label = task.title ?? task.text ?? "Untitled task";
   const isDone = task.status === "DONE";
@@ -547,14 +499,6 @@ function TaskRow({
         day: "numeric",
       })
     : null;
-  const inputRef = useRef<TextInput | null>(null);
-
-  useEffect(() => {
-    if (isEditing) {
-      const id = setTimeout(() => inputRef.current?.focus(), 0);
-      return () => clearTimeout(id);
-    }
-  }, [isEditing]);
 
   return (
     <View
@@ -573,47 +517,26 @@ function TaskRow({
         onPress={onToggle}
       />
       <Pressable
-        onPress={isEditing ? undefined : onEditBegin}
+        onPress={onOpenEditor}
         onLongPress={onLongPress}
         delayLongPress={350}
         style={{ flex: 1, marginLeft: 12 }}
       >
-        {isEditing ? (
-          <TextInput
-            ref={inputRef}
-            value={editText}
-            onChangeText={onEditChange}
-            onBlur={onEditEnd}
-            onSubmitEditing={onEditEnd}
-            returnKeyType="done"
-            blurOnSubmit
-            selectionColor="#7C3AED"
-            style={{
-              fontSize: 15,
-              lineHeight: 20,
-              color: "#18181B",
-              padding: 0,
-              margin: 0,
-            }}
-            className="dark:text-zinc-50"
-          />
-        ) : (
-          <Text
-            style={{
-              fontSize: 15,
-              lineHeight: 20,
-              textDecorationLine: isDone ? "line-through" : "none",
-            }}
-            className={
-              isDone
-                ? "text-zinc-400 dark:text-zinc-500"
-                : "text-zinc-800 dark:text-zinc-100"
-            }
-          >
-            {label}
-          </Text>
-        )}
-        {(showPriorityChip || dueDate) && !isEditing && (
+        <Text
+          style={{
+            fontSize: 15,
+            lineHeight: 20,
+            textDecorationLine: isDone ? "line-through" : "none",
+          }}
+          className={
+            isDone
+              ? "text-zinc-400 dark:text-zinc-500"
+              : "text-zinc-800 dark:text-zinc-100"
+          }
+        >
+          {label}
+        </Text>
+        {(showPriorityChip || dueDate) && (
           <View className="flex-row items-center gap-2 mt-1">
             {showPriorityChip && (
               <View

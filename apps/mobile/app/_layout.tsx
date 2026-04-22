@@ -125,6 +125,13 @@ function ThemedApp() {
           }}
         />
         <Stack.Screen
+          name="task/[id]"
+          options={{
+            headerShown: false,
+            presentation: "modal",
+          }}
+        />
+        <Stack.Screen
           name="paywall"
           options={{
             headerShown: false,

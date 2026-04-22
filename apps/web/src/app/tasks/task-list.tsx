@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { PRIORITY_COLOR } from "@acuity/shared";
 
 type Task = {
@@ -40,8 +40,6 @@ export function TaskList() {
   const [activeTab, setActiveTab] = useState<Tab>("open");
   const [acting, setActing] = useState<Set<string>>(new Set());
   const [editingTask, setEditingTask] = useState<Task | null>(null);
-  const [inlineEditId, setInlineEditId] = useState<string | null>(null);
-  const [inlineEditText, setInlineEditText] = useState("");
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
     new Set()
   );
@@ -96,40 +94,6 @@ export function TaskList() {
     },
     [fetchAll]
   );
-
-  const saveInlineEdit = useCallback(
-    async (id: string, nextTitle: string) => {
-      const trimmed = nextTitle.trim();
-      setInlineEditId(null);
-      setInlineEditText("");
-      const task = tasks.find((t) => t.id === id);
-      const original = task?.title ?? task?.text ?? "";
-      if (!trimmed || trimmed === original) return;
-      setTasks((prev) =>
-        prev.map((t) => (t.id === id ? { ...t, title: trimmed } : t))
-      );
-      try {
-        await fetch("/api/tasks", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            id,
-            action: "edit",
-            fields: { title: trimmed },
-          }),
-        });
-        await fetchAll();
-      } catch {
-        await fetchAll();
-      }
-    },
-    [tasks, fetchAll]
-  );
-
-  const beginInlineEdit = useCallback((task: Task) => {
-    setInlineEditId(task.id);
-    setInlineEditText(task.title ?? task.text ?? "");
-  }, []);
 
   const toggleGroup = useCallback((id: string) => {
     setCollapsedGroups((prev) => {
@@ -252,11 +216,6 @@ export function TaskList() {
                 tab={activeTab}
                 groups={sortedGroups}
                 acting={acting}
-                inlineEditId={inlineEditId}
-                inlineEditText={inlineEditText}
-                onInlineEditChange={setInlineEditText}
-                onInlineEditBegin={beginInlineEdit}
-                onInlineEditEnd={(id) => saveInlineEdit(id, inlineEditText)}
                 onToggleComplete={(task) =>
                   act(
                     task.id,
@@ -298,11 +257,6 @@ export function TaskList() {
                 tab={activeTab}
                 groups={sortedGroups}
                 acting={acting}
-                inlineEditId={inlineEditId}
-                inlineEditText={inlineEditText}
-                onInlineEditChange={setInlineEditText}
-                onInlineEditBegin={beginInlineEdit}
-                onInlineEditEnd={(id) => saveInlineEdit(id, inlineEditText)}
                 onToggleComplete={(task) =>
                   act(
                     task.id,
@@ -346,11 +300,6 @@ function GroupSection({
   tab,
   groups,
   acting,
-  inlineEditId,
-  inlineEditText,
-  onInlineEditChange,
-  onInlineEditBegin,
-  onInlineEditEnd,
   onToggleComplete,
   onSnooze,
   onDismiss,
@@ -366,11 +315,6 @@ function GroupSection({
   tab: Tab;
   groups: TaskGroup[];
   acting: Set<string>;
-  inlineEditId: string | null;
-  inlineEditText: string;
-  onInlineEditChange: (next: string) => void;
-  onInlineEditBegin: (task: Task) => void;
-  onInlineEditEnd: (id: string) => void;
   onToggleComplete: (task: Task) => void;
   onSnooze: (task: Task) => void;
   onDismiss: (task: Task) => void;
@@ -429,11 +373,6 @@ function GroupSection({
                 tab={tab}
                 groups={groups}
                 busy={acting.has(task.id)}
-                isEditing={inlineEditId === task.id}
-                editText={inlineEditText}
-                onEditChange={onInlineEditChange}
-                onEditBegin={() => onInlineEditBegin(task)}
-                onEditEnd={() => onInlineEditEnd(task.id)}
                 onToggle={() => onToggleComplete(task)}
                 onOpenFullEdit={() => onOpenFullEdit(task)}
                 onSnooze={() => onSnooze(task)}
@@ -457,11 +396,6 @@ function TaskRow({
   tab,
   groups,
   busy,
-  isEditing,
-  editText,
-  onEditChange,
-  onEditBegin,
-  onEditEnd,
   onToggle,
   onOpenFullEdit,
   onSnooze,
@@ -474,11 +408,6 @@ function TaskRow({
   tab: Tab;
   groups: TaskGroup[];
   busy: boolean;
-  isEditing: boolean;
-  editText: string;
-  onEditChange: (next: string) => void;
-  onEditBegin: () => void;
-  onEditEnd: () => void;
   onToggle: () => void;
   onOpenFullEdit: () => void;
   onSnooze: () => void;
@@ -499,11 +428,6 @@ function TaskRow({
         day: "numeric",
       })
     : null;
-  const inputRef = useRef<HTMLInputElement | null>(null);
-
-  useEffect(() => {
-    if (isEditing) inputRef.current?.focus();
-  }, [isEditing]);
 
   return (
     <div
@@ -518,35 +442,19 @@ function TaskRow({
       />
 
       <div className="flex-1 min-w-0">
-        {isEditing ? (
-          <input
-            ref={inputRef}
-            value={editText}
-            onChange={(e) => onEditChange(e.target.value)}
-            onBlur={onEditEnd}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === "Escape") {
-                e.preventDefault();
-                onEditEnd();
-              }
-            }}
-            className="w-full bg-transparent text-sm leading-snug text-zinc-900 dark:text-zinc-100 outline-none border-b border-violet-500 py-0"
-          />
-        ) : (
-          <button
-            type="button"
-            onClick={onEditBegin}
-            className={`text-left text-sm leading-snug w-full ${
-              isDone
-                ? "text-zinc-400 dark:text-zinc-500 line-through"
-                : "text-zinc-800 dark:text-zinc-100"
-            }`}
-          >
-            {label}
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={onOpenFullEdit}
+          className={`text-left text-sm leading-snug w-full ${
+            isDone
+              ? "text-zinc-400 dark:text-zinc-500 line-through"
+              : "text-zinc-800 dark:text-zinc-100"
+          }`}
+        >
+          {label}
+        </button>
 
-        {(showPriorityChip || dueDate || task.description) && !isEditing && (
+        {(showPriorityChip || dueDate || task.description) && (
           <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-zinc-400 dark:text-zinc-500">
             {showPriorityChip && (
               <span
@@ -569,8 +477,7 @@ function TaskRow({
         )}
       </div>
 
-      {!isEditing && (
-        <div className="shrink-0 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity relative">
+      <div className="shrink-0 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity relative">
           <button
             type="button"
             onClick={() => setMoveMenuOpen(!moveMenuOpen)}
@@ -629,17 +536,6 @@ function TaskRow({
               </button>
             </div>
           )}
-          {tab !== "completed" && (
-            <RowAction
-              title="Details"
-              aria="Open full edit"
-              onClick={onOpenFullEdit}
-              busy={busy}
-            >
-              <path d="M12 20h9" />
-              <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z" />
-            </RowAction>
-          )}
           {tab === "open" && (
             <>
               <RowAction
@@ -662,7 +558,6 @@ function TaskRow({
             </>
           )}
         </div>
-      )}
     </div>
   );
 }
