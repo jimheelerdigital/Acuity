@@ -736,9 +736,19 @@ model UserDemographics {
   // Multi-select: any of "Career" | "Relationships" | "Mental health"
   // | "Productivity" | "Curiosity" | "Other"
   primaryReasons String[]
+  // Freeform elaboration when the user picks "Other" on primaryReasons.
+  // Captures what they're actually here for that the preset chips
+  // didn't cover — fuels cohort analysis without losing the long tail
+  // of motivations to a catch-all bucket. Null when Other wasn't
+  // picked or the user declined to elaborate.
+  primaryReasonsCustom String?
   // One of "Student" | "Early career" | "Established career" | "Parent"
   // | "Retired" | "In transition" | "Prefer not to say"
   lifeStage      String?
+  // Freeform elaboration for lifeStage = "Other" or "In transition" —
+  // both imply context the preset options don't carry (layoff?
+  // caregiving? sabbatical? career change?). Null otherwise.
+  lifeStageCustom String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }

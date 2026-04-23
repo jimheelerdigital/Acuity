@@ -1,5 +1,12 @@
 import { useEffect, useState } from "react";
-import { NativeModules, Platform, Pressable, Text, View } from "react-native";
+import {
+  NativeModules,
+  Platform,
+  Pressable,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 
 import { useOnboarding } from "./context";
 
@@ -88,8 +95,13 @@ export function Step3Demographics() {
   // Lazy init avoids re-running the native-modules read on every render.
   const [country, setCountry] = useState<string | null>(() => detectRegion());
   const [primaryReasons, setPrimaryReasons] = useState<string[]>([]);
+  const [primaryReasonsCustom, setPrimaryReasonsCustom] = useState("");
   const [lifeStage, setLifeStage] = useState<string | null>(null);
+  const [lifeStageCustom, setLifeStageCustom] = useState("");
   const [countryPickerOpen, setCountryPickerOpen] = useState(false);
+
+  const showReasonsCustom = primaryReasons.includes("Other");
+  const showLifeStageCustom = lifeStage === "In transition";
 
   useEffect(() => {
     setCanContinue(true);
@@ -98,14 +110,24 @@ export function Step3Demographics() {
       gender,
       country,
       primaryReasons,
+      primaryReasonsCustom: showReasonsCustom
+        ? primaryReasonsCustom.trim() || null
+        : null,
       lifeStage,
+      lifeStageCustom: showLifeStageCustom
+        ? lifeStageCustom.trim() || null
+        : null,
     });
   }, [
     ageRange,
     gender,
     country,
     primaryReasons,
+    primaryReasonsCustom,
     lifeStage,
+    lifeStageCustom,
+    showReasonsCustom,
+    showLifeStageCustom,
     setCanContinue,
     setCapturedData,
   ]);
@@ -205,6 +227,17 @@ export function Step3Demographics() {
           />
         ))}
       </Section>
+      {showReasonsCustom && (
+        <TextInput
+          value={primaryReasonsCustom}
+          onChangeText={setPrimaryReasonsCustom}
+          maxLength={200}
+          placeholder="Tell Acuity more — what brings you here?"
+          placeholderTextColor="#71717A"
+          className="mt-3 w-full rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-4 py-3 text-sm text-zinc-900 dark:text-zinc-100"
+          accessibilityLabel="What brings you here (freeform)"
+        />
+      )}
 
       {/* Life stage */}
       <Section label="Life stage">
@@ -217,6 +250,17 @@ export function Step3Demographics() {
           />
         ))}
       </Section>
+      {showLifeStageCustom && (
+        <TextInput
+          value={lifeStageCustom}
+          onChangeText={setLifeStageCustom}
+          maxLength={200}
+          placeholder="What's shifting? (layoff, caregiving, sabbatical…)"
+          placeholderTextColor="#71717A"
+          className="mt-3 w-full rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-4 py-3 text-sm text-zinc-900 dark:text-zinc-100"
+          accessibilityLabel="Life stage (freeform)"
+        />
+      )}
     </View>
   );
 }

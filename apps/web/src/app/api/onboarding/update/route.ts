@@ -144,10 +144,22 @@ export async function POST(req: NextRequest) {
       .filter((x): x is string => typeof x === "string" && VALID_REASONS.includes(x))
       .slice(0, VALID_REASONS.length);
   }
+  if (typeof raw.primaryReasonsCustom === "string") {
+    const trimmed = raw.primaryReasonsCustom.trim().slice(0, 200);
+    demographicsUpdates.primaryReasonsCustom = trimmed.length > 0 ? trimmed : null;
+  } else if (raw.primaryReasonsCustom === null) {
+    demographicsUpdates.primaryReasonsCustom = null;
+  }
   if (typeof raw.lifeStage === "string" && VALID_LIFE_STAGES.includes(raw.lifeStage)) {
     demographicsUpdates.lifeStage = raw.lifeStage;
   } else if (raw.lifeStage === null) {
     demographicsUpdates.lifeStage = null;
+  }
+  if (typeof raw.lifeStageCustom === "string") {
+    const trimmed = raw.lifeStageCustom.trim().slice(0, 200);
+    demographicsUpdates.lifeStageCustom = trimmed.length > 0 ? trimmed : null;
+  } else if (raw.lifeStageCustom === null) {
+    demographicsUpdates.lifeStageCustom = null;
   }
 
   // ─── Notification fields (step 9) ──────────────────────────────────────

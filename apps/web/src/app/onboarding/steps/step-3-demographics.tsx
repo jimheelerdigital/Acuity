@@ -81,13 +81,21 @@ export function Step3Demographics() {
   const [gender, setGender] = useState<string | null>(null);
   const [country, setCountry] = useState<string | null>(null);
   const [primaryReasons, setPrimaryReasons] = useState<string[]>([]);
+  const [primaryReasonsCustom, setPrimaryReasonsCustom] = useState("");
   const [lifeStage, setLifeStage] = useState<string | null>(null);
+  const [lifeStageCustom, setLifeStageCustom] = useState("");
 
   // Seed country from the browser's locale once on mount.
   useEffect(() => {
     const d = detectCountry();
     if (d) setCountry(d);
   }, []);
+
+  const showReasonsCustom = primaryReasons.includes("Other");
+  // "In transition" is the only life-stage chip that implies
+  // elaboration. "Prefer not to say" deliberately doesn't trigger a
+  // text input — the whole point of that option is to opt out.
+  const showLifeStageCustom = lifeStage === "In transition";
 
   useEffect(() => {
     // Every field is optional — step is always continuable.
@@ -97,9 +105,30 @@ export function Step3Demographics() {
       gender,
       country,
       primaryReasons,
+      // Only send the freeform text when the trigger option is picked;
+      // otherwise send null so previously-stored customs get cleared
+      // if the user changed their mind.
+      primaryReasonsCustom: showReasonsCustom
+        ? primaryReasonsCustom.trim() || null
+        : null,
       lifeStage,
+      lifeStageCustom: showLifeStageCustom
+        ? lifeStageCustom.trim() || null
+        : null,
     });
-  }, [ageRange, gender, country, primaryReasons, lifeStage, setCanContinue, setCapturedData]);
+  }, [
+    ageRange,
+    gender,
+    country,
+    primaryReasons,
+    primaryReasonsCustom,
+    lifeStage,
+    lifeStageCustom,
+    showReasonsCustom,
+    showLifeStageCustom,
+    setCanContinue,
+    setCapturedData,
+  ]);
 
   const toggleReason = (r: string) => {
     setPrimaryReasons((prev) =>
@@ -191,6 +220,17 @@ export function Step3Demographics() {
             </Chip>
           ))}
         </div>
+        {showReasonsCustom && (
+          <input
+            type="text"
+            value={primaryReasonsCustom}
+            onChange={(e) => setPrimaryReasonsCustom(e.target.value)}
+            maxLength={200}
+            placeholder="Tell Acuity more — what brings you here?"
+            className="mt-3 w-full rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-violet-500"
+            aria-label="What brings you here (freeform)"
+          />
+        )}
       </section>
 
       {/* Life stage */}
@@ -209,6 +249,17 @@ export function Step3Demographics() {
             </Chip>
           ))}
         </div>
+        {showLifeStageCustom && (
+          <input
+            type="text"
+            value={lifeStageCustom}
+            onChange={(e) => setLifeStageCustom(e.target.value)}
+            maxLength={200}
+            placeholder="What's shifting? (layoff, caregiving, sabbatical…)"
+            className="mt-3 w-full rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-violet-500"
+            aria-label="Life stage (freeform)"
+          />
+        )}
       </section>
     </div>
   );
