@@ -1757,29 +1757,51 @@ export function LandingPage() {
 
       {/* ───── FAQ ───── */}
       <section className="px-6 py-24 sm:py-32">
-        <div className="mx-auto max-w-2xl">
+        <div className="mx-auto max-w-3xl text-center">
           <Reveal>
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl text-center mb-12 text-white">
-              Frequently asked questions
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-sm text-[#A0A0B8] mb-6">
+              <svg className="h-4 w-4 text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
+              FAQ
+            </span>
+          </Reveal>
+          <Reveal>
+            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl mb-4 text-white">
+              Frequently asked questions about Acuity
             </h2>
           </Reveal>
-          <div className="space-y-4">
-            {[
-              { q: "Is this actually private?", a: "Your audio is deleted within 24 hours of transcription. Transcripts are encrypted. We use OpenAI Whisper for transcription and Anthropic Claude for analysis — under their API terms, your data is processed and returned, never used to train their models. We never sell your data." },
-              { q: "Do I have to use it every night?", a: "No. But people who record 4+ times in week one see dramatically better weekly reports. The AI needs a few data points before it can spot patterns." },
-              { q: "What if I don't know what to say?", a: "That's the point. Just talk. Say whatever is on your mind. The messier, the better — Acuity pulls the signal out of the noise." },
-              { q: "Is this just a journaling app?", a: "No. You don't write anything. You talk for 60 seconds. By morning your tasks are on a list, your mood is scored, and every Sunday a 400-word story of your week lands on your phone." },
-              { q: "How much does it cost?", a: "$12.99/month after a 14-day free trial. No credit card to start. Cancel anytime with one click." },
-              { q: "What AI do you use?", a: "OpenAI Whisper for transcription (best-in-class accuracy, even with mumbling). Anthropic Claude for extraction and reports. We name the stack because we think you should know what's running under the hood." },
-            ].map((faq, i) => (
-              <Reveal key={i} delay={Math.min(i + 1, 3) as 1 | 2 | 3}>
-                <div className="rounded-xl border border-white/10 bg-[#13131F] p-6">
-                  <h3 className="text-base font-semibold text-white mb-2">{faq.q}</h3>
-                  <p className="text-sm text-[#A0A0B8] leading-relaxed">{faq.a}</p>
-                </div>
-              </Reveal>
-            ))}
-          </div>
+          <Reveal delay={2}>
+            <p className="text-[#A0A0B8] mb-4 max-w-xl mx-auto">
+              Have questions about Acuity and how it turns your nightly brain dump into action? Our FAQs cover everything you need to get started.
+            </p>
+          </Reveal>
+        </div>
+        <div className="mx-auto max-w-3xl mt-8">
+          <Reveal delay={2}>
+            <div className="rounded-2xl border border-white/10 bg-[#13131F] divide-y divide-white/10">
+              {[
+                { q: "What is Acuity and how does it work?", a: "Acuity is a nightly shutdown ritual. You talk for 60 seconds about whatever is on your mind — tasks, worries, ideas, things that happened. By morning, your tasks are on a list, your mood is scored, and your goals are tracked. Every Sunday, a 400-word story of your week lands on your phone. You talk. Acuity does the rest." },
+                { q: "Is this actually private?", a: "Your audio is deleted within 24 hours of transcription. Transcripts are encrypted at rest. We use OpenAI Whisper for transcription and Anthropic Claude for analysis — under their API terms, your data is processed and returned, never used to train their models. We never sell your data." },
+                { q: "Do I have to use it every night?", a: "No. But people who record 4+ times in week one see dramatically better weekly reports. The AI needs a few data points before it can spot patterns. Most people settle into 4\u20135 recordings per week." },
+                { q: "What if I don't know what to say?", a: "That's the point. Just talk. Say whatever is on your mind. The messier, the better — Acuity pulls the signal out of the noise. There are no prompts to answer and no format to follow." },
+                { q: "Is this just a journaling app?", a: "No. You don't write anything. You talk for 60 seconds. Acuity extracts tasks, tracks goals over time, scores your mood, and writes you a weekly narrative. A journal records what you write down. Acuity catches what you'd otherwise forget." },
+                { q: "How is Acuity different from voice notes or other recording apps?", a: "Voice notes store audio. Acuity processes it. Within minutes your recording becomes a task list, a mood score, a goal-tracking update, and a data point that feeds into your weekly report. The recording is the input, not the output." },
+                { q: "How much does Acuity cost?", a: "$12.99/month after a 14-day free trial. No credit card required to start. Cancel anytime with one tap." },
+                { q: "What AI does Acuity use?", a: "OpenAI Whisper for speech-to-text (accurate even when you mumble). Anthropic Claude for extraction, scoring, and report writing. We name the stack because you should know what's running under the hood." },
+                { q: "Can I use Acuity on my phone?", a: "Yes. Acuity works on iPhone and Android. You can also use it on the web at getacuity.io. Your data syncs across devices." },
+                { q: "What is the weekly report?", a: "Every Sunday morning, Acuity writes you a 400-word narrative of your week. It covers what you worked on, what kept coming up, how your mood shifted, and what patterns are forming. People tell us it's the most useful part of the app." },
+              ].map((faq, i) => (
+                <details key={i} className="group">
+                  <summary className="flex cursor-pointer items-center justify-between px-6 py-5 text-left">
+                    <h3 className="text-base font-semibold text-white pr-4">{faq.q}</h3>
+                    <span className="shrink-0 text-[#A0A0B8] transition-transform group-open:rotate-45 text-xl leading-none">+</span>
+                  </summary>
+                  <div className="px-6 pb-5 -mt-1">
+                    <p className="text-sm text-[#A0A0B8] leading-relaxed">{faq.a}</p>
+                  </div>
+                </details>
+              ))}
+            </div>
+          </Reveal>
         </div>
       </section>
 
@@ -1824,48 +1846,75 @@ export function LandingPage() {
       </section>
 
       {/* ───── FOOTER ───── */}
-      <footer className="border-t border-white/10 px-6 py-12 bg-[#0A0A0F]">
-        <div className="mx-auto max-w-5xl">
-          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
-            <div>
+      <footer className="border-t border-white/10 px-6 py-16 bg-[#0A0A0F]">
+        <div className="mx-auto max-w-6xl">
+          <div className="grid gap-12 lg:grid-cols-5">
+            {/* Brand column */}
+            <div className="lg:col-span-2">
               <div className="flex items-center gap-2">
-                <img src="/AcuityLogoDark.png" alt="Acuity logo" className="shrink-0" style={{ width: 24, height: 24 }} />
-                <span className="text-lg font-bold tracking-tight">
+                <img src="/AcuityLogoDark.png" alt="Acuity logo" className="shrink-0" style={{ width: 28, height: 28 }} />
+                <span className="text-xl font-bold tracking-tight">
                   Acuity
                 </span>
               </div>
-              <p className="mt-2 text-sm text-[#A0A0B8] max-w-xs">
-                Your nightly shutdown ritual.
+              <p className="mt-3 text-sm text-[#A0A0B8] max-w-xs leading-relaxed">
+                Talk for 60 seconds. Wake up to a clearer picture of your life. Your nightly shutdown ritual.
+              </p>
+              <div className="mt-6 flex items-center gap-4">
+                <a href="https://apps.apple.com" aria-label="Download on iPhone" className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-[#A0A0B8] transition hover:text-white hover:border-white/20">
+                  <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+                  iPhone
+                </a>
+                <a href="https://play.google.com" aria-label="Download on Android" className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-[#A0A0B8] transition hover:text-white hover:border-white/20">
+                  <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M3.18 23.04L13.3 12.96 3.18.96C2.55 1.2 2.13 1.8 2.13 2.52v18.96c0 .72.42 1.32 1.05 1.56zm1.38.66l11.28-6.36-2.52-2.46-8.76 8.82zm14.64-8.28c.48-.3.78-.78.78-1.38s-.3-1.08-.78-1.38L16.2 11.4l-2.76 2.76 2.76 2.76 3-.48zm-14.64-8.7l8.76 8.82 2.52-2.46L4.56 6.72z"/></svg>
+                  Android
+                </a>
+              </div>
+              <p className="mt-6 text-xs text-[#A0A0B8]">
+                Need help? <a href="mailto:hello@getacuity.io" className="text-violet-400 hover:text-violet-300 transition">hello@getacuity.io</a>
               </p>
             </div>
+
+            {/* Link columns */}
             <div>
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-white/50 mb-3">Product</h3>
-              <ul className="space-y-2 text-sm text-[#A0A0B8]">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-white/50 mb-4">Product</h3>
+              <ul className="space-y-3 text-sm text-[#A0A0B8]">
                 <li><a href="/" className="transition hover:text-white">Home</a></li>
                 <li><a href="/waitlist" className="transition hover:text-white">Join Waitlist</a></li>
+                <li><a href="/#how-it-works" className="transition hover:text-white">How It Works</a></li>
+                <li><a href="/#pricing" className="transition hover:text-white">Pricing</a></li>
+                <li><a href="/#faq" className="transition hover:text-white">FAQ</a></li>
               </ul>
             </div>
             <div>
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-white/50 mb-3">Learn</h3>
-              <ul className="space-y-2 text-sm text-[#A0A0B8]">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-white/50 mb-4">Resources</h3>
+              <ul className="space-y-3 text-sm text-[#A0A0B8]">
                 <li><a href="/voice-journaling" className="transition hover:text-white">Voice Journaling Guide</a></li>
                 <li><a href="/blog" className="transition hover:text-white">Blog</a></li>
+                <li><a href="/#weekly-report" className="transition hover:text-white">Weekly Report</a></li>
+                <li><a href="/#features" className="transition hover:text-white">Features</a></li>
               </ul>
             </div>
             <div>
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-white/50 mb-3">Company</h3>
-              <ul className="space-y-2 text-sm text-[#A0A0B8]">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-white/50 mb-4">Company</h3>
+              <ul className="space-y-3 text-sm text-[#A0A0B8]">
                 <li><a href="/terms" className="transition hover:text-white">Terms</a></li>
                 <li><a href="/privacy" className="transition hover:text-white">Privacy</a></li>
                 <li><a href="mailto:hello@getacuity.io" className="transition hover:text-white">Contact</a></li>
+                <li><a href="/blog" className="transition hover:text-white">About</a></li>
               </ul>
             </div>
           </div>
 
-          <div className="mt-8 pt-6 border-t border-white/10 text-center">
+          <div className="mt-12 pt-8 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4">
             <p className="text-xs text-[#A0A0B8]">
               &copy; {new Date().getFullYear()} Acuity. All rights reserved.
             </p>
+            <div className="flex items-center gap-6 text-xs text-[#A0A0B8]">
+              <a href="/terms" className="transition hover:text-white">Terms</a>
+              <a href="/privacy" className="transition hover:text-white">Privacy</a>
+              <a href="mailto:hello@getacuity.io" className="transition hover:text-white">Support</a>
+            </div>
           </div>
         </div>
       </footer>
