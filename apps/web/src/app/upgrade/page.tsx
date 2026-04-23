@@ -37,7 +37,7 @@ export default async function UpgradePage({
             Upgrade to {PLAN_PRO_NAME}
           </h1>
           <p className="text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed">
-            Keep what you built over the last 14 days.
+            Keep everything you've built so far.
           </p>
         </div>
 
@@ -74,7 +74,7 @@ export default async function UpgradePage({
           </ul>
 
           <p className="mt-3 text-center text-xs text-zinc-400 dark:text-zinc-500">
-            14-day free trial. Cancel anytime.
+            Cancel anytime. No commitment.
           </p>
         </div>
 

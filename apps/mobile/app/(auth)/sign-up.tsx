@@ -83,7 +83,7 @@ export default function SignUpScreen() {
           Create your account
         </Text>
         <Text className="text-sm text-zinc-400 dark:text-zinc-500 mb-8 text-center">
-          14-day free trial. No credit card.
+          30-day free trial. No credit card.
         </Text>
 
         <TextInput

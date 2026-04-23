@@ -23,7 +23,7 @@ import {
 } from "@/components/landing-shared";
 
 const UTM = "sleep";
-const WAITLIST = `/waitlist?utm_campaign=${UTM}`;
+const WAITLIST = `/auth/signup?utm_campaign=${UTM}`;
 
 export default function SleepPage() {
   return (
@@ -47,7 +47,7 @@ export default function SleepPage() {
           <Reveal delay={2}>
             <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
               <PulsingCTA href={WAITLIST}>
-                Join the waitlist — first month free
+                Start Free Trial
               </PulsingCTA>
               <a
                 href="#how-it-works"
@@ -111,7 +111,7 @@ export default function SleepPage() {
       {/* ───── PRE-HOW-IT-WORKS CTA ───── */}
       <MidPageCTA
         headline="Ready to try the 60-second ritual that empties your head before bed?"
-        subheadline="No credit card required · cancel anytime"
+        subheadline="No card. 90 seconds to set up. · cancel anytime"
         utmCampaign={UTM}
       />
 
@@ -151,7 +151,7 @@ export default function SleepPage() {
       {/* ───── MID-PAGE CTA ───── */}
       <MidPageCTA
         headline="What if tonight was the last night you stared at the ceiling?"
-        subheadline="No credit card required · cancel anytime"
+        subheadline="No card. 90 seconds to set up. · cancel anytime"
         utmCampaign={UTM}
       />
 
@@ -264,7 +264,7 @@ export default function SleepPage() {
       <CTABanner
         headline="Your brain has been waiting for somewhere to put all of this."
         subheadline="Tonight. 60 seconds. See what happens."
-        buttonText="Join the waitlist — first month free"
+        buttonText="Start Free Trial"
         utmCampaign={UTM}
       />
 

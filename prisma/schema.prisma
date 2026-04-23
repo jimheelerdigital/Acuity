@@ -124,6 +124,11 @@ model User {
   // runs; stale snapshots are fine — they only seed the "what unlocked
   // since last check" diff.
   progressionSnapshot    Json?
+  // First 100 signups are Founding Members — 30-day trial, badge, and
+  // sequential number 1-100. After 100 the fields stay false/null and
+  // new users get the standard 14-day trial.
+  isFoundingMember       Boolean      @default(false)
+  foundingMemberNumber   Int?
   createdAt              DateTime     @default(now())
   // Last time the user loaded a page / opened the app. Updated
   // opportunistically from /api/user/me; not strongly durable.

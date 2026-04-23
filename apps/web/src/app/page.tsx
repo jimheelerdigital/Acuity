@@ -55,7 +55,7 @@ const jsonLd = {
           name: "How much does Acuity cost?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "Acuity costs $12.99/month with your first month completely free. No credit card required to join the waitlist.",
+            text: "Acuity costs $12.99/month with your 30-day free trial. No card. 90 seconds to set up.",
           },
         },
         {

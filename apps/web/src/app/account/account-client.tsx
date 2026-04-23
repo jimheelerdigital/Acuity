@@ -440,7 +440,7 @@ function RemindersSection({
 
 const STATUS_LABELS: Record<string, { label: string; hint: string; tone: "default" | "warn" | "good" }> = {
   PRO: { label: "Pro — active", hint: "Thanks for supporting Acuity.", tone: "good" },
-  TRIAL: { label: "14-day trial", hint: "You have full access during your trial.", tone: "default" },
+  TRIAL: { label: "Free trial", hint: "You have full access during your trial.", tone: "default" },
   PAST_DUE: {
     label: "Payment needed",
     hint: "Stripe couldn't charge your card. Update it to keep your subscription active.",

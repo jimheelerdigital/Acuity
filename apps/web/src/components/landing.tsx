@@ -1093,11 +1093,11 @@ export function LandingPage() {
             </div>
           </div>
           <Link
-            href="/waitlist?utm_campaign=home"
+            href="/auth/signup?utm_campaign=home"
             onClick={trackInitiateCheckout}
             className="rounded-full bg-[#7C5CFC] px-5 py-2 text-sm font-medium text-white transition hover:bg-[#6B4FE0] hover:shadow-lg hover:shadow-[#7C5CFC]/40 active:scale-95"
           >
-            Join the Waitlist
+            Start Free Trial
           </Link>
         </div>
       </nav>
@@ -1127,13 +1127,13 @@ export function LandingPage() {
               <Reveal delay={3}>
                 <div className="mt-10 hidden lg:flex flex-row items-start gap-3">
                   <Link
-                    href="/waitlist?utm_campaign=home"
+                    href="/auth/signup?utm_campaign=home"
                     onClick={trackInitiateCheckout}
                     className="group relative rounded-full p-[2px] transition active:scale-95 overflow-hidden"
                   >
                     <span className="absolute inset-[-100%] animate-cta-shine" style={{ background: 'conic-gradient(from 0deg, transparent 0%, transparent 60%, #ffffff 75%, #B8A5FF 85%, transparent 100%)' }} />
                     <span className="relative block rounded-full bg-[#7C5CFC] px-7 py-3.5 text-sm font-semibold text-white transition group-hover:bg-[#6B4FE0]">
-                      Join the waitlist — first month free
+                      Start Free Trial
                     </span>
                   </Link>
                   <a
@@ -1144,7 +1144,7 @@ export function LandingPage() {
                   </a>
                 </div>
                 <p className="mt-3 text-xs text-[#A0A0B8] hidden lg:block">
-                  No credit card required
+                  No card. 90 seconds to set up.
                 </p>
               </Reveal>
             </div>
@@ -1289,7 +1289,7 @@ export function LandingPage() {
               ))}
             </div>
             <p className="text-sm text-[#A0A0B8]">
-              Join <span className="text-white font-semibold">500+</span> people already on the waitlist
+              Join <span className="text-white font-semibold">500+</span> people already using Acuity
             </p>
               </div>
             </Reveal>
@@ -1589,11 +1589,11 @@ export function LandingPage() {
         <Reveal>
           <div className="mx-auto max-w-xl text-center">
             <Link
-              href="/waitlist?utm_campaign=home"
+              href="/auth/signup?utm_campaign=home"
               onClick={trackInitiateCheckout}
               className="inline-flex items-center gap-2 rounded-full bg-[#7C5CFC] px-8 py-4 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] hover:shadow-xl hover:shadow-[#7C5CFC]/10 active:scale-95"
             >
-              Join the waitlist — first month free
+              Start Free Trial
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
               </svg>
@@ -1682,7 +1682,7 @@ export function LandingPage() {
       {/* ───── TRUST STRIP ───── */}
       <section className="px-6 py-8">
         <div className="mx-auto max-w-3xl flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
-          {["Audio deleted within 24hrs", "No card required", "Cancel anytime", "First month free"].map((item, i) => (
+          {["Audio deleted within 24hrs", "No card required", "Cancel anytime", "30-day free trial"].map((item, i) => (
             <Reveal key={i} delay={Math.min(i, 3) as 0 | 1 | 2 | 3}>
               <div className="flex items-center gap-2 text-sm text-[#A0A0B8]">
                 <svg className="h-4 w-4 text-emerald-400 shrink-0 animate-check-pulse" style={{ animationDelay: `${i * 0.5}s` }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -1723,7 +1723,7 @@ export function LandingPage() {
                   <span className="text-[#A0A0B8]">/month</span>
                 </p>
                 <p className="mt-2 text-sm text-[#A0A0B8]">
-                  Join the waitlist &middot; no credit card required
+                  No card. 90 seconds to set up.
                 </p>
 
                 <ul className="mt-8 space-y-3 text-sm text-[#A0A0B8]">
@@ -1748,13 +1748,13 @@ export function LandingPage() {
                 </ul>
 
                 <Link
-                  href="/waitlist?utm_campaign=home"
+                  href="/auth/signup?utm_campaign=home"
                   onClick={trackInitiateCheckout}
                   className="group relative mt-8 block w-full rounded-full p-[2px] transition active:scale-95 overflow-hidden"
                 >
                   <span className="absolute inset-[-100%] animate-cta-shine" style={{ background: 'conic-gradient(from 0deg, transparent 0%, transparent 60%, #ffffff 75%, #B8A5FF 85%, transparent 100%)' }} />
                   <span className="relative block w-full rounded-full bg-[#7C5CFC] py-3.5 text-center text-sm font-semibold text-white transition group-hover:bg-[#6B4FE0]">
-                    Join the waitlist — first month free
+                    Start Free Trial
                   </span>
                 </Link>
               </div>
@@ -1793,7 +1793,7 @@ export function LandingPage() {
                 { q: "What if I don't know what to say?", a: "That's the point. Just talk. Say whatever is on your mind. The messier, the better — Acuity pulls the signal out of the noise. There are no prompts to answer and no format to follow." },
                 { q: "Is this just a journaling app?", a: "No. You don't write anything. You talk for 60 seconds. Acuity extracts tasks, tracks goals over time, scores your mood, and writes you a weekly narrative. A journal records what you write down. Acuity catches what you'd otherwise forget." },
                 { q: "How is Acuity different from voice notes or other recording apps?", a: "Voice notes store audio. Acuity processes it. Within minutes your recording becomes a task list, a mood score, a goal-tracking update, and a data point that feeds into your weekly report. The recording is the input, not the output." },
-                { q: "How much does Acuity cost?", a: "$12.99/month after a 14-day free trial. No credit card required to start. Cancel anytime with one tap." },
+                { q: "How much does Acuity cost?", a: "$12.99/month after a 30-day free trial. No credit card required to start. Cancel anytime with one tap." },
                 { q: "What AI does Acuity use?", a: "OpenAI Whisper for speech-to-text (accurate even when you mumble). Anthropic Claude for extraction, scoring, and report writing. We name the stack because you should know what's running under the hood." },
                 { q: "Can I use Acuity on my phone?", a: "Yes. Acuity works on iPhone and Android. You can also use it on the web at getacuity.io. Your data syncs across devices." },
                 { q: "What is the weekly report?", a: "Every Sunday morning, Acuity writes you a 400-word narrative of your week. It covers what you worked on, what kept coming up, how your mood shifted, and what patterns are forming. People tell us it's the most useful part of the app." },
@@ -1827,7 +1827,7 @@ export function LandingPage() {
 
             <div className="relative">
               <p className="text-sm font-medium text-violet-400 mb-4 uppercase tracking-wider">
-                Join the waitlist · no credit card required
+                No card. 90 seconds to set up.
               </p>
               <h2 className="text-3xl font-bold sm:text-5xl tracking-tight">
                 Your first debrief takes
@@ -1842,13 +1842,13 @@ export function LandingPage() {
               </p>
               <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
                 <Link
-                  href="/waitlist?utm_campaign=home"
+                  href="/auth/signup?utm_campaign=home"
                   onClick={trackInitiateCheckout}
                   className="group relative rounded-full p-[2px] transition active:scale-95 overflow-hidden"
                 >
                   <span className="absolute inset-[-100%] animate-cta-shine" style={{ background: 'conic-gradient(from 0deg, transparent 0%, transparent 60%, #ffffff 75%, #B8A5FF 85%, transparent 100%)' }} />
                   <span className="relative block rounded-full bg-[#7C5CFC] px-8 py-4 text-sm font-bold text-white shadow-lg shadow-[#7C5CFC]/10 transition group-hover:bg-[#6B4FE0]">
-                    Join the waitlist — first month free
+                    Start Free Trial
                   </span>
                 </Link>
                 <span className="text-sm text-[#A0A0B8]">
@@ -1895,7 +1895,7 @@ export function LandingPage() {
               <h3 className="text-xs font-semibold uppercase tracking-wider text-white/80 mb-4">Product</h3>
               <ul className="space-y-3 text-sm text-[#A0A0B8]">
                 <li><a href="/" className="transition hover:text-white hover:underline underline-offset-4">Home</a></li>
-                <li><a href="/waitlist" className="transition hover:text-white hover:underline underline-offset-4">Join Waitlist</a></li>
+                <li><a href="/auth/signup" className="transition hover:text-white hover:underline underline-offset-4">Start Free Trial</a></li>
                 <li><a href="/#how-it-works" className="transition hover:text-white hover:underline underline-offset-4">How It Works</a></li>
                 <li><a href="/#pricing" className="transition hover:text-white hover:underline underline-offset-4">Pricing</a></li>
                 <li><a href="/#faq" className="transition hover:text-white hover:underline underline-offset-4">FAQ</a></li>
@@ -1938,17 +1938,17 @@ export function LandingPage() {
       <div className="fixed bottom-0 inset-x-0 z-40 sm:hidden">
         <div className="bg-[#0A0A0F]/95 backdrop-blur-lg border-t border-white/10 px-4 py-3">
           <Link
-            href="/waitlist?utm_campaign=home"
+            href="/auth/signup?utm_campaign=home"
             onClick={trackInitiateCheckout}
             className="group relative block w-full rounded-full p-[2px] transition active:scale-[0.98] overflow-hidden"
           >
             <span className="absolute inset-[-100%] animate-cta-shine" style={{ background: 'conic-gradient(from 0deg, transparent 0%, transparent 60%, #ffffff 75%, #B8A5FF 85%, transparent 100%)' }} />
             <span className="relative block w-full rounded-full bg-[#7C5CFC] py-3.5 text-center text-sm font-semibold text-white transition group-hover:bg-[#6B4FE0]">
-              Join the waitlist — first month free
+              Start Free Trial
             </span>
           </Link>
           <p className="mt-1.5 text-center text-xs text-[#A0A0B8]">
-            Early access — limited spots at founding member pricing
+            No card. 90 seconds to set up.
           </p>
         </div>
       </div>

@@ -309,7 +309,7 @@ function email4(rawName: string): string {
           <tr>
             <td style="padding-bottom:24px;">
               <p style="margin:0;font-size:16px;color:#A0A0B8;line-height:1.7;">
-                We're putting the final touches on Acuity and getting ready to open the doors. You're on the list — and that matters.
+                Acuity is live — and as one of our earliest signups, you've got a head start most people won't get.
               </p>
             </td>
           </tr>
@@ -317,7 +317,7 @@ function email4(rawName: string): string {
           <tr>
             <td style="padding-bottom:24px;">
               <p style="margin:0;font-size:16px;color:#A0A0B8;line-height:1.7;">
-                As a founding member, you're getting something that won't be available after launch:
+                As a founding member, you're getting something that won't be available much longer:
               </p>
             </td>
           </tr>
@@ -332,10 +332,10 @@ function email4(rawName: string): string {
                       Founding member benefits:
                     </p>
                     <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;">
-                      ${bullet("Your first month is completely free — no credit card required")}
+                      ${bullet("30-day free trial — no credit card required to start")}
                       ${bullet("Lock in $12.99/month — the lowest price Acuity will ever be")}
-                      ${bullet("This price goes up after launch. Your rate stays forever.")}
-                      ${bullet("Priority access before the public launch")}
+                      ${bullet("This price goes up after the first 100 members. Your rate stays forever.")}
+                      ${bullet("Founding Member status — permanently on your account")}
                     </table>
                   </td>
                 </tr>
@@ -352,7 +352,7 @@ function email4(rawName: string): string {
                     <p style="margin:0;font-size:16px;color:#FFFFFF;line-height:1.7;">
                       <span style="font-size:32px;font-weight:800;">$12.99</span><span style="color:#A0A0B8;">/month</span>
                       <br/>
-                      <span style="font-size:14px;color:#A0A0B8;">Founding member pricing — locked in forever. Goes up after launch.</span>
+                      <span style="font-size:14px;color:#A0A0B8;">Founding member pricing — locked in forever. Goes up after the first 100.</span>
                     </p>
                   </td>
                 </tr>
@@ -363,7 +363,7 @@ function email4(rawName: string): string {
           <tr>
             <td style="padding-bottom:8px;">
               <p style="margin:0;font-size:16px;color:#A0A0B8;line-height:1.7;">
-                We'll be in touch very soon.
+                Ready to start? Your account is waiting.
               </p>
             </td>
           </tr>
@@ -387,7 +387,7 @@ function email5(rawName: string): string {
           <tr>
             <td style="padding-bottom:24px;">
               <h1 style="margin:0;font-size:28px;font-weight:800;color:#FFFFFF;letter-spacing:-0.5px;line-height:1.3;">
-                ${name}, doors are opening soon.
+                ${name}, your founding member spot is still open.
               </h1>
             </td>
           </tr>
@@ -395,7 +395,7 @@ function email5(rawName: string): string {
           <tr>
             <td style="padding-bottom:24px;">
               <p style="margin:0;font-size:16px;color:#A0A0B8;line-height:1.7;">
-                This is the last email before we open the doors. We wanted to remind you what you signed up for — because it's almost here.
+                Acuity is live and your founding member spot is still reserved. Here's a quick reminder of what's waiting for you.
               </p>
             </td>
           </tr>
@@ -429,7 +429,7 @@ function email5(rawName: string): string {
                 <tr>
                   <td style="background-color:#13131F;border-radius:12px;padding:24px;border-left:4px solid #7C5CFC;">
                     <p style="margin:0;font-size:16px;color:#FFFFFF;line-height:1.7;">
-                      As a founding member, your first month is free and you lock in $12.99/month — the lowest price Acuity will ever be.
+                      As a founding member, you get a 30-day free trial and lock in $12.99/month — the lowest price Acuity will ever be.
                     </p>
                   </td>
                 </tr>
@@ -440,7 +440,7 @@ function email5(rawName: string): string {
           <tr>
             <td style="padding-bottom:24px;">
               <p style="margin:0;font-size:16px;color:#A0A0B8;line-height:1.7;">
-                You'll be among the very first people to get access. We built this for people exactly like you — people who think too much, carry too much, and never have a system that actually sticks.
+                We built this for people exactly like you — people who think too much, carry too much, and never have a system that actually sticks.
               </p>
             </td>
           </tr>
@@ -448,7 +448,7 @@ function email5(rawName: string): string {
           <tr>
             <td style="padding-bottom:24px;">
               <p style="margin:0;font-size:16px;color:#FFFFFF;line-height:1.7;font-weight:600;">
-                Get ready. It's almost time.
+                Your first brain dump takes 60 seconds. Start tonight.
               </p>
             </td>
           </tr>
@@ -491,13 +491,13 @@ export const DRIP_SEQUENCE: DripEmail[] = [
   {
     step: 4,
     daysAfterSignup: 10,
-    subject: "You're closer to the front of the line than you think",
+    subject: "Your founding member benefits, {name}",
     buildHtml: email4,
   },
   {
     step: 5,
     daysAfterSignup: 14,
-    subject: "Doors are opening soon, {name}",
+    subject: "Your founding member spot is still open, {name}",
     buildHtml: email5,
   },
 ];

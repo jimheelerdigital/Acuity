@@ -47,7 +47,10 @@ function SignUpForm() {
   const handleGoogle = async () => {
     setError(null);
     setLoading("google");
-    if (typeof fbq !== "undefined") fbq("track", "CompleteRegistration");
+    if (typeof fbq !== "undefined") {
+      fbq("track", "Lead");
+      fbq("track", "CompleteRegistration");
+    }
     await signIn("google", { callbackUrl: "/home" });
   };
 
@@ -59,6 +62,8 @@ function SignUpForm() {
       return;
     }
     setLoading("password");
+    // Meta Pixel: Lead fires on signup form submission
+    if (typeof fbq !== "undefined") fbq("track", "Lead");
     try {
       const res = await fetch("/api/auth/signup", {
         method: "POST",
@@ -128,7 +133,7 @@ function SignUpForm() {
         <img src="/AcuityLogo.png" alt="Acuity logo" className="mx-auto mb-4" style={{ width: 32, height: 32 }} />
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">Create your account</h1>
         <p className="mt-1.5 text-sm text-zinc-500 dark:text-zinc-400">
-          14-day free trial. No credit card.
+          30-day free trial. No credit card.
         </p>
       </div>
 

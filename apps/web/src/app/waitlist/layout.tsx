@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Join the Acuity Waitlist — First Month Free",
+  title: "Start Your Free Trial — 30-Day Free Trial",
   description:
-    "Be first in line for Acuity, the AI journaling app that turns 60-second nightly voice brain dumps into extracted tasks, mood tracking, pattern detection, and weekly AI reports. First month free.",
+    "Be first in line for Acuity, the AI journaling app that turns 60-second nightly voice brain dumps into extracted tasks, mood tracking, pattern detection, and weekly AI reports. 30-day free trial.",
   alternates: { canonical: "https://getacuity.io/waitlist" },
   openGraph: {
-    title: "Join the Acuity Waitlist — First Month Free",
+    title: "Start Your Free Trial — 30-Day Free Trial",
     description:
       "Be first in line for Acuity, the AI journaling app that turns nightly voice brain dumps into tasks, mood tracking, and weekly AI reports.",
     url: "https://getacuity.io/waitlist",
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary",
-    title: "Join the Acuity Waitlist — First Month Free",
+    title: "Start Your Free Trial — 30-Day Free Trial",
     description:
       "Be first in line for Acuity. 60-second nightly voice brain dumps turned into tasks, mood tracking, and weekly AI reports.",
   },

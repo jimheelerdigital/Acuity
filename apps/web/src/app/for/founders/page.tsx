@@ -24,7 +24,7 @@ import {
 } from "@/components/landing-shared";
 
 const UTM = "founders";
-const WAITLIST = `/waitlist?utm_campaign=${UTM}`;
+const WAITLIST = `/auth/signup?utm_campaign=${UTM}`;
 
 export default function FoundersPage() {
   return (
@@ -48,7 +48,7 @@ export default function FoundersPage() {
           <Reveal delay={2}>
             <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
               <PulsingCTA href={WAITLIST}>
-                Join the waitlist — first month free
+                Start Free Trial
               </PulsingCTA>
               <a
                 href="#how-it-works"
@@ -173,7 +173,7 @@ export default function FoundersPage() {
       {/* ───── PRE-HOW-IT-WORKS CTA ───── */}
       <MidPageCTA
         headline="Ready to start capturing every idea, task, and decision automatically?"
-        subheadline="No credit card required · cancel anytime"
+        subheadline="No card. 90 seconds to set up. · cancel anytime"
         utmCampaign={UTM}
       />
 
@@ -213,7 +213,7 @@ export default function FoundersPage() {
       {/* ───── MID-PAGE CTA ───── */}
       <MidPageCTA
         headline="What would your performance look like if you debriefed every night?"
-        subheadline="No credit card required · cancel anytime"
+        subheadline="No card. 90 seconds to set up. · cancel anytime"
         utmCampaign={UTM}
       />
 
@@ -421,7 +421,7 @@ export default function FoundersPage() {
       {/* ───── FINAL CTA ───── */}
       <CTABanner
         headline="You track your MRR. Your burn rate. Your pipeline. Start tracking what's actually running your business — your mind."
-        buttonText="Join the waitlist — first month free"
+        buttonText="Start Free Trial"
         utmCampaign={UTM}
       />
 

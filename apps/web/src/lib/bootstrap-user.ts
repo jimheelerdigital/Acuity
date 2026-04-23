@@ -55,15 +55,22 @@ export async function bootstrapNewUser(params: {
     referredById = await resolveReferrerByCode(prisma, referralCodeFromSignup);
   }
 
-  // Referred-user reward: an extra 30 days on top of the base trial
-  // when signup carried a valid ?ref=CODE. Pairs with the referrer-
-  // side reward that fires on trial→paid conversion (see
-  // recordReferralConversion). The bonus survives the "welcome back"
-  // reduced trial — 3 + 30 = 33 days — because the policy isn't
-  // about gating returning users from a longer run, it's about
-  // throttling trial farming via delete+recreate. A genuine referral
-  // signal wins.
-  const trialDays = baseTrialDays + (referredById ? 30 : 0);
+  // First 100 signups are Founding Members — 30-day trial instead of 14.
+  // Count existing founding members to determine eligibility and number.
+  const FOUNDING_MEMBER_CAP = 100;
+  const FOUNDING_MEMBER_TRIAL_DAYS = 30;
+  const foundingCount = await prisma.user.count({
+    where: { isFoundingMember: true },
+  });
+  const isFoundingMember = foundingCount < FOUNDING_MEMBER_CAP;
+  const foundingMemberNumber = isFoundingMember ? foundingCount + 1 : null;
+
+  // Founding members get 30-day trial. Standard users get base trial.
+  // Referral bonus stacks on top of either.
+  const effectiveBaseDays = isFoundingMember
+    ? FOUNDING_MEMBER_TRIAL_DAYS
+    : baseTrialDays;
+  const trialDays = effectiveBaseDays + (referredById ? 30 : 0);
   const trialEndsAt = new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000);
 
   // Issue a referral code up-front. Retry-on-collision a few times —
@@ -85,6 +92,8 @@ export async function bootstrapNewUser(params: {
       subscriptionStatus: "TRIAL",
       trialEndsAt,
       referralCode: code,
+      isFoundingMember,
+      foundingMemberNumber,
       ...(referredById ? { referredById } : {}),
     },
   });
@@ -93,6 +102,8 @@ export async function bootstrapNewUser(params: {
     trialEndsAt: trialEndsAt.toISOString(),
     trialDays,
     reducedTrial: trialDays < 14,
+    isFoundingMember,
+    foundingMemberNumber,
     email,
   });
 

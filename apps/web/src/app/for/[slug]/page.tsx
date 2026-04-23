@@ -21,7 +21,7 @@ export default function PersonaLandingPage({ params }: { params: { slug: string 
   if (!page) notFound();
 
   const UTM = params.slug;
-  const WAITLIST = `/waitlist?utm_campaign=${UTM}`;
+  const WAITLIST = `/auth/signup?utm_campaign=${UTM}`;
 
   return (
     <div className="min-h-screen bg-[#0A0A0F] text-white pb-24 sm:pb-0 overflow-x-hidden">
@@ -61,7 +61,7 @@ export default function PersonaLandingPage({ params }: { params: { slug: string 
           <Reveal delay={2}>
             <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
               <PulsingCTA href={WAITLIST}>
-                Join the waitlist — first month free
+                Start Free Trial
               </PulsingCTA>
               <a
                 href="#how-it-works"
@@ -223,7 +223,7 @@ export default function PersonaLandingPage({ params }: { params: { slug: string 
               <div className="flex items-center justify-between mb-4">
                 <span className="text-sm font-semibold uppercase tracking-wider text-[#7C5CFC]">Pro</span>
                 <span className="rounded-full bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 text-xs font-semibold text-emerald-400">
-                  First month free
+                  30-day free trial
                 </span>
               </div>
               <p className="flex items-baseline gap-1 mb-6">
@@ -244,7 +244,7 @@ export default function PersonaLandingPage({ params }: { params: { slug: string 
                 href={WAITLIST}
                 className="block w-full rounded-full bg-[#7C5CFC] py-3.5 text-center text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-95"
               >
-                Join the waitlist — first month free
+                Start Free Trial
               </Link>
             </div>
           </Reveal>
@@ -268,10 +268,10 @@ export default function PersonaLandingPage({ params }: { params: { slug: string 
                   href={WAITLIST}
                   className="rounded-full bg-[#7C5CFC] px-8 py-4 text-sm font-bold text-white transition hover:bg-[#6B4FE0] hover:-translate-y-0.5 active:scale-95"
                 >
-                  Join the waitlist — first month free
+                  Start Free Trial
                 </Link>
                 <span className="text-sm text-[#A0A0B8]">
-                  Then $12.99/month &middot; no credit card required
+                  Then $12.99/month &middot; No card. 90 seconds to set up.
                 </span>
               </div>
             </div>

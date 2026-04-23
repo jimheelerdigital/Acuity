@@ -5,7 +5,7 @@ import { Pressable, Text, View } from "react-native";
 import { useOnboarding } from "./context";
 
 /**
- * Step 8 — Trial explanation. Sets expectations: 14 days, Day 14
+ * Step 8 — Trial explanation. Sets expectations: 30 days, Day 30
  * audit, post-trial free tier. Also captures the user's intended
  * cadence (DAILY / WEEKDAYS / WEEKLY / UNSURE) so the reminders step
  * defaults can line up and downstream reports know how to talk
@@ -36,21 +36,21 @@ export function Step8Trial() {
         How the trial works
       </Text>
       <Text className="mt-3 text-base leading-relaxed text-zinc-600 dark:text-zinc-300">
-        14 days free. On Day 14 you get your Life Audit — a long-form
-        read of your first two weeks. After that, subscribe to keep
+        30 days free. On Day 30 you get your Life Audit — a long-form
+        read of your first month. After that, subscribe to keep
         generating. Nothing disappears.
       </Text>
 
       <View className="mt-6 gap-3">
         <TrialPoint
           icon="calendar-outline"
-          title="14 days free"
+          title="30 days free"
           body="Full access. No credit card yet."
         />
         <TrialPoint
           icon="book-outline"
-          title="Day 14 Life Audit"
-          body="A narrative of your two weeks. Yours to keep."
+          title="Day 30 Life Audit"
+          body="A narrative of your first month. Yours to keep."
         />
         <TrialPoint
           icon="lock-closed-outline"

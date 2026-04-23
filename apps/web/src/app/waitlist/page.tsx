@@ -151,8 +151,8 @@ export default function WaitlistPage() {
                   <span className="absolute inset-0 rounded-xl bg-violet-400/30 animate-[pulse_2s_ease-in-out_infinite]" />
                   <span className="relative z-10">
                     {status === "loading"
-                      ? "Joining..."
-                      : "Join the waitlist \u2014 it\u2019s free"}
+                      ? "Creating account..."
+                      : "Start Free Trial"}
                   </span>
                 </button>
                 {status === "error" && (

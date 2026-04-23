@@ -24,7 +24,7 @@ import {
 } from "@/components/landing-shared";
 
 const UTM = "therapy";
-const WAITLIST = `/waitlist?utm_campaign=${UTM}`;
+const WAITLIST = `/auth/signup?utm_campaign=${UTM}`;
 
 export default function TherapyPage() {
   return (
@@ -48,7 +48,7 @@ export default function TherapyPage() {
           <Reveal delay={2}>
             <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
               <PulsingCTA href={WAITLIST}>
-                Join the waitlist — first month free
+                Start Free Trial
               </PulsingCTA>
               <a
                 href="#how-it-works"
@@ -88,7 +88,7 @@ export default function TherapyPage() {
       {/* ───── PRE-HOW-IT-WORKS CTA ───── */}
       <MidPageCTA
         headline="Ready to show up to your next session with real data?"
-        subheadline="No credit card required · cancel anytime"
+        subheadline="No card. 90 seconds to set up. · cancel anytime"
         utmCampaign={UTM}
       />
 
@@ -128,7 +128,7 @@ export default function TherapyPage() {
       {/* ───── MID-PAGE CTA ───── */}
       <MidPageCTA
         headline="What if your therapist could see your emotional data from the last 7 days?"
-        subheadline="No credit card required · cancel anytime"
+        subheadline="No card. 90 seconds to set up. · cancel anytime"
         utmCampaign={UTM}
       />
 
