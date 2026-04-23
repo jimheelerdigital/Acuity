@@ -1109,7 +1109,7 @@ export function LandingPage() {
         <div className="relative mx-auto max-w-6xl px-6">
           <div className="flex flex-col lg:flex-row lg:items-center lg:gap-10">
             {/* Left content — center on mobile, left on desktop */}
-            <div className="flex-1 max-w-2xl text-center mx-auto lg:text-left">
+            <div className="flex-1 max-w-2xl text-left mx-auto lg:mx-0">
               <Reveal>
                 <h1 className="text-[2.5rem] font-black tracking-tight sm:text-5xl lg:text-[3.5rem] xl:text-[4rem] leading-[1.08]">
                   <span className="text-white sm:whitespace-nowrap">You have too much</span>
@@ -1119,13 +1119,13 @@ export function LandingPage() {
               </Reveal>
 
               <Reveal delay={2}>
-                <p className="mt-5 text-lg text-[#A0A0B8] leading-relaxed max-w-md mx-auto lg:mx-0">
+                <p className="mt-5 text-lg text-[#A0A0B8] leading-relaxed max-w-md">
                   Acuity is the daily debrief that turns what you&rsquo;re thinking about into what you&rsquo;re doing. Talk for 60 seconds, any time of day — it catches your tasks, tracks the goals you keep circling, and helps you monitor the patterns that leave you stuck.
                 </p>
               </Reveal>
 
               <Reveal delay={3}>
-                <div className="mt-8 flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3">
+                <div className="mt-8 flex flex-col sm:flex-row items-start gap-3">
                   <Link
                     href="/waitlist?utm_campaign=home"
                     onClick={trackInitiateCheckout}
