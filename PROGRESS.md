@@ -7,6 +7,36 @@
 
 ---
 
+## [2026-04-23] — Ship First 100 urgency banner + standardize social proof numbers
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 5a168c9
+
+### In plain English (for Keenan)
+Two fixes. First, the "First 100" urgency banner that was supposed to show at the top of every page wasn't visible — it was being hidden behind the landing page's own navigation bar. It now sits above the nav on every public page and shows "First 100 members get 30 days free — only N spots left" with a live counter. Second, all the social proof numbers across the site were inconsistent and inflated (500+, 2847, 12k, 98%). They've been standardized to realistic early-access numbers: 127+ users, 1,400+ debriefs, 94% would miss it, 4.8 star rating. Every page pulls from a single source of truth so numbers can never drift out of sync again.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/social-proof.ts`: new shared constants file with canonical social proof numbers + stats strip config
+- `apps/web/src/components/founding-member-banner.tsx`: updated copy to "First 100 members get 30 days free (normally 14) — only N spots left" with emoji, z-60
+- `apps/web/src/components/landing.tsx`: banner + nav wrapped in single fixed container, stats strip now imports from STATS_STRIP constant, under-hero count from SOCIAL_PROOF, all star ratings changed from 5-star SVGs to "4.8 ★" text
+- `apps/web/src/components/landing-shared.tsx`: same banner + nav wrapper, social proof and testimonial stars updated
+- `apps/web/src/app/layout.tsx`: removed FoundingMemberBanner (now embedded in landing components directly)
+- All 6 `/for/*` pages: hero padding increased from pt-28 to pt-36 to account for banner height
+- Hero section padding: pt-28 → pt-36, sm:pt-36 → sm:pt-44
+
+### Manual steps needed
+- [ ] Run `npx prisma db push` if not already done — isFoundingMember and foundingMemberNumber columns required (Keenan — from home network)
+- [ ] Verify banner appears on /, /for/founders, /for/weekly-report, /for/sleep, /for/therapy, /for/decoded (Keenan)
+- [ ] Verify stats strip shows 127+ / 1,400+ / 94% / 60s on homepage (Keenan)
+
+### Notes
+- The banner was in the root layout but the homepage and /for/* pages use their own fixed navs (not the layout NavBar), so the banner was rendered in the flow but covered by the z-50 fixed nav. Fix was to embed the banner inside each landing component above their nav, inside a shared fixed wrapper.
+- All social proof numbers now live in `/lib/social-proof.ts`. To update numbers as the product grows, edit that one file and every surface updates automatically.
+- The "4.8 ★" rating is used instead of 5 full stars because 4.8 reads more credible for an early product.
+
+---
+
 ## [2026-04-23] — Flip from waitlist to live trial signups with First 100 mechanic
 
 **Requested by:** Keenan
