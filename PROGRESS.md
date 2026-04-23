@@ -7,6 +7,135 @@
 
 ---
 
+## 2026-04-23 — Phase 1: userProgression() foundation + locked empty states
+
+- **Requested by:** Both (guided 14-day first-experience, beta slipped to Fri May 8 / Mon May 11)
+- **Committed by:** Claude Code
+- **Commit hashes:** 9367648 · 9273c21 · db283a3 · 189c7ae · 3906afa (five scoped commits)
+
+### In plain English (for Keenan)
+
+This is the foundation for the guided first-run experience. New users no longer walk into empty radar charts and blank theme maps on day one. Instead, every feature that needs some data to be meaningful (Life Matrix, Theme Map, Weekly Report, Pattern Insights, Goal Suggestions) now shows a friendly "unlocks soon" card with a progress bar toward the threshold and a button back to the recorder. Paid and trial users both see this — unlocks are experiential, not billing-related. A paid user with 2 entries would see the exact same locked card as a trial user with 2 entries, because 2 entries isn't enough for a Life Matrix to say anything useful regardless of what they're paying.
+
+No user-visible focus card, tip bubbles, or onboarding changes yet — those are Phase 2+ and all read from the helper this phase built.
+
+### What shipped
+
+**1. `packages/shared/src/userProgression.ts` — the single source of truth**
+
+Pure function signature:
+
+```ts
+userProgression({ user, entries, themes, goals, previousProgression?, now?, timezone? })
+  → {
+    dayOfTrial, trialEndsAt, isInTrial,
+    entriesCount, entriesInLast7Days, dimensionsCovered, goalsSet, themesDetected,
+    currentStreak, longestStreak, lastEntryAt, streakAtRisk,
+    unlocked: { lifeMatrix, goalSuggestions, patternInsights, themeMap, weeklyReport, lifeAudit },
+    nextUnlock: { key, label, condition, progress } | null,
+    recentlyUnlocked: UnlockKey[]
+  }
+```
+
+Unlock thresholds (locked):
+
+| Feature | Condition |
+|---|---|
+| Life Matrix | ≥5 entries AND ≥3 dimensions |
+| Goal Suggestions | ≥5 entries |
+| Pattern Insights | ≥7 entries |
+| Theme Map | ≥10 entries AND ≥3 themes |
+| Weekly Report | day ≥7 AND ≥3 entries in last 7d |
+| Life Audit | day ≥14 AND ≥1 entry |
+
+Also ships `lockedFeatureCopy()` so web + mobile render identical Acuity-voice strings. All user-facing strings say "Acuity" — never "Claude" (that's the underlying model, not the brand).
+
+**2. Schema: `User.progressionSnapshot` Json?**
+
+Needed to diff `recentlyUnlocked` across sessions. Idempotent prod migration at `supabase/migrations/2026-04-23_user_progression_snapshot.sql` (ADD COLUMN IF NOT EXISTS). Prisma client regenerated locally.
+
+**3. API: `GET /api/user/progression`**
+
+Thin wrapper around the pure helper. Single parallel Prisma fetch of user + entries + themes + goals, computes the progression, writes the snapshot back. `getAnySessionUserId` auth so web + mobile both hit it. 60s private cache with 30s stale-while-revalidate.
+
+**4. Locked empty states — web**
+
+| Page | Feature gated |
+|---|---|
+| `/insights` | Life Matrix hero (LifeMap), Theme Map link card, Weekly Report (InsightsView), Pattern Insights (UserInsightsCard in metrics drawer) |
+| `/insights/theme-map` | Full-screen Theme Map (direct-URL visits get the locked card too) |
+| `/goals` | Goal Suggestions (locked card above the goal tree) |
+
+**5. Locked empty states — mobile**
+
+| Screen | Feature gated |
+|---|---|
+| `app/(tabs)/insights.tsx` | Life Matrix radar, Theme Map entry card, Weekly Report section, Pattern Insights (UserInsightsCard inside metrics drawer) |
+| `app/(tabs)/goals.tsx` | Goal Suggestions banner |
+
+Theme Map detail screen (`app/insights/theme-map.tsx`) already had its own `LockedState` at 10+ entries from the 2026-04-22 redesign — left alone since its logic matches our `themeMap` unlock entry-count arm.
+
+### Files modified
+
+| File | Purpose |
+|---|---|
+| `packages/shared/src/userProgression.ts` | **New.** Pure helper + lockedFeatureCopy |
+| `packages/shared/src/index.ts` | Re-export |
+| `prisma/schema.prisma` | Add `User.progressionSnapshot Json?` |
+| `supabase/migrations/2026-04-23_user_progression_snapshot.sql` | **New.** Idempotent ADD COLUMN for prod |
+| `apps/web/src/lib/userProgression.ts` | **New.** Server wrapper `getUserProgression()` |
+| `apps/web/src/app/api/user/progression/route.ts` | **New.** GET endpoint |
+| `apps/web/src/components/locked-feature-card.tsx` | **New.** Shared locked-state card |
+| `apps/web/src/app/insights/page.tsx` | Gate LifeMap / Theme Map link / Weekly Report / Pattern Insights |
+| `apps/web/src/app/insights/theme-map/page.tsx` | Gate full-screen Theme Map |
+| `apps/web/src/app/goals/page.tsx` | Locked Goal Suggestions card |
+| `apps/mobile/lib/userProgression.ts` | **New.** Mobile fetcher |
+| `apps/mobile/components/locked-feature-card.tsx` | **New.** Mobile locked-state card |
+| `apps/mobile/app/(tabs)/insights.tsx` | Same four gates as web |
+| `apps/mobile/app/(tabs)/goals.tsx` | Locked Goal Suggestions card |
+
+### Typecheck
+
+- `npx tsc --noEmit -p apps/web` → exit 0 ✓
+- `npx tsc --noEmit -p packages/shared` → exit 0 ✓
+- `npx tsc --noEmit -p apps/mobile` → zero new errors in touched files (pre-existing TS2786 dual-React noise + one pre-existing error in `shell.tsx:214` unrelated to this run) ✓
+
+### Smoke test results
+
+Could not connect to prod Supabase from this network (work-Mac port block noted in CLAUDE.md). Ran a pure-function smoke test with synthetic fixtures instead — 25 assertions across 6 representative cases (brand-new user day 1, mid-trial with partial data, full unlock day 8, streak math across today/yesterday/broken, recentlyUnlocked diff). All 25 green. Live-DB smoke is a manual follow-up for Keenan's home network.
+
+One finding during smoke: `nextUnlock` correctly returns the closest-to-unlocking feature (by work-units-remaining, tiebreak via UNLOCK_PRIORITY). For a fresh day-6 user with 5 entries across 3 dimensions, `nextUnlock.key = "weeklyReport"` (distance 1 — just one day gap) beats `patternInsights` (distance 2). That's correct per spec; I'd initially written smoke expectations assuming strict priority order rather than closest-first.
+
+### Deviations from spec
+
+**Kept the existing `packages/shared/src/progression.ts` checklist module** rather than replacing it. That module drives the 7-item "Getting to know Acuity" discovery checklist on Home; it's a passive UX (marked in code: "Items are NOT feature gates"), whereas this new `userProgression()` is about data-richness-driven feature unlocks. They're complementary — the checklist is still what shows on Home until Phase 2 replaces it with a focus card. Keeping both costs nothing and avoids breaking `/api/progression` + its two consumers during the cut-over. Phase 2 can deprecate the old module cleanly once the focus card ships.
+
+**`dimensionsCovered`** reads from `Entry.dimensionContext` (distinct non-null lowercase keys) rather than `LifeMapArea.mentionCount > 0`. Rationale: `dimensionContext` reflects explicit user intent ("record about this dimension"), which is a cleaner signal than the Claude extraction's guess at which areas were touched. If this turns out too restrictive in practice (users rarely use the contextual recorder), Phase 2 can widen the definition to also count `LifeMapArea.mentionCount > 0` rows.
+
+### Manual steps for Keenan
+
+- [ ] **Run `npx prisma db push`** from home network to apply `User.progressionSnapshot` to prod Supabase. (Or apply the SQL migration directly via psql — same effect.) Until this runs, any call to `/api/user/progression` will 500 because Prisma can't write the snapshot column.
+- [ ] **Spot-check on prod** once schema is live: visit `/insights` logged in as a new user → should see locked cards. Visit as a power user with 20+ entries → should see the real feature.
+- [ ] No EAS update needed yet — the mobile wrappers fail-soft if the API returns null. OTA waits for Phase 2 (focus card + streak UI land on Home).
+
+### Recommended next run — Phase 2 (focus card + streak UI on Home)
+
+Build on top of the foundation this run shipped:
+
+1. **Home focus card** — one card per day, copy driven by `userProgression.nextUnlock` and `userProgression.dayOfTrial`. "Day 3 — you're 2 entries away from unlocking your Life Matrix." Replace the legacy 7-item `ProgressionChecklist` with this single-focus surface.
+2. **Streak UI on Home** — read `currentStreak` + `streakAtRisk` + `longestStreak` from the same endpoint. Small chip: "🔥 3-day streak — record today to keep it alive." Celebration on milestones (7/30/100 days; schema already has `lastStreakMilestone`).
+3. **`recentlyUnlocked` celebrations** — one-time modal or toast when a feature unlocks this session. The diff field is populated; Phase 2 adds the UI that consumes it.
+4. **Onboarding content audit** — finish the 8-step flow (per prior audit), add "why this matters" copy, add contextual first-time modals on each core page.
+5. **Email cadence** — daily tip emails / streak-risk emails driven by `userProgression` state. Requires Inngest cron (already scheduled per prior paywall plan).
+
+Longer-term followup not tied to Phase 2:
+- Blended MRR (once yearly sub counts matter)
+- Stripe webhook interval capture
+- Remaining RLS gaps (7/12 tables per `docs/RLS_STATUS_LIVE.md`)
+- Beta blockers from `docs/PRODUCTION_AUDIT_2026-04-21.md` C1-C5
+
+---
+
 ## 2026-04-23 — Locked pricing at $12.99/mo and $99/yr
 
 - **Requested by:** Both (pricing decision final)
