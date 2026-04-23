@@ -219,7 +219,8 @@ export const processEntryFn = inngest.createFunction(
       });
 
       const { recordThemesFromExtraction } = await import("@/lib/themes");
-      const { persistSubGoalSuggestions } = await import("@/lib/goals");
+      const { persistSubGoalSuggestions, persistProgressSuggestions } =
+        await import("@/lib/goals");
       await prisma.$transaction(async (tx) => {
         const entry = await tx.entry.update({
           where: { id: entryId },
@@ -316,6 +317,34 @@ export const processEntryFn = inngest.createFunction(
           }
         }
 
+        // Anchor-goal bump — when the user recorded "Add a reflection" on
+        // a specific goal, Entry.goalId is set. The extraction.goals loop
+        // above only touches goals Claude emitted by title; the anchor
+        // goal won't appear there unless the user spoke its exact title.
+        // Explicitly bump the anchor's lastMentionedAt + entryRefs so the
+        // reflection always counts toward "last mentioned" and shows up
+        // in the goal's linked-entries list. Mirror of the same block in
+        // apps/web/src/lib/pipeline.ts.
+        const entryRow = await tx.entry.findUnique({
+          where: { id: entryId },
+          select: { goalId: true },
+        });
+        if (entryRow?.goalId) {
+          const anchor = await tx.goal.findFirst({
+            where: { id: entryRow.goalId, userId },
+            select: { id: true, entryRefs: true },
+          });
+          if (anchor) {
+            const refs = Array.from(
+              new Set([...(anchor.entryRefs ?? []), entryId])
+            );
+            await tx.goal.update({
+              where: { id: anchor.id },
+              data: { lastMentionedAt: new Date(), entryRefs: refs },
+            });
+          }
+        }
+
         // GoalSuggestion emission — runs after goal upserts so a new
         // goal from this same entry is eligible as a parent. Orphan
         // suggestions (no fuzzy parent match) are dropped inside the
@@ -329,6 +358,28 @@ export const processEntryFn = inngest.createFunction(
             userId,
             entryId,
             extraction.subGoalSuggestions
+          );
+        }
+
+        // ProgressSuggestion emission — mirror of pipeline.ts. The
+        // anchor goalId (if any) lives on the entry row, not in
+        // scope here, so we read it alongside the rest of the
+        // extraction context. When set, progress suggestions fall
+        // back to matching the anchor if goalText didn't resolve.
+        if (
+          extraction.progressSuggestions &&
+          extraction.progressSuggestions.length > 0
+        ) {
+          const anchorRow = await tx.entry.findUnique({
+            where: { id: entryId },
+            select: { goalId: true },
+          });
+          await persistProgressSuggestions(
+            tx,
+            userId,
+            entryId,
+            anchorRow?.goalId ?? null,
+            extraction.progressSuggestions
           );
         }
       });

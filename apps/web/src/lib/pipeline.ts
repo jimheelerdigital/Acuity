@@ -126,6 +126,13 @@ Return ONLY valid JSON matching this exact schema — no markdown, no prose:
       "suggestedAction": "the concrete next step the user mentioned under that goal"
     }
   ],
+  "progressSuggestions": [
+    {
+      "goalText": "verbatim phrase matching an existing goal the user already has",
+      "suggestedProgressPct": <integer 0-100, the new total progress value not a delta>,
+      "rationale": "one short sentence quoting the transcript that justifies the update"
+    }
+  ],
   "lifeAreaMentions": {
     "career": { "mentioned": bool, "score": 1-10, "themes": [], "people": [], "goals": [], "sentiment": "positive"|"negative"|"neutral" },
     "health": { ... },
@@ -141,6 +148,7 @@ Guidelines:
 - Infer priority from urgency language ("need to", "ASAP", "important" → HIGH; "maybe", "someday" → LOW)
 - Only include goals if the user expressed a clear medium-to-long term aspiration
 - subGoalSuggestions: populate ONLY when the user references HOW they'll pursue an existing goal the memory context mentions. parentGoalText must match the phrasing of one of the user's existing goals. suggestedAction is the concrete next step. Skip if unsure — orphan suggestions get dropped.
+- progressSuggestions: populate ONLY when the transcript contains concrete, quantifiable evidence of progress on an existing user goal from the memory context — e.g. "closed our first $100k deal" against a "close $1M" goal. goalText must match an existing goal. suggestedProgressPct is the new total percent (not a delta) — infer from the numeric relationship when possible (e.g. $100k of $1M → 10), otherwise leave conservative. rationale is one short sentence that QUOTES a phrase from the transcript. Do NOT invent progress or guess percentages without clear evidence. Skip if unsure — these get shown to the user for validation before anything is written, so precision beats enthusiasm.
 - Keep theme labels short (1-3 words). Per-theme sentiment reflects the user's emotional framing of that specific theme in this entry: POSITIVE if they expressed satisfaction/progress, NEGATIVE if strain/frustration, NEUTRAL if they mentioned it factually without strong valence. Up to 5 themes per entry.
 - Insights should be reflective observations the user might not have noticed, or concrete next-step recommendations
 - moodScore should be a nuanced score that reflects the overall emotional tone
@@ -290,6 +298,34 @@ export async function extractFromTranscript(
           }))
           .slice(0, 5)
       : [],
+    progressSuggestions: Array.isArray(parsed.progressSuggestions)
+      ? parsed.progressSuggestions
+          .filter(
+            (
+              s
+            ): s is {
+              goalText: string;
+              suggestedProgressPct: number;
+              rationale: string;
+            } =>
+              !!s &&
+              typeof s === "object" &&
+              typeof (s as { goalText?: unknown }).goalText === "string" &&
+              typeof (s as { suggestedProgressPct?: unknown })
+                .suggestedProgressPct === "number" &&
+              typeof (s as { rationale?: unknown }).rationale === "string"
+          )
+          .map((s) => ({
+            goalText: s.goalText.slice(0, 200),
+            suggestedProgressPct: clamp(
+              Math.round(Number(s.suggestedProgressPct)),
+              0,
+              100
+            ),
+            rationale: s.rationale.slice(0, 500),
+          }))
+          .slice(0, 5)
+      : [],
     lifeAreaMentions: validateLifeAreaMentions(parsed.lifeAreaMentions),
   };
 }
@@ -378,7 +414,8 @@ export async function processEntry({
 
     // ── Persist everything in one transaction ─────────────────────────────
     const { recordThemesFromExtraction } = await import("@/lib/themes");
-    const { persistSubGoalSuggestions } = await import("@/lib/goals");
+    const { persistSubGoalSuggestions, persistProgressSuggestions } =
+      await import("@/lib/goals");
     const result = await prisma.$transaction(async (tx) => {
       const entry = await tx.entry.update({
         where: { id: entryId },
@@ -476,6 +513,29 @@ export async function processEntry({
         }
       }
 
+      // Anchor-goal bump — when the user recorded "Add a reflection" on
+      // a specific goal, Entry.goalId is set. The extraction.goals loop
+      // above only touches goals Claude emitted by title; the anchor
+      // goal won't appear there unless the user spoke its exact title.
+      // Explicitly bump the anchor's lastMentionedAt + entryRefs so the
+      // reflection always counts toward "last mentioned" and shows up
+      // in the goal's linked-entries list.
+      if (goalId) {
+        const anchor = await tx.goal.findFirst({
+          where: { id: goalId, userId },
+          select: { id: true, entryRefs: true },
+        });
+        if (anchor) {
+          const refs = Array.from(
+            new Set([...(anchor.entryRefs ?? []), entryId])
+          );
+          await tx.goal.update({
+            where: { id: anchor.id },
+            data: { lastMentionedAt: new Date(), entryRefs: refs },
+          });
+        }
+      }
+
       // Goal sub-goal suggestions — fuzzy-match parentGoalText against
       // the user's existing goals, create GoalSuggestion rows. Runs
       // AFTER the goal upserts above so a brand-new goal from this same
@@ -486,6 +546,24 @@ export async function processEntry({
           userId,
           entryId,
           extraction.subGoalSuggestions
+        );
+      }
+
+      // Progress suggestions — Claude emits these when the transcript
+      // evidences concrete progress on an existing goal. Persisted
+      // PENDING; the goal detail page shows a banner + review modal
+      // where the user accepts/edits/dismisses before anything writes
+      // to Goal.progress.
+      if (
+        extraction.progressSuggestions &&
+        extraction.progressSuggestions.length > 0
+      ) {
+        await persistProgressSuggestions(
+          tx,
+          userId,
+          entryId,
+          goalId ?? null,
+          extraction.progressSuggestions
         );
       }
 
