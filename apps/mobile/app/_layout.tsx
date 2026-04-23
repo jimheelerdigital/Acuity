@@ -3,6 +3,7 @@ import "../global.css";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { AuthProvider, useAuth } from "@/contexts/auth-context";
@@ -60,13 +61,20 @@ function AuthGate() {
 
 export default function RootLayout() {
   return (
-    <SafeAreaProvider>
-      <ThemeProvider>
-        <AuthProvider>
-          <ThemedApp />
-        </AuthProvider>
-      </ThemeProvider>
-    </SafeAreaProvider>
+    // GestureHandlerRootView is required for react-native-gesture-
+    // handler to work — added 2026-04-23 for the FocusCardStack
+    // swipe gesture on Home. Wraps the entire tree so any descendant
+    // that uses GestureDetector / PanGestureHandler picks up the
+    // required root context.
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <ThemedApp />
+          </AuthProvider>
+        </ThemeProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
 

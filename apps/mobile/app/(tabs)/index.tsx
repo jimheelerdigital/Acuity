@@ -17,12 +17,15 @@ import {
   type EntryDTO,
   formatRelativeDate,
   type ProgressionItemKey,
+  type UserProgression,
 } from "@acuity/shared";
 
+import { HomeFocusStack } from "@/components/home-focus-stack";
 import { ProgressionChecklist } from "@/components/progression-checklist";
 import { RecommendedActivity } from "@/components/recommended-activity";
 import { useAuth } from "@/contexts/auth-context";
 import { api } from "@/lib/api";
+import { fetchUserProgression } from "@/lib/userProgression";
 
 const HOME_ENTRY_LIMIT = 5;
 
@@ -70,16 +73,19 @@ export default function DashboardTab() {
   const router = useRouter();
   const [entries, setEntries] = useState<EntryDTO[] | null>(null);
   const [homeData, setHomeData] = useState<HomePayload | null>(null);
+  const [progression, setProgression] = useState<UserProgression | null>(null);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     try {
-      const [entriesData, home] = await Promise.all([
+      const [entriesData, home, prog] = await Promise.all([
         api.get<{ entries: EntryDTO[] }>("/api/entries"),
         api.get<HomePayload>("/api/home").catch(() => null),
+        fetchUserProgression().catch(() => null),
       ]);
       setEntries(entriesData.entries ?? []);
       setHomeData(home);
+      setProgression(prog);
     } catch {
       setEntries([]);
     } finally {
@@ -140,6 +146,13 @@ export default function DashboardTab() {
         </View>
 
         <TrialBanner />
+
+        {/* Focus card stack — Phase 2 Run 1. Unlock cards + resting
+            card above the record CTA so celebrations are the first
+            thing a returning user sees. */}
+        <View className="mb-6">
+          <HomeFocusStack progression={progression} />
+        </View>
 
         {/* Primary record CTA */}
         <Pressable

@@ -8,9 +8,11 @@ import { redirect } from "next/navigation";
 import { getAuthOptions } from "@/lib/auth";
 import { TrackCompleteRegistration, TrackPurchase } from "@/components/meta-pixel-events";
 import { WelcomeBackBanner } from "@/components/welcome-back-banner";
+import { HomeFocusStack } from "@/components/home-focus-stack";
 import { ProgressionChecklist } from "@/components/progression-checklist";
 import { RecommendedActivity } from "@/components/recommended-activity";
 import { computeProgressionState, type ProgressionState } from "@/lib/progression";
+import { getUserProgression } from "@/lib/userProgression";
 import { RecordButton } from "./record-button";
 import { EntryCard } from "./entry-card";
 
@@ -68,6 +70,13 @@ export default async function DashboardPage() {
           null,
       })
     : null;
+
+  // Phase 2 Run 1 — focus card stack. Fetches the UserProgression
+  // snapshot so we can render recentlyUnlocked celebration cards + a
+  // resting card above the Greeting. Separate from the legacy
+  // ProgressionChecklist above; Run 2 will deprecate the checklist
+  // once the focus card carries the same discovery work.
+  const userProg = await getUserProgression(userId);
 
   // Recommendation selector — mirrors /api/home's 3-tier logic. Inline
   // rather than fetch-self because this is server-rendered and the same
@@ -144,6 +153,13 @@ export default async function DashboardPage() {
             </div>
           </section>
         )}
+
+        {/* Focus card stack — Phase 2 Run 1. Sits above the greeting
+            so unlock celebrations + the resting card are the first
+            thing a returning user sees. */}
+        <div className="mb-8">
+          <HomeFocusStack progression={userProg} />
+        </div>
 
         {/* Greeting */}
         <div className="mb-8 text-center sm:text-left">
