@@ -236,6 +236,12 @@ export default function ThemeMapScreen() {
                 hero={{ id: heroTheme.id, name: heroTheme.name }}
                 planets={constellationThemes}
                 replayToken={replayToken}
+                onTapHero={() =>
+                  router.push(`/insights/theme/${heroTheme.id}` as never)
+                }
+                onTapPlanet={(id) =>
+                  router.push(`/insights/theme/${id}` as never)
+                }
               />
             ) : (
               <View
@@ -302,6 +308,9 @@ export default function ThemeMapScreen() {
                 sparkline={t.sparkline}
                 firstMentionedDaysAgo={t.firstMentionedDaysAgo}
                 trendDescription={t.trendDescription}
+                onPress={() =>
+                  router.push(`/insights/theme/${t.id}` as never)
+                }
               />
             ))}
           </>

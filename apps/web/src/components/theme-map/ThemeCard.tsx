@@ -21,9 +21,11 @@ const SENTIMENT_GLOW: Record<Sentiment, string> = {
 };
 
 /**
- * Per-theme card below the constellation. Header row: name + sentiment
- * dot + mention count. Body: 36-pixel-tall sparkline filled in the
- * sentiment color. Footer: "First Xd ago" | trend description.
+ * Row in the "All themes" list below the constellation. Two-column
+ * layout: theme name + metadata on the left, a compact 7-day
+ * sparkline constrained to ~30% of row width on the right. The old
+ * full-width sparkline overflowed the screen edge on narrow
+ * viewports; capping its max-width + right-aligning fixes the cutoff.
  *
  * Entrance is a 0.5s fadeInUp; stagger delays come from the parent
  * (setting `animationDelay` on the outer wrapper per index).
@@ -52,6 +54,10 @@ export function ThemeCard({
   const dot = SENTIMENT_DOT[sentiment];
   const dotGlow = SENTIMENT_GLOW[sentiment];
 
+  // Last 7 days of the sparkline only — keeps the narrow column
+  // legible.
+  const trimmed = sparkline.slice(-7);
+
   return (
     <button
       type="button"
@@ -62,26 +68,36 @@ export function ThemeCard({
         animation: `tmCardIn 0.5s ease-out ${delay}s forwards`,
       }}
     >
-      <div className="flex items-start justify-between gap-3">
-        <span className="text-[15px] font-semibold text-zinc-900 dark:text-zinc-50">
-          {name}
-        </span>
-        <span className="flex items-center gap-2.5 shrink-0">
-          <span
-            className="block h-2 w-2 rounded-full"
-            style={{ backgroundColor: dot, boxShadow: `0 0 8px ${dotGlow}` }}
-          />
-          <span className="text-xs text-zinc-400 dark:text-zinc-500 tabular-nums">
-            {mentionCount}
-          </span>
-        </span>
-      </div>
+      <div className="flex items-center justify-between gap-4">
+        {/* Left column — name + metadata */}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span
+              className="block h-2 w-2 rounded-full shrink-0"
+              style={{ backgroundColor: dot, boxShadow: `0 0 8px ${dotGlow}` }}
+            />
+            <span className="text-[15px] font-semibold uppercase tracking-wide text-zinc-900 dark:text-zinc-50 truncate">
+              {name}
+            </span>
+            <span className="text-xs text-zinc-400 dark:text-zinc-500 tabular-nums shrink-0">
+              {mentionCount}
+            </span>
+          </div>
+          <div className="mt-1 flex items-center gap-2 text-[11px] text-zinc-400 dark:text-zinc-500">
+            <span>First {firstMentionedDaysAgo}d ago</span>
+            <span aria-hidden>·</span>
+            <span className="truncate">{trendDescription}</span>
+          </div>
+        </div>
 
-      <Sparkline data={sparkline} color={fill} />
-
-      <div className="flex items-center justify-between mt-1.5 text-[11px] text-zinc-400 dark:text-zinc-500">
-        <span>First {firstMentionedDaysAgo}d ago</span>
-        <span>{trendDescription}</span>
+        {/* Right column — compact 7d sparkline. Max-width cap keeps
+            it from eating row space on narrow viewports. */}
+        <div
+          className="shrink-0"
+          style={{ width: "30%", maxWidth: 140, minWidth: 64 }}
+        >
+          <Sparkline data={trimmed} color={fill} />
+        </div>
       </div>
 
       <style jsx>{`
@@ -107,36 +123,40 @@ export function ThemeCard({
 }
 
 function Sparkline({ data, color }: { data: number[]; color: string }) {
-  if (data.length === 0) return <div style={{ height: 36 }} />;
-  const w = 300;
-  const h = 36;
-  const max = Math.max(...data, 1);
-  const stepX = data.length > 1 ? w / (data.length - 1) : w;
+  const h = 28;
+  if (data.length === 0) return <div style={{ height: h }} />;
+  // Single data point → dot. The old full-width polyline degraded
+  // into a flat invisible line at length 1.
+  if (data.length === 1) {
+    const w = 80;
+    return (
+      <svg
+        viewBox={`0 0 ${w} ${h}`}
+        preserveAspectRatio="none"
+        className="block w-full"
+        style={{ height: h }}
+      >
+        <circle cx={w / 2} cy={h / 2} r={3} fill={color} />
+      </svg>
+    );
+  }
 
+  const w = 80;
+  const max = Math.max(...data, 1);
+  const stepX = w / (data.length - 1);
   const points = data.map((v, i) => ({
     x: i * stepX,
     y: h - (v / max) * (h - 4) - 2,
   }));
-
   const line = points.map((p) => `${p.x},${p.y}`).join(" ");
-  const fillArea = `${points.map((p) => `${p.x},${p.y}`).join(" ")} ${w},${h} 0,${h}`;
-
-  const gradId = `tm-spark-${Math.random().toString(36).slice(2, 8)}`;
 
   return (
     <svg
       viewBox={`0 0 ${w} ${h}`}
       preserveAspectRatio="none"
-      className="block w-full mt-2"
-      style={{ height: 36 }}
+      className="block w-full"
+      style={{ height: h }}
     >
-      <defs>
-        <linearGradient id={gradId} x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity={0.35} />
-          <stop offset="100%" stopColor={color} stopOpacity={0} />
-        </linearGradient>
-      </defs>
-      <polyline points={fillArea} fill={`url(#${gradId})`} stroke="none" />
       <polyline
         points={line}
         fill="none"

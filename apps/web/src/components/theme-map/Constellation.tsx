@@ -64,10 +64,15 @@ export function Constellation({
 
   return (
     <div
-      className="relative rounded-3xl border border-zinc-200 dark:border-white/10 overflow-visible"
+      className="relative rounded-3xl border border-zinc-200 dark:border-white/10 overflow-hidden"
       style={{
         margin: "20px 0",
-        padding: "20px 16px",
+        // Extra vertical padding gives the orbital entrance animation
+        // room to arc without clipping — planets rotate through
+        // translateX(180) at radii up to ~180 during spin-in, which
+        // extends well beyond the landed positions. Side padding kept
+        // generous too so long theme labels don't clip to the border.
+        padding: "60px 32px",
         background:
           "linear-gradient(180deg, rgba(124,58,237,0.06) 0%, rgba(124,58,237,0) 100%)",
       }}
@@ -83,8 +88,8 @@ export function Constellation({
       />
 
       <svg
-        viewBox="0 0 350 280"
-        style={{ width: "100%", height: 280, overflow: "visible" }}
+        viewBox="-40 -40 430 360"
+        style={{ width: "100%", height: 340, overflow: "visible" }}
         aria-label="Theme constellation"
       >
         <defs>
@@ -158,11 +163,12 @@ export function Constellation({
               x={175}
               y={144}
               textAnchor="middle"
-              fontSize={12}
-              fontWeight={600}
+              fontSize={11}
+              fontWeight={700}
               fill="white"
+              style={{ letterSpacing: "0.5px" }}
             >
-              {hero.name}
+              {(hero.name ?? "").toUpperCase()}
             </text>
           </g>
           {/* Invisible tap target */}
@@ -210,21 +216,14 @@ export function Constellation({
                   style={{ cursor: onTapPlanet ? "pointer" : "default" }}
                   onClick={() => onTapPlanet?.(p.id)}
                 />
-                {/* Label — positioned below (above for top slot E) */}
-                <text
-                  className={`tm-label tm-label-${i + 1}`}
-                  x={0}
-                  y={i === 4 ? -slot.halo - 8 : slot.halo + 16}
-                  textAnchor="middle"
-                  fontSize={i <= 1 ? 11 : 10}
-                  fontWeight={500}
-                  fill={
-                    i <= 1 ? "rgba(250,250,250,0.85)" : "rgba(250,250,250,0.55)"
-                  }
-                  opacity={0}
-                >
-                  {p.name}
-                </text>
+                {/* Label — uppercase, wraps to two lines on long names.
+                    Positioned below each planet (above for top slot E). */}
+                <PlanetLabel
+                  name={p.name}
+                  index={i}
+                  anchorY={i === 4 ? -slot.halo - 12 : slot.halo + 18}
+                  above={i === 4}
+                />
               </g>
             </g>
           );
@@ -484,6 +483,83 @@ export function Constellation({
       `}</style>
     </div>
   );
+}
+
+/**
+ * Planet label renderer — uppercase, wraps to two lines on longer
+ * names (split on last space before midpoint). Keeps SVG text
+ * readable on narrow containers where truncation used to hit.
+ */
+function PlanetLabel({
+  name,
+  index,
+  anchorY,
+  above,
+}: {
+  name: string;
+  index: number;
+  anchorY: number;
+  above: boolean;
+}) {
+  const upper = (name ?? "").toUpperCase();
+  const fontSize = index <= 1 ? 11 : 10;
+  const fill =
+    index <= 1 ? "rgba(250,250,250,0.9)" : "rgba(250,250,250,0.65)";
+  // Wrap at the space nearest the midpoint for names > 16 chars.
+  const lines = wrapLabel(upper, 16);
+  // For two-line labels above the planet, stack upward (earlier line
+  // first). Below the planet, stack downward.
+  const lineHeight = fontSize + 3;
+  return (
+    <text
+      className={`tm-label tm-label-${index + 1}`}
+      x={0}
+      y={anchorY}
+      textAnchor="middle"
+      fontSize={fontSize}
+      fontWeight={600}
+      fill={fill}
+      opacity={0}
+      style={{ letterSpacing: "0.5px" }}
+    >
+      {lines.map((ln, i) => (
+        <tspan
+          key={i}
+          x={0}
+          dy={i === 0 ? 0 : lineHeight}
+        >
+          {ln}
+        </tspan>
+      ))}
+      {/* One-line labels above a planet don't need vertical shift;
+          two-line labels above need to start one line higher so the
+          SECOND line lands at anchorY (anchor was the bottom line). */}
+      {above && lines.length > 1 ? (
+        <tspan x={0} dy={-lineHeight * lines.length} />
+      ) : null}
+    </text>
+  );
+}
+
+function wrapLabel(label: string, maxLen: number): string[] {
+  if (label.length <= maxLen) return [label];
+  const mid = Math.floor(label.length / 2);
+  // Find the space nearest the midpoint (search outward from mid).
+  let splitAt = -1;
+  for (let offset = 0; offset < label.length; offset++) {
+    const left = mid - offset;
+    const right = mid + offset;
+    if (left >= 0 && label[left] === " ") {
+      splitAt = left;
+      break;
+    }
+    if (right < label.length && label[right] === " ") {
+      splitAt = right;
+      break;
+    }
+  }
+  if (splitAt < 0) return [label];
+  return [label.slice(0, splitAt), label.slice(splitAt + 1)];
 }
 
 function LegendDot({

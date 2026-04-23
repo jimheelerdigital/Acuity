@@ -1,10 +1,5 @@
 import { Pressable, Text, View } from "react-native";
-import Svg, {
-  Defs,
-  LinearGradient,
-  Polyline,
-  Stop,
-} from "react-native-svg";
+import Svg, { Circle, Polyline } from "react-native-svg";
 
 type Sentiment = "positive" | "neutral" | "challenging";
 
@@ -21,10 +16,10 @@ const SENTIMENT_DOT: Record<Sentiment, string> = {
 };
 
 /**
- * Theme card with 36px sparkline. Header + mention count + dot,
- * middle sparkline, footer with first-mentioned-days-ago + trend.
- * Entrance animation intentionally omitted on mobile (matches the
- * constellation's static-for-now stance).
+ * Theme card row. Two columns: name + metadata on the left, compact
+ * last-7-days sparkline on the right constrained to ~30% row width.
+ * The old full-width sparkline overflowed the screen edge on narrow
+ * viewports; capping it + right-aligning fixes the cutoff.
  */
 export function ThemeCard({
   name,
@@ -45,6 +40,7 @@ export function ThemeCard({
 }) {
   const fill = SENTIMENT_HEX[sentiment];
   const dot = SENTIMENT_DOT[sentiment];
+  const trimmed = sparkline.slice(-7);
 
   return (
     <Pressable
@@ -65,97 +61,114 @@ export function ThemeCard({
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-between",
+          gap: 16,
         }}
       >
-        <Text
-          style={{ fontSize: 15, fontWeight: "600" }}
-          className="text-zinc-900 dark:text-zinc-50"
-          numberOfLines={1}
-        >
-          {name}
-        </Text>
-        <View
-          style={{ flexDirection: "row", alignItems: "center", gap: 10 }}
-        >
+        {/* Left — name + metadata */}
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <View
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: 4,
+                backgroundColor: dot,
+                shadowColor: dot,
+                shadowOpacity: sentiment === "neutral" ? 0 : 0.6,
+                shadowRadius: 4,
+              }}
+            />
+            <Text
+              style={{
+                fontSize: 15,
+                fontWeight: "600",
+                letterSpacing: 0.5,
+                flexShrink: 1,
+              }}
+              className="text-zinc-900 dark:text-zinc-50 uppercase"
+              numberOfLines={1}
+            >
+              {name}
+            </Text>
+            <Text
+              style={{ fontSize: 12 }}
+              className="text-zinc-400 dark:text-zinc-500"
+            >
+              {mentionCount}
+            </Text>
+          </View>
           <View
             style={{
-              width: 8,
-              height: 8,
-              borderRadius: 4,
-              backgroundColor: dot,
-              shadowColor: dot,
-              shadowOpacity: sentiment === "neutral" ? 0 : 0.6,
-              shadowRadius: 4,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 6,
+              marginTop: 4,
             }}
-          />
-          <Text
-            style={{ fontSize: 12 }}
-            className="text-zinc-400 dark:text-zinc-500"
           >
-            {mentionCount}
-          </Text>
+            <Text
+              style={{ fontSize: 11 }}
+              className="text-zinc-400 dark:text-zinc-500"
+            >
+              First {firstMentionedDaysAgo}d ago
+            </Text>
+            <Text
+              style={{ fontSize: 11 }}
+              className="text-zinc-400 dark:text-zinc-500"
+            >
+              ·
+            </Text>
+            <Text
+              style={{ fontSize: 11, flexShrink: 1 }}
+              className="text-zinc-400 dark:text-zinc-500"
+              numberOfLines={1}
+            >
+              {trendDescription}
+            </Text>
+          </View>
         </View>
-      </View>
 
-      <Sparkline data={sparkline} color={fill} />
-
-      <View
-        style={{
-          flexDirection: "row",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginTop: 6,
-        }}
-      >
-        <Text
-          style={{ fontSize: 11 }}
-          className="text-zinc-400 dark:text-zinc-500"
-        >
-          First {firstMentionedDaysAgo}d ago
-        </Text>
-        <Text
-          style={{ fontSize: 11 }}
-          className="text-zinc-400 dark:text-zinc-500"
-        >
-          {trendDescription}
-        </Text>
+        {/* Right — compact sparkline, hard-capped in width */}
+        <View style={{ width: "30%", maxWidth: 120, minWidth: 60 }}>
+          <Sparkline data={trimmed} color={fill} />
+        </View>
       </View>
     </Pressable>
   );
 }
 
 function Sparkline({ data, color }: { data: number[]; color: string }) {
-  if (data.length === 0) {
-    return <View style={{ height: 36, marginTop: 8 }} />;
+  const h = 28;
+  if (data.length === 0) return <View style={{ height: h }} />;
+  if (data.length === 1) {
+    const w = 80;
+    return (
+      <Svg
+        viewBox={`0 0 ${w} ${h}`}
+        preserveAspectRatio="none"
+        width="100%"
+        height={h}
+      >
+        <Circle cx={w / 2} cy={h / 2} r={3} fill={color} />
+      </Svg>
+    );
   }
-  const w = 300;
-  const h = 36;
-  const max = Math.max(...data, 1);
-  const stepX = data.length > 1 ? w / (data.length - 1) : w;
 
+  const w = 80;
+  const max = Math.max(...data, 1);
+  const stepX = w / (data.length - 1);
   const pts = data.map((v, i) => ({
     x: i * stepX,
     y: h - (v / max) * (h - 4) - 2,
   }));
-
   const line = pts.map((p) => `${p.x},${p.y}`).join(" ");
-  const fill = `${pts.map((p) => `${p.x},${p.y}`).join(" ")} ${w},${h} 0,${h}`;
 
   return (
     <Svg
       viewBox={`0 0 ${w} ${h}`}
       preserveAspectRatio="none"
       width="100%"
-      height={36}
-      style={{ marginTop: 8 }}
+      height={h}
     >
-      <Defs>
-        <LinearGradient id="tm-spark" x1="0" x2="0" y1="0" y2="1">
-          <Stop offset="0%" stopColor={color} stopOpacity={0.35} />
-          <Stop offset="100%" stopColor={color} stopOpacity={0} />
-        </LinearGradient>
-      </Defs>
-      <Polyline points={fill} fill="url(#tm-spark)" stroke="none" />
       <Polyline
         points={line}
         fill="none"

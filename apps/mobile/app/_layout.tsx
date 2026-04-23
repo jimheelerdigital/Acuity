@@ -146,6 +146,16 @@ function ThemedApp() {
             presentation: "modal",
           }}
         />
+        <Stack.Screen
+          name="insights/theme/[themeId]"
+          options={{
+            headerShown: true,
+            headerStyle: { backgroundColor: headerBg },
+            headerTintColor: headerFg,
+            headerTitleStyle: { fontWeight: "600" },
+            title: "Theme",
+          }}
+        />
       </Stack>
     </>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Constellation } from "@/components/theme-map/Constellation";
@@ -59,6 +60,7 @@ const SORT_LABELS: Record<SortKey, string> = {
 };
 
 export function ThemeMapClient() {
+  const router = useRouter();
   const [window_, setWindow] = useState<TimeWindow>("month");
   const [sort, setSort] = useState<SortKey>("frequency");
   const [data, setData] = useState<ApiResponse | null>(null);
@@ -177,6 +179,8 @@ export function ThemeMapClient() {
           key={animKey}
           hero={{ id: heroTheme.id, name: heroTheme.name }}
           planets={constellationThemes}
+          onTapHero={() => router.push(`/insights/theme/${heroTheme.id}`)}
+          onTapPlanet={(id) => router.push(`/insights/theme/${id}`)}
         />
       ) : (
         <div className="my-10 text-center text-sm text-zinc-500 dark:text-zinc-400">
@@ -217,6 +221,7 @@ export function ThemeMapClient() {
             firstMentionedDaysAgo={t.firstMentionedDaysAgo}
             trendDescription={t.trendDescription}
             staggerIndex={Math.min(i, 4)}
+            onClick={() => router.push(`/insights/theme/${t.id}`)}
           />
         ))}
       </div>

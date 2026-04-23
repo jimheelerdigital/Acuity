@@ -442,9 +442,15 @@ export function Constellation({
       }}
     >
       <Svg
-        viewBox="0 0 350 280"
+        // Expanded viewBox: the orbital entrance animation starts each
+        // planet at startRadius ≈ 180px from the hero (175, 140),
+        // which extends well outside the old 350×280 bounds. Expanding
+        // -40 -40 to 430×360 shows the full arc without clipping;
+        // preserveAspectRatio (default xMidYMid meet) scales the whole
+        // viewBox uniformly so the landed composition stays centered.
+        viewBox="-40 -40 430 360"
         width="100%"
-        height={280}
+        height={340}
         style={{ overflow: "visible" }}
       >
         <Defs>
@@ -500,15 +506,18 @@ export function Constellation({
           onPress={onTapHero}
         />
 
-        {/* Hero text */}
+        {/* Hero text — uppercase, no truncation. Old 10-char truncate
+            left labels like "commute frict..." mid-word; relying on
+            the hero name being short in practice + letting long ones
+            overflow the core is the lesser evil visually. */}
         <AnimatedText
           animatedProps={heroTextProps}
           textAnchor="middle"
-          fontSize={12}
-          fontWeight="600"
+          fontSize={11}
+          fontWeight="700"
           fill="#FFFFFF"
         >
-          {truncate(hero.name, 10)}
+          {(hero.name ?? "").toUpperCase()}
         </AnimatedText>
 
         {/* Planets — halo + core + label. Each handled by a small
@@ -640,10 +649,10 @@ function Planet({
         animatedProps={labelProps}
         textAnchor="middle"
         fontSize={labelFontSize}
-        fontWeight="500"
+        fontWeight="600"
         fill={labelColor}
       >
-        {truncate(name, 14)}
+        {(name ?? "").toUpperCase()}
       </AnimatedText>
     </>
   );
