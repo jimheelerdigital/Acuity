@@ -9,7 +9,9 @@ import {
  * Server wrapper around the pure `userProgression()` helper. Fetches
  * the four data inputs (user, entries, themes, goals) in parallel
  * via Prisma, loads the stored snapshot for diff, computes the new
- * progression, and writes the snapshot back.
+ * progression, and writes the snapshot back. Also write-back on
+ * milestone fire: User.lastStreakMilestone is bumped to the fired
+ * threshold so a future streak-break + rebuild can't re-celebrate.
  *
  * Safe for server components and API routes — single Prisma trip,
  * no external IO, ~5ms on a warm user.
@@ -25,6 +27,8 @@ export async function getUserProgression(userId: string): Promise<UserProgressio
         createdAt: true,
         timezone: true,
         progressionSnapshot: true,
+        milestoneBaselineStreak: true,
+        lastStreakMilestone: true,
       },
     }),
     prisma.entry.findMany({
@@ -65,17 +69,24 @@ export async function getUserProgression(userId: string): Promise<UserProgressio
     themes,
     goals,
     previousProgression,
+    milestoneBaselineStreak: user.milestoneBaselineStreak,
+    lastStreakMilestone: user.lastStreakMilestone ?? 0,
     timezone: user.timezone,
   });
 
-  // Write back the snapshot — fire-and-forget would be nicer but we
-  // want the diff to be accurate on the next call, so we await.
-  // Cheap single-row update.
+  // Write back the snapshot + milestone-celebrated bump in a single
+  // update. If a milestone fired this call, persist the threshold
+  // to User.lastStreakMilestone so subsequent streak-break + rebuild
+  // can't re-celebrate the same threshold.
   try {
+    const fired = progression.recentlyHitMilestone;
     await prisma.user.update({
       where: { id: userId },
       data: {
         progressionSnapshot: serializeSnapshot(progression) as never,
+        ...(fired && fired > (user.lastStreakMilestone ?? 0)
+          ? { lastStreakMilestone: fired }
+          : {}),
       },
     });
   } catch (err) {
@@ -120,11 +131,17 @@ function deserializeSnapshot(raw: unknown): UserProgression | null {
       longestStreak: Number(r.longestStreak ?? 0),
       lastEntryAt: r.lastEntryAt ? new Date(String(r.lastEntryAt)) : null,
       streakAtRisk: Boolean(r.streakAtRisk),
+      nextMilestone:
+        r.nextMilestone == null ? null : Number(r.nextMilestone),
       unlocked: r.unlocked as UserProgression["unlocked"],
       nextUnlock: (r.nextUnlock as UserProgression["nextUnlock"]) ?? null,
       recentlyUnlocked: Array.isArray(r.recentlyUnlocked)
         ? (r.recentlyUnlocked as UserProgression["recentlyUnlocked"])
         : [],
+      recentlyHitMilestone:
+        r.recentlyHitMilestone == null
+          ? null
+          : Number(r.recentlyHitMilestone),
     };
   } catch {
     return null;

@@ -1,26 +1,30 @@
 "use client";
 
+import { Flame } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import {
+  PROGRESSION_ITEMS,
   type UnlockKey,
   type UserProgression,
 } from "@acuity/shared";
 
 import { FocusCardStack, type FocusCard } from "./focus-card-stack";
+import { MilestoneCard } from "./milestone-card";
 
 /**
- * Home-page card stack. Takes the UserProgression snapshot fetched by
- * the server, builds an ordered queue — one "unlock" card per
- * recentlyUnlocked key, ending with a "resting" card — and hands it
- * to FocusCardStack.
+ * Home-page card stack. Takes the UserProgression snapshot fetched
+ * by the server, builds an ordered queue, hands it to FocusCardStack.
  *
- * Local state only tracks which cards the user has dismissed in this
- * session. Run 1 doesn't persist dismissals to the server: the
- * progression endpoint diffs from the stored snapshot, so on the
- * next mount recentlyUnlocked is already empty (snapshot was written
- * on the previous fetch). That gives us natural one-shot semantics
- * without a dismissal column.
+ * Order (top → bottom):
+ *   1. Feature unlock cards — one per recentlyUnlocked key
+ *   2. Streak milestone card — if recentlyHitMilestone set
+ *   3. Resting card — never dismissible; placeholder/streak content
+ *
+ * One-shot semantics: the progression API writes the snapshot back
+ * on each call, so recentlyUnlocked + recentlyHitMilestone clear on
+ * the next mount. No separate dismissal column; session-only state
+ * suffices.
  */
 export function HomeFocusStack({ progression }: { progression: UserProgression }) {
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
@@ -37,8 +41,18 @@ export function HomeFocusStack({ progression }: { progression: UserProgression }
         render: () => <UnlockCard unlockKey={key} />,
       });
     }
-    // Resting card always at the end. Run 2 will own this surface
-    // (streak chip + focus copy); Run 1 renders a minimal placeholder.
+    if (progression.recentlyHitMilestone != null) {
+      const m = progression.recentlyHitMilestone;
+      const id = `milestone:${m}`;
+      if (!dismissedIds.has(id)) {
+        out.push({
+          id,
+          type: "milestone",
+          dismissible: true,
+          render: () => <MilestoneCard milestone={m} />,
+        });
+      }
+    }
     out.push({
       id: "resting",
       type: "resting",
@@ -115,20 +129,99 @@ function UnlockCard({ unlockKey }: { unlockKey: UnlockKey }) {
   );
 }
 
+/**
+ * Resting card body. Day-aware:
+ *   - Days 1-7: the latest PROGRESSION_ITEMS entry the user has
+ *     unlocked-by-day (scripted guidance)
+ *   - Day 8+: streak-driven content — current streak + progress to
+ *     next milestone, or gentler re-engagement if streak is 0
+ */
 function RestingCard({ progression }: { progression: UserProgression }) {
-  // Minimal placeholder — Run 2 fills in streak chip, focus copy,
-  // tip bubbles. Intentionally spare for now so Run 2's design has
-  // room without fighting this run's commit.
+  if (progression.dayOfTrial <= 7) {
+    return <ScriptedResting progression={progression} />;
+  }
+  return <StreakResting progression={progression} />;
+}
+
+function ScriptedResting({ progression }: { progression: UserProgression }) {
+  // Pick the latest item the user has "unlocked-by-day."
+  const ageDays = progression.dayOfTrial - 1;
+  const latest =
+    [...PROGRESSION_ITEMS]
+      .reverse()
+      .find((it) => ageDays >= it.unlockAfterDays) ?? PROGRESSION_ITEMS[0];
   return (
     <div>
       <p className="text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
         Day {progression.dayOfTrial} of your trial
       </p>
-      <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
-        {progression.isInTrial
-          ? "Keep going — one recording a day is all Acuity needs."
-          : "Your trial has wrapped. Acuity keeps working on what you've built."}
+      <h3 className="mt-1.5 text-base font-semibold text-zinc-900 dark:text-zinc-50">
+        {latest.title}
+      </h3>
+      <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
+        {latest.description}
       </p>
+    </div>
+  );
+}
+
+function StreakResting({ progression }: { progression: UserProgression }) {
+  const { currentStreak, nextMilestone, streakAtRisk, longestStreak } = progression;
+
+  if (currentStreak === 0) {
+    // Broken-streak / never-started. Gentle re-engagement; no
+    // milestone delta shown — that'd feel accusatory.
+    return (
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
+          Day {progression.dayOfTrial}
+        </p>
+        <h3 className="mt-1.5 text-base font-semibold text-zinc-900 dark:text-zinc-50">
+          {longestStreak > 0
+            ? `Your longest streak was ${longestStreak} day${longestStreak === 1 ? "" : "s"}.`
+            : "No streak yet."}
+        </h3>
+        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
+          {longestStreak > 0
+            ? "One recording today starts a new one."
+            : "One recording today starts it."}
+        </p>
+      </div>
+    );
+  }
+
+  const delta =
+    nextMilestone != null ? Math.max(0, nextMilestone - currentStreak) : null;
+
+  return (
+    <div>
+      <div className="flex items-center gap-2">
+        <Flame className="h-5 w-5 text-orange-500" aria-hidden="true" />
+        <p className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
+          {currentStreak}-day streak
+        </p>
+        {streakAtRisk && (
+          <span className="rounded-full bg-amber-100 dark:bg-amber-900/40 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-300 uppercase tracking-wider">
+            At risk
+          </span>
+        )}
+      </div>
+      {delta != null && delta > 0 ? (
+        <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
+          {delta === 1
+            ? `1 day to your next milestone (${nextMilestone}).`
+            : `${delta} days to your next milestone (${nextMilestone}).`}
+        </p>
+      ) : (
+        <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
+          You&rsquo;ve cleared every milestone Acuity tracks. Keep going.
+        </p>
+      )}
+      {streakAtRisk && (
+        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+          Record today to keep it alive.
+        </p>
+      )}
     </div>
   );
 }

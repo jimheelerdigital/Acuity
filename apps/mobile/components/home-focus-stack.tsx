@@ -1,24 +1,29 @@
 import { useRouter } from "expo-router";
+import { Flame } from "lucide-react-native";
 import { useMemo, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 
 import {
+  PROGRESSION_ITEMS,
   type UnlockKey,
   type UserProgression,
 } from "@acuity/shared";
 
 import { FocusCardStack, type FocusCard } from "./focus-card-stack";
+import { MilestoneCard } from "./milestone-card";
 
 /**
  * Mobile Home focus stack. Mirror of apps/web/src/components/
- * home-focus-stack.tsx. Builds an ordered card queue from the
- * UserProgression passed in and hands it to FocusCardStack.
- *
- * Fetches progression at the Home tab level (not inside this
- * component) so pull-to-refresh works without prop gymnastics —
- * callsite passes `progression` + re-renders on refetch.
+ * home-focus-stack.tsx. Queue order:
+ *   1. Unlock card(s) from recentlyUnlocked
+ *   2. Milestone card from recentlyHitMilestone
+ *   3. Resting card (day 1-7 scripted, day 8+ streak)
  */
-export function HomeFocusStack({ progression }: { progression: UserProgression | null }) {
+export function HomeFocusStack({
+  progression,
+}: {
+  progression: UserProgression | null;
+}) {
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
 
   const cards = useMemo<FocusCard[]>(() => {
@@ -33,6 +38,18 @@ export function HomeFocusStack({ progression }: { progression: UserProgression |
         dismissible: true,
         render: () => <UnlockCard unlockKey={key} />,
       });
+    }
+    if (progression.recentlyHitMilestone != null) {
+      const m = progression.recentlyHitMilestone;
+      const id = `milestone:${m}`;
+      if (!dismissedIds.has(id)) {
+        out.push({
+          id,
+          type: "milestone",
+          dismissible: true,
+          render: () => <MilestoneCard milestone={m} />,
+        });
+      }
     }
     out.push({
       id: "resting",
@@ -119,16 +136,90 @@ function UnlockCard({ unlockKey }: { unlockKey: UnlockKey }) {
 }
 
 function RestingCard({ progression }: { progression: UserProgression }) {
+  if (progression.dayOfTrial <= 7) {
+    return <ScriptedResting progression={progression} />;
+  }
+  return <StreakResting progression={progression} />;
+}
+
+function ScriptedResting({ progression }: { progression: UserProgression }) {
+  const ageDays = progression.dayOfTrial - 1;
+  const latest =
+    [...PROGRESSION_ITEMS]
+      .reverse()
+      .find((it) => ageDays >= it.unlockAfterDays) ?? PROGRESSION_ITEMS[0];
   return (
     <View>
       <Text className="text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
         Day {progression.dayOfTrial} of your trial
       </Text>
-      <Text className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
-        {progression.isInTrial
-          ? "Keep going — one recording a day is all Acuity needs."
-          : "Your trial has wrapped. Acuity keeps working on what you've built."}
+      <Text className="mt-1.5 text-base font-semibold text-zinc-900 dark:text-zinc-50">
+        {latest.title}
       </Text>
+      <Text className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
+        {latest.description}
+      </Text>
+    </View>
+  );
+}
+
+function StreakResting({ progression }: { progression: UserProgression }) {
+  const { currentStreak, nextMilestone, streakAtRisk, longestStreak } = progression;
+
+  if (currentStreak === 0) {
+    return (
+      <View>
+        <Text className="text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
+          Day {progression.dayOfTrial}
+        </Text>
+        <Text className="mt-1.5 text-base font-semibold text-zinc-900 dark:text-zinc-50">
+          {longestStreak > 0
+            ? `Your longest streak was ${longestStreak} day${longestStreak === 1 ? "" : "s"}.`
+            : "No streak yet."}
+        </Text>
+        <Text className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
+          {longestStreak > 0
+            ? "One recording today starts a new one."
+            : "One recording today starts it."}
+        </Text>
+      </View>
+    );
+  }
+
+  const delta =
+    nextMilestone != null ? Math.max(0, nextMilestone - currentStreak) : null;
+
+  return (
+    <View>
+      <View className="flex-row items-center gap-2">
+        <Flame size={18} color="#F97316" />
+        <Text className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
+          {currentStreak}-day streak
+        </Text>
+        {streakAtRisk && (
+          <View className="rounded-full bg-amber-100 dark:bg-amber-900/40 px-2 py-0.5">
+            <Text className="text-[10px] font-semibold text-amber-700 dark:text-amber-300 uppercase tracking-wider">
+              At risk
+            </Text>
+          </View>
+        )}
+      </View>
+      {delta != null && delta > 0 ? (
+        <Text className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
+          {delta === 1
+            ? `1 day to your next milestone (${nextMilestone}).`
+            : `${delta} days to your next milestone (${nextMilestone}).`}
+        </Text>
+      ) : (
+        <Text className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
+          You&rsquo;ve cleared every milestone Acuity tracks. Keep going.
+        </Text>
+      )}
+      {streakAtRisk && (
+        <Text className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+          Record today to keep it alive.
+        </Text>
+      )}
     </View>
   );
 }

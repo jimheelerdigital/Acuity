@@ -96,11 +96,21 @@ model User {
   currentStreak          Int          @default(0)
   longestStreak          Int          @default(0)
   lastSessionDate        DateTime?
-  // Highest milestone we've celebrated for this user (7, 30, 100). NULL
-  // means no milestone fired yet. Set once and monotonically increases —
-  // a user who drops from 100 back to 0 and climbs again gets a new
-  // milestone toast only if they exceed lastMilestone.
+  // Highest milestone we've celebrated for this user (3, 7, 14, 30, 60,
+  // 100, 365). NULL means no milestone fired yet. Set once and
+  // monotonically increases — a user who drops from 100 back to 0 and
+  // climbs again gets a new milestone toast only if they exceed
+  // lastMilestone. (Originally 7/30/100; Phase 2 Run 2 2026-04-23
+  // expanded to the full 3/7/14/30/60/100/365 ladder.)
   lastStreakMilestone    Int?
+  // Baseline currentStreak at the time milestone celebrations shipped
+  // (Phase 2 Run 2 deploy). Default 0 for new users. Prevents the
+  // retroactive dump where an existing user at streak 35 suddenly
+  // sees stacked 3+7+14+30 cards on first snapshot post-deploy.
+  // Milestone fires only if threshold > milestoneBaselineStreak
+  // (AND > lastStreakMilestone per the existing rule). Static after
+  // the backfill migration; never updated by app code.
+  milestoneBaselineStreak Int          @default(0)
   // Cookie/analytics consent record — stored as JSON so we can evolve
   // the categories without a migration. Shape: { version:1, acceptedAt,
   // analytics:boolean, marketing:boolean }. Null = user has never seen

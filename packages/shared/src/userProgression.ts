@@ -34,6 +34,27 @@ export interface UnlockProgress {
   target: number;
 }
 
+/**
+ * Milestone thresholds in days. Passing any value in this list via a
+ * streak crossing fires a one-shot celebration card. Tiers:
+ *   3, 60 → small
+ *   7, 14, 30 → medium
+ *   100 → big
+ *   365 → biggest
+ * Defined here so web + mobile agree on the ladder.
+ */
+export const STREAK_MILESTONES = [3, 7, 14, 30, 60, 100, 365] as const;
+export type StreakMilestone = (typeof STREAK_MILESTONES)[number];
+
+export type MilestoneTier = "small" | "medium" | "big" | "biggest";
+
+export function milestoneTier(m: number): MilestoneTier {
+  if (m >= 365) return "biggest";
+  if (m >= 100) return "big";
+  if (m === 7 || m === 14 || m === 30) return "medium";
+  return "small";
+}
+
 export interface UserProgression {
   // Time
   dayOfTrial: number;
@@ -52,6 +73,9 @@ export interface UserProgression {
   longestStreak: number;
   lastEntryAt: Date | null;
   streakAtRisk: boolean;
+  /** Next milestone the user is working toward. Null when the user is
+   *  already past the top of the ladder (365+). */
+  nextMilestone: number | null;
 
   // Unlocks
   unlocked: Record<UnlockKey, boolean>;
@@ -66,6 +90,14 @@ export interface UserProgression {
 
   // Celebrations
   recentlyUnlocked: UnlockKey[];
+  /** The milestone value just crossed — set exactly once per crossing
+   *  (compared against previousProgression.currentStreak). Guarded by
+   *  milestoneBaselineStreak (no retro fires pre-deploy) AND
+   *  lastStreakMilestone (don't re-fire the same milestone after a
+   *  streak-break + rebuild). Null when no milestone crossed this
+   *  diff. Cleared on the next snapshot read — one-shot semantics
+   *  matching recentlyUnlocked. */
+  recentlyHitMilestone: number | null;
 }
 
 export interface UserProgressionInput {
@@ -74,6 +106,18 @@ export interface UserProgressionInput {
   themes: Array<{ id: string }>;
   goals: Array<{ id: string }>;
   previousProgression?: UserProgression | null;
+  /** Streak value at the time milestone celebrations shipped. Prevents
+   *  retroactively firing every milestone below a user's current
+   *  streak on first snapshot post-deploy. Static after backfill;
+   *  callers pass it in from User.milestoneBaselineStreak. Defaults
+   *  to 0 when omitted (new users, tests). */
+  milestoneBaselineStreak?: number;
+  /** Highest milestone already celebrated for this user (from
+   *  User.lastStreakMilestone). Used alongside the baseline: a
+   *  milestone fires only if threshold > lastStreakMilestone, so a
+   *  user who hit 7 → broke → rebuilt to 7 doesn't re-celebrate.
+   *  Defaults to 0 (never celebrated). */
+  lastStreakMilestone?: number;
   /** Optional override for "now" — used by tests and by the snapshot
    *  comparison logic. Defaults to `new Date()`. */
   now?: Date;
@@ -162,6 +206,38 @@ export function userProgression(input: UserProgressionInput): UserProgression {
     }
   }
 
+  // Milestone detection: the highest milestone the user crossed
+  // between previousProgression.currentStreak and streak.current.
+  // Guards:
+  //   (a) only fires on a real crossing during THIS diff — no prior
+  //       snapshot means no fire (new users' baseline already
+  //       accounts for pre-existing streaks)
+  //   (b) threshold must exceed milestoneBaselineStreak — prevents
+  //       retroactive cards for users who were already deep into a
+  //       streak when milestones shipped
+  //   (c) threshold must exceed lastStreakMilestone — prevents
+  //       re-celebrating the same milestone after a streak-break +
+  //       rebuild (matches the existing User.lastStreakMilestone
+  //       semantics)
+  const baseline = Math.max(0, input.milestoneBaselineStreak ?? 0);
+  const lastCelebrated = Math.max(0, input.lastStreakMilestone ?? 0);
+  let recentlyHitMilestone: number | null = null;
+  if (previousProgression) {
+    const prevStreak = previousProgression.currentStreak;
+    let highestCrossed = -1;
+    for (const m of STREAK_MILESTONES) {
+      if (streak.current >= m && prevStreak < m && m > baseline && m > lastCelebrated) {
+        if (m > highestCrossed) highestCrossed = m;
+      }
+    }
+    if (highestCrossed > 0) recentlyHitMilestone = highestCrossed;
+  }
+
+  // nextMilestone — the smallest threshold the user hasn't yet hit.
+  // Null when past the top. Used by the resting card on day 8+.
+  const nextMilestone =
+    STREAK_MILESTONES.find((m) => m > streak.current) ?? null;
+
   return {
     dayOfTrial,
     trialEndsAt,
@@ -175,9 +251,11 @@ export function userProgression(input: UserProgressionInput): UserProgression {
     longestStreak: streak.longest,
     lastEntryAt: streak.lastEntryAt,
     streakAtRisk: streak.atRisk,
+    nextMilestone,
     unlocked,
     nextUnlock,
     recentlyUnlocked,
+    recentlyHitMilestone,
   };
 }
 
