@@ -1111,16 +1111,15 @@ export function LandingPage() {
             {/* Left content — center on mobile, left on desktop */}
             <div className="flex-1 max-w-2xl text-left mx-auto lg:mx-0">
               <Reveal>
-                <h1 className="text-[2.5rem] font-black tracking-tight sm:text-5xl lg:text-[3.5rem] xl:text-[4rem] leading-[1.08]">
-                  <span className="text-[#A0A0B8]">One minute a day.</span>
+                <h1 className="text-[2rem] font-black tracking-tight sm:text-4xl lg:text-5xl xl:text-[3.5rem] leading-[1.08]">
+                  <span className="text-white">One minute a day.</span>
                   <br />
-                  <span className="text-white">A week of </span>
-                  <span className="text-[#B8A5FF]">clarity.</span>
+                  <span className="bg-gradient-to-r from-[#B8A5FF] to-[#7C5CFC] bg-clip-text text-transparent">A week of clarity.</span>
                 </h1>
               </Reveal>
 
               <Reveal delay={2}>
-                <p className="mt-5 text-lg text-[#A0A0B8] leading-relaxed max-w-md">
+                <p className="mt-5 text-lg text-[#C0C0D0] leading-relaxed max-w-lg">
                   Acuity is the daily debrief that turns what you&rsquo;re thinking about into what you&rsquo;re doing. Talk for 60 seconds, any time of day — it catches your tasks, tracks the goals you keep circling, and helps you monitor the patterns that leave you stuck.
                 </p>
               </Reveal>
