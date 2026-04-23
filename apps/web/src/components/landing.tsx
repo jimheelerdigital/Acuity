@@ -1103,7 +1103,7 @@ export function LandingPage() {
       </nav>
 
       {/* ───── HERO ───── */}
-      <section className="relative pt-28 pb-10 sm:pt-36 sm:pb-16 overflow-hidden">
+      <section className="relative pt-28 pb-0 sm:pt-36 sm:pb-0 overflow-hidden">
         <ParallaxOrbs />
 
         <div className="relative mx-auto max-w-6xl px-6">
@@ -1279,7 +1279,7 @@ export function LandingPage() {
       </section>
 
       {/* ───── SOCIAL PROOF ───── */}
-      <section className="px-6 py-8">
+      <section className="px-6 pt-4 pb-6">
         <Reveal>
           <div className="mx-auto max-w-2xl flex flex-col sm:flex-row items-center justify-center gap-4 text-center">
             <div className="flex items-center gap-1">
@@ -1297,7 +1297,7 @@ export function LandingPage() {
       </section>
 
       {/* ───── STATS TICKER ───── */}
-      <section className="py-12 px-6 border-y border-white/5 bg-[#13131F]/50 backdrop-blur">
+      <section className="py-8 px-6 border-y border-white/5 bg-[#13131F]/50 backdrop-blur">
         <div className="mx-auto max-w-5xl">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 text-center">
             {stats.map((stat, i) => (
@@ -1318,7 +1318,7 @@ export function LandingPage() {
 
       {/* ───── SOCIAL PROOF STRIP ───── */}
       {/* TODO: Replace placeholder avatars with real influencer/user photos */}
-      <section className="py-16 px-6 overflow-hidden">
+      <section className="py-10 px-6 overflow-hidden">
         <div className="mx-auto max-w-2xl text-center">
           <Reveal>
             <h3 className="text-lg font-semibold text-[#A0A0B8]">
