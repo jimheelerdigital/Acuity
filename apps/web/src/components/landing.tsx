@@ -1112,8 +1112,8 @@ export function LandingPage() {
             <div className="flex-1 max-w-2xl text-left mx-auto lg:mx-0">
               <Reveal>
                 <h1 className="font-black tracking-tight leading-[1.08]">
-                  <span className="block text-white text-[clamp(2rem,5.5vw,4.5rem)]">One minute a day.</span>
-                  <span className="block bg-gradient-to-r from-[#B8A5FF] to-[#7C5CFC] bg-clip-text text-transparent text-[clamp(2rem,5.5vw,4.5rem)]">A life of clarity.</span>
+                  <span className="block text-white whitespace-nowrap text-4xl sm:text-5xl lg:text-[3.25rem] xl:text-[3.75rem]">One minute a day.</span>
+                  <span className="block bg-gradient-to-r from-[#B8A5FF] to-[#7C5CFC] bg-clip-text text-transparent whitespace-nowrap text-4xl sm:text-5xl lg:text-[3.25rem] xl:text-[3.75rem]">A life of clarity.</span>
                 </h1>
               </Reveal>
 
@@ -1128,9 +1128,9 @@ export function LandingPage() {
                   <Link
                     href="/waitlist?utm_campaign=home"
                     onClick={trackInitiateCheckout}
-                    className="group relative rounded-full p-[2px] transition active:scale-95"
+                    className="group relative rounded-full p-[2px] transition active:scale-95 overflow-hidden"
                   >
-                    <span className="absolute inset-0 rounded-full animate-cta-shine" style={{ background: 'conic-gradient(from 0deg, #7C5CFC 0%, transparent 30%, transparent 70%, #B8A5FF 85%, #7C5CFC 100%)' }} />
+                    <span className="absolute inset-[-100%] animate-cta-shine" style={{ background: 'conic-gradient(from 0deg, transparent 0%, transparent 60%, #ffffff 75%, #B8A5FF 85%, transparent 100%)' }} />
                     <span className="relative block rounded-full bg-[#7C5CFC] px-7 py-3.5 text-sm font-semibold text-white transition group-hover:bg-[#6B4FE0]">
                       Join the waitlist — first month free
                     </span>
