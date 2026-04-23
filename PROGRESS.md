@@ -7,6 +7,38 @@
 
 ---
 
+## [2026-04-23] — Fix broken waitlist drip sequence + landing page overhaul
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** b4d15fa
+
+### In plain English (for Keenan)
+The 5-email waitlist drip was completely broken — only the Day 0 welcome email was firing. Nobody on the waitlist was getting their Day 2, Day 5, Day 10, or Day 14 emails because the daily scheduler was never set up. This is now fixed: a daily cron runs at 2pm UTC and sends all overdue emails. The 7 signups from the past 4–6 days will get their missed emails on the next cron run. Also shipped a major landing page overhaul: new hero headline, transparent favicon, accordion FAQ, expanded footer, mobile-centered layout, removed redundant mobile CTAs, tightened section spacing, added shine animations to CTA buttons, and comprehensive desktop improvements (wider layouts, bigger phone mockups, better hover states).
+
+### Technical changes (for Jimmy)
+- `vercel.json`: new file at repo root with daily cron entry (`0 14 * * *`) pointing to `/api/cron/waitlist-drip`
+- `apps/web/src/app/api/cron/waitlist-drip/route.ts`: rewrote loop to process ALL eligible drip steps per user in one pass (catch-up logic). Added `safeLog.info` at start, per-user skip/send, and completion. Returns `details` array in response for debugging.
+- `apps/web/src/components/landing.tsx`: hero text, FAQ accordion, footer expansion, mobile centering, CTA shine animations, desktop max-width widening, phone mockup sizing, typography hierarchy fixes, section spacing reductions
+- `apps/web/src/app/globals.css`: FAQ smooth open/close, check-pulse, pricing-glow keyframes
+- `apps/web/tailwind.config.ts`: cta-shine animation utility
+- `apps/web/src/components/providers.tsx`: forced dark theme globally
+- `apps/web/public/favicon-96x96.png`, `favicon.ico`, `apple-touch-icon.png`, `icon-192.png`, `icon-512.png`: replaced with transparent-background diamond logo
+
+### Manual steps needed
+- [ ] Verify `CRON_SECRET` is set in Vercel production env vars (Keenan / Jimmy)
+- [ ] After next deploy, manually trigger the cron once to backfill missed emails: `curl -H "Authorization: Bearer $CRON_SECRET" https://www.getacuity.io/api/cron/waitlist-drip` (Jimmy)
+- [ ] Check Resend dashboard to confirm backfill emails sent successfully (Keenan)
+- [ ] Vercel redeploy will happen automatically on push — verify cron appears in Vercel dashboard under Settings → Crons (Jimmy)
+
+### Notes
+- The cron route was already implemented and working — it just had no scheduler invoking it. The `vercel.json` cron entry is the only thing that was missing.
+- Catch-up logic: if a user signed up 6 days ago and is on step 1, the cron will now send both Day 2 and Day 5 emails in a single run (sequentially, with a break on error).
+- Emails 4 and 5 (Day 10, Day 14) contain copy that assumes an imminent launch ("putting the final touches", "doors are opening soon"). These should be reviewed before those emails start firing for real signups.
+- The drip sequence steps: Step 1 = Day 0 (welcome, sent at signup), Step 2 = Day 2, Step 3 = Day 5, Step 4 = Day 10, Step 5 = Day 14.
+
+---
+
 ## [2026-04-23] — Polish landing hero text and swap to transparent favicon
 
 **Requested by:** Keenan
