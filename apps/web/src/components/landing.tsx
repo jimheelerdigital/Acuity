@@ -1277,13 +1277,10 @@ export function LandingPage() {
             </div>
           </div>
 
-        </div>
-      </section>
-
-      {/* ───── SOCIAL PROOF ───── */}
-      <section className="px-6 pt-4 pb-6 lg:pt-8 lg:pb-10">
-        <Reveal>
-          <div className="mx-auto max-w-2xl flex flex-col sm:flex-row items-center justify-center gap-4 text-center">
+          {/* ───── SOCIAL PROOF (inside hero) ───── */}
+          <div className="mt-8 lg:mt-6 px-6">
+            <Reveal>
+              <div className="mx-auto max-w-2xl flex flex-col sm:flex-row items-center justify-center gap-4 text-center">
             <div className="flex items-center gap-1">
               {[...Array(5)].map((_, i) => (
                 <svg key={i} className="h-5 w-5 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
@@ -1294,8 +1291,10 @@ export function LandingPage() {
             <p className="text-sm text-[#A0A0B8]">
               Join <span className="text-white font-semibold">500+</span> people already on the waitlist
             </p>
+              </div>
+            </Reveal>
           </div>
-        </Reveal>
+        </div>
       </section>
 
       {/* ───── STATS TICKER ───── */}
