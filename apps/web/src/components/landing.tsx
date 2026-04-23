@@ -100,7 +100,7 @@ function WhoItsForDropdown() {
       </button>
 
       <div
-        className={`absolute left-0 top-full mt-2 w-[640px] rounded-xl border border-white/10 bg-[#13131F] shadow-2xl transition-all duration-200 origin-top ${
+        className={`absolute left-0 top-full mt-2 w-[640px] max-w-[calc(100vw-2rem)] rounded-xl border border-white/10 bg-[#13131F] shadow-2xl transition-all duration-200 origin-top ${
           open
             ? "opacity-100 scale-y-100 translate-y-0"
             : "opacity-0 scale-y-95 -translate-y-1 pointer-events-none"
@@ -1058,7 +1058,7 @@ export function LandingPage() {
     <div className="min-h-screen bg-[#0A0A0F] text-white pb-24 sm:pb-0 overflow-x-hidden">
       {/* ───── NAVBAR ───── */}
       <nav className="fixed top-0 inset-x-0 z-50 bg-[#0A0A0F] sm:bg-[#0A0A0F]/80 sm:backdrop-blur-md border-b border-white/5">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:py-5">
           <div className="flex items-center gap-8">
             <Link href="/" className="flex items-center gap-2 group">
               <img src="/AcuityLogoDark.png" alt="Acuity logo" className="shrink-0" style={{ width: 24, height: 24 }} />
@@ -1095,7 +1095,7 @@ export function LandingPage() {
           <Link
             href="/waitlist?utm_campaign=home"
             onClick={trackInitiateCheckout}
-            className="rounded-full bg-[#7C5CFC] px-5 py-2 text-sm font-medium text-white transition hover:bg-[#6B4FE0] hover:shadow-lg hover:shadow-[#7C5CFC]/20 active:scale-95"
+            className="rounded-full bg-[#7C5CFC] px-5 py-2 text-sm font-medium text-white transition hover:bg-[#6B4FE0] hover:shadow-lg hover:shadow-[#7C5CFC]/40 active:scale-95"
           >
             Join the Waitlist
           </Link>
@@ -1103,10 +1103,10 @@ export function LandingPage() {
       </nav>
 
       {/* ───── HERO ───── */}
-      <section className="relative pt-28 pb-0 sm:pt-36 sm:pb-0 overflow-hidden">
+      <section className="relative pt-28 pb-0 sm:pt-36 sm:pb-0 lg:pb-10 overflow-hidden">
         <ParallaxOrbs />
 
-        <div className="relative mx-auto max-w-6xl px-6">
+        <div className="relative mx-auto max-w-7xl px-6">
           <div className="flex flex-col lg:flex-row lg:items-center lg:gap-10">
             {/* Left content — center on mobile, left on desktop */}
             <div className="flex-1 max-w-2xl text-center lg:text-left mx-auto lg:mx-0">
@@ -1138,7 +1138,7 @@ export function LandingPage() {
                   </Link>
                   <a
                     href="#how-it-works"
-                    className="rounded-xl border border-white/10 px-7 py-3.5 text-sm font-semibold text-[#A0A0B8] transition hover:border-white/20 hover:bg-white/5 active:scale-95"
+                    className="rounded-xl border border-white/10 px-7 py-3.5 text-sm font-semibold text-[#A0A0B8] transition hover:border-white/30 hover:bg-white/10 active:scale-95"
                   >
                     See how it works
                   </a>
@@ -1164,7 +1164,7 @@ export function LandingPage() {
                 </Link>
                 <a
                   href="#how-it-works"
-                  className="rounded-xl border border-white/10 px-7 py-3.5 text-sm font-semibold text-[#A0A0B8] transition hover:border-white/20 hover:bg-white/5 active:scale-95"
+                  className="rounded-xl border border-white/10 px-7 py-3.5 text-sm font-semibold text-[#A0A0B8] transition hover:border-white/30 hover:bg-white/10 active:scale-95"
                 >
                   See how it works
                 </a>
@@ -1176,12 +1176,12 @@ export function LandingPage() {
 
             {/* Right side: Enhanced animated phone mockups — desktop only */}
             <div className="flex-1 mt-10 lg:mt-0 hidden lg:flex justify-center lg:justify-end">
-              <div className="relative w-[320px] h-[540px] sm:w-[360px] sm:h-[600px]">
+              <div className="relative w-[320px] h-[540px] sm:w-[360px] sm:h-[600px] lg:w-[400px] lg:h-[660px] xl:w-[440px] xl:h-[720px]">
                 {/* Ambient glow behind phones */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] rounded-full bg-[#7C5CFC]/8 blur-[80px] animate-pulse-slow" />
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] lg:w-[400px] lg:h-[400px] rounded-full bg-[#7C5CFC]/15 blur-[80px] animate-pulse-slow" />
 
                 {/* Phone 1 (back) — Weekly Report */}
-                <div className="absolute right-0 top-6 w-[200px] sm:w-[230px] h-[400px] sm:h-[450px] rounded-[2rem] bg-[#1E1E2E] p-2 shadow-2xl shadow-black/40 rotate-3 animate-float-delay">
+                <div className="absolute right-0 top-6 w-[200px] sm:w-[230px] lg:w-[260px] xl:w-[280px] h-[400px] sm:h-[450px] lg:h-[500px] xl:h-[540px] rounded-[2rem] bg-[#1E1E2E] p-2 shadow-2xl shadow-black/40 rotate-3 animate-float">
                   <div className="h-full w-full rounded-[1.5rem] bg-[#13131F] p-4 flex flex-col gap-2.5 overflow-hidden">
                     {/* Status bar */}
                     <div className="flex items-center justify-between mb-1">
@@ -1249,7 +1249,7 @@ export function LandingPage() {
                 </div>
 
                 {/* Phone 2 (front) — Today's Debrief */}
-                <div className="absolute left-0 top-0 w-[200px] sm:w-[230px] h-[400px] sm:h-[450px] rounded-[2rem] bg-[#1E1E2E] p-2 shadow-2xl shadow-black/50 -rotate-3 z-10 animate-float">
+                <div className="absolute left-0 top-0 w-[200px] sm:w-[230px] lg:w-[260px] xl:w-[280px] h-[400px] sm:h-[450px] lg:h-[500px] xl:h-[540px] rounded-[2rem] bg-[#1E1E2E] p-2 shadow-2xl shadow-black/50 -rotate-3 z-10 animate-float">
                   <div className="h-full w-full rounded-[1.5rem] bg-[#13131F] p-4 flex flex-col gap-2.5 overflow-hidden">
                     {/* Status bar */}
                     <div className="flex items-center justify-between mb-1">
@@ -1306,7 +1306,7 @@ export function LandingPage() {
       </section>
 
       {/* ───── SOCIAL PROOF ───── */}
-      <section className="px-6 pt-4 pb-6">
+      <section className="px-6 pt-4 pb-6 lg:pt-8 lg:pb-10">
         <Reveal>
           <div className="mx-auto max-w-2xl flex flex-col sm:flex-row items-center justify-center gap-4 text-center">
             <div className="flex items-center gap-1">
@@ -1324,8 +1324,8 @@ export function LandingPage() {
       </section>
 
       {/* ───── STATS TICKER ───── */}
-      <section className="py-8 px-6 border-y border-white/5 bg-[#13131F]/50 backdrop-blur">
-        <div className="mx-auto max-w-5xl">
+      <section className="py-8 lg:py-10 px-6 border-y border-white/5 bg-[#13131F]/50 backdrop-blur">
+        <div className="mx-auto max-w-6xl">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 text-center">
             {stats.map((stat, i) => (
               <Reveal key={stat.label} delay={i as 0 | 1 | 2 | 3}>
@@ -1352,21 +1352,23 @@ export function LandingPage() {
               Used by productivity obsessives 👀
             </h3>
           </Reveal>
-          <Reveal delay={1}>
-            <div className="mt-6 flex justify-center -space-x-3">
-              {["S", "M", "P", "A", "J", "R"].map((letter, i) => (
-                <div
-                  key={i}
-                  className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-[#0A0A0F] bg-[#1E1E2E] text-sm font-semibold text-[#A0A0B8] transition-transform hover:scale-110 hover:z-10 cursor-default"
-                >
-                  {letter}
-                </div>
-              ))}
-              <div className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-[#0A0A0F] bg-[#7C5CFC] text-xs font-semibold text-white transition-transform hover:scale-110">
-                +99
+          <div className="mt-6 flex justify-center -space-x-3">
+            {["S", "M", "P", "A", "J", "R"].map((letter, i) => (
+              <div
+                key={i}
+                className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-[#0A0A0F] bg-[#1E1E2E] text-sm font-semibold text-[#A0A0B8] transition-all hover:scale-110 hover:z-10 cursor-default opacity-0 animate-fade-in-up"
+                style={{ animationDelay: `${i * 100}ms`, animationFillMode: 'forwards' }}
+              >
+                {letter}
               </div>
+            ))}
+            <div
+              className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-[#0A0A0F] bg-[#7C5CFC] text-xs font-semibold text-white transition-all hover:scale-110 opacity-0 animate-fade-in-up"
+              style={{ animationDelay: '600ms', animationFillMode: 'forwards' }}
+            >
+              +99
             </div>
-          </Reveal>
+          </div>
         </div>
 
         {/* Scrolling brand ticker — seamless infinite loop */}
@@ -1396,8 +1398,8 @@ export function LandingPage() {
       </section>
 
       {/* ───── HOW IT WORKS ───── */}
-      <section id="how-it-works" className="px-6 py-16 sm:py-20">
-        <div className="mx-auto max-w-6xl">
+      <section id="how-it-works" className="px-6 py-16 sm:py-20 lg:py-24">
+        <div className="mx-auto max-w-7xl">
           <Reveal>
             <div className="text-center mb-14">
               <h2 className="text-3xl font-bold tracking-tight sm:text-5xl">
@@ -1579,15 +1581,15 @@ export function LandingPage() {
       </section>
 
       {/* ───── LIFE MATRIX ───── */}
-      <section className="relative px-6 py-16 sm:py-20 overflow-hidden">
-        <div className="relative mx-auto max-w-5xl">
+      <section className="relative px-6 py-16 sm:py-20 lg:py-24 overflow-hidden">
+        <div className="relative mx-auto max-w-6xl">
           {/* Header */}
           <Reveal>
             <div className="text-center mb-16">
               <p className="text-xs font-semibold uppercase tracking-widest text-[#7C5CFC] mb-4">
                 Life Matrix
               </p>
-              <h2 className="text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
+              <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-5xl">
                 Your mind has patterns.
                 <br />
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-500 to-indigo-500">
@@ -1630,8 +1632,8 @@ export function LandingPage() {
       </section>
 
       {/* ───── TRACK PROGRESS — ANIMATED GROWTH CHART ───── */}
-      <section className="px-6 py-16 sm:py-20">
-        <div className="mx-auto max-w-5xl">
+      <section className="px-6 py-16 sm:py-20 lg:py-24">
+        <div className="mx-auto max-w-6xl">
           <Reveal>
             <div className="text-center mb-12">
               <p className="text-xs font-semibold uppercase tracking-widest text-[#7C5CFC] mb-4">
@@ -1656,10 +1658,10 @@ export function LandingPage() {
 
       {/* ───── TESTIMONIALS ───── */}
       {/* TODO: Replace fake testimonials with real user testimonials */}
-      <section className="px-6 py-16 sm:py-20">
-        <div className="mx-auto max-w-5xl">
+      <section className="px-6 py-16 sm:py-20 lg:py-24">
+        <div className="mx-auto max-w-6xl">
           <Reveal>
-            <h2 className="text-center text-3xl font-bold tracking-tight sm:text-5xl">
+            <h2 className="text-center text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
               What people say after week one
             </h2>
             <p className="mx-auto mt-4 text-center text-[#A0A0B8] text-lg">
@@ -1797,7 +1799,7 @@ export function LandingPage() {
             </span>
           </Reveal>
           <Reveal>
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl mb-4 text-white">
+            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl mb-4 text-white">
               Frequently asked questions about Acuity
             </h2>
           </Reveal>
@@ -1885,9 +1887,9 @@ export function LandingPage() {
       </section>
 
       {/* ───── FOOTER ───── */}
-      <footer className="border-t border-white/10 px-6 py-16 bg-[#0A0A0F]">
-        <div className="mx-auto max-w-6xl">
-          <div className="grid gap-12 lg:grid-cols-5">
+      <footer className="border-t border-white/10 px-6 py-16 bg-[#08080D]">
+        <div className="mx-auto max-w-7xl">
+          <div className="grid gap-8 lg:gap-12 lg:grid-cols-5">
             {/* Brand column */}
             <div className="lg:col-span-2">
               <div className="flex items-center gap-2">
@@ -1916,31 +1918,31 @@ export function LandingPage() {
 
             {/* Link columns */}
             <div>
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-white/50 mb-4">Product</h3>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-white/80 mb-4">Product</h3>
               <ul className="space-y-3 text-sm text-[#A0A0B8]">
-                <li><a href="/" className="transition hover:text-white">Home</a></li>
-                <li><a href="/waitlist" className="transition hover:text-white">Join Waitlist</a></li>
-                <li><a href="/#how-it-works" className="transition hover:text-white">How It Works</a></li>
-                <li><a href="/#pricing" className="transition hover:text-white">Pricing</a></li>
-                <li><a href="/#faq" className="transition hover:text-white">FAQ</a></li>
+                <li><a href="/" className="transition hover:text-white hover:underline underline-offset-4">Home</a></li>
+                <li><a href="/waitlist" className="transition hover:text-white hover:underline underline-offset-4">Join Waitlist</a></li>
+                <li><a href="/#how-it-works" className="transition hover:text-white hover:underline underline-offset-4">How It Works</a></li>
+                <li><a href="/#pricing" className="transition hover:text-white hover:underline underline-offset-4">Pricing</a></li>
+                <li><a href="/#faq" className="transition hover:text-white hover:underline underline-offset-4">FAQ</a></li>
               </ul>
             </div>
             <div>
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-white/50 mb-4">Resources</h3>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-white/80 mb-4">Resources</h3>
               <ul className="space-y-3 text-sm text-[#A0A0B8]">
-                <li><a href="/voice-journaling" className="transition hover:text-white">Voice Journaling Guide</a></li>
-                <li><a href="/blog" className="transition hover:text-white">Blog</a></li>
-                <li><a href="/#weekly-report" className="transition hover:text-white">Weekly Report</a></li>
-                <li><a href="/#features" className="transition hover:text-white">Features</a></li>
+                <li><a href="/voice-journaling" className="transition hover:text-white hover:underline underline-offset-4">Voice Journaling Guide</a></li>
+                <li><a href="/blog" className="transition hover:text-white hover:underline underline-offset-4">Blog</a></li>
+                <li><a href="/#weekly-report" className="transition hover:text-white hover:underline underline-offset-4">Weekly Report</a></li>
+                <li><a href="/#features" className="transition hover:text-white hover:underline underline-offset-4">Features</a></li>
               </ul>
             </div>
             <div>
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-white/50 mb-4">Company</h3>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-white/80 mb-4">Company</h3>
               <ul className="space-y-3 text-sm text-[#A0A0B8]">
-                <li><a href="/terms" className="transition hover:text-white">Terms</a></li>
-                <li><a href="/privacy" className="transition hover:text-white">Privacy</a></li>
-                <li><a href="mailto:hello@getacuity.io" className="transition hover:text-white">Contact</a></li>
-                <li><a href="/blog" className="transition hover:text-white">About</a></li>
+                <li><a href="/terms" className="transition hover:text-white hover:underline underline-offset-4">Terms</a></li>
+                <li><a href="/privacy" className="transition hover:text-white hover:underline underline-offset-4">Privacy</a></li>
+                <li><a href="mailto:hello@getacuity.io" className="transition hover:text-white hover:underline underline-offset-4">Contact</a></li>
+                <li><a href="/blog" className="transition hover:text-white hover:underline underline-offset-4">About</a></li>
               </ul>
             </div>
           </div>
