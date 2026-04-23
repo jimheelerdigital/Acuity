@@ -221,6 +221,13 @@ model UserOnboarding {
   // Seeds the Life Matrix starting scores so day-1 insights aren't
   // drawing against a zero baseline.
   moodBaseline           String?
+  // Numeric mood baseline (1-10) from the slider. Added 2026-04-23
+  // when the mood selector was redesigned from 5-emoji buttons to a
+  // 10-point therapy-app-style slider. Coexists with moodBaseline:
+  // new onboarding writes both (numeric value + bucketed enum), old
+  // rows have null here. Read numeric when present, fall back to
+  // the enum for legacy users.
+  moodBaselineNumeric    Int?
   // Step 6 — user's ranked importance for the 6 canonical life areas.
   // Stored as Json: { CAREER: 3, HEALTH: 5, RELATIONSHIPS: 4, ... }
   // where higher numbers = higher importance (1-5 scale).

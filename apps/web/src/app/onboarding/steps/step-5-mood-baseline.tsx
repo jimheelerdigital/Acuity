@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 
-import { MOOD_EMOJI, MOOD_LABELS, type Mood } from "@acuity/shared";
+import { moodBucketFromScore } from "@acuity/shared";
+
+import { MoodSlider } from "@/components/mood-slider";
 
 import { useOnboarding } from "../onboarding-context";
 
@@ -10,38 +12,29 @@ import { useOnboarding } from "../onboarding-context";
  * Step 5 — Mood baseline.
  *
  * Seeds the Life Matrix so day-1 insights aren't drawing against a
- * neutral-for-everyone default. The answer here doesn't anchor a
- * diagnosis; it just gives the first week's narrative a reference
- * point — "relative to where you said you were" — instead of an
- * absolute scale.
+ * neutral-for-everyone default. The answer is a 1-10 self-rating —
+ * therapy-app style — stored as moodBaselineNumeric on UserOnboarding,
+ * with the bucketed string (GREAT/GOOD/NEUTRAL/LOW/ROUGH) written to
+ * moodBaseline for legacy consumers (Life Audit prompt, memory).
  *
- * Skippable via the shell's Skip-this-step button (step 5 is in the
- * default skippableSteps). Continue is disabled until a mood is
- * picked so a user who doesn't want to answer makes that choice
- * explicitly rather than accidentally posting null via a stray click.
- *
- * Ordering: worst-to-best. Reading left-to-right matches the way most
- * charts plot improvement over time; reversing it (best-to-worst)
- * implies a decline you don't want to prime.
+ * Skippable via the shell's Skip-this-step button. Continue is
+ * disabled until the user touches the slider — no default post.
  */
-const MOOD_ORDER: Mood[] = ["ROUGH", "LOW", "NEUTRAL", "GOOD", "GREAT"];
-
-const MOOD_HINTS: Record<Mood, string> = {
-  GREAT: "Things are clicking.",
-  GOOD: "Mostly steady.",
-  NEUTRAL: "Fine, nothing remarkable.",
-  LOW: "A little heavy lately.",
-  ROUGH: "Hard stretch.",
-};
-
 export function Step5MoodBaseline() {
   const { setCanContinue, setCapturedData } = useOnboarding();
-  const [selected, setSelected] = useState<Mood | null>(null);
+  const [value, setValue] = useState<number | null>(null);
 
   useEffect(() => {
-    setCanContinue(selected !== null);
-    setCapturedData(selected ? { moodBaseline: selected } : null);
-  }, [selected, setCanContinue, setCapturedData]);
+    setCanContinue(value !== null);
+    setCapturedData(
+      value !== null
+        ? {
+            moodBaselineNumeric: value,
+            moodBaseline: moodBucketFromScore(value),
+          }
+        : null
+    );
+  }, [value, setCanContinue, setCapturedData]);
 
   return (
     <div className="flex flex-col">
@@ -50,54 +43,22 @@ export function Step5MoodBaseline() {
       </h1>
 
       <p className="mt-4 text-base leading-relaxed text-zinc-600 dark:text-zinc-300">
-        Not today specifically. The average of the last couple of weeks.
-        One answer. Refine it later if it shifts.
+        Not today specifically — the average of the last couple of
+        weeks. One rating. Refine it later if it shifts.
       </p>
 
-      <div className="mt-10 grid grid-cols-5 gap-2">
-        {MOOD_ORDER.map((mood) => {
-          const isSelected = selected === mood;
-          return (
-            <button
-              key={mood}
-              onClick={() => setSelected(mood)}
-              className={`flex flex-col items-center gap-2 rounded-2xl border bg-white dark:bg-[#1E1E2E] p-3 transition ${
-                isSelected
-                  ? "border-[#7C5CFC] bg-[#F7F5FF] shadow-sm"
-                  : "border-zinc-200 dark:border-white/10 hover:border-zinc-300 dark:hover:border-white/20"
-              }`}
-              aria-pressed={isSelected}
-            >
-              <span className="text-2xl">{MOOD_EMOJI[mood]}</span>
-              <span
-                className={`text-xs font-medium ${
-                  isSelected ? "text-[#5B3FD6]" : "text-zinc-600 dark:text-zinc-300"
-                }`}
-              >
-                {MOOD_LABELS[mood]}
-              </span>
-            </button>
-          );
-        })}
+      <div className="mt-10">
+        <MoodSlider
+          value={value}
+          onChange={(v) => setValue(v)}
+          label="Mood baseline"
+        />
       </div>
 
-      {/* Hint below the selected button — shows what that mood
-          typically sounds like. Keeps the buckets short and the
-          elaboration on demand. */}
-      <div className="mt-6 min-h-[20px]">
-        {selected && (
-          <p
-            key={selected}
-            className="animate-fade-in text-sm text-zinc-500 dark:text-zinc-400"
-          >
-            {MOOD_HINTS[selected]}
-          </p>
-        )}
-      </div>
-
-      <p className="mt-8 text-xs text-zinc-400 dark:text-zinc-500">
-        No right answer. This shapes how we read your first week&rsquo;s
-        entries against your own baseline instead of everyone else&rsquo;s.
+      <p className="mt-10 text-xs text-zinc-400 dark:text-zinc-500">
+        No right answer. This shapes how Acuity reads your first
+        week&rsquo;s entries against your own baseline instead of
+        everyone else&rsquo;s.
       </p>
     </div>
   );

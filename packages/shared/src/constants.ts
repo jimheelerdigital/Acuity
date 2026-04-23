@@ -1,3 +1,5 @@
+import type { Mood } from "./types";
+
 // ─── App ──────────────────────────────────────────────────────────────────────
 
 export const APP_NAME = "Acuity";
@@ -101,6 +103,27 @@ export const MOOD_EMOJI: Record<string, string> = {
   LOW: "😔",
   ROUGH: "😣",
 };
+
+/**
+ * Map a 1-10 mood score to the 5-bucket enum. Kept symmetric so a
+ * legacy consumer reading the string label still behaves well when
+ * the new slider is used:
+ *   1–2 ROUGH · 3–4 LOW · 5–6 NEUTRAL · 7–8 GOOD · 9–10 GREAT
+ */
+export function moodBucketFromScore(score: number): Mood {
+  const n = Math.max(1, Math.min(10, Math.round(score)));
+  if (n <= 2) return "ROUGH";
+  if (n <= 4) return "LOW";
+  if (n <= 6) return "NEUTRAL";
+  if (n <= 8) return "GOOD";
+  return "GREAT";
+}
+
+/** Short word describing a 1-10 score — used beneath the slider thumb. */
+export function moodLabelForScore(score: number): string {
+  const bucket = moodBucketFromScore(score);
+  return MOOD_LABELS[bucket];
+}
 
 // ─── Priority ─────────────────────────────────────────────────────────────────
 

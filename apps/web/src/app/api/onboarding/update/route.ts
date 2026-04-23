@@ -95,6 +95,13 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  if (typeof raw.moodBaselineNumeric === "number") {
+    const n = Math.round(raw.moodBaselineNumeric);
+    if (Number.isFinite(n) && n >= 1 && n <= 10) {
+      onboardingUpdates.moodBaselineNumeric = n;
+    }
+  }
+
   if (raw.lifeAreaPriorities && typeof raw.lifeAreaPriorities === "object") {
     const cleaned: Record<string, number> = {};
     for (const [k, v] of Object.entries(raw.lifeAreaPriorities)) {

@@ -1,4 +1,5 @@
 import type { Task, Goal } from "@prisma/client";
+import { Flame } from "lucide-react";
 import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
@@ -153,8 +154,9 @@ export default async function DashboardPage() {
               : `${entries.length} session${entries.length === 1 ? "" : "s"} this week.`}
           </p>
           {currentStreak >= 2 && (
-            <p className="mt-2 text-sm font-medium text-orange-600 dark:text-orange-400">
-              🔥 {currentStreak}-day streak
+            <p className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-orange-600 dark:text-orange-400">
+              <Flame className="h-4 w-4" aria-hidden="true" />
+              {currentStreak}-day streak
             </p>
           )}
         </div>

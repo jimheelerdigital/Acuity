@@ -1,3 +1,4 @@
+import { LinearGradient } from "expo-linear-gradient";
 import { useEffect, useState } from "react";
 import {
   GestureResponderEvent,
@@ -7,66 +8,45 @@ import {
   View,
 } from "react-native";
 
-import type { Mood } from "@acuity/shared";
+import { moodBucketFromScore, moodLabelForScore } from "@acuity/shared";
 
 import { useOnboarding } from "./context";
 
 /**
- * Step 6 — Mood baseline slider (1..5).
+ * Step 6 — Mood baseline (1-10 drag slider, therapy-app style).
  *
- * Spec asked for a slider replacement for the web's 5-emoji grid.
- * Dead-simple impl: a horizontally-laid 1..5 scale with a draggable
- * thumb. Values map to the existing Mood enum so the shared
- * extraction pipeline + baseline-seeding logic keep working without
- * a schema change:
+ * Spec 2026-04-23: upgraded from the 5-emoji grid + 1-5 rank to a
+ * 10-point numerical slider with a red → amber → green gradient
+ * track. Output written as both `moodBaselineNumeric` (1-10 int) and
+ * `moodBaseline` (bucketed string via moodBucketFromScore) so legacy
+ * consumers like the Life Audit prompt keep working.
  *
- *   1 ROUGH  "Struggling"
- *   2 LOW    "A little low"
- *   3 NEUTRAL "Okay"
- *   4 GOOD   "Good"
- *   5 GREAT  "Thriving"
- *
- * Implemented with PanResponder rather than a slider dep — we don't
- * have @react-native-community/slider in the bundle and this is
- * ~30 lines of gesture code. Avoids a native rebuild for one screen.
+ * Gesture: PanResponder driving a thumb over a gradient track — no
+ * slider native module required.
  */
 
-const RANK_TO_MOOD: Record<number, Mood> = {
-  1: "ROUGH",
-  2: "LOW",
-  3: "NEUTRAL",
-  4: "GOOD",
-  5: "GREAT",
-};
-const LABELS: Record<number, string> = {
-  1: "Struggling",
-  2: "A little low",
-  3: "Okay",
-  4: "Good",
-  5: "Thriving",
-};
-
 const MIN = 1;
-const MAX = 5;
-// Start in the middle — the user picks explicitly; Continue stays
-// enabled because the step is skippable.
-const DEFAULT_RANK = 3;
+const MAX = 10;
+const DEFAULT_VALUE = 5;
 
 export function Step6MoodSlider() {
   const { setCanContinue, setCapturedData } = useOnboarding();
-  const [rank, setRank] = useState(DEFAULT_RANK);
+  const [value, setValue] = useState(DEFAULT_VALUE);
   const [trackWidth, setTrackWidth] = useState(0);
 
   useEffect(() => {
     setCanContinue(true);
-    setCapturedData({ moodBaseline: RANK_TO_MOOD[rank] });
-  }, [rank, setCanContinue, setCapturedData]);
+    setCapturedData({
+      moodBaseline: moodBucketFromScore(value),
+      moodBaselineNumeric: value,
+    });
+  }, [value, setCanContinue, setCapturedData]);
 
   const setFromTouch = (locationX: number) => {
     if (trackWidth <= 0) return;
     const t = Math.max(0, Math.min(1, locationX / trackWidth));
-    const nextRank = Math.round(MIN + t * (MAX - MIN));
-    setRank(nextRank);
+    const next = Math.round(MIN + t * (MAX - MIN));
+    setValue(next);
   };
 
   const panResponder = PanResponder.create({
@@ -78,12 +58,12 @@ export function Step6MoodSlider() {
       setFromTouch(e.nativeEvent.locationX),
   });
 
-  const thumbPct = ((rank - MIN) / (MAX - MIN)) * 100;
+  const thumbPct = ((value - MIN) / (MAX - MIN)) * 100;
 
   return (
     <View className="flex-1">
       <Text className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
-        How&apos;s your baseline?
+        How&apos;s your baseline lately?
       </Text>
       <Text className="mt-3 text-base leading-relaxed text-zinc-600 dark:text-zinc-300">
         The average of the last couple of weeks — not today
@@ -92,10 +72,13 @@ export function Step6MoodSlider() {
 
       <View className="mt-16 items-center">
         <Text className="text-4xl font-semibold text-zinc-900 dark:text-zinc-50">
-          {LABELS[rank]}
+          {value}
+          <Text className="text-2xl font-medium text-zinc-400 dark:text-zinc-500">
+            /10
+          </Text>
         </Text>
-        <Text className="mt-2 text-sm text-zinc-400 dark:text-zinc-500">
-          {rank} / 5
+        <Text className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
+          {moodLabelForScore(value)}
         </Text>
       </View>
 
@@ -107,27 +90,12 @@ export function Step6MoodSlider() {
             setTrackWidth(e.nativeEvent.layout.width)
           }
         >
-          {/* Track */}
-          <View className="h-2 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden">
-            <View
-              className="h-full rounded-full bg-violet-500"
-              style={{ width: `${thumbPct}%` }}
-            />
-          </View>
-
-          {/* Tick marks */}
-          <View className="absolute left-0 right-0 flex-row justify-between top-1 px-0">
-            {[1, 2, 3, 4, 5].map((n) => (
-              <View
-                key={n}
-                className={`h-2 w-2 rounded-full ${
-                  n <= rank
-                    ? "bg-violet-600"
-                    : "bg-zinc-300 dark:bg-white/20"
-                }`}
-              />
-            ))}
-          </View>
+          <LinearGradient
+            colors={["#FDA4AF", "#FCD34D", "#6EE7B7"]}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={{ height: 8, borderRadius: 999 }}
+          />
 
           {/* Thumb */}
           <View
@@ -140,10 +108,10 @@ export function Step6MoodSlider() {
               height: 28,
               borderRadius: 14,
               backgroundColor: "#FFFFFF",
-              borderWidth: 3,
-              borderColor: "#7C3AED",
+              borderWidth: 2,
+              borderColor: "#18181B",
               shadowColor: "#000",
-              shadowOpacity: 0.12,
+              shadowOpacity: 0.15,
               shadowRadius: 4,
               shadowOffset: { width: 0, height: 2 },
               elevation: 3,
@@ -154,18 +122,21 @@ export function Step6MoodSlider() {
 
         {/* End labels */}
         <View className="mt-3 flex-row justify-between">
-          <Text className="text-xs text-zinc-500 dark:text-zinc-400">
-            Struggling
+          <Text className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+            Rough
           </Text>
-          <Text className="text-xs text-zinc-500 dark:text-zinc-400">
-            Thriving
+          <Text className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+            Okay
+          </Text>
+          <Text className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+            Strong
           </Text>
         </View>
       </View>
 
       <Text className="mt-10 text-xs text-zinc-400 dark:text-zinc-500">
-        No right answer. We use this to frame your first week&rsquo;s
-        entries against your own baseline.
+        No right answer. Acuity uses this to frame your first
+        week&rsquo;s entries against your own baseline.
       </Text>
     </View>
   );

@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
+import { Flame } from "lucide-react-native";
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
@@ -118,9 +119,12 @@ export default function DashboardTab() {
                 : `${weekCount} session${weekCount === 1 ? "" : "s"} this week.`}
             </Text>
             {(user?.currentStreak ?? 0) >= 2 && (
-              <Text className="mt-2 text-sm font-semibold text-orange-500 dark:text-orange-400">
-                🔥 {user?.currentStreak}-day streak
-              </Text>
+              <View className="mt-2 flex-row items-center gap-1.5">
+                <Flame size={14} color="#F97316" />
+                <Text className="text-sm font-semibold text-orange-500 dark:text-orange-400">
+                  {user?.currentStreak}-day streak
+                </Text>
+              </View>
             )}
           </View>
           <Pressable
