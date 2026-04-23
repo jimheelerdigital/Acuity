@@ -107,6 +107,13 @@ model User {
   // the banner or logged-in-from-another-device. Mirror of the
   // localStorage record on the client.
   cookieConsent          Json?
+  // Last-computed UserProgression snapshot, used to diff `recentlyUnlocked`
+  // across sessions (see packages/shared/src/userProgression.ts). Shape is
+  // the full UserProgression JSON. Null on users who've never hit the
+  // /api/user/progression endpoint. Regenerated every time that endpoint
+  // runs; stale snapshots are fine — they only seed the "what unlocked
+  // since last check" diff.
+  progressionSnapshot    Json?
   createdAt              DateTime     @default(now())
   // Last time the user loaded a page / opened the app. Updated
   // opportunistically from /api/user/me; not strongly durable.
