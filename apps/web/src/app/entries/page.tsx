@@ -1,8 +1,8 @@
 import { getServerSession } from "next-auth";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { getAuthOptions } from "@/lib/auth";
+import { BackButton } from "@/components/back-button";
 
 import { EntriesList } from "./entries-list";
 
@@ -42,13 +42,8 @@ export default async function EntriesPage() {
       <main className="mx-auto max-w-3xl px-6 py-10 animate-fade-in">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <Link
-              href="/home"
-              className="text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition"
-            >
-              ← Home
-            </Link>
-            <h1 className="mt-2 text-4xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+            <BackButton className="mb-4" ariaLabel="Back to Home" />
+            <h1 className="text-4xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
               All entries
             </h1>
             <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">

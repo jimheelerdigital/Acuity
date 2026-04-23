@@ -117,7 +117,11 @@ export function ThemeDetailClient({ themeId }: { themeId: string }) {
           <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
             Last 30 days
           </h2>
-          <TrendChart trend={trend} color={color} />
+          <TrendChart
+            trend={trend}
+            color={color}
+            mentionCount={theme.mentionCount}
+          />
         </section>
       )}
 
@@ -192,27 +196,47 @@ export function ThemeDetailClient({ themeId }: { themeId: string }) {
   );
 }
 
-function TrendChart({ trend, color }: { trend: number[]; color: string }) {
-  const total = trend.reduce((a, b) => a + b, 0);
-  if (total === 0) {
-    return (
-      <p className="text-sm text-zinc-500 dark:text-zinc-400">
-        No mentions in the last 30 days.
-      </p>
-    );
-  }
+function TrendChart({
+  trend,
+  color,
+  mentionCount,
+}: {
+  trend: number[];
+  color: string;
+  mentionCount: number;
+}) {
   const nonZero = trend.filter((v) => v > 0).length;
-  if (nonZero === 1) {
-    const idx = trend.findIndex((v) => v > 0);
-    const w = 600;
-    const h = 90;
-    const cx = (idx / (trend.length - 1)) * w;
-    const cy = h / 2;
+
+  // Low-data fallback — 1-2 data points in the window don't plot to
+  // a meaningful line. Render a soft gradient card with the mention
+  // count centered so the space reads as intentional, not broken.
+  if (nonZero < 3) {
     return (
-      <div className="rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-4">
-        <svg viewBox={`0 0 ${w} ${h}`} className="block w-full" style={{ height: 90 }}>
-          <circle cx={cx} cy={cy} r={6} fill={color} />
-        </svg>
+      <div
+        className="relative overflow-hidden rounded-xl border border-zinc-200 dark:border-white/10 bg-gradient-to-br from-violet-50 via-white to-zinc-50 dark:from-violet-950/20 dark:via-[#1E1E2E] dark:to-[#13131F] px-6 py-8"
+        style={{ minHeight: 140 }}
+        aria-label={`${mentionCount} mention${mentionCount === 1 ? "" : "s"} — not enough data for a trend yet`}
+      >
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 opacity-30"
+          style={{
+            background: `radial-gradient(circle at center, ${color}33 0%, transparent 60%)`,
+          }}
+        />
+        <div className="relative flex flex-col items-center gap-2">
+          <div className="flex items-baseline gap-1 tabular-nums">
+            <span className="text-4xl font-bold" style={{ color }}>
+              {mentionCount}
+            </span>
+            <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
+              mention{mentionCount === 1 ? "" : "s"}
+            </span>
+          </div>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 text-center max-w-xs">
+            Not enough data yet — check back after more entries.
+          </p>
+        </div>
       </div>
     );
   }

@@ -148,13 +148,15 @@ function ThemedApp() {
         />
         <Stack.Screen
           name="insights/theme/[themeId]"
-          options={{
-            headerShown: true,
-            headerStyle: { backgroundColor: headerBg },
-            headerTintColor: headerFg,
-            headerTitleStyle: { fontWeight: "600" },
-            title: "Theme",
-          }}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="insights/ask"
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="insights/state-of-me"
+          options={{ headerShown: false }}
         />
       </Stack>
     </>

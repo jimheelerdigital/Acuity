@@ -5,6 +5,8 @@ import { useState } from "react";
 
 import { formatRelativeDate } from "@acuity/shared";
 
+import { BackButton } from "@/components/back-button";
+
 /**
  * "Ask your past self" input + answer surface.
  *
@@ -87,13 +89,8 @@ export function AskPastClient() {
   return (
     <>
       <div className="mb-6">
-        <Link
-          href="/insights"
-          className="text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition"
-        >
-          ← Insights
-        </Link>
-        <h1 className="mt-2 text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+        <BackButton className="mb-3" ariaLabel="Back to Insights" />
+        <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
           Ask your past self
         </h1>
         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">

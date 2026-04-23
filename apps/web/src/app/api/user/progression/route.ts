@@ -29,13 +29,20 @@ export async function GET(req: NextRequest) {
 
   try {
     const progression = await getUserProgression(userId);
-    // no-store so the browser HTTP cache doesn't sit on top of Next's
-    // Router Cache and double-stale the counter after a fresh record.
-    // Compute is cheap (~5ms on a warm user) and happens server-side
-    // anyway; letting every request recompute keeps the locked-state
-    // counters live-accurate.
+    // Short private cache + stale-while-revalidate: two tab
+    // navigations within 30s render instantly from cache, third tab
+    // hits the DB. Snapshot diff remains accurate because the
+    // server-side snapshot write inside getUserProgression always
+    // runs on cache miss; a stale hit is just the last-known state
+    // that the client has already seen. The record-complete flow
+    // hard-refreshes via router.refresh() which bypasses this
+    // cache, so locked-state counters stay live-accurate after a
+    // new entry lands.
     return NextResponse.json(progression, {
-      headers: { "Cache-Control": "no-store" },
+      headers: {
+        "Cache-Control":
+          "private, max-age=30, stale-while-revalidate=60",
+      },
     });
   } catch (err) {
     console.error("[api/user/progression]", err);

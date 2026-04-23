@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth";
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
+import { BackButton } from "@/components/back-button";
 import { getAuthOptions } from "@/lib/auth";
 
 import { GoalDetail } from "./goal-detail";
@@ -63,12 +63,7 @@ export default async function GoalDetailPage({
   return (
     <div className="min-h-screen">
       <main className="mx-auto max-w-3xl px-6 py-10 animate-fade-in">
-        <Link
-          href="/goals"
-          className="mb-4 inline-block text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition"
-        >
-          ← Goals
-        </Link>
+        <BackButton className="mb-6" ariaLabel="Back to Goals" />
         <GoalDetail
           initialGoal={{
             id: goal.id,

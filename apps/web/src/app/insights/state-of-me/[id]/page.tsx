@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { notFound, redirect } from "next/navigation";
 
+import { BackButton } from "@/components/back-button";
 import { getAuthOptions } from "@/lib/auth";
 import type { StateOfMeContent } from "@acuity/shared";
 
@@ -33,12 +33,7 @@ export default async function StateOfMeDetailPage({
   return (
     <div className="min-h-screen">
       <main className="mx-auto max-w-3xl px-6 py-10">
-        <Link
-          href="/insights/state-of-me"
-          className="text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition"
-        >
-          ← All reports
-        </Link>
+        <BackButton className="mb-4" ariaLabel="Back to all reports" />
         <StateOfMeDetail
           reportId={report.id}
           periodStart={report.periodStart.toISOString()}

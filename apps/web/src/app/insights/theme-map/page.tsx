@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
-import Link from "next/link";
 
+import { BackButton } from "@/components/back-button";
 import { getAuthOptions } from "@/lib/auth";
 import { getUserProgression } from "@/lib/userProgression";
 import { LockedFeatureCard } from "@/components/locked-feature-card";
@@ -34,12 +34,7 @@ export default async function ThemeMapPage() {
           <ThemeMapClient />
         ) : (
           <>
-            <Link
-              href="/insights"
-              className="mb-4 inline-block text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition"
-            >
-              ← Insights
-            </Link>
+            <BackButton className="mb-6" ariaLabel="Back to Insights" />
             <h1 className="mb-4 text-2xl font-bold text-zinc-900 dark:text-zinc-50">
               Theme Map
             </h1>

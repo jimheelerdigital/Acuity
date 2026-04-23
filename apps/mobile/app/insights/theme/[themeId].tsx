@@ -8,10 +8,11 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Svg, { Circle, Polyline } from "react-native-svg";
+import Svg, { Polyline } from "react-native-svg";
 
 import { formatRelativeDate, MOOD_LABELS } from "@acuity/shared";
 
+import { BackButton } from "@/components/back-button";
 import { api } from "@/lib/api";
 
 type SentimentBand = "positive" | "neutral" | "challenging";
@@ -94,11 +95,9 @@ export default function ThemeDetailScreen() {
   return (
     <SafeAreaView edges={["top"]} className="flex-1 bg-white dark:bg-[#0B0B12]">
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 48 }}>
-        <Pressable onPress={() => router.back()} hitSlop={8} className="mb-4">
-          <Text className="text-sm text-zinc-500 dark:text-zinc-400">
-            ← Theme Map
-          </Text>
-        </Pressable>
+        <View className="mb-5">
+          <BackButton />
+        </View>
 
         <View className="mb-8">
           <View className="flex-row items-center gap-2 mb-2">
@@ -127,7 +126,11 @@ export default function ThemeDetailScreen() {
             <Text className="mb-3 text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
               Last 30 days
             </Text>
-            <TrendChart trend={trend} color={color} />
+            <TrendChart
+              trend={trend}
+              color={color}
+              mentionCount={theme.mentionCount}
+            />
           </View>
         )}
 
@@ -212,18 +215,54 @@ export default function ThemeDetailScreen() {
   );
 }
 
-function TrendChart({ trend, color }: { trend: number[]; color: string }) {
-  const total = trend.reduce((a, b) => a + b, 0);
-  if (total === 0) {
+function TrendChart({
+  trend,
+  color,
+  mentionCount,
+}: {
+  trend: number[];
+  color: string;
+  mentionCount: number;
+}) {
+  const nonZero = trend.filter((v) => v > 0).length;
+
+  // Low-data fallback — 1-2 points don't plot to a meaningful line.
+  // Mirror the web gradient card with centered mention count.
+  if (nonZero < 3) {
     return (
-      <Text className="text-sm text-zinc-500 dark:text-zinc-400">
-        No mentions in the last 30 days.
-      </Text>
+      <View
+        style={{
+          minHeight: 140,
+          borderRadius: 12,
+          borderWidth: 1,
+          borderColor: "rgba(255,255,255,0.08)",
+          backgroundColor: "rgba(124,58,237,0.08)",
+          paddingVertical: 28,
+          paddingHorizontal: 24,
+          alignItems: "center",
+          justifyContent: "center",
+          overflow: "hidden",
+        }}
+      >
+        <View className="flex-row items-baseline gap-1">
+          <Text
+            style={{ color, fontSize: 36, fontWeight: "700" }}
+          >
+            {mentionCount}
+          </Text>
+          <Text className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
+            mention{mentionCount === 1 ? "" : "s"}
+          </Text>
+        </View>
+        <Text className="mt-2 text-center text-xs text-zinc-500 dark:text-zinc-400">
+          Not enough data yet — check back after more entries.
+        </Text>
+      </View>
     );
   }
+
   const w = 600;
   const h = 90;
-  const nonZero = trend.filter((v) => v > 0).length;
 
   return (
     <View className="rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-4">
@@ -233,13 +272,7 @@ function TrendChart({ trend, color }: { trend: number[]; color: string }) {
         width="100%"
         height={90}
       >
-        {nonZero === 1
-          ? (() => {
-              const idx = trend.findIndex((v) => v > 0);
-              const cx = (idx / (trend.length - 1)) * w;
-              return <Circle cx={cx} cy={h / 2} r={6} fill={color} />;
-            })()
-          : (() => {
+        {(() => {
               const max = Math.max(...trend, 1);
               const stepX = w / (trend.length - 1);
               const pts = trend.map((v, i) => ({

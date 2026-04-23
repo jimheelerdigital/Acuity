@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { MOOD_EMOJI } from "@acuity/shared";
+import { MoodIcon } from "@/components/mood-icon";
 
 import { RecordSheet } from "@/components/record-sheet";
 
@@ -258,9 +258,11 @@ export function DimensionDetailModal({
                             className="rounded-xl border border-zinc-200 dark:border-white/10 p-3"
                           >
                             <div className="mb-1 flex items-center gap-2">
-                              <span className="text-base">
-                                {MOOD_EMOJI[e.mood ?? "NEUTRAL"] ?? "•"}
-                              </span>
+                              <MoodIcon
+                                mood={e.mood ?? "NEUTRAL"}
+                                size={14}
+                                className="text-zinc-500 dark:text-zinc-400"
+                              />
                               <span className="text-xs text-zinc-400 dark:text-zinc-500">
                                 {day}
                               </span>

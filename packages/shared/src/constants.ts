@@ -59,6 +59,51 @@ export const LIFE_AREA_DISPLAY: Record<LifeArea, string> = {
   OTHER: "Other",
 };
 
+/**
+ * Goal group metadata — drives the grouped sections on the Goals
+ * screen (mirror of the Tasks group pattern). The 6 values + order
+ * match the product spec: Career / Health / Finances / Relationships
+ * / Personal Growth / Hobbies. Internally the groups map back to the
+ * existing LifeArea enum (OTHER = Hobbies) so no schema change is
+ * required and existing goals populate groups automatically.
+ *
+ * Icon names are Lucide identifiers; each platform imports the same
+ * icon from its respective lucide-react / lucide-react-native
+ * package, so copy stays platform-agnostic here.
+ */
+export type GoalGroupId = LifeArea;
+
+export interface GoalGroupMeta {
+  id: GoalGroupId;
+  label: string;
+  icon:
+    | "Briefcase"
+    | "HeartPulse"
+    | "Wallet"
+    | "Users"
+    | "Sprout"
+    | "Palette";
+  color: string;
+  order: number;
+}
+
+export const GOAL_GROUPS: GoalGroupMeta[] = [
+  { id: "CAREER", label: "Career", icon: "Briefcase", color: "#3B82F6", order: 0 },
+  { id: "HEALTH", label: "Health", icon: "HeartPulse", color: "#14B8A6", order: 1 },
+  { id: "FINANCES", label: "Finances", icon: "Wallet", color: "#F59E0B", order: 2 },
+  { id: "RELATIONSHIPS", label: "Relationships", icon: "Users", color: "#F43F5E", order: 3 },
+  { id: "PERSONAL", label: "Personal Growth", icon: "Sprout", color: "#A855F7", order: 4 },
+  { id: "OTHER", label: "Hobbies", icon: "Palette", color: "#71717A", order: 5 },
+];
+
+/** Find group metadata for a life-area value. Falls back to OTHER
+ *  (Hobbies) for anything unrecognized — e.g. a legacy goal whose
+ *  lifeArea somehow doesn't match the canonical 6. */
+export function goalGroupForArea(area: string | null | undefined): GoalGroupMeta {
+  const match = GOAL_GROUPS.find((g) => g.id === area);
+  return match ?? GOAL_GROUPS[GOAL_GROUPS.length - 1];
+}
+
 export const LIFE_AREA_PROMPT_KEYS: Record<LifeArea, string> = {
   CAREER: "career",
   HEALTH: "health",

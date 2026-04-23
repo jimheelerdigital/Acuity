@@ -16,7 +16,22 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { formatRelativeDate, type UserProgression } from "@acuity/shared";
+import {
+  formatRelativeDate,
+  GOAL_GROUPS,
+  goalGroupForArea,
+  type GoalGroupMeta,
+  type UserProgression,
+} from "@acuity/shared";
+import {
+  Briefcase,
+  ChevronDown,
+  HeartPulse,
+  Palette,
+  Sprout,
+  Users,
+  Wallet,
+} from "lucide-react-native";
 
 import { LockedFeatureCard } from "@/components/locked-feature-card";
 import { api } from "@/lib/api";
@@ -88,6 +103,9 @@ export default function GoalsTab() {
   const [actionSheetFor, setActionSheetFor] = useState<TreeGoal | null>(null);
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [progression, setProgression] = useState<UserProgression | null>(null);
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
+    new Set()
+  );
 
   const fetchTree = useCallback(async (withArchived = false) => {
     try {
@@ -189,6 +207,29 @@ export default function GoalsTab() {
     return n;
   }, [roots]);
 
+  const groupedRoots = useMemo(() => {
+    const byGroup = new Map<string, TreeGoal[]>();
+    for (const g of roots) {
+      const grp = goalGroupForArea(g.lifeArea);
+      const arr = byGroup.get(grp.id) ?? [];
+      arr.push(g);
+      byGroup.set(grp.id, arr);
+    }
+    return GOAL_GROUPS.map((group) => ({
+      group,
+      goals: byGroup.get(group.id) ?? [],
+    }));
+  }, [roots]);
+
+  const toggleGroupCollapse = useCallback((id: string) => {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
   if (loading && roots.length === 0) {
     return (
       <SafeAreaView
@@ -213,7 +254,7 @@ export default function GoalsTab() {
         }
       >
         <View className="flex-row items-baseline gap-2 mb-1">
-          <Text className="text-3xl font-bold text-zinc-900 dark:text-zinc-50">
+          <Text className="text-4xl font-bold text-zinc-900 dark:text-zinc-50">
             Goals
           </Text>
           {inProgressCount > 0 && (
@@ -283,20 +324,66 @@ export default function GoalsTab() {
             </Text>
           </View>
         ) : (
-          <View className="gap-2">
-            {roots.map((g) => (
-              <TreeNode
-                key={g.id}
-                goal={g}
-                depth={0}
-                expanded={expanded}
-                onToggleExpand={toggleExpanded}
-                onOpen={(id) => router.push(`/goal/${id}`)}
-                onAddSubgoal={setAddSubgoalFor}
-                onActions={setActionSheetFor}
-                onToggleTask={toggleTask}
-              />
-            ))}
+          <View style={{ gap: 16 }}>
+            {groupedRoots.map(({ group, goals }) => {
+              if (goals.length === 0) return null;
+              const collapsed = collapsedGroups.has(group.id);
+              return (
+                <View key={group.id}>
+                  <Pressable
+                    onPress={() => toggleGroupCollapse(group.id)}
+                    className="flex-row items-center gap-3 mb-2"
+                  >
+                    <View
+                      style={{
+                        height: 32,
+                        width: 32,
+                        borderRadius: 16,
+                        backgroundColor: group.color + "22",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <GoalGroupIcon name={group.icon} color={group.color} />
+                    </View>
+                    <Text
+                      style={{ letterSpacing: 1 }}
+                      className="text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400"
+                    >
+                      {group.label}
+                    </Text>
+                    <Text className="text-xs font-medium text-zinc-400 dark:text-zinc-500">
+                      {goals.length}
+                    </Text>
+                    <View style={{ flex: 1 }} />
+                    <ChevronDown
+                      size={16}
+                      color="#A1A1AA"
+                      style={{
+                        transform: [{ rotate: collapsed ? "-90deg" : "0deg" }],
+                      }}
+                    />
+                  </Pressable>
+                  {!collapsed && (
+                    <View style={{ gap: 8 }}>
+                      {goals.map((g) => (
+                        <TreeNode
+                          key={g.id}
+                          goal={g}
+                          depth={0}
+                          expanded={expanded}
+                          onToggleExpand={toggleExpanded}
+                          onOpen={(id) => router.push(`/goal/${id}`)}
+                          onAddSubgoal={setAddSubgoalFor}
+                          onActions={setActionSheetFor}
+                          onToggleTask={toggleTask}
+                        />
+                      ))}
+                    </View>
+                  )}
+                </View>
+              );
+            })}
           </View>
         )}
       </ScrollView>
@@ -916,4 +1003,26 @@ function SuggestionsSheet({
       </View>
     </Modal>
   );
+}
+
+function GoalGroupIcon({
+  name,
+  color,
+}: {
+  name: GoalGroupMeta["icon"];
+  color: string;
+}) {
+  const Icon =
+    name === "Briefcase"
+      ? Briefcase
+      : name === "HeartPulse"
+        ? HeartPulse
+        : name === "Wallet"
+          ? Wallet
+          : name === "Users"
+            ? Users
+            : name === "Sprout"
+              ? Sprout
+              : Palette;
+  return <Icon size={16} color={color} strokeWidth={2} />;
 }

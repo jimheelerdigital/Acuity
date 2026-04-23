@@ -93,12 +93,14 @@ export default function DashboardTab() {
     }
   }, []);
 
-  // Refresh on every focus — a completed recording routes back here
-  // via router.back() and the list should reflect the new entry
-  // immediately rather than showing stale cache.
+  // Refresh on every focus so a completed recording reflects the new
+  // entry. CRITICAL: do NOT flip setLoading(true) here — that would
+  // replace cached content with a spinner on every tab focus, which
+  // is the "loading wheels everywhere" UX problem. Instead the
+  // existing cached entries/homeData/progression stays rendered
+  // while the background refetch updates state in place.
   useFocusEffect(
     useCallback(() => {
-      setLoading(true);
       load();
     }, [load])
   );
@@ -116,10 +118,10 @@ export default function DashboardTab() {
             tab slot (which moved out of the bar when Entries was added). */}
         <View className="mb-6 flex-row items-start justify-between">
           <View className="flex-1 pr-3">
-            <Text className="text-3xl font-bold text-zinc-900 dark:text-zinc-50">
+            <Text className="text-4xl font-bold text-zinc-900 dark:text-zinc-50">
               {greeting}, {firstName}.
             </Text>
-            <Text className="text-base text-zinc-400 dark:text-zinc-500 mt-1">
+            <Text className="text-lg text-zinc-400 dark:text-zinc-500 mt-1">
               {weekCount === 0
                 ? "No sessions this week yet."
                 : `${weekCount} session${weekCount === 1 ? "" : "s"} this week.`}

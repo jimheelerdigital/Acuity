@@ -1,9 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { BackButton } from "@/components/back-button";
 import { Constellation } from "@/components/theme-map/Constellation";
 import type { ConstellationTheme } from "@/components/theme-map/Constellation";
 import { LockedState } from "@/components/theme-map/LockedState";
@@ -232,15 +232,9 @@ export function ThemeMapClient() {
 function Header() {
   return (
     <div>
-      <Link
-        href="/insights"
-        className="text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300"
-        style={{ fontSize: 15 }}
-      >
-        ‹ Insights
-      </Link>
+      <BackButton className="mb-4" ariaLabel="Back to Insights" />
       <h1
-        className="text-zinc-900 dark:text-zinc-50 font-bold mt-2"
+        className="text-zinc-900 dark:text-zinc-50 font-bold"
         style={{ fontSize: 34, letterSpacing: "-0.8px", lineHeight: 1.1 }}
       >
         Theme Map

@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { MOOD_EMOJI } from "@acuity/shared";
+import { MoodIcon } from "@/components/mood-icon";
 
 import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
@@ -249,9 +249,11 @@ export default function DimensionDetailScreen() {
                       className="rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-3"
                     >
                       <View className="flex-row items-center gap-2 mb-1">
-                        <Text style={{ fontSize: 16 }}>
-                          {MOOD_EMOJI[e.mood ?? "NEUTRAL"] ?? "•"}
-                        </Text>
+                        <MoodIcon
+                          mood={e.mood ?? "NEUTRAL"}
+                          size={14}
+                          color="#A1A1AA"
+                        />
                         <Text className="text-xs text-zinc-400 dark:text-zinc-500">
                           {day}
                         </Text>

@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { BackButton } from "@/components/back-button";
 import { api } from "@/lib/api";
 import {
   applyReminderSchedule,
@@ -151,9 +152,9 @@ export default function RemindersScreen() {
   return (
     <SafeAreaView edges={["top"]} className="flex-1 bg-white dark:bg-[#0B0B12]">
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
-        <Pressable onPress={() => router.back()} hitSlop={10} className="mb-4 self-start">
-          <Text className="text-sm text-zinc-500 dark:text-zinc-400">← Profile</Text>
-        </Pressable>
+        <View className="mb-5 self-start">
+          <BackButton accessibilityLabel="Back to Profile" />
+        </View>
 
         <Text className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
           Reminders

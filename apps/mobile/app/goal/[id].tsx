@@ -16,6 +16,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { formatRelativeDate } from "@acuity/shared";
 
+import { BackButton } from "@/components/back-button";
 import { ProgressSuggestionBanner } from "@/components/progress-suggestion-banner";
 import { api } from "@/lib/api";
 
@@ -155,13 +156,9 @@ export default function GoalDetailScreen() {
       >
         <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 80 }}>
           {/* Back button */}
-          <Pressable
-            onPress={() => router.back()}
-            hitSlop={10}
-            className="mb-4 self-start"
-          >
-            <Text className="text-sm text-zinc-500 dark:text-zinc-400">← Goals</Text>
-          </Pressable>
+          <View className="mb-5">
+            <BackButton accessibilityLabel="Back to Goals" />
+          </View>
 
           {/* Area label */}
           <Text className="text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 mb-2">

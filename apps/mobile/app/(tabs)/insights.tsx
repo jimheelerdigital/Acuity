@@ -13,7 +13,6 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
-  MOOD_EMOJI,
   DEFAULT_LIFE_AREAS,
   type EntryDTO,
   type UserProgression,
@@ -22,6 +21,7 @@ import {
 import { ComparisonsCard } from "@/components/comparisons-card";
 import { LifeMapRadar } from "@/components/life-map-radar";
 import { LockedFeatureCard } from "@/components/locked-feature-card";
+import { MoodIcon } from "@/components/mood-icon";
 import { UserInsightsCard } from "@/components/user-insights-card";
 import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
@@ -193,10 +193,10 @@ export default function InsightsTab() {
       >
         {/* Header */}
         <View className="mb-6">
-          <Text className="text-3xl font-bold text-zinc-900 dark:text-zinc-50">
+          <Text className="text-4xl font-bold text-zinc-900 dark:text-zinc-50">
             Insights
           </Text>
-          <Text className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
+          <Text className="text-base text-zinc-500 dark:text-zinc-400 mt-1">
             Your life, decoded.
           </Text>
         </View>
@@ -405,9 +405,11 @@ export default function InsightsTab() {
                     className="w-56 rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-3"
                   >
                     <View className="flex-row items-center gap-2 mb-2">
-                      <Text style={{ fontSize: 18 }}>
-                        {MOOD_EMOJI[entry.mood ?? "NEUTRAL"] ?? "•"}
-                      </Text>
+                      <MoodIcon
+                        mood={entry.mood ?? "NEUTRAL"}
+                        size={16}
+                        color="#A1A1AA"
+                      />
                       <View className="flex-1">
                         <Text className="text-xs font-semibold text-zinc-600 dark:text-zinc-300">
                           {day}
@@ -667,7 +669,7 @@ export default function InsightsTab() {
                           />
                         </View>
                         <Text className="text-xs text-zinc-400 dark:text-zinc-500">
-                          {MOOD_EMOJI[entry.mood ?? "NEUTRAL"] ?? day}
+                          {day}
                         </Text>
                       </View>
                     );

@@ -4,13 +4,13 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import {
-  MOOD_EMOJI,
   MOOD_LABELS,
   PRIORITY_COLOR,
   type ExtractionResult,
   type RecordResponse,
 } from "@acuity/shared";
 
+import { MoodIcon } from "@/components/mood-icon";
 import {
   useEntryPolling,
   type PolledEntry,
@@ -387,7 +387,11 @@ function ResultCard({
       <div className="px-5 pt-5 pb-4 flex items-start justify-between gap-4">
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-2">
-            <span className="text-lg">{MOOD_EMOJI[mood]}</span>
+            <MoodIcon
+              mood={mood}
+              size={18}
+              className="text-zinc-500 dark:text-zinc-400"
+            />
             <span className="text-sm font-medium text-zinc-800 dark:text-zinc-100">
               {MOOD_LABELS[mood]}
             </span>

@@ -286,7 +286,7 @@ export default function TasksTab() {
         {/* Header */}
         <View className="px-5 pt-4 pb-2">
           <View className="flex-row items-baseline gap-2">
-            <Text className="text-3xl font-bold text-zinc-900 dark:text-zinc-50">
+            <Text className="text-4xl font-bold text-zinc-900 dark:text-zinc-50">
               Tasks
             </Text>
             {grouped.open.length > 0 && (
@@ -524,8 +524,8 @@ function TaskRow({
       >
         <Text
           style={{
-            fontSize: 15,
-            lineHeight: 20,
+            fontSize: 16,
+            lineHeight: 22,
             textDecorationLine: isDone ? "line-through" : "none",
           }}
           className={

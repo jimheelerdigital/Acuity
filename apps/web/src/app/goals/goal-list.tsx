@@ -1,7 +1,22 @@
 "use client";
 
+import {
+  Briefcase,
+  ChevronDown,
+  HeartPulse,
+  Palette,
+  Sprout,
+  Users,
+  Wallet,
+} from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+
+import {
+  GOAL_GROUPS,
+  goalGroupForArea,
+  type GoalGroupMeta,
+} from "@acuity/shared";
 
 /**
  * Tree-view Goals page.
@@ -87,6 +102,9 @@ export function GoalList() {
   const [includeArchived, setIncludeArchived] = useState(false);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
+    new Set()
+  );
   const [addSubgoalFor, setAddSubgoalFor] = useState<Goal | null>(null);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
@@ -158,6 +176,29 @@ export function GoalList() {
     [fetchTree, includeArchived]
   );
 
+  const groupedRoots = useMemo(() => {
+    const byGroup = new Map<string, Goal[]>();
+    for (const g of roots ?? []) {
+      const group = goalGroupForArea(g.lifeArea);
+      const arr = byGroup.get(group.id) ?? [];
+      arr.push(g);
+      byGroup.set(group.id, arr);
+    }
+    return GOAL_GROUPS.map((group) => ({
+      group,
+      goals: byGroup.get(group.id) ?? [],
+    }));
+  }, [roots]);
+
+  const toggleGroupCollapse = useCallback((id: string) => {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
   const inProgressCount = useMemo(() => {
     if (!roots) return 0;
     let n = 0;
@@ -223,20 +264,56 @@ export function GoalList() {
           </p>
         </div>
       ) : (
-        <div className="space-y-3">
-          {(roots ?? []).map((g) => (
-            <GoalTreeNode
-              key={g.id}
-              goal={g}
-              depth={0}
-              expanded={expanded}
-              onToggleExpand={toggleExpanded}
-              onAction={performAction}
-              onDelete={deleteGoal}
-              onToggleTask={toggleTask}
-              onAddSubgoal={setAddSubgoalFor}
-            />
-          ))}
+        <div className="space-y-6">
+          {groupedRoots.map(({ group, goals }) => {
+            if (goals.length === 0) return null;
+            const groupCollapsed = collapsedGroups.has(group.id);
+            return (
+              <section key={group.id}>
+                <button
+                  type="button"
+                  onClick={() => toggleGroupCollapse(group.id)}
+                  className="w-full flex items-center gap-3 mb-2 group"
+                >
+                  <span
+                    className="h-8 w-8 rounded-full flex items-center justify-center shrink-0"
+                    style={{ backgroundColor: group.color + "1A" }}
+                  >
+                    <GoalGroupIcon name={group.icon} color={group.color} />
+                  </span>
+                  <span className="text-sm font-semibold uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
+                    {group.label}
+                  </span>
+                  <span className="text-xs font-medium text-zinc-400 dark:text-zinc-500 tabular-nums">
+                    {goals.length}
+                  </span>
+                  <ChevronDown
+                    className={`ml-auto h-4 w-4 text-zinc-400 transition-transform ${
+                      groupCollapsed ? "-rotate-90" : ""
+                    }`}
+                    aria-hidden="true"
+                  />
+                </button>
+                {!groupCollapsed && (
+                  <div className="space-y-3">
+                    {goals.map((g) => (
+                      <GoalTreeNode
+                        key={g.id}
+                        goal={g}
+                        depth={0}
+                        expanded={expanded}
+                        onToggleExpand={toggleExpanded}
+                        onAction={performAction}
+                        onDelete={deleteGoal}
+                        onToggleTask={toggleTask}
+                        onAddSubgoal={setAddSubgoalFor}
+                      />
+                    ))}
+                  </div>
+                )}
+              </section>
+            );
+          })}
         </div>
       )}
 
@@ -710,3 +787,25 @@ function SuggestionsBanner({
 
 // Suggestions modal — lives in F.5 separate file for composability.
 import { SuggestionsModal } from "./suggestions-modal";
+
+function GoalGroupIcon({
+  name,
+  color,
+}: {
+  name: GoalGroupMeta["icon"];
+  color: string;
+}) {
+  const Icon =
+    name === "Briefcase"
+      ? Briefcase
+      : name === "HeartPulse"
+        ? HeartPulse
+        : name === "Wallet"
+          ? Wallet
+          : name === "Users"
+            ? Users
+            : name === "Sprout"
+              ? Sprout
+              : Palette;
+  return <Icon className="h-4 w-4" color={color} strokeWidth={2} aria-hidden />;
+}

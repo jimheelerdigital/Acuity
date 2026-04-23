@@ -1,11 +1,11 @@
 import { getServerSession } from "next-auth";
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { MOOD_LABELS, PRIORITY_LABELS } from "@acuity/shared";
 import type { Mood } from "@acuity/shared";
 
 import { getAuthOptions } from "@/lib/auth";
+import { BackButton } from "@/components/back-button";
 import { MoodIcon } from "@/components/mood-icon";
 
 import { ExtractionReview } from "./extraction-review";
@@ -61,12 +61,7 @@ export default async function EntryDetailPage({
   return (
     <div className="min-h-screen">
       <main className="mx-auto max-w-3xl px-6 py-10 animate-fade-in">
-        <Link
-          href="/entries"
-          className="mb-4 inline-block text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition"
-        >
-          ← All entries
-        </Link>
+        <BackButton className="mb-6" ariaLabel="Back to entries" />
 
         <header className="mb-8">
           <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-2">{date}</p>

@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Tabs, useRouter } from "expo-router";
+import { Tabs, useRouter, useSegments } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { Animated, Pressable, Text, View } from "react-native";
 
@@ -153,26 +153,52 @@ export default function TabsLayout() {
   );
 }
 
+// Active + inactive record-button fills. The inactive state is a
+// desaturated/darker purple — NOT a translucent version of the active
+// color. Previous fix used opacity, which painted the tab bar through
+// the button (translucent); this pair of solid colors reads as
+// "muted but solid" at alpha 1.0.
+const RECORD_FILL_ACTIVE = "#7C3AED"; // full accent
+const RECORD_FILL_INACTIVE = "#5D449B"; // ~40% less saturation, ~20% less brightness
+
 /**
- * Tab-bar record button. Per 2026-04-23 polish spec: when NOT actively
- * recording, the button reads as "muted," not "always active." Since
- * the tab bar is hidden while the /record modal is open, "not
- * recording" is the button's default visible state — dim opacity
- * 0.7 is the idle look. Pressing fades it to 1.0 over 200ms ease for
- * tactile feedback, then fades back when released.
+ * Tab-bar record button. Active (user is on Home) → full accent
+ * purple. Inactive (any other tab) → muted solid purple. Pressed
+ * briefly punches back to active for tactile feedback. 200ms ease
+ * between states. Opacity stays 1.0 — no translucency.
  */
 function RecordCenterButton({ isDark }: { isDark: boolean }) {
   const router = useRouter();
+  const segments = useSegments();
   const [pressed, setPressed] = useState(false);
-  const opacity = useRef(new Animated.Value(0.7)).current;
+
+  // Segments from (tabs). "index" is Home (though expo-router may
+  // render it as "" when it's the default route); when the user is
+  // on any other tab, the second-to-last segment is the tab name.
+  // We treat Home as "last segment empty or equals (tabs) itself."
+  // Cast to string because expo-router narrows the segment union to
+  // known route names and "index"/"(tabs)" may or may not appear in
+  // that union depending on route registration timing.
+  const lastSegment = segments[segments.length - 1] as string | undefined;
+  const isOnHome =
+    segments.length < 2 ||
+    lastSegment === "index" ||
+    lastSegment === "(tabs)";
+  const targetColorValue = pressed || isOnHome ? 1 : 0;
+  const colorAnim = useRef(new Animated.Value(isOnHome ? 1 : 0)).current;
 
   useEffect(() => {
-    Animated.timing(opacity, {
-      toValue: pressed ? 1 : 0.7,
+    Animated.timing(colorAnim, {
+      toValue: targetColorValue,
       duration: 200,
-      useNativeDriver: true,
+      useNativeDriver: false, // backgroundColor interpolation requires JS driver
     }).start();
-  }, [pressed, opacity]);
+  }, [targetColorValue, colorAnim]);
+
+  const backgroundColor = colorAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [RECORD_FILL_INACTIVE, RECORD_FILL_ACTIVE],
+  });
 
   return (
     <View
@@ -180,8 +206,13 @@ function RecordCenterButton({ isDark }: { isDark: boolean }) {
       style={{
         flex: 1,
         alignItems: "center",
-        justifyContent: "flex-end",
-        paddingBottom: 4,
+        // `flex-start` aligns the internal text to the SAME top
+        // baseline the sibling tabs use for their icon+label blocks.
+        // Old `flex-end` pushed this slot's content to the bottom of
+        // the bar, which is why the "Home" label sat lower than
+        // "Goals", "Tasks", "Insights", "Entries".
+        justifyContent: "flex-start",
+        paddingTop: 0,
       }}
     >
       <Animated.View
@@ -190,7 +221,19 @@ function RecordCenterButton({ isDark }: { isDark: boolean }) {
           top: -26,
           zIndex: 10,
           elevation: 10,
-          opacity,
+          width: 64,
+          height: 64,
+          borderRadius: 32,
+          backgroundColor,
+          borderWidth: 4,
+          borderColor: isDark ? "#0B0B12" : "#FFFFFF",
+          shadowColor: "#7C3AED",
+          shadowOffset: { width: 0, height: 6 },
+          shadowRadius: 14,
+          shadowOpacity: isDark ? 0.6 : 0.45,
+          alignItems: "center",
+          justifyContent: "center",
+          transform: [{ scale: pressed ? 0.94 : 1 }],
         }}
       >
         <Pressable
@@ -204,24 +247,20 @@ function RecordCenterButton({ isDark }: { isDark: boolean }) {
             width: 64,
             height: 64,
             borderRadius: 32,
-            backgroundColor: "#7C3AED",
             alignItems: "center",
             justifyContent: "center",
-            borderWidth: 4,
-            borderColor: isDark ? "#0B0B12" : "#FFFFFF",
-            shadowColor: "#7C3AED",
-            shadowOffset: { width: 0, height: 6 },
-            shadowRadius: 14,
-            shadowOpacity: isDark ? 0.6 : 0.45,
-            transform: [{ scale: pressed ? 0.94 : 1 }],
           }}
         >
           <Ionicons name="mic" size={28} color="#FFFFFF" />
         </Pressable>
       </Animated.View>
+      {/* Label sits with the siblings' top edges. The circle above is
+          absolutely positioned at top: -26, so it doesn't affect this
+          text's layout — the only remaining factor is the container's
+          justifyContent, now flex-start. */}
       <Text
         style={{
-          marginTop: 36,
+          marginTop: 42,
           fontSize: 11,
           fontWeight: "500",
           color: isDark ? "rgba(255,255,255,0.62)" : "rgba(39,39,42,0.62)",

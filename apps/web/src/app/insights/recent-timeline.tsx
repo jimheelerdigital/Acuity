@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { MOOD_EMOJI, type EntryDTO } from "@acuity/shared";
+import { type EntryDTO } from "@acuity/shared";
+
+import { MoodIcon } from "@/components/mood-icon";
 
 /**
  * Horizontally-scrolling "Recent activity" strip for the Insights page.
@@ -79,9 +81,11 @@ export function RecentTimeline() {
               className="shrink-0 w-64 rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-3 transition hover:border-violet-300 dark:hover:border-violet-700/40 hover:shadow-sm"
             >
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-lg">
-                  {MOOD_EMOJI[entry.mood ?? "NEUTRAL"] ?? "•"}
-                </span>
+                <MoodIcon
+                  mood={entry.mood ?? "NEUTRAL"}
+                  size={16}
+                  className="text-zinc-500 dark:text-zinc-400"
+                />
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-semibold text-zinc-600 dark:text-zinc-300">
                     {day}
