@@ -1109,7 +1109,7 @@ export function LandingPage() {
         <div className="relative mx-auto max-w-6xl px-6">
           <div className="flex flex-col lg:flex-row lg:items-center lg:gap-10">
             {/* Left content — center on mobile, left on desktop */}
-            <div className="flex-1 max-w-2xl text-left mx-auto lg:mx-0">
+            <div className="flex-1 max-w-2xl text-center lg:text-left mx-auto lg:mx-0">
               <Reveal>
                 <h1 className="font-black tracking-tight">
                   <span className="block text-white whitespace-nowrap text-4xl sm:text-5xl lg:text-[3.25rem] xl:text-[3.75rem] leading-[1.1] mb-2 sm:mb-3">One minute a day.</span>
@@ -1118,13 +1118,13 @@ export function LandingPage() {
               </Reveal>
 
               <Reveal delay={2}>
-                <p className="mt-8 text-base text-[#C0C0D0] leading-relaxed max-w-lg">
+                <p className="mt-8 text-base text-[#C0C0D0] leading-relaxed max-w-lg mx-auto lg:mx-0">
                   Acuity is the daily debrief that turns what you&rsquo;re thinking about into what you&rsquo;re doing. Talk for 60 seconds, any time of day — it catches your tasks, tracks the goals you keep circling, and helps you monitor the patterns that leave you stuck.
                 </p>
               </Reveal>
 
               <Reveal delay={3}>
-                <div className="mt-10 flex flex-col sm:flex-row items-start gap-3">
+                <div className="mt-10 flex flex-col sm:flex-row items-center lg:items-start gap-3">
                   <Link
                     href="/waitlist?utm_campaign=home"
                     onClick={trackInitiateCheckout}
@@ -1142,7 +1142,7 @@ export function LandingPage() {
                     See how it works
                   </a>
                 </div>
-                <p className="mt-3 text-xs text-[#A0A0B8]">
+                <p className="mt-3 text-xs text-[#A0A0B8] text-center lg:text-left">
                   No credit card required
                 </p>
               </Reveal>
