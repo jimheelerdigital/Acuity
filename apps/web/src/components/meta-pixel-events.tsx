@@ -18,7 +18,9 @@ export function TrackPurchase() {
 
   useEffect(() => {
     if (searchParams.get("upgraded") === "1" && typeof fbq !== "undefined") {
-      fbq("track", "Purchase", { value: 12.99, currency: "USD" });
+      const plan = searchParams.get("plan");
+      const value = plan === "yearly" ? 99 : 12.99;
+      fbq("track", "Purchase", { value, currency: "USD" });
     }
   }, [searchParams]);
 

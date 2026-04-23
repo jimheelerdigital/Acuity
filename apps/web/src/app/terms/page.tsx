@@ -136,9 +136,10 @@ export default function TermsPage() {
               <li>
                 <strong className="text-white">Subscription.</strong>{" "}
                 When you subscribe, you authorise us (via Stripe) to
-                charge you {`{{PRICE_PER_MONTH}}`} per month. The
-                subscription renews automatically each month until you
-                cancel.
+                charge you $12.99 per month or $99 per year, depending
+                on the plan you select. The subscription renews
+                automatically at the end of each billing period until
+                you cancel.
               </li>
               <li>
                 <strong className="text-white">Cancellation.</strong>{" "}

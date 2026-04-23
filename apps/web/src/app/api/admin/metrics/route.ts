@@ -451,8 +451,11 @@ async function getRevenue(
       }),
     ]);
 
-  // Simple MRR estimate: $9.99/mo per paying sub (adjust as needed)
-  const mrrCents = payingSubs * 999;
+  // Simple MRR estimate: $12.99/mo per paying sub. Does NOT account for
+  // yearly subs ($99/yr ≈ $8.25/mo effective) — once yearly sub counts
+  // become non-trivial, replace with a blended calculation pulling
+  // Stripe's actual invoice totals.
+  const mrrCents = payingSubs * 1299;
   const churnRate =
     payingSubs + churnedInPeriod > 0
       ? (churnedInPeriod / (payingSubs + churnedInPeriod)) * 100

@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 
 import { getAuthOptions } from "@/lib/auth";
 import { PLAN_PRO_NAME } from "@acuity/shared";
-import { UpgradeButton } from "./upgrade-button";
+import { UpgradePlanPicker } from "./upgrade-plan-picker";
 
 export const dynamic = "force-dynamic";
 
@@ -43,12 +43,9 @@ export default async function UpgradePage({
 
         {/* Pricing card */}
         <div className="rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-6 shadow-sm mb-6">
-          <div className="flex items-baseline gap-1 mb-6">
-            <span className="text-3xl font-bold text-zinc-900 dark:text-zinc-50">$12.99</span>
-            <span className="text-sm text-zinc-400 dark:text-zinc-500">/month</span>
-          </div>
+          <UpgradePlanPicker />
 
-          <ul className="space-y-3 mb-6">
+          <ul className="space-y-3 mt-6 mb-2">
             {[
               "Unlimited nightly debriefs",
               "Sunday report every week",
@@ -75,8 +72,6 @@ export default async function UpgradePage({
               </li>
             ))}
           </ul>
-
-          <UpgradeButton />
 
           <p className="mt-3 text-center text-xs text-zinc-400 dark:text-zinc-500">
             14-day free trial. Cancel anytime.

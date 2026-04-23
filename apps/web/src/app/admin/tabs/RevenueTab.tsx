@@ -147,7 +147,7 @@ export default function RevenueTab({
                       <td className="py-2 pr-4 whitespace-nowrap">
                         {new Date(u.createdAt).toLocaleDateString()}
                       </td>
-                      <td className="py-2 pr-4">$9.99</td>
+                      <td className="py-2 pr-4">$12.99</td>
                       <td className="py-2">{daysPaying}</td>
                     </tr>
                   );
