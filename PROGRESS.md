@@ -7,6 +7,29 @@
 
 ---
 
+## [2026-04-23] — Polish landing hero text and swap to transparent favicon
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 9b5885a
+
+### In plain English (for Keenan)
+The big headline on the landing page is now slightly smaller so it fits on two lines, and the subtitle text underneath is bigger so it's easier to read. The wording was changed from "keep you stuck" to "leave you stuck." The headline also has a subtle glow effect to make the white text pop more against the dark background. The browser tab icon now uses the purple diamond on a transparent background instead of the old dark square — it looks cleaner in both light and dark browser themes.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/landing.tsx`: hero h1 scaled down one responsive step (4xl/5xl/6xl/7xl → 3xl/4xl/5xl/6xl), changed `font-extrabold` → `font-black`, added white `text-shadow` glow via inline style
+- `apps/web/src/components/landing.tsx`: subtitle paragraph bumped from `text-base` to `text-lg`; copy changed "keep you stuck" → "leave you stuck"
+- `apps/web/public/favicon-96x96.png`, `favicon.ico`, `apple-touch-icon.png`, `icon-192.png`, `icon-512.png`: replaced with versions generated from `AcuityLogo.png` (transparent background diamond)
+
+### Manual steps needed
+None
+
+### Notes
+- Used `sips` (macOS built-in) to generate icon sizes from `AcuityLogo.png` since ImageMagick wasn't available. Source image was 5200×4676 (not square), so it was padded to 5200×5200 before resizing.
+- `AcuityLogoDark.png` appears identical to `AcuityLogo.png` — both are transparent. Kept both files as-is.
+
+---
+
 ## 2026-04-23 — Fix CSP regression blocking Supabase auth on production
 
 - **Requested by:** Jimmy (beta-blocking — auth broken on www.getacuity.io)
