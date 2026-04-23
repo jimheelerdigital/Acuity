@@ -1114,7 +1114,7 @@ export function LandingPage() {
                 <h1 className="text-[2.5rem] font-black tracking-tight sm:text-5xl lg:text-6xl xl:text-[4.25rem] leading-[1.08]">
                   <span className="text-white">One minute a day.</span>
                   <br />
-                  <span className="bg-gradient-to-r from-[#B8A5FF] to-[#7C5CFC] bg-clip-text text-transparent">A week of clarity.</span>
+                  <span className="bg-gradient-to-r from-[#B8A5FF] to-[#7C5CFC] bg-clip-text text-transparent">A life of clarity.</span>
                 </h1>
               </Reveal>
 
