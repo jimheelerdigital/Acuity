@@ -1123,8 +1123,9 @@ export function LandingPage() {
                 </p>
               </Reveal>
 
+              {/* CTA — hidden on mobile, shown on desktop */}
               <Reveal delay={3}>
-                <div className="mt-10 flex flex-col sm:flex-row items-center lg:items-start gap-3">
+                <div className="mt-10 hidden lg:flex flex-row items-start gap-3">
                   <Link
                     href="/waitlist?utm_campaign=home"
                     onClick={trackInitiateCheckout}
@@ -1142,14 +1143,39 @@ export function LandingPage() {
                     See how it works
                   </a>
                 </div>
-                <p className="mt-3 text-xs text-[#A0A0B8] text-center lg:text-left">
+                <p className="mt-3 text-xs text-[#A0A0B8] hidden lg:block">
                   No credit card required
                 </p>
               </Reveal>
             </div>
 
-            {/* Right side: Enhanced animated phone mockups */}
-            <div className="flex-1 mt-14 lg:mt-0 flex justify-center lg:justify-end">
+            {/* CTA — mobile only, shown after hero text */}
+            <div className="lg:hidden mt-8 text-center">
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                <Link
+                  href="/waitlist?utm_campaign=home"
+                  onClick={trackInitiateCheckout}
+                  className="group relative rounded-full p-[2px] transition active:scale-95 overflow-hidden"
+                >
+                  <span className="absolute inset-[-100%] animate-cta-shine" style={{ background: 'conic-gradient(from 0deg, transparent 0%, transparent 60%, #ffffff 75%, #B8A5FF 85%, transparent 100%)' }} />
+                  <span className="relative block rounded-full bg-[#7C5CFC] px-7 py-3.5 text-sm font-semibold text-white transition group-hover:bg-[#6B4FE0]">
+                    Join the waitlist — first month free
+                  </span>
+                </Link>
+                <a
+                  href="#how-it-works"
+                  className="rounded-xl border border-white/10 px-7 py-3.5 text-sm font-semibold text-[#A0A0B8] transition hover:border-white/20 hover:bg-white/5 active:scale-95"
+                >
+                  See how it works
+                </a>
+              </div>
+              <p className="mt-3 text-xs text-[#A0A0B8]">
+                No credit card required
+              </p>
+            </div>
+
+            {/* Right side: Enhanced animated phone mockups — desktop only */}
+            <div className="flex-1 mt-10 lg:mt-0 hidden lg:flex justify-center lg:justify-end">
               <div className="relative w-[320px] h-[540px] sm:w-[360px] sm:h-[600px]">
                 {/* Ambient glow behind phones */}
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] rounded-full bg-[#7C5CFC]/8 blur-[80px] animate-pulse-slow" />
@@ -1275,6 +1301,7 @@ export function LandingPage() {
               </div>
             </div>
           </div>
+
         </div>
       </section>
 
@@ -1927,9 +1954,12 @@ export function LandingPage() {
           <Link
             href="/waitlist?utm_campaign=home"
             onClick={trackInitiateCheckout}
-            className="block w-full rounded-full bg-[#7C5CFC] py-3.5 text-center text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98]"
+            className="group relative block w-full rounded-full p-[2px] transition active:scale-[0.98] overflow-hidden"
           >
-            Join the waitlist — first month free
+            <span className="absolute inset-[-100%] animate-cta-shine" style={{ background: 'conic-gradient(from 0deg, transparent 0%, transparent 60%, #ffffff 75%, #B8A5FF 85%, transparent 100%)' }} />
+            <span className="relative block w-full rounded-full bg-[#7C5CFC] py-3.5 text-center text-sm font-semibold text-white transition group-hover:bg-[#6B4FE0]">
+              Join the waitlist — first month free
+            </span>
           </Link>
           <p className="mt-1.5 text-center text-xs text-[#A0A0B8]">
             Early access — limited spots at founding member pricing
