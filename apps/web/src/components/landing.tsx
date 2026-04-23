@@ -1057,7 +1057,7 @@ export function LandingPage() {
   return (
     <div className="min-h-screen bg-[#0A0A0F] text-white pb-24 sm:pb-0 overflow-x-hidden">
       {/* ───── NAVBAR ───── */}
-      <nav className="fixed top-0 inset-x-0 z-50 bg-[#0A0A0F]/80 backdrop-blur-md border-b border-white/5">
+      <nav className="fixed top-0 inset-x-0 z-50 bg-[#0A0A0F] sm:bg-[#0A0A0F]/80 sm:backdrop-blur-md border-b border-white/5">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-8">
             <Link href="/" className="flex items-center gap-2 group">
