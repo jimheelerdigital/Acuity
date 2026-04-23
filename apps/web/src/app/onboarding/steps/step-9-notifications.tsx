@@ -38,7 +38,46 @@ export function Step9Notifications() {
   const [frequency, setFrequency] = useState<Frequency>("DAILY");
   const [time, setTime] = useState(DEFAULT_TIME);
   const [custom, setCustom] = useState<number[]>([1, 2, 3, 4, 5]); // default = weekdays
-  const [enabled, setEnabled] = useState(true);
+  // Default OFF — we only flip to true after the browser's
+  // Notification API grants permission. This prevents "toggle says ON
+  // but we never asked for permission" mismatch where the user thinks
+  // reminders are wired up but no notification can ever fire.
+  const [enabled, setEnabled] = useState(false);
+  const [permissionError, setPermissionError] = useState<string | null>(null);
+
+  const requestAndEnable = async () => {
+    setPermissionError(null);
+    if (typeof window === "undefined" || typeof Notification === "undefined") {
+      // SSR or a browser without the Notification API — fall through
+      // and just flip the preference on. Email fallback still works.
+      setEnabled(true);
+      return;
+    }
+    if (Notification.permission === "granted") {
+      setEnabled(true);
+      return;
+    }
+    if (Notification.permission === "denied") {
+      setPermissionError(
+        "Acuity can't send reminders without notification permission. Enable it in your browser settings, then toggle this back on."
+      );
+      return;
+    }
+    try {
+      const result = await Notification.requestPermission();
+      if (result === "granted") {
+        setEnabled(true);
+      } else {
+        setPermissionError(
+          "No problem — Acuity can't send reminders without permission, so we'll skip for now. Toggle this back on anytime."
+        );
+      }
+    } catch {
+      setPermissionError(
+        "Couldn't request notification permission. Your browser may not support reminders here."
+      );
+    }
+  };
 
   const days =
     frequency === "DAILY"
@@ -76,7 +115,14 @@ export function Step9Notifications() {
       <div className="mt-8 flex items-center gap-3">
         <button
           type="button"
-          onClick={() => setEnabled((v) => !v)}
+          onClick={() => {
+            if (enabled) {
+              setEnabled(false);
+              setPermissionError(null);
+            } else {
+              void requestAndEnable();
+            }
+          }}
           aria-pressed={enabled}
           className={`relative h-7 w-12 rounded-full transition ${
             enabled ? "bg-violet-600" : "bg-zinc-300 dark:bg-white/10"
@@ -92,6 +138,14 @@ export function Step9Notifications() {
           {enabled ? "Reminders on" : "Reminders off"}
         </span>
       </div>
+      {permissionError && (
+        <p
+          role="alert"
+          className="mt-2 text-xs text-amber-700 dark:text-amber-300"
+        >
+          {permissionError}
+        </p>
+      )}
 
       {/* Time + frequency (only relevant when enabled) */}
       <div

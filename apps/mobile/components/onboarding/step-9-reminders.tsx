@@ -41,7 +41,10 @@ type Frequency = "DAILY" | "WEEKDAYS" | "CUSTOM";
 export function Step9Reminders() {
   const { setCanContinue, setCapturedData } = useOnboarding();
 
-  const [enabled, setEnabled] = useState(true);
+  // Default OFF — flipping the toggle triggers the OS permission
+  // prompt. Ensures the stored preference never claims "enabled"
+  // while the OS refuses to deliver notifications.
+  const [enabled, setEnabled] = useState(false);
   const [hour, setHour] = useState(DEFAULT_HOUR);
   const [minute, setMinute] = useState(DEFAULT_MINUTE);
   const [frequency, setFrequency] = useState<Frequency>("DAILY");
@@ -88,14 +91,36 @@ export function Step9Reminders() {
       // this is idempotent (cancel-then-reschedule).
       const time = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
       applyReminderSchedule({ enabled, time, days }).catch(() => {});
-    } else if (next === "denied") {
+      return true;
+    }
+    if (next === "denied") {
       Alert.alert(
         "Notifications off",
         Platform.OS === "ios"
-          ? "Enable in iOS Settings to get reminders. Your preference is still saved — we'll start firing as soon as you allow it."
-          : "Enable notifications in system settings to get reminders."
+          ? "Acuity can't send reminders without notification permission. Enable it in iOS Settings, then toggle this back on."
+          : "Acuity can't send reminders without notification permission. Enable it in system settings, then toggle this back on."
       );
     }
+    return false;
+  };
+
+  /** Flip master toggle with permission-aware semantics: turning ON
+   *  requests permission first; denied permission flips back to OFF
+   *  so the preference never drifts from what the OS will deliver. */
+  const toggleEnabled = async () => {
+    if (enabled) {
+      setEnabled(false);
+      return;
+    }
+    // Going OFF → ON. Permission must be granted before we flip.
+    if (permission === "granted") {
+      setEnabled(true);
+      return;
+    }
+    const granted = await askPermission();
+    if (granted) setEnabled(true);
+    // else: stays off. User sees the Alert or can tap the Open
+    // Settings affordance below.
   };
 
   const openSettings = () => {
@@ -127,7 +152,9 @@ export function Step9Reminders() {
       {/* Master toggle */}
       <View className="mt-6 flex-row items-center gap-3">
         <Pressable
-          onPress={() => setEnabled((v) => !v)}
+          onPress={() => {
+            void toggleEnabled();
+          }}
           accessibilityRole="switch"
           accessibilityState={{ checked: enabled }}
           className={`h-7 w-12 rounded-full justify-center ${
