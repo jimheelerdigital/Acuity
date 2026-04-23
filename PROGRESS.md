@@ -7,6 +7,100 @@
 
 ---
 
+## 2026-04-23 — Locked pricing at $12.99/mo and $99/yr
+
+- **Requested by:** Both (pricing decision final)
+- **Committed by:** Claude Code
+- **Commit hash:** 9c55993 (code) · pending (PROGRESS.md)
+
+### In plain English (for Keenan)
+
+Pricing is now locked in the code. Monthly stays at **$12.99**. Yearly is now an option at **$99** — that's $8.25/month effective, and saves a user $56.88 vs paying monthly for a full year (~36% off). The web upgrade page now shows both plans side-by-side with a Monthly/Yearly toggle; yearly is selected by default with a "Save 36%" badge. Everything else a user sees elsewhere on the site (marketing pages, drip emails, FAQs) still leads with the $12.99/month headline — the yearly option is only surfaced at the upgrade decision point, which is how most SaaS apps do it.
+
+There are manual steps Jim needs to do separately in the Stripe Dashboard and Vercel before the yearly button actually works — see the checklist below.
+
+### Discovery findings
+
+- **Mobile billing architecture:** Stripe via SFSafari handoff. No Apple IAP, no RevenueCat, no `react-native-iap`. Mobile paywall intentionally shows *no price text* (Apple Review Guideline 3.1.1 compliance per `docs/APPLE_IAP_DECISION.md`). So no App Store Connect work needed, and mobile code was not touched.
+- **Before this run, no yearly plan existed in code.** Zero `$99`, `yearly`, `/year`, or `STRIPE_PRICE_YEARLY` references anywhere. The entire checkout flow assumed monthly-only. This run built the yearly path.
+- **One env var in use:** `STRIPE_PRO_PRICE_ID` (consumed only by `apps/web/src/app/api/stripe/checkout/route.ts:33`, declared in `.env.example:34` + `turbo.json:14`).
+- **Price references inventoried:** 35 occurrences of `$12.99` across landing, pillar, emails, FAQs, admin, upgrade, terms. Plus two stale `$9.99` admin references (RevenueTab column + MRR calc cents) from an earlier pricing experiment. One unresolved `{{PRICE_PER_MONTH}}` template placeholder on `/terms`.
+
+### Files modified
+
+| File | Change |
+|---|---|
+| `.env.example` | `STRIPE_PRO_PRICE_ID=""` → `STRIPE_PRICE_MONTHLY=""` + `STRIPE_PRICE_YEARLY=""` |
+| `turbo.json` | `globalEnv`: replaced `STRIPE_PRO_PRICE_ID` with both new names |
+| `apps/web/src/app/api/stripe/checkout/route.ts` | Now accepts `{ interval: "monthly" \| "yearly" }` in POST body. Picks matching env var. Fails loud (500) if env missing. Writes interval into Stripe session metadata + success_url (`?plan=${interval}`) |
+| `apps/web/src/app/upgrade/page.tsx` | Swapped `<UpgradeButton />` → `<UpgradePlanPicker />` |
+| `apps/web/src/app/upgrade/upgrade-plan-picker.tsx` | **New.** Client component, owns Monthly/Yearly toggle state (defaults to yearly), renders the correct price card, POSTs selected interval to checkout |
+| `apps/web/src/app/upgrade/upgrade-button.tsx` | **Deleted.** Replaced by plan-picker |
+| `apps/web/src/app/terms/page.tsx` | `{{PRICE_PER_MONTH}}` placeholder → `$12.99 per month or $99 per year` |
+| `apps/web/src/app/admin/tabs/RevenueTab.tsx` | `$9.99` column → `$12.99` |
+| `apps/web/src/app/api/admin/metrics/route.ts` | MRR estimator `999¢` → `1299¢`, with comment flagging the need for a blended calc once yearly subs matter |
+| `apps/web/src/components/meta-pixel-events.tsx` | Purchase event reads `?plan=` and emits `99` or `12.99` |
+
+### Left unchanged on purpose
+
+- **Mobile** (`apps/mobile/**`) — no price display per Apple 3.1.1 compliance.
+- **Landing + pillar pages** — `landing.tsx`, `landing-shared.tsx`, `/for/[slug]`, `/for/founders`, `/for/therapy`, `/for/sleep`, `/for/weekly-report`, `/voice-journaling`, `/page.tsx`: kept on the `$12.99/month` primary headline. Yearly only surfaces at `/upgrade`. Standard SaaS pattern; avoids diluting acquisition CTA.
+- **Drip emails** (`apps/web/src/lib/drip-emails.ts`): kept on `$12.99/month` — these are waitlist hooks, not upgrade decisions.
+- **Content factory prompt** (`apps/web/src/lib/content-factory/generate.ts:30`): kept on `$12.99/month` as the brief-line to the AI content generator.
+- **Admin GuideTab explanatory copy**: kept `$12.99` references since they explain the primary monthly price for MRR / CAC / churn context. The guide will need refresh once yearly subs are significant.
+
+### Verification
+
+- Typecheck: `npx tsc --noEmit -p apps/web` exits `0`.
+- Phase 3 re-grep: zero remaining `$9.99`, `$14.99`, `$19.99`, `STRIPE_PRO_PRICE_ID`, `{{PRICE_PER_MONTH}}` in source.
+- Phase 3 re-grep for `$12.99`: consistent formatting (no `$12` or `12.99 USD` variants).
+- `$99` appears only on `/upgrade` picker, `/terms`, `meta-pixel-events.tsx`, and in the `api/admin/metrics/route.ts` comment. No bare "99" references crept into marketing pages.
+
+### Manual steps for Jim
+
+```
+Stripe Dashboard (https://dashboard.stripe.com/products):
+[ ] On the existing Acuity Pro product, create Price:
+    Amount: $12.99  |  Recurring: monthly  |  Currency: USD
+    → Copy the new Price ID (price_xxx)
+[ ] On the same product, create Price:
+    Amount: $99  |  Recurring: yearly  |  Currency: USD
+    → Copy the new Price ID (price_xxx)
+[ ] Archive the old monthly Price ID currently referenced by STRIPE_PRO_PRICE_ID (do NOT delete — archive keeps it accessible for historical invoices)
+
+Vercel Dashboard — Production + Preview environments (all three if separate):
+[ ] Remove env var: STRIPE_PRO_PRICE_ID
+[ ] Add env var:    STRIPE_PRICE_MONTHLY = <new monthly price_xxx from Stripe>
+[ ] Add env var:    STRIPE_PRICE_YEARLY  = <new yearly price_xxx from Stripe>
+[ ] Trigger redeploy (or push any small change — the rename is load-bearing; the server will 500 on checkout until new env vars land)
+
+Local .env:
+[ ] Remove:  STRIPE_PRO_PRICE_ID
+[ ] Add:     STRIPE_PRICE_MONTHLY = <new monthly price_xxx>
+[ ] Add:     STRIPE_PRICE_YEARLY  = <new yearly price_xxx>
+
+Verification after redeploy:
+[ ] Visit /upgrade logged in — toggle between Monthly and Yearly, click Start Free Trial for each → Stripe checkout opens with the correct price
+[ ] Complete a test checkout on both → land on /home?upgraded=1&plan=yearly (or &plan=monthly); Meta Pixel Purchase event should fire with value=99 or value=12.99
+```
+
+### Blockers / non-obvious notes
+
+- **Env var rename is a breaking change to the running deployment.** Once this commit ships, the server will 500 on `/api/stripe/checkout` until Vercel has `STRIPE_PRICE_MONTHLY` set. The fail-loud is deliberate — silently defaulting to an old/wrong Price ID is worse than a 500. Roll the env-var update before any user traffic hits checkout post-deploy.
+- **MRR estimator is now inaccurate for yearly subs.** `apps/web/src/app/api/admin/metrics/route.ts:454` multiplies `payingSubs × 1299¢`, which over-counts yearly subs ($8.25/mo effective, not $12.99). Flagged in-code. Fix once yearly sub count crosses ~10 (currently zero).
+- **No mobile OTA needed.** Mobile shows no price, so no copy drift; paywall still opens `/upgrade` which picks up the new UI automatically.
+
+### Recommended next run
+
+Highest-leverage follow-ups, ordered:
+
+1. **Stripe webhook sanity pass** — ensure `subscription.created` / `subscription.updated` / `invoice.paid` events write `Interval` (monthly vs yearly) onto `User` / `StripeEvent` so the admin can segment paying users. Currently we only store `stripeSubscriptionId` + `subscriptionStatus`. ~1 hr.
+2. **Blended MRR calc** — replace `payingSubs × 1299¢` with a Stripe API call that sums last-30-day invoice amounts. ~1 hr. Becomes necessary the moment yearly sub counts > ~10.
+3. **Beta blocker sweep** (from `docs/PRODUCTION_AUDIT_2026-04-21.md`): C1 (Gmail plus-addressing trial bypass), C2 (no ZDR agreement with Anthropic/OpenAI), C3-C5.
+4. **7/12 RLS gaps still open** per `docs/RLS_STATUS_LIVE.md`. ~2 hr.
+
+---
+
 ## 2026-04-23 — Closed 3 critical web parity gaps for beta
 
 - **Requested by:** Both (beta prep for Friday)
