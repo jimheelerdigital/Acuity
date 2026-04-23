@@ -440,6 +440,7 @@ model Goal {
   tasks           Task[]
   entries         Entry[]
   suggestions     GoalSuggestion[]
+  progressSuggestions ProgressSuggestion[]
 
   @@index([userId, status])
   @@index([parentGoalId])
@@ -846,6 +847,45 @@ model GoalSuggestion {
 
   @@index([userId, status])
   @@index([parentGoalId])
+}
+
+// Progress-update suggestions surfaced by the extraction pipeline when
+// a transcript evidences movement on an existing goal (e.g. user says
+// "we closed our first $100k deal" against a goal titled "close $1M").
+// Persisted PENDING; user reviews + accepts/dismisses from the goal
+// detail page. Acceptance writes to Goal.progress + increments the
+// goal's progressNotes; dismissal just updates status.
+//
+// sourceEntryId keeps provenance so the review UI can show the quote
+// that triggered the suggestion with a deep link back to the entry.
+model ProgressSuggestion {
+  id              String   @id @default(cuid())
+  userId          String
+  // The goal this suggestion targets. Cascade delete — if the goal
+  // is gone, the suggestion loses meaning.
+  goalId          String
+  goal            Goal     @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  // Suggested progress value (0..100). Replaces the current Goal.progress
+  // on accept. Int (not Float) to match Goal.progress semantics.
+  suggestedProgressPct Int
+  // The previous progress value the suggestion was computed against —
+  // captured at suggestion time so the review UI can render "0 → 10%"
+  // even if the user has manually edited the goal in the meantime.
+  priorProgressPct Int
+  // Short human-facing rationale pulled from the extraction. ~1-2
+  // sentences, quotes a phrase from the transcript. e.g. "Your entry
+  // mentioned 'closed our first $100k deal' — roughly 10% of the $1M
+  // target."
+  rationale       String
+  sourceEntryId   String?
+  // "PENDING" | "ACCEPTED" | "DISMISSED" — String for cross-version
+  // compatibility. Same pattern as GoalSuggestion.
+  status          String   @default("PENDING")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId, status])
+  @@index([goalId, status])
 }
 
 // Idempotency record for Stripe webhook deliveries. Stripe retries

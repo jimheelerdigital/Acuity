@@ -78,6 +78,20 @@ export interface SubGoalSuggestion {
   suggestedAction: string;
 }
 
+/** Progress-update suggestion. Claude emits this when a transcript
+ *  evidences movement on an existing user goal. `goalText` fuzzy-
+ *  matches against Goal.title at persistence time (ambiguous matches
+ *  are dropped rather than guessed). `suggestedProgressPct` is an
+ *  int 0-100 representing the new Goal.progress value — not a delta;
+ *  Claude has the current progress in its prompt context and returns
+ *  the resulting value. `rationale` is a short user-facing sentence
+ *  that usually quotes a phrase from the transcript. */
+export interface ExtractedProgressSuggestion {
+  goalText: string;
+  suggestedProgressPct: number;
+  rationale: string;
+}
+
 export interface ExtractionResult {
   summary: string;
   mood: Mood;
@@ -101,6 +115,10 @@ export interface ExtractionResult {
   /** Sub-goal suggestions anchored to existing user goals. Persisted
    *  as GoalSuggestion rows with status=PENDING. */
   subGoalSuggestions?: SubGoalSuggestion[];
+  /** Progress updates detected on existing user goals. Persisted as
+   *  ProgressSuggestion rows with status=PENDING so the user can
+   *  review and accept/dismiss before the goal's progress is changed. */
+  progressSuggestions?: ExtractedProgressSuggestion[];
   /** Life area analysis for Life Matrix (may be absent for old entries) */
   lifeAreaMentions?: LifeAreaMentions;
 }

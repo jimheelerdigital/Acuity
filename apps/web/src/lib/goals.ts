@@ -253,6 +253,91 @@ export async function persistSubGoalSuggestions(
   return written;
 }
 
+/**
+ * Progress-update suggestions — Claude emits these when a transcript
+ * evidences movement on an existing user goal. Fuzzy-matched against
+ * the user's goals the same way subGoalSuggestions are. Dedup guard
+ * prevents stacking identical PENDING rows across multiple re-
+ * mentions; once the user accepts/dismisses, a fresh extraction can
+ * file a new PENDING. Anchor goal (Entry.goalId) is given priority —
+ * if it's set, we always attempt to match progress to it even when
+ * goalText doesn't substring-hit its title, because the user
+ * explicitly recorded about it.
+ */
+export async function persistProgressSuggestions(
+  tx: PrismaClient | Prisma.TransactionClient,
+  userId: string,
+  sourceEntryId: string,
+  anchorGoalId: string | null,
+  suggestions: Array<{
+    goalText: string;
+    suggestedProgressPct: number;
+    rationale: string;
+  }>
+): Promise<number> {
+  if (!suggestions || suggestions.length === 0) return 0;
+
+  const userGoals = await tx.goal.findMany({
+    where: {
+      userId,
+      status: { in: ["NOT_STARTED", "IN_PROGRESS"] },
+    },
+    select: { id: true, title: true, progress: true },
+  });
+  if (userGoals.length === 0) return 0;
+
+  let written = 0;
+  for (const s of suggestions) {
+    // Prefer the anchor goal when the entry was goal-anchored AND
+    // the suggestion's goalText doesn't point somewhere else. This
+    // catches the common case where the user records "about goal X"
+    // and speaks about progress on X without saying X's title.
+    let matched: { id: string; title: string; progress: number } | null = null;
+    const matchedAnchor = anchorGoalId
+      ? userGoals.find((g) => g.id === anchorGoalId) ?? null
+      : null;
+    const byText = findBestGoalMatch(s.goalText, userGoals);
+    if (byText) {
+      matched = userGoals.find((g) => g.id === byText.id) ?? null;
+    } else if (matchedAnchor) {
+      matched = matchedAnchor;
+    }
+    if (!matched) continue;
+
+    // Skip suggestions that wouldn't actually move the needle.
+    const clamped = Math.max(0, Math.min(100, Math.round(s.suggestedProgressPct)));
+    if (clamped === matched.progress) continue;
+
+    // Dedupe: if there's already a PENDING suggestion for this goal at
+    // the same target value, don't stack another. A fresh rationale
+    // from a new entry is nice but not worth noise. (User dismisses
+    // or accepts; the next re-mention at a DIFFERENT target can file.)
+    const existing = await tx.progressSuggestion.findFirst({
+      where: {
+        userId,
+        goalId: matched.id,
+        status: "PENDING",
+        suggestedProgressPct: clamped,
+      },
+      select: { id: true },
+    });
+    if (existing) continue;
+
+    await tx.progressSuggestion.create({
+      data: {
+        userId,
+        goalId: matched.id,
+        suggestedProgressPct: clamped,
+        priorProgressPct: matched.progress,
+        rationale: s.rationale.slice(0, 500),
+        sourceEntryId,
+      },
+    });
+    written += 1;
+  }
+  return written;
+}
+
 function findBestGoalMatch(
   raw: string,
   goals: Array<{ id: string; title: string }>
