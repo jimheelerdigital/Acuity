@@ -1111,14 +1111,14 @@ export function LandingPage() {
             {/* Left content — center on mobile, left on desktop */}
             <div className="flex-1 max-w-xl text-center mx-auto lg:mx-0">
               <Reveal>
-                <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl lg:text-6xl xl:text-7xl leading-[1.05]">
+                <h1 className="text-3xl font-black tracking-tight sm:text-4xl lg:text-5xl xl:text-6xl leading-[1.05]" style={{ textShadow: '0 0 20px rgba(255,255,255,0.3), 0 0 40px rgba(255,255,255,0.15)' }}>
                   You have too much in your head.
                 </h1>
               </Reveal>
 
               <Reveal delay={2}>
-                <p className="mt-5 text-base text-[#A0A0B8] leading-relaxed max-w-md mx-auto">
-                  Acuity is the daily debrief that turns what you&rsquo;re thinking about into what you&rsquo;re doing. Talk for 60 seconds, any time of day — it catches your tasks, tracks the goals you keep circling, and helps you monitor the patterns that keep you stuck.
+                <p className="mt-5 text-lg text-[#A0A0B8] leading-relaxed max-w-md mx-auto">
+                  Acuity is the daily debrief that turns what you&rsquo;re thinking about into what you&rsquo;re doing. Talk for 60 seconds, any time of day — it catches your tasks, tracks the goals you keep circling, and helps you monitor the patterns that leave you stuck.
                 </p>
               </Reveal>
 
