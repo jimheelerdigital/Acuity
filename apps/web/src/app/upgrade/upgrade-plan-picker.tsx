@@ -17,6 +17,7 @@ type Interval = "monthly" | "yearly";
 export function UpgradePlanPicker() {
   const [interval, setInterval] = useState<Interval>("yearly");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof fbq !== "undefined") {
@@ -25,11 +26,12 @@ export function UpgradePlanPicker() {
   }, []);
 
   const handleUpgrade = async () => {
+    setError(null);
     setLoading(true);
     try {
       const src = new URLSearchParams(window.location.search).get("src");
       posthog.capture("upgrade_page_cta_clicked", {
-        ctaVariant: "start_free_trial_button",
+        ctaVariant: "subscribe_now_button",
         source: src ?? "direct",
         interval,
       });
@@ -48,9 +50,27 @@ export function UpgradePlanPicker() {
           window.location.href = data.url;
           return;
         }
+        setError("Checkout returned no redirect URL. Try again.");
+      } else if (res.status === 401) {
+        // Session dropped between page render + checkout click. Push
+        // the user to sign-in with a callback to land them back here.
+        window.location.href = `/auth/signin?callbackUrl=${encodeURIComponent("/upgrade")}`;
+        return;
+      } else {
+        const body = await res.json().catch(() => ({}));
+        setError(
+          typeof body?.error === "string"
+            ? `Couldn't start checkout: ${body.error}`
+            : `Couldn't start checkout (status ${res.status}). Try again in a moment.`
+        );
       }
-      setLoading(false);
-    } catch {
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? `Couldn't reach checkout: ${err.message}`
+          : "Couldn't reach checkout. Check your connection and try again."
+      );
+    } finally {
       setLoading(false);
     }
   };
@@ -113,9 +133,18 @@ export function UpgradePlanPicker() {
             Redirecting...
           </span>
         ) : (
-          "Start Free Trial"
+          "Subscribe Now"
         )}
       </button>
+
+      {error && (
+        <p
+          role="alert"
+          className="mt-3 rounded-lg border border-red-200 dark:border-red-900/40 bg-red-50 dark:bg-red-950/20 px-3 py-2 text-xs text-red-700 dark:text-red-300"
+        >
+          {error}
+        </p>
+      )}
     </>
   );
 }
