@@ -7,6 +7,45 @@
 
 ---
 
+## [2026-04-23] — Flip from waitlist to live trial signups with First 100 mechanic
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 598dc5f
+
+### In plain English (for Keenan)
+Acuity is officially live for real signups. Every "Join the Waitlist" button across the entire site now says "Start Free Trial" and takes people directly to account creation. The first 100 people who sign up get Founding Member status: a 30-day free trial (instead of 14), a permanent badge on their account, and a sequential number (#1-100). A purple banner at the top of every page shows how many spots are left. The 14 existing waitlist users are grandfathered as Founding Members #1-14 when they create their accounts. There's a ready-to-send email template for Keenan to notify those 14 people with their access links. All the drip emails have been updated to remove "when we launch" language since we've launched.
+
+### Technical changes (for Jimmy)
+- `prisma/schema.prisma`: added `isFoundingMember` (Boolean, default false) and `foundingMemberNumber` (Int?) to User model
+- `apps/web/src/lib/bootstrap-user.ts`: counts founding members at signup, auto-assigns number 1-100 and 30-day trial; after 100, reverts to standard 14-day
+- `apps/web/src/app/api/founding-members/route.ts`: new GET endpoint returning `{ spotsLeft, total, claimed }` with 60s cache
+- `apps/web/src/components/founding-member-banner.tsx`: client component fetching spots-left, renders purple banner above nav, disappears at 0
+- `apps/web/src/app/layout.tsx`: FoundingMemberBanner added above NavBar
+- `apps/web/src/app/auth/signup/page.tsx`: Meta Pixel Lead event added on form submission (both email and Google paths), trial copy updated to 30-day
+- All CTA text swapped across 20+ files: landing.tsx, landing-shared.tsx, all /for/* pages, voice-journaling, waitlist page, upgrade page, mobile signup, mobile onboarding
+- All `/waitlist` hrefs changed to `/auth/signup`
+- `apps/web/src/lib/drip-emails.ts`: scrubbed "when we launch", "doors opening", "before the public launch" from emails 4-5; updated subjects and founding member copy
+- `emails/waitlist-activation.tsx`: one-off email template with Founding Member badge, 30-day trial messaging, and signup CTA
+- `apps/web/src/app/sitemap.ts`: `/waitlist` → `/auth/signup`
+
+### Manual steps needed
+- [ ] Run `npx prisma db push` to add isFoundingMember and foundingMemberNumber columns (Keenan — from home network)
+- [ ] Verify Meta Pixel Lead event fires in Facebook Test Events after a test signup (Keenan)
+- [ ] Send the waitlist activation email to the 14 existing users via Resend — use the template at emails/waitlist-activation.tsx (Keenan)
+- [ ] When those 14 users sign up, their bootstrap will auto-assign Founding Member #15+ — consider manually setting #1-14 via DB update if desired (Jimmy)
+- [ ] Verify the First 100 banner appears on production after deploy (Keenan)
+
+### Notes
+- The Waitlist table and all 14 existing records are preserved — nothing was deleted
+- Stripe trial_period_days is NOT used — Acuity handles trials via trialEndsAt in the DB, so the 30-day founding member trial is handled entirely by bootstrap-user.ts
+- The founding member count is a simple `prisma.user.count({ where: { isFoundingMember: true } })` — no race condition risk at this scale
+- The First 100 banner disappears entirely (no "sold out" messaging) when spots hit 0
+- Drip emails 4 and 5 now reference "founding member spot" language instead of "doors opening" — safe to send to existing and new waitlist users
+- The /waitlist page still exists and works (it's the waitlist form) but all links now point to /auth/signup instead
+
+---
+
 ## [2026-04-23] — Fix broken waitlist drip sequence + landing page overhaul
 
 **Requested by:** Keenan
