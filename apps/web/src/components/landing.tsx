@@ -1112,9 +1112,10 @@ export function LandingPage() {
             <div className="flex-1 max-w-2xl text-left mx-auto lg:mx-0">
               <Reveal>
                 <h1 className="text-[2.5rem] font-black tracking-tight sm:text-5xl lg:text-[3.5rem] xl:text-[4rem] leading-[1.08]">
-                  <span className="text-white sm:whitespace-nowrap">You have too much</span>
-                  <br className="hidden sm:block" />
-                  <span className="text-[#B8A5FF]"> in your head.</span>
+                  <span className="text-[#A0A0B8]">One minute a day.</span>
+                  <br />
+                  <span className="text-white">A week of </span>
+                  <span className="text-[#B8A5FF]">clarity.</span>
                 </h1>
               </Reveal>
 
