@@ -7,6 +7,8 @@ import { formatRelativeDate } from "@acuity/shared";
 
 import { RecordSheet } from "@/components/record-sheet";
 
+import { ProgressSuggestionBanner } from "./progress-suggestion-banner";
+
 type Goal = {
   id: string;
   title: string;
@@ -164,6 +166,16 @@ export function GoalDetail({
           )}
         </p>
       </header>
+
+      <ProgressSuggestionBanner
+        goalId={goal.id}
+        onProgressUpdated={(newPct) => {
+          setGoal((g) => ({ ...g, progress: newPct }));
+          // Re-fetch linked entries + other server data so the page
+          // stays in sync with the write that just happened.
+          router.refresh();
+        }}
+      />
 
       {/* Status + progress */}
       <section className="rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.04)] dark:shadow-none dark:ring-1 dark:ring-white/5">
