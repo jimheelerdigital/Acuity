@@ -1103,7 +1103,7 @@ export function LandingPage() {
       </nav>
 
       {/* ───── HERO ───── */}
-      <section className="relative pt-28 pb-16 sm:pt-36 sm:pb-24 overflow-hidden">
+      <section className="relative pt-28 pb-10 sm:pt-36 sm:pb-16 overflow-hidden">
         <ParallaxOrbs />
 
         <div className="relative mx-auto max-w-6xl px-6">
@@ -1369,7 +1369,7 @@ export function LandingPage() {
       </section>
 
       {/* ───── HOW IT WORKS ───── */}
-      <section id="how-it-works" className="px-6 py-24 sm:py-32">
+      <section id="how-it-works" className="px-6 py-16 sm:py-20">
         <div className="mx-auto max-w-6xl">
           <Reveal>
             <div className="text-center mb-14">
@@ -1552,7 +1552,7 @@ export function LandingPage() {
       </section>
 
       {/* ───── LIFE MATRIX ───── */}
-      <section className="relative px-6 py-24 sm:py-32 overflow-hidden">
+      <section className="relative px-6 py-16 sm:py-20 overflow-hidden">
         <div className="relative mx-auto max-w-5xl">
           {/* Header */}
           <Reveal>
@@ -1603,7 +1603,7 @@ export function LandingPage() {
       </section>
 
       {/* ───── TRACK PROGRESS — ANIMATED GROWTH CHART ───── */}
-      <section className="px-6 py-24 sm:py-32">
+      <section className="px-6 py-16 sm:py-20">
         <div className="mx-auto max-w-5xl">
           <Reveal>
             <div className="text-center mb-12">
@@ -1629,7 +1629,7 @@ export function LandingPage() {
 
       {/* ───── TESTIMONIALS ───── */}
       {/* TODO: Replace fake testimonials with real user testimonials */}
-      <section className="px-6 py-24 sm:py-32">
+      <section className="px-6 py-16 sm:py-20">
         <div className="mx-auto max-w-5xl">
           <Reveal>
             <h2 className="text-center text-3xl font-bold tracking-tight sm:text-5xl">
@@ -1693,7 +1693,7 @@ export function LandingPage() {
       </section>
 
       {/* ───── PRICING ───── */}
-      <section id="pricing" className="px-6 py-24 sm:py-32">
+      <section id="pricing" className="px-6 py-16 sm:py-20">
         <div className="mx-auto max-w-md text-center">
           <Reveal>
             <h2 className="text-3xl font-bold tracking-tight sm:text-5xl">
@@ -1758,7 +1758,7 @@ export function LandingPage() {
       </section>
 
       {/* ───── FAQ ───── */}
-      <section className="px-6 py-24 sm:py-32">
+      <section className="px-6 py-16 sm:py-20">
         <div className="mx-auto max-w-3xl text-center">
           <Reveal>
             <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-sm text-[#A0A0B8] mb-6">
@@ -1808,7 +1808,7 @@ export function LandingPage() {
       </section>
 
       {/* ───── CTA BANNER ───── */}
-      <section className="px-6 py-24 sm:py-32">
+      <section className="px-6 py-16 sm:py-20">
         <Reveal>
           <div className="mx-auto max-w-4xl rounded-3xl bg-zinc-900 p-12 sm:p-16 text-center text-white relative overflow-hidden">
             {/* Subtle animated accents */}
