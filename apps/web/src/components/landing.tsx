@@ -1111,10 +1111,9 @@ export function LandingPage() {
             {/* Left content — center on mobile, left on desktop */}
             <div className="flex-1 max-w-2xl text-left mx-auto lg:mx-0">
               <Reveal>
-                <h1 className="text-[2.5rem] font-black tracking-tight sm:text-5xl lg:text-6xl xl:text-[4.25rem] leading-[1.08]">
-                  <span className="text-white">One minute a day.</span>
-                  <br />
-                  <span className="bg-gradient-to-r from-[#B8A5FF] to-[#7C5CFC] bg-clip-text text-transparent">A life of clarity.</span>
+                <h1 className="font-black tracking-tight leading-[1.08]">
+                  <span className="block text-white text-[clamp(2rem,5.5vw,4.5rem)]">One minute a day.</span>
+                  <span className="block bg-gradient-to-r from-[#B8A5FF] to-[#7C5CFC] bg-clip-text text-transparent text-[clamp(2rem,5.5vw,4.5rem)]">A life of clarity.</span>
                 </h1>
               </Reveal>
 
@@ -1129,10 +1128,12 @@ export function LandingPage() {
                   <Link
                     href="/waitlist?utm_campaign=home"
                     onClick={trackInitiateCheckout}
-                    className="relative rounded-full bg-[#7C5CFC] px-7 py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] hover:shadow-xl hover:shadow-[#7C5CFC]/10 active:scale-95 overflow-hidden"
+                    className="group relative rounded-full p-[2px] transition active:scale-95"
                   >
-                    <span className="absolute inset-0 rounded-full animate-cta-shine" style={{ background: 'conic-gradient(from 0deg, transparent 0%, transparent 70%, rgba(255,255,255,0.3) 80%, transparent 90%, transparent 100%)' }} />
-                    <span className="relative">Join the waitlist — first month free</span>
+                    <span className="absolute inset-0 rounded-full animate-cta-shine" style={{ background: 'conic-gradient(from 0deg, #7C5CFC 0%, transparent 30%, transparent 70%, #B8A5FF 85%, #7C5CFC 100%)' }} />
+                    <span className="relative block rounded-full bg-[#7C5CFC] px-7 py-3.5 text-sm font-semibold text-white transition group-hover:bg-[#6B4FE0]">
+                      Join the waitlist — first month free
+                    </span>
                   </Link>
                   <a
                     href="#how-it-works"
