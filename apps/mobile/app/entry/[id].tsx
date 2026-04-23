@@ -7,9 +7,10 @@ import {
   View,
 } from "react-native";
 
-import { MOOD_EMOJI, MOOD_LABELS, type EntryDTO, type TaskDTO } from "@acuity/shared";
+import { MOOD_LABELS, type EntryDTO, type TaskDTO } from "@acuity/shared";
 
 import { ExtractionReview } from "@/components/extraction-review";
+import { MoodIcon } from "@/components/mood-icon";
 import { api } from "@/lib/api";
 
 type EntryDetail = EntryDTO & { tasks: TaskDTO[] };
@@ -65,9 +66,12 @@ export default function EntryDetailScreen() {
         <Text className="text-xs text-zinc-500 dark:text-zinc-400 mb-1">{date}</Text>
         <View className="flex-row items-center gap-3">
           {entry.mood && (
-            <Text className="text-lg">
-              {MOOD_EMOJI[entry.mood]} {MOOD_LABELS[entry.mood]}
-            </Text>
+            <View className="flex-row items-center gap-2">
+              <MoodIcon mood={entry.mood} size={22} color="#A1A1AA" />
+              <Text className="text-lg text-zinc-800 dark:text-zinc-100">
+                {MOOD_LABELS[entry.mood]}
+              </Text>
+            </View>
           )}
           {entry.energy !== null && (
             <Text className="text-sm text-zinc-400 dark:text-zinc-500">Energy {entry.energy}/10</Text>

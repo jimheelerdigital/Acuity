@@ -13,12 +13,12 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
-  MOOD_EMOJI,
   MOOD_LABELS,
   type EntryDTO,
   type Mood,
 } from "@acuity/shared";
 
+import { MoodIcon } from "@/components/mood-icon";
 import { api } from "@/lib/api";
 
 /**
@@ -92,7 +92,7 @@ export default function EntriesTab() {
       edges={["top"]}
     >
       <View className="px-5 pt-2 pb-3 gap-3">
-        <Text className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+        <Text className="text-3xl font-bold text-zinc-900 dark:text-zinc-50">
           Entries
         </Text>
 
@@ -122,12 +122,23 @@ export default function EntriesTab() {
               <Pressable
                 key={m}
                 onPress={() => setMoodFilter(m === "ALL" ? null : (m as Mood))}
-                className={`rounded-full px-3 py-1 border ${
+                className={`flex-row items-center gap-1.5 rounded-full px-3 py-1 border ${
                   selected
                     ? "border-violet-500 bg-violet-500/10 dark:border-violet-400 dark:bg-violet-500/20"
                     : "border-zinc-200 bg-transparent dark:border-white/10"
                 }`}
               >
+                {m !== "ALL" && (
+                  <MoodIcon
+                    mood={m}
+                    size={13}
+                    color={
+                      selected
+                        ? "#7C3AED"
+                        : "#A1A1AA"
+                    }
+                  />
+                )}
                 <Text
                   className={`text-xs font-medium ${
                     selected
@@ -135,9 +146,7 @@ export default function EntriesTab() {
                       : "text-zinc-500 dark:text-zinc-400"
                   }`}
                 >
-                  {m === "ALL"
-                    ? "All"
-                    : `${MOOD_EMOJI[m as Mood]} ${MOOD_LABELS[m as Mood]}`}
+                  {m === "ALL" ? "All" : MOOD_LABELS[m as Mood]}
                 </Text>
               </Pressable>
             );
@@ -214,10 +223,13 @@ function EntryRow({
           {dateLabel}
         </Text>
         {entry.mood && (
-          <Text className="text-xs text-zinc-500 dark:text-zinc-400">
-            · {MOOD_EMOJI[entry.mood as Mood] ?? ""}{" "}
-            {MOOD_LABELS[entry.mood as Mood] ?? ""}
-          </Text>
+          <View className="flex-row items-center gap-1">
+            <Text className="text-xs text-zinc-500 dark:text-zinc-400">·</Text>
+            <MoodIcon mood={entry.mood} size={12} color="#A1A1AA" />
+            <Text className="text-xs text-zinc-500 dark:text-zinc-400">
+              {MOOD_LABELS[entry.mood as Mood] ?? ""}
+            </Text>
+          </View>
         )}
         {entry.status === "PARTIAL" && (
           <View className="rounded-full bg-amber-900/40 px-2 py-0.5">

@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
-import { MOOD_EMOJI, MOOD_LABELS } from "@acuity/shared";
+import { MOOD_LABELS } from "@acuity/shared";
 import type { Mood } from "@acuity/shared";
 
 import { EntryCard } from "@/app/home/entry-card";
+import { MoodIcon } from "@/components/mood-icon";
 
 type EntryRow = Parameters<typeof EntryCard>[0]["entry"] & {
   createdAt: Date;
@@ -84,15 +85,20 @@ export function EntriesList({
                 key={m}
                 type="button"
                 onClick={() => setMoodFilter(m === "ALL" ? null : (m as Mood))}
-                className={`rounded-full px-3 py-1 border text-xs font-medium transition ${
+                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 border text-xs font-medium transition ${
                   selected
                     ? "border-violet-500 bg-violet-500/10 text-violet-700 dark:border-violet-400 dark:bg-violet-500/20 dark:text-violet-300"
                     : "border-zinc-200 text-zinc-500 hover:border-zinc-300 dark:border-white/10 dark:text-zinc-400 dark:hover:border-white/20"
                 }`}
               >
-                {m === "ALL"
-                  ? "All"
-                  : `${MOOD_EMOJI[m]} ${MOOD_LABELS[m]}`}
+                {m === "ALL" ? (
+                  "All"
+                ) : (
+                  <>
+                    <MoodIcon mood={m} size={14} />
+                    {MOOD_LABELS[m]}
+                  </>
+                )}
               </button>
             );
           })}

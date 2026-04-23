@@ -12,7 +12,6 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
-  MOOD_EMOJI,
   MOOD_LABELS,
   type EntryDTO,
   formatRelativeDate,
@@ -21,6 +20,7 @@ import {
 } from "@acuity/shared";
 
 import { HomeFocusStack } from "@/components/home-focus-stack";
+import { MoodIcon } from "@/components/mood-icon";
 import { ProgressionChecklist } from "@/components/progression-checklist";
 import { RecommendedActivity } from "@/components/recommended-activity";
 import { useAuth } from "@/contexts/auth-context";
@@ -116,10 +116,10 @@ export default function DashboardTab() {
             tab slot (which moved out of the bar when Entries was added). */}
         <View className="mb-6 flex-row items-start justify-between">
           <View className="flex-1 pr-3">
-            <Text className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+            <Text className="text-3xl font-bold text-zinc-900 dark:text-zinc-50">
               {greeting}, {firstName}.
             </Text>
-            <Text className="text-sm text-zinc-400 dark:text-zinc-500 mt-1">
+            <Text className="text-base text-zinc-400 dark:text-zinc-500 mt-1">
               {weekCount === 0
                 ? "No sessions this week yet."
                 : `${weekCount} session${weekCount === 1 ? "" : "s"} this week.`}
@@ -293,9 +293,13 @@ function EntryRow({
           <View className="flex-row items-center gap-2">
             <Text className="text-xs text-zinc-500 dark:text-zinc-400">{dateLabel}</Text>
             {entry.mood && (
-              <Text className="text-xs text-zinc-400 dark:text-zinc-500">
-                · {MOOD_EMOJI[entry.mood] ?? ""} {MOOD_LABELS[entry.mood] ?? ""}
-              </Text>
+              <View className="flex-row items-center gap-1">
+                <Text className="text-xs text-zinc-400 dark:text-zinc-500">·</Text>
+                <MoodIcon mood={entry.mood} size={11} color="#A1A1AA" />
+                <Text className="text-xs text-zinc-400 dark:text-zinc-500">
+                  {MOOD_LABELS[entry.mood] ?? ""}
+                </Text>
+              </View>
             )}
             {isPartial && (
               <View className="rounded-full bg-amber-900/40 px-2 py-0.5">

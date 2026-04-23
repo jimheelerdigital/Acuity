@@ -27,7 +27,7 @@ export default async function InsightsPage() {
       <main className="mx-auto max-w-4xl px-6 py-10 animate-fade-in">
         {/* ─── 1. LIFE MATRIX — hero ─────────────────────────────── */}
         <section className="mb-10">
-          <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50 mb-1">
+          <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-50 mb-1">
             Life Matrix
           </h1>
           <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-6">

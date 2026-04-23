@@ -2,10 +2,11 @@ import { getServerSession } from "next-auth";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
-import { MOOD_EMOJI, MOOD_LABELS, PRIORITY_LABELS } from "@acuity/shared";
+import { MOOD_LABELS, PRIORITY_LABELS } from "@acuity/shared";
 import type { Mood } from "@acuity/shared";
 
 import { getAuthOptions } from "@/lib/auth";
+import { MoodIcon } from "@/components/mood-icon";
 
 import { ExtractionReview } from "./extraction-review";
 
@@ -71,8 +72,9 @@ export default async function EntryDetailPage({
           <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-2">{date}</p>
           <div className="flex items-center gap-3 flex-wrap">
             {moodKey && (
-              <span className="text-lg text-zinc-800 dark:text-zinc-100">
-                {MOOD_EMOJI[moodKey]} {MOOD_LABELS[moodKey]}
+              <span className="inline-flex items-center gap-2 text-lg text-zinc-800 dark:text-zinc-100">
+                <MoodIcon mood={moodKey} size={22} />
+                {MOOD_LABELS[moodKey]}
               </span>
             )}
             {entry.energy !== null && entry.energy !== undefined && (

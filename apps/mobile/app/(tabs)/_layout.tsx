@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Tabs, useRouter } from "expo-router";
-import { useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { Animated, Pressable, Text, View } from "react-native";
 
 import { useTheme } from "@/contexts/theme-context";
 
@@ -153,9 +153,26 @@ export default function TabsLayout() {
   );
 }
 
+/**
+ * Tab-bar record button. Per 2026-04-23 polish spec: when NOT actively
+ * recording, the button reads as "muted," not "always active." Since
+ * the tab bar is hidden while the /record modal is open, "not
+ * recording" is the button's default visible state — dim opacity
+ * 0.7 is the idle look. Pressing fades it to 1.0 over 200ms ease for
+ * tactile feedback, then fades back when released.
+ */
 function RecordCenterButton({ isDark }: { isDark: boolean }) {
   const router = useRouter();
   const [pressed, setPressed] = useState(false);
+  const opacity = useRef(new Animated.Value(0.7)).current;
+
+  useEffect(() => {
+    Animated.timing(opacity, {
+      toValue: pressed ? 1 : 0.7,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+  }, [pressed, opacity]);
 
   return (
     <View
@@ -167,35 +184,41 @@ function RecordCenterButton({ isDark }: { isDark: boolean }) {
         paddingBottom: 4,
       }}
     >
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Open Home to record a brain dump"
-        onPress={() => router.navigate("/(tabs)")}
-        onPressIn={() => setPressed(true)}
-        onPressOut={() => setPressed(false)}
-        hitSlop={12}
+      <Animated.View
         style={{
           position: "absolute",
           top: -26,
           zIndex: 10,
           elevation: 10,
-          width: 64,
-          height: 64,
-          borderRadius: 32,
-          backgroundColor: "#7C3AED",
-          alignItems: "center",
-          justifyContent: "center",
-          borderWidth: 4,
-          borderColor: isDark ? "#0B0B12" : "#FFFFFF",
-          shadowColor: "#7C3AED",
-          shadowOffset: { width: 0, height: 6 },
-          shadowRadius: 14,
-          shadowOpacity: isDark ? 0.6 : 0.45,
-          transform: [{ scale: pressed ? 0.94 : 1 }],
+          opacity,
         }}
       >
-        <Ionicons name="mic" size={28} color="#FFFFFF" />
-      </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Open Home to record a brain dump"
+          onPress={() => router.navigate("/(tabs)")}
+          onPressIn={() => setPressed(true)}
+          onPressOut={() => setPressed(false)}
+          hitSlop={12}
+          style={{
+            width: 64,
+            height: 64,
+            borderRadius: 32,
+            backgroundColor: "#7C3AED",
+            alignItems: "center",
+            justifyContent: "center",
+            borderWidth: 4,
+            borderColor: isDark ? "#0B0B12" : "#FFFFFF",
+            shadowColor: "#7C3AED",
+            shadowOffset: { width: 0, height: 6 },
+            shadowRadius: 14,
+            shadowOpacity: isDark ? 0.6 : 0.45,
+            transform: [{ scale: pressed ? 0.94 : 1 }],
+          }}
+        >
+          <Ionicons name="mic" size={28} color="#FFFFFF" />
+        </Pressable>
+      </Animated.View>
       <Text
         style={{
           marginTop: 36,

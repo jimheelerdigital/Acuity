@@ -1,11 +1,12 @@
 import Link from "next/link";
 import {
-  MOOD_EMOJI,
   MOOD_LABELS,
   formatRelativeDate,
 } from "@acuity/shared";
 import type { Entry } from "@prisma/client";
 import type { Mood } from "@acuity/shared";
+
+import { MoodIcon } from "@/components/mood-icon";
 
 type EntryCardProps = {
   entry: Pick<
@@ -39,8 +40,9 @@ export function EntryCard({ entry, taskCount }: EntryCardProps) {
           <div className="flex items-center gap-2 mb-1.5 flex-wrap">
             <span className="text-xs font-medium text-zinc-400 dark:text-zinc-500">{date}</span>
             {moodKey && (
-              <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                {MOOD_EMOJI[moodKey]} {MOOD_LABELS[moodKey]}
+              <span className="inline-flex items-center gap-1 text-xs text-zinc-500 dark:text-zinc-400">
+                <MoodIcon mood={moodKey} size={12} />
+                {MOOD_LABELS[moodKey]}
               </span>
             )}
             {entry.energy !== null && entry.energy !== undefined && (
@@ -64,7 +66,7 @@ export function EntryCard({ entry, taskCount }: EntryCardProps) {
               </span>
             )}
           </div>
-          <p className="text-base sm:text-sm text-zinc-700 leading-snug line-clamp-2 dark:text-zinc-200">
+          <p className="text-lg sm:text-base text-zinc-700 leading-snug line-clamp-2 dark:text-zinc-200">
             {entry.summary ?? (isProcessing ? "Processing your debrief..." : "No summary generated.")}
           </p>
           {entry.themes.length > 0 && (

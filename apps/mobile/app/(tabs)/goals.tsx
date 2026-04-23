@@ -213,7 +213,7 @@ export default function GoalsTab() {
         }
       >
         <View className="flex-row items-baseline gap-2 mb-1">
-          <Text className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+          <Text className="text-3xl font-bold text-zinc-900 dark:text-zinc-50">
             Goals
           </Text>
           {inProgressCount > 0 && (

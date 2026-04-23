@@ -163,7 +163,7 @@ export function TaskList() {
   return (
     <>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50 mb-1">
+        <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-50 mb-1">
           Tasks
           {grouped.open.length > 0 && (
             <span className="ml-2 align-middle text-base font-normal text-zinc-400 dark:text-zinc-500">
@@ -584,7 +584,10 @@ function Checkbox({
       style={{
         width: 22,
         height: 22,
-        borderRadius: 11,
+        // Squarish per 2026-04-23 spec — rounded-corner checkbox reads
+        // better than the fully-circular disc the old radius-11
+        // design used. 4px keeps the ~22px square from feeling sharp.
+        borderRadius: 4,
         borderWidth: 2,
         borderStyle: muted ? "dashed" : "solid",
         borderColor: checked ? "#7C3AED" : "#A1A1AA",

@@ -163,7 +163,7 @@ export default async function DashboardPage() {
 
         {/* Greeting */}
         <div className="mb-8 text-center sm:text-left">
-          <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">{greeting}</h1>
+          <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-50">{greeting}</h1>
           <p className="text-zinc-500 dark:text-zinc-400 text-sm mt-1">
             {entries.length === 0
               ? "Record your first daily debrief to get started."

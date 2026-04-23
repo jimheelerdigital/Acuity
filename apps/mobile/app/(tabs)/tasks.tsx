@@ -286,7 +286,7 @@ export default function TasksTab() {
         {/* Header */}
         <View className="px-5 pt-4 pb-2">
           <View className="flex-row items-baseline gap-2">
-            <Text className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+            <Text className="text-3xl font-bold text-zinc-900 dark:text-zinc-50">
               Tasks
             </Text>
             {grouped.open.length > 0 && (
@@ -589,7 +589,9 @@ function Checkbox({
       style={({ pressed }) => ({
         width: size,
         height: size,
-        borderRadius: size / 2,
+        // Squarish per 2026-04-23 spec — 4px corners instead of a
+        // full-circle disc. Matches the web task list.
+        borderRadius: 4,
         borderWidth: 2,
         borderStyle: muted ? "dashed" : "solid",
         borderColor: checked ? "#7C3AED" : "#A1A1AA",

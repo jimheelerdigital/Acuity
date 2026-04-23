@@ -193,7 +193,7 @@ export default function InsightsTab() {
       >
         {/* Header */}
         <View className="mb-6">
-          <Text className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+          <Text className="text-3xl font-bold text-zinc-900 dark:text-zinc-50">
             Insights
           </Text>
           <Text className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
