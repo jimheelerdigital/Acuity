@@ -1111,9 +1111,9 @@ export function LandingPage() {
             {/* Left content — center on mobile, left on desktop */}
             <div className="flex-1 max-w-2xl text-left mx-auto lg:mx-0">
               <Reveal>
-                <h1 className="font-black tracking-tight leading-[1.08]">
-                  <span className="block text-white whitespace-nowrap text-4xl sm:text-5xl lg:text-[3.25rem] xl:text-[3.75rem]">One minute a day.</span>
-                  <span className="block bg-gradient-to-r from-[#B8A5FF] to-[#7C5CFC] bg-clip-text text-transparent whitespace-nowrap text-4xl sm:text-5xl lg:text-[3.25rem] xl:text-[3.75rem]">A life of clarity.</span>
+                <h1 className="font-black tracking-tight">
+                  <span className="block text-white whitespace-nowrap text-4xl sm:text-5xl lg:text-[3.25rem] xl:text-[3.75rem] leading-[1.1] mb-2 sm:mb-3">One minute a day.</span>
+                  <span className="block bg-gradient-to-r from-[#B8A5FF] to-[#7C5CFC] bg-clip-text text-transparent whitespace-nowrap text-4xl sm:text-5xl lg:text-[3.25rem] xl:text-[3.75rem] leading-[1.2] pb-1">A life of clarity.</span>
                 </h1>
               </Reveal>
 
