@@ -1149,31 +1149,6 @@ export function LandingPage() {
               </Reveal>
             </div>
 
-            {/* CTA — mobile only, shown after hero text */}
-            <div className="lg:hidden mt-8 text-center">
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-                <Link
-                  href="/waitlist?utm_campaign=home"
-                  onClick={trackInitiateCheckout}
-                  className="group relative rounded-full p-[2px] transition active:scale-95 overflow-hidden"
-                >
-                  <span className="absolute inset-[-100%] animate-cta-shine" style={{ background: 'conic-gradient(from 0deg, transparent 0%, transparent 60%, #ffffff 75%, #B8A5FF 85%, transparent 100%)' }} />
-                  <span className="relative block rounded-full bg-[#7C5CFC] px-7 py-3.5 text-sm font-semibold text-white transition group-hover:bg-[#6B4FE0]">
-                    Join the waitlist — first month free
-                  </span>
-                </Link>
-                <a
-                  href="#how-it-works"
-                  className="rounded-xl border border-white/10 px-7 py-3.5 text-sm font-semibold text-[#A0A0B8] transition hover:border-white/30 hover:bg-white/10 active:scale-95"
-                >
-                  See how it works
-                </a>
-              </div>
-              <p className="mt-3 text-xs text-[#A0A0B8]">
-                No credit card required
-              </p>
-            </div>
-
             {/* Right side: Enhanced animated phone mockups — desktop only */}
             <div className="flex-1 mt-10 lg:mt-0 hidden lg:flex justify-center lg:justify-end">
               <div className="relative w-[320px] h-[540px] sm:w-[360px] sm:h-[600px] lg:w-[400px] lg:h-[660px] xl:w-[440px] xl:h-[720px]">
