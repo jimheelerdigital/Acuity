@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -114,9 +114,14 @@ export default function GoalsTab() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchTree(includeArchived);
-  }, [fetchTree, includeArchived]);
+  // Re-fetch on every tab focus so returning from the /record modal
+  // refreshes the progression (e.g. a fresh recording bumps the
+  // goalSuggestions unlock meter live).
+  useFocusEffect(
+    useCallback(() => {
+      fetchTree(includeArchived);
+    }, [fetchTree, includeArchived])
+  );
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);

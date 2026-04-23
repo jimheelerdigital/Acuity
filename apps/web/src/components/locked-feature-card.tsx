@@ -1,25 +1,35 @@
-import Link from "next/link";
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 import { lockedFeatureCopy, type UnlockKey, type UserProgression } from "@acuity/shared";
+
+import { RecordSheet } from "@/components/record-sheet";
 
 /**
  * Empty-state card shown when a feature is not yet unlocked per the
  * user's progression. Not a paywall — unlocks are experiential gates,
  * not billing gates. Paid and trial users on low data both see this.
  *
- * Pairs with `lockedFeatureCopy()` from @acuity/shared so mobile +
- * web render identical copy. Add a primary CTA back to the recorder
- * since every unlock ladder comes down to "record more."
+ * "Record now" opens an inline RecordSheet on the same screen rather
+ * than navigating to Home. On successful record, router.refresh()
+ * re-renders the parent server component so the progress counter
+ * (e.g. "5 of 10") ticks up immediately without navigation.
+ *
+ * Copy via lockedFeatureCopy() from @acuity/shared so mobile + web
+ * render identical strings.
  */
 export function LockedFeatureCard({
   unlockKey,
   progression,
-  recordHref = "/home",
 }: {
   unlockKey: UnlockKey;
   progression: UserProgression;
-  recordHref?: string;
 }) {
+  const router = useRouter();
+  const [recordOpen, setRecordOpen] = useState(false);
+
   const copy = lockedFeatureCopy(unlockKey, progression);
   const pct = copy.progress
     ? Math.min(
@@ -62,8 +72,9 @@ export function LockedFeatureCard({
       )}
 
       <div className="mt-5">
-        <Link
-          href={recordHref}
+        <button
+          type="button"
+          onClick={() => setRecordOpen(true)}
           className="inline-flex items-center gap-1.5 rounded-full bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
         >
           Record now
@@ -80,8 +91,26 @@ export function LockedFeatureCard({
           >
             <path d="M9 18l6-6-6-6" />
           </svg>
-        </Link>
+        </button>
       </div>
+
+      <RecordSheet
+        open={recordOpen}
+        onClose={() => setRecordOpen(false)}
+        context={{
+          type: "generic",
+          label: `Record to unlock ${copy.headline.replace(/\.$/, "")}`,
+        }}
+        onRecordComplete={() => {
+          setRecordOpen(false);
+          // Re-renders the parent server component — progression
+          // fetches fresh data, progress bar ticks up. Note: the
+          // entry row is written at submit time (status=QUEUED)
+          // before transcription runs, so the counter moves the
+          // moment the upload lands, not after extraction.
+          router.refresh();
+        }}
+      />
     </div>
   );
 }

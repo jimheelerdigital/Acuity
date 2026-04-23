@@ -29,10 +29,13 @@ export async function GET(req: NextRequest) {
 
   try {
     const progression = await getUserProgression(userId);
+    // no-store so the browser HTTP cache doesn't sit on top of Next's
+    // Router Cache and double-stale the counter after a fresh record.
+    // Compute is cheap (~5ms on a warm user) and happens server-side
+    // anyway; letting every request recompute keeps the locked-state
+    // counters live-accurate.
     return NextResponse.json(progression, {
-      headers: {
-        "Cache-Control": "private, max-age=60, stale-while-revalidate=30",
-      },
+      headers: { "Cache-Control": "no-store" },
     });
   } catch (err) {
     console.error("[api/user/progression]", err);

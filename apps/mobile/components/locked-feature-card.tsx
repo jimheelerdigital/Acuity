@@ -20,12 +20,14 @@ import {
 export function LockedFeatureCard({
   unlockKey,
   progression,
-  recordHref = "/",
+  recordHref = "/record",
 }: {
   unlockKey: UnlockKey;
   progression: UserProgression;
   /** Route the "Record now" CTA sends the user to. Defaults to the
-   *  home tab (where the record button lives). */
+   *  modal `/record` screen so the user can record without leaving
+   *  the feature page. The parent tab's useFocusEffect re-fetches
+   *  progression when the modal dismisses, so the counter updates. */
   recordHref?: string;
 }) {
   const router = useRouter();
