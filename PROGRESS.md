@@ -30,6 +30,113 @@ None
 
 ---
 
+## 2026-04-23 — Beta polish batch (5 tasks): Subscribe fix, review screen, mood slider, onboarding inputs, notifications permission
+
+- **Requested by:** Both (post-auth-restore, five items from Jim's first prod sign-in session)
+- **Committed by:** Claude Code
+- **Commit hashes:** c9281bd · 9440d5a · f914e81 · 9d1ba1a · 0f549d3
+
+### In plain English (for Keenan)
+
+Five separate ships, each fixing something Jim saw the first time he signed in end-to-end on production:
+
+1. **Subscribe button works again.** The click was actually wired up correctly all along — the server was returning a redirect URL and everything. But when anything went wrong (session expired, server error, network blip), the button silently spun once and returned to idle with no explanation. Now errors show up as a red alert below the button, and a dropped session sends the user to sign in with a callback that lands them right back on /upgrade. Also renamed "Start Free Trial" to "Subscribe Now" — the 14-day trial promise still shows in the fine print below.
+
+2. **Recordings no longer auto-spam your task and goal lists.** Every recording used to drop every extracted task and every inferred goal straight into your main lists. Ten recordings later your task list was polluted with noise. Now the recording still gets extracted — but instead of committing tasks/goals automatically, there's a review panel on the entry detail page with checkboxes next to each one. You tick what to keep, hit Commit, and only those items persist. There's a "Skip all" link if none of the extractions are worth keeping. Works on web and mobile.
+
+3. **Mood selector is now a 10-point slider, not emoji buttons.** The old 5-emoji mood picker (😣😔😐😊🚀) is gone. In its place, a therapy-app-style 10-point slider with a red → amber → green gradient. Current value shows prominently as "7/10 Good", label updates as you slide. Started the bigger Lucide icon sweep at the same time — streak 🔥 on Home is now a clean Flame icon on both platforms. The remaining emojis (auth screens, entry mood display, tab bar) are flagged for a follow-up run since they don't block beta.
+
+4. **Onboarding now captures the "Other" context.** When a new user picks "Other" on "What brings you here?" or "In transition" on "Life stage," a text input appears beneath the chips so they can say what's actually going on ("career change," "new parent," "laid off last month"). Before, that context was just lost to the "Other" bucket. "Prefer not to say" deliberately does NOT trigger a text input — that option's whole point is opting out.
+
+5. **"Reminders on" actually asks for notification permission.** Before: you could toggle reminders ON and complete onboarding, but the browser had never been asked if it could send notifications, so reminders could never fire. Now: toggle starts OFF; flipping it to ON triggers the OS permission request. If you grant, it stays on. If you deny, it reverts to OFF and shows a message about enabling in browser/iOS settings. Works on both platforms.
+
+### Commits + what each did
+
+1. **`c9281bd` — `fix(web): surface Subscribe button errors + rename to "Subscribe Now"`**
+   - Root cause: client handler silently swallowed non-OK responses; button spun and reset with no user-visible error.
+   - Server side was already correct (uses STRIPE_PRICE_MONTHLY / STRIPE_PRICE_YEARLY env vars, returns a redirect URL).
+   - Added visible error state, 401 → redirect-to-signin-with-callback, rename to "Subscribe Now", PostHog ctaVariant renamed to subscribe_now_button.
+
+2. **`9440d5a` — `feat: recording review — user commits extracted tasks/goals instead of auto-adding`**
+   - Schema: `Entry.extractionCommittedAt DateTime?` — null = review banner renders. Existing entries backfilled to createdAt so legacy entries don't grow a banner.
+   - Pipeline (both sync + Inngest): removed `tx.task.createMany` + `tx.goal.create` for NEW goals. Kept the UPDATE branch on existing goals (lastMentionedAt + entryRefs bump — observational metadata, no new row). Kept subGoalSuggestions + progressSuggestions + anchor-goal bump.
+   - API: `GET /api/entries/[id]/extraction` returns proposed tasks + goals (marks goals that already exist), `POST` accepts `{action:"commit"|"skip", tasks?, goals?}` with user-approved subset.
+   - Web + mobile: review banner on entry detail with checkboxes, inline editable titles, Commit + Skip buttons.
+   - Analytics: new `entry_extraction_reviewed` event with tasksProposed/tasksCommitted/goalsProposed/goalsCommitted — signal-to-noise metric for tuning the prompt later.
+
+3. **`f914e81` — `feat(web+mobile): 10-point mood slider + begin Lucide icon sweep`**
+   - Installed `lucide-react` (web) + `lucide-react-native` (mobile) + `expo-linear-gradient`.
+   - Schema: `UserOnboarding.moodBaselineNumeric Int?` added alongside existing `moodBaseline String?` — new onboarding writes both (numeric + bucketed enum via `moodBucketFromScore`) so legacy consumers (Life Audit prompt, memory) keep working. Entry.moodScore Int? already existed; no change needed.
+   - New shared helpers in `@acuity/shared`: `moodBucketFromScore`, `moodLabelForScore`.
+   - Web: new `MoodSlider` client component (native range + custom thumb + gradient). Wired into onboarding step-5.
+   - Mobile: upgraded existing PanResponder slider from 1-5 to 1-10, swapped violet track for the same red → amber → green LinearGradient.
+   - Streak 🔥 → Lucide `Flame` on both Home pages (web + mobile).
+
+4. **`9d1ba1a` — `feat: capture freeform "Other" text on onboarding "What brings you here" + "Life stage"`**
+   - Schema: `UserDemographics.primaryReasonsCustom String?` + `UserDemographics.lifeStageCustom String?`.
+   - Trigger conditions: `Other` picked in primaryReasons → text input; `In transition` picked in lifeStage → text input. "Prefer not to say" deliberately excluded.
+   - Conditional TextInput only posts custom text when the trigger chip is currently selected (so reverting clears the stored custom).
+   - API handler trims to 200 chars, sets null on empty or when trigger is unchecked.
+   - Both web step-3-demographics.tsx + mobile step-3-demographics.tsx updated.
+
+5. **`0f549d3` — `feat: request OS notification permission when user enables reminders`**
+   - Toggle defaults OFF (was ON).
+   - Flipping OFF→ON triggers permission request. Granted → stays on. Denied → reverts + shows a message.
+   - Web: `Notification.requestPermission()`.
+   - Mobile: existing `requestNotificationPermission()` from `@/lib/notifications` via expo-notifications. Existing "Allow notifications" card stays as secondary affordance for edge cases where enabled=true but permission was revoked later.
+   - No unsolicited permission prompts on page mount — only on explicit toggle-on.
+
+### Schema migrations shipped
+
+| Migration | Purpose |
+|---|---|
+| `supabase/migrations/2026-04-23_entry_extraction_committed_at.sql` | `Entry.extractionCommittedAt DateTime?` + backfill for legacy entries |
+| `supabase/migrations/2026-04-23_mood_baseline_numeric.sql` | `UserOnboarding.moodBaselineNumeric Int?` |
+| `supabase/migrations/2026-04-23_onboarding_custom_fields.sql` | `UserDemographics.primaryReasonsCustom String?` + `lifeStageCustom String?` |
+
+All three applied to prod via `npm run db:push` during this run.
+
+### Typecheck status
+
+- `npx tsc --noEmit -p apps/web` → exit 0 after each commit ✓
+- `npx tsc --noEmit -p packages/shared` → exit 0 ✓
+- `npx tsc --noEmit -p apps/mobile` → pre-existing TS2786 dual-React + one error in onboarding/shell.tsx:214 unchanged from prior sessions; zero new errors in touched files ✓
+
+### Subscribe button — root cause + fix
+
+Client handler silently swallowed non-OK API responses (401/500/network) — button spun once and reset with no UI feedback. Server was correct; UX was invisible-error. Fix adds visible error surfacing + 401-aware sign-in redirect + button copy rename.
+
+### Mood slider — what it looks like now
+
+**Before:** a 5-column grid of large emoji buttons, each with an emoji (😣 / 😔 / 😐 / 😊 / 🚀) and a text label (Rough / Low / Neutral / Good / Great) — pick one.
+
+**After:** a horizontal gradient track (rose → amber → emerald) with a draggable thumb. Above the track, a big "N/10" number and dynamic label ("7 — Good"). Below, three tick labels: "Rough · Okay · Strong." Web uses a native range input; mobile uses a PanResponder-driven thumb over an expo-linear-gradient. Accessibility: aria-valuenow/valuetext on web; accessibilityLabel on mobile.
+
+### Blockers surfaced that need Jim's input
+
+- None from these 5 tasks. All shipped and applied.
+- **Standing:** the emoji sweep (Task 3) only did the highest-visibility sites (mood selector + streak 🔥). Remaining ~28 files still have emoji (entry mood display in lists, auth screen decorative emojis, tab bar, reminders step iOS hint, etc.). Not beta-blocking but flagged for a dedicated icon-cleanup run.
+
+### Recommended next run
+
+**Phase 2 of userProgression (already scoped in the prior 2026-04-23 Phase 1 entry):**
+
+1. **Home focus card** driven by `userProgression.nextUnlock` + `dayOfTrial` — single-focus surface replacing the legacy 7-item `ProgressionChecklist`. The Flame streak icon is already in place, so the focus card slots in alongside it.
+2. **Streak UI on Home** — chip reading `currentStreak` / `streakAtRisk` / `longestStreak` with milestone celebration (7/30/100).
+3. **`recentlyUnlocked` celebrations** — toast when a feature crosses from locked → unlocked in a session.
+
+**OR, if you want a cleanup run first:**
+- Finish the Lucide emoji sweep (remaining ~28 files). ~2 hours; low-risk, high-aesthetic-impact.
+- Then Phase 2.
+
+Longer-term followups unchanged:
+- Blended MRR (once yearly sub counts matter)
+- Stripe webhook interval capture
+- Remaining RLS gaps (7/12 tables per `docs/RLS_STATUS_LIVE.md`)
+- Beta blockers from `docs/PRODUCTION_AUDIT_2026-04-21.md` C1-C5
+
+---
+
 ## 2026-04-23 — Fix CSP regression blocking Supabase auth on production
 
 - **Requested by:** Jimmy (beta-blocking — auth broken on www.getacuity.io)
