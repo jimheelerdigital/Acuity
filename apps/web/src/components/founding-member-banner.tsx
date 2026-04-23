@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 
 /**
- * Thin urgency banner: "First 100 · 30 days free (normally 14) · N spots left"
- * Disappears entirely when spots hit 0.
+ * Urgency banner: "First 100 members get 30 days free — only N spots left"
+ * Disappears entirely when spots hit 0 or on error.
  */
 export function FoundingMemberBanner() {
   const [spotsLeft, setSpotsLeft] = useState<number | null>(null);
@@ -12,17 +12,21 @@ export function FoundingMemberBanner() {
   useEffect(() => {
     fetch("/api/founding-members")
       .then((r) => r.json())
-      .then((d) => setSpotsLeft(d.spotsLeft))
+      .then((d) => {
+        if (typeof d.spotsLeft === "number") setSpotsLeft(d.spotsLeft);
+      })
       .catch(() => setSpotsLeft(null));
   }, []);
 
-  // Don't render if loading, errored, or sold out
   if (spotsLeft === null || spotsLeft <= 0) return null;
 
   return (
-    <div className="bg-gradient-to-r from-[#7C5CFC] to-[#6B4FE0] text-white text-center text-xs sm:text-sm py-2 px-4 font-medium">
-      First 100 · 30 days free (normally 14) ·{" "}
-      <span className="font-bold">{spotsLeft} spots left</span>
+    <div className="w-full bg-gradient-to-r from-[#7C5CFC] to-[#6B4FE0] text-white text-center text-xs sm:text-sm py-2.5 sm:py-2 px-4 font-medium z-[60] relative">
+      <span className="inline-block leading-snug">
+        🔥 First 100 members get 30 days free (normally 14) — only{" "}
+        <span className="font-bold text-sm sm:text-base">{spotsLeft}</span>{" "}
+        spots left
+      </span>
     </div>
   );
 }

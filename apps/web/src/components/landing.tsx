@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState, useCallback } from "react";
+import { FoundingMemberBanner } from "@/components/founding-member-banner";
+import { SOCIAL_PROOF, STATS_STRIP } from "@/lib/social-proof";
 
 /* ═══════════════════════════════════════════
    "Who it's for" dropdown for landing nav
@@ -1056,8 +1058,10 @@ export function LandingPage() {
 
   return (
     <div className="min-h-screen bg-[#0A0A0F] text-white pb-24 sm:pb-0 overflow-x-hidden">
-      {/* ───── NAVBAR ───── */}
-      <nav className="fixed top-0 inset-x-0 z-50 bg-[#0A0A0F] sm:bg-[#0A0A0F]/80 sm:backdrop-blur-md border-b border-white/5">
+      {/* ───── BANNER + NAVBAR (both fixed) ───── */}
+      <div className="fixed top-0 inset-x-0 z-50">
+        <FoundingMemberBanner />
+        <nav className="bg-[#0A0A0F] sm:bg-[#0A0A0F]/80 sm:backdrop-blur-md border-b border-white/5">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:py-5">
           <div className="flex items-center gap-8">
             <Link href="/" className="flex items-center gap-2 group">
@@ -1101,9 +1105,10 @@ export function LandingPage() {
           </Link>
         </div>
       </nav>
+      </div>
 
       {/* ───── HERO ───── */}
-      <section className="relative pt-28 pb-0 sm:pt-36 sm:pb-0 lg:pb-10 overflow-hidden">
+      <section className="relative pt-36 pb-0 sm:pt-44 sm:pb-0 lg:pb-10 overflow-hidden">
         <ParallaxOrbs />
 
         <div className="relative mx-auto max-w-7xl px-6">
@@ -1282,14 +1287,10 @@ export function LandingPage() {
             <Reveal>
               <div className="mx-auto max-w-2xl flex flex-col sm:flex-row items-center justify-center gap-4 text-center">
             <div className="flex items-center gap-1">
-              {[...Array(5)].map((_, i) => (
-                <svg key={i} className="h-5 w-5 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                </svg>
-              ))}
+              <span className="text-amber-400 font-bold text-sm">{SOCIAL_PROOF.rating} ★</span>
             </div>
             <p className="text-sm text-[#A0A0B8]">
-              Join <span className="text-white font-semibold">500+</span> people already using Acuity
+              Join {SOCIAL_PROOF.underHeroCount} people already using Acuity
             </p>
               </div>
             </Reveal>
@@ -1648,17 +1649,7 @@ export function LandingPage() {
               <Reveal key={t.name} delay={Math.min(i + 1, 3) as 1 | 2 | 3}>
                 <figure className="group rounded-2xl border border-white/10 bg-[#13131F] p-6 shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
                   <div className="flex items-center gap-1 mb-4">
-                    {[...Array(5)].map((_, j) => (
-                      <svg
-                        key={j}
-                        className="h-4 w-4 text-amber-400 transition-transform duration-300"
-                        style={{ transitionDelay: `${j * 50}ms` }}
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                      </svg>
-                    ))}
+                    <span className="text-amber-400 font-bold text-xs">{SOCIAL_PROOF.rating} ★</span>
                   </div>
                   <blockquote className="text-sm leading-relaxed text-[#A0A0B8]">
                     "{t.quote}"
@@ -1988,12 +1979,8 @@ const comparisons = [
   },
 ];
 
-const stats = [
-  { value: 2847, suffix: "+", prefix: "", label: "Daily debriefs recorded" },
-  { value: 12, suffix: "k", prefix: "", label: "Tasks extracted" },
-  { value: 98, suffix: "%", prefix: "", label: "Said they sleep better" },
-  { value: 60, suffix: "s", prefix: "", label: "Average debrief time" },
-];
+// Imported from shared constants — see lib/social-proof.ts
+const stats = STATS_STRIP.map((s) => ({ ...s }));
 
 const tickerItems = [
   "✦ 60-second nightly debrief",

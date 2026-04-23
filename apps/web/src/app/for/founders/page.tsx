@@ -32,7 +32,7 @@ export default function FoundersPage() {
       <LandingNav />
 
       {/* ───── HERO ───── */}
-      <section className="relative pt-28 pb-16 sm:pt-36 sm:pb-24 overflow-hidden">
+      <section className="relative pt-36 pb-16 sm:pt-44 sm:pb-24 overflow-hidden">
         <ParallaxOrbs />
         <div className="relative mx-auto max-w-4xl px-6 text-center">
           <Reveal>

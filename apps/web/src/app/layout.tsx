@@ -10,7 +10,8 @@ import { CookieConsentBanner } from "@/components/cookie-consent";
 import { ConsentGatedTrackers } from "@/components/consent-gated-trackers";
 import { CrisisFooter } from "@/components/crisis-footer";
 import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
-import { FoundingMemberBanner } from "@/components/founding-member-banner";
+// FoundingMemberBanner is embedded directly in landing.tsx and landing-shared.tsx
+// (above their own fixed navs) rather than in the root layout.
 
 const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
 const GOOGLE_SITE_VERIFICATION = process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION;
@@ -103,7 +104,6 @@ export default function RootLayout({
         <Providers>
           <ConsentGatedTrackers />
           <GoogleAnalytics />
-          <FoundingMemberBanner />
           <NavBar />
           <KeyboardShortcuts />
           {children}
