@@ -1109,10 +1109,10 @@ export function LandingPage() {
         <div className="relative mx-auto max-w-6xl px-6">
           <div className="flex flex-col lg:flex-row lg:items-center lg:gap-10">
             {/* Left content — center on mobile, left on desktop */}
-            <div className="flex-1 max-w-xl text-center mx-auto lg:mx-0">
+            <div className="flex-1 max-w-2xl text-center mx-auto lg:mx-0">
               <Reveal>
-                <h1 className="text-4xl font-black tracking-tight sm:text-5xl lg:text-6xl xl:text-7xl leading-[1.05]">
-                  <span className="text-white">You have too much</span>
+                <h1 className="text-[2.5rem] font-black tracking-tight sm:text-5xl lg:text-[3.5rem] xl:text-[4rem] leading-[1.08]">
+                  <span className="text-white whitespace-nowrap">You have too much</span>
                   <br />
                   <span className="text-[#B8A5FF]">in your head.</span>
                 </h1>
