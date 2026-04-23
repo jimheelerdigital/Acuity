@@ -35,20 +35,30 @@ export default async function GoalDetailPage({
   });
   if (!goal) notFound();
 
+  // Linked entries come from TWO sources, unioned:
+  //   1. Entry.goalId — explicit link set when the user tapped "Add a
+  //      reflection" and the recorder forwarded goalId.
+  //   2. Goal.entryRefs — fuzzy match written by the extraction pipeline
+  //      when a transcript references an existing goal by title.
+  // Keep in sync with /api/goals/[id]/route.ts which does the same union.
   const refs = Array.isArray(goal.entryRefs) ? goal.entryRefs.slice(0, 20) : [];
-  const linkedEntries =
-    refs.length > 0
-      ? await prisma.entry.findMany({
-          where: { id: { in: refs }, userId: session.user.id },
-          select: {
-            id: true,
-            summary: true,
-            createdAt: true,
-            mood: true,
-          },
-          orderBy: { createdAt: "desc" },
-        })
-      : [];
+  const linkedEntries = await prisma.entry.findMany({
+    where: {
+      userId: session.user.id,
+      OR: [
+        { goalId: goal.id },
+        ...(refs.length > 0 ? [{ id: { in: refs } }] : []),
+      ],
+    },
+    select: {
+      id: true,
+      summary: true,
+      createdAt: true,
+      mood: true,
+    },
+    orderBy: { createdAt: "desc" },
+    take: 20,
+  });
 
   return (
     <div className="min-h-screen">
