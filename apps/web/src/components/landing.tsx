@@ -1111,8 +1111,10 @@ export function LandingPage() {
             {/* Left content — center on mobile, left on desktop */}
             <div className="flex-1 max-w-xl text-center mx-auto lg:mx-0">
               <Reveal>
-                <h1 className="text-3xl font-black tracking-tight sm:text-4xl lg:text-[2.75rem] xl:text-5xl leading-[1.05] bg-gradient-to-r from-[#B8A5FF] to-white bg-clip-text text-transparent" style={{ textShadow: 'none' }}>
-                  You have too much in your head.
+                <h1 className="text-4xl font-black tracking-tight sm:text-5xl lg:text-6xl xl:text-7xl leading-[1.05]">
+                  <span className="text-white">You have too much</span>
+                  <br />
+                  <span className="text-[#B8A5FF]">in your head.</span>
                 </h1>
               </Reveal>
 
