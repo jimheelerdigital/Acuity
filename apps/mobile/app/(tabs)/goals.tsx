@@ -16,9 +16,11 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { formatRelativeDate } from "@acuity/shared";
+import { formatRelativeDate, type UserProgression } from "@acuity/shared";
 
+import { LockedFeatureCard } from "@/components/locked-feature-card";
 import { api } from "@/lib/api";
+import { fetchUserProgression } from "@/lib/userProgression";
 
 /**
  * Mobile Goals — expandable tree. Parity with web's /goals page:
@@ -85,14 +87,19 @@ export default function GoalsTab() {
   const [addSubgoalFor, setAddSubgoalFor] = useState<TreeGoal | null>(null);
   const [actionSheetFor, setActionSheetFor] = useState<TreeGoal | null>(null);
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
+  const [progression, setProgression] = useState<UserProgression | null>(null);
 
   const fetchTree = useCallback(async (withArchived = false) => {
     try {
-      const res = await api.get<{ roots: TreeGoal[]; pendingSuggestionsCount: number }>(
-        `/api/goals/tree${withArchived ? "?includeArchived=1" : ""}`
-      );
+      const [res, prog] = await Promise.all([
+        api.get<{ roots: TreeGoal[]; pendingSuggestionsCount: number }>(
+          `/api/goals/tree${withArchived ? "?includeArchived=1" : ""}`
+        ),
+        fetchUserProgression().catch(() => null),
+      ]);
       setRoots(res.roots ?? []);
       setPendingSuggestions(res.pendingSuggestionsCount ?? 0);
+      setProgression(prog);
       setExpanded((prev) => {
         if (prev.size > 0) return prev;
         const next = new Set<string>();
@@ -214,7 +221,16 @@ export default function GoalsTab() {
           What you&apos;re working toward. Tap to open, + to add a sub-step.
         </Text>
 
-        {pendingSuggestions > 0 && (
+        {progression && !progression.unlocked.goalSuggestions && (
+          <View className="mb-5">
+            <LockedFeatureCard
+              unlockKey="goalSuggestions"
+              progression={progression}
+            />
+          </View>
+        )}
+
+        {progression?.unlocked.goalSuggestions && pendingSuggestions > 0 && (
           <Pressable
             onPress={() => setSuggestionsOpen(true)}
             className="mb-5 rounded-2xl border border-violet-900/30 bg-violet-950/10 p-4"

@@ -12,13 +12,20 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { MOOD_EMOJI, DEFAULT_LIFE_AREAS, type EntryDTO } from "@acuity/shared";
+import {
+  MOOD_EMOJI,
+  DEFAULT_LIFE_AREAS,
+  type EntryDTO,
+  type UserProgression,
+} from "@acuity/shared";
 
 import { ComparisonsCard } from "@/components/comparisons-card";
 import { LifeMapRadar } from "@/components/life-map-radar";
+import { LockedFeatureCard } from "@/components/locked-feature-card";
 import { UserInsightsCard } from "@/components/user-insights-card";
 import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
+import { fetchUserProgression } from "@/lib/userProgression";
 
 type Report = {
   id: string;
@@ -82,11 +89,12 @@ export default function InsightsTab() {
     fourWeeksAgo: Array<{ area: string; score: number | null }>;
   } | null>(null);
   const [metricsOpen, setMetricsOpen] = useState(false);
+  const [progression, setProgression] = useState<UserProgression | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
-      const [entriesRes, reportsRes, lifeMapRes, trendRes] = await Promise.all(
-        [
+      const [entriesRes, reportsRes, lifeMapRes, trendRes, prog] =
+        await Promise.all([
           api.get<{ entries: EntryDTO[] }>("/api/entries"),
           api.get<{ reports: Report[] }>("/api/weekly"),
           api.get<{ areas: LifeMapAreaData[]; memory: MemoryData }>(
@@ -98,13 +106,14 @@ export default function InsightsTab() {
               fourWeeksAgo: Array<{ area: string; score: number | null }>;
             }>("/api/lifemap/trend")
             .catch(() => null),
-        ]
-      );
+          fetchUserProgression().catch(() => null),
+        ]);
       setEntries(entriesRes.entries ?? []);
       setReports(reportsRes.reports ?? []);
       setAreas(lifeMapRes.areas ?? []);
       setMemory(lifeMapRes.memory ?? null);
       setTrend(trendRes);
+      setProgression(prog);
     } catch {
       // silent
     } finally {
@@ -188,7 +197,14 @@ export default function InsightsTab() {
         </View>
 
         {/* ─── 1. LIFE MATRIX — hero ─────────────────────────────────── */}
-        {areas.length > 0 ? (
+        {progression && !progression.unlocked.lifeMatrix ? (
+          <View className="mb-6">
+            <LockedFeatureCard
+              unlockKey="lifeMatrix"
+              progression={progression}
+            />
+          </View>
+        ) : areas.length > 0 ? (
           <View className="mb-6 rounded-2xl border border-zinc-200 bg-white p-4 dark:border-white/10 dark:bg-[#1E1E2E]">
             <View className="flex-row items-center justify-between mb-3">
               <Text className="text-xs font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
@@ -410,26 +426,35 @@ export default function InsightsTab() {
         ) : null}
 
         {/* ─── 3. THEME MAP ────────────────────────────────────────── */}
-        <Pressable
-          onPress={() => router.push("/insights/theme-map")}
-          style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
-          className="mb-4 rounded-2xl border border-violet-900/30 bg-violet-950/10 p-4"
-        >
-          <View className="flex-row items-center justify-between">
-            <View className="flex-1 pr-3">
-              <Text className="text-[11px] font-semibold uppercase tracking-widest text-violet-400">
-                Explore
-              </Text>
-              <Text className="mt-1 text-base font-semibold text-zinc-900 dark:text-zinc-50">
-                Theme Map
-              </Text>
-              <Text className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
-                The patterns your debriefs keep circling.
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color="#A78BFA" />
+        {progression && !progression.unlocked.themeMap ? (
+          <View className="mb-4">
+            <LockedFeatureCard
+              unlockKey="themeMap"
+              progression={progression}
+            />
           </View>
-        </Pressable>
+        ) : (
+          <Pressable
+            onPress={() => router.push("/insights/theme-map")}
+            style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
+            className="mb-4 rounded-2xl border border-violet-900/30 bg-violet-950/10 p-4"
+          >
+            <View className="flex-row items-center justify-between">
+              <View className="flex-1 pr-3">
+                <Text className="text-[11px] font-semibold uppercase tracking-widest text-violet-400">
+                  Explore
+                </Text>
+                <Text className="mt-1 text-base font-semibold text-zinc-900 dark:text-zinc-50">
+                  Theme Map
+                </Text>
+                <Text className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                  The patterns your debriefs keep circling.
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color="#A78BFA" />
+            </View>
+          </Pressable>
+        )}
 
         {/* ─── 4. ASK YOUR PAST SELF (web-linked from mobile) ────── */}
         <Pressable
@@ -480,6 +505,13 @@ export default function InsightsTab() {
           <Text className="text-xs font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-3">
             Weekly report
           </Text>
+          {progression && !progression.unlocked.weeklyReport ? (
+            <LockedFeatureCard
+              unlockKey="weeklyReport"
+              progression={progression}
+            />
+          ) : (
+          <>
           <Pressable
             onPress={generateReport}
             disabled={generating}
@@ -555,6 +587,8 @@ export default function InsightsTab() {
               </Text>
             </View>
           )}
+          </>
+          )}
         </View>
 
         {/* ─── 7. METRICS — collapsible at the bottom ─────────────── */}
@@ -575,7 +609,16 @@ export default function InsightsTab() {
         </Pressable>
         {metricsOpen && (
           <>
-            <UserInsightsCard />
+            {progression && !progression.unlocked.patternInsights ? (
+              <View className="mb-4">
+                <LockedFeatureCard
+                  unlockKey="patternInsights"
+                  progression={progression}
+                />
+              </View>
+            ) : (
+              <UserInsightsCard />
+            )}
             <ComparisonsCard />
 
             {/* Mood chart — legacy 7-bar view, kept in the metrics drawer */}
