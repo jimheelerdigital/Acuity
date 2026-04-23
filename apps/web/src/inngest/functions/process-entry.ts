@@ -247,38 +247,14 @@ export const processEntryFn = inngest.createFunction(
           extraction.themesDetailed
         );
 
-        if (extraction.tasks.length > 0) {
-          // Resolve Claude-assigned groupName → TaskGroup.id for this
-          // user. Missing / unknown names fall back to the "Other" id.
-          const userGroups = await tx.taskGroup.findMany({
-            where: { userId },
-            select: { id: true, name: true },
-          });
-          const groupIdByName = new Map<string, string>();
-          for (const g of userGroups) {
-            groupIdByName.set(g.name.toLowerCase(), g.id);
-          }
-          const otherGroupId = groupIdByName.get("other") ?? null;
+        // Tasks: extracted but NOT persisted yet. User reviews + commits
+        // via /api/entries/[id]/commit-extraction. Raw list survives on
+        // Entry.rawAnalysis.tasks; extractionCommittedAt stays null
+        // until the user decides. Mirror of the sync pipeline.
 
-          await tx.task.createMany({
-            data: extraction.tasks.map((t) => {
-              const resolved = t.groupName
-                ? groupIdByName.get(t.groupName.trim().toLowerCase())
-                : undefined;
-              return {
-                userId,
-                entryId,
-                text: t.title,
-                title: t.title,
-                description: t.description ?? null,
-                priority: t.priority,
-                dueDate: t.dueDate ? new Date(t.dueDate) : null,
-                groupId: resolved ?? otherGroupId,
-              };
-            }),
-          });
-        }
-
+        // Goals: existing-goal re-mentions still bump lastMentionedAt +
+        // entryRefs (observational metadata, no new row). NEW goals
+        // surface in the review banner on the entry detail page.
         for (const g of extraction.goals) {
           const existing = await tx.goal.findFirst({
             where: {
@@ -286,35 +262,21 @@ export const processEntryFn = inngest.createFunction(
               title: { equals: g.title, mode: "insensitive" },
             },
           });
-          if (!existing) {
-            await tx.goal.create({
-              data: {
-                userId,
-                title: g.title,
-                description: g.description ?? null,
-                targetDate: g.targetDate ? new Date(g.targetDate) : null,
-                lastMentionedAt: new Date(),
-                entryRefs: [entryId],
-              },
-            });
-          } else {
-            // Re-mention of an existing goal. Always bump lastMentionedAt +
-            // append this entryId. Respect editedByUser: we never clobber a
-            // user-authored title/description/status, but lastMentionedAt
-            // is observational metadata so it always updates.
+          if (existing) {
             const refs = Array.from(new Set([...(existing.entryRefs ?? []), entryId]));
             await tx.goal.update({
               where: { id: existing.id },
               data: {
                 lastMentionedAt: new Date(),
                 entryRefs: refs,
-                // Only refill description if the user hasn't edited.
                 ...(!existing.editedByUser && g.description
                   ? { description: g.description }
                   : {}),
               },
             });
           }
+          // else: NEW goals surface in the review banner — see
+          // /api/entries/[id]/extraction GET route.
         }
 
         // Anchor-goal bump — when the user recorded "Add a reflection" on

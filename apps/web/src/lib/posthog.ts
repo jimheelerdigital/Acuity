@@ -77,7 +77,12 @@ export type AnalyticsEvent =
   // milestone (7/30/100) when currentStreak first crosses the mark.
   // Monotonic via User.lastStreakMilestone; resetting to 0 and
   // re-climbing doesn't re-fire the same milestone.
-  | "streak_milestone_hit";
+  | "streak_milestone_hit"
+  // Recording extraction review — fired when the user commits or
+  // skips the tasks+goals that Claude extracted from an entry. Props
+  // carry tasksProposed/tasksCommitted/goalsProposed/goalsCommitted
+  // so we can tune the extraction prompt against real signal-to-noise.
+  | "entry_extraction_reviewed";
 
 /**
  * Fire an analytics event. Safe on missing env config (no-op). Safe

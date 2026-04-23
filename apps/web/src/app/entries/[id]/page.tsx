@@ -7,6 +7,8 @@ import type { Mood } from "@acuity/shared";
 
 import { getAuthOptions } from "@/lib/auth";
 
+import { ExtractionReview } from "./extraction-review";
+
 export const dynamic = "force-dynamic";
 
 export const metadata = {
@@ -80,6 +82,8 @@ export default async function EntryDetailPage({
             )}
           </div>
         </header>
+
+        <ExtractionReview entryId={entry.id} />
 
         <div className="space-y-8">
           {entry.summary && (

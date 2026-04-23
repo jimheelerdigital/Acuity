@@ -447,58 +447,22 @@ export async function processEntry({
         extraction.themesDetailed
       );
 
-      let tasksCreated = 0;
-      if (extraction.tasks.length > 0) {
-        // Build a {lowercase name → id} map of this user's groups so we
-        // resolve Claude's `groupName` field to a TaskGroup.id without
-        // a per-task DB roundtrip. Missing / unknown names fall back
-        // to the "Other" group id (always seeded by default).
-        const userGroups = await tx.taskGroup.findMany({
-          where: { userId },
-          select: { id: true, name: true },
-        });
-        const groupIdByName = new Map<string, string>();
-        for (const g of userGroups) {
-          groupIdByName.set(g.name.toLowerCase(), g.id);
-        }
-        const otherGroupId = groupIdByName.get("other") ?? null;
+      // Tasks: extracted but NOT persisted yet. User reviews + commits
+      // via /api/entries/[id]/commit-extraction. The raw list lives on
+      // Entry.rawAnalysis.tasks and is rendered by the review banner on
+      // the entry detail page. extractionCommittedAt stays null until
+      // the user decides.
+      const tasksCreated = 0;
 
-        const { count } = await tx.task.createMany({
-          data: extraction.tasks.map((t) => {
-            const resolved = t.groupName
-              ? groupIdByName.get(t.groupName.trim().toLowerCase())
-              : undefined;
-            return {
-              userId,
-              entryId,
-              text: t.title,
-              title: t.title,
-              description: t.description ?? null,
-              priority: t.priority,
-              dueDate: t.dueDate ? new Date(t.dueDate) : null,
-              groupId: resolved ?? otherGroupId,
-            };
-          }),
-        });
-        tasksCreated = count;
-      }
-
+      // Goals: matching re-mentions of EXISTING user goals still bump
+      // lastMentionedAt + entryRefs (observational metadata, no new
+      // row). NEW goals from the extraction are NOT auto-created —
+      // they're surfaced in the review banner for the user to confirm.
       for (const g of extraction.goals) {
         const existing = await tx.goal.findFirst({
           where: { userId, title: { equals: g.title, mode: "insensitive" } },
         });
-        if (!existing) {
-          await tx.goal.create({
-            data: {
-              userId,
-              title: g.title,
-              description: g.description ?? null,
-              targetDate: g.targetDate ? new Date(g.targetDate) : null,
-              lastMentionedAt: new Date(),
-              entryRefs: [entryId],
-            },
-          });
-        } else {
+        if (existing) {
           const refs = Array.from(new Set([...(existing.entryRefs ?? []), entryId]));
           await tx.goal.update({
             where: { id: existing.id },
@@ -511,6 +475,8 @@ export async function processEntry({
             },
           });
         }
+        // else: NEW goals surface in the review banner — see
+        // /api/entries/[id]/extraction GET route.
       }
 
       // Anchor-goal bump — when the user recorded "Add a reflection" on

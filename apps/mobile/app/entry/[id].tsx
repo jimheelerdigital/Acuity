@@ -9,6 +9,7 @@ import {
 
 import { MOOD_EMOJI, MOOD_LABELS, type EntryDTO, type TaskDTO } from "@acuity/shared";
 
+import { ExtractionReview } from "@/components/extraction-review";
 import { api } from "@/lib/api";
 
 type EntryDetail = EntryDTO & { tasks: TaskDTO[] };
@@ -18,12 +19,18 @@ export default function EntryDetailScreen() {
   const [entry, setEntry] = useState<EntryDetail | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const reload = () => {
+    if (!id) return;
     api
       .get<{ entry: EntryDetail }>(`/api/entries/${id}`)
       .then((d) => setEntry(d.entry ?? null))
       .catch(() => setEntry(null))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    reload();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   if (loading) {
@@ -67,6 +74,9 @@ export default function EntryDetailScreen() {
           )}
         </View>
       </View>
+
+      <ExtractionReview entryId={entry.id} onCommitted={reload} />
+
 
       {/* Summary */}
       {entry.summary && (

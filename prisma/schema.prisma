@@ -300,6 +300,14 @@ model Entry {
   // Cross-reference into Inngest's run dashboard for observability. Written
   // by processEntryFn's first step. Null for sync-path entries.
   inngestRunId  String?
+  // Set when the user reviews the AI-extracted tasks + goals (see
+  // /api/entries/[id]/commit-extraction) and confirms which to persist.
+  // Null = extraction is complete but user hasn't reviewed yet, so the
+  // review banner on the entry detail page should render. Set to now()
+  // on commit (including "Skip all" which commits zero items).
+  // Pre-2026-04-23 entries are backfilled to createdAt by the migration
+  // so legacy entries don't get an unwanted review banner.
+  extractionCommittedAt DateTime?
   entryDate     DateTime @default(now())
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
