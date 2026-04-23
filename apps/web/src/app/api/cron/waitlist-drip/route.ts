@@ -39,19 +39,31 @@ export async function GET(req: NextRequest) {
 
   let sent = 0;
   let errors = 0;
+  const details: { email: string; step: number; status: string }[] = [];
+
+  safeLog.info("waitlist-drip.start", { totalUsers: users.length });
 
   for (const user of users) {
     const daysSinceSignup = Math.floor(
       (now.getTime() - user.createdAt.getTime()) / (1000 * 60 * 60 * 24)
     );
 
-    // Find the next email in the sequence for this user
-    const nextEmail = DRIP_SEQUENCE.find(
-      (e) => e.step === user.emailSequenceStep + 1
-    );
+    // Find ALL eligible emails this user should have received by now
+    // (handles catch-up if cron was down for multiple days)
+    const eligibleEmails = DRIP_SEQUENCE.filter(
+      (e) =>
+        e.step > user.emailSequenceStep &&
+        daysSinceSignup >= e.daysAfterSignup
+    ).sort((a, b) => a.step - b.step);
 
-    if (!nextEmail) continue;
-    if (daysSinceSignup < nextEmail.daysAfterSignup) continue;
+    if (eligibleEmails.length === 0) {
+      safeLog.info("waitlist-drip.skip", {
+        email: user.email,
+        currentStep: user.emailSequenceStep,
+        daysSinceSignup,
+      });
+      continue;
+    }
 
     // Strip CR/LF to defend against header injection via a malicious
     // waitlist name. HTML body escaping happens inside buildHtml
@@ -59,35 +71,50 @@ export async function GET(req: NextRequest) {
     // Resend's SDK treats it as a header value — but must reject
     // newlines.
     const displayName = (user.name || "Friend").replace(/[\r\n]/g, " ");
-    const subject = nextEmail.subject.replace("{name}", displayName);
 
-    try {
-      await resend.emails.send({
-        from: "Acuity <hello@getacuity.io>",
-        to: user.email,
-        subject,
-        html: nextEmail.buildHtml(displayName),
-      });
+    // Send each eligible email in sequence order
+    for (const dripEmail of eligibleEmails) {
+      const subject = dripEmail.subject.replace("{name}", displayName);
 
-      await prisma.waitlist.update({
-        where: { id: user.id },
-        data: { emailSequenceStep: nextEmail.step },
-      });
+      try {
+        await resend.emails.send({
+          from: "Acuity <hello@getacuity.io>",
+          to: user.email,
+          subject,
+          html: dripEmail.buildHtml(displayName),
+        });
 
-      sent++;
-    } catch (err) {
-      safeLog.error("waitlist-drip.send_failed", err, {
-        step: nextEmail.step,
-        email: user.email,
-      });
-      errors++;
+        await prisma.waitlist.update({
+          where: { id: user.id },
+          data: { emailSequenceStep: dripEmail.step },
+        });
+
+        sent++;
+        details.push({ email: user.email, step: dripEmail.step, status: "sent" });
+        safeLog.info("waitlist-drip.sent", {
+          email: user.email,
+          step: dripEmail.step,
+          daysSinceSignup,
+        });
+      } catch (err) {
+        safeLog.error("waitlist-drip.send_failed", err, {
+          step: dripEmail.step,
+          email: user.email,
+        });
+        errors++;
+        details.push({ email: user.email, step: dripEmail.step, status: "error" });
+        break; // Don't send later emails if an earlier one failed
+      }
     }
   }
+
+  safeLog.info("waitlist-drip.complete", { processed: users.length, sent, errors });
 
   return NextResponse.json({
     processed: users.length,
     sent,
     errors,
+    details,
     timestamp: now.toISOString(),
   });
 }
