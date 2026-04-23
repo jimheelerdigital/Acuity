@@ -16,6 +16,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { formatRelativeDate } from "@acuity/shared";
 
+import { ProgressSuggestionBanner } from "@/components/progress-suggestion-banner";
 import { api } from "@/lib/api";
 
 /**
@@ -206,6 +207,15 @@ export default function GoalDetailScreen() {
               <> · last mentioned {formatRelativeDate(delta.lastMentionedAt)}</>
             )}
           </Text>
+
+          <ProgressSuggestionBanner
+            goalId={goal.id}
+            onProgressUpdated={(newPct) => {
+              setGoal((g) => (g ? { ...g, progress: newPct } : g));
+              setProgressDraft(newPct);
+              load();
+            }}
+          />
 
           {/* Status pills */}
           <View className="mt-6">
