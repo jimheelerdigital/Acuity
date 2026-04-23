@@ -1,39 +1,81 @@
 /** @type {import('next').NextConfig} */
 
 /**
- * Content-Security-Policy allowlist.
+ * Content-Security-Policy allowlist — DO NOT remove entries without
+ * verifying the service is unused. Every listed origin is load-bearing
+ * for a user-facing flow; silent removals have caused auth + checkout
+ * regressions before.
  *
- * Kept explicit — enumerating every legitimate origin rather than
- * relying on wildcards means any new third-party integration has to
- * make a conscious config addition. Sources of each entry:
+ * Per-service directive map — which directives each third-party needs:
  *
- *   Google Analytics + Tag Manager ........ https://www.googletagmanager.com
- *                                            https://www.google-analytics.com
- *   Meta Pixel ............................ https://connect.facebook.net
- *                                            https://www.facebook.com
- *   Contentsquare / Hotjar ................ https://t.contentsquare.net
- *                                            https://*.hotjar.com
- *                                            https://*.hotjar.io
- *   PostHog ............................... https://us.i.posthog.com
- *                                            https://*.posthog.com
- *   Google Fonts .......................... https://fonts.googleapis.com
- *                                            https://fonts.gstatic.com
- *   Stripe Checkout ....................... https://js.stripe.com
- *                                            https://checkout.stripe.com
- *                                            https://*.stripe.com
- *   JSON-LD structured-data scripts ....... 'unsafe-inline' on script-src
- *                                            (hashed alternative deferred)
- *   Meta Pixel tracker init + GTM inline .. 'unsafe-inline' on script-src
+ *   Supabase (auth, realtime, storage)
+ *       connect-src  https://*.supabase.co  (REST + auth API)
+ *       connect-src  wss://*.supabase.co    (realtime websocket)
+ *       worker-src   blob:                  (auth SDK spawns a Web
+ *                                            Worker via blob URL —
+ *                                            without worker-src, it
+ *                                            falls back to script-src
+ *                                            which does not allow
+ *                                            blob: and breaks sign-in)
+ *       img-src      https: (wildcard covers *.supabase.co storage)
  *
- * 'unsafe-inline' on script-src is a real loosening. Tightening
- * requires hashing every inline <Script> tag we render. That's a
- * migration; tracked as a follow-up in docs/SECURITY_AUDIT.md.
+ *   Google OAuth (sign-in)
+ *       connect-src  https://accounts.google.com      (OIDC discovery)
+ *       connect-src  https://oauth2.googleapis.com    (token exchange)
+ *
+ *   Google Analytics + Tag Manager
+ *       script-src   https://www.googletagmanager.com
+ *                    https://www.google-analytics.com
+ *       connect-src  https://www.google-analytics.com
+ *       img-src      https://*.google-analytics.com
+ *
+ *   Meta Pixel (Facebook)
+ *       script-src   https://connect.facebook.net
+ *                    https://www.facebook.com
+ *       connect-src  https://www.facebook.com
+ *                    https://connect.facebook.net
+ *       img-src      https://www.facebook.com
+ *       frame-src    https://www.facebook.com
+ *
+ *   Stripe Checkout
+ *       script-src   https://js.stripe.com https://checkout.stripe.com
+ *       connect-src  https://api.stripe.com https://checkout.stripe.com
+ *                    https://r.stripe.com https://*.stripe.com
+ *       frame-src    https://js.stripe.com https://checkout.stripe.com
+ *                    https://*.stripe.com
+ *       form-action  https://checkout.stripe.com
+ *
+ *   PostHog (product analytics)
+ *       script-src + connect-src
+ *                    https://us.i.posthog.com https://*.posthog.com
+ *
+ *   Hotjar (session replay)
+ *       script-src + connect-src
+ *                    https://*.hotjar.com https://*.hotjar.io
+ *
+ *   Contentsquare
+ *       script-src + connect-src  https://t.contentsquare.net
+ *
+ *   Google Fonts
+ *       style-src    https://fonts.googleapis.com
+ *       font-src     https://fonts.gstatic.com
+ *
+ *   Sentry (error monitoring)
+ *       connect-src  https://*.sentry.io https://*.ingest.sentry.io
+ *
+ *   Inline scripts (JSON-LD structured data, Meta Pixel init, GTM init)
+ *       script-src   'unsafe-inline'  (hashed alternative tracked as
+ *                                      F-15 in docs/SECURITY_AUDIT.md)
  */
 const CSP_DIRECTIVES = [
   "default-src 'self'",
   // Scripts
   "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com https://connect.facebook.net https://www.facebook.com https://t.contentsquare.net https://*.hotjar.com https://*.hotjar.io https://us.i.posthog.com https://*.posthog.com https://js.stripe.com https://checkout.stripe.com",
   "script-src-elem 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com https://connect.facebook.net https://www.facebook.com https://t.contentsquare.net https://*.hotjar.com https://*.hotjar.io https://us.i.posthog.com https://*.posthog.com https://js.stripe.com https://checkout.stripe.com",
+  // Workers — Supabase auth SDK spawns a Web Worker from a blob URL.
+  // Without this directive, worker-src falls back to script-src which
+  // does not allow blob:, and sign-in silently breaks in the browser.
+  "worker-src 'self' blob:",
   // Styles
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com",
@@ -43,7 +85,7 @@ const CSP_DIRECTIVES = [
   "img-src 'self' data: blob: https: https://*.googleusercontent.com https://www.facebook.com https://*.google-analytics.com",
   "media-src 'self' blob:",
   // Connections — APIs called from the browser
-  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.posthog.com https://*.hotjar.com https://*.hotjar.io https://www.google-analytics.com https://api.stripe.com https://checkout.stripe.com https://r.stripe.com https://*.stripe.com https://www.facebook.com https://connect.facebook.net https://t.contentsquare.net https://oauth2.googleapis.com https://*.sentry.io https://*.ingest.sentry.io",
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.posthog.com https://*.hotjar.com https://*.hotjar.io https://www.google-analytics.com https://api.stripe.com https://checkout.stripe.com https://r.stripe.com https://*.stripe.com https://www.facebook.com https://connect.facebook.net https://t.contentsquare.net https://accounts.google.com https://oauth2.googleapis.com https://*.sentry.io https://*.ingest.sentry.io",
   // Frames (Stripe Checkout embeds an iframe)
   "frame-src 'self' https://js.stripe.com https://checkout.stripe.com https://*.stripe.com https://www.facebook.com",
   "frame-ancestors 'none'",
