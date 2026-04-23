@@ -76,6 +76,39 @@
 }
 .animate-ticker { animation: ticker 30s linear infinite; }
 
+/* FAQ smooth open/close */
+details .faq-answer {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.3s ease-out, opacity 0.3s ease-out;
+  opacity: 0;
+}
+details[open] .faq-answer {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+details .faq-answer > div {
+  overflow: hidden;
+}
+
+/* Trust strip check pulse */
+@keyframes check-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+}
+.animate-check-pulse {
+  animation: check-pulse 2s ease-in-out infinite;
+}
+
+/* Pricing card glow */
+@keyframes pricing-glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(124,92,252,0.0); }
+  50% { box-shadow: 0 0 30px rgba(124,92,252,0.15), 0 0 60px rgba(124,92,252,0.05); }
+}
+.animate-pricing-glow {
+  animation: pricing-glow 3s ease-in-out infinite;
+}
+
 /* Fix mobile text highlight/selection artifacts on gradient and animated text */
 .bg-clip-text {
   -webkit-box-decoration-break: clone;

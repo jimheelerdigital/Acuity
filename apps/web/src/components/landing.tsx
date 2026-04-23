@@ -546,8 +546,8 @@ function ParallaxOrbs() {
   }, [handleMove]);
 
   return (
-    <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-      {/* Floating orbs that respond to mouse */}
+    <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden hidden sm:block">
+      {/* Floating orbs that respond to mouse — hidden on mobile for performance */}
       <div
         className="absolute top-20 left-[15%] h-[400px] w-[400px] rounded-full bg-violet-600/10 blur-[100px] animate-blob-drift"
         style={{
@@ -907,13 +907,13 @@ function GrowthChart() {
   }
 
   return (
-    <div ref={ref} className="rounded-2xl border border-white/10 bg-[#13131F] p-6 overflow-hidden">
+    <div ref={ref} className="rounded-2xl border border-white/10 bg-[#13131F] p-3 sm:p-6 overflow-hidden">
       {/* Legend */}
-      <div className="flex flex-wrap gap-4 mb-4 justify-center">
+      <div className="flex flex-wrap gap-3 sm:gap-4 mb-4 justify-center">
         {GROWTH_LINES.map((line) => (
           <div key={line.label} className="flex items-center gap-1.5">
             <div className="h-2 w-2 rounded-full" style={{ backgroundColor: line.color }} />
-            <span className="text-xs text-[#A0A0B8]">{line.label}</span>
+            <span className="text-[10px] sm:text-xs text-[#A0A0B8]">{line.label}</span>
           </div>
         ))}
       </div>
@@ -925,7 +925,7 @@ function GrowthChart() {
           return (
             <g key={val}>
               <line x1={padL} y1={y} x2={w - padR} y2={y} stroke="rgba(255,255,255,0.1)" strokeWidth="0.5" />
-              <text x={padL - 8} y={y + 3} textAnchor="end" fontSize="9" fill="#A0A0B8">
+              <text x={padL - 8} y={y + 3} textAnchor="end" fontSize="11" fill="#A0A0B8">
                 {val}
               </text>
             </g>
@@ -936,7 +936,7 @@ function GrowthChart() {
         {MONTHS.map((month, i) => {
           const x = padL + (i / (numPoints - 1)) * chartW;
           return (
-            <text key={month} x={x} y={h - 10} textAnchor="middle" fontSize="9" fill="#A0A0B8">
+            <text key={month} x={x} y={h - 8} textAnchor="middle" fontSize="11" fill="#A0A0B8">
               {month}
             </text>
           );
@@ -1705,18 +1705,18 @@ export function LandingPage() {
 
       {/* ───── TRUST STRIP ───── */}
       <section className="px-6 py-8">
-        <Reveal>
-          <div className="mx-auto max-w-3xl flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
-            {["Audio deleted within 24hrs", "No card required", "Cancel anytime", "First month free"].map((item, i) => (
-              <div key={i} className="flex items-center gap-2 text-sm text-[#A0A0B8]">
-                <svg className="h-4 w-4 text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+        <div className="mx-auto max-w-3xl flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
+          {["Audio deleted within 24hrs", "No card required", "Cancel anytime", "First month free"].map((item, i) => (
+            <Reveal key={i} delay={Math.min(i, 3) as 0 | 1 | 2 | 3}>
+              <div className="flex items-center gap-2 text-sm text-[#A0A0B8]">
+                <svg className="h-4 w-4 text-emerald-400 shrink-0 animate-check-pulse" style={{ animationDelay: `${i * 0.5}s` }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
                 </svg>
                 {item}
               </div>
-            ))}
-          </div>
-        </Reveal>
+            </Reveal>
+          ))}
+        </div>
       </section>
 
       {/* ───── PRICING ───── */}
@@ -1736,7 +1736,7 @@ export function LandingPage() {
               {/* Shimmer border effect */}
               <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-r from-violet-400 via-indigo-400 to-violet-400 opacity-0 group-hover:opacity-100 transition-opacity duration-500 animate-shimmer blur-[1px]" />
 
-              <div className="relative rounded-2xl border border-white/10 bg-[#13131F] p-8 text-left shadow-sm">
+              <div className="relative rounded-2xl border border-white/10 bg-[#13131F] p-8 text-left shadow-sm animate-pricing-glow">
                 <p className="text-sm font-semibold uppercase tracking-wider text-[#7C5CFC]">
                   Pro
                 </p>
@@ -1774,9 +1774,12 @@ export function LandingPage() {
                 <Link
                   href="/waitlist?utm_campaign=home"
                   onClick={trackInitiateCheckout}
-                  className="mt-8 block w-full rounded-full bg-[#7C5CFC] py-3.5 text-center text-sm font-semibold text-white transition hover:bg-[#6B4FE0] hover:shadow-xl hover:shadow-[#7C5CFC]/20 active:scale-95"
+                  className="group relative mt-8 block w-full rounded-full p-[2px] transition active:scale-95 overflow-hidden"
                 >
-                  Join the waitlist — first month free
+                  <span className="absolute inset-[-100%] animate-cta-shine" style={{ background: 'conic-gradient(from 0deg, transparent 0%, transparent 60%, #ffffff 75%, #B8A5FF 85%, transparent 100%)' }} />
+                  <span className="relative block w-full rounded-full bg-[#7C5CFC] py-3.5 text-center text-sm font-semibold text-white transition group-hover:bg-[#6B4FE0]">
+                    Join the waitlist — first month free
+                  </span>
                 </Link>
               </div>
             </div>
@@ -1822,10 +1825,14 @@ export function LandingPage() {
                 <details key={i} className="group">
                   <summary className="flex cursor-pointer items-center justify-between px-6 py-5 text-left">
                     <h3 className="text-base font-semibold text-white pr-4">{faq.q}</h3>
-                    <span className="shrink-0 text-[#A0A0B8] transition-transform group-open:rotate-45 text-xl leading-none">+</span>
+                    <span className="shrink-0 text-[#A0A0B8] transition-transform duration-300 group-open:rotate-45 text-xl leading-none">+</span>
                   </summary>
-                  <div className="px-6 pb-5 -mt-1">
-                    <p className="text-sm text-[#A0A0B8] leading-relaxed">{faq.a}</p>
+                  <div className="faq-answer">
+                    <div>
+                      <div className="px-6 pb-5">
+                        <p className="text-sm text-[#A0A0B8] leading-relaxed">{faq.a}</p>
+                      </div>
+                    </div>
                   </div>
                 </details>
               ))}
@@ -1837,7 +1844,7 @@ export function LandingPage() {
       {/* ───── CTA BANNER ───── */}
       <section className="px-6 py-16 sm:py-20">
         <Reveal>
-          <div className="mx-auto max-w-4xl rounded-3xl bg-zinc-900 p-12 sm:p-16 text-center text-white relative overflow-hidden">
+          <div className="mx-auto max-w-4xl rounded-3xl bg-zinc-900 p-6 sm:p-12 lg:p-16 text-center text-white relative overflow-hidden">
             {/* Subtle animated accents */}
             <div className="absolute top-0 right-0 h-72 w-72 rounded-full bg-violet-600/20 -translate-y-1/3 translate-x-1/4 blur-3xl animate-blob-drift" />
             <div className="absolute bottom-0 left-0 h-56 w-56 rounded-full bg-indigo-600/20 translate-y-1/3 -translate-x-1/4 blur-3xl animate-blob-drift-2" />
@@ -1861,9 +1868,12 @@ export function LandingPage() {
                 <Link
                   href="/waitlist?utm_campaign=home"
                   onClick={trackInitiateCheckout}
-                  className="rounded-full bg-[#7C5CFC] px-8 py-4 text-sm font-bold text-white shadow-lg shadow-[#7C5CFC]/10 transition hover:shadow-xl hover:shadow-[#7C5CFC]/20 hover:-translate-y-0.5 active:scale-95"
+                  className="group relative rounded-full p-[2px] transition active:scale-95 overflow-hidden"
                 >
-                  Join the waitlist — first month free
+                  <span className="absolute inset-[-100%] animate-cta-shine" style={{ background: 'conic-gradient(from 0deg, transparent 0%, transparent 60%, #ffffff 75%, #B8A5FF 85%, transparent 100%)' }} />
+                  <span className="relative block rounded-full bg-[#7C5CFC] px-8 py-4 text-sm font-bold text-white shadow-lg shadow-[#7C5CFC]/10 transition group-hover:bg-[#6B4FE0]">
+                    Join the waitlist — first month free
+                  </span>
                 </Link>
                 <span className="text-sm text-[#A0A0B8]">
                   Then $12.99/month · cancel anytime
