@@ -7,6 +7,64 @@
 
 ---
 
+## 2026-04-23 — Fix CSP regression blocking Supabase auth on production
+
+- **Requested by:** Jimmy (beta-blocking — auth broken on www.getacuity.io)
+- **Committed by:** Claude Code
+- **Commit hash:** 2b6aace
+
+### In plain English (for Keenan)
+
+Auth was broken on production. Nobody could sign in — not through Google, not through email + password, not through a magic link. When a user clicked "Sign in," the browser silently refused to let our sign-in code run, because of a security setting in the site's config that was too restrictive. That setting (Content-Security-Policy, or "CSP") is the rule that tells the browser which outside services the site is allowed to talk to. Two specific things were missing: permission for the Supabase sign-in worker (a small piece of background code Supabase uses for auth) and permission to talk to Google's OAuth server. Both are added now. This is a code-only fix — no database, no Vercel dashboard clicks, no Stripe changes. Ship the commit to prod and auth comes back.
+
+### Technical changes (for Jimmy)
+
+Root cause: two gaps in the CSP defined in `apps/web/next.config.js`.
+
+1. **`worker-src` directive was never declared.** Supabase's auth SDK spawns a Web Worker loaded from a `blob:` URL. With no `worker-src`, browsers fall back to `script-src`, which doesn't allow `blob:`, so the worker is blocked. This is the source of the production error: `Creating a worker from 'blob:https://www.getacuity.io/...' violates the following Content Security Policy directive: "script-src ...". Note that 'worker-src' was not explicitly set, so 'script-src' is used as a fallback.`
+2. **`connect-src` was missing `https://accounts.google.com`.** Google OAuth uses this origin for the OIDC discovery handshake during sign-in.
+
+Supabase origins (`https://*.supabase.co`, `wss://*.supabase.co`) and `https://oauth2.googleapis.com` were already present from commit `5fa66ff` (pre-beta security audit, 2026-04-20), so those didn't need to change. Discovery confirmed no other CSP source: no `middleware.ts` header overrides, no `vercel.json`, no `_headers` file. `apps/web/next.config.js` is the single source of truth.
+
+- `apps/web/next.config.js:78` — added `"worker-src 'self' blob:"` as a new directive
+- `apps/web/next.config.js:88` — added `https://accounts.google.com` to the existing `connect-src` allowlist
+- `apps/web/next.config.js:3-69` — rewrote the header comment from a services-only list into a per-service → directive map, so next time someone edits the CSP they can see at a glance which directives each third-party needs (Supabase, Stripe, Google OAuth, GA, Meta Pixel, PostHog, Hotjar, Contentsquare, Fonts, Sentry). Regression-prevention; no functional effect.
+
+Typecheck: `npx tsc --noEmit -p apps/web` → exit 0.
+
+No removals, no loosening. No `*` wildcards added to `connect-src`. `'self'` preserved as base on every directive. Net delta: +1 directive, +1 origin.
+
+### Manual steps needed
+
+- [ ] **Jim — deploy to production.** Push `main` (commit `2b6aace`) through Vercel → promote preview → prod. This is a one-commit CSP fix; no env vars, no schema migration, no Vercel dashboard config changes required.
+- [ ] **Jim — post-deploy smoke test.** In an incognito window:
+  1. Visit `https://www.getacuity.io/auth/signin`
+  2. Try Google sign-in — should redirect to Google and return a session
+  3. Try email + magic link — should receive an email and complete sign-in
+  4. Try email + password sign-in — should create a session
+  5. Open devtools → Console — **zero CSP violations** expected
+  6. Check devtools → Application → Cookies — Supabase session cookie present
+- [ ] **Jim — if any CSP error reappears in the console after deploy,** capture the exact blocked origin + directive and reopen. The current fix covers every directive flagged in the production error log, but there may be a follow-on origin (e.g. `https://www.googleapis.com` for some OAuth scopes) that only surfaces once the workers and Supabase handshake actually run.
+
+### Notes
+
+- CSP header was introduced in commit `5fa66ff` (2026-04-20) during the pre-public-beta security audit. It already had Supabase in `connect-src` from day one — but `worker-src` was never declared. This is a latent bug that likely surfaced when Supabase's auth SDK started spawning the blob-worker (either an SDK version bump or a browser behavior change narrowed the `script-src` → `worker-src` fallback). Worth flagging: if we see similar "this worked yesterday" breakage again, check for missing fallback-dependent directives (`worker-src`, `child-src`, `media-src`) before assuming a dependency regression.
+- Regression-prevention comment now lives at the top of `apps/web/next.config.js`. If you add a third-party service, update the comment too — the comment is the reviewer's checklist for "did they remember to add all the directives this service needs?"
+- Did NOT touch Stripe, Sentry, or any env var. Strictly a CSP fix.
+- Did NOT deploy from this session per standing rule — Jim promotes from Vercel after reviewing the commit.
+
+### Recommended next run — back to Phase 2 of userProgression
+
+Unblock beta timeline by continuing the guided first-run experience work started in the prior entry below:
+
+1. **Home focus card** driven by `userProgression.nextUnlock` + `dayOfTrial` — single-focus surface replacing the legacy 7-item `ProgressionChecklist`.
+2. **Streak UI on Home** — chip reading `currentStreak` / `streakAtRisk` / `longestStreak`.
+3. **`recentlyUnlocked` celebrations** — consume the diff field the Phase 1 endpoint already populates.
+
+See the Phase 1 entry immediately below for the full Phase 2 plan.
+
+---
+
 ## 2026-04-23 — Phase 1: userProgression() foundation + locked empty states
 
 - **Requested by:** Both (guided 14-day first-experience, beta slipped to Fri May 8 / Mon May 11)
