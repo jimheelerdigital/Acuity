@@ -1,7 +1,7 @@
 "use client";
 
 import { signOut } from "next-auth/react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { ThemeToggle } from "@/components/theme-toggle";
 
@@ -20,6 +20,12 @@ interface Props {
   trialEndsAt: string | null;
   weeklyEmailEnabled: boolean;
   monthlyEmailEnabled: boolean;
+  /** True when the page was rendered from a Stripe Checkout success
+   *  redirect (`?upgrade=success`). Triggers the welcome banner,
+   *  card highlight, and the webhook-race polling loop inside
+   *  SubscriptionSection. Read server-side in page.tsx so we don't
+   *  need useSearchParams + a client-side Suspense boundary. */
+  justUpgraded: boolean;
 }
 
 export default function AccountClient({
@@ -34,6 +40,7 @@ export default function AccountClient({
   trialEndsAt,
   weeklyEmailEnabled,
   monthlyEmailEnabled,
+  justUpgraded,
 }: Props) {
   const [confirmOpen, setConfirmOpen] = useState(false);
 
@@ -72,6 +79,7 @@ export default function AccountClient({
           hasStripeCustomer={hasStripeCustomer}
           periodEnd={periodEnd}
           trialEndsAt={trialEndsAt}
+          justUpgraded={justUpgraded}
         />
 
         {/* Reminders */}
@@ -449,25 +457,151 @@ const STATUS_LABELS: Record<string, { label: string; hint: string; tone: "defaul
   FREE: { label: "Read-only", hint: "Your trial has ended. Upgrade to keep generating new insights.", tone: "default" },
 };
 
+// Polling config for the post-upgrade webhook race. The Stripe webhook
+// typically lands within 5-10s of a successful checkout, but can be
+// delayed in the sub-1% of cases where Stripe's event queue has a
+// backlog or our webhook handler is cold-starting. 15s × 1.5s cadence
+// gives us 10 attempts which covers the long-tail comfortably.
+const POLL_INTERVAL_MS = 1500;
+const POLL_MAX_ATTEMPTS = 10; // 15s total
+const BANNER_AUTO_DISMISS_MS = 6000;
+const CARD_HIGHLIGHT_MS = 3000;
+
 /**
- * Subscription status block + Stripe Customer Portal entry. The
- * actual cancel / plan-change / update-card UI is inside Stripe's
- * hosted portal, so our job here is surface status + route.
+ * Subscription status block + Stripe Customer Portal entry.
+ *
+ * Two render modes:
+ *
+ *   1. Normal — server-rendered status from the User row. Shows the
+ *      label + renewal date + portal / upgrade button. Unchanged from
+ *      pre-2026-04-24 behavior.
+ *
+ *   2. Post-upgrade — when `justUpgraded` is true (page was rendered
+ *      from a Stripe Checkout success redirect, `?upgrade=success`).
+ *      Shows:
+ *        - Welcome banner at the top of the section, auto-dismiss 6s
+ *        - Card highlight (purple glow border) for 3s
+ *        - If status hasn't flipped to PRO yet (webhook race), polls
+ *          /api/user/me every 1.5s for up to 15s to catch the flip
+ *          live. Shows an "Activating your subscription…" spinner
+ *          during the poll window. If still not PRO after 15s, shows
+ *          a friendly "payment went through — refresh in a moment"
+ *          with a manual refresh button. Never errors — the webhook
+ *          lands within 30s in 99.9% of cases.
+ *
+ * The actual cancel / plan-change / update-card UI lives inside
+ * Stripe's hosted portal, which this section routes to.
  */
 function SubscriptionSection({
-  status,
-  hasStripeCustomer,
-  periodEnd,
+  status: initialStatus,
+  hasStripeCustomer: initialHasStripeCustomer,
+  periodEnd: initialPeriodEnd,
   trialEndsAt,
+  justUpgraded,
 }: {
   status: string;
   hasStripeCustomer: boolean;
   periodEnd: string | null;
   trialEndsAt: string | null;
+  justUpgraded: boolean;
 }) {
-  const meta = STATUS_LABELS[status] ?? STATUS_LABELS.FREE;
+  // Server-rendered values become the INITIAL state; polling can
+  // overwrite them when the webhook flips the User row to PRO.
+  const [status, setStatus] = useState(initialStatus);
+  const [hasStripeCustomer, setHasStripeCustomer] = useState(
+    initialHasStripeCustomer
+  );
+  const [periodEnd, setPeriodEnd] = useState(initialPeriodEnd);
+
+  // UI state for the post-upgrade window.
+  const [bannerVisible, setBannerVisible] = useState(justUpgraded);
+  const [highlightVisible, setHighlightVisible] = useState(justUpgraded);
+  const [polling, setPolling] = useState(
+    justUpgraded && initialStatus !== "PRO"
+  );
+  const [pollTimedOut, setPollTimedOut] = useState(false);
+
+  // Portal button state — unchanged from prior version.
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const pollAttemptRef = useRef(0);
+  const pollHandleRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Auto-dismiss the welcome banner after 6s.
+  useEffect(() => {
+    if (!bannerVisible) return;
+    const h = setTimeout(() => setBannerVisible(false), BANNER_AUTO_DISMISS_MS);
+    return () => clearTimeout(h);
+  }, [bannerVisible]);
+
+  // Drop the purple highlight ring after 3s. Also clears when polling
+  // completes — post-flip the card is already in its happy state, the
+  // highlight is just for eye-catching on arrival.
+  useEffect(() => {
+    if (!highlightVisible) return;
+    const h = setTimeout(() => setHighlightVisible(false), CARD_HIGHLIGHT_MS);
+    return () => clearTimeout(h);
+  }, [highlightVisible]);
+
+  // Polling loop. Fires /api/user/me every 1.5s while we're waiting
+  // for the Stripe webhook to flip the DB row. Stops when status
+  // reads "PRO" (happy path) OR after 10 attempts (15s fallback).
+  useEffect(() => {
+    if (!polling) return;
+
+    const tick = async () => {
+      pollAttemptRef.current += 1;
+      try {
+        const res = await fetch("/api/user/me", {
+          cache: "no-store",
+          credentials: "same-origin",
+        });
+        if (res.ok) {
+          const body = (await res.json()) as {
+            user?: {
+              subscriptionStatus?: string;
+              stripeCurrentPeriodEnd?: string | null;
+              hasStripeCustomer?: boolean;
+            };
+          };
+          const nextStatus = body.user?.subscriptionStatus;
+          if (nextStatus === "PRO") {
+            setStatus("PRO");
+            setHasStripeCustomer(Boolean(body.user?.hasStripeCustomer));
+            if (body.user?.stripeCurrentPeriodEnd) {
+              setPeriodEnd(body.user.stripeCurrentPeriodEnd);
+            }
+            setPolling(false);
+            return;
+          }
+        }
+      } catch {
+        // Transient fetch error — ignore and let the interval retry.
+        // A consistently-failing endpoint will exhaust attempts and
+        // fall through to the friendly timeout message.
+      }
+
+      if (pollAttemptRef.current >= POLL_MAX_ATTEMPTS) {
+        setPolling(false);
+        setPollTimedOut(true);
+      }
+    };
+
+    // Fire the first attempt immediately — if the webhook already
+    // landed by the time the user's browser reaches this page, we
+    // want the card to reflect that without a 1.5s wait.
+    void tick();
+    pollHandleRef.current = setInterval(tick, POLL_INTERVAL_MS);
+    return () => {
+      if (pollHandleRef.current) {
+        clearInterval(pollHandleRef.current);
+        pollHandleRef.current = null;
+      }
+    };
+  }, [polling]);
+
+  const meta = STATUS_LABELS[status] ?? STATUS_LABELS.FREE;
 
   const openPortal = async () => {
     setLoading(true);
@@ -505,62 +639,129 @@ function SubscriptionSection({
       })
     : null;
 
+  // While polling, show a dedicated "activating" state that replaces
+  // the status pill. Once polling resolves (PRO or timeout) we drop
+  // back to the normal status display.
+  const showingActivatingState = polling;
+
   return (
     <section
-      className={`mt-8 rounded-xl border p-6 ${
-        meta.tone === "warn"
-          ? "border-amber-300 dark:border-amber-900/40 bg-amber-50/40 dark:bg-amber-950/20"
-          : "border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E]"
+      className={`mt-8 rounded-xl border p-6 transition-all duration-500 ${
+        highlightVisible
+          ? "border-violet-400 dark:border-violet-500 shadow-[0_0_0_4px_rgba(167,139,250,0.18)] dark:shadow-[0_0_0_4px_rgba(167,139,250,0.22)]"
+          : meta.tone === "warn"
+            ? "border-amber-300 dark:border-amber-900/40 bg-amber-50/40 dark:bg-amber-950/20"
+            : "border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E]"
       }`}
     >
+      {bannerVisible && (
+        <div className="mb-5 flex items-start justify-between gap-3 rounded-lg border border-violet-200 bg-violet-50 px-4 py-3 dark:border-violet-900/40 dark:bg-violet-950/30">
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-violet-800 dark:text-violet-200">
+              🎉 Welcome to Acuity Pro.
+            </p>
+            <p className="mt-0.5 text-xs text-violet-700/80 dark:text-violet-300/80">
+              Your receipt is on its way to your inbox. Full Pro access
+              is live.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setBannerVisible(false)}
+            aria-label="Dismiss"
+            className="text-violet-600 hover:text-violet-800 dark:text-violet-400 dark:hover:text-violet-200"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
         Subscription
       </h2>
 
       <div className="mt-3 flex items-center gap-3">
-        <span
-          className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-            meta.tone === "good"
-              ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
-              : meta.tone === "warn"
-                ? "bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
-                : "bg-zinc-100 text-zinc-700 dark:bg-white/5 dark:text-zinc-300"
-          }`}
-        >
-          {meta.label}
-        </span>
-        {status === "PRO" && periodEndLabel && (
+        {showingActivatingState ? (
+          <span className="inline-flex items-center gap-2 rounded-full bg-violet-100 px-2.5 py-0.5 text-xs font-medium text-violet-800 dark:bg-violet-950/40 dark:text-violet-300">
+            <span
+              aria-hidden="true"
+              className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-violet-300 border-t-violet-700 dark:border-violet-700 dark:border-t-violet-300"
+            />
+            Activating your subscription…
+          </span>
+        ) : (
+          <span
+            className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+              meta.tone === "good"
+                ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+                : meta.tone === "warn"
+                  ? "bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
+                  : "bg-zinc-100 text-zinc-700 dark:bg-white/5 dark:text-zinc-300"
+            }`}
+          >
+            {meta.label}
+          </span>
+        )}
+        {!showingActivatingState && status === "PRO" && periodEndLabel && (
           <span className="text-xs text-zinc-500 dark:text-zinc-400">
             Renews {periodEndLabel}
           </span>
         )}
-        {status === "TRIAL" && trialEndLabel && (
+        {!showingActivatingState && status === "TRIAL" && trialEndLabel && (
           <span className="text-xs text-zinc-500 dark:text-zinc-400">
             Ends {trialEndLabel}
           </span>
         )}
       </div>
 
-      <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-300">{meta.hint}</p>
-
-      <div className="mt-5 flex flex-wrap gap-3">
-        {hasStripeCustomer ? (
+      {showingActivatingState ? (
+        <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-300">
+          Stripe has confirmed your payment. We&rsquo;re finalizing the
+          activation on our end — this usually takes a few seconds.
+        </p>
+      ) : pollTimedOut && status !== "PRO" ? (
+        <div className="mt-3">
+          <p className="text-sm text-zinc-600 dark:text-zinc-300">
+            Your payment went through — we&rsquo;re still finalizing on
+            our end. Refresh in a moment and your Pro access will be
+            live. Nothing&rsquo;s wrong; Stripe&rsquo;s confirmation
+            just takes a little longer than usual.
+          </p>
           <button
-            onClick={openPortal}
-            disabled={loading}
-            className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-white disabled:opacity-50"
+            type="button"
+            onClick={() => window.location.reload()}
+            className="mt-3 rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-violet-500"
           >
-            {loading ? "Opening…" : "Manage subscription"}
+            Refresh
           </button>
-        ) : (
-          <a
-            href="/upgrade"
-            className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-violet-500"
-          >
-            {status === "TRIAL" ? "Subscribe early" : "Upgrade"}
-          </a>
-        )}
-      </div>
+        </div>
+      ) : (
+        <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-300">
+          {meta.hint}
+        </p>
+      )}
+
+      {!showingActivatingState && !(pollTimedOut && status !== "PRO") && (
+        <div className="mt-5 flex flex-wrap gap-3">
+          {hasStripeCustomer ? (
+            <button
+              onClick={openPortal}
+              disabled={loading}
+              className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-white disabled:opacity-50"
+            >
+              {loading ? "Opening…" : "Manage subscription"}
+            </button>
+          ) : (
+            <a
+              href="/upgrade"
+              className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-violet-500"
+            >
+              {status === "TRIAL" ? "Subscribe early" : "Upgrade"}
+            </a>
+          )}
+        </div>
+      )}
+
       {error && (
         <p className="mt-3 text-xs text-red-600 dark:text-red-400">{error}</p>
       )}

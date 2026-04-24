@@ -70,7 +70,14 @@ export async function POST(req: NextRequest) {
         quantity: 1,
       },
     ],
-    success_url: `${process.env.NEXTAUTH_URL}/home?upgraded=1&plan=${interval}`,
+    // Redirect to /account (settings) not /home so the user's eye
+    // lands on the Subscription section where the new active state is
+    // visible. `?upgrade=success` triggers a welcome banner + card
+    // highlight in the client; `{CHECKOUT_SESSION_ID}` is Stripe's
+    // template placeholder — Stripe swaps it for the real session id
+    // server-side at redirect time (session.id e.g. `cs_live_...`),
+    // which we keep for future correlation if anything fails.
+    success_url: `${process.env.NEXTAUTH_URL}/account?upgrade=success&session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${process.env.NEXTAUTH_URL}/upgrade`,
     metadata: { userId: session.user.id, interval },
   });

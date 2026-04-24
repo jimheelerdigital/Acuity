@@ -38,6 +38,14 @@ export async function GET(req: NextRequest) {
       image: true,
       subscriptionStatus: true,
       trialEndsAt: true,
+      // stripeCurrentPeriodEnd is the renewal date once
+      // subscriptionStatus flips to PRO. Exposed so the account-page
+      // polling can render "Renews [date]" without a second fetch.
+      stripeCurrentPeriodEnd: true,
+      // Raw customer ID is NOT sent — flattened to a boolean below.
+      // Callers use this to decide whether to show "Manage subscription"
+      // vs "Upgrade" without needing the underlying id.
+      stripeCustomerId: true,
       timezone: true,
       currentStreak: true,
       longestStreak: true,
@@ -95,13 +103,24 @@ export async function GET(req: NextRequest) {
   // mobile AuthGate can read without understanding the nested shape.
   // `onboardingCompleted` is the only flag that drives the redirect;
   // `onboardingStep` helps the client resume where the user left off.
-  const { onboarding, createdAt: _created, ...rest } = user;
+  //
+  // `stripeCustomerId` is NEVER returned as a raw string — downstream
+  // callers only need to know whether the user has a Stripe customer
+  // row (to decide "Upgrade" vs "Manage subscription" UI). Replaced
+  // with a boolean `hasStripeCustomer` before send.
+  const {
+    onboarding,
+    createdAt: _created,
+    stripeCustomerId,
+    ...rest
+  } = user;
   void _created; // only used for smart-skip math above
   void onboarding;
   const flat = {
     ...rest,
     onboardingCompleted: Boolean(effectiveCompletedAt),
     onboardingStep: user.onboarding?.currentStep ?? 1,
+    hasStripeCustomer: Boolean(stripeCustomerId),
   };
 
   return NextResponse.json(

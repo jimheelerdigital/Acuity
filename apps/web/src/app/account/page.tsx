@@ -12,7 +12,17 @@ export const metadata = {
   robots: { index: false, follow: false },
 };
 
-export default async function AccountPage() {
+export default async function AccountPage({
+  searchParams,
+}: {
+  /** Set by Stripe Checkout's success_url when the user completes
+   *  checkout. Also carries `session_id={CHECKOUT_SESSION_ID}` for
+   *  correlation; we don't need to read the session_id server-side,
+   *  but it lives in the URL so the client could log it if needed.
+   *  See apps/web/src/app/api/stripe/checkout/route.ts success_url
+   *  for the source. */
+  searchParams?: { upgrade?: string; session_id?: string };
+}) {
   const session = await getServerSession(getAuthOptions());
   if (!session?.user?.id || !session.user.email) {
     redirect("/auth/signin?callbackUrl=/account");
@@ -47,6 +57,7 @@ export default async function AccountPage() {
       trialEndsAt={user?.trialEndsAt?.toISOString() ?? null}
       weeklyEmailEnabled={user?.weeklyEmailEnabled ?? true}
       monthlyEmailEnabled={user?.monthlyEmailEnabled ?? true}
+      justUpgraded={searchParams?.upgrade === "success"}
     />
   );
 }
