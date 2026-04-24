@@ -11,7 +11,7 @@
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** PENDING
+**Commit hash:** f482d2b
 
 ### In plain English (for Keenan)
 Theme Map went from "five orbs that bumped into each other around a hero" to a proper bubble cluster — each bubble is a theme, size = how often it shows up, color = sentiment, packed so they never overlap. The three-stat strip at the top is now a single big gradient card with 40pt numbers for Themes / Mentions / Top Theme. The All Themes list below lost its jagged sparklines and now renders as clean card rows with sentiment dots and mention-count pill badges. The Theme Detail page (when you tap a theme) now has a smooth curved area chart with a gradient fill underneath — fitness-app-style, not Excel-style — plus a purple-tinted "What Acuity notices" card, rounded mention cards, and pill-chip related themes. Web got the same redesign so the experience is identical between the phone and a laptop. This is a visual ship only: same data, same unlock gate (10+ entries), same tap-to-detail navigation — just dramatically nicer to look at.
