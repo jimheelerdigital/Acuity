@@ -3,31 +3,59 @@ import { Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { BackButton } from "@/components/back-button";
+import { useTheme } from "@/contexts/theme-context";
 
-/**
- * Placeholder — the full State of Me report lives on web
- * (apps/web/src/app/insights/state-of-me). Mobile port is future
- * work; this screen unblocks the Insights tile's deep link so
- * users don't hit Expo Router's Unmatched Route fallback.
- */
 export default function StateOfMeScreen() {
   const router = useRouter();
+  const { resolved } = useTheme();
+  const isDark = resolved === "dark";
   return (
     <SafeAreaView
       edges={["top"]}
-      className="flex-1 bg-white dark:bg-[#0B0B12]"
+      style={{ flex: 1, backgroundColor: isDark ? "#0B0B12" : "#FFFFFF" }}
     >
-      <View className="p-5">
+      <View style={{ padding: 20 }}>
         <BackButton onPress={() => router.back()} />
       </View>
-      <View className="flex-1 items-center justify-center px-8">
-        <Text className="text-xs font-semibold uppercase tracking-widest text-amber-400 mb-3">
+      <View
+        style={{
+          flex: 1,
+          alignItems: "center",
+          justifyContent: "center",
+          paddingHorizontal: 32,
+        }}
+      >
+        <Text
+          style={{
+            fontSize: 12,
+            fontWeight: "600",
+            textTransform: "uppercase",
+            letterSpacing: 2,
+            color: "#FBBF24",
+            marginBottom: 12,
+          }}
+        >
           Quarterly
         </Text>
-        <Text className="text-2xl font-bold text-zinc-900 dark:text-zinc-50 text-center mb-3">
+        <Text
+          style={{
+            fontSize: 24,
+            fontWeight: "700",
+            textAlign: "center",
+            marginBottom: 12,
+            color: isDark ? "#FAFAFA" : "#18181B",
+          }}
+        >
           State of Me
         </Text>
-        <Text className="text-base leading-relaxed text-zinc-500 dark:text-zinc-400 text-center">
+        <Text
+          style={{
+            fontSize: 16,
+            lineHeight: 24,
+            textAlign: "center",
+            color: isDark ? "#A1A1AA" : "#71717A",
+          }}
+        >
           Your quarterly State of Me report — coming soon. Every 90
           days, Acuity will write a long-form read across the
           quarter: themes, mood arc, patterns worth noticing.

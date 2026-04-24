@@ -19,7 +19,7 @@ import {
 export async function getUserProgression(userId: string): Promise<UserProgression> {
   const { prisma } = await import("@/lib/prisma");
 
-  const [user, entries, themes, goals] = await Promise.all([
+  const [user, entries, themes, goals, lifeAreas] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -47,6 +47,17 @@ export async function getUserProgression(userId: string): Promise<UserProgressio
       where: { userId },
       select: { id: true },
     }),
+    // Life-Matrix unlock source of truth — count of canonical life
+    // areas the extraction pipeline has scored at least once for this
+    // user. This replaces the legacy Entry.dimensionContext tally,
+    // which only incremented when the user started a recording from a
+    // dimension detail screen ("Record about this area"); natural
+    // Home-tab recordings were ignored by that signal even when
+    // extraction produced a rich multi-area readout.
+    prisma.lifeMapArea.findMany({
+      where: { userId, mentionCount: { gt: 0 } },
+      select: { area: true },
+    }),
   ]);
 
   if (!user) {
@@ -60,14 +71,15 @@ export async function getUserProgression(userId: string): Promise<UserProgressio
     entries: entries.map((e) => ({
       id: e.id,
       createdAt: e.createdAt,
-      // `dimensionContext` is the lowercase life-area key ("career",
-      // "health", etc.) set when the user records "about" a specific
-      // dimension. Nullable. The shared helper counts distinct non-
-      // null values as `dimensionsCovered`.
+      // Kept nullable for the shared helper's fallback tally path —
+      // only used when lifeAreasCovered isn't passed in.
       dimensionId: e.dimensionContext ?? null,
     })),
     themes,
     goals,
+    // Distinct canonical areas with at least one extraction-scored
+    // mention — the real "life areas covered" signal.
+    lifeAreasCovered: new Set(lifeAreas.map((a) => a.area)).size,
     previousProgression,
     milestoneBaselineStreak: user.milestoneBaselineStreak,
     lastStreakMilestone: user.lastStreakMilestone ?? 0,

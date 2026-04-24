@@ -105,6 +105,15 @@ export interface UserProgressionInput {
   entries: Array<{ id: string; createdAt: Date; dimensionId: string | null }>;
   themes: Array<{ id: string }>;
   goals: Array<{ id: string }>;
+  /** Count of distinct life areas the user has touched, sourced from
+   *  the LifeMapArea table (rows with mentionCount > 0). Preferred
+   *  over counting Entry.dimensionContext because the latter is only
+   *  set when the user explicitly taps "Record about this area" from
+   *  a dimension detail screen — standard Home-tab recordings leave
+   *  dimensionContext null even when the extraction pipeline scores
+   *  multiple life areas from the transcript. When omitted, falls
+   *  back to the old entries-based count for backward compat. */
+  lifeAreasCovered?: number;
   previousProgression?: UserProgression | null;
   /** Streak value at the time milestone celebrations shipped. Prevents
    *  retroactively firing every milestone below a user's current
@@ -169,7 +178,11 @@ export function userProgression(input: UserProgressionInput): UserProgression {
   const entriesCount = entries.length;
   const sevenDaysAgo = new Date(now.getTime() - 7 * DAY_MS);
   const entriesInLast7Days = entries.filter((e) => e.createdAt >= sevenDaysAgo).length;
-  const dimensionsCovered = countDistinctDimensions(entries);
+  // Prefer the explicit LifeMapArea count (extraction pipeline ground
+  // truth) when callers pass it in. Fall back to the legacy
+  // Entry.dimensionContext tally for old callers / tests.
+  const dimensionsCovered =
+    input.lifeAreasCovered ?? countDistinctDimensions(entries);
   const goalsSet = goals.length;
   const themesDetected = themes.length;
 

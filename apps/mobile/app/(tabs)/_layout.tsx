@@ -203,16 +203,15 @@ function RecordCenterButton({ isDark }: { isDark: boolean }) {
   return (
     <View
       pointerEvents="box-none"
+      // Mirror React Navigation's BottomTabItem layout exactly —
+      // flex: 1, center both axes, icon-sized block above label —
+      // so the "Home" label lands on the same baseline as Goals /
+      // Tasks / Insights / Entries. The raised circle is absolutely
+      // positioned and doesn't affect the flow at all.
       style={{
         flex: 1,
         alignItems: "center",
-        // `flex-start` aligns the internal text to the SAME top
-        // baseline the sibling tabs use for their icon+label blocks.
-        // Old `flex-end` pushed this slot's content to the bottom of
-        // the bar, which is why the "Home" label sat lower than
-        // "Goals", "Tasks", "Insights", "Entries".
-        justifyContent: "flex-start",
-        paddingTop: 0,
+        justifyContent: "center",
       }}
     >
       <Animated.View
@@ -254,13 +253,16 @@ function RecordCenterButton({ isDark }: { isDark: boolean }) {
           <Ionicons name="mic" size={28} color="#FFFFFF" />
         </Pressable>
       </Animated.View>
-      {/* Label sits with the siblings' top edges. The circle above is
-          absolutely positioned at top: -26, so it doesn't affect this
-          text's layout — the only remaining factor is the container's
-          justifyContent, now flex-start. */}
+      {/* Invisible icon-sized spacer — matches the 22px Ionicons that
+          the sibling tabs render. React Navigation's default item
+          lays icon + label as a vertical stack in a centered block;
+          this keeps our label's vertical position locked to that same
+          stack geometry (22 icon + ~3 gap + 14 label centered in the
+          52pt content area). */}
+      <View style={{ width: 22, height: 22 }} />
       <Text
         style={{
-          marginTop: 42,
+          marginTop: 3,
           fontSize: 11,
           fontWeight: "500",
           color: isDark ? "rgba(255,255,255,0.62)" : "rgba(39,39,42,0.62)",

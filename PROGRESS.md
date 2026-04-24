@@ -7,6 +7,35 @@
 
 ---
 
+## [2026-04-24] — Build 14 bug-fix sweep: Home tab label, Life Matrix unlock, Theme Map back, placeholder centering
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** PENDING
+
+### In plain English (for Keenan)
+Four things visible on Build 13 in TestFlight were broken: the "Home" label under the mic button was sitting a few pixels below the other tab labels; the Insights page kept claiming the user had "0 of 3 life areas" even though they'd recorded across career, health, and golf; the Theme Map still had a text-style `< Insights` back button instead of the circle-arrow one; and the two "coming soon" screens (State of Me and Ask Your Past Self) had their copy glued to the bottom instead of sitting in the vertical middle. Build 14 fixes all four: labels now align on a single baseline, the Life Matrix reads from the real extraction-scored coverage (so it unlocks when the AI has actually tagged three different areas in a user's entries), every back button in the Insights flow is the circle component, and the placeholder screens center their copy properly. No new features in this build — it's a cleanup pass on Build 13.
+
+### Technical changes (for Jimmy)
+- `apps/mobile/app/(tabs)/_layout.tsx` — RecordCenterButton rewritten to mirror React Navigation's default BottomTabItem layout (`flex: 1, alignItems: center, justifyContent: center`) with a 22×22 invisible spacer standing in for the icon slot and `marginTop: 3` on the "Home" label. The raised purple circle is absolutely positioned (`top: -26`) so it doesn't affect the flow at all. This is why the label now sits on the same baseline as Goals / Tasks / Insights / Entries (22 icon + 3 gap + ~14 label, centered in the 52pt content area).
+- `packages/shared/src/userProgression.ts` — Added optional `lifeAreasCovered?: number` to `UserProgressionInput`. When present, it's used verbatim for `dimensionsCovered`; falls back to the legacy `countDistinctDimensions(entries)` tally if omitted (keeps existing tests and any callers that don't pass the field compiling).
+- `apps/web/src/lib/userProgression.ts` — 5th Promise added to the parallel fetch: `prisma.lifeMapArea.findMany({ where: { userId, mentionCount: { gt: 0 } }, select: { area: true } })`. Passes `new Set(lifeAreas.map(a => a.area)).size` as `lifeAreasCovered` to the shared helper. This replaces the legacy signal (count of distinct `Entry.dimensionContext` values — only set when the user started a recording from a dimension detail screen; natural Home-tab recordings were ignored).
+- `apps/mobile/app/insights/theme-map.tsx` — Dropped the inline chevron-back + "Insights" Text Pressable, imported `BackButton` from `@/components/back-button`, and replaced with `<BackButton onPress={() => router.back()} accessibilityLabel="Back to Insights" />`. Title `marginTop` bumped 8 → 16 for correct spacing below the circle button.
+- `apps/mobile/app/insights/state-of-me.tsx` and `apps/mobile/app/insights/ask.tsx` — Converted SafeAreaView + wrapper View + Text nodes from NativeWind className-driven layout to explicit inline `style={{...}}`. The prior `className="flex-1 items-center justify-center"` did not propagate flex through `SafeAreaView` (react-native-safe-area-context wrapper isn't part of NativeWind's auto-registered component set in this project), so the content block sized to its intrinsic height and sat near the bottom. Inline styles make it unambiguous.
+- `apps/mobile/app.json` — version 0.1.2 → 0.1.3. `runtimeVersion.policy: "appVersion"` means this is the match key for the new build.
+
+### Manual steps needed
+- [ ] Monitor the EAS production build + TestFlight auto-submit (Claude Code kicked it off)
+- [ ] Once Build 14 lands in TestFlight, verify all four fixes on device and report back — especially the Home tab label baseline (screenshot side-by-side with a sibling label)
+
+### Notes
+- The Life Matrix regression wasn't caused by the recent Goals groups work — it was always broken for natural Home-tab recordings. The fix changes which column we count, not how we count. Existing users with populated `LifeMapArea` rows will unlock the Life Matrix immediately on the next page load; users without them need the extraction pipeline to run on at least three areas' worth of content.
+- Typecheck results: zero new errors in any file touched. The pre-existing 4 web errors (`isFoundingMember`, landing stat `prefix`) and 47 mobile errors (react-native-svg + React Context.Provider under React 19 typings) are unrelated and out of scope for this bug-fix run.
+- Back-button audit: `grep -rn "← \|&larr;" apps/mobile/app` returns zero. Every Insights sub-page now uses the circle `BackButton` component.
+- The simulator is currently running the TestFlight Build 13 binary, not the Metro dev bundle, so live on-device verification of Fix #4 wasn't possible in this session. The fix is structurally correct (explicit inline flex) and will validate on Build 14 in TestFlight.
+
+---
+
 ## [2026-04-23] — Tasks screen: checked items stay visible until you leave the tab
 
 **Requested by:** Jimmy

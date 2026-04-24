@@ -1,4 +1,3 @@
-import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -13,6 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { api } from "@/lib/api";
 
+import { BackButton } from "@/components/back-button";
 import { Constellation } from "@/components/theme-map/Constellation";
 import type { ConstellationTheme } from "@/components/theme-map/Constellation";
 import { LockedState } from "@/components/theme-map/LockedState";
@@ -170,26 +170,17 @@ export default function ThemeMapScreen() {
       >
         {/* Back + header */}
         <View style={{ paddingHorizontal: 20, paddingTop: 8 }}>
-          <Pressable
+          <BackButton
             onPress={() => router.back()}
-            hitSlop={10}
-            style={{ flexDirection: "row", alignItems: "center" }}
-          >
-            <Ionicons name="chevron-back" size={16} color="#A1A1AA" />
-            <Text
-              style={{ fontSize: 15 }}
-              className="text-zinc-400 dark:text-zinc-500"
-            >
-              Insights
-            </Text>
-          </Pressable>
+            accessibilityLabel="Back to Insights"
+          />
           <Text
             style={{
               fontSize: 34,
               fontWeight: "700",
               letterSpacing: -0.8,
               lineHeight: 38,
-              marginTop: 8,
+              marginTop: 16,
             }}
             className="text-zinc-900 dark:text-zinc-50"
           >
