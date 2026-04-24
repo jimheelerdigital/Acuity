@@ -1,14 +1,17 @@
 // Learn more https://docs.expo.io/guides/customizing-metro
 // Monorepo pattern: https://docs.expo.dev/guides/monorepos/
 // NativeWind v4: https://www.nativewind.dev/docs/getting-started/installation
-const { getDefaultConfig } = require("expo/metro-config");
+const { getSentryExpoConfig } = require("@sentry/react-native/metro");
 const { withNativeWind } = require("nativewind/metro");
 const path = require("path");
 
 const projectRoot = __dirname;
 const workspaceRoot = path.resolve(projectRoot, "../..");
 
-const config = getDefaultConfig(projectRoot);
+// getSentryExpoConfig wraps Expo's getDefaultConfig and additionally
+// emits source maps alongside the JS bundle so EAS Build can upload
+// them to Sentry. Drop-in replacement — signature is identical.
+const config = getSentryExpoConfig(projectRoot);
 
 // 1. Watch the full monorepo so packages/shared edits hot-reload.
 config.watchFolders = [workspaceRoot];

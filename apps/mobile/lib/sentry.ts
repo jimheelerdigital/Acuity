@@ -5,19 +5,32 @@
  * it's embedded into the JS bundle; safe to expose (DSN is not a
  * secret, it just identifies the ingest endpoint).
  *
- * Next EAS build will include the native module. Until that build
- * ships, Sentry.init short-circuits at runtime if the native module
- * isn't present (the JS SDK handles this gracefully — we don't need
- * a guard here).
+ * Native module is autolinked via the @sentry/react-native/expo
+ * config plugin registered in app.json.
  *
  * PII filter mirrors the web SDK's beforeSend scrub so a breadcrumb
  * that slips email / transcript / entry content into a Sentry event
  * gets redacted before send.
  */
 
+import Constants from "expo-constants";
+import { Platform } from "react-native";
 import * as Sentry from "@sentry/react-native";
 
 const DSN = process.env.EXPO_PUBLIC_SENTRY_DSN;
+
+// Version tagging. `release` groups events across a given JS bundle;
+// `dist` disambiguates native builds of the same release. Matching
+// the format EAS/Expo Updates uses so future OTA events align.
+const APP_VERSION =
+  (Constants.expoConfig?.version as string | undefined) ?? "0.0.0";
+const NATIVE_BUILD =
+  (Constants.expoConfig?.ios?.buildNumber as string | undefined) ??
+  (Constants.expoConfig?.android?.versionCode as number | undefined)?.toString() ??
+  "dev";
+const RELEASE = `com.heelerdigital.acuity@${APP_VERSION}`;
+const DIST = `${Platform.OS}-${NATIVE_BUILD}`;
+const ENVIRONMENT = __DEV__ ? "development" : "production";
 
 const PII_KEY_PATTERNS: RegExp[] = [
   /^email$/i,
@@ -53,9 +66,23 @@ function scrubDeep<T>(value: T, depth = 0): T {
 }
 
 export function initSentry() {
-  if (!DSN) return;
+  if (!DSN) {
+    // Loud in dev so the next cofounder who adds a new env/profile
+    // notices immediately. Silent in prod (nothing to report to).
+    if (__DEV__) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        "[sentry] EXPO_PUBLIC_SENTRY_DSN not set — Sentry disabled. " +
+          "Check apps/mobile/eas.json env block for the active build profile."
+      );
+    }
+    return;
+  }
   Sentry.init({
     dsn: DSN,
+    environment: ENVIRONMENT,
+    release: RELEASE,
+    dist: DIST,
     enableAutoSessionTracking: true,
     // Aggressive default sample. 1% traces in prod; 10% in dev.
     tracesSampleRate: __DEV__ ? 0.1 : 0.01,
@@ -69,6 +96,13 @@ export function initSentry() {
     // builds ahead of the Sentry UI pages.
     enabled: true,
   });
+
+  // One-shot launch canary. Confirms DSN + network + ingest on the
+  // very first open of a fresh install; if this event shows up in
+  // Sentry, the pipeline works and any silent crash after this point
+  // is a real bug to chase. Kept as info-level so it's trivially
+  // filterable (`level:info`) in the issue list.
+  Sentry.captureMessage(`mobile.launch ${RELEASE} ${DIST}`, "info");
 }
 
 /**

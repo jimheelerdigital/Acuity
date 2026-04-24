@@ -5,6 +5,7 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import * as Sentry from "@sentry/react-native";
 
 import { AuthProvider, useAuth } from "@/contexts/auth-context";
 import { ThemeProvider, useTheme } from "@/contexts/theme-context";
@@ -59,7 +60,7 @@ function AuthGate() {
   return null;
 }
 
-export default function RootLayout() {
+function RootLayout() {
   return (
     // GestureHandlerRootView is required for react-native-gesture-
     // handler to work — added 2026-04-23 for the FocusCardStack
@@ -77,6 +78,11 @@ export default function RootLayout() {
     </GestureHandlerRootView>
   );
 }
+
+// Sentry.wrap installs the React error boundary and auto-instruments
+// navigation breadcrumbs. Without this, uncaught render-tree errors
+// never make it to Sentry and silent white-screen crashes stay silent.
+export default Sentry.wrap(RootLayout);
 
 function ThemedApp() {
   const { resolved } = useTheme();

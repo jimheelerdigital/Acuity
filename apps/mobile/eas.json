@@ -20,7 +20,8 @@
       "channel": "preview",
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://www.getacuity.io"
+        "EXPO_PUBLIC_API_URL": "https://www.getacuity.io",
+        "EXPO_PUBLIC_SENTRY_DSN": "https://c29c3ab6b17807b427a677cd5c518d1c@o4511258398818304.ingest.us.sentry.io/4511258441547776"
       },
       "ios": {
         "resourceClass": "m-medium"
@@ -31,7 +32,8 @@
       "channel": "production",
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://www.getacuity.io"
+        "EXPO_PUBLIC_API_URL": "https://www.getacuity.io",
+        "EXPO_PUBLIC_SENTRY_DSN": "https://c29c3ab6b17807b427a677cd5c518d1c@o4511258398818304.ingest.us.sentry.io/4511258441547776"
       },
       "ios": {
         "resourceClass": "m-medium"
