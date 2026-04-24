@@ -11,7 +11,7 @@
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** <pending>
+**Commit hash:** 9434cbd
 
 ### In plain English (for Keenan)
 The web app now looks like a real desktop SaaS product instead of a mobile screen stretched across a big monitor. On any desktop-sized browser (≥1024px), there's a persistent left sidebar with every major section one click away, a dedicated top bar with just the profile menu on the right, and the main content fills the full canvas up to a 1600px cap so dashboards, charts, and the Life Matrix can actually breathe. The sidebar groups nav into three sections — CORE (Home, Tasks, Goals), REFLECT (Life Matrix, Theme Map, Insights), ACCOUNT (Settings) — and puts a prominent purple "Record" button above everything so starting a debrief is always one click away. Life Matrix is now a top-level destination at `/life-matrix` with its own wide page instead of being buried as a section inside Insights — it's the flagship view of the product and now looks like it. Mobile and tablet (<1024px) are completely untouched: same nav bar, same single-column layout as before.
