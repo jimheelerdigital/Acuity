@@ -16,21 +16,23 @@ import { HeroMetricsCard } from "@/components/theme-map/HeroMetricsCard";
 import { LockedState } from "@/components/theme-map/LockedState";
 import { SentimentLegend } from "@/components/theme-map/SentimentLegend";
 import {
-  ThemeGallery,
-  type GalleryTheme,
-} from "@/components/theme-map/ThemeGallery";
+  ThemeRadial,
+  type RadialTheme,
+} from "@/components/theme-map/ThemeRadial";
 import {
   TimeChips,
   type TimeWindow,
 } from "@/components/theme-map/TimeChips";
 
 /**
- * Theme Map — Round 2 visual redesign (2026-04-24). Replaces the
- * bubble cluster with the Theme Gallery: hero card for the top
- * theme, row of 2 for ranks 2–3, 2×2 grid for 4–7, premium strip
- * rows for 8+. Gradient color encodes sentiment; typography weight
- * and card size encode frequency. Scales cleanly from 1 to 30+
- * themes because each rank band has its own treatment.
+ * Theme Map — Round 3 visual redesign (2026-04-24). Radial / ring
+ * geometry as the primary visual language: hero ring (220pt) for
+ * rank 1 with share-of-all arc + centered mention count, 2×2 grid
+ * of satellite ring-stat cards for ranks 2–5 (ring share relative
+ * to top), and arc-row list for ranks 6+ with a 34pt frequency
+ * ring on the left of each row. Replaces the editorial gallery —
+ * jewel-tone gradients and soft glow retained, rectangular cards
+ * out.
  */
 
 type SentimentBand = "positive" | "neutral" | "challenging";
@@ -96,9 +98,9 @@ export default function ThemeMapScreen() {
   const entryCount = data?.meta.totalEntries ?? 0;
   const locked = entryCount < UNLOCK_THRESHOLD;
 
-  const galleryThemes: GalleryTheme[] = useMemo(() => {
+  const radialThemes: RadialTheme[] = useMemo(() => {
     if (!data) return [];
-    // All themes — the gallery scales rank bands internally.
+    // All themes — the radial component slices rank bands internally.
     return data.themes.map((t) => ({
       id: t.id,
       name: t.name,
@@ -197,9 +199,9 @@ export default function ThemeMapScreen() {
               />
             </View>
 
-            {galleryThemes.length > 0 ? (
-              <ThemeGallery
-                themes={galleryThemes}
+            {radialThemes.length > 0 ? (
+              <ThemeRadial
+                themes={radialThemes}
                 replayToken={replayToken}
                 onTap={(id) => router.push(`/insights/theme/${id}` as never)}
               />
@@ -219,7 +221,7 @@ export default function ThemeMapScreen() {
                   }}
                 >
                   Not enough theme variety yet — record a few more sessions
-                  to see the gallery take shape.
+                  to see the map take shape.
                 </Text>
               </View>
             )}

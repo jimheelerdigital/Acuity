@@ -26,8 +26,8 @@ export function AreaChart({
   }
 
   const W = 600;
-  const H = 180;
-  const PAD_Y = 14;
+  const H = 200;
+  const PAD_Y = 18;
 
   const max = Math.max(...trend, 1);
   const stepX = W / (trend.length - 1);
@@ -39,14 +39,14 @@ export function AreaChart({
   const curve = monotoneCubicPath(points);
   const area = `${curve} L ${W} ${H} L 0 ${H} Z`;
 
-  const dotIndices = pickDotIndices(points.length, 5);
+  const endpointIdx = points.length - 1;
 
   return (
     <div
-      className="overflow-hidden rounded-3xl border p-4"
+      className="relative overflow-hidden rounded-3xl border p-4"
       style={{
         borderColor: "rgba(255,255,255,0.06)",
-        backgroundColor: "rgba(30,30,46,0.6)",
+        background: `radial-gradient(120% 110% at 50% 100%, ${color}22 0%, rgba(30,27,75,0.7) 55%, #0B0B12 100%)`,
       }}
     >
       <svg
@@ -57,41 +57,62 @@ export function AreaChart({
       >
         <defs>
           <linearGradient id="web-area-fill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={color} stopOpacity={0.35} />
-            <stop offset="70%" stopColor={color} stopOpacity={0.08} />
+            <stop offset="0%" stopColor={color} stopOpacity={0.55} />
+            <stop offset="55%" stopColor={color} stopOpacity={0.18} />
             <stop offset="100%" stopColor={color} stopOpacity={0} />
+          </linearGradient>
+          <linearGradient id="web-area-stroke" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor={color} stopOpacity={0.85} />
+            <stop offset="100%" stopColor={color} stopOpacity={1} />
           </linearGradient>
         </defs>
         <path d={area} fill="url(#web-area-fill)" />
+        {/* Soft outer glow */}
         <path
           d={curve}
           fill="none"
           stroke={color}
-          strokeWidth={2.5}
+          strokeWidth={6}
+          strokeLinejoin="round"
+          strokeLinecap="round"
+          opacity={0.22}
+        />
+        <path
+          d={curve}
+          fill="none"
+          stroke="url(#web-area-stroke)"
+          strokeWidth={3}
           strokeLinejoin="round"
           strokeLinecap="round"
         />
-        {dotIndices.map((i) => (
-          <circle
-            key={i}
-            cx={points[i].x}
-            cy={points[i].y}
-            r={4}
-            fill="#0B0B12"
-            stroke={color}
-            strokeWidth={2}
-          />
-        ))}
+        {/* Endpoint marker */}
+        <circle
+          cx={points[endpointIdx].x}
+          cy={points[endpointIdx].y}
+          r={10}
+          fill={color}
+          opacity={0.22}
+        />
+        <circle
+          cx={points[endpointIdx].x}
+          cy={points[endpointIdx].y}
+          r={4.5}
+          fill={color}
+          stroke="#0B0B12"
+          strokeWidth={2}
+        />
       </svg>
 
       <div className="mt-3 flex justify-between px-1">
         {xLabels.map((l, i) => (
           <span
             key={`${l}-${i}`}
+            className="uppercase"
             style={{
-              fontSize: 11,
-              color: "rgba(161,161,170,0.7)",
-              fontWeight: 500,
+              fontSize: 10,
+              color: "rgba(161,161,170,0.55)",
+              fontWeight: 600,
+              letterSpacing: "0.8px",
             }}
           >
             {l}
@@ -206,11 +227,3 @@ function monotoneCubicPath(points: { x: number; y: number }[]): string {
   return d;
 }
 
-function pickDotIndices(n: number, count: number): number[] {
-  if (n <= count) return Array.from({ length: n }, (_, i) => i);
-  const out: number[] = [];
-  for (let i = 0; i < count; i++) {
-    out.push(Math.round((i * (n - 1)) / (count - 1)));
-  }
-  return out;
-}

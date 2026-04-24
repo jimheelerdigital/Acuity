@@ -8,18 +8,19 @@ import { HeroMetricsCard } from "@/components/theme-map/HeroMetricsCard";
 import { LockedState } from "@/components/theme-map/LockedState";
 import { SentimentLegend } from "@/components/theme-map/SentimentLegend";
 import {
-  ThemeGallery,
-  type GalleryTheme,
-} from "@/components/theme-map/ThemeGallery";
+  ThemeRadial,
+  type RadialTheme,
+} from "@/components/theme-map/ThemeRadial";
 import {
   TimeChips,
   type TimeWindow,
 } from "@/components/theme-map/TimeChips";
 
 /**
- * Theme Map — Round 2 visual redesign. Replaces the bubble cluster
- * with ThemeGallery: hero card, 2-up row, 2×2 grid, premium strip
- * rows. Sentiment → gradient hue; frequency → card size/typography.
+ * Theme Map — Round 3 visual redesign. Radial / ring geometry:
+ * hero ring card (rank 1), 2×2 satellite ring-stat cards (ranks
+ * 2–5), arc rows (ranks 6+). Sentiment → gradient hue; mention
+ * count → arc sweep.
  */
 
 type SentimentBand = "positive" | "neutral" | "challenging";
@@ -86,7 +87,7 @@ export function ThemeMapClient() {
   const entryCount = data?.meta.totalEntries ?? 0;
   const locked = entryCount < UNLOCK_THRESHOLD;
 
-  const galleryThemes: GalleryTheme[] = useMemo(() => {
+  const radialThemes: RadialTheme[] = useMemo(() => {
     if (!data) return [];
     return data.themes.map((t) => ({
       id: t.id,
@@ -142,10 +143,10 @@ export function ThemeMapClient() {
         <TimeChips value={window_} onChange={handleWindowChange} />
       </div>
 
-      {galleryThemes.length > 0 ? (
+      {radialThemes.length > 0 ? (
         <div className="mt-4">
-          <ThemeGallery
-            themes={galleryThemes}
+          <ThemeRadial
+            themes={radialThemes}
             replayKey={animKey}
             onTap={(id) => router.push(`/insights/theme/${id}`)}
           />
@@ -153,7 +154,7 @@ export function ThemeMapClient() {
       ) : (
         <div className="my-10 text-center text-sm text-zinc-500 dark:text-zinc-400">
           Not enough theme variety yet — record a few more sessions to
-          see the gallery take shape.
+          see the map take shape.
         </div>
       )}
 

@@ -4,6 +4,8 @@ import Svg, {
   Defs,
   LinearGradient,
   Path,
+  RadialGradient,
+  Rect,
   Stop,
 } from "react-native-svg";
 
@@ -45,8 +47,8 @@ export function AreaChart({
   }
 
   const W = 600;
-  const H = 160;
-  const PAD_Y = 12;
+  const H = 180;
+  const PAD_Y = 16;
 
   const max = Math.max(...trend, 1);
   const stepX = W / (trend.length - 1);
@@ -58,22 +60,37 @@ export function AreaChart({
   const curve = monotoneCubicPath(points);
   const area = `${curve} L ${W} ${H} L 0 ${H} Z`;
 
-  // Which data points to draw as visible dots — up to 5, evenly
-  // spaced along the series. Drawing one per data point would be
-  // visually noisy at 30 samples.
-  const dotIndices = pickDotIndices(points.length, 5);
+  // Only the endpoint gets a visible dot — matches the purple/pink
+  // wave-chart reference where the shape is the primary read and
+  // dots would clutter the silhouette.
+  const endpointIdx = points.length - 1;
 
   return (
     <View
       style={{
-        borderRadius: 20,
+        borderRadius: 24,
         overflow: "hidden",
         borderWidth: 1,
         borderColor: "rgba(255,255,255,0.06)",
-        backgroundColor: "rgba(30,30,46,0.6)",
         padding: 16,
       }}
     >
+      <Svg
+        width="100%"
+        height="100%"
+        style={{ position: "absolute", inset: 0 }}
+        pointerEvents="none"
+      >
+        <Defs>
+          <RadialGradient id="chart-bg" cx="50%" cy="100%" r="110%">
+            <Stop offset="0%" stopColor={color} stopOpacity={0.14} />
+            <Stop offset="55%" stopColor="#1E1B4B" stopOpacity={0.7} />
+            <Stop offset="100%" stopColor="#0B0B12" stopOpacity={1} />
+          </RadialGradient>
+        </Defs>
+        <Rect x="0" y="0" width="100%" height="100%" fill="url(#chart-bg)" />
+      </Svg>
+
       <Svg
         viewBox={`0 0 ${W} ${H}`}
         preserveAspectRatio="none"
@@ -82,40 +99,59 @@ export function AreaChart({
       >
         <Defs>
           <LinearGradient id="area-fill" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0%" stopColor={color} stopOpacity={0.35} />
-            <Stop offset="70%" stopColor={color} stopOpacity={0.08} />
+            <Stop offset="0%" stopColor={color} stopOpacity={0.55} />
+            <Stop offset="55%" stopColor={color} stopOpacity={0.18} />
             <Stop offset="100%" stopColor={color} stopOpacity={0} />
+          </LinearGradient>
+          <LinearGradient id="area-stroke" x1="0" y1="0" x2="1" y2="0">
+            <Stop offset="0%" stopColor={color} stopOpacity={0.8} />
+            <Stop offset="100%" stopColor={color} stopOpacity={1} />
           </LinearGradient>
         </Defs>
 
         <Path d={area} fill="url(#area-fill)" />
+        {/* Soft outer glow — wider, translucent stroke beneath the main line */}
         <Path
           d={curve}
           fill="none"
           stroke={color}
-          strokeWidth={2.5}
+          strokeWidth={6}
+          strokeLinejoin="round"
+          strokeLinecap="round"
+          opacity={0.22}
+        />
+        <Path
+          d={curve}
+          fill="none"
+          stroke="url(#area-stroke)"
+          strokeWidth={3}
           strokeLinejoin="round"
           strokeLinecap="round"
         />
 
-        {dotIndices.map((i) => (
-          <Circle
-            key={i}
-            cx={points[i].x}
-            cy={points[i].y}
-            r={4}
-            fill="#0B0B12"
-            stroke={color}
-            strokeWidth={2}
-          />
-        ))}
+        {/* Endpoint marker */}
+        <Circle
+          cx={points[endpointIdx].x}
+          cy={points[endpointIdx].y}
+          r={9}
+          fill={color}
+          opacity={0.22}
+        />
+        <Circle
+          cx={points[endpointIdx].x}
+          cy={points[endpointIdx].y}
+          r={4.5}
+          fill={color}
+          stroke="#0B0B12"
+          strokeWidth={2}
+        />
       </Svg>
 
       <View
         style={{
           flexDirection: "row",
           justifyContent: "space-between",
-          marginTop: 10,
+          marginTop: 12,
           paddingHorizontal: 4,
         }}
       >
@@ -123,9 +159,11 @@ export function AreaChart({
           <Text
             key={`${l}-${i}`}
             style={{
-              fontSize: 11,
-              color: "rgba(161,161,170,0.7)",
-              fontWeight: "500",
+              fontSize: 10,
+              color: "rgba(161,161,170,0.55)",
+              fontWeight: "600",
+              letterSpacing: 0.8,
+              textTransform: "uppercase",
             }}
           >
             {l}
@@ -261,11 +299,3 @@ function monotoneCubicPath(points: { x: number; y: number }[]): string {
   return d;
 }
 
-function pickDotIndices(n: number, count: number): number[] {
-  if (n <= count) return Array.from({ length: n }, (_, i) => i);
-  const out: number[] = [];
-  for (let i = 0; i < count; i++) {
-    out.push(Math.round((i * (n - 1)) / (count - 1)));
-  }
-  return out;
-}

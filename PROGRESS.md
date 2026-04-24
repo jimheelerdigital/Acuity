@@ -7,6 +7,58 @@
 
 ---
 
+## [2026-04-24] — Theme Map Round 3: radial / ring geometry, wave-chart polish
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** _pending_
+
+### In plain English (for Keenan)
+Third attempt at Theme Map. Previous two were rejected: the bubble cluster felt like a preschool toy, and the "gallery" of colored rectangular boxes read like a boring list of cards. This one replaces all of that with curved, ring-shaped visualizations — the same visual language fitness and investing apps use when they want numbers to feel premium and alive instead of spreadsheet-y. The top theme is now a hero ring: a big 220-point circle with the theme's mention count in the middle and a glowing colored arc sweeping around it, sized proportionally to how much of your total mentions that theme represents (e.g. "this theme is 24% of everything you talked about this month"). Below it, themes ranked 2 through 5 sit in a 2×2 grid, each with its own smaller ring showing how big it is relative to the #1 theme — so you get an instant visual read of "which themes dominate and which are secondary." Themes ranked 6 and below become clean arc-rows, each with a tiny ring on the left that fills up by how often that theme appears. Every ring uses the deep jewel-tone gradients (emerald for positive, indigo for neutral, rose for challenging) with a soft glow on the active arc — which gives the whole screen the "dashboard screenshots you save on Pinterest" feel Jimmy asked for. The trend chart on the Theme Detail page also got the same polish: deeper gradient fill under the curve, a softer outer glow on the line, only the endpoint marked with a dot (so the shape reads as a wave, not a list of data points), and tiny uppercase axis labels instead of chart-style ones. Web got the same redesign so you'll see it identically on the phone and the desktop. Same data as before; visual only.
+
+### Technical changes (for Jimmy)
+- **New: `apps/mobile/components/theme-map/ThemeRadial.tsx`** — the primary viz. Three internal components, one per rank band:
+  - `HeroRing` (rank 1) — 340pt tall rounded card with radial-gradient background in the sentiment's jewel tone. A 220pt × 14pt-stroke SVG ring sits centered. The ring has three circles: a faint white track, a soft-glow under-stroke (stroke width +8, opacity 0.16, mimics Gaussian blur without `<feGaussianBlur>` which is unreliable in react-native-svg), and the actual gradient progress arc (`LinearGradient` stop-0%→ringStart, stop-100%→ringEnd, rotated -90° so the sweep starts at 12 o'clock). Sweep length is `circumference × share`, where `share = hero.mentionCount / totalMentions`, clamped to [0.12, 1] so a small share still reads as an arc. Mention count (54pt) + "MENTIONS" label (10pt accent) sits at the ring's center via absolute positioning. "TOP THEME" pill in the top-left; share-percent stat ("24% of all") in the top-right; theme name (24pt bold) at the bottom.
+  - `SatelliteRing` (ranks 2–5) — 2×2 grid of 142pt cards, each with an 80pt ring on the upper-left showing that theme's `mentionCount / topCount` as the sweep (so the top theme's ring fills fully and others scale down). Rank pill ("02", "03"...) in the upper-right; theme name (13pt, 2-line clamp) at the bottom-left.
+  - `ArcRow` (ranks 6+) — horizontal row, 36pt × 4pt-stroke ring on the left encoding relative share, theme name (15pt) middle, count (16pt, accent color) right. No gradient background — just dark card with subtle border. Cheap enough to render 25+ rows smoothly.
+  - Entry anim: staggered translateY 14→0 + opacity 0→1, 360ms duration, 45ms stagger (capped 520ms). ReduceMotion bypass. Reanimated shared values, one pair per card.
+  - Shared `Ring` helper component handles the SVG stroke-dasharray math for all three ranks — one place to change the arc rendering.
+- **New: `apps/web/src/components/theme-map/ThemeRadial.tsx`** — CSS-driven parity. Same three-band structure (hero card 380pt, 2×2 grid, arc rows). `radial-gradient()` backgrounds on cards, SVG rings with `<linearGradient>` strokes. Soft glow on the hero ring uses CSS `filter: blur(4px)` on a wider under-stroke. Staggered entrance via CSS `@keyframes radial-enter` with inline `animation-delay`.
+- **Deleted:**
+  - `apps/mobile/components/theme-map/ThemeGallery.tsx` (654 LOC — the editorial Hero/Mid/Small/Strip cards from Round 2)
+  - `apps/web/src/components/theme-map/ThemeGallery.tsx` (427 LOC)
+- **Rewired screens:**
+  - `apps/mobile/app/insights/theme-map.tsx` — imports `ThemeRadial` + `RadialTheme` instead of `ThemeGallery` + `GalleryTheme`. Same data mapping (all themes → radial, component slices bands internally). Empty-state copy: "record a few more sessions to see the map take shape" (was "gallery take shape").
+  - `apps/web/src/app/insights/theme-map/theme-map-client.tsx` — same swap.
+- **Tuned: `apps/mobile/components/theme-detail/AreaChart.tsx` + `apps/web/src/components/theme-detail/AreaChart.tsx`** to match the purple/pink wave-chart reference:
+  - Fill gradient deepened: 0→55% alpha at top (was 35%), mid 18% (was 8%), 100% transparent at bottom.
+  - Curve gets a 6px outer-glow pass (opacity 0.22) below the main 3px stroke — the halo visible in the mockup.
+  - Removed the 5-dot marker row (was cluttering the silhouette). Only the endpoint is marked: 10pt radius soft halo (0.22 opacity) behind a 4.5pt solid dot with #0B0B12 inset ring — reads as "this is where you are today."
+  - Card background is now a `radialGradient` under the chart (color-tinted, fading to #0B0B12 at the edges) instead of a flat `rgba(30,30,46,0.6)` rectangle — chart feels continuous with the rest of the screen instead of boxed in.
+  - Axis labels: 10pt uppercase 600-weight with 0.8px letter-spacing, at 0.55 opacity (was 11pt 500-weight at 0.7). Matches the understated axis style in the reference mockups.
+  - Chart stroke now uses an `<linearGradient>` horizontal fade from 0.85→1.0 opacity so the curve has a subtle left→right intensity shift, mirroring the reference.
+  - Removed the now-unused `pickDotIndices` helper from both files.
+- **Version:** `apps/mobile/app.json` 0.1.5 → 0.1.6.
+- **No package.json changes.**
+
+### Manual steps needed
+- [ ] Monitor the EAS Build production build + TestFlight auto-submit (Claude Code will kick it off)
+- [ ] Install on device. Open Theme Map — expected: hero ring card taking the top third, 2×2 grid of ring-stat cards, arc rows below. Top theme's ring should visibly sweep proportional to its share; rank-2's ring should be slightly less filled; rank-5 should be much less filled.
+- [ ] Tap the top theme → verify trend chart now reads as a smooth wave with only one endpoint dot (not five). Gradient fill should feel deeper / more saturated than before.
+- [ ] Open Theme Map with a user that has 25+ themes → verify the arc-rows below the grid scroll smoothly with no perceptible jank (each row renders a tiny SVG ring, so this is the scale test).
+
+### Notes
+- **Why ring geometry this time:** previous two attempts failed for different reasons — the bubble cluster (Round A) had overlapping labels and saturated colors that read as childish; the gallery (Round B) used the correct jewel-tone palette but all-rectangular cards, which Jimmy called out as reading like "a list of colored boxes." The reference mockups he shared were almost all variations of radial progress rings (the "4900" donut, the "91% Completed" circle, the "50/50/30/25" 2×2 grid of small rings). Radial geometry gives us the "premium dashboard" visual vocabulary without needing to change the data — arc sweep ↔ mention count is a natural mapping.
+- **Why SVG stroke-dasharray instead of actual arc paths:** arcs via `<path d="M... A...">` are a pain to animate and the math is fussy at high precision on iOS (single-precision floats, visible 1-2px shift at small radii). Using a full `<circle>` with `strokeDasharray="sweepLen gapLen"` and rotating -90° via `transform` is one-line simpler, renders identically across platforms, and the ring is trivially animatable by animating `sweepLen` if we ever want a fill-in entrance.
+- **Soft glow rendering:** react-native-svg has no reliable `<feGaussianBlur>` — Android ignores it and iOS sometimes rasterizes weirdly. The workaround is a wider (stroke + 8), lower-opacity under-stroke of the same arc. Visual diff vs. a real Gaussian blur is minimal at the 14pt+ strokes we use; invisible on web once we apply `filter: blur(4px)` which CSS supports natively.
+- **minShare = 0.12 on hero, 0.10 on satellites/rows:** a theme with literally 1 mention out of 100 would have a share of 1% and the arc would be invisible. Clamping to a floor means tiny themes still render as a noticeable dot of arc, which is correct visually even if technically inaccurate. The `mentionCount` is always shown in text, so the truth is legible; the arc is a vibe signal, not a precision instrument.
+- **Share-of-all vs. relative-to-top:** the hero's arc shows `hero.count / totalMentions` (absolute share — "this theme is 24% of everything you said") because that's a real, meaningful stat. The satellite and row rings show `theme.count / topCount` (relative to hero — "this is 60% as common as the top") because the absolute share would all be tiny single-digit percentages that don't visually vary enough. Two different encodings for two different reads. Documented in the component's TypeDoc.
+- **Typecheck:** mobile net error count 68 → 97, all new errors are the known react-native-svg / React 19 `TS2786: X cannot be used as a JSX component` gap. Zero real errors introduced. (ThemeRadial uses many more SVG elements than ThemeGallery did — ThemeGallery was mostly RN Views with background gradients; ThemeRadial's Ring component alone uses Svg + Defs + LinearGradient + Stop × 2 + Circle × 3 per instance, and there are 1 hero + 4 satellite + up to ~25 row rings per screen.) Web errors unchanged at 4, all pre-existing (isFoundingMember + landing stat `prefix`).
+- **AreaChart rename scan:** both `linearGradient id="area-fill"` (mobile) and `id="web-area-fill"` (web) now include an additional `id="area-stroke"`/`id="web-area-stroke"` definition for the horizontal stroke fade. SVG requires gradient IDs be document-unique; these are scoped to the component so there's no collision even when two AreaCharts render on the same page (we don't currently, but future-proof).
+- **Kept unchanged:** `HeroMetricsCard`, `TimeChips`, `SentimentLegend`, `LockedState`, `InsightCard`, `MentionCard`, `RelatedChips`, the Theme Detail screen structure, and the `/api/insights/theme-map` + `/api/insights/theme/[themeId]` endpoints. This is a pure viz swap — same data contracts, same unlock threshold (10+ entries), same navigation. If the ring is rejected, rolling back is a 2-file swap.
+
+---
+
 ## [2026-04-24] — Perf overhaul, haptics on task check, Theme Map Round 2 (Theme Gallery)
 
 **Requested by:** Jimmy
