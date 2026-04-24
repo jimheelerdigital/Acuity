@@ -7,6 +7,93 @@
 
 ---
 
+## [2026-04-24] — Retired waitlist drip, shipped 9-step trial onboarding sequence with behavioral branching
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 7e7694c
+
+### In plain English (for Keenan)
+The old "waitlist drip" (5 emails that went out based on someone's spot in the Waitlist table) is off. Nobody will get any of those 5 emails anymore — including people who were halfway through the sequence. The Waitlist rows themselves stay in the database as a historical record, we just stopped sending to them.
+
+In its place is a new 9-email trial onboarding sequence that treats every user differently based on how they're actually behaving. The moment someone signs up they get a short "You're in — here's the 60-second thing" email from Keenan, personally, within seconds (not an hour later). Then the system watches what they do:
+
+- If they record their first debrief, they get a reply-style email 24h later referencing what Acuity caught, then a case for why 60 seconds is enough, then a tease of pattern detection, then a short illustrative user story on day 5, then a check-in after their first weekly report, then the Life Matrix reveal on day 10, then a live stats summary on day 12 ("here's what Acuity has of yours"), and finally a trial-ending reminder 24h before their card is needed.
+- If they DON'T record by hour 48 they get flipped onto a reactivation track — three emails that take a completely different tone (disarming, direct, "what's in the way?") and drop the STANDARD emails entirely.
+- If they record 5+ times in the first 4 days they get flipped onto a POWER_USER track — we skip the "is 60 seconds enough?" objection email (they've already answered that by using the product) and instead get a short feature-deepening tip and eventually a "forward this to a friend" ask. They still get the value recap + trial-ending reminders.
+
+Every email has an unsubscribe link in the footer that kills the whole onboarding sequence for that user in one click. The weekly report and any transactional emails (password reset, receipts) still go through.
+
+There's a new tab in the admin dashboard (`/admin?tab=trial-emails`) that shows, live: how many users are in each track (STANDARD / REACTIVATION / POWER_USER), a bar chart of the last 7 days of emails sent, open + click rates per emailKey, and a "resend" button to fire any specific email at any specific user by userId — handy when Keenan wants to see what one of the emails looks like in his inbox without creating a fresh signup.
+
+### Technical changes (for Jimmy)
+
+**Waitlist drip neutralized**
+- `apps/web/src/app/api/cron/waitlist-drip/route.ts` — body replaced with a no-op that honors CRON_SECRET, logs a `waitlist-drip.retired.noop` event, and returns `{ retired: true, sent: 0 }`. The 0 14 * * * Vercel cron keeps firing (no deploy change needed) but writes + sends nothing. Waitlist table rows are untouched. `DRIP_SEQUENCE` in `lib/drip-emails.ts` is orphaned but retained in case we ever want to resurrect.
+- The one-off Founding Member activation email (`emails/waitlist-activation.tsx`) is unchanged — that's a manual-send script and not part of this system.
+
+**Prisma schema (`prisma/schema.prisma`)**
+- New model: `TrialEmailLog` (id, userId, emailKey, sentAt, opened?, clicked?, openedAt?, clickedAt?, resendId). Unique on `(userId, emailKey)` so the orchestrator is safe to re-run hourly. Unique on `resendId` so the webhook can find a row by Resend's message id. Indexes on `(userId, sentAt)` and `(emailKey, sentAt)` for admin queries.
+- User fields added: `firstRecordingAt`, `lastRecordingAt` (both DateTime?), `totalRecordings` (Int default 0), `onboardingTrack` (String default "STANDARD"), `onboardingUnsubscribed` (Bool default false). `onboardingTrack` is kept as a String (same pattern as other status columns) for cross-Postgres compatibility.
+
+**Email templates (`apps/web/src/emails/trial/`)**
+- 14 template files (the 9 STANDARD sequence members plus 3 reactivation + 2 power_user variants), plus shared `layout.ts` (dark canvas, purple accent, full-width table shell matching the existing email system), `types.ts` (TrialVars + TrialEmailKey), and `registry.ts` (central emailKey → template map).
+- Every template takes a TrialVars bag `{ firstName, appUrl, trialEndsAt, totalRecordings, topTheme, firstDebriefTaskCount, foundingMemberNumber, unsubscribeUrl }`. Orchestrator builds the bag once per user per tick via `buildTrialVars`.
+- All user-supplied values go through `escapeHtml` before interpolation — same SECURITY_AUDIT.md §S8 contract as the legacy drip.
+
+**Send chokepoint (`apps/web/src/lib/trial-emails.ts`)**
+- `sendTrialEmail(userId, emailKey, { force? })` — idempotent on `(userId, emailKey)` via `TrialEmailLog.upsert`. Reads `User.onboardingUnsubscribed` and short-circuits. Resolves `topTheme` from the Theme table (highest mention count) and `firstDebriefTaskCount` from the user's earliest COMPLETE entry. Persists the returned Resend message id onto `TrialEmailLog.resendId` so the webhook can correlate.
+- `hoursSince(instant)` helper reused by the orchestrator.
+
+**welcome_day0 fast path**
+- `apps/web/src/lib/bootstrap-user.ts` — appended a fail-soft `sendTrialEmail(userId, "welcome_day0")` call at the end of bootstrap. That's the single chokepoint every signup path already funnels through (Google OAuth via NextAuth events.createUser, web email/password, mobile OAuth via /api/auth/mobile-callback, mobile email/password, mobile magic link). Result: every new user gets welcome_day0 as part of their signup request — not waiting for an hourly cron.
+
+**Orchestrator (`apps/web/src/inngest/functions/trial-email-orchestrator.ts`)**
+- New Inngest function. Trigger: `{ cron: "0 * * * *" }` (every hour on the hour). Retries: 2.
+- Fetches all users with `subscriptionStatus = "TRIAL"`, `onboardingUnsubscribed = false`, and a non-expired trialEndsAt (nullable tolerated).
+- Rehydrates Date fields from the `step.run` JSON boundary — Inngest serializes step returns so Dates come back as ISO strings; without the `.map(u => ({ ...u, createdAt: new Date(u.createdAt) }))` hydrate the hoursSince math silently coerces.
+- Per user: classifies track (REACTIVATION if no firstRecordingAt and hoursSinceSignup ≥ 48; POWER_USER if totalRecordings ≥ 5 and hoursSinceSignup ≥ 96; else STANDARD). Persists track change monotonically — once flipped, a user doesn't slide back to STANDARD.
+- `nextEmailForUser(user, track, now)` returns the single emailKey due right now, or null. Orchestrator sends at most one email per user per tick so a long Inngest outage catches up gracefully instead of dumping 5 emails in the same hour.
+- `trial_ending_day13` fires when `trialEndsAt - now() ≤ 24h` (a 6h grace window on the negative side so a cron miss doesn't strand the email). `weekly_report_checkin` fires 24h after the user's first COMPLETE WeeklyReport.
+- Registered in `apps/web/src/app/api/inngest/route.ts` alongside the other functions.
+
+**Recording stats hook**
+- `apps/web/src/inngest/functions/process-entry.ts` — new `step.run("update-recording-stats")` after `persist-extraction`. Reads the entry's COMPLETE status, reads the user's current `firstRecordingAt` (to preserve the earliest), and writes `firstRecordingAt ?? entry.createdAt`, `lastRecordingAt = entry.createdAt`, and `totalRecordings: { increment: 1 }`. Non-fatal — a stats update failure doesn't downgrade the entry.
+- `apps/web/src/lib/pipeline.ts` — mirrored in the sync path so entries recorded while `ENABLE_INNGEST_PIPELINE` is off also update stats.
+
+**Unsubscribe**
+- `apps/web/src/lib/email-tokens.ts` — `UnsubscribeKind` widened to include `"onboarding"`. Signed-token format unchanged.
+- `apps/web/src/app/api/emails/unsubscribe/route.ts` — route now branches on `parsed.kind`: `weekly` flips `weeklyEmailEnabled`, `monthly` flips `monthlyEmailEnabled`, `onboarding` flips `onboardingUnsubscribed`. Confirmation page copy updated for the onboarding branch.
+
+**Resend webhook stub**
+- `apps/web/src/app/api/webhooks/resend/route.ts` — accepts Resend's `email.opened` / `email.clicked` event payloads, finds the corresponding TrialEmailLog by `resendId`, and updates `opened + openedAt` or `clicked + clickedAt`. If `RESEND_WEBHOOK_SECRET` is missing, logs a warn and accepts anyway (so the endpoint doesn't 500 on healthchecks before the secret is configured). When we wire the secret in the Resend dashboard, install `svix` and switch the stub to `Webhook.verify` from that package.
+
+**Admin "Trial Emails" tab**
+- `apps/web/src/app/admin/admin-dashboard.tsx` — adds a `trial-emails` tab between Users and Guide.
+- `apps/web/src/app/admin/tabs/TrialEmailsTab.tsx` — client component showing: 4 MetricCards (active STANDARD / REACTIVATION / POWER_USER / Sent last 7d), a bar chart of the last 7 days of sends, a per-emailKey table (sent / opens / clicks / open rate / click rate), and a manual resend form (userId input + emailKey select + Resend button).
+- `apps/web/src/app/api/admin/trial-emails/route.ts` — admin-gated GET that aggregates the stats.
+- `apps/web/src/app/api/admin/trial-emails/resend/route.ts` — admin-gated POST that force-resends via `sendTrialEmail(userId, emailKey, { force: true })`.
+
+### Manual steps needed
+- [ ] **Jimmy:** `npx prisma db push` from the home network (work Mac blocks Supabase ports). The schema adds `TrialEmailLog` + 5 new User columns (`firstRecordingAt`, `lastRecordingAt`, `totalRecordings`, `onboardingTrack`, `onboardingUnsubscribed`).
+- [ ] **Jimmy:** In Inngest Cloud, after the next deploy, confirm `trial-email-orchestrator` appears in the function catalog. If not, trigger a manual resync (PUT /api/inngest) from the Inngest dashboard.
+- [ ] **Jimmy:** Configure the Resend webhook so opens + clicks flow into `TrialEmailLog.opened` / `.clicked`. In the Resend dashboard: add a webhook endpoint pointing at `https://www.getacuity.io/api/webhooks/resend`, subscribe to `email.opened` and `email.clicked` events, copy the signing secret, and set `RESEND_WEBHOOK_SECRET` in Vercel env (Production + Preview). Redeploy. Until that's done, the admin Trial Emails tab will show `open / click = 0` for every emailKey — that's cosmetic, not a failure.
+- [ ] **Keenan:** Test signup from a brand-new email address — confirm `welcome_day0` arrives within 60 seconds from `hello@getacuity.io`. Record a debrief — confirm `User.firstRecordingAt` + `totalRecordings = 1` in Supabase. Wait for the next hour's orchestrator tick, confirm `first_debrief_replay` arrives ~24h later.
+- [ ] **Keenan:** Verify in production Supabase that the Waitlist table has `unsubscribed = false` on mid-sequence rows (schema untouched) and that no new drip emails are firing — the `waitlist-drip.retired.noop` log line should be visible in Vercel logs at 14:00 UTC each day.
+
+### Notes
+- **Welcome email timing:** routed through `bootstrapNewUser` (not the orchestrator) precisely because the spec demanded "within 60 seconds of signup". The hourly cron would otherwise introduce up to 60 minutes of latency. Fail-soft: a Resend failure at that point logs to console and doesn't brick signup — the orchestrator on the next tick will NOT re-send because `welcome_day0` is keyed like any other email and `sendTrialEmail` will catch an earlier log row if one exists. The risk here is that if the initial send fails (Resend 5xx during signup), there's no automatic retry from the orchestrator today. Acceptable for beta; for hardening, the orchestrator could check for missing welcome_day0 rows and re-issue within the first 6h window.
+- **Track monotonicity:** once a user is flipped to REACTIVATION or POWER_USER we never flip them back to STANDARD, even if their behavior changes. A REACTIVATION user who finally records doesn't retroactively collect STANDARD emails — they stay on the reactivation track until they age out. This matches the spec's "Replaces the STANDARD sequence entirely from this point forward" language and avoids a weird inbox where a user gets "what's in the way?" followed 3 days later by "here's what Acuity caught".
+- **Order of evaluation in `nextEmailForUser`:** `trial_ending_day13` and `value_recap` are checked before the track-specific branches because they fire on both STANDARD and POWER_USER and need to land at the right time regardless of track-specific emails being due. The ordering within each track otherwise follows the spec's chronology.
+- **Date serialization at Inngest step boundaries:** `step.run()` returns go through JSON serialization (that's how Inngest persists step state for replay). A Prisma findMany with Date fields comes back as ISO strings. First attempt at the orchestrator typecheck caught this as `Type 'string' is not assignable to type 'Date'`. Fixed with an explicit rehydrate loop after the step. Same pattern worth watching in any future Inngest function that passes Prisma results across step boundaries.
+- **Illustrative user story:** the spec allowed a plausible-but-fabricated user story until real testimonials exist. The user_story email calls this out explicitly ("this is an illustrative story — not a real customer testimonial"). When a real testimonial lands, edit `apps/web/src/emails/trial/user-story.ts` in place — the copy will propagate on the next deploy without any schema or orchestrator change.
+- **Power referral tease:** the real referral infrastructure (ReferralConversion table, code issuance) exists, but the trial-extension reward automation isn't wired. Per spec fallback, the power_referral_tease email does a generic "forward this to a friend" ask without a tracked link. When the reward automation lands, swap the CTA to `${appUrl}?ref=${user.referralCode}` or similar.
+- **Admin resend button:** uses `force: true` on `sendTrialEmail`, which upserts the TrialEmailLog row (resets opened/clicked to null, bumps sentAt). Next orchestrator tick will still consider the email "sent" and won't auto-resend — good default. If we ever want "resend and then let the orchestrator re-drip later", the call needs to delete the log row rather than upsert it.
+- **`DRIP_SEQUENCE` in `lib/drip-emails.ts`:** left in place as dead code. The new cron route no longer imports it. Safe to delete in a future cleanup pass once we're confident nothing else references the export (a fast `grep -r DRIP_SEQUENCE apps/` currently shows zero other consumers besides the now-neutralized cron, which no longer imports it either).
+- **Typecheck:** web errors 4 → 4 (unchanged; all pre-existing: lucide-react / React 19 JSX typing gap on a few components + the landing stat.prefix ts2339 that's been sitting there for weeks). The new orchestrator, send library, registry, and 14 templates all type-clean after the Date rehydrate fix.
+
+---
+
 ## [2026-04-24] — Theme Map Round 4 (constellation), sticky back, tab baseline, goals typography
 
 **Requested by:** Jimmy
