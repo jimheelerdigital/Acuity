@@ -11,7 +11,7 @@
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** PENDING
+**Commit hash:** f958b99
 
 ### In plain English (for Keenan)
 Three things shipped in this build. First: the app feels fast now. The biggest culprit was Tasks — every checkbox tap was waiting on a full trip to the server plus a re-download of every task and group in your account before the UI would respond. That's gone. Checkboxes now fill instantly and the network save happens silently in the background. Tab switches are instant too: Home, Entries, and Insights no longer wipe their content and re-fetch from scratch every time you tap back to them — they show what's already cached and quietly update in place if the data is older than 30 seconds. Second: a light tap/buzz fires when you complete a task on iOS. Like the iOS Reminders app. Only on complete, never on uncheck. Third: the Theme Map got a complete redesign. The bubble cluster is gone. In its place is the "Theme Gallery" — the #1 theme gets a full-width hero card with a big gradient and 34pt typography, ranks 2 and 3 live side-by-side in medium cards, ranks 4 through 7 sit in a 2×2 grid, and everything from #8 down renders as a premium pill row with a glowing sentiment stripe. Colors are deep jewel tones (emerald / indigo / rose) instead of preschool-saturation mint/crimson/violet. It handles Jimmy's 32 themes without looking cluttered because each rank band has its own visual treatment. Web got the same redesign for parity.
