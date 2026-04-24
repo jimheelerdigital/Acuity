@@ -4,27 +4,24 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { BackButton } from "@/components/back-button";
-import { Constellation } from "@/components/theme-map/Constellation";
-import type { ConstellationTheme } from "@/components/theme-map/Constellation";
+import {
+  BubbleCluster,
+  type BubbleTheme,
+} from "@/components/theme-map/BubbleCluster";
+import { HeroMetricsCard } from "@/components/theme-map/HeroMetricsCard";
 import { LockedState } from "@/components/theme-map/LockedState";
-import { SummaryStrip } from "@/components/theme-map/SummaryStrip";
-import { ThemeCard } from "@/components/theme-map/ThemeCard";
+import { SentimentLegend } from "@/components/theme-map/SentimentLegend";
+import { ThemeListRow } from "@/components/theme-map/ThemeListRow";
 import {
   TimeChips,
   type TimeWindow,
 } from "@/components/theme-map/TimeChips";
 
 /**
- * Theme Map — mobile-first redesign (2026-04-22 spec).
- *
- * Structure top-to-bottom: header → time chips → summary strip →
- * constellation → all-themes section with sparkline cards. Gated
- * behind 10+ entries; below that the user sees the LockedState.
- *
- * The prior force-directed-graph version (theme-map-client.tsx ~760
- * LOC, dynamic-imported react-force-graph) was replaced wholesale per
- * Jim's spec. If the force graph needs to come back as an advanced
- * view in a followup, pull it from git history.
+ * Theme Map — Run B visual redesign (2026-04-24 spec). Bubble cluster
+ * replaces the orb constellation, hero metrics card replaces the
+ * three-stat strip, sparklines are gone from the All Themes list.
+ * Gated behind 10+ entries; below that the user sees LockedState.
  */
 
 type SentimentBand = "positive" | "neutral" | "challenging";
@@ -66,8 +63,6 @@ export function ThemeMapClient() {
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  // Re-mounts the Constellation on window change so the entrance
-  // animation replays for the new data.
   const [animKey, setAnimKey] = useState(0);
 
   const fetchData = useCallback(async (win: TimeWindow) => {
@@ -117,22 +112,17 @@ export function ThemeMapClient() {
     return arr;
   }, [data, sort]);
 
-  const constellationThemes: ConstellationTheme[] = useMemo(() => {
-    if (!data || data.themes.length === 0) return [];
-    // Hero = top theme. Planets = next 5.
-    return data.themes.slice(1, 6).map((t, i) => {
-      const size: "large" | "medium" | "small" =
-        i < 2 ? "large" : i < 4 ? "medium" : "small";
-      return {
-        id: t.id,
-        name: t.name,
-        tone: t.sentimentBand,
-        size,
-      };
-    });
+  const bubbleThemes: BubbleTheme[] = useMemo(() => {
+    if (!data) return [];
+    return data.themes.slice(0, 10).map((t) => ({
+      id: t.id,
+      name: t.name,
+      mentionCount: t.mentionCount,
+      tone: t.sentimentBand,
+    }));
   }, [data]);
 
-  const heroTheme = data?.themes[0] ?? null;
+  const topTheme = data?.themes[0] ?? null;
 
   if (loading && !data) {
     return (
@@ -162,37 +152,46 @@ export function ThemeMapClient() {
   return (
     <>
       <Header />
+
+      {data && (
+        <div className="mt-4">
+          <HeroMetricsCard
+            themeCount={data.themes.length}
+            mentionCount={data.totalMentions}
+            topTheme={data.topTheme}
+            topSentiment={topTheme?.sentimentBand ?? null}
+          />
+        </div>
+      )}
+
       <div className="mt-4">
         <TimeChips value={window_} onChange={handleWindowChange} />
       </div>
 
-      <div className="mt-4">
-        <SummaryStrip
-          themeCount={data?.themes.length ?? 0}
-          mentionCount={data?.totalMentions ?? 0}
-          topTheme={data?.topTheme ?? null}
-        />
-      </div>
-
-      {heroTheme && constellationThemes.length > 0 ? (
-        <Constellation
-          key={animKey}
-          hero={{ id: heroTheme.id, name: heroTheme.name }}
-          planets={constellationThemes}
-          onTapHero={() => router.push(`/insights/theme/${heroTheme.id}`)}
-          onTapPlanet={(id) => router.push(`/insights/theme/${id}`)}
+      {bubbleThemes.length > 0 ? (
+        <BubbleCluster
+          themes={bubbleThemes}
+          replayKey={animKey}
+          onTap={(id) => router.push(`/insights/theme/${id}`)}
         />
       ) : (
         <div className="my-10 text-center text-sm text-zinc-500 dark:text-zinc-400">
           Not enough theme variety yet — record a few more sessions to
-          see the constellation take shape.
+          see the cluster take shape.
         </div>
       )}
 
-      <div className="mt-4 mb-2 flex items-center justify-between">
+      <SentimentLegend />
+
+      <div className="mt-5 mb-3 flex items-center justify-between">
         <h2
-          className="text-xs uppercase text-zinc-400 dark:text-zinc-500"
-          style={{ letterSpacing: "1px" }}
+          className="uppercase"
+          style={{
+            fontSize: 11,
+            letterSpacing: "1.2px",
+            color: "rgba(161,161,170,0.6)",
+            fontWeight: 600,
+          }}
         >
           All themes
         </h2>
@@ -203,24 +202,22 @@ export function ThemeMapClient() {
             const next = order[(order.indexOf(sort) + 1) % order.length];
             setSort(next);
           }}
-          className="text-violet-500 hover:text-violet-400"
-          style={{ fontSize: 13 }}
+          className="text-violet-400 hover:text-violet-300"
+          style={{ fontSize: 13, fontWeight: 500 }}
         >
           {SORT_LABELS[sort]} ›
         </button>
       </div>
 
       <div>
-        {sortedThemes.slice(0, 8).map((t, i) => (
-          <ThemeCard
+        {sortedThemes.slice(0, 10).map((t) => (
+          <ThemeListRow
             key={t.id}
             name={t.name}
             mentionCount={t.mentionCount}
             sentiment={t.sentimentBand}
-            sparkline={t.sparkline}
-            firstMentionedDaysAgo={t.firstMentionedDaysAgo}
-            trendDescription={t.trendDescription}
-            staggerIndex={Math.min(i, 4)}
+            firstMentionedAt={t.firstMentionedAt}
+            lastMentionedAt={t.lastMentionedAt}
             onClick={() => router.push(`/insights/theme/${t.id}`)}
           />
         ))}
@@ -249,5 +246,4 @@ function Header() {
   );
 }
 
-// Preserve the named export the page.tsx imports.
 export { ThemeMapClient as default };

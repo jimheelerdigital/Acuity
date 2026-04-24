@@ -13,32 +13,24 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { api } from "@/lib/api";
 
 import { BackButton } from "@/components/back-button";
-import { Constellation } from "@/components/theme-map/Constellation";
-import type { ConstellationTheme } from "@/components/theme-map/Constellation";
+import {
+  BubbleCluster,
+  type BubbleTheme,
+} from "@/components/theme-map/BubbleCluster";
+import { HeroMetricsCard } from "@/components/theme-map/HeroMetricsCard";
 import { LockedState } from "@/components/theme-map/LockedState";
-import { SummaryStrip } from "@/components/theme-map/SummaryStrip";
-import { ThemeCard } from "@/components/theme-map/ThemeCard";
+import { SentimentLegend } from "@/components/theme-map/SentimentLegend";
+import { ThemeListRow } from "@/components/theme-map/ThemeListRow";
 import {
   TimeChips,
   type TimeWindow,
 } from "@/components/theme-map/TimeChips";
 
 /**
- * Theme Map — mobile-first redesign (2026-04-22 spec).
- *
- * Structure: header → time chips → summary strip → constellation
- * (static in this ship) → all-themes section with sparkline cards.
+ * Theme Map — Run B visual redesign (2026-04-24 spec). Bubble cluster
+ * replaces the orb constellation, hero metrics card replaces the
+ * three-stat strip, sparklines are gone from the All Themes list.
  * Gated behind 10+ entries.
- *
- * The prior implementation used a static d3-force simulation rendered
- * with react-native-svg (~400 LOC of force math + pan/zoom). It's
- * replaced wholesale per the spec; pull from git history if the force
- * graph needs to come back as an advanced view later.
- *
- * Constellation entrance animation SHIPS via Reanimated 3 (see
- * components/theme-map/Constellation.tsx) matching the web keyframes
- * one-to-one. `replayToken` bumps on time-chip change + pull-to-refresh
- * so the orbital entrance plays fresh for the new data.
  */
 
 type SentimentBand = "positive" | "neutral" | "challenging";
@@ -81,8 +73,6 @@ export default function ThemeMapScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Bumped on time-chip change + pull-to-refresh so the Constellation
-  // replays its orbital entrance animation for the freshly-fetched data.
   const [replayToken, setReplayToken] = useState(0);
 
   const fetchData = useCallback(async (win: TimeWindow) => {
@@ -131,21 +121,30 @@ export default function ThemeMapScreen() {
     return arr;
   }, [data, sort]);
 
-  const constellationThemes: ConstellationTheme[] = useMemo(() => {
-    if (!data || data.themes.length === 0) return [];
-    return data.themes.slice(1, 6).map((t) => ({
+  const bubbleThemes: BubbleTheme[] = useMemo(() => {
+    if (!data) return [];
+    // Cap at 10 so the cluster reads as a coherent grouping rather
+    // than a crowded soup. Forced rank by mentionCount desc matches
+    // the API's default sort.
+    return data.themes.slice(0, 10).map((t) => ({
       id: t.id,
       name: t.name,
+      mentionCount: t.mentionCount,
       tone: t.sentimentBand,
     }));
   }, [data]);
 
-  const heroTheme = data?.themes[0] ?? null;
+  const topTheme = data?.themes[0] ?? null;
 
   if (loading && !data) {
     return (
       <SafeAreaView
-        className="flex-1 bg-white dark:bg-[#0B0B12] items-center justify-center"
+        style={{
+          flex: 1,
+          backgroundColor: "#0B0B12",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
         edges={["top"]}
       >
         <ActivityIndicator color="#7C3AED" />
@@ -155,7 +154,7 @@ export default function ThemeMapScreen() {
 
   return (
     <SafeAreaView
-      className="flex-1 bg-white dark:bg-[#0B0B12]"
+      style={{ flex: 1, backgroundColor: "#0B0B12" }}
       edges={["top"]}
     >
       <ScrollView
@@ -168,7 +167,6 @@ export default function ThemeMapScreen() {
         }
         contentContainerStyle={{ paddingBottom: 40 }}
       >
-        {/* Back + header */}
         <View style={{ paddingHorizontal: 20, paddingTop: 8 }}>
           <BackButton
             onPress={() => router.back()}
@@ -181,14 +179,17 @@ export default function ThemeMapScreen() {
               letterSpacing: -0.8,
               lineHeight: 38,
               marginTop: 16,
+              color: "#FAFAFA",
             }}
-            className="text-zinc-900 dark:text-zinc-50"
           >
             Theme Map
           </Text>
           <Text
-            style={{ fontSize: 14, marginTop: 4 }}
-            className="text-zinc-500 dark:text-zinc-400"
+            style={{
+              fontSize: 14,
+              marginTop: 4,
+              color: "rgba(161,161,170,0.75)",
+            }}
           >
             Your recurring patterns, surfaced.
           </Text>
@@ -196,15 +197,24 @@ export default function ThemeMapScreen() {
 
         {error && (
           <View style={{ padding: 40, alignItems: "center" }}>
-            <Text className="text-zinc-500 dark:text-zinc-400">{error}</Text>
+            <Text style={{ color: "rgba(161,161,170,0.8)" }}>{error}</Text>
           </View>
         )}
 
         {!error && locked && <LockedState count={entryCount} />}
 
-        {!error && !locked && (
+        {!error && !locked && data && (
           <>
-            <View style={{ marginTop: 16 }}>
+            <View style={{ marginTop: 20, marginBottom: 16 }}>
+              <HeroMetricsCard
+                themeCount={data.themes.length}
+                mentionCount={data.totalMentions}
+                topTheme={data.topTheme}
+                topSentiment={topTheme?.sentimentBand ?? null}
+              />
+            </View>
+
+            <View style={{ marginBottom: 8 }}>
               <TimeChips
                 value={window_}
                 onChange={(next) => {
@@ -214,25 +224,11 @@ export default function ThemeMapScreen() {
               />
             </View>
 
-            <View style={{ marginTop: 12 }}>
-              <SummaryStrip
-                themeCount={data?.themes.length ?? 0}
-                mentionCount={data?.totalMentions ?? 0}
-                topTheme={data?.topTheme ?? null}
-              />
-            </View>
-
-            {heroTheme && constellationThemes.length > 0 ? (
-              <Constellation
-                hero={{ id: heroTheme.id, name: heroTheme.name }}
-                planets={constellationThemes}
+            {bubbleThemes.length > 0 ? (
+              <BubbleCluster
+                themes={bubbleThemes}
                 replayToken={replayToken}
-                onTapHero={() =>
-                  router.push(`/insights/theme/${heroTheme.id}` as never)
-                }
-                onTapPlanet={(id) =>
-                  router.push(`/insights/theme/${id}` as never)
-                }
+                onTap={(id) => router.push(`/insights/theme/${id}` as never)}
               />
             ) : (
               <View
@@ -243,33 +239,38 @@ export default function ThemeMapScreen() {
                 }}
               >
                 <Text
-                  style={{ fontSize: 13, textAlign: "center" }}
-                  className="text-zinc-500 dark:text-zinc-400"
+                  style={{
+                    fontSize: 13,
+                    textAlign: "center",
+                    color: "rgba(161,161,170,0.75)",
+                  }}
                 >
                   Not enough theme variety yet — record a few more sessions
-                  to see the constellation take shape.
+                  to see the cluster take shape.
                 </Text>
               </View>
             )}
 
-            {/* All themes section */}
+            <SentimentLegend />
+
             <View
               style={{
                 flexDirection: "row",
                 alignItems: "center",
                 justifyContent: "space-between",
                 paddingHorizontal: 20,
-                marginTop: 16,
-                marginBottom: 8,
+                marginTop: 20,
+                marginBottom: 12,
               }}
             >
               <Text
                 style={{
-                  fontSize: 12,
-                  letterSpacing: 1,
+                  fontSize: 11,
+                  letterSpacing: 1.2,
                   textTransform: "uppercase",
+                  color: "rgba(161,161,170,0.6)",
+                  fontWeight: "600",
                 }}
-                className="text-zinc-400 dark:text-zinc-500"
               >
                 All themes
               </Text>
@@ -280,25 +281,31 @@ export default function ThemeMapScreen() {
                     "alphabetical",
                     "recent",
                   ];
-                  const next = order[(order.indexOf(sort) + 1) % order.length];
+                  const next =
+                    order[(order.indexOf(sort) + 1) % order.length];
                   setSort(next);
                 }}
               >
-                <Text style={{ fontSize: 13, color: "#A78BFA" }}>
+                <Text
+                  style={{
+                    fontSize: 13,
+                    color: "#A78BFA",
+                    fontWeight: "500",
+                  }}
+                >
                   {SORT_LABELS[sort]} ›
                 </Text>
               </Pressable>
             </View>
 
-            {sortedThemes.slice(0, 8).map((t) => (
-              <ThemeCard
+            {sortedThemes.slice(0, 10).map((t) => (
+              <ThemeListRow
                 key={t.id}
                 name={t.name}
                 mentionCount={t.mentionCount}
                 sentiment={t.sentimentBand}
-                sparkline={t.sparkline}
-                firstMentionedDaysAgo={t.firstMentionedDaysAgo}
-                trendDescription={t.trendDescription}
+                firstMentionedAt={t.firstMentionedAt}
+                lastMentionedAt={t.lastMentionedAt}
                 onPress={() =>
                   router.push(`/insights/theme/${t.id}` as never)
                 }

@@ -1,18 +1,15 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  Text,
-  View,
-} from "react-native";
+import { useEffect, useMemo, useState } from "react";
+import { ActivityIndicator, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Svg, { Polyline } from "react-native-svg";
 
-import { formatRelativeDate, MOOD_LABELS } from "@acuity/shared";
+import { formatRelativeDate } from "@acuity/shared";
 
 import { BackButton } from "@/components/back-button";
+import { AreaChart } from "@/components/theme-detail/AreaChart";
+import { InsightCard } from "@/components/theme-detail/InsightCard";
+import { MentionCard } from "@/components/theme-detail/MentionCard";
+import { RelatedChips } from "@/components/theme-detail/RelatedChips";
 import { api } from "@/lib/api";
 
 type SentimentBand = "positive" | "neutral" | "challenging";
@@ -34,14 +31,19 @@ type ThemeDetail = {
     sentiment: string;
     createdAt: string;
   }>;
-  relatedThemes: Array<{ id: string; name: string; count: number }>;
+  relatedThemes: Array<{
+    id: string;
+    name: string;
+    count: number;
+    sentimentBand?: SentimentBand;
+  }>;
   aiInsight: string | null;
 };
 
 const SENTIMENT_COLOR: Record<SentimentBand, string> = {
   positive: "#34D399",
   challenging: "#F87171",
-  neutral: "#94a3b8",
+  neutral: "#A78BFA",
 };
 
 const SENTIMENT_LABEL: Record<SentimentBand, string> = {
@@ -65,11 +67,21 @@ export default function ThemeDetailScreen() {
       .finally(() => setLoading(false));
   }, [themeId]);
 
+  const xLabels = useMemo(() => {
+    if (!data) return [];
+    return buildXLabels(data.trend.length);
+  }, [data]);
+
   if (loading) {
     return (
       <SafeAreaView
         edges={["top"]}
-        className="flex-1 bg-white dark:bg-[#0B0B12] items-center justify-center"
+        style={{
+          flex: 1,
+          backgroundColor: "#0B0B12",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
       >
         <ActivityIndicator color="#7C3AED" />
       </SafeAreaView>
@@ -80,11 +92,15 @@ export default function ThemeDetailScreen() {
     return (
       <SafeAreaView
         edges={["top"]}
-        className="flex-1 bg-white dark:bg-[#0B0B12] items-center justify-center p-6"
+        style={{
+          flex: 1,
+          backgroundColor: "#0B0B12",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 24,
+        }}
       >
-        <Text className="text-zinc-500 dark:text-zinc-400">
-          Theme not found.
-        </Text>
+        <Text style={{ color: "rgba(161,161,170,0.8)" }}>Theme not found.</Text>
       </SafeAreaView>
     );
   }
@@ -93,121 +109,161 @@ export default function ThemeDetailScreen() {
   const color = SENTIMENT_COLOR[theme.sentimentBand];
 
   return (
-    <SafeAreaView edges={["top"]} className="flex-1 bg-white dark:bg-[#0B0B12]">
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 48 }}>
-        <View className="mb-5">
-          <BackButton />
+    <SafeAreaView
+      edges={["top"]}
+      style={{ flex: 1, backgroundColor: "#0B0B12" }}
+    >
+      <ScrollView contentContainerStyle={{ paddingBottom: 48 }}>
+        <View style={{ paddingHorizontal: 20, paddingTop: 8 }}>
+          <BackButton onPress={() => router.back()} />
         </View>
 
-        <View className="mb-8">
-          <View className="flex-row items-center gap-2 mb-2">
+        <View
+          style={{ paddingHorizontal: 20, marginTop: 16, marginBottom: 24 }}
+        >
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 8,
+              marginBottom: 10,
+            }}
+          >
             <View
-              style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: color }}
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: 4,
+                backgroundColor: color,
+                shadowColor: color,
+                shadowOpacity: theme.sentimentBand === "neutral" ? 0 : 0.8,
+                shadowRadius: 4,
+              }}
             />
-            <Text className="text-xs font-semibold uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
+            <Text
+              style={{
+                fontSize: 11,
+                fontWeight: "700",
+                letterSpacing: 1.4,
+                textTransform: "uppercase",
+                color: "rgba(161,161,170,0.75)",
+              }}
+            >
               {SENTIMENT_LABEL[theme.sentimentBand]} · {theme.mentionCount}{" "}
               mention{theme.mentionCount === 1 ? "" : "s"}
             </Text>
           </View>
           <Text
-            className="text-3xl font-semibold uppercase tracking-tight text-zinc-900 dark:text-zinc-50"
-            style={{ letterSpacing: -0.5 }}
+            style={{
+              fontSize: 32,
+              fontWeight: "700",
+              letterSpacing: -0.8,
+              lineHeight: 38,
+              color: "#FAFAFA",
+            }}
           >
-            {theme.name}
+            {sentenceCase(theme.name)}
           </Text>
-          <Text className="mt-2 text-xs text-zinc-400 dark:text-zinc-500">
+          <Text
+            style={{
+              marginTop: 8,
+              fontSize: 12,
+              color: "rgba(161,161,170,0.7)",
+            }}
+          >
             First seen {formatRelativeDate(theme.firstMentionedAt)} · last{" "}
             {formatRelativeDate(theme.lastMentionedAt)}
           </Text>
         </View>
 
         {theme.mentionCount > 0 && (
-          <View className="mb-8">
-            <Text className="mb-3 text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
+          <View style={{ paddingHorizontal: 20, marginBottom: 28 }}>
+            <Text
+              style={{
+                fontSize: 11,
+                fontWeight: "700",
+                letterSpacing: 1.4,
+                textTransform: "uppercase",
+                color: "rgba(161,161,170,0.6)",
+                marginBottom: 12,
+              }}
+            >
               Last 30 days
             </Text>
-            <TrendChart
+            <AreaChart
               trend={trend}
               color={color}
               mentionCount={theme.mentionCount}
+              xLabels={xLabels}
             />
           </View>
         )}
 
         {aiInsight && (
-          <View className="mb-8 rounded-2xl border border-violet-200 dark:border-violet-900/30 bg-violet-50/40 dark:bg-violet-950/20 p-4">
-            <Text className="text-xs font-semibold uppercase tracking-widest text-violet-700 dark:text-violet-300">
-              What Acuity notices
-            </Text>
-            <Text className="mt-2 text-sm leading-relaxed text-zinc-700 dark:text-zinc-200">
-              {aiInsight}
-            </Text>
+          <View style={{ paddingHorizontal: 20, marginBottom: 28 }}>
+            <InsightCard text={aiInsight} />
           </View>
         )}
 
-        <View className="mb-8">
-          <Text className="mb-3 text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
+        <View style={{ paddingHorizontal: 20, marginBottom: 12 }}>
+          <Text
+            style={{
+              fontSize: 11,
+              fontWeight: "700",
+              letterSpacing: 1.4,
+              textTransform: "uppercase",
+              color: "rgba(161,161,170,0.6)",
+              marginBottom: 12,
+            }}
+          >
             All mentions
           </Text>
-          {mentions.length === 0 ? (
-            <Text className="text-sm text-zinc-500 dark:text-zinc-400">
-              No mentions yet.
-            </Text>
-          ) : (
-            <View className="gap-2">
-              {mentions.map((m) => (
-                <Pressable
-                  key={`${m.entryId}-${m.createdAt}`}
-                  onPress={() =>
-                    router.push(`/entry/${m.entryId}` as never)
-                  }
-                  className="rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-4 py-3"
-                >
-                  <View className="flex-row items-center justify-between">
-                    <Text className="text-xs text-zinc-500 dark:text-zinc-400">
-                      {formatRelativeDate(m.createdAt)}
-                    </Text>
-                    {m.mood && (
-                      <Text className="text-xs text-zinc-500 dark:text-zinc-400">
-                        {MOOD_LABELS[m.mood] ?? m.mood}
-                      </Text>
-                    )}
-                  </View>
-                  <Text
-                    className="mt-1 text-sm text-zinc-700 dark:text-zinc-200"
-                    numberOfLines={2}
-                  >
-                    {m.summary ?? "(no summary)"}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-          )}
         </View>
 
-        {relatedThemes.length > 0 && (
-          <View className="mb-8">
-            <Text className="mb-3 text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
-              Often appears alongside
+        {mentions.length === 0 ? (
+          <View style={{ paddingHorizontal: 20 }}>
+            <Text style={{ fontSize: 13, color: "rgba(161,161,170,0.75)" }}>
+              No mentions yet.
             </Text>
-            <View className="flex-row flex-wrap gap-2">
-              {relatedThemes.map((r) => (
-                <Pressable
-                  key={r.id}
-                  onPress={() =>
-                    router.push(`/insights/theme/${r.id}` as never)
-                  }
-                  className="rounded-full border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-3 py-1.5"
-                >
-                  <Text className="text-xs font-medium uppercase tracking-wider text-zinc-700 dark:text-zinc-200">
-                    {r.name}{" "}
-                    <Text className="text-zinc-400 dark:text-zinc-500 normal-case tracking-normal">
-                      × {r.count}
-                    </Text>
-                  </Text>
-                </Pressable>
-              ))}
+          </View>
+        ) : (
+          <View style={{ paddingHorizontal: 20, gap: 10 }}>
+            {mentions.map((m) => (
+              <MentionCard
+                key={`${m.entryId}-${m.createdAt}`}
+                summary={m.summary}
+                mood={m.mood}
+                createdAt={m.createdAt}
+                onPress={() => router.push(`/entry/${m.entryId}` as never)}
+              />
+            ))}
+          </View>
+        )}
+
+        {relatedThemes.length > 0 && (
+          <View style={{ marginTop: 28 }}>
+            <View style={{ paddingHorizontal: 20, marginBottom: 12 }}>
+              <Text
+                style={{
+                  fontSize: 11,
+                  fontWeight: "700",
+                  letterSpacing: 1.4,
+                  textTransform: "uppercase",
+                  color: "rgba(161,161,170,0.6)",
+                }}
+              >
+                Often appears alongside
+              </Text>
             </View>
+            <RelatedChips
+              items={relatedThemes.map((r) => ({
+                id: r.id,
+                name: r.name,
+                count: r.count,
+                sentiment: r.sentimentBand,
+              }))}
+              onTap={(id) => router.push(`/insights/theme/${id}` as never)}
+            />
           </View>
         )}
       </ScrollView>
@@ -215,83 +271,18 @@ export default function ThemeDetailScreen() {
   );
 }
 
-function TrendChart({
-  trend,
-  color,
-  mentionCount,
-}: {
-  trend: number[];
-  color: string;
-  mentionCount: number;
-}) {
-  const nonZero = trend.filter((v) => v > 0).length;
+function sentenceCase(s: string): string {
+  if (!s) return s;
+  const lower = s.toLowerCase();
+  return lower.charAt(0).toUpperCase() + lower.slice(1);
+}
 
-  // Low-data fallback — 1-2 points don't plot to a meaningful line.
-  // Mirror the web gradient card with centered mention count.
-  if (nonZero < 3) {
-    return (
-      <View
-        style={{
-          minHeight: 140,
-          borderRadius: 12,
-          borderWidth: 1,
-          borderColor: "rgba(255,255,255,0.08)",
-          backgroundColor: "rgba(124,58,237,0.08)",
-          paddingVertical: 28,
-          paddingHorizontal: 24,
-          alignItems: "center",
-          justifyContent: "center",
-          overflow: "hidden",
-        }}
-      >
-        <View className="flex-row items-baseline gap-1">
-          <Text
-            style={{ color, fontSize: 36, fontWeight: "700" }}
-          >
-            {mentionCount}
-          </Text>
-          <Text className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
-            mention{mentionCount === 1 ? "" : "s"}
-          </Text>
-        </View>
-        <Text className="mt-2 text-center text-xs text-zinc-500 dark:text-zinc-400">
-          Not enough data yet — check back after more entries.
-        </Text>
-      </View>
-    );
-  }
-
-  const w = 600;
-  const h = 90;
-
-  return (
-    <View className="rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-4">
-      <Svg
-        viewBox={`0 0 ${w} ${h}`}
-        preserveAspectRatio="none"
-        width="100%"
-        height={90}
-      >
-        {(() => {
-              const max = Math.max(...trend, 1);
-              const stepX = w / (trend.length - 1);
-              const pts = trend.map((v, i) => ({
-                x: i * stepX,
-                y: h - (v / max) * (h - 8) - 4,
-              }));
-              const line = pts.map((p) => `${p.x},${p.y}`).join(" ");
-              return (
-                <Polyline
-                  points={line}
-                  fill="none"
-                  stroke={color}
-                  strokeWidth={1.8}
-                  strokeLinejoin="round"
-                  strokeLinecap="round"
-                />
-              );
-            })()}
-      </Svg>
-    </View>
-  );
+/**
+ * Build 4 evenly-spaced x-axis labels for the 30-day trend window.
+ * "30d ago", "20d", "10d", "Today". The parent passes the computed
+ * array into <AreaChart>.
+ */
+function buildXLabels(length: number): string[] {
+  if (length < 4) return [];
+  return ["30d ago", "20d", "10d", "Today"];
 }

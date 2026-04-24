@@ -7,6 +7,70 @@
 
 ---
 
+## [2026-04-24] — Theme Map + Theme Detail visual redesign (Run B)
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** PENDING
+
+### In plain English (for Keenan)
+Theme Map went from "five orbs that bumped into each other around a hero" to a proper bubble cluster — each bubble is a theme, size = how often it shows up, color = sentiment, packed so they never overlap. The three-stat strip at the top is now a single big gradient card with 40pt numbers for Themes / Mentions / Top Theme. The All Themes list below lost its jagged sparklines and now renders as clean card rows with sentiment dots and mention-count pill badges. The Theme Detail page (when you tap a theme) now has a smooth curved area chart with a gradient fill underneath — fitness-app-style, not Excel-style — plus a purple-tinted "What Acuity notices" card, rounded mention cards, and pill-chip related themes. Web got the same redesign so the experience is identical between the phone and a laptop. This is a visual ship only: same data, same unlock gate (10+ entries), same tap-to-detail navigation — just dramatically nicer to look at.
+
+### Technical changes (for Jimmy)
+- **Mobile — new components:**
+  - `apps/mobile/components/theme-map/BubbleCluster.tsx` — d3-force (already in mobile deps) with forceX/forceY/forceCollide/forceManyBody, 180 synchronous ticks. Radial-gradient fills per sentiment, soft-glow halo as a larger semi-transparent circle behind each bubble (react-native-svg has no reliable filter/blur), labels in absolute-positioned RN Views layered above the Svg (SvgText glyph metrics diverge iOS vs Android). Reanimated shared values per bubble for 35ms-staggered fade+scale entrance. ReduceMotion aware. AnimatedCircle cast through `any` for the same react-native-svg/@types/react typing gap Constellation had.
+  - `apps/mobile/components/theme-map/HeroMetricsCard.tsx` — 3-column rounded card with purple-tinted linear gradient rendered via SVG `<Rect fill="url(#hero-bg)">` underlay. 36pt hero numbers. Adaptive top-theme font size so long names don't ellipsize.
+  - `apps/mobile/components/theme-map/SentimentLegend.tsx` — three colored-dot/label pairs, small, centered.
+  - `apps/mobile/components/theme-map/ThemeListRow.tsx` — dot + name + pill-badge count + muted "First seen / Recent" meta line. No sparkline.
+  - `apps/mobile/components/theme-detail/AreaChart.tsx` — Fritsch-Carlson monotone cubic bezier path, vertical `<LinearGradient>` fill, 4-5 Circle dots at evenly-spaced indices, 4 x-axis labels.
+  - `apps/mobile/components/theme-detail/InsightCard.tsx` — rounded card with SVG linear-gradient underlay (purple-tinted).
+  - `apps/mobile/components/theme-detail/MentionCard.tsx` — dark rounded card, timestamp + mood header, 3-line clamped summary.
+  - `apps/mobile/components/theme-detail/RelatedChips.tsx` — horizontal ScrollView of dot + name + ×count pills.
+- **Mobile — restyled:**
+  - `apps/mobile/components/theme-map/TimeChips.tsx` — segmented pill control, dark track, active option filled in #7C3AED with soft shadow; inactive options quiet muted text on the dark track (no border).
+- **Mobile — deleted:**
+  - `apps/mobile/components/theme-map/Constellation.tsx` (756 LOC of orbital physics — replaced by BubbleCluster)
+  - `apps/mobile/components/theme-map/ThemeCard.tsx` (sparkline row — replaced by ThemeListRow)
+  - `apps/mobile/components/theme-map/SummaryStrip.tsx` (replaced by HeroMetricsCard)
+- **Mobile — rewritten screens:**
+  - `apps/mobile/app/insights/theme-map.tsx` — wires HeroMetricsCard → TimeChips → BubbleCluster → SentimentLegend → ThemeListRow[×N]. Bumps replayToken on chip change + pull-to-refresh so the entrance plays fresh.
+  - `apps/mobile/app/insights/theme/[themeId].tsx` — wires AreaChart → InsightCard → MentionCard[×N] → RelatedChips. xLabels computed client-side (`["30d ago", "20d", "10d", "Today"]`).
+- **Web — new components** (mirrored structure, adjusted for DOM/CSS):
+  - `apps/web/src/components/theme-map/BubbleCluster.tsx` — inline bubble packing (simple relaxation algorithm: center attraction + pairwise collision resolution, 200 iterations) to avoid pulling in d3-force as a web dep. ResizeObserver for responsive width. Height 360px narrow / 520px wide. CSS keyframe entrance with staggered delays.
+  - `apps/web/src/components/theme-map/HeroMetricsCard.tsx`
+  - `apps/web/src/components/theme-map/SentimentLegend.tsx`
+  - `apps/web/src/components/theme-map/ThemeListRow.tsx`
+  - `apps/web/src/components/theme-detail/AreaChart.tsx` — monotone cubic port (same Fritsch-Carlson as mobile), SVG linearGradient fill.
+  - `apps/web/src/components/theme-detail/InsightCard.tsx`
+  - `apps/web/src/components/theme-detail/MentionCard.tsx`
+  - `apps/web/src/components/theme-detail/RelatedChips.tsx`
+- **Web — restyled:**
+  - `apps/web/src/components/theme-map/TimeChips.tsx` — segmented pill parity with mobile.
+- **Web — deleted:**
+  - `apps/web/src/components/theme-map/Constellation.tsx`
+  - `apps/web/src/components/theme-map/ThemeCard.tsx`
+  - `apps/web/src/components/theme-map/SummaryStrip.tsx`
+- **Web — rewritten clients:**
+  - `apps/web/src/app/insights/theme-map/theme-map-client.tsx`
+  - `apps/web/src/app/insights/theme/[themeId]/theme-detail-client.tsx`
+- **Deps:** no package.json changes. d3-force already in mobile; web packs inline to avoid a 15KB dep add for ~60 lines of math.
+- **Version:** `apps/mobile/app.json` 0.1.3 → 0.1.4.
+
+### Manual steps needed
+- [ ] Monitor the EAS Build 15 production build + TestFlight auto-submit (Claude Code kicked it off)
+- [ ] Once Build 15 lands, open Theme Map on device, verify the bubble cluster packs cleanly (no overlap, no clipping), the entrance animation is calm (fade+scale stagger, no flying or orbiting), and the All Themes list has zero sparklines
+- [ ] Tap the top theme → verify the area chart renders with a smooth curve + gradient fill for themes with 3+ data points, or the gradient placeholder card for <3
+
+### Notes
+- Mobile AnimatedCircle is cast `const AnimatedCircle: any = ...` for the known react-native-svg + @types/react typing gap under React 19. Constellation did this too; keep doing it for future Reanimated + SVG integrations.
+- Web bubble packing uses inline relaxation instead of d3-force. For ≤12 bubbles in a 320-1200px container, 200 iterations converge cleanly. If you ever bump bubble count past 15 or so, revisit — overlap resolution is O(n²) per iteration and the synchronous cost grows.
+- Monotone cubic curve (Fritsch-Carlson) is intentionally monotonic — it won't synthesize peaks/dips between samples. Perfect for mention-count trends that can't go negative; wrong for data where overshoot would be visually informative (e.g. wave/oscillation data). Don't re-use this for future charts without checking.
+- Typecheck results: zero new errors in any touched file. Pre-existing 4 web errors (`isFoundingMember`, landing stat `prefix`) and ~47 mobile errors (react-native-svg + React Context.Provider under React 19 typings + one onboarding/shell bigint mismatch) remain unrelated.
+- `<style>` with plain React children is used for the web bubble-enter keyframe (not `<style jsx>` — styled-jsx has App Router caveats and a single named keyframe doesn't need it).
+- Bubble label strategy: inside-bubble when radius ≥ 34 on mobile / ≥ 40 on web; below-bubble otherwise. Web label font and weight match mobile for a consistent read across surfaces.
+
+---
+
 ## [2026-04-24] — Build 14 bug-fix sweep: Home tab label, Life Matrix unlock, Theme Map back, placeholder centering
 
 **Requested by:** Jimmy
