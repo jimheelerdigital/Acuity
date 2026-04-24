@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 
 import { getAuthOptions } from "@/lib/auth";
+import { PageContainer } from "@/components/page-container";
 import { TaskList } from "./task-list";
 
 export const dynamic = "force-dynamic";
@@ -12,9 +13,9 @@ export default async function TasksPage() {
 
   return (
     <div className="min-h-screen">
-      <main className="mx-auto max-w-3xl px-6 py-10 animate-fade-in">
+      <PageContainer mobileWidth="3xl" className="animate-fade-in">
         <TaskList />
-      </main>
+      </PageContainer>
     </div>
   );
 }

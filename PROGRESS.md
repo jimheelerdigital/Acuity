@@ -7,6 +7,71 @@
 
 ---
 
+## [2026-04-24] — Desktop web app shell: persistent sidebar, Life Matrix page, wider canvas
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** <pending>
+
+### In plain English (for Keenan)
+The web app now looks like a real desktop SaaS product instead of a mobile screen stretched across a big monitor. On any desktop-sized browser (≥1024px), there's a persistent left sidebar with every major section one click away, a dedicated top bar with just the profile menu on the right, and the main content fills the full canvas up to a 1600px cap so dashboards, charts, and the Life Matrix can actually breathe. The sidebar groups nav into three sections — CORE (Home, Tasks, Goals), REFLECT (Life Matrix, Theme Map, Insights), ACCOUNT (Settings) — and puts a prominent purple "Record" button above everything so starting a debrief is always one click away. Life Matrix is now a top-level destination at `/life-matrix` with its own wide page instead of being buried as a section inside Insights — it's the flagship view of the product and now looks like it. Mobile and tablet (<1024px) are completely untouched: same nav bar, same single-column layout as before.
+
+### Technical changes (for Jimmy)
+
+**New shell primitives**
+- `apps/web/src/components/app-shell.tsx` — `<AppShell>` component. At `lg+` (Tailwind's 1024px breakpoint), renders a fixed-position 240px-wide sidebar (`<Sidebar>`) + sticky topbar (`<DesktopTopbar>`) + content wrapper capped at `max-w-[1600px]`. Below `lg`, returns `<>{children}</>` untouched. Also bypasses on marketing / auth / onboarding / upgrade routes and when unauthenticated. Sidebar sections hardcoded in `SECTIONS` array: CORE (Home/Tasks/Goals), REFLECT (Life Matrix/Theme Map/Insights), ACCOUNT (Settings).
+- `apps/web/src/components/page-container.tsx` — `<PageContainer>` replaces the per-page `<main className="mx-auto max-w-Xxl px-6 py-10">` wrapper. `mobileWidth` prop (default `"5xl"`) preserves the existing per-page mobile cap. `variant`: `"fluid"` (default) removes the cap at `lg+`; `"narrow"` keeps `max-w-3xl` even on desktop for long-form reading screens.
+- `apps/web/src/components/user-menu.tsx` — extracted from `nav-bar.tsx`. Exports `UserMenu` (prop-driven) and `SessionUserMenu` (session-aware wrapper). Both NavBar (mobile) and AppShell topbar (desktop) share this component so behavior is identical across viewports.
+
+**Record CTA**
+- Full-width purple button (`bg-violet-600`) with Mic icon above the CORE section. Links to `/home#record` (the existing record button on Home has an `id="record"` anchor). On mobile the existing in-page Record button is unchanged.
+
+**Life Matrix as a top-level page**
+- `apps/web/src/app/life-matrix/page.tsx` — new server component. Session-gated, progression-gated via `getUserProgression(...).unlocked.lifeMatrix`. Renders the existing `<LifeMap />` component from `apps/web/src/app/insights/life-map.tsx` (re-exported across route boundaries — the component was already client-side and self-contained). Wider hero treatment (`text-4xl` on `lg+`, violet eyebrow, two-line description).
+- `apps/web/src/app/insights/page.tsx` — Life Matrix hero section removed from Insights (it's duplicated at `/life-matrix` now). Replaced with a 2-card grid at the top: Life Matrix (violet gradient) + Theme Map (indigo gradient). Ask + State of Me also moved into a 2-col grid below the timeline. Now uses `<PageContainer mobileWidth="4xl">`.
+
+**Sidebar active-state + Life Matrix visual emphasis**
+- Active link has: left-edge violet accent bar + `bg-zinc-100 dark:bg-white/10` + violet icon tint. Inactive: muted zinc with hover.
+- Life Matrix nav row has `accent: true` flag — label is `font-semibold` and a small violet dot (`h-1.5 w-1.5 bg-violet-500` + soft shadow) sits at the far right of the row as a subtle honor for the signature view.
+
+**Top nav teardown on lg+**
+- `apps/web/src/components/nav-bar.tsx` — root `<nav>` gained `lg:hidden`. Session-authenticated desktop viewports now show AppShell's sidebar+topbar exclusively. Marketing viewport still uses NavBar (its existing auto-hide rules preserved). Inline `UserMenu` (~200 LOC) removed — imported from the new shared file.
+- `apps/web/src/app/layout.tsx` — wraps `{children}` in `<AppShell>`. `<NavBar />` stays mounted (its own responsive gating hides it on `lg+` authenticated views).
+
+**Per-page width retrofits (`lg:max-w-none` via `<PageContainer>`)**
+- `apps/web/src/app/home/page.tsx` — swapped `max-w-5xl` for `<PageContainer mobileWidth="5xl">`. Record button container got `lg:max-w-none` so it stretches on desktop instead of sitting at 512px centered.
+- `apps/web/src/app/tasks/page.tsx` — swapped `max-w-3xl` for `<PageContainer mobileWidth="3xl">`.
+- `apps/web/src/app/goals/page.tsx` — same swap.
+- `apps/web/src/app/insights/theme-map/page.tsx` — swapped `max-w-xl` for `<PageContainer mobileWidth="2xl">` so the constellation has more room on desktop.
+- `apps/web/src/app/account/account-client.tsx` — outer container is now `lg:grid lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-12`. Left column: new `<SettingsSubNav>` (sticky, hidden on mobile) with 12 anchor links. Right column: existing sections wrapped in `<div id="..." className="scroll-mt-24">` blocks (subscription, reminders, dimensions, referrals, email, integrations, export) or `id`-upgraded `<section>` tags (profile, support, appearance, privacy, danger). Mobile layout is byte-identical to before.
+
+### Manual steps needed
+- [ ] **Jimmy:** Visual verification in browser. Programmatic screenshots were not possible in this session — Google OAuth can't be exercised on localhost from the automation, so authenticated views can't be rendered. Open a dev build, sign in, and walk through `/home`, `/tasks`, `/goals`, `/life-matrix`, `/insights/theme-map`, `/insights`, `/account` at both desktop (≥1024px) and mobile (<1024px) widths. What to check:
+  - Desktop: sidebar on the left with CORE / REFLECT / ACCOUNT sections; Record button at top is violet and prominent; Life Matrix has the small violet dot to its right; active page has the left-edge violet bar and lit icon; topbar shows only the avatar dropdown on the right; content area fills the viewport up to 1600px.
+  - Mobile: layout is unchanged from before this run — same top nav with Home/Tasks/Goals/Insights tabs, same narrow single column per page, same profile dropdown in the top-right.
+  - `/life-matrix`: radar + score cards are visible, refreshed / locked states both still work.
+  - `/account`: left sub-nav is visible on desktop with 12 links; clicking each scrolls to that section; mobile keeps the vertical stack unchanged.
+- [ ] **Jimmy:** Dev build type-checks clean (only pre-existing `landing.tsx` stat.prefix error remains — unchanged from prior runs). Full `next build` not run in this session; recommend running it before deploy in case of RSC / client-boundary edge cases the typecheck misses.
+- [ ] **Jimmy (optional polish follow-ups, not blockers):**
+  - Tasks page still renders as a single list on desktop — no split-pane yet (list left / detail right). The list component (`TaskList`) has complex internal state that would need threading. Flagged but not done in this run.
+  - Home page dashboard grid (`grid-cols-1 lg:grid-cols-3`) was already in the code; I left the current arrangement. A full dashboard rework (span-7 record hero + span-5 sidebar cards) is a worthy follow-up but not in this run.
+  - Sub-nav scroll-spy active state (highlighting the current section as you scroll) — plain anchor links today; could add an IntersectionObserver if desired.
+  - `/entries` page was not touched — it keeps its current layout. Low blast radius since it's a straightforward list.
+
+### Notes
+- **Why no split-pane Tasks today:** the existing `TaskList` is a single client component with ~800 LOC of state management (optimistic mutations, pending refs, cache wiring). Threading a selected-task + detail panel through it is a real refactor, not a layout tweak. Deferred to a follow-up rather than half-ship.
+- **Content cap = 1600px.** Matches Linear/Vercel/Stripe density (their app shells sit 1500–1680). 1400 was my initial proposal — Jimmy bumped to 1600 on approval. Gutters on 27"+ monitors are still large but content is no longer a postage stamp.
+- **Sidebar width = 240px (w-60 in Tailwind).** Fits "Life Matrix" + icon + accent dot without wrapping. Narrow enough that content still gets 1360px at the 1600 cap. Not customizable — if we ever add collapse/expand it'll be a toggle on the sidebar itself, not a user-level pref.
+- **Record button target = `/home#record`.** The existing Home page already has `<div id="record">` wrapping its `<RecordButton/>`. So clicking Record anywhere in the app: (a) routes to /home, (b) the browser's native hash-scroll drops the user straight to the record button. If a future iteration wants tap-to-auto-record (skip the click on Home), introduce a `?record=1` query param and have Home auto-open the mic when present.
+- **Light + dark handling:** sidebar uses `bg-[#FAFAF7] dark:bg-[#0B0B12]` + `border-zinc-200 dark:border-white/10` to match the existing theme tokens. The product is primarily dark (Keenan's preference + brand), but light-mode users get a coherent sidebar too — same Linear-ish proportions, lighter surface.
+- **Mobile safety net:** three independent gates protect the mobile layout. (1) `AppShell` early-returns `{children}` unchanged when viewport-assumption isn't met (the `lg:` Tailwind gates on Sidebar/Topbar render nothing on mobile either way). (2) NavBar's root `<nav>` has `lg:hidden` so it renders ONLY on `<lg`. (3) Each `<PageContainer>` preserves per-page `mobileWidth` so mobile cap matches exactly what shipped before this run.
+- **Why extract UserMenu:** the Run 2 dropdown lived inside `nav-bar.tsx` as a non-exported function. AppShell's topbar needs the same dropdown. Rather than duplicate ~200 LOC, extracted to `components/user-menu.tsx` with two exports: `<UserMenu ... />` (prop-driven, for NavBar which already has `useSession()` in scope) and `<SessionUserMenu />` (self-hydrating, for AppShell where the topbar doesn't need to thread session down). Zero behavior change from the dropdown Jimmy just saw in Run 2.
+- **Life Matrix route:** the existing `<LifeMap>` component is in `apps/web/src/app/insights/life-map.tsx`. The new `/life-matrix/page.tsx` imports it directly via relative path (`../insights/life-map`). This is unusual (importing from another page's folder) but legitimate — the component is self-contained and the alternative (moving it to `components/`) is churn without benefit. If we ever delete `/insights/life-map.tsx`, the `/life-matrix` import needs to be redirected.
+- **Typecheck:** web 4 → 4 errors. Only the pre-existing `src/components/landing.tsx:1311 stat.prefix` TS2339 remains. All new files + modified files type-clean.
+- **Dev build smoke check:** `pnpm dev` boots, `/home` and `/life-matrix` both respond with 307 redirects to `/auth/signin` (expected for unauthenticated), confirming the routes exist and the layout doesn't throw during render. Full authenticated walkthrough needs a real session — Manual Steps above.
+
+---
+
 ## [2026-04-24] — Top nav redesign: avatar-only with account dropdown
 
 **Requested by:** Jimmy

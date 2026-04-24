@@ -13,6 +13,7 @@ import { ProgressionChecklist } from "@/components/progression-checklist";
 import { RecommendedActivity } from "@/components/recommended-activity";
 import { computeProgressionState, type ProgressionState } from "@/lib/progression";
 import { getUserProgression } from "@/lib/userProgression";
+import { PageContainer } from "@/components/page-container";
 import { RecordButton } from "./record-button";
 import { EntryCard } from "./entry-card";
 
@@ -131,7 +132,7 @@ export default async function DashboardPage() {
     <div className="min-h-screen">
       <TrackCompleteRegistration />
       <TrackPurchase />
-      <main className="mx-auto max-w-5xl px-6 py-10 animate-fade-in">
+      <PageContainer mobileWidth="5xl" className="animate-fade-in">
         <WelcomeBackBanner reduced={reducedTrial} daysLeft={trialDaysLeft} />
 
         {user?.subscriptionStatus === "PAST_DUE" && (
@@ -177,8 +178,8 @@ export default async function DashboardPage() {
           )}
         </div>
 
-        {/* Record button */}
-        <div id="record" className="mb-10 mx-auto max-w-lg">
+        {/* Record button — centered narrow on mobile, full-width card on desktop */}
+        <div id="record" className="mb-10 mx-auto max-w-lg lg:max-w-none">
           <RecordButton />
         </div>
 
@@ -300,7 +301,7 @@ export default async function DashboardPage() {
             </div>
           </aside>
         </div>
-      </main>
+      </PageContainer>
     </div>
   );
 }

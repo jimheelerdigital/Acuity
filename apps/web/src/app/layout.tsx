@@ -4,6 +4,7 @@ import Script from "next/script";
 import "./globals.css";
 
 import { Providers } from "@/components/providers";
+import { AppShell } from "@/components/app-shell";
 import { NavBar } from "@/components/nav-bar";
 import { GoogleAnalytics } from "@/components/google-analytics";
 import { CookieConsentBanner } from "@/components/cookie-consent";
@@ -106,7 +107,7 @@ export default function RootLayout({
           <GoogleAnalytics />
           <NavBar />
           <KeyboardShortcuts />
-          {children}
+          <AppShell>{children}</AppShell>
           <CrisisFooter />
           <CookieConsentBanner />
         </Providers>

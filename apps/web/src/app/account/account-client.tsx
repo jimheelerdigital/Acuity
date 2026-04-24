@@ -45,9 +45,15 @@ export default function AccountClient({
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-[#FAFAF7] px-6 py-12 dark:bg-[#0B0B12]">
-      <div className="mx-auto max-w-2xl">
-        <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+    <div className="min-h-screen bg-[#FAFAF7] px-6 py-12 dark:bg-[#0B0B12] lg:px-0 lg:py-0">
+      <div className="mx-auto max-w-2xl lg:grid lg:max-w-none lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-12">
+        {/* Sticky sub-nav — lg+ only. Mobile keeps the current stacked
+            layout because the content sections already act as a single
+            scroll column there. */}
+        <SettingsSubNav />
+
+        <div className="lg:min-w-0">
+        <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 lg:text-3xl">
           Account
         </h1>
         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
@@ -55,7 +61,7 @@ export default function AccountClient({
         </p>
 
         {/* Account info */}
-        <section className="mt-8 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-6">
+        <section id="profile" className="mt-8 scroll-mt-24 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-6">
           <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
             Profile
           </h2>
@@ -74,41 +80,55 @@ export default function AccountClient({
         </section>
 
         {/* Subscription */}
-        <SubscriptionSection
-          status={subscriptionStatus}
-          hasStripeCustomer={hasStripeCustomer}
-          periodEnd={periodEnd}
-          trialEndsAt={trialEndsAt}
-          justUpgraded={justUpgraded}
-        />
+        <div id="subscription" className="scroll-mt-24">
+          <SubscriptionSection
+            status={subscriptionStatus}
+            hasStripeCustomer={hasStripeCustomer}
+            periodEnd={periodEnd}
+            trialEndsAt={trialEndsAt}
+            justUpgraded={justUpgraded}
+          />
+        </div>
 
         {/* Reminders */}
-        <RemindersSection
-          initialTime={notificationTime}
-          initialDays={notificationDays}
-          initialEnabled={notificationsEnabled}
-        />
+        <div id="reminders" className="scroll-mt-24">
+          <RemindersSection
+            initialTime={notificationTime}
+            initialDays={notificationDays}
+            initialEnabled={notificationsEnabled}
+          />
+        </div>
 
         {/* Life Matrix dimensions */}
-        <LifeDimensionsSection />
+        <div id="dimensions" className="scroll-mt-24">
+          <LifeDimensionsSection />
+        </div>
 
         {/* Referrals */}
-        <ReferralsSection />
+        <div id="referrals" className="scroll-mt-24">
+          <ReferralsSection />
+        </div>
 
         {/* Email preferences */}
-        <EmailPrefsSection
-          initialWeekly={weeklyEmailEnabled}
-          initialMonthly={monthlyEmailEnabled}
-        />
+        <div id="email" className="scroll-mt-24">
+          <EmailPrefsSection
+            initialWeekly={weeklyEmailEnabled}
+            initialMonthly={monthlyEmailEnabled}
+          />
+        </div>
 
         {/* Integrations (calendar stubs — foundation only) */}
-        <IntegrationsSection />
+        <div id="integrations" className="scroll-mt-24">
+          <IntegrationsSection />
+        </div>
 
         {/* Data export */}
-        <DataExportSection />
+        <div id="export" className="scroll-mt-24">
+          <DataExportSection />
+        </div>
 
         {/* Support & safety — crisis resources pointer */}
-        <section className="mt-8 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-6">
+        <section id="support" className="mt-8 scroll-mt-24 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-6">
           <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
             Support &amp; safety
           </h2>
@@ -126,7 +146,7 @@ export default function AccountClient({
         </section>
 
         {/* Appearance */}
-        <section className="mt-8 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-6">
+        <section id="appearance" className="mt-8 scroll-mt-24 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-6">
           <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
             Appearance
           </h2>
@@ -139,7 +159,7 @@ export default function AccountClient({
         </section>
 
         {/* Privacy choices — entry point to re-open the cookie banner */}
-        <section className="mt-8 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-6">
+        <section id="privacy" className="mt-8 scroll-mt-24 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-6">
           <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
             Privacy choices
           </h2>
@@ -165,7 +185,7 @@ export default function AccountClient({
         </section>
 
         {/* Danger zone */}
-        <section className="mt-8 rounded-xl border border-red-200 bg-red-50/40 p-6 dark:border-red-900/40 dark:bg-red-950/20">
+        <section id="danger" className="mt-8 scroll-mt-24 rounded-xl border border-red-200 bg-red-50/40 p-6 dark:border-red-900/40 dark:bg-red-950/20">
           <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
             Delete account
           </h2>
@@ -191,6 +211,7 @@ export default function AccountClient({
             Delete my account
           </button>
         </section>
+        </div>
       </div>
 
       {confirmOpen && (
@@ -1136,5 +1157,49 @@ function DataExportSection() {
         <p className="mt-3 text-xs text-red-600 dark:text-red-400">{error}</p>
       )}
     </section>
+  );
+}
+
+// ─── Settings sub-nav (lg+ only) ────────────────────────────────────
+
+const SETTINGS_NAV = [
+  { href: "#profile", label: "Profile" },
+  { href: "#subscription", label: "Subscription" },
+  { href: "#reminders", label: "Reminders" },
+  { href: "#dimensions", label: "Life dimensions" },
+  { href: "#referrals", label: "Referrals" },
+  { href: "#email", label: "Email" },
+  { href: "#integrations", label: "Integrations" },
+  { href: "#export", label: "Data export" },
+  { href: "#support", label: "Support" },
+  { href: "#appearance", label: "Appearance" },
+  { href: "#privacy", label: "Privacy" },
+  { href: "#danger", label: "Delete account", danger: true },
+] as const;
+
+function SettingsSubNav() {
+  return (
+    <aside className="hidden lg:block">
+      <div className="sticky top-20">
+        <p className="mb-3 px-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-400 dark:text-zinc-500">
+          Settings
+        </p>
+        <nav className="space-y-0.5">
+          {SETTINGS_NAV.map((item) => (
+            <a
+              key={item.href}
+              href={item.href}
+              className={`block rounded-lg px-3 py-1.5 text-sm transition-colors ${
+                "danger" in item && item.danger
+                  ? "text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-500/10"
+                  : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-white/5 dark:hover:text-zinc-100"
+              }`}
+            >
+              {item.label}
+            </a>
+          ))}
+        </nav>
+      </div>
+    </aside>
   );
 }
