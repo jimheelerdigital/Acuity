@@ -182,8 +182,48 @@ export function getAuthOptions(): NextAuthOptions {
         // Trial clock + LifeMapArea seed + UserMemory + trial_started
         // PostHog event. Shared with /api/auth/mobile-callback so the
         // native OAuth path produces identical state; see lib/bootstrap-user.ts.
-        const { bootstrapNewUser } = await import("@/lib/bootstrap-user");
-        await bootstrapNewUser({ userId: user.id, email: user.email ?? null });
+        //
+        // Wrapped in try/catch so a bootstrap failure does NOT brick
+        // sign-in. The User row has already been created by the
+        // adapter before this event fires. If bootstrap throws
+        // (transient DB error, schema-drift on a newly-added column,
+        // Inngest unavailable, etc.) the user STILL completes sign-in
+        // with a partially-seeded account; we catch it server-side
+        // via Sentry and repair the row.
+        //
+        // Without this guard, a bootstrap failure propagates up to
+        // NextAuth's OAuth callback handler, which returns ?error=Callback
+        // and strands the user on /auth/signin — an infrastructure
+        // gap becomes a total sign-in outage (exactly the 2026-04-24
+        // incident when schema.prisma gained isFoundingMember but
+        // `prisma db push` hadn't run against production).
+        try {
+          const { bootstrapNewUser } = await import("@/lib/bootstrap-user");
+          await bootstrapNewUser({
+            userId: user.id,
+            email: user.email ?? null,
+          });
+        } catch (err) {
+          // Lazy import so Sentry isn't pulled into contexts that
+          // don't have it initialized.
+          try {
+            const Sentry = await import("@sentry/nextjs");
+            Sentry.captureException(err, {
+              tags: { stage: "events.createUser" },
+              extra: { userId: user.id },
+            });
+          } catch {
+            // Sentry itself may be down / not configured locally.
+            // Fall back to a single error log so the failure isn't
+            // completely silent in dev.
+            // eslint-disable-next-line no-console
+            console.error(
+              "[auth.events.createUser] bootstrapNewUser failed:",
+              err
+            );
+          }
+          // Swallow. Sign-in continues.
+        }
       },
     },
   };

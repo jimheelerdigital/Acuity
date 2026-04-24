@@ -193,15 +193,45 @@ export default function SignInPage() {
 }
 
 // NextAuth-native error codes (from ?error= in the URL on a failed
-// OAuth / magic-link callback).
+// OAuth / magic-link callback). Every error code NextAuth documents
+// is listed here. Missing entries fall through to `Default`, which
+// shows the generic "Something went wrong" — that's what triggered
+// the 2026-04-24 diagnosis delay on the Callback-code outage. Any
+// future NextAuth upgrade that adds error codes should extend this
+// map; an unrecognized code is a diagnostic dead-end.
 const nextAuthErrorMessages: Record<string, string> = {
+  // OAuth flow
   OAuthSignin: "Could not start Google sign-in. Please try again.",
-  OAuthCallback: "Google sign-in failed. Please try again.",
-  OAuthCreateAccount: "Could not create account. Please try again.",
+  OAuthCallback: "Google sign-in failed on return. Please try again.",
+  OAuthCreateAccount: "Could not create account from Google. Please try again.",
+  OAuthAccountNotLinked:
+    "This email already has an account with a different sign-in method. Sign in the way you did originally.",
+
+  // Magic link flow
   EmailCreateAccount: "Could not create account. Please try again.",
   EmailSignin: "Failed to send the magic link. Please try again.",
-  SessionRequired: "You must be signed in to access that page.",
+  Verification:
+    "The sign-in link has expired or was already used. Request a new one.",
+
+  // Credentials + session
   CredentialsSignin: "Incorrect email or password.",
+  SessionRequired: "You must be signed in to access that page.",
+
+  // User cancelled on the provider's consent screen
+  AccessDenied: "Sign-in was cancelled. Tap Continue with Google to try again.",
+
+  // Generic callback — usually means something threw inside our
+  // server-side callback chain (events.createUser, callbacks.jwt,
+  // callbacks.session, or the adapter). Sentry will have the stack.
+  Callback:
+    "Something went wrong during sign-in. Please try again or contact support at jim@heelerdigital.com.",
+
+  // Server-side misconfiguration — NEXTAUTH_SECRET or NEXTAUTH_URL
+  // missing or wrong. Does not self-heal; needs env var fix in Vercel.
+  Configuration:
+    "Sign-in is temporarily unavailable. We've been notified and are looking into it.",
+
+  // Fallback
   Default: "Something went wrong. Please try again.",
 };
 
