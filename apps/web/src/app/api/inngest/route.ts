@@ -23,6 +23,7 @@ import { cleanupGenerationJobsFn } from "@/inngest/functions/cleanup-generation-
 import { snapshotLifemapHistoryFn } from "@/inngest/functions/snapshot-lifemap-history";
 import { computeDailySnapshotFn } from "@/inngest/functions/compute-daily-snapshot";
 import { scanRedFlagsFn } from "@/inngest/functions/scan-red-flags";
+import { trialEmailOrchestratorFn } from "@/inngest/functions/trial-email-orchestrator";
 import { weeklyDigestFn } from "@/inngest/functions/weekly-digest";
 
 export const dynamic = "force-dynamic";
@@ -52,6 +53,7 @@ const handler = serve({
     scanRedFlagsFn,
     generateStateOfMeFn,
     stateOfMeAutoTickFn,
+    trialEmailOrchestratorFn,
   ],
 });
 

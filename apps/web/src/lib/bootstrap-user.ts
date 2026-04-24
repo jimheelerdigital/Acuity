@@ -131,6 +131,19 @@ export async function bootstrapNewUser(params: {
     .catch(() => {
       // Ignore if already exists (UserMemory has a unique userId).
     });
+
+  // Send welcome_day0 inline (spec: within 60 seconds of signup, not
+  // from the hourly orchestrator). Fail-soft — a send failure must not
+  // brick signup. The TrialEmailLog unique constraint makes this safe
+  // to re-invoke on a retried signup path: the second attempt returns
+  // `already_sent` without re-dispatching.
+  try {
+    const { sendTrialEmail } = await import("@/lib/trial-emails");
+    await sendTrialEmail(userId, "welcome_day0");
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error("[bootstrap-user] welcome_day0 send failed:", err);
+  }
 }
 
 /**

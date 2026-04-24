@@ -347,6 +347,40 @@ export const processEntryFn = inngest.createFunction(
       });
     });
 
+    // Recording stats — drives the trial onboarding orchestrator.
+    // Runs right after the persist transaction so firstRecordingAt
+    // lands before the next hour's trialEmailOrchestrator tick. We
+    // only stamp on COMPLETE entries (not PARTIAL / FAILED), which is
+    // the state a successful persist puts the row in. Fail-soft:
+    // a stats update failure shouldn't fail the entry.
+    await step.run("update-recording-stats", async () => {
+      const entry = await prisma.entry.findUnique({
+        where: { id: entryId },
+        select: { status: true, createdAt: true },
+      });
+      if (!entry || entry.status !== "COMPLETE") return;
+
+      const existing = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { firstRecordingAt: true },
+      });
+      if (!existing) return;
+
+      await prisma.user.update({
+        where: { id: userId },
+        data: {
+          firstRecordingAt: existing.firstRecordingAt ?? entry.createdAt,
+          lastRecordingAt: entry.createdAt,
+          totalRecordings: { increment: 1 },
+        },
+      });
+    }).catch((err) => {
+      logger.error(
+        "[process-entry] update-recording-stats failed (non-fatal)",
+        { err }
+      );
+    });
+
     // Embedding generation — fail-soft. Runs outside the transaction
     // because OpenAI latency shouldn't block entry persistence; a
     // missed embedding just means this entry won't show up in

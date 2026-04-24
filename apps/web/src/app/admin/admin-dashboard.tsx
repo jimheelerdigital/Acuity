@@ -20,6 +20,7 @@ const ContentFactoryTab = dynamic(() => import("./tabs/ContentFactoryTab"));
 const RedFlagsTab = dynamic(() => import("./tabs/RedFlagsTab"));
 const FeatureFlagsTab = dynamic(() => import("./tabs/FeatureFlagsTab"));
 const UsersTab = dynamic(() => import("./tabs/UsersTab"));
+const TrialEmailsTab = dynamic(() => import("./tabs/TrialEmailsTab"));
 const GuideTab = dynamic(() => import("./tabs/GuideTab"));
 
 const TABS = [
@@ -34,6 +35,7 @@ const TABS = [
   { key: "red-flags", label: "Red Flags" },
   { key: "feature-flags", label: "Feature Flags" },
   { key: "users", label: "Users" },
+  { key: "trial-emails", label: "Trial Emails" },
   { key: "guide", label: "Guide" },
 ] as const;
 
@@ -111,6 +113,7 @@ export default function AdminDashboard() {
     activeTab !== "content-factory" &&
     activeTab !== "feature-flags" &&
     activeTab !== "users" &&
+    activeTab !== "trial-emails" &&
     activeTab !== "guide";
 
   return (
@@ -191,6 +194,7 @@ export default function AdminDashboard() {
           )}
           {activeTab === "feature-flags" && <FeatureFlagsTab />}
           {activeTab === "users" && <UsersTab />}
+          {activeTab === "trial-emails" && <TrialEmailsTab />}
           {activeTab === "guide" && <GuideTab />}
         </div>
       </div>

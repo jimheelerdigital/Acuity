@@ -193,7 +193,50 @@ model User {
   // REFERRAL_ANNUAL_CAP in lib/referrals.ts.
   referralRewardDays     Int          @default(0)
 
+  // Trial email sequence fields (2026-04-24). Drives the
+  // trial-email-orchestrator Inngest function. firstRecordingAt /
+  // lastRecordingAt are stamped by the process-entry pipeline on a
+  // user's first successful debrief persistence (and on each
+  // subsequent one). totalRecordings is incremented in the same
+  // write. onboardingTrack flips to REACTIVATION when no recording
+  // by hour 48 post-signup, or to POWER_USER at 5+ recordings within
+  // 96h. onboardingUnsubscribed is flipped true by the unsubscribe
+  // link in every trial email footer.
+  firstRecordingAt       DateTime?
+  lastRecordingAt        DateTime?
+  totalRecordings        Int          @default(0)
+  onboardingTrack        String       @default("STANDARD")
+  onboardingUnsubscribed Boolean      @default(false)
+  trialEmailLogs         TrialEmailLog[]
+
   @@index([createdAt])
+}
+
+// Per-email-send log for the trial onboarding sequence. Unique on
+// (userId, emailKey) so the orchestrator can safely re-run hourly
+// without duplicating sends. `opened` + `clicked` update via the
+// Resend webhook (see /api/webhooks/resend) — nullable while the
+// webhook is not yet configured in the Resend dashboard.
+//
+// See apps/web/src/inngest/functions/trial-email-orchestrator.ts for
+// the scheduling logic + emailKey catalog.
+model TrialEmailLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emailKey  String
+  sentAt    DateTime @default(now())
+  opened    Boolean? // null until Resend webhook lands
+  clicked   Boolean? // null until Resend webhook lands
+  openedAt  DateTime?
+  clickedAt DateTime?
+  // Resend message id — returned from resend.emails.send. Lets the
+  // webhook tie delivery events back to a specific log row.
+  resendId  String?  @unique
+
+  @@unique([userId, emailKey])
+  @@index([userId, sentAt])
+  @@index([emailKey, sentAt])
 }
 
 // Tombstone for deleted accounts — closes the trial-reset exploit

@@ -43,7 +43,9 @@ async function handle(req: NextRequest) {
       data:
         parsed.kind === "weekly"
           ? { weeklyEmailEnabled: false }
-          : { monthlyEmailEnabled: false },
+          : parsed.kind === "monthly"
+            ? { monthlyEmailEnabled: false }
+            : { onboardingUnsubscribed: true },
     });
   } catch {
     return htmlResponse(
@@ -87,8 +89,16 @@ a{color:#A78BFA;text-decoration:none;font-weight:500}
 <body><div class="card">${body}</div></body></html>`;
 }
 
-function confirmedPage(kind: "weekly" | "monthly"): string {
-  const label = kind === "weekly" ? "weekly" : "monthly";
+function confirmedPage(kind: "weekly" | "monthly" | "onboarding"): string {
+  if (kind === "onboarding") {
+    return pageShell(`
+      <div class="logo">✦</div>
+      <h1>You're off the onboarding list.</h1>
+      <p>No more tips, debrief reminders, or trial check-ins from Keenan. Your weekly report and any transactional emails (password reset, payment receipts) will still reach you.</p>
+      <p><a href="/account">Account settings</a></p>
+    `);
+  }
+  const label = kind;
   return pageShell(`
     <div class="logo">✦</div>
     <h1>You're unsubscribed from the ${label} digest.</h1>

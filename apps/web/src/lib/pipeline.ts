@@ -541,6 +541,33 @@ export async function processEntry({
       return { entry, tasks, tasksCreated, extraction };
     });
 
+    // ── Recording stats (drives trial onboarding sequence) ────────────────
+    // Mirror of the process-entry.ts step.run("update-recording-stats")
+    // block so sync-path entries (ENABLE_INNGEST_PIPELINE unset) also
+    // flip firstRecordingAt on successful persist. Non-fatal.
+    try {
+      const existingUser = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { firstRecordingAt: true },
+      });
+      if (existingUser) {
+        await prisma.user.update({
+          where: { id: userId },
+          data: {
+            firstRecordingAt:
+              existingUser.firstRecordingAt ?? result.entry.createdAt,
+            lastRecordingAt: result.entry.createdAt,
+            totalRecordings: { increment: 1 },
+          },
+        });
+      }
+    } catch (err) {
+      console.error(
+        "[pipeline] recording stats update failed (non-fatal):",
+        err
+      );
+    }
+
     // ── Post-transaction: update memory + life map (non-fatal) ────────────
     try {
       const { updateUserMemory, updateLifeMap } = await import("@/lib/memory");
