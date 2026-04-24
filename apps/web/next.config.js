@@ -22,6 +22,21 @@
  *   Google OAuth (sign-in)
  *       connect-src  https://accounts.google.com      (OIDC discovery)
  *       connect-src  https://oauth2.googleapis.com    (token exchange)
+ *       form-action  https://accounts.google.com      (NextAuth v4
+ *                                                     posts a hidden
+ *                                                     form to its own
+ *                                                     signin endpoint,
+ *                                                     which 302-redirects
+ *                                                     to accounts.google.com.
+ *                                                     Chrome 105+ enforces
+ *                                                     form-action on
+ *                                                     redirect targets
+ *                                                     per CSP Level 3,
+ *                                                     so the redirect
+ *                                                     target must be
+ *                                                     allowlisted here
+ *                                                     too — not just in
+ *                                                     connect-src.)
  *
  *   Google Analytics + Tag Manager
  *       script-src   https://www.googletagmanager.com
@@ -89,7 +104,12 @@ const CSP_DIRECTIVES = [
   // Frames (Stripe Checkout embeds an iframe)
   "frame-src 'self' https://js.stripe.com https://checkout.stripe.com https://*.stripe.com https://www.facebook.com",
   "frame-ancestors 'none'",
-  "form-action 'self' https://checkout.stripe.com",
+  // NextAuth v4's signIn("google") posts a hidden form to /api/auth/signin/google
+  // which then 302-redirects to accounts.google.com. Chrome enforces form-action
+  // on redirect targets (CSP Level 3) — so the Google OAuth origin has to be
+  // allowlisted here, not just in connect-src. Checkout.stripe.com was already
+  // here for the existing Stripe Checkout form POST.
+  "form-action 'self' https://checkout.stripe.com https://accounts.google.com",
   "base-uri 'self'",
   "object-src 'none'",
   "manifest-src 'self'",
