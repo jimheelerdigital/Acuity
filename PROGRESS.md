@@ -7,6 +7,44 @@
 
 ---
 
+## [2026-04-23] — Fix silent Sentry on mobile + ship build 11 with launch canary
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** 31b6ec6
+
+### In plain English (for Keenan)
+Our mobile crash reporting was completely broken. We had Sentry installed in the app but it had never been turned on properly — the secret address it needs to send crashes to was never set for production builds. That's why the Sentry dashboard was near-empty despite real crashes happening in TestFlight builds 9 and 10. This ships the fix: every TestFlight build from now on sends crashes and errors to Sentry. It also fires a "hello" ping the first time the app opens after install, so we can verify the pipeline is working before a user hits a real bug. Build 11 is on its way to TestFlight with all of this wired up.
+
+### Technical changes (for Jimmy)
+- `apps/mobile/eas.json`: added `EXPO_PUBLIC_SENTRY_DSN` to both `preview.env` and `production.env` blocks. Without this, `process.env.EXPO_PUBLIC_SENTRY_DSN` was undefined at bundle time and `initSentry()` at `lib/sentry.ts` early-returned on every launch
+- `apps/mobile/app.json`: bumped `version` 0.1.1 → 0.1.2; registered `@sentry/react-native/expo` config plugin with `organization: heeler-digital`, `project: react-native` — this is what makes EAS Build configure the native SDK and (once auth token is added) upload source maps
+- `apps/mobile/metro.config.js`: swapped `getDefaultConfig` → `getSentryExpoConfig` from `@sentry/react-native/metro` so the JS bundle ships with source maps adjacent
+- `apps/mobile/app/_layout.tsx`: wrapped root export with `Sentry.wrap(RootLayout)` — installs React error boundary + expo-router navigation breadcrumbs
+- `apps/mobile/lib/sentry.ts`: added `environment` (`development`/`production`), `release` (`com.heelerdigital.acuity@0.1.2`), and `dist` (`ios-11`) tags pulled from `expo-constants` + Platform; dev-mode `console.warn` when DSN is missing so this class of bug can't recur silently; one-shot `Sentry.captureMessage("mobile.launch …", "info")` canary on every launch as a liveness heartbeat — if this event appears in Sentry, the pipeline works end-to-end
+- Sentry DSN `https://c29c...sentry.io/4511258441547776` — not a secret, safe to inline in eas.json (DSN is just an ingest URL identifier)
+- Chose to defer `SENTRY_AUTH_TOKEN` + source-map upload to follow-up (Jimmy's call). Events will flow without it — stack frames just stay minified until we add the token as an EAS secret
+- Build 11 kicked off via `eas build --profile production --platform ios --auto-submit --non-interactive`; auto-incremented `buildNumber 10 → 11`; TestFlight submission happens automatically on build success
+
+### Manual steps needed
+- [ ] Wait for "Ready to Test" email from App Store Connect (~15–25 min after EAS build completes) (Jimmy)
+- [ ] Install build 11 in TestFlight on iPhone (Jimmy)
+- [ ] Confirm `mobile.launch com.heelerdigital.acuity@0.1.2 ios-11` canary event appears in Sentry → heeler-digital/react-native project → filter `level:info` within 30s of first launch (Jimmy)
+- [ ] Reproduce the build 9 silent crash; verify Sentry captures a `level:error` event with crash signature + breadcrumbs (Jimmy)
+- [ ] Post crash issue + top breadcrumbs back to Claude for root-cause triage (Jimmy)
+- [ ] Follow-up: generate Sentry auth token, store as EAS secret `SENTRY_AUTH_TOKEN`, rerun build so source maps upload (Jimmy — ~2 min after we confirm raw events flow)
+- [ ] Unrelated: someone left debug red/green colors in `apps/mobile/app/(tabs)/tasks.tsx` Checkbox (lines 597–598). Not touched by this commit — revert when convenient (Jimmy)
+
+### Notes
+- Root cause of the silent Sentry was the eas.json gap, not the SDK. `@sentry/react-native 8.8.0` is autolinked via cocoapods (confirmed in `ios/Podfile.lock`: RNSentry 8.8.0, Sentry 9.10.0) — the native side was always ready, JS just never called `init` because DSN was undefined
+- Web Sentry (`NEXT_PUBLIC_SENTRY_DSN` in Vercel env) is unaffected by this change and has always been working — the "2 issues in 14 days" on the dashboard were web events, not mobile
+- The launch canary is a permanent feature, not a temporary probe. Cost is negligible (one event per cold launch) and it provides ongoing signal that a given build's Sentry pipeline is alive. Delete the `captureMessage` line if it ever becomes noisy
+- `release` format `com.heelerdigital.acuity@0.1.2` matches Expo's convention so future OTA updates via `expo-updates` will tag into the same release group
+- If canary fires but later crashes don't — most likely cause is an uncaught error in native land (Objective-C or C++) that the JS SDK can't see. That's exactly what the config plugin unlocks native crash capture for; should be handled out of the box now
+- Cannot add source maps in this commit because EAS secrets are not self-service via CLI without an auth token; Jimmy to generate at Sentry → Settings → Account → Auth Tokens with scopes `project:releases` + `org:read`
+
+---
+
 ## [2026-04-23] — Ship First 100 urgency banner + standardize social proof numbers
 
 **Requested by:** Keenan
