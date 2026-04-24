@@ -11,7 +11,7 @@
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** PENDING
+**Commit hash:** 849a3b1
 
 ### In plain English (for Keenan)
 Four things visible on Build 13 in TestFlight were broken: the "Home" label under the mic button was sitting a few pixels below the other tab labels; the Insights page kept claiming the user had "0 of 3 life areas" even though they'd recorded across career, health, and golf; the Theme Map still had a text-style `< Insights` back button instead of the circle-arrow one; and the two "coming soon" screens (State of Me and Ask Your Past Self) had their copy glued to the bottom instead of sitting in the vertical middle. Build 14 fixes all four: labels now align on a single baseline, the Life Matrix reads from the real extraction-scored coverage (so it unlocks when the AI has actually tagged three different areas in a user's entries), every back button in the Insights flow is the circle component, and the placeholder screens center their copy properly. No new features in this build — it's a cleanup pass on Build 13.
