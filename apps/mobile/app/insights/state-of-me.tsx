@@ -2,7 +2,7 @@ import { useRouter } from "expo-router";
 import { Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { BackButton } from "@/components/back-button";
+import { StickyBackButton } from "@/components/back-button";
 import { useTheme } from "@/contexts/theme-context";
 
 export default function StateOfMeScreen() {
@@ -14,9 +14,7 @@ export default function StateOfMeScreen() {
       edges={["top"]}
       style={{ flex: 1, backgroundColor: isDark ? "#0B0B12" : "#FFFFFF" }}
     >
-      <View style={{ padding: 20 }}>
-        <BackButton onPress={() => router.back()} />
-      </View>
+      <StickyBackButton onPress={() => router.back()} />
       <View
         style={{
           flex: 1,

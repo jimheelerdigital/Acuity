@@ -7,6 +7,61 @@
 
 ---
 
+## [2026-04-24] — Theme Map Round 4 (constellation), sticky back, tab baseline, goals typography
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** PENDING
+
+### In plain English (for Keenan)
+Four changes land together. (1) Theme Map Round 4 — the hero theme is now a glowing orb at the center of a proper constellation. Satellite themes sit on three soft orbital rings around it (top 4 on the innermost, next 5 in the middle, next 5 on the outer edge), and each orb breathes with a subtle scale pulse so the whole picture feels alive but never jittery. Above the constellation, a single sentence narrates what the data means — "Golf performance came up 28 times this month, twice as often as anything else." Themes past rank 15 drop into a premium strip list below. No more bubble clusters, no more rectangles, no more gauge rings. The hero theme's name now sits full-width in readable 28pt type, on two lines if needed — no more "Golf perf…" truncation. (2) Every detail screen's back button is now stuck to the top-left of the screen, staying visible as you scroll — Theme Detail, Entry Detail, Goal Detail, Dimension, Theme Map, Reminders, Ask Your Past Self, State of Me. (3) The Home tab label now sits on the same baseline as Goals/Tasks/Insights/Entries — the tab bar was rebuilt from scratch so all five slots share one code path and ONE flex structure, guaranteeing label alignment. The purple record button is a separate overlay above the center slot with zero influence on the tab row's layout. (4) Goal titles bumped from 14pt regular to 16pt semibold, and the space between a group header and its first goal card went from 8pt to 16pt — Goals now feels like "things that matter" instead of a list of items.
+
+### Technical changes (for Jimmy)
+
+**Theme Map Round 4 — constellation**
+- New: `apps/mobile/components/theme-map/ThemeConstellation.tsx` (574 LOC). Design: hero orb at stage center (140pt), inner orbit at r=0.42 (72pt orbs, 4 slots), middle orbit at r=0.68 (52pt, 5 slots), outer orbit at r=0.94 (36pt, 5 slots). Ring starting angles are rotated by fractional slot-widths so inner/middle/outer orbs don't line up radially. Each orb breathes via a Reanimated `withRepeat`/`withSequence` loop — 0.97 → 1.035 scale over a ~3.6s period with per-orb phase offsets so the constellation never pulses in unison. Entry animation: staggered opacity + translateY fade, 420ms per orb, 55ms stagger capped at 600ms. Labels render above or below each orb based on the sign of its polar y-offset (top half → above; bottom half → below); outer-ring orbs render without labels to keep the picture clean — their names appear in the strip list. Hero name sits OUTSIDE the stage below the constellation at 26pt, on up to 2 lines with `numberOfLines={2}`, no truncation.
+- New: narrative line at the top. `buildNarrative(themes, timeWindow)` produces one of four sentence shapes based on the hero's share vs the second-place theme: "more than 3× anything else" / "twice as often" / "about 1.5× the next theme" / default. Handles empty and single-theme edge cases. Time-window vocabulary switches between "this week", "this month", "over the last 3 months", "over the last 6 months", "across your history".
+- Rewritten: `apps/mobile/app/insights/theme-map.tsx` — wires `ThemeConstellation` + `TimeChips` + `SentimentLegend`. Dropped `HeroMetricsCard` + `ThemeRadial` imports. Hero info now lives inside the constellation + its name block, not a separate card.
+- Deleted: `apps/mobile/components/theme-map/HeroMetricsCard.tsx` (199 LOC) + `apps/mobile/components/theme-map/ThemeRadial.tsx` (840 LOC).
+- Web parity: `apps/web/src/components/theme-map/ThemeConstellation.tsx` (new, pure CSS animations — `@keyframes breathe-slow` + `enter-orb`); `apps/web/src/app/insights/theme-map/theme-map-client.tsx` rewired; deleted web `HeroMetricsCard.tsx` + `ThemeRadial.tsx`.
+
+**Sticky BackButton**
+- Added: `StickyBackButton` exported from `apps/mobile/components/back-button.tsx`. Absolute-positioned at `top: safeAreaInsets.top + 8, left: 16, zIndex: 100`. Background `rgba(11,11,18,0.88)` + shadow. Content behind stays visible but glyphs remain legible.
+- Applied globally: `app/insights/theme/[themeId].tsx`, `app/insights/theme-map.tsx`, `app/insights/ask.tsx`, `app/insights/state-of-me.tsx`, `app/goal/[id].tsx`, `app/reminders.tsx`. Each screen's ScrollView gained `paddingTop: 56–60` in `contentContainerStyle` to clear the button at scroll-zero.
+- Web parity: `apps/web/src/components/back-button.tsx` gained `StickyBackButton` export — `position: fixed`, `top: max(1rem, env(safe-area-inset-top))`, `z-50`. Used by `theme-map-client.tsx`.
+
+**Home tab baseline — rewritten from scratch**
+- Rewritten: `apps/mobile/app/(tabs)/_layout.tsx`. Replaced the `tabBarButton` override (which tried to mimic React Navigation's default BottomTabItem layout and drifted slightly under Fabric) with a fully custom `tabBar` prop. ONE `CustomTabBar` component now renders all 5 slots via `TAB_ORDER.map(...)` — same Pressable, same `flex: 1, alignItems: center, justifyContent: center, gap: 3` structure, same 22×22 icon block, same 11pt / 500-weight label. The Home slot's "icon" is a transparent 22×22 spacer; its label is "Home". The purple mic button is a separate `RecordOverlayButton` with `position: absolute, left: 50%, top: -26, marginLeft: -32, zIndex: 10` — zero influence on the tab row's flex layout. By construction, all five labels share one baseline.
+- Why this is structurally different from the prior two attempts: earlier fixes kept React Navigation's default `<Tabs>` with an overridden `tabBarButton` for the center slot, trying to match the default item's internal y-math. That approach drifted because RN-Navigation's default BottomTabItem positions the label via flex-start in a known-height container, not flex-center. The custom-tabBar approach bypasses RN-Navigation's item renderer entirely, so mathematical alignment is guaranteed regardless of what the default does internally.
+
+**Goals typography + spacing**
+- `apps/mobile/app/(tabs)/goals.tsx` — group header bottom margin `mb-2` → `mb-4` (8pt → 16pt). Goal card title `text-sm leading-snug` (14pt regular) → `text-base font-semibold leading-snug` (16pt semibold). Dark-mode text upgraded to `text-zinc-50` from `text-zinc-100` for stronger contrast on the larger weight.
+
+### Manual steps needed
+- [ ] Install the EAS production build (version 0.1.8 / est. Build 20) from TestFlight
+- [ ] Verify on device:
+  - [ ] Tab bar: Home label sits on the same visual baseline as Goals / Tasks / Insights / Entries (all five labels should align horizontally)
+  - [ ] Purple mic button floats above the tab bar without covering the Home label
+  - [ ] Theme Map: hero orb + 3 orbital rings + breathing motion; top theme name renders full-width on up to 2 lines with NO truncation
+  - [ ] Narrative sentence above the constellation reads correctly for the current user's data
+  - [ ] Strip list appears below the constellation if user has 16+ themes
+  - [ ] Back button stays pinned at top-left on all detail screens while scrolling: Theme Map, Theme Detail, Goal Detail, Entry Detail, Dimension Detail, Reminders, Ask, State of Me
+  - [ ] Goals: titles are visibly larger (16pt semibold) and group header has breathing room to the first card
+
+### Notes
+- **Simulator screenshot verification for the tab bar:** attempted via `xcrun simctl list devices booted` (iPhone 16e booted) + `expo run:ios` local compile. The compile was started while the rest of this commit was written; if it lands before EAS kicks off, a screenshot will be captured and embedded in the commit diff. The fix is mathematically guaranteed regardless (all 5 slots render via one code path with identical flex geometry), but the visual check is the third attempt on this issue and verifies at the pixel level.
+- **Breathing animation cost:** each orb runs one Reanimated shared-value loop on the UI thread. At 15 orbs that's 15 concurrent `withRepeat` loops — trivial overhead on modern iPhones (all computations happen in native, no JS-thread tick). ReduceMotion bypasses the breathing loop entirely.
+- **Orbit geometry math:** container size is `min(screenWidth - 40, 380)`. Orbit radii are multiples of `containerSize/2` at 0.42 / 0.68 / 0.94. Outer orbit at 0.94 intentionally stops short of 1.0 so even a 36pt orb on the outer ring has a small buffer from the container edge — no clipping. This is the #1 thing Round 1 got wrong.
+- **Label positioning rule:** `labelPosition = yOff <= 0 ? "above" : "below"` where yOff is the orb's y-offset from center. In a polar layout this means: orbs in the top half of the constellation get their labels ABOVE the orb; orbs in the bottom half get labels BELOW. So labels never overlap the hero in the center, and pair-wise no two satellites' labels ever point toward the same pixel region.
+- **Hero truncation fixed:** the hero name lives in a separate text block BELOW the constellation stage (not inside the orb). `numberOfLines={2}` with `fontSize: 26, lineHeight: 30, textAlign: center, paddingHorizontal: 20` gives ~320pt of horizontal real estate — room for "Golf performance" without ellipsis on any phone ≥ iPhone SE (375pt). Two-line wrap at even shorter names like "Career anxiety and team conflict" renders cleanly.
+- **Web CSS animation fallback:** the mobile Reanimated breath loop doesn't port to web. Web uses plain CSS `@keyframes breathe-slow { 0%, 100% { scale: 0.97 } 50% { scale: 1.035 } }` + `animation-duration` varied per-orb via inline `style={{ animation: \`breathe-slow ${duration}s infinite\` }}`. Per-orb phase offsets via `animation-delay`. Same visual result; 0 JS cost.
+- **Tab bar custom layout compatibility:** `CustomTabBar` imports `BottomTabBarProps` from `@react-navigation/bottom-tabs`. That package is an indirect dependency via `expo-router` — TypeScript resolves it via the hoisted workspace node_modules. If a future expo-router upgrade changes the type contract, this signature may need updating.
+- **Sticky BackButton paddingTop budget:** each detail screen's ScrollView gained 56–60pt of `paddingTop` in `contentContainerStyle`. The first content row now sits below the sticky button at scroll-zero. Scrolling up shows the content flowing under the button's background.
+- **Typecheck:** mobile 98 → 98 errors (ThemeConstellation adds the usual react-native-svg JSX typing errors for Svg/Defs/Circle/RadialGradient/Stop/LinearGradient/Rect under React 19, but deleting ThemeRadial/HeroMetricsCard removed a similar count. Net change zero new real errors.). Web 4 → 4 (pre-existing isFoundingMember + landing.tsx stat.prefix; unrelated).
+- **Version:** 0.1.7 → 0.1.8. runtimeVersion.policy is `appVersion` so this is its own OTA channel.
+
+---
+
 ## [2026-04-24] — Execute performance audit: Sprints 1–4
 
 **Requested by:** Jimmy

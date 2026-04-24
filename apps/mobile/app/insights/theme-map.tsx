@@ -11,28 +11,23 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { api } from "@/lib/api";
 
-import { BackButton } from "@/components/back-button";
-import { HeroMetricsCard } from "@/components/theme-map/HeroMetricsCard";
+import { StickyBackButton } from "@/components/back-button";
 import { LockedState } from "@/components/theme-map/LockedState";
 import { SentimentLegend } from "@/components/theme-map/SentimentLegend";
 import {
-  ThemeRadial,
-  type RadialTheme,
-} from "@/components/theme-map/ThemeRadial";
+  ThemeConstellation,
+  type ConstellationTheme,
+} from "@/components/theme-map/ThemeConstellation";
 import {
   TimeChips,
   type TimeWindow,
 } from "@/components/theme-map/TimeChips";
 
 /**
- * Theme Map — Round 3 visual redesign (2026-04-24). Radial / ring
- * geometry as the primary visual language: hero ring (220pt) for
- * rank 1 with share-of-all arc + centered mention count, 2×2 grid
- * of satellite ring-stat cards for ranks 2–5 (ring share relative
- * to top), and arc-row list for ranks 6+ with a 34pt frequency
- * ring on the left of each row. Replaces the editorial gallery —
- * jewel-tone gradients and soft glow retained, rectangular cards
- * out.
+ * Theme Map — Round 4. Hero theme orb at center of a constellation,
+ * satellites on three ghosted orbital rings, narrative sentence above
+ * framing what the data means. See components/theme-map/ThemeConstellation.tsx
+ * for the full design rationale.
  */
 
 type SentimentBand = "positive" | "neutral" | "challenging";
@@ -98,9 +93,8 @@ export default function ThemeMapScreen() {
   const entryCount = data?.meta.totalEntries ?? 0;
   const locked = entryCount < UNLOCK_THRESHOLD;
 
-  const radialThemes: RadialTheme[] = useMemo(() => {
+  const constellationThemes: ConstellationTheme[] = useMemo(() => {
     if (!data) return [];
-    // All themes — the radial component slices rank bands internally.
     return data.themes.map((t) => ({
       id: t.id,
       name: t.name,
@@ -108,8 +102,6 @@ export default function ThemeMapScreen() {
       tone: t.sentimentBand,
     }));
   }, [data]);
-
-  const topTheme = data?.themes[0] ?? null;
 
   if (loading && !data) {
     return (
@@ -132,6 +124,10 @@ export default function ThemeMapScreen() {
       style={{ flex: 1, backgroundColor: "#0B0B12" }}
       edges={["top"]}
     >
+      <StickyBackButton
+        onPress={() => router.back()}
+        accessibilityLabel="Back to Insights"
+      />
       <ScrollView
         refreshControl={
           <RefreshControl
@@ -140,20 +136,15 @@ export default function ThemeMapScreen() {
             tintColor="#7C3AED"
           />
         }
-        contentContainerStyle={{ paddingBottom: 40 }}
+        contentContainerStyle={{ paddingBottom: 40, paddingTop: 56 }}
       >
-        <View style={{ paddingHorizontal: 20, paddingTop: 8 }}>
-          <BackButton
-            onPress={() => router.back()}
-            accessibilityLabel="Back to Insights"
-          />
+        <View style={{ paddingHorizontal: 20 }}>
           <Text
             style={{
               fontSize: 34,
               fontWeight: "700",
               letterSpacing: -0.8,
               lineHeight: 38,
-              marginTop: 16,
               color: "#FAFAFA",
             }}
           >
@@ -180,16 +171,7 @@ export default function ThemeMapScreen() {
 
         {!error && !locked && data && (
           <>
-            <View style={{ marginTop: 20, marginBottom: 16 }}>
-              <HeroMetricsCard
-                themeCount={data.themes.length}
-                mentionCount={data.totalMentions}
-                topTheme={data.topTheme}
-                topSentiment={topTheme?.sentimentBand ?? null}
-              />
-            </View>
-
-            <View style={{ marginBottom: 14 }}>
+            <View style={{ marginTop: 14, marginBottom: 6 }}>
               <TimeChips
                 value={window_}
                 onChange={(next) => {
@@ -199,10 +181,11 @@ export default function ThemeMapScreen() {
               />
             </View>
 
-            {radialThemes.length > 0 ? (
-              <ThemeRadial
-                themes={radialThemes}
+            {constellationThemes.length > 0 ? (
+              <ThemeConstellation
+                themes={constellationThemes}
                 replayToken={replayToken}
+                timeWindow={window_}
                 onTap={(id) => router.push(`/insights/theme/${id}` as never)}
               />
             ) : (
@@ -221,12 +204,12 @@ export default function ThemeMapScreen() {
                   }}
                 >
                   Not enough theme variety yet — record a few more sessions
-                  to see the map take shape.
+                  to see the constellation take shape.
                 </Text>
               </View>
             )}
 
-            <View style={{ marginTop: 6 }}>
+            <View style={{ marginTop: 10 }}>
               <SentimentLegend />
             </View>
           </>

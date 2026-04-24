@@ -601,7 +601,7 @@ export default function GoalsTab() {
                 <View key={group.id}>
                   <Pressable
                     onPress={() => toggleGroupCollapse(group.id)}
-                    className="flex-row items-center gap-3 mb-2"
+                    className="flex-row items-center gap-3 mb-4"
                   >
                     <View
                       style={{
@@ -790,10 +790,10 @@ const TreeNode = memo(function TreeNode({
               )}
             </View>
             <Text
-              className={`text-sm leading-snug ${
+              className={`text-base font-semibold leading-snug ${
                 struck
                   ? "text-zinc-400 dark:text-zinc-500 line-through"
-                  : "text-zinc-800 dark:text-zinc-100"
+                  : "text-zinc-900 dark:text-zinc-50"
               }`}
             >
               {goal.title}

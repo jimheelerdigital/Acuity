@@ -3,24 +3,22 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { BackButton } from "@/components/back-button";
-import { HeroMetricsCard } from "@/components/theme-map/HeroMetricsCard";
+import { StickyBackButton } from "@/components/back-button";
 import { LockedState } from "@/components/theme-map/LockedState";
 import { SentimentLegend } from "@/components/theme-map/SentimentLegend";
 import {
-  ThemeRadial,
-  type RadialTheme,
-} from "@/components/theme-map/ThemeRadial";
+  ThemeConstellation,
+  type ConstellationTheme,
+} from "@/components/theme-map/ThemeConstellation";
 import {
   TimeChips,
   type TimeWindow,
 } from "@/components/theme-map/TimeChips";
 
 /**
- * Theme Map — Round 3 visual redesign. Radial / ring geometry:
- * hero ring card (rank 1), 2×2 satellite ring-stat cards (ranks
- * 2–5), arc rows (ranks 6+). Sentiment → gradient hue; mention
- * count → arc sweep.
+ * Theme Map — Round 4. Hero orb + three orbital rings of satellites +
+ * narrative sentence framing what the data means. Mirrors the mobile
+ * ThemeConstellation design.
  */
 
 type SentimentBand = "positive" | "neutral" | "challenging";
@@ -87,7 +85,7 @@ export function ThemeMapClient() {
   const entryCount = data?.meta.totalEntries ?? 0;
   const locked = entryCount < UNLOCK_THRESHOLD;
 
-  const radialThemes: RadialTheme[] = useMemo(() => {
+  const constellationThemes: ConstellationTheme[] = useMemo(() => {
     if (!data) return [];
     return data.themes.map((t) => ({
       id: t.id,
@@ -96,8 +94,6 @@ export function ThemeMapClient() {
       tone: t.sentimentBand,
     }));
   }, [data]);
-
-  const topTheme = data?.themes[0] ?? null;
 
   if (loading && !data) {
     return (
@@ -118,6 +114,7 @@ export function ThemeMapClient() {
   if (locked) {
     return (
       <>
+        <StickyBackButton />
         <Header />
         <LockedState count={entryCount} />
       </>
@@ -126,35 +123,26 @@ export function ThemeMapClient() {
 
   return (
     <>
+      <StickyBackButton />
       <Header />
-
-      {data && (
-        <div className="mt-4">
-          <HeroMetricsCard
-            themeCount={data.themes.length}
-            mentionCount={data.totalMentions}
-            topTheme={data.topTheme}
-            topSentiment={topTheme?.sentimentBand ?? null}
-          />
-        </div>
-      )}
 
       <div className="mt-4">
         <TimeChips value={window_} onChange={handleWindowChange} />
       </div>
 
-      {radialThemes.length > 0 ? (
+      {constellationThemes.length > 0 ? (
         <div className="mt-4">
-          <ThemeRadial
-            themes={radialThemes}
+          <ThemeConstellation
+            themes={constellationThemes}
             replayKey={animKey}
+            timeWindow={window_}
             onTap={(id) => router.push(`/insights/theme/${id}`)}
           />
         </div>
       ) : (
         <div className="my-10 text-center text-sm text-zinc-500 dark:text-zinc-400">
           Not enough theme variety yet — record a few more sessions to
-          see the map take shape.
+          see the constellation take shape.
         </div>
       )}
 
@@ -168,7 +156,6 @@ export function ThemeMapClient() {
 function Header() {
   return (
     <div>
-      <BackButton className="mb-4" ariaLabel="Back to Insights" />
       <h1
         className="text-zinc-900 dark:text-zinc-50 font-bold"
         style={{ fontSize: 34, letterSpacing: "-0.8px", lineHeight: 1.1 }}

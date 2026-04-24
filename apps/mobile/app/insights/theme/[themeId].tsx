@@ -5,7 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { formatRelativeDate } from "@acuity/shared";
 
-import { BackButton } from "@/components/back-button";
+import { StickyBackButton } from "@/components/back-button";
 import { AreaChart } from "@/components/theme-detail/AreaChart";
 import { InsightCard } from "@/components/theme-detail/InsightCard";
 import { MentionCard } from "@/components/theme-detail/MentionCard";
@@ -113,10 +113,8 @@ export default function ThemeDetailScreen() {
       edges={["top"]}
       style={{ flex: 1, backgroundColor: "#0B0B12" }}
     >
-      <ScrollView contentContainerStyle={{ paddingBottom: 48 }}>
-        <View style={{ paddingHorizontal: 20, paddingTop: 8 }}>
-          <BackButton onPress={() => router.back()} />
-        </View>
+      <StickyBackButton onPress={() => router.back()} />
+      <ScrollView contentContainerStyle={{ paddingBottom: 48, paddingTop: 56 }}>
 
         <View
           style={{ paddingHorizontal: 20, marginTop: 16, marginBottom: 24 }}

@@ -16,7 +16,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { formatRelativeDate } from "@acuity/shared";
 
-import { BackButton } from "@/components/back-button";
+import { StickyBackButton } from "@/components/back-button";
 import { ProgressSuggestionBanner } from "@/components/progress-suggestion-banner";
 import { api } from "@/lib/api";
 import { getCached, isStale, setCached } from "@/lib/cache";
@@ -183,16 +183,18 @@ export default function GoalDetailScreen() {
       edges={["top"]}
       className="flex-1 bg-white dark:bg-[#0B0B12]"
     >
+      <StickyBackButton accessibilityLabel="Back to Goals" />
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         className="flex-1"
       >
-        <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 80 }}>
-          {/* Back button */}
-          <View className="mb-5">
-            <BackButton accessibilityLabel="Back to Goals" />
-          </View>
-
+        <ScrollView
+          contentContainerStyle={{
+            padding: 20,
+            paddingTop: 60,
+            paddingBottom: 80,
+          }}
+        >
           {/* Area label */}
           <Text className="text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 mb-2">
             {LIFE_AREA_LABELS[delta.lifeArea] ?? delta.lifeArea}
