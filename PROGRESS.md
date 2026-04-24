@@ -7,6 +7,39 @@
 
 ---
 
+## [2026-04-23] — Tasks screen: checked items stay visible until you leave the tab
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** PENDING
+
+### In plain English (for Keenan)
+Before: tapping a task's checkbox instantly yanked it off the Open list — no visual confirmation, no undo, just "where'd it go?" This reshapes the rhythm: tapping a box fills it purple and strikes the title, but the task stays on the Open list for the rest of your current visit. Tap it again to undo (strike removed, box empties). Leave the Tasks tab — to Home, Goals, Insights, Entries, or any detail screen — and the next time you come back, the boxes you checked have moved to Done. The Done tab works the same way in reverse: un-checking something keeps it on Done with the strike removed, and moves it to Open next visit. No timers, no "are you sure" dialogs — just the natural rhythm of "work through a list, then flip away when you're done."
+
+### Technical changes (for Jimmy)
+- `apps/mobile/app/(tabs)/tasks.tsx`:
+  - Added `VisitSnapshot = { open, snoozed, completed }: Set<string>` state keyed off the `TasksTab` component
+  - `useFocusEffect` from `expo-router` snapshots the current tab assignment of every task ID when the tab gains focus and clears it on blur
+  - Fallback `useEffect` snapshots when `fetchAll` returns after the focus has already fired (race on first mount)
+  - `grouped` `useMemo` now prefers the snapshot's tab membership over the task's current status — only tasks that weren't present at focus time (new from `fetchAll` mid-visit) fall through to natural grouping
+  - `act()` strips the id from the snapshot for non-toggle actions (`snooze` / `dismiss` / `move`) so those changes reflect immediately — keeps the "stayed visible" behavior scoped to the checkbox toggle, which is the only action that has an undo arc
+  - Extracted `naturalTab(task, now)` helper so the snapshot builder and the fallback grouping share one categorization rule
+- No schema change, no API change, no new dependencies — purely client-side rendering-timing logic
+- Backend write is still immediate on check, so closing the app mid-visit commits the state durably (the visual "stays visible" concern only applies to the displayed list, not the persisted state)
+
+### Manual steps needed
+- None — lands on top of the build 13 fix (Pressable static-style conversion). Next time a production build ships, this behavior ships with it. No db push, no env var, no Vercel action
+
+### Notes
+- Chose `useFocusEffect` over a timer per Jimmy's instruction — avoids the "did I wait long enough?" question and keeps the state tied to a deterministic user action (navigating away)
+- The snapshot is keyed by task id, so adding or renaming a task mid-visit doesn't disturb which tab anything sits in
+- If a task appears in the fetched list that wasn't in the snapshot (e.g., another device added one mid-visit), it goes to its natural tab — no chance of a ghost item pinned to a tab it was never in
+- The `disabled={busy}` on Checkbox is kept — prevents double-taps from racing two PATCHes. Undo still works once the first PATCH returns (~500ms)
+- Count labels ("Open 14", header "14 open") reflect the displayed list size, not the true-status count, so a checked-but-not-flushed task still counts toward "Open" for the current visit. Matches what the user sees on the screen
+- The behavior is symmetric: the Done tab freezes its own membership the same way. Uncheck on Done → stays on Done (struck-removed) for the visit, flips back to Open on next focus
+
+---
+
 ## [2026-04-23] — Root-cause for build 9 "nothing rendering" — Pressable functional-style broken on Fabric
 
 **Requested by:** Jimmy

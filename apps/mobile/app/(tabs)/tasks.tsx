@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActionSheetIOS,
   ActivityIndicator,
@@ -43,7 +43,39 @@ type TaskGroup = {
 
 type Tab = "open" | "snoozed" | "completed";
 
+type VisitSnapshot = {
+  open: Set<string>;
+  snoozed: Set<string>;
+  completed: Set<string>;
+};
+
 const UNGROUPED_KEY = "__ungrouped__";
+
+function naturalTab(t: Task, now: number): Tab {
+  if (t.status === "DONE") return "completed";
+  if (
+    t.status === "SNOOZED" &&
+    t.snoozedUntil &&
+    new Date(t.snoozedUntil).getTime() > now
+  ) {
+    return "snoozed";
+  }
+  return "open";
+}
+
+function makeVisitSnapshot(list: Task[]): VisitSnapshot {
+  const open = new Set<string>();
+  const snoozed = new Set<string>();
+  const completed = new Set<string>();
+  const now = Date.now();
+  for (const t of list) {
+    const tab = naturalTab(t, now);
+    if (tab === "open") open.add(t.id);
+    else if (tab === "snoozed") snoozed.add(t.id);
+    else completed.add(t.id);
+  }
+  return { open, snoozed, completed };
+}
 
 export default function TasksTab() {
   const router = useRouter();
@@ -56,6 +88,19 @@ export default function TasksTab() {
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
     new Set()
   );
+
+  // Visit snapshot — freezes each task's tab membership for the life
+  // of one Tasks-screen visit, so checking a box marks the task as
+  // done visually (fill + strikethrough) without yanking it out of
+  // the Open list. Cleared on blur; recomputed on next focus against
+  // the then-current server state. Reopening a Done task on the Done
+  // tab works symmetrically.
+  const [visitSnapshot, setVisitSnapshot] = useState<VisitSnapshot | null>(
+    null
+  );
+  const tasksRef = useRef<Task[]>(tasks);
+  tasksRef.current = tasks;
+  const isFocusedRef = useRef(false);
 
   const fetchAll = useCallback(async () => {
     try {
@@ -77,6 +122,33 @@ export default function TasksTab() {
     fetchAll();
   }, [fetchAll]);
 
+  // Snapshot tab membership on focus; clear on blur. If the focus
+  // fires before the first fetchAll completes, the fallback effect
+  // below takes the snapshot once tasks arrive.
+  useFocusEffect(
+    useCallback(() => {
+      isFocusedRef.current = true;
+      if (tasksRef.current.length > 0) {
+        setVisitSnapshot(makeVisitSnapshot(tasksRef.current));
+      }
+      return () => {
+        isFocusedRef.current = false;
+        setVisitSnapshot(null);
+      };
+    }, [])
+  );
+
+  useEffect(() => {
+    if (
+      isFocusedRef.current &&
+      !visitSnapshot &&
+      !loading &&
+      tasks.length > 0
+    ) {
+      setVisitSnapshot(makeVisitSnapshot(tasks));
+    }
+  }, [tasks, loading, visitSnapshot]);
+
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     fetchAll();
@@ -92,6 +164,28 @@ export default function TasksTab() {
               : t
           )
         );
+      } else {
+        // Non-toggle actions (snooze/dismiss/move) — drop the id from
+        // the visit snapshot so natural grouping takes over. Otherwise
+        // a snoozed task would stay pinned to the Open tab until the
+        // user leaves the screen, which reads as "did my snooze work?"
+        setVisitSnapshot((prev) => {
+          if (!prev) return prev;
+          if (
+            !prev.open.has(id) &&
+            !prev.snoozed.has(id) &&
+            !prev.completed.has(id)
+          ) {
+            return prev;
+          }
+          const open = new Set(prev.open);
+          const snoozed = new Set(prev.snoozed);
+          const completed = new Set(prev.completed);
+          open.delete(id);
+          snoozed.delete(id);
+          completed.delete(id);
+          return { open, snoozed, completed };
+        });
       }
       setActing((prev) => new Set(prev).add(id));
       try {
@@ -207,20 +301,22 @@ export default function TasksTab() {
     const snoozed: Task[] = [];
     const completed: Task[] = [];
     for (const t of tasks) {
-      if (t.status === "DONE") {
-        completed.push(t);
-      } else if (
-        t.status === "SNOOZED" &&
-        t.snoozedUntil &&
-        new Date(t.snoozedUntil).getTime() > now
-      ) {
-        snoozed.push(t);
-      } else {
-        open.push(t);
-      }
+      // Prefer the visit-snapshot tab so a task the user checked in
+      // this visit stays put (rendered struck-through) until blur.
+      // Tasks that weren't present at focus time — a refresh brought
+      // them in mid-visit — fall through to their natural tab.
+      let tab: Tab;
+      if (visitSnapshot?.open.has(t.id)) tab = "open";
+      else if (visitSnapshot?.snoozed.has(t.id)) tab = "snoozed";
+      else if (visitSnapshot?.completed.has(t.id)) tab = "completed";
+      else tab = naturalTab(t, now);
+
+      if (tab === "open") open.push(t);
+      else if (tab === "snoozed") snoozed.push(t);
+      else completed.push(t);
     }
     return { open, snoozed, completed };
-  }, [tasks, now]);
+  }, [tasks, now, visitSnapshot]);
 
   const current = grouped[activeTab];
 
