@@ -11,7 +11,7 @@
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** PENDING
+**Commit hash:** a36d1b2
 
 ### In plain English (for Keenan)
 Four changes land together. (1) Theme Map Round 4 — the hero theme is now a glowing orb at the center of a proper constellation. Satellite themes sit on three soft orbital rings around it (top 4 on the innermost, next 5 in the middle, next 5 on the outer edge), and each orb breathes with a subtle scale pulse so the whole picture feels alive but never jittery. Above the constellation, a single sentence narrates what the data means — "Golf performance came up 28 times this month, twice as often as anything else." Themes past rank 15 drop into a premium strip list below. No more bubble clusters, no more rectangles, no more gauge rings. The hero theme's name now sits full-width in readable 28pt type, on two lines if needed — no more "Golf perf…" truncation. (2) Every detail screen's back button is now stuck to the top-left of the screen, staying visible as you scroll — Theme Detail, Entry Detail, Goal Detail, Dimension, Theme Map, Reminders, Ask Your Past Self, State of Me. (3) The Home tab label now sits on the same baseline as Goals/Tasks/Insights/Entries — the tab bar was rebuilt from scratch so all five slots share one code path and ONE flex structure, guaranteeing label alignment. The purple record button is a separate overlay above the center slot with zero influence on the tab row's layout. (4) Goal titles bumped from 14pt regular to 16pt semibold, and the space between a group header and its first goal card went from 8pt to 16pt — Goals now feels like "things that matter" instead of a list of items.
