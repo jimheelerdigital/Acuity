@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Flame } from "lucide-react-native";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -25,6 +25,7 @@ import { ProgressionChecklist } from "@/components/progression-checklist";
 import { RecommendedActivity } from "@/components/recommended-activity";
 import { useAuth } from "@/contexts/auth-context";
 import { api } from "@/lib/api";
+import { getCached, isStale, setCached } from "@/lib/cache";
 import { fetchUserProgression } from "@/lib/userProgression";
 
 const HOME_ENTRY_LIMIT = 5;
@@ -68,42 +69,65 @@ interface HomePayload {
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
+const HOME_ENTRIES_KEY = "/api/entries";
+const HOME_DATA_KEY = "/api/home";
+const HOME_PROGRESSION_KEY = "/api/user/progression";
+
 export default function DashboardTab() {
   const { user } = useAuth();
   const router = useRouter();
-  const [entries, setEntries] = useState<EntryDTO[] | null>(null);
-  const [homeData, setHomeData] = useState<HomePayload | null>(null);
-  const [progression, setProgression] = useState<UserProgression | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [entries, setEntries] = useState<EntryDTO[] | null>(
+    () =>
+      getCached<{ entries: EntryDTO[] }>(HOME_ENTRIES_KEY)?.entries ?? null
+  );
+  const [homeData, setHomeData] = useState<HomePayload | null>(
+    () => getCached<HomePayload>(HOME_DATA_KEY) ?? null
+  );
+  const [progression, setProgression] = useState<UserProgression | null>(
+    () => getCached<UserProgression>(HOME_PROGRESSION_KEY) ?? null
+  );
+  const [loading, setLoading] = useState(
+    () => !getCached<{ entries: EntryDTO[] }>(HOME_ENTRIES_KEY)
+  );
+  const loadInFlightRef = useRef(false);
 
   const load = useCallback(async () => {
+    if (loadInFlightRef.current) return;
+    loadInFlightRef.current = true;
     try {
       const [entriesData, home, prog] = await Promise.all([
-        api.get<{ entries: EntryDTO[] }>("/api/entries"),
-        api.get<HomePayload>("/api/home").catch(() => null),
+        api.get<{ entries: EntryDTO[] }>(HOME_ENTRIES_KEY),
+        api.get<HomePayload>(HOME_DATA_KEY).catch(() => null),
         fetchUserProgression().catch(() => null),
       ]);
+      setCached(HOME_ENTRIES_KEY, entriesData);
+      if (home) setCached(HOME_DATA_KEY, home);
+      if (prog) setCached(HOME_PROGRESSION_KEY, prog);
       setEntries(entriesData.entries ?? []);
       setHomeData(home);
       setProgression(prog);
     } catch {
-      setEntries([]);
+      // Keep any cached state on failure — don't blank the UI.
+      setEntries((prev) => prev ?? []);
     } finally {
       setLoading(false);
+      loadInFlightRef.current = false;
     }
   }, []);
 
-  // Refresh on every focus so a completed recording reflects the new
-  // entry. CRITICAL: do NOT flip setLoading(true) here — that would
-  // replace cached content with a spinner on every tab focus, which
-  // is the "loading wheels everywhere" UX problem. Instead the
-  // existing cached entries/homeData/progression stays rendered
-  // while the background refetch updates state in place.
+  // Revalidate silently on focus, but only if the cache is stale.
+  // Cached content stays rendered — no spinner flash on tab switches.
   useFocusEffect(
     useCallback(() => {
-      load();
+      if (isStale(HOME_ENTRIES_KEY) || isStale(HOME_DATA_KEY)) {
+        load();
+      }
     }, [load])
   );
+
+  useEffect(() => {
+    if (entries === null) load();
+  }, [entries, load]);
 
   const firstName = user?.name?.split(" ")[0] ?? "there";
   const greeting = greetingFor(new Date());

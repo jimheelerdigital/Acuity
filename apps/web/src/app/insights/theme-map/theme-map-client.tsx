@@ -4,24 +4,22 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { BackButton } from "@/components/back-button";
-import {
-  BubbleCluster,
-  type BubbleTheme,
-} from "@/components/theme-map/BubbleCluster";
 import { HeroMetricsCard } from "@/components/theme-map/HeroMetricsCard";
 import { LockedState } from "@/components/theme-map/LockedState";
 import { SentimentLegend } from "@/components/theme-map/SentimentLegend";
-import { ThemeListRow } from "@/components/theme-map/ThemeListRow";
+import {
+  ThemeGallery,
+  type GalleryTheme,
+} from "@/components/theme-map/ThemeGallery";
 import {
   TimeChips,
   type TimeWindow,
 } from "@/components/theme-map/TimeChips";
 
 /**
- * Theme Map — Run B visual redesign (2026-04-24 spec). Bubble cluster
- * replaces the orb constellation, hero metrics card replaces the
- * three-stat strip, sparklines are gone from the All Themes list.
- * Gated behind 10+ entries; below that the user sees LockedState.
+ * Theme Map — Round 2 visual redesign. Replaces the bubble cluster
+ * with ThemeGallery: hero card, 2-up row, 2×2 grid, premium strip
+ * rows. Sentiment → gradient hue; frequency → card size/typography.
  */
 
 type SentimentBand = "positive" | "neutral" | "challenging";
@@ -48,18 +46,9 @@ type ApiResponse = {
 
 const UNLOCK_THRESHOLD = 10;
 
-type SortKey = "frequency" | "alphabetical" | "recent";
-
-const SORT_LABELS: Record<SortKey, string> = {
-  frequency: "Sort by frequency",
-  alphabetical: "Sort alphabetically",
-  recent: "Sort by recent",
-};
-
 export function ThemeMapClient() {
   const router = useRouter();
   const [window_, setWindow] = useState<TimeWindow>("month");
-  const [sort, setSort] = useState<SortKey>("frequency");
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -97,24 +86,9 @@ export function ThemeMapClient() {
   const entryCount = data?.meta.totalEntries ?? 0;
   const locked = entryCount < UNLOCK_THRESHOLD;
 
-  const sortedThemes = useMemo(() => {
+  const galleryThemes: GalleryTheme[] = useMemo(() => {
     if (!data) return [];
-    const arr = [...data.themes];
-    if (sort === "alphabetical") {
-      arr.sort((a, b) => a.name.localeCompare(b.name));
-    } else if (sort === "recent") {
-      arr.sort(
-        (a, b) =>
-          new Date(b.lastMentionedAt).getTime() -
-          new Date(a.lastMentionedAt).getTime()
-      );
-    }
-    return arr;
-  }, [data, sort]);
-
-  const bubbleThemes: BubbleTheme[] = useMemo(() => {
-    if (!data) return [];
-    return data.themes.slice(0, 10).map((t) => ({
+    return data.themes.map((t) => ({
       id: t.id,
       name: t.name,
       mentionCount: t.mentionCount,
@@ -168,59 +142,23 @@ export function ThemeMapClient() {
         <TimeChips value={window_} onChange={handleWindowChange} />
       </div>
 
-      {bubbleThemes.length > 0 ? (
-        <BubbleCluster
-          themes={bubbleThemes}
-          replayKey={animKey}
-          onTap={(id) => router.push(`/insights/theme/${id}`)}
-        />
+      {galleryThemes.length > 0 ? (
+        <div className="mt-4">
+          <ThemeGallery
+            themes={galleryThemes}
+            replayKey={animKey}
+            onTap={(id) => router.push(`/insights/theme/${id}`)}
+          />
+        </div>
       ) : (
         <div className="my-10 text-center text-sm text-zinc-500 dark:text-zinc-400">
           Not enough theme variety yet — record a few more sessions to
-          see the cluster take shape.
+          see the gallery take shape.
         </div>
       )}
 
-      <SentimentLegend />
-
-      <div className="mt-5 mb-3 flex items-center justify-between">
-        <h2
-          className="uppercase"
-          style={{
-            fontSize: 11,
-            letterSpacing: "1.2px",
-            color: "rgba(161,161,170,0.6)",
-            fontWeight: 600,
-          }}
-        >
-          All themes
-        </h2>
-        <button
-          type="button"
-          onClick={() => {
-            const order: SortKey[] = ["frequency", "alphabetical", "recent"];
-            const next = order[(order.indexOf(sort) + 1) % order.length];
-            setSort(next);
-          }}
-          className="text-violet-400 hover:text-violet-300"
-          style={{ fontSize: 13, fontWeight: 500 }}
-        >
-          {SORT_LABELS[sort]} ›
-        </button>
-      </div>
-
-      <div>
-        {sortedThemes.slice(0, 10).map((t) => (
-          <ThemeListRow
-            key={t.id}
-            name={t.name}
-            mentionCount={t.mentionCount}
-            sentiment={t.sentimentBand}
-            firstMentionedAt={t.firstMentionedAt}
-            lastMentionedAt={t.lastMentionedAt}
-            onClick={() => router.push(`/insights/theme/${t.id}`)}
-          />
-        ))}
+      <div className="mt-4">
+        <SentimentLegend />
       </div>
     </>
   );

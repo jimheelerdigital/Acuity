@@ -25,7 +25,20 @@ import { MoodIcon } from "@/components/mood-icon";
 import { UserInsightsCard } from "@/components/user-insights-card";
 import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
+import { getCached, isStale, setCached } from "@/lib/cache";
 import { fetchUserProgression } from "@/lib/userProgression";
+
+const INSIGHTS_ENTRIES_KEY = "/api/entries";
+const INSIGHTS_WEEKLY_KEY = "/api/weekly";
+const INSIGHTS_LIFEMAP_KEY = "/api/lifemap";
+const INSIGHTS_LIFEMAP_TREND_KEY = "/api/lifemap/trend";
+const INSIGHTS_PROGRESSION_KEY = "/api/user/progression";
+
+type LifeMapResponse = { areas: LifeMapAreaData[]; memory: MemoryData };
+type TrendResponse = {
+  hasEnoughHistory: boolean;
+  fourWeeksAgo: Array<{ area: string; score: number | null }>;
+};
 
 type Report = {
   id: string;
@@ -75,39 +88,53 @@ export default function InsightsTab() {
   const router = useRouter();
   const { resolved: resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
-  const [entries, setEntries] = useState<EntryDTO[]>([]);
-  const [reports, setReports] = useState<Report[]>([]);
-  const [areas, setAreas] = useState<LifeMapAreaData[]>([]);
-  const [memory, setMemory] = useState<MemoryData | null>(null);
+  const [entries, setEntries] = useState<EntryDTO[]>(
+    () =>
+      getCached<{ entries: EntryDTO[] }>(INSIGHTS_ENTRIES_KEY)?.entries ?? []
+  );
+  const [reports, setReports] = useState<Report[]>(
+    () =>
+      getCached<{ reports: Report[] }>(INSIGHTS_WEEKLY_KEY)?.reports ?? []
+  );
+  const initialLifeMap = getCached<LifeMapResponse>(INSIGHTS_LIFEMAP_KEY);
+  const [areas, setAreas] = useState<LifeMapAreaData[]>(
+    () => initialLifeMap?.areas ?? []
+  );
+  const [memory, setMemory] = useState<MemoryData | null>(
+    () => initialLifeMap?.memory ?? null
+  );
   const [expandedArea, setExpandedArea] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(
+    () => !getCached<LifeMapResponse>(INSIGHTS_LIFEMAP_KEY)
+  );
   const [refreshing, setRefreshing] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [view, setView] = useState<"current" | "trend">("current");
-  const [trend, setTrend] = useState<{
-    hasEnoughHistory: boolean;
-    fourWeeksAgo: Array<{ area: string; score: number | null }>;
-  } | null>(null);
+  const [trend, setTrend] = useState<TrendResponse | null>(
+    () => getCached<TrendResponse>(INSIGHTS_LIFEMAP_TREND_KEY) ?? null
+  );
   const [metricsOpen, setMetricsOpen] = useState(false);
-  const [progression, setProgression] = useState<UserProgression | null>(null);
+  const [progression, setProgression] = useState<UserProgression | null>(
+    () => getCached<UserProgression>(INSIGHTS_PROGRESSION_KEY) ?? null
+  );
 
   const fetchData = useCallback(async () => {
     try {
       const [entriesRes, reportsRes, lifeMapRes, trendRes, prog] =
         await Promise.all([
-          api.get<{ entries: EntryDTO[] }>("/api/entries"),
-          api.get<{ reports: Report[] }>("/api/weekly"),
-          api.get<{ areas: LifeMapAreaData[]; memory: MemoryData }>(
-            "/api/lifemap"
-          ),
+          api.get<{ entries: EntryDTO[] }>(INSIGHTS_ENTRIES_KEY),
+          api.get<{ reports: Report[] }>(INSIGHTS_WEEKLY_KEY),
+          api.get<LifeMapResponse>(INSIGHTS_LIFEMAP_KEY),
           api
-            .get<{
-              hasEnoughHistory: boolean;
-              fourWeeksAgo: Array<{ area: string; score: number | null }>;
-            }>("/api/lifemap/trend")
+            .get<TrendResponse>(INSIGHTS_LIFEMAP_TREND_KEY)
             .catch(() => null),
           fetchUserProgression().catch(() => null),
         ]);
+      setCached(INSIGHTS_ENTRIES_KEY, entriesRes);
+      setCached(INSIGHTS_WEEKLY_KEY, reportsRes);
+      setCached(INSIGHTS_LIFEMAP_KEY, lifeMapRes);
+      if (trendRes) setCached(INSIGHTS_LIFEMAP_TREND_KEY, trendRes);
+      if (prog) setCached(INSIGHTS_PROGRESSION_KEY, prog);
       setEntries(entriesRes.entries ?? []);
       setReports(reportsRes.reports ?? []);
       setAreas(lifeMapRes.areas ?? []);
@@ -115,19 +142,24 @@ export default function InsightsTab() {
       setTrend(trendRes);
       setProgression(prog);
     } catch {
-      // silent
+      // Keep cached state on failure.
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   }, []);
 
-  // Re-fetch on every tab focus so returning from the /record modal
-  // refreshes the progression counters (e.g. "5 of 10" → "6 of 10")
-  // without requiring a pull-to-refresh.
+  // Revalidate on focus only when stale (30s TTL). Cached UI stays
+  // painted during the background fetch so the tab switch is instant.
   useFocusEffect(
     useCallback(() => {
-      fetchData();
+      if (
+        isStale(INSIGHTS_LIFEMAP_KEY) ||
+        isStale(INSIGHTS_ENTRIES_KEY) ||
+        isStale(INSIGHTS_PROGRESSION_KEY)
+      ) {
+        fetchData();
+      }
     }, [fetchData])
   );
 

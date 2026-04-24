@@ -2,7 +2,6 @@ import { useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Pressable,
   RefreshControl,
   ScrollView,
   Text,
@@ -13,24 +12,25 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { api } from "@/lib/api";
 
 import { BackButton } from "@/components/back-button";
-import {
-  BubbleCluster,
-  type BubbleTheme,
-} from "@/components/theme-map/BubbleCluster";
 import { HeroMetricsCard } from "@/components/theme-map/HeroMetricsCard";
 import { LockedState } from "@/components/theme-map/LockedState";
 import { SentimentLegend } from "@/components/theme-map/SentimentLegend";
-import { ThemeListRow } from "@/components/theme-map/ThemeListRow";
+import {
+  ThemeGallery,
+  type GalleryTheme,
+} from "@/components/theme-map/ThemeGallery";
 import {
   TimeChips,
   type TimeWindow,
 } from "@/components/theme-map/TimeChips";
 
 /**
- * Theme Map — Run B visual redesign (2026-04-24 spec). Bubble cluster
- * replaces the orb constellation, hero metrics card replaces the
- * three-stat strip, sparklines are gone from the All Themes list.
- * Gated behind 10+ entries.
+ * Theme Map — Round 2 visual redesign (2026-04-24). Replaces the
+ * bubble cluster with the Theme Gallery: hero card for the top
+ * theme, row of 2 for ranks 2–3, 2×2 grid for 4–7, premium strip
+ * rows for 8+. Gradient color encodes sentiment; typography weight
+ * and card size encode frequency. Scales cleanly from 1 to 30+
+ * themes because each rank band has its own treatment.
  */
 
 type SentimentBand = "positive" | "neutral" | "challenging";
@@ -57,18 +57,9 @@ type ApiResponse = {
 
 const UNLOCK_THRESHOLD = 10;
 
-type SortKey = "frequency" | "alphabetical" | "recent";
-
-const SORT_LABELS: Record<SortKey, string> = {
-  frequency: "Sort by frequency",
-  alphabetical: "Sort alphabetically",
-  recent: "Sort by recent",
-};
-
 export default function ThemeMapScreen() {
   const router = useRouter();
   const [window_, setWindow] = useState<TimeWindow>("month");
-  const [sort, setSort] = useState<SortKey>("frequency");
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -76,7 +67,6 @@ export default function ThemeMapScreen() {
   const [replayToken, setReplayToken] = useState(0);
 
   const fetchData = useCallback(async (win: TimeWindow) => {
-    setLoading((prev) => prev || true);
     setError(null);
     try {
       const json = await api.get<ApiResponse>(
@@ -106,27 +96,10 @@ export default function ThemeMapScreen() {
   const entryCount = data?.meta.totalEntries ?? 0;
   const locked = entryCount < UNLOCK_THRESHOLD;
 
-  const sortedThemes = useMemo(() => {
+  const galleryThemes: GalleryTheme[] = useMemo(() => {
     if (!data) return [];
-    const arr = [...data.themes];
-    if (sort === "alphabetical") {
-      arr.sort((a, b) => a.name.localeCompare(b.name));
-    } else if (sort === "recent") {
-      arr.sort(
-        (a, b) =>
-          new Date(b.lastMentionedAt).getTime() -
-          new Date(a.lastMentionedAt).getTime()
-      );
-    }
-    return arr;
-  }, [data, sort]);
-
-  const bubbleThemes: BubbleTheme[] = useMemo(() => {
-    if (!data) return [];
-    // Cap at 10 so the cluster reads as a coherent grouping rather
-    // than a crowded soup. Forced rank by mentionCount desc matches
-    // the API's default sort.
-    return data.themes.slice(0, 10).map((t) => ({
+    // All themes — the gallery scales rank bands internally.
+    return data.themes.map((t) => ({
       id: t.id,
       name: t.name,
       mentionCount: t.mentionCount,
@@ -214,7 +187,7 @@ export default function ThemeMapScreen() {
               />
             </View>
 
-            <View style={{ marginBottom: 8 }}>
+            <View style={{ marginBottom: 14 }}>
               <TimeChips
                 value={window_}
                 onChange={(next) => {
@@ -224,9 +197,9 @@ export default function ThemeMapScreen() {
               />
             </View>
 
-            {bubbleThemes.length > 0 ? (
-              <BubbleCluster
-                themes={bubbleThemes}
+            {galleryThemes.length > 0 ? (
+              <ThemeGallery
+                themes={galleryThemes}
                 replayToken={replayToken}
                 onTap={(id) => router.push(`/insights/theme/${id}` as never)}
               />
@@ -246,71 +219,14 @@ export default function ThemeMapScreen() {
                   }}
                 >
                   Not enough theme variety yet — record a few more sessions
-                  to see the cluster take shape.
+                  to see the gallery take shape.
                 </Text>
               </View>
             )}
 
-            <SentimentLegend />
-
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-                paddingHorizontal: 20,
-                marginTop: 20,
-                marginBottom: 12,
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 11,
-                  letterSpacing: 1.2,
-                  textTransform: "uppercase",
-                  color: "rgba(161,161,170,0.6)",
-                  fontWeight: "600",
-                }}
-              >
-                All themes
-              </Text>
-              <Pressable
-                onPress={() => {
-                  const order: SortKey[] = [
-                    "frequency",
-                    "alphabetical",
-                    "recent",
-                  ];
-                  const next =
-                    order[(order.indexOf(sort) + 1) % order.length];
-                  setSort(next);
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 13,
-                    color: "#A78BFA",
-                    fontWeight: "500",
-                  }}
-                >
-                  {SORT_LABELS[sort]} ›
-                </Text>
-              </Pressable>
+            <View style={{ marginTop: 6 }}>
+              <SentimentLegend />
             </View>
-
-            {sortedThemes.slice(0, 10).map((t) => (
-              <ThemeListRow
-                key={t.id}
-                name={t.name}
-                mentionCount={t.mentionCount}
-                sentiment={t.sentimentBand}
-                firstMentionedAt={t.firstMentionedAt}
-                lastMentionedAt={t.lastMentionedAt}
-                onPress={() =>
-                  router.push(`/insights/theme/${t.id}` as never)
-                }
-              />
-            ))}
           </>
         )}
       </ScrollView>

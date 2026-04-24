@@ -7,6 +7,62 @@
 
 ---
 
+## [2026-04-24] — Perf overhaul, haptics on task check, Theme Map Round 2 (Theme Gallery)
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** PENDING
+
+### In plain English (for Keenan)
+Three things shipped in this build. First: the app feels fast now. The biggest culprit was Tasks — every checkbox tap was waiting on a full trip to the server plus a re-download of every task and group in your account before the UI would respond. That's gone. Checkboxes now fill instantly and the network save happens silently in the background. Tab switches are instant too: Home, Entries, and Insights no longer wipe their content and re-fetch from scratch every time you tap back to them — they show what's already cached and quietly update in place if the data is older than 30 seconds. Second: a light tap/buzz fires when you complete a task on iOS. Like the iOS Reminders app. Only on complete, never on uncheck. Third: the Theme Map got a complete redesign. The bubble cluster is gone. In its place is the "Theme Gallery" — the #1 theme gets a full-width hero card with a big gradient and 34pt typography, ranks 2 and 3 live side-by-side in medium cards, ranks 4 through 7 sit in a 2×2 grid, and everything from #8 down renders as a premium pill row with a glowing sentiment stripe. Colors are deep jewel tones (emerald / indigo / rose) instead of preschool-saturation mint/crimson/violet. It handles Jimmy's 32 themes without looking cluttered because each rank band has its own visual treatment. Web got the same redesign for parity.
+
+### Technical changes (for Jimmy)
+- **Perceived latency fixes in Tasks (`apps/mobile/app/(tabs)/tasks.tsx`):**
+  - Removed `await fetchAll()` after each PATCH. The optimistic `setTasks` synchronously updates the UI; the PATCH fires in the background, no await. The old flow blocked the checkbox in a disabled/opacity:0.5 state until the round-trip + refetch returned — that was the full 2–3s the user was measuring as "tap takes forever."
+  - Removed the `acting: Set<string>` state + `busy` prop entirely. Checkbox renders at full opacity immediately. Race protection is now handled by the synchronous optimistic update (second tap flips from DONE → OPEN based on already-updated state).
+  - `useMemo` for `grouped` no longer recomputes on every render. Previous code pulled `const now = Date.now()` outside the memo and listed it in deps, so the memo invalidated every render and all downstream arrays re-computed; moved `now` inside the memo body.
+  - Wrapped `TaskRow` and `GroupSection` in `React.memo`. TaskRow has a custom comparator that treats `task` by reference — the optimistic `setTasks((prev) => prev.map(...))` swap only re-creates the touched row, so unchanged rows no-op.
+  - Added `pendingMutationsRef` so silent focus-driven refetches merge server state without clobbering any in-flight optimistic change. The merge preserves the local copy of any task whose PATCH hasn't resolved yet.
+- **API response cache** (`apps/mobile/lib/cache.ts`, new file):
+  - Module-level `Map<string, { data, fetchedAt }>` with a 30s TTL.
+  - `getCached<T>(key)` / `setCached(key, data)` — synchronous hydrate from cache on screen mount; no spinner flash when flipping to a tab you already loaded.
+  - `isStale(key, ttlMs)` — gates focus-driven refetches so we don't network-flog on every rapid tab toggle.
+  - `dedupedGet<T>(path)` — collapses concurrent fetches of the same URL into one in-flight promise.
+  - Also exports a `useCachedResource<T>(path)` SWR-style hook that's available for future callers but not wired in this commit (the tab screens use the primitive `getCached` / `setCached` calls directly so the migration is surgical).
+- **Home / Entries / Insights tabs rewired to cache:**
+  - `apps/mobile/app/(tabs)/index.tsx` — entries / home payload / progression hydrate from cache on mount. `useFocusEffect` only triggers `load()` if `isStale` for the primary keys. On load failure, prev cached state is preserved — no UI blanking.
+  - `apps/mobile/app/(tabs)/entries.tsx` — entries list hydrates from cache; focus refetch is stale-gated; `setEntries([])` on failure removed so cached list survives transient network errors.
+  - `apps/mobile/app/(tabs)/insights.tsx` — all five parallel fetches (entries, weekly, lifemap, lifemap/trend, progression) hydrate from cache; focus refetch gated on staleness of the three primary keys.
+- **Haptic feedback on task complete:**
+  - `apps/mobile/package.json` — added `expo-haptics ~15.0.8` (Expo SDK 54 match).
+  - `apps/mobile/app/(tabs)/tasks.tsx` — on `action === "complete"` + `Platform.OS === "ios"`, fire-and-forget `Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {})`. Never on uncheck, never on Android.
+  - `apps/mobile/components/theme-map/ThemeGallery.tsx` — same light haptic on any gallery card tap (iOS only). Makes the Theme Map feel like the Cards app, not a web page.
+- **Theme Map — Round 2 redesign:**
+  - New: `apps/mobile/components/theme-map/ThemeGallery.tsx` — editorial hierarchy visualization. HeroCard (rank 1, 170pt tall, 34pt theme name, big radial gradient), MidCard×2 (ranks 2–3, 130pt, 2-up row), SmallCard×4 (ranks 4–7, 96pt, 2×2 grid), StripRow (ranks 8+, premium pill with 3px glowing sentiment stripe + typography count). No physics simulation, no overlapping labels — each rank band has its own geometry. Gradients use deep jewel tones: positive emerald (`#064E3B → #022C22`), neutral indigo (`#1E1B4B → #0F0D2E`), challenging rose (`#881337 → #500724`). Sentiment accent color (`#6EE7B7` / `#A5B4FC` / `#FDA4AF`) drives the small dot marker + count typography on each card. Entry animation: staggered `translateY 16→0 + opacity 0→1`, 360ms duration, 45ms stagger (capped at 520ms total), ease-out cubic. ReduceMotion bypass. SVG radial-gradient backgrounds using `react-native-svg` `<Defs><RadialGradient/>` layered under the content.
+  - Rewritten: `apps/mobile/app/insights/theme-map.tsx` — drops `BubbleCluster` + `ThemeListRow`, wires `ThemeGallery` with ALL themes (gallery internally slices into rank bands, so 32 themes just means a longer strip-row list, not cluster clutter). Keeps existing `HeroMetricsCard`, `TimeChips`, `SentimentLegend`, `LockedState` — they were fine, only the middle viz was rejected.
+  - Deleted: `apps/mobile/components/theme-map/BubbleCluster.tsx` (452 LOC — d3-force + 180 ticks + per-circle Reanimated shared values + glow circles + absolute-positioned label views). `apps/mobile/components/theme-map/ThemeListRow.tsx` (147 LOC — replaced by `StripRow` inside the Gallery).
+- **Web parity:**
+  - New: `apps/web/src/components/theme-map/ThemeGallery.tsx` — same hierarchy (HeroCard → MidCard → SmallCard → StripRow). Pure CSS: `radial-gradient()` backgrounds, CSS `@keyframes gallery-enter` for the stagger, inline `animation-delay` per rank. No JS physics.
+  - Rewritten: `apps/web/src/app/insights/theme-map/theme-map-client.tsx` — same wiring as mobile; passes all themes to `ThemeGallery` and drops the `ThemeListRow` list below.
+  - Deleted: `apps/web/src/components/theme-map/BubbleCluster.tsx` (276 LOC — inline relaxation packing). `apps/web/src/components/theme-map/ThemeListRow.tsx` (replaced).
+- **Version:** `apps/mobile/app.json` 0.1.4 → 0.1.5.
+
+### Manual steps needed
+- [ ] Monitor the EAS Build production build + TestFlight auto-submit (Claude Code kicked it off)
+- [ ] Install the build on device. Before/after feel: tap a task's checkbox — should fill instantly with a light haptic. Tap three tabs rapidly (Home → Insights → Entries → Home) — no blank-screen spinners between them. Open Theme Map — should render as a hero card + 2-up row + 2×2 grid + strip rows, NOT a bubble cluster.
+- [ ] Open Theme Map with a user that has 20+ themes — verify the strip-row section scrolls cleanly without visual noise.
+
+### Notes
+- **Perf measurements (subjective; no profiler runs in this session):** the 2–3s "tap-to-check" stall was `optimistic setState` (instant) → `await api.patch` (~200–600ms) → `await fetchAll()` (parallel GET of tasks + groups, ~800–1800ms, depending on user's task count) → `setActing.delete(id)` (clears the opacity:0.5 visual). Removing the `await fetchAll` drops the user-perceived stall to the Pressable's native touch feedback (~0ms). Tab switches were previously doing N parallel fetches on every focus where N = 3 (home) / 5 (insights) / 1 (entries) / 2 (tasks) — each with its own setState that forced a full tree re-render. Now focus only triggers fetches when `isStale()`, and cached state keeps the screen painted while the silent refetch runs. The Tasks screen's `useMemo` for `grouped` was also previously recomputing on every render because `const now = Date.now()` was a fresh value each render — moving it inside the memo fixes that and stops cascading re-renders of every TaskRow.
+- **Why no React.memo on entries/insights list rows:** the inline list items in those screens iterate over small arrays (≤ 10 recent entries, 5–6 life areas). The benefit-vs-bundle-size tradeoff doesn't justify the extra boilerplate yet. Revisit if list sizes grow.
+- **Gallery rank bands, not 10-bubble cap:** BubbleCluster hard-capped at 10 themes (anything more overwhelmed the packing algorithm). ThemeGallery shows EVERY theme — rank 1 gets the hero, ranks 2–3 share a row, ranks 4–7 fill a grid, 8+ become strip rows. User has 32 themes → ~25 strip rows. Strip rows are cheap (no SVG, no gradient backgrounds — only a 3px stripe + text) so the scroll stays smooth.
+- **Haptic is fire-and-forget with `.catch(() => {})`:** if haptic generation fails (rare, typically on iPhone SE 1st gen) we swallow the error rather than crash the tap handler. The check is `Platform.OS === "ios"` not a Haptics availability query — Haptics.impactAsync is a no-op on Android anyway, but explicit platform gate prevents unneeded bundle loading if RN ever starts tree-shaking.
+- **react-native-svg typecheck errors:** `ThemeGallery` adds the standard 8–10 "Svg/Defs/RadialGradient/Stop/Rect not a valid JSX component" errors that plague this repo under React 19. Net mobile error count actually fell from 70 → 68 because deleting BubbleCluster (with its AnimatedCircle casts) removed more errors than ThemeGallery added. No new errors outside the known pre-existing gap.
+- **Cache is per-process:** module-level Map, no AsyncStorage persistence. Cold app starts still network-hit. Persistence would be a next iteration — AsyncStorage writes on `setCached` + hydrate on boot — but would require a schema migration strategy (what if a cached response shape is older than the app code?). Out of scope for this ship.
+- **Visit snapshot behavior preserved:** the "checkbox stays visible until you leave the tab" behavior (shipped 2026-04-23) still works. `useFocusEffect` re-takes the snapshot on each focus; focus-driven silent refetch merges via `pendingMutationsRef` so a still-pending PATCH doesn't get clobbered.
+
+---
+
 ## [2026-04-24] — Theme Map + Theme Detail visual redesign (Run B)
 
 **Requested by:** Jimmy

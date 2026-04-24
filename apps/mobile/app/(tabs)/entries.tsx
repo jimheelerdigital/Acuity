@@ -20,6 +20,9 @@ import {
 
 import { MoodIcon } from "@/components/mood-icon";
 import { api } from "@/lib/api";
+import { getCached, isStale, setCached } from "@/lib/cache";
+
+const ENTRIES_CACHE_KEY = "/api/entries";
 
 /**
  * Entries tab — full-screen chronological list with search + mood
@@ -29,29 +32,34 @@ import { api } from "@/lib/api";
  */
 export default function EntriesTab() {
   const router = useRouter();
-  const [entries, setEntries] = useState<EntryDTO[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [entries, setEntries] = useState<EntryDTO[]>(
+    () => getCached<{ entries: EntryDTO[] }>(ENTRIES_CACHE_KEY)?.entries ?? []
+  );
+  const [loading, setLoading] = useState(
+    () => !getCached<{ entries: EntryDTO[] }>(ENTRIES_CACHE_KEY)
+  );
   const [refreshing, setRefreshing] = useState(false);
   const [query, setQuery] = useState("");
   const [moodFilter, setMoodFilter] = useState<Mood | null>(null);
 
   const load = useCallback(async () => {
     try {
-      const data = await api.get<{ entries: EntryDTO[] }>("/api/entries");
+      const data = await api.get<{ entries: EntryDTO[] }>(ENTRIES_CACHE_KEY);
+      setCached(ENTRIES_CACHE_KEY, data);
       setEntries(data.entries ?? []);
     } catch {
-      setEntries([]);
+      // Keep existing cached entries on failure.
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   }, []);
 
-  // Silent background refetch on focus — cached entries stay
-  // rendered, no spinner flash between tab switches.
+  // Revalidate on focus only when stale. Cached list stays visible
+  // during the network round-trip — no spinner flash on tab switches.
   useFocusEffect(
     useCallback(() => {
-      load();
+      if (isStale(ENTRIES_CACHE_KEY)) load();
     }, [load])
   );
 
