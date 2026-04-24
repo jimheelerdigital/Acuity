@@ -11,7 +11,7 @@
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** PENDING
+**Commit hash:** 50752ad
 
 ### In plain English (for Keenan)
 This run executed the performance audit (docs/PERFORMANCE_AUDIT_2026-04-24.md) end-to-end and shipped all four sprints in one build. What you'll notice on device: (1) On the Goals tab, checking a task under a goal or tapping a status pill (complete/archive/start/restore) now fills the UI instantly — same fix we shipped for the Tasks tab this morning. (2) Navigating into a task's edit modal, an entry's detail view, a goal's detail page, or a life-area's drill-down now skips the loading spinner entirely when you've already loaded that data on the screen you came from — the content appears as fast as you can scroll. (3) Boot: the white-flash-with-spinner between the splash logo and the app is gone — splash stays up until auth resolves. (4) Behind the scenes: all debug `console.log` from the Google sign-in flow is stripped from production builds (and any future ones, because the build process now removes them automatically), and an unused audio library was removed from the bundle. Net: the app feels tighter everywhere without adding any new features.
