@@ -7,6 +7,41 @@
 
 ---
 
+## [2026-04-24] — Top nav redesign: avatar-only with account dropdown
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** 1adcc3d
+
+### In plain English (for Keenan)
+The top-right corner of every authenticated page used to show your profile picture, your name as text, and a "Sign out" text link all sitting in the nav bar. We've cleaned that up to a single profile circle with a small chevron. Clicking (or tapping) it opens a compact dropdown that shows your name and email at the top, then four items — Settings, Documentation, Support, and Sign out. Sign out is styled in red so it can't be confused with the navigation items above it. The menu handles keyboard navigation cleanly (Tab to focus, Enter to open, arrows to move, Esc to close) and works on phones as well as desktop. Net result: less visual clutter in the nav bar and a clearer home for anything account-related.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/nav-bar.tsx`:
+  - Added a new internal `UserMenu` component (~180 LOC). Pattern matches the existing hand-rolled `WhoItsForDropdown` in the same file: click-outside handler, Escape handler, opacity/scale CSS transition. No new dependencies. Lucide icons already shipped in the app — imported `BookOpen`, `ChevronDown`, `LifeBuoy`, `LogOut`, `Settings`.
+  - Replaced the right-side render block (Link wrapping avatar + name + separate Sign out `<button>`) with `<UserMenu name email image initials />`.
+  - Menu items: Settings → `/account`, Documentation → `https://docs.getacuity.io` (new tab, `rel="noopener noreferrer"`), Support → `mailto:support@getacuity.io`, Sign out → existing `signOut({ callbackUrl: "/" })` call.
+  - Panel positioning: `absolute right-0 top-full mt-2 w-56` — anchored to the right edge of the avatar so it never overflows narrow viewports. Panel bg matches the existing dropdown: `bg-[#FAFAF7] dark:bg-[#1E1E2E]` with `border-zinc-200 dark:border-white/10`. Fade/scale transition is `transition-all duration-150`.
+  - Accessibility: trigger button has `aria-haspopup="menu"` + `aria-expanded`; panel is `role="menu"` + `aria-orientation="vertical"`; each item is `role="menuitem"` with `tabIndex={-1}` and managed via a roving-focus pattern. Arrow Up/Down cycles with wraparound, Home/End jumps to first/last, Tab closes the menu, Esc closes and returns focus to the trigger. Trigger has a violet focus ring matching Acuity's accent.
+  - Sign out visually distinguished by a top divider plus `text-rose-600 dark:text-rose-400` and a matching `hover:bg-rose-50 dark:hover:bg-rose-500/10` — signals destructive without shouting.
+  - Menu header shows `name` + `email` so those labels are not lost from the nav bar, just moved into the dropdown.
+
+### Manual steps needed
+- [ ] **Jimmy:** Confirm `https://docs.getacuity.io` resolves to a real docs site. If not yet live, decide whether to (a) stand up a docs site, (b) swap the URL to a Notion/Linear public doc, or (c) change the menu item to `/docs` with a placeholder page. Code ships with the `.io` subdomain as the target.
+- [ ] **Jimmy:** Verify in browser on /home, /tasks, /goals, /insights, /account that the top-right shows only the avatar + chevron (no name label, no separate Sign out text link). Screenshots not captured in this session — Google OAuth can't be exercised on localhost from here, so the authenticated view could not be rendered for screenshotting. Build-time typecheck passes with zero new errors (the pre-existing landing.tsx `prefix` TS error is unchanged).
+- [ ] **Jimmy (optional):** Decide whether Settings should link to `/account` (current implementation — `/account` is the existing settings page in the codebase) or whether we want to introduce a new `/settings` route / redirect. Task spec said `/settings`; there is no such route in `apps/web/src/app/`, so the implementation uses `/account` which is where life-dimensions and integrations management already lives.
+
+### Notes
+- **No new dependency.** The project already ships `lucide-react ^1.9.0` and the existing `WhoItsForDropdown` is a solid hand-rolled pattern. Adding Radix or Headless UI for a 4-item menu would have been overkill. If we add a second dropdown like this (e.g., a notifications panel), it would be worth extracting a shared `<Menu>` primitive; for now two bespoke dropdowns is under the abstraction threshold.
+- **Roving tabindex over `tabIndex={0}` on every item.** Each item is `tabIndex={-1}` so Tab from the trigger does not walk through the whole menu — instead Tab closes the menu (matches Radix / WAI-ARIA APG Menu pattern). Arrow keys handle intra-menu navigation, Enter activates. Shift+Tab from the trigger continues backward out of the menu region as expected.
+- **Escape focus return.** On Esc we close AND call `triggerRef.current?.focus()` so keyboard users land back on the avatar button, not the document body. Click-outside close does NOT refocus the trigger (it would steal focus from wherever the user clicked).
+- **Why `/account` not `/settings`:** task asked for `/settings`, but the existing Acuity app does not have that route — `/account` is where account-level config lives (integrations, life dimensions). Linking to a non-existent `/settings` would 404 for every user. Flagged in Manual Steps for a follow-up decision.
+- **`docs.getacuity.io`:** did not verify the subdomain resolves — no fetch was performed. Flagged in Manual Steps. The link opens in a new tab with `noopener noreferrer` per external-link security hygiene.
+- **Mobile:** no separate hamburger pattern. The avatar button is tap-sized at 28×28 (`h-7 w-7`) + a 14×14 chevron, and the dropdown panel's `w-56` (224px) fits comfortably right-anchored on a 375pt iPhone SE viewport.
+- **Layout coverage.** `<NavBar />` is mounted once in `apps/web/src/app/layout.tsx`. It auto-hides on `/auth*` and `/` per its own guard. So this one-file change propagates to every authenticated page — `/home`, `/tasks`, `/goals`, `/insights`, `/account`, `/entries`, `/onboarding`, `/admin`, `/dashboard`, `/upgrade` — without touching per-page layouts.
+
+---
+
 ## [2026-04-24] — Retired waitlist drip, shipped 9-step trial onboarding sequence with behavioral branching
 
 **Requested by:** Keenan
