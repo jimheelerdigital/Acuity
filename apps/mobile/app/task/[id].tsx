@@ -14,7 +14,11 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { api } from "@/lib/api";
+import { getCached, isStale, setCached } from "@/lib/cache";
 import { useTheme } from "@/contexts/theme-context";
+
+const TASKS_CACHE_KEY = "/api/tasks?all=1";
+const GROUPS_CACHE_KEY = "/api/task-groups";
 
 type Task = {
   id: string;
@@ -48,43 +52,97 @@ export default function TaskEditScreen() {
   const { resolved } = useTheme();
   const isDark = resolved === "dark";
 
-  const [task, setTask] = useState<Task | null>(null);
-  const [groups, setGroups] = useState<TaskGroup[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Cache-first hydrate: when the user is opening the editor from the
+  // Tasks tab, the tasks + groups lists have already been fetched and
+  // live in lib/cache.ts. We find our task by id in the cached list
+  // — O(n) scan over ~100 items is microseconds, and critically, there
+  // is ZERO network traffic to open the editor in the warm case. Only
+  // if the cache misses (direct deep link, stale cold start) do we
+  // fall back to fetching the list from the network.
+  const cachedTasks = getCached<{ tasks: Task[] }>(TASKS_CACHE_KEY);
+  const cachedGroups = getCached<{ groups: TaskGroup[] }>(GROUPS_CACHE_KEY);
+  const cachedTask =
+    id && cachedTasks ? cachedTasks.tasks.find((t) => t.id === id) : undefined;
+
+  const [task, setTask] = useState<Task | null>(() => cachedTask ?? null);
+  const [groups, setGroups] = useState<TaskGroup[]>(
+    () => cachedGroups?.groups ?? []
+  );
+  const [loading, setLoading] = useState(() => !cachedTask);
   const [saving, setSaving] = useState(false);
 
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [priority, setPriority] = useState<string>("MEDIUM");
-  const [due, setDue] = useState("");
-  const [groupId, setGroupId] = useState<string | null>(null);
+  const [title, setTitle] = useState(
+    () => cachedTask?.title ?? cachedTask?.text ?? ""
+  );
+  const [description, setDescription] = useState(
+    () => cachedTask?.description ?? ""
+  );
+  const [priority, setPriority] = useState<string>(
+    () => cachedTask?.priority ?? "MEDIUM"
+  );
+  const [due, setDue] = useState(() =>
+    cachedTask?.dueDate
+      ? new Date(cachedTask.dueDate).toISOString().slice(0, 10)
+      : ""
+  );
+  const [groupId, setGroupId] = useState<string | null>(
+    () => cachedTask?.groupId ?? null
+  );
 
   useEffect(() => {
     if (!id) return;
+    // If we hydrated from fresh cache, skip the fetch entirely. The
+    // user just came from the Tasks tab which revalidated on focus.
+    if (cachedTask && !isStale(TASKS_CACHE_KEY)) return;
+
     let cancelled = false;
     (async () => {
       try {
         const [tasksRes, groupsRes] = await Promise.all([
-          api.get<{ tasks: Task[] }>("/api/tasks?all=1"),
-          api.get<{ groups: TaskGroup[] }>("/api/task-groups"),
+          api.get<{ tasks: Task[] }>(TASKS_CACHE_KEY),
+          api.get<{ groups: TaskGroup[] }>(GROUPS_CACHE_KEY),
         ]);
         if (cancelled) return;
+        setCached(TASKS_CACHE_KEY, tasksRes);
+        setCached(GROUPS_CACHE_KEY, groupsRes);
         const found = (tasksRes.tasks ?? []).find((t) => t.id === id);
         if (!found) {
-          Alert.alert("Not found", "Couldn't load this task.");
-          router.back();
+          // Only treat as "not found" on a cold miss. If we already
+          // hydrated from cache, keep the cached copy.
+          if (!cachedTask) {
+            Alert.alert("Not found", "Couldn't load this task.");
+            router.back();
+          }
           return;
         }
         setTask(found);
-        setTitle(found.title ?? found.text ?? "");
-        setDescription(found.description ?? "");
-        setPriority(found.priority);
-        setDue(
-          found.dueDate
-            ? new Date(found.dueDate).toISOString().slice(0, 10)
-            : ""
+        // Only overwrite draft fields if they match the cached copy
+        // — if the user already started typing, we don't want a
+        // background refetch to clobber their in-progress edits.
+        setTitle((prev) => {
+          const cachedValue = cachedTask?.title ?? cachedTask?.text ?? "";
+          return prev === cachedValue ? found.title ?? found.text ?? "" : prev;
+        });
+        setDescription((prev) => {
+          const cachedValue = cachedTask?.description ?? "";
+          return prev === cachedValue ? found.description ?? "" : prev;
+        });
+        setPriority((prev) =>
+          prev === (cachedTask?.priority ?? "MEDIUM") ? found.priority : prev
         );
-        setGroupId(found.groupId);
+        setDue((prev) => {
+          const cachedValue = cachedTask?.dueDate
+            ? new Date(cachedTask.dueDate).toISOString().slice(0, 10)
+            : "";
+          return prev === cachedValue
+            ? found.dueDate
+              ? new Date(found.dueDate).toISOString().slice(0, 10)
+              : ""
+            : prev;
+        });
+        setGroupId((prev) =>
+          prev === (cachedTask?.groupId ?? null) ? found.groupId : prev
+        );
         setGroups(groupsRes.groups ?? []);
       } finally {
         if (!cancelled) setLoading(false);
@@ -93,7 +151,8 @@ export default function TaskEditScreen() {
     return () => {
       cancelled = true;
     };
-  }, [id, router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   const save = async () => {
     if (!task) return;

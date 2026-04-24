@@ -14,6 +14,11 @@ import { MoodIcon } from "@/components/mood-icon";
 
 import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
+import { getCached, isStale, setCached } from "@/lib/cache";
+
+function dimensionKey(key: string): string {
+  return `/api/lifemap/dimension/${encodeURIComponent(key)}`;
+}
 
 type DimensionDetail = {
   dimension: {
@@ -56,21 +61,32 @@ export default function DimensionDetailScreen() {
   const { resolved } = useTheme();
   const isDark = resolved === "dark";
 
-  const [data, setData] = useState<DimensionDetail | null>(null);
+  const cacheKey = key ? dimensionKey(key) : null;
+  const initialCached = cacheKey
+    ? getCached<DimensionDetail>(cacheKey)
+    : undefined;
+
+  const [data, setData] = useState<DimensionDetail | null>(
+    () => initialCached ?? null
+  );
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !initialCached);
 
   useEffect(() => {
-    if (!key) return;
+    if (!key || !cacheKey) return;
+    // Cache-hit render is instant; skip the fetch if the response is
+    // still fresh (30s TTL). Otherwise revalidate silently in the
+    // background — cached content stays painted during the round-trip.
+    if (initialCached && !isStale(cacheKey)) return;
     let cancelled = false;
     (async () => {
       try {
-        const res = await api.get<DimensionDetail>(
-          `/api/lifemap/dimension/${encodeURIComponent(key)}`
-        );
-        if (!cancelled) setData(res);
+        const res = await api.get<DimensionDetail>(cacheKey);
+        if (cancelled) return;
+        setCached(cacheKey, res);
+        setData(res);
       } catch (err) {
-        if (!cancelled) {
+        if (!cancelled && !initialCached) {
           setError(
             err instanceof Error
               ? err.message
@@ -84,7 +100,8 @@ export default function DimensionDetailScreen() {
     return () => {
       cancelled = true;
     };
-  }, [key]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, cacheKey]);
 
   return (
     <SafeAreaView

@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -35,7 +36,176 @@ import {
 
 import { LockedFeatureCard } from "@/components/locked-feature-card";
 import { api } from "@/lib/api";
+import { getCached, isStale, setCached } from "@/lib/cache";
 import { fetchUserProgression } from "@/lib/userProgression";
+
+const GOALS_TREE_KEY = "/api/goals/tree";
+const GOALS_TREE_ARCHIVED_KEY = "/api/goals/tree?includeArchived=1";
+const GOALS_PROGRESSION_KEY = "/api/user/progression";
+
+function treeCacheKey(withArchived: boolean): string {
+  return withArchived ? GOALS_TREE_ARCHIVED_KEY : GOALS_TREE_KEY;
+}
+
+type GoalsTreeResponse = {
+  roots: TreeGoal[];
+  pendingSuggestionsCount: number;
+};
+
+/**
+ * Walk the tree and return a new tree with `patcher` applied to the
+ * goal whose id matches. All parent nodes on the path get new array
+ * references so `React.memo` children with stable deps re-render only
+ * if they're on the path. Nodes off the path share the prior reference
+ * so their `TreeNode` memo no-ops.
+ */
+function patchGoalInTree(
+  roots: TreeGoal[],
+  id: string,
+  patcher: (g: TreeGoal) => TreeGoal
+): TreeGoal[] {
+  let changed = false;
+  const next = roots.map((r) => {
+    const replaced = patchGoalRecursive(r, id, patcher);
+    if (replaced !== r) changed = true;
+    return replaced;
+  });
+  return changed ? next : roots;
+}
+
+function patchGoalRecursive(
+  node: TreeGoal,
+  id: string,
+  patcher: (g: TreeGoal) => TreeGoal
+): TreeGoal {
+  if (node.id === id) return patcher(node);
+  let childChanged = false;
+  const newChildren = node.children.map((c) => {
+    const replaced = patchGoalRecursive(c, id, patcher);
+    if (replaced !== c) childChanged = true;
+    return replaced;
+  });
+  if (!childChanged) return node;
+  return { ...node, children: newChildren };
+}
+
+function removeGoalFromTree(roots: TreeGoal[], id: string): TreeGoal[] {
+  let changed = false;
+  const next: TreeGoal[] = [];
+  for (const r of roots) {
+    if (r.id === id) {
+      changed = true;
+      continue;
+    }
+    const cleaned = removeGoalRecursive(r, id);
+    if (cleaned !== r) changed = true;
+    next.push(cleaned);
+  }
+  return changed ? next : roots;
+}
+
+function removeGoalRecursive(node: TreeGoal, id: string): TreeGoal {
+  let childChanged = false;
+  const newChildren: TreeGoal[] = [];
+  for (const c of node.children) {
+    if (c.id === id) {
+      childChanged = true;
+      continue;
+    }
+    const cleaned = removeGoalRecursive(c, id);
+    if (cleaned !== c) childChanged = true;
+    newChildren.push(cleaned);
+  }
+  if (!childChanged) return node;
+  return { ...node, children: newChildren };
+}
+
+function patchTaskStatusInTree(
+  roots: TreeGoal[],
+  taskId: string,
+  nextStatus: string
+): TreeGoal[] {
+  let rootsChanged = false;
+  const next = roots.map((r) => {
+    const replaced = patchTaskInGoal(r, taskId, nextStatus);
+    if (replaced !== r) rootsChanged = true;
+    return replaced;
+  });
+  return rootsChanged ? next : roots;
+}
+
+function patchTaskInGoal(
+  node: TreeGoal,
+  taskId: string,
+  nextStatus: string
+): TreeGoal {
+  let taskChanged = false;
+  const newTasks = node.tasks.map((t) => {
+    if (t.id !== taskId) return t;
+    taskChanged = true;
+    return { ...t, status: nextStatus };
+  });
+  let childChanged = false;
+  const newChildren = node.children.map((c) => {
+    const replaced = patchTaskInGoal(c, taskId, nextStatus);
+    if (replaced !== c) childChanged = true;
+    return replaced;
+  });
+  if (!taskChanged && !childChanged) return node;
+  return {
+    ...node,
+    tasks: taskChanged ? newTasks : node.tasks,
+    children: childChanged ? newChildren : node.children,
+  };
+}
+
+function tapHaptic(): void {
+  if (Platform.OS !== "ios") return;
+  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+}
+
+/**
+ * Overlay in-flight local mutations on top of the server's freshly-
+ * returned tree. For each pending goal id we preserve the local
+ * goal's `status`; for each pending task id we preserve the local
+ * task's `status`. Everything else comes straight from the server.
+ * Called on silent focus-driven revalidation so a still-pending
+ * optimistic check doesn't flicker back to its pre-tap state.
+ */
+function mergePendingIntoServerTree(
+  serverRoots: TreeGoal[],
+  localRoots: TreeGoal[],
+  pendingGoalIds: Set<string>,
+  pendingTaskIds: Set<string>
+): TreeGoal[] {
+  const localByGoalId = new Map<string, TreeGoal>();
+  const localByTaskId = new Map<string, TreeTask>();
+  const indexLocal = (node: TreeGoal) => {
+    localByGoalId.set(node.id, node);
+    for (const t of node.tasks) localByTaskId.set(t.id, t);
+    for (const c of node.children) indexLocal(c);
+  };
+  for (const r of localRoots) indexLocal(r);
+
+  const overlay = (node: TreeGoal): TreeGoal => {
+    const localGoal = localByGoalId.get(node.id);
+    const overlaidStatus =
+      localGoal && pendingGoalIds.has(node.id)
+        ? localGoal.status
+        : node.status;
+
+    const tasks = node.tasks.map((t) => {
+      if (!pendingTaskIds.has(t.id)) return t;
+      const localTask = localByTaskId.get(t.id);
+      if (!localTask) return t;
+      return { ...t, status: localTask.status };
+    });
+    const children = node.children.map(overlay);
+    return { ...node, status: overlaidStatus, tasks, children };
+  };
+
+  return serverRoots.map(overlay);
+}
 
 /**
  * Mobile Goals — expandable tree. Parity with web's /goals page:
@@ -91,111 +261,211 @@ const STATUS_STYLES: Record<string, { label: string; color: string }> = {
   ARCHIVED: { label: "Archived", color: "#52525B" },
 };
 
+const ACTION_TO_STATUS: Record<string, string> = {
+  complete: "COMPLETE",
+  archive: "ARCHIVED",
+  start: "IN_PROGRESS",
+  restore: "NOT_STARTED",
+};
+
 export default function GoalsTab() {
   const router = useRouter();
-  const [roots, setRoots] = useState<TreeGoal[]>([]);
-  const [pendingSuggestions, setPendingSuggestions] = useState(0);
   const [includeArchived, setIncludeArchived] = useState(false);
-  const [loading, setLoading] = useState(true);
+
+  const initialCacheKey = treeCacheKey(includeArchived);
+  const initialCached = getCached<GoalsTreeResponse>(initialCacheKey);
+
+  const [roots, setRoots] = useState<TreeGoal[]>(
+    () => initialCached?.roots ?? []
+  );
+  const [pendingSuggestions, setPendingSuggestions] = useState(
+    () => initialCached?.pendingSuggestionsCount ?? 0
+  );
+  const [loading, setLoading] = useState(() => !initialCached);
   const [refreshing, setRefreshing] = useState(false);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [addSubgoalFor, setAddSubgoalFor] = useState<TreeGoal | null>(null);
   const [actionSheetFor, setActionSheetFor] = useState<TreeGoal | null>(null);
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
-  const [progression, setProgression] = useState<UserProgression | null>(null);
+  const [progression, setProgression] = useState<UserProgression | null>(
+    () => getCached<UserProgression>(GOALS_PROGRESSION_KEY) ?? null
+  );
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
     new Set()
   );
 
-  const fetchTree = useCallback(async (withArchived = false) => {
-    try {
-      const [res, prog] = await Promise.all([
-        api.get<{ roots: TreeGoal[]; pendingSuggestionsCount: number }>(
-          `/api/goals/tree${withArchived ? "?includeArchived=1" : ""}`
-        ),
-        fetchUserProgression().catch(() => null),
-      ]);
-      setRoots(res.roots ?? []);
-      setPendingSuggestions(res.pendingSuggestionsCount ?? 0);
-      setProgression(prog);
-      setExpanded((prev) => {
-        if (prev.size > 0) return prev;
-        const next = new Set<string>();
-        for (const r of res.roots) next.add(r.id);
-        return next;
-      });
-    } catch {
-      // silent
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
+  // Pending mutations keep optimistic state alive during a focus-
+  // driven silent revalidation. Ids are goal ids or task ids; we merge
+  // server response by patching each pending id back to local state.
+  const pendingGoalMutationsRef = useRef<Set<string>>(new Set());
+  const pendingTaskMutationsRef = useRef<Set<string>>(new Set());
+
+  const fetchTree = useCallback(
+    async (withArchived: boolean, silent: boolean) => {
+      if (!silent) setLoading(true);
+      try {
+        const key = treeCacheKey(withArchived);
+        const [res, prog] = await Promise.all([
+          api.get<GoalsTreeResponse>(key),
+          fetchUserProgression().catch(() => null),
+        ]);
+        setCached(key, res);
+        if (prog) setCached(GOALS_PROGRESSION_KEY, prog);
+
+        // Merge server state with anything still locally-pending. We
+        // can't know from the server response which tasks/goals the
+        // user mutated mid-fetch, so we overlay the prior local copy
+        // for any id we have a pending mutation on.
+        setRoots((prev) => {
+          const serverRoots = res.roots ?? [];
+          if (
+            pendingGoalMutationsRef.current.size === 0 &&
+            pendingTaskMutationsRef.current.size === 0
+          ) {
+            return serverRoots;
+          }
+          return mergePendingIntoServerTree(
+            serverRoots,
+            prev,
+            pendingGoalMutationsRef.current,
+            pendingTaskMutationsRef.current
+          );
+        });
+        setPendingSuggestions(res.pendingSuggestionsCount ?? 0);
+        setProgression(prog);
+        setExpanded((prevExpanded) => {
+          if (prevExpanded.size > 0) return prevExpanded;
+          const next = new Set<string>();
+          for (const r of res.roots) next.add(r.id);
+          return next;
+        });
+      } catch {
+        // silent
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    []
+  );
+
+  // Initial fetch — silent if cache hydrated.
+  useEffect(() => {
+    fetchTree(includeArchived, roots.length > 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Re-fetch on every tab focus so returning from the /record modal
-  // refreshes the progression (e.g. a fresh recording bumps the
-  // goalSuggestions unlock meter live).
+  // Re-fetch when the user toggles "include archived" — different
+  // cache key, so seed from cache if we have it, otherwise show the
+  // loading state until the fresh list lands.
+  useEffect(() => {
+    const key = treeCacheKey(includeArchived);
+    const cached = getCached<GoalsTreeResponse>(key);
+    if (cached) {
+      setRoots(cached.roots ?? []);
+      setPendingSuggestions(cached.pendingSuggestionsCount ?? 0);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
+    fetchTree(includeArchived, !!cached);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [includeArchived]);
+
+  // Silent revalidation on focus — cached tree stays painted.
   useFocusEffect(
     useCallback(() => {
-      fetchTree(includeArchived);
+      const key = treeCacheKey(includeArchived);
+      if (isStale(key) || isStale(GOALS_PROGRESSION_KEY)) {
+        fetchTree(includeArchived, true);
+      }
     }, [fetchTree, includeArchived])
   );
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    fetchTree(includeArchived);
+    fetchTree(includeArchived, true);
   }, [fetchTree, includeArchived]);
 
-  const toggleExpanded = (id: string) => {
+  const toggleExpanded = useCallback((id: string) => {
     setExpanded((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
       return next;
     });
-  };
+  }, []);
 
-  const performAction = async (
-    goalId: string,
-    action: "complete" | "archive" | "start" | "restore"
-  ) => {
-    try {
-      await api.patch("/api/goals", { id: goalId, action });
-      await fetchTree(includeArchived);
-    } catch {
-      Alert.alert("Couldn't update", "Please try again.");
-    }
-  };
+  const performAction = useCallback(
+    (goalId: string, action: "complete" | "archive" | "start" | "restore") => {
+      if (action === "complete") tapHaptic();
+      const nextStatus = ACTION_TO_STATUS[action];
+      if (nextStatus) {
+        setRoots((prev) =>
+          patchGoalInTree(prev, goalId, (g) => ({ ...g, status: nextStatus }))
+        );
+      }
+      pendingGoalMutationsRef.current.add(goalId);
+      api
+        .patch("/api/goals", { id: goalId, action })
+        .catch(() => {
+          Alert.alert("Couldn't update", "Please try again.");
+        })
+        .finally(() => {
+          pendingGoalMutationsRef.current.delete(goalId);
+        });
+    },
+    []
+  );
 
-  const deleteGoal = async (goalId: string) => {
+  const deleteGoal = useCallback((goalId: string) => {
     Alert.alert("Delete goal?", "This deletes the goal + its sub-goals.", [
       { text: "Cancel", style: "cancel" },
       {
         text: "Delete",
         style: "destructive",
-        onPress: async () => {
-          try {
-            await api.del(`/api/goals/${goalId}`);
-            await fetchTree(includeArchived);
-          } catch {
-            Alert.alert("Couldn't delete", "Please try again.");
-          }
+        onPress: () => {
+          // Optimistic removal — the goal vanishes from the tree
+          // immediately. If the DELETE fails, the focus-driven
+          // revalidation will restore it (and the Alert below fires).
+          setRoots((prev) => removeGoalFromTree(prev, goalId));
+          pendingGoalMutationsRef.current.add(goalId);
+          api
+            .del(`/api/goals/${goalId}`)
+            .catch(() => {
+              Alert.alert("Couldn't delete", "Please try again.");
+            })
+            .finally(() => {
+              pendingGoalMutationsRef.current.delete(goalId);
+            });
         },
       },
     ]);
-  };
+  }, []);
 
-  const toggleTask = async (taskId: string, currentStatus: string) => {
-    try {
-      await api.patch("/api/tasks", {
+  const openGoal = useCallback(
+    (id: string) => router.push(`/goal/${id}`),
+    [router]
+  );
+
+  const toggleTask = useCallback((taskId: string, currentStatus: string) => {
+    const isComplete = currentStatus !== "DONE";
+    if (isComplete) tapHaptic();
+    const nextStatus = isComplete ? "DONE" : "OPEN";
+    setRoots((prev) => patchTaskStatusInTree(prev, taskId, nextStatus));
+    pendingTaskMutationsRef.current.add(taskId);
+    api
+      .patch("/api/tasks", {
         id: taskId,
-        action: currentStatus === "DONE" ? "reopen" : "complete",
+        action: isComplete ? "complete" : "reopen",
+      })
+      .catch(() => {
+        // Server will be out of sync with local; focus refetch corrects.
+      })
+      .finally(() => {
+        pendingTaskMutationsRef.current.delete(taskId);
       });
-      await fetchTree(includeArchived);
-    } catch {
-      // silent
-    }
-  };
+  }, []);
 
   const inProgressCount = useMemo(() => {
     let n = 0;
@@ -372,7 +642,7 @@ export default function GoalsTab() {
                           depth={0}
                           expanded={expanded}
                           onToggleExpand={toggleExpanded}
-                          onOpen={(id) => router.push(`/goal/${id}`)}
+                          onOpen={openGoal}
                           onAddSubgoal={setAddSubgoalFor}
                           onActions={setActionSheetFor}
                           onToggleTask={toggleTask}
@@ -391,9 +661,11 @@ export default function GoalsTab() {
         <AddSubgoalSheet
           parent={addSubgoalFor}
           onClose={() => setAddSubgoalFor(null)}
-          onSaved={async () => {
+          onSaved={() => {
             setAddSubgoalFor(null);
-            await fetchTree(includeArchived);
+            // A new sub-goal isn't derivable client-side (server
+            // assigns id, depth, parent linkage), so force-refetch.
+            fetchTree(includeArchived, true);
           }}
         />
       )}
@@ -402,13 +674,13 @@ export default function GoalsTab() {
         <ActionSheet
           goal={actionSheetFor}
           onClose={() => setActionSheetFor(null)}
-          onAction={async (action) => {
+          onAction={(action) => {
             const g = actionSheetFor;
             setActionSheetFor(null);
             if (action === "delete") {
-              await deleteGoal(g.id);
+              deleteGoal(g.id);
             } else {
-              await performAction(g.id, action);
+              performAction(g.id, action);
             }
           }}
         />
@@ -417,8 +689,10 @@ export default function GoalsTab() {
       {suggestionsOpen && (
         <SuggestionsSheet
           onClose={() => setSuggestionsOpen(false)}
-          onChanged={async () => {
-            await fetchTree(includeArchived);
+          onChanged={() => {
+            // Accepting a suggestion materializes a new goal on the
+            // server — force-refetch to pick it up.
+            fetchTree(includeArchived, true);
           }}
         />
       )}
@@ -428,7 +702,7 @@ export default function GoalsTab() {
 
 // ─── Tree node recursive ─────────────────────────────────────────────────
 
-function TreeNode({
+const TreeNode = memo(function TreeNode({
   goal,
   depth,
   expanded,
@@ -571,7 +845,7 @@ function TreeNode({
               key={t.id}
               task={t}
               indent={(depth + 1) * 16}
-              onToggle={() => onToggleTask(t.id, t.status)}
+              onToggle={onToggleTask}
             />
           ))}
           {goal.children.map((c) => (
@@ -591,25 +865,29 @@ function TreeNode({
       )}
     </View>
   );
-}
+});
 
-function TaskLeaf({
+const TaskLeaf = memo(function TaskLeaf({
   task,
   indent,
   onToggle,
 }: {
   task: TreeTask;
   indent: number;
-  onToggle: () => void;
+  onToggle: (id: string, status: string) => void;
 }) {
   const done = task.status === "DONE";
   const label = task.title ?? task.text ?? "Untitled task";
+  const handleToggle = useCallback(
+    () => onToggle(task.id, task.status),
+    [onToggle, task.id, task.status]
+  );
   return (
     <View
       className="flex-row items-center gap-2 rounded-lg bg-zinc-50 dark:bg-[#13131F] px-3 py-2"
       style={{ marginLeft: indent - 8 }}
     >
-      <Pressable onPress={onToggle} hitSlop={8}>
+      <Pressable onPress={handleToggle} hitSlop={8}>
         <View
           className={`h-5 w-5 rounded-full border-2 items-center justify-center ${
             done
@@ -631,7 +909,7 @@ function TaskLeaf({
       </Text>
     </View>
   );
-}
+});
 
 // ─── Sheets ──────────────────────────────────────────────────────────────
 

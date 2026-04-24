@@ -3,7 +3,7 @@ import * as Google from "expo-auth-session/providers/google";
 import Constants from "expo-constants";
 import * as SecureStore from "expo-secure-store";
 import * as WebBrowser from "expo-web-browser";
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 
 // Required for expo-auth-session on web + some Expo Go edge cases.
 // No-op on native iOS but safe to call anywhere.
@@ -403,37 +403,6 @@ export function useGoogleSignIn() {
   // first-build QA without having to re-instrument the screen. We log
   // every transition (not just failures) because the no_token branch
   // is opaque without seeing the prior steps.
-  // Log the computed redirectUri on first mount so build logs capture
-  // it. If this ever drifts from the registered CFBundleURLScheme or
-  // the Google OAuth client's expected format, we'll see it here.
-  useEffect(() => {
-    // eslint-disable-next-line no-console
-    console.log("[auth] redirectUri:", redirectUri);
-  }, [redirectUri]);
-
-  useEffect(() => {
-    if (!response) return;
-    // eslint-disable-next-line no-console
-    console.log("[auth] Google response.type:", response.type);
-    if (response.type === "success") {
-      // eslint-disable-next-line no-console
-      console.log(
-        "[auth] params keys:",
-        Object.keys(response.params ?? {}),
-        "authentication:",
-        response.authentication
-          ? {
-              hasIdToken: Boolean(response.authentication.idToken),
-              hasAccessToken: Boolean(response.authentication.accessToken),
-              tokenType: response.authentication.tokenType,
-            }
-          : null
-      );
-    } else if ("error" in response) {
-      // eslint-disable-next-line no-console
-      console.log("[auth] Google response error:", response.error);
-    }
-  }, [response]);
 
   const signIn = async (): Promise<SignInResult> => {
     // Accumulator — every failure return attaches this so the UI can
@@ -454,8 +423,6 @@ export function useGoogleSignIn() {
     try {
       promptResult = await promptAsync();
     } catch (err) {
-      // eslint-disable-next-line no-console
-      console.log("[auth] promptAsync threw:", err);
       return {
         ok: false,
         reason: "server_error",
@@ -465,8 +432,6 @@ export function useGoogleSignIn() {
     }
 
     debug.responseType = promptResult.type;
-    // eslint-disable-next-line no-console
-    console.log("[auth] promptAsync result type:", promptResult.type);
 
     if (promptResult.type === "cancel" || promptResult.type === "dismiss") {
       return { ok: false, reason: "cancelled", debug };
@@ -570,15 +535,11 @@ export function useGoogleSignIn() {
         body: JSON.stringify({ googleIdToken: idToken }),
       });
       debug.callbackStatus = res.status;
-      // eslint-disable-next-line no-console
-      console.log("[auth] mobile-callback HTTP:", res.status);
       if (!res.ok) {
         const body = (await res.json().catch(() => ({}))) as {
           error?: string;
         };
         debug.callbackError = body.error ?? `HTTP ${res.status}`;
-        // eslint-disable-next-line no-console
-        console.log("[auth] mobile-callback error body:", body);
         return {
           ok: false,
           reason: "server_error",

@@ -1,5 +1,5 @@
 import { useLocalSearchParams } from "expo-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   ScrollView,
@@ -12,27 +12,48 @@ import { MOOD_LABELS, type EntryDTO, type TaskDTO } from "@acuity/shared";
 import { ExtractionReview } from "@/components/extraction-review";
 import { MoodIcon } from "@/components/mood-icon";
 import { api } from "@/lib/api";
+import { getCached, isStale, setCached } from "@/lib/cache";
 
 type EntryDetail = EntryDTO & { tasks: TaskDTO[] };
 
+type EntryDetailResponse = { entry: EntryDetail };
+
+function entryDetailKey(id: string): string {
+  return `/api/entries/${id}`;
+}
+
 export default function EntryDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const [entry, setEntry] = useState<EntryDetail | null>(null);
-  const [loading, setLoading] = useState(true);
+  const cacheKey = id ? entryDetailKey(id) : null;
+  const initialCached = cacheKey
+    ? getCached<EntryDetailResponse>(cacheKey)
+    : undefined;
 
-  const reload = () => {
-    if (!id) return;
+  const [entry, setEntry] = useState<EntryDetail | null>(
+    () => initialCached?.entry ?? null
+  );
+  const [loading, setLoading] = useState(() => !initialCached);
+
+  const reload = useCallback(() => {
+    if (!cacheKey) return;
     api
-      .get<{ entry: EntryDetail }>(`/api/entries/${id}`)
-      .then((d) => setEntry(d.entry ?? null))
-      .catch(() => setEntry(null))
+      .get<EntryDetailResponse>(cacheKey)
+      .then((d) => {
+        setCached(cacheKey, d);
+        setEntry(d.entry ?? null);
+      })
+      .catch(() => {
+        // Keep cached state on failure; only null out on cold miss.
+        setEntry((prev) => prev ?? null);
+      })
       .finally(() => setLoading(false));
-  };
+  }, [cacheKey]);
 
   useEffect(() => {
-    reload();
+    if (!cacheKey) return;
+    if (!initialCached || isStale(cacheKey)) reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+  }, [cacheKey]);
 
   if (loading) {
     return (
@@ -50,11 +71,15 @@ export default function EntryDetailScreen() {
     );
   }
 
-  const date = new Date(entry.createdAt).toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  });
+  const date = useMemo(
+    () =>
+      new Date(entry.createdAt).toLocaleDateString("en-US", {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+      }),
+    [entry.createdAt]
+  );
 
   return (
     <ScrollView

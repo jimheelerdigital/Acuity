@@ -1,6 +1,7 @@
 import "../global.css";
 
 import { Stack, useRouter, useSegments } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -14,10 +15,27 @@ import { initSentry, setSentryUser } from "@/lib/sentry";
 // Sentry init at module scope — idempotent on re-import.
 initSentry();
 
+// Keep the native splash up until auth + theme have hydrated. Without
+// this, Expo auto-hides the splash as soon as React mounts, which
+// lands the user on the AuthGate's <ActivityIndicator> spinner — the
+// "white spinner flash between splash and content" the audit flagged.
+SplashScreen.preventAutoHideAsync().catch(() => {});
+
 function AuthGate() {
   const { user, loading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+
+  // Hide the native splash once auth has resolved. We block on
+  // `loading` rather than `user` because a signed-out user should see
+  // the sign-in screen, not a spinner. Paired with
+  // `SplashScreen.preventAutoHideAsync()` at module scope, this turns
+  // the boot sequence into: splash → sign-in/home (no spinner flash).
+  useEffect(() => {
+    if (!loading) {
+      SplashScreen.hideAsync().catch(() => {});
+    }
+  }, [loading]);
 
   // Tag Sentry with the current user id as soon as auth resolves.
   useEffect(() => {

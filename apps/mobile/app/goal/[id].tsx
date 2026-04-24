@@ -19,6 +19,13 @@ import { formatRelativeDate } from "@acuity/shared";
 import { BackButton } from "@/components/back-button";
 import { ProgressSuggestionBanner } from "@/components/progress-suggestion-banner";
 import { api } from "@/lib/api";
+import { getCached, isStale, setCached } from "@/lib/cache";
+
+type GoalDetailResponse = { goal: Goal; linkedEntries: LinkedEntry[] };
+
+function goalDetailKey(id: string): string {
+  return `/api/goals/${id}`;
+}
 
 /**
  * Mobile goal detail screen. Parity with apps/web/src/app/goals/[id]/page.tsx —
@@ -69,38 +76,56 @@ export default function GoalDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
 
-  const [goal, setGoal] = useState<Goal | null>(null);
-  const [linked, setLinked] = useState<LinkedEntry[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cacheKey = id ? goalDetailKey(id) : null;
+  const initialCached = cacheKey
+    ? getCached<GoalDetailResponse>(cacheKey)
+    : undefined;
+
+  const [goal, setGoal] = useState<Goal | null>(
+    () => initialCached?.goal ?? null
+  );
+  const [linked, setLinked] = useState<LinkedEntry[]>(
+    () => initialCached?.linkedEntries ?? []
+  );
+  const [loading, setLoading] = useState(() => !initialCached);
   const [saving, setSaving] = useState(false);
 
-  const [titleDraft, setTitleDraft] = useState("");
+  const [titleDraft, setTitleDraft] = useState(
+    () => initialCached?.goal.title ?? ""
+  );
   const [editingTitle, setEditingTitle] = useState(false);
-  const [notesDraft, setNotesDraft] = useState("");
+  const [notesDraft, setNotesDraft] = useState(
+    () => initialCached?.goal.notes ?? ""
+  );
   const [editingNotes, setEditingNotes] = useState(false);
-  const [progressDraft, setProgressDraft] = useState(0);
+  const [progressDraft, setProgressDraft] = useState(
+    () => initialCached?.goal.progress ?? 0
+  );
 
   const load = useCallback(async () => {
-    if (!id) return;
+    if (!id || !cacheKey) return;
     try {
-      const data = await api.get<{ goal: Goal; linkedEntries: LinkedEntry[] }>(
-        `/api/goals/${id}`
-      );
+      const data = await api.get<GoalDetailResponse>(cacheKey);
+      setCached(cacheKey, data);
       setGoal(data.goal);
       setLinked(data.linkedEntries);
       setTitleDraft(data.goal.title);
       setNotesDraft(data.goal.notes ?? "");
       setProgressDraft(data.goal.progress);
     } catch {
-      setGoal(null);
+      // Keep cached state on failure; only null out if we never had
+      // content (cold miss).
+      setGoal((prev) => prev ?? null);
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, cacheKey]);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    if (!cacheKey) return;
+    if (!initialCached || isStale(cacheKey)) load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cacheKey]);
 
   const patch = async (fields: Record<string, unknown>) => {
     if (!goal) return;
@@ -113,6 +138,14 @@ export default function GoalDetailScreen() {
       });
       if (res?.goal) {
         setGoal((g) => (g ? { ...g, ...res.goal } : g));
+        if (cacheKey) {
+          // Keep the detail cache in sync so a back-and-forward nav
+          // lands on the just-saved state, not stale pre-edit data.
+          setCached(cacheKey, {
+            goal: { ...goal, ...res.goal },
+            linkedEntries: linked,
+          });
+        }
       }
     } catch {
       Alert.alert("Couldn't save", "Please try again.");

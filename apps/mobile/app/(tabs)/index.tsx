@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Flame } from "lucide-react-native";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -130,10 +130,24 @@ export default function DashboardTab() {
   }, [entries, load]);
 
   const firstName = user?.name?.split(" ")[0] ?? "there";
-  const greeting = greetingFor(new Date());
-  const weekCount = (entries ?? []).filter((e) => {
-    return new Date(e.createdAt).getTime() > Date.now() - WEEK_MS;
-  }).length;
+  // Greeting is fixed for the session — avoids a fresh `new Date()`
+  // allocation on every render.
+  const greeting = useMemo(() => greetingFor(new Date()), []);
+  // Filter is O(n) over entries; memoize so it doesn't re-run when
+  // unrelated state (home focus stack dismissals, etc.) triggers a
+  // parent re-render.
+  const weekCount = useMemo(
+    () =>
+      (entries ?? []).filter(
+        (e) => new Date(e.createdAt).getTime() > Date.now() - WEEK_MS
+      ).length,
+    [entries]
+  );
+
+  const openEntry = useCallback(
+    (entryId: string) => router.push(`/entry/${entryId}`),
+    [router]
+  );
 
   return (
     <SafeAreaView className="flex-1 bg-white dark:bg-[#1E1E2E] dark:bg-[#0B0B12]" edges={["top"]}>
@@ -249,11 +263,7 @@ export default function DashboardTab() {
         ) : (
           <View className="gap-2">
             {(entries ?? []).slice(0, HOME_ENTRY_LIMIT).map((entry) => (
-              <EntryRow
-                key={entry.id}
-                entry={entry}
-                onPress={() => router.push(`/entry/${entry.id}`)}
-              />
+              <EntryRow key={entry.id} entry={entry} onPress={openEntry} />
             ))}
           </View>
         )}
@@ -297,18 +307,19 @@ function TrialBanner() {
   );
 }
 
-function EntryRow({
+const EntryRow = memo(function EntryRow({
   entry,
   onPress,
 }: {
   entry: EntryDTO;
-  onPress: () => void;
+  onPress: (entryId: string) => void;
 }) {
   const dateLabel = formatRelativeDate(entry.createdAt);
   const isPartial = entry.status === "PARTIAL";
+  const handlePress = useCallback(() => onPress(entry.id), [onPress, entry.id]);
   return (
     <Pressable
-      onPress={onPress}
+      onPress={handlePress}
       className="rounded-2xl border border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-[#13131F] dark:bg-[#1E1E2E] px-4 py-3"
     >
       <View className="flex-row items-center gap-3">
@@ -343,7 +354,7 @@ function EntryRow({
       </View>
     </Pressable>
   );
-}
+});
 
 function greetingFor(now: Date): string {
   const hour = now.getHours();

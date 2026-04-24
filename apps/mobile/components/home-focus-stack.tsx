@@ -1,6 +1,6 @@
 import { useRouter } from "expo-router";
 import { Flame } from "lucide-react-native";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 
 import {
@@ -60,21 +60,18 @@ export function HomeFocusStack({
     return out;
   }, [progression, dismissedIds]);
 
+  const handleDismiss = useCallback((card: FocusCard) => {
+    setDismissedIds((prev) => {
+      if (prev.has(card.id)) return prev;
+      const next = new Set(prev);
+      next.add(card.id);
+      return next;
+    });
+  }, []);
+
   if (!progression) return null;
 
-  return (
-    <FocusCardStack
-      cards={cards}
-      onDismiss={(card) =>
-        setDismissedIds((prev) => {
-          if (prev.has(card.id)) return prev;
-          const next = new Set(prev);
-          next.add(card.id);
-          return next;
-        })
-      }
-    />
-  );
+  return <FocusCardStack cards={cards} onDismiss={handleDismiss} />;
 }
 
 const UNLOCK_TITLES: Record<UnlockKey, string> = {

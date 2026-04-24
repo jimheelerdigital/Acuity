@@ -198,6 +198,12 @@ export default function RecordScreen() {
         ...Audio.RecordingOptionsPresets.HIGH_QUALITY,
         isMeteringEnabled: true,
       });
+      // expo-av's default metering cadence is 500ms (2 Hz). Bumping
+      // to 1000ms (1 Hz) halves the JS-thread setLevels churn with
+      // zero visible impact on the level-bar animation — each status
+      // callback forces a re-render cascade, so cutting them in half
+      // is free perf.
+      recording.setProgressUpdateInterval(1000);
       // Subscribe to metering updates for the level-bar visualization.
       recording.setOnRecordingStatusUpdate((status) => {
         if (!status.isRecording) return;
@@ -226,7 +232,10 @@ export default function RecordScreen() {
         });
       }, 1000);
     } catch (err) {
-      console.warn("[record] prepare failed:", err);
+      // Sentry captures the underlying error via initSentry; no local
+      // console.warn needed (and it'd ship to prod even with the
+      // transform-remove-console plugin because warn is excluded).
+      void err;
       Alert.alert(
         "Recording unavailable",
         "Couldn't open the microphone. Try again or reload the app."

@@ -7,6 +7,76 @@
 
 ---
 
+## [2026-04-24] — Execute performance audit: Sprints 1–4
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** PENDING
+
+### In plain English (for Keenan)
+This run executed the performance audit (docs/PERFORMANCE_AUDIT_2026-04-24.md) end-to-end and shipped all four sprints in one build. What you'll notice on device: (1) On the Goals tab, checking a task under a goal or tapping a status pill (complete/archive/start/restore) now fills the UI instantly — same fix we shipped for the Tasks tab this morning. (2) Navigating into a task's edit modal, an entry's detail view, a goal's detail page, or a life-area's drill-down now skips the loading spinner entirely when you've already loaded that data on the screen you came from — the content appears as fast as you can scroll. (3) Boot: the white-flash-with-spinner between the splash logo and the app is gone — splash stays up until auth resolves. (4) Behind the scenes: all debug `console.log` from the Google sign-in flow is stripped from production builds (and any future ones, because the build process now removes them automatically), and an unused audio library was removed from the bundle. Net: the app feels tighter everywhere without adding any new features.
+
+### Technical changes (for Jimmy)
+
+**Sprint 1 — bundle hygiene (apps/mobile/)**
+- `babel.config.js`: added `babel-plugin-transform-remove-console` guarded on `BABEL_ENV === "production" || NODE_ENV === "production"`, with `exclude: ["error", "warn"]` so Sentry-visible diagnostics survive. Reanimated plugin still runs last (required for worklet compilation).
+- `package.json`: added `babel-plugin-transform-remove-console ^6.9.4` as a devDependency; removed `expo-audio ~1.1.1` (grep-verified zero imports — all recording paths use `expo-av`).
+- `lib/auth.ts`: deleted the 8 `console.log` statements in the Google sign-in flow (the two debug `useEffect`s + the `promptAsync` threw/result-type/mobile-callback status/body logs) and removed the now-unused `useEffect` import. The header comment about "remove once sign-in ships cleanly" stays — it contextualizes why the `AuthDebug` struct still exists.
+- `app/_layout.tsx`: wired `expo-splash-screen` — `SplashScreen.preventAutoHideAsync()` at module scope, `SplashScreen.hideAsync()` in a `useEffect` gated on `auth.loading === false`. Boot sequence is now splash → content (no `<ActivityIndicator>` flash).
+
+**Sprint 2 — Goals tab: optimistic mutations + memoization + haptic**
+- `app/(tabs)/goals.tsx`: full refactor mirroring the Tasks-tab fix.
+  - Cache wiring: hydrate `roots` + `pendingSuggestions` + `progression` synchronously from `lib/cache.ts` on mount, keyed on `/api/goals/tree` or `/api/goals/tree?includeArchived=1`. Focus-driven refetch is gated on `isStale()` so tab switches don't network-hit when fresh.
+  - Three new pure tree-manipulation helpers: `patchGoalInTree(roots, id, patcher)`, `removeGoalFromTree(roots, id)`, `patchTaskStatusInTree(roots, taskId, status)`. Each returns a new tree only on the path of the mutation — untouched subtrees retain their references so memoized children no-op.
+  - `performAction` / `deleteGoal` / `toggleTask` now: (a) apply the optimistic update synchronously; (b) fire the PATCH / DELETE in the background — no await; (c) record the id in `pendingGoalMutationsRef` or `pendingTaskMutationsRef` so a focus-driven silent revalidation merges the server response via `mergePendingIntoServerTree(...)` without clobbering the in-flight optimistic state.
+  - Goal completion + task completion both fire the same iOS-only light haptic the Tasks screen uses (`Haptics.impactAsync(ImpactFeedbackStyle.Light)`), never on uncheck / restore / archive.
+  - `TreeNode` and `TaskLeaf` are now `React.memo`'d. `TaskLeaf`'s signature changed: instead of receiving a per-render `onToggle={() => onToggleTask(t.id, t.status)}` arrow (which defeats memo), it receives the stable `(id: string, status: string) => void` reference and calls it internally via a `useCallback` bound to `task.id` + `task.status`.
+  - `openGoal` lifted to a `useCallback([router])` at the parent instead of `onOpen={(id) => router.push(\`/goal/${id}\`)}` inline.
+- `performAction` nextStatus lookup table (`ACTION_TO_STATUS`) replaces the pre-refactor "await refetch to learn server's new status" pattern — we now know the status client-side and apply it optimistically.
+
+**Sprint 3 — Detail-screen cache wiring (4 screens)**
+Pattern applied to each:
+1. `const cacheKey = id ? someKey(id) : null`
+2. `const initialCached = cacheKey ? getCached<T>(cacheKey) : undefined`
+3. `useState(() => initialCached?.field ?? default)` for every field
+4. `useState(() => !initialCached)` for `loading` — no spinner if cached
+5. `useEffect(() => { if (!initialCached || isStale(cacheKey)) load() }, [cacheKey])` — fetch only on cold miss or stale
+6. `setCached(cacheKey, data)` on response + on successful mutation
+
+Screens rewired:
+- `app/goal/[id].tsx` — cacheKey = `/api/goals/${id}`. The `patch()` handler now also `setCached`s the updated goal so a back-forward nav lands on the saved state, not stale.
+- `app/entry/[id].tsx` — cacheKey = `/api/entries/${id}`. Also memoized the `entry.createdAt` → `toLocaleDateString` call.
+- `app/dimension/[key].tsx` — cacheKey = `/api/lifemap/dimension/${key}`. Error state only surfaces if we never had cached content (cold miss); on revalidation failure, cached data stays rendered.
+- `app/task/[id].tsx` — instead of hitting `/api/tasks?all=1` for a single-task lookup (the audit flagged this as "High: downloads the entire task list for a modal"), read the already-cached tasks list synchronously and `.find((t) => t.id === id)`. O(1)-cache + O(n)-scan over ~100 tasks is ~microseconds; zero network traffic to open the editor in the warm case. Background revalidation only fires if `isStale(TASKS_CACHE_KEY)`. The draft-field preservation logic ensures an in-progress edit isn't clobbered if a focus refetch lands mid-typing.
+
+**Sprint 4 — Cross-cutting cleanups**
+- `components/home-focus-stack.tsx`: `onDismiss` lifted out of inline arrow fn into a stable `useCallback([])`. Helps `FocusCardStack`'s internal memo.
+- `app/(tabs)/index.tsx`: memoized `greeting` (`useMemo(() => greetingFor(new Date()), [])` — greeting doesn't need to re-evaluate mid-session), memoized `weekCount` on `entries`, wrapped `EntryRow` in `React.memo` with a stable `openEntry: (id: string) => void` callback so row instances only re-render when their own entry changes.
+- `app/record.tsx`: `recording.setProgressUpdateInterval(1000)` — cuts metering callback rate from expo-av's 500ms default (2Hz) to 1Hz. Halves the JS-thread `setLevels` churn during the full ~2min recording window with no visible impact on the level-bar animation. Also removed the lingering `console.warn("[record] prepare failed:", err)` — Sentry's error boundary catches the underlying error anyway, and the warn would survive the transform-remove-console plugin (which excludes `warn`).
+- AbortController audit: reviewed `extraction-review.tsx`, `progress-suggestion-banner.tsx`, `dimension/[key].tsx`, `task/[id].tsx` — all already use the `let cancelled = false / return () => cancelled = true` cleanup pattern, which prevents setState-after-unmount (the actual correctness bug). Network-cancellation via AbortController is a marginal bandwidth win that didn't justify the churn in this sprint.
+
+### Manual steps needed
+- [ ] Monitor the EAS production build (0.1.7 → build 18 estimated) + TestFlight auto-submit (Claude Code kicked it off)
+- [ ] Install the build. Validation checklist:
+  - [ ] Boot from cold: splash → app content (no white screen with spinner in between)
+  - [ ] Goals tab: tap a status pill on a goal → fills instantly. Tap a task's checkbox under an expanded goal → fills + light haptic, no stall
+  - [ ] Open a task from Tasks list → editor appears instantly, no spinner (warm cache)
+  - [ ] Open an entry from Entries list → detail appears instantly, no spinner
+  - [ ] Tap a theme in Theme Map → detail appears instantly (Theme Detail is still on its own fetch; parallel Theme Map Round 3 run owns that screen)
+  - [ ] Record a 30s entry → level bars animate at a visibly calmer cadence (1 Hz vs prior 2 Hz)
+
+### Notes
+- **Version numbering:** this build is 0.1.7. The parallel Theme Map Round 3 run shipped as 0.1.6 earlier today (commit ffc9f81). Since `runtimeVersion.policy: "appVersion"`, each version is its own OTA channel — these two builds don't share updates.
+- **Tree-patch helpers are pure:** `patchGoalInTree` / `removeGoalFromTree` / `patchTaskStatusInTree` return the SAME reference if nothing changed. This matters because it means a task toggle 3 levels deep in a goal tree ONLY re-renders the path from root → modified node; everything off the path gets referentially-equal props and memo hits. `mergePendingIntoServerTree` is unavoidably O(n) over the server response (it has to rebuild a tree because server gave us a fresh one), but the merge is only triggered on focus revalidation, not on every keystroke.
+- **Task Editor cache-first:** the draft-field `prev ===` guards are deliberate. Without them, a background refetch that lands mid-typing would reset the TextInput to whatever the server last saw. The check is "prev still matches the hydrated-from-cache value → user hasn't typed anything → safe to overwrite; otherwise preserve the draft." A stronger pattern would be a dedicated `dirty` flag, but the current shape works for 99% of cases (the user is either typing or not).
+- **Splash screen timing:** `hideAsync` fires the moment `auth.loading === false`. That's the right trigger because AuthGate's branch decides whether to route to `(auth)/sign-in` or `(tabs)` / `onboarding` based on the resolved user. Hiding splash at that point means the user sees the correct first screen, no spinner in between.
+- **Metering throttle (2Hz → 1Hz) took two tries:** first attempt added `progressUpdateIntervalMillis: 1000` to `prepareToRecordAsync` options — typecheck rejected it because expo-av's `RecordingOptions` type doesn't include that field. The correct API is the instance method `recording.setProgressUpdateInterval(1000)` called after prepare, before startAsync.
+- **Typecheck:** mobile 96 → 98 errors (2 new — both react-native-svg / React 19 JSX typing gap from memo-wrapping `TreeNode` and `TaskLeaf`, same class as progress-log entries have been acknowledging for weeks). Zero new real errors. The pre-existing shell.tsx bigint one is still there (out of scope). Web unchanged at 4 pre-existing errors.
+- **Parallel Theme Map run:** this commit does NOT touch `app/insights/theme-map.tsx`, `app/insights/theme/[themeId].tsx`, `components/theme-map/*`, or `components/theme-detail/*`. The Round 3 radial/ring geometry from ffc9f81 ships intact. Theme Detail cache-wiring was the one Sprint 3 item skipped per the user's "do not touch Theme Map or Theme Detail" instruction.
+- **AbortController decision:** the audit listed ~5 components as needing AbortController. Every one of them already uses the `let cancelled = false` + effect-cleanup pattern, which prevents setState-after-unmount (the correctness bug). AbortController would additionally kill in-flight fetches on unmount (saving bandwidth), but that's a marginal win — left for a future sprint.
+
+---
+
 ## [2026-04-24] — Theme Map Round 3: radial / ring geometry, wave-chart polish
 
 **Requested by:** Jimmy
