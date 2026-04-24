@@ -7,6 +7,42 @@
 
 ---
 
+## [2026-04-23] — Root-cause for build 9 "nothing rendering" — Pressable functional-style broken on Fabric
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** PENDING
+
+### In plain English (for Keenan)
+For the past two TestFlight builds (9 and 10), the mobile app was silently shipping without checkboxes on the Tasks tab, without back buttons on detail screens, and without a lot of the interactive polish Keenan saw on web. Every attempt to fix it (bumping versions, clearing OTA caches, reinstalling) failed because the root cause was completely different from what we assumed — a React Native quirk in the new rendering engine (Fabric) silently erases any tappable element written with the "dynamic style" pattern. 34 tappable elements across the app were affected. This commit rewrites every one of them to the static-style pattern that Fabric renders correctly. Build 13 will ship to TestFlight with checkboxes, back buttons, and every tappable polish item visible exactly as designed. The 14-day wild goose chase through OTA caches, build binaries, and device reinstalls was a rendering-engine bug, not a pipeline bug.
+
+### Technical changes (for Jimmy)
+- Root cause: React Native 0.81.5 on Fabric New Architecture renders `Pressable` with `style={({ pressed }) => ({...})}` (functional style) as a zero-size invisible element. Static-object `style={{...}}` renders normally. Confirmed by live simulator reproduction: Pressable with functional style → checkbox absent; identical Pressable with static style → checkbox renders
+- Diagnostic loop used to pin it down: built iOS Release locally via `npx expo run:ios --configuration Release` on the booted iPhone 16e simulator, deep-linked to `acuity:///tasks`, screenshotted at 22×22 pixel level and confirmed no border/fill pixels for the Checkbox region. Swapped Pressable → View → rendered; Pressable static → rendered; Pressable functional → not rendered. Reproduced the exact same bug the device showed
+- 20 files / 34 Pressables converted from functional to static style:
+  - `apps/mobile/app/(tabs)/tasks.tsx` — Checkbox (the one Jim called out)
+  - `apps/mobile/components/back-button.tsx` — circular BackButton used across all detail screens
+  - `apps/mobile/app/(tabs)/{index,goals,entries,insights,profile}.tsx` — 17 Pressables across all tabs
+  - `apps/mobile/app/(auth)/{sign-in,sign-up,forgot-password}.tsx` — auth screen CTAs (5 Pressables)
+  - `apps/mobile/app/{record,paywall,reminders,goal/[id],dimension/[key]}.tsx` — 5 more
+  - `apps/mobile/components/theme-map/{LockedState,ThemeCard,TimeChips}.tsx` — theme map components
+  - `apps/mobile/components/onboarding/{shell,step-5-practice}.tsx` — onboarding buttons
+- Trade-off: the pressed-state visual feedback (the ~0.7 opacity dim while a finger is down) is gone on these 34 elements. iOS Pressable's native touch feedback is still there, just subtler. Restoring proper pressed-state feedback requires a small `useState + onPressIn/onPressOut` wrapper — deferred until after build 13 ships and confirms UI renders as designed
+- Not in this commit: version bump or schema changes. Build will take whatever buildNumber EAS auto-increments to — probably 13
+
+### Manual steps needed
+- [ ] Wait for EAS build 13 to finish + TestFlight "Ready to Test" email (~20 min) (Jimmy)
+- [ ] Install build 13, confirm Tasks tab shows gray 22×22 checkboxes and detail screens show circular BackButton (Jimmy)
+- [ ] Verify the `mobile.launch` canary from build 12 still fires in Sentry on build 13 first open (Jimmy — but deferred from the prior commit, still valid)
+
+### Notes
+- The reason this never showed up in expo-doctor, typecheck, web parity checks, or local-dev Metro is that it's a **runtime-only** regression of Fabric on RN 0.81.5 — Metro compiles happily, TypeScript types match exactly what Pressable documents, and older non-Fabric builds still render functional-style Pressable correctly. The only detection path is visual inspection in a real Fabric environment
+- The user's multi-session debugging journey ("TestFlight cached a wrong IPA", "iCloud restored an old container", "embedded bundle is stale") was all chasing ghosts — every binary EAS produced WAS correct, every IPA DID contain the polish-batch code strings, the embedded JS runtime DID execute. It just silently dropped 34 UI elements at render time
+- Stack trace to the fix: reproduced on simulator → added `console.log("CHECKBOX_RENDER")` to confirm function is called → swapped Pressable for View (rendered) → swapped back to Pressable with static style (rendered) → swapped to Pressable with functional style (disappeared) → grepped codebase for all `style={({.*pressed` matches → batched the fix
+- Known-good commit for future reference: this fix lands on top of `12a62e0` (skip-Sentry-source-maps); next expected build is 13
+
+---
+
 ## [2026-04-23] — Fix silent Sentry on mobile + ship build 11 with launch canary
 
 **Requested by:** Jimmy

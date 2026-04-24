@@ -217,7 +217,6 @@ function EntryRow({
     <Pressable
       onPress={onPress}
       className="rounded-2xl border border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-[#1E1E2E] px-4 py-3"
-      style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
     >
       <View className="flex-row items-center gap-2 flex-wrap mb-1">
         <Text className="text-xs text-zinc-500 dark:text-zinc-400">

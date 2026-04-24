@@ -113,9 +113,9 @@ export function Step5Practice() {
         <Pressable
           onPress={phase === "recording" ? stop : start}
           disabled={phase === "recorded"}
-          style={({ pressed }) => ({
-            opacity: pressed || phase === "recorded" ? 0.7 : 1,
-          })}
+          style={{
+            opacity: phase === "recorded" ? 0.7 : 1,
+          }}
           className={`h-24 w-24 rounded-full items-center justify-center ${
             phase === "recording"
               ? "bg-red-500"

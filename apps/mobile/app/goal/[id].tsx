@@ -226,11 +226,10 @@ export default function GoalDetailScreen() {
                   <Pressable
                     key={opt.value}
                     onPress={() => patch({ status: opt.value })}
-                    style={({ pressed }) => ({
-                      opacity: pressed ? 0.6 : 1,
+                    style={{
                       backgroundColor: active ? opt.color : "transparent",
                       borderColor: active ? opt.color : "#3f3f46",
-                    })}
+                    }}
                     className="rounded-full border px-3 py-1.5"
                   >
                     <Text

@@ -167,7 +167,6 @@ export default function RemindersScreen() {
         <View className="mt-6 flex-row items-center gap-3">
           <Pressable
             onPress={() => setEnabled((v) => !v)}
-            style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
             className={`h-7 w-12 rounded-full justify-center ${
               enabled ? "bg-violet-600" : "bg-zinc-300 dark:bg-white/10"
             }`}
@@ -246,7 +245,7 @@ export default function RemindersScreen() {
             disabled={saving}
             onPress={save}
             className="rounded-full bg-violet-600 px-4 py-2"
-            style={({ pressed }) => ({ opacity: saving || pressed ? 0.7 : 1 })}
+            style={{ opacity: saving ? 0.7 : 1 }}
           >
             <Text className="text-white font-semibold text-sm">
               {saving ? "Saving…" : "Save"}

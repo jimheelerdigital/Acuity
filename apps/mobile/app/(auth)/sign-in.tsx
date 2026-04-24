@@ -148,7 +148,7 @@ export default function SignInScreen() {
           onPress={handleGoogle}
           disabled={loading !== null}
           className="w-full flex-row items-center justify-center gap-3 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-4 py-3.5 mb-4"
-          style={({ pressed }) => ({ opacity: pressed || loading ? 0.7 : 1 })}
+          style={{ opacity: loading ? 0.7 : 1 }}
         >
           {loading === "google" ? (
             <ActivityIndicator size="small" color="#A1A1AA" />
@@ -191,12 +191,12 @@ export default function SignInScreen() {
           onPress={handlePassword}
           disabled={loading !== null || !email.trim() || !password}
           className="w-full rounded-xl bg-zinc-900 dark:bg-zinc-50 px-4 py-3.5 items-center"
-          style={({ pressed }) => ({
+          style={{
             opacity:
-              pressed || loading !== null || !email.trim() || !password
+              loading !== null || !email.trim() || !password
                 ? 0.5
                 : 1,
-          })}
+          }}
         >
           <Text className="text-sm font-semibold text-white dark:text-zinc-900">
             {loading === "password" ? "Signing in…" : "Sign in"}
@@ -208,9 +208,9 @@ export default function SignInScreen() {
           onPress={handleMagic}
           disabled={loading !== null}
           className="w-full rounded-xl border border-zinc-200 dark:border-white/10 px-4 py-3 mt-3 items-center"
-          style={({ pressed }) => ({
-            opacity: pressed || loading !== null ? 0.5 : 1,
-          })}
+          style={{
+            opacity: loading !== null ? 0.5 : 1,
+          }}
         >
           <Text className="text-sm font-medium text-zinc-600 dark:text-zinc-300">
             {loading === "magic" ? "Sending link…" : "Email me a sign-in link"}

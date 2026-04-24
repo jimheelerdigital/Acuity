@@ -30,7 +30,7 @@ export function TimeChips({
           <Pressable
             key={c.key}
             onPress={() => onChange(c.key)}
-            style={({ pressed }) => ({
+            style={{
               paddingVertical: 8,
               paddingHorizontal: 14,
               borderRadius: 999,
@@ -39,8 +39,7 @@ export function TimeChips({
                 : "transparent",
               borderWidth: 1,
               borderColor: active ? "#7C3AED" : "rgba(148,163,184,0.25)",
-              opacity: pressed ? 0.7 : 1,
-            })}
+            }}
           >
             <View style={active ? { transform: [{ scale: 1 }] } : undefined}>
               <Text

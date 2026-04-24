@@ -232,7 +232,6 @@ export default function InsightsTab() {
                               )
                           : undefined
                       }
-                      style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
                       className={`rounded-full px-2.5 py-1 ${
                         view === v
                           ? "bg-white dark:bg-[#1E1E2E]"
@@ -401,7 +400,6 @@ export default function InsightsTab() {
                   <Pressable
                     key={entry.id}
                     onPress={() => router.push(`/entry/${entry.id}`)}
-                    style={({ pressed }) => ({ opacity: pressed ? 0.75 : 1 })}
                     className="w-56 rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-3"
                   >
                     <View className="flex-row items-center gap-2 mb-2">
@@ -443,7 +441,6 @@ export default function InsightsTab() {
         ) : (
           <Pressable
             onPress={() => router.push("/insights/theme-map")}
-            style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
             className="mb-4 rounded-2xl border border-violet-900/30 bg-violet-950/10 p-4"
           >
             <View className="flex-row items-center justify-between">
@@ -466,7 +463,6 @@ export default function InsightsTab() {
         {/* ─── 4. ASK YOUR PAST SELF (web-linked from mobile) ────── */}
         <Pressable
           onPress={() => router.push("/insights/ask" as never)}
-          style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
           className="mb-4 rounded-2xl border border-indigo-900/30 bg-indigo-950/10 p-4"
         >
           <View className="flex-row items-center justify-between">
@@ -488,7 +484,6 @@ export default function InsightsTab() {
         {/* ─── 5. STATE OF ME ──────────────────────────────────────── */}
         <Pressable
           onPress={() => router.push("/insights/state-of-me" as never)}
-          style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
           className="mb-6 rounded-2xl border border-amber-900/30 bg-amber-950/10 p-4"
         >
           <View className="flex-row items-center justify-between">
@@ -523,9 +518,9 @@ export default function InsightsTab() {
             onPress={generateReport}
             disabled={generating}
             className="rounded-2xl bg-zinc-900 dark:bg-violet-600 py-3 items-center mb-3"
-            style={({ pressed }) => ({
-              opacity: pressed || generating ? 0.7 : 1,
-            })}
+            style={{
+              opacity: generating ? 0.7 : 1,
+            }}
           >
             {generating ? (
               <View className="flex-row items-center gap-2">

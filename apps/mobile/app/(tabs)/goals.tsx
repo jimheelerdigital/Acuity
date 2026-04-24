@@ -280,7 +280,6 @@ export default function GoalsTab() {
           <Pressable
             onPress={() => setSuggestionsOpen(true)}
             className="mb-5 rounded-2xl border border-violet-900/30 bg-violet-950/10 p-4"
-            style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
           >
             <Text className="text-[11px] font-semibold uppercase tracking-widest text-violet-400">
               From your recordings
@@ -485,7 +484,6 @@ function TreeNode({
           <Pressable
             onPress={() => onOpen(goal.id)}
             className="flex-1"
-            style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
           >
             <View className="flex-row items-center flex-wrap gap-1.5 mb-1">
               <View
@@ -700,9 +698,9 @@ function AddSubgoalSheet({
                   disabled={saving || !text.trim()}
                   onPress={save}
                   className="rounded-full bg-violet-600 px-4 py-2"
-                  style={({ pressed }) => ({
-                    opacity: saving || !text.trim() ? 0.4 : pressed ? 0.85 : 1,
-                  })}
+                  style={{
+                    opacity: saving || !text.trim() ? 0.4 : 1,
+                  }}
                 >
                   <Text className="text-sm font-semibold text-white">
                     {saving ? "Adding…" : "Add"}
@@ -787,9 +785,9 @@ function SheetRow({
     <Pressable
       onPress={onPress}
       className="flex-row items-center gap-3 px-3 py-3 rounded-lg"
-      style={({ pressed }) => ({
-        backgroundColor: pressed ? "rgba(255,255,255,0.05)" : "transparent",
-      })}
+      style={{
+        backgroundColor: "transparent",
+      }}
     >
       <Ionicons name={icon} size={18} color={danger ? "#EF4444" : "#A78BFA"} />
       <Text
@@ -945,10 +943,10 @@ function SuggestionsSheet({
                                 act(s.id, "edit-accept", editText.trim())
                               }
                               className="rounded-full bg-violet-600 px-3 py-1.5"
-                              style={({ pressed }) => ({
+                              style={{
                                 opacity:
-                                  busy || !editText.trim() ? 0.4 : pressed ? 0.85 : 1,
-                              })}
+                                  busy || !editText.trim() ? 0.4 : 1,
+                              }}
                             >
                               <Text className="text-xs font-semibold text-white">
                                 Save + accept
@@ -982,9 +980,9 @@ function SuggestionsSheet({
                               disabled={busy}
                               onPress={() => act(s.id, "accept")}
                               className="rounded-full bg-violet-600 px-3 py-1.5"
-                              style={({ pressed }) => ({
-                                opacity: busy ? 0.4 : pressed ? 0.85 : 1,
-                              })}
+                              style={{
+                                opacity: busy ? 0.4 : 1,
+                              }}
                             >
                               <Text className="text-xs font-semibold text-white">
                                 Accept

@@ -586,7 +586,7 @@ function Checkbox({
       accessibilityLabel={
         checked ? "Mark task incomplete" : "Mark task complete"
       }
-      style={({ pressed }) => ({
+      style={{
         width: size,
         height: size,
         // Squarish per 2026-04-23 spec — 4px corners instead of a
@@ -599,8 +599,8 @@ function Checkbox({
         alignItems: "center",
         justifyContent: "center",
         marginTop: 1,
-        opacity: pressed || busy ? 0.5 : 1,
-      })}
+        opacity: busy ? 0.5 : 1,
+      }}
     >
       {checked ? <Ionicons name="checkmark" size={14} color="#FFFFFF" /> : null}
     </Pressable>

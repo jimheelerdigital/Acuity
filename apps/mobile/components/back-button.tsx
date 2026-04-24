@@ -23,18 +23,16 @@ export function BackButton({
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       hitSlop={8}
-      style={({ pressed }) => ({
+      style={{
         height: 40,
         width: 40,
         borderRadius: 20,
         borderWidth: 1,
         borderColor: "rgba(255,255,255,0.08)",
-        backgroundColor: pressed
-          ? "rgba(124,58,237,0.14)"
-          : "rgba(30,30,46,0.8)",
+        backgroundColor: "rgba(30,30,46,0.8)",
         alignItems: "center",
         justifyContent: "center",
-      })}
+      }}
     >
       <ChevronLeft size={20} color="#E4E4E7" />
     </Pressable>

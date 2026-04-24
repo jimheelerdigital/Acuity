@@ -85,9 +85,9 @@ export default function ForgotPasswordScreen() {
           onPress={handleSubmit}
           disabled={loading || !email.trim()}
           className="w-full rounded-xl bg-zinc-900 dark:bg-zinc-50 px-4 py-3.5 items-center"
-          style={({ pressed }) => ({
-            opacity: pressed || loading || !email.trim() ? 0.5 : 1,
-          })}
+          style={{
+            opacity: loading || !email.trim() ? 0.5 : 1,
+          }}
         >
           <Text className="text-sm font-semibold text-white dark:text-zinc-900">
             {loading ? "Sending link…" : "Send reset link"}

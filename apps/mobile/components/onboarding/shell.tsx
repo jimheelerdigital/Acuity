@@ -221,9 +221,9 @@ export function OnboardingShell({
               disabled={step <= 1}
               hitSlop={6}
               className="px-2 py-2"
-              style={({ pressed }) => ({
-                opacity: step <= 1 ? 0 : pressed ? 0.6 : 1,
-              })}
+              style={{
+                opacity: step <= 1 ? 0 : 1,
+              }}
             >
               <Text className="text-sm text-zinc-500 dark:text-zinc-400">
                 ← Back
@@ -244,9 +244,9 @@ export function OnboardingShell({
               <Pressable
                 onPress={() => (isLastStep ? complete(false) : goNext())}
                 disabled={!canContinue || submitting}
-                style={({ pressed }) => ({
-                  opacity: !canContinue || submitting ? 0.4 : pressed ? 0.85 : 1,
-                })}
+                style={{
+                  opacity: !canContinue || submitting ? 0.4 : 1,
+                }}
                 className="flex-row items-center gap-1.5 rounded-full bg-violet-600 px-5 py-2.5"
               >
                 {submitting && (

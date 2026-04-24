@@ -45,15 +45,15 @@ export function ThemeCard({
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => ({
+      style={{
         borderRadius: 14,
         borderWidth: 1,
-        borderColor: pressed ? "#7C3AED" : "rgba(255,255,255,0.08)",
+        borderColor: "rgba(255,255,255,0.08)",
         paddingHorizontal: 16,
         paddingVertical: 14,
         marginBottom: 8,
         marginHorizontal: 20,
-      })}
+      }}
       className="bg-white dark:bg-[#1E1E2E]"
     >
       <View

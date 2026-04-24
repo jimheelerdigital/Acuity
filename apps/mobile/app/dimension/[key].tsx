@@ -329,7 +329,6 @@ export default function DimensionDetailScreen() {
                 );
               }}
               className="rounded-xl bg-violet-600 py-2.5 items-center"
-              style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
             >
               <Text className="text-sm font-semibold text-white">
                 Record about this

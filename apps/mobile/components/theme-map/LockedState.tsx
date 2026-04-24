@@ -166,7 +166,7 @@ export function LockedState({ count }: { count: number }) {
 
       <Pressable
         onPress={() => router.push("/record")}
-        style={({ pressed }) => ({
+        style={{
           paddingVertical: 14,
           paddingHorizontal: 28,
           borderRadius: 14,
@@ -176,8 +176,7 @@ export function LockedState({ count }: { count: number }) {
           shadowRadius: 24,
           shadowOffset: { width: 0, height: 8 },
           elevation: 8,
-          opacity: pressed ? 0.85 : 1,
-        })}
+        }}
       >
         <Text
           style={{ fontSize: 15, fontWeight: "600", color: "#FFFFFF" }}

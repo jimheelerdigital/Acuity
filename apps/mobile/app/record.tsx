@@ -443,10 +443,6 @@ export default function RecordScreen() {
             {/* Record / stop button */}
             <Pressable
               onPress={handlePress}
-              style={({ pressed }) => ({
-                opacity: pressed ? 0.8 : 1,
-                transform: [{ scale: pressed ? 0.95 : 1 }],
-              })}
             >
               <View
                 className={`h-28 w-28 rounded-full items-center justify-center ${

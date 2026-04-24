@@ -141,7 +141,6 @@ export default function DashboardTab() {
             onPress={() => router.push("/(tabs)/profile")}
             hitSlop={12}
             className="h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-white dark:border-white/10 dark:bg-[#1E1E2E]"
-            style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
           >
             <Ionicons name="settings-outline" size={18} color="#71717A" />
           </Pressable>
@@ -160,14 +159,13 @@ export default function DashboardTab() {
         <Pressable
           onPress={() => router.push("/record")}
           className="rounded-3xl bg-violet-600 py-8 items-center justify-center mb-10"
-          style={({ pressed }) => ({
-            opacity: pressed ? 0.85 : 1,
+          style={{
             shadowColor: "#7C3AED",
             shadowOffset: { width: 0, height: 0 },
             shadowOpacity: 0.4,
             shadowRadius: 20,
             elevation: 8,
-          })}
+          }}
         >
           <View className="h-16 w-16 rounded-full bg-violet-500 items-center justify-center mb-3">
             <Ionicons name="mic" size={32} color="#fff" />
@@ -288,7 +286,6 @@ function EntryRow({
     <Pressable
       onPress={onPress}
       className="rounded-2xl border border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-[#13131F] dark:bg-[#1E1E2E] px-4 py-3"
-      style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
     >
       <View className="flex-row items-center gap-3">
         <View className="flex-1">

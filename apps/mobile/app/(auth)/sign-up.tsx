@@ -117,12 +117,12 @@ export default function SignUpScreen() {
           onPress={handleSubmit}
           disabled={loading || !email.trim() || password.length < PASSWORD_MIN}
           className="w-full rounded-xl bg-zinc-900 dark:bg-zinc-50 px-4 py-3.5 items-center"
-          style={({ pressed }) => ({
+          style={{
             opacity:
-              pressed || loading || !email.trim() || password.length < PASSWORD_MIN
+              loading || !email.trim() || password.length < PASSWORD_MIN
                 ? 0.5
                 : 1,
-          })}
+          }}
         >
           <Text className="text-sm font-semibold text-white dark:text-zinc-900">
             {loading ? "Creating account…" : "Create account"}

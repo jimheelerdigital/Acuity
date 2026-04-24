@@ -114,13 +114,13 @@ export default function PaywallScreen() {
             onPress={openUpgrade}
             disabled={opening}
             className="rounded-full bg-violet-600 py-4 items-center"
-            style={({ pressed }) => ({
-              opacity: pressed || opening ? 0.85 : 1,
+            style={{
+              opacity: opening ? 0.85 : 1,
               shadowColor: "#7C3AED",
               shadowOffset: { width: 0, height: 0 },
               shadowOpacity: 0.35,
               shadowRadius: 12,
-            })}
+            }}
           >
             {opening ? (
               <ActivityIndicator color="#fff" />

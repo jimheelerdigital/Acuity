@@ -180,7 +180,6 @@ function MenuItem({
     <Pressable
       onPress={onPress}
       className="flex-row items-center gap-3 rounded-2xl border border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-[#13131F] dark:bg-[#1E1E2E] px-4 py-3.5"
-      style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
     >
       <Ionicons
         name={icon}
