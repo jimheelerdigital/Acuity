@@ -7,6 +7,34 @@
 
 ---
 
+## [2026-04-24] — Hotfix: Entry Detail screen crashing every TestFlight tap
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** 45fde16
+
+### In plain English (for Keenan)
+TestFlight Build 20 had a hard crash where tapping any entry to view its details closed the app instantly. It happened 100% of the time on every entry — from Home, from the Journal list, from anywhere — so users effectively could not read their own entries on this build. This commit fixes that. The fix is a tiny code reorder, no new features or changes elsewhere; the entry detail screen will load and display normally as soon as the fix reaches the app. We will ship the fix to existing TestFlight installs over-the-air (no new build download needed for testers), and a fresh Build 21 will follow so the binary on the App Store side has the fix baked in for any new reviewer or fresh install.
+
+### Technical changes (for Jimmy)
+- `apps/mobile/app/entry/[id].tsx`: moved the `date` `useMemo` above the `if (loading)` and `if (!entry)` early returns and guarded its body with `entry?.createdAt` (returns `""` when entry is null). Hook count is now constant across all renders (6 every time) instead of 5 → 6 across the load transition.
+- **Bug provenance:** introduced in `50752ad` ("perf: execute performance audit sprints 1-4", Sprint 4 — "date formatting moved into useMemo on Home + Entry Detail"). The `useMemo` was placed below the early returns rather than above, producing a Rules of Hooks violation. On Hermes + Fabric in a release build, the resulting "Rendered more hooks than during the previous render" error is uncaught and the JS runtime tears down with no error UI, which presented as an instant app close on every tap.
+- **Sibling audit:** `goal/[id].tsx`, `dimension/[key].tsx`, and `task/[id].tsx` were inspected for the same pattern (all four were touched by `50752ad`). None of them have hook calls placed below early returns. No additional fixes needed.
+- **Type check:** mobile typecheck unchanged at 92 pre-existing errors, all `react-native-svg` / React-19 JSX typing gaps unrelated to this fix. Zero errors in `app/entry/[id].tsx`.
+
+### Manual steps needed
+- [ ] **Jimmy:** ship OTA to TestFlight (channel: production) with `cd apps/mobile && eas update --channel production --message "fix: entry detail hook-order crash (45fde16)"`. Active testers on Build 20 will get the JS bundle update on next app open, ~2 minutes end-to-end. Verify by opening any entry on TestFlight after the OTA lands.
+- [ ] **Jimmy (follow-up, not blocker):** cut Build 21 (`cd apps/mobile && eas build --platform ios --profile production`) and submit to App Store. Fresh-install reviewers and new App Store users won't be on the OTA channel until they've launched the app once, so the binary needs the fix too. Not urgent if Build 20 isn't yet in App Store review — only critical if the binary is already on review.
+
+### Notes
+- **Why no Sentry stack trace was pulled before the fix:** no `sentry-cli` installed locally and no `SENTRY_AUTH_TOKEN` available in this shell. `apps/mobile/eas.json` only carries the public DSN (ingest-only). Diagnosis was static-analysis + git-blame: `git blame` showed the `useMemo` was added by `50752ad` today, the commit message confirmed it was Sprint 4 "date formatting moved into useMemo on Home + Entry Detail," and the symptom (instant close on second render of any entry tap, no error UI) matches Rules of Hooks violations on Hermes/Fabric exactly. If we want a Sentry-confirmed match before next time, drop a `SENTRY_AUTH_TOKEN` into `~/.zshrc` or install `sentry-cli`.
+- **Why move the hook above instead of inlining `new Date(...)`:** the inlined version would re-allocate the formatted string on every render. Memoizing is the right call — Sprint 4's intent was correct, just the placement was wrong. Moving the hook above the guards keeps the perf win and removes the crash.
+- **OTA vs full build:** the fix is JS-only. No native modules added or removed, no `app.json` plugin changes, no permissions changes, no schema changes. EAS Updates will deliver this to existing Build 20 installs. Build 21 is for the binary side (App Store reviewers, fresh installs that haven't fetched the OTA channel yet) — recommended but not blocking the immediate fix to existing testers.
+- **Hermes/Fabric hard-crash characteristic:** worth remembering. In dev with the JS debugger attached, Rules of Hooks violations show a red box with "Rendered more hooks than during the previous render." In release builds with Hermes + the new architecture (Fabric), the same exception is uncaught at the bridge boundary and the OS terminates the JS runtime with no UI. So "screen tap → instant close, no error" should always include "Rules of Hooks violation in the screen that opened" as one of the first two suspects.
+- **Sentry capture:** the crash on Build 20 should still appear in Sentry (the `mobile.launch` canary in `lib/sentry.ts` confirms ingest works in prod). After the OTA lands, that issue group should stop accumulating new events — useful as a passive verification that the fix took.
+
+---
+
 ## [2026-04-24] — Desktop web app shell: persistent sidebar, Life Matrix page, wider canvas
 
 **Requested by:** Jimmy
