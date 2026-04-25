@@ -108,9 +108,22 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const durationSeconds = formData.get("durationSeconds")
-    ? Number(formData.get("durationSeconds"))
-    : undefined;
+  // Clamp to a sane integer range. Number() on bad input returns NaN /
+  // Infinity / negatives, all of which corrupt Entry.audioDuration and
+  // silently break downstream pipeline math. Cap at 1 hour — recordings
+  // longer than that aren't legitimate (the recorder UI caps well below
+  // 60 minutes, and Whisper has its own ceiling). Anything outside the
+  // range falls back to undefined so the column ends up null rather
+  // than holding bogus data.
+  const rawDuration = formData.get("durationSeconds");
+  const durationSeconds = (() => {
+    if (typeof rawDuration !== "string" || rawDuration.length === 0) {
+      return undefined;
+    }
+    const n = Number(rawDuration);
+    if (!Number.isFinite(n) || n <= 0) return undefined;
+    return Math.min(3600, Math.max(1, Math.round(n)));
+  })();
 
   // Optional — set when the user opens the recorder from a goal card
   // or goal detail ("Record about this goal"). Validated to belong to
