@@ -57,7 +57,7 @@ export function StickyBackButton({
       type="button"
       onClick={onClick ?? (() => router.back())}
       aria-label={ariaLabel}
-      className="fixed left-4 top-4 z-50 inline-flex h-10 w-10 items-center justify-center rounded-full border border-zinc-200 dark:border-white/10 bg-white/85 dark:bg-[#0B0B12]/85 backdrop-blur-md text-zinc-700 dark:text-zinc-200 shadow-lg transition hover:bg-white hover:border-zinc-300 dark:hover:bg-[#13131F] dark:hover:border-white/20"
+      className="fixed left-4 top-4 z-40 inline-flex h-10 w-10 items-center justify-center rounded-full border border-zinc-200 dark:border-white/10 bg-white/85 dark:bg-[#0B0B12]/85 backdrop-blur-md text-zinc-700 dark:text-zinc-200 shadow-lg transition hover:bg-white hover:border-zinc-300 dark:hover:bg-[#13131F] dark:hover:border-white/20 lg:left-[252px]"
       style={{ top: "max(1rem, env(safe-area-inset-top))" }}
     >
       <ChevronLeft className="h-5 w-5" aria-hidden="true" />

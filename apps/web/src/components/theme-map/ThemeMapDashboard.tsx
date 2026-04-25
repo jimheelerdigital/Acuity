@@ -8,16 +8,36 @@ import { useMemo } from "react";
  * gradient fills, tile grids with sparklines, and frequency spectrum
  * bars — all on one screen, layered.
  *
- * Layers (top → bottom):
- *   1. Hero ring + narrative panel   (ring + share-of-voice + sentence)
- *   2. Wave chart                    (top-3 themes overlaid, peak callout)
- *   3. Tile grid                     (themes 1-6 with mini sparkline)
- *   4. Frequency spectrum            (themes 7-15 as gradient bars)
+ * Visual vocabulary (matching the reference screenshots' execution):
+ *   - Strokes glow. Every gradient line gets feGaussianBlur halo + 3pt
+ *     stroke weight so it reads as light, not as a hairline.
+ *   - Numbers are typographic heroes. Hero ring count is 88-96pt at
+ *     800 weight with tabular-nums; tile counts are 44-52pt at 800.
+ *   - Cards have inner top-edge highlight (1px lighter line) + outer
+ *     glow shadow, so they feel lifted off the canvas.
+ *   - Page background is a deep vertical gradient (slightly lighter at
+ *     top, deeper at bottom) plus a large radial glow tinted by the
+ *     top theme's sentiment colour.
  *
- * All graphics are raw SVG — no chart library — so the visual weight is
- * predictable and the gradient/glow vocabulary stays consistent across
- * elements. Color is sentiment-encoded via SENTIMENT (positive = warm
- * coral/peach, neutral = purple/blue, challenging = pink/rose).
+ * Low-data behaviour:
+ *   - Wave chart with <5 active days renders a dashed baseline horizon
+ *     plus dot-markers at recording dates and a soft "your trend fills
+ *     in as you record" caption — instead of looking like a broken
+ *     chart with peaks slammed against the right edge.
+ *   - Tile sparklines with <2 active points render an em-dash inside
+ *     the tile rather than a confusing single-pixel spike.
+ *   - Wave callouts auto-anchor: peaks in the right 30% of the chart
+ *     get their pill rendered to the LEFT of the dot so it doesn't
+ *     overflow the chart edge.
+ *
+ * Layers (top → bottom):
+ *   1. Hero ring + narrative panel
+ *   2. Wave chart with peak callout (or low-data state)
+ *   3. Tile grid (themes 1-6) with mini sparkline + sentiment dot
+ *   4. Frequency spectrum (themes 7-15) as gradient bars
+ *
+ * All graphics are raw SVG — no chart library — so the gradient + glow
+ * vocabulary stays consistent across every element.
  */
 
 export type SentimentTone = "positive" | "challenging" | "neutral";
@@ -33,15 +53,10 @@ export type DashboardTheme = {
 };
 
 type Gradient = {
-  /** stop-1 (start) of every gradient — most saturated */
   from: string;
-  /** stop-2 (mid) — softens the curve */
   via: string;
-  /** stop-3 (end) — fades into the highlight */
   to: string;
-  /** glow color used for outer drop-shadow auras */
   glow: string;
-  /** quiet text color used for trend label / metadata */
   soft: string;
 };
 
@@ -50,21 +65,21 @@ const SENTIMENT: Record<SentimentTone, Gradient> = {
     from: "#FB923C",
     via: "#FBBF24",
     to: "#FDE68A",
-    glow: "rgba(251,146,60,0.42)",
+    glow: "rgba(251,146,60,0.55)",
     soft: "#FCD34D",
   },
   neutral: {
     from: "#A78BFA",
     via: "#60A5FA",
     to: "#22D3EE",
-    glow: "rgba(96,165,250,0.42)",
+    glow: "rgba(96,165,250,0.55)",
     soft: "#93C5FD",
   },
   challenging: {
     from: "#F472B6",
     via: "#FB7185",
     to: "#F87171",
-    glow: "rgba(244,114,182,0.42)",
+    glow: "rgba(244,114,182,0.55)",
     soft: "#FDA4AF",
   },
 };
@@ -75,6 +90,10 @@ const PERIOD_LABEL: Record<string, string> = {
   "3months": "the last 3 months",
   "6months": "the last 6 months",
   all: "across all your sessions",
+};
+
+const TABULAR: React.CSSProperties = {
+  fontVariantNumeric: "tabular-nums",
 };
 
 export function ThemeMapDashboard({
@@ -106,7 +125,13 @@ export function ThemeMapDashboard({
     <div
       className="relative isolate overflow-hidden rounded-3xl"
       style={{
-        background: "#0A0A14",
+        // Vertical page gradient — slightly lit at top, deeper at
+        // bottom. Matches the reference screenshots' atmospheric
+        // depth (canvas isn't flat black).
+        background:
+          "linear-gradient(180deg, #0E0E1C 0%, #08080F 60%, #06060D 100%)",
+        boxShadow:
+          "inset 0 1px 0 rgba(255,255,255,0.04), 0 30px 80px -40px rgba(0,0,0,0.8)",
       }}
     >
       <Atmosphere tone={top.tone} />
@@ -121,11 +146,27 @@ export function ThemeMapDashboard({
         <TileGrid themes={tilesRow} onTap={onTap} />
         {longTail.length > 0 && <FrequencySpectrum themes={longTail} />}
       </div>
+      <style>{`
+        @keyframes acuity-pulse {
+          0%, 100% { transform: scale(0.985); }
+          50% { transform: scale(1.018); }
+        }
+        @keyframes acuity-glow-drift {
+          0%, 100% { transform: rotate(0deg) scale(1); opacity: 0.85; }
+          50% { transform: rotate(180deg) scale(1.06); opacity: 1; }
+        }
+        @keyframes acuity-shimmer {
+          0% { stroke-dashoffset: 0; }
+          100% { stroke-dashoffset: -240; }
+        }
+        .acuity-tile { transition: transform 220ms ease, box-shadow 220ms ease, border-color 220ms ease; }
+        .acuity-tile:hover { transform: translateY(-2px); }
+      `}</style>
     </div>
   );
 }
 
-// ─── Layer 6: Atmosphere ────────────────────────────────────────────
+// ─── Atmosphere ────────────────────────────────────────────────────
 
 function Atmosphere({ tone }: { tone: SentimentTone }) {
   const g = SENTIMENT[tone];
@@ -133,31 +174,54 @@ function Atmosphere({ tone }: { tone: SentimentTone }) {
     <>
       <div
         aria-hidden
-        className="pointer-events-none absolute -top-40 left-1/2 -translate-x-1/2"
+        className="pointer-events-none absolute -top-44 left-1/2 -translate-x-1/2"
         style={{
-          width: 720,
-          height: 720,
+          width: 820,
+          height: 820,
           borderRadius: 9999,
-          background: `radial-gradient(circle, ${g.from}28 0%, ${g.via}18 30%, transparent 65%)`,
-          filter: "blur(40px)",
+          background: `radial-gradient(circle, ${g.from}3a 0%, ${g.via}24 28%, ${g.to}10 50%, transparent 70%)`,
+          filter: "blur(50px)",
+          animation: "acuity-glow-drift 9s ease-in-out infinite",
         }}
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute -bottom-32 -right-24"
+        className="pointer-events-none absolute -bottom-40 -right-32"
         style={{
-          width: 380,
-          height: 380,
+          width: 460,
+          height: 460,
           borderRadius: 9999,
-          background: `radial-gradient(circle, ${g.to}1a 0%, transparent 70%)`,
-          filter: "blur(40px)",
+          background: `radial-gradient(circle, ${g.to}26 0%, transparent 70%)`,
+          filter: "blur(50px)",
+        }}
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -bottom-20 -left-24"
+        style={{
+          width: 320,
+          height: 320,
+          borderRadius: 9999,
+          background: `radial-gradient(circle, ${g.from}14 0%, transparent 65%)`,
+          filter: "blur(60px)",
         }}
       />
     </>
   );
 }
 
-// ─── Layer 1: Hero ring + narrative ─────────────────────────────────
+// ─── Card chrome (re-used) ─────────────────────────────────────────
+
+const CARD_STYLE: React.CSSProperties = {
+  background:
+    "linear-gradient(180deg, rgba(255,255,255,0.025) 0%, rgba(255,255,255,0.005) 100%)",
+  border: "1px solid rgba(255,255,255,0.06)",
+  // Inner top highlight + outer drop shadow for "lifted" depth.
+  boxShadow:
+    "inset 0 1px 0 rgba(255,255,255,0.07), inset 0 0 0 1px rgba(255,255,255,0.02), 0 24px 60px -36px rgba(0,0,0,0.6)",
+};
+
+// ─── Hero ring + narrative ─────────────────────────────────────────
 
 function HeroRingPanel({
   top,
@@ -171,13 +235,8 @@ function HeroRingPanel({
   periodLabel: string;
 }) {
   const g = SENTIMENT[top.tone];
-
-  // Share of voice = top theme's mentions / total mentions in window.
-  // Gives a 0..1 fraction the ring stroke draws as an arc.
   const share = totalMentions > 0 ? top.mentionCount / totalMentions : 0;
   const sharePct = Math.round(share * 100);
-
-  // Narrative ratio — "twice as often as anything else". Compare top to #2.
   const second = themes[1];
   const ratioCopy =
     second && second.mentionCount > 0
@@ -187,14 +246,17 @@ function HeroRingPanel({
       : `the only recurring thread so far`;
 
   return (
-    <div className="relative grid grid-cols-1 gap-5 rounded-2xl border border-white/5 bg-white/[0.02] p-5 backdrop-blur-sm sm:grid-cols-[200px_1fr] sm:items-center sm:gap-6 sm:p-6">
+    <div
+      className="relative grid grid-cols-1 gap-6 rounded-2xl p-6 backdrop-blur-sm sm:grid-cols-[220px_1fr] sm:items-center sm:gap-8 sm:p-7"
+      style={CARD_STYLE}
+    >
       <HeroRing share={share} count={top.mentionCount} tone={top.tone} />
       <div className="min-w-0">
         <p
           className="uppercase"
           style={{
             fontSize: 10,
-            letterSpacing: 2,
+            letterSpacing: 2.4,
             fontWeight: 700,
             color: g.soft,
           }}
@@ -204,32 +266,41 @@ function HeroRingPanel({
         <h2
           className="mt-2 text-zinc-50"
           style={{
-            fontSize: 22,
+            fontSize: 24,
             fontWeight: 700,
-            letterSpacing: -0.3,
-            lineHeight: 1.25,
+            letterSpacing: -0.4,
+            lineHeight: 1.2,
+            background: `linear-gradient(135deg, #FAFAFA 0%, ${g.to} 90%)`,
+            WebkitBackgroundClip: "text",
+            backgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            color: "transparent",
           }}
         >
           {capitalize(top.name)} came up {top.mentionCount}{" "}
           {top.mentionCount === 1 ? "time" : "times"} {periodLabel}.
         </h2>
         <p
-          className="mt-2"
+          className="mt-2.5"
           style={{
             fontSize: 14,
-            lineHeight: 1.5,
+            lineHeight: 1.55,
             color: "rgba(228,228,231,0.78)",
           }}
         >
           {top.trendDescription === "New theme"
             ? "Brand new this period — "
             : ""}
-          {ratioCopy}. {sharePct}% of every theme you mentioned.
+          {ratioCopy}.{" "}
+          <span style={{ color: g.soft, fontWeight: 600, ...TABULAR }}>
+            {sharePct}%
+          </span>{" "}
+          of every theme you mentioned.
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <Badge tone={top.tone}>{top.trendDescription}</Badge>
           <span
-            style={{ fontSize: 12, color: "rgba(161,161,170,0.7)" }}
+            style={{ fontSize: 12, color: "rgba(161,161,170,0.7)", ...TABULAR }}
           >
             {top.firstMentionedDaysAgo === 0
               ? "first surfaced today"
@@ -251,11 +322,11 @@ function HeroRing({
   tone: SentimentTone;
 }) {
   const g = SENTIMENT[tone];
-  const size = 184;
+  const size = 220;
   const cx = size / 2;
   const cy = size / 2;
-  const r = 72;
-  const trackR = 84;
+  const r = 86;
+  const trackR = 100;
   const circumference = 2 * Math.PI * r;
   const dash = circumference * Math.max(0.04, Math.min(1, share));
   const id = useMemo(() => Math.random().toString(36).slice(2, 9), []);
@@ -263,17 +334,16 @@ function HeroRing({
   return (
     <div
       className="relative mx-auto flex items-center justify-center"
-      style={{
-        width: size,
-        height: size,
-      }}
+      style={{ width: size, height: size }}
     >
+      {/* outer halo glow — sits behind the SVG and breathes */}
       <div
         aria-hidden
         className="absolute inset-0"
         style={{
-          background: `radial-gradient(circle at 50% 50%, ${g.glow} 0%, transparent 60%)`,
-          filter: "blur(18px)",
+          background: `radial-gradient(circle at 50% 50%, ${g.glow} 0%, ${g.from}26 35%, transparent 65%)`,
+          filter: "blur(22px)",
+          animation: "acuity-pulse 4s ease-in-out infinite",
         }}
       />
       <svg
@@ -293,6 +363,19 @@ function HeroRing({
             <stop offset="0%" stopColor={g.from} stopOpacity={0.18} />
             <stop offset="80%" stopColor={g.from} stopOpacity={0} />
           </radialGradient>
+          <filter
+            id={`glow-${id}`}
+            x="-30%"
+            y="-30%"
+            width="160%"
+            height="160%"
+          >
+            <feGaussianBlur stdDeviation="3" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
         </defs>
         {/* outer faint ring */}
         <circle
@@ -310,27 +393,28 @@ function HeroRing({
           r={r}
           fill={`url(#fill-${id})`}
           stroke="rgba(255,255,255,0.06)"
-          strokeWidth={10}
+          strokeWidth={11}
         />
-        {/* progress arc */}
+        {/* progress arc — glowing */}
         <circle
           cx={cx}
           cy={cy}
           r={r}
           fill="none"
           stroke={`url(#ring-${id})`}
-          strokeWidth={10}
+          strokeWidth={11}
           strokeLinecap="round"
           strokeDasharray={`${dash} ${circumference - dash}`}
           transform={`rotate(-90 ${cx} ${cy})`}
+          filter={`url(#glow-${id})`}
         />
         {/* tick markers around outer ring */}
-        {Array.from({ length: 28 }).map((_, i) => {
-          const a = (i / 28) * Math.PI * 2;
-          const x1 = cx + Math.cos(a) * (trackR + 4);
-          const y1 = cy + Math.sin(a) * (trackR + 4);
-          const x2 = cx + Math.cos(a) * (trackR + 9);
-          const y2 = cy + Math.sin(a) * (trackR + 9);
+        {Array.from({ length: 32 }).map((_, i) => {
+          const a = (i / 32) * Math.PI * 2;
+          const x1 = cx + Math.cos(a) * (trackR + 5);
+          const y1 = cy + Math.sin(a) * (trackR + 5);
+          const x2 = cx + Math.cos(a) * (trackR + 11);
+          const y2 = cy + Math.sin(a) * (trackR + 11);
           return (
             <line
               key={i}
@@ -338,7 +422,7 @@ function HeroRing({
               y1={y1}
               x2={x2}
               y2={y2}
-              stroke="rgba(255,255,255,0.06)"
+              stroke="rgba(255,255,255,0.07)"
               strokeWidth={1}
             />
           );
@@ -350,21 +434,23 @@ function HeroRing({
       >
         <span
           style={{
-            fontSize: 44,
+            fontSize: 78,
             fontWeight: 800,
             color: "#FAFAFA",
-            letterSpacing: -1.5,
+            letterSpacing: -3,
             lineHeight: 1,
+            textShadow: `0 0 24px ${g.glow}`,
+            ...TABULAR,
           }}
         >
           {count}
         </span>
         <span
           style={{
-            fontSize: 11,
-            marginTop: 4,
-            fontWeight: 600,
-            letterSpacing: 1.2,
+            fontSize: 10,
+            marginTop: 6,
+            fontWeight: 700,
+            letterSpacing: 1.6,
             color: g.soft,
             textTransform: "uppercase",
           }}
@@ -372,12 +458,6 @@ function HeroRing({
           mentions
         </span>
       </div>
-      <style jsx>{`
-        @keyframes acuity-pulse {
-          0%, 100% { transform: scale(0.985); }
-          50% { transform: scale(1.015); }
-        }
-      `}</style>
     </div>
   );
 }
@@ -394,12 +474,13 @@ function Badge({
     <span
       className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1"
       style={{
-        background: `linear-gradient(90deg, ${g.from}24 0%, ${g.to}14 100%)`,
-        border: `1px solid ${g.from}40`,
+        background: `linear-gradient(90deg, ${g.from}30 0%, ${g.to}1a 100%)`,
+        border: `1px solid ${g.from}55`,
         fontSize: 11,
         fontWeight: 600,
         color: g.soft,
         letterSpacing: 0.2,
+        boxShadow: `0 0 18px -4px ${g.glow}`,
       }}
     >
       <span
@@ -409,7 +490,7 @@ function Badge({
           height: 6,
           borderRadius: 9999,
           background: g.from,
-          boxShadow: `0 0 6px ${g.glow}`,
+          boxShadow: `0 0 8px ${g.from}, 0 0 16px ${g.glow}`,
         }}
       />
       {children}
@@ -417,43 +498,36 @@ function Badge({
   );
 }
 
-// ─── Layer 2: Wave chart with gradient fills + peak callout ─────────
+// ─── Wave chart with smart low-data state ──────────────────────────
 
 function WaveChart({ themes }: { themes: DashboardTheme[] }) {
   const id = useMemo(() => Math.random().toString(36).slice(2, 9), []);
   const W = 640;
-  const H = 180;
-  const PAD_X = 16;
-  const PAD_TOP = 30;
-  const PAD_BOT = 26;
+  const H = 200;
+  const PAD_X = 18;
+  const PAD_TOP = 32;
+  const PAD_BOT = 28;
   const innerW = W - PAD_X * 2;
   const innerH = H - PAD_TOP - PAD_BOT;
 
-  // Ensure all themes share the same x-axis length so they align.
   const days = themes[0]?.sparkline.length ?? 30;
-  const maxAcross = Math.max(
-    1,
-    ...themes.flatMap((t) => t.sparkline)
+  const maxAcross = Math.max(1, ...themes.flatMap((t) => t.sparkline));
+
+  // Active days = sum of mentions across all themes per day index, > 0.
+  const combinedActive = countActiveDays(
+    themes.flatMap((t) => t.sparkline),
+    days
   );
-
-  const seriesPaths = themes.map((t) => {
-    const path = smoothPath(t.sparkline, innerW, innerH, PAD_X, PAD_TOP, maxAcross);
-    return { theme: t, ...path };
-  });
-
-  const top = seriesPaths[0];
-  const peak = top
-    ? findPeak(top.theme.sparkline, innerW, innerH, PAD_X, PAD_TOP, maxAcross)
-    : null;
+  const isLowData = combinedActive < 5;
 
   return (
-    <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-4 sm:p-5">
+    <div className="rounded-2xl p-4 sm:p-5" style={CARD_STYLE}>
       <div className="mb-3 flex items-baseline justify-between">
         <p
           className="uppercase"
           style={{
             fontSize: 10,
-            letterSpacing: 2,
+            letterSpacing: 2.4,
             fontWeight: 700,
             color: "rgba(228,228,231,0.55)",
           }}
@@ -474,7 +548,7 @@ function WaveChart({ themes }: { themes: DashboardTheme[] }) {
                   height: 8,
                   borderRadius: 9999,
                   background: SENTIMENT[t.tone].from,
-                  boxShadow: `0 0 6px ${SENTIMENT[t.tone].glow}`,
+                  boxShadow: `0 0 8px ${SENTIMENT[t.tone].from}, 0 0 16px ${SENTIMENT[t.tone].glow}`,
                 }}
               />
               {t.name}
@@ -487,21 +561,46 @@ function WaveChart({ themes }: { themes: DashboardTheme[] }) {
           width="100%"
           viewBox={`0 0 ${W} ${H}`}
           preserveAspectRatio="none"
-          style={{ display: "block", height: 180 }}
+          style={{ display: "block", height: 200 }}
           aria-hidden
         >
           <defs>
-            {seriesPaths.map((s, i) => {
-              const g = SENTIMENT[s.theme.tone];
+            <filter
+              id={`wave-glow-${id}`}
+              x="-20%"
+              y="-50%"
+              width="140%"
+              height="200%"
+            >
+              <feGaussianBlur stdDeviation="2.4" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+            {themes.map((t, i) => {
+              const g = SENTIMENT[t.tone];
               return (
-                <g key={s.theme.id}>
-                  <linearGradient id={`stroke-${id}-${i}`} x1="0" x2="1" y1="0" y2="0">
+                <g key={t.id}>
+                  <linearGradient
+                    id={`stroke-${id}-${i}`}
+                    x1="0"
+                    x2="1"
+                    y1="0"
+                    y2="0"
+                  >
                     <stop offset="0%" stopColor={g.from} />
                     <stop offset="50%" stopColor={g.via} />
                     <stop offset="100%" stopColor={g.to} />
                   </linearGradient>
-                  <linearGradient id={`fill-${id}-${i}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={g.from} stopOpacity={0.22} />
+                  <linearGradient
+                    id={`fill-${id}-${i}`}
+                    x1="0"
+                    y1="0"
+                    x2="0"
+                    y2="1"
+                  >
+                    <stop offset="0%" stopColor={g.from} stopOpacity={0.34} />
                     <stop offset="100%" stopColor={g.from} stopOpacity={0} />
                   </linearGradient>
                 </g>
@@ -523,96 +622,272 @@ function WaveChart({ themes }: { themes: DashboardTheme[] }) {
               />
             );
           })}
-          {/* bottom dotted lane */}
+          {/* baseline lane */}
           <line
             x1={PAD_X}
             x2={W - PAD_X}
             y1={H - PAD_BOT}
             y2={H - PAD_BOT}
-            stroke="rgba(255,255,255,0.08)"
+            stroke="rgba(255,255,255,0.1)"
             strokeWidth={1}
-            strokeDasharray="2 4"
+            strokeDasharray={isLowData ? "4 6" : "2 4"}
           />
-          {/* fills (back to front) */}
-          {seriesPaths.map((s, i) => (
-            <path
-              key={`fill-${s.theme.id}`}
-              d={s.area}
-              fill={`url(#fill-${id}-${i})`}
+
+          {isLowData ? (
+            <LowDataMarkers
+              themes={themes}
+              days={days}
+              W={W}
+              H={H}
+              PAD_X={PAD_X}
+              PAD_BOT={PAD_BOT}
+              filterId={`wave-glow-${id}`}
             />
-          ))}
-          {/* strokes */}
-          {seriesPaths.map((s, i) => (
-            <path
-              key={`stroke-${s.theme.id}`}
-              d={s.line}
-              fill="none"
-              stroke={`url(#stroke-${id}-${i})`}
-              strokeWidth={i === 0 ? 2.6 : 2}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              opacity={i === 0 ? 1 : 0.78}
+          ) : (
+            <FullWavePaths
+              themes={themes}
+              W={W}
+              H={H}
+              PAD_X={PAD_X}
+              PAD_TOP={PAD_TOP}
+              PAD_BOT={PAD_BOT}
+              innerW={innerW}
+              innerH={innerH}
+              maxAcross={maxAcross}
+              gradientIdPrefix={id}
+              filterId={`wave-glow-${id}`}
             />
-          ))}
-          {/* peak callout */}
-          {peak && top && (
-            <g>
-              <circle
-                cx={peak.x}
-                cy={peak.y}
-                r={10}
-                fill={SENTIMENT[top.theme.tone].from}
-                opacity={0.18}
-              />
-              <circle
-                cx={peak.x}
-                cy={peak.y}
-                r={5}
-                fill="#0A0A14"
-                stroke={SENTIMENT[top.theme.tone].from}
-                strokeWidth={2}
-              />
-              <g transform={`translate(${Math.min(peak.x, W - 90)}, ${Math.max(peak.y - 38, 2)})`}>
-                <rect
-                  x={0}
-                  y={0}
-                  width={86}
-                  height={28}
-                  rx={6}
-                  fill="rgba(10,10,20,0.92)"
-                  stroke={SENTIMENT[top.theme.tone].from}
-                  strokeOpacity={0.6}
-                  strokeWidth={1}
-                />
-                <text
-                  x={8}
-                  y={11}
-                  fontSize={9}
-                  fill="rgba(228,228,231,0.6)"
-                  letterSpacing={1}
-                  fontWeight={700}
-                >
-                  PEAK
-                </text>
-                <text
-                  x={8}
-                  y={23}
-                  fontSize={11}
-                  fill="#FAFAFA"
-                  fontWeight={700}
-                >
-                  +{peak.value} {top.theme.name}
-                </text>
-              </g>
-            </g>
           )}
         </svg>
+        {isLowData && (
+          <p
+            className="absolute left-0 right-0 text-center"
+            style={{
+              bottom: 8,
+              fontSize: 11,
+              letterSpacing: 0.6,
+              color: "rgba(228,228,231,0.5)",
+            }}
+          >
+            Your trend fills in as you record.
+          </p>
+        )}
       </div>
     </div>
   );
 }
 
-// ─── Layer 3: Tile grid ──────────────────────────────────────────────
+function FullWavePaths({
+  themes,
+  W,
+  H,
+  PAD_X,
+  PAD_TOP,
+  PAD_BOT,
+  innerW,
+  innerH,
+  maxAcross,
+  gradientIdPrefix,
+  filterId,
+}: {
+  themes: DashboardTheme[];
+  W: number;
+  H: number;
+  PAD_X: number;
+  PAD_TOP: number;
+  PAD_BOT: number;
+  innerW: number;
+  innerH: number;
+  maxAcross: number;
+  gradientIdPrefix: string;
+  filterId: string;
+}) {
+  const series = themes.map((t) => {
+    const path = smoothPath(
+      t.sparkline,
+      innerW,
+      innerH,
+      PAD_X,
+      PAD_TOP,
+      maxAcross
+    );
+    return { theme: t, ...path };
+  });
+  const top = series[0];
+  const peak = top
+    ? findPeak(top.theme.sparkline, innerW, innerH, PAD_X, PAD_TOP, maxAcross)
+    : null;
+
+  // Auto-anchor the callout pill: if the peak is in the right 30% of
+  // the chart, render the pill to the LEFT of the dot so it doesn't
+  // overflow. Otherwise to the right. Same for vertical edge clamps.
+  const PILL_W = 96;
+  const PILL_H = 30;
+  let pillX = 0;
+  let pillY = 0;
+  let connectorX = 0;
+  if (peak) {
+    const anchorRight = peak.x > W - PAD_X - PILL_W - 24;
+    pillX = anchorRight ? peak.x - PILL_W - 14 : peak.x + 14;
+    pillY = Math.max(4, Math.min(peak.y - PILL_H / 2 - 18, H - PILL_H - 4));
+    connectorX = anchorRight ? peak.x - 6 : peak.x + 6;
+  }
+
+  return (
+    <>
+      {/* fills (back to front) */}
+      {series.map((s, i) => (
+        <path
+          key={`fill-${s.theme.id}`}
+          d={s.area}
+          fill={`url(#fill-${gradientIdPrefix}-${i})`}
+        />
+      ))}
+      {/* glowing strokes */}
+      {series.map((s, i) => (
+        <path
+          key={`stroke-${s.theme.id}`}
+          d={s.line}
+          fill="none"
+          stroke={`url(#stroke-${gradientIdPrefix}-${i})`}
+          strokeWidth={i === 0 ? 3.2 : 2.4}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          opacity={i === 0 ? 1 : 0.78}
+          filter={`url(#${filterId})`}
+        />
+      ))}
+      {/* peak callout */}
+      {peak && top && (
+        <g>
+          {/* connecting line + outer halo dot */}
+          <line
+            x1={peak.x}
+            y1={peak.y}
+            x2={connectorX}
+            y2={pillY + PILL_H / 2}
+            stroke={SENTIMENT[top.theme.tone].from}
+            strokeOpacity={0.5}
+            strokeWidth={1}
+          />
+          <circle
+            cx={peak.x}
+            cy={peak.y}
+            r={11}
+            fill={SENTIMENT[top.theme.tone].from}
+            opacity={0.22}
+          />
+          <circle
+            cx={peak.x}
+            cy={peak.y}
+            r={5.5}
+            fill={SENTIMENT[top.theme.tone].from}
+            stroke="#FAFAFA"
+            strokeWidth={1.5}
+            filter={`url(#${filterId})`}
+          />
+          {/* pill */}
+          <g transform={`translate(${pillX}, ${pillY})`}>
+            <rect
+              x={0}
+              y={0}
+              width={PILL_W}
+              height={PILL_H}
+              rx={8}
+              fill={`${SENTIMENT[top.theme.tone].from}28`}
+              stroke={SENTIMENT[top.theme.tone].from}
+              strokeOpacity={0.7}
+              strokeWidth={1}
+              filter={`url(#${filterId})`}
+            />
+            <text
+              x={10}
+              y={12}
+              fontSize={9}
+              fill={SENTIMENT[top.theme.tone].soft}
+              letterSpacing={1.4}
+              fontWeight={700}
+            >
+              PEAK
+            </text>
+            <text
+              x={10}
+              y={24}
+              fontSize={11}
+              fill="#FAFAFA"
+              fontWeight={700}
+            >
+              +{peak.value} {top.theme.name}
+            </text>
+          </g>
+        </g>
+      )}
+    </>
+  );
+}
+
+function LowDataMarkers({
+  themes,
+  days,
+  W,
+  H,
+  PAD_X,
+  PAD_BOT,
+  filterId,
+}: {
+  themes: DashboardTheme[];
+  days: number;
+  W: number;
+  H: number;
+  PAD_X: number;
+  PAD_BOT: number;
+  filterId: string;
+}) {
+  const baselineY = H - PAD_BOT;
+  const innerW = W - PAD_X * 2;
+  return (
+    <g>
+      {themes.map((t) => {
+        const g = SENTIMENT[t.tone];
+        return t.sparkline
+          .map((v, i) => {
+            if (v <= 0) return null;
+            const x = PAD_X + (i / Math.max(1, days - 1)) * innerW;
+            return (
+              <g key={`${t.id}-${i}`}>
+                <line
+                  x1={x}
+                  y1={baselineY}
+                  x2={x}
+                  y2={baselineY - 12 - v * 4}
+                  stroke={g.from}
+                  strokeOpacity={0.28}
+                  strokeWidth={1.5}
+                />
+                <circle
+                  cx={x}
+                  cy={baselineY - 12 - v * 4}
+                  r={4}
+                  fill={g.from}
+                  filter={`url(#${filterId})`}
+                />
+                <circle
+                  cx={x}
+                  cy={baselineY - 12 - v * 4}
+                  r={9}
+                  fill={g.from}
+                  opacity={0.18}
+                />
+              </g>
+            );
+          })
+          .filter(Boolean);
+      })}
+    </g>
+  );
+}
+
+// ─── Tile grid ─────────────────────────────────────────────────────
 
 function TileGrid({
   themes,
@@ -623,8 +898,8 @@ function TileGrid({
 }) {
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-      {themes.map((t) => (
-        <Tile key={t.id} theme={t} onTap={onTap} />
+      {themes.map((t, i) => (
+        <Tile key={t.id} theme={t} onTap={onTap} isTop={i === 0} />
       ))}
     </div>
   );
@@ -633,16 +908,22 @@ function TileGrid({
 function Tile({
   theme,
   onTap,
+  isTop,
 }: {
   theme: DashboardTheme;
   onTap?: (id: string) => void;
+  isTop: boolean;
 }) {
   const g = SENTIMENT[theme.tone];
   const id = useMemo(() => Math.random().toString(36).slice(2, 9), []);
   const W = 200;
   const H = 60;
   const max = Math.max(1, ...theme.sparkline);
-  const { line, area } = smoothPath(theme.sparkline, W - 8, H - 8, 4, 4, max);
+  const activePoints = theme.sparkline.filter((v) => v > 0).length;
+  const showSparkline = activePoints >= 2;
+  const { line, area } = showSparkline
+    ? smoothPath(theme.sparkline, W - 8, H - 8, 4, 4, max)
+    : { line: "", area: "" };
 
   const handle = onTap ? () => onTap(theme.id) : undefined;
   const Tag: keyof JSX.IntrinsicElements = handle ? "button" : "div";
@@ -650,105 +931,167 @@ function Tile({
   return (
     <Tag
       onClick={handle}
-      className="group relative overflow-hidden rounded-2xl border p-4 text-left transition"
+      className="group acuity-tile relative overflow-hidden rounded-2xl p-4 text-left"
       style={{
-        background: `linear-gradient(135deg, ${g.from}10 0%, ${g.to}06 60%, rgba(20,20,30,0.6) 100%)`,
-        borderColor: `${g.from}26`,
-        boxShadow: `0 12px 40px -22px ${g.glow}, inset 0 1px 0 rgba(255,255,255,0.03)`,
+        // Layered: outer card chrome + inner sentiment-colored gradient
+        // overlay (top-left → bottom-right) + top-edge highlight.
+        background: `
+          linear-gradient(135deg, ${g.from}26 0%, ${g.via}10 45%, rgba(20,20,30,0.7) 100%),
+          linear-gradient(180deg, rgba(255,255,255,0.02) 0%, rgba(0,0,0,0.2) 100%)
+        `,
+        border: `1px solid ${g.from}40`,
+        boxShadow: `
+          inset 0 1px 0 ${g.from}40,
+          inset 0 0 0 1px rgba(255,255,255,0.02),
+          0 18px 50px -28px ${g.glow}
+        `,
       }}
     >
       <div
         aria-hidden
-        className="pointer-events-none absolute -right-10 -top-10"
+        className="pointer-events-none absolute -right-14 -top-14"
         style={{
-          width: 90,
-          height: 90,
+          width: 110,
+          height: 110,
           borderRadius: 9999,
-          background: `radial-gradient(circle, ${g.from}22 0%, transparent 70%)`,
-          filter: "blur(8px)",
+          background: `radial-gradient(circle, ${g.from}40 0%, transparent 70%)`,
+          filter: "blur(10px)",
         }}
       />
       <div className="relative">
-        <p
-          style={{
-            fontSize: 11,
-            letterSpacing: 1.4,
-            fontWeight: 700,
-            textTransform: "uppercase",
-            color: g.soft,
-          }}
-        >
-          {theme.trendDescription}
-        </p>
+        <div className="flex items-center gap-1.5">
+          <span
+            aria-hidden
+            style={{
+              width: 7,
+              height: 7,
+              borderRadius: 9999,
+              background: g.from,
+              boxShadow: `0 0 8px ${g.from}, 0 0 14px ${g.glow}`,
+            }}
+          />
+          <p
+            style={{
+              fontSize: 9.5,
+              letterSpacing: 1.6,
+              fontWeight: 700,
+              textTransform: "uppercase",
+              color: g.soft,
+            }}
+          >
+            {theme.trendDescription}
+          </p>
+        </div>
         <p
           className="mt-1 truncate"
           style={{
             fontSize: 14,
             fontWeight: 600,
-            color: "rgba(244,244,245,0.92)",
+            color: "rgba(244,244,245,0.95)",
             letterSpacing: -0.1,
+            ...(isTop
+              ? {
+                  background: `linear-gradient(90deg, #FAFAFA 0%, ${g.to} 100%)`,
+                  WebkitBackgroundClip: "text",
+                  backgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  color: "transparent",
+                }
+              : {}),
           }}
         >
           {capitalize(theme.name)}
         </p>
-        <div className="mt-2 flex items-end justify-between gap-2">
+        <div className="mt-3 flex items-end justify-between gap-2">
           <span
             style={{
-              fontSize: 32,
+              fontSize: 44,
               fontWeight: 800,
               color: "#FAFAFA",
-              letterSpacing: -1,
-              lineHeight: 1,
+              letterSpacing: -1.6,
+              lineHeight: 0.95,
+              textShadow: `0 0 20px ${g.glow}`,
+              ...TABULAR,
             }}
           >
             {theme.mentionCount}
           </span>
-          <svg
-            width={W}
-            height={H}
-            viewBox={`0 0 ${W} ${H}`}
-            preserveAspectRatio="none"
-            style={{ flex: 1, maxWidth: 110, height: 36 }}
-            aria-hidden
-          >
-            <defs>
-              <linearGradient id={`tile-stroke-${id}`} x1="0" x2="1" y1="0" y2="0">
-                <stop offset="0%" stopColor={g.from} />
-                <stop offset="100%" stopColor={g.to} />
-              </linearGradient>
-              <linearGradient id={`tile-fill-${id}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={g.from} stopOpacity={0.4} />
-                <stop offset="100%" stopColor={g.from} stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <path d={area} fill={`url(#tile-fill-${id})`} />
-            <path
-              d={line}
-              fill="none"
-              stroke={`url(#tile-stroke-${id})`}
-              strokeWidth={2}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
+          {showSparkline ? (
+            <svg
+              width={W}
+              height={H}
+              viewBox={`0 0 ${W} ${H}`}
+              preserveAspectRatio="none"
+              style={{ flex: 1, maxWidth: 110, height: 36 }}
+              aria-hidden
+            >
+              <defs>
+                <linearGradient id={`tile-stroke-${id}`} x1="0" x2="1" y1="0" y2="0">
+                  <stop offset="0%" stopColor={g.from} />
+                  <stop offset="100%" stopColor={g.to} />
+                </linearGradient>
+                <linearGradient id={`tile-fill-${id}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={g.from} stopOpacity={0.5} />
+                  <stop offset="100%" stopColor={g.from} stopOpacity={0} />
+                </linearGradient>
+                <filter
+                  id={`tile-glow-${id}`}
+                  x="-20%"
+                  y="-50%"
+                  width="140%"
+                  height="200%"
+                >
+                  <feGaussianBlur stdDeviation="1.4" result="b" />
+                  <feMerge>
+                    <feMergeNode in="b" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
+              </defs>
+              <path d={area} fill={`url(#tile-fill-${id})`} />
+              <path
+                d={line}
+                fill="none"
+                stroke={`url(#tile-stroke-${id})`}
+                strokeWidth={2.2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                filter={`url(#tile-glow-${id})`}
+              />
+            </svg>
+          ) : (
+            <span
+              style={{
+                flex: 1,
+                maxWidth: 110,
+                textAlign: "right",
+                fontSize: 22,
+                fontWeight: 600,
+                color: `${g.from}99`,
+                letterSpacing: 1,
+              }}
+              aria-label="Not enough data yet"
+            >
+              —
+            </span>
+          )}
         </div>
       </div>
     </Tag>
   );
 }
 
-// ─── Layer 4: Frequency spectrum ─────────────────────────────────────
+// ─── Frequency spectrum ────────────────────────────────────────────
 
 function FrequencySpectrum({ themes }: { themes: DashboardTheme[] }) {
-  const id = useMemo(() => Math.random().toString(36).slice(2, 9), []);
   const max = Math.max(1, ...themes.map((t) => t.mentionCount));
   return (
-    <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-4 sm:p-5">
+    <div className="rounded-2xl p-4 sm:p-5" style={CARD_STYLE}>
       <p
-        className="mb-3 uppercase"
+        className="mb-4 uppercase"
         style={{
           fontSize: 10,
-          letterSpacing: 2,
+          letterSpacing: 2.4,
           fontWeight: 700,
           color: "rgba(228,228,231,0.55)",
         }}
@@ -756,9 +1099,9 @@ function FrequencySpectrum({ themes }: { themes: DashboardTheme[] }) {
         Also mentioned
       </p>
       <div className="flex items-end gap-2 overflow-x-auto pb-2">
-        {themes.map((t, i) => {
+        {themes.map((t) => {
           const g = SENTIMENT[t.tone];
-          const h = 12 + (t.mentionCount / max) * 64;
+          const h = 16 + (t.mentionCount / max) * 72;
           return (
             <div
               key={t.id}
@@ -769,16 +1112,17 @@ function FrequencySpectrum({ themes }: { themes: DashboardTheme[] }) {
                 className="relative w-full overflow-hidden rounded-t-md"
                 style={{
                   height: h,
-                  background: `linear-gradient(180deg, ${g.from} 0%, ${g.via} 60%, ${g.to}60 100%)`,
-                  boxShadow: `0 -4px 18px -2px ${g.glow}`,
+                  background: `linear-gradient(180deg, ${g.from} 0%, ${g.via} 60%, ${g.to}66 100%)`,
+                  boxShadow: `0 -6px 24px -4px ${g.glow}, inset 0 1px 0 rgba(255,255,255,0.25)`,
                 }}
               >
                 <span
                   className="absolute left-1/2 top-1.5 -translate-x-1/2"
                   style={{
                     fontSize: 11,
-                    fontWeight: 700,
-                    color: "rgba(10,10,20,0.85)",
+                    fontWeight: 800,
+                    color: "rgba(10,10,20,0.9)",
+                    ...TABULAR,
                   }}
                 >
                   {t.mentionCount}
@@ -798,13 +1142,12 @@ function FrequencySpectrum({ themes }: { themes: DashboardTheme[] }) {
             </div>
           );
         })}
-        <div className="hidden">{id}</div>
       </div>
     </div>
   );
 }
 
-// ─── Geometry helpers ────────────────────────────────────────────────
+// ─── Geometry helpers ──────────────────────────────────────────────
 
 function smoothPath(
   values: number[],
@@ -823,7 +1166,6 @@ function smoothPath(
     return [x, y] as [number, number];
   });
 
-  // Catmull-Rom → cubic Bezier conversion for smooth waves.
   let line = `M ${points[0][0]} ${points[0][1]}`;
   for (let i = 0; i < points.length - 1; i++) {
     const p0 = points[Math.max(0, i - 1)];
@@ -866,6 +1208,18 @@ function findPeak(
   const x = padX + (idx / Math.max(1, values.length - 1)) * width;
   const y = padY + height - (max / m) * height;
   return { x, y, value: max };
+}
+
+function countActiveDays(allValues: number[], days: number): number {
+  // Count distinct day-indices where ANY of the unioned series had a
+  // mention. The input is a flat concat of all series' sparklines, so
+  // we walk in chunks of `days`.
+  if (days <= 0) return 0;
+  const active = new Set<number>();
+  for (let i = 0; i < allValues.length; i++) {
+    if (allValues[i] > 0) active.add(i % days);
+  }
+  return active.size;
 }
 
 function capitalize(s: string): string {
