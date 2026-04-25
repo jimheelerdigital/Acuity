@@ -55,6 +55,20 @@ export default function EntryDetailScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cacheKey]);
 
+  // Hooks must run on every render in the same order. Keep useMemo
+  // above the early returns and guard against a null entry inside.
+  const date = useMemo(
+    () =>
+      entry?.createdAt
+        ? new Date(entry.createdAt).toLocaleDateString("en-US", {
+            weekday: "long",
+            month: "long",
+            day: "numeric",
+          })
+        : "",
+    [entry?.createdAt]
+  );
+
   if (loading) {
     return (
       <View className="flex-1 bg-white dark:bg-[#1E1E2E] dark:bg-[#0B0B12] items-center justify-center">
@@ -70,16 +84,6 @@ export default function EntryDetailScreen() {
       </View>
     );
   }
-
-  const date = useMemo(
-    () =>
-      new Date(entry.createdAt).toLocaleDateString("en-US", {
-        weekday: "long",
-        month: "long",
-        day: "numeric",
-      }),
-    [entry.createdAt]
-  );
 
   return (
     <ScrollView
