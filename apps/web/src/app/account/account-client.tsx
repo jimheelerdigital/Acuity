@@ -422,6 +422,11 @@ function RemindersSection({
             onChange={(e) => setTime(e.target.value || "21:00")}
             className="rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#13131F] px-3 py-1.5 text-sm font-mono text-zinc-900 dark:text-zinc-100 outline-none focus:border-violet-500"
           />
+          {/* User's local timezone label — sits under the time input
+              so the user knows which zone the time is in. Browser
+              <input type=time> renders in 12h or 24h depending on
+              user locale, so we don't need a format toggle here. */}
+          <LocalTimezoneHint />
         </div>
         <div>
           <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1.5">
@@ -464,6 +469,41 @@ function RemindersSection({
         )}
       </div>
     </section>
+  );
+}
+
+/**
+ * Friendly label for the user's local timezone (e.g. "Eastern Time").
+ * Falls back to the IANA name, then to a generic string. Client-only
+ * since Intl resolves to the browser's zone. Mirrors the same helper
+ * on mobile (apps/mobile/app/reminders.tsx).
+ */
+function LocalTimezoneHint() {
+  const [label, setLabel] = useState<string>("");
+  useEffect(() => {
+    try {
+      const ianaName = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const parts = new Intl.DateTimeFormat("en-US", {
+        timeZone: ianaName,
+        timeZoneName: "long",
+      }).formatToParts(new Date());
+      const longName = parts.find((p) => p.type === "timeZoneName")?.value;
+      if (longName) {
+        setLabel(
+          longName
+            .replace(/\bStandard\s+/i, "")
+            .replace(/\bDaylight\s+/i, "")
+        );
+        return;
+      }
+      setLabel(ianaName.replace(/_/g, " "));
+    } catch {
+      setLabel("your local timezone");
+    }
+  }, []);
+  if (!label) return null;
+  return (
+    <p className="mt-1.5 text-xs text-zinc-400 dark:text-zinc-500">{label}</p>
   );
 }
 

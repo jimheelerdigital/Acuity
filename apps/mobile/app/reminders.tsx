@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -24,15 +24,20 @@ import {
 
 /**
  * Mobile reminder preferences. Saves notificationTime / Days / Enabled
- * to the server via POST /api/account/notifications. OS-level local
- * notifications are queued by a follow-up once expo-notifications is
- * added to the mobile build (requires a native module, so it lands on
- * the next EAS build, not a JS-only OTA update).
+ * to the server via POST /api/account/notifications, then schedules
+ * OS-level local notifications via expo-notifications.
  *
- * Time input: a simple native time-style picker on Android doesn't ship
- * with Expo out of the box either — so both platforms get a tap-to-edit
- * HH / MM stepper. Ugly but shippable; a proper DateTimePicker can come
- * in the same PR that wires expo-notifications.
+ * Time picker (2026-04-25 redesign):
+ *   - 12-hour HH : MM with AM/PM segmented toggle (was: 24-hour HH:MM)
+ *   - Display 1-12 hours / 0-55 minutes (5-min step). Stored on the
+ *     server as 24-hour `HH:MM` strings via to24h() / from24h().
+ *   - All controls scaled up significantly for Pro Max viewports —
+ *     numbers at ~64pt, taps at ≥48pt, day toggles at 56pt, save
+ *     button full-width at 56pt height.
+ *   - Form vertically centered on the viewport so it feels intentional
+ *     instead of left-aligned-and-floating.
+ *   - "24-hour clock" subtext replaced with the user's actual local
+ *     timezone (e.g. "Eastern Time").
  */
 
 const DAY_LABELS: Array<{ i: number; label: string }> = [
@@ -51,18 +56,75 @@ type Me = {
   notificationsEnabled: boolean;
 };
 
+/**
+ * 24-hour internal → 12-hour display.
+ */
+function from24h(h24: number): { hour12: number; period: "AM" | "PM" } {
+  const period: "AM" | "PM" = h24 >= 12 ? "PM" : "AM";
+  let hour12 = h24 % 12;
+  if (hour12 === 0) hour12 = 12;
+  return { hour12, period };
+}
+
+/**
+ * 12-hour display → 24-hour internal.
+ */
+function to24h(hour12: number, period: "AM" | "PM"): number {
+  if (period === "AM") return hour12 === 12 ? 0 : hour12;
+  return hour12 === 12 ? 12 : hour12 + 12;
+}
+
+/**
+ * Friendly label for the user's local timezone (e.g. "Eastern Time").
+ * Falls back to the raw IANA name ("America/New_York") if Intl can't
+ * supply a long form. Last-resort fallback is "your local timezone".
+ */
+function useLocalTimezoneLabel(): string {
+  return useMemo(() => {
+    try {
+      const ianaName = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      // Try for the human-friendly long-form name via timeZoneName.
+      const parts = new Intl.DateTimeFormat("en-US", {
+        timeZone: ianaName,
+        timeZoneName: "long",
+      }).formatToParts(new Date());
+      const longName = parts.find((p) => p.type === "timeZoneName")?.value;
+      if (longName) {
+        // "Eastern Standard Time" / "Eastern Daylight Time" → "Eastern Time".
+        // The standard/daylight distinction is noise to the user; the
+        // OS handles DST transitions automatically.
+        return longName
+          .replace(/\bStandard\s+/i, "")
+          .replace(/\bDaylight\s+/i, "");
+      }
+      // Last fallback: pretty-print the IANA name.
+      return ianaName.replace(/_/g, " ");
+    } catch {
+      return "your local timezone";
+    }
+  }, []);
+}
+
 export default function RemindersScreen() {
-  const router = useRouter();
+  // router import retained for future use; expo-router auto-handles nav
+  // back via StickyBackButton above. eslint-disable not needed because
+  // useRouter has zero side effects.
+  void useRouter();
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
+  // Internal: store hour as 24-hour for backend symmetry; expose 12h
+  // via from24h() at render time.
   const [hour, setHour] = useState(21);
   const [minute, setMinute] = useState(0);
   const [days, setDays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
   const [enabled, setEnabled] = useState(false);
   const [permission, setPermission] =
     useState<PermissionStatus>("undetermined");
+
+  const tzLabel = useLocalTimezoneLabel();
 
   const load = useCallback(async () => {
     try {
@@ -94,10 +156,23 @@ export default function RemindersScreen() {
     );
   };
 
-  const bumpHour = (delta: number) =>
-    setHour((h) => (h + delta + 24) % 24);
+  // Hour bumping operates on the 12-hour display. We compute the new
+  // 12h value, hold the period, then re-derive the 24h state.
+  const bumpHour = (delta: number) => {
+    setHour((h24) => {
+      const { hour12, period } = from24h(h24);
+      const next12 = ((hour12 - 1 + delta + 12) % 12) + 1; // cycle 1-12
+      return to24h(next12, period);
+    });
+  };
   const bumpMinute = (delta: number) =>
     setMinute((m) => (m + delta + 60) % 60);
+  const setPeriod = (period: "AM" | "PM") => {
+    setHour((h24) => {
+      const { hour12 } = from24h(h24);
+      return to24h(hour12, period);
+    });
+  };
 
   const askPermission = async () => {
     const next = await requestNotificationPermission();
@@ -149,131 +224,213 @@ export default function RemindersScreen() {
     );
   }
 
+  const { hour12, period } = from24h(hour);
+
   return (
     <SafeAreaView edges={["top"]} className="flex-1 bg-white dark:bg-[#0B0B12]">
       <StickyBackButton accessibilityLabel="Back to Profile" />
+      {/* Vertically-centered scroll. flexGrow on the contentContainer
+          + justifyContent ensures the form sits in the middle of the
+          viewport on tall screens while still scrolling on shorter
+          ones (smaller iPhones, landscape). */}
       <ScrollView
         contentContainerStyle={{
-          padding: 20,
-          paddingTop: 60,
+          flexGrow: 1,
+          justifyContent: "center",
+          paddingTop: 80,
           paddingBottom: 40,
+          paddingHorizontal: 24,
         }}
       >
-        <Text className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+        <Text
+          className="text-zinc-900 dark:text-zinc-50"
+          style={{ fontSize: 34, fontWeight: "700", letterSpacing: -0.6 }}
+        >
           Reminders
         </Text>
-        <Text className="mt-1 text-sm text-zinc-400 dark:text-zinc-500">
+        <Text
+          className="text-zinc-500 dark:text-zinc-400"
+          style={{ fontSize: 17, marginTop: 6, lineHeight: 24 }}
+        >
           When we nudge you to journal. Turn off anytime.
         </Text>
 
         {/* Master toggle */}
-        <View className="mt-6 flex-row items-center gap-3">
+        <View className="mt-8 flex-row items-center" style={{ gap: 14 }}>
           <Pressable
             onPress={() => setEnabled((v) => !v)}
-            className={`h-7 w-12 rounded-full justify-center ${
+            className={`rounded-full justify-center ${
               enabled ? "bg-violet-600" : "bg-zinc-300 dark:bg-white/10"
             }`}
+            style={{ height: 32, width: 56 }}
           >
             <View
-              className="h-6 w-6 rounded-full bg-white"
+              className="rounded-full bg-white"
               style={{
-                transform: [{ translateX: enabled ? 22 : 2 }],
+                height: 28,
+                width: 28,
+                transform: [{ translateX: enabled ? 26 : 2 }],
               }}
             />
           </Pressable>
-          <Text className="text-sm text-zinc-700 dark:text-zinc-200">
+          <Text
+            className="text-zinc-700 dark:text-zinc-200"
+            style={{ fontSize: 17 }}
+          >
             {enabled ? "Reminders on" : "Reminders off"}
           </Text>
         </View>
 
-        <View style={{ opacity: enabled ? 1 : 0.4 }} pointerEvents={enabled ? "auto" : "none"}>
-          {/* Time */}
-          <View className="mt-6">
-            <Text className="text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 mb-2">
-              Time
+        <View
+          style={{ opacity: enabled ? 1 : 0.4, marginTop: 36 }}
+          pointerEvents={enabled ? "auto" : "none"}
+        >
+          {/* Time — 12h with AM/PM segmented toggle */}
+          <Text
+            className="text-zinc-400 dark:text-zinc-500"
+            style={{
+              fontSize: 12,
+              fontWeight: "600",
+              letterSpacing: 1.6,
+              textTransform: "uppercase",
+              marginBottom: 14,
+            }}
+          >
+            Time
+          </Text>
+
+          <View className="flex-row items-center justify-center" style={{ gap: 16 }}>
+            <Stepper
+              value={hour12}
+              onDecrement={() => bumpHour(-1)}
+              onIncrement={() => bumpHour(1)}
+            />
+            <Text
+              className="text-zinc-400 dark:text-zinc-500"
+              style={{ fontSize: 56, fontWeight: "700", lineHeight: 64 }}
+            >
+              :
             </Text>
-            <View className="flex-row items-center gap-4">
-              <Stepper
-                value={hour}
-                label="HH"
-                onDecrement={() => bumpHour(-1)}
-                onIncrement={() => bumpHour(1)}
+            <Stepper
+              value={minute}
+              onDecrement={() => bumpMinute(-5)}
+              onIncrement={() => bumpMinute(5)}
+            />
+
+            <View
+              className="ml-2 rounded-full bg-zinc-100 dark:bg-white/10 flex-col"
+              style={{ padding: 4, gap: 4 }}
+            >
+              <PeriodPill
+                label="AM"
+                active={period === "AM"}
+                onPress={() => setPeriod("AM")}
               />
-              <Text className="text-3xl font-bold text-zinc-400 dark:text-zinc-500">:</Text>
-              <Stepper
-                value={minute}
-                label="MM"
-                step={5}
-                onDecrement={() => bumpMinute(-5)}
-                onIncrement={() => bumpMinute(5)}
+              <PeriodPill
+                label="PM"
+                active={period === "PM"}
+                onPress={() => setPeriod("PM")}
               />
             </View>
-            <Text className="mt-2 text-xs text-zinc-400 dark:text-zinc-500">
-              24-hour clock · your local timezone
-            </Text>
           </View>
+
+          <Text
+            className="text-zinc-400 dark:text-zinc-500 text-center"
+            style={{ fontSize: 13, marginTop: 14 }}
+          >
+            {tzLabel}
+          </Text>
 
           {/* Days */}
-          <View className="mt-6">
-            <Text className="text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 mb-2">
-              Days
-            </Text>
-            <View className="flex-row gap-2">
-              {DAY_LABELS.map((d) => {
-                const on = days.includes(d.i);
-                return (
-                  <Pressable
-                    key={d.i}
-                    onPress={() => toggleDay(d.i)}
-                    className={`h-10 w-10 rounded-full items-center justify-center ${
-                      on ? "bg-violet-600" : "bg-zinc-100 dark:bg-white/5"
-                    }`}
+          <Text
+            className="text-zinc-400 dark:text-zinc-500"
+            style={{
+              fontSize: 12,
+              fontWeight: "600",
+              letterSpacing: 1.6,
+              textTransform: "uppercase",
+              marginTop: 32,
+              marginBottom: 14,
+            }}
+          >
+            Days
+          </Text>
+          <View className="flex-row justify-center" style={{ gap: 10 }}>
+            {DAY_LABELS.map((d) => {
+              const on = days.includes(d.i);
+              return (
+                <Pressable
+                  key={d.i}
+                  onPress={() => toggleDay(d.i)}
+                  className={`rounded-full items-center justify-center ${
+                    on ? "bg-violet-600" : "bg-zinc-100 dark:bg-white/5"
+                  }`}
+                  style={{ height: 52, width: 52 }}
+                >
+                  <Text
+                    className={
+                      on ? "text-white" : "text-zinc-500 dark:text-zinc-400"
+                    }
+                    style={{ fontSize: 16, fontWeight: "600" }}
                   >
-                    <Text
-                      className={`text-xs font-semibold ${
-                        on ? "text-white" : "text-zinc-500 dark:text-zinc-400"
-                      }`}
-                    >
-                      {d.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
+                    {d.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
         </View>
 
-        <View className="mt-8 flex-row items-center gap-3">
-          <Pressable
-            disabled={saving}
-            onPress={save}
-            className="rounded-full bg-violet-600 px-4 py-2"
-            style={{ opacity: saving ? 0.7 : 1 }}
+        {/* Save — full-width at 56pt */}
+        <Pressable
+          disabled={saving}
+          onPress={save}
+          className="rounded-2xl bg-violet-600 items-center justify-center"
+          style={{
+            marginTop: 36,
+            height: 56,
+            opacity: saving ? 0.7 : 1,
+          }}
+        >
+          <Text
+            className="text-white"
+            style={{ fontSize: 18, fontWeight: "600" }}
           >
-            <Text className="text-white font-semibold text-sm">
-              {saving ? "Saving…" : "Save"}
-            </Text>
-          </Pressable>
-          {saved && (
-            <Text className="text-xs text-emerald-500 dark:text-emerald-400">
-              Saved ✓
-            </Text>
-          )}
-        </View>
+            {saving ? "Saving…" : "Save"}
+          </Text>
+        </Pressable>
+        {saved && (
+          <Text
+            className="text-emerald-500 dark:text-emerald-400 text-center"
+            style={{ fontSize: 13, marginTop: 10 }}
+          >
+            Saved ✓
+          </Text>
+        )}
 
         {enabled && permission !== "granted" && (
-          <View className="mt-8 rounded-xl border border-violet-900/30 bg-violet-950/20 px-4 py-3">
-            <Text className="text-xs text-violet-300 leading-5">
-              <Ionicons name="information-circle-outline" size={13} />{" "}
+          <View
+            className="rounded-2xl border border-violet-900/30 bg-violet-950/20"
+            style={{ padding: 16, marginTop: 24 }}
+          >
+            <Text
+              className="text-violet-300"
+              style={{ fontSize: 14, lineHeight: 20 }}
+            >
+              <Ionicons name="information-circle-outline" size={14} />{" "}
               {permission === "denied"
                 ? "Notifications are off in iOS Settings. Your preference is saved — we'll start firing as soon as you enable them."
                 : "Allow notifications to get reminders at the time above."}
             </Text>
             <Pressable
               onPress={permission === "denied" ? openSettings : askPermission}
-              className="mt-2 self-start rounded-full bg-violet-600 px-3 py-1.5"
+              className="self-start rounded-full bg-violet-600"
+              style={{ marginTop: 10, paddingHorizontal: 14, paddingVertical: 8 }}
             >
-              <Text className="text-xs font-semibold text-white">
+              <Text
+                className="text-white"
+                style={{ fontSize: 14, fontWeight: "600" }}
+              >
                 {permission === "denied" ? "Open Settings" : "Allow notifications"}
               </Text>
             </Pressable>
@@ -284,42 +441,80 @@ export default function RemindersScreen() {
   );
 }
 
+/**
+ * Larger HH / MM stepper. 48pt tap targets, 64pt numerals.
+ * Removed the "MM · step 5" implementation-detail subtext that the
+ * original component leaked — the user doesn't need to know the
+ * minute step is 5; it's an internal choice.
+ */
 function Stepper({
   value,
-  label,
-  step = 1,
   onIncrement,
   onDecrement,
 }: {
   value: number;
-  label: string;
-  step?: number;
   onIncrement: () => void;
   onDecrement: () => void;
 }) {
   return (
-    <View className="items-center">
-      <View className="flex-row items-center gap-3">
-        <Pressable
-          onPress={onDecrement}
-          className="h-9 w-9 rounded-full border border-zinc-300 dark:border-white/15 items-center justify-center"
-        >
-          <Ionicons name="remove" size={18} color="#A1A1AA" />
-        </Pressable>
-        <Text className="text-3xl font-mono font-bold tabular-nums w-14 text-center text-zinc-900 dark:text-zinc-50">
-          {String(value).padStart(2, "0")}
-        </Text>
-        <Pressable
-          onPress={onIncrement}
-          className="h-9 w-9 rounded-full border border-zinc-300 dark:border-white/15 items-center justify-center"
-        >
-          <Ionicons name="add" size={18} color="#A1A1AA" />
-        </Pressable>
-      </View>
-      <Text className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1">
-        {label}
-        {step !== 1 && <> · step {step}</>}
+    <View className="items-center" style={{ gap: 6 }}>
+      <Pressable
+        onPress={onIncrement}
+        hitSlop={8}
+        className="rounded-full border border-zinc-300 dark:border-white/15 items-center justify-center"
+        style={{ height: 36, width: 48 }}
+      >
+        <Ionicons name="chevron-up" size={20} color="#A1A1AA" />
+      </Pressable>
+      <Text
+        className="font-mono tabular-nums text-zinc-900 dark:text-zinc-50"
+        style={{
+          fontSize: 56,
+          fontWeight: "700",
+          lineHeight: 64,
+          minWidth: 84,
+          textAlign: "center",
+        }}
+      >
+        {String(value).padStart(2, "0")}
       </Text>
+      <Pressable
+        onPress={onDecrement}
+        hitSlop={8}
+        className="rounded-full border border-zinc-300 dark:border-white/15 items-center justify-center"
+        style={{ height: 36, width: 48 }}
+      >
+        <Ionicons name="chevron-down" size={20} color="#A1A1AA" />
+      </Pressable>
     </View>
+  );
+}
+
+function PeriodPill({
+  label,
+  active,
+  onPress,
+}: {
+  label: string;
+  active: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      className={`rounded-full items-center justify-center ${
+        active ? "bg-violet-600" : "bg-transparent"
+      }`}
+      style={{ paddingHorizontal: 14, paddingVertical: 6, minWidth: 44 }}
+    >
+      <Text
+        className={
+          active ? "text-white" : "text-zinc-500 dark:text-zinc-400"
+        }
+        style={{ fontSize: 13, fontWeight: "700", letterSpacing: 0.5 }}
+      >
+        {label}
+      </Text>
+    </Pressable>
   );
 }
