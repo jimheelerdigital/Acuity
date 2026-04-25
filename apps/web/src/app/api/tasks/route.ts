@@ -3,8 +3,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAnySessionUserId } from "@/lib/mobile-auth";
 import { enforceUserRateLimit } from "@/lib/rate-limit";
 import { ensureDefaultTaskGroups } from "@/lib/task-groups";
+import {
+  boundedText,
+  boundedTextOrNull,
+  DESCRIPTION_MAX,
+  TITLE_MAX,
+  TextBoundsError,
+} from "@/lib/text-bounds";
 
 export const dynamic = "force-dynamic";
+
+function tooLong(err: TextBoundsError): NextResponse {
+  return NextResponse.json(
+    { error: "TooLong", field: err.field, limit: err.limit },
+    { status: 400 }
+  );
+}
 
 export async function GET(req: NextRequest) {
   const userId = await getAnySessionUserId(req);
@@ -61,6 +75,26 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  let title: string;
+  let description: string | null;
+  try {
+    title = boundedText(body.title ?? body.text, "title", TITLE_MAX);
+    description = boundedTextOrNull(
+      body.description,
+      "description",
+      DESCRIPTION_MAX
+    );
+  } catch (err) {
+    if (err instanceof TextBoundsError) return tooLong(err);
+    throw err;
+  }
+  if (!title) {
+    return NextResponse.json(
+      { error: "Missing required field: title" },
+      { status: 400 }
+    );
+  }
+
   const { prisma } = await import("@/lib/prisma");
 
   // Validate groupId belongs to this user if provided; silent-drop
@@ -77,9 +111,9 @@ export async function POST(req: NextRequest) {
   const task = await prisma.task.create({
     data: {
       userId: userId,
-      text: body.title ?? body.text,
-      title: body.title ?? body.text,
-      description: body.description ?? null,
+      text: title,
+      title,
+      description,
       priority: body.priority ?? "MEDIUM",
       dueDate: body.dueDate ? new Date(body.dueDate) : null,
       groupId,
@@ -168,12 +202,22 @@ export async function PATCH(req: NextRequest) {
       }
       const VALID_PRIORITY = ["URGENT", "HIGH", "MEDIUM", "LOW"];
       const update: Record<string, unknown> = {};
-      if (typeof fields.title === "string") {
-        update.title = fields.title.trim();
-        update.text = fields.title.trim();
-      }
-      if (typeof fields.description === "string" || fields.description === null) {
-        update.description = fields.description;
+      try {
+        if (typeof fields.title === "string") {
+          const t = boundedText(fields.title, "title", TITLE_MAX);
+          update.title = t;
+          update.text = t;
+        }
+        if (typeof fields.description === "string" || fields.description === null) {
+          update.description = boundedTextOrNull(
+            fields.description,
+            "description",
+            DESCRIPTION_MAX
+          );
+        }
+      } catch (err) {
+        if (err instanceof TextBoundsError) return tooLong(err);
+        throw err;
       }
       if (typeof fields.priority === "string") {
         if (!VALID_PRIORITY.includes(fields.priority)) {
