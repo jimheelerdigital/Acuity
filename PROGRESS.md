@@ -7,6 +7,50 @@
 
 ---
 
+## [2026-04-25] — Theme Map: back-arrow fix + low-data wave + reference-fidelity execution pass
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** 6f2b7ae
+
+### In plain English (for Keenan)
+Two visible bugs and one "make it look as good as the inspirational mockups" pass. (1) The back arrow at the top-left of the Theme Map was sitting on top of the Acuity logo in the sidebar — fixed by tucking the back arrow inside the content area on desktop. (2) When a user has only a few mentions in their data, the trend chart was rendering as a flat zero line for 27 days followed by two peaks slammed against the right edge — looked broken. Now low-data periods render as glowing dot markers at the actual recording dates against a faint dashed horizon, with the caption "Your trend fills in as you record." (3) The visual quality of the page is now substantially closer to the reference dashboard mockups Jimmy shared — every gradient stroke now glows softly, the hero number is bigger and more confident, cards have inner top-edge highlights and outer glow shadows, tile sentiment indicators have luminous halos, and the page background has a subtle vertical gradient with multiple radial color glows tinted to the user's top theme. Same artifact lands on web and mobile.
+
+### Technical changes (for Jimmy)
+
+**Bug 1 — back arrow / sidebar collision**
+- `apps/web/src/components/back-button.tsx` — `StickyBackButton` className gained `lg:left-[252px]` (240px sidebar width + 12px gap) so the button sits inside the content area on `lg+` instead of overlapping the AppShell sidebar's Acuity logo. z-index dropped from `z-50` → `z-40` so any topbar dropdown wins on overlap. Mobile (<lg) unchanged at `left-4`.
+
+**Bug 2 — low-data wave chart**
+- `apps/web/src/components/theme-map/ThemeMapDashboard.tsx` and the mobile twin: `WaveChart` now branches on `combinedActive < 5` (count of distinct day-indices with any series mention).
+  - Low-data branch renders `<LowDataMarkers>` — a glowing dot at each recording date positioned along the actual timeline, with a small connector line down to the dashed baseline + a 9px halo behind each dot. Caption "Your trend fills in as you record" floats at the bottom of the chart frame. Atmospheric gradient + glow preserved.
+  - Full-data branch renders `<FullWavePaths>` with a smarter peak-callout: pill auto-anchors LEFT of the dot if `peak.x > W - PAD_X - PILL_W - 24` so it never overflows the chart edge. Vertical clamp via `Math.max(4, Math.min(peak.y - PILL_H/2 - 18, H - PILL_H - 4))`.
+- `Tile` sparklines: `activePoints = sparkline.filter(v => v > 0).length`; `showSparkline = activePoints >= 2`. <2 active points renders an em-dash in the sentiment color rather than a single-pixel spike at the right edge.
+
+**Execution pass — reference-fidelity upgrades (both platforms)**
+
+1. **Glowing strokes** — every gradient stroke now passes through an SVG `<filter>` with `<feGaussianBlur stdDeviation="2.4"/>` + `<feMerge>` to halo. Strokes upgraded from 2-2.6pt to 3-3.2pt for the hero theme. Mobile uses react-native-svg's `<Filter><FeGaussianBlur/><FeMerge>` (already supported in current types — dropped the `@ts-expect-error` directives I'd initially added).
+2. **Atmospheric depth** — page-level vertical gradient `linear-gradient(180deg, #0E0E1C 0%, #08080F 60%, #06060D 100%)` instead of flat `#0A0A14`. Three layered radial glows tinted by the top theme's sentiment color: a 820px primary glow at top-center (animated 9s drift loop), a 460px secondary at bottom-right, a 320px tertiary at bottom-left.
+3. **Hero typography** — hero count went from 44pt (web) / 34pt (mobile) to 78pt / 56pt at weight 800, letter-spacing -3, `fontVariantNumeric: tabular-nums`. Web hero number gets `text-shadow: 0 0 24px ${sentiment.glow}` for halo. Tile counts upgraded from 32pt → 44pt (web) / 28pt → 36pt (mobile) at weight 800.
+4. **Callout styling** — peak callout was a transparent debug-style box; now a solid sentiment-tinted pill (`${color}28` fill, `${color}` stroke at 70% opacity, `feGaussianBlur` filter applied). Connecting line from the data point to the pill. Halo dot at the data point: `r=11` outer halo at 22% opacity, `r=5.5` solid filled with white border.
+5. **Gradient fills** — top stop on wave-area fills bumped from 22% → 34% opacity for a more confident filled silhouette underneath each line. Bottom stop unchanged at 0% (transparent fade).
+6. **Motion** — hero halo gets a 9s `acuity-glow-drift` animation (rotate(180deg) + scale(1.06)). Hero count keeps the 3.5s `acuity-pulse` (0.985 → 1.018 scale). Web tiles get a CSS hover state (`acuity-tile:hover { transform: translateY(-2px) }`). Mobile uses Reanimated SharedValues for both halo and pulse with `withRepeat(withTiming(...), -1, true)` on mount + `cancelAnimation` on unmount.
+7. **Tile design** — each tile now layers two backgrounds: outer `linear-gradient(135deg, ${from}26 0%, ${via}10 45%, rgba(20,20,30,0.7) 100%)` + inner highlight `linear-gradient(180deg, rgba(255,255,255,0.02) 0%, rgba(0,0,0,0.2) 100%)`. Inset border `1px ${from}40` + inset top-edge highlight `inset 0 1px 0 ${from}40` + outer glow `0 18px 50px -28px ${glow}`. Sentiment indicator dot upgraded with double-shadow halo. Top tile's title gets a gradient text fill (`linear-gradient(90deg, #FAFAFA 0%, ${to} 100%)` + `WebkitBackgroundClip: text`).
+
+### Manual steps needed
+- [ ] **Jimmy:** Visual verification on web at https://getacuity.io/insights/theme-map after deploy. Sign in with an account that has 10+ entries to bypass the locked state. Confirm: ring glows luminously, hero number reads as a typographic centerpiece (~78pt), wave chart's strokes have visible halo, tile cards feel lifted with sentiment-tinted glow, sentiment dots have visible glow halos, low-data state on a fresh-data account shows the dashed-baseline + dot-markers treatment instead of a flat-then-spike chart. I couldn't screenshot from this CLI session — `/insights/theme-map` is gated behind sign-in.
+- [ ] **Jimmy:** OTA update for mobile: `cd apps/mobile && eas update --channel production --message "fix(theme-map): collision + low-data + execution pass"`.
+- [ ] **None for Keenan.**
+
+### Notes
+- **Why not commit a screenshot:** the dev server runs but `/insights/theme-map` requires authenticated session + 10+ entries. I can't perform Google OAuth or seed data from this CLI. Verifying visually after deploy is the trade-off.
+- **Why peak-callout auto-anchor uses 30% rule:** simpler than a measured-rect collision check and reliably keeps the pill on-canvas. Threshold tuned to `W - PAD_X - PILL_W - 24`; the `-24` is a comfort gap so the pill doesn't sit flush against the chart border.
+- **Low-data threshold of 5 active days:** felt right at low data densities I tested mentally — fewer than 5 days = "early data, looks broken if interpolated"; 5+ days = "enough texture for a smooth curve to read as informative". Easy to retune via the constant if it lands wrong in the wild.
+- **Web dropped a 9s glow-drift animation that the mobile version replicates via Reanimated.** They run independently so they won't desync; the web version uses CSS `@keyframes` since it doesn't need to compose with React state, mobile uses SharedValue + `withRepeat(withTiming(...))` because Reanimated's UI-thread driver is the cheapest way to get a 9s loop without re-rendering the component every frame.
+- **No backend changes.** All five layers still render off the existing `themes[].sparkline` (30-day daily array) + `mentionCount` + `sentimentBand` + `trendDescription` + `firstMentionedDaysAgo` + `totalMentions`. The 30-day-fixed wave window remains a known limitation, deferred until we add a `dailyByTheme` projection keyed on `window`.
+
+---
+
 ## [2026-04-25] — Theme Map redesign — dashboard composition (hero ring, wave chart, tile grid, frequency spectrum)
 
 **Requested by:** Jimmy
