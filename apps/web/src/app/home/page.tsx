@@ -212,11 +212,18 @@ export default async function DashboardPage() {
           )}
         </div>
 
-        {/* Hero row — Record card. lg+ renders compact horizontal,
-            mobile keeps the existing centered-mic vertical layout
-            from RecordButton. The id="record" anchor is preserved
-            so the sidebar Record link still scroll-jumps here. */}
-        <div id="record" className="mb-8 mx-auto max-w-lg lg:max-w-none">
+        {/* Record card — MOBILE ONLY. The sidebar Record button
+            is always visible at lg+, so this dashboard surface is
+            redundant on desktop and was eating viewport above the
+            actual signal-tier widgets. Mobile keeps the big
+            centered-mic surface as the primary action.
+            The id="record" anchor is kept on the wrapper so the
+            sidebar Record link's #record hash still has a target
+            on desktop (scroll-jumps to top of page, harmless). */}
+        <div
+          id="record"
+          className="mb-8 mx-auto max-w-lg lg:hidden"
+        >
           <RecordButton />
         </div>
 
