@@ -1,21 +1,21 @@
-import type { Task, Goal } from "@prisma/client";
+import type { Task } from "@prisma/client";
 import { Flame } from "lucide-react";
 import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
-
 
 import { getAuthOptions } from "@/lib/auth";
 import { TrackCompleteRegistration, TrackPurchase } from "@/components/meta-pixel-events";
 import { WelcomeBackBanner } from "@/components/welcome-back-banner";
 import { HomeFocusStack } from "@/components/home-focus-stack";
 import { ProgressionChecklist } from "@/components/progression-checklist";
-import { RecommendedActivity } from "@/components/recommended-activity";
 import { computeProgressionState, type ProgressionState } from "@/lib/progression";
 import { getUserProgression } from "@/lib/userProgression";
 import { PageContainer } from "@/components/page-container";
 import { RecordButton } from "./record-button";
 import { EntryCard } from "./entry-card";
+import { LifeMatrixSnapshot } from "./life-matrix-snapshot";
+import { WeeklyInsightCard } from "./weekly-insight-card";
 
 const HOME_ENTRY_LIMIT = 5;
 
@@ -46,7 +46,6 @@ export default async function DashboardPage() {
   type EntryWithCount = Awaited<ReturnType<typeof fetchEntries>>[number];
   let entries: EntryWithCount[] = [];
   let tasks: Task[] = [];
-  let goals: Goal[] = [];
 
   // Re-read user for streak + trial shape + progression state. Single
   // row read; cheap.
@@ -72,32 +71,46 @@ export default async function DashboardPage() {
       })
     : null;
 
-  // Phase 2 Run 1 — focus card stack. Fetches the UserProgression
-  // snapshot so we can render recentlyUnlocked celebration cards + a
-  // resting card above the Greeting. Separate from the legacy
-  // ProgressionChecklist above; Run 2 will deprecate the checklist
-  // once the focus card carries the same discovery work.
+  // Phase 2 Run 1 — focus card stack. HomeFocusStack early-returns null
+  // when there's no celebration content, so a power user on day 30
+  // sees the dashboard grid with zero stacked banners above it.
   const userProg = await getUserProgression(userId);
 
-  // Recommendation selector — mirrors /api/home's 3-tier logic. Inline
-  // rather than fetch-self because this is server-rendered and the same
-  // prisma instance is already in scope.
+  // Recommendation selector for "Today's prompt" widget. Mirrors
+  // /api/home's 3-tier logic. Inline rather than fetch-self because
+  // this is server-rendered and prisma is already in scope.
   const recommendation = await pickHomeRecommendation(userId);
 
+  // Dashboard data, all parallelized:
+  //   - entries: 7 most recent for the Recent sessions widget
+  //   - tasks: 10 open for the Open tasks widget
+  //   - lifemap: 6 dimension scores for the Life Matrix snapshot
+  //   - weeklyReport: most recent COMPLETE for the Weekly insight quote
+  //   - totalEntryCount: drives empty-state progress bars on Life
+  //     Matrix + Weekly insight widgets
+  //
+  // Goals widget removed in 2026-04-24 dashboard redesign — Goals
+  // lives at /goals, no need to duplicate on /home.
+  let lifemapAreas: { area: string; score: number }[] = [];
+  let weeklyReport: Awaited<ReturnType<typeof fetchLatestWeeklyReport>> = null;
+  let totalEntryCount = 0;
   try {
-    [entries, tasks, goals] = await Promise.all([
-      fetchEntries(userId),
-      prisma.task.findMany({
-        where: { userId, status: { in: ["TODO", "IN_PROGRESS", "OPEN"] } },
-        orderBy: [{ priority: "desc" }, { createdAt: "desc" }],
-        take: 10,
-      }),
-      prisma.goal.findMany({
-        where: { userId, status: { in: ["IN_PROGRESS", "NOT_STARTED"] } },
-        orderBy: { createdAt: "desc" },
-        take: 5,
-      }),
-    ]);
+    [entries, tasks, lifemapAreas, weeklyReport, totalEntryCount] =
+      await Promise.all([
+        fetchEntries(userId),
+        prisma.task.findMany({
+          where: { userId, status: { in: ["TODO", "IN_PROGRESS", "OPEN"] } },
+          orderBy: [{ priority: "desc" }, { createdAt: "desc" }],
+          take: 10,
+        }),
+        prisma.lifeMapArea.findMany({
+          where: { userId },
+          select: { area: true, score: true },
+          orderBy: { sortOrder: "asc" },
+        }),
+        fetchLatestWeeklyReport(userId),
+        prisma.entry.count({ where: { userId } }),
+      ]);
   } catch (err) {
     console.error("[dashboard] Failed to load data:", err);
   }
@@ -128,6 +141,16 @@ export default async function DashboardPage() {
       : 0;
   const currentStreak = user?.currentStreak ?? 0;
 
+  // Sessions-this-week tally for the Streak summary card. The
+  // recent-sessions widget below caps at 7 entries already, so we can
+  // reuse `entries` to count without an extra query — though the
+  // count there is "of the last 7 records" not "this week" in calendar
+  // sense. For the dashboard summary we want calendar-week.
+  const oneWeekMs = 7 * 24 * 60 * 60 * 1000;
+  const sessionsThisWeek = entries.filter(
+    (e) => Date.now() - e.createdAt.getTime() < oneWeekMs
+  ).length;
+
   return (
     <div className="min-h-screen">
       <TrackCompleteRegistration />
@@ -155,31 +178,39 @@ export default async function DashboardPage() {
           </section>
         )}
 
-        {/* Focus card stack — Phase 2 Run 1. Sits above the greeting
-            so unlock celebrations + the resting card are the first
-            thing a returning user sees. */}
+        {/* Focus card stack — only renders when there's celebration
+            content (recently unlocked feature, milestone, etc).
+            Power users with quiet progression skip this block
+            entirely and see the dashboard grid first. */}
         <div className="mb-8">
           <HomeFocusStack progression={userProg} />
         </div>
 
-        {/* Greeting */}
-        <div className="mb-8 text-center sm:text-left">
-          <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-50">{greeting}</h1>
-          <p className="text-zinc-500 dark:text-zinc-400 text-sm mt-1">
+        {/* Greeting + mobile streak. On lg+ the streak number lives
+            inside the StreakSummaryCard widget; on mobile the
+            existing inline display is preserved. */}
+        <div className="mb-6 text-center sm:text-left">
+          <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-50 lg:text-3xl">
+            {greeting}
+          </h1>
+          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
             {entries.length === 0
               ? "Record your first daily debrief to get started."
               : `${entries.length} session${entries.length === 1 ? "" : "s"} this week.`}
           </p>
           {currentStreak >= 2 && (
-            <p className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-orange-600 dark:text-orange-400">
+            <p className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-orange-600 dark:text-orange-400 lg:hidden">
               <Flame className="h-4 w-4" aria-hidden="true" />
               {currentStreak}-day streak
             </p>
           )}
         </div>
 
-        {/* Record button — centered narrow on mobile, full-width card on desktop */}
-        <div id="record" className="mb-10 mx-auto max-w-lg lg:max-w-none">
+        {/* Hero row — Record card. lg+ renders compact horizontal,
+            mobile keeps the existing centered-mic vertical layout
+            from RecordButton. The id="record" anchor is preserved
+            so the sidebar Record link still scroll-jumps here. */}
+        <div id="record" className="mb-8 mx-auto max-w-lg lg:max-w-none">
           <RecordButton />
         </div>
 
@@ -191,16 +222,45 @@ export default async function DashboardPage() {
           />
         )}
 
-        <RecommendedActivity
-          prompt={recommendation.text}
-          label={recommendation.label}
-          goalId={recommendation.goalId}
-        />
+        {/* Dashboard grid — desktop only. Mobile (<lg) falls through
+            to the old single-column stacking via the absence of
+            lg:grid-cols utilities; each row's children stack
+            naturally. */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:gap-6">
+          {/* Row 2 — Today's prompt (8 cols) + Streak summary (4 cols) */}
+          <TodaysPromptCard
+            prompt={recommendation.text}
+            label={recommendation.label}
+            goalId={recommendation.goalId}
+          />
+          <StreakSummaryCard
+            currentStreak={currentStreak}
+            sessionsThisWeek={sessionsThisWeek}
+            totalEntryCount={totalEntryCount}
+          />
 
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-          {/* Recent entries — capped to 5 with "View all" link. Full list
-              lives on /entries. */}
-          <section className="lg:col-span-2">
+          {/* Row 3 — SIGNAL TIER. Life Matrix snapshot is the visual
+              center of gravity (7 cols), Weekly insight to its right
+              (5 cols). */}
+          <div className="lg:col-span-7">
+            <LifeMatrixSnapshot
+              areas={lifemapAreas}
+              entryCount={totalEntryCount}
+              unlocked={userProg.unlocked.lifeMatrix}
+            />
+          </div>
+          <div className="lg:col-span-5">
+            <WeeklyInsightCard
+              report={weeklyReport}
+              entryCount={totalEntryCount}
+              unlocked={userProg.unlocked.weeklyReport}
+            />
+          </div>
+
+          {/* Row 4 — CONTEXT TIER. Recent sessions (7 cols) + Open
+              tasks (5 cols). Both render their existing empty states
+              when no rows exist. */}
+          <section className="lg:col-span-7 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-[#1E1E2E]">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
                 Recent sessions
@@ -233,73 +293,35 @@ export default async function DashboardPage() {
             )}
           </section>
 
-          {/* Sidebar */}
-          <aside className="space-y-6">
-            {/* Tasks */}
-            <div>
-              <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
-                Open tasks
-              </h2>
-              {tasks.length === 0 ? (
-                <EmptyState
-                  icon="✅"
-                  title="All clear"
-                  description="No open tasks. Record a session to extract some."
-                  compact
-                />
-              ) : (
-                <div className="space-y-2">
-                  {tasks.map((t) => (
-                    <div
-                      key={t.id}
-                      className="rounded-xl border border-zinc-200 bg-white px-4 py-3 shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 dark:border-white/10 dark:bg-[#1E1E2E] dark:shadow-none dark:hover:bg-[#24243A]"
-                    >
-                      <p className="text-sm text-zinc-800 leading-snug dark:text-zinc-100">
-                        {t.title ?? t.text}
-                      </p>
-                      <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">
-                        {t.priority} · {t.status.replace("_", " ")}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Goals */}
-            <div>
-              <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
-                Active goals
-              </h2>
-              {goals.length === 0 ? (
-                <EmptyState
-                  icon="🎯"
-                  title="No goals"
-                  description="Mention a goal in your daily debrief and we'll track it."
-                  compact
-                />
-              ) : (
-                <div className="space-y-2">
-                  {goals.map((g) => (
-                    <div
-                      key={g.id}
-                      className="rounded-xl border border-zinc-200 bg-white px-4 py-3 shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 dark:border-white/10 dark:bg-[#1E1E2E] dark:shadow-none dark:hover:bg-[#24243A]"
-                    >
-                      <p className="text-sm text-zinc-800 leading-snug dark:text-zinc-100">
-                        {g.title}
-                      </p>
-                      <div className="mt-2 h-1.5 w-full rounded-full bg-zinc-100 dark:bg-white/10">
-                        <div
-                          className="h-1.5 rounded-full bg-violet-500 transition-all duration-700"
-                          style={{ width: `${g.progress}%` }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </aside>
+          <section className="lg:col-span-5 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-[#1E1E2E]">
+            <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
+              Open tasks
+            </h2>
+            {tasks.length === 0 ? (
+              <EmptyState
+                icon="✅"
+                title="All clear"
+                description="No open tasks. Record a session to extract some."
+                compact
+              />
+            ) : (
+              <div className="space-y-2">
+                {tasks.map((t) => (
+                  <div
+                    key={t.id}
+                    className="rounded-xl border border-zinc-200 bg-white px-4 py-3 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 dark:border-white/10 dark:bg-[#13131F] dark:hover:bg-[#24243A]"
+                  >
+                    <p className="text-sm text-zinc-800 leading-snug dark:text-zinc-100">
+                      {t.title ?? t.text}
+                    </p>
+                    <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">
+                      {t.priority} · {t.status.replace("_", " ")}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
         </div>
       </PageContainer>
     </div>
@@ -320,7 +342,132 @@ async function fetchEntries(userId: string) {
   });
 }
 
+async function fetchLatestWeeklyReport(userId: string) {
+  const { prisma } = await import("@/lib/prisma");
+  return prisma.weeklyReport.findFirst({
+    where: { userId, status: "COMPLETE" },
+    orderBy: { weekStart: "desc" },
+    select: {
+      id: true,
+      weekStart: true,
+      weekEnd: true,
+      insightBullets: true,
+      narrative: true,
+    },
+  });
+}
+
 // ─── Sub-components ──────────────────────────────────────────────────────────
+
+/**
+ * Today's prompt card — widget #2. Wraps the existing recommendation
+ * engine output (label + text + optional goalId) in a generous
+ * quote-card. Always populated; the recommendation engine has a
+ * 3-tier fallback so it never returns empty.
+ */
+function TodaysPromptCard({
+  prompt,
+  label,
+  goalId,
+}: {
+  prompt: string;
+  label: string | null;
+  /** Optional — Recommendation.goalId is `string | undefined` (a
+   *  field that exists for GOAL-tier recommendations only). Allow
+   *  both undefined and null at the boundary so server data flows
+   *  through without coercion. */
+  goalId?: string | null;
+}) {
+  const recordHref = goalId
+    ? `/home?goalId=${encodeURIComponent(goalId)}#record`
+    : "/home#record";
+  return (
+    <section className="lg:col-span-8 rounded-2xl border border-zinc-200 bg-gradient-to-br from-violet-50/60 via-white to-white p-6 shadow-sm dark:border-white/10 dark:from-violet-950/20 dark:via-[#1E1E2E] dark:to-[#1E1E2E]">
+      {label && (
+        <p className="text-xs font-semibold uppercase tracking-widest text-violet-600 dark:text-violet-400">
+          {label}
+        </p>
+      )}
+      <p className="mt-2 text-base font-medium leading-relaxed text-zinc-800 dark:text-zinc-100 lg:text-lg">
+        {prompt}
+      </p>
+      <Link
+        href={recordHref}
+        className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-violet-600 transition hover:text-violet-500 dark:text-violet-400"
+      >
+        Record about this
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          aria-hidden="true"
+        >
+          <path d="M9 18l6-6-6-6" />
+        </svg>
+      </Link>
+    </section>
+  );
+}
+
+/**
+ * Streak + sessions-this-week summary — widget #3. Replaces the
+ * "resting card" content that previously sat above the dashboard
+ * inside HomeFocusStack. Always shows; copy adapts to streak === 0
+ * vs ≥ 1 days.
+ */
+function StreakSummaryCard({
+  currentStreak,
+  sessionsThisWeek,
+  totalEntryCount,
+}: {
+  currentStreak: number;
+  sessionsThisWeek: number;
+  totalEntryCount: number;
+}) {
+  const streakLabel =
+    currentStreak === 0
+      ? "0-day streak"
+      : `${currentStreak}-day streak`;
+
+  // Three-tier hint: brand-new user, has-been-recording, broke-streak.
+  let hint: string;
+  if (totalEntryCount === 0) {
+    hint = "Record today to start the count.";
+  } else if (currentStreak === 0) {
+    hint = "One recording today restarts the streak.";
+  } else {
+    hint =
+      sessionsThisWeek === 1
+        ? "1 session this week so far. Keep it going."
+        : `${sessionsThisWeek} sessions this week.`;
+  }
+
+  return (
+    <section className="lg:col-span-4 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-[#1E1E2E]">
+      <h2 className="text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
+        Streak
+      </h2>
+      <div className="mt-2 flex items-center gap-2">
+        <Flame
+          className={`h-6 w-6 ${
+            currentStreak >= 2
+              ? "text-orange-500"
+              : "text-zinc-300 dark:text-zinc-600"
+          }`}
+          aria-hidden="true"
+        />
+        <p className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+          {streakLabel}
+        </p>
+      </div>
+      <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">{hint}</p>
+    </section>
+  );
+}
 
 function EmptyState({
   icon,

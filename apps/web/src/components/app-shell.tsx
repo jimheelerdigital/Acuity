@@ -114,16 +114,19 @@ function Sidebar() {
 
   return (
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r border-zinc-200 bg-[#FAFAF7] dark:border-white/10 dark:bg-[#0B0B12] lg:flex">
-      {/* Logo */}
-      <div className="flex h-14 items-center border-b border-zinc-200 px-5 dark:border-white/10">
+      {/* Logo — h-[68px] matches the top bar (DesktopTopbar) so the
+          sidebar header and the top bar appear as one continuous
+          horizontal edge across the viewport. If you change one of
+          these, change the other. */}
+      <div className="flex h-[68px] items-center border-b border-zinc-200 px-5 dark:border-white/10">
         <Link href="/home" className="flex items-center gap-2 group">
           <img
             src="/AcuityLogoDark.png"
             alt=""
             className="shrink-0"
-            style={{ width: 22, height: 22 }}
+            style={{ width: 24, height: 24 }}
           />
-          <span className="font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+          <span className="text-base font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
             Acuity
           </span>
         </Link>
@@ -167,7 +170,13 @@ function Sidebar() {
 
 function DesktopTopbar() {
   return (
-    <header className="sticky top-0 z-30 hidden h-14 items-center justify-end border-b border-zinc-200 bg-[#FAFAF7]/85 px-8 backdrop-blur-md dark:border-white/10 dark:bg-[#0B0B12]/85 lg:flex">
+    // h-[68px] (was h-14 / 56px) — gives the avatar trigger more room
+    // to breathe and matches the sidebar logo header for a continuous
+    // top edge across the viewport. The semi-transparent bg + border
+    // distinguish the chrome from main content without an outright
+    // background shift. Avatar trigger lives top-right inside the
+    // 1600px content cap below.
+    <header className="sticky top-0 z-30 hidden h-[68px] items-center justify-end border-b border-zinc-200 bg-[#FAFAF7]/85 px-8 backdrop-blur-md dark:border-white/10 dark:bg-[#0B0B12]/85 lg:flex">
       <SessionUserMenu />
     </header>
   );

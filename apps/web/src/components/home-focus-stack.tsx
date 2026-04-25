@@ -16,18 +16,37 @@ import { MilestoneCard } from "./milestone-card";
  * Home-page card stack. Takes the UserProgression snapshot fetched
  * by the server, builds an ordered queue, hands it to FocusCardStack.
  *
- * Order (top → bottom):
+ * Render contract (2026-04-24):
+ *
+ *   - Renders ONLY when there is celebration content to show —
+ *     `recentlyUnlocked.length > 0` OR `recentlyHitMilestone != null`.
+ *     A user on day 30 with a fully-unlocked product and no recent
+ *     milestone should NOT see this stack above the dashboard grid.
+ *     The streak / progression-resting content that previously lived
+ *     here as a non-dismissible "resting card" has moved INTO the
+ *     dashboard grid (StreakSummaryCard widget on /home).
+ *
+ *   - When celebration content IS present, the resting card is
+ *     appended below the celebration cards as before so the user
+ *     still has a quiet streak/milestone reference under the
+ *     dismissible cards.
+ *
+ * Order (top → bottom) when shown:
  *   1. Feature unlock cards — one per recentlyUnlocked key
  *   2. Streak milestone card — if recentlyHitMilestone set
- *   3. Resting card — never dismissible; placeholder/streak content
+ *   3. Resting card — only when (1) or (2) is also showing
  *
  * One-shot semantics: the progression API writes the snapshot back
  * on each call, so recentlyUnlocked + recentlyHitMilestone clear on
  * the next mount. No separate dismissal column; session-only state
- * suffices.
+ * suffices for celebration cards.
  */
 export function HomeFocusStack({ progression }: { progression: UserProgression }) {
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
+
+  const hasCelebrationContent =
+    progression.recentlyUnlocked.length > 0 ||
+    progression.recentlyHitMilestone != null;
 
   const cards = useMemo<FocusCard[]>(() => {
     const out: FocusCard[] = [];
@@ -53,14 +72,26 @@ export function HomeFocusStack({ progression }: { progression: UserProgression }
         });
       }
     }
-    out.push({
-      id: "resting",
-      type: "resting",
-      dismissible: false,
-      render: () => <RestingCard progression={progression} />,
-    });
+    // Only append the resting card when there's other content above
+    // it. On a quiet visit (no celebrations) the dashboard grid's
+    // StreakSummaryCard handles the streak read; rendering the
+    // resting card here too would be redundant.
+    if (out.length > 0) {
+      out.push({
+        id: "resting",
+        type: "resting",
+        dismissible: false,
+        render: () => <RestingCard progression={progression} />,
+      });
+    }
     return out;
   }, [progression, dismissedIds]);
+
+  // Early-return null when there's nothing to celebrate. The /home
+  // page renders the grid right under where this would have been —
+  // power users see no top stack.
+  if (!hasCelebrationContent) return null;
+  if (cards.length === 0) return null;
 
   return (
     <FocusCardStack

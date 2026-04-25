@@ -116,21 +116,26 @@ export function UserMenu({ name, email, image, initials }: UserMenuProps) {
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={name ? `Account menu for ${name}` : "Account menu"}
-        className="flex items-center gap-1 rounded-full transition hover:opacity-80 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 focus-visible:ring-offset-[#FAFAF7] dark:focus-visible:ring-offset-[#0B0B12]"
+        // Bigger trigger (2026-04-24 redesign) — avatar bumped from
+        // 28px → 40px to match the taller top bar. Hover state adds a
+        // subtle ring + slight lift so the trigger feels active. The
+        // chevron is now full-size next to the avatar instead of a
+        // tiny indicator under it.
+        className="group flex items-center gap-1.5 rounded-full p-1 pr-1.5 transition-all duration-150 hover:bg-zinc-100 hover:shadow-sm dark:hover:bg-white/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 focus-visible:ring-offset-[#FAFAF7] dark:focus-visible:ring-offset-[#0B0B12]"
       >
         {image ? (
           <img
             src={image}
             alt=""
-            className="h-7 w-7 rounded-full ring-2 ring-white dark:ring-white/10"
+            className="h-10 w-10 rounded-full ring-2 ring-white transition group-hover:ring-zinc-200 dark:ring-white/10 dark:group-hover:ring-white/20"
           />
         ) : (
-          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-zinc-200 dark:bg-white/10 text-xs font-medium text-zinc-600 dark:text-zinc-300">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-200 text-sm font-semibold text-zinc-700 ring-2 ring-white transition group-hover:ring-zinc-200 dark:bg-white/10 dark:text-zinc-200 dark:ring-white/10 dark:group-hover:ring-white/20">
             {initials}
           </div>
         )}
         <ChevronDown
-          className={`h-3.5 w-3.5 text-zinc-500 dark:text-zinc-400 transition-transform duration-150 ${
+          className={`h-4 w-4 text-zinc-500 transition-transform duration-150 dark:text-zinc-400 ${
             open ? "rotate-180" : ""
           }`}
           aria-hidden="true"

@@ -178,22 +178,41 @@ export function RecordButton() {
 
   const isProcessing = phase === "uploading" || phase === "processing";
 
+  // Compact horizontal layout (lg+) ONLY in the idle phase. Once the
+  // user starts recording or processing, the card returns to the
+  // vertical centered layout that's been there since launch — that's
+  // a moment where the app needs to be the focal point, not a tile in
+  // the dashboard. Mobile keeps the vertical layout in every phase
+  // (existing behavior — thumb-reachable mic, big timer, etc).
+  const compactIdleAtLg = phase === "idle";
+
   return (
     <div className="w-full">
-      <div className="flex flex-col items-center gap-5 rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-6 py-8 shadow-sm transition-shadow duration-300 hover:shadow-md">
-        {/* Mic button */}
+      <div
+        className={`rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] shadow-sm transition-shadow duration-300 hover:shadow-md ${
+          compactIdleAtLg
+            ? "flex flex-col items-center gap-5 px-6 py-8 lg:flex-row lg:items-center lg:justify-between lg:gap-6 lg:px-7 lg:py-5"
+            : "flex flex-col items-center gap-5 px-6 py-8"
+        }`}
+      >
+        {/* Mic button — at lg+ in the idle phase the diameter shrinks
+            from 80px → 64px so the card height comes in around 150px
+            (per the dashboard redesign spec — Record card should not
+            dominate the viewport on desktop). All other phases use
+            the full 80px. */}
         <button
           onClick={handleClick}
           disabled={isProcessing}
           aria-label={phase === "recording" ? "Stop recording" : "Start recording"}
-          className={`relative flex h-20 w-20 items-center justify-center rounded-full transition-all duration-300
-            ${phase === "recording"
+          className={`relative flex items-center justify-center rounded-full transition-all duration-300 ${
+            compactIdleAtLg ? "h-20 w-20 lg:h-16 lg:w-16 shrink-0" : "h-20 w-20"
+          } ${
+            phase === "recording"
               ? "bg-red-500 hover:bg-red-400 scale-110 shadow-lg shadow-red-500/30"
               : isProcessing
                 ? "bg-zinc-200 dark:bg-white/10 cursor-wait"
                 : "bg-violet-600 hover:bg-violet-500 hover:scale-105 hover:shadow-xl hover:shadow-violet-500/30 active:scale-95"
-            }
-          `}
+          }`}
         >
           {phase === "recording" && (
             <>
@@ -231,14 +250,32 @@ export function RecordButton() {
         ) : phase === "processing" ? (
           <Stepper currentPhase={poll.phase} elapsedSeconds={poll.elapsedSeconds} />
         ) : phase === "idle" ? (
-          <div className="text-center">
-            <p className="text-sm font-medium text-zinc-800 dark:text-zinc-100">
-              Start your daily debrief
-            </p>
-            <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-0.5">
-              Up to {MAX_SECONDS / 60} minutes
-            </p>
-          </div>
+          <>
+            <div className="text-center lg:flex-1 lg:text-left">
+              <p className="text-sm font-medium text-zinc-800 dark:text-zinc-100 lg:text-base">
+                Start your daily debrief
+              </p>
+              <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-0.5 lg:text-sm">
+                Up to {MAX_SECONDS / 60} minutes — speak whatever&rsquo;s on
+                your mind, we&rsquo;ll handle the rest.
+              </p>
+            </div>
+            {/* Chevron on the right at lg+ — signals the card is the
+                whole tap target, mic button included. Hidden on mobile
+                where the original centered layout doesn't need it. */}
+            <svg
+              aria-hidden="true"
+              className="hidden h-5 w-5 shrink-0 text-zinc-400 transition-transform group-hover:translate-x-0.5 dark:text-zinc-500 lg:block"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M9 18l6-6-6-6" />
+            </svg>
+          </>
         ) : phase === "timeout" ? (
           <div className="text-center">
             <p className="text-sm text-zinc-600 dark:text-zinc-300">This is taking longer than expected.</p>
