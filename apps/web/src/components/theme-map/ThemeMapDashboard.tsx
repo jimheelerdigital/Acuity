@@ -129,7 +129,7 @@ export function ThemeMapDashboard({
         // bottom. Matches the reference screenshots' atmospheric
         // depth (canvas isn't flat black).
         background:
-          "linear-gradient(180deg, #0E0E1C 0%, #08080F 60%, #06060D 100%)",
+          "linear-gradient(180deg, #1A1530 0%, #0E0E1C 40%, #08080F 100%)",
         boxShadow:
           "inset 0 1px 0 rgba(255,255,255,0.04), 0 30px 80px -40px rgba(0,0,0,0.8)",
       }}
@@ -148,8 +148,8 @@ export function ThemeMapDashboard({
       </div>
       <style>{`
         @keyframes acuity-pulse {
-          0%, 100% { transform: scale(0.985); }
-          50% { transform: scale(1.018); }
+          0%, 100% { transform: scale(0.97); }
+          50% { transform: scale(1.035); }
         }
         @keyframes acuity-glow-drift {
           0%, 100% { transform: rotate(0deg) scale(1); opacity: 0.85; }
@@ -176,11 +176,11 @@ function Atmosphere({ tone }: { tone: SentimentTone }) {
         aria-hidden
         className="pointer-events-none absolute -top-44 left-1/2 -translate-x-1/2"
         style={{
-          width: 820,
-          height: 820,
+          width: 1100,
+          height: 1100,
           borderRadius: 9999,
-          background: `radial-gradient(circle, ${g.from}3a 0%, ${g.via}24 28%, ${g.to}10 50%, transparent 70%)`,
-          filter: "blur(50px)",
+          background: `radial-gradient(circle, ${g.from}66 0%, ${g.via}3a 28%, ${g.to}1a 50%, transparent 70%)`,
+          filter: "blur(80px)",
           animation: "acuity-glow-drift 9s ease-in-out infinite",
         }}
       />
@@ -191,7 +191,7 @@ function Atmosphere({ tone }: { tone: SentimentTone }) {
           width: 460,
           height: 460,
           borderRadius: 9999,
-          background: `radial-gradient(circle, ${g.to}26 0%, transparent 70%)`,
+          background: `radial-gradient(circle, ${g.to}40 0%, transparent 70%)`,
           filter: "blur(50px)",
         }}
       />
@@ -202,7 +202,7 @@ function Atmosphere({ tone }: { tone: SentimentTone }) {
           width: 320,
           height: 320,
           borderRadius: 9999,
-          background: `radial-gradient(circle, ${g.from}14 0%, transparent 65%)`,
+          background: `radial-gradient(circle, ${g.from}28 0%, transparent 65%)`,
           filter: "blur(60px)",
         }}
       />
@@ -342,7 +342,7 @@ function HeroRing({
         className="absolute inset-0"
         style={{
           background: `radial-gradient(circle at 50% 50%, ${g.glow} 0%, ${g.from}26 35%, transparent 65%)`,
-          filter: "blur(22px)",
+          filter: "blur(40px)",
           animation: "acuity-pulse 4s ease-in-out infinite",
         }}
       />
@@ -360,7 +360,7 @@ function HeroRing({
             <stop offset="100%" stopColor={g.to} />
           </linearGradient>
           <radialGradient id={`fill-${id}`} cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor={g.from} stopOpacity={0.18} />
+            <stop offset="0%" stopColor={g.from} stopOpacity={0.35} />
             <stop offset="80%" stopColor={g.from} stopOpacity={0} />
           </radialGradient>
           <filter
@@ -370,7 +370,7 @@ function HeroRing({
             width="160%"
             height="160%"
           >
-            <feGaussianBlur stdDeviation="3" result="blur" />
+            <feGaussianBlur stdDeviation="8" result="blur" />
             <feMerge>
               <feMergeNode in="blur" />
               <feMergeNode in="SourceGraphic" />
@@ -393,7 +393,7 @@ function HeroRing({
           r={r}
           fill={`url(#fill-${id})`}
           stroke="rgba(255,255,255,0.06)"
-          strokeWidth={11}
+          strokeWidth={14}
         />
         {/* progress arc — glowing */}
         <circle
@@ -402,7 +402,7 @@ function HeroRing({
           r={r}
           fill="none"
           stroke={`url(#ring-${id})`}
-          strokeWidth={11}
+          strokeWidth={14}
           strokeLinecap="round"
           strokeDasharray={`${dash} ${circumference - dash}`}
           transform={`rotate(-90 ${cx} ${cy})`}
@@ -422,7 +422,7 @@ function HeroRing({
               y1={y1}
               x2={x2}
               y2={y2}
-              stroke="rgba(255,255,255,0.07)"
+              stroke="rgba(255,255,255,0.12)"
               strokeWidth={1}
             />
           );
@@ -434,12 +434,12 @@ function HeroRing({
       >
         <span
           style={{
-            fontSize: 78,
+            fontSize: 96,
             fontWeight: 800,
             color: "#FAFAFA",
-            letterSpacing: -3,
+            letterSpacing: -4,
             lineHeight: 1,
-            textShadow: `0 0 24px ${g.glow}`,
+            textShadow: `0 0 36px ${g.glow}, 0 0 12px ${g.from}`,
             ...TABULAR,
           }}
         >
@@ -572,7 +572,7 @@ function WaveChart({ themes }: { themes: DashboardTheme[] }) {
               width="140%"
               height="200%"
             >
-              <feGaussianBlur stdDeviation="2.4" result="blur" />
+              <feGaussianBlur stdDeviation="5.5" result="blur" />
               <feMerge>
                 <feMergeNode in="blur" />
                 <feMergeNode in="SourceGraphic" />
@@ -600,7 +600,8 @@ function WaveChart({ themes }: { themes: DashboardTheme[] }) {
                     x2="0"
                     y2="1"
                   >
-                    <stop offset="0%" stopColor={g.from} stopOpacity={0.34} />
+                    <stop offset="0%" stopColor={g.from} stopOpacity={0.55} />
+                    <stop offset="30%" stopColor={g.from} stopOpacity={0.25} />
                     <stop offset="100%" stopColor={g.from} stopOpacity={0} />
                   </linearGradient>
                 </g>
@@ -750,10 +751,10 @@ function FullWavePaths({
           d={s.line}
           fill="none"
           stroke={`url(#stroke-${gradientIdPrefix}-${i})`}
-          strokeWidth={i === 0 ? 3.2 : 2.4}
+          strokeWidth={i === 0 ? 5 : 3.5}
           strokeLinecap="round"
           strokeLinejoin="round"
-          opacity={i === 0 ? 1 : 0.78}
+          opacity={i === 0 ? 1 : 0.85}
           filter={`url(#${filterId})`}
         />
       ))}
@@ -775,12 +776,12 @@ function FullWavePaths({
             cy={peak.y}
             r={11}
             fill={SENTIMENT[top.theme.tone].from}
-            opacity={0.22}
+            opacity={0.35}
           />
           <circle
             cx={peak.x}
             cy={peak.y}
-            r={5.5}
+            r={7}
             fill={SENTIMENT[top.theme.tone].from}
             stroke="#FAFAFA"
             strokeWidth={1.5}
@@ -794,9 +795,9 @@ function FullWavePaths({
               width={PILL_W}
               height={PILL_H}
               rx={8}
-              fill={`${SENTIMENT[top.theme.tone].from}28`}
+              fill={`${SENTIMENT[top.theme.tone].from}55`}
               stroke={SENTIMENT[top.theme.tone].from}
-              strokeOpacity={0.7}
+              strokeOpacity={1.0}
               strokeWidth={1}
               filter={`url(#${filterId})`}
             />
@@ -939,11 +940,11 @@ function Tile({
           linear-gradient(135deg, ${g.from}26 0%, ${g.via}10 45%, rgba(20,20,30,0.7) 100%),
           linear-gradient(180deg, rgba(255,255,255,0.02) 0%, rgba(0,0,0,0.2) 100%)
         `,
-        border: `1px solid ${g.from}40`,
+        border: `1px solid ${g.from}66`,
         boxShadow: `
           inset 0 1px 0 ${g.from}40,
           inset 0 0 0 1px rgba(255,255,255,0.02),
-          0 18px 50px -28px ${g.glow}
+          0 18px 80px -28px ${g.glow}
         `,
       }}
     >
@@ -954,8 +955,8 @@ function Tile({
           width: 110,
           height: 110,
           borderRadius: 9999,
-          background: `radial-gradient(circle, ${g.from}40 0%, transparent 70%)`,
-          filter: "blur(10px)",
+          background: `radial-gradient(circle, ${g.from}60 0%, transparent 70%)`,
+          filter: "blur(24px)",
         }}
       />
       <div className="relative">
@@ -1005,12 +1006,12 @@ function Tile({
         <div className="mt-3 flex items-end justify-between gap-2">
           <span
             style={{
-              fontSize: 44,
+              fontSize: 56,
               fontWeight: 800,
               color: "#FAFAFA",
               letterSpacing: -1.6,
               lineHeight: 0.95,
-              textShadow: `0 0 20px ${g.glow}`,
+              textShadow: `0 0 32px ${g.glow}, 0 0 8px ${g.from}`,
               ...TABULAR,
             }}
           >
@@ -1031,7 +1032,7 @@ function Tile({
                   <stop offset="100%" stopColor={g.to} />
                 </linearGradient>
                 <linearGradient id={`tile-fill-${id}`} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={g.from} stopOpacity={0.5} />
+                  <stop offset="0%" stopColor={g.from} stopOpacity={0.65} />
                   <stop offset="100%" stopColor={g.from} stopOpacity={0} />
                 </linearGradient>
                 <filter
@@ -1041,7 +1042,7 @@ function Tile({
                   width="140%"
                   height="200%"
                 >
-                  <feGaussianBlur stdDeviation="1.4" result="b" />
+                  <feGaussianBlur stdDeviation="3" result="b" />
                   <feMerge>
                     <feMergeNode in="b" />
                     <feMergeNode in="SourceGraphic" />
@@ -1053,7 +1054,7 @@ function Tile({
                 d={line}
                 fill="none"
                 stroke={`url(#tile-stroke-${id})`}
-                strokeWidth={2.2}
+                strokeWidth={2.8}
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 filter={`url(#tile-glow-${id})`}
@@ -1101,7 +1102,7 @@ function FrequencySpectrum({ themes }: { themes: DashboardTheme[] }) {
       <div className="flex items-end gap-2 overflow-x-auto pb-2">
         {themes.map((t) => {
           const g = SENTIMENT[t.tone];
-          const h = 16 + (t.mentionCount / max) * 72;
+          const h = 20 + (t.mentionCount / max) * 96;
           return (
             <div
               key={t.id}
@@ -1112,8 +1113,8 @@ function FrequencySpectrum({ themes }: { themes: DashboardTheme[] }) {
                 className="relative w-full overflow-hidden rounded-t-md"
                 style={{
                   height: h,
-                  background: `linear-gradient(180deg, ${g.from} 0%, ${g.via} 60%, ${g.to}66 100%)`,
-                  boxShadow: `0 -6px 24px -4px ${g.glow}, inset 0 1px 0 rgba(255,255,255,0.25)`,
+                  background: `linear-gradient(180deg, ${g.from} 0%, ${g.via} 60%, ${g.to}aa 100%)`,
+                  boxShadow: `0 -6px 32px -4px ${g.glow}, inset 0 1px 0 rgba(255,255,255,0.25)`,
                 }}
               >
                 <span

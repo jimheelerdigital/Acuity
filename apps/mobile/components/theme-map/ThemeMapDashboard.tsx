@@ -184,9 +184,9 @@ function PageBackground({ tone: _tone }: { tone: SentimentTone }) {
     >
       <Defs>
         <SvgLinearGradient id="page-bg" x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0%" stopColor="#0E0E1C" />
-          <Stop offset="60%" stopColor="#08080F" />
-          <Stop offset="100%" stopColor="#06060D" />
+          <Stop offset="0%" stopColor="#1A1530" />
+          <Stop offset="40%" stopColor="#0E0E1C" />
+          <Stop offset="100%" stopColor="#08080F" />
         </SvgLinearGradient>
       </Defs>
       <Rect x="0" y="0" width="100%" height="100%" fill="url(#page-bg)" />
@@ -206,9 +206,9 @@ function Atmosphere({ tone }: { tone: SentimentTone }) {
     >
       <Defs>
         <RadialGradient id="bg-glow" cx="50%" cy="20%" r="70%">
-          <Stop offset="0%" stopColor={g.from} stopOpacity={0.32} />
-          <Stop offset="35%" stopColor={g.via} stopOpacity={0.16} />
-          <Stop offset="70%" stopColor={g.to} stopOpacity={0.05} />
+          <Stop offset="0%" stopColor={g.from} stopOpacity={0.5} />
+          <Stop offset="35%" stopColor={g.via} stopOpacity={0.28} />
+          <Stop offset="70%" stopColor={g.to} stopOpacity={0.1} />
           <Stop offset="100%" stopColor={g.from} stopOpacity={0} />
         </RadialGradient>
       </Defs>
@@ -348,12 +348,12 @@ function HeroRing({
   const circumference = 2 * Math.PI * r;
   const dash = circumference * Math.max(0.04, Math.min(1, share));
 
-  const pulseScale = useSharedValue(1);
+  const pulseScale = useSharedValue(0.97);
   const haloScale = useSharedValue(1);
   useEffect(() => {
     if (Platform.OS === "web") return;
     pulseScale.value = withRepeat(
-      withTiming(1.025, {
+      withTiming(1.035, {
         duration: 1750,
         easing: Easing.inOut(Easing.ease),
       }),
@@ -411,7 +411,7 @@ function HeroRing({
             <Stop offset="100%" stopColor={g.to} />
           </SvgLinearGradient>
           <RadialGradient id="hero-fill" cx="50%" cy="50%" r="50%">
-            <Stop offset="0%" stopColor={g.from} stopOpacity={0.22} />
+            <Stop offset="0%" stopColor={g.from} stopOpacity={0.4} />
             <Stop offset="80%" stopColor={g.from} stopOpacity={0} />
           </RadialGradient>
           <Filter
@@ -421,7 +421,7 @@ function HeroRing({
             width="160%"
             height="160%"
           >
-            <FeGaussianBlur stdDeviation="2.6" />
+            <FeGaussianBlur stdDeviation="6" />
             <FeMerge>
               <FeMergeNode in="blur" />
               <FeMergeNode in="SourceGraphic" />
@@ -442,7 +442,7 @@ function HeroRing({
           r={r}
           fill="url(#hero-fill)"
           stroke="rgba(255,255,255,0.06)"
-          strokeWidth={9}
+          strokeWidth={12}
         />
         <Circle
           cx={cx}
@@ -450,7 +450,7 @@ function HeroRing({
           r={r}
           fill="none"
           stroke="url(#hero-ring)"
-          strokeWidth={9}
+          strokeWidth={12}
           strokeLinecap="round"
           strokeDasharray={`${dash} ${circumference - dash}`}
           transform={`rotate(-90 ${cx} ${cy})`}
@@ -489,13 +489,13 @@ function HeroRing({
       >
         <Text
           style={{
-            fontSize: 56,
+            fontSize: 72,
             fontWeight: "800",
             color: "#FAFAFA",
-            letterSpacing: -2,
-            lineHeight: 58,
+            letterSpacing: -3,
+            lineHeight: 74,
             textShadowColor: g.glow,
-            textShadowRadius: 18,
+            textShadowRadius: 28,
           }}
         >
           {count}
@@ -649,7 +649,7 @@ function WaveChart({ themes }: { themes: DashboardTheme[] }) {
         <Svg width={W} height={H} viewBox={`0 0 ${W} ${H}`}>
           <Defs>
             <Filter id="wave-glow" x="-20%" y="-50%" width="140%" height="200%">
-              <FeGaussianBlur stdDeviation="2.2" />
+              <FeGaussianBlur stdDeviation="5" />
               <FeMerge>
                 <FeMergeNode in="blur" />
                 <FeMergeNode in="SourceGraphic" />
@@ -677,7 +677,8 @@ function WaveChart({ themes }: { themes: DashboardTheme[] }) {
                     x2="0"
                     y2="1"
                   >
-                    <Stop offset="0%" stopColor={g.from} stopOpacity={0.34} />
+                    <Stop offset="0%" stopColor={g.from} stopOpacity={0.55} />
+                    <Stop offset="30%" stopColor={g.from} stopOpacity={0.25} />
                     <Stop offset="100%" stopColor={g.from} stopOpacity={0} />
                   </SvgLinearGradient>
                 </G>
@@ -809,10 +810,10 @@ function FullWavePaths({
           d={s.line}
           fill="none"
           stroke={`url(#stroke-${i})`}
-          strokeWidth={i === 0 ? 3 : 2.4}
+          strokeWidth={i === 0 ? 4.5 : 3.5}
           strokeLinecap="round"
           strokeLinejoin="round"
-          opacity={i === 0 ? 1 : 0.78}
+          opacity={i === 0 ? 1 : 0.85}
           filter="url(#wave-glow)"
         />
       ))}
@@ -832,12 +833,12 @@ function FullWavePaths({
             cy={peak.y}
             r={10}
             fill={SENTIMENT[top.theme.tone].from}
-            opacity={0.22}
+            opacity={0.35}
           />
           <Circle
             cx={peak.x}
             cy={peak.y}
-            r={5}
+            r={6}
             fill={SENTIMENT[top.theme.tone].from}
             stroke="#FAFAFA"
             strokeWidth={1.5}
@@ -849,9 +850,9 @@ function FullWavePaths({
               width={PILL_W}
               height={PILL_H}
               rx={7}
-              fill={`${SENTIMENT[top.theme.tone].from}28`}
+              fill={`${SENTIMENT[top.theme.tone].from}55`}
               stroke={SENTIMENT[top.theme.tone].from}
-              strokeOpacity={0.7}
+              strokeOpacity={1.0}
               strokeWidth={1}
             />
             <SvgText
@@ -993,7 +994,7 @@ function Tile({
         padding: 14,
         borderRadius: 18,
         borderWidth: 1,
-        borderColor: `${g.from}40`,
+        borderColor: `${g.from}66`,
         overflow: "hidden",
         shadowColor: g.from,
         shadowOpacity: 0.4,
@@ -1092,13 +1093,13 @@ function Tile({
       >
         <Text
           style={{
-            fontSize: 36,
+            fontSize: 44,
             fontWeight: "800",
             color: "#FAFAFA",
             letterSpacing: -1.2,
-            lineHeight: 38,
+            lineHeight: 46,
             textShadowColor: g.glow,
-            textShadowRadius: 14,
+            textShadowRadius: 22,
           }}
         >
           {theme.mentionCount}
@@ -1123,7 +1124,7 @@ function Tile({
                 x2="0"
                 y2="1"
               >
-                <Stop offset="0%" stopColor={g.from} stopOpacity={0.5} />
+                <Stop offset="0%" stopColor={g.from} stopOpacity={0.65} />
                 <Stop offset="100%" stopColor={g.from} stopOpacity={0} />
               </SvgLinearGradient>
               <Filter
@@ -1133,7 +1134,7 @@ function Tile({
                 width="140%"
                 height="200%"
               >
-                <FeGaussianBlur stdDeviation="1.4" />
+                <FeGaussianBlur stdDeviation="3" />
                 <FeMerge>
                   <FeMergeNode in="blur" />
                   <FeMergeNode in="SourceGraphic" />
@@ -1145,7 +1146,7 @@ function Tile({
               d={line}
               fill="none"
               stroke={`url(#tile-stroke-${theme.id})`}
-              strokeWidth={2.2}
+              strokeWidth={2.8}
               strokeLinecap="round"
               strokeLinejoin="round"
               filter={`url(#tile-glow-stroke-${theme.id})`}
@@ -1198,7 +1199,7 @@ function FrequencySpectrum({ themes }: { themes: DashboardTheme[] }) {
       >
         {themes.map((t) => {
           const g = SENTIMENT[t.tone];
-          const h = 16 + (t.mentionCount / max) * 64;
+          const h = 20 + (t.mentionCount / max) * 84;
           return (
             <View key={t.id} style={{ alignItems: "center", width: 56 }}>
               <View
@@ -1225,7 +1226,7 @@ function FrequencySpectrum({ themes }: { themes: DashboardTheme[] }) {
                     >
                       <Stop offset="0%" stopColor={g.from} />
                       <Stop offset="60%" stopColor={g.via} />
-                      <Stop offset="100%" stopColor={g.to} stopOpacity={0.45} />
+                      <Stop offset="100%" stopColor={g.to} stopOpacity={0.67} />
                     </SvgLinearGradient>
                   </Defs>
                   <Rect
