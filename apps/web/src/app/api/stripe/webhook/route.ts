@@ -30,9 +30,16 @@ export async function POST(req: NextRequest) {
       process.env.STRIPE_WEBHOOK_SECRET!
     );
   } catch (err) {
+    // Log the SDK's diagnostic message server-side, but return an opaque
+    // error to the caller. Surfacing the SDK message lets an attacker
+    // tune signature-forgery attempts (e.g. "no signatures found
+    // matching the expected signature for payload" vs "timestamp
+    // outside the tolerance zone" tells them which guard to bypass
+    // next).
     const message = err instanceof Error ? err.message : "Unknown error";
+    console.error("[stripe-webhook] signature verification failed:", message);
     return NextResponse.json(
-      { error: `Webhook verification failed: ${message}` },
+      { error: "Invalid webhook signature" },
       { status: 400 }
     );
   }
