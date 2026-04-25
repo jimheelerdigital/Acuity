@@ -122,7 +122,8 @@ export async function POST(req: NextRequest) {
   // create because the same email may have been deleted + restored +
   // re-deleted — we just want the latest record.
   try {
-    const normalizedEmail = user.email.toLowerCase().trim();
+    const { canonicalizeEmail } = await import("@/lib/bootstrap-user");
+    const normalizedEmail = canonicalizeEmail(user.email);
     await prisma.$transaction(async (tx) => {
       await tx.deletedUser.upsert({
         where: { email: normalizedEmail },
