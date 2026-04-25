@@ -14,6 +14,7 @@ import { getUserProgression } from "@/lib/userProgression";
 import { PageContainer } from "@/components/page-container";
 import { RecordButton } from "./record-button";
 import { EntryCard } from "./entry-card";
+import { Greeting } from "./greeting";
 import { LifeMatrixSnapshot } from "./life-matrix-snapshot";
 import { WeeklyInsightCard } from "./weekly-insight-card";
 
@@ -115,7 +116,12 @@ export default async function DashboardPage() {
     console.error("[dashboard] Failed to load data:", err);
   }
 
-  const greeting = getGreeting(session.user.name);
+  // Greeting word picked client-side from the user's local hour —
+  // server-side `new Date().getHours()` returns the SERVER's hour
+  // (Vercel runs UTC), which produces "Good morning" at midnight ET.
+  // First name is server-known and stable; only the time-of-day
+  // word is client-computed. See ./greeting.tsx.
+  const firstName = session.user.name?.split(" ")[0] ?? "there";
 
   // Reduced-trial detection for the welcome-back banner (pentest T-07 fix):
   // if trialEndsAt is within 7 days of createdAt, the user got the
@@ -191,7 +197,7 @@ export default async function DashboardPage() {
             existing inline display is preserved. */}
         <div className="mb-6 text-center sm:text-left">
           <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-50 lg:text-3xl">
-            {greeting}
+            <Greeting firstName={firstName} />
           </h1>
           <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
             {entries.length === 0
@@ -491,14 +497,6 @@ function EmptyState({
       <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">{description}</p>
     </div>
   );
-}
-
-function getGreeting(name?: string | null): string {
-  const hour = new Date().getHours();
-  const firstName = name?.split(" ")[0] ?? "there";
-  if (hour < 12) return `Good morning, ${firstName}`;
-  if (hour < 17) return `Good afternoon, ${firstName}`;
-  return `Good evening, ${firstName}`;
 }
 
 /**
