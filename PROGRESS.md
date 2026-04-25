@@ -11,7 +11,7 @@
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** TBD
+**Commit hash:** d7cfb51
 
 ### In plain English (for Keenan)
 Four small but visible tightenings to the new-user onboarding flow. First, the entire 10-step flow now renders in dark mode regardless of the user's device theme — the brand identity is dark-first and the light-mode styling was half-finished anyway. Second, the life-stage question (Student / Early career / Parent / etc.) is now multi-select instead of forcing one answer; lots of users are both "Parent" and "Established career" and the radio-button version was undercounting. Third, the microphone practice round now explicitly tells users to "Tap and start talking" instead of just "Tap to start" — the old copy didn't make it clear that they were supposed to speak. Fourth, the web flow's "Record your first entry" button now shows "Listening…" while submitting instead of the awkward "Taking you in…".
