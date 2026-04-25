@@ -7,6 +7,51 @@
 
 ---
 
+## [2026-04-25] — Theme Map redesign — dashboard composition (hero ring, wave chart, tile grid, frequency spectrum)
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** TBD
+
+### In plain English (for Keenan)
+The Theme Map page (the screen that shows what topics keep coming up in your recordings) has been rebuilt from scratch. The old version showed a constellation of themed orbs floating around — pretty in concept, but the data was hard to read at a glance and the metaphor didn't match the tone of the rest of the app. The new version is a serious, modern data dashboard inspired by reference designs Jimmy shared (deep navy, glowing gradients, smooth curves, polished tiles). On one screen the user now sees: (1) a giant gradient ring with their #1 theme's count in the middle and a sentence explaining what stood out and why; (2) a smooth wave chart showing how their top 3 themes have moved over the last 30 days, with a callout dot pinned on the peak day; (3) a tile grid for themes 1-6 with each tile showing the count, a sentiment-colored mini sparkline, and a one-word trend label like "Trending up" or "Steady"; (4) a frequency-spectrum bar chart of the long-tail themes (the ones with only a couple mentions) so they're still discoverable but quiet. Color encodes mood — warm coral/amber for positive themes, purple/blue for neutral, pink/rose for challenging — so the user can scan their emotional terrain in one look. Everything is dark, soft, and atmospheric, with a faint radial glow at the top in the color of the user's top theme. The same artifact ships on web and mobile, scaled to fit each.
+
+### Technical changes (for Jimmy)
+
+**New components**
+- `apps/web/src/components/theme-map/ThemeMapDashboard.tsx` — single composition file containing all five layers (Atmosphere, HeroRingPanel + HeroRing, WaveChart, TileGrid + Tile, FrequencySpectrum). Pure SVG via raw `<svg>` — no chart library. Uses Catmull-Rom-to-cubic-Bezier smoothing for the wave paths. Sentiment palette is a 5-stop gradient per tone (positive = `#FB923C`→`#FBBF24`→`#FDE68A`, neutral = `#A78BFA`→`#60A5FA`→`#22D3EE`, challenging = `#F472B6`→`#FB7185`→`#F87171`). Hero ring count gets a 3.5s 0.985→1.015 scale pulse via inline `@keyframes`. Each layer is its own subcomponent so individual pieces can be lifted into `/insights` next.
+- `apps/mobile/components/theme-map/ThemeMapDashboard.tsx` — same composition, same gradient palette, ported to `react-native-svg`. Pulse driven by Reanimated SharedValue (`withRepeat` + `withTiming`, infinite, reverse). Atmosphere uses an absolutely-positioned full-width SVG with a `RadialGradient` tinted by the top theme's sentiment.
+
+**Wiring**
+- `apps/web/src/app/insights/theme-map/theme-map-client.tsx` — replaced `<ThemeConstellation>` import with `<ThemeMapDashboard>`. Now passes `sparkline`, `trendDescription`, `firstMentionedDaysAgo`, plus `totalMentions` so the share-of-voice math runs in the panel. Dropped `<SentimentLegend>` (the tile colors carry the same encoding inline now). Removed the per-window animation `replayKey` (no longer needed — the new layers don't replay-animate).
+- `apps/mobile/app/insights/theme-map.tsx` — same wiring. Dropped `replayToken` for the same reason. `<SentimentLegend>` removed.
+
+**Deletions**
+- `apps/web/src/components/theme-map/ThemeConstellation.tsx`
+- `apps/web/src/components/theme-map/SentimentLegend.tsx`
+- `apps/mobile/components/theme-map/ThemeConstellation.tsx`
+- `apps/mobile/components/theme-map/SentimentLegend.tsx`
+
+**Build verification**
+- Web: `next build` clean. `/insights/theme-map` compiles at 7.54 kB (down from prior; constellation file was larger).
+- Web typecheck: zero new errors. Pre-existing `landing.tsx` `prefix`/`suffix` discriminated-union issue untouched.
+- Mobile typecheck: zero new errors. The cluster of "Svg cannot be used as a JSX component" / "Provider cannot be used as a JSX component" / "bigint is not assignable to ReactNode" errors are the same React-19 / `react-native-svg` / `@types/react` mismatch already present everywhere in the mobile codebase (verified by checking pre-edit baseline).
+
+### Manual steps needed
+- [ ] **Jimmy:** EAS OTA push to TestFlight so existing testers see the new Theme Map without waiting for Build 22+: `cd apps/mobile && eas update --channel production --message "feat(theme-map): dashboard composition redesign"`. Visual verification at `/insights/theme-map` on a phone — ring + wave + tile grid should all render with sentiment-colored gradients and the hero count should pulse gently.
+- [ ] **Jimmy:** Visual verification on web at https://getacuity.io/insights/theme-map after deploy. Sign in with an account that has 10+ entries to bypass the locked state.
+- [ ] **None for Keenan.** No env vars, no Stripe config, no schema changes.
+
+### Notes
+- **Why all-SVG, no chart library:** consistency. Recharts / Visx / d3 each ship their own visual vocabulary that fights the gradient + glow language we're building. Hand-rolled SVG keeps the line weights, gradient stops, glow opacities, and corner radii in sync across the ring, the wave, the tile sparklines, and the spectrum bars. The whole composition is ~700 lines per platform and predictable.
+- **Why the wave chart is fixed at 30 days:** the API's `themes[].sparkline` is a 30-day daily array regardless of the selected window. For "Last week" the wave has 23 days of context plus 7 days of activity at the right edge — fine visually. For "3 months / 6 months / All time" the wave still only spans the last 30 days. The header says "Trend · last 30 days" so the user isn't misled. If we want the wave to span the actual selected window later, the cleanest path is adding a `dailyByTheme` (variable-length, daily ≤90d / weekly >90d) projection to `apps/web/src/app/api/insights/theme-map/route.ts`. Defer until a user reports the gap.
+- **Sentiment color choice:** matched the references' warm/cool semiotics — coral/amber = positive, purple/blue = neutral, pink/rose = challenging. The previous green/violet/red palette was too literal (green = good vs red = bad reads as moralistic). The references use coral as the warm/positive accent universally, and we adopted it.
+- **Why the share-of-voice ring uses circumference and not segmented sentiment slices:** segmented (positive arc + neutral arc + challenging arc) was the first instinct but reads as "your overall mood breakdown" — that's a different chart. The single-arc ring is "your #1 theme's share of all mentions" which is the actual story the narrative panel is telling. One ring, one number, one story.
+- **Pulse timing:** 3.5s loop, 0.97-1.03 scale (web) and 1750ms half-cycle / 1.025 scale (mobile, reverse-reanimated). Slow enough to feel like breathing, not flashing. Subtle enough that the user notices the screen feels alive without staring at any one element.
+- **Nothing on the API side changed.** All five layers render off existing fields: `themes[].mentionCount`, `themes[].sentimentBand`, `themes[].sparkline`, `themes[].trendDescription`, `themes[].firstMentionedDaysAgo`, `totalMentions`, `topTheme`. Backend untouched.
+
+---
+
 ## [2026-04-24] — Onboarding polish: forced dark mode, multi-select life roles, mic prompt
 
 **Requested by:** Jimmy

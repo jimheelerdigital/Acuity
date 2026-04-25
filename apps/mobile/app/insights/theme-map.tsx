@@ -13,21 +13,20 @@ import { api } from "@/lib/api";
 
 import { StickyBackButton } from "@/components/back-button";
 import { LockedState } from "@/components/theme-map/LockedState";
-import { SentimentLegend } from "@/components/theme-map/SentimentLegend";
 import {
-  ThemeConstellation,
-  type ConstellationTheme,
-} from "@/components/theme-map/ThemeConstellation";
+  ThemeMapDashboard,
+  type DashboardTheme,
+} from "@/components/theme-map/ThemeMapDashboard";
 import {
   TimeChips,
   type TimeWindow,
 } from "@/components/theme-map/TimeChips";
 
 /**
- * Theme Map — Round 4. Hero theme orb at center of a constellation,
- * satellites on three ghosted orbital rings, narrative sentence above
- * framing what the data means. See components/theme-map/ThemeConstellation.tsx
- * for the full design rationale.
+ * Theme Map (mobile) — dashboard composition with hero ring + share-of-
+ * voice narrative, gradient wave chart with peak callout, sparkline tile
+ * grid, and a frequency spectrum bar chart for the long tail. See
+ * components/theme-map/ThemeMapDashboard.tsx for per-layer rationale.
  */
 
 type SentimentBand = "positive" | "neutral" | "challenging";
@@ -61,7 +60,6 @@ export default function ThemeMapScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [replayToken, setReplayToken] = useState(0);
 
   const fetchData = useCallback(async (win: TimeWindow) => {
     setError(null);
@@ -86,20 +84,22 @@ export default function ThemeMapScreen() {
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    setReplayToken((t) => t + 1);
     fetchData(window_);
   }, [fetchData, window_]);
 
   const entryCount = data?.meta.totalEntries ?? 0;
   const locked = entryCount < UNLOCK_THRESHOLD;
 
-  const constellationThemes: ConstellationTheme[] = useMemo(() => {
+  const dashboardThemes: DashboardTheme[] = useMemo(() => {
     if (!data) return [];
     return data.themes.map((t) => ({
       id: t.id,
       name: t.name,
       mentionCount: t.mentionCount,
       tone: t.sentimentBand,
+      sparkline: t.sparkline,
+      trendDescription: t.trendDescription,
+      firstMentionedDaysAgo: t.firstMentionedDaysAgo,
     }));
   }, [data]);
 
@@ -174,17 +174,14 @@ export default function ThemeMapScreen() {
             <View style={{ marginTop: 14, marginBottom: 6 }}>
               <TimeChips
                 value={window_}
-                onChange={(next) => {
-                  setWindow(next);
-                  setReplayToken((t) => t + 1);
-                }}
+                onChange={(next) => setWindow(next)}
               />
             </View>
 
-            {constellationThemes.length > 0 ? (
-              <ThemeConstellation
-                themes={constellationThemes}
-                replayToken={replayToken}
+            {dashboardThemes.length > 0 ? (
+              <ThemeMapDashboard
+                themes={dashboardThemes}
+                totalMentions={data.totalMentions ?? 0}
                 timeWindow={window_}
                 onTap={(id) => router.push(`/insights/theme/${id}` as never)}
               />
@@ -203,15 +200,11 @@ export default function ThemeMapScreen() {
                     color: "rgba(161,161,170,0.75)",
                   }}
                 >
-                  Not enough theme variety yet — record a few more sessions
-                  to see the constellation take shape.
+                  Not enough theme variety yet — record a few more
+                  sessions to see your patterns surface.
                 </Text>
               </View>
             )}
-
-            <View style={{ marginTop: 10 }}>
-              <SentimentLegend />
-            </View>
           </>
         )}
       </ScrollView>
