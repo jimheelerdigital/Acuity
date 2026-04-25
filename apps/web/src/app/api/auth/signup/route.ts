@@ -26,6 +26,7 @@ import { randomToken } from "@/lib/auth-tokens";
 import { hashPassword, validatePassword } from "@/lib/passwords";
 import {
   checkRateLimit,
+  identifierFromRequest,
   limiters,
   rateLimitedResponse,
 } from "@/lib/rate-limit";
@@ -65,6 +66,15 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Per-email cap stops brute-force on a single address. Per-IP cap
+  // stops industrial farming across many addresses (the authByEmail
+  // limiter keys on the address itself, so an attacker rotating
+  // through new emails defeats it). Both must pass.
+  const rlIp = await checkRateLimit(
+    limiters.signupByIp,
+    identifierFromRequest(req, "signup")
+  );
+  if (!rlIp.success) return rateLimitedResponse(rlIp);
   const rl = await checkRateLimit(limiters.authByEmail, `signup:${email}`);
   if (!rl.success) return rateLimitedResponse(rl);
 

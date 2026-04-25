@@ -103,6 +103,16 @@ export const limiters = {
   authByEmail: buildLimiter("auth-by-email", 5, "1 h"),
   /** Public waitlist signups — spam + email-bomb target. */
   waitlist: buildLimiter("waitlist", 3, "1 h"),
+  /**
+   * IP-based signup cap. The authByEmail limiter (5/hr) keys on the
+   * email address, so an attacker rotating across email providers
+   * (gmail, outlook, proton, custom domains) can still farm trials at
+   * scale even after the plus-addressing canonicalization fix landed.
+   * 5/hr per IP catches industrial farming without blocking legitimate
+   * household-shared-IP signups (a household creating accounts for two
+   * people in the same hour is plausible; five+ is not).
+   */
+  signupByIp: buildLimiter("signup-by-ip", 5, "1 h"),
   /** Account deletion — high-impact abuse target. */
   accountDelete: buildLimiter("account-delete", 3, "1 d"),
   /** Signed-URL issuance for audio playback — S4 stopgap replacement. */
