@@ -7,6 +7,38 @@
 
 ---
 
+## [2026-04-24] — Onboarding polish: forced dark mode, multi-select life roles, mic prompt
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** TBD
+
+### In plain English (for Keenan)
+Four small but visible tightenings to the new-user onboarding flow. First, the entire 10-step flow now renders in dark mode regardless of the user's device theme — the brand identity is dark-first and the light-mode styling was half-finished anyway. Second, the life-stage question (Student / Early career / Parent / etc.) is now multi-select instead of forcing one answer; lots of users are both "Parent" and "Established career" and the radio-button version was undercounting. Third, the microphone practice round now explicitly tells users to "Tap and start talking" instead of just "Tap to start" — the old copy didn't make it clear that they were supposed to speak. Fourth, the web flow's "Record your first entry" button now shows "Listening…" while submitting instead of the awkward "Taking you in…".
+
+### Technical changes (for Jimmy)
+- **Schema (Prisma):** added `lifeStages: String[] @default([])` to `UserDemographics`. Old `lifeStage: String?` column kept in place for backward compat — read paths that need life-stage data should prefer `lifeStages` and fall back to `lifeStage` for legacy rows. No data migration; new rows write `lifeStages` only.
+- **API:** `apps/web/src/app/api/onboarding/update/route.ts` — accepts and validates `raw.lifeStages` as a string array against `VALID_LIFE_STAGES`. Existing single-value `raw.lifeStage` path retained so old web/mobile clients still work during rollout.
+- **Mobile UI:** `apps/mobile/components/onboarding/step-3-demographics.tsx` — life-stage chips converted from single-select (`useState<string | null>`) to multi-select (`useState<string[]>`). New `toggleLifeStage` helper enforces "Prefer not to say" mutual exclusivity (tapping it clears the others; tapping anything else clears it). Section header gained "Pick any that fit." subtitle to mirror the multi-select pattern used by the "What brings you here?" question above.
+- **Web UI:** `apps/web/src/app/onboarding/steps/step-3-demographics.tsx` — same multi-select conversion as mobile. Same mutual-exclusivity rule for "Prefer not to say".
+- **Web copy fix:** `apps/web/src/app/onboarding/steps/step-8-first-entry-cta.tsx` — submitting label "Taking you in…" → "Listening…".
+- **Mobile mic prompt:** `apps/mobile/components/onboarding/step-5-practice.tsx` — subtitle expanded with explicit prompt ("Tap the mic and tell us about your day — what's on your mind, what went well, what didn't."). State strings: "Tap to start" → "Tap and start talking"; recording state prefixed with "Listening…".
+- **Forced dark mode (mobile):** `apps/mobile/components/onboarding/shell.tsx` — calls `setColorScheme("dark")` on mount via NativeWind's `useColorScheme`, restores user's previous preference on unmount. SafeAreaView background hardcoded to `bg-[#0B0B12]` (dropped the `bg-white` fallback) to eliminate the one-frame light flash before the effect runs.
+- **Forced dark mode (web):** `apps/web/src/app/onboarding/onboarding-shell.tsx` — calls `setTheme("dark")` on mount via `useTheme` from `next-themes`, restores previous theme on unmount. Outer `<div>` background changed from `bg-[#FAFAF7]` (hardcoded light) to `bg-[#0B0B12]`.
+
+### Manual steps needed
+- [ ] **Jimmy:** run `npx prisma db push` from home network to apply the `lifeStages` column add. Work-Mac network blocks the Supabase pooler port, so this has to come from the home WiFi. Without it, the API write to `demographicsUpdates.lifeStages` will throw a Prisma "unknown field" error and the onboarding step-3 POST will 500. The app does not need a redeploy after the push — Prisma schema is loaded fresh per request.
+- [ ] **Jimmy:** ship a fresh mobile bundle (OTA `eas update --channel production`) so existing TestFlight Build 20/21 testers get the new onboarding copy + multi-select chips. New users from a fresh install will pick this up automatically once Build 22+ ships.
+
+### Notes
+- **Why keep the legacy `lifeStage` column:** dropping it would lose data on every existing demographics row. The user-facing surface only writes `lifeStages` going forward; `lifeStage` is now write-shadowed but still readable. Future cleanup is a one-line `ALTER TABLE ... DROP COLUMN` once we're confident no analytics queries hit the old column (low-risk: nothing in the codebase reads it today besides the API that I just amended).
+- **Why "Prefer not to say" is mutually exclusive:** without the carve-out, a user could pick `["Parent", "Prefer not to say"]` which is incoherent. The toggle helper enforces the rule in JS rather than at the schema layer because the rule is a UX choice, not a data integrity one — if we later decide multi-select with "Prefer not to say" alongside is fine, only the helper changes.
+- **Why force dark mode at the shell level instead of removing all `dark:` variants from the step components:** scope. There are 10 mobile steps and 9 web steps, each carrying ~20-50 dark-variant utility classes. Touching every file to hardcode the dark color would be a bigger blast radius than the user reported issue calls for. The shell-level override flips one switch and the rest of the existing styling pipeline does the right thing. Restoration on unmount means if a user ever re-enters onboarding (via the Skip-recovery path or schema re-run), their preference is still respected outside of the flow.
+- **One-frame flash on mobile:** `useEffect` runs after first render, so a user with a light-mode device technically sees one frame of `bg-white` if NativeWind hasn't already resolved `dark`. Hardcoding the SafeAreaView's bg to `#0B0B12` makes that frame look correct from a paint-budget standpoint; the inner step-component classes (`text-zinc-900 dark:text-zinc-50` etc.) flip on the next render. Acceptable trade-off vs. touching every step file.
+- **Did NOT touch the extraction / insights pipelines:** I grepped for `lifeStage` consumers across `apps/` and `packages/` — the only reads are the onboarding update API I just modified. No Claude prompt, no weekly report, no Life Audit, no insight cron currently pulls life-stage data. Safe to ship without coordinating downstream.
+
+---
+
 ## [2026-04-24] — Hotfix: Entry Detail screen crashing every TestFlight tap
 
 **Requested by:** Jimmy

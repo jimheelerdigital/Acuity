@@ -800,9 +800,17 @@ model UserDemographics {
   // of motivations to a catch-all bucket. Null when Other wasn't
   // picked or the user declined to elaborate.
   primaryReasonsCustom String?
-  // One of "Student" | "Early career" | "Established career" | "Parent"
-  // | "Retired" | "In transition" | "Prefer not to say"
+  // DEPRECATED single-select column. Kept so existing rows aren't lost
+  // (a `prisma db push` without it would drop the column data). Read
+  // path falls back to this when `lifeStages` is empty. New writes go
+  // to `lifeStages` only.
   lifeStage      String?
+  // Multi-select (2026-04-24). Any of "Student" | "Early career" |
+  // "Established career" | "Parent" | "Retired" | "In transition" |
+  // "Prefer not to say". Replaces the single-select `lifeStage` —
+  // users routinely fit multiple roles (e.g. "Parent" + "Established
+  // career"), so the original radio-button UX undercounted.
+  lifeStages     String[] @default([])
   // Freeform elaboration for lifeStage = "Other" or "In transition" —
   // both imply context the preset options don't carry (layoff?
   // caregiving? sabbatical? career change?). Null otherwise.

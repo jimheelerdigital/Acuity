@@ -105,8 +105,10 @@ export function Step5Practice() {
         Practice round
       </Text>
       <Text className="mt-3 text-base leading-relaxed text-zinc-600 dark:text-zinc-300">
-        Thirty seconds. Nothing you say here is saved — it&rsquo;s just
-        to get comfortable with the tap-to-record rhythm.
+        Tap the mic and tell us about your day — what&rsquo;s on your
+        mind, what went well, what didn&rsquo;t. Thirty seconds.
+        Nothing you say here is saved — it&rsquo;s just to get
+        comfortable with the tap-to-record rhythm.
       </Text>
 
       <View className="mt-12 items-center">
@@ -142,9 +144,9 @@ export function Step5Practice() {
           {String(elapsed % 60).padStart(2, "0")}
         </Text>
         <Text className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-          {phase === "idle" && "Tap to start"}
+          {phase === "idle" && "Tap and start talking"}
           {phase === "recording" &&
-            `${MAX_SECONDS - elapsed}s left · tap to stop`}
+            `Listening… ${MAX_SECONDS - elapsed}s left · tap to stop`}
           {phase === "recorded" && "Nice — you're ready."}
         </Text>
       </View>

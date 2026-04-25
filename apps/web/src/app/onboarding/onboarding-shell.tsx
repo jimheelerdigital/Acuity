@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useTheme } from "next-themes";
 import {
   useCallback,
   useEffect,
@@ -66,6 +67,21 @@ export function OnboardingShell({
   const [canContinue, setCanContinue] = useState(true);
   const [showSkipModal, setShowSkipModal] = useState(false);
   const capturedRef = useRef<Record<string, unknown> | null>(null);
+
+  // Force dark mode for the entire onboarding flow regardless of the
+  // user's preference. Brand identity is dark-first; the light-mode
+  // styling here is half-baked and not worth fixing for a one-shot
+  // surface. Restore their preference on unmount.
+  const { theme, setTheme } = useTheme();
+  useEffect(() => {
+    const previous = theme;
+    setTheme("dark");
+    return () => {
+      if (previous && previous !== "dark") setTheme(previous);
+    };
+    // Only run on mount/unmount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Fire onboarding_started exactly once on first mount of step 1.
   // Re-mounts within the same step shouldn't re-fire; crossing into
@@ -180,7 +196,7 @@ export function OnboardingShell({
 
   return (
     <OnboardingContext.Provider value={contextValue}>
-      <div className="min-h-screen bg-[#FAFAF7]">
+      <div className="min-h-screen bg-[#0B0B12]">
         {/* Top row — progress + skip-all */}
         <header className="mx-auto flex max-w-lg items-center justify-between px-6 pt-8 sm:pt-10">
           <div className="flex items-center gap-3">

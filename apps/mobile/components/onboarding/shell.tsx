@@ -1,6 +1,8 @@
 import { useRouter } from "expo-router";
+import { useColorScheme } from "nativewind";
 import {
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -58,6 +60,23 @@ export function OnboardingShell({
   const [canContinue, setCanContinue] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const capturedRef = useRef<Record<string, unknown> | null>(null);
+
+  // Force dark mode for the entire onboarding flow regardless of the
+  // user's preference. Brand identity is dark-first; light-mode polish
+  // for onboarding isn't worth the maintenance cost since the user only
+  // sees this surface once. Restore their previous preference on
+  // unmount so the rest of the app still honors their choice.
+  const { colorScheme, setColorScheme } = useColorScheme();
+  useEffect(() => {
+    const previous = colorScheme;
+    setColorScheme("dark");
+    return () => {
+      if (previous && previous !== "dark") setColorScheme(previous);
+    };
+    // Only run on mount/unmount — re-running on `colorScheme` changes
+    // would fight the very override we just installed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const setCapturedData = useCallback(
     (data: Record<string, unknown> | null) => {
@@ -169,7 +188,7 @@ export function OnboardingShell({
     <OnboardingContext.Provider value={contextValue}>
       <SafeAreaView
         edges={["top", "bottom"]}
-        className="flex-1 bg-white dark:bg-[#0B0B12]"
+        className="flex-1 bg-[#0B0B12]"
       >
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : undefined}

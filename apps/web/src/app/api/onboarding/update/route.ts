@@ -155,6 +155,11 @@ export async function POST(req: NextRequest) {
   } else if (raw.lifeStage === null) {
     demographicsUpdates.lifeStage = null;
   }
+  if (Array.isArray(raw.lifeStages)) {
+    demographicsUpdates.lifeStages = raw.lifeStages
+      .filter((x): x is string => typeof x === "string" && VALID_LIFE_STAGES.includes(x))
+      .slice(0, VALID_LIFE_STAGES.length);
+  }
   if (typeof raw.lifeStageCustom === "string") {
     const trimmed = raw.lifeStageCustom.trim().slice(0, 200);
     demographicsUpdates.lifeStageCustom = trimmed.length > 0 ? trimmed : null;

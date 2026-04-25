@@ -92,7 +92,7 @@ export function Step8FirstEntryCta() {
           className="flex items-center justify-center gap-3 rounded-full bg-[#7C5CFC] px-7 py-4 text-base font-semibold text-white shadow-md transition hover:bg-[#6B4FE0] hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-60"
         >
           <MicIcon />
-          {isSubmitting ? "Taking you in…" : "Record your first entry"}
+          {isSubmitting ? "Listening…" : "Record your first entry"}
         </button>
         <button
           onClick={() => complete(false)}

@@ -96,12 +96,12 @@ export function Step3Demographics() {
   const [country, setCountry] = useState<string | null>(() => detectRegion());
   const [primaryReasons, setPrimaryReasons] = useState<string[]>([]);
   const [primaryReasonsCustom, setPrimaryReasonsCustom] = useState("");
-  const [lifeStage, setLifeStage] = useState<string | null>(null);
+  const [lifeStages, setLifeStages] = useState<string[]>([]);
   const [lifeStageCustom, setLifeStageCustom] = useState("");
   const [countryPickerOpen, setCountryPickerOpen] = useState(false);
 
   const showReasonsCustom = primaryReasons.includes("Other");
-  const showLifeStageCustom = lifeStage === "In transition";
+  const showLifeStageCustom = lifeStages.includes("In transition");
 
   useEffect(() => {
     setCanContinue(true);
@@ -113,7 +113,7 @@ export function Step3Demographics() {
       primaryReasonsCustom: showReasonsCustom
         ? primaryReasonsCustom.trim() || null
         : null,
-      lifeStage,
+      lifeStages,
       lifeStageCustom: showLifeStageCustom
         ? lifeStageCustom.trim() || null
         : null,
@@ -124,7 +124,7 @@ export function Step3Demographics() {
     country,
     primaryReasons,
     primaryReasonsCustom,
-    lifeStage,
+    lifeStages,
     lifeStageCustom,
     showReasonsCustom,
     showLifeStageCustom,
@@ -136,6 +136,19 @@ export function Step3Demographics() {
     setPrimaryReasons((prev) =>
       prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r]
     );
+
+  const toggleLifeStage = (s: string) =>
+    setLifeStages((prev) => {
+      // "Prefer not to say" is mutually exclusive with the others —
+      // tapping it clears the rest, and tapping anything else clears it.
+      if (s === "Prefer not to say") {
+        return prev.includes(s) ? [] : [s];
+      }
+      const without = prev.filter((x) => x !== "Prefer not to say");
+      return without.includes(s)
+        ? without.filter((x) => x !== s)
+        : [...without, s];
+    });
 
   const selectedCountryName =
     COUNTRIES.find((c) => c.code === country)?.name ?? "Prefer not to say";
@@ -240,12 +253,12 @@ export function Step3Demographics() {
       )}
 
       {/* Life stage */}
-      <Section label="Life stage">
+      <Section label="Life stage" sub="Pick any that fit.">
         {LIFE_STAGES.map((s) => (
           <Chip
             key={s}
-            active={lifeStage === s}
-            onPress={() => setLifeStage(lifeStage === s ? null : s)}
+            active={lifeStages.includes(s)}
+            onPress={() => toggleLifeStage(s)}
             label={s}
           />
         ))}

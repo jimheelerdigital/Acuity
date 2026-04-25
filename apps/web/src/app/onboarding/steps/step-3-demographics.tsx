@@ -82,7 +82,7 @@ export function Step3Demographics() {
   const [country, setCountry] = useState<string | null>(null);
   const [primaryReasons, setPrimaryReasons] = useState<string[]>([]);
   const [primaryReasonsCustom, setPrimaryReasonsCustom] = useState("");
-  const [lifeStage, setLifeStage] = useState<string | null>(null);
+  const [lifeStages, setLifeStages] = useState<string[]>([]);
   const [lifeStageCustom, setLifeStageCustom] = useState("");
 
   // Seed country from the browser's locale once on mount.
@@ -95,7 +95,7 @@ export function Step3Demographics() {
   // "In transition" is the only life-stage chip that implies
   // elaboration. "Prefer not to say" deliberately doesn't trigger a
   // text input — the whole point of that option is to opt out.
-  const showLifeStageCustom = lifeStage === "In transition";
+  const showLifeStageCustom = lifeStages.includes("In transition");
 
   useEffect(() => {
     // Every field is optional — step is always continuable.
@@ -111,7 +111,7 @@ export function Step3Demographics() {
       primaryReasonsCustom: showReasonsCustom
         ? primaryReasonsCustom.trim() || null
         : null,
-      lifeStage,
+      lifeStages,
       lifeStageCustom: showLifeStageCustom
         ? lifeStageCustom.trim() || null
         : null,
@@ -122,7 +122,7 @@ export function Step3Demographics() {
     country,
     primaryReasons,
     primaryReasonsCustom,
-    lifeStage,
+    lifeStages,
     lifeStageCustom,
     showReasonsCustom,
     showLifeStageCustom,
@@ -134,6 +134,20 @@ export function Step3Demographics() {
     setPrimaryReasons((prev) =>
       prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r]
     );
+  };
+
+  const toggleLifeStage = (s: string) => {
+    setLifeStages((prev) => {
+      // "Prefer not to say" is mutually exclusive — tapping it clears
+      // the others, and tapping anything else clears it.
+      if (s === "Prefer not to say") {
+        return prev.includes(s) ? [] : [s];
+      }
+      const without = prev.filter((x) => x !== "Prefer not to say");
+      return without.includes(s)
+        ? without.filter((x) => x !== s)
+        : [...without, s];
+    });
   };
 
   return (
@@ -235,15 +249,18 @@ export function Step3Demographics() {
 
       {/* Life stage */}
       <section className="mt-6">
-        <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-100 mb-3">
+        <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-100 mb-1">
           Life stage
+        </p>
+        <p className="text-xs text-zinc-400 dark:text-zinc-500 mb-3">
+          Pick any that fit.
         </p>
         <div className="flex flex-wrap gap-2">
           {LIFE_STAGES.map((s) => (
             <Chip
               key={s}
-              active={lifeStage === s}
-              onClick={() => setLifeStage(lifeStage === s ? null : s)}
+              active={lifeStages.includes(s)}
+              onClick={() => toggleLifeStage(s)}
             >
               {s}
             </Chip>
