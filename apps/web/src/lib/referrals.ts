@@ -9,18 +9,32 @@
  * where it plugs in.
  */
 
+import { randomBytes } from "node:crypto";
+
 import type { PrismaClient } from "@prisma/client";
 
 /**
  * Generate a human-friendly referral code. 8 chars, uppercase,
  * unambiguous alphabet (no 0/O/I/1). Short enough to say out loud,
  * long enough that collisions are vanishingly rare at beta scale.
+ *
+ * Uses node:crypto's CSPRNG (not Math.random) — Math.random is
+ * deterministic per V8 session and an attacker on the same Node
+ * process could enumerate codes by predicting the sequence. With a
+ * 32-symbol alphabet × 8 chars (~10^12 codespace) and a CSPRNG, codes
+ * are unguessable from outside the process and collision-resistant
+ * across instances.
  */
 export function generateReferralCode(): string {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  // Reject-sample to avoid modulo bias: 256 mod 32 = 0, so each
+  // alphabet slot maps to exactly 8 byte values cleanly. 256 / 32 = 8;
+  // any byte 0..255 modulo 32 lands evenly. Pull 8 bytes, take low 5
+  // bits each.
+  const bytes = randomBytes(8);
   let out = "";
   for (let i = 0; i < 8; i++) {
-    out += alphabet[Math.floor(Math.random() * alphabet.length)];
+    out += alphabet[bytes[i] & 0x1f];
   }
   return out;
 }

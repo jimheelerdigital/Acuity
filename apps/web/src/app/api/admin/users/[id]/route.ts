@@ -120,7 +120,8 @@ export async function DELETE(
   }
 
   try {
-    const normalizedEmail = target.email.toLowerCase().trim();
+    const { canonicalizeEmail } = await import("@/lib/bootstrap-user");
+    const normalizedEmail = canonicalizeEmail(target.email);
     await prisma.$transaction(async (tx) => {
       await tx.deletedUser.upsert({
         where: { email: normalizedEmail },
