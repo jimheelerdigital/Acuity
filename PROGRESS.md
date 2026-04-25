@@ -11,7 +11,7 @@
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** TBD
+**Commit hash:** 45a7145
 
 ### In plain English (for Keenan)
 The Theme Map page (the screen that shows what topics keep coming up in your recordings) has been rebuilt from scratch. The old version showed a constellation of themed orbs floating around — pretty in concept, but the data was hard to read at a glance and the metaphor didn't match the tone of the rest of the app. The new version is a serious, modern data dashboard inspired by reference designs Jimmy shared (deep navy, glowing gradients, smooth curves, polished tiles). On one screen the user now sees: (1) a giant gradient ring with their #1 theme's count in the middle and a sentence explaining what stood out and why; (2) a smooth wave chart showing how their top 3 themes have moved over the last 30 days, with a callout dot pinned on the peak day; (3) a tile grid for themes 1-6 with each tile showing the count, a sentiment-colored mini sparkline, and a one-word trend label like "Trending up" or "Steady"; (4) a frequency-spectrum bar chart of the long-tail themes (the ones with only a couple mentions) so they're still discoverable but quiet. Color encodes mood — warm coral/amber for positive themes, purple/blue for neutral, pink/rose for challenging — so the user can scan their emotional terrain in one look. Everything is dark, soft, and atmospheric, with a faint radial glow at the top in the color of the user's top theme. The same artifact ships on web and mobile, scaled to fit each.
