@@ -18,7 +18,14 @@ export const EMBEDDING_DIMS = 1536;
 let cachedClient: OpenAI | null = null;
 function openai(): OpenAI {
   if (!cachedClient) {
-    cachedClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    // 30s per-call timeout. SDK default (600s) would let a stuck
+    // upstream tie up the Vercel function for 10 min — embeddings
+    // are called inline on /api/insights/ask, so a hang would block
+    // the user too. 30s is well above p99 for text-embedding-3-small.
+    cachedClient = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+      timeout: 30_000,
+    });
   }
   return cachedClient;
 }
