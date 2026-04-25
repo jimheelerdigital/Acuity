@@ -7,6 +7,41 @@
 
 ---
 
+## [2026-04-25] — Theme Map: surgical value markup pass (exact numbers, no interpretation)
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** 0b541c9
+
+### In plain English (for Keenan)
+After 6 vague iterations of "make it match the references," Jimmy switched the workflow: I surfaced an inventory of every single visual value on the Theme Map page (every font size, stroke width, gradient stop, glow blur, opacity, shadow), and Jimmy marked up a precise list of numerical changes against that inventory. This commit applies ONLY the exact values Jimmy specified — no creative reinterpretation, no "while I'm here" tweaks, no extra polish. Both platforms in lockstep. The result is bigger hero numbers, fatter glowing strokes, stronger wave fills, more visible glow halos, taller frequency bars, brighter atmospheric backdrop. The page should now read substantially closer to the dark-navy fitness/finance dashboard references that have been the visual target across every iteration.
+
+### Technical changes (for Jimmy)
+The full markup spec is in the commit body — abbreviated here. Web file: `apps/web/src/components/theme-map/ThemeMapDashboard.tsx`. Mobile file: `apps/mobile/components/theme-map/ThemeMapDashboard.tsx`.
+
+- **Section 1 page bg gradient:** `#1A1530 0% → #0E0E1C 40% → #08080F 100%` (was darker uniform navy).
+- **Section 2 atmosphere glow #1:** web 820→1100px, blur 50→80px, stops 3a/24/10 → 66/3a/1a; mobile stops 0.32/0.16/0.05 → 0.50/0.28/0.10. Glow #2 `${to}26→40`. Glow #3 `${from}14→28`.
+- **Section 3 hero ring:** track + arc strokeWidth 11→14 web / 9→12 mobile; glow stdDev 3→8 web / 2.6→6 mobile; inner radial fill 0.18→0.35 / 0.22→0.40; outer halo blur 22→40px web; tick markers 0.07→0.12 alpha.
+- **Section 4 hero number:** 78→96pt web / 56→72pt mobile; letter-spacing -3→-4 / -2→-3; web text-shadow stacked (`0 0 36px ${glow}, 0 0 12px ${from}`); mobile textShadowRadius 18→28; pulse 0.985↔1.018 → 0.97↔1.035 (mobile shared-value init also dropped to 0.97 so amplitude matches).
+- **Section 5 wave strokes:** top stroke 3.2→5 web / 3.0→4.5 mobile; secondary 2.4→3.5; opacity 0.78→0.85; glow stdDev 2.4→5.5 web / 2.2→5 mobile.
+- **Section 6 wave fills:** 2-stop → 3-stop: `0.55 @ 0% / 0.25 @ 30% / 0 @ 100%` (was flat 0.34 → 0).
+- **Section 7 peak callout:** pill fill `${from}28→55`; pill stroke opacity 0.7→1.0; halo dot opacity 0.22→0.35; inner dot r 5.5→7 web / 5→6 mobile.
+- **Section 8 tile cards:** border `${from}40→66`; outer drop shadow blur 50→80px web; decorative glow `${from}40→60`, blur 10→24px web; count 44→56pt web / 36→44pt mobile; count text-shadow stacked; sparkline strokeWidth 2.2→2.8; sparkline glow stdDev 1.4→3; sparkline fill top opacity 0.5→0.65.
+- **Section 9 frequency spectrum:** bar height formula `16 + r*72 → 20 + r*96` web / `16 + r*64 → 20 + r*84` mobile; last gradient stop `${to}66 → ${to}aa` (mobile stopOpacity 0.45→0.67); outer shadow blur 24→32px web.
+
+### Manual steps needed
+- [ ] **Jimmy:** Visual verification on web at https://getacuity.io/insights/theme-map after deploy. I cannot screenshot the auth-gated route from this CLI; verify on Vercel preview with a 10+-entry account.
+- [ ] **Jimmy:** EAS OTA `cd apps/mobile && eas update --channel production --message "style(theme-map): surgical value markup"` so existing testers get the mobile changes.
+- [ ] **None for Keenan.**
+
+### Notes
+- **Why the workflow shift worked:** the prior 6 iterations were vague directives ("more glow", "make it luminous", "match the references"). Each iteration introduced new interpretation drift. The inventory + markup pattern collapses the interpretation gap: I surfaced every value, Jimmy marked specific deltas, I applied only those. Single source of truth for what changed and why.
+- **Why mobile pulse shared-value init dropped to 0.97:** the user's spec said `0.97 ↔ 1.035` for both platforms. Web's CSS keyframes encode the range explicitly. Reanimated's `withRepeat(withTiming(target), -1, true)` reverses between the SharedValue's current value and the target; to get a 0.97 ↔ 1.035 amplitude (rather than the previous 1 ↔ 1.025) I had to set `useSharedValue(0.97)` so the reverse-loop bounces between 0.97 and 1.035. Strict literal interpretation of the spec.
+- **Why mobile freq spectrum stopOpacity 0.67 maps to web's `${to}aa`:** hex alpha `aa` = 170 / 255 = 0.667. RN-svg's `stopOpacity` takes a 0..1 number; web's CSS gradient uses 8-digit hex. Same value, different syntax.
+- **Cost: zero new dependencies, zero schema changes, zero build config changes.** Pure number diff.
+
+---
+
 ## [2026-04-25] — Theme Map: back-arrow fix + low-data wave + reference-fidelity execution pass
 
 **Requested by:** Jimmy
