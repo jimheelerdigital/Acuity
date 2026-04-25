@@ -23,8 +23,21 @@ import {
 import { extensionForMimeType } from "./audio";
 import { LIFE_AREA_EXTRACTION_SCHEMA } from "./prompts/lifemap";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+// 30s per-call timeout. SDK default is 600s (10 min); a stuck
+// upstream would otherwise tie up the Vercel function for the full
+// duration, burning $$ on Active CPU and blocking Inngest's retry
+// budget. 30s is well above p99 latency for either Whisper or Claude
+// at our prompt sizes, so legitimate calls aren't truncated. Both
+// SDKs throw an APITimeoutError on hit, which Inngest will retry.
+const SDK_TIMEOUT_MS = 30_000;
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+  timeout: SDK_TIMEOUT_MS,
+});
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+  timeout: SDK_TIMEOUT_MS,
+});
 
 const STORAGE_BUCKET = "voice-entries";
 
