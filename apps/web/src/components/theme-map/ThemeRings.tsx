@@ -218,7 +218,7 @@ export function ThemeRings({
             <text
               x={20}
               y={36}
-              fontSize={11}
+              fontSize={13}
               fontWeight={500}
               letterSpacing={1.8}
               fill="#22D3EE"
@@ -240,7 +240,7 @@ export function ThemeRings({
             <text
               x={302}
               y={46}
-              fontSize={11}
+              fontSize={13}
               fontWeight={500}
               letterSpacing={1.8}
               fill="#A78BFA"
@@ -257,8 +257,8 @@ export function ThemeRings({
         >
           <span
             style={{
-              fontSize: 11,
-              letterSpacing: 1.8,
+              fontSize: 13,
+              letterSpacing: 2,
               fontWeight: 500,
               color: "#FCA85A",
               textTransform: "uppercase",
@@ -268,10 +268,10 @@ export function ThemeRings({
           </span>
           <span
             style={{
-              fontSize: 56,
+              fontSize: 64,
               fontWeight: 500,
               color: "#FAFAFA",
-              letterSpacing: -2,
+              letterSpacing: -1,
               lineHeight: 1,
               marginTop: 4,
               textShadow: "0 0 24px rgba(251,146,60,0.6)",
@@ -282,9 +282,9 @@ export function ThemeRings({
           </span>
           <span
             style={{
-              fontSize: 12,
+              fontSize: 14,
               marginTop: 6,
-              color: "rgba(168,168,180,0.8)",
+              color: "rgba(168,168,180,0.85)",
             }}
           >
             mentions so far
@@ -327,7 +327,7 @@ function NarrativeColumn({
       <p
         className="uppercase"
         style={{
-          fontSize: 12,
+          fontSize: 14,
           letterSpacing: 2,
           fontWeight: 700,
           color: "#FCA85A",
@@ -338,10 +338,10 @@ function NarrativeColumn({
       <h2
         className="mt-2"
         style={{
-          fontSize: 24,
+          fontSize: 28,
           fontWeight: 500,
           letterSpacing: -0.3,
-          lineHeight: 1.3,
+          lineHeight: 1.25,
           color: "#FAFAFA",
         }}
       >
@@ -384,8 +384,8 @@ function PeriodStat({
         />
         <span
           style={{
-            fontSize: 12,
-            letterSpacing: 1.6,
+            fontSize: 14,
+            letterSpacing: 1.8,
             fontWeight: 700,
             color: "rgba(168,168,180,0.7)",
           }}
@@ -396,9 +396,9 @@ function PeriodStat({
       <div
         style={{
           marginTop: 6,
-          fontSize: 28,
+          fontSize: 36,
           fontWeight: 500,
-          letterSpacing: -0.5,
+          letterSpacing: -1,
           color: "#FAFAFA",
           fontVariantNumeric: "tabular-nums",
         }}

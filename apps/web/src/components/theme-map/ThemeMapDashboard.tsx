@@ -171,7 +171,7 @@ export function ThemeMapDashboard({
 
 function SectionLabel({ label, dot }: { label: string; dot: string }) {
   return (
-    <div className="flex items-center gap-2" style={{ marginBottom: 16 }}>
+    <div className="flex items-center gap-2" style={{ marginBottom: 20 }}>
       <span
         aria-hidden
         style={{
@@ -184,8 +184,8 @@ function SectionLabel({ label, dot }: { label: string; dot: string }) {
       />
       <span
         style={{
-          fontSize: 12,
-          letterSpacing: 2,
+          fontSize: 14,
+          letterSpacing: 2.2,
           fontWeight: 500,
           color: "rgba(168,168,180,0.65)",
           textTransform: "uppercase",

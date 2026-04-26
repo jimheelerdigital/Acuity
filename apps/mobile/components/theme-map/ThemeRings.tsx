@@ -212,7 +212,7 @@ export function ThemeRings({
             <SvgText
               x={14}
               y={28}
-              fontSize={11}
+              fontSize={13}
               fontWeight="500"
               fill="#22D3EE"
               letterSpacing={1.8}
@@ -231,7 +231,7 @@ export function ThemeRings({
             <SvgText
               x={252}
               y={36}
-              fontSize={11}
+              fontSize={13}
               fontWeight="500"
               fill="#A78BFA"
               letterSpacing={1.8}
@@ -253,8 +253,8 @@ export function ThemeRings({
           >
             <Text
               style={{
-                fontSize: 11,
-                letterSpacing: 1.8,
+                fontSize: 13,
+                letterSpacing: 2,
                 fontWeight: "500",
                 color: "#FCA85A",
                 textTransform: "uppercase",
@@ -264,10 +264,10 @@ export function ThemeRings({
             </Text>
             <Text
               style={{
-                fontSize: 48,
+                fontSize: 56,
                 fontWeight: "500",
                 color: "#FAFAFA",
-                letterSpacing: -1.5,
+                letterSpacing: -1,
                 marginTop: 4,
                 textShadowColor: "rgba(251,146,60,0.6)",
                 textShadowRadius: 18,
@@ -277,9 +277,9 @@ export function ThemeRings({
             </Text>
             <Text
               style={{
-                fontSize: 12,
+                fontSize: 14,
                 marginTop: 4,
-                color: "rgba(168,168,180,0.8)",
+                color: "rgba(168,168,180,0.85)",
               }}
             >
               mentions so far
@@ -311,7 +311,7 @@ function NarrativeBlock({
     <View style={{ borderTopWidth: 0.5, borderTopColor: "rgba(255,255,255,0.06)", paddingTop: 14 }}>
       <Text
         style={{
-          fontSize: 12,
+          fontSize: 14,
           letterSpacing: 2,
           fontWeight: "700",
           color: "#FCA85A",
@@ -323,11 +323,11 @@ function NarrativeBlock({
       <Text
         style={{
           marginTop: 6,
-          fontSize: 20,
+          fontSize: 24,
           fontWeight: "500",
           letterSpacing: -0.3,
           color: TEXT.primary,
-          lineHeight: 26,
+          lineHeight: 30,
         }}
       >
         <Text style={{ fontWeight: "600" }}>{capitalize(topThemeName)}</Text>{" "}
@@ -366,8 +366,8 @@ function PeriodStat({ label, count, dot }: { label: string; count: number; dot: 
         />
         <Text
           style={{
-            fontSize: 12,
-            letterSpacing: 1.6,
+            fontSize: 14,
+            letterSpacing: 1.8,
             fontWeight: "700",
             color: "rgba(168,168,180,0.7)",
           }}
@@ -378,9 +378,9 @@ function PeriodStat({ label, count, dot }: { label: string; count: number; dot: 
       <Text
         style={{
           marginTop: 4,
-          fontSize: 28,
+          fontSize: 36,
           fontWeight: "500",
-          letterSpacing: -0.5,
+          letterSpacing: -1,
           color: TEXT.primary,
         }}
       >

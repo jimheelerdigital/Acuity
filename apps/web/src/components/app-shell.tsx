@@ -82,7 +82,7 @@ function SidebarLink({ item, active }: { item: NavItem; active: boolean }) {
           ? "bg-zinc-100 text-zinc-900 dark:bg-white/10 dark:text-zinc-50"
           : "text-zinc-600 hover:bg-zinc-100/70 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-white/5 dark:hover:text-zinc-100"
       }`}
-      style={{ paddingTop: 11, paddingBottom: 11, fontSize: 15, fontWeight: 500 }}
+      style={{ paddingTop: 14, paddingBottom: 14, fontSize: 17, fontWeight: 500 }}
       aria-current={active ? "page" : undefined}
     >
       {active && (
@@ -92,7 +92,7 @@ function SidebarLink({ item, active }: { item: NavItem; active: boolean }) {
         />
       )}
       <Icon
-        className={`h-[18px] w-[18px] shrink-0 ${
+        className={`h-[22px] w-[22px] shrink-0 ${
           active
             ? "text-violet-600 dark:text-violet-400"
             : "text-zinc-400 group-hover:text-zinc-600 dark:text-zinc-500 dark:group-hover:text-zinc-300"
@@ -114,7 +114,7 @@ function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-40 hidden w-[248px] flex-col border-r border-zinc-200 bg-[#FAFAF7] dark:border-white/10 dark:bg-[#0B0B12] lg:flex">
+    <aside className="fixed inset-y-0 left-0 z-40 hidden w-[272px] flex-col border-r border-zinc-200 bg-[#FAFAF7] dark:border-white/10 dark:bg-[#0B0B12] lg:flex">
       {/* Logo — h-[68px] matches the top bar (DesktopTopbar) so the
           sidebar header and the top bar appear as one continuous
           horizontal edge across the viewport. If you change one of
@@ -125,9 +125,12 @@ function Sidebar() {
             src="/AcuityLogoDark.png"
             alt=""
             className="shrink-0"
-            style={{ width: 24, height: 24 }}
+            style={{ width: 28, height: 28 }}
           />
-          <span className="text-base font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+          <span
+            className="font-semibold tracking-tight text-zinc-900 dark:text-zinc-50"
+            style={{ fontSize: 20 }}
+          >
             Acuity
           </span>
         </Link>
@@ -138,25 +141,26 @@ function Sidebar() {
         <Link
           href="/home#record"
           className="flex w-full items-center justify-center gap-2 rounded-lg bg-violet-600 px-3 text-white shadow-[0_4px_14px_rgba(124,58,237,0.35)] transition hover:bg-violet-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#FAFAF7] dark:focus-visible:ring-offset-[#0B0B12]"
-          style={{ paddingTop: 14, paddingBottom: 14, fontSize: 15, fontWeight: 500 }}
+          style={{ paddingTop: 16, paddingBottom: 16, fontSize: 17, fontWeight: 500 }}
         >
-          <Mic className="h-[18px] w-[18px]" aria-hidden />
+          <Mic className="h-[22px] w-[22px]" aria-hidden />
           Record
         </Link>
       </div>
 
       {/* Nav sections */}
       <nav className="flex-1 overflow-y-auto px-3 py-5">
-        <div className="space-y-6">
+        <div className="space-y-8">
           {SECTIONS.map((section) => (
             <div key={section.heading}>
               <p
-                className="mb-2 px-3 uppercase text-zinc-400 dark:text-zinc-500"
+                className="px-3 uppercase text-zinc-400 dark:text-zinc-500"
                 style={{
-                  fontSize: 11,
+                  fontSize: 13,
                   letterSpacing: "1.6px",
                   fontWeight: 600,
-                  opacity: 0.6,
+                  opacity: 0.7,
+                  marginBottom: 12,
                 }}
               >
                 {section.heading}
@@ -226,7 +230,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <>
       <Sidebar />
-      <div className="lg:pl-[248px]">
+      <div className="lg:pl-[272px]">
         <DesktopTopbar />
         <div className="lg:mx-auto lg:w-full lg:max-w-[1600px] lg:px-8 lg:py-6 xl:px-10">
           {children}

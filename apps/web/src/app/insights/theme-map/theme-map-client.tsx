@@ -172,11 +172,11 @@ export function ThemeMapClient() {
 
 function Header() {
   return (
-    <div style={{ marginBottom: 32 }}>
+    <div style={{ marginBottom: 36 }}>
       <p
         style={{
-          fontSize: 11,
-          letterSpacing: 2.5,
+          fontSize: 12,
+          letterSpacing: 2.8,
           fontWeight: 700,
           color: "#FCA85A",
           textTransform: "uppercase",
@@ -188,7 +188,7 @@ function Header() {
       <h1
         className="text-zinc-900 dark:text-zinc-50"
         style={{
-          fontSize: 28,
+          fontSize: 32,
           fontWeight: 500,
           letterSpacing: "-0.4px",
           lineHeight: 1.15,
@@ -199,7 +199,7 @@ function Header() {
       </h1>
       <p
         style={{
-          fontSize: 16,
+          fontSize: 18,
           color: "rgba(168,168,180,0.75)",
         }}
       >

@@ -174,8 +174,8 @@ function SectionLabel({ label }: { label: string }) {
       />
       <Text
         style={{
-          fontSize: 12,
-          letterSpacing: 2,
+          fontSize: 14,
+          letterSpacing: 2.2,
           fontWeight: "500",
           color: "rgba(168,168,180,0.65)",
           textTransform: "uppercase",

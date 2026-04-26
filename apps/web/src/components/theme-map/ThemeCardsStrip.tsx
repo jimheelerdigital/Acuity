@@ -61,7 +61,7 @@ function Card({
       className="group shrink-0 cursor-pointer rounded-xl text-left transition hover:-translate-y-0.5"
       style={{
         width: "min(220px, 80vw)",
-        padding: 18,
+        padding: 22,
         background: `linear-gradient(180deg, ${c.solid}14 0%, ${c.solid}05 100%)`,
         border: `0.5px solid ${c.solid}66`,
         boxShadow: `0 18px 50px -28px ${c.solid}90`,
@@ -72,21 +72,21 @@ function Card({
         className="truncate"
         style={{
           marginTop: 12,
-          marginBottom: 8,
-          fontSize: 15,
+          marginBottom: 10,
+          fontSize: 17,
           fontWeight: 500,
           color: "#FAFAFA",
           letterSpacing: -0.1,
-          lineHeight: 1.3,
+          lineHeight: 1.25,
         }}
       >
         {capitalize(theme.name)}
       </div>
       <div
         style={{
-          fontSize: 32,
+          fontSize: 40,
           fontWeight: 500,
-          letterSpacing: -1,
+          letterSpacing: -1.5,
           color: "#FAFAFA",
           fontVariantNumeric: "tabular-nums",
           textShadow: `0 0 18px ${c.solid}60`,
@@ -98,7 +98,7 @@ function Card({
       <div
         style={{
           marginTop: 8,
-          fontSize: 12,
+          fontSize: 14,
           color: "rgba(168,168,180,0.7)",
         }}
       >
@@ -146,9 +146,9 @@ function TrendChip({
       style={{
         background: `${dotColor}1f`,
         border: `0.5px solid ${dotColor}55`,
-        fontSize: 10,
+        fontSize: 12,
         fontWeight: 700,
-        letterSpacing: 1.4,
+        letterSpacing: 1.6,
         color: dotColor,
       }}
     >

@@ -32,8 +32,8 @@ export type WaveTheme = {
 };
 
 const VB_W = 600;
-const VB_H = 72;
-const BASELINE_Y = 36;
+const VB_H = 120;
+const BASELINE_Y = 60;
 
 export function ThemeMoodWaveRow({
   rank,
@@ -61,7 +61,7 @@ export function ThemeMoodWaveRow({
     <Pressable
       onPress={onTap ? () => onTap(theme.id) : undefined}
       style={({ pressed }) => ({
-        paddingVertical: 18,
+        paddingVertical: 22,
         paddingHorizontal: 18,
         backgroundColor: pressed ? "rgba(255,255,255,0.03)" : "transparent",
         borderTopWidth: isFirst ? 0 : 0.5,
@@ -71,11 +71,11 @@ export function ThemeMoodWaveRow({
       <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
         <Text
           style={{
-            fontSize: 12,
+            fontSize: 14,
             fontWeight: "600",
-            color: "rgba(168,168,180,0.5)",
+            color: "rgba(168,168,180,0.55)",
             letterSpacing: 1,
-            width: 24,
+            width: 28,
           }}
         >
           {String(rank).padStart(2, "0")}
@@ -84,7 +84,7 @@ export function ThemeMoodWaveRow({
           numberOfLines={1}
           style={{
             flex: 1,
-            fontSize: 15,
+            fontSize: 17,
             fontWeight: "500",
             color: TEXT.primary,
             letterSpacing: -0.1,
@@ -95,9 +95,9 @@ export function ThemeMoodWaveRow({
         <View style={{ alignItems: "flex-end" }}>
           <Text
             style={{
-              fontSize: 22,
+              fontSize: 28,
               fontWeight: "500",
-              letterSpacing: -0.3,
+              letterSpacing: -0.5,
               color: TEXT.primary,
               textShadowColor: `${c.solid}66`,
               textShadowRadius: 10,
@@ -105,7 +105,7 @@ export function ThemeMoodWaveRow({
           >
             {theme.count}
           </Text>
-          <Text style={{ fontSize: 12, color: moodColor, marginTop: 2 }}>
+          <Text style={{ fontSize: 14, color: moodColor, marginTop: 2 }}>
             mood {theme.meanMood.toFixed(1)}
           </Text>
         </View>
@@ -135,7 +135,7 @@ export function ThemeMoodWaveRow({
       </View>
       <Text
         numberOfLines={1}
-        style={{ marginTop: 6, fontSize: 13, color: trendCaption.color }}
+        style={{ marginTop: 6, fontSize: 15, color: trendCaption.color }}
       >
         {trendCaption.text}
       </Text>
@@ -156,7 +156,7 @@ function WaveSVG({
   const id = `${category}-${entries.length}-${Math.random().toString(36).slice(2, 6)}`;
   const points = entries.map((e, i) => {
     const x = entries.length === 1 ? VB_W / 2 : (i / (entries.length - 1)) * VB_W;
-    const y = Math.max(5, Math.min(67, 36 - ((e.mood - 5) / 5) * 29));
+    const y = Math.max(8, Math.min(112, 60 - ((e.mood - 5) / 5) * 50));
     return { x, y, mood: e.mood };
   });
   if (points.length === 0) {
@@ -192,7 +192,7 @@ function WaveSVG({
           <Stop offset="100%" stopColor={c.solid} />
         </SvgLinearGradient>
         <Filter id={`glow-${id}`} x="-10%" y="-50%" width="120%" height="200%">
-          <FeGaussianBlur stdDeviation="4" />
+          <FeGaussianBlur stdDeviation="5" />
         </Filter>
       </Defs>
       <Line x1={0} y1={BASELINE_Y} x2={VB_W} y2={BASELINE_Y} stroke="rgba(255,255,255,0.06)" strokeWidth={0.5} />
@@ -255,11 +255,11 @@ function isFadedTheme(lastEntryAt: string): boolean {
 function pickTrendCaption(theme: WaveTheme): { text: string; color: string } {
   if (isFadedTheme(theme.lastEntryAt)) {
     const date = new Date(theme.lastEntryAt).toLocaleDateString("en-US", { month: "short", day: "numeric" });
-    return { text: `↓ fading · last seen ${date}`, color: "rgba(168,168,180,0.65)" };
+    return { text: `↓ fading · last seen ${date}`, color: "rgba(168,168,180,0.75)" };
   }
   const topCo = theme.coOccurrences[0];
   if (topCo && topCo.count > theme.count * 0.5) {
-    return { text: `paired with ${topCo.themeName}`, color: "rgba(168,168,180,0.65)" };
+    return { text: `paired with ${topCo.themeName}`, color: "rgba(168,168,180,0.75)" };
   }
   if (theme.entries.length >= 3) {
     if (theme.meanMood > 7.5) return { text: "consistently positive · highest mood", color: "#34D399" };
@@ -271,7 +271,7 @@ function pickTrendCaption(theme: WaveTheme): { text: string; color: string } {
   if (theme.trend.ratio !== null && theme.trend.ratio >= 1.5 && theme.trend.priorPeriodCount > 0) {
     return { text: `↑ ${Math.round(theme.trend.ratio)}× this week vs last`, color: "#FCA85A" };
   }
-  return { text: "balanced · reflective tone", color: "rgba(168,168,180,0.65)" };
+  return { text: "balanced · reflective tone", color: "rgba(168,168,180,0.75)" };
 }
 
 function colorForMean(mean: number): string {
