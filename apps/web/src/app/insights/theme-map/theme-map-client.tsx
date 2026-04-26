@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { StickyBackButton } from "@/components/back-button";
@@ -14,39 +13,55 @@ import {
   type TimeWindow,
 } from "@/components/theme-map/TimeChips";
 
-/**
- * Theme Map — dashboard composition. Hero ring + share-of-voice
- * narrative, gradient-stroked wave chart with peak callout, tile grid
- * with sparklines per theme, and a frequency spectrum bar chart for
- * the long tail. See ThemeMapDashboard.tsx for the per-layer rationale.
- */
-
+type CategoryToken = "activity" | "reflection" | "life" | "emotional";
 type SentimentBand = "positive" | "neutral" | "challenging";
 
-type Theme = {
+type ApiTheme = {
   id: string;
   name: string;
+  category: CategoryToken;
   mentionCount: number;
+  meanMood: number;
   avgSentiment: number;
   sentimentBand: SentimentBand;
   firstMentionedAt: string;
   lastMentionedAt: string;
+  lastEntryAt: string;
   firstMentionedDaysAgo: number;
   sparkline: number[];
   trendDescription: string;
+  trend: { priorPeriodCount: number; ratio: number | null };
+  entries: { id: string; timestamp: string; mood: number }[];
+  coOccurrences: { themeName: string; count: number }[];
+  recentEntries: {
+    id: string;
+    createdAt: string;
+    sentiment: "POSITIVE" | "NEGATIVE" | "NEUTRAL";
+    excerpt: string;
+  }[];
 };
 
 type ApiResponse = {
-  themes: Theme[];
+  themes: ApiTheme[];
   totalMentions: number;
   topTheme: string | null;
-  meta: { totalEntries: number };
+  topThemeName: string | null;
+  periodLabel: string;
+  periods: {
+    today: { count: number; mood: number };
+    week: { count: number; mood: number };
+    month: { count: number; mood: number };
+  };
+  meta: {
+    totalEntries: number;
+    windowStart: string | null;
+    windowEnd: string;
+  };
 };
 
 const UNLOCK_THRESHOLD = 10;
 
 export function ThemeMapClient() {
-  const router = useRouter();
   const [window_, setWindow] = useState<TimeWindow>("month");
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -76,10 +91,6 @@ export function ThemeMapClient() {
     fetchData(window_);
   }, [window_, fetchData]);
 
-  const handleWindowChange = (next: TimeWindow) => {
-    setWindow(next);
-  };
-
   const entryCount = data?.meta.totalEntries ?? 0;
   const locked = entryCount < UNLOCK_THRESHOLD;
 
@@ -88,11 +99,18 @@ export function ThemeMapClient() {
     return data.themes.map((t) => ({
       id: t.id,
       name: t.name,
-      mentionCount: t.mentionCount,
-      tone: t.sentimentBand,
+      category: t.category,
+      count: t.mentionCount,
+      meanMood: t.meanMood,
+      lastEntryAt: t.lastEntryAt,
+      trend: t.trend,
+      entries: t.entries,
+      coOccurrences: t.coOccurrences,
+      sentimentBand: t.sentimentBand,
       sparkline: t.sparkline,
       trendDescription: t.trendDescription,
       firstMentionedDaysAgo: t.firstMentionedDaysAgo,
+      recentEntries: t.recentEntries,
     }));
   }, [data]);
 
@@ -128,16 +146,18 @@ export function ThemeMapClient() {
       <Header />
 
       <div className="mt-4">
-        <TimeChips value={window_} onChange={handleWindowChange} />
+        <TimeChips value={window_} onChange={setWindow} />
       </div>
 
-      {dashboardThemes.length > 0 ? (
+      {dashboardThemes.length > 0 && data ? (
         <div className="mt-5">
           <ThemeMapDashboard
             themes={dashboardThemes}
-            totalMentions={data?.totalMentions ?? 0}
-            timeWindow={window_}
-            onTap={(id) => router.push(`/insights/theme/${id}`)}
+            totalMentions={data.totalMentions ?? 0}
+            topThemeName={data.topThemeName ?? data.topTheme}
+            periods={data.periods}
+            windowStart={data.meta.windowStart}
+            windowEnd={data.meta.windowEnd}
           />
         </div>
       ) : (
@@ -153,6 +173,18 @@ export function ThemeMapClient() {
 function Header() {
   return (
     <div>
+      <p
+        className="mb-2"
+        style={{
+          fontSize: 10,
+          letterSpacing: 2.4,
+          fontWeight: 700,
+          color: "#FCA85A",
+          textTransform: "uppercase",
+        }}
+      >
+        Reflect · Theme Map
+      </p>
       <h1
         className="text-zinc-900 dark:text-zinc-50 font-bold"
         style={{ fontSize: 34, letterSpacing: "-0.8px", lineHeight: 1.1 }}

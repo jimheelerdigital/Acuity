@@ -252,9 +252,12 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // Pull EVERY entry across the window (not just recentEntryIds) so we
+  // can build per-theme entries-with-mood for the v2 wave shape. Bounded
+  // by the active window, capped client-side at 30 per theme below.
   const entryRows = await prisma.entry.findMany({
     where: {
-      id: { in: Array.from(recentEntryIds) },
+      id: { in: Array.from(entryIdSet) },
       userId,
     },
     select: {
@@ -262,6 +265,7 @@ export async function GET(req: NextRequest) {
       createdAt: true,
       transcript: true,
       summary: true,
+      moodScore: true,
     },
   });
   const entryMap = new Map(entryRows.map((e) => [e.id, e]));
@@ -351,23 +355,142 @@ export async function GET(req: NextRequest) {
       firstMentionedDaysAgo
     );
 
+    // ── v2 — per-theme entries-with-mood for ThemeMoodWaveRow ────────
+    // Last 30 entries (within the active window) ordered ascending by
+    // timestamp. Mood is Entry.moodScore (1-10); null gets coerced to 5
+    // (neutral baseline) so every entry has a defined y-position.
+    const themeEntriesAsc: { id: string; timestamp: string; mood: number }[] = [];
+    for (const m of mentions) {
+      if (m.themeId !== t.id) continue;
+      if (themeEntriesAsc.find((e) => e.id === m.entryId)) continue;
+      const entry = entryMap.get(m.entryId);
+      if (!entry) continue;
+      themeEntriesAsc.push({
+        id: entry.id,
+        timestamp: entry.createdAt.toISOString(),
+        mood: typeof entry.moodScore === "number" ? entry.moodScore : 5,
+      });
+      if (themeEntriesAsc.length >= 30) break;
+    }
+    // mentions came in desc order; flip to asc for the wave x-axis.
+    themeEntriesAsc.sort(
+      (a, b) =>
+        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
+
+    // ── meanMood across all entries-with-mood for this theme ─────────
+    const moodSamples = themeEntriesAsc
+      .map((e) => e.mood)
+      .filter((m) => Number.isFinite(m));
+    const meanMood =
+      moodSamples.length > 0
+        ? moodSamples.reduce((a, b) => a + b, 0) / moodSamples.length
+        : 5;
+
+    // ── per-theme coOccurrences (top 5) ──────────────────────────────
+    const themeCoOcc: { themeName: string; count: number }[] = [];
+    for (const pair of pairMap.values()) {
+      if (pair.theme1Id !== t.id && pair.theme2Id !== t.id) continue;
+      const otherId = pair.theme1Id === t.id ? pair.theme2Id : pair.theme1Id;
+      const other = byTheme.get(otherId);
+      if (!other) continue;
+      themeCoOcc.push({ themeName: other.name, count: pair.count });
+    }
+    themeCoOcc.sort((a, b) => b.count - a.count);
+    const coOccurrences = themeCoOcc.slice(0, 5);
+
+    // ── category (heuristic from name keywords) ──────────────────────
+    const category = categorizeTheme(t.name);
+
+    // ── trend vs prior period ────────────────────────────────────────
+    // Prior period count = mentions in [windowStart - span, windowStart).
+    // For "all time" or no windowStart, use 0 (everything is current).
+    let priorPeriodCount = 0;
+    if (windowStart && windowSpan) {
+      const priorStart = new Date(windowStart.getTime() - windowSpan);
+      for (const m of mentions) {
+        if (m.themeId !== t.id) continue;
+        if (m.createdAt < priorStart) continue;
+        if (m.createdAt >= windowStart) continue;
+        priorPeriodCount += 1;
+      }
+    }
+    const trendRatio =
+      priorPeriodCount > 0 ? t.mentionCount / priorPeriodCount : null;
+
     return {
       id: t.id,
       name: t.name,
+      category,
       mentionCount: t.mentionCount,
+      meanMood,
       avgSentiment,
       sentimentBand,
       firstMentionedAt: t.firstMentionedAt.toISOString(),
       lastMentionedAt: t.lastMentionedAt.toISOString(),
+      lastEntryAt: t.lastMentionedAt.toISOString(),
       firstMentionedDaysAgo,
       sparkline,
       trendDescription,
+      trend: { priorPeriodCount, ratio: trendRatio },
+      entries: themeEntriesAsc,
+      coOccurrences,
       recentEntries: Array.from(perEntry.values()),
     };
   });
 
   const totalMentions = mentions.length;
   const topTheme = themes.length > 0 ? themes[0].name : null;
+  const topThemeName = topTheme;
+
+  // ── periods block for ThemeRings hero ──────────────────────────────
+  // Three nested time windows on the TOP theme's mentions: today, week,
+  // month. mood = mean Entry.moodScore across those entries.
+  const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+  const todayStart = new Date(now);
+  todayStart.setHours(0, 0, 0, 0);
+  const weekStart = new Date(now.getTime() - 7 * ONE_DAY_MS);
+  const monthStart = new Date(now.getTime() - 30 * ONE_DAY_MS);
+
+  function periodStats(start: Date): { count: number; mood: number } {
+    if (themes.length === 0) return { count: 0, mood: 5 };
+    const top = topThemes[0];
+    let count = 0;
+    const moods: number[] = [];
+    const seenEntries = new Set<string>();
+    for (const m of mentions) {
+      if (m.themeId !== top.id) continue;
+      if (m.createdAt < start) continue;
+      if (m.createdAt > effectiveEnd) continue;
+      if (seenEntries.has(m.entryId)) continue;
+      seenEntries.add(m.entryId);
+      count += 1;
+      const entry = entryMap.get(m.entryId);
+      if (entry?.moodScore != null) moods.push(entry.moodScore);
+    }
+    const mood =
+      moods.length > 0 ? moods.reduce((a, b) => a + b, 0) / moods.length : 5;
+    return { count, mood };
+  }
+
+  const periods = {
+    today: periodStats(todayStart),
+    week: periodStats(weekStart),
+    month: periodStats(monthStart),
+  };
+
+  const periodLabel =
+    windowKey === "week"
+      ? "Last week"
+      : windowKey === "month"
+        ? "Last month"
+        : windowKey === "3months"
+          ? "3 months"
+          : windowKey === "6months"
+            ? "6 months"
+            : windowKey === "year"
+              ? "Last year"
+              : "All time";
 
   return NextResponse.json(
     {
@@ -375,6 +498,9 @@ export async function GET(req: NextRequest) {
       coOccurrences,
       totalMentions,
       topTheme,
+      topThemeName,
+      periodLabel,
+      periods,
       meta: {
         windowStart: windowStart?.toISOString() ?? null,
         windowEnd: effectiveEnd.toISOString(),
@@ -382,8 +508,45 @@ export async function GET(req: NextRequest) {
         snapshotAt: snapshot ?? null,
       },
     },
-    { headers: { "Cache-Control": "private, max-age=300" } }
+    { headers: { "Cache-Control": "private, max-age=60" } }
   );
+}
+
+/**
+ * Heuristic categorisation of theme names into one of the four UI
+ * vocabulary buckets. Pure keyword match — fragile but bounded.
+ * Promotes to a real Theme.category column once the user manually
+ * recategorises enough themes that the heuristic feels noisy.
+ */
+function categorizeTheme(
+  name: string
+): "activity" | "reflection" | "life" | "emotional" {
+  const n = name.toLowerCase();
+  const ACTIVITY = [
+    "golf", "run", "running", "workout", "gym", "lift", "yoga", "swim",
+    "bike", "cycling", "practice", "training", "mechanics", "exercise",
+    "sport", "tennis", "ski", "climb", "hike",
+  ];
+  const REFLECTION = [
+    "self", "patience", "reading", "writing", "journal", "meditate",
+    "meditation", "reflection", "growth", "learning", "awareness",
+    "mindful", "discipline", "focus", "purpose", "values",
+  ];
+  const LIFE = [
+    "family", "sleep", "kids", "partner", "marriage", "spouse",
+    "friend", "home", "house", "money", "finance", "career", "work",
+    "job", "travel", "food", "diet", "weight", "health",
+  ];
+  const EMOTIONAL = [
+    "stress", "anxiety", "frustration", "anger", "sad", "fear",
+    "lonely", "overwhelm", "burnout", "tired", "exhausted", "worry",
+    "doubt", "shame", "guilt", "grief",
+  ];
+  if (EMOTIONAL.some((k) => n.includes(k))) return "emotional";
+  if (ACTIVITY.some((k) => n.includes(k))) return "activity";
+  if (REFLECTION.some((k) => n.includes(k))) return "reflection";
+  if (LIFE.some((k) => n.includes(k))) return "life";
+  return "reflection";
 }
 
 /**
