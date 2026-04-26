@@ -22,33 +22,50 @@ import {
   type TimeWindow,
 } from "@/components/theme-map/TimeChips";
 
-/**
- * Theme Map (mobile) — dashboard composition with hero ring + share-of-
- * voice narrative, gradient wave chart with peak callout, sparkline tile
- * grid, and a frequency spectrum bar chart for the long tail. See
- * components/theme-map/ThemeMapDashboard.tsx for per-layer rationale.
- */
-
+type CategoryToken = "activity" | "reflection" | "life" | "emotional";
 type SentimentBand = "positive" | "neutral" | "challenging";
 
-type Theme = {
+type ApiTheme = {
   id: string;
   name: string;
+  category: CategoryToken;
   mentionCount: number;
+  meanMood: number;
   avgSentiment: number;
   sentimentBand: SentimentBand;
   firstMentionedAt: string;
   lastMentionedAt: string;
+  lastEntryAt: string;
   firstMentionedDaysAgo: number;
   sparkline: number[];
   trendDescription: string;
+  trend: { priorPeriodCount: number; ratio: number | null };
+  entries: { id: string; timestamp: string; mood: number }[];
+  coOccurrences: { themeName: string; count: number }[];
+  recentEntries: {
+    id: string;
+    createdAt: string;
+    sentiment: "POSITIVE" | "NEGATIVE" | "NEUTRAL";
+    excerpt: string;
+  }[];
 };
 
 type ApiResponse = {
-  themes: Theme[];
+  themes: ApiTheme[];
   totalMentions: number;
   topTheme: string | null;
-  meta: { totalEntries: number };
+  topThemeName: string | null;
+  periodLabel: string;
+  periods: {
+    today: { count: number; mood: number };
+    week: { count: number; mood: number };
+    month: { count: number; mood: number };
+  };
+  meta: {
+    totalEntries: number;
+    windowStart: string | null;
+    windowEnd: string;
+  };
 };
 
 const UNLOCK_THRESHOLD = 10;
@@ -95,11 +112,18 @@ export default function ThemeMapScreen() {
     return data.themes.map((t) => ({
       id: t.id,
       name: t.name,
-      mentionCount: t.mentionCount,
-      tone: t.sentimentBand,
+      category: t.category,
+      count: t.mentionCount,
+      meanMood: t.meanMood,
+      lastEntryAt: t.lastEntryAt,
+      trend: t.trend,
+      entries: t.entries,
+      coOccurrences: t.coOccurrences,
+      sentimentBand: t.sentimentBand,
       sparkline: t.sparkline,
       trendDescription: t.trendDescription,
       firstMentionedDaysAgo: t.firstMentionedDaysAgo,
+      recentEntries: t.recentEntries,
     }));
   }, [data]);
 
@@ -120,25 +144,27 @@ export default function ThemeMapScreen() {
   }
 
   return (
-    <SafeAreaView
-      style={{ flex: 1, backgroundColor: "#0B0B12" }}
-      edges={["top"]}
-    >
-      <StickyBackButton
-        onPress={() => router.back()}
-        accessibilityLabel="Back to Insights"
-      />
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#0B0B12" }} edges={["top"]}>
+      <StickyBackButton onPress={() => router.back()} accessibilityLabel="Back to Insights" />
       <ScrollView
         refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor="#7C3AED"
-          />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#7C3AED" />
         }
         contentContainerStyle={{ paddingBottom: 40, paddingTop: 56 }}
       >
         <View style={{ paddingHorizontal: 20 }}>
+          <Text
+            style={{
+              fontSize: 10,
+              letterSpacing: 2.4,
+              fontWeight: "700",
+              color: "#FCA85A",
+              textTransform: "uppercase",
+              marginBottom: 8,
+            }}
+          >
+            Reflect · Theme Map
+          </Text>
           <Text
             style={{
               fontSize: 34,
@@ -154,7 +180,7 @@ export default function ThemeMapScreen() {
             style={{
               fontSize: 14,
               marginTop: 4,
-              color: "rgba(161,161,170,0.75)",
+              color: "rgba(168,168,180,0.7)",
             }}
           >
             Your recurring patterns, surfaced.
@@ -163,7 +189,7 @@ export default function ThemeMapScreen() {
 
         {error && (
           <View style={{ padding: 40, alignItems: "center" }}>
-            <Text style={{ color: "rgba(161,161,170,0.8)" }}>{error}</Text>
+            <Text style={{ color: "rgba(168,168,180,0.8)" }}>{error}</Text>
           </View>
         )}
 
@@ -172,36 +198,22 @@ export default function ThemeMapScreen() {
         {!error && !locked && data && (
           <>
             <View style={{ marginTop: 14, marginBottom: 6 }}>
-              <TimeChips
-                value={window_}
-                onChange={(next) => setWindow(next)}
-              />
+              <TimeChips value={window_} onChange={setWindow} />
             </View>
 
             {dashboardThemes.length > 0 ? (
               <ThemeMapDashboard
                 themes={dashboardThemes}
                 totalMentions={data.totalMentions ?? 0}
-                timeWindow={window_}
-                onTap={(id) => router.push(`/insights/theme/${id}` as never)}
+                topThemeName={data.topThemeName ?? data.topTheme}
+                periods={data.periods}
+                windowStart={data.meta.windowStart}
+                windowEnd={data.meta.windowEnd}
               />
             ) : (
-              <View
-                style={{
-                  marginHorizontal: 20,
-                  marginVertical: 40,
-                  alignItems: "center",
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 13,
-                    textAlign: "center",
-                    color: "rgba(161,161,170,0.75)",
-                  }}
-                >
-                  Not enough theme variety yet — record a few more
-                  sessions to see your patterns surface.
+              <View style={{ marginHorizontal: 20, marginVertical: 40, alignItems: "center" }}>
+                <Text style={{ fontSize: 13, textAlign: "center", color: "rgba(168,168,180,0.75)" }}>
+                  Not enough theme variety yet — record a few more sessions to see your patterns surface.
                 </Text>
               </View>
             )}
