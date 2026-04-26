@@ -192,7 +192,7 @@ export default function EntryDetailScreen() {
       {/* Transcript */}
       <Section title="Transcript">
         <Text className="text-sm text-zinc-400 dark:text-zinc-500 leading-relaxed">
-          {entry.transcript}
+          {entry.transcript || "Transcript still processing…"}
         </Text>
       </Section>
     </ScrollView>

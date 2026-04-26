@@ -1,5 +1,6 @@
+import * as WebBrowser from "expo-web-browser";
 import { useRouter } from "expo-router";
-import { Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { StickyBackButton } from "@/components/back-button";
@@ -52,11 +53,35 @@ export default function AskPastSelfScreen() {
             lineHeight: 24,
             textAlign: "center",
             color: isDark ? "#A1A1AA" : "#71717A",
+            marginBottom: 24,
           }}
         >
-          Coming soon to mobile. Ask natural-language questions across
-          your own journal history and get answers in your own words.
+          Coming soon to mobile. Available on the web today — ask
+          natural-language questions across your journal history and
+          get answers in your own words.
         </Text>
+        <Pressable
+          onPress={() =>
+            WebBrowser.openBrowserAsync("https://www.getacuity.io/insights/ask")
+          }
+          style={{
+            paddingHorizontal: 24,
+            paddingVertical: 12,
+            borderRadius: 999,
+            backgroundColor: "#7C3AED",
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 14,
+              fontWeight: "600",
+              color: "#FFFFFF",
+              letterSpacing: 0.2,
+            }}
+          >
+            Open on web
+          </Text>
+        </Pressable>
       </View>
     </SafeAreaView>
   );

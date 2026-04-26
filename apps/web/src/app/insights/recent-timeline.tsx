@@ -42,7 +42,25 @@ export function RecentTimeline() {
     .filter((e) => new Date(e.createdAt).getTime() >= sevenDaysAgo)
     .slice(0, 12);
 
-  if (recent.length < 3) return null;
+  if (recent.length < 3) {
+    return (
+      <section className="mb-8">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+            Recent activity
+          </h2>
+        </div>
+        <p
+          className="rounded-lg border border-white/5 bg-white/[0.02] px-4 py-6 text-center text-sm"
+          style={{ color: "rgba(168,168,180,0.7)" }}
+        >
+          {recent.length === 0
+            ? "Nothing this week yet — record an entry to start filling this in."
+            : `${recent.length} ${recent.length === 1 ? "entry" : "entries"} so far this week. A few more and your timeline will surface here.`}
+        </p>
+      </section>
+    );
+  }
 
   return (
     <section className="mb-8">

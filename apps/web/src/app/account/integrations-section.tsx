@@ -39,8 +39,20 @@ export function IntegrationsSection() {
       </h2>
       <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
         Connect a calendar so weekly reports and the Life Matrix can
-        ground patterns in what you actually did. Coming soon — none
-        of these light up until after beta.
+        ground patterns in what you actually did.
+      </p>
+      <p
+        className="mt-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5"
+        style={{
+          fontSize: 11,
+          fontWeight: 600,
+          letterSpacing: 0.4,
+          color: "#FCA85A",
+          background: "rgba(252,168,90,0.12)",
+          border: "0.5px solid rgba(252,168,90,0.4)",
+        }}
+      >
+        Coming after beta — not yet available
       </p>
 
       <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">

@@ -31,8 +31,8 @@ export default function OnboardingScreen() {
     return clampStep(Number(raw ?? 1));
   }, [params.step]);
 
-  const entry = ONBOARDING_STEPS.find((s) => s.step === step);
-  if (!entry) return null;
+  const entry =
+    ONBOARDING_STEPS.find((s) => s.step === step) ?? ONBOARDING_STEPS[0];
 
   const StepComponent = entry.Component;
 

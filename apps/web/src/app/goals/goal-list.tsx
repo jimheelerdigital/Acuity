@@ -689,7 +689,13 @@ function AddSubgoalModal({
         onSaved();
       } else {
         const body = await res.json().catch(() => ({}));
-        setErr(body.detail ?? body.error ?? `HTTP ${res.status}`);
+        setErr(
+          body.detail ??
+            body.error ??
+            (res.status >= 500
+              ? "Something went wrong on our end — please try again."
+              : "We couldn't save that — please check your input and retry.")
+        );
       }
     } finally {
       setSaving(false);

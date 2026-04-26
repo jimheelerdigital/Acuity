@@ -224,7 +224,7 @@ const nextAuthErrorMessages: Record<string, string> = {
   // server-side callback chain (events.createUser, callbacks.jwt,
   // callbacks.session, or the adapter). Sentry will have the stack.
   Callback:
-    "Something went wrong during sign-in. Please try again or contact support at jim@heelerdigital.com.",
+    "Something went wrong during sign-in. Please try again, or visit /support if it keeps happening.",
 
   // Server-side misconfiguration — NEXTAUTH_SECRET or NEXTAUTH_URL
   // missing or wrong. Does not self-heal; needs env var fix in Vercel.

@@ -241,7 +241,23 @@ export async function extractFromTranscript(
     .replace(/\n?```$/m, "")
     .trim();
 
-  const parsed = JSON.parse(jsonText) as ExtractionResult;
+  // Guard against malformed / truncated JSON. Claude usually returns
+  // clean JSON but a long-tail of edge cases (token cap mid-object,
+  // unescaped quotes inside transcript echoes, partial responses on
+  // upstream timeout retry) can cause the parse to throw. Re-raise as
+  // a typed Error with the raw response trimmed to 500 chars so the
+  // pipeline's catch block can mark Entry FAILED with a useful message.
+  let parsed: ExtractionResult;
+  try {
+    parsed = JSON.parse(jsonText) as ExtractionResult;
+  } catch (err) {
+    const preview = jsonText.slice(0, 500);
+    throw new Error(
+      `Claude returned malformed JSON (${
+        err instanceof Error ? err.message : "parse error"
+      }). Preview: ${preview}`
+    );
+  }
 
   // Theme parsing accepts both the new { label, sentiment }[] shape and
   // the legacy string[] shape. Legacy entries get NEUTRAL sentiment.
@@ -614,12 +630,23 @@ export async function processEntry({
 
     return result;
   } catch (err) {
+    // Mark FAILED so the user sees a concrete error state instead of a
+    // permanently-PROCESSING entry. If THIS write also fails (deleted
+    // mid-flight, pool exhaustion), log it loudly — silent swallow
+    // here was the bug. Inngest will surface the original error via
+    // its retry log either way.
     await prisma.entry
       .update({
         where: { id: entryId },
         data: { status: "FAILED" },
       })
-      .catch(() => {});
+      .catch((updateErr) => {
+        // eslint-disable-next-line no-console
+        console.error(
+          `[pipeline] CRITICAL: failed to mark entry ${entryId} FAILED — entry will be stuck:`,
+          updateErr
+        );
+      });
 
     throw err;
   }

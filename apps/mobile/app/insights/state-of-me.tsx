@@ -1,5 +1,6 @@
+import * as WebBrowser from "expo-web-browser";
 import { useRouter } from "expo-router";
-import { Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { StickyBackButton } from "@/components/back-button";
@@ -52,12 +53,38 @@ export default function StateOfMeScreen() {
             lineHeight: 24,
             textAlign: "center",
             color: isDark ? "#A1A1AA" : "#71717A",
+            marginBottom: 24,
           }}
         >
-          Your quarterly State of Me report — coming soon. Every 90
-          days, Acuity will write a long-form read across the
+          Your quarterly State of Me report — coming soon to mobile.
+          Every 90 days, Acuity writes a long-form read across the
           quarter: themes, mood arc, patterns worth noticing.
+          Available on the web today.
         </Text>
+        <Pressable
+          onPress={() =>
+            WebBrowser.openBrowserAsync(
+              "https://www.getacuity.io/insights/state-of-me"
+            )
+          }
+          style={{
+            paddingHorizontal: 24,
+            paddingVertical: 12,
+            borderRadius: 999,
+            backgroundColor: "#7C3AED",
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 14,
+              fontWeight: "600",
+              color: "#FFFFFF",
+              letterSpacing: 0.2,
+            }}
+          >
+            Open on web
+          </Text>
+        </Pressable>
       </View>
     </SafeAreaView>
   );

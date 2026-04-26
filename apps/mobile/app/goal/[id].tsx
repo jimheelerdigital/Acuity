@@ -147,8 +147,14 @@ export default function GoalDetailScreen() {
           });
         }
       }
-    } catch {
-      Alert.alert("Couldn't save", "Please try again.");
+    } catch (err) {
+      const msg =
+        err instanceof Error && /network|fetch|offline/i.test(err.message)
+          ? "You're offline. We'll save once you're back online."
+          : err instanceof Error && /4\d\d/.test(err.message)
+            ? "We couldn't accept that — please check your input and retry."
+            : "Something went wrong on our end. Please try again.";
+      Alert.alert("Couldn't save", msg);
     } finally {
       setSaving(false);
     }
