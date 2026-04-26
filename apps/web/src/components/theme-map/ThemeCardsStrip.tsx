@@ -58,9 +58,10 @@ function Card({
   return (
     <Tag
       onClick={onTap ? () => onTap(theme.id) : undefined}
-      className="group shrink-0 cursor-pointer rounded-xl p-4 text-left transition hover:-translate-y-0.5"
+      className="group shrink-0 cursor-pointer rounded-xl text-left transition hover:-translate-y-0.5"
       style={{
         width: "min(220px, 80vw)",
+        padding: 18,
         background: `linear-gradient(180deg, ${c.solid}14 0%, ${c.solid}05 100%)`,
         border: `0.5px solid ${c.solid}66`,
         boxShadow: `0 18px 50px -28px ${c.solid}90`,
@@ -68,20 +69,22 @@ function Card({
     >
       <TrendChip trend={trend} accent={c.solid} />
       <div
-        className="mt-3 truncate"
+        className="truncate"
         style={{
-          fontSize: 13,
+          marginTop: 12,
+          marginBottom: 8,
+          fontSize: 15,
           fontWeight: 500,
           color: "#FAFAFA",
           letterSpacing: -0.1,
+          lineHeight: 1.3,
         }}
       >
         {capitalize(theme.name)}
       </div>
       <div
-        className="mt-1.5"
         style={{
-          fontSize: 28,
+          fontSize: 32,
           fontWeight: 500,
           letterSpacing: -1,
           color: "#FAFAFA",
@@ -93,9 +96,9 @@ function Card({
         {theme.count}
       </div>
       <div
-        className="mt-2"
         style={{
-          fontSize: 11,
+          marginTop: 8,
+          fontSize: 12,
           color: "rgba(168,168,180,0.7)",
         }}
       >
@@ -143,9 +146,9 @@ function TrendChip({
       style={{
         background: `${dotColor}1f`,
         border: `0.5px solid ${dotColor}55`,
-        fontSize: 9.5,
+        fontSize: 10,
         fontWeight: 700,
-        letterSpacing: 1,
+        letterSpacing: 1.4,
         color: dotColor,
       }}
     >

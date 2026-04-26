@@ -41,8 +41,10 @@ export function TimeChips({
               key={c.key}
               type="button"
               onClick={() => onChange(c.key)}
-              className="shrink-0 rounded-full px-4 py-2 text-sm transition-all"
+              className="shrink-0 rounded-full transition-all"
               style={{
+                padding: "9px 18px",
+                fontSize: 13,
                 backgroundColor: active ? "#7C3AED" : "transparent",
                 color: active ? "#FFFFFF" : "rgba(228,228,231,0.7)",
                 fontWeight: active ? 600 : 500,
