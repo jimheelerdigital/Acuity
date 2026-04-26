@@ -238,6 +238,17 @@ export function ThemeRings({
                     strokeDasharray={dasharray}
                     transform={`rotate(-90 ${CX} ${CY})`}
                   />
+                  {onTap && (
+                    <Circle
+                      cx={CX}
+                      cy={CY}
+                      r={slot.r}
+                      fill="none"
+                      stroke="transparent"
+                      strokeWidth={Math.max(slot.sw, 28)}
+                      onPress={() => onTap(t.id)}
+                    />
+                  )}
                 </G>
               );
             })}

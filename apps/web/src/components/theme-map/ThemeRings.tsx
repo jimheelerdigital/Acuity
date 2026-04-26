@@ -259,6 +259,38 @@ export function ThemeRings({
             );
           })}
 
+          {/* Transparent click targets — one per ring. Drawn on top so
+              clicks always hit the right slot, with stroke-width
+              generous enough that small/partial arcs are still
+              comfortable to tap. Rendered last so they sit above the
+              visual layers. */}
+          {onTap &&
+            rings.map((t, i) => {
+              const slot = RING_SLOTS[i];
+              return (
+                <circle
+                  key={`hit-${t.id}-${i}`}
+                  cx={CX}
+                  cy={CY}
+                  r={slot.r}
+                  fill="none"
+                  stroke="transparent"
+                  strokeWidth={Math.max(slot.sw, 24)}
+                  style={{ cursor: "pointer", pointerEvents: "stroke" }}
+                  onClick={() => onTap(t.id)}
+                  aria-label={`Open ${t.name} details`}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onTap(t.id);
+                    }
+                  }}
+                />
+              );
+            })}
+
         </svg>
 
         {/* centre content — JUST the hero number. Eyebrow lives above
