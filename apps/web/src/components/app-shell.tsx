@@ -77,11 +77,12 @@ function SidebarLink({ item, active }: { item: NavItem; active: boolean }) {
   return (
     <Link
       href={item.href}
-      className={`group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+      className={`group relative flex items-center gap-3 rounded-lg px-3 transition-colors ${
         active
           ? "bg-zinc-100 text-zinc-900 dark:bg-white/10 dark:text-zinc-50"
           : "text-zinc-600 hover:bg-zinc-100/70 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-white/5 dark:hover:text-zinc-100"
       }`}
+      style={{ paddingTop: 11, paddingBottom: 11, fontSize: 15, fontWeight: 500 }}
       aria-current={active ? "page" : undefined}
     >
       {active && (
@@ -91,7 +92,7 @@ function SidebarLink({ item, active }: { item: NavItem; active: boolean }) {
         />
       )}
       <Icon
-        className={`h-4 w-4 shrink-0 ${
+        className={`h-[18px] w-[18px] shrink-0 ${
           active
             ? "text-violet-600 dark:text-violet-400"
             : "text-zinc-400 group-hover:text-zinc-600 dark:text-zinc-500 dark:group-hover:text-zinc-300"
@@ -113,7 +114,7 @@ function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r border-zinc-200 bg-[#FAFAF7] dark:border-white/10 dark:bg-[#0B0B12] lg:flex">
+    <aside className="fixed inset-y-0 left-0 z-40 hidden w-[248px] flex-col border-r border-zinc-200 bg-[#FAFAF7] dark:border-white/10 dark:bg-[#0B0B12] lg:flex">
       {/* Logo — h-[68px] matches the top bar (DesktopTopbar) so the
           sidebar header and the top bar appear as one continuous
           horizontal edge across the viewport. If you change one of
@@ -136,9 +137,10 @@ function Sidebar() {
       <div className="px-3 pt-4">
         <Link
           href="/home#record"
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-violet-600 px-3 py-2.5 text-sm font-semibold text-white shadow-[0_4px_14px_rgba(124,58,237,0.35)] transition hover:bg-violet-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#FAFAF7] dark:focus-visible:ring-offset-[#0B0B12]"
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-violet-600 px-3 text-white shadow-[0_4px_14px_rgba(124,58,237,0.35)] transition hover:bg-violet-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#FAFAF7] dark:focus-visible:ring-offset-[#0B0B12]"
+          style={{ paddingTop: 14, paddingBottom: 14, fontSize: 15, fontWeight: 500 }}
         >
-          <Mic className="h-4 w-4" aria-hidden />
+          <Mic className="h-[18px] w-[18px]" aria-hidden />
           Record
         </Link>
       </div>
@@ -148,7 +150,15 @@ function Sidebar() {
         <div className="space-y-6">
           {SECTIONS.map((section) => (
             <div key={section.heading}>
-              <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-400 dark:text-zinc-500">
+              <p
+                className="mb-2 px-3 uppercase text-zinc-400 dark:text-zinc-500"
+                style={{
+                  fontSize: 11,
+                  letterSpacing: "1.6px",
+                  fontWeight: 600,
+                  opacity: 0.6,
+                }}
+              >
                 {section.heading}
               </p>
               <div className="space-y-0.5">
@@ -216,7 +226,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <>
       <Sidebar />
-      <div className="lg:pl-60">
+      <div className="lg:pl-[248px]">
         <DesktopTopbar />
         <div className="lg:mx-auto lg:w-full lg:max-w-[1600px] lg:px-8 lg:py-6 xl:px-10">
           {children}

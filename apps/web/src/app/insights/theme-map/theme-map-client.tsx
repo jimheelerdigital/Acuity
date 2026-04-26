@@ -172,28 +172,36 @@ export function ThemeMapClient() {
 
 function Header() {
   return (
-    <div>
+    <div style={{ marginBottom: 32 }}>
       <p
-        className="mb-2"
         style={{
-          fontSize: 10,
-          letterSpacing: 2.4,
+          fontSize: 11,
+          letterSpacing: 2.5,
           fontWeight: 700,
           color: "#FCA85A",
           textTransform: "uppercase",
+          marginBottom: 10,
         }}
       >
         Reflect · Theme Map
       </p>
       <h1
-        className="text-zinc-900 dark:text-zinc-50 font-bold"
-        style={{ fontSize: 34, letterSpacing: "-0.8px", lineHeight: 1.1 }}
+        className="text-zinc-900 dark:text-zinc-50"
+        style={{
+          fontSize: 28,
+          fontWeight: 500,
+          letterSpacing: "-0.4px",
+          lineHeight: 1.15,
+          marginBottom: 8,
+        }}
       >
         Theme Map
       </h1>
       <p
-        className="text-zinc-500 dark:text-zinc-400 mt-1"
-        style={{ fontSize: 14 }}
+        style={{
+          fontSize: 16,
+          color: "rgba(168,168,180,0.75)",
+        }}
       >
         Your recurring patterns, surfaced.
       </p>

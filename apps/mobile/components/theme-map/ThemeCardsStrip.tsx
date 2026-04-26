@@ -56,7 +56,7 @@ function Card({
       onPress={onTap ? () => onTap(theme.id) : undefined}
       style={{
         width: 186,
-        padding: 14,
+        padding: 18,
         borderRadius: 12,
         backgroundColor: `${c.solid}10`,
         borderWidth: 0.5,
@@ -72,22 +72,23 @@ function Card({
         numberOfLines={1}
         style={{
           marginTop: 12,
-          fontSize: 13,
+          marginBottom: 8,
+          fontSize: 15,
           fontWeight: "500",
           color: TEXT.primary,
           letterSpacing: -0.1,
+          lineHeight: 20,
         }}
       >
         {capitalize(theme.name)}
       </Text>
       <Text
         style={{
-          marginTop: 6,
-          fontSize: 28,
+          fontSize: 32,
           fontWeight: "500",
           color: TEXT.primary,
           letterSpacing: -1,
-          lineHeight: 30,
+          lineHeight: 32,
           textShadowColor: `${c.solid}99`,
           textShadowRadius: 18,
         }}
@@ -96,8 +97,8 @@ function Card({
       </Text>
       <Text
         style={{
-          marginTop: 6,
-          fontSize: 11,
+          marginTop: 8,
+          fontSize: 12,
           color: TEXT.secondary,
         }}
       >
@@ -168,9 +169,9 @@ function TrendChip({
       />
       <Text
         style={{
-          fontSize: 9.5,
+          fontSize: 10,
           fontWeight: "700",
-          letterSpacing: 1,
+          letterSpacing: 1.4,
           color: dotColor,
         }}
       >

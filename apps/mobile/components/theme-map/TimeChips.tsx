@@ -46,8 +46,8 @@ export function TimeChips({
               key={c.key}
               onPress={() => onChange(c.key)}
               style={{
-                paddingVertical: 10,
-                paddingHorizontal: 16,
+                paddingVertical: 11,
+                paddingHorizontal: 18,
                 borderRadius: 999,
                 backgroundColor: active ? "#7C3AED" : "transparent",
                 shadowColor: active ? "#7C3AED" : "transparent",
@@ -58,7 +58,7 @@ export function TimeChips({
             >
               <Text
                 style={{
-                  fontSize: 14,
+                  fontSize: 13,
                   fontWeight: active ? "600" : "500",
                   color: active ? "#FFFFFF" : "rgba(228,228,231,0.7)",
                   letterSpacing: 0.1,

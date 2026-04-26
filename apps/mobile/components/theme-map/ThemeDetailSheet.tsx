@@ -136,7 +136,7 @@ export function ThemeDetailSheet({
             <View style={{ flex: 1 }}>
               <Text
                 style={{
-                  fontSize: 22,
+                  fontSize: 24,
                   fontWeight: "500",
                   color: TEXT.primary,
                   letterSpacing: -0.4,
@@ -246,7 +246,7 @@ export function ThemeDetailSheet({
                     >
                       <Text
                         style={{
-                          fontSize: 11,
+                          fontSize: 13,
                           color: TEXT.tertiary,
                           marginTop: 2,
                           minWidth: 44,
@@ -255,7 +255,7 @@ export function ThemeDetailSheet({
                         {new Date(e.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                       </Text>
                       <Text
-                        style={{ flex: 1, fontSize: 13, color: TEXT.primary, lineHeight: 18 }}
+                        style={{ flex: 1, fontSize: 14, color: TEXT.primary, lineHeight: 20 }}
                       >
                         {e.excerpt || "—"}
                       </Text>
@@ -305,8 +305,8 @@ function Section({ label, children }: { label: string; children: React.ReactNode
     <View>
       <Text
         style={{
-          fontSize: 9.5,
-          letterSpacing: 1.8,
+          fontSize: 12,
+          letterSpacing: 2,
           fontWeight: "700",
           color: TEXT.tertiary,
           textTransform: "uppercase",

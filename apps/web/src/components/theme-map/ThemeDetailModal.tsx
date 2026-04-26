@@ -104,7 +104,7 @@ export function ThemeDetailModal({
           <div>
             <h2
               style={{
-                fontSize: 24,
+                fontSize: 26,
                 fontWeight: 500,
                 color: TEXT.primary,
                 letterSpacing: -0.4,
@@ -201,7 +201,7 @@ export function ThemeDetailModal({
                   >
                     <span
                       style={{
-                        fontSize: 11,
+                        fontSize: 13,
                         color: TEXT.tertiary,
                         whiteSpace: "nowrap",
                         marginTop: 2,
@@ -216,7 +216,7 @@ export function ThemeDetailModal({
                     <span
                       className="flex-1"
                       style={{
-                        fontSize: 13,
+                        fontSize: 14,
                         color: TEXT.primary,
                         lineHeight: 1.45,
                       }}
@@ -280,8 +280,8 @@ function Section({
       <p
         className="mb-2.5 uppercase"
         style={{
-          fontSize: 9.5,
-          letterSpacing: 1.8,
+          fontSize: 12,
+          letterSpacing: 2,
           fontWeight: 700,
           color: TEXT.tertiary,
         }}
