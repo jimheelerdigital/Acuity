@@ -35,8 +35,8 @@ export type WaveTheme = {
 };
 
 const VB_W = 800;
-const VB_H = 56;
-const BASELINE_Y = 28;
+const VB_H = 80;
+const BASELINE_Y = 40;
 
 export function ThemeMoodWaveRow({
   rank,
@@ -64,19 +64,21 @@ export function ThemeMoodWaveRow({
     <button
       type="button"
       onClick={onTap ? () => onTap(theme.id) : undefined}
-      className="group grid w-full items-center px-6 py-3.5 text-left transition hover:bg-white/[0.02]"
+      className="group grid w-full items-center px-6 text-left transition hover:bg-white/[0.02]"
       style={{
-        gridTemplateColumns: "28px 130px 1fr 70px 22px",
+        gridTemplateColumns: "28px 160px 1fr 90px 22px",
         gap: 12,
+        paddingTop: 18,
+        paddingBottom: 18,
         borderTop: isFirst ? "none" : "0.5px solid rgba(255,255,255,0.04)",
         cursor: "pointer",
       }}
     >
       <span
         style={{
-          fontSize: 11,
+          fontSize: 12,
           fontWeight: 600,
-          color: "rgba(168,168,180,0.4)",
+          color: "rgba(168,168,180,0.5)",
           letterSpacing: 1,
           fontVariantNumeric: "tabular-nums",
         }}
@@ -88,7 +90,7 @@ export function ThemeMoodWaveRow({
         <div
           className="truncate"
           style={{
-            fontSize: 14,
+            fontSize: 15,
             fontWeight: 500,
             color: TEXT.primary,
             letterSpacing: -0.1,
@@ -99,7 +101,7 @@ export function ThemeMoodWaveRow({
         <div
           className="mt-0.5 truncate"
           style={{
-            fontSize: 11,
+            fontSize: 13,
             color: trendCaption.color,
           }}
         >
@@ -136,8 +138,9 @@ export function ThemeMoodWaveRow({
       >
         <div
           style={{
-            fontSize: 18,
+            fontSize: 22,
             fontWeight: 500,
+            letterSpacing: -0.3,
             color: TEXT.primary,
             lineHeight: 1,
             textShadow: `0 0 12px ${c.solid}55`,
@@ -147,7 +150,7 @@ export function ThemeMoodWaveRow({
         </div>
         <div
           style={{
-            fontSize: 10,
+            fontSize: 12,
             color: moodColor,
             marginTop: 4,
           }}
@@ -179,7 +182,7 @@ function WaveSVG({
   const points = entries.map((e, i) => {
     const x =
       entries.length === 1 ? VB_W / 2 : (i / (entries.length - 1)) * VB_W;
-    const y = Math.max(4, Math.min(52, 28 - ((e.mood - 5) / 5) * 22));
+    const y = Math.max(6, Math.min(74, 40 - ((e.mood - 5) / 5) * 32));
     return { x, y, mood: e.mood };
   });
 
@@ -238,7 +241,7 @@ function WaveSVG({
           <stop offset="100%" stopColor={c.solid} />
         </linearGradient>
         <filter id={`glow-${id}`} x="-10%" y="-50%" width="120%" height="200%">
-          <feGaussianBlur stdDeviation="3" />
+          <feGaussianBlur stdDeviation="4" />
         </filter>
       </defs>
 
@@ -385,7 +388,7 @@ function pickTrendCaption(theme: WaveTheme): { text: string; color: string } {
     });
     return {
       text: `↓ fading · last seen ${date}`,
-      color: "rgba(168,168,180,0.55)",
+      color: "rgba(168,168,180,0.65)",
     };
   }
 
@@ -394,7 +397,7 @@ function pickTrendCaption(theme: WaveTheme): { text: string; color: string } {
   if (topCo && topCo.count > theme.count * 0.5) {
     return {
       text: `paired with ${topCo.themeName}`,
-      color: "rgba(168,168,180,0.55)",
+      color: "rgba(168,168,180,0.65)",
     };
   }
 
@@ -430,7 +433,7 @@ function pickTrendCaption(theme: WaveTheme): { text: string; color: string } {
   // Default
   return {
     text: "balanced · reflective tone",
-    color: "rgba(168,168,180,0.55)",
+    color: "rgba(168,168,180,0.65)",
   };
 }
 

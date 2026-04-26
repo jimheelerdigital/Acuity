@@ -212,10 +212,10 @@ export function ThemeRings({
             <SvgText
               x={14}
               y={28}
-              fontSize={9}
-              fontWeight="700"
+              fontSize={11}
+              fontWeight="500"
               fill="#22D3EE"
-              letterSpacing={2}
+              letterSpacing={1.8}
             >
               MONTH
             </SvgText>
@@ -231,10 +231,10 @@ export function ThemeRings({
             <SvgText
               x={252}
               y={36}
-              fontSize={9}
-              fontWeight="700"
+              fontSize={11}
+              fontWeight="500"
               fill="#A78BFA"
-              letterSpacing={2}
+              letterSpacing={1.8}
             >
               WEEK
             </SvgText>
@@ -253,9 +253,9 @@ export function ThemeRings({
           >
             <Text
               style={{
-                fontSize: 9,
-                letterSpacing: 2.4,
-                fontWeight: "700",
+                fontSize: 11,
+                letterSpacing: 1.8,
+                fontWeight: "500",
                 color: "#FCA85A",
                 textTransform: "uppercase",
               }}
@@ -277,9 +277,9 @@ export function ThemeRings({
             </Text>
             <Text
               style={{
-                fontSize: 11,
+                fontSize: 12,
                 marginTop: 4,
-                color: "rgba(168,168,180,0.7)",
+                color: "rgba(168,168,180,0.8)",
               }}
             >
               mentions so far
@@ -311,8 +311,8 @@ function NarrativeBlock({
     <View style={{ borderTopWidth: 0.5, borderTopColor: "rgba(255,255,255,0.06)", paddingTop: 14 }}>
       <Text
         style={{
-          fontSize: 9,
-          letterSpacing: 2.2,
+          fontSize: 12,
+          letterSpacing: 2,
           fontWeight: "700",
           color: "#FCA85A",
           textTransform: "uppercase",
@@ -323,11 +323,11 @@ function NarrativeBlock({
       <Text
         style={{
           marginTop: 6,
-          fontSize: 18,
+          fontSize: 20,
           fontWeight: "500",
           letterSpacing: -0.3,
           color: TEXT.primary,
-          lineHeight: 24,
+          lineHeight: 26,
         }}
       >
         <Text style={{ fontWeight: "600" }}>{capitalize(topThemeName)}</Text>{" "}
@@ -366,8 +366,8 @@ function PeriodStat({ label, count, dot }: { label: string; count: number; dot: 
         />
         <Text
           style={{
-            fontSize: 9,
-            letterSpacing: 1.5,
+            fontSize: 12,
+            letterSpacing: 1.6,
             fontWeight: "700",
             color: "rgba(168,168,180,0.7)",
           }}
@@ -378,7 +378,7 @@ function PeriodStat({ label, count, dot }: { label: string; count: number; dot: 
       <Text
         style={{
           marginTop: 4,
-          fontSize: 22,
+          fontSize: 28,
           fontWeight: "500",
           letterSpacing: -0.5,
           color: TEXT.primary,

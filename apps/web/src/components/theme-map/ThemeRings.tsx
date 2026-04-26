@@ -218,9 +218,9 @@ export function ThemeRings({
             <text
               x={20}
               y={36}
-              fontSize={9}
-              fontWeight={700}
-              letterSpacing={2}
+              fontSize={11}
+              fontWeight={500}
+              letterSpacing={1.8}
               fill="#22D3EE"
             >
               MONTH
@@ -240,9 +240,9 @@ export function ThemeRings({
             <text
               x={302}
               y={46}
-              fontSize={9}
-              fontWeight={700}
-              letterSpacing={2}
+              fontSize={11}
+              fontWeight={500}
+              letterSpacing={1.8}
               fill="#A78BFA"
             >
               WEEK
@@ -257,9 +257,9 @@ export function ThemeRings({
         >
           <span
             style={{
-              fontSize: 9,
-              letterSpacing: 2.4,
-              fontWeight: 700,
+              fontSize: 11,
+              letterSpacing: 1.8,
+              fontWeight: 500,
               color: "#FCA85A",
               textTransform: "uppercase",
             }}
@@ -282,9 +282,9 @@ export function ThemeRings({
           </span>
           <span
             style={{
-              fontSize: 11,
+              fontSize: 12,
               marginTop: 6,
-              color: "rgba(168,168,180,0.7)",
+              color: "rgba(168,168,180,0.8)",
             }}
           >
             mentions so far
@@ -327,8 +327,8 @@ function NarrativeColumn({
       <p
         className="uppercase"
         style={{
-          fontSize: 10,
-          letterSpacing: 2.4,
+          fontSize: 12,
+          letterSpacing: 2,
           fontWeight: 700,
           color: "#FCA85A",
         }}
@@ -338,10 +338,10 @@ function NarrativeColumn({
       <h2
         className="mt-2"
         style={{
-          fontSize: 28,
+          fontSize: 24,
           fontWeight: 500,
-          letterSpacing: -0.5,
-          lineHeight: 1.25,
+          letterSpacing: -0.3,
+          lineHeight: 1.3,
           color: "#FAFAFA",
         }}
       >
@@ -384,7 +384,7 @@ function PeriodStat({
         />
         <span
           style={{
-            fontSize: 9.5,
+            fontSize: 12,
             letterSpacing: 1.6,
             fontWeight: 700,
             color: "rgba(168,168,180,0.7)",
@@ -396,7 +396,7 @@ function PeriodStat({
       <div
         style={{
           marginTop: 6,
-          fontSize: 24,
+          fontSize: 28,
           fontWeight: 500,
           letterSpacing: -0.5,
           color: "#FAFAFA",

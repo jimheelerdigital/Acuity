@@ -155,32 +155,32 @@ export default function ThemeMapScreen() {
         <View style={{ paddingHorizontal: 20 }}>
           <Text
             style={{
-              fontSize: 10,
-              letterSpacing: 2.4,
+              fontSize: 11,
+              letterSpacing: 2.5,
               fontWeight: "700",
               color: "#FCA85A",
               textTransform: "uppercase",
-              marginBottom: 8,
+              marginBottom: 10,
             }}
           >
             Reflect · Theme Map
           </Text>
           <Text
             style={{
-              fontSize: 34,
-              fontWeight: "700",
-              letterSpacing: -0.8,
-              lineHeight: 38,
+              fontSize: 28,
+              fontWeight: "500",
+              letterSpacing: -0.4,
+              lineHeight: 32,
               color: "#FAFAFA",
+              marginBottom: 8,
             }}
           >
             Theme Map
           </Text>
           <Text
             style={{
-              fontSize: 14,
-              marginTop: 4,
-              color: "rgba(168,168,180,0.7)",
+              fontSize: 16,
+              color: "rgba(168,168,180,0.75)",
             }}
           >
             Your recurring patterns, surfaced.
