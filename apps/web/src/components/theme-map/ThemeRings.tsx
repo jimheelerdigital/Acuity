@@ -2,23 +2,32 @@
 
 import { useEffect, useState } from "react";
 
+import { CATEGORY, type CategoryToken } from "./theme-tokens";
+
 /**
- * Hero rings card — three concentric rings (today / week / month) with
- * a pulsing centre, a "what stood out" narrative on the right, and
- * dashed wayfinding leader lines.
+ * Hero rings card — FOUR concentric rings, each ring = one of the top
+ * 4 themes for the active period. Each ring's gradient comes from that
+ * theme's CATEGORY (activity = orange/amber, reflection = purple/blue,
+ * life = cyan, emotional = pink). Innermost ring is the #1 theme and
+ * always fills 100%; rings 2-4 fill proportionally to the #1 count
+ * (floor 8% so a small count still has a visible arc).
  *
- * 360×360 viewBox. Each ring is rendered TWICE — once with a Gaussian
- * blur for halo, once crisp on top — so the gradients read as light.
+ * 360×360 viewBox, ring radii 64 / 98 / 128 / 156 (gaps ~14-15px).
+ * Each ring renders TWICE (glow + crisp). Rotated -90° to start at
+ * 12 o'clock. Strokes are round-capped.
  *
- * dasharray math: stroke-dasharray="<filled> <gap>" where
- *   filled = (count / target) * circumference, capped at full circle.
- * Targets are sensibly bounded:
- *   - inner (today):  max(8, todayCount * 1.5)
- *   - middle (week):  max(20, weekCount * 1.25)
- *   - outer (month):  max(40, monthCount * 1.1)
- *
- * Rings start at 12 o'clock via rotate(-90).
+ * Center label is the period-aware top-theme readout. Right side of
+ * the rings carries narrative ("X is your top theme this month — 24
+ * mentions, 31% of total"). Outer rank/name/count leader labels stagger
+ * across the 3-o'clock and 9-o'clock sides so they don't collide.
  */
+
+export type RingTheme = {
+  id: string;
+  name: string;
+  category: CategoryToken;
+  count: number;
+};
 
 export type ThemePeriods = {
   today: { count: number; mood: number };
@@ -26,16 +35,48 @@ export type ThemePeriods = {
   month: { count: number; mood: number };
 };
 
+export type ThemeRingsTimeWindow =
+  | "week"
+  | "month"
+  | "3months"
+  | "6months"
+  | "all";
+
+const PERIOD_PHRASE: Record<ThemeRingsTimeWindow, string> = {
+  week: "this week",
+  month: "this month",
+  "3months": "this quarter",
+  "6months": "the last 6 months",
+  all: "all time",
+};
+
+const CX = 180;
+const CY = 180;
+
+const RING_SLOTS = [
+  { r: 64, sw: 22 }, // innermost — top theme
+  { r: 98, sw: 18 },
+  { r: 128, sw: 14 },
+  { r: 156, sw: 12 },
+];
+
 export function ThemeRings({
-  periods,
-  topThemeName,
+  topThemes,
   totalMentions,
+  periods,
+  timeWindow,
 }: {
-  periods: ThemePeriods;
-  topThemeName: string;
+  topThemes: RingTheme[];
   totalMentions: number;
+  periods: ThemePeriods;
+  timeWindow: ThemeRingsTimeWindow;
 }) {
-  // Animate dasharray from 0 → target on mount.
+  // Cap to 4 — slot order matches RING_SLOTS (innermost is #1).
+  const rings = topThemes.slice(0, 4);
+  const topTheme = rings[0];
+
+  // Animate dasharray from 0 → target on mount or when the ring set
+  // changes (period switch).
   const [progress, setProgress] = useState(0);
   useEffect(() => {
     const start = performance.now();
@@ -43,69 +84,50 @@ export function ThemeRings({
     let raf = 0;
     const step = (now: number) => {
       const t = Math.min(1, (now - start) / duration);
-      // cubic-bezier(0.2, 0.8, 0.2, 1) approximation
-      const eased = 1 - Math.pow(1 - t, 3);
+      const eased = 1 - Math.pow(1 - t, 3); // approx cubic-bezier(0.2,0.8,0.2,1)
       setProgress(eased);
       if (t < 1) raf = requestAnimationFrame(step);
     };
     raf = requestAnimationFrame(step);
     return () => cancelAnimationFrame(raf);
-  }, [periods.today.count, periods.week.count, periods.month.count]);
+  }, [
+    rings.map((r) => `${r.id}:${r.count}`).join("|"),
+    timeWindow,
+  ]);
 
-  const TARGET_TODAY = Math.max(8, periods.today.count * 1.5);
-  const TARGET_WEEK = Math.max(20, periods.week.count * 1.25);
-  const TARGET_MONTH = Math.max(40, periods.month.count * 1.1);
+  if (!topTheme) {
+    return (
+      <div
+        className="rounded-2xl p-8 text-center"
+        style={{
+          background:
+            "linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.005) 100%)",
+          border: "0.5px solid rgba(255,255,255,0.08)",
+        }}
+      >
+        <p style={{ fontSize: 14, color: "rgba(168,168,180,0.7)" }}>
+          No themes yet — record your first reflection to see patterns appear.
+        </p>
+      </div>
+    );
+  }
 
-  const ringSpec = [
-    {
-      r: 80,
-      strokeWidth: 22,
-      gradientId: "today-gradient",
-      stops: [
-        { offset: "0%", color: "#FB923C" },
-        { offset: "55%", color: "#FBBF24" },
-        { offset: "100%", color: "#FDE68A" },
-      ],
-      trackColor: "rgba(251,146,60,0.18)",
-      glowColor: "#FB923C",
-      label: "TODAY",
-      count: periods.today.count,
-      target: TARGET_TODAY,
-    },
-    {
-      r: 120,
-      strokeWidth: 18,
-      gradientId: "week-gradient",
-      stops: [
-        { offset: "0%", color: "#A78BFA" },
-        { offset: "55%", color: "#8B5CF6" },
-        { offset: "100%", color: "#60A5FA" },
-      ],
-      trackColor: "rgba(139,92,246,0.18)",
-      glowColor: "#8B5CF6",
-      label: "WEEK",
-      count: periods.week.count,
-      target: TARGET_WEEK,
-    },
-    {
-      r: 156,
-      strokeWidth: 14,
-      gradientId: "month-gradient",
-      stops: [
-        { offset: "0%", color: "#22D3EE" },
-        { offset: "100%", color: "#A78BFA" },
-      ],
-      trackColor: "rgba(34,211,238,0.18)",
-      glowColor: "#22D3EE",
-      label: "MONTH",
-      count: periods.month.count,
-      target: TARGET_MONTH,
-    },
+  const topCount = Math.max(1, topTheme.count);
+  const periodPhrase = PERIOD_PHRASE[timeWindow];
+  const topAccent = CATEGORY[topTheme.category].solid;
+
+  // Stagger leader labels: rings 1+3 to the right, rings 2+4 to the
+  // left, slightly offset vertically so they don't collide.
+  const leaderPositions: { x: number; y: number; anchor: "start" | "end" }[] = [
+    { x: 290, y: 168, anchor: "start" },  // ring 1 (right of innermost)
+    { x: 70, y: 168, anchor: "end" },     // ring 2 (left)
+    { x: 320, y: 200, anchor: "start" },  // ring 3 (right, lower)
+    { x: 40, y: 200, anchor: "end" },     // ring 4 (left, lower)
   ];
 
   return (
     <div
-      className="relative grid grid-cols-1 gap-6 rounded-2xl p-6 sm:grid-cols-[360px_1fr] sm:items-center sm:gap-8 sm:p-7"
+      className="relative grid grid-cols-1 gap-6 rounded-2xl p-6 sm:grid-cols-[400px_1fr] sm:items-center sm:gap-8 sm:p-7"
       style={{
         background:
           "linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.005) 100%)",
@@ -114,143 +136,150 @@ export function ThemeRings({
           "inset 0 1px 0 rgba(255,255,255,0.06), 0 24px 60px -36px rgba(0,0,0,0.6)",
       }}
     >
-      <div className="relative mx-auto" style={{ width: 360, height: 360 }}>
-        {/* background pulsing glow */}
+      <div className="relative mx-auto" style={{ width: 400, height: 400 }}>
+        {/* background pulsing glow tinted by top theme's category */}
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0"
           style={{
-            background:
-              "radial-gradient(circle, rgba(251,146,60,0.32) 0%, rgba(251,146,60,0.08) 30%, transparent 60%)",
+            background: `radial-gradient(circle, ${topAccent}55 0%, ${topAccent}14 30%, transparent 60%)`,
             filter: "blur(40px)",
             animation: "rings-pulse 4s ease-in-out infinite",
           }}
         />
-        <svg width={360} height={360} viewBox="0 0 360 360" style={{ overflow: "visible" }}>
+        <svg
+          width={400}
+          height={400}
+          viewBox="0 0 360 360"
+          style={{ overflow: "visible" }}
+        >
           <defs>
-            {ringSpec.map((spec) => (
-              <linearGradient
-                key={spec.gradientId}
-                id={spec.gradientId}
-                x1="0"
-                y1="0"
-                x2="1"
-                y2="1"
-              >
-                {spec.stops.map((s) => (
-                  <stop key={s.offset} offset={s.offset} stopColor={s.color} />
-                ))}
-              </linearGradient>
-            ))}
+            {rings.map((t, i) => {
+              const c = CATEGORY[t.category];
+              return (
+                <linearGradient
+                  key={`grad-${t.id}-${i}`}
+                  id={`ring-grad-${i}`}
+                  x1="0"
+                  y1="0"
+                  x2="1"
+                  y2="1"
+                >
+                  <stop offset="0%" stopColor={c.solid} />
+                  <stop offset="55%" stopColor={c.accent} />
+                  <stop offset="100%" stopColor={c.accent} stopOpacity={0.85} />
+                </linearGradient>
+              );
+            })}
             <filter id="rings-glow" x="-30%" y="-30%" width="160%" height="160%">
               <feGaussianBlur stdDeviation="6" />
             </filter>
             <radialGradient id="rings-bg-glow" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="#FB923C" stopOpacity={0.25} />
-              <stop offset="100%" stopColor="#FB923C" stopOpacity={0} />
+              <stop offset="0%" stopColor={topAccent} stopOpacity={0.25} />
+              <stop offset="100%" stopColor={topAccent} stopOpacity={0} />
             </radialGradient>
           </defs>
 
-          {/* radial bg-glow at r=170 */}
-          <circle cx={180} cy={180} r={170} fill="url(#rings-bg-glow)" />
+          {/* radial bg-glow */}
+          <circle cx={CX} cy={CY} r={170} fill="url(#rings-bg-glow)" />
 
-          {/* tracks (faint) — render all THREE first so progress arcs sit on top */}
-          {ringSpec.map((spec) => (
-            <circle
-              key={`track-${spec.gradientId}`}
-              cx={180}
-              cy={180}
-              r={spec.r}
-              fill="none"
-              stroke={spec.trackColor}
-              strokeWidth={spec.strokeWidth}
-            />
-          ))}
+          {/* tracks (faint) — render all rings first so progress arcs sit on top */}
+          {rings.map((t, i) => {
+            const slot = RING_SLOTS[i];
+            const c = CATEGORY[t.category];
+            return (
+              <circle
+                key={`track-${t.id}-${i}`}
+                cx={CX}
+                cy={CY}
+                r={slot.r}
+                fill="none"
+                stroke={`${c.solid}26`}
+                strokeWidth={slot.sw}
+              />
+            );
+          })}
 
-          {/* glow underlayer + crisp top — for each ring */}
-          {ringSpec.map((spec) => {
-            const circumference = 2 * Math.PI * spec.r;
-            const filled =
-              Math.min(1, spec.count / spec.target) * circumference * progress;
+          {/* glow underlayer + crisp top */}
+          {rings.map((t, i) => {
+            const slot = RING_SLOTS[i];
+            const circumference = 2 * Math.PI * slot.r;
+            const ratio = Math.max(0.08, Math.min(1, t.count / topCount));
+            const filled = ratio * circumference * progress;
             const dasharray = `${filled} ${circumference - filled}`;
             return (
-              <g key={`arc-${spec.gradientId}`}>
+              <g key={`arc-${t.id}-${i}`}>
                 <circle
-                  cx={180}
-                  cy={180}
-                  r={spec.r}
+                  cx={CX}
+                  cy={CY}
+                  r={slot.r}
                   fill="none"
-                  stroke={`url(#${spec.gradientId})`}
-                  strokeWidth={spec.strokeWidth}
+                  stroke={`url(#ring-grad-${i})`}
+                  strokeWidth={slot.sw}
                   strokeLinecap="round"
                   strokeDasharray={dasharray}
-                  transform="rotate(-90 180 180)"
+                  transform={`rotate(-90 ${CX} ${CY})`}
                   filter="url(#rings-glow)"
-                  opacity={0.75}
+                  opacity={0.7}
                 />
                 <circle
-                  cx={180}
-                  cy={180}
-                  r={spec.r}
+                  cx={CX}
+                  cy={CY}
+                  r={slot.r}
                   fill="none"
-                  stroke={`url(#${spec.gradientId})`}
-                  strokeWidth={spec.strokeWidth}
+                  stroke={`url(#ring-grad-${i})`}
+                  strokeWidth={slot.sw}
                   strokeLinecap="round"
                   strokeDasharray={dasharray}
-                  transform="rotate(-90 180 180)"
+                  transform={`rotate(-90 ${CX} ${CY})`}
                 />
               </g>
             );
           })}
 
-          {/* dashed wayfinding leader lines */}
-          {/* MONTH leader — top-left */}
-          <g opacity={0.55}>
-            <line
-              x1={50}
-              y1={40}
-              x2={148}
-              y2={68}
-              stroke="rgba(34,211,238,0.5)"
-              strokeWidth={0.8}
-              strokeDasharray="3 4"
-            />
-            <text
-              x={20}
-              y={36}
-              fontSize={13}
-              fontWeight={500}
-              letterSpacing={1.8}
-              fill="#22D3EE"
-            >
-              MONTH
-            </text>
-          </g>
-          {/* WEEK leader — top-right */}
-          <g opacity={0.55}>
-            <line
-              x1={310}
-              y1={50}
-              x2={224}
-              y2={88}
-              stroke="rgba(139,92,246,0.5)"
-              strokeWidth={0.8}
-              strokeDasharray="3 4"
-            />
-            <text
-              x={302}
-              y={46}
-              fontSize={13}
-              fontWeight={500}
-              letterSpacing={1.8}
-              fill="#A78BFA"
-            >
-              WEEK
-            </text>
-          </g>
+          {/* leader labels — rank · name · count, staggered left/right */}
+          {rings.map((t, i) => {
+            const slot = RING_SLOTS[i];
+            const c = CATEGORY[t.category];
+            const pos = leaderPositions[i];
+            // Anchor leader line near the ring's outer edge.
+            const ringEdgeX =
+              pos.anchor === "start"
+                ? CX + (slot.r + slot.sw / 2) - 2
+                : CX - (slot.r + slot.sw / 2) + 2;
+            const lineX2 = pos.anchor === "start" ? pos.x - 8 : pos.x + 8;
+            return (
+              <g key={`leader-${t.id}-${i}`} opacity={0.85}>
+                <line
+                  x1={ringEdgeX}
+                  y1={CY}
+                  x2={lineX2}
+                  y2={pos.y - 2}
+                  stroke={`${c.solid}66`}
+                  strokeWidth={0.8}
+                  strokeDasharray="3 4"
+                />
+                <text
+                  x={pos.x}
+                  y={pos.y}
+                  fontSize={12}
+                  fontWeight={500}
+                  textAnchor={pos.anchor === "start" ? "start" : "end"}
+                  fill="#FAFAFA"
+                >
+                  <tspan fill="rgba(168,168,180,0.5)" fontWeight={600}>
+                    {String(i + 1).padStart(2, "0")}
+                  </tspan>
+                  <tspan fill="rgba(168,168,180,0.55)">{" · "}</tspan>
+                  <tspan>{truncate(capitalize(t.name), 18)}</tspan>
+                  <tspan fill="rgba(168,168,180,0.7)">{` · ${t.count}`}</tspan>
+                </text>
+              </g>
+            );
+          })}
         </svg>
 
-        {/* centre content (HTML overlay so text is selectable + crisp) */}
+        {/* centre content */}
         <div
           className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center"
           style={{ animation: "rings-pulse-num 4s ease-in-out infinite" }}
@@ -260,42 +289,56 @@ export function ThemeRings({
               fontSize: 13,
               letterSpacing: 2,
               fontWeight: 500,
-              color: "#FCA85A",
+              color: "rgba(252,168,90,0.85)",
               textTransform: "uppercase",
             }}
           >
-            TODAY · {topThemeName.toUpperCase()}
+            TOP THEME · {periodPhrase}
           </span>
           <span
             style={{
-              fontSize: 64,
+              fontSize: 60,
               fontWeight: 500,
               color: "#FAFAFA",
               letterSpacing: -1,
               lineHeight: 1,
-              marginTop: 4,
-              textShadow: "0 0 24px rgba(251,146,60,0.6)",
+              marginTop: 6,
+              textShadow: `0 0 24px ${topAccent}99`,
               fontVariantNumeric: "tabular-nums",
             }}
           >
-            {periods.today.count}
+            {topTheme.count}
           </span>
           <span
             style={{
-              fontSize: 14,
-              marginTop: 6,
-              color: "rgba(168,168,180,0.85)",
+              fontSize: 16,
+              fontWeight: 500,
+              marginTop: 8,
+              color: "rgba(228,228,231,0.9)",
+              textAlign: "center",
+              maxWidth: 200,
             }}
           >
-            mentions so far
+            {capitalize(topTheme.name)}
+          </span>
+          <span
+            style={{
+              fontSize: 12,
+              marginTop: 4,
+              color: "rgba(168,168,180,0.7)",
+            }}
+          >
+            {topTheme.count} {topTheme.count === 1 ? "mention" : "mentions"}
           </span>
         </div>
       </div>
 
       <NarrativeColumn
-        topThemeName={topThemeName}
-        periods={periods}
+        topTheme={topTheme}
+        topThemes={rings}
         totalMentions={totalMentions}
+        periods={periods}
+        periodPhrase={periodPhrase}
       />
 
       <style jsx>{`
@@ -313,15 +356,24 @@ export function ThemeRings({
 }
 
 function NarrativeColumn({
-  topThemeName,
-  periods,
+  topTheme,
+  topThemes,
   totalMentions,
+  periods,
+  periodPhrase,
 }: {
-  topThemeName: string;
-  periods: ThemePeriods;
+  topTheme: RingTheme;
+  topThemes: RingTheme[];
   totalMentions: number;
+  periods: ThemePeriods;
+  periodPhrase: string;
 }) {
-  const headline = buildHeadline(topThemeName, periods, totalMentions);
+  const enoughThemes = topThemes.length >= 3;
+  const pct =
+    totalMentions > 0
+      ? Math.round((topTheme.count / totalMentions) * 100)
+      : 0;
+
   return (
     <div className="min-w-0">
       <p
@@ -345,8 +397,23 @@ function NarrativeColumn({
           color: "#FAFAFA",
         }}
       >
-        <span style={{ fontWeight: 600 }}>{capitalize(topThemeName)}</span>{" "}
-        {headline}
+        {enoughThemes ? (
+          <>
+            <span style={{ fontWeight: 600 }}>{capitalize(topTheme.name)}</span>{" "}
+            <span style={gradientText()}>
+              is your top theme {periodPhrase}
+            </span>
+            {" — "}
+            {topTheme.count} {topTheme.count === 1 ? "mention" : "mentions"},{" "}
+            {pct}% of total.
+          </>
+        ) : (
+          <>
+            <span style={{ fontWeight: 600 }}>{capitalize(topTheme.name)}</span>{" "}
+            is the only recurring theme {periodPhrase}. Keep journaling to
+            surface more patterns.
+          </>
+        )}
       </h2>
       <div
         className="mt-5 grid grid-cols-3 gap-3"
@@ -409,55 +476,6 @@ function PeriodStat({
   );
 }
 
-function buildHeadline(
-  _themeName: string,
-  periods: ThemePeriods,
-  totalMentions: number
-): React.ReactNode {
-  const today = periods.today.count;
-  const week = periods.week.count;
-  const month = periods.month.count;
-
-  // Today-driven headline when there's activity today.
-  if (today > 0) {
-    if (week > today && week > 0) {
-      const pct = Math.round((today / week) * 100);
-      return (
-        <>
-          <span style={gradientText()}>
-            came up {today} {today === 1 ? "time" : "times"} today
-          </span>
-          {" — "}already {pct}% of this week&rsquo;s count.
-        </>
-      );
-    }
-    return (
-      <>
-        <span style={gradientText()}>
-          came up {today} {today === 1 ? "time" : "times"} today
-        </span>
-        .
-      </>
-    );
-  }
-
-  // No-today fallback: month framing.
-  if (month > 0) {
-    const pct =
-      totalMentions > 0 ? Math.round((month / totalMentions) * 100) : 0;
-    return (
-      <>
-        <span style={gradientText()}>
-          came up {month} {month === 1 ? "time" : "times"} this month
-        </span>
-        {pct > 0 ? ` — ${pct}% of all your themes.` : "."}
-      </>
-    );
-  }
-
-  return "is your most-mentioned recurring thread.";
-}
-
 function gradientText(): React.CSSProperties {
   return {
     background:
@@ -468,6 +486,10 @@ function gradientText(): React.CSSProperties {
     color: "transparent",
     fontWeight: 600,
   };
+}
+
+function truncate(s: string, max: number): string {
+  return s.length > max ? `${s.slice(0, max - 1)}…` : s;
 }
 
 function capitalize(s: string): string {

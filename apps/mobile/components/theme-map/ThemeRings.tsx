@@ -21,13 +21,21 @@ import Svg, {
   Text as SvgText,
 } from "react-native-svg";
 
-import { TEXT } from "./theme-tokens";
+import { CATEGORY, TEXT, type CategoryToken } from "./theme-tokens";
 
 /**
- * Mobile counterpart to apps/web/src/components/theme-map/ThemeRings.
- * Same three-ring composition + centre pulse + leader lines, scaled
- * to fit a phone (300×300 viewBox).
+ * Mobile mirror of apps/web/src/components/theme-map/ThemeRings.
+ * FOUR concentric rings = top 4 themes for the active period. Each
+ * ring's color comes from that theme's category. Same composition
+ * rules as web; scaled for a phone (300×300 viewBox).
  */
+
+export type RingTheme = {
+  id: string;
+  name: string;
+  category: CategoryToken;
+  count: number;
+};
 
 export type ThemePeriods = {
   today: { count: number; mood: number };
@@ -35,68 +43,46 @@ export type ThemePeriods = {
   month: { count: number; mood: number };
 };
 
+export type ThemeRingsTimeWindow =
+  | "week"
+  | "month"
+  | "3months"
+  | "6months"
+  | "all";
+
+const PERIOD_PHRASE: Record<ThemeRingsTimeWindow, string> = {
+  week: "this week",
+  month: "this month",
+  "3months": "this quarter",
+  "6months": "the last 6 months",
+  all: "all time",
+};
+
 const SIZE = 300;
 const CX = SIZE / 2;
 const CY = SIZE / 2;
 
-const RINGS = [
-  {
-    r: 66,
-    sw: 18,
-    gradId: "today-grad",
-    track: "rgba(251,146,60,0.18)",
-    label: "TODAY",
-    accent: "#FB923C",
-    stops: [
-      { o: "0%", c: "#FB923C" },
-      { o: "55%", c: "#FBBF24" },
-      { o: "100%", c: "#FDE68A" },
-    ],
-  },
-  {
-    r: 100,
-    sw: 15,
-    gradId: "week-grad",
-    track: "rgba(139,92,246,0.18)",
-    label: "WEEK",
-    accent: "#8B5CF6",
-    stops: [
-      { o: "0%", c: "#A78BFA" },
-      { o: "55%", c: "#8B5CF6" },
-      { o: "100%", c: "#60A5FA" },
-    ],
-  },
-  {
-    r: 130,
-    sw: 12,
-    gradId: "month-grad",
-    track: "rgba(34,211,238,0.18)",
-    label: "MONTH",
-    accent: "#22D3EE",
-    stops: [
-      { o: "0%", c: "#22D3EE" },
-      { o: "100%", c: "#A78BFA" },
-    ],
-  },
+const RING_SLOTS = [
+  { r: 50, sw: 18 },
+  { r: 78, sw: 14 },
+  { r: 102, sw: 11 },
+  { r: 124, sw: 9 },
 ];
 
 export function ThemeRings({
-  periods,
-  topThemeName,
+  topThemes,
   totalMentions,
+  periods,
+  timeWindow,
 }: {
-  periods: ThemePeriods;
-  topThemeName: string;
+  topThemes: RingTheme[];
   totalMentions: number;
+  periods: ThemePeriods;
+  timeWindow: ThemeRingsTimeWindow;
 }) {
-  const TARGET_TODAY = Math.max(8, periods.today.count * 1.5);
-  const TARGET_WEEK = Math.max(20, periods.week.count * 1.25);
-  const TARGET_MONTH = Math.max(40, periods.month.count * 1.1);
+  const rings = topThemes.slice(0, 4);
+  const topTheme = rings[0];
 
-  const counts = [periods.today.count, periods.week.count, periods.month.count];
-  const targets = [TARGET_TODAY, TARGET_WEEK, TARGET_MONTH];
-
-  // Centre pulse
   const pulse = useSharedValue(1);
   useEffect(() => {
     pulse.value = withRepeat(
@@ -113,6 +99,29 @@ export function ThemeRings({
     transform: [{ scale: pulse.value }],
   }));
 
+  if (!topTheme) {
+    return (
+      <View
+        style={{
+          padding: 24,
+          borderRadius: 16,
+          backgroundColor: "rgba(255,255,255,0.02)",
+          borderWidth: 0.5,
+          borderColor: "rgba(255,255,255,0.08)",
+          alignItems: "center",
+        }}
+      >
+        <Text style={{ fontSize: 13, color: "rgba(168,168,180,0.7)" }}>
+          No themes yet — record your first reflection to see patterns appear.
+        </Text>
+      </View>
+    );
+  }
+
+  const topCount = Math.max(1, topTheme.count);
+  const periodPhrase = PERIOD_PHRASE[timeWindow];
+  const topAccent = CATEGORY[topTheme.category].solid;
+
   return (
     <View
       style={{
@@ -128,69 +137,78 @@ export function ThemeRings({
         <View style={{ width: SIZE, height: SIZE }}>
           <Svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
             <Defs>
-              {RINGS.map((r) => (
-                <SvgLinearGradient
-                  key={r.gradId}
-                  id={r.gradId}
-                  x1="0"
-                  y1="0"
-                  x2="1"
-                  y2="1"
-                >
-                  {r.stops.map((s) => (
-                    <Stop key={s.o} offset={s.o} stopColor={s.c} />
-                  ))}
-                </SvgLinearGradient>
-              ))}
+              {rings.map((t, i) => {
+                const c = CATEGORY[t.category];
+                return (
+                  <SvgLinearGradient
+                    key={`grad-${t.id}-${i}`}
+                    id={`ring-grad-${i}`}
+                    x1="0"
+                    y1="0"
+                    x2="1"
+                    y2="1"
+                  >
+                    <Stop offset="0%" stopColor={c.solid} />
+                    <Stop offset="55%" stopColor={c.accent} />
+                    <Stop offset="100%" stopColor={c.accent} stopOpacity={0.85} />
+                  </SvgLinearGradient>
+                );
+              })}
               <Filter id="rings-glow" x="-30%" y="-30%" width="160%" height="160%">
                 <FeGaussianBlur stdDeviation="6" />
               </Filter>
               <RadialGradient id="rings-bg" cx="50%" cy="50%" r="50%">
-                <Stop offset="0%" stopColor="#FB923C" stopOpacity={0.25} />
-                <Stop offset="100%" stopColor="#FB923C" stopOpacity={0} />
+                <Stop offset="0%" stopColor={topAccent} stopOpacity={0.25} />
+                <Stop offset="100%" stopColor={topAccent} stopOpacity={0} />
               </RadialGradient>
             </Defs>
 
-            <Circle cx={CX} cy={CY} r={142} fill="url(#rings-bg)" />
+            <Circle cx={CX} cy={CY} r={140} fill="url(#rings-bg)" />
 
-            {RINGS.map((r) => (
-              <Circle
-                key={`track-${r.gradId}`}
-                cx={CX}
-                cy={CY}
-                r={r.r}
-                fill="none"
-                stroke={r.track}
-                strokeWidth={r.sw}
-              />
-            ))}
+            {rings.map((t, i) => {
+              const slot = RING_SLOTS[i];
+              const c = CATEGORY[t.category];
+              return (
+                <Circle
+                  key={`track-${t.id}-${i}`}
+                  cx={CX}
+                  cy={CY}
+                  r={slot.r}
+                  fill="none"
+                  stroke={`${c.solid}26`}
+                  strokeWidth={slot.sw}
+                />
+              );
+            })}
 
-            {RINGS.map((r, i) => {
-              const c = 2 * Math.PI * r.r;
-              const filled = Math.min(1, counts[i] / targets[i]) * c;
+            {rings.map((t, i) => {
+              const slot = RING_SLOTS[i];
+              const c = 2 * Math.PI * slot.r;
+              const ratio = Math.max(0.08, Math.min(1, t.count / topCount));
+              const filled = ratio * c;
               const dasharray = `${filled} ${c - filled}`;
               return (
-                <G key={r.gradId}>
+                <G key={`arc-${t.id}-${i}`}>
                   <Circle
                     cx={CX}
                     cy={CY}
-                    r={r.r}
+                    r={slot.r}
                     fill="none"
-                    stroke={`url(#${r.gradId})`}
-                    strokeWidth={r.sw}
+                    stroke={`url(#ring-grad-${i})`}
+                    strokeWidth={slot.sw}
                     strokeLinecap="round"
                     strokeDasharray={dasharray}
                     transform={`rotate(-90 ${CX} ${CY})`}
                     filter="url(#rings-glow)"
-                    opacity={0.75}
+                    opacity={0.7}
                   />
                   <Circle
                     cx={CX}
                     cy={CY}
-                    r={r.r}
+                    r={slot.r}
                     fill="none"
-                    stroke={`url(#${r.gradId})`}
-                    strokeWidth={r.sw}
+                    stroke={`url(#ring-grad-${i})`}
+                    strokeWidth={slot.sw}
                     strokeLinecap="round"
                     strokeDasharray={dasharray}
                     transform={`rotate(-90 ${CX} ${CY})`}
@@ -198,47 +216,8 @@ export function ThemeRings({
                 </G>
               );
             })}
-
-            {/* Leader lines */}
-            <Line
-              x1={42}
-              y1={32}
-              x2={124}
-              y2={56}
-              stroke="rgba(34,211,238,0.5)"
-              strokeWidth={0.8}
-              strokeDasharray="3 4"
-            />
-            <SvgText
-              x={14}
-              y={28}
-              fontSize={13}
-              fontWeight="500"
-              fill="#22D3EE"
-              letterSpacing={1.8}
-            >
-              MONTH
-            </SvgText>
-            <Line
-              x1={258}
-              y1={42}
-              x2={186}
-              y2={74}
-              stroke="rgba(139,92,246,0.5)"
-              strokeWidth={0.8}
-              strokeDasharray="3 4"
-            />
-            <SvgText
-              x={252}
-              y={36}
-              fontSize={13}
-              fontWeight="500"
-              fill="#A78BFA"
-              letterSpacing={1.8}
-            >
-              WEEK
-            </SvgText>
           </Svg>
+
           <Animated.View
             pointerEvents="none"
             style={[
@@ -253,60 +232,126 @@ export function ThemeRings({
           >
             <Text
               style={{
-                fontSize: 13,
-                letterSpacing: 2,
+                fontSize: 11,
+                letterSpacing: 1.8,
                 fontWeight: "500",
-                color: "#FCA85A",
+                color: "rgba(252,168,90,0.85)",
                 textTransform: "uppercase",
               }}
             >
-              TODAY · {topThemeName.toUpperCase()}
+              TOP THEME · {periodPhrase}
             </Text>
             <Text
               style={{
-                fontSize: 56,
+                fontSize: 52,
                 fontWeight: "500",
                 color: "#FAFAFA",
                 letterSpacing: -1,
                 marginTop: 4,
-                textShadowColor: "rgba(251,146,60,0.6)",
+                textShadowColor: `${topAccent}99`,
                 textShadowRadius: 18,
               }}
             >
-              {periods.today.count}
+              {topTheme.count}
             </Text>
             <Text
               style={{
+                marginTop: 6,
                 fontSize: 14,
-                marginTop: 4,
-                color: "rgba(168,168,180,0.85)",
+                fontWeight: "500",
+                color: "rgba(228,228,231,0.9)",
+                textAlign: "center",
+                maxWidth: 180,
+              }}
+              numberOfLines={1}
+            >
+              {capitalize(topTheme.name)}
+            </Text>
+            <Text
+              style={{
+                marginTop: 2,
+                fontSize: 11,
+                color: "rgba(168,168,180,0.7)",
               }}
             >
-              mentions so far
+              {topTheme.count} {topTheme.count === 1 ? "mention" : "mentions"}
             </Text>
           </Animated.View>
         </View>
       </View>
 
+      {/* Compact rank list (mobile-friendly version of leader labels) */}
+      <View style={{ borderTopWidth: 0.5, borderTopColor: "rgba(255,255,255,0.06)", paddingTop: 12, gap: 6 }}>
+        {rings.map((t, i) => {
+          const c = CATEGORY[t.category];
+          return (
+            <View
+              key={`rank-${t.id}`}
+              style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+            >
+              <View
+                style={{
+                  width: 7,
+                  height: 7,
+                  borderRadius: 999,
+                  backgroundColor: c.solid,
+                  shadowColor: c.solid,
+                  shadowOpacity: 1,
+                  shadowRadius: 6,
+                  shadowOffset: { width: 0, height: 0 },
+                }}
+              />
+              <Text
+                style={{
+                  fontSize: 11,
+                  fontWeight: "600",
+                  color: "rgba(168,168,180,0.5)",
+                  width: 22,
+                }}
+              >
+                {String(i + 1).padStart(2, "0")}
+              </Text>
+              <Text
+                numberOfLines={1}
+                style={{ flex: 1, fontSize: 14, fontWeight: "500", color: TEXT.primary }}
+              >
+                {capitalize(t.name)}
+              </Text>
+              <Text style={{ fontSize: 14, fontWeight: "500", color: "rgba(168,168,180,0.85)" }}>
+                {t.count}
+              </Text>
+            </View>
+          );
+        })}
+      </View>
+
       <NarrativeBlock
-        topThemeName={topThemeName}
-        periods={periods}
+        topTheme={topTheme}
+        topThemes={rings}
         totalMentions={totalMentions}
+        periods={periods}
+        periodPhrase={periodPhrase}
       />
     </View>
   );
 }
 
 function NarrativeBlock({
-  topThemeName,
-  periods,
+  topTheme,
+  topThemes,
   totalMentions,
+  periods,
+  periodPhrase,
 }: {
-  topThemeName: string;
-  periods: ThemePeriods;
+  topTheme: RingTheme;
+  topThemes: RingTheme[];
   totalMentions: number;
+  periods: ThemePeriods;
+  periodPhrase: string;
 }) {
-  const headline = buildHeadline(topThemeName, periods, totalMentions);
+  const enoughThemes = topThemes.length >= 3;
+  const pct = totalMentions > 0 ? Math.round((topTheme.count / totalMentions) * 100) : 0;
+
   return (
     <View style={{ borderTopWidth: 0.5, borderTopColor: "rgba(255,255,255,0.06)", paddingTop: 14 }}>
       <Text
@@ -330,8 +375,18 @@ function NarrativeBlock({
           lineHeight: 30,
         }}
       >
-        <Text style={{ fontWeight: "600" }}>{capitalize(topThemeName)}</Text>{" "}
-        {headline}
+        {enoughThemes ? (
+          <>
+            <Text style={{ fontWeight: "600" }}>{capitalize(topTheme.name)}</Text>{" "}
+            is your top theme {periodPhrase} — {topTheme.count}{" "}
+            {topTheme.count === 1 ? "mention" : "mentions"}, {pct}% of total.
+          </>
+        ) : (
+          <>
+            <Text style={{ fontWeight: "600" }}>{capitalize(topTheme.name)}</Text>{" "}
+            is the only recurring theme {periodPhrase}. Keep journaling to surface more patterns.
+          </>
+        )}
       </Text>
       <View
         style={{
@@ -390,30 +445,7 @@ function PeriodStat({ label, count, dot }: { label: string; count: number; dot: 
   );
 }
 
-function buildHeadline(
-  _name: string,
-  periods: ThemePeriods,
-  totalMentions: number
-): string {
-  const today = periods.today.count;
-  const week = periods.week.count;
-  const month = periods.month.count;
-  if (today > 0) {
-    if (week > today && week > 0) {
-      const pct = Math.round((today / week) * 100);
-      return `came up ${today} ${today === 1 ? "time" : "times"} today — already ${pct}% of this week's count.`;
-    }
-    return `came up ${today} ${today === 1 ? "time" : "times"} today.`;
-  }
-  if (month > 0) {
-    const pct = totalMentions > 0 ? Math.round((month / totalMentions) * 100) : 0;
-    return `came up ${month} ${month === 1 ? "time" : "times"} this month${pct > 0 ? ` — ${pct}% of all your themes.` : "."}`;
-  }
-  return "is your most-mentioned recurring thread.";
-}
-
 function capitalize(s: string): string {
   if (!s) return s;
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
-

@@ -10,7 +10,12 @@ import Svg, {
 import { ThemeCardsStrip, type StripTheme } from "./ThemeCardsStrip";
 import { ThemeDetailSheet, type DetailEntry } from "./ThemeDetailSheet";
 import { ThemeMoodWaveRow, type WaveTheme } from "./ThemeMoodWaveRow";
-import { ThemeRings, type ThemePeriods } from "./ThemeRings";
+import {
+  ThemeRings,
+  type RingTheme,
+  type ThemePeriods,
+  type ThemeRingsTimeWindow,
+} from "./ThemeRings";
 import { CARD_STYLE, PAGE_BG_STOPS, TEXT } from "./theme-tokens";
 
 /**
@@ -34,6 +39,7 @@ export function ThemeMapDashboard({
   totalMentions,
   topThemeName,
   periods,
+  timeWindow,
   windowStart,
   windowEnd,
 }: {
@@ -41,6 +47,7 @@ export function ThemeMapDashboard({
   totalMentions: number;
   topThemeName: string | null;
   periods: ThemePeriods;
+  timeWindow: ThemeRingsTimeWindow;
   windowStart: string | null;
   windowEnd: string;
 }) {
@@ -86,9 +93,15 @@ export function ThemeMapDashboard({
         <SectionLabel label="PERIOD AT A GLANCE" />
 
         <ThemeRings
-          periods={periods}
-          topThemeName={topThemeName ?? themes[0].name}
+          topThemes={themes.slice(0, 4).map<RingTheme>((t) => ({
+            id: t.id,
+            name: t.name,
+            category: t.category,
+            count: t.count,
+          }))}
           totalMentions={totalMentions}
+          periods={periods}
+          timeWindow={timeWindow}
         />
 
         <ThemeCardsStrip themes={stripThemes} onTap={setActiveThemeId} />

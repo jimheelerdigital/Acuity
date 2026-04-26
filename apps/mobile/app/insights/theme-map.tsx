@@ -207,6 +207,7 @@ export default function ThemeMapScreen() {
                 totalMentions={data.totalMentions ?? 0}
                 topThemeName={data.topThemeName ?? data.topTheme}
                 periods={data.periods}
+                timeWindow={window_}
                 windowStart={data.meta.windowStart}
                 windowEnd={data.meta.windowEnd}
               />
