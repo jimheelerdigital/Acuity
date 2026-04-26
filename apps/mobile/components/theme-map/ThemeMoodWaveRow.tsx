@@ -5,6 +5,7 @@ import Svg, {
   Defs,
   FeGaussianBlur,
   Filter,
+  G,
   Line,
   LinearGradient as SvgLinearGradient,
   Path,
@@ -175,6 +176,12 @@ function WaveSVG({
   const negativePath = buildHalfPath(negative, VB_W);
   const lastPoint = points[points.length - 1];
 
+  // Center the curve in the lane (see web for full rationale).
+  const ys = points.map((p) => p.y);
+  const yMin = Math.min(...ys, BASELINE_Y);
+  const yMax = Math.max(...ys, BASELINE_Y);
+  const dy = BASELINE_Y - (yMin + yMax) / 2;
+
   return (
     <Svg width="100%" height={VB_H} viewBox={`0 0 ${VB_W} ${VB_H}`} preserveAspectRatio="none">
       <Defs>
@@ -198,6 +205,7 @@ function WaveSVG({
           <FeGaussianBlur stdDeviation="5" />
         </Filter>
       </Defs>
+      <G transform={`translate(0, ${dy})`}>
       <Line x1={0} y1={BASELINE_Y} x2={VB_W} y2={BASELINE_Y} stroke="rgba(255,255,255,0.06)" strokeWidth={0.5} />
       {positivePath && (
         <>
@@ -219,6 +227,7 @@ function WaveSVG({
           <Circle cx={lastPoint.x} cy={lastPoint.y} r={2.5} fill={lastPoint.mood >= 5 ? MOOD.positiveLight : MOOD.negativeLight} />
         </>
       )}
+      </G>
     </Svg>
   );
 }

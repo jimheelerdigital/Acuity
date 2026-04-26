@@ -102,6 +102,7 @@ export function ThemeMapDashboard({
           totalMentions={totalMentions}
           periods={periods}
           timeWindow={timeWindow}
+          onTap={setActiveThemeId}
         />
 
         <ThemeCardsStrip themes={stripThemes} onTap={setActiveThemeId} />

@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import Animated, {
   Easing,
   cancelAnimation,
@@ -84,11 +84,13 @@ export function ThemeRings({
   totalMentions,
   periods,
   timeWindow,
+  onTap,
 }: {
   topThemes: RingTheme[];
   totalMentions: number;
   periods: ThemePeriods;
   timeWindow: ThemeRingsTimeWindow;
+  onTap?: (id: string) => void;
 }) {
   const rings = topThemes.slice(0, 4);
   const topTheme = rings[0];
@@ -293,14 +295,23 @@ export function ThemeRings({
         {rings.map((t, i) => {
           const p = SLOT_PALETTE[i];
           return (
-            <View
+            <Pressable
               key={`rank-${t.id}`}
-              style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+              onPress={onTap ? () => onTap(t.id) : undefined}
+              style={({ pressed }) => ({
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 10,
+                paddingVertical: 8,
+                paddingHorizontal: 8,
+                borderRadius: 8,
+                backgroundColor: pressed ? "rgba(255,255,255,0.04)" : "transparent",
+              })}
             >
               <View
                 style={{
-                  width: 7,
-                  height: 7,
+                  width: 9,
+                  height: 9,
                   borderRadius: 999,
                   backgroundColor: p.solid,
                   shadowColor: p.solid,
@@ -311,24 +322,24 @@ export function ThemeRings({
               />
               <Text
                 style={{
-                  fontSize: 11,
+                  fontSize: 14,
                   fontWeight: "600",
                   color: "rgba(168,168,180,0.5)",
-                  width: 22,
+                  width: 26,
                 }}
               >
                 {String(i + 1).padStart(2, "0")}
               </Text>
               <Text
                 numberOfLines={1}
-                style={{ flex: 1, fontSize: 14, fontWeight: "500", color: TEXT.primary }}
+                style={{ flex: 1, fontSize: 17, fontWeight: "500", color: TEXT.primary }}
               >
                 {capitalize(t.name)}
               </Text>
-              <Text style={{ fontSize: 14, fontWeight: "500", color: "rgba(168,168,180,0.85)" }}>
+              <Text style={{ fontSize: 17, fontWeight: "500", color: "rgba(168,168,180,0.85)" }}>
                 {t.count}
               </Text>
-            </View>
+            </Pressable>
           );
         })}
       </View>

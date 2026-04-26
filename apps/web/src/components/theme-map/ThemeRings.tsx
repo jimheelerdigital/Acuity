@@ -80,11 +80,13 @@ export function ThemeRings({
   totalMentions,
   periods,
   timeWindow,
+  onTap,
 }: {
   topThemes: RingTheme[];
   totalMentions: number;
   periods: ThemePeriods;
   timeWindow: ThemeRingsTimeWindow;
+  onTap?: (id: string) => void;
 }) {
   // Cap to 4 — slot order matches RING_SLOTS (innermost is #1).
   const rings = topThemes.slice(0, 4);
@@ -330,20 +332,30 @@ export function ThemeRings({
       >
         {rings.map((t, i) => {
           const p = SLOT_PALETTE[i];
+          const Tag: keyof JSX.IntrinsicElements = onTap ? "button" : "div";
           return (
-            <div
+            <Tag
               key={`rank-${t.id}`}
-              className="flex items-center gap-3"
-              style={{ fontSize: 14 }}
+              onClick={onTap ? () => onTap(t.id) : undefined}
+              className={`flex items-center gap-3 rounded-md text-left transition ${
+                onTap ? "cursor-pointer hover:bg-white/[0.03]" : ""
+              }`}
+              style={{
+                fontSize: 17,
+                paddingTop: 8,
+                paddingBottom: 8,
+                paddingLeft: 8,
+                paddingRight: 8,
+              }}
             >
               <span
                 aria-hidden
                 style={{
-                  width: 8,
-                  height: 8,
+                  width: 10,
+                  height: 10,
                   borderRadius: 9999,
                   background: p.solid,
-                  boxShadow: `0 0 8px ${p.solid}, 0 0 14px ${p.solid}66`,
+                  boxShadow: `0 0 10px ${p.solid}, 0 0 18px ${p.solid}66`,
                   flexShrink: 0,
                 }}
               />
@@ -351,7 +363,7 @@ export function ThemeRings({
                 style={{
                   color: "rgba(168,168,180,0.5)",
                   fontWeight: 600,
-                  width: 24,
+                  width: 28,
                   fontVariantNumeric: "tabular-nums",
                 }}
               >
@@ -375,7 +387,7 @@ export function ThemeRings({
               >
                 {t.count}
               </span>
-            </div>
+            </Tag>
           );
         })}
       </div>

@@ -110,6 +110,7 @@ export function ThemeMapDashboard({
           totalMentions={totalMentions}
           periods={periods}
           timeWindow={timeWindow}
+          onTap={setActiveThemeId}
         />
 
         {/* 5. Top 5 cards */}

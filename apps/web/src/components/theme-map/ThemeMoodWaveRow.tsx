@@ -224,6 +224,16 @@ function WaveSVG({
   // Tip dot at the rightmost entry.
   const lastPoint = points[points.length - 1];
 
+  // Center the rendered curve in the lane. When all entries are positive
+  // the curve sits in the top half and the bottom half is empty space —
+  // and vice versa. Compute the curve's vertical bounding box and
+  // translate so the bbox center sits at the lane's vertical center.
+  const ys = points.map((p) => p.y);
+  const yMin = Math.min(...ys, BASELINE_Y);
+  const yMax = Math.max(...ys, BASELINE_Y);
+  const bboxCenter = (yMin + yMax) / 2;
+  const dy = BASELINE_Y - bboxCenter;
+
   return (
     <svg
       width="100%"
@@ -253,7 +263,9 @@ function WaveSVG({
         </filter>
       </defs>
 
-      {/* baseline mood line */}
+      {/* baseline mood line — shifted with the curve so the visual
+          relationship between line and wave stays anchored. */}
+      <g transform={`translate(0, ${dy})`}>
       <line
         x1={0}
         y1={BASELINE_Y}
@@ -335,6 +347,7 @@ function WaveSVG({
           />
         </>
       )}
+      </g>
     </svg>
   );
 }
