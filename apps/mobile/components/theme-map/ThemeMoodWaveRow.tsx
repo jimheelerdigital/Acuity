@@ -32,8 +32,8 @@ export type WaveTheme = {
 };
 
 const VB_W = 600;
-const VB_H = 80;
-const BASELINE_Y = 40;
+const VB_H = 72;
+const BASELINE_Y = 36;
 
 export function ThemeMoodWaveRow({
   rank,
@@ -156,7 +156,7 @@ function WaveSVG({
   const id = `${category}-${entries.length}-${Math.random().toString(36).slice(2, 6)}`;
   const points = entries.map((e, i) => {
     const x = entries.length === 1 ? VB_W / 2 : (i / (entries.length - 1)) * VB_W;
-    const y = Math.max(6, Math.min(74, 40 - ((e.mood - 5) / 5) * 32));
+    const y = Math.max(5, Math.min(67, 36 - ((e.mood - 5) / 5) * 29));
     return { x, y, mood: e.mood };
   });
   if (points.length === 0) {
