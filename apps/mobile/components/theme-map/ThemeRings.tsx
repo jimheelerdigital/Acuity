@@ -143,6 +143,19 @@ export function ThemeRings({
         gap: 16,
       }}
     >
+      {/* Period eyebrow above rings — keeps it off the ring sweeps */}
+      <Text
+        style={{
+          fontSize: 12,
+          letterSpacing: 2,
+          fontWeight: "600",
+          color: "rgba(252,168,90,0.9)",
+          textTransform: "uppercase",
+          textAlign: "center",
+        }}
+      >
+        TOP THEME · {periodPhrase}
+      </Text>
       <View style={{ alignItems: "center", width: "100%" }}>
         <View style={{ width: SIZE, height: SIZE }}>
           <Svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
@@ -242,52 +255,37 @@ export function ThemeRings({
           >
             <Text
               style={{
-                fontSize: 11,
-                letterSpacing: 1.8,
-                fontWeight: "500",
-                color: "rgba(252,168,90,0.85)",
-                textTransform: "uppercase",
-              }}
-            >
-              TOP THEME · {periodPhrase}
-            </Text>
-            <Text
-              style={{
-                fontSize: 52,
+                fontSize: 68,
                 fontWeight: "500",
                 color: "#FAFAFA",
-                letterSpacing: -1,
-                marginTop: 4,
-                textShadowColor: `${topAccent}99`,
-                textShadowRadius: 18,
+                letterSpacing: -2,
+                textShadowColor: `${topAccent}cc`,
+                textShadowRadius: 24,
               }}
             >
               {topTheme.count}
             </Text>
-            <Text
-              style={{
-                marginTop: 6,
-                fontSize: 14,
-                fontWeight: "500",
-                color: "rgba(228,228,231,0.9)",
-                textAlign: "center",
-                maxWidth: 180,
-              }}
-              numberOfLines={1}
-            >
-              {capitalize(topTheme.name)}
-            </Text>
-            <Text
-              style={{
-                marginTop: 2,
-                fontSize: 11,
-                color: "rgba(168,168,180,0.7)",
-              }}
-            >
-              {topTheme.count} {topTheme.count === 1 ? "mention" : "mentions"}
-            </Text>
           </Animated.View>
         </View>
+      </View>
+
+      {/* Theme name + count under the rings */}
+      <View style={{ alignItems: "center", gap: 4 }}>
+        <Text
+          style={{
+            fontSize: 20,
+            fontWeight: "500",
+            letterSpacing: -0.3,
+            color: "#FAFAFA",
+            textAlign: "center",
+          }}
+          numberOfLines={1}
+        >
+          {capitalize(topTheme.name)}
+        </Text>
+        <Text style={{ fontSize: 13, color: "rgba(168,168,180,0.7)" }}>
+          {topTheme.count} {topTheme.count === 1 ? "mention" : "mentions"} {periodPhrase}
+        </Text>
       </View>
 
       {/* Compact rank list (mobile-friendly version of leader labels) */}

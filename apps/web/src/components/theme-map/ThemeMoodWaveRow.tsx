@@ -35,8 +35,8 @@ export type WaveTheme = {
 };
 
 const VB_W = 800;
-const VB_H = 160;
-const BASELINE_Y = 80;
+const VB_H = 120;
+const BASELINE_Y = 60;
 
 export function ThemeMoodWaveRow({
   rank,
@@ -182,7 +182,15 @@ function WaveSVG({
   const points = entries.map((e, i) => {
     const x =
       entries.length === 1 ? VB_W / 2 : (i / (entries.length - 1)) * VB_W;
-    const y = Math.max(10, Math.min(150, 80 - ((e.mood - 5) / 5) * 70));
+    // Amplified deflection — small mood swings (6-7) should still produce
+    // visually substantial curves. mood 6 → 28px (was 14); mood 7+ → 50
+    // (clamped to lane edge); mood 3 → -50 (clamped to bottom edge).
+    // Side-correctness invariant preserved: mood ≥ 5 sits above baseline,
+    // < 5 sits below.
+    const delta = e.mood - 5;
+    const direction = delta >= 0 ? -1 : 1; // up for positive, down for negative
+    const magnitude = Math.min(50, Math.abs(delta) * 28);
+    const y = Math.max(8, Math.min(112, 60 + direction * magnitude));
     return { x, y, mood: e.mood };
   });
 

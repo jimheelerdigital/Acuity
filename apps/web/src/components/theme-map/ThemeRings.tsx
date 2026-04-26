@@ -142,7 +142,20 @@ export function ThemeRings({
           "inset 0 1px 0 rgba(255,255,255,0.06), 0 24px 60px -36px rgba(0,0,0,0.6)",
       }}
     >
-      <div className="flex flex-col items-center gap-5">
+      <div className="flex flex-col items-center gap-4">
+      {/* Period eyebrow — above the rings so it doesn't fight the orange
+          ring sweep behind. */}
+      <p
+        style={{
+          fontSize: 13,
+          letterSpacing: 2.4,
+          fontWeight: 600,
+          color: "rgba(252,168,90,0.9)",
+          textTransform: "uppercase",
+        }}
+      >
+        TOP THEME · {periodPhrase}
+      </p>
       <div className="relative mx-auto" style={{ width: 400, height: 400 }}>
         {/* background pulsing glow tinted by top theme's category */}
         <div
@@ -246,31 +259,21 @@ export function ThemeRings({
 
         </svg>
 
-        {/* centre content */}
+        {/* centre content — JUST the hero number. Eyebrow lives above
+            the rings, theme name + count live below. Keeps the centre
+            clean and readable against any ring color. */}
         <div
           className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center"
           style={{ animation: "rings-pulse-num 4s ease-in-out infinite" }}
         >
           <span
             style={{
-              fontSize: 13,
-              letterSpacing: 2,
-              fontWeight: 500,
-              color: "rgba(252,168,90,0.85)",
-              textTransform: "uppercase",
-            }}
-          >
-            TOP THEME · {periodPhrase}
-          </span>
-          <span
-            style={{
-              fontSize: 60,
+              fontSize: 80,
               fontWeight: 500,
               color: "#FAFAFA",
-              letterSpacing: -1,
+              letterSpacing: -2,
               lineHeight: 1,
-              marginTop: 6,
-              textShadow: `0 0 24px ${topAccent}99`,
+              textShadow: `0 0 32px ${topAccent}cc, 0 0 12px ${topAccent}`,
               fontVariantNumeric: "tabular-nums",
             }}
           >
@@ -278,18 +281,7 @@ export function ThemeRings({
           </span>
           <span
             style={{
-              fontSize: 16,
-              fontWeight: 500,
-              marginTop: 8,
-              color: "rgba(228,228,231,0.9)",
-              textAlign: "center",
-              maxWidth: 200,
-            }}
-          >
-            {capitalize(topTheme.name)}
-          </span>
-          <span
-            style={{
+              display: "none",
               fontSize: 12,
               marginTop: 4,
               color: "rgba(168,168,180,0.7)",
@@ -298,6 +290,29 @@ export function ThemeRings({
             {topTheme.count} {topTheme.count === 1 ? "mention" : "mentions"}
           </span>
         </div>
+      </div>
+
+      {/* Theme name + count under the rings */}
+      <div className="flex flex-col items-center" style={{ gap: 4 }}>
+        <span
+          style={{
+            fontSize: 22,
+            fontWeight: 500,
+            letterSpacing: -0.3,
+            color: "#FAFAFA",
+            textAlign: "center",
+          }}
+        >
+          {capitalize(topTheme.name)}
+        </span>
+        <span
+          style={{
+            fontSize: 13,
+            color: "rgba(168,168,180,0.7)",
+          }}
+        >
+          {topTheme.count} {topTheme.count === 1 ? "mention" : "mentions"} {periodPhrase}
+        </span>
       </div>
 
       {/* Rank list — replaces the in-SVG leader labels. Stays inside
