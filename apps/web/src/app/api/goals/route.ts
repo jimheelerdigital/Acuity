@@ -2,8 +2,23 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { getAnySessionUserId } from "@/lib/mobile-auth";
 import { enforceUserRateLimit } from "@/lib/rate-limit";
+import {
+  boundedText,
+  boundedTextOrNull,
+  DESCRIPTION_MAX,
+  NOTES_MAX,
+  TITLE_MAX,
+  TextBoundsError,
+} from "@/lib/text-bounds";
 
 export const dynamic = "force-dynamic";
+
+function tooLong(err: TextBoundsError): NextResponse {
+  return NextResponse.json(
+    { error: "TooLong", field: err.field, limit: err.limit },
+    { status: 400 }
+  );
+}
 
 export async function GET(req: NextRequest) {
   const userId = await getAnySessionUserId(req);
@@ -38,13 +53,33 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  let title: string;
+  let description: string | null;
+  try {
+    title = boundedText(body.title, "title", TITLE_MAX);
+    description = boundedTextOrNull(
+      body.description,
+      "description",
+      DESCRIPTION_MAX
+    );
+  } catch (err) {
+    if (err instanceof TextBoundsError) return tooLong(err);
+    throw err;
+  }
+  if (!title) {
+    return NextResponse.json(
+      { error: "Missing required field: title" },
+      { status: 400 }
+    );
+  }
+
   const { prisma } = await import("@/lib/prisma");
 
   const goal = await prisma.goal.create({
     data: {
       userId,
-      title: body.title,
-      description: body.description ?? null,
+      title,
+      description,
       targetDate: body.targetDate ? new Date(body.targetDate) : null,
       lifeArea: body.lifeArea ?? "PERSONAL",
       // Manually-created goals are user-authored from the first keystroke,
@@ -132,11 +167,24 @@ export async function PATCH(req: NextRequest) {
         "ARCHIVED",
       ];
       const update: Record<string, unknown> = { editedByUser: true };
-      if (typeof fields.title === "string") update.title = fields.title.trim();
-      if (typeof fields.description === "string" || fields.description === null)
-        update.description = fields.description;
-      if (typeof fields.notes === "string" || fields.notes === null)
-        update.notes = fields.notes;
+      try {
+        if (typeof fields.title === "string") {
+          update.title = boundedText(fields.title, "title", TITLE_MAX);
+        }
+        if (typeof fields.description === "string" || fields.description === null) {
+          update.description = boundedTextOrNull(
+            fields.description,
+            "description",
+            DESCRIPTION_MAX
+          );
+        }
+        if (typeof fields.notes === "string" || fields.notes === null) {
+          update.notes = boundedTextOrNull(fields.notes, "notes", NOTES_MAX);
+        }
+      } catch (err) {
+        if (err instanceof TextBoundsError) return tooLong(err);
+        throw err;
+      }
       if (typeof fields.status === "string") {
         if (!VALID_STATUS.includes(fields.status)) {
           return NextResponse.json({ error: "Invalid status" }, { status: 400 });

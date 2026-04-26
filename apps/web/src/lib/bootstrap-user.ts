@@ -147,6 +147,30 @@ export async function bootstrapNewUser(params: {
 }
 
 /**
+ * Canonicalize an email so plus-addressing variants of the same address
+ * collapse to a single identity. `alice+spam@gmail.com` and
+ * `alice@gmail.com` route to the same Gmail inbox, so they must hash
+ * to the same DeletedUser key — otherwise an attacker can farm fresh
+ * 14-day trials by signing up with `alice+1@`, `alice+2@`, etc., each
+ * of which evades the tombstone lookup.
+ *
+ * Applied to all email addresses (not just Gmail) — every major
+ * provider that supports `+` aliasing routes the variants to the same
+ * mailbox, and providers that don't support aliasing won't have a `+`
+ * in their addresses to strip.
+ */
+export function canonicalizeEmail(email: string): string {
+  const trimmed = email.toLowerCase().trim();
+  const atIdx = trimmed.indexOf("@");
+  if (atIdx === -1) return trimmed;
+  const local = trimmed.slice(0, atIdx);
+  const domain = trimmed.slice(atIdx);
+  const plusIdx = local.indexOf("+");
+  const cleanLocal = plusIdx === -1 ? local : local.slice(0, plusIdx);
+  return `${cleanLocal}${domain}`;
+}
+
+/**
  * Determine how many trial days to issue based on DeletedUser history.
  * Exported separately so the (rare) admin-side flows + any future
  * signup paths that don't go through bootstrapNewUser can share it.
@@ -161,9 +185,16 @@ export async function trialDaysForEmail(
   if (!email) return STANDARD_TRIAL_DAYS;
 
   const { prisma } = await import("@/lib/prisma");
-  const normalized = email.toLowerCase().trim();
-  const deleted = await prisma.deletedUser.findUnique({
-    where: { email: normalized },
+  const canonical = canonicalizeEmail(email);
+  // Look up both the canonical form and the literal lowercased form so
+  // legacy DeletedUser rows (written before canonicalization landed) still
+  // catch their owners. New tombstones write the canonical form only.
+  const literal = email.toLowerCase().trim();
+  const candidates =
+    canonical === literal ? [canonical] : [canonical, literal];
+  const deleted = await prisma.deletedUser.findFirst({
+    where: { email: { in: candidates } },
+    orderBy: { deletedAt: "desc" },
   });
   if (!deleted) return STANDARD_TRIAL_DAYS;
 
