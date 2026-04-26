@@ -2,7 +2,22 @@
 
 import { useEffect, useState } from "react";
 
-import { CATEGORY, type CategoryToken } from "./theme-tokens";
+import { type CategoryToken } from "./theme-tokens";
+
+// Per-slot gradient palette. Decoupled from category so the four rings
+// always read as four DIFFERENT colors even when multiple top themes
+// share a category (e.g. three "reflection" themes would otherwise all
+// render as identical purple/blue rings).
+const SLOT_PALETTE: { from: string; via: string; to: string; solid: string }[] = [
+  // Slot 0 — innermost, top theme. Orange → amber (warm, hero).
+  { from: "#FB923C", via: "#FBBF24", to: "#FDE68A", solid: "#FB923C" },
+  // Slot 1 — pink → rose.
+  { from: "#F472B6", via: "#FB7185", to: "#F87171", solid: "#F472B6" },
+  // Slot 2 — cyan → teal.
+  { from: "#22D3EE", via: "#67E8F9", to: "#A5F3FC", solid: "#22D3EE" },
+  // Slot 3 — purple → blue (outermost).
+  { from: "#A78BFA", via: "#8B5CF6", to: "#60A5FA", solid: "#A78BFA" },
+];
 
 /**
  * Hero rings card — FOUR concentric rings, each ring = one of the top
@@ -114,16 +129,7 @@ export function ThemeRings({
 
   const topCount = Math.max(1, topTheme.count);
   const periodPhrase = PERIOD_PHRASE[timeWindow];
-  const topAccent = CATEGORY[topTheme.category].solid;
-
-  // Stagger leader labels: rings 1+3 to the right, rings 2+4 to the
-  // left, slightly offset vertically so they don't collide.
-  const leaderPositions: { x: number; y: number; anchor: "start" | "end" }[] = [
-    { x: 290, y: 168, anchor: "start" },  // ring 1 (right of innermost)
-    { x: 70, y: 168, anchor: "end" },     // ring 2 (left)
-    { x: 320, y: 200, anchor: "start" },  // ring 3 (right, lower)
-    { x: 40, y: 200, anchor: "end" },     // ring 4 (left, lower)
-  ];
+  const topAccent = SLOT_PALETTE[0].solid;
 
   return (
     <div
@@ -136,6 +142,7 @@ export function ThemeRings({
           "inset 0 1px 0 rgba(255,255,255,0.06), 0 24px 60px -36px rgba(0,0,0,0.6)",
       }}
     >
+      <div className="flex flex-col items-center gap-5">
       <div className="relative mx-auto" style={{ width: 400, height: 400 }}>
         {/* background pulsing glow tinted by top theme's category */}
         <div
@@ -155,7 +162,7 @@ export function ThemeRings({
         >
           <defs>
             {rings.map((t, i) => {
-              const c = CATEGORY[t.category];
+              const p = SLOT_PALETTE[i];
               return (
                 <linearGradient
                   key={`grad-${t.id}-${i}`}
@@ -165,9 +172,9 @@ export function ThemeRings({
                   x2="1"
                   y2="1"
                 >
-                  <stop offset="0%" stopColor={c.solid} />
-                  <stop offset="55%" stopColor={c.accent} />
-                  <stop offset="100%" stopColor={c.accent} stopOpacity={0.85} />
+                  <stop offset="0%" stopColor={p.from} />
+                  <stop offset="55%" stopColor={p.via} />
+                  <stop offset="100%" stopColor={p.to} />
                 </linearGradient>
               );
             })}
@@ -186,7 +193,7 @@ export function ThemeRings({
           {/* tracks (faint) — render all rings first so progress arcs sit on top */}
           {rings.map((t, i) => {
             const slot = RING_SLOTS[i];
-            const c = CATEGORY[t.category];
+            const p = SLOT_PALETTE[i];
             return (
               <circle
                 key={`track-${t.id}-${i}`}
@@ -194,7 +201,7 @@ export function ThemeRings({
                 cy={CY}
                 r={slot.r}
                 fill="none"
-                stroke={`${c.solid}26`}
+                stroke={`${p.solid}26`}
                 strokeWidth={slot.sw}
               />
             );
@@ -237,46 +244,6 @@ export function ThemeRings({
             );
           })}
 
-          {/* leader labels — rank · name · count, staggered left/right */}
-          {rings.map((t, i) => {
-            const slot = RING_SLOTS[i];
-            const c = CATEGORY[t.category];
-            const pos = leaderPositions[i];
-            // Anchor leader line near the ring's outer edge.
-            const ringEdgeX =
-              pos.anchor === "start"
-                ? CX + (slot.r + slot.sw / 2) - 2
-                : CX - (slot.r + slot.sw / 2) + 2;
-            const lineX2 = pos.anchor === "start" ? pos.x - 8 : pos.x + 8;
-            return (
-              <g key={`leader-${t.id}-${i}`} opacity={0.85}>
-                <line
-                  x1={ringEdgeX}
-                  y1={CY}
-                  x2={lineX2}
-                  y2={pos.y - 2}
-                  stroke={`${c.solid}66`}
-                  strokeWidth={0.8}
-                  strokeDasharray="3 4"
-                />
-                <text
-                  x={pos.x}
-                  y={pos.y}
-                  fontSize={12}
-                  fontWeight={500}
-                  textAnchor={pos.anchor === "start" ? "start" : "end"}
-                  fill="#FAFAFA"
-                >
-                  <tspan fill="rgba(168,168,180,0.5)" fontWeight={600}>
-                    {String(i + 1).padStart(2, "0")}
-                  </tspan>
-                  <tspan fill="rgba(168,168,180,0.55)">{" · "}</tspan>
-                  <tspan>{truncate(capitalize(t.name), 18)}</tspan>
-                  <tspan fill="rgba(168,168,180,0.7)">{` · ${t.count}`}</tspan>
-                </text>
-              </g>
-            );
-          })}
         </svg>
 
         {/* centre content */}
@@ -331,6 +298,72 @@ export function ThemeRings({
             {topTheme.count} {topTheme.count === 1 ? "mention" : "mentions"}
           </span>
         </div>
+      </div>
+
+      {/* Rank list — replaces the in-SVG leader labels. Stays inside
+          the left column so nothing overflows into the narrative. */}
+      <div
+        className="w-full"
+        style={{
+          maxWidth: 400,
+          display: "flex",
+          flexDirection: "column",
+          gap: 8,
+          paddingTop: 16,
+          borderTop: "0.5px solid rgba(255,255,255,0.06)",
+        }}
+      >
+        {rings.map((t, i) => {
+          const p = SLOT_PALETTE[i];
+          return (
+            <div
+              key={`rank-${t.id}`}
+              className="flex items-center gap-3"
+              style={{ fontSize: 14 }}
+            >
+              <span
+                aria-hidden
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: 9999,
+                  background: p.solid,
+                  boxShadow: `0 0 8px ${p.solid}, 0 0 14px ${p.solid}66`,
+                  flexShrink: 0,
+                }}
+              />
+              <span
+                style={{
+                  color: "rgba(168,168,180,0.5)",
+                  fontWeight: 600,
+                  width: 24,
+                  fontVariantNumeric: "tabular-nums",
+                }}
+              >
+                {String(i + 1).padStart(2, "0")}
+              </span>
+              <span
+                className="flex-1 truncate"
+                style={{
+                  color: "#FAFAFA",
+                  fontWeight: 500,
+                }}
+              >
+                {capitalize(t.name)}
+              </span>
+              <span
+                style={{
+                  color: "rgba(168,168,180,0.85)",
+                  fontWeight: 500,
+                  fontVariantNumeric: "tabular-nums",
+                }}
+              >
+                {t.count}
+              </span>
+            </div>
+          );
+        })}
+      </div>
       </div>
 
       <NarrativeColumn
@@ -486,10 +519,6 @@ function gradientText(): React.CSSProperties {
     color: "transparent",
     fontWeight: 600,
   };
-}
-
-function truncate(s: string, max: number): string {
-  return s.length > max ? `${s.slice(0, max - 1)}…` : s;
 }
 
 function capitalize(s: string): string {
