@@ -18,11 +18,22 @@ import {
   type User,
 } from "@/lib/auth";
 
+export type DeleteAccountResult =
+  | { ok: true }
+  | { ok: false; error: string; status?: number };
+
 type AuthState = {
   user: User | null;
   loading: boolean;
   signOut: () => Promise<void>;
   refresh: () => Promise<void>;
+  /**
+   * Permanently delete the signed-in account. Calls
+   * POST /api/user/delete with the session email as confirmation,
+   * then wipes local SecureStore + cached user state on success.
+   * Caller is responsible for navigating away (back to /(auth)/sign-in).
+   */
+  deleteAccount: () => Promise<DeleteAccountResult>;
 };
 
 const AuthContext = createContext<AuthState>({
@@ -30,6 +41,7 @@ const AuthContext = createContext<AuthState>({
   loading: true,
   signOut: async () => {},
   refresh: async () => {},
+  deleteAccount: async () => ({ ok: false, error: "Not initialized" }),
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -111,8 +123,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
+  /**
+   * Permanently delete the account. Server cascades the User row
+   * (Entry, Task, Goal, WeeklyReport, LifeMapArea, UserMemory, etc),
+   * cancels Stripe customer, removes Supabase Storage audio, and
+   * writes a DeletedUser tombstone for trial-reset protection.
+   *
+   * On success, the local session is cleared via signOut so the
+   * AuthGate routes back to /(auth)/sign-in. On failure, the local
+   * session is preserved — the user remains signed in and can retry
+   * or contact support.
+   */
+  const deleteAccount = useCallback(async (): Promise<DeleteAccountResult> => {
+    const email = user?.email;
+    if (!email) {
+      return { ok: false, error: "No signed-in account to delete." };
+    }
+    try {
+      await api.post("/api/user/delete", { confirmEmail: email });
+    } catch (err) {
+      const status = (err as { status?: number }).status;
+      const message =
+        (err as { message?: string }).message ??
+        "We couldn't delete your account — please try again.";
+      if (status === 429) {
+        return {
+          ok: false,
+          status,
+          error:
+            "Too many deletion requests today. Please try again tomorrow or contact support.",
+        };
+      }
+      if (status === 400) {
+        return {
+          ok: false,
+          status,
+          error:
+            "Confirmation email didn't match the account email. Please try again.",
+        };
+      }
+      return { ok: false, status, error: message };
+    }
+    await clearSession();
+    setUser(null);
+    return { ok: true };
+  }, [user?.email]);
+
   return (
-    <AuthContext.Provider value={{ user, loading, signOut, refresh }}>
+    <AuthContext.Provider
+      value={{ user, loading, signOut, refresh, deleteAccount }}
+    >
       {children}
     </AuthContext.Provider>
   );

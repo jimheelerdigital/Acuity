@@ -11,13 +11,15 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { DeleteAccountModal } from "@/components/delete-account-modal";
 import { useAuth } from "@/contexts/auth-context";
 import { useTheme, type ThemeChoice } from "@/contexts/theme-context";
 
 export default function ProfileTab() {
   const router = useRouter();
-  const { user, signOut } = useAuth();
+  const { user, signOut, deleteAccount } = useAuth();
   const [signingOut, setSigningOut] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const handleSignOut = () => {
     Alert.alert("Sign out", "Are you sure you want to sign out?", [
@@ -157,8 +159,32 @@ export default function ProfileTab() {
             destructive
             onPress={handleSignOut}
           />
+
+          {/* In-app account deletion — required by App Store
+              Guideline 5.1.1(v). Opens a type-to-confirm modal that
+              calls POST /api/user/delete and signs the user out on
+              success. */}
+          <MenuItem
+            icon="trash-outline"
+            label="Delete account"
+            sublabel="Permanently remove all your data"
+            destructive
+            onPress={() => setShowDeleteModal(true)}
+          />
         </View>
       </ScrollView>
+
+      <DeleteAccountModal
+        visible={showDeleteModal}
+        email={email}
+        isPro={subStatus === "PRO"}
+        onClose={() => setShowDeleteModal(false)}
+        onDelete={deleteAccount}
+        onDeleted={() => {
+          setShowDeleteModal(false);
+          router.replace("/(auth)/sign-in");
+        }}
+      />
     </SafeAreaView>
   );
 }
