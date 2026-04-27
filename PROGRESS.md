@@ -7,6 +7,32 @@
 
 ---
 
+## [2026-04-27] — /home Life Matrix contrast pass + right-column h-full fix
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** 1e7420e
+
+### In plain English (for Keenan)
+Two final polish passes on the dashboard. The Life Matrix radar polygon was too faint to read at a glance — bumped the colors brighter and the lines thicker so the shape pops against the dark card. Separately, the right column (Weekly Insight + Goals) still wasn't matching the left column's height despite last round's fix — the wrapper needed an extra "fill the available height" rule. Now the bottom edges of the Life Matrix card and the Goals card line up exactly, and the radar reads at a glance.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/app/home/life-matrix-snapshot.tsx`: polygon stroke `#7C3AED → #A78BFA`, strokeWidth `2 → 2.25`, fill rgba `0.18 → 0.32`. Vertex dot radius `4 → 5`, stroke width `1.5 → 2`. Background rings rgba `0.18 → 0.30`, spokes rgba `0.14 → 0.22`.
+- `apps/web/src/app/home/page.tsx`: right-column wrapper changed from `flex flex-col gap-6 lg:col-span-5` to `flex h-full flex-col gap-6 lg:col-span-5`. The `h-full` is the load-bearing addition.
+- No schema, no API, no mobile. Web-only.
+
+### Why h-full was needed
+This is the kind of CSS bug worth recording for next time. CSS grid stretches the cell to the row's max height by default (`align-items: stretch`). But the *inner flex container* (the right column wrapper) sizes itself to its **content** unless told otherwise. So `flex-1` on the Goals card had no leftover space to claim — the container was already exactly as tall as Weekly Insight + Goals + gap.
+
+Adding `h-full` tells the wrapper to fill the grid cell's stretched height (100% of parent). Now the wrapper has extra height to distribute, and `flex-1` on Goals claims it. Bottom edges align.
+
+The next time a `flex-1` child mysteriously refuses to grow, check whether its parent has a defined height — `h-full` if it's inside a stretched grid cell, an explicit class if it's not.
+
+### Manual steps needed
+- [ ] **Jimmy:** verify on /home as the reviewer account once Vercel redeploys: radar polygon clearly visible against the card; bottom edges of Life Matrix (left) and Goals (right) line up exactly.
+
+---
+
 ## [2026-04-27] — /life-matrix duplicate-gate bug — drop the inner UserMemory check
 
 **Requested by:** Jimmy
