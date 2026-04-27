@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 type ListUser = {
   id: string;
@@ -33,6 +34,16 @@ export default function UsersTab() {
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+
+  // Deep-link from drilldown modals: /admin?tab=users&select=<userId>
+  // opens that user's detail modal on tab mount. We don't strip the
+  // param after opening — back/forward stays consistent and re-mounts
+  // re-open the modal predictably.
+  useEffect(() => {
+    const sel = searchParams.get("select");
+    if (sel) setSelected(sel);
+  }, [searchParams]);
 
   const load = useCallback(
     async (opts: { reset?: boolean } = {}) => {

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   BarChart,
   Bar,
@@ -17,11 +18,14 @@ import ChartCard from "../components/ChartCard";
 import RefreshButton from "../components/RefreshButton";
 import RecentAdminActions from "../components/RecentAdminActions";
 import { SkeletonMetric, SkeletonChart } from "../components/SkeletonCard";
+import { DrilldownModal } from "../components/DrilldownModal";
 import { useTabData } from "./useTabData";
 import {
   MONTHLY_PRICE_CENTS,
   formatDollarsRounded,
 } from "@/lib/pricing";
+
+type Drilldown = { metric: string; fallbackTitle: string } | null;
 
 interface OverviewData {
   signups: number;
@@ -52,6 +56,7 @@ export default function OverviewTab({
   end: string;
 }) {
   const { data, loading, meta, refresh } = useTabData<OverviewData>("overview", start, end);
+  const [drilldown, setDrilldown] = useState<Drilldown>(null);
 
   if (loading || !data) {
     return (
@@ -87,22 +92,43 @@ export default function OverviewTab({
           currentValue={data.signups}
           previousValue={data.prevSignups}
           sparklineData={signupSparkline}
+          onClick={() =>
+            setDrilldown({ metric: "signups", fallbackTitle: "New Signups" })
+          }
         />
         <MetricCard
           label="Trial-to-Paid Conversion Rate"
           value={`${data.conversionRate}%`}
           currentValue={data.conversionRate}
           previousValue={data.prevConversionRate}
+          onClick={() =>
+            setDrilldown({
+              metric: "trial_to_paid",
+              fallbackTitle: "Trial-to-Paid Conversions",
+            })
+          }
         />
         <MetricCard
           label="Active Paying Subscribers"
           value={data.payingSubs}
           currentValue={data.payingSubs}
           previousValue={data.prevPayingSubs}
+          onClick={() =>
+            setDrilldown({
+              metric: "paying_subs",
+              fallbackTitle: "Active Paying Subscribers",
+            })
+          }
         />
         <MetricCard
           label="Monthly Recurring Revenue (MRR)"
           value={formatDollarsRounded(data.payingSubs * MONTHLY_PRICE_CENTS)}
+          onClick={() =>
+            setDrilldown({
+              metric: "mrr_breakdown",
+              fallbackTitle: "MRR Breakdown",
+            })
+          }
         />
         <MetricCard
           label="Blended Customer Acquisition Cost (CAC)"
@@ -113,6 +139,12 @@ export default function OverviewTab({
           label="Claude Spend (Month-to-Date)"
           value={`$${aiDollars}`}
           budgetBar={{ current: data.aiSpendCents, max: 10000 }}
+          onClick={() =>
+            setDrilldown({
+              metric: "ai_spend_breakdown",
+              fallbackTitle: "Claude Spend by Feature",
+            })
+          }
         />
       </div>
 
@@ -208,6 +240,16 @@ export default function OverviewTab({
 
       {/* Recent admin actions (AdminAuditLog) */}
       <RecentAdminActions />
+
+      {drilldown && (
+        <DrilldownModal
+          metric={drilldown.metric}
+          start={start}
+          end={end}
+          fallbackTitle={drilldown.fallbackTitle}
+          onClose={() => setDrilldown(null)}
+        />
+      )}
 
       {/* Red flags summary */}
       {data.redFlags.length > 0 && (

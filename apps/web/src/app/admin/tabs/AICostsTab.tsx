@@ -12,6 +12,7 @@ import {
 import MetricCard from "../components/MetricCard";
 import ChartCard from "../components/ChartCard";
 import RefreshButton from "../components/RefreshButton";
+import { DrilldownModal } from "../components/DrilldownModal";
 import { SkeletonMetric, SkeletonChart, SkeletonTable } from "../components/SkeletonCard";
 import { useTabData } from "./useTabData";
 
@@ -43,6 +44,7 @@ export default function AICostsTab({
 }) {
   const { data, loading, meta, refresh } = useTabData<AICostsData>("ai-costs", start, end);
   const [filterPurpose, setFilterPurpose] = useState("");
+  const [showBreakdown, setShowBreakdown] = useState(false);
 
   if (loading || !data) {
     return (
@@ -78,10 +80,12 @@ export default function AICostsTab({
             current: data.mtdSpendCents,
             max: data.budgetCents,
           }}
+          onClick={() => setShowBreakdown(true)}
         />
         <MetricCard
           label="Total Calls (period)"
           value={data.byDay.reduce((a, d) => a + d.calls, 0)}
+          onClick={() => setShowBreakdown(true)}
         />
         <MetricCard
           label="Avg Cost/Call"
@@ -256,6 +260,16 @@ export default function AICostsTab({
           </table>
         </div>
       </div>
+
+      {showBreakdown && (
+        <DrilldownModal
+          metric="ai_spend_breakdown"
+          start={start}
+          end={end}
+          fallbackTitle="Claude Spend by Feature"
+          onClose={() => setShowBreakdown(false)}
+        />
+      )}
     </div>
   );
 }

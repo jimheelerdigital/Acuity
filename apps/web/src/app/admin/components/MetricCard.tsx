@@ -15,6 +15,7 @@ interface Props {
   format?: "number" | "currency" | "percent";
   budgetBar?: { current: number; max: number };
   title?: string;
+  onClick?: () => void;
 }
 
 export default function MetricCard({
@@ -25,6 +26,7 @@ export default function MetricCard({
   sparklineData,
   budgetBar,
   title,
+  onClick,
 }: Props) {
   let badge: React.ReactNode = null;
   if (previousValue != null && currentValue != null && previousValue > 0) {
@@ -48,11 +50,21 @@ export default function MetricCard({
     badge = <span className="text-xs text-white/30">&mdash;</span>;
   }
 
+  const Wrapper = onClick ? "button" : "div";
+  const wrapperProps = onClick
+    ? {
+        type: "button" as const,
+        onClick,
+        className:
+          "rounded-xl bg-[#13131F] p-5 flex flex-col justify-between min-h-[140px] text-left transition hover:bg-[#181826] hover:ring-1 hover:ring-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 cursor-pointer w-full",
+      }
+    : {
+        className:
+          "rounded-xl bg-[#13131F] p-5 flex flex-col justify-between min-h-[140px]",
+      };
+
   return (
-    <div
-      className="rounded-xl bg-[#13131F] p-5 flex flex-col justify-between min-h-[140px]"
-      title={title}
-    >
+    <Wrapper {...wrapperProps} title={title}>
       <div className="flex items-start justify-between">
         <p className="text-[11px] font-medium uppercase tracking-widest text-white/40">
           {label}
@@ -102,6 +114,6 @@ export default function MetricCard({
           </ResponsiveContainer>
         </div>
       )}
-    </div>
+    </Wrapper>
   );
 }

@@ -7,6 +7,49 @@
 
 ---
 
+## [2026-04-27] — Admin metric tile drilldowns (Overview + AI Costs)
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** _to be filled by commit_
+
+### In plain English (for Keenan)
+Every metric tile on the admin Overview page is now clickable. Click "New Signups" → modal with the actual users who signed up in the active period (email, name, signup time, sign-in method). Click "Trial-to-Paid Conversion Rate" → list of users who converted. Click "Active Paying Subscribers" → list of paying users. Click "Monthly Recurring Revenue (MRR)" → same paying-users list with an inferred plan column (monthly vs annual, derived from how soon their billing period ends — real plan attribution lands in Slice 3). Click "Claude Spend (Month-to-Date)" or any of the AI Costs tiles → spend-by-feature table sorted by total cost.
+
+Click any user row in any of these modals → drops you into the Users tab with that user's detail modal already open. Privacy guard is the same as the existing Users tab — metadata only, never entry transcripts / audio / themes / goals / tasks / AI insights.
+
+The Blended CAC tile still says "—" with the awaiting-attribution tooltip; no drilldown on that until Slice 3 ships signup-source. Charts (Signups Over Time bars, AI Cost donut slices) and edge-tab drilldowns (Funnel, Engagement, Past Due rows) come in the next two commits.
+
+### Technical changes (for Jimmy)
+- **New API:** `apps/web/src/app/api/admin/drilldown/route.ts`. Single `GET ?metric=<key>&start=<iso>&end=<iso>` endpoint that returns a typed payload — either `{ kind: "users", rows, meta }` or `{ kind: "aggregate", columns, rows, meta }`. Supported metric keys this slice: `signups`, `trial_to_paid`, `paying_subs`, `mrr_breakdown`, `ai_spend_breakdown`. Privacy guard inherited from the existing `/api/admin/users/[id]` pattern (metadata only). Each successful drilldown writes one `AdminAuditLog` row with `action = admin.metric.drilldown` + metric key + count + range.
+- **New audit slug:** `ADMIN_ACTIONS.METRIC_DRILLDOWN = "admin.metric.drilldown"` in `apps/web/src/lib/admin-audit.ts`.
+- **New component:** `apps/web/src/app/admin/components/DrilldownModal.tsx`. Generic modal: header with title/count/period + sortable table + ESC/click-out to close. Renders both `users` and `aggregate` payloads from the API. Click a user row → router push `/admin?tab=users&select=<userId>`.
+- **MetricCard:** added optional `onClick` prop. When present, the card renders as a `<button>` with hover/focus styling instead of a passive `<div>` — visually identical otherwise. No layout shift.
+- **OverviewTab:** wired drilldown click handlers on New Signups, Trial-to-Paid Conversion, Active Paying Subscribers, MRR, Claude Spend MTD tiles. Mounted `<DrilldownModal>` at the top of the tab tree.
+- **AICostsTab:** wired drilldown click handlers on Claude Spend MTD and Total Calls tiles → both open the spend-by-feature breakdown.
+- **UsersTab:** added `useSearchParams()` listener for `?select=<userId>`; on mount/param-change opens the existing `UserDetailModal` for that user. URL state is preserved so back/forward stays consistent.
+- MRR plan attribution heuristic: if `stripeCurrentPeriodEnd - now < 35 days` → monthly, otherwise → annual. Acceptable proxy until Slice 3 reads Stripe Price IDs directly.
+- `npm run build` clean.
+
+### Manual steps needed
+- [ ] **Jimmy:** verify on prod after Vercel deploy:
+  - /admin?tab=overview: click "New Signups" tile → modal lists recent signups with method column.
+  - /admin?tab=overview: click MRR tile → list shows inferred plan (monthly/annual) per user + MRR contribution.
+  - /admin?tab=overview: click Claude Spend tile → spend-by-feature breakdown sorted by total.
+  - /admin?tab=ai-costs: same drilldown from Claude Spend MTD tile.
+  - Click a user row in any drilldown → tab switches to Users with detail modal pre-opened.
+  - ESC closes modal. Click-outside closes. No layout shift after close.
+- [ ] **Jimmy:** spot-check `AdminAuditLog` table after a few drilldown clicks — should see new rows with `action = admin.metric.drilldown` + `metadata.metric` + `metadata.count`.
+
+### Notes
+- Why a single `/api/admin/drilldown` endpoint with a metric key instead of one route per metric: keeps the audit-log call in one place (one `logAdminAction` per fetch) and lets the modal stay metric-agnostic. Trade-off: the route handler is a switch on metric strings; growing past 12-15 metrics it should be split.
+- Why the heuristic for monthly/annual instead of pulling from Stripe directly: Stripe API hits cost a round-trip per user × 500 users = a slow drilldown. A nightly Stripe sync (Slice 3) is the right home for that data; storing `User.subscriptionInterval` on the User row makes the drilldown a no-op then.
+- Why the modal uses `router.push` instead of an in-place `UserDetailModal`: keeps the user-detail logic in one place (UsersTab.tsx) instead of duplicating the same modal in three contexts. Also gives the URL a deep-linkable shape for sharing in Slack ("hey, look at /admin?tab=users&select=<id>").
+- Audit-log writes are non-fatal — `logAdminAction` swallows errors. A drilldown still renders if the audit table is briefly unavailable.
+- Drilldown queries are capped at 500 rows. Signup-list scenarios above 500 should be done from the Users tab with email search, not from a tile click.
+
+---
+
 ## [2026-04-27] — /admin gets its own chrome (no consumer sidebar) + admin topbar with user menu
 
 **Requested by:** Jimmy

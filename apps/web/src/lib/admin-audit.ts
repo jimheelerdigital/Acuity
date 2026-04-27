@@ -18,6 +18,7 @@ export const ADMIN_ACTIONS = {
   USER_SOFT_DELETE: "user.soft_delete",
   USER_EXTEND_TRIAL: "user.extend_trial",
   USER_SEND_MAGIC_LINK: "user.send_magic_link",
+  METRIC_DRILLDOWN: "admin.metric.drilldown",
 } as const;
 
 export type AdminAction =
