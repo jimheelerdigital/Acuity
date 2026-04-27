@@ -41,6 +41,11 @@ export default function ProfileTab() {
   const email = user?.email ?? "—";
   const subStatus = user?.subscriptionStatus ?? "FREE";
   const isPro = subStatus === "PRO";
+  // Only show "Manage subscription" when the user actually has a
+  // Stripe customer behind their PRO status. Comped / reviewer
+  // accounts are PRO without a Stripe row — the portal call would
+  // 400 NoSubscription, surfacing as a confusing dead-end Alert.
+  const canManageSubscription = isPro && user?.hasStripeCustomer === true;
 
   // Days remaining on the current paid period — used by the delete
   // modal to spell out forfeiture. Null on non-PRO users, missing
@@ -138,12 +143,14 @@ export default function ProfileTab() {
             />
           )}
 
-          {isPro && (
+          {canManageSubscription && (
             // Apple Guideline 3.1.2 — in-app subscription management.
             // Opens the Stripe Customer Portal in the system in-app
             // browser tab (SafariViewController on iOS). Customer is
             // looked up server-side by user.id, not email, so this
-            // works for Apple private-relay accounts.
+            // works for Apple private-relay accounts. Hidden on
+            // PRO-without-customer accounts (App Store reviewer seed,
+            // comped accounts) to avoid the dead-end portal call.
             <MenuItem
               icon="card-outline"
               label="Manage subscription"

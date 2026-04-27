@@ -26,6 +26,12 @@ export type User = {
   // modal to compute "X days remaining" if the user deletes mid-period.
   // Null on free / trial users.
   stripeCurrentPeriodEnd?: string | null;
+  // True when the user has an actual stripeCustomerId on the User row.
+  // Flattened by /api/user/me so we don't expose the raw id. PRO users
+  // without a Stripe customer (App Store reviewer seed accounts, comped
+  // accounts) hide "Manage subscription" — there's nothing to manage
+  // and the portal call would 400 NoSubscription.
+  hasStripeCustomer?: boolean;
   currentStreak?: number;
   longestStreak?: number;
   lastStreakMilestone?: number | null;
