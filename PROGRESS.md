@@ -7,6 +7,33 @@
 
 ---
 
+## [2026-04-27] — /home Open Tasks card now interactive (checkboxes + drilldown)
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** 6888e65
+
+### In plain English (for Keenan)
+Brought the Open Tasks card on the /home dashboard up to feature parity with iOS. Each row now has a checkbox on the left, the task title in the middle, and a priority badge (HIGH / MEDIUM / LOW) on the right. Tap the checkbox to mark a task done — it fades out and disappears from the list immediately, just like the mobile app. Tap anywhere else on the row to jump straight to the full task editing screen.
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/app/home/open-tasks-card.tsx` — client component. Optimistic UI: checkbox tap immediately fades + line-throughs the row, fires `PATCH /api/tasks {id, action:"complete"}`, removes the row 180ms later (after the fade plays), then `router.refresh()` so dashboard counts re-sync.
+- Body click navigates to `/tasks#task-<id>` so the user lands on the full editing surface. (No deep-link param wiring on /tasks yet — the hash is a forward-compatible anchor; if/when we wire `useSearchParams` selection on /tasks the URL shape stays the same.)
+- `apps/web/src/app/home/page.tsx`: replaced the inline static `<section>` with `<OpenTasksCard initialTasks={...} />`. Server-side prisma query unchanged.
+- Priority badge styling: URGENT + HIGH share the rose chip (visually grouped as hot-state), MEDIUM is amber, LOW is muted zinc — matches the mobile tasks tab's chip semantics.
+- No schema, no API, no mobile changes.
+
+### Manual steps needed
+- [ ] **Jimmy:** verify on /home as the reviewer account once Vercel redeploys: tap the checkbox on "Range session Tuesday + Thursday" — the row should fade, drop, and the dashboard should re-render with one fewer task. Tap a task body — should land on /tasks. Confirm `/api/tasks` returns the toggled task as DONE if you query it.
+
+### Notes
+- Why client-only optimistic state with `router.refresh()` after rather than a global SWR cache: the dashboard is server-rendered with `force-dynamic`, so a refresh re-runs all the parallel fetches and gets us back to a single source of truth without standing up cache infra. Mobile uses an equivalent pattern (line ~217 of `apps/mobile/app/(tabs)/tasks.tsx`).
+- 180ms fade window: long enough for the line-through + opacity transition to play (matches the existing `transition-all duration-200` on the rows), short enough that it doesn't feel like the UI is hanging.
+- Network-failure recovery un-fades the row but doesn't show a toast yet. If support starts seeing "tasks won't check off" reports we can add a toast — for now we match mobile's silent retry-by-user pattern.
+- The URL hash format `#task-<id>` is a future-proofing choice; the /tasks page doesn't currently scroll to it, but the navigation works and we can wire that up later in a one-liner without changing the link format.
+
+---
+
 ## [2026-04-27] — /home dashboard: balance row heights (Goals stretch + 6/6 row 4)
 
 **Requested by:** Jimmy
