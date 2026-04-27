@@ -7,6 +7,33 @@
 
 ---
 
+## [2026-04-27] — Account deletion 500: work around schema-vs-DB column drift
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** d980f4e
+
+### In plain English (for Keenan)
+After fixing the "Unauthorized" error earlier today, the next delete attempt got a different error: "Account deletion failed - please try again or contact support." Root cause was a mismatch between our schema definition (which lists a brand-new column we added today, `targetCadence`) and the actual production database (which doesn't have that column yet because the schema push from the home network hasn't run). When we tried to delete the user row, Prisma asked the database for every column the schema mentions — including the missing one — and the database refused. Fixed by switching to a delete style that doesn't read the row back. Cascade still fires; user data still gets removed. Account deletion should now actually work for both Apple and Google sign-in users on TestFlight.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/app/api/user/delete/route.ts`:
+  - `tx.user.delete()` → `tx.user.deleteMany({ where: { id } })`. `delete` returns the deleted row, which under the hood emits `DELETE … RETURNING …` with every schema column — fails when prod DB is behind on a column. `deleteMany` returns `{ count }` and emits plain `DELETE WHERE …` — immune to drift.
+  - Per-step `stage` instrumentation (`tombstone` → `verification-tokens` → `user-delete`). On failure we log `stage` + Prisma `code` + message, and surface the `stage` tag in the JSON response so future failures pinpoint the offending step from Vercel logs.
+  - Throws if `result.count === 0` so a row vanishing mid-transaction still rolls back rather than silently succeeding.
+- No Prisma generate / db push needed for this fix — it's a query-shape change. The `targetCadence` db push is still pending (separate manual step).
+
+### Manual steps needed
+- [ ] **Jimmy:** verify on TestFlight after the Vercel redeploy lands (should auto-deploy from the push). Apple-private-relay account → Profile → Delete account → type DELETE → confirm. Should succeed: User row gone in Supabase, DeletedUser tombstone written, app routes back to sign-in.
+- [ ] **Jimmy:** still pending: `npx prisma db push` from home network for User.targetCadence (and User.appleSubject if it's somehow not yet pushed). Once that runs the deleteMany workaround stops being needed, but it's a fine pattern to keep — works around any future schema-vs-DB lag too.
+
+### Notes
+- This is the second time today the same drift bit us. The first was `safeUpdateUser` for the onboarding step 8 / targetCadence write earlier (tries the update, catches the missing-column error, retries without the column). The lesson: any Prisma operation that returns the row's columns is brittle when there's pending migration. Read paths use explicit `select` clauses; write paths sometimes don't. Worth a future hardening pass — `update`/`delete`/`upsert` calls in routes that touch User should be audited.
+- Why deleteMany even though we're filtering by primary key: we want the *query shape*, not the *plurality semantics*. Prisma uses query shape (delete vs deleteMany) to decide whether to RETURNING the row. By-id is still a single-row filter; deleteMany just drops the RETURNING that we don't actually need.
+- Why no migration to `npx prisma migrate dev` instead: the project uses `prisma db push` (not migrate), and that's run manually by Jimmy from home (work network blocks Supabase ports). That dependency on a manual step from a specific network is the upstream reason this drift even exists.
+
+---
+
 ## [2026-04-27] — Mobile account deletion: fix Unauthorized + switch to "type DELETE" confirm
 
 **Requested by:** Jimmy
