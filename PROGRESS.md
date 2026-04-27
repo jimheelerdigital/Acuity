@@ -7,6 +7,53 @@
 
 ---
 
+## [2026-04-27] — Admin fixes Slice 1: status-string drift + price source-of-truth + misleading labels
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** _to be filled by commit_
+
+### In plain English (for Keenan)
+The admin dashboard at /admin has been showing **zero** for paying subscribers, MRR, churn, and trial-to-paid conversion — not because we have zero, but because the code was looking up subscriptions under the wrong label. Stripe writes our paying subs as `PRO` and the admin queries were asking for `ACTIVE` (a label nothing writes). Same story for churn (queries asked for `CANCELED`, webhook writes `FREE`). Both fixed. Numbers should populate the next time the page loads in production.
+
+Also tidied up a couple of "lying" displays: the Overview MRR card was multiplying by $9.99 while the API computed using $12.99 (so the same screen disagreed with itself), the Ads tab labeled a chart "CAC by Campaign" when it actually showed raw spend, and the Funnel tab's "Waitlist → Account" drop-off was comparing two unrelated populations. All fixed or relabeled honestly. The "Blended CAC" tile still reads "—" but now has a tooltip explaining why (we need ad-source attribution, lands in Slice 3).
+
+The per-user detail modal (admin Users tab) was audited — it correctly excludes entry transcripts, audio, goals, tasks, and AI insights by design. No change needed.
+
+### Technical changes (for Jimmy)
+- **New:** `apps/web/src/lib/pricing.ts`. Constants `MONTHLY_PRICE_CENTS = 1299`, `ANNUAL_PRICE_CENTS = 9900`, `ANNUAL_AS_MONTHLY_CENTS`, helpers `formatDollars` / `formatDollarsRounded`. Plus `SUBSCRIPTION_STATUS = { TRIAL, PRO, PAST_DUE, FREE }` mirroring exactly what `apps/web/src/app/api/stripe/webhook/route.ts` writes. Stripe price IDs stay in env.
+- `apps/web/src/app/api/admin/metrics/route.ts`:
+  - Replaced every `subscriptionStatus: "ACTIVE"` with `SUBSCRIPTION_STATUS.PRO` (Overview, Revenue, Funnel "converted to paid", trial-to-paid conversion).
+  - Replaced `subscriptionStatus: "CANCELED"` with `SUBSCRIPTION_STATUS.FREE` AND `stripeCustomerId: { not: null }` for the churn query — so churn counts users who were paying customers and are now FREE, not trial-expired-without-paying users.
+  - Hardcoded `1299` in MRR calc → `MONTHLY_PRICE_CENTS`. (Real Stripe-driven MRR lands in Slice 3.)
+  - Trial-to-paid denominator simplified to "all signups in range" (was filtering on a list that included the wrong status strings).
+- `apps/web/src/app/admin/components/MetricCard.tsx`: added optional `title` prop for tooltips.
+- `apps/web/src/app/admin/tabs/OverviewTab.tsx`: MRR card now uses `MONTHLY_PRICE_CENTS` (was `× 999`). Blended CAC tile gets the new title tooltip.
+- `apps/web/src/app/admin/tabs/RevenueTab.tsx`: paying-users table renders `formatDollars(MONTHLY_PRICE_CENTS)` per row instead of literal `"$12.99"`.
+- `apps/web/src/app/admin/tabs/AdsTab.tsx`: chart title `"Customer Acquisition Cost (CAC) by Campaign"` → `"Spend by Campaign"` with a one-line caption.
+- `apps/web/src/app/admin/tabs/FunnelTab.tsx`: amber banner above the funnel explaining the Waitlist→Account drop-off is two independent populations until Slice 3 adds the email join.
+- **New docs:** `docs/launch-audit-2026-04-26/08-admin-audit.md` (admin scaffolding), `09-admin-functional-audit.md` (tab-by-tab), `10-admin-fixes-shipped.md` (Slice 1 record).
+- Verified: `npm run build` clean. `npx tsc --noEmit` clean for slice-1 files (one pre-existing unrelated error in `landing.tsx`).
+
+### Manual steps needed
+- [ ] **Jimmy:** verify on prod after Vercel auto-deploy (≈90s):
+  - `/admin?tab=overview` MRR card shows a non-zero number (was $0).
+  - `/admin?tab=revenue` Paying Subs / Trial Users / Churn rows populate; Past Due alerts list shows real users if any.
+  - `/admin?tab=funnel` "Converted to Paid" row > 0 if any signups in range converted; amber banner visible at top.
+  - `/admin?tab=ads` chart now titled "Spend by Campaign".
+  - Hover Overview "Blended CAC" tile → tooltip "Awaiting ad attribution…"
+- [ ] **Jimmy:** stage Slice 4 (Slack + Resend signup notifier) by setting `SLACK_SIGNUP_WEBHOOK_URL` and `SIGNUP_NOTIFICATION_EMAILS` in Vercel env.
+- [ ] **Jimmy:** stage Slice 2 by running `npx prisma db push` from home network after we add the `MetricSnapshot` schema.
+
+### Notes
+- **The diagnostic finding that flipped this slice's scope:** earlier audit (09-admin-functional-audit.md) labeled Revenue / Overview / Funnel as "real data" — they were not. The Stripe webhook writes `PRO`, not `ACTIVE`; `FREE`, not `CANCELED`. Every paying-sub query in `/api/admin/metrics/route.ts` was returning zero. This is the real bug; the status-pill drift in `UsersTab` was a downstream symptom.
+- Why the churn fix needs `stripeCustomerId IS NOT NULL`: the webhook writes `FREE` both for paying users who cancel AND for trial users whose subscription was deleted. Without the customer-ID guard, churn would balloon to include every never-paid trial.
+- Why marketing copy is intentionally **out of scope** for the price constants: per `docs/Acuity_SalesCopy.md`, landing pages and `/for/*` carry inline `$12.99` for SEO and sales-copy precision. Centralizing those into a constant would force a future copy change to touch a constants file the marketing review doesn't read. Admin-tree only.
+- Why I added a `title` tooltip rather than removing the Blended CAC tile: removing it would make Overview's tile grid asymmetric. Keeping the tile with an honest "—" + tooltip lets it light up cleanly when Slice 3 ships the attribution column.
+- Open question for next slice: there are still places in the wider app that may read `subscriptionStatus`. This commit only touched the admin tree. A grep of the broader codebase for any `=== "ACTIVE"` or `=== "CANCELED"` against `subscriptionStatus` is worth a 10-minute pass before Slice 2.
+
+---
+
 ## [2026-04-27] — Mobile subscription management + PRO delete forfeiture copy
 
 **Requested by:** Jimmy

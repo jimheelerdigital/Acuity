@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { getAuthOptions } from "@/lib/auth";
 import { getCached, invalidateCachePrefix } from "@/lib/admin-cache";
+import { MONTHLY_PRICE_CENTS, SUBSCRIPTION_STATUS } from "@/lib/pricing";
 
 export const dynamic = "force-dynamic";
 
@@ -149,41 +150,39 @@ async function getOverview(
     // Active paying subs
     prisma.user.count({
       where: {
-        subscriptionStatus: "ACTIVE",
+        subscriptionStatus: SUBSCRIPTION_STATUS.PRO,
         stripeSubscriptionId: { not: null },
       },
     }),
-    // Prev period paying — use snapshot if available, else same count
+    // Prev-period paying-sub count: no point-in-time history exists yet
+    // (MetricSnapshot lands in Slice 2). Returning the same count here
+    // means the period delta renders as "no change" — accurate-ish until
+    // the snapshot table backfills a real prior value.
     prisma.user.count({
       where: {
-        subscriptionStatus: "ACTIVE",
+        subscriptionStatus: SUBSCRIPTION_STATUS.PRO,
         stripeSubscriptionId: { not: null },
       },
     }),
-    // Trial-to-paid: users created in range who are now ACTIVE
+    // Trial-to-paid: users created in range who are now PRO
     prisma.user.count({
       where: {
         createdAt: { gte: start, lte: end },
-        subscriptionStatus: "ACTIVE",
+        subscriptionStatus: SUBSCRIPTION_STATUS.PRO,
       },
     }),
+    // Denominator: every signup in range, regardless of current status.
     prisma.user.count({
-      where: {
-        createdAt: { gte: start, lte: end },
-        subscriptionStatus: { in: ["TRIAL", "ACTIVE", "CANCELED", "PAST_DUE"] },
-      },
+      where: { createdAt: { gte: start, lte: end } },
     }),
     prisma.user.count({
       where: {
         createdAt: { gte: prevStart, lte: prevEnd },
-        subscriptionStatus: "ACTIVE",
+        subscriptionStatus: SUBSCRIPTION_STATUS.PRO,
       },
     }),
     prisma.user.count({
-      where: {
-        createdAt: { gte: prevStart, lte: prevEnd },
-        subscriptionStatus: { in: ["TRIAL", "ACTIVE", "CANCELED", "PAST_DUE"] },
-      },
+      where: { createdAt: { gte: prevStart, lte: prevEnd } },
     }),
     // AI spend MTD
     prisma.$queryRaw<{ total: bigint | null }[]>`
@@ -403,15 +402,15 @@ async function getRevenue(
     await Promise.all([
       prisma.user.count({
         where: {
-          subscriptionStatus: "ACTIVE",
+          subscriptionStatus: SUBSCRIPTION_STATUS.PRO,
           stripeSubscriptionId: { not: null },
         },
       }),
       prisma.user.count({
-        where: { subscriptionStatus: "TRIAL" },
+        where: { subscriptionStatus: SUBSCRIPTION_STATUS.TRIAL },
       }),
       prisma.user.findMany({
-        where: { subscriptionStatus: "PAST_DUE" },
+        where: { subscriptionStatus: SUBSCRIPTION_STATUS.PAST_DUE },
         select: {
           email: true,
           stripeCurrentPeriodEnd: true,
@@ -421,7 +420,7 @@ async function getRevenue(
       }),
       prisma.user.findMany({
         where: {
-          subscriptionStatus: "ACTIVE",
+          subscriptionStatus: SUBSCRIPTION_STATUS.PRO,
           stripeSubscriptionId: { not: null },
         },
         select: {
@@ -432,16 +431,21 @@ async function getRevenue(
         orderBy: { createdAt: "desc" },
         take: 50,
       }),
+      // Churn = users who were paying customers (have a Stripe customer)
+      // and are now FREE. The Stripe webhook writes "FREE" — never
+      // "CANCELED". Filtering by stripeCustomerId IS NOT NULL excludes
+      // trial-expired-without-paying users from the churn numerator.
       prisma.user.count({
         where: {
-          subscriptionStatus: "CANCELED",
+          subscriptionStatus: SUBSCRIPTION_STATUS.FREE,
+          stripeCustomerId: { not: null },
           updatedAt: { gte: start, lte: end },
         },
       }),
       prisma.user.count({
         where: {
           createdAt: { gte: start, lte: end },
-          subscriptionStatus: "ACTIVE",
+          subscriptionStatus: SUBSCRIPTION_STATUS.PRO,
         },
       }),
       prisma.user.count({
@@ -451,11 +455,12 @@ async function getRevenue(
       }),
     ]);
 
-  // Simple MRR estimate: $12.99/mo per paying sub. Does NOT account for
-  // yearly subs ($99/yr ≈ $8.25/mo effective) — once yearly sub counts
-  // become non-trivial, replace with a blended calculation pulling
-  // Stripe's actual invoice totals.
-  const mrrCents = payingSubs * 1299;
+  // MRR estimate: every paying sub × monthly price. Does NOT blend
+  // yearly subs ($99/yr ≈ $8.25/mo effective). Real Stripe-driven MRR
+  // (sum of active subscription prices) lands in Slice 3 once we add
+  // a Stripe API call. Until then this number reads slightly high for
+  // any annual-paying user. Acceptable at <100 paying users.
+  const mrrCents = payingSubs * MONTHLY_PRICE_CENTS;
   const churnRate =
     payingSubs + churnedInPeriod > 0
       ? (churnedInPeriod / (payingSubs + churnedInPeriod)) * 100
@@ -528,7 +533,7 @@ async function getFunnel(prisma: P, start: Date, end: Date) {
     prisma.user.count({
       where: {
         createdAt: { gte: start, lte: end },
-        subscriptionStatus: "ACTIVE",
+        subscriptionStatus: SUBSCRIPTION_STATUS.PRO,
       },
     }),
   ]);

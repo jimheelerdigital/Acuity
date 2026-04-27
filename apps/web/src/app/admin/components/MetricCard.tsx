@@ -14,6 +14,7 @@ interface Props {
   sparklineData?: { v: number }[];
   format?: "number" | "currency" | "percent";
   budgetBar?: { current: number; max: number };
+  title?: string;
 }
 
 export default function MetricCard({
@@ -23,6 +24,7 @@ export default function MetricCard({
   currentValue,
   sparklineData,
   budgetBar,
+  title,
 }: Props) {
   let badge: React.ReactNode = null;
   if (previousValue != null && currentValue != null && previousValue > 0) {
@@ -47,7 +49,10 @@ export default function MetricCard({
   }
 
   return (
-    <div className="rounded-xl bg-[#13131F] p-5 flex flex-col justify-between min-h-[140px]">
+    <div
+      className="rounded-xl bg-[#13131F] p-5 flex flex-col justify-between min-h-[140px]"
+      title={title}
+    >
       <div className="flex items-start justify-between">
         <p className="text-[11px] font-medium uppercase tracking-widest text-white/40">
           {label}

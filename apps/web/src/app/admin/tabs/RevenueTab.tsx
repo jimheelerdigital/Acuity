@@ -4,6 +4,7 @@ import MetricCard from "../components/MetricCard";
 import RefreshButton from "../components/RefreshButton";
 import { SkeletonMetric, SkeletonTable } from "../components/SkeletonCard";
 import { useTabData } from "./useTabData";
+import { MONTHLY_PRICE_CENTS, formatDollars } from "@/lib/pricing";
 
 interface RevenueData {
   mrrCents: number;
@@ -147,7 +148,9 @@ export default function RevenueTab({
                       <td className="py-2 pr-4 whitespace-nowrap">
                         {new Date(u.createdAt).toLocaleDateString()}
                       </td>
-                      <td className="py-2 pr-4">$12.99</td>
+                      <td className="py-2 pr-4">
+                        {formatDollars(MONTHLY_PRICE_CENTS)}
+                      </td>
                       <td className="py-2">{daysPaying}</td>
                     </tr>
                   );

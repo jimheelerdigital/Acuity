@@ -30,9 +30,17 @@ export default function FunnelTab({
       </div>
 
       <div className="rounded-xl bg-[#13131F] p-6">
-        <h3 className="mb-6 text-sm font-medium text-white/60">
+        <h3 className="mb-2 text-sm font-medium text-white/60">
           User Funnel
         </h3>
+        <p className="mb-6 rounded-md border border-amber-500/20 bg-amber-900/10 px-3 py-2 text-[11px] text-amber-300/70">
+          Heads up: the Waitlist row counts every waitlist signup in the
+          range, and the Account Created row counts every new User in the
+          range — they are independent populations, not joined by email.
+          The drop-off % between those two rows is therefore not meaningful
+          until Slice 3 (Waitlist→User email match) ships. Steps from
+          Account Created downward are joined correctly.
+        </p>
         <div className="space-y-3 max-w-3xl mx-auto">
           {data.steps.map((step, i) => {
             const pct = (step.count / maxCount) * 100;

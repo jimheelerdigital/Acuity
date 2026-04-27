@@ -18,6 +18,10 @@ import RefreshButton from "../components/RefreshButton";
 import RecentAdminActions from "../components/RecentAdminActions";
 import { SkeletonMetric, SkeletonChart } from "../components/SkeletonCard";
 import { useTabData } from "./useTabData";
+import {
+  MONTHLY_PRICE_CENTS,
+  formatDollarsRounded,
+} from "@/lib/pricing";
 
 interface OverviewData {
   signups: number;
@@ -98,11 +102,12 @@ export default function OverviewTab({
         />
         <MetricCard
           label="Monthly Recurring Revenue (MRR)"
-          value={`$${((data.payingSubs * 999) / 100).toFixed(0)}`}
+          value={formatDollarsRounded(data.payingSubs * MONTHLY_PRICE_CENTS)}
         />
         <MetricCard
           label="Blended Customer Acquisition Cost (CAC)"
           value="—"
+          title="Awaiting ad attribution. Lights up after User.signupSource ships in Slice 3."
         />
         <MetricCard
           label="Claude Spend (Month-to-Date)"

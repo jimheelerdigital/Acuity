@@ -98,12 +98,18 @@ export default function AdsTab({
         />
       </div>
 
-      {/* CAC by campaign */}
+      {/* Spend by campaign — true per-campaign CAC requires per-user
+          signup-source attribution (Slice 3). Until that lands, this
+          chart shows raw spend per campaign so the label matches the data. */}
       {data.byCampaign.length > 0 && (
         <div className="rounded-xl bg-[#13131F] p-5">
           <h3 className="mb-3 text-sm font-medium text-white/60">
-            Customer Acquisition Cost (CAC) by Campaign
+            Spend by Campaign
           </h3>
+          <p className="mb-3 text-[11px] text-white/40">
+            Per-campaign CAC requires signup-source attribution (Slice 3).
+            Showing spend only.
+          </p>
           <div className="space-y-2">
             {data.byCampaign.map((c) => {
               const maxCents = Math.max(
