@@ -22,9 +22,24 @@ export type SnapshotGoal = {
   lifeArea: string;
 };
 
-export function GoalsSnapshotCard({ goals }: { goals: SnapshotGoal[] }) {
+export function GoalsSnapshotCard({
+  goals,
+  className,
+}: {
+  goals: SnapshotGoal[];
+  /**
+   * Optional layout passthrough. /home applies `flex-1` so this card
+   * stretches to fill the right column when the LifeMatrixSnapshot
+   * on the left is taller than WeeklyInsightCard + Goals stacked.
+   */
+  className?: string;
+}) {
   return (
-    <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-[#1E1E2E]">
+    <section
+      className={`rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-[#1E1E2E] ${
+        className ?? ""
+      }`}
+    >
       <h2 className="text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
         Goals
       </h2>

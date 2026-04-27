@@ -269,24 +269,25 @@ export default async function DashboardPage() {
               unlocked={userProg.unlocked.lifeMatrix}
             />
           </div>
-          {/* Right column — Weekly insight + Goals snapshot stacked
-              with the same gap as the dashboard grid so the column's
-              total height tracks the LifeMatrixSnapshot card on the
-              left. Without the second card the column was visibly
-              short. */}
+          {/* Right column — Weekly insight (top, content-sized) +
+              Goals snapshot (flex-1, stretches). Goals takes whatever
+              vertical space remains so the right column tracks the
+              full height of LifeMatrixSnapshot on the left. Without
+              the stretch the right column was visibly short. */}
           <div className="flex flex-col gap-6 lg:col-span-5">
             <WeeklyInsightCard
               report={weeklyReport}
               entryCount={totalEntryCount}
               unlocked={userProg.unlocked.weeklyReport}
             />
-            <GoalsSnapshotCard goals={snapshotGoals} />
+            <GoalsSnapshotCard goals={snapshotGoals} className="flex-1" />
           </div>
 
-          {/* Row 4 — CONTEXT TIER. Recent sessions (7 cols) + Open
-              tasks (5 cols). Both render their existing empty states
-              when no rows exist. */}
-          <section className="lg:col-span-7 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-[#1E1E2E]">
+          {/* Row 4 — CONTEXT TIER. Recent sessions + Open tasks split
+              50/50 (was 7/5). Equal cols so the two lists balance
+              vertically — Open Tasks no longer leaves a hanging gap
+              on the right when Recent Sessions has 5 entries. */}
+          <section className="lg:col-span-6 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-[#1E1E2E]">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
                 Recent sessions
@@ -319,7 +320,7 @@ export default async function DashboardPage() {
             )}
           </section>
 
-          <section className="lg:col-span-5 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-[#1E1E2E]">
+          <section className="lg:col-span-6 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-[#1E1E2E]">
             <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
               Open tasks
             </h2>
