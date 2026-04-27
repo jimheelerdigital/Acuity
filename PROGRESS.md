@@ -7,6 +7,35 @@
 
 ---
 
+## [2026-04-27] — /admin gets its own chrome (no consumer sidebar) + admin topbar with user menu
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** _to be filled by commit_
+
+### In plain English (for Keenan)
+The admin dashboard at /admin used to inherit the same left sidebar as the consumer app — Record button, Home / Tasks / Goals / Insights / Life Matrix / Settings — eating ~272px of horizontal space and mixing two contexts. That sidebar is now hidden on /admin. Admin pages render full-width with a thin top bar that still has the avatar menu (so you can sign out, hit account, etc.). Navigate to /home and the consumer sidebar is back to normal.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/app-shell.tsx`: added `pathname.startsWith("/admin")` to the AppShell bypass list. /admin no longer renders the consumer Sidebar or DesktopTopbar.
+- New: `apps/web/src/app/admin/admin-topbar.tsx` — sticky 68px dark-themed topbar with the Acuity logo + "Acuity Admin" wordmark on the left and `<SessionUserMenu />` on the right. Reuses the same user-menu component the consumer topbar uses.
+- `apps/web/src/app/admin/layout.tsx`: added wrapper `<div className="bg-[#0A0A0F]">` + `<AdminTopbar />` above children. Did NOT set `min-h-screen` on the wrapper because the inner admin-dashboard page already sets it; stacking both would push total page height past viewport.
+- Verified `npm run build` clean.
+
+### Manual steps needed
+- [ ] **Jimmy:** verify on prod after Vercel deploy:
+  - /admin: no consumer sidebar visible, full-width content, dark topbar at top with avatar menu top-right.
+  - /home: consumer sidebar still renders normally (Record button, Home/Tasks/etc.).
+  - /admin?tab=overview, /admin?tab=users, /admin/content-factory: all use the new admin chrome.
+  - Click avatar on /admin → menu opens → Account / Sign out work.
+
+### Notes
+- Why a sticky 68px topbar instead of a static one: matches the consumer DesktopTopbar height pixel-for-pixel so the user menu's vertical position doesn't jump when navigating between /home and /admin. Same backdrop-blur/85 alpha bg.
+- Why not just delete the AppShell bypass list approach and move /admin under a route group: would force a deeper restructure of the consumer routes. The bypass list is the minimal-blast-radius option and matches how /onboarding, /upgrade, /auth, etc. already opt out.
+- The admin-topbar.tsx is intentionally a thin client component — only `<SessionUserMenu />` needs the `useSession` hook. Layout stays a server component for the isAdmin gate.
+
+---
+
 ## [2026-04-27] — Admin fixes Slice 1: status-string drift + price source-of-truth + misleading labels
 
 **Requested by:** Jimmy

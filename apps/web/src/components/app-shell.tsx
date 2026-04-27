@@ -220,6 +220,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     pathname.startsWith("/support") ||
     pathname.startsWith("/onboarding") ||
     pathname.startsWith("/upgrade") ||
+    // /admin owns its own layout (dark theme, full-width, no consumer
+    // sidebar). The admin/layout.tsx server component still gates on
+    // isAdmin and renders its own topbar with SessionUserMenu.
+    pathname.startsWith("/admin") ||
     status !== "authenticated" ||
     !session?.user;
 
