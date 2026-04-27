@@ -7,6 +7,7 @@ import MetricCard from "../components/MetricCard";
 import RefreshButton from "../components/RefreshButton";
 import { DrilldownModal } from "../components/DrilldownModal";
 import { SkeletonMetric, SkeletonTable } from "../components/SkeletonCard";
+import { TabError } from "../components/TabError";
 import { useTabData } from "./useTabData";
 
 interface EngagementData {
@@ -27,7 +28,7 @@ export default function EngagementTab({
   start: string;
   end: string;
 }) {
-  const { data, loading, meta, refresh } = useTabData<EngagementData>(
+  const { data, loading, error, meta, refresh } = useTabData<EngagementData>(
     "engagement",
     start,
     end
@@ -37,6 +38,10 @@ export default function EngagementTab({
     label: string;
   } | null>(null);
   const router = useRouter();
+
+  if (error && !data) {
+    return <TabError message={error} onRetry={refresh} />;
+  }
 
   if (loading || !data) {
     return (

@@ -194,20 +194,32 @@ export function DrilldownModal({
         aria-modal="true"
         aria-label={title}
       >
-        <header className="flex items-start justify-between gap-4 border-b border-white/10 px-6 py-4">
+        <header className="flex items-start justify-between gap-4 border-b border-white/10 px-6 py-5">
           <div>
-            <h2 className="text-lg font-semibold">{title}</h2>
-            <p className="mt-0.5 text-xs text-white/40">
-              {periodLabel ? `${periodLabel} · ` : ""}
-              {data ? `${data.meta.count} row${data.meta.count === 1 ? "" : "s"}` : "Loading…"}
+            <h2
+              className="font-semibold"
+              style={{ fontSize: 22, letterSpacing: "-0.2px" }}
+            >
+              {title}
+            </h2>
+            <p
+              className="mt-1 text-white/55"
+              style={{ fontSize: 12, letterSpacing: "2px" }}
+            >
+              {periodLabel ? `${periodLabel.toUpperCase()} · ` : ""}
+              {data
+                ? `${data.meta.count} ROW${data.meta.count === 1 ? "" : "S"}`
+                : "LOADING…"}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="rounded-md px-3 py-1 text-sm text-white/40 hover:bg-white/10 hover:text-white"
+            className="flex h-8 w-8 items-center justify-center rounded-md text-white/55 hover:bg-white/10 hover:text-white"
+            style={{ fontSize: 14 }}
             aria-label="Close"
+            title="Close (ESC)"
           >
-            Close (ESC)
+            ✕
           </button>
         </header>
 
@@ -316,8 +328,14 @@ function UserTable({
 
   return (
     <div className="max-h-[70vh] overflow-y-auto">
-      <table className="w-full text-left text-sm">
-        <thead className="sticky top-0 bg-[#0A0A0F] text-xs uppercase tracking-wider text-white/40">
+      <table
+        className="w-full text-left"
+        style={{ fontSize: 14 }}
+      >
+        <thead
+          className="sticky top-0 bg-[#0A0A0F] uppercase tracking-wider text-white/55"
+          style={{ fontSize: 13, fontWeight: 500 }}
+        >
           <tr className="border-b border-white/10">
             <SortHeader
               label="Email"
@@ -456,11 +474,14 @@ function AggregateTable({
   return (
     <div className="max-h-[70vh] overflow-y-auto">
       {summary && (
-        <div className="border-b border-white/10 px-6 py-3 text-xs text-white/60">
+        <div
+          className="border-b border-white/10 px-6 py-4 text-white/70"
+          style={{ fontSize: 13 }}
+        >
           {Object.entries(summary).map(([k, v]) => (
-            <span key={k} className="mr-4">
-              <span className="text-white/40">{k}:</span>{" "}
-              <span className="text-white/80">
+            <span key={k} className="mr-5">
+              <span className="text-white/45">{k}:</span>{" "}
+              <span className="text-white/90">
                 {k.toLowerCase().includes("cents") && typeof v === "number"
                   ? formatDollars(v)
                   : v}
@@ -469,8 +490,11 @@ function AggregateTable({
           ))}
         </div>
       )}
-      <table className="w-full text-left text-sm">
-        <thead className="sticky top-0 bg-[#0A0A0F] text-xs uppercase tracking-wider text-white/40">
+      <table className="w-full text-left" style={{ fontSize: 14 }}>
+        <thead
+          className="sticky top-0 bg-[#0A0A0F] uppercase tracking-wider text-white/55"
+          style={{ fontSize: 13, fontWeight: 500 }}
+        >
           <tr className="border-b border-white/10">
             {columns.map((c) => (
               <SortHeader

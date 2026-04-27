@@ -28,26 +28,35 @@ export default function MetricCard({
   title,
   onClick,
 }: Props) {
+  const deltaStyle = { fontSize: 13 } as const;
   let badge: React.ReactNode = null;
   if (previousValue != null && currentValue != null && previousValue > 0) {
     const pctChange = ((currentValue - previousValue) / previousValue) * 100;
     if (Math.abs(pctChange) < 0.5) {
-      badge = <span className="text-xs text-white/30">—</span>;
+      badge = (
+        <span className="text-white/30" style={deltaStyle}>
+          —
+        </span>
+      );
     } else if (pctChange > 0) {
       badge = (
-        <span className="text-xs font-medium text-green-400">
+        <span className="font-medium text-green-400" style={deltaStyle}>
           +{pctChange.toFixed(1)}%
         </span>
       );
     } else {
       badge = (
-        <span className="text-xs font-medium text-red-400">
+        <span className="font-medium text-red-400" style={deltaStyle}>
           {pctChange.toFixed(1)}%
         </span>
       );
     }
   } else if (previousValue != null || currentValue != null) {
-    badge = <span className="text-xs text-white/30">&mdash;</span>;
+    badge = (
+      <span className="text-white/30" style={deltaStyle}>
+        &mdash;
+      </span>
+    );
   }
 
   const Wrapper = onClick ? "button" : "div";
@@ -56,23 +65,37 @@ export default function MetricCard({
         type: "button" as const,
         onClick,
         className:
-          "rounded-xl bg-[#13131F] p-5 flex flex-col justify-between min-h-[140px] text-left transition hover:bg-[#181826] hover:ring-1 hover:ring-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 cursor-pointer w-full",
+          "rounded-xl bg-[#13131F] flex flex-col justify-between min-h-[160px] text-left transition hover:bg-[#181826] hover:ring-1 hover:ring-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 cursor-pointer w-full",
+        style: { padding: 22 },
       }
     : {
         className:
-          "rounded-xl bg-[#13131F] p-5 flex flex-col justify-between min-h-[140px]",
+          "rounded-xl bg-[#13131F] flex flex-col justify-between min-h-[160px]",
+        style: { padding: 22 },
       };
 
   return (
     <Wrapper {...wrapperProps} title={title}>
-      <div className="flex items-start justify-between">
-        <p className="text-[11px] font-medium uppercase tracking-widest text-white/40">
+      <div className="flex items-start justify-between gap-3">
+        <p
+          className="font-medium uppercase text-white/45"
+          style={{ fontSize: 11, letterSpacing: "1.6px" }}
+        >
           {label}
         </p>
         {badge}
       </div>
       <div>
-        <p className="mt-2 text-3xl font-bold text-white">{value}</p>
+        <p
+          className="mt-3 font-medium text-white"
+          style={{
+            fontSize: 36,
+            letterSpacing: "-1px",
+            lineHeight: 1.1,
+          }}
+        >
+          {value}
+        </p>
         {budgetBar && (
           <div className="mt-2">
             <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">

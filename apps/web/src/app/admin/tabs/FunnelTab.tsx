@@ -5,6 +5,7 @@ import { useState } from "react";
 import RefreshButton from "../components/RefreshButton";
 import { SkeletonChart } from "../components/SkeletonCard";
 import { DrilldownModal } from "../components/DrilldownModal";
+import { TabError } from "../components/TabError";
 import { useTabData } from "./useTabData";
 
 interface FunnelData {
@@ -27,11 +28,15 @@ export default function FunnelTab({
   start: string;
   end: string;
 }) {
-  const { data, loading, meta, refresh } = useTabData<FunnelData>("funnel", start, end);
+  const { data, loading, error, meta, refresh } = useTabData<FunnelData>("funnel", start, end);
   const [drilldown, setDrilldown] = useState<{
     step: string;
     label: string;
   } | null>(null);
+
+  if (error && !data) {
+    return <TabError message={error} onRetry={refresh} />;
+  }
 
   if (loading || !data) {
     return <SkeletonChart />;

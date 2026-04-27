@@ -117,20 +117,26 @@ export default function AdminDashboard() {
     activeTab !== "guide";
 
   return (
-    <div className="min-h-screen bg-[#0A0A0F] px-4 py-6 text-white sm:px-8">
-      <div className="mx-auto max-w-7xl">
+    <div className="min-h-screen bg-[#0A0A0F] px-4 py-8 text-white sm:px-8">
+      <div className="mx-auto w-full max-w-[1600px]">
         {/* Header */}
-        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Acuity Admin</h1>
-            <div className="mt-1 flex flex-wrap gap-2">
+            <h1
+              className="font-semibold text-white"
+              style={{ fontSize: 32, letterSpacing: "-0.4px" }}
+            >
+              Acuity Admin
+            </h1>
+            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1.5">
               {QUICK_LINKS.map((link) => (
                 <a
                   key={link.label}
                   href={link.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-[10px] text-white/25 hover:text-[#7C5CFC] transition"
+                  className="text-white/55 hover:text-[#A78BFA] transition"
+                  style={{ fontSize: 13 }}
                 >
                   {link.label}
                 </a>
@@ -149,16 +155,17 @@ export default function AdminDashboard() {
         </div>
 
         {/* Tab bar — horizontal scroll on mobile */}
-        <div className="mb-6 flex gap-1 overflow-x-auto rounded-lg bg-[#13131F] p-1 no-scrollbar">
+        <div className="mb-8 flex gap-1 overflow-x-auto rounded-lg bg-[#13131F] p-1 no-scrollbar">
           {TABS.map((tab) => (
             <button
               key={tab.key}
               onClick={() => setTab(tab.key)}
-              className={`shrink-0 rounded-md px-4 py-2 text-sm font-medium transition ${
+              className={`shrink-0 rounded-md px-4 py-2.5 transition ${
                 activeTab === tab.key
                   ? "bg-[#7C5CFC] text-white"
-                  : "text-white/40 hover:text-white/70"
+                  : "text-white/50 hover:text-white/80"
               }`}
+              style={{ fontSize: 15, fontWeight: 500 }}
             >
               {tab.label}
             </button>

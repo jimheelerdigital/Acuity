@@ -7,6 +7,67 @@
 
 ---
 
+## [2026-04-27] — Admin: surface fetch errors + typography pass + max-width 1600 + tile breakpoint
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** _to be filled by commit_
+
+### In plain English (for Keenan)
+Two issues fixed.
+
+First, the **Revenue tab "wouldn't load"** symptom was actually two bugs in one. The metrics route had an unbounded query for past-due users (would return every PAST_DUE row in the DB if there were many) and — more importantly — every metrics tab silently swallowed fetch errors, showing a loading spinner forever instead of the actual error. So if /api/admin/metrics ever 500'd or timed out, the tab looked frozen. Now: every tab surfaces the underlying error inline with a Retry button. If Revenue (or any tab) fails again, you'll see the error and can paste it back to me to diagnose.
+
+Second, **admin typography was too small** for a no-sidebar layout. Bumped sizes across the page: the "Acuity Admin" title is now 32px instead of cramped 24, the tech-stack URLs (Supabase/Vercel/Stripe/etc) are now actually visible (was 10px white/25 — almost invisible — now 13px white/55 with violet hover), tab nav 15px, time-range chips 13px with proper padding, metric tile labels 11px tracking 1.6, big numbers 36px, chart titles 16px, chart axis labels 12px, chart legend 12px with stronger contrast, drilldown modal title 22px with a 32px hit-target close button, table cells 14px with 13px headers. Container max-width now 1600px so charts and tiles use the freed sidebar space. The 6-tile metric row at the top of Overview now waits until ≥1536px viewport before collapsing six-up (the old 1280 breakpoint cramped the bigger numbers).
+
+### Technical changes (for Jimmy)
+- **New:** `apps/web/src/app/admin/components/TabError.tsx`. Shared error card with retry button. Renders `error` from `useTabData` whenever the metric fetch fails. Tells the operator to check `/api/admin/metrics` function logs.
+- **All `useTabData` consumers** (Overview, Growth, Engagement, Revenue, Funnel, Ads, AI Costs, Red Flags) now destructure `error` and short-circuit to `<TabError message={error} onRetry={refresh} />` when `error && !data`. Previously they ignored the field, so any 5xx left the tab on its skeleton state forever.
+- `apps/web/src/app/api/admin/metrics/route.ts`: `pastDueUsers` query now `take: 200` instead of unbounded. Defensive cap.
+- `apps/web/src/app/admin/admin-topbar.tsx`: logo 24→28px, wordmark 17→18px with -0.2 letter-spacing.
+- `apps/web/src/app/admin/admin-dashboard.tsx`:
+  - Container `max-w-7xl` (1280) → `max-w-[1600px]`.
+  - Page padding `py-6` → `py-8`.
+  - Title `text-2xl font-bold` → 32px font-weight-600 letter-spacing -0.4.
+  - Tech-stack URL strip: was 10px white/25 (near-invisible) → 13px white/55 with `[#A78BFA]` hover, gap-x-4 gap-y-1.5.
+  - Tab nav `text-sm font-medium` → 15px font-weight-500 padding-2.5.
+- `apps/web/src/app/admin/components/MetricCard.tsx`:
+  - Padding 20→22 (inline style to override Tailwind's `p-5`).
+  - `min-h-[140px]` → `min-h-[160px]`.
+  - Label tracking-widest white/40 → 11px tracking 1.6 white/45.
+  - Big number `text-3xl font-bold` → 36px font-weight-500 letter-spacing -1 line-height 1.1.
+  - Delta badge `text-xs` → 13px font-medium.
+- `apps/web/src/app/admin/components/ChartCard.tsx`: title 14px white/60 → 16px font-weight-500 white/75. Padding 20→22.
+- `apps/web/src/app/admin/components/RefreshButton.tsx`: text 12px (was 11px implicit `text-xs`), white/55→/80 hover. Icon 14→16.
+- `apps/web/src/app/admin/components/TimeRangeSelector.tsx`: chip styling 13px font-weight-500 padding 9/16. Chip color white/55 active/85 hover. Custom date inputs same.
+- `apps/web/src/app/admin/components/RecentAdminActions.tsx`: full pass — h3 16px/500, body 14px, action-detail spans 13px white/65, timestamp column 12px.
+- `apps/web/src/app/admin/components/DrilldownModal.tsx`:
+  - Header title 22px, eyebrow strip "{period} · {count} ROWS" → 12px tracking-2 uppercase.
+  - Close button 32×32 hit target with ✕ glyph (was a wide "Close (ESC)" text button).
+  - User table + aggregate table body 14px, header rows 13px tracking-wider weight-500 white/55.
+  - Summary strip in aggregate-mode 13px with white/45 keys + white/90 values.
+- Recharts axis ticks across Overview / Growth / AI Costs: 10px white/0.3 → 12px white/0.55. Pie legend on Overview: 11px → 12px white/0.7.
+- Hero metric grid breakpoint: `xl:grid-cols-6` (1280px) → `2xl:grid-cols-6` (1536px). Reason: 6 tiles at 1280 viewport with the new 36px numbers cramped horizontally; 1536 gives ~240px per tile inside the 1600 container which fits the larger typography. At 1280–1535 the grid stays at 3 cols (`lg:grid-cols-3`), still readable.
+
+### Manual steps needed
+- [ ] **Jimmy:** verify on prod after Vercel deploy:
+  - /admin?tab=revenue: tab loads (or shows a clear error message — paste it back if so).
+  - All tabs: title + URLs + tabs + tiles + charts feel readable at normal viewing distance, no microscopic markers.
+  - Wide screen (≥1536): 6-tile row at the top of Overview. Below 1536: 3-tile row.
+  - Drilldown modal: 22px title, ✕ button is easy to click without precision.
+  - Tech-stack URLs (Supabase / Vercel / etc) clearly visible — not the previous near-invisible white/25.
+- [ ] **Jimmy:** if Revenue STILL fails to load after this deploy, paste the error message that now renders in the TabError card. The route's most likely failure modes are (a) `getRevenue` query timeout — would benefit from a slow-query log, (b) some other Prisma issue. The TabError card surfaces whatever response status useTabData saw; that's the diagnostic we couldn't get before.
+
+### Notes
+- Why I added `error` handling across all `useTabData` consumers, not just Revenue: the same code-shape bug (ignored `useTabData.error`) was in every tab. Fixing only Revenue would leave the same trap for the next tab that ever fails. One-time pass, low risk, all behind a clean error boundary.
+- Why typography is set via inline `style={{ fontSize: 13 }}` rather than expanding Tailwind's font-size scale: the spec specified exact px values that don't map cleanly onto Tailwind's bracket-arbitrary syntax. Inline keeps the spec literal and grep-able.
+- Why letter-spacing -0.4 on the page title and -1 on big numbers: matches the tracking the consumer Acuity wordmark uses elsewhere — keeps the admin chrome typographically consistent with the marketing/product pages. The `tabular-nums` Tailwind utility on per-row monetary cells handles digit alignment.
+- Tile breakpoint move (xl→2xl): tested mentally against 1280 (3 cols, comfortable), 1440 (3 cols, comfortable), 1536 (6 cols, ~240px each), 1920 (6 cols, ~265px each — generous). No layout failure mode I can see.
+- Deferred typography in tabs that weren't in the explicit spec (Trial Emails, Feature Flags, Users tab tables, Content Factory). Those have their own dense layouts with separate visual rhythms; touching them would extend scope. Easy follow-up if Keenan asks.
+- I could not pull the actual Revenue-tab production error message from this seat — Issue 1 is fixed defensively (cap + visible error state). If the underlying API is genuinely throwing, the TabError card will now render the response status so we can diagnose.
+
+---
+
 ## [2026-04-27] — /home dashboard fixes: radar polygon + balanced right column
 
 **Requested by:** Jimmy

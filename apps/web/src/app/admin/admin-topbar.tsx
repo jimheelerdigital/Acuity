@@ -16,15 +16,18 @@ export function AdminTopbar() {
     <header className="sticky top-0 z-30 flex h-[68px] items-center justify-between border-b border-white/10 bg-[#0A0A0F]/85 px-4 backdrop-blur-md sm:px-8">
       <Link
         href="/admin"
-        className="flex items-center gap-2 text-white"
+        className="flex items-center gap-2.5 text-white"
       >
         <img
           src="/AcuityLogoDark.png"
           alt=""
           className="shrink-0"
-          style={{ width: 24, height: 24 }}
+          style={{ width: 28, height: 28 }}
         />
-        <span className="font-semibold tracking-tight" style={{ fontSize: 17 }}>
+        <span
+          className="font-semibold"
+          style={{ fontSize: 18, letterSpacing: "-0.2px" }}
+        >
           Acuity Admin
         </span>
       </Link>

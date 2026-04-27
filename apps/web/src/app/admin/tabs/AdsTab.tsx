@@ -4,6 +4,7 @@ import { useState } from "react";
 import MetricCard from "../components/MetricCard";
 import RefreshButton from "../components/RefreshButton";
 import { SkeletonMetric, SkeletonTable } from "../components/SkeletonCard";
+import { TabError } from "../components/TabError";
 import { useTabData } from "./useTabData";
 
 interface AdsData {
@@ -30,7 +31,7 @@ export default function AdsTab({
   start: string;
   end: string;
 }) {
-  const { data, loading, meta, refresh } = useTabData<AdsData>("ads", start, end);
+  const { data, loading, error, meta, refresh } = useTabData<AdsData>("ads", start, end);
   const [saving, setSaving] = useState(false);
   const [weekStart, setWeekStart] = useState(() => {
     const d = new Date();
@@ -58,6 +59,10 @@ export default function AdsTab({
       setSaving(false);
     }
   };
+
+  if (error && !data) {
+    return <TabError message={error} onRetry={refresh} />;
+  }
 
   if (loading || !data) {
     return (

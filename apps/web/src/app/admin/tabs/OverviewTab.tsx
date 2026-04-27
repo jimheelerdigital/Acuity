@@ -19,6 +19,7 @@ import RefreshButton from "../components/RefreshButton";
 import RecentAdminActions from "../components/RecentAdminActions";
 import { SkeletonMetric, SkeletonChart } from "../components/SkeletonCard";
 import { DrilldownModal } from "../components/DrilldownModal";
+import { TabError } from "../components/TabError";
 import { useTabData } from "./useTabData";
 import {
   MONTHLY_PRICE_CENTS,
@@ -61,8 +62,12 @@ export default function OverviewTab({
   start: string;
   end: string;
 }) {
-  const { data, loading, meta, refresh } = useTabData<OverviewData>("overview", start, end);
+  const { data, loading, error, meta, refresh } = useTabData<OverviewData>("overview", start, end);
   const [drilldown, setDrilldown] = useState<Drilldown>(null);
+
+  if (error && !data) {
+    return <TabError message={error} onRetry={refresh} />;
+  }
 
   if (loading || !data) {
     return (
@@ -90,8 +95,10 @@ export default function OverviewTab({
         <RefreshButton computedAt={meta?.computedAt ?? null} onRefresh={refresh} loading={loading} />
       </div>
 
-      {/* Hero metrics */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
+      {/* Hero metrics. xl-grid was 6-cols starting at 1280 — too cramped
+          for the bumped 36px values. 2xl (1536) gives ~240px per tile
+          inside the 1600 container, which fits the larger typography. */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 2xl:grid-cols-6">
         <MetricCard
           label="New Signups"
           value={data.signups}
@@ -167,13 +174,13 @@ export default function OverviewTab({
                 <BarChart data={data.signupsOverTime}>
                   <XAxis
                     dataKey="date"
-                    tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 10 }}
+                    tick={{ fill: "rgba(255,255,255,0.55)", fontSize: 12 }}
                     tickFormatter={(v) => v.slice(5)}
                     axisLine={false}
                     tickLine={false}
                   />
                   <YAxis
-                    tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 10 }}
+                    tick={{ fill: "rgba(255,255,255,0.55)", fontSize: 12 }}
                     axisLine={false}
                     tickLine={false}
                     allowDecimals={false}
@@ -248,7 +255,7 @@ export default function OverviewTab({
                     ))}
                   </Pie>
                   <Legend
-                    wrapperStyle={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}
+                    wrapperStyle={{ fontSize: 12, color: "rgba(255,255,255,0.7)" }}
                   />
                   <Tooltip
                     formatter={(value) =>

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import MetricCard from "../components/MetricCard";
 import RefreshButton from "../components/RefreshButton";
 import { SkeletonMetric, SkeletonTable } from "../components/SkeletonCard";
+import { TabError } from "../components/TabError";
 import { useTabData } from "./useTabData";
 import { MONTHLY_PRICE_CENTS, formatDollars } from "@/lib/pricing";
 
@@ -35,8 +36,12 @@ export default function RevenueTab({
   start: string;
   end: string;
 }) {
-  const { data, loading, meta, refresh } = useTabData<RevenueData>("revenue", start, end);
+  const { data, loading, error, meta, refresh } = useTabData<RevenueData>("revenue", start, end);
   const router = useRouter();
+
+  if (error && !data) {
+    return <TabError message={error} onRetry={refresh} />;
+  }
 
   if (loading || !data) {
     return (

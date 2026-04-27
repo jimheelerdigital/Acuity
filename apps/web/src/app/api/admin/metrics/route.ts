@@ -418,6 +418,7 @@ async function getRevenue(
           createdAt: true,
         },
         orderBy: { stripeCurrentPeriodEnd: "asc" },
+        take: 200,
       }),
       prisma.user.findMany({
         where: {

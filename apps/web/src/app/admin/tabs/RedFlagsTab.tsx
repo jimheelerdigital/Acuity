@@ -3,6 +3,7 @@
 import { useState } from "react";
 import RefreshButton from "../components/RefreshButton";
 import { SkeletonTable } from "../components/SkeletonCard";
+import { TabError } from "../components/TabError";
 import { useTabData } from "./useTabData";
 
 interface RedFlagsData {
@@ -48,9 +49,13 @@ export default function RedFlagsTab({
   start: string;
   end: string;
 }) {
-  const { data, loading, meta, refresh } = useTabData<RedFlagsData>("red-flags", start, end);
+  const { data, loading, error, meta, refresh } = useTabData<RedFlagsData>("red-flags", start, end);
   const [resolving, setResolving] = useState<string | null>(null);
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+
+  if (error && !data) {
+    return <TabError message={error} onRetry={refresh} />;
+  }
 
   const handleResolve = async (flagId: string, action: string) => {
     setResolving(flagId);

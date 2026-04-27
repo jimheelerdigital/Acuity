@@ -12,6 +12,7 @@ import MetricCard from "../components/MetricCard";
 import ChartCard from "../components/ChartCard";
 import RefreshButton from "../components/RefreshButton";
 import { SkeletonMetric, SkeletonChart } from "../components/SkeletonCard";
+import { TabError } from "../components/TabError";
 import { useTabData } from "./useTabData";
 
 interface GrowthData {
@@ -34,7 +35,11 @@ export default function GrowthTab({
   start: string;
   end: string;
 }) {
-  const { data, loading, meta, refresh } = useTabData<GrowthData>("growth", start, end);
+  const { data, loading, error, meta, refresh } = useTabData<GrowthData>("growth", start, end);
+
+  if (error && !data) {
+    return <TabError message={error} onRetry={refresh} />;
+  }
 
   if (loading || !data) {
     return (
@@ -87,13 +92,13 @@ export default function GrowthTab({
               <BarChart data={data.signupsOverTime}>
                 <XAxis
                   dataKey="date"
-                  tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 10 }}
+                  tick={{ fill: "rgba(255,255,255,0.55)", fontSize: 12 }}
                   tickFormatter={(v) => v.slice(5)}
                   axisLine={false}
                   tickLine={false}
                 />
                 <YAxis
-                  tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 10 }}
+                  tick={{ fill: "rgba(255,255,255,0.55)", fontSize: 12 }}
                   axisLine={false}
                   tickLine={false}
                   allowDecimals={false}

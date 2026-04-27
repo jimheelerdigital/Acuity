@@ -31,11 +31,12 @@ export default function RefreshButton({ computedAt, onRefresh, loading }: Props)
     <button
       onClick={onRefresh}
       disabled={loading}
-      className="flex items-center gap-2 rounded-lg bg-white/5 px-3 py-1.5 text-xs text-white/40 transition hover:bg-white/10 hover:text-white/60 disabled:opacity-50"
+      className="flex items-center gap-2 rounded-lg bg-white/5 px-3 py-2 text-white/55 transition hover:bg-white/10 hover:text-white/80 disabled:opacity-50"
+      style={{ fontSize: 12 }}
       title="Refresh data (invalidates cache)"
     >
       <svg
-        className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`}
+        className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
         fill="none"
         viewBox="0 0 24 24"
         stroke="currentColor"

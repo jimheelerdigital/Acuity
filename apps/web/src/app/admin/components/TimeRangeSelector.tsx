@@ -39,11 +39,12 @@ export default function TimeRangeSelector({
           <button
             key={opt.value}
             onClick={() => onChange(opt.value)}
-            className={`rounded-md px-3 py-1.5 text-xs font-medium transition ${
+            className={`rounded-md transition ${
               value === opt.value
                 ? "bg-[#7C5CFC] text-white"
-                : "text-white/40 hover:text-white/70"
+                : "text-white/55 hover:text-white/85"
             }`}
+            style={{ fontSize: 13, fontWeight: 500, padding: "9px 16px" }}
           >
             {opt.label}
           </button>
@@ -55,14 +56,18 @@ export default function TimeRangeSelector({
             type="date"
             value={customStart ?? ""}
             onChange={(e) => onCustomChange(e.target.value, customEnd ?? "")}
-            className="rounded-md bg-[#13131F] px-3 py-1.5 text-xs text-white/80"
+            className="rounded-md bg-[#13131F] text-white/80"
+            style={{ fontSize: 13, padding: "9px 12px" }}
           />
-          <span className="text-xs text-white/30">to</span>
+          <span className="text-white/40" style={{ fontSize: 13 }}>
+            to
+          </span>
           <input
             type="date"
             value={customEnd ?? ""}
             onChange={(e) => onCustomChange(customStart ?? "", e.target.value)}
-            className="rounded-md bg-[#13131F] px-3 py-1.5 text-xs text-white/80"
+            className="rounded-md bg-[#13131F] text-white/80"
+            style={{ fontSize: 13, padding: "9px 12px" }}
           />
         </div>
       )}

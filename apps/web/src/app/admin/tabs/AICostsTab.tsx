@@ -14,6 +14,7 @@ import ChartCard from "../components/ChartCard";
 import RefreshButton from "../components/RefreshButton";
 import { DrilldownModal } from "../components/DrilldownModal";
 import { SkeletonMetric, SkeletonChart, SkeletonTable } from "../components/SkeletonCard";
+import { TabError } from "../components/TabError";
 import { useTabData } from "./useTabData";
 
 interface AICostsData {
@@ -42,9 +43,13 @@ export default function AICostsTab({
   start: string;
   end: string;
 }) {
-  const { data, loading, meta, refresh } = useTabData<AICostsData>("ai-costs", start, end);
+  const { data, loading, error, meta, refresh } = useTabData<AICostsData>("ai-costs", start, end);
   const [filterPurpose, setFilterPurpose] = useState("");
   const [showBreakdown, setShowBreakdown] = useState(false);
+
+  if (error && !data) {
+    return <TabError message={error} onRetry={refresh} />;
+  }
 
   if (loading || !data) {
     return (
@@ -156,13 +161,13 @@ export default function AICostsTab({
               <LineChart data={data.byDay}>
                 <XAxis
                   dataKey="date"
-                  tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 10 }}
+                  tick={{ fill: "rgba(255,255,255,0.55)", fontSize: 12 }}
                   tickFormatter={(v) => v.slice(5)}
                   axisLine={false}
                   tickLine={false}
                 />
                 <YAxis
-                  tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 10 }}
+                  tick={{ fill: "rgba(255,255,255,0.55)", fontSize: 12 }}
                   axisLine={false}
                   tickLine={false}
                   tickFormatter={(v) => `$${(v / 100).toFixed(0)}`}
