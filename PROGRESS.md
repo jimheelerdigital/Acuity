@@ -7,6 +7,27 @@
 
 ---
 
+## [2026-04-27] — Add Sign In link to landing page
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 11d624e
+
+### In plain English (for Keenan)
+Existing users who visited the main website had no obvious way to sign in — the landing page only showed "Start Free Trial." Now there's a "Sign in" link in the top nav and in the footer so returning users can get back into their account without having to type the URL manually.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/landing.tsx`: Added "Sign in" link to desktop nav bar (next to "Start Free Trial" button) and to the footer Product column.
+
+### Manual steps needed
+None
+
+### Notes
+- The `/upgrade` page was already fully functional with Stripe checkout, plan picker (monthly/yearly), and post-checkout webhook polling. No changes needed there.
+- Trial onboarding emails (14 total across 3 tracks) were rendered and sent to keenan@heelerdigital.com as Gmail drafts for review.
+
+---
+
 ## [2026-04-27] — App Store reviewer seed account + hide Manage Subscription on comped PRO
 
 **Requested by:** Jimmy
