@@ -17,6 +17,7 @@ import { EntryCard } from "./entry-card";
 import { Greeting } from "./greeting";
 import { GoalsSnapshotCard, type SnapshotGoal } from "./goals-snapshot";
 import { LifeMatrixSnapshot } from "./life-matrix-snapshot";
+import { OpenTasksCard } from "./open-tasks-card";
 import { WeeklyInsightCard } from "./weekly-insight-card";
 
 const HOME_ENTRY_LIMIT = 5;
@@ -320,35 +321,15 @@ export default async function DashboardPage() {
             )}
           </section>
 
-          <section className="lg:col-span-6 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-[#1E1E2E]">
-            <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
-              Open tasks
-            </h2>
-            {tasks.length === 0 ? (
-              <EmptyState
-                icon="✅"
-                title="All clear"
-                description="No open tasks. Record a session to extract some."
-                compact
-              />
-            ) : (
-              <div className="space-y-2">
-                {tasks.map((t) => (
-                  <div
-                    key={t.id}
-                    className="rounded-xl border border-zinc-200 bg-white px-4 py-3 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 dark:border-white/10 dark:bg-[#13131F] dark:hover:bg-[#24243A]"
-                  >
-                    <p className="text-sm text-zinc-800 leading-snug dark:text-zinc-100">
-                      {t.title ?? t.text}
-                    </p>
-                    <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">
-                      {t.priority} · {t.status.replace("_", " ")}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
+          <OpenTasksCard
+            initialTasks={tasks.map((t) => ({
+              id: t.id,
+              title: t.title,
+              text: t.text,
+              status: t.status,
+              priority: t.priority,
+            }))}
+          />
         </div>
       </PageContainer>
     </div>
