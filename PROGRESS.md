@@ -7,6 +7,36 @@
 
 ---
 
+## [2026-04-27] — /home dashboard fixes: radar polygon + balanced right column
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** 68a030a
+
+### In plain English (for Keenan)
+Two visual problems on the consumer dashboard, both visible to the App Store reviewer.
+
+The Life Matrix radar chart was broken — only showing 3 of the 6 axes, the polygon collapsed near zero. Two reasons working together: the seed accidentally wrote scores on a 0-100 scale when the chart expects 0-10 (so vertices projected way outside the visible circle), and the seed only wrote 4 of the 6 areas (Finances and Other were missing). Fixed both: re-seeded with correct scale and all six areas, AND hardened the chart so any future bad data is clamped to the visible circle instead of disappearing off-canvas.
+
+The right column under "Weekly insight" was much shorter than the Life Matrix card on the left, leaving an awkward empty gap. Added a "Goals" card below it showing the top three active goals with progress bars. Now the columns match in height and the dashboard feels balanced.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/app/home/life-matrix-snapshot.tsx`: polygon fraction now `Math.min(1, Math.max(0.05, score / 10))`. Same clamp on the vertex-dot positions. Bad-scale data renders inside the radar instead of off-canvas.
+- `apps/web/src/app/home/goals-snapshot.tsx` (new): top-3 active-goal card. Status filter `IN_PROGRESS | NOT_STARTED`, ordered by status then `lastMentionedAt`. Empty state copy + CTA into `/goals`.
+- `apps/web/src/app/home/page.tsx`: new `fetchSnapshotGoals()` parallel fetch. Right-column wrapper changed to `flex flex-col gap-6 lg:col-span-5` so `<WeeklyInsightCard />` and `<GoalsSnapshotCard />` stack with the same gap as the dashboard grid.
+- `scripts/seed-app-store-reviewer.ts`: scores back on the 0-10 scale matching the component contract; seed now writes all 6 canonical areas (CAREER / HEALTH / RELATIONSHIPS / FINANCES / PERSONAL / OTHER); `historicalHigh/Low` and `baselineScore` brought into the same scale; weekly/monthly deltas dropped to 1-2 (was 4/8, also wrong-scale).
+- Re-ran seed against prod with `--force`. New userId: `cmohslow800007t2o3bg52qir`. LifeMapArea row count went 4 → 6. Other row counts unchanged.
+
+### Manual steps needed
+- [ ] **Jimmy:** sign in at https://getacuity.io/auth/signin once Vercel deploys (auto on push). Verify on /home: radar polygon shows clearly across all 6 axes, right column matches left in height. Same credentials as previous reviewer-seed entry.
+
+### Notes
+- Why clamp at the component instead of just trusting the seed fix: the bug only surfaced because of a specific data shape, but the same shape can come from any future seed/import/migration. A clamp is a few characters and prevents an entire class of off-canvas bugs.
+- Why GoalsSnapshotCard not RecentThemes: goals are the more reviewer-legible signal — they show forward intent, progress bars are familiar, and the top-3 ordering is deterministic. A themes mini-list would have needed a sentiment heuristic and risked looking sparse on accounts with few extracted themes.
+- The right-column flex wrapper was the smaller of the two layout choices we considered (vs. `h-full`-stretching the existing single card). Adding genuine content beats faking equal height.
+
+---
+
 ## [2026-04-27] — Add Sign In link to landing page
 
 **Requested by:** Keenan
