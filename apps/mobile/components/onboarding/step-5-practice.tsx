@@ -6,16 +6,20 @@ import { Alert, Pressable, Text, View } from "react-native";
 import { useOnboarding } from "./context";
 
 /**
- * Step 5 — Practice recording. A throwaway 30-second sample. The audio
+ * Step 5 — Practice recording. A throwaway 10-second sample. The audio
  * is recorded to a temp file and then unloaded without upload — the
  * goal is muscle memory for tap-to-record, not to persist anything.
  *
  * Continue is gated on reaching the "recorded" state (user actually
  * tried the flow). A user who hits Skip from the shell just moves on.
+ *
+ * MAX_SECONDS is the auto-stop ceiling — recording cuts off here so
+ * the practice doesn't drag. Was 30s; lowered to 10s so the gate
+ * doesn't feel like an obligation in the new-user flow.
  */
 
 type Phase = "idle" | "recording" | "recorded";
-const MAX_SECONDS = 30;
+const MAX_SECONDS = 10;
 
 export function Step5Practice() {
   const { setCanContinue, setCapturedData } = useOnboarding();
@@ -106,9 +110,9 @@ export function Step5Practice() {
       </Text>
       <Text className="mt-3 text-base leading-relaxed text-zinc-600 dark:text-zinc-300">
         Tap the mic and tell us about your day — what&rsquo;s on your
-        mind, what went well, what didn&rsquo;t. Thirty seconds.
-        Nothing you say here is saved — it&rsquo;s just to get
-        comfortable with the tap-to-record rhythm.
+        mind, what went well, what didn&rsquo;t. Ten seconds. Nothing
+        you say here is saved — it&rsquo;s just to get comfortable
+        with the tap-to-record rhythm.
       </Text>
 
       <View className="mt-12 items-center">
