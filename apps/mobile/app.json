@@ -18,6 +18,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.heelerdigital.acuity",
+      "usesAppleSignIn": true,
       "infoPlist": {
         "NSMicrophoneUsageDescription": "Acuity uses your microphone to record your daily voice entries.",
         "ITSAppUsesNonExemptEncryption": false,

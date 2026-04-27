@@ -1,9 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
+import * as AppleAuthentication from "expo-apple-authentication";
 import { Link } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Platform,
   Pressable,
   Text,
   TextInput,
@@ -17,8 +19,9 @@ import {
   signInWithPassword,
   useGoogleSignIn,
 } from "@/lib/auth";
+import { isAppleSignInAvailable, signInWithApple } from "@/lib/apple-auth";
 
-type Loading = "google" | "password" | "magic" | null;
+type Loading = "google" | "apple" | "password" | "magic" | null;
 
 /**
  * Mobile sign-in. Three paths, all of which end with a session JWT
@@ -37,6 +40,45 @@ export default function SignInScreen() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState<Loading>(null);
   const [magicSent, setMagicSent] = useState(false);
+  const [appleAvailable, setAppleAvailable] = useState(false);
+
+  // Apple sign-in is iOS 13+ on physical devices. Hide the button if
+  // unavailable rather than render-then-fail.
+  useEffect(() => {
+    if (Platform.OS !== "ios") {
+      setAppleAvailable(false);
+      return;
+    }
+    let cancelled = false;
+    isAppleSignInAvailable().then((ok) => {
+      if (!cancelled) setAppleAvailable(ok);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function handleApple() {
+    setLoading("apple");
+    const result = await signInWithApple();
+    setLoading(null);
+
+    if (!result.ok) {
+      if (result.reason === "Cancelled") return;
+      Alert.alert(
+        "Sign-in failed",
+        result.reason === "Unavailable"
+          ? "Apple sign-in isn't available on this device."
+          : result.reason === "NoIdentityToken"
+            ? "Apple didn't return a sign-in token. Try again."
+            : result.reason === "NetworkError"
+              ? "Can't reach Acuity. Check your connection and try again."
+              : "Please try again or use email."
+      );
+      return;
+    }
+    await refresh();
+  }
 
   async function handleGoogle() {
     if (!ready) {
@@ -142,6 +184,40 @@ export default function SignInScreen() {
         <Text className="text-sm text-zinc-400 dark:text-zinc-500 mb-8 text-center">
           Your nightly brain dump, pattern recognition across your own words.
         </Text>
+
+        {/* Apple — iOS only. Required by App Store Guideline 4.8
+            whenever a third-party sign-in is offered. Renders the
+            native button via AppleAuthenticationButton; we still
+            allow our own state to drive the loading + post-auth nav. */}
+        {appleAvailable && (
+          <View style={{ marginBottom: 12 }}>
+            {loading === "apple" ? (
+              <View
+                className="w-full flex-row items-center justify-center gap-3 rounded-xl px-4 py-3.5"
+                style={{ backgroundColor: "#000000", height: 48 }}
+              >
+                <ActivityIndicator size="small" color="#FFFFFF" />
+                <Text style={{ color: "#FFFFFF", fontSize: 15, fontWeight: "600" }}>
+                  Signing in…
+                </Text>
+              </View>
+            ) : (
+              <AppleAuthentication.AppleAuthenticationButton
+                buttonType={
+                  AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN
+                }
+                buttonStyle={
+                  AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
+                }
+                cornerRadius={12}
+                style={{ width: "100%", height: 48 }}
+                onPress={() => {
+                  if (loading === null) handleApple();
+                }}
+              />
+            )}
+          </View>
+        )}
 
         {/* Google */}
         <Pressable

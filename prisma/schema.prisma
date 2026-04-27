@@ -129,6 +129,12 @@ model User {
   // new users get the standard 14-day trial.
   isFoundingMember       Boolean      @default(false)
   foundingMemberNumber   Int?
+  // Apple's stable per-user identifier (`sub` claim from the Apple ID
+  // token). Set when a user signs in with Apple. Unique so the same
+  // Apple ID maps to exactly one User row even when Apple's relayed
+  // email rotates or the user opts out of email sharing on a later
+  // sign-in. Null on users who've never signed in with Apple.
+  appleSubject           String?      @unique
   createdAt              DateTime     @default(now())
   // Last time the user loaded a page / opened the app. Updated
   // opportunistically from /api/user/me; not strongly durable.
