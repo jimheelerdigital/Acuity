@@ -11,7 +11,7 @@
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** _to be filled by commit_
+**Commit hash:** 89df97d
 
 ### In plain English (for Keenan)
 The two charts on the admin Overview page are now clickable. Click a bar in "Signups Over Time" → modal listing the users who signed up that day, with their email, name, sign-in method, and current status. Click a slice of the "AI Cost by Feature" donut → modal listing every Claude call for that feature in the active period, sorted by time, with token counts, cost per call, latency, and OK/FAIL.
