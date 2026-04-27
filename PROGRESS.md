@@ -7,6 +7,41 @@
 
 ---
 
+## [2026-04-27] — App Store reviewer seed account + hide Manage Subscription on comped PRO
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** c156950
+
+### In plain English (for Keenan)
+Apple's reviewers need to sign into a populated account so they don't see a blank app on first launch. Built a one-shot script that creates a fully-populated demo account — 31 voice journal entries spread over 30 days with realistic content (golf, family, work stress, sleep, mood swings), themes extracted, weekly insights, a Life Audit, goals and tasks, the works. The reviewer account is on PRO so they can see all paid features. The script is locked to one specific email so we can't accidentally clobber a real user.
+
+Also closed a small loose end: the "Manage subscription" button we added earlier this morning would have shown up for the reviewer account and dead-ended, because there's no real Stripe subscription behind it. Now hidden whenever a PRO account doesn't have a Stripe customer attached. Real paying users still see it.
+
+### Technical changes (for Jimmy)
+- New `scripts/seed-app-store-reviewer.ts`. Literal allowlist (only `jim+applereview@heelerdigital.com` for now). `--force` deletes any prior row. Bcrypt cost=12 password hash. Creates: User, UserOnboarding (completedAt=now), 31 Entry, 28 Theme, 73 ThemeMention, 4 LifeMapArea, 3 Goal, 7 Task, 4 WeeklyReport (status=COMPLETE), 1 LifeAudit (kind=TRIAL_DAY_14). All synthetic — no Inngest pipeline calls.
+- `apps/mobile/lib/auth.ts`: User type gains `hasStripeCustomer?: boolean` (`/api/user/me` already exposes it).
+- `apps/mobile/app/(tabs)/profile.tsx`: "Manage subscription" gated on `isPro && user.hasStripeCustomer === true` (renamed `canManageSubscription`).
+- Ran the seed against prod successfully. EAS OTA published: `0388b4b7-17c8-4c14-a2b1-8a2694ea0910`.
+
+### Reviewer credentials (for Apple submission)
+- **URL:** https://getacuity.io/auth/signin
+- **Email:** jim+applereview@heelerdigital.com
+- **Password:** `m6d&s9DWdVn%fLKU`
+- Account is PRO, period end 90 days out. No Stripe subscription behind it (intentional — "Manage subscription" hidden).
+
+### Manual steps needed
+- [ ] **Jimmy:** sign in at https://getacuity.io/auth/signin with the credentials above to verify the populated state. Should land on dashboard with 31 entries, themes populated, weekly reports, Life Audit visible. App Store Connect reviewer notes should reference the same credentials.
+- [ ] **Jimmy:** if you want a separate iOS-side check, the same credentials log into the mobile app once it's published.
+
+### Notes
+- Why a one-off script vs. extending `seed-test-user.ts`: the existing test seeder is for paywall/trial QA — flag-driven, deliberately minimal. This one is for a single specific use case (reviewer demo) and writing it as a separate file keeps the test seeder's safety semantics intact.
+- Why synthetic data instead of real Inngest pipeline runs: cost (Claude API for 31 entries × extraction × weekly × audit is meaningful) and determinism (the demo's mood arc is curated to read coherently — a real pipeline would produce uneven results that might tell a less convincing story to a reviewer skimming for 60 seconds).
+- Why no Stripe customer on the seeded PRO: comped PRO via DB row is the simplest path. Real Stripe customer would require a test-mode subscription in the live Stripe account, which is more state to maintain. The new "Manage subscription" gate handles this case clean.
+- Allowlist is a `Set` of literal addresses, not a regex. If a future seed target is needed, add the literal string to `ALLOWED_REVIEWER_EMAILS` and re-run.
+
+---
+
 ## [2026-04-27] — Admin edge-tab drilldowns (Funnel, Engagement, Past Due)
 
 **Requested by:** Jimmy
