@@ -11,7 +11,7 @@
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** _to be filled by commit_
+**Commit hash:** b73e944
 
 ### In plain English (for Keenan)
 The admin dashboard at /admin used to inherit the same left sidebar as the consumer app — Record button, Home / Tasks / Goals / Insights / Life Matrix / Settings — eating ~272px of horizontal space and mixing two contexts. That sidebar is now hidden on /admin. Admin pages render full-width with a thin top bar that still has the avatar menu (so you can sign out, hit account, etc.). Navigate to /home and the consumer sidebar is back to normal.
