@@ -11,7 +11,7 @@
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** _to be filled by commit_
+**Commit hash:** 2313550
 
 ### In plain English (for Keenan)
 The admin dashboard at /admin has been showing **zero** for paying subscribers, MRR, churn, and trial-to-paid conversion — not because we have zero, but because the code was looking up subscriptions under the wrong label. Stripe writes our paying subs as `PRO` and the admin queries were asking for `ACTIVE` (a label nothing writes). Same story for churn (queries asked for `CANCELED`, webhook writes `FREE`). Both fixed. Numbers should populate the next time the page loads in production.
