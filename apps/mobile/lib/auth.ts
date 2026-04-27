@@ -22,6 +22,10 @@ export type User = {
   // freshly-created users before the createUser event writes it,
   // or for users who existed before the 2026-04-20 backfill.
   trialEndsAt?: string | null;
+  // Renewal date when subscriptionStatus = "PRO". Used by the delete
+  // modal to compute "X days remaining" if the user deletes mid-period.
+  // Null on free / trial users.
+  stripeCurrentPeriodEnd?: string | null;
   currentStreak?: number;
   longestStreak?: number;
   lastStreakMilestone?: number | null;

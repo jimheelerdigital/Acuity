@@ -31,18 +31,34 @@ const CONFIRM_PHRASE = "DELETE";
 type Props = {
   visible: boolean;
   isPro: boolean;
+  /**
+   * Days left in the current paid period — derived from
+   * user.stripeCurrentPeriodEnd. Null when the user isn't PRO, when
+   * the field is missing, or when the calculation can't be trusted
+   * (negative, NaN). The modal shows "X days remaining" when this is
+   * non-null and falls back to softer copy otherwise.
+   */
+  daysRemaining: number | null;
   onClose: () => void;
   onDelete: () => Promise<DeleteAccountResult>;
   /** Called once the deletion succeeds AND local session is cleared. */
   onDeleted: () => void;
+  /**
+   * Tapping the "Cancel subscription instead" CTA inside the PRO
+   * warning. Modal closes itself first via onClose, then the parent
+   * fires this to open the Stripe Customer Portal.
+   */
+  onCancelSubscription: () => void;
 };
 
 export function DeleteAccountModal({
   visible,
   isPro,
+  daysRemaining,
   onClose,
   onDelete,
   onDeleted,
+  onCancelSubscription,
 }: Props) {
   const [confirmText, setConfirmText] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -205,7 +221,7 @@ export function DeleteAccountModal({
             <DeletedItem text="Notification preferences and reminders" />
           </View>
 
-          {/* PRO subscription warning */}
+          {/* PRO subscription warning — explicit forfeiture + alt CTA */}
           {isPro && (
             <View
               style={{
@@ -215,38 +231,79 @@ export function DeleteAccountModal({
                 borderRadius: 14,
                 padding: 16,
                 marginBottom: 16,
-                flexDirection: "row",
-                gap: 12,
               }}
             >
-              <Ionicons
-                name="alert-circle-outline"
-                size={20}
-                color="#FCA85A"
-                style={{ marginTop: 1 }}
-              />
-              <View style={{ flex: 1 }}>
+              <View style={{ flexDirection: "row", gap: 12 }}>
+                <Ionicons
+                  name="alert-circle-outline"
+                  size={20}
+                  color="#FCA85A"
+                  style={{ marginTop: 1 }}
+                />
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={{
+                      fontSize: 14,
+                      fontWeight: "600",
+                      color: "#FCA85A",
+                      marginBottom: 8,
+                    }}
+                  >
+                    You&rsquo;re on PRO. Deleting your account will:
+                  </Text>
+                  <ProBullet text="Cancel your subscription immediately (no refund for unused time)" />
+                  <ProBullet
+                    text={
+                      daysRemaining !== null
+                        ? `Forfeit the rest of your current paid period (${daysRemaining} ${
+                            daysRemaining === 1 ? "day" : "days"
+                          } remaining)`
+                        : "Forfeit the rest of your current paid period"
+                    }
+                  />
+                  <ProBullet text="Permanently delete all your data" />
+                  <Text
+                    style={{
+                      fontSize: 13,
+                      color: "rgba(228,228,231,0.85)",
+                      lineHeight: 18,
+                      marginTop: 10,
+                    }}
+                  >
+                    If you just want to stop paying, cancel your
+                    subscription instead — your account stays and you
+                    keep access until the period ends.
+                  </Text>
+                </View>
+              </View>
+
+              <Pressable
+                onPress={() => {
+                  if (submitting) return;
+                  onCancelSubscription();
+                }}
+                disabled={submitting}
+                style={{
+                  marginTop: 12,
+                  paddingVertical: 12,
+                  borderRadius: 10,
+                  backgroundColor: "rgba(124,58,237,0.18)",
+                  borderWidth: 1,
+                  borderColor: "rgba(124,58,237,0.5)",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
                 <Text
                   style={{
                     fontSize: 14,
                     fontWeight: "600",
-                    color: "#FCA85A",
-                    marginBottom: 4,
+                    color: "#C4B5FD",
                   }}
                 >
-                  You have an active subscription
+                  Cancel subscription instead
                 </Text>
-                <Text
-                  style={{
-                    fontSize: 13,
-                    color: "rgba(228,228,231,0.85)",
-                    lineHeight: 18,
-                  }}
-                >
-                  Deleting your account cancels your subscription
-                  immediately. You won&rsquo;t be billed again.
-                </Text>
-              </View>
+              </Pressable>
             </View>
           )}
 
@@ -348,6 +405,33 @@ export function DeleteAccountModal({
         </ScrollView>
       </SafeAreaView>
     </Modal>
+  );
+}
+
+function ProBullet({ text }: { text: string }) {
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "flex-start",
+        gap: 8,
+        marginBottom: 4,
+      }}
+    >
+      <Text style={{ color: "#FCA85A", fontSize: 13, lineHeight: 18 }}>
+        •
+      </Text>
+      <Text
+        style={{
+          flex: 1,
+          fontSize: 13,
+          color: "rgba(228,228,231,0.9)",
+          lineHeight: 18,
+        }}
+      >
+        {text}
+      </Text>
+    </View>
   );
 }
 

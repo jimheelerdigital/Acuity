@@ -14,6 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { DeleteAccountModal } from "@/components/delete-account-modal";
 import { useAuth } from "@/contexts/auth-context";
 import { useTheme, type ThemeChoice } from "@/contexts/theme-context";
+import { openSubscriptionPortal } from "@/lib/subscription";
 
 export default function ProfileTab() {
   const router = useRouter();
@@ -39,6 +40,22 @@ export default function ProfileTab() {
   const name = user?.name ?? "Acuity User";
   const email = user?.email ?? "—";
   const subStatus = user?.subscriptionStatus ?? "FREE";
+  const isPro = subStatus === "PRO";
+
+  // Days remaining on the current paid period — used by the delete
+  // modal to spell out forfeiture. Null on non-PRO users, missing
+  // field, or a calculation that doesn't make sense (negative, NaN).
+  const daysRemaining: number | null = (() => {
+    if (!isPro) return null;
+    const iso = user?.stripeCurrentPeriodEnd;
+    if (!iso) return null;
+    const end = new Date(iso).getTime();
+    if (!Number.isFinite(end)) return null;
+    const now = Date.now();
+    const days = Math.ceil((end - now) / (24 * 60 * 60 * 1000));
+    if (!Number.isFinite(days) || days < 0) return null;
+    return days;
+  })();
   const initials = name
     .split(" ")
     .map((n) => n[0])
@@ -101,7 +118,7 @@ export default function ProfileTab() {
 
         {/* Menu */}
         <View className="gap-2">
-          {subStatus !== "PRO" && (
+          {!isPro && (
             // Copy deliberately avoids "Upgrade" / "Subscribe" / "$"
             // per docs/APPLE_IAP_DECISION.md (Option C / App Store
             // Review Guideline 3.1.1). Opens Safari (external
@@ -117,6 +134,22 @@ export default function ProfileTab() {
                 import("expo-linking").then((Linking) =>
                   Linking.openURL(url)
                 );
+              }}
+            />
+          )}
+
+          {isPro && (
+            // Apple Guideline 3.1.2 — in-app subscription management.
+            // Opens the Stripe Customer Portal in the system in-app
+            // browser tab (SafariViewController on iOS). Customer is
+            // looked up server-side by user.id, not email, so this
+            // works for Apple private-relay accounts.
+            <MenuItem
+              icon="card-outline"
+              label="Manage subscription"
+              sublabel="Cancel, change payment, view invoices"
+              onPress={() => {
+                void openSubscriptionPortal();
               }}
             />
           )}
@@ -176,12 +209,21 @@ export default function ProfileTab() {
 
       <DeleteAccountModal
         visible={showDeleteModal}
-        isPro={subStatus === "PRO"}
+        isPro={isPro}
+        daysRemaining={daysRemaining}
         onClose={() => setShowDeleteModal(false)}
         onDelete={deleteAccount}
         onDeleted={() => {
           setShowDeleteModal(false);
           router.replace("/(auth)/sign-in");
+        }}
+        onCancelSubscription={() => {
+          // Close the modal first so the in-app browser overlay
+          // doesn't mount on top of a dismissed sheet — then open the
+          // portal. The user lands back on the profile screen when
+          // they finish in Stripe.
+          setShowDeleteModal(false);
+          void openSubscriptionPortal();
         }}
       />
     </SafeAreaView>
