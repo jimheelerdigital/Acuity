@@ -7,6 +7,41 @@
 
 ---
 
+## [2026-04-27] — /life-matrix duplicate-gate bug — drop the inner UserMemory check
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** e05f99e
+
+### In plain English (for Keenan)
+The dedicated Life Matrix page was showing reviewers a "Record 3 more debriefs to unlock" message even though the account had 31 entries and the data clearly existed (the same data renders on /home just fine). The page was actually doing the right unlock check at the top — and then doing a SECOND, different unlock check inside the chart component, sourced from a separate table that the seed hadn't populated. The second check kept saying "locked" no matter what. Removed the duplicate gate; the page-level check is now the single source of truth, just like /home.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/app/insights/life-map.tsx`: removed `isLocked = !memory || memory.totalEntries < 3`. Removed the locked-state JSX (blurred-radar + "Record N more debriefs" overlay). Kept the rest of the component identical.
+- The parent page (`/life-matrix/page.tsx`) already gates on `progression.unlocked.lifeMatrix` — same expression `/home` uses. `<LifeMap />` only mounts when that gate passes; it doesn't need to re-check.
+- No schema, no API, no mobile. Web-only — Vercel auto-redeploys.
+
+### The data-fetch divergence (for future-us — DO NOT REPEAT)
+Two surfaces showed the same data with two different gates:
+
+| surface | gate | data source |
+|---|---|---|
+| `/home` LifeMatrixSnapshot | `progression.unlocked.lifeMatrix` (canonical: `entriesCount >= 5 && dimensionsCovered >= 3`) | `prisma.lifeMapArea.findMany` from server, `progression` from `getUserProgression` |
+| `/life-matrix` `<LifeMap />` (inner) | `memory.totalEntries < 3` | `/api/lifemap` → `UserMemory.totalEntries` |
+| `/life-matrix` page | `progression.unlocked.lifeMatrix` (same as /home) | same as /home |
+
+The inner `<LifeMap />` gate predated the progression system. Nobody removed it when progression became the canonical source. The bug only surfaced on the reviewer seed because that account was the first one with a fully-populated LifeMapArea set but no UserMemory row.
+
+**Lesson for next time:** if `getUserProgression` says the feature is unlocked, the feature renders. Components must NOT re-derive unlock from other tables. If you find a `< 3` or `< 5` literal in a feature component, it's almost certainly a stale local gate that needs to be deleted.
+
+### Manual steps needed
+- [ ] **Jimmy:** verify /life-matrix as the reviewer account. Should now show the same hexagonal radar /home shows, larger, with axis labels + click-to-detail. No "unlock" overlay.
+
+### On the "consolidate to one component" ask
+The task asked to consolidate the radar visualization between /home and /life-matrix. Did NOT do this — they're genuinely different surfaces: `LifeMatrixSnapshot` is 240px, no axis labels, no click-to-detail, no history overlay; `RadarChart` (inside `<LifeMap />`) is the full-detail surface with all of those. Folding them into one component with mode flags is a bigger refactor that doesn't unblock the reviewer. If Apple submission is on the line, fix-the-bug-first was the right trade. Flag for a future cleanup pass.
+
+---
+
 ## [2026-04-27] — /home Open Tasks card now interactive (checkboxes + drilldown)
 
 **Requested by:** Jimmy
