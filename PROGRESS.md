@@ -7,6 +7,31 @@
 
 ---
 
+## [2026-04-25] — Onboarding step 8 reframed as a daily-commitment goal
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** 563e94e
+
+### In plain English (for Keenan)
+The "How the trial works" screen during mobile onboarding now ends with a clear ask: "Set your daily commitment." Three options — Daily, Most days, A few times a week — with Daily pre-selected and visually highlighted (subtle violet glow). The old softer options ("Not sure" and "Weekly") are gone because they read like permission to skip days. We don't lock anyone out based on what they pick — it's a stated intent we can later reference in reminder copy, streak nudges, etc. New users land on the recommended cadence by default.
+
+### Technical changes (for Jimmy)
+- `apps/mobile/components/onboarding/step-8-trial.tsx`: replaced FREQUENCIES (DAILY/WEEKDAYS/WEEKLY/UNSURE) with 3-option CADENCES (`daily` / `most_days` / `few_times_week`). Added "Set your daily commitment" header + subhead. Default-selected Daily card carries violet shadow + soft border accent so it visually leads.
+- `apps/web/src/app/api/onboarding/update/route.ts`: added VALID_CADENCES validation, writes `targetCadence` to User. Wrapped `prisma.user.update` in a `safeUpdateUser()` helper that catches the "column does not exist" error and retries without targetCadence — protects the rest of the user record (notification fields) during the window before `prisma db push` runs in prod.
+- `prisma/schema.prisma`: added `User.targetCadence String? @default("daily")` with comment block explaining it's goal-setting only.
+- EAS OTA published: update group `52cdc881-ef24-49bf-87c8-0ed5d2405cd1`, runtime 0.1.8, channel production.
+
+### Manual steps needed
+- [ ] **Jimmy:** `npx prisma db push` from home network to add the `targetCadence` column. Until then `safeUpdateUser` silently no-ops the cadence write so the rest of onboarding still saves cleanly.
+
+### Notes
+- Default cadence is "daily" both client-side (`DEFAULT_CADENCE`) and server-side (`@default("daily")`) so the user.targetCadence row is sensible even for users who somehow skip step 8.
+- Did NOT add an enum — kept it as `String?` to avoid a Prisma migration round trip if we want to add a fourth option later. Validation lives in the route.
+- safeUpdateUser pattern is reusable — if we add another optional column in the future and want to ship the API code before pushing the schema, the same try/catch shape works.
+
+---
+
 ## [2026-04-25] — Theme Map: surgical value markup pass (exact numbers, no interpretation)
 
 **Requested by:** Jimmy
