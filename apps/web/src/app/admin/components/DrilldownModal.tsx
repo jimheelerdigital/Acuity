@@ -54,6 +54,8 @@ interface Props {
   onClose: () => void;
   /** Optional date label (e.g. "Apr 27, 2026") shown in the modal header. */
   periodLabel?: string;
+  /** Extra query params for metric variants (day=YYYY-MM-DD, purpose=…). */
+  params?: Record<string, string>;
 }
 
 /**
@@ -78,6 +80,7 @@ export function DrilldownModal({
   fallbackTitle,
   onClose,
   periodLabel,
+  params,
 }: Props) {
   const router = useRouter();
   const [data, setData] = useState<Payload | null>(null);
@@ -104,9 +107,11 @@ export function DrilldownModal({
 
     (async () => {
       try {
-        const url = `/api/admin/drilldown?metric=${encodeURIComponent(
-          metric
-        )}&start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`;
+        const qs = new URLSearchParams({ metric, start, end });
+        if (params) {
+          for (const [k, v] of Object.entries(params)) qs.set(k, v);
+        }
+        const url = `/api/admin/drilldown?${qs.toString()}`;
         const res = await fetch(url, { cache: "no-store" });
         if (!res.ok) {
           if (!cancelled) setError(`Failed (${res.status})`);
@@ -122,7 +127,7 @@ export function DrilldownModal({
     return () => {
       cancelled = true;
     };
-  }, [metric, start, end]);
+  }, [metric, start, end, params]);
 
   // ESC to close.
   useEffect(() => {

@@ -95,6 +95,28 @@ export async function GET(req: NextRequest) {
       case "ai_spend_breakdown":
         payload = await drillAiSpendBreakdown(start, end);
         break;
+      case "signups_on_day": {
+        const day = req.nextUrl.searchParams.get("day");
+        if (!day || !/^\d{4}-\d{2}-\d{2}$/.test(day)) {
+          return NextResponse.json(
+            { error: "Missing/invalid day=YYYY-MM-DD" },
+            { status: 400 }
+          );
+        }
+        payload = await drillSignupsOnDay(day);
+        break;
+      }
+      case "ai_spend_for_purpose": {
+        const purpose = req.nextUrl.searchParams.get("purpose");
+        if (!purpose) {
+          return NextResponse.json(
+            { error: "Missing purpose" },
+            { status: 400 }
+          );
+        }
+        payload = await drillAiSpendForPurpose(purpose, start, end);
+        break;
+      }
       default:
         return NextResponse.json({ error: "Unknown metric" }, { status: 400 });
     }
@@ -287,6 +309,98 @@ async function drillMrrBreakdown(): Promise<DrilldownPayload> {
     meta: {
       count: userRows.length,
       metric: "mrr_breakdown",
+    },
+  };
+}
+
+async function drillSignupsOnDay(day: string): Promise<DrilldownPayload> {
+  // Day is the user's calendar day in UTC — same convention as the
+  // metrics route's signupsOverTime query (DATE("createdAt")).
+  const dayStart = new Date(`${day}T00:00:00.000Z`);
+  const dayEnd = new Date(`${day}T23:59:59.999Z`);
+
+  const rows = await prisma.user.findMany({
+    where: { createdAt: { gte: dayStart, lte: dayEnd } },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      createdAt: true,
+      subscriptionStatus: true,
+      accounts: { select: { provider: true }, take: 1 },
+    },
+    orderBy: { createdAt: "desc" },
+    take: 500,
+  });
+
+  return {
+    kind: "users",
+    title: `Signups on ${day}`,
+    rows: rows.map((u) => ({
+      id: u.id,
+      email: u.email,
+      name: u.name,
+      createdAt: u.createdAt.toISOString(),
+      subscriptionStatus: u.subscriptionStatus,
+      signInMethod: u.accounts[0]?.provider ?? "email",
+    })),
+    meta: { count: rows.length, metric: "signups_on_day" },
+  };
+}
+
+async function drillAiSpendForPurpose(
+  purpose: string,
+  start: Date,
+  end: Date
+): Promise<DrilldownPayload> {
+  const rows = await prisma.claudeCallLog.findMany({
+    where: {
+      purpose,
+      createdAt: { gte: start, lte: end },
+    },
+    orderBy: { createdAt: "desc" },
+    take: 500,
+    select: {
+      id: true,
+      purpose: true,
+      model: true,
+      tokensIn: true,
+      tokensOut: true,
+      costCents: true,
+      durationMs: true,
+      success: true,
+      createdAt: true,
+    },
+  });
+
+  const totalCents = rows.reduce((acc, r) => acc + r.costCents, 0);
+  const failures = rows.filter((r) => !r.success).length;
+
+  return {
+    kind: "aggregate",
+    title: `Claude calls — ${purpose}`,
+    columns: [
+      { key: "createdAt", label: "When" },
+      { key: "model", label: "Model" },
+      { key: "tokensIn", label: "Tokens In", align: "right" },
+      { key: "tokensOut", label: "Tokens Out", align: "right" },
+      { key: "costCents", label: "Cost", align: "right" },
+      { key: "durationMs", label: "ms", align: "right" },
+      { key: "status", label: "Status" },
+    ],
+    rows: rows.map((r) => ({
+      createdAt: new Date(r.createdAt).toLocaleString(),
+      model: r.model,
+      tokensIn: r.tokensIn,
+      tokensOut: r.tokensOut,
+      costCents: r.costCents,
+      durationMs: r.durationMs,
+      status: r.success ? "OK" : "FAIL",
+    })),
+    meta: {
+      count: rows.length,
+      metric: "ai_spend_for_purpose",
+      summary: { totalCents, calls: rows.length, failures },
     },
   };
 }

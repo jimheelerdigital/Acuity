@@ -25,7 +25,13 @@ import {
   formatDollarsRounded,
 } from "@/lib/pricing";
 
-type Drilldown = { metric: string; fallbackTitle: string } | null;
+type Drilldown =
+  | {
+      metric: string;
+      fallbackTitle: string;
+      params?: Record<string, string>;
+    }
+  | null;
 
 interface OverviewData {
   signups: number;
@@ -181,7 +187,21 @@ export default function OverviewTab({
                     }}
                     labelStyle={{ color: "rgba(255,255,255,0.5)" }}
                   />
-                  <Bar dataKey="count" fill="#7C5CFC" radius={[4, 4, 0, 0]} />
+                  <Bar
+                    dataKey="count"
+                    fill="#7C5CFC"
+                    radius={[4, 4, 0, 0]}
+                    cursor="pointer"
+                    onClick={(payload: { date?: string } | undefined) => {
+                      if (payload?.date) {
+                        setDrilldown({
+                          metric: "signups_on_day",
+                          fallbackTitle: `Signups on ${payload.date}`,
+                          params: { day: payload.date },
+                        });
+                      }
+                    }}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -209,6 +229,16 @@ export default function OverviewTab({
                     dataKey="value"
                     label={false}
                     labelLine={false}
+                    cursor="pointer"
+                    onClick={(payload: { name?: string } | undefined) => {
+                      if (payload?.name) {
+                        setDrilldown({
+                          metric: "ai_spend_for_purpose",
+                          fallbackTitle: `Claude calls — ${payload.name}`,
+                          params: { purpose: payload.name },
+                        });
+                      }
+                    }}
                   >
                     {data.aiByPurpose.map((_, i) => (
                       <Cell
@@ -247,6 +277,7 @@ export default function OverviewTab({
           start={start}
           end={end}
           fallbackTitle={drilldown.fallbackTitle}
+          params={drilldown.params}
           onClose={() => setDrilldown(null)}
         />
       )}

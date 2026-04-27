@@ -7,6 +7,44 @@
 
 ---
 
+## [2026-04-27] — Admin chart drilldowns (Signups bars + AI Cost donut slices)
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** _to be filled by commit_
+
+### In plain English (for Keenan)
+The two charts on the admin Overview page are now clickable. Click a bar in "Signups Over Time" → modal listing the users who signed up that day, with their email, name, sign-in method, and current status. Click a slice of the "AI Cost by Feature" donut → modal listing every Claude call for that feature in the active period, sorted by time, with token counts, cost per call, latency, and OK/FAIL.
+
+Same privacy guard as the tile drilldowns: metadata only, never entry content / audio / themes / goals / tasks / AI insights. Same audit-log row written per drilldown open.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/app/api/admin/drilldown/route.ts`: two new metric handlers.
+  - `signups_on_day` — accepts `?day=YYYY-MM-DD`, returns user list (kind=users, max 500).
+  - `ai_spend_for_purpose` — accepts `?purpose=<name>`, returns aggregate Claude-call list (kind=aggregate) with summary totalCents / calls / failures.
+- `apps/web/src/app/admin/components/DrilldownModal.tsx`: new optional `params: Record<string, string>` prop forwarded into the fetch URL. Effect dep array updated.
+- `apps/web/src/app/admin/tabs/OverviewTab.tsx`:
+  - Bar `<Bar onClick>` payload extracts `date` and opens `signups_on_day` drilldown with that day.
+  - Pie `<Pie onClick>` payload extracts `name` and opens `ai_spend_for_purpose` with that purpose.
+  - `cursor="pointer"` on both for affordance.
+  - Drilldown state extended to carry `params` through to the modal.
+- `npm run build` clean.
+
+### Manual steps needed
+- [ ] **Jimmy:** verify on prod after Vercel deploy:
+  - /admin?tab=overview: click any bar in "Signups Over Time" → modal opens with that day's signups (or empty-state if none).
+  - /admin?tab=overview: click a slice of "AI Cost by Feature" → modal lists individual Claude calls for that feature with cost/ms/status.
+  - Bar/pie hover shows pointer cursor.
+  - Audit log: each chart click writes a new admin.metric.drilldown row with `metadata.metric = "signups_on_day"` (or `ai_spend_for_purpose`) and the day/purpose tag.
+
+### Notes
+- The `signups_on_day` query uses UTC day boundaries (`YYYY-MM-DDT00:00:00.000Z` to `T23:59:59.999Z`) — same convention the metrics route uses for `DATE("createdAt")`. Off-by-one for users near a UTC midnight crossing is acceptable; production data is dominated by US-evening signups which sit cleanly inside one UTC day.
+- Recharts `Bar.onClick` payload typing is loose — we narrow it to `{ date?: string }` and bail if `date` is missing. Same shape for Pie which we narrow to `{ name?: string }`.
+- We don't pass period bounds for `signups_on_day` (the day param overrides), but the modal still passes `start`/`end` in the query string for consistency. The route handler ignores them when `day` is set.
+- AI-call drilldown caps at 500 rows. For deeper investigations, AI Costs tab's existing recent-calls table remains the right place (it has filtering + pagination plumbing).
+
+---
+
 ## [2026-04-27] — Admin metric tile drilldowns (Overview + AI Costs)
 
 **Requested by:** Jimmy
