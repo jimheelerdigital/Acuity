@@ -412,6 +412,7 @@ async function getRevenue(
       prisma.user.findMany({
         where: { subscriptionStatus: SUBSCRIPTION_STATUS.PAST_DUE },
         select: {
+          id: true,
           email: true,
           stripeCurrentPeriodEnd: true,
           createdAt: true,
@@ -476,7 +477,7 @@ async function getRevenue(
     churnRate: Math.round(churnRate * 10) / 10,
     conversionRate: Math.round(conversionRate * 10) / 10,
     churnedInPeriod,
-    pastDueUsers: pastDueUsers.map((u: { email: string; createdAt: Date; stripeCurrentPeriodEnd: Date | null }) => ({
+    pastDueUsers: pastDueUsers.map((u: { id: string; email: string; createdAt: Date; stripeCurrentPeriodEnd: Date | null }) => ({
       ...u,
       createdAt: u.createdAt.toISOString(),
       stripeCurrentPeriodEnd: u.stripeCurrentPeriodEnd?.toISOString() ?? null,

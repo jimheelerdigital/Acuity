@@ -1,5 +1,7 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+
 import MetricCard from "../components/MetricCard";
 import RefreshButton from "../components/RefreshButton";
 import { SkeletonMetric, SkeletonTable } from "../components/SkeletonCard";
@@ -14,6 +16,7 @@ interface RevenueData {
   conversionRate: number;
   churnedInPeriod: number;
   pastDueUsers: {
+    id: string;
     email: string;
     stripeCurrentPeriodEnd: string | null;
     createdAt: string;
@@ -33,6 +36,7 @@ export default function RevenueTab({
   end: string;
 }) {
   const { data, loading, meta, refresh } = useTabData<RevenueData>("revenue", start, end);
+  const router = useRouter();
 
   if (loading || !data) {
     return (
@@ -95,8 +99,9 @@ export default function RevenueTab({
               <tbody>
                 {data.pastDueUsers.map((u) => (
                   <tr
-                    key={u.email}
-                    className="border-b border-red-500/5 text-red-200/70"
+                    key={u.id}
+                    className="cursor-pointer border-b border-red-500/5 text-red-200/70 hover:bg-red-500/5"
+                    onClick={() => router.push(`/admin?tab=users&select=${u.id}`)}
                   >
                     <td className="py-2 pr-4">{u.email}</td>
                     <td className="py-2">

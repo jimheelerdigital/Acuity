@@ -1,12 +1,24 @@
 "use client";
 
+import { useState } from "react";
+
 import RefreshButton from "../components/RefreshButton";
 import { SkeletonChart } from "../components/SkeletonCard";
+import { DrilldownModal } from "../components/DrilldownModal";
 import { useTabData } from "./useTabData";
 
 interface FunnelData {
   steps: { label: string; count: number }[];
 }
+
+const STEP_KEY: Record<string, string> = {
+  "Waitlist Signups": "waitlist",
+  "Account Created": "account",
+  "First Recording": "first_recording",
+  "Active Day 3": "active_d3",
+  "Active Day 7": "active_d7",
+  "Converted to Paid": "converted",
+};
 
 export default function FunnelTab({
   start,
@@ -16,6 +28,10 @@ export default function FunnelTab({
   end: string;
 }) {
   const { data, loading, meta, refresh } = useTabData<FunnelData>("funnel", start, end);
+  const [drilldown, setDrilldown] = useState<{
+    step: string;
+    label: string;
+  } | null>(null);
 
   if (loading || !data) {
     return <SkeletonChart />;
@@ -54,8 +70,23 @@ export default function FunnelTab({
                 ? Math.round((step.count / prevCount) * 100)
                 : null;
 
+            const stepKey = STEP_KEY[step.label];
+            const drillable = stepKey && stepKey !== "active_d3"; // d3 not in API yet
             return (
-              <div key={step.label}>
+              <button
+                key={step.label}
+                type="button"
+                disabled={!drillable || step.count === 0}
+                onClick={() =>
+                  drillable &&
+                  setDrilldown({ step: stepKey, label: step.label })
+                }
+                className={`block w-full text-left ${
+                  drillable && step.count > 0
+                    ? "cursor-pointer hover:opacity-90"
+                    : "cursor-default"
+                }`}
+              >
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-sm text-white/70">{step.label}</span>
                   <div className="flex items-center gap-3">
@@ -80,7 +111,7 @@ export default function FunnelTab({
                     style={{ width: `${Math.max(pct, 2)}%` }}
                   />
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>
@@ -90,6 +121,17 @@ export default function FunnelTab({
           </p>
         )}
       </div>
+
+      {drilldown && (
+        <DrilldownModal
+          metric="funnel_step"
+          start={start}
+          end={end}
+          fallbackTitle={drilldown.label}
+          params={{ step: drilldown.step }}
+          onClose={() => setDrilldown(null)}
+        />
+      )}
     </div>
   );
 }

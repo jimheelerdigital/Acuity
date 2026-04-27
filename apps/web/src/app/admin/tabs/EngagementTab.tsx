@@ -1,7 +1,11 @@
 "use client";
 
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+
 import MetricCard from "../components/MetricCard";
 import RefreshButton from "../components/RefreshButton";
+import { DrilldownModal } from "../components/DrilldownModal";
 import { SkeletonMetric, SkeletonTable } from "../components/SkeletonCard";
 import { useTabData } from "./useTabData";
 
@@ -28,6 +32,11 @@ export default function EngagementTab({
     start,
     end
   );
+  const [drilldown, setDrilldown] = useState<{
+    window: "dau" | "wau" | "mau";
+    label: string;
+  } | null>(null);
+  const router = useRouter();
 
   if (loading || !data) {
     return (
@@ -49,9 +58,27 @@ export default function EngagementTab({
       </div>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
-        <MetricCard label="Daily Active Users (DAU)" value={data.dau} />
-        <MetricCard label="Weekly Active Users (WAU)" value={data.wau} />
-        <MetricCard label="Monthly Active Users (MAU)" value={data.mau} />
+        <MetricCard
+          label="Daily Active Users (DAU)"
+          value={data.dau}
+          onClick={() =>
+            setDrilldown({ window: "dau", label: "Daily Active Users" })
+          }
+        />
+        <MetricCard
+          label="Weekly Active Users (WAU)"
+          value={data.wau}
+          onClick={() =>
+            setDrilldown({ window: "wau", label: "Weekly Active Users" })
+          }
+        />
+        <MetricCard
+          label="Monthly Active Users (MAU)"
+          value={data.mau}
+          onClick={() =>
+            setDrilldown({ window: "mau", label: "Monthly Active Users" })
+          }
+        />
         <MetricCard
           label="Daily/Monthly Active Users Ratio (DAU/MAU)"
           value={`${data.dauMauRatio}%`}
@@ -88,7 +115,10 @@ export default function EngagementTab({
                 {data.silentTrialUsers.map((u) => (
                   <tr
                     key={u.id}
-                    className="border-b border-white/5 text-white/70"
+                    className="cursor-pointer border-b border-white/5 text-white/70 hover:bg-white/5"
+                    onClick={() =>
+                      router.push(`/admin?tab=users&select=${u.id}`)
+                    }
                   >
                     <td className="py-2 pr-4">{u.email}</td>
                     <td className="py-2 whitespace-nowrap">
@@ -103,6 +133,17 @@ export default function EngagementTab({
           </div>
         )}
       </div>
+
+      {drilldown && (
+        <DrilldownModal
+          metric="engagement_users"
+          start={start}
+          end={end}
+          fallbackTitle={drilldown.label}
+          params={{ window: drilldown.window }}
+          onClose={() => setDrilldown(null)}
+        />
+      )}
     </div>
   );
 }

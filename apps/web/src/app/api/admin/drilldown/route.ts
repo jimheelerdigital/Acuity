@@ -117,6 +117,25 @@ export async function GET(req: NextRequest) {
         payload = await drillAiSpendForPurpose(purpose, start, end);
         break;
       }
+      case "funnel_step": {
+        const step = req.nextUrl.searchParams.get("step");
+        if (!step) {
+          return NextResponse.json({ error: "Missing step" }, { status: 400 });
+        }
+        payload = await drillFunnelStep(step, start, end);
+        break;
+      }
+      case "engagement_users": {
+        const window = req.nextUrl.searchParams.get("window");
+        if (!window || !["dau", "wau", "mau"].includes(window)) {
+          return NextResponse.json(
+            { error: "Missing/invalid window (dau|wau|mau)" },
+            { status: 400 }
+          );
+        }
+        payload = await drillEngagementUsers(window as "dau" | "wau" | "mau");
+        break;
+      }
       default:
         return NextResponse.json({ error: "Unknown metric" }, { status: 400 });
     }
@@ -310,6 +329,175 @@ async function drillMrrBreakdown(): Promise<DrilldownPayload> {
       count: userRows.length,
       metric: "mrr_breakdown",
     },
+  };
+}
+
+async function drillFunnelStep(
+  step: string,
+  start: Date,
+  end: Date
+): Promise<DrilldownPayload> {
+  // Funnel step keys mirror the metrics route's getFunnel labels.
+  // Cohort = users created in [start, end]; we then filter by the
+  // step's user-level predicate. The Waitlist step is special — its
+  // population is from `Waitlist`, not `User` (per the existing audit
+  // 09 finding that those two are independent populations until Slice
+  // 3 lands the email-join). We surface a different shape for it.
+  let title = "";
+  let userIds: { id: string }[] = [];
+
+  if (step === "waitlist") {
+    const rows = await prisma.waitlist.findMany({
+      where: { createdAt: { gte: start, lte: end } },
+      select: { id: true, email: true, createdAt: true, source: true },
+      orderBy: { createdAt: "desc" },
+      take: 500,
+    });
+    return {
+      kind: "aggregate",
+      title: "Waitlist Signups",
+      columns: [
+        { key: "email", label: "Email" },
+        { key: "source", label: "Source" },
+        { key: "createdAt", label: "When" },
+      ],
+      rows: rows.map((r) => ({
+        email: r.email,
+        source: r.source ?? "—",
+        createdAt: new Date(r.createdAt).toLocaleString(),
+      })),
+      meta: { count: rows.length, metric: "funnel_step" },
+    };
+  }
+
+  const baseWhere = { createdAt: { gte: start, lte: end } };
+  switch (step) {
+    case "account":
+      title = "Account Created";
+      userIds = await prisma.user.findMany({
+        where: baseWhere,
+        select: { id: true },
+        orderBy: { createdAt: "desc" },
+        take: 500,
+      });
+      break;
+    case "first_recording":
+      title = "First Recording";
+      userIds = await prisma.$queryRaw<{ id: string }[]>`
+        SELECT DISTINCT u.id
+        FROM "User" u
+        INNER JOIN "Entry" e ON e."userId" = u.id
+        WHERE u."createdAt" >= ${start} AND u."createdAt" <= ${end}
+        ORDER BY u.id
+        LIMIT 500
+      `;
+      break;
+    case "active_d7":
+      title = "Active Day 7";
+      userIds = await prisma.$queryRaw<{ id: string }[]>`
+        SELECT DISTINCT u.id
+        FROM "User" u
+        INNER JOIN "Entry" e ON e."userId" = u.id
+          AND e."createdAt" >= u."createdAt" + interval '6 days'
+          AND e."createdAt" <= u."createdAt" + interval '8 days'
+        WHERE u."createdAt" >= ${start} AND u."createdAt" <= ${end}
+        ORDER BY u.id
+        LIMIT 500
+      `;
+      break;
+    case "converted":
+      title = "Converted to Paid";
+      userIds = await prisma.user.findMany({
+        where: { ...baseWhere, subscriptionStatus: SUBSCRIPTION_STATUS.PRO },
+        select: { id: true },
+        orderBy: { createdAt: "desc" },
+        take: 500,
+      });
+      break;
+    default:
+      return {
+        kind: "users",
+        title: "Unknown step",
+        rows: [],
+        meta: { count: 0, metric: "funnel_step" },
+      };
+  }
+
+  const users = await prisma.user.findMany({
+    where: { id: { in: userIds.map((u) => u.id) } },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      createdAt: true,
+      subscriptionStatus: true,
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  return {
+    kind: "users",
+    title,
+    rows: users.map((u) => ({
+      id: u.id,
+      email: u.email,
+      name: u.name,
+      createdAt: u.createdAt.toISOString(),
+      subscriptionStatus: u.subscriptionStatus,
+    })),
+    meta: { count: users.length, metric: "funnel_step" },
+  };
+}
+
+async function drillEngagementUsers(
+  window: "dau" | "wau" | "mau"
+): Promise<DrilldownPayload> {
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+  const since =
+    window === "dau"
+      ? today
+      : window === "wau"
+      ? new Date(today.getTime() - 7 * 86400000)
+      : new Date(today.getTime() - 30 * 86400000);
+
+  const rows = await prisma.$queryRaw<{ id: string }[]>`
+    SELECT DISTINCT "userId" as id
+    FROM "Entry"
+    WHERE "createdAt" >= ${since}
+    LIMIT 500
+  `;
+
+  const users = await prisma.user.findMany({
+    where: { id: { in: rows.map((r) => r.id) } },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      createdAt: true,
+      subscriptionStatus: true,
+      lastSeenAt: true,
+    },
+    orderBy: { lastSeenAt: "desc" },
+  });
+
+  const titleMap = {
+    dau: "Daily Active Users (recorded today)",
+    wau: "Weekly Active Users (recorded in last 7 days)",
+    mau: "Monthly Active Users (recorded in last 30 days)",
+  };
+
+  return {
+    kind: "users",
+    title: titleMap[window],
+    rows: users.map((u) => ({
+      id: u.id,
+      email: u.email,
+      name: u.name,
+      createdAt: u.createdAt.toISOString(),
+      subscriptionStatus: u.subscriptionStatus,
+    })),
+    meta: { count: users.length, metric: "engagement_users" },
   };
 }
 

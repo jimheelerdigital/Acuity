@@ -7,6 +7,42 @@
 
 ---
 
+## [2026-04-27] — Admin edge-tab drilldowns (Funnel, Engagement, Past Due)
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** _to be filled by commit_
+
+### In plain English (for Keenan)
+The remaining /admin tabs — Funnel, Engagement, and Revenue's Failed Payment Alerts — are now drillable. Click "Account Created", "First Recording", "Active Day 7", or "Converted to Paid" in the Funnel → modal lists the users at that step. Click "Waitlist Signups" → modal lists the actual waitlist rows (different shape since they're not yet matched to User accounts; that's Slice 3). Click DAU / WAU / MAU tile in Engagement → list of users who recorded in that window. Click any row in the Failed Payment Alerts table or any silent-trial row → drops you straight into that user's detail modal in the Users tab.
+
+Same privacy guard, same audit-log pattern.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/app/api/admin/drilldown/route.ts`: two new metric handlers.
+  - `funnel_step` — accepts `?step=waitlist|account|first_recording|active_d7|converted`. Waitlist returns aggregate (Waitlist rows). Other steps query the User cohort joined to Entry where appropriate, return user list. `active_d3` deliberately not wired (low-value step per the existing audit).
+  - `engagement_users` — accepts `?window=dau|wau|mau`. Returns DISTINCT recorders from `Entry` since today / 7d / 30d, joined back to User for metadata. Capped at 500.
+- `apps/web/src/app/api/admin/metrics/route.ts`: include `id` in the `pastDueUsers` projection so RevenueTab rows can deep-link.
+- `apps/web/src/app/admin/tabs/RevenueTab.tsx`: Past Due rows now `cursor-pointer` + `onClick → router.push(/admin?tab=users&select=<id>)`. Hover-bg-red. No modal — direct deep-link.
+- `apps/web/src/app/admin/tabs/FunnelTab.tsx`: each funnel step row is now a `<button>` (disabled when count=0 or active_d3 since it has no API handler) → opens DrilldownModal with `step=<key>`. Step→key map kept inline at the top of the file.
+- `apps/web/src/app/admin/tabs/EngagementTab.tsx`: DAU / WAU / MAU tiles now drill into `engagement_users` with the matching window param. Silent-trial table rows now click-to-deep-link (same pattern as Past Due).
+- Build clean.
+
+### Manual steps needed
+- [ ] **Jimmy:** verify on prod after Vercel deploy:
+  - /admin?tab=funnel: click "Account Created" → modal lists users; "Waitlist Signups" → modal lists waitlist rows with source column.
+  - /admin?tab=engagement: click DAU / WAU / MAU tiles → user list. Click a silent-trial row → tab switches to Users with that detail modal pre-opened.
+  - /admin?tab=revenue: click any row in Failed Payment Alerts → same deep-link behavior.
+  - Audit log shows new admin.metric.drilldown rows tagged with metric=funnel_step (+ step) or engagement_users (+ window).
+
+### Notes
+- Why `active_d3` is gated off: the metrics route does compute it, but the engagement value is marginal compared to D0 / D7 / D30 — we'd just be adding a fourth nearly-redundant cohort window. Easy to add later if Keenan asks.
+- The Waitlist drilldown returns `kind=aggregate` (not `users`) because Waitlist rows don't have User IDs until Slice 3's nightly email-match cron runs. Once that lands, this handler should switch to `kind=users`.
+- Past Due and silent-trial rows skip the modal entirely and just `router.push` — the table IS the drilldown. Less click depth than tile/chart drilldowns. Still logs an `admin.metric.drilldown` row indirectly when the operator opens UserDetailModal? — actually no, the user-detail GET doesn't log drilldown audit; that's a separate UserDetailModal pattern. If we want a row-level audit trail later, wire it through the same route.
+- Drilldown query caps stay at 500 per metric. Beyond that, the Users tab's email-search + cursor pagination is the right tool.
+
+---
+
 ## [2026-04-27] — Admin chart drilldowns (Signups bars + AI Cost donut slices)
 
 **Requested by:** Jimmy
