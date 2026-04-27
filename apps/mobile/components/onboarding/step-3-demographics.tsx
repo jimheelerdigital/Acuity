@@ -88,16 +88,47 @@ function detectRegion(): string | null {
 }
 
 export function Step3Demographics() {
-  const { setCanContinue, setCapturedData } = useOnboarding();
+  const { step, setCanContinue, setCapturedData, getCapturedData } =
+    useOnboarding();
 
-  const [ageRange, setAgeRange] = useState<string | null>(null);
-  const [gender, setGender] = useState<string | null>(null);
+  // Rehydrate from prior captured state on remount (back-navigation).
+  // Lazy init reads once at mount; subsequent re-renders use the
+  // already-set state values so we don't fight live edits.
+  const prior = getCapturedData(step) as
+    | {
+        ageRange?: string | null;
+        gender?: string | null;
+        country?: string | null;
+        primaryReasons?: string[];
+        primaryReasonsCustom?: string | null;
+        lifeStages?: string[];
+        lifeStageCustom?: string | null;
+      }
+    | null;
+
+  const [ageRange, setAgeRange] = useState<string | null>(
+    () => prior?.ageRange ?? null
+  );
+  const [gender, setGender] = useState<string | null>(
+    () => prior?.gender ?? null
+  );
   // Lazy init avoids re-running the native-modules read on every render.
-  const [country, setCountry] = useState<string | null>(() => detectRegion());
-  const [primaryReasons, setPrimaryReasons] = useState<string[]>([]);
-  const [primaryReasonsCustom, setPrimaryReasonsCustom] = useState("");
-  const [lifeStages, setLifeStages] = useState<string[]>([]);
-  const [lifeStageCustom, setLifeStageCustom] = useState("");
+  // Prior captured value wins over the device-detected default.
+  const [country, setCountry] = useState<string | null>(
+    () => prior?.country ?? detectRegion()
+  );
+  const [primaryReasons, setPrimaryReasons] = useState<string[]>(
+    () => prior?.primaryReasons ?? []
+  );
+  const [primaryReasonsCustom, setPrimaryReasonsCustom] = useState(
+    () => prior?.primaryReasonsCustom ?? ""
+  );
+  const [lifeStages, setLifeStages] = useState<string[]>(
+    () => prior?.lifeStages ?? []
+  );
+  const [lifeStageCustom, setLifeStageCustom] = useState(
+    () => prior?.lifeStageCustom ?? ""
+  );
   const [countryPickerOpen, setCountryPickerOpen] = useState(false);
 
   const showReasonsCustom = primaryReasons.includes("Other");

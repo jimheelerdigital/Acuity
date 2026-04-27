@@ -14,6 +14,10 @@ export interface OnboardingContextValue {
   step: number;
   setCanContinue: (value: boolean) => void;
   setCapturedData: (data: Record<string, unknown> | null) => void;
+  /** Read previously-captured data for the current step (or any
+   *  step). Used by step components to rehydrate their local form
+   *  state on remount, so back-nav doesn't wipe prior answers. */
+  getCapturedData: (step: number) => Record<string, unknown> | null;
 }
 
 export const OnboardingContext = createContext<OnboardingContextValue | null>(

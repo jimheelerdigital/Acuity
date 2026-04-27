@@ -11,6 +11,7 @@ import {
 import {
   ActivityIndicator,
   Alert,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -59,7 +60,26 @@ export function OnboardingShell({
   const { refresh } = useAuth();
   const [canContinue, setCanContinue] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const capturedRef = useRef<Record<string, unknown> | null>(null);
+  // Per-step captured form state. Survives step remounts inside this
+  // single shell instance so back-navigation (re-mounts the prior
+  // step) can rehydrate fields from the user's earlier answers.
+  // Keyed by step number.
+  const capturedByStepRef = useRef<Record<number, Record<string, unknown>>>({});
+
+  // Keyboard visibility — when the keyboard is up, hide the
+  // Continue/Back/Skip footer so the user can't mis-tap "Continue"
+  // thinking it's a dismiss-keyboard button.
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+  useEffect(() => {
+    const showEvt = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvt = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const showSub = Keyboard.addListener(showEvt, () => setKeyboardOpen(true));
+    const hideSub = Keyboard.addListener(hideEvt, () => setKeyboardOpen(false));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   // Force dark mode for the entire onboarding flow regardless of the
   // user's preference. Brand identity is dark-first; light-mode polish
@@ -78,20 +98,33 @@ export function OnboardingShell({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Writes are scoped to the CURRENT step. The shell's `step` prop
+  // tells us which slot to update; the step component just hands us
+  // its current form snapshot.
   const setCapturedData = useCallback(
     (data: Record<string, unknown> | null) => {
-      capturedRef.current = data;
+      if (data === null) {
+        delete capturedByStepRef.current[step];
+      } else {
+        capturedByStepRef.current[step] = data;
+      }
     },
+    [step]
+  );
+
+  const getCapturedData = useCallback(
+    (s: number): Record<string, unknown> | null =>
+      capturedByStepRef.current[s] ?? null,
     []
   );
 
   const contextValue = useMemo<OnboardingContextValue>(
-    () => ({ step, setCanContinue, setCapturedData }),
-    [step, setCapturedData]
+    () => ({ step, setCanContinue, setCapturedData, getCapturedData }),
+    [step, setCapturedData, getCapturedData]
   );
 
   const persist = useCallback(async () => {
-    const data = capturedRef.current;
+    const data = capturedByStepRef.current[step];
     if (!data) return;
     try {
       await api.post("/api/onboarding/update", { step, data });
@@ -137,9 +170,11 @@ export function OnboardingShell({
   }, [router, step]);
 
   const skipStep = useCallback(async () => {
-    // Step-level skip: clear captured data so we don't persist a
-    // partially-filled state the user explicitly walked away from.
-    capturedRef.current = null;
+    // Step-level skip: clear THIS step's captured data so we don't
+    // persist a partially-filled state the user explicitly walked
+    // away from. Other steps' data is untouched so the user can
+    // navigate back later and still find their earlier answers.
+    delete capturedByStepRef.current[step];
     if (step < totalSteps) {
       router.replace(`/onboarding?step=${step + 1}`);
     }
@@ -233,7 +268,12 @@ export function OnboardingShell({
             {children}
           </ScrollView>
 
-          {/* Footer — Back / Skip / Continue */}
+          {/* Footer — Back / Skip / Continue. Hidden while the
+              keyboard is open so the user can't mis-tap "Continue"
+              thinking it's a dismiss-keyboard button. The
+              ScrollView's keyboardShouldPersistTaps="handled" lets
+              users tap outside any text input to dismiss. */}
+          {!keyboardOpen && (
           <View className="flex-row items-center justify-between gap-3 border-t border-zinc-100 dark:border-white/10 px-5 py-3">
             <Pressable
               onPress={goBack}
@@ -277,6 +317,7 @@ export function OnboardingShell({
               </Pressable>
             </View>
           </View>
+          )}
         </KeyboardAvoidingView>
       </SafeAreaView>
     </OnboardingContext.Provider>

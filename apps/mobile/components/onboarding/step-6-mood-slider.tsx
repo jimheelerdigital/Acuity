@@ -30,8 +30,14 @@ const MAX = 10;
 const DEFAULT_VALUE = 5;
 
 export function Step6MoodSlider() {
-  const { setCanContinue, setCapturedData } = useOnboarding();
-  const [value, setValue] = useState(DEFAULT_VALUE);
+  const { step, setCanContinue, setCapturedData, getCapturedData } =
+    useOnboarding();
+  const prior = getCapturedData(step) as
+    | { moodBaselineNumeric?: number }
+    | null;
+  const [value, setValue] = useState(
+    () => prior?.moodBaselineNumeric ?? DEFAULT_VALUE
+  );
   const [trackWidth, setTrackWidth] = useState(0);
 
   useEffect(() => {

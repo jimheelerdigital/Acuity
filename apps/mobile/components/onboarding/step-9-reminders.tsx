@@ -39,16 +39,47 @@ const DAYS: Array<{ i: number; label: string }> = [
 type Frequency = "DAILY" | "WEEKDAYS" | "CUSTOM";
 
 export function Step9Reminders() {
-  const { setCanContinue, setCapturedData } = useOnboarding();
+  const { step, setCanContinue, setCapturedData, getCapturedData } =
+    useOnboarding();
+
+  // Rehydrate from prior captured state on remount (back-nav).
+  const prior = getCapturedData(step) as
+    | {
+        notificationsEnabled?: boolean;
+        notificationTime?: string;
+        notificationDays?: number[];
+      }
+    | null;
+  const priorTime = (() => {
+    if (!prior?.notificationTime) return null;
+    const [h, m] = prior.notificationTime.split(":").map(Number);
+    if (Number.isFinite(h) && Number.isFinite(m)) return { h, m };
+    return null;
+  })();
+  const priorFrequency: Frequency = (() => {
+    const days = prior?.notificationDays;
+    if (!days || days.length === 0) return "DAILY";
+    if (days.length === 7) return "DAILY";
+    if (
+      days.length === 5 &&
+      [1, 2, 3, 4, 5].every((d) => days.includes(d))
+    )
+      return "WEEKDAYS";
+    return "CUSTOM";
+  })();
 
   // Default OFF — flipping the toggle triggers the OS permission
   // prompt. Ensures the stored preference never claims "enabled"
   // while the OS refuses to deliver notifications.
-  const [enabled, setEnabled] = useState(false);
-  const [hour, setHour] = useState(DEFAULT_HOUR);
-  const [minute, setMinute] = useState(DEFAULT_MINUTE);
-  const [frequency, setFrequency] = useState<Frequency>("DAILY");
-  const [custom, setCustom] = useState<number[]>([1, 2, 3, 4, 5]);
+  const [enabled, setEnabled] = useState(
+    () => prior?.notificationsEnabled ?? false
+  );
+  const [hour, setHour] = useState(() => priorTime?.h ?? DEFAULT_HOUR);
+  const [minute, setMinute] = useState(() => priorTime?.m ?? DEFAULT_MINUTE);
+  const [frequency, setFrequency] = useState<Frequency>(() => priorFrequency);
+  const [custom, setCustom] = useState<number[]>(
+    () => prior?.notificationDays ?? [1, 2, 3, 4, 5]
+  );
   const [permission, setPermission] =
     useState<PermissionStatus>("undetermined");
 

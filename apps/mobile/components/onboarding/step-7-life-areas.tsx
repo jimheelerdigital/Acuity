@@ -18,8 +18,20 @@ import { useOnboarding } from "./context";
  */
 
 export function Step7LifeAreas() {
-  const { setCanContinue, setCapturedData } = useOnboarding();
-  const [picks, setPicks] = useState<string[]>([]); // ordered by rank
+  const { step, setCanContinue, setCapturedData, getCapturedData } =
+    useOnboarding();
+  // Rehydrate ordered picks from prior captured priorities (rank 1 first).
+  const prior = getCapturedData(step) as
+    | { lifeAreaPriorities?: Record<string, number> }
+    | null;
+  const [picks, setPicks] = useState<string[]>(() => {
+    const map = prior?.lifeAreaPriorities;
+    if (!map) return [];
+    return Object.entries(map)
+      .sort(([, a], [, b]) => a - b)
+      .map(([k]) => k)
+      .slice(0, 3);
+  });
 
   useEffect(() => {
     setCanContinue(picks.length === 3);
