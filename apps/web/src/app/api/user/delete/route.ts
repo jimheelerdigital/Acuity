@@ -135,13 +135,24 @@ export async function POST(req: NextRequest) {
   // DeletedUser tombstone (pentest T-07 fix): write the tombstone
   // BEFORE the cascade inside the same transaction so a subsequent
   // re-signup with the same email sees it and bootstrapNewUser picks
-  // the reduced-trial path via trialDaysForEmail. Upsert rather than
-  // create because the same email may have been deleted + restored +
-  // re-deleted — we just want the latest record.
+  // the reduced-trial path via trialDaysForEmail.
+  //
+  // IMPORTANT: we use `deleteMany` instead of `delete` for the User row.
+  // `delete` returns the deleted row, which forces Prisma to issue a
+  // RETURNING clause referencing every column the schema declares. If
+  // schema.prisma has a column the prod DB hasn't been migrated for yet
+  // (db push lag), the RETURNING fails with "column does not exist" and
+  // the whole transaction rolls back — surfacing as a 500 to the user
+  // even though the cascade itself would work fine. `deleteMany` returns
+  // { count } and uses a plain `DELETE WHERE` with no RETURNING, so it's
+  // immune to schema-vs-DB drift. Same defensive pattern as
+  // safeUpdateUser elsewhere.
+  let stage = "init";
   try {
     const { canonicalizeEmail } = await import("@/lib/bootstrap-user");
     const normalizedEmail = canonicalizeEmail(user.email);
     await prisma.$transaction(async (tx) => {
+      stage = "tombstone";
       await tx.deletedUser.upsert({
         where: { email: normalizedEmail },
         create: {
@@ -155,15 +166,35 @@ export async function POST(req: NextRequest) {
           originalTrialEndedAt: user.trialEndsAt ?? null,
         },
       });
+      stage = "verification-tokens";
       await tx.verificationToken.deleteMany({
         where: { identifier: user.email },
       });
-      await tx.user.delete({ where: { id: userId } });
+      stage = "user-delete";
+      const result = await tx.user.deleteMany({ where: { id: userId } });
+      if (result.count === 0) {
+        throw new Error("user row vanished mid-transaction");
+      }
     });
   } catch (err) {
-    console.error(`[user/delete] DB delete failed for user ${userId}:`, err);
+    const code =
+      typeof err === "object" && err && "code" in err
+        ? String((err as { code?: unknown }).code)
+        : "n/a";
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(
+      `[user/delete] DB delete failed for user ${userId} at stage="${stage}" code=${code}: ${message}`,
+      err
+    );
     return NextResponse.json(
-      { error: "Account deletion failed — please try again or contact support" },
+      {
+        error:
+          "Account deletion failed — please try again or contact support",
+        // Surface only the stage tag (not the underlying SQL/PII) so the
+        // client can show a specific support message; the full error is
+        // captured in server logs.
+        stage,
+      },
       { status: 500 }
     );
   }
