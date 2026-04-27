@@ -2,6 +2,10 @@ import { useEffect, useState } from "react";
 import { Alert, Linking, Platform, Pressable, Text, View } from "react-native";
 
 import {
+  ReminderTimePicker,
+  useLocalTimezoneLabel,
+} from "@/components/reminders/time-picker";
+import {
   applyReminderSchedule,
   getPermissionStatus,
   requestNotificationPermission,
@@ -13,14 +17,12 @@ import { useOnboarding } from "./context";
 /**
  * Step 9 — Reminders. Captures notificationTime (HH:MM), frequency
  * (daily / weekdays / custom), and notificationsEnabled (master
- * toggle). No slider dep: hour + minute step buttons cover the
- * realistic cases (the user will pick 9pm-ish and move on).
+ * toggle).
  *
- * Permission request + local notification scheduling land in a
- * follow-up commit alongside the expo-notifications install. For now
- * this step persists preferences to the server; the reminders-editor
- * screen on /reminders does the same. Once expo-notifications ships,
- * a shared helper reads these values and schedules them.
+ * Time picker is the shared 12-hour ReminderTimePicker — same
+ * component as /reminders settings. Single source of truth so the
+ * format never drifts between onboarding and the settings screen.
+ * Internal state stays 24-hour (`hour` 0-23) for backend symmetry.
  */
 
 const DEFAULT_HOUR = 21;
@@ -162,8 +164,7 @@ export function Step9Reminders() {
     }
   };
 
-  const bumpHour = (d: number) => setHour((h) => (h + d + 24) % 24);
-  const bumpMinute = (d: number) => setMinute((m) => (m + d + 60) % 60);
+  const tzLabel = useLocalTimezoneLabel();
 
   const toggleCustomDay = (i: number) =>
     setCustom((prev) =>
@@ -206,31 +207,20 @@ export function Step9Reminders() {
         style={{ opacity: enabled ? 1 : 0.4 }}
         pointerEvents={enabled ? "auto" : "none"}
       >
-        {/* Time stepper */}
+        {/* Time — shared 12-hour picker (matches /reminders settings) */}
         <View className="mt-6">
-          <Text className="text-sm font-semibold text-zinc-800 dark:text-zinc-100 mb-2">
+          <Text className="text-sm font-semibold text-zinc-800 dark:text-zinc-100 mb-3">
             Time
           </Text>
-          <View className="flex-row items-center justify-center gap-5">
-            <TimeStepper
-              value={hour}
-              label="HH"
-              onDec={() => bumpHour(-1)}
-              onInc={() => bumpHour(1)}
-            />
-            <Text className="text-3xl font-bold text-zinc-400 dark:text-zinc-500">
-              :
-            </Text>
-            <TimeStepper
-              value={minute}
-              label="MM"
-              step={5}
-              onDec={() => bumpMinute(-5)}
-              onInc={() => bumpMinute(5)}
-            />
-          </View>
-          <Text className="mt-2 text-center text-xs text-zinc-400 dark:text-zinc-500">
-            24-hour · your local timezone
+          <ReminderTimePicker
+            hour24={hour}
+            minute={minute}
+            onChangeHour24={setHour}
+            onChangeMinute={setMinute}
+            size="md"
+          />
+          <Text className="mt-3 text-center text-xs text-zinc-400 dark:text-zinc-500">
+            {tzLabel}
           </Text>
         </View>
 
@@ -325,46 +315,3 @@ export function Step9Reminders() {
   );
 }
 
-function TimeStepper({
-  value,
-  label,
-  step = 1,
-  onInc,
-  onDec,
-}: {
-  value: number;
-  label: string;
-  step?: number;
-  onInc: () => void;
-  onDec: () => void;
-}) {
-  return (
-    <View className="items-center">
-      <View className="flex-row items-center gap-3">
-        <Pressable
-          onPress={onDec}
-          className="h-9 w-9 rounded-full border border-zinc-300 dark:border-white/15 items-center justify-center"
-        >
-          <Text className="text-lg font-semibold text-zinc-500 dark:text-zinc-400">
-            −
-          </Text>
-        </Pressable>
-        <Text className="w-16 text-center text-3xl font-mono tabular-nums font-bold text-zinc-900 dark:text-zinc-50">
-          {String(value).padStart(2, "0")}
-        </Text>
-        <Pressable
-          onPress={onInc}
-          className="h-9 w-9 rounded-full border border-zinc-300 dark:border-white/15 items-center justify-center"
-        >
-          <Text className="text-lg font-semibold text-zinc-500 dark:text-zinc-400">
-            +
-          </Text>
-        </Pressable>
-      </View>
-      <Text className="mt-1 text-[10px] text-zinc-400 dark:text-zinc-500">
-        {label}
-        {step !== 1 && ` · step ${step}`}
-      </Text>
-    </View>
-  );
-}

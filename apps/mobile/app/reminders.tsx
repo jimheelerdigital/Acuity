@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -14,6 +14,10 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { StickyBackButton } from "@/components/back-button";
+import {
+  ReminderTimePicker,
+  useLocalTimezoneLabel,
+} from "@/components/reminders/time-picker";
 import { api } from "@/lib/api";
 import {
   applyReminderSchedule,
@@ -27,17 +31,8 @@ import {
  * to the server via POST /api/account/notifications, then schedules
  * OS-level local notifications via expo-notifications.
  *
- * Time picker (2026-04-25 redesign):
- *   - 12-hour HH : MM with AM/PM segmented toggle (was: 24-hour HH:MM)
- *   - Display 1-12 hours / 0-55 minutes (5-min step). Stored on the
- *     server as 24-hour `HH:MM` strings via to24h() / from24h().
- *   - All controls scaled up significantly for Pro Max viewports —
- *     numbers at ~64pt, taps at ≥48pt, day toggles at 56pt, save
- *     button full-width at 56pt height.
- *   - Form vertically centered on the viewport so it feels intentional
- *     instead of left-aligned-and-floating.
- *   - "24-hour clock" subtext replaced with the user's actual local
- *     timezone (e.g. "Eastern Time").
+ * Time picker is the shared <ReminderTimePicker /> — same component
+ * onboarding step 9 uses, so the format never drifts.
  */
 
 const DAY_LABELS: Array<{ i: number; label: string }> = [
@@ -55,55 +50,6 @@ type Me = {
   notificationDays: number[];
   notificationsEnabled: boolean;
 };
-
-/**
- * 24-hour internal → 12-hour display.
- */
-function from24h(h24: number): { hour12: number; period: "AM" | "PM" } {
-  const period: "AM" | "PM" = h24 >= 12 ? "PM" : "AM";
-  let hour12 = h24 % 12;
-  if (hour12 === 0) hour12 = 12;
-  return { hour12, period };
-}
-
-/**
- * 12-hour display → 24-hour internal.
- */
-function to24h(hour12: number, period: "AM" | "PM"): number {
-  if (period === "AM") return hour12 === 12 ? 0 : hour12;
-  return hour12 === 12 ? 12 : hour12 + 12;
-}
-
-/**
- * Friendly label for the user's local timezone (e.g. "Eastern Time").
- * Falls back to the raw IANA name ("America/New_York") if Intl can't
- * supply a long form. Last-resort fallback is "your local timezone".
- */
-function useLocalTimezoneLabel(): string {
-  return useMemo(() => {
-    try {
-      const ianaName = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      // Try for the human-friendly long-form name via timeZoneName.
-      const parts = new Intl.DateTimeFormat("en-US", {
-        timeZone: ianaName,
-        timeZoneName: "long",
-      }).formatToParts(new Date());
-      const longName = parts.find((p) => p.type === "timeZoneName")?.value;
-      if (longName) {
-        // "Eastern Standard Time" / "Eastern Daylight Time" → "Eastern Time".
-        // The standard/daylight distinction is noise to the user; the
-        // OS handles DST transitions automatically.
-        return longName
-          .replace(/\bStandard\s+/i, "")
-          .replace(/\bDaylight\s+/i, "");
-      }
-      // Last fallback: pretty-print the IANA name.
-      return ianaName.replace(/_/g, " ");
-    } catch {
-      return "your local timezone";
-    }
-  }, []);
-}
 
 export default function RemindersScreen() {
   // router import retained for future use; expo-router auto-handles nav
@@ -156,24 +102,6 @@ export default function RemindersScreen() {
     );
   };
 
-  // Hour bumping operates on the 12-hour display. We compute the new
-  // 12h value, hold the period, then re-derive the 24h state.
-  const bumpHour = (delta: number) => {
-    setHour((h24) => {
-      const { hour12, period } = from24h(h24);
-      const next12 = ((hour12 - 1 + delta + 12) % 12) + 1; // cycle 1-12
-      return to24h(next12, period);
-    });
-  };
-  const bumpMinute = (delta: number) =>
-    setMinute((m) => (m + delta + 60) % 60);
-  const setPeriod = (period: "AM" | "PM") => {
-    setHour((h24) => {
-      const { hour12 } = from24h(h24);
-      return to24h(hour12, period);
-    });
-  };
-
   const askPermission = async () => {
     const next = await requestNotificationPermission();
     setPermission(next);
@@ -223,8 +151,6 @@ export default function RemindersScreen() {
       </SafeAreaView>
     );
   }
-
-  const { hour12, period } = from24h(hour);
 
   return (
     <SafeAreaView edges={["top"]} className="flex-1 bg-white dark:bg-[#0B0B12]">
@@ -299,40 +225,13 @@ export default function RemindersScreen() {
             Time
           </Text>
 
-          <View className="flex-row items-center justify-center" style={{ gap: 16 }}>
-            <Stepper
-              value={hour12}
-              onDecrement={() => bumpHour(-1)}
-              onIncrement={() => bumpHour(1)}
-            />
-            <Text
-              className="text-zinc-400 dark:text-zinc-500"
-              style={{ fontSize: 56, fontWeight: "700", lineHeight: 64 }}
-            >
-              :
-            </Text>
-            <Stepper
-              value={minute}
-              onDecrement={() => bumpMinute(-5)}
-              onIncrement={() => bumpMinute(5)}
-            />
-
-            <View
-              className="ml-2 rounded-full bg-zinc-100 dark:bg-white/10 flex-col"
-              style={{ padding: 4, gap: 4 }}
-            >
-              <PeriodPill
-                label="AM"
-                active={period === "AM"}
-                onPress={() => setPeriod("AM")}
-              />
-              <PeriodPill
-                label="PM"
-                active={period === "PM"}
-                onPress={() => setPeriod("PM")}
-              />
-            </View>
-          </View>
+          <ReminderTimePicker
+            hour24={hour}
+            minute={minute}
+            onChangeHour24={setHour}
+            onChangeMinute={setMinute}
+            size="lg"
+          />
 
           <Text
             className="text-zinc-400 dark:text-zinc-500 text-center"
@@ -441,80 +340,3 @@ export default function RemindersScreen() {
   );
 }
 
-/**
- * Larger HH / MM stepper. 48pt tap targets, 64pt numerals.
- * Removed the "MM · step 5" implementation-detail subtext that the
- * original component leaked — the user doesn't need to know the
- * minute step is 5; it's an internal choice.
- */
-function Stepper({
-  value,
-  onIncrement,
-  onDecrement,
-}: {
-  value: number;
-  onIncrement: () => void;
-  onDecrement: () => void;
-}) {
-  return (
-    <View className="items-center" style={{ gap: 6 }}>
-      <Pressable
-        onPress={onIncrement}
-        hitSlop={8}
-        className="rounded-full border border-zinc-300 dark:border-white/15 items-center justify-center"
-        style={{ height: 36, width: 48 }}
-      >
-        <Ionicons name="chevron-up" size={20} color="#A1A1AA" />
-      </Pressable>
-      <Text
-        className="font-mono tabular-nums text-zinc-900 dark:text-zinc-50"
-        style={{
-          fontSize: 56,
-          fontWeight: "700",
-          lineHeight: 64,
-          minWidth: 84,
-          textAlign: "center",
-        }}
-      >
-        {String(value).padStart(2, "0")}
-      </Text>
-      <Pressable
-        onPress={onDecrement}
-        hitSlop={8}
-        className="rounded-full border border-zinc-300 dark:border-white/15 items-center justify-center"
-        style={{ height: 36, width: 48 }}
-      >
-        <Ionicons name="chevron-down" size={20} color="#A1A1AA" />
-      </Pressable>
-    </View>
-  );
-}
-
-function PeriodPill({
-  label,
-  active,
-  onPress,
-}: {
-  label: string;
-  active: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      className={`rounded-full items-center justify-center ${
-        active ? "bg-violet-600" : "bg-transparent"
-      }`}
-      style={{ paddingHorizontal: 14, paddingVertical: 6, minWidth: 44 }}
-    >
-      <Text
-        className={
-          active ? "text-white" : "text-zinc-500 dark:text-zinc-400"
-        }
-        style={{ fontSize: 13, fontWeight: "700", letterSpacing: 0.5 }}
-      >
-        {label}
-      </Text>
-    </Pressable>
-  );
-}
