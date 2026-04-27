@@ -176,7 +176,6 @@ export default function ProfileTab() {
 
       <DeleteAccountModal
         visible={showDeleteModal}
-        email={email}
         isPro={subStatus === "PRO"}
         onClose={() => setShowDeleteModal(false)}
         onDelete={deleteAccount}

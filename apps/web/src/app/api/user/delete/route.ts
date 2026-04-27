@@ -4,31 +4,31 @@
  * Permanently deletes the signed-in user's account and all associated
  * data. Required for SECURITY_AUDIT.md S3 / GDPR Art. 17 compliance.
  *
- * Confirmation: the request body must include `{ confirmEmail: <email> }`
- * matching the session's email exactly. Defense-in-depth — the UI
- * already enforces this; the route enforces it again so no malicious
- * client can bypass the modal by hand-crafting a fetch.
+ * Auth: symmetric — cookie session on web, Bearer JWT on mobile, via
+ * getAnySessionUserId. Apple-sign-in users (private-relay emails) and
+ * email-typing was always going to be hostile, so confirmation moved
+ * to a literal "DELETE" string.
+ *
+ * Confirmation: body must include `{ confirm: "DELETE" }` (case-
+ * sensitive, exact). Defense-in-depth — the UI gates on it too. The
+ * legacy `confirmEmail` shape is still accepted for any old web
+ * client that hasn't picked up the new modal yet (mobile is OTA so
+ * the new shape ships immediately).
  *
  * Order of operations:
- *   1. Stripe customer cancellation (best-effort — failures logged
- *      but proceed; Stripe orphan = ops debt, not a user-facing
- *      privacy issue).
+ *   1. Stripe customer cancellation (best-effort).
  *   2. Delete VerificationToken rows by email (NextAuth tokens are
  *      keyed on identifier, no FK to User).
  *   3. Delete the User row in a transaction. Cascades drop Account,
  *      Session, Entry, Task, Goal, WeeklyReport, LifeMapArea,
- *      UserMemory automatically (schema FK constraints).
+ *      UserMemory automatically.
  *   4. Storage cleanup: list + delete every object under
- *      `voice-entries/${userId}/` (best-effort — failures logged
- *      but the user's identity is already gone).
- *
- * Returns 200 { deleted: true } on success.
+ *      `voice-entries/${userId}/` (best-effort).
  */
 
-import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 
-import { getAuthOptions } from "@/lib/auth";
+import { getAnySessionUserId } from "@/lib/mobile-auth";
 import {
   checkRateLimit,
   limiters,
@@ -41,28 +41,42 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const STORAGE_BUCKET = "voice-entries";
+const CONFIRM_PHRASE = "DELETE";
 
 export async function POST(req: NextRequest) {
   // ── 1. Auth ──────────────────────────────────────────────────────────────
-  const session = await getServerSession(getAuthOptions());
-  if (!session?.user?.id || !session.user.email) {
+  // Symmetric auth: NextAuth cookie on web, Bearer JWT on mobile.
+  const userId = await getAnySessionUserId(req);
+  if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const userId = session.user.id;
-  const sessionEmail = session.user.email;
 
   // ── 1b. Rate limit (3 attempts per day per user) ────────────────────────
   const rl = await checkRateLimit(limiters.accountDelete, `user:${userId}`);
   if (!rl.success) return rateLimitedResponse(rl);
 
   // ── 2. Body validation ───────────────────────────────────────────────────
+  // New shape: `{ confirm: "DELETE" }`. Legacy: `{ confirmEmail: <email> }`
+  // — accepted for clients that haven't picked up the new modal yet,
+  // matched against the user's actual email after we re-fetch below.
   const body = await req.json().catch(() => null);
-  const confirmEmail = (body?.confirmEmail ?? "").trim().toLowerCase();
-  if (!confirmEmail || confirmEmail !== sessionEmail.toLowerCase()) {
+  const confirmString = typeof body?.confirm === "string" ? body.confirm : "";
+  const legacyConfirmEmail =
+    typeof body?.confirmEmail === "string"
+      ? body.confirmEmail.trim().toLowerCase()
+      : "";
+
+  if (!confirmString && !legacyConfirmEmail) {
+    return NextResponse.json(
+      { error: "Confirmation required" },
+      { status: 400 }
+    );
+  }
+  if (confirmString && confirmString !== CONFIRM_PHRASE) {
     return NextResponse.json(
       {
         error:
-          "Confirmation email does not match the signed-in account",
+          'Confirmation must be the word "DELETE" in capital letters.',
       },
       { status: 400 }
     );
@@ -85,13 +99,16 @@ export async function POST(req: NextRequest) {
   if (!user) {
     return NextResponse.json({ error: "Account not found" }, { status: 404 });
   }
-  if (user.email.toLowerCase() !== sessionEmail.toLowerCase()) {
-    // JWT email is stale (e.g. user changed email then session re-issued).
-    // Refuse rather than risk deleting the wrong row.
-    return NextResponse.json(
-      { error: "Session email no longer matches the account" },
-      { status: 409 }
-    );
+
+  // Legacy email confirmation path — only enforced if the new
+  // CONFIRM_PHRASE wasn't supplied.
+  if (!confirmString && legacyConfirmEmail) {
+    if (user.email.toLowerCase() !== legacyConfirmEmail) {
+      return NextResponse.json(
+        { error: "Confirmation email does not match the signed-in account" },
+        { status: 400 }
+      );
+    }
   }
 
   // ── 3. Stripe cancellation (best-effort) ────────────────────────────────

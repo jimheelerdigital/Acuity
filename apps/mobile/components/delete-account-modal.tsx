@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -13,18 +12,11 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 /**
- * Type-to-confirm account deletion modal. Three-pane progressive
- * disclosure so the user has to acknowledge what gets removed before
- * the destructive button enables:
- *
- *   1. Warning  — list of what gets deleted; PRO users also see the
- *      "your active subscription will cancel immediately" caveat.
- *   2. Type-to-confirm — text input that must match the user's email
- *      exactly (case-insensitive). Submit button stays disabled until
- *      it matches.
- *   3. Loading / error — spinner while the network call is in flight,
- *      surface a friendly error if the server refuses (rate limit,
- *      400 mismatch, 500 etc).
+ * Type-to-confirm account deletion modal. The destructive button only
+ * enables when the user types DELETE in capital letters — universal
+ * pattern that works for email-based and Apple-private-relay accounts
+ * alike (private-relay addresses are long random strings that are
+ * hostile to retype on mobile).
  *
  * Apple Guideline 5.1.1(v) requires this flow to be reachable from
  * inside the app. Wired from apps/mobile/app/(tabs)/profile.tsx.
@@ -34,9 +26,10 @@ export type DeleteAccountResult =
   | { ok: true }
   | { ok: false; error: string; status?: number };
 
+const CONFIRM_PHRASE = "DELETE";
+
 type Props = {
   visible: boolean;
-  email: string;
   isPro: boolean;
   onClose: () => void;
   onDelete: () => Promise<DeleteAccountResult>;
@@ -46,13 +39,12 @@ type Props = {
 
 export function DeleteAccountModal({
   visible,
-  email,
   isPro,
   onClose,
   onDelete,
   onDeleted,
 }: Props) {
-  const [confirmEmail, setConfirmEmail] = useState("");
+  const [confirmText, setConfirmText] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -60,14 +52,13 @@ export function DeleteAccountModal({
   // doesn't show stale state.
   useEffect(() => {
     if (visible) {
-      setConfirmEmail("");
+      setConfirmText("");
       setSubmitting(false);
       setError(null);
     }
   }, [visible]);
 
-  const matches =
-    confirmEmail.trim().toLowerCase() === email.trim().toLowerCase();
+  const matches = confirmText === CONFIRM_PHRASE;
 
   const handleConfirm = async () => {
     if (!matches || submitting) return;
@@ -259,7 +250,7 @@ export function DeleteAccountModal({
             </View>
           )}
 
-          {/* Type-to-confirm */}
+          {/* Type-to-confirm — DELETE in caps */}
           <View style={{ marginTop: 8, marginBottom: 16 }}>
             <Text
               style={{
@@ -268,20 +259,23 @@ export function DeleteAccountModal({
                 marginBottom: 10,
               }}
             >
-              To confirm, type your email below:{" "}
-              <Text style={{ color: "#FAFAFA", fontWeight: "600" }}>
-                {email}
-              </Text>
+              To confirm, type{" "}
+              <Text style={{ color: "#FAFAFA", fontWeight: "700" }}>
+                DELETE
+              </Text>{" "}
+              below.
             </Text>
             <TextInput
-              value={confirmEmail}
-              onChangeText={setConfirmEmail}
-              placeholder="your.email@example.com"
+              value={confirmText}
+              onChangeText={setConfirmText}
+              placeholder=""
               placeholderTextColor="rgba(168,168,180,0.4)"
-              autoCapitalize="none"
+              autoCapitalize="characters"
               autoCorrect={false}
-              keyboardType={Platform.OS === "ios" ? "email-address" : "default"}
+              autoComplete="off"
+              spellCheck={false}
               editable={!submitting}
+              accessibilityLabel="Type DELETE to confirm"
               style={{
                 paddingHorizontal: 14,
                 paddingVertical: 12,
@@ -293,6 +287,7 @@ export function DeleteAccountModal({
                   : "rgba(255,255,255,0.08)",
                 color: "#FAFAFA",
                 fontSize: 16,
+                letterSpacing: 1.2,
               }}
             />
           </View>

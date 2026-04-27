@@ -29,9 +29,10 @@ type AuthState = {
   refresh: () => Promise<void>;
   /**
    * Permanently delete the signed-in account. Calls
-   * POST /api/user/delete with the session email as confirmation,
-   * then wipes local SecureStore + cached user state on success.
-   * Caller is responsible for navigating away (back to /(auth)/sign-in).
+   * POST /api/user/delete with `{ confirm: "DELETE" }`. Caller (the
+   * modal) gates the call on the user typing DELETE; this helper
+   * fires the request and clears local SecureStore + cached user
+   * state on success.
    */
   deleteAccount: () => Promise<DeleteAccountResult>;
 };
@@ -135,12 +136,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * or contact support.
    */
   const deleteAccount = useCallback(async (): Promise<DeleteAccountResult> => {
-    const email = user?.email;
-    if (!email) {
+    if (!user?.id) {
       return { ok: false, error: "No signed-in account to delete." };
     }
     try {
-      await api.post("/api/user/delete", { confirmEmail: email });
+      await api.post("/api/user/delete", { confirm: "DELETE" });
     } catch (err) {
       const status = (err as { status?: number }).status;
       const message =
@@ -154,12 +154,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             "Too many deletion requests today. Please try again tomorrow or contact support.",
         };
       }
-      if (status === 400) {
+      if (status === 401) {
         return {
           ok: false,
           status,
           error:
-            "Confirmation email didn't match the account email. Please try again.",
+            "Your session expired. Please sign out and back in, then try again.",
         };
       }
       return { ok: false, status, error: message };
@@ -167,7 +167,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await clearSession();
     setUser(null);
     return { ok: true };
-  }, [user?.email]);
+  }, [user?.id]);
 
   return (
     <AuthContext.Provider
