@@ -271,11 +271,15 @@ export default async function DashboardPage() {
             />
           </div>
           {/* Right column — Weekly insight (top, content-sized) +
-              Goals snapshot (flex-1, stretches). Goals takes whatever
-              vertical space remains so the right column tracks the
-              full height of LifeMatrixSnapshot on the left. Without
-              the stretch the right column was visibly short. */}
-          <div className="flex flex-col gap-6 lg:col-span-5">
+              Goals snapshot (flex-1, stretches). `h-full` is the
+              critical bit: CSS grid stretches the cell to row height,
+              but the inner flex container only fills its content
+              height by default — so flex-1 on Goals had nothing to
+              grow into. With h-full the wrapper takes the full cell
+              height and Goals stretches to fill remaining space,
+              matching the bottom edge of LifeMatrixSnapshot on the
+              left. */}
+          <div className="flex h-full flex-col gap-6 lg:col-span-5">
             <WeeklyInsightCard
               report={weeklyReport}
               entryCount={totalEntryCount}

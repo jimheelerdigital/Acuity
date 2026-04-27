@@ -113,7 +113,11 @@ export function LifeMatrixSnapshot({
           className="shrink-0"
           aria-hidden="true"
         >
-          {/* Concentric guide rings — three at 33%/66%/100% radius. */}
+          {/* Concentric guide rings — three at 33%/66%/100% radius.
+              Neutral-gray rgba so the rings read on both light card
+              backgrounds and the dark dashboard. Bumped 2026-04-27
+              to 0.30 / 0.22 so the polygon has visible scaffolding
+              behind it instead of floating in space. */}
           {RING_LEVELS.map((level) => (
             <circle
               key={level}
@@ -121,7 +125,7 @@ export function LifeMatrixSnapshot({
               cy={CENTER}
               r={RADIUS * level}
               fill="none"
-              stroke="rgba(161,161,170,0.18)"
+              stroke="rgba(161,161,170,0.30)"
               strokeWidth={1}
               strokeDasharray={level === 1 ? undefined : "2 4"}
             />
@@ -137,21 +141,23 @@ export function LifeMatrixSnapshot({
                 y1={CENTER}
                 x2={x}
                 y2={y}
-                stroke="rgba(161,161,170,0.14)"
+                stroke="rgba(161,161,170,0.22)"
                 strokeWidth={1}
               />
             );
           })}
 
-          {/* The user's score polygon — filled violet at low opacity,
-              stroked at full. In empty state the polygon is a flat
-              circle at 45% radius so it reads as "scaffolding waiting
-              for data" rather than "you scored a 4 across the board". */}
+          {/* The user's score polygon — filled violet at higher
+              opacity than the page-level radar so it pops on the
+              compact card. Stroke is #A78BFA (violet-400) for clear
+              outline contrast on dark mode without being neon-loud
+              on light. In empty state the polygon is a dashed flat
+              circle so it reads as "scaffolding waiting for data". */}
           <polygon
             points={polygonPoints}
-            fill={isEmpty ? "rgba(167,139,250,0.10)" : "rgba(124,58,237,0.18)"}
-            stroke={isEmpty ? "rgba(167,139,250,0.40)" : "#7C3AED"}
-            strokeWidth={isEmpty ? 1 : 2}
+            fill={isEmpty ? "rgba(167,139,250,0.10)" : "rgba(167,139,250,0.32)"}
+            stroke={isEmpty ? "rgba(167,139,250,0.40)" : "#A78BFA"}
+            strokeWidth={isEmpty ? 1 : 2.25}
             strokeDasharray={isEmpty ? "4 4" : undefined}
           />
 
@@ -167,10 +173,10 @@ export function LifeMatrixSnapshot({
                   key={a.enum}
                   cx={x}
                   cy={y}
-                  r={4}
+                  r={5}
                   fill={a.color}
                   stroke="white"
-                  strokeWidth={1.5}
+                  strokeWidth={2}
                   className="dark:[stroke:#1E1E2E]"
                 />
               );
