@@ -7,6 +7,32 @@
 
 ---
 
+## [2026-04-27] — Reminder time picker unified at 12-hour AM/PM (onboarding + settings)
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** f626c4e
+
+### In plain English (for Keenan)
+The reminder-time picker during onboarding (step 9) was still showing 24-hour military time, even though the standalone Reminders settings screen had been moved to a friendlier 12-hour AM/PM picker a couple sessions ago. Both screens now use the same picker, so a user who picks 7:30 AM during onboarding sees the exact same thing if they revisit the setting later. No more drift between the two entry points.
+
+### Technical changes (for Jimmy)
+- New shared file `apps/mobile/components/reminders/time-picker.tsx`. Exports `<ReminderTimePicker />` plus the `to24h` / `from24h` helpers and `useLocalTimezoneLabel()` hook. Picker takes a `size` prop (`"lg"` for the full settings screen, `"md"` for the more compact onboarding context).
+- `apps/mobile/components/onboarding/step-9-reminders.tsx`: replaced the inline 24-hour `TimeStepper` with `<ReminderTimePicker size="md" />`. Subtext now shows the user's timezone label instead of the literal string "24-hour". Removed the unused `bumpHour` / `bumpMinute` helpers and the local `TimeStepper` component.
+- `apps/mobile/app/reminders.tsx`: deleted the inlined `Stepper`, `PeriodPill`, `from24h`, `to24h`, and `useLocalTimezoneLabel` (moved to the shared module).
+- Storage format unchanged: `User.notificationTime` stays as `HH:MM` 24-hour string. No server-side or schema work needed.
+- EAS OTA published: update group `4fd1088a-bb66-4bfa-9806-e10ac436fe0e`, runtime 0.1.8, channel production.
+
+### Manual steps needed
+- [ ] **Jimmy:** verify on TestFlight after OTA: pick 7:30 AM in onboarding step 9 → save → check `user.notificationTime` is `07:30`. Pick 9:00 PM → check `user.notificationTime` is `21:00`. Same round-trip on /reminders.
+
+### Notes
+- Why a `size` prop and not two components: 90% of the UI is identical (numerals, AM/PM pill, layout). The differences are font sizes, gaps, and tap target dimensions — clean to express as a single conditional in one component vs. duplicating layout JSX.
+- The `to24h` / `from24h` helpers live next to the picker rather than in a generic `lib/` folder because they're picker-specific. If a third caller appears, promote them.
+- Colon glyph between HH and MM uses the same `lineHeight` as the numerals so vertical alignment stays clean across both sizes.
+
+---
+
 ## [2026-04-25] — Onboarding step 8 reframed as a daily-commitment goal
 
 **Requested by:** Jimmy
