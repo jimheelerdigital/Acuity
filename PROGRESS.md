@@ -7,6 +7,39 @@
 
 ---
 
+## [2026-04-27] — Mobile subscription management + PRO delete forfeiture copy
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** f27b7c7
+
+### In plain English (for Keenan)
+Two related changes for PRO subscribers on iPhone.
+
+First: **a way to cancel without nuking your account.** Until today, a PRO user on mobile had no in-app option to stop paying short of deleting everything. Apple's Guideline 3.1.2 actually requires an in-app subscription management flow, so this was both a UX gap and an App Store compliance risk. Profile screen now shows "Manage subscription" (PRO users only) which opens Stripe's hosted portal — cancel at period end, change card, see invoices, all the standard stuff.
+
+Second: **honest copy about what you give up if you delete instead.** The old delete modal said "your subscription will cancel immediately." True but soft. The new copy spells it out: cancellation is immediate, no refund, you forfeit the rest of your current paid period (with the actual day count when we can calculate it), and your data is gone. Right below the warning is a "Cancel subscription instead" button that takes you to the same Stripe portal. Free users still see the original delete warning unchanged.
+
+### Technical changes (for Jimmy)
+- New `apps/mobile/lib/subscription.ts` exporting `openSubscriptionPortal()`. POSTs `/api/stripe/portal` (existing endpoint, unchanged), opens the returned URL via `WebBrowser.openBrowserAsync` so it lands in SafariViewController. Surfaces specific Alerts for 400 NoSubscription / 401 expired / generic failure.
+- `apps/mobile/lib/auth.ts`: User type gains `stripeCurrentPeriodEnd?: string | null`. `/api/user/me` already exposes the field.
+- `apps/mobile/components/delete-account-modal.tsx`: new `daysRemaining` and `onCancelSubscription` props. PRO warning rewritten as three bullets (cancel immediately / forfeit X days / data gone) plus a violet "Cancel subscription instead" CTA inside the warning card. Free users unchanged.
+- `apps/mobile/app/(tabs)/profile.tsx`: new "Manage subscription" menu item gated on `isPro`. `daysRemaining` math: `Math.ceil((stripeCurrentPeriodEnd - now) / 86_400_000)`, returns null on missing field / negative / NaN. Wired modal `onCancelSubscription` to dismiss the modal first then open the portal.
+- No web / API / schema changes. The portal route already uses `getAnySessionUserId` (mobile-symmetric) and looks up customers by `user.id` — Apple private-relay emails are unaffected.
+- EAS OTA published: update group `c1e32539-4fc6-4089-b95c-1fcc09b63837`, runtime 0.1.8, channel production.
+
+### Manual steps needed
+- [ ] **Jimmy:** verify on TestFlight with a PRO test account: Profile → Manage subscription → Stripe portal opens → cancel at period end → returns to app. Then test the delete-modal alt path: Profile → Delete account → see new copy with day count → "Cancel subscription instead" → same portal.
+- [ ] **Jimmy:** verify on TestFlight with a free / trial account: no "Manage subscription" item visible; if they hit Delete, the original warning shows (no PRO bullets).
+
+### Notes
+- Why the modal closes before opening the portal on the alt CTA: stacking a SafariViewController on top of a presentationStyle="pageSheet" Modal occasionally keeps the sheet's dim layer mounted underneath. Cleaner to dismiss the sheet first; the user lands back on the profile screen when they finish in Stripe, which is the correct state anyway.
+- `daysRemaining` uses `Math.ceil` not `floor` so a user with 18 hours left still sees "1 day remaining" rather than "0" — "0 days remaining" reads as "already expired."
+- Why a "Cancel subscription instead" CTA inside the warning card and not as a peer button below the destructive button: Apple's HIG places the destructive action last. We don't want the alt CTA to look like an equal-weight choice — it's a softer recommendation embedded inside the warning, the destructive Delete button still owns the bottom of the modal.
+- Why `WebBrowser.openBrowserAsync` (in-app browser tab) and not `Linking.openURL` (system Safari): the user comes back to the app inside the same process when they dismiss the in-app tab, which lets `auth-context`'s AppState→active hook pick up the new subscriptionStatus. With Linking they'd context-switch out to Safari.
+
+---
+
 ## [2026-04-27] — Account deletion 500: work around schema-vs-DB column drift
 
 **Requested by:** Jimmy
