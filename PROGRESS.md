@@ -11,7 +11,7 @@
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** _to be filled by commit_
+**Commit hash:** ab0c213
 
 ### In plain English (for Keenan)
 Every metric tile on the admin Overview page is now clickable. Click "New Signups" → modal with the actual users who signed up in the active period (email, name, signup time, sign-in method). Click "Trial-to-Paid Conversion Rate" → list of users who converted. Click "Active Paying Subscribers" → list of paying users. Click "Monthly Recurring Revenue (MRR)" → same paying-users list with an inferred plan column (monthly vs annual, derived from how soon their billing period ends — real plan attribution lands in Slice 3). Click "Claude Spend (Month-to-Date)" or any of the AI Costs tiles → spend-by-feature table sorted by total cost.
