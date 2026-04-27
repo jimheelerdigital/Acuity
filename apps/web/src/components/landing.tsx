@@ -1096,13 +1096,21 @@ export function LandingPage() {
               </Link>
             </div>
           </div>
-          <Link
-            href="/auth/signup?utm_campaign=home"
-            onClick={trackInitiateCheckout}
-            className="rounded-full bg-[#7C5CFC] px-5 py-2 text-sm font-medium text-white transition hover:bg-[#6B4FE0] hover:shadow-lg hover:shadow-[#7C5CFC]/40 active:scale-95"
-          >
-            Start Free Trial
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link
+              href="/auth/signin"
+              className="text-sm font-medium text-[#A0A0B8] transition hover:text-white"
+            >
+              Sign in
+            </Link>
+            <Link
+              href="/auth/signup?utm_campaign=home"
+              onClick={trackInitiateCheckout}
+              className="rounded-full bg-[#7C5CFC] px-5 py-2 text-sm font-medium text-white transition hover:bg-[#6B4FE0] hover:shadow-lg hover:shadow-[#7C5CFC]/40 active:scale-95"
+            >
+              Start Free Trial
+            </Link>
+          </div>
         </div>
       </nav>
       </div>
@@ -1887,6 +1895,7 @@ export function LandingPage() {
               <ul className="space-y-3 text-sm text-[#A0A0B8]">
                 <li><a href="/" className="transition hover:text-white hover:underline underline-offset-4">Home</a></li>
                 <li><a href="/auth/signup" className="transition hover:text-white hover:underline underline-offset-4">Start Free Trial</a></li>
+                <li><a href="/auth/signin" className="transition hover:text-white hover:underline underline-offset-4">Sign In</a></li>
                 <li><a href="/#how-it-works" className="transition hover:text-white hover:underline underline-offset-4">How It Works</a></li>
                 <li><a href="/#pricing" className="transition hover:text-white hover:underline underline-offset-4">Pricing</a></li>
                 <li><a href="/#faq" className="transition hover:text-white hover:underline underline-offset-4">FAQ</a></li>
