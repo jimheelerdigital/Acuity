@@ -172,7 +172,14 @@ export function LifeMap() {
   // History rows carry both `area` (enum) and `name` (title-case). Match
   // on `area` since `selected` is now the enum in every code path.
   const selectedHistory = history.find((h) => h.area === selected);
-  const isLocked = !memory || memory.totalEntries < 3;
+  // The unlock gate is owned by the parent page via
+  // `progression.unlocked.lifeMatrix` (entriesCount >= 5 &&
+  // dimensionsCovered >= 3). LifeMap is only mounted when that gate
+  // passes, so we don't second-guess it here. A previous in-component
+  // gate keyed on `memory.totalEntries < 3` produced false-locks when
+  // UserMemory hadn't been seeded yet (e.g. the App Store reviewer
+  // account) — the parent page would let the user through, then this
+  // gate would re-lock based on a different criterion.
 
   if (loading) {
     return (
@@ -207,26 +214,10 @@ export function LifeMap() {
         </div>
       )}
 
-      {/* Locked state */}
-      {isLocked ? (
-        <div className="relative">
-          <div className="blur-sm pointer-events-none opacity-50">
-            <RadarChart areas={areas} onSelect={() => {}} selected={null} />
-          </div>
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-8 py-6 text-center shadow-lg">
-              <div className="text-3xl mb-3">🗺️</div>
-              <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50 mb-1">
-                Record {3 - (memory?.totalEntries ?? 0)} more debrief{3 - (memory?.totalEntries ?? 0) === 1 ? "" : "s"} to unlock your Life Matrix
-              </p>
-              <p className="text-xs text-zinc-400 dark:text-zinc-500">
-                We need at least 3 sessions to map your life areas.
-              </p>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <>
+      {/* Unlock gating happens at the parent page (see /life-matrix
+          and /insights). LifeMap renders the live view unconditionally
+          once mounted. */}
+      <>
           {/* Current / Trend toggle — disabled when we don't have 4+
               weeks of data, with a tooltip explaining why. */}
           <div className="mb-4 flex items-center justify-center gap-2">
@@ -359,7 +350,6 @@ export function LifeMap() {
             />
           )}
         </>
-      )}
 
       {/* Rich dimension drill-down modal. Opens when the user clicks
           one of the score cards above. Fetches /api/lifemap/dimension/[key]
