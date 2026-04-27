@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, Text, TextInput, View } from "react-native";
 
 import { DEFAULT_LIFE_AREAS } from "@acuity/shared";
 
@@ -22,7 +22,10 @@ export function Step7LifeAreas() {
     useOnboarding();
   // Rehydrate ordered picks from prior captured priorities (rank 1 first).
   const prior = getCapturedData(step) as
-    | { lifeAreaPriorities?: Record<string, number> }
+    | {
+        lifeAreaPriorities?: Record<string, number>;
+        lifeAreaOtherText?: string | null;
+      }
     | null;
   const [picks, setPicks] = useState<string[]>(() => {
     const map = prior?.lifeAreaPriorities;
@@ -32,8 +35,15 @@ export function Step7LifeAreas() {
       .map(([k]) => k)
       .slice(0, 3);
   });
+  const [otherText, setOtherText] = useState<string>(
+    () => prior?.lifeAreaOtherText ?? ""
+  );
+
+  const otherSelected = picks.includes("OTHER");
 
   useEffect(() => {
+    // Continue is gated on exactly 3 picks. The "Other" text is
+    // optional — empty string is fine; user can leave it blank.
     setCanContinue(picks.length === 3);
     if (picks.length === 0) {
       setCapturedData(null);
@@ -43,8 +53,14 @@ export function Step7LifeAreas() {
     picks.forEach((area, i) => {
       priorities[area] = i + 1;
     });
-    setCapturedData({ lifeAreaPriorities: priorities });
-  }, [picks, setCanContinue, setCapturedData]);
+    setCapturedData({
+      lifeAreaPriorities: priorities,
+      // Only persist the text when OTHER is actually one of the picks;
+      // otherwise null so a previously-typed value gets cleared if the
+      // user unselected OTHER on a back-nav round-trip.
+      lifeAreaOtherText: otherSelected ? otherText.trim() || null : null,
+    });
+  }, [picks, otherText, otherSelected, setCanContinue, setCapturedData]);
 
   const toggle = (enumKey: string) => {
     setPicks((prev) => {
@@ -69,49 +85,66 @@ export function Step7LifeAreas() {
         {DEFAULT_LIFE_AREAS.map((area) => {
           const rank = picks.indexOf(area.enum);
           const selected = rank >= 0;
+          const isOther = area.enum === "OTHER";
           return (
-            <Pressable
-              key={area.enum}
-              onPress={() => toggle(area.enum)}
-              accessibilityRole="button"
-              accessibilityState={{ selected }}
-              className={`flex-row items-center gap-3 rounded-2xl border px-4 py-3 ${
-                selected
-                  ? "border-violet-500 bg-violet-50/60 dark:bg-violet-950/20"
-                  : "border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E]"
-              }`}
-            >
-              <View
-                className={`h-8 w-8 rounded-full items-center justify-center ${
-                  selected ? "" : "border border-zinc-200 dark:border-white/10"
+            <View key={area.enum}>
+              <Pressable
+                onPress={() => toggle(area.enum)}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+                className={`flex-row items-center gap-3 rounded-2xl border px-4 py-3 ${
+                  selected
+                    ? "border-violet-500 bg-violet-50/60 dark:bg-violet-950/20"
+                    : "border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E]"
                 }`}
-                style={
-                  selected ? { backgroundColor: area.color } : undefined
-                }
               >
-                {selected ? (
-                  <Text className="text-sm font-bold text-white">
-                    {rank + 1}
-                  </Text>
-                ) : (
-                  <Ionicons name="ellipse-outline" size={14} color="#A1A1AA" />
-                )}
-              </View>
-              <View className="flex-1">
-                <Text
-                  className={`text-base font-semibold ${
-                    selected
-                      ? "text-zinc-900 dark:text-zinc-50"
-                      : "text-zinc-800 dark:text-zinc-100"
+                <View
+                  className={`h-8 w-8 rounded-full items-center justify-center ${
+                    selected ? "" : "border border-zinc-200 dark:border-white/10"
                   }`}
+                  style={
+                    selected ? { backgroundColor: area.color } : undefined
+                  }
                 >
-                  {area.name}
-                </Text>
-              </View>
-              {selected && (
-                <Ionicons name="checkmark" size={18} color={area.color} />
+                  {selected ? (
+                    <Text className="text-sm font-bold text-white">
+                      {rank + 1}
+                    </Text>
+                  ) : (
+                    <Ionicons name="ellipse-outline" size={14} color="#A1A1AA" />
+                  )}
+                </View>
+                <View className="flex-1">
+                  <Text
+                    className={`text-base font-semibold ${
+                      selected
+                        ? "text-zinc-900 dark:text-zinc-50"
+                        : "text-zinc-800 dark:text-zinc-100"
+                    }`}
+                  >
+                    {area.name}
+                  </Text>
+                </View>
+                {selected && (
+                  <Ionicons name="checkmark" size={18} color={area.color} />
+                )}
+              </Pressable>
+
+              {/* Other → optional freeform input. Doesn't block
+                  Continue if left blank. */}
+              {isOther && selected && (
+                <TextInput
+                  value={otherText}
+                  onChangeText={setOtherText}
+                  maxLength={120}
+                  placeholder="What's the other area? (optional)"
+                  placeholderTextColor="#71717A"
+                  className="mt-2 ml-11 mr-2 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100"
+                  accessibilityLabel="Describe your other life area"
+                  returnKeyType="done"
+                />
               )}
-            </Pressable>
+            </View>
           );
         })}
       </View>
