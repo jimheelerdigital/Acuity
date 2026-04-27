@@ -182,6 +182,12 @@ export async function POST(req: NextRequest) {
     userUpdates.notificationsEnabled = raw.notificationsEnabled;
   }
 
+  // Step 8 — target cadence (goal-setting only; doesn't gate features).
+  const VALID_CADENCES = ["daily", "most_days", "few_times_week"];
+  if (typeof raw.targetCadence === "string" && VALID_CADENCES.includes(raw.targetCadence)) {
+    userUpdates.targetCadence = raw.targetCadence;
+  }
+
   const { prisma } = await import("@/lib/prisma");
 
   const existing = await prisma.userOnboarding.findUnique({
@@ -221,12 +227,48 @@ export async function POST(req: NextRequest) {
         })
       : Promise.resolve(),
     Object.keys(userUpdates).length > 0
-      ? prisma.user.update({
-          where: { id: userId },
-          data: userUpdates,
-        })
+      ? safeUpdateUser(userId, userUpdates)
       : Promise.resolve(),
   ]);
 
   return NextResponse.json({ ok: true });
+}
+
+/**
+ * Update User with onboarding-time fields. If the underlying DB hasn't
+ * yet had `prisma db push` run for a newly-added column (e.g.
+ * `targetCadence` was added 2026-04-27 and the prod DB hasn't been
+ * migrated yet), Postgres throws "column does not exist". We catch
+ * that one specific error, drop `targetCadence`, and retry — the
+ * rest of the user record updates without losing the user's other
+ * onboarding answers. Once the column lands the catch-and-retry is a
+ * no-op (the first attempt succeeds).
+ */
+async function safeUpdateUser(
+  userId: string,
+  data: Record<string, unknown>
+): Promise<void> {
+  const { prisma } = await import("@/lib/prisma");
+  try {
+    await prisma.user.update({ where: { id: userId }, data });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (
+      "targetCadence" in data &&
+      /targetCadence|target_cadence|column.*does not exist/i.test(msg)
+    ) {
+      const { targetCadence: _drop, ...withoutCadence } = data as {
+        targetCadence?: unknown;
+        [k: string]: unknown;
+      };
+      void _drop;
+      if (Object.keys(withoutCadence).length === 0) return;
+      await prisma.user.update({
+        where: { id: userId },
+        data: withoutCadence,
+      });
+      return;
+    }
+    throw err;
+  }
 }

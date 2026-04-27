@@ -135,6 +135,13 @@ model User {
   // email rotates or the user opts out of email sharing on a later
   // sign-in. Null on users who've never signed in with Apple.
   appleSubject           String?      @unique
+  // Goal-setting cadence captured during onboarding step 8. One of
+  // "daily" | "most_days" | "few_times_week". Doesn't change app
+  // behavior or limit functionality — it's a self-reported intent
+  // that downstream nudge / reminder / streak copy can reference.
+  // Default "daily" reflects the recommended cadence for getting
+  // value from Acuity (more entries → better extraction).
+  targetCadence          String?      @default("daily")
   createdAt              DateTime     @default(now())
   // Last time the user loaded a page / opened the app. Updated
   // opportunistically from /api/user/me; not strongly durable.
