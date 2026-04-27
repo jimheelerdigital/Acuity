@@ -7,6 +7,36 @@
 
 ---
 
+## [2026-04-27] — Mobile account deletion: fix Unauthorized + switch to "type DELETE" confirm
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** e12e85f
+
+### In plain English (for Keenan)
+Two real problems with the delete-account flow on the iPhone app, both fixed.
+
+The first was a real bug: tapping "Delete my account" always returned "Unauthorized," no matter which user tried it. The deletion endpoint was only set up to recognize people signed in on the website (cookie-based), not people signed in on the mobile app (bearer-token-based). Fixed.
+
+The second was a usability problem that's brand-new with Apple sign-in. Apple lets users hide behind random email aliases like `6mqc2kmrsn@privaterelay.appleid.com` — which is genuinely impossible to retype on a phone. So the modal no longer asks for your email — it just asks you to type the word **DELETE** in caps. Universal: same flow for Google and Apple users alike.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/app/api/user/delete/route.ts`: replaced `getServerSession()` with `getAnySessionUserId(req)` so the route works for both web cookie sessions and mobile bearer JWTs. New body shape `{ confirm: "DELETE" }` (case-sensitive). Legacy `{ confirmEmail }` still accepted for any web client that hasn't picked up a new modal yet.
+- `apps/mobile/contexts/auth-context.tsx`: `deleteAccount()` now POSTs `{ confirm: "DELETE" }`. Dropped the now-unnecessary email lookup; added a 401 branch surfacing "session expired, sign out and back in."
+- `apps/mobile/components/delete-account-modal.tsx`: removed the `email` prop. Input is now: `autoCapitalize="characters"`, `autoCorrect={false}`, `autoComplete="off"`, `spellCheck={false}`. Button enables only when `confirmText === "DELETE"` (strict).
+- `apps/mobile/app/(tabs)/profile.tsx`: removed the `email` prop from the `<DeleteAccountModal />` call.
+- Vercel auto-redeploys web on push (e12e85f). EAS OTA published: update group `6fec3d9c-528a-4d12-8d3e-d4c22fb09a4e`, runtime 0.1.8, channel production.
+
+### Manual steps needed
+- [ ] **Jimmy:** verify on TestFlight after web redeploy + OTA. Repro the original Apple-private-relay path: sign in with Apple → Profile → Delete account → type DELETE → confirm. Should succeed (account row gone, DeletedUser tombstone written). Same flow with a Google-sign-in account as the control case.
+
+### Notes
+- Why the Apple report was misleading: the user reported "Apple sign-in users get Unauthorized." That was a true symptom but the wrong attribution — the route was rejecting **all** mobile users, not just Apple ones. Apple just happened to be the user they tested with first.
+- Why we kept the legacy `confirmEmail` accept path: web's `account-client.tsx` still POSTs that shape. Rather than ship two coordinated changes (web client + route) on the same commit and risk a brief window where one is deployed and the other isn't, the route accepts both shapes. Web client can migrate to `{ confirm: "DELETE" }` later as a cleanup pass.
+- Confirmation phrase is **case-sensitive uppercase** — the route does an exact `=== "DELETE"` check, no `.toUpperCase()` normalization. Matches what the input is producing (autoCapitalize=characters) so it's invisible to the user, but stops a typed-lowercase "delete" from triggering accidentally.
+
+---
+
 ## [2026-04-27] — Reminder time picker unified at 12-hour AM/PM (onboarding + settings)
 
 **Requested by:** Jimmy
