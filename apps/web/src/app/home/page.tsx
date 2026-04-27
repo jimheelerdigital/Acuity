@@ -15,6 +15,7 @@ import { PageContainer } from "@/components/page-container";
 import { RecordButton } from "./record-button";
 import { EntryCard } from "./entry-card";
 import { Greeting } from "./greeting";
+import { GoalsSnapshotCard, type SnapshotGoal } from "./goals-snapshot";
 import { LifeMatrixSnapshot } from "./life-matrix-snapshot";
 import { WeeklyInsightCard } from "./weekly-insight-card";
 
@@ -95,8 +96,9 @@ export default async function DashboardPage() {
   let lifemapAreas: { area: string; score: number }[] = [];
   let weeklyReport: Awaited<ReturnType<typeof fetchLatestWeeklyReport>> = null;
   let totalEntryCount = 0;
+  let snapshotGoals: SnapshotGoal[] = [];
   try {
-    [entries, tasks, lifemapAreas, weeklyReport, totalEntryCount] =
+    [entries, tasks, lifemapAreas, weeklyReport, totalEntryCount, snapshotGoals] =
       await Promise.all([
         fetchEntries(userId),
         prisma.task.findMany({
@@ -111,6 +113,11 @@ export default async function DashboardPage() {
         }),
         fetchLatestWeeklyReport(userId),
         prisma.entry.count({ where: { userId } }),
+        // Top 3 goals for the snapshot card under Weekly insight.
+        // Status priority: IN_PROGRESS first, then NOT_STARTED, then
+        // anything else. Skip ARCHIVED + COMPLETE entirely — they
+        // belong in the goals page, not the dashboard glance.
+        fetchSnapshotGoals(userId),
       ]);
   } catch (err) {
     console.error("[dashboard] Failed to load data:", err);
@@ -262,12 +269,18 @@ export default async function DashboardPage() {
               unlocked={userProg.unlocked.lifeMatrix}
             />
           </div>
-          <div className="lg:col-span-5">
+          {/* Right column — Weekly insight + Goals snapshot stacked
+              with the same gap as the dashboard grid so the column's
+              total height tracks the LifeMatrixSnapshot card on the
+              left. Without the second card the column was visibly
+              short. */}
+          <div className="flex flex-col gap-6 lg:col-span-5">
             <WeeklyInsightCard
               report={weeklyReport}
               entryCount={totalEntryCount}
               unlocked={userProg.unlocked.weeklyReport}
             />
+            <GoalsSnapshotCard goals={snapshotGoals} />
           </div>
 
           {/* Row 4 — CONTEXT TIER. Recent sessions (7 cols) + Open
@@ -353,6 +366,29 @@ async function fetchEntries(userId: string) {
       _count: { select: { tasks: true } },
     },
   });
+}
+
+async function fetchSnapshotGoals(userId: string): Promise<SnapshotGoal[]> {
+  const { prisma } = await import("@/lib/prisma");
+  // Pull the top 3 active goals — IN_PROGRESS first (the "you're
+  // doing this" tier), NOT_STARTED next (extracted but not engaged
+  // yet). Excludes COMPLETE, ON_HOLD, ARCHIVED — those don't belong
+  // on the at-a-glance dashboard surface.
+  const rows = await prisma.goal.findMany({
+    where: { userId, status: { in: ["IN_PROGRESS", "NOT_STARTED"] } },
+    orderBy: [{ status: "asc" }, { lastMentionedAt: "desc" }, { createdAt: "desc" }],
+    take: 3,
+    select: {
+      id: true,
+      title: true,
+      status: true,
+      progress: true,
+      lifeArea: true,
+    },
+  });
+  // Sort IN_PROGRESS before NOT_STARTED — Prisma's `asc` on the
+  // string column gives I < N alphabetically which happens to match.
+  return rows;
 }
 
 async function fetchLatestWeeklyReport(userId: string) {

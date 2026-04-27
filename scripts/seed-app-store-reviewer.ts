@@ -686,12 +686,17 @@ async function main(): Promise<void> {
     }
 
     // ─── Life Map Areas ─────────────────────────────────────────────
+    // Scores are on the 0-10 scale (LifeMatrixSnapshot multiplies by
+    // 10 for display: "Career 72/100"). All six canonical areas are
+    // seeded so the radar polygon has all six axes visible — leaving
+    // FINANCES / OTHER unseeded would collapse two vertices to center
+    // and produce a partial polygon.
     const lifeMapAreas = [
       {
         area: "CAREER",
         name: "Career",
-        color: "#7C3AED",
-        score: 72,
+        color: "#3B82F6",
+        score: 7,
         summary:
           "Strong week-over-week trajectory. Shipped the Q2 plan and started defending the calendar. The migration setback was a bump but the postmortem habit is sticking.",
         topThemes: ["work", "writing", "decision"],
@@ -700,8 +705,8 @@ async function main(): Promise<void> {
       {
         area: "HEALTH",
         name: "Health",
-        color: "#10B981",
-        score: 58,
+        color: "#14B8A6",
+        score: 6,
         summary:
           "Sleep is the lever. Phone-in-kitchen rule is helping when held. Lifting at lunch reliably improves the afternoon — when it happens.",
         topThemes: ["sleep", "exercise", "habit"],
@@ -710,21 +715,41 @@ async function main(): Promise<void> {
       {
         area: "RELATIONSHIPS",
         name: "Relationships",
-        color: "#F59E0B",
-        score: 65,
+        color: "#F43F5E",
+        score: 7,
         summary:
           "Anniversary dinner was the high point. Argument earlier this month surfaced a real boundary issue around evening hours. Family time happens when phone goes away.",
         topThemes: ["family", "kids", "evening"],
         trend: "up",
       },
       {
+        area: "FINANCES",
+        name: "Finances",
+        color: "#F59E0B",
+        score: 5,
+        summary:
+          "Quiet area for now. The senior engineer hire pushed the budget tight but the runway math still works. Worth a deeper look in next month's audit.",
+        topThemes: ["budget", "hiring"],
+        trend: "stable",
+      },
+      {
         area: "PERSONAL",
-        name: "Personal",
-        color: "#3B82F6",
-        score: 70,
+        name: "Personal Growth",
+        color: "#A855F7",
+        score: 7,
         summary:
           "Golf is the cleanest signal — every entry mentioning it correlates with a high mood score. Walking 18 alone has shown up as a reliable reset.",
         topThemes: ["golf", "weekend", "flow"],
+        trend: "stable",
+      },
+      {
+        area: "OTHER",
+        name: "Other",
+        color: "#71717A",
+        score: 4,
+        summary:
+          "Surfaces general reflections that don't slot cleanly into a single dimension yet — most weeks it's near zero, which is the expected state.",
+        topThemes: ["misc"],
         trend: "stable",
       },
     ];
@@ -742,14 +767,17 @@ async function main(): Promise<void> {
           activeGoals: i < 3 ? 1 : 0,
           lastMentioned: now,
           trend: a.trend,
-          weeklyDelta: a.trend === "up" ? 4 : 0,
-          monthlyDelta: a.trend === "up" ? 8 : 1,
+          weeklyDelta: a.trend === "up" ? 1 : 0,
+          monthlyDelta: a.trend === "up" ? 2 : 0,
           mentionCount: 6 + i,
           topThemes: a.topThemes,
           insightSummary: a.summary,
-          historicalHigh: a.score + 5,
-          historicalLow: a.score - 12,
-          baselineScore: 50,
+          // historicalHigh/Low are kept on the 0-10 scale to match
+          // score; columns are Int but the model doesn't enforce a
+          // particular scale.
+          historicalHigh: Math.min(10, a.score + 1),
+          historicalLow: Math.max(0, a.score - 2),
+          baselineScore: 5,
         },
       });
     }

@@ -73,10 +73,18 @@ export function LifeMatrixSnapshot({
     score: scoresByEnum.get(a.enum) ?? 0,
   }));
 
-  // Polygon path: x,y pairs for each dimension, score normalized to 0-1.
+  // Polygon path: x,y pairs for each dimension, score normalized to
+  // 0-1. Clamped on BOTH ends:
+  //   - lower bound 0.05 so a zero-score vertex is visible just off
+  //     the center dot rather than collapsed behind it
+  //   - upper bound 1.0 so any out-of-range data (e.g. a row where
+  //     score is on the 0-100 scale by mistake) still renders inside
+  //     the radar circle instead of projecting off-canvas
   const polygonPoints = ordered
     .map((a, i) => {
-      const fraction = isEmpty ? 0.45 : Math.max(0.05, a.score / 10);
+      const fraction = isEmpty
+        ? 0.45
+        : Math.min(1, Math.max(0.05, a.score / 10));
       const { x, y } = polarToCartesian(i, ordered.length, fraction);
       return `${x.toFixed(1)},${y.toFixed(1)}`;
     })
@@ -152,7 +160,7 @@ export function LifeMatrixSnapshot({
               Hidden in empty state — would suggest data exists. */}
           {!isEmpty &&
             ordered.map((a, i) => {
-              const fraction = Math.max(0.05, a.score / 10);
+              const fraction = Math.min(1, Math.max(0.05, a.score / 10));
               const { x, y } = polarToCartesian(i, ordered.length, fraction);
               return (
                 <circle
