@@ -7,6 +7,30 @@
 
 ---
 
+## [2026-04-27] — /home dashboard: balance row heights (Goals stretch + 6/6 row 4)
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** 55e4ad5
+
+### In plain English (for Keenan)
+Closed two empty-space gaps on the consumer dashboard. The Goals card on the right of the middle row now stretches to match the Life Matrix card on the left — no more dark gap below it. Recent Sessions and Open Tasks at the bottom are now equal-width (50/50 instead of 60/40) so they line up cleanly without one leaving a hanging gap. Page reads as a balanced grid top-to-bottom now.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/app/home/goals-snapshot.tsx`: GoalsSnapshotCard accepts an optional `className` prop merged into the section. Lets callers stretch or constrain it without touching internals.
+- `apps/web/src/app/home/page.tsx`: row-3 right column passes `className="flex-1"` to GoalsSnapshotCard so it grows to whatever vertical space the row demands. Row 4 (Recent Sessions / Open Tasks) changed from `lg:col-span-7` + `lg:col-span-5` to `lg:col-span-6` + `lg:col-span-6`.
+- No new fetches, no schema, no API.
+
+### Manual steps needed
+- [ ] **Jimmy:** verify on /home as the reviewer account once Vercel redeploys. No vertical empty space below Goals; Recent Sessions and Open Tasks should be equal width and roughly equal height with the seeded data.
+
+### Notes
+- Why stretching the Goals card instead of adding a third right-column card: the previous round already added Goals as the second card. Adding a third would have been "filler for filler's sake" and pulled focus from the actual signal (insight + goals). Stretching the existing card to absorb leftover space is the cheapest way to balance.
+- Why 6/6 instead of leaving 7/5 plus stretching Open Tasks: stretching a `<section>` card with empty space inside reads as visual filler. Equal columns with equal heights reads as intentional layout. The 7/5 split made sense when row 3's Life Matrix needed visual emphasis; row 4's two cards are peers, so equal widths fit the content relationship.
+- The `flex-1` on a card with content-driven height inside a flex column does what we want: card outer height grows, padding stretches, content stays top-anchored. The empty space at the bottom of the card looks like card padding rather than a layout gap.
+
+---
+
 ## [2026-04-27] — Admin: surface fetch errors + typography pass + max-width 1600 + tile breakpoint
 
 **Requested by:** Jimmy
