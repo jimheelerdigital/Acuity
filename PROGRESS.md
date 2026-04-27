@@ -11,7 +11,7 @@
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** _to be filled by commit_
+**Commit hash:** 30b4336
 
 ### In plain English (for Keenan)
 Two issues fixed.
