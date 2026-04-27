@@ -11,7 +11,7 @@
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** _to be filled by commit_
+**Commit hash:** e79246f
 
 ### In plain English (for Keenan)
 The remaining /admin tabs — Funnel, Engagement, and Revenue's Failed Payment Alerts — are now drillable. Click "Account Created", "First Recording", "Active Day 7", or "Converted to Paid" in the Funnel → modal lists the users at that step. Click "Waitlist Signups" → modal lists the actual waitlist rows (different shape since they're not yet matched to User accounts; that's Slice 3). Click DAU / WAU / MAU tile in Engagement → list of users who recorded in that window. Click any row in the Failed Payment Alerts table or any silent-trial row → drops you straight into that user's detail modal in the Users tab.
