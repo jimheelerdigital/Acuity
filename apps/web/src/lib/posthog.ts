@@ -82,7 +82,13 @@ export type AnalyticsEvent =
   // skips the tasks+goals that Claude extracted from an entry. Props
   // carry tasksProposed/tasksCommitted/goalsProposed/goalsCommitted
   // so we can tune the extraction prompt against real signal-to-noise.
-  | "entry_extraction_reviewed";
+  | "entry_extraction_reviewed"
+  // Acquisition funnel events — signup flow instrumentation
+  | "signup_page_viewed"
+  | "start_trial_cta_clicked"
+  | "first_recording_completed"
+  // A/B experiment tracking
+  | "experiment_variant_assigned";
 
 /**
  * Fire an analytics event. Safe on missing env config (no-op). Safe

@@ -23,6 +23,7 @@ const UsersTab = dynamic(() => import("./tabs/UsersTab"));
 const TrialEmailsTab = dynamic(() => import("./tabs/TrialEmailsTab"));
 const GuideTab = dynamic(() => import("./tabs/GuideTab"));
 const AutoBlogTab = dynamic(() => import("./tabs/AutoBlogTab"));
+const AcquisitionTab = dynamic(() => import("./tabs/AcquisitionTab"));
 
 const TABS = [
   { key: "overview", label: "Overview" },
@@ -31,6 +32,7 @@ const TABS = [
   { key: "revenue", label: "Revenue" },
   { key: "funnel", label: "Funnel" },
   { key: "ads", label: "Ads" },
+  { key: "acquisition", label: "Acquisition" },
   { key: "ai-costs", label: "AI Costs" },
   { key: "content-factory", label: "Content Factory" },
   { key: "auto-blog", label: "Auto Blog" },
@@ -114,6 +116,7 @@ export default function AdminDashboard() {
   const showTimeRange =
     activeTab !== "content-factory" &&
     activeTab !== "auto-blog" &&
+    activeTab !== "acquisition" &&
     activeTab !== "feature-flags" &&
     activeTab !== "users" &&
     activeTab !== "trial-emails" &&
@@ -200,6 +203,7 @@ export default function AdminDashboard() {
           )}
           {activeTab === "content-factory" && <ContentFactoryTab />}
           {activeTab === "auto-blog" && <AutoBlogTab />}
+          {activeTab === "acquisition" && <AcquisitionTab />}
           {activeTab === "red-flags" && (
             <RedFlagsTab start={startStr} end={endStr} />
           )}

@@ -292,6 +292,28 @@ const GUIDE_DATA: GuideSection[] = [
         action:
           "Either stop acquiring from that source, or dig into WHY those users don't convert.",
       },
+      {
+        name: "Day 1 Retention",
+        measures:
+          "Percentage of signups who record at least one entry within 2 days of signup.",
+        matters:
+          "First-day activation is the strongest predictor of long-term retention. Users who don't try the product in 48h rarely come back.",
+        healthy: "60%+ of signups record within 48 hours.",
+        redFlag: "Below 40% — onboarding friction or unclear value prop.",
+        action:
+          "Check if the onboarding flow is confusing, the first-debrief CTA is visible, or push notifications are disabled.",
+      },
+      {
+        name: "Day 30 Retention",
+        measures:
+          "Percentage of signups who are still recording around day 30.",
+        matters:
+          "The make-or-break metric for long-term product-market fit. Users still active at 30 days are highly likely to convert or stay.",
+        healthy: "15%+ of signups still active at day 30.",
+        redFlag: "Below 8% — the product isn't retaining past the novelty phase.",
+        action:
+          "Look at Day 7 vs Day 30 drop — if Day 7 is healthy but Day 30 drops sharply, the weekly report isn't delivering enough value to sustain the habit.",
+      },
     ],
   },
   {
@@ -421,6 +443,44 @@ const GUIDE_DATA: GuideSection[] = [
         redFlag: "",
         action:
           "Turn new features on gradually. Never launch to everyone day one.",
+      },
+    ],
+  },
+  {
+    tab: "Acquisition",
+    metrics: [
+      {
+        name: "Blended CAC vs True CAC",
+        measures:
+          "Blended CAC = total ad spend / total signups. True CAC = total ad spend / paid conversions only.",
+        matters:
+          "Blended CAC tells you what you're paying per signup. True CAC tells you what you're paying per paying customer. Use blended for budget planning, true for unit economics.",
+        healthy: "Blended CAC under $15. True CAC under $100.",
+        redFlag: "True CAC above $200 — you're paying more to acquire a customer than their first year of revenue.",
+        action:
+          "Pause lowest-performing campaigns. Double down on campaigns with the lowest true CAC.",
+      },
+      {
+        name: "Pre-Signup Funnel Drop-Off",
+        measures:
+          "Drop-off rate at each step: landing page → CTA click → signup page view → signup completion.",
+        matters:
+          "Shows where potential users are bouncing before they even create an account.",
+        healthy: "Less than 40% drop at any single step.",
+        redFlag: "Signup page → completion drops 60%+ — the form is too hard or the value prop is unclear.",
+        action:
+          "If CTA→signup page is high drop: page loads too slowly or CTA copy is misleading. If signup→completion is high: simplify the form or add social proof.",
+      },
+      {
+        name: "Experiment Significance",
+        measures:
+          "Whether an A/B test variant has enough data to declare a winner.",
+        matters:
+          "Shipping a winner too early leads to false positives. Waiting too long wastes time.",
+        healthy: "p < 0.05 with 100+ users per variant.",
+        redFlag: "Running for 30+ days with no significant difference — the variants are too similar.",
+        action:
+          "Ship the winner at p < 0.05. If neither wins after 30 days, try a bigger change.",
       },
     ],
   },

@@ -37,8 +37,18 @@ export async function bootstrapNewUser(params: {
    *  resulting User.referredById and, on trial→paid conversion later,
    *  credits the referrer via ReferralConversion. */
   referralCodeFromSignup?: string | null;
+  /** First-touch UTM attribution from the acuity_attribution cookie. */
+  attribution?: {
+    utmSource?: string;
+    utmMedium?: string;
+    utmCampaign?: string;
+    utmContent?: string;
+    utmTerm?: string;
+    referrer?: string;
+    landingPath?: string;
+  };
 }): Promise<void> {
-  const { userId, email, referralCodeFromSignup } = params;
+  const { userId, email, referralCodeFromSignup, attribution } = params;
   const { prisma } = await import("@/lib/prisma");
   const { track } = await import("@/lib/posthog");
   const { generateReferralCode, resolveReferrerByCode } = await import(
@@ -95,6 +105,13 @@ export async function bootstrapNewUser(params: {
       isFoundingMember,
       foundingMemberNumber,
       ...(referredById ? { referredById } : {}),
+      ...(attribution?.utmSource ? { signupUtmSource: attribution.utmSource } : {}),
+      ...(attribution?.utmMedium ? { signupUtmMedium: attribution.utmMedium } : {}),
+      ...(attribution?.utmCampaign ? { signupUtmCampaign: attribution.utmCampaign } : {}),
+      ...(attribution?.utmContent ? { signupUtmContent: attribution.utmContent } : {}),
+      ...(attribution?.utmTerm ? { signupUtmTerm: attribution.utmTerm } : {}),
+      ...(attribution?.referrer ? { signupReferrer: attribution.referrer } : {}),
+      ...(attribution?.landingPath ? { signupLandingPath: attribution.landingPath } : {}),
     },
   });
 
@@ -105,6 +122,10 @@ export async function bootstrapNewUser(params: {
     isFoundingMember,
     foundingMemberNumber,
     email,
+    utmSource: attribution?.utmSource ?? null,
+    utmMedium: attribution?.utmMedium ?? null,
+    utmCampaign: attribution?.utmCampaign ?? null,
+    landingPath: attribution?.landingPath ?? null,
   });
 
   await prisma.lifeMapArea

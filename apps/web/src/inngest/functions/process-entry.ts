@@ -362,9 +362,17 @@ export const processEntryFn = inngest.createFunction(
 
       const existing = await prisma.user.findUnique({
         where: { id: userId },
-        select: { firstRecordingAt: true },
+        select: {
+          firstRecordingAt: true,
+          createdAt: true,
+          signupUtmSource: true,
+          signupUtmCampaign: true,
+          foundingMemberNumber: true,
+        },
       });
       if (!existing) return;
+
+      const isFirstRecording = existing.firstRecordingAt === null;
 
       await prisma.user.update({
         where: { id: userId },
@@ -374,6 +382,25 @@ export const processEntryFn = inngest.createFunction(
           totalRecordings: { increment: 1 },
         },
       });
+
+      // Fire first_recording_completed PostHog event
+      if (isFirstRecording) {
+        try {
+          const { track } = await import("@/lib/posthog");
+          const hoursSinceSignup = Math.round(
+            (entry.createdAt.getTime() - existing.createdAt.getTime()) /
+              (1000 * 60 * 60)
+          );
+          await track(userId, "first_recording_completed", {
+            hoursSinceSignup,
+            signupUtmSource: existing.signupUtmSource,
+            signupUtmCampaign: existing.signupUtmCampaign,
+            foundingMemberNumber: existing.foundingMemberNumber,
+          });
+        } catch {
+          // PostHog failure is non-fatal
+        }
+      }
     }).catch((err) => {
       logger.error(
         "[process-entry] update-recording-stats failed (non-fatal)",

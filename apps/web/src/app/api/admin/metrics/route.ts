@@ -220,6 +220,24 @@ async function getOverview(
     prevTrialTotal > 0 ? (prevTrialConverted / prevTrialTotal) * 100 : 0;
   const aiSpendCents = Number(aiSpend[0]?.total ?? 0);
 
+  // Blended CAC: total ad spend / total signups in period
+  let blendedCac: number | null = null;
+  try {
+    const adSpendRows = await prisma.metaSpend.findMany({
+      where: { weekStart: { gte: start, lte: end } },
+      select: { spendCents: true },
+    });
+    const totalAdSpend = adSpendRows.reduce(
+      (acc: number, r: { spendCents: number }) => acc + r.spendCents,
+      0
+    );
+    if (totalAdSpend > 0 && signups > 0) {
+      blendedCac = Math.round(totalAdSpend / signups);
+    }
+  } catch {
+    // MetaSpend table may not exist yet
+  }
+
   return {
     signups,
     prevSignups,
@@ -228,6 +246,7 @@ async function getOverview(
     conversionRate: Math.round(conversionRate * 10) / 10,
     prevConversionRate: Math.round(prevConversionRate * 10) / 10,
     aiSpendCents,
+    blendedCac,
     signupsOverTime: signupsOverTime.map((r: { date: string; count: bigint }) => ({
       date: r.date,
       count: Number(r.count),
@@ -496,8 +515,10 @@ async function getFunnel(prisma: P, start: Date, end: Date) {
     waitlistCount,
     accountsCreated,
     firstRecording,
+    activeDay1,
     activeDay3,
     activeDay7,
+    activeDay30,
     converted,
   ] = await Promise.all([
     prisma.waitlist.count({
@@ -511,6 +532,15 @@ async function getFunnel(prisma: P, start: Date, end: Date) {
       SELECT COUNT(DISTINCT u.id)::bigint as count
       FROM "User" u
       INNER JOIN "Entry" e ON e."userId" = u.id
+      WHERE u."createdAt" >= ${start} AND u."createdAt" <= ${end}
+    `.catch(() => [{ count: BigInt(0) }]),
+    // Active Day 1 (first 0-2 days)
+    prisma.$queryRaw<{ count: bigint }[]>`
+      SELECT COUNT(DISTINCT u.id)::bigint as count
+      FROM "User" u
+      INNER JOIN "Entry" e ON e."userId" = u.id
+        AND e."createdAt" >= u."createdAt"
+        AND e."createdAt" <= u."createdAt" + interval '2 days'
       WHERE u."createdAt" >= ${start} AND u."createdAt" <= ${end}
     `.catch(() => [{ count: BigInt(0) }]),
     // Active Day 3
@@ -531,6 +561,15 @@ async function getFunnel(prisma: P, start: Date, end: Date) {
         AND e."createdAt" <= u."createdAt" + interval '8 days'
       WHERE u."createdAt" >= ${start} AND u."createdAt" <= ${end}
     `.catch(() => [{ count: BigInt(0) }]),
+    // Active Day 30 (days 28-32)
+    prisma.$queryRaw<{ count: bigint }[]>`
+      SELECT COUNT(DISTINCT u.id)::bigint as count
+      FROM "User" u
+      INNER JOIN "Entry" e ON e."userId" = u.id
+        AND e."createdAt" >= u."createdAt" + interval '28 days'
+        AND e."createdAt" <= u."createdAt" + interval '32 days'
+      WHERE u."createdAt" >= ${start} AND u."createdAt" <= ${end}
+    `.catch(() => [{ count: BigInt(0) }]),
     // Converted to paid
     prisma.user.count({
       where: {
@@ -544,8 +583,10 @@ async function getFunnel(prisma: P, start: Date, end: Date) {
     { label: "Waitlist Signups", count: waitlistCount },
     { label: "Account Created", count: accountsCreated },
     { label: "First Recording", count: Number(firstRecording[0]?.count ?? 0) },
+    { label: "Active Day 1", count: Number(activeDay1[0]?.count ?? 0) },
     { label: "Active Day 3", count: Number(activeDay3[0]?.count ?? 0) },
     { label: "Active Day 7", count: Number(activeDay7[0]?.count ?? 0) },
+    { label: "Active Day 30", count: Number(activeDay30[0]?.count ?? 0) },
     { label: "Converted to Paid", count: converted },
   ];
 

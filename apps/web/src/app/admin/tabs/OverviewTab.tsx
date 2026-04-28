@@ -144,9 +144,17 @@ export default function OverviewTab({
           }
         />
         <MetricCard
-          label="Blended Customer Acquisition Cost (CAC)"
-          value="—"
-          title="Awaiting ad attribution. Lights up after User.signupSource ships in Slice 3."
+          label="Blended CAC"
+          value={
+            data.blendedCac != null
+              ? `$${(data.blendedCac / 100).toFixed(2)}`
+              : "—"
+          }
+          title={
+            data.blendedCac != null
+              ? "Total ad spend ÷ total signups this period"
+              : "No ad spend data for this period. Enter spend in the Ads tab."
+          }
         />
         <MetricCard
           label="Claude Spend (Month-to-Date)"

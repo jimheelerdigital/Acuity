@@ -22,6 +22,28 @@ function SignUpForm() {
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Fire signup_page_viewed PostHog event on mount
+  useEffect(() => {
+    try {
+      const { getClientAttribution } = require("@/lib/attribution");
+      const posthog = require("posthog-js").default;
+      const attr = getClientAttribution() ?? {};
+      if (posthog?.capture) {
+        posthog.capture("signup_page_viewed", {
+          utm_source: attr.utm_source ?? null,
+          utm_medium: attr.utm_medium ?? null,
+          utm_campaign: attr.utm_campaign ?? null,
+          utm_content: attr.utm_content ?? null,
+          utm_term: attr.utm_term ?? null,
+          referrer: attr.referrer ?? null,
+          landingPath: attr.landingPath ?? null,
+        });
+      }
+    } catch {
+      // PostHog not loaded — degrade silently
+    }
+  }, []);
+
   // Resolve ref code from (in order) query string → localStorage.
   // Storing it in localStorage lets the ?ref= → sign-up flow survive
   // a marketing landing detour without a server-side session.
@@ -65,6 +87,14 @@ function SignUpForm() {
     // Meta Pixel: Lead fires on signup form submission
     if (typeof fbq !== "undefined") fbq("track", "Lead");
     try {
+      // Read attribution cookie for UTM capture
+      let attribution: Record<string, string> | undefined;
+      try {
+        const { getClientAttribution } = require("@/lib/attribution");
+        const attr = getClientAttribution();
+        if (attr) attribution = attr;
+      } catch { /* ignore */ }
+
       const res = await fetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -73,6 +103,7 @@ function SignUpForm() {
           password,
           name: name.trim() || null,
           referralCode: referralCode ?? undefined,
+          attribution,
         }),
       });
       if (!res.ok) {
@@ -91,6 +122,14 @@ function SignUpForm() {
         return;
       }
       if (typeof fbq !== "undefined") fbq("track", "CompleteRegistration");
+      // Persist UTM attribution to user record
+      if (attribution) {
+        fetch("/api/auth/set-attribution", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(attribution),
+        }).catch(() => { /* non-critical */ });
+      }
       // Clear the stored code so a subsequent signup from the same
       // browser doesn't mis-attribute.
       try {

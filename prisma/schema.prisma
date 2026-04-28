@@ -222,6 +222,16 @@ model User {
   onboardingUnsubscribed Boolean      @default(false)
   trialEmailLogs         TrialEmailLog[]
 
+  // Signup attribution (first-touch UTM capture). Written once at signup
+  // from the acuity_attribution cookie set on first landing page visit.
+  signupUtmSource        String?
+  signupUtmMedium        String?
+  signupUtmCampaign      String?
+  signupUtmContent       String?
+  signupUtmTerm          String?
+  signupReferrer         String?
+  signupLandingPath      String?
+
   @@index([createdAt])
 }
 
@@ -1320,10 +1330,31 @@ model FeatureFlag {
   // Null = no tier gate. "FREE" or "PRO" restricts to users whose
   // User.subscriptionStatus matches the mapped tier.
   requiredTier       String?
+  // A/B experiment support. When experimentVariants is non-empty,
+  // the flag acts as an experiment — users are deterministically
+  // bucketed into a variant based on hash(userId+key).
+  experimentVariants    String[]  @default([])
+  experimentTrafficSplit Json?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
   @@index([key])
+}
+
+// A/B experiment variant assignment. Records which variant a user
+// or session was assigned to for a given experiment flag. Supports
+// both authenticated users (userId) and anonymous visitors (sessionId).
+model ExperimentAssignment {
+  id         String   @id @default(cuid())
+  userId     String?
+  sessionId  String?
+  flagKey    String
+  variant    String
+  assignedAt DateTime @default(now())
+
+  @@unique([userId, flagKey])
+  @@unique([sessionId, flagKey])
+  @@index([flagKey])
 }
 
 // Per-user override — forces a flag on or off for one account,

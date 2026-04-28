@@ -44,6 +44,7 @@ export async function POST(req: NextRequest) {
     password?: unknown;
     name?: unknown;
     referralCode?: unknown;
+    attribution?: Record<string, string>;
   } | null;
 
   const email = typeof body?.email === "string" ? body.email.toLowerCase().trim() : "";
@@ -127,7 +128,21 @@ export async function POST(req: NextRequest) {
     // Same bootstrap as Google OAuth signups. Trial clock + Life
     // Matrix + UserMemory + trial_started event.
     const { bootstrapNewUser } = await import("@/lib/bootstrap-user");
-    await bootstrapNewUser({ userId, email, referralCodeFromSignup: referralCode });
+    const attr = body?.attribution;
+    await bootstrapNewUser({
+      userId,
+      email,
+      referralCodeFromSignup: referralCode,
+      attribution: attr ? {
+        utmSource: attr.utm_source,
+        utmMedium: attr.utm_medium,
+        utmCampaign: attr.utm_campaign,
+        utmContent: attr.utm_content,
+        utmTerm: attr.utm_term,
+        referrer: attr.referrer,
+        landingPath: attr.landingPath,
+      } : undefined,
+    });
   }
 
   // Store the verification token. Reuse NextAuth's VerificationToken

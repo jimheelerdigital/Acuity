@@ -16,8 +16,10 @@ const STEP_KEY: Record<string, string> = {
   "Waitlist Signups": "waitlist",
   "Account Created": "account",
   "First Recording": "first_recording",
+  "Active Day 1": "active_d1",
   "Active Day 3": "active_d3",
   "Active Day 7": "active_d7",
+  "Active Day 30": "active_d30",
   "Converted to Paid": "converted",
 };
 

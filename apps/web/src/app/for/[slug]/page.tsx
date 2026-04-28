@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import {
   LandingNav,
@@ -22,6 +23,16 @@ export default function PersonaLandingPage({ params }: { params: { slug: string 
 
   const UTM = params.slug;
   const WAITLIST = `/auth/signup?utm_campaign=${UTM}`;
+
+  // Set first-touch attribution cookie on landing page visit
+  useEffect(() => {
+    try {
+      const { setAttributionCookie } = require("@/lib/attribution");
+      setAttributionCookie({ landingPath: `/for/${params.slug}` });
+    } catch {
+      // attribution module may not be available
+    }
+  }, [params.slug]);
 
   return (
     <div className="min-h-screen bg-[#0A0A0F] text-white pb-24 sm:pb-0 overflow-x-hidden">

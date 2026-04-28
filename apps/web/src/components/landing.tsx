@@ -1051,10 +1051,38 @@ function trackInitiateCheckout() {
   if (typeof window !== "undefined" && window.fbq) {
     window.fbq("track", "InitiateCheckout");
   }
+  // PostHog CTA click tracking for acquisition funnel
+  try {
+    const { getClientAttribution } = require("@/lib/attribution");
+    const attr = getClientAttribution();
+    const posthog = require("posthog-js").default;
+    if (posthog?.capture) {
+      posthog.capture("start_trial_cta_clicked", {
+        sourcePage: window.location.pathname,
+        utm_source: attr?.utm_source ?? null,
+        utm_medium: attr?.utm_medium ?? null,
+        utm_campaign: attr?.utm_campaign ?? null,
+        utm_content: attr?.utm_content ?? null,
+        ctaPosition: "above-fold",
+      });
+    }
+  } catch {
+    // PostHog may not be loaded — degrade silently
+  }
 }
 
 export function LandingPage() {
   const [tickerPaused, setTickerPaused] = useState(false);
+
+  // Set first-touch attribution cookie on landing
+  useEffect(() => {
+    try {
+      const { setAttributionCookie } = require("@/lib/attribution");
+      setAttributionCookie();
+    } catch {
+      // attribution module may not be available
+    }
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#0A0A0F] text-white pb-24 sm:pb-0 overflow-x-hidden">
