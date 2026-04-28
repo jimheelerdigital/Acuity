@@ -7,6 +7,31 @@
 
 ---
 
+## [2026-04-27] — /home row alignment via grid stretch + h-full (third pass, settled)
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** 3a3df57
+
+### In plain English (for Keenan)
+Third and final pass on the dashboard's row alignment. The previous fix overshot — Goals card was extending past the Life Matrix card on the right. Reset the approach: each card now uses a "fill the cell" rule, and CSS grid handles the row sizing. Whichever side has more content sets the row height; the other side's card stretches to match. Bottom edges line up. If a card has empty space inside, that's just padding.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/app/home/life-matrix-snapshot.tsx`: section gains `flex h-full flex-col`.
+- `apps/web/src/app/home/page.tsx`: removed `h-full` from right-column wrapper and `flex-1` from Goals (the previous round's overcorrection). Recent Sessions section gains `flex h-full flex-col`.
+- `apps/web/src/app/home/open-tasks-card.tsx`: section gains `flex h-full flex-col`.
+- Approach: CSS grid stretches each cell to row height (default `align-items: stretch`). Each card uses `h-full` so its border extends to the cell bottom. Bottom edges align via the grid cell boundary, not by inflating content.
+
+### Manual steps needed
+- [ ] **Jimmy:** verify on /home: Life Matrix bottom edge == Goals bottom edge; Recent Sessions bottom edge == Open Tasks bottom edge. The "shorter" card should show its border extending to the row bottom with empty padding inside (intended).
+
+### Notes
+- Three passes on the same problem. Each round of feedback narrowed the constraint — first round added Goals to bridge a gap, second round used `h-full + flex-1` to stretch Goals (overshot), third round drops the stretching and lets grid do its native job. Lesson: when alignment is the problem, the right tool is the layout system that owns it (grid / flex), not content padding tricks.
+- The reason `h-full` works here without a sibling `flex-1`: each card is a direct child of a stretched grid cell. The cell has a resolved height (from `align-items: stretch`), so `height: 100%` on the card resolves cleanly. The right column wrapper is a flex container with natural-height children — total = right natural — which only matters if right is the taller side (then it sets row height; Life Matrix's h-full stretches to match).
+- I cannot screenshot the deployed page from this session — visual verification is on Jimmy. The CSS reasoning checks out: any side that's shorter than the row gets its card stretched via h-full to the cell bottom, so bottom edges of the cards align with the grid cell bottom on both sides.
+
+---
+
 ## [2026-04-27] — Recording-processing screen: spinner → determinate progress bar (web + mobile)
 
 **Requested by:** Jimmy
