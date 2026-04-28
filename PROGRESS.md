@@ -11,7 +11,7 @@
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** _to be filled by commit_
+**Commit hash:** f718ca2
 
 ### In plain English (for Keenan)
 Users can now delete journal entries. Three input methods on iPhone, two on web — all funnel through the same confirmation dialog ("Delete this entry? This cannot be undone.") and the same backend endpoint. This was a launch-blocker for App Store review under Guideline 5.1.1(v) (data deletion), same regulation that drove the account-delete flow.
