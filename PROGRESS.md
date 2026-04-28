@@ -7,6 +7,33 @@
 
 ---
 
+## [2026-04-27] — /life-matrix grid contrast + axis label breathing room
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** d6197fc
+
+### In plain English (for Keenan)
+After bumping the polygon fill last round, two new annoyances on the dedicated Life Matrix page: the background hexagon outlines were too bright and competed with the data, and the axis labels (Career / Health / Relationships / Personal Growth / Finances / Other) were sitting close enough to the polygon that the longer ones overlapped the shape's edge. Toned the grid down so it recedes behind the polygon, and pushed the labels further out with extra room to breathe.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/app/insights/life-map.tsx`:
+  - viewBox `0 0 300 300` → `-30 -10 360 320` (extra 30px horizontal margin per side, 10px vertical) so the further-out labels don't clip on the SVG edge
+  - max-width 400 → 420
+  - Rings: inner four use `stroke-zinc-200 dark:stroke-white/[0.10]`, outermost uses `stroke-zinc-300 dark:stroke-white/[0.15]`. strokeWidth 0.5 → 0.75 so the rings still register at lower opacity
+  - Spokes: same `stroke-zinc-200 dark:stroke-white/[0.10]`, strokeWidth 0.75
+  - Axis label radial offset 18 → 32 (label position from chart center)
+- No schema, no API, no mobile.
+
+### Manual steps needed
+- [ ] **Jimmy:** verify on /life-matrix as the reviewer account once Vercel redeploys: rings recede behind the polygon (visible but not loud), all 6 axis labels render outside the polygon with clear breathing room, no clipped text on long names like "Personal Growth".
+
+### Notes
+- Why class-based strokes vs. inline rgba: lets light + dark mode each get their own tuned value without a JS branch. Tailwind's `stroke-{color}/[opacity]` syntax is what made this clean — without that we'd be doing CSS variables or inline conditionals.
+- The +32 offset works because the polygon vertices max at maxR=110 (score 10). At +32 labels sit at r=142, comfortably outside any vertex even at high scores. The viewBox expansion is what made it possible without clipping the labels themselves at the SVG edge.
+
+---
+
 ## [2026-04-27] — /life-matrix radar polygon fill bumped 0.12 → 0.50
 
 **Requested by:** Jimmy
