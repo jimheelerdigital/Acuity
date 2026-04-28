@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { getPostBySlug, getAllSlugs } from "@/lib/blog-posts";
@@ -20,6 +20,8 @@ interface DynamicPost {
   targetKeyword: string | null;
   distributedAt: Date | null;
   finalBody: string | null;
+  status: string;
+  redirectTo: string | null;
 }
 
 async function getDynamicPost(slug: string): Promise<DynamicPost | null> {
@@ -29,7 +31,15 @@ async function getDynamicPost(slug: string): Promise<DynamicPost | null> {
       where: {
         slug,
         type: "BLOG",
-        status: "DISTRIBUTED",
+        status: {
+          in: [
+            "DISTRIBUTED",
+            "AUTO_PUBLISHED",
+            "PRUNED_DAY7",
+            "PRUNED_DAY30",
+            "PRUNED_DAY90",
+          ],
+        },
       },
       select: {
         slug: true,
@@ -40,6 +50,8 @@ async function getDynamicPost(slug: string): Promise<DynamicPost | null> {
         targetKeyword: true,
         distributedAt: true,
         finalBody: true,
+        status: true,
+        redirectTo: true,
       },
     }) as DynamicPost | null;
   } catch {
@@ -321,6 +333,11 @@ export default async function BlogPostPage({ params }: Props) {
   // Try dynamic post
   const dynamicPost = await getDynamicPost(params.slug);
   if (!dynamicPost) notFound();
+
+  // Pruned posts redirect to the best-performing live post
+  if (dynamicPost.redirectTo && dynamicPost.status.startsWith("PRUNED_")) {
+    permanentRedirect(`/blog/${dynamicPost.redirectTo}`);
+  }
 
   const htmlBody = sanitizeHtml(dynamicPost.finalBody ?? dynamicPost.body);
   const publishedAt =

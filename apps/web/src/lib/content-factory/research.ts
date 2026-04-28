@@ -59,6 +59,8 @@ interface GA4Winner {
   sessions: number;
 }
 
+// Uses @google-analytics/data SDK directly (not the shared google/auth.ts
+// helper) because the GA4 SDK handles its own auth via BetaAnalyticsDataClient.
 async function fetchGA4Winners(): Promise<GA4Winner[]> {
   const propertyId = process.env.GA4_PROPERTY_ID;
   const serviceAccountKey = process.env.GA4_SERVICE_ACCOUNT_KEY;

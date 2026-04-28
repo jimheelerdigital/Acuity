@@ -312,7 +312,7 @@ Write ${count} Reddit post draft(s). Pick the subreddit that best matches today'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function extractJson(raw: string): string {
+export function extractJson(raw: string): string {
   // Try to extract JSON from markdown code blocks or raw text
   const codeBlockMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
   if (codeBlockMatch) return codeBlockMatch[1].trim();

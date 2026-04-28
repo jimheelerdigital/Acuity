@@ -39,7 +39,7 @@ async function updateJob(
     data,
   });
   console.log(
-    `[GenerationJob ${jobId}] step ${data.currentStep ?? "?"}/${12}: ${data.stepLabel ?? data.status ?? "update"}`
+    `[GenerationJob ${jobId}] step ${data.currentStep ?? "?"}/${11}: ${data.stepLabel ?? data.status ?? "update"}`
   );
 }
 
@@ -81,79 +81,64 @@ export const generateDailyFn = inngest.createFunction(
         briefing = await buildDailyBriefing();
       }
 
-      // Step 2: Blog post
-      await updateJob(jobId, {
-        currentStep: 2,
-        stepLabel: "Writing SEO blog post…",
-      });
+      // Blog generation has been moved to the auto-blog pipeline
+      // (see inngest/functions/auto-blog.ts). This function now produces
+      // 8 pieces: 3 tweets + 2 TikToks + 2 ads + 1 Reddit draft.
 
       const {
-        generateBlogPost,
         generateTwitterPosts,
         generateTikTokScripts,
         generateAdCopy,
         generateRedditDraft,
       } = await import("@/lib/content-factory/generate");
 
-      const blog = await generateBlogPost(briefing);
-
-      // Steps 3-5: Tweets (one at a time for progress)
+      // Steps 2-4: Tweets (one at a time for progress)
       const tweets = [];
       for (let i = 0; i < 3; i++) {
         await updateJob(jobId, {
-          currentStep: 3 + i,
+          currentStep: 2 + i,
           stepLabel: `Writing tweet ${i + 1} of 3…`,
         });
         const batch = await generateTwitterPosts(briefing, 1);
         tweets.push(...batch);
       }
 
-      // Steps 6-7: TikTok scripts
+      // Steps 5-6: TikTok scripts
       const tiktoks = [];
       for (let i = 0; i < 2; i++) {
         await updateJob(jobId, {
-          currentStep: 6 + i,
+          currentStep: 5 + i,
           stepLabel: `Writing TikTok script ${i + 1} of 2…`,
         });
         const batch = await generateTikTokScripts(briefing, 1);
         tiktoks.push(...batch);
       }
 
-      // Steps 8-9: Ad copy
+      // Steps 7-8: Ad copy
       const ads = [];
       for (let i = 0; i < 2; i++) {
         await updateJob(jobId, {
-          currentStep: 8 + i,
+          currentStep: 7 + i,
           stepLabel: `Writing ad copy variant ${i + 1} of 2…`,
         });
         const batch = await generateAdCopy(briefing, 1);
         ads.push(...batch);
       }
 
-      // Step 10: Reddit draft
+      // Step 9: Reddit draft
       await updateJob(jobId, {
-        currentStep: 10,
+        currentStep: 9,
         stepLabel: "Writing Reddit draft…",
       });
       const redditDrafts = await generateRedditDraft(briefing, 1);
 
-      // Step 11: Save to database
+      // Step 10: Save to database
       await updateJob(jobId, {
-        currentStep: 11,
+        currentStep: 10,
         stepLabel: "Saving to database…",
       });
 
       const pieces = [
-        {
-          type: "BLOG" as const,
-          title: blog.title,
-          body: blog.body,
-          hook: blog.hook,
-          cta: blog.cta,
-          targetKeyword: blog.targetKeyword,
-          predictedScore: blog.predictedScore,
-          sourceBriefingId: briefing.id,
-        },
         ...tweets.map((t) => ({
           type: "TWITTER" as const,
           title: t.hook.slice(0, 80),
@@ -196,10 +181,10 @@ export const generateDailyFn = inngest.createFunction(
         pieces.map((p) => prisma.contentPiece.create({ data: p }))
       );
 
-      // Step 12: Done
+      // Step 11: Done
       await updateJob(jobId, {
         status: "SUCCESS",
-        currentStep: 12,
+        currentStep: 11,
         stepLabel: `Done! ${created.length} pieces created`,
         piecesCreated: created.length,
         completedAt: new Date(),

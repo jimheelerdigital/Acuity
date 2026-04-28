@@ -727,12 +727,21 @@ model ContentPiece {
   reviewedBy       String?
   editNotes        String?
   finalBody        String?           @db.Text
-  distributedAt    DateTime?
-  distributedUrl   String?
-  slug             String?           @unique
-  metrics          Json?
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
+  distributedAt          DateTime?
+  distributedUrl         String?
+  slug                   String?           @unique
+  metrics                Json?
+  secondaryKeywords      String[]          @default([])
+  faqSchema              Json?
+  foundingMemberSnapshot Int?
+  impressions            Int               @default(0)
+  clicks                 Int               @default(0)
+  lastGscSyncAt          DateTime?
+  publishedAt            DateTime?
+  redirectTo             String?
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
+  blogTopic              BlogTopicQueue?
 
   @@index([type, status, createdAt])
 }
@@ -765,6 +774,11 @@ enum ContentStatus {
   REJECTED
   EDITED
   DISTRIBUTED
+  AUTO_PUBLISHED
+  PRUNED_DAY7
+  PRUNED_DAY30
+  PRUNED_DAY90
+  GENERATION_FAILED
 }
 
 // ─── Generation Job Tracking ─────────────────────────────────────────────────
@@ -787,6 +801,55 @@ enum JobStatus {
   RUNNING
   SUCCESS
   FAILED
+}
+
+// ─── Auto-Blog System ───────────────────────────────────────────────────────
+
+model BlogTopicQueue {
+  id             String          @id @default(cuid())
+  topic          String
+  persona        String
+  targetKeyword  String
+  searchIntent   String
+  status         BlogTopicStatus @default(QUEUED)
+  scheduledFor   DateTime?
+  createdAt      DateTime        @default(now())
+  publishedAt    DateTime?
+  contentPieceId String?         @unique
+  contentPiece   ContentPiece?   @relation(fields: [contentPieceId], references: [id])
+
+  @@index([status, createdAt])
+}
+
+enum BlogTopicStatus {
+  QUEUED
+  IN_PROGRESS
+  PUBLISHED
+  SKIPPED
+}
+
+model IndexingLog {
+  id           String   @id @default(cuid())
+  url          String
+  eventType    String
+  success      Boolean
+  errorMessage String?
+  attemptCount Int      @default(1)
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+model PruneLog {
+  id               String   @id @default(cuid())
+  contentPieceId   String
+  prunedAt         DateTime @default(now())
+  reason           String
+  impressions      Int
+  clicks           Int
+  redirectedToSlug String?
+
+  @@index([prunedAt])
 }
 
 // Optional demographic metadata collected during onboarding step 3.

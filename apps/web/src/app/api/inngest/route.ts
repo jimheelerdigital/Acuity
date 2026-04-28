@@ -25,6 +25,10 @@ import { computeDailySnapshotFn } from "@/inngest/functions/compute-daily-snapsh
 import { scanRedFlagsFn } from "@/inngest/functions/scan-red-flags";
 import { trialEmailOrchestratorFn } from "@/inngest/functions/trial-email-orchestrator";
 import { weeklyDigestFn } from "@/inngest/functions/weekly-digest";
+import {
+  autoBlogGenerateFn,
+  autoBlogPruneFn,
+} from "@/inngest/functions/auto-blog";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -54,6 +58,8 @@ const handler = serve({
     generateStateOfMeFn,
     stateOfMeAutoTickFn,
     trialEmailOrchestratorFn,
+    autoBlogGenerateFn,
+    autoBlogPruneFn,
   ],
 });
 

@@ -31,7 +31,7 @@ async function getDynamicPosts(): Promise<BlogCard[]> {
     const pieces = await prisma.contentPiece.findMany({
       where: {
         type: "BLOG",
-        status: "DISTRIBUTED",
+        status: { in: ["DISTRIBUTED", "AUTO_PUBLISHED"] },
         slug: { not: null },
       },
       orderBy: { distributedAt: "desc" },

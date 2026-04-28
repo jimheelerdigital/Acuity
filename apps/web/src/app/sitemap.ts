@@ -49,7 +49,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const pieces = await prisma.contentPiece.findMany({
       where: {
         type: "BLOG",
-        status: "DISTRIBUTED",
+        status: { in: ["DISTRIBUTED", "AUTO_PUBLISHED"] },
         slug: { not: null },
       },
       select: { slug: true, distributedAt: true },

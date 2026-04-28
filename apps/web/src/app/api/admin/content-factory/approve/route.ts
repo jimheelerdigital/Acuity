@@ -2,27 +2,8 @@ import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 
 import { getAuthOptions } from "@/lib/auth";
-
-function slugify(title: string): string {
-  return title
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 60);
-}
-
-async function uniqueSlug(
-  prisma: { contentPiece: { findUnique: (args: { where: { slug: string } }) => Promise<unknown> } },
-  base: string
-): Promise<string> {
-  let slug = base;
-  let suffix = 2;
-  while (await prisma.contentPiece.findUnique({ where: { slug } })) {
-    slug = `${base.slice(0, 56)}-${suffix}`;
-    suffix++;
-  }
-  return slug;
-}
+import { slugify, uniqueSlug } from "@/lib/content-factory/slug";
+import { notifyPublish } from "@/lib/google/indexing";
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(getAuthOptions());
@@ -69,6 +50,11 @@ export async function POST(req: NextRequest) {
         distributedUrl,
       },
     });
+
+    // Fire-and-forget indexing notification
+    notifyPublish(distributedUrl).catch((err) =>
+      console.error("[approve] Indexing notification failed:", err)
+    );
 
     return NextResponse.json({ ok: true, piece, autoPublished: true });
   }

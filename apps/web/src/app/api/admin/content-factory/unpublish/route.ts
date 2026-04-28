@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 
 import { getAuthOptions } from "@/lib/auth";
+import { notifyUnpublish } from "@/lib/google/indexing";
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(getAuthOptions());
@@ -23,6 +24,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "pieceId required" }, { status: 400 });
   }
 
+  // Read the URL before clearing it (needed for indexing notification)
+  const existing = await prisma.contentPiece.findUnique({
+    where: { id: pieceId },
+    select: { distributedUrl: true },
+  });
+
   const piece = await prisma.contentPiece.update({
     where: { id: pieceId },
     data: {
@@ -32,6 +39,13 @@ export async function POST(req: NextRequest) {
       // Keep slug so re-publishing uses the same URL
     },
   });
+
+  // Fire-and-forget indexing notification
+  if (existing?.distributedUrl) {
+    notifyUnpublish(existing.distributedUrl).catch((err) =>
+      console.error("[unpublish] Indexing notification failed:", err)
+    );
+  }
 
   return NextResponse.json({ ok: true, piece });
 }

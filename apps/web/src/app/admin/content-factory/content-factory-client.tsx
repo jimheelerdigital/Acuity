@@ -119,8 +119,9 @@ export default function ContentFactoryClient({
   activeJobId: initialJobId,
 }: Props) {
   const [tab, setTab] = useState(0);
-  const [pending, setPending] = useState(initialPending);
-  const [ready, setReady] = useState(initialReady);
+  // Blog posts are now handled by the Auto Blog pipeline — filter them out
+  const [pending, setPending] = useState(initialPending.filter((p) => p.type !== "BLOG"));
+  const [ready, setReady] = useState(initialReady.filter((p) => p.type !== "BLOG"));
   const [jobId, setJobId] = useState<string | null>(initialJobId ?? null);
   const [jobStatus, setJobStatus] = useState<JobStatus | null>(null);
   const [stale, setStale] = useState(false);
