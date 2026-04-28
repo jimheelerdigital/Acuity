@@ -437,10 +437,18 @@ function RadarChart({
 
   return (
     <div className="flex justify-center">
-      <svg viewBox="0 0 300 300" className="w-full max-w-[400px] h-auto">
-        {/* Grid rings */}
+      {/* viewBox expanded from "0 0 300 300" so axis labels at the
+          extra-radial offset don't clip on the long names ("Personal
+          Growth", "Relationships"). 30px horizontal margin per side,
+          10px vertical. */}
+      <svg viewBox="-30 -10 360 320" className="w-full max-w-[420px] h-auto">
+        {/* Grid rings — outermost ring slightly stronger than the
+            inner three so the chart's outer boundary is clear without
+            competing with the data polygon. Class-based strokes scale
+            with light/dark theme. */}
         {Array.from({ length: levels }).map((_, i) => {
           const r = ((i + 1) / levels) * maxR;
+          const isOuter = i === levels - 1;
           const points = areaConfigs
             .map((_, j) => {
               const p = getPoint(j, r);
@@ -452,13 +460,17 @@ function RadarChart({
               key={i}
               points={points}
               fill="none"
-              stroke="#E4E4E7"
-              strokeWidth="0.5"
+              className={
+                isOuter
+                  ? "stroke-zinc-300 dark:stroke-white/[0.15]"
+                  : "stroke-zinc-200 dark:stroke-white/[0.10]"
+              }
+              strokeWidth="0.75"
             />
           );
         })}
 
-        {/* Spokes */}
+        {/* Spokes — same fade as inner rings. */}
         {areaConfigs.map((_, i) => {
           const p = getPoint(i, maxR);
           return (
@@ -468,8 +480,8 @@ function RadarChart({
               y1={cy}
               x2={p.x}
               y2={p.y}
-              stroke="#E4E4E7"
-              strokeWidth="0.5"
+              className="stroke-zinc-200 dark:stroke-white/[0.10]"
+              strokeWidth="0.75"
             />
           );
         })}
@@ -511,7 +523,13 @@ function RadarChart({
           const score = area ? area.score / 10 : 0;
           const nodeR = score * maxR;
           const nodeP = getPoint(i, nodeR);
-          const labelP = getPoint(i, maxR + 18);
+          // Label offset bumped from +18 to +32 (2026-04-27): with
+          // the polygon fill at 0.50 the previous offset put labels
+          // close enough to the polygon edge that long names like
+          // "Personal Growth" and "Relationships" started to touch
+          // the fill near high-score vertices. The expanded viewBox
+          // above absorbs the extra radial distance.
+          const labelP = getPoint(i, maxR + 32);
           const isSelected = selected === config.enum;
 
           return (
