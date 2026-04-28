@@ -7,6 +7,48 @@
 
 ---
 
+## [2026-04-28] — Acquisition funnel instrumentation + new Acquisition admin tab
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 48e9245
+
+### In plain English (for Keenan)
+You can now see exactly where every paying customer came from. When someone lands on any Acuity page, a cookie captures which ad campaign, traffic source, and landing page brought them. That attribution stays with them through signup and all the way to paid conversion. The admin dashboard has a new "Acquisition" tab showing per-source signup breakdowns, per-campaign CAC (cost to acquire each customer), which /for/* landing pages convert best, and A/B experiment results. The Funnel tab now shows Day 1 and Day 30 retention alongside the existing Day 3 and Day 7. The Overview tab's "Blended CAC" card now shows a real number instead of "—" once you have ad spend entered. Four new tracking events fire automatically: when someone views the signup page, clicks a "Start Free Trial" button, completes their first recording, or gets assigned to an A/B test variant.
+
+### Technical changes (for Jimmy)
+- `prisma/schema.prisma`: Added 7 UTM fields to User model (signupUtmSource, signupUtmMedium, signupUtmCampaign, signupUtmContent, signupUtmTerm, signupReferrer, signupLandingPath). Extended FeatureFlag with experimentVariants + experimentTrafficSplit. New ExperimentAssignment model.
+- `apps/web/src/lib/attribution.ts`: First-touch attribution cookie (acuity_attribution, 30-day expiry). Set on first landing page visit, read at signup.
+- `apps/web/src/lib/experiments.ts`: Deterministic A/B variant bucketing via FNV-1a hash. Records to ExperimentAssignment table + fires PostHog event.
+- `apps/web/src/lib/posthog.ts`: 4 new typed events: signup_page_viewed, start_trial_cta_clicked, first_recording_completed, experiment_variant_assigned
+- `apps/web/src/lib/bootstrap-user.ts`: Accepts attribution param, stores UTM fields on User row, includes UTM data in trial_started PostHog event
+- `apps/web/src/components/landing.tsx`: Sets attribution cookie on homepage landing, fires PostHog start_trial_cta_clicked on CTA clicks
+- `apps/web/src/app/for/[slug]/page.tsx`: Sets attribution cookie with landingPath on persona page visit
+- `apps/web/src/app/auth/signup/page.tsx`: Fires signup_page_viewed on mount, reads attribution cookie and passes to signup API, POSTs to set-attribution endpoint after signup
+- `apps/web/src/app/api/auth/signup/route.ts`: Accepts attribution object in body, passes to bootstrapNewUser
+- `apps/web/src/app/api/auth/set-attribution/route.ts`: One-shot UTM writer for OAuth signups (write-once, first-touch)
+- `apps/web/src/inngest/functions/process-entry.ts`: Fires first_recording_completed PostHog event when firstRecordingAt transitions from null
+- `apps/web/src/app/api/admin/metrics/route.ts`: Added Day 1 (0-2 day window) and Day 30 (28-32 day window) SQL cohort queries to getFunnel(). Added real blended CAC computation from MetaSpend to getOverview().
+- `apps/web/src/app/admin/tabs/FunnelTab.tsx`: Now shows 8 funnel steps (was 6): Waitlist → Account Created → First Recording → Active Day 1 → Active Day 3 → Active Day 7 → Active Day 30 → Converted to Paid
+- `apps/web/src/app/admin/tabs/OverviewTab.tsx`: Blended CAC card now computes real value from MetaSpend data instead of showing "—"
+- `apps/web/src/app/api/admin/acquisition-data/route.ts`: New API endpoint with 5 data sections (signup source breakdown, per-campaign CAC, landing page performance, active experiments, pre-signup funnel)
+- `apps/web/src/app/admin/tabs/AcquisitionTab.tsx`: New admin tab with source table, campaign CAC table, landing page table, experiment results cards, pre-signup funnel bars
+- `apps/web/src/app/admin/tabs/GuideTab.tsx`: Added Acquisition section (CAC, pre-signup drop-off, experiment significance) + Day 1/30 retention docs to Funnel section
+
+### Manual steps needed
+- [ ] `npx prisma db push` from home Mac (Keenan — adds User UTM fields, FeatureFlag experiment columns, ExperimentAssignment table)
+- [ ] Create `hero_headline_test` feature flag via admin Feature Flags tab: key=hero_headline_test, enabled=true, experimentVariants=["control","variant_a"], experimentTrafficSplit={"control":50,"variant_a":50} (Keenan — optional, for first A/B test)
+- [ ] Confirm POSTHOG_API_KEY is set in Vercel (should already be there from existing PostHog setup) (Jimmy)
+
+### Notes
+- Attribution is first-touch model: cookie is set on first landing page visit and never overwritten. This means a user who first came from organic and later clicks an ad will always be attributed to organic.
+- The `acuity_attribution` cookie has 30-day expiry, matching the trial length. If a user visits, waits 31 days, then signs up, attribution will be lost — acceptable tradeoff for simplicity.
+- Google OAuth signup attribution works via the set-attribution endpoint called after redirect. The attribution cookie survives the OAuth redirect because it's same-site.
+- Mobile signup paths (`mobile-signup`, `mobile-magic-link`) don't set attribution cookies since the mobile app handles its own deep linking. Mobile attribution is a future item.
+- The experiment system is functional but no experiments are wired to live pages yet — the hero_headline_test flag needs to be created manually, then the /for/founders page variant logic can be added.
+
+---
+
 ## [2026-04-28] — Auto-blog pipeline with Google Search Console + Indexing API
 
 **Requested by:** Keenan
