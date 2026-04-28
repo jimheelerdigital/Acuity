@@ -7,6 +7,34 @@
 
 ---
 
+## [2026-04-27] — Mobile keyboard avoidance — auth screens + delete modal
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** f4297d1
+
+### In plain English (for Keenan)
+On the iPhone sign-in screen, when you tapped the password field the keyboard would come up and hide it — you'd be typing blind. Same potential problem on sign-up, password-reset, and the delete-account confirmation. Built a small reusable wrapper that keeps any active text input visible above the keyboard and lets the form scroll if needed. Applied to all four screens. iOS users can now drag the keyboard down to dismiss it.
+
+### Technical changes (for Jimmy)
+- New `apps/mobile/components/keyboard-aware-screen.tsx` — `<KeyboardAwareScreen>` wrapper. KeyboardAvoidingView (`behavior="padding"` on iOS, default on Android) + ScrollView with `flexGrow: 1` content container, `keyboardShouldPersistTaps="handled"`, `keyboardDismissMode="interactive"` (iOS) / `"on-drag"` (Android). Optional `keyboardVerticalOffset` for screens nested under a navigation header.
+- `apps/mobile/app/(auth)/sign-in.tsx`: SafeAreaView body replaced its outer `<View flex-1 justify-center>` with `<KeyboardAwareScreen>`. Padding moved to `contentContainerStyle`.
+- `apps/mobile/app/(auth)/sign-up.tsx`: same treatment.
+- `apps/mobile/app/(auth)/forgot-password.tsx`: same treatment.
+- `apps/mobile/components/delete-account-modal.tsx`: existing ScrollView wrapped in `<KeyboardAvoidingView>` (RN primitives directly, since this lives inside `<Modal>` with a different root than the auth screens). Added `keyboardDismissMode` to the ScrollView.
+- Onboarding shell already had this pattern wired (`KeyboardAvoidingView` + `ScrollView` since the earlier onboarding-bug fix). Left untouched.
+- Profile / settings screens have no TextInput — nothing to do there.
+
+### Manual steps needed
+- [ ] **Jimmy:** verify on TestFlight after OTA installs — sign in, tap password field, keyboard rises, password input stays visible. Same flow on sign-up (3 fields), password reset (1 field), and delete-account modal (DELETE confirmation field). Drag-down-to-dismiss should work on iOS for all four.
+
+### Notes
+- Why not wrap ScrollView in `TouchableWithoutFeedback` / `Pressable` for tap-out-to-dismiss: it eats scroll gestures and child taps in subtle ways, and `keyboardDismissMode="interactive"` already gives users a clean dismiss path. Standard RN tradeoff.
+- `flexGrow: 1` on the contentContainer is what preserves the previous "vertically centered form" feel — without it, the form would jump to the top of the ScrollView and look broken on tall screens.
+- The auth screens previously had `<View className="flex-1 justify-center">` wrapping their content. With the wrapper now handling vertical centering via `contentContainerStyle.justifyContent: "center"`, that wrapper is gone.
+
+---
+
 ## [2026-04-27] — Recording-processing screen: bring back the stage checklist beneath the progress bar
 
 **Requested by:** Jimmy
