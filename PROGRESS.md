@@ -11,7 +11,7 @@
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** _to be filled by commit_
+**Commit hash:** cfece10
 
 ### In plain English (for Keenan)
 The progress bar from the previous commit stays at the top of the wait screen, but now there's also a vertical checklist below it showing every processing stage and its status. Each stage is one of three states: pending (empty outlined circle, muted), active (filled violet circle that pulses), complete (filled violet circle with a checkmark + the time it took, like "0.8s"). The checklist updates in lockstep with the bar — when the bar advances to "Transcribing", the Transcribing row goes Active, the rows above mark Complete with their durations. Same combined view on web and on iPhone.
