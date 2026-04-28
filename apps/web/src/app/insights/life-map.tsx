@@ -489,11 +489,15 @@ function RadarChart({
           />
         )}
 
-        {/* Data polygon */}
+        {/* Data polygon. Fill bumped from 0.12 to 0.50 (2026-04-27) so
+            the shape reads clearly on the larger dedicated /life-matrix
+            radar — the original opacity was tuned for a smaller render
+            and got lost in the empty space at full size. Stroke +
+            vertex dots unchanged. */}
         <polygon
           points={polyPoints}
           fill="#7C3AED"
-          fillOpacity="0.12"
+          fillOpacity="0.50"
           stroke="#7C3AED"
           strokeWidth="1.5"
           className="transition-all duration-700"
