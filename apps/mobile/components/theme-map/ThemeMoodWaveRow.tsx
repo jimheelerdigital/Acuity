@@ -136,7 +136,7 @@ export function ThemeMoodWaveRow({
       </View>
       <Text
         numberOfLines={1}
-        style={{ marginTop: 6, fontSize: 15, color: trendCaption.color }}
+        style={{ marginTop: 12, fontSize: 12, color: trendCaption.color }}
       >
         {trendCaption.text}
       </Text>
@@ -155,12 +155,17 @@ function WaveSVG({
 }) {
   const c = CATEGORY[category];
   const id = `${category}-${entries.length}-${Math.random().toString(36).slice(2, 6)}`;
+  // Amplitude tuned 2026-04-27: was Math.min(50, |delta|×28) which let
+  // peaks reach 60-70% of card height and read as zigzag spikes. New
+  // cap is 24 over a 60px half-height (40% of half = ~20% of full
+  // card), so the curves read as gentle waves. Multiplier dropped from
+  // 28 to 14 in step.
   const points = entries.map((e, i) => {
     const x = entries.length === 1 ? VB_W / 2 : (i / (entries.length - 1)) * VB_W;
     const delta = e.mood - 5;
     const direction = delta >= 0 ? -1 : 1;
-    const magnitude = Math.min(50, Math.abs(delta) * 28);
-    const y = Math.max(8, Math.min(112, 60 + direction * magnitude));
+    const magnitude = Math.min(24, Math.abs(delta) * 14);
+    const y = Math.max(20, Math.min(100, 60 + direction * magnitude));
     return { x, y, mood: e.mood };
   });
   if (points.length === 0) {
@@ -206,7 +211,15 @@ function WaveSVG({
         </Filter>
       </Defs>
       <G transform={`translate(0, ${dy})`}>
-      <Line x1={0} y1={BASELINE_Y} x2={VB_W} y2={BASELINE_Y} stroke="rgba(255,255,255,0.06)" strokeWidth={0.5} />
+      <Line
+        x1={0}
+        y1={BASELINE_Y}
+        x2={VB_W}
+        y2={BASELINE_Y}
+        stroke="rgba(255,255,255,0.18)"
+        strokeWidth={0.75}
+        strokeDasharray="3 4"
+      />
       {positivePath && (
         <>
           <Path d={positivePath.area} fill={`url(#top-fill-${id})`} opacity={0.6} filter={`url(#glow-${id})`} />
@@ -242,17 +255,21 @@ function buildHalfPath(
     ...pts,
     { x: width, y: BASELINE_Y },
   ];
+  // Catmull-Rom-style cubic Bezier with softened tangent (2026-04-27).
+  // Was t=0.5 / divisor 6 (visible kinks between sparse points). Now
+  // t=0.4 / divisor 8 — gentler tangents, less overshoot, curves flow
+  // naturally between data points.
   let line = `M ${anchored[0].x} ${anchored[0].y}`;
   for (let i = 0; i < anchored.length - 1; i++) {
     const p0 = anchored[Math.max(0, i - 1)];
     const p1 = anchored[i];
     const p2 = anchored[i + 1];
     const p3 = anchored[Math.min(anchored.length - 1, i + 2)];
-    const t = 0.5;
-    const c1x = p1.x + ((p2.x - p0.x) / 6) * t * 2;
-    const c1y = p1.y + ((p2.y - p0.y) / 6) * t * 2;
-    const c2x = p2.x - ((p3.x - p1.x) / 6) * t * 2;
-    const c2y = p2.y - ((p3.y - p1.y) / 6) * t * 2;
+    const t = 0.4;
+    const c1x = p1.x + ((p2.x - p0.x) / 8) * t * 2;
+    const c1y = p1.y + ((p2.y - p0.y) / 8) * t * 2;
+    const c2x = p2.x - ((p3.x - p1.x) / 8) * t * 2;
+    const c2y = p2.y - ((p3.y - p1.y) / 8) * t * 2;
     line += ` C ${c1x} ${c1y}, ${c2x} ${c2y}, ${p2.x} ${p2.y}`;
   }
   const area = `${line} L ${width} ${BASELINE_Y} L 0 ${BASELINE_Y} Z`;
@@ -267,11 +284,11 @@ function isFadedTheme(lastEntryAt: string): boolean {
 function pickTrendCaption(theme: WaveTheme): { text: string; color: string } {
   if (isFadedTheme(theme.lastEntryAt)) {
     const date = new Date(theme.lastEntryAt).toLocaleDateString("en-US", { month: "short", day: "numeric" });
-    return { text: `↓ fading · last seen ${date}`, color: "rgba(168,168,180,0.75)" };
+    return { text: `↓ fading · last seen ${date}`, color: "rgba(255,255,255,0.5)" };
   }
   const topCo = theme.coOccurrences[0];
   if (topCo && topCo.count > theme.count * 0.5) {
-    return { text: `paired with ${topCo.themeName}`, color: "rgba(168,168,180,0.75)" };
+    return { text: `paired with ${topCo.themeName}`, color: "rgba(255,255,255,0.5)" };
   }
   if (theme.entries.length >= 3) {
     if (theme.meanMood > 7.5) return { text: "consistently positive · highest mood", color: "#34D399" };
@@ -283,7 +300,7 @@ function pickTrendCaption(theme: WaveTheme): { text: string; color: string } {
   if (theme.trend.ratio !== null && theme.trend.ratio >= 1.5 && theme.trend.priorPeriodCount > 0) {
     return { text: `↑ ${Math.round(theme.trend.ratio)}× this week vs last`, color: "#FCA85A" };
   }
-  return { text: "balanced · reflective tone", color: "rgba(168,168,180,0.75)" };
+  return { text: "balanced · reflective tone", color: "rgba(255,255,255,0.5)" };
 }
 
 function colorForMean(mean: number): string {

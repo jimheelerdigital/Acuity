@@ -99,9 +99,9 @@ export function ThemeMoodWaveRow({
           {capitalize(theme.name)}
         </div>
         <div
-          className="mt-0.5 truncate"
+          className="mt-3 truncate"
           style={{
-            fontSize: 15,
+            fontSize: 12,
             color: trendCaption.color,
           }}
         >
@@ -117,8 +117,8 @@ export function ThemeMoodWaveRow({
             top: BASELINE_Y,
             left: 0,
             right: 0,
-            height: 0.5,
-            background: "rgba(255,255,255,0.06)",
+            height: 0,
+            borderTop: "0.5px dashed rgba(255,255,255,0.18)",
           }}
         />
         <div
@@ -182,15 +182,15 @@ function WaveSVG({
   const points = entries.map((e, i) => {
     const x =
       entries.length === 1 ? VB_W / 2 : (i / (entries.length - 1)) * VB_W;
-    // Amplified deflection — small mood swings (6-7) should still produce
-    // visually substantial curves. mood 6 → 28px (was 14); mood 7+ → 50
-    // (clamped to lane edge); mood 3 → -50 (clamped to bottom edge).
-    // Side-correctness invariant preserved: mood ≥ 5 sits above baseline,
-    // < 5 sits below.
+    // Amplitude tuned 2026-04-27 (mobile + web kept in sync). Was
+    // |delta|×28 capped at 50 — peaks reached 60-70% of card height
+    // and read as zigzag spikes. Now |delta|×14 capped at 24, which
+    // keeps peaks within ~30-40% of card height. mood ≥ 5 sits above
+    // baseline; < 5 sits below — invariant preserved.
     const delta = e.mood - 5;
-    const direction = delta >= 0 ? -1 : 1; // up for positive, down for negative
-    const magnitude = Math.min(50, Math.abs(delta) * 28);
-    const y = Math.max(8, Math.min(112, 60 + direction * magnitude));
+    const direction = delta >= 0 ? -1 : 1;
+    const magnitude = Math.min(24, Math.abs(delta) * 14);
+    const y = Math.max(20, Math.min(100, 60 + direction * magnitude));
     return { x, y, mood: e.mood };
   });
 
@@ -264,15 +264,18 @@ function WaveSVG({
       </defs>
 
       {/* baseline mood line — shifted with the curve so the visual
-          relationship between line and wave stays anchored. */}
+          relationship between line and wave stays anchored. Dashed +
+          stronger opacity (2026-04-27) so it reads as the zero-mood
+          reference line, not a near-invisible hairline. */}
       <g transform={`translate(0, ${dy})`}>
       <line
         x1={0}
         y1={BASELINE_Y}
         x2={VB_W}
         y2={BASELINE_Y}
-        stroke="rgba(255,255,255,0.06)"
-        strokeWidth={0.5}
+        stroke="rgba(255,255,255,0.18)"
+        strokeWidth={0.75}
+        strokeDasharray="3 4"
       />
 
       {positivePath && (
@@ -372,17 +375,21 @@ function buildHalfPath(
     { x: width, y: BASELINE_Y },
   ];
 
+  // Catmull-Rom-style cubic Bezier with softened tangent (2026-04-27,
+  // kept in sync with mobile). Was t=0.5 / divisor 6 — visible kinks
+  // between sparse points. Now t=0.4 / divisor 8 — gentler tangents,
+  // less overshoot, curves flow naturally.
   let line = `M ${anchored[0].x} ${anchored[0].y}`;
   for (let i = 0; i < anchored.length - 1; i++) {
     const p0 = anchored[Math.max(0, i - 1)];
     const p1 = anchored[i];
     const p2 = anchored[i + 1];
     const p3 = anchored[Math.min(anchored.length - 1, i + 2)];
-    const t = 0.5;
-    const c1x = p1.x + ((p2.x - p0.x) / 6) * t * 2;
-    const c1y = p1.y + ((p2.y - p0.y) / 6) * t * 2;
-    const c2x = p2.x - ((p3.x - p1.x) / 6) * t * 2;
-    const c2y = p2.y - ((p3.y - p1.y) / 6) * t * 2;
+    const t = 0.4;
+    const c1x = p1.x + ((p2.x - p0.x) / 8) * t * 2;
+    const c1y = p1.y + ((p2.y - p0.y) / 8) * t * 2;
+    const c2x = p2.x - ((p3.x - p1.x) / 8) * t * 2;
+    const c2y = p2.y - ((p3.y - p1.y) / 8) * t * 2;
     line += ` C ${c1x} ${c1y}, ${c2x} ${c2y}, ${p2.x} ${p2.y}`;
   }
   // Area: line + close along baseline
@@ -409,7 +416,7 @@ function pickTrendCaption(theme: WaveTheme): { text: string; color: string } {
     });
     return {
       text: `↓ fading · last seen ${date}`,
-      color: "rgba(168,168,180,0.75)",
+      color: "rgba(255,255,255,0.5)",
     };
   }
 
@@ -418,7 +425,7 @@ function pickTrendCaption(theme: WaveTheme): { text: string; color: string } {
   if (topCo && topCo.count > theme.count * 0.5) {
     return {
       text: `paired with ${topCo.themeName}`,
-      color: "rgba(168,168,180,0.75)",
+      color: "rgba(255,255,255,0.5)",
     };
   }
 
@@ -454,7 +461,7 @@ function pickTrendCaption(theme: WaveTheme): { text: string; color: string } {
   // Default
   return {
     text: "balanced · reflective tone",
-    color: "rgba(168,168,180,0.75)",
+    color: "rgba(255,255,255,0.5)",
   };
 }
 

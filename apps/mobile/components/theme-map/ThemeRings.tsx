@@ -1,3 +1,4 @@
+import { ChevronRight } from "lucide-react-native";
 import { useEffect } from "react";
 import { Pressable, Text, View } from "react-native";
 import Animated, {
@@ -262,18 +263,19 @@ export function ThemeRings({
                 inset: 0,
                 alignItems: "center",
                 justifyContent: "center",
+                padding: 18,
               } as object,
               pulseStyle,
             ]}
           >
             <Text
               style={{
-                fontSize: 68,
+                fontSize: 46,
                 fontWeight: "500",
                 color: "#FAFAFA",
-                letterSpacing: -2,
+                letterSpacing: -1.4,
                 textShadowColor: `${topAccent}cc`,
-                textShadowRadius: 24,
+                textShadowRadius: 18,
               }}
             >
               {topTheme.count}
@@ -286,9 +288,9 @@ export function ThemeRings({
       <View style={{ alignItems: "center", gap: 4 }}>
         <Text
           style={{
-            fontSize: 20,
-            fontWeight: "500",
-            letterSpacing: -0.3,
+            fontSize: 18,
+            fontWeight: "600",
+            letterSpacing: -0.2,
             color: "#FAFAFA",
             textAlign: "center",
           }}
@@ -296,13 +298,16 @@ export function ThemeRings({
         >
           {capitalize(topTheme.name)}
         </Text>
-        <Text style={{ fontSize: 13, color: "rgba(168,168,180,0.7)" }}>
+        <Text style={{ fontSize: 14, color: "rgba(255,255,255,0.55)" }}>
           {topTheme.count} {topTheme.count === 1 ? "mention" : "mentions"} {periodPhrase}
         </Text>
       </View>
 
-      {/* Compact rank list (mobile-friendly version of leader labels) */}
-      <View style={{ borderTopWidth: 0.5, borderTopColor: "rgba(255,255,255,0.06)", paddingTop: 12, gap: 6 }}>
+      {/* Rank list — single horizontal row per theme: dot, "01",
+          name (truncates), count (right-aligned), chevron. Row height
+          ~58px sits inside the 56-64 spec. Inter-row separators
+          replace the previous `gap: 6` so spacing reads tighter. */}
+      <View style={{ borderTopWidth: 0.5, borderTopColor: "rgba(255,255,255,0.06)", paddingTop: 4 }}>
         {rings.map((t, i) => {
           const p = SLOT_PALETTE[i];
           return (
@@ -312,10 +317,12 @@ export function ThemeRings({
               style={({ pressed }) => ({
                 flexDirection: "row",
                 alignItems: "center",
-                gap: 10,
-                paddingVertical: 8,
+                gap: 12,
+                paddingVertical: 16,
                 paddingHorizontal: 8,
                 borderRadius: 8,
+                borderTopWidth: i === 0 ? 0 : 0.5,
+                borderTopColor: "rgba(255,255,255,0.05)",
                 backgroundColor: pressed ? "rgba(255,255,255,0.04)" : "transparent",
               })}
             >
@@ -343,13 +350,30 @@ export function ThemeRings({
               </Text>
               <Text
                 numberOfLines={1}
-                style={{ flex: 1, fontSize: 17, fontWeight: "500", color: TEXT.primary }}
+                ellipsizeMode="tail"
+                style={{
+                  flex: 1,
+                  fontSize: 17,
+                  fontWeight: "500",
+                  color: TEXT.primary,
+                  letterSpacing: -0.1,
+                }}
               >
                 {capitalize(t.name)}
               </Text>
-              <Text style={{ fontSize: 17, fontWeight: "500", color: "rgba(168,168,180,0.85)" }}>
+              <Text
+                style={{
+                  fontSize: 22,
+                  fontWeight: "500",
+                  color: "rgba(255,255,255,0.85)",
+                  letterSpacing: -0.4,
+                  textAlign: "right",
+                  minWidth: 40,
+                }}
+              >
                 {t.count}
               </Text>
+              <ChevronRight size={16} color="rgba(168,168,180,0.5)" />
             </Pressable>
           );
         })}

@@ -7,6 +7,54 @@
 
 ---
 
+## [2026-04-27] — Theme Map polish: center number, single-line rank rows, smoother waves
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** _to be filled by commit_
+
+### In plain English (for Keenan)
+Three readability fixes on the Theme Map screen.
+
+1. The big number in the center of the rings was too dominant — it filled almost the entire inner circle. Dropped it from ~68px to 46px and gave it 18px of padding so the rings stay the visual hero. The "Work" theme name and "13 mentions this month" subtitle below now read as a coherent label group instead of a giant number followed by tiny text.
+
+2. The "01 Work / 02 Family / 03 Weekend" ranking list under the rings is now a clean single-line-per-row layout: dot, "01", theme name (truncates with ellipsis if it overflows), big count number on the right, chevron. Row height bumped to ~58px so the larger count fits comfortably without crowding.
+
+3. The colored mood waveforms below were spiking too high and zigzagging instead of flowing. Halved the peak amplitude (was ~60% of card height, now ~30-40%), softened the curve tangents so the waves bend smoothly between data points instead of kinking, and made the zero-mood baseline visible as a subtle dashed line so the reader can tell positive (above) from negative (below) at a glance. Same wave math now ships on web and mobile (consolidated divergence).
+
+### Technical changes (for Jimmy)
+- `apps/mobile/components/theme-map/ThemeRings.tsx`:
+  - Center number: `fontSize 68 → 46`, `letterSpacing -2 → -1.4`, `textShadowRadius 24 → 18`. Wrapped in a View with `padding: 18` so it breathes inside the inner ring.
+  - Theme name "Work" label: `fontSize 20 → 18`, `fontWeight "500" → "600"`, `letterSpacing -0.3 → -0.2`.
+  - "13 mentions this month": `fontSize 13 → 14`, color `rgba(168,168,180,0.7) → rgba(255,255,255,0.55)`.
+  - Rank list: replaced `gap: 6` between rows with inter-row top borders + `paddingVertical: 8 → 16` (row height ~58px). Count `fontSize 17 → 22, letterSpacing -0.4`, right-aligned with `minWidth: 40` so single-digit counts don't cramp against the chevron. Theme name now `numberOfLines={1}, ellipsizeMode="tail"`. Added `<ChevronRight size={16}>` glyph at the row end.
+- `apps/mobile/components/theme-map/ThemeMoodWaveRow.tsx`:
+  - Wave amplitude: `Math.min(50, |delta| × 28) → Math.min(24, |delta| × 14)`. y-clamp `[8, 112] → [20, 100]` to keep curves inside the inner safe area. Peaks now hit 30-40% of card height max.
+  - `buildHalfPath` tangent softening: `t = 0.5, divisor 6 → t = 0.4, divisor 8`. Less overshoot, smoother flow between sparse points.
+  - Baseline line: `stroke rgba(255,255,255,0.06) → 0.18`, `strokeWidth 0.5 → 0.75`, added `strokeDasharray="3 4"` so the zero-mood reference line is visible as subtle dashes instead of a near-invisible hairline.
+  - Caption "balanced · reflective tone": `fontSize 15 → 12`, `marginTop 6 → 12` for breathing room. Default neutral color in `pickTrendCaption` updated `rgba(168,168,180,0.75) → rgba(255,255,255,0.5)` (kept the special-case green/pink/orange colors for high-mood / low-mood / trending captions).
+- `apps/web/src/components/theme-map/ThemeMoodWaveRow.tsx` — **kept in sync** with the mobile wave changes per the spec's consolidation request:
+  - Same amplitude cap and y-clamp.
+  - Same `buildHalfPath` tangent softening.
+  - Both baseline lines (the SVG `<line>` and the absolutely-positioned divider div) now use the dashed/0.18-opacity styling.
+  - Caption: `fontSize 15 → 12`, `mt-0.5 → mt-3` for breathing room. Default neutral color `rgba(168,168,180,0.75) → rgba(255,255,255,0.5)` everywhere it appears.
+- Web `npm run build` clean. Mobile `tsc --noEmit` clean for the touched files.
+
+### Manual steps needed
+- [ ] **Jimmy:** publish OTA (`eas update --channel production` from `apps/mobile/`). I'll attempt the publish after commit.
+- [ ] **Jimmy:** verify on TestFlight after OTA: open Theme Map → center number is calmly sized, "Work" label heavier than the count line below it, ranks list reads as one row per theme, waves are gentle curves with a visible dashed zero line.
+- [ ] **Jimmy:** verify on /insights/theme-map on web: same wave geometry — the curves should look identical in shape and amplitude to mobile, just at desktop width.
+
+### Notes
+- Why I didn't switch to monotone-cubic interpolation (which would prevent overshoots completely): the spec hinted at it but the catmull-rom-with-softer-tangent change handles the visible cases without rewriting the math from scratch. If we still see overshoot on real data after OTA, monotone-cubic is a 20-line follow-up — keeping the current shape minimizes risk for the OTA push.
+- Why the y-clamp moved from `[8, 112]` to `[20, 100]`: the centering shift `dy` (which translates the curve to fit its bounding box around the baseline) plus the smaller magnitude means the curves never hit the old extreme bounds anyway. Tightening the clamp prevents the rare 1-entry-with-mood-10 case from clipping at the top edge of the SVG.
+- Why I added `minWidth: 40` to the count text: a single-digit count ("3") was sitting almost flush against the chevron with no visual weight. The minWidth gives the right-aligned number a consistent column so all counts line up regardless of digit width.
+- Why I kept the colored captions ("consistently positive", "consistently low mood", "↑ 2× this week vs last") at their hue instead of forcing white/0.5: those are signal text — the color IS the message. Only the neutral default ("balanced · reflective tone", "paired with X", "fading · last seen X") gets the toned-down white/0.5.
+- Web baseline: the absolutely-positioned divider (outside the SVG) couldn't use `strokeDasharray` since it's a div, so it uses `borderTop: "0.5px dashed rgba(255,255,255,0.18)"` instead — visually equivalent at the same opacity.
+- Center-number padding (Issue 1 specifically): the spec said "16-20px more padding inside the inner ring around the number." The number is rendered in an absolutely-positioned overlay layered on the SVG; the inner ring itself is at r=50 (100px diameter). Adding `padding: 18` to the overlay container reduces the hit area for the number's pulse animation and creates the visual breathing room without resizing the actual ring geometry.
+
+---
+
 ## [2026-04-27] — Mobile keyboard avoidance — auth screens + delete modal
 
 **Requested by:** Jimmy
