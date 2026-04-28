@@ -11,7 +11,7 @@
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** _to be filled by commit_
+**Commit hash:** 01a521b
 
 ### In plain English (for Keenan)
 Three readability fixes on the Theme Map screen.
