@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { MOOD_LABELS } from "@acuity/shared";
 import type { Mood } from "@acuity/shared";
 
 import { EntryCard } from "@/app/home/entry-card";
+import { EntryDeleteButton } from "@/components/entry-delete-button";
 import { MoodIcon } from "@/components/mood-icon";
 
 type EntryRow = Parameters<typeof EntryCard>[0]["entry"] & {
@@ -32,10 +34,16 @@ export function EntriesList({
 }) {
   const [query, setQuery] = useState("");
   const [moodFilter, setMoodFilter] = useState<Mood | null>(null);
+  // Optimistic hide-on-delete. Server data refreshes via router.refresh()
+  // after the DELETE returns; this set just keeps the row from showing
+  // again during the round-trip.
+  const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
+  const router = useRouter();
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return entries.filter((e) => {
+      if (deletedIds.has(e.id)) return false;
       if (moodFilter && e.mood !== moodFilter) return false;
       if (!q) return true;
       const haystack = [
@@ -47,7 +55,7 @@ export function EntriesList({
         .toLowerCase();
       return haystack.includes(q);
     });
-  }, [entries, query, moodFilter]);
+  }, [entries, query, moodFilter, deletedIds]);
 
   const showingFiltered =
     query.trim().length > 0 || moodFilter !== null;
@@ -137,15 +145,99 @@ export function EntriesList({
       ) : (
         <div className="space-y-3">
           {filtered.map((e) => (
-            <EntryCard
+            <EntryRowWithMenu
               key={e.id}
-              entry={e}
-              taskCount={taskCounts[e.id] ?? 0}
-            />
+              entryId={e.id}
+              onDeleted={() => {
+                setDeletedIds((prev) => {
+                  const next = new Set(prev);
+                  next.add(e.id);
+                  return next;
+                });
+                router.refresh();
+              }}
+            >
+              <EntryCard entry={e} taskCount={taskCounts[e.id] ?? 0} />
+            </EntryRowWithMenu>
           ))}
         </div>
       )}
     </>
+  );
+}
+
+/**
+ * Wraps an EntryCard with a hover-revealed "..." menu in the top-right.
+ * The card itself is a Link to /entries/<id> (handled by EntryCard);
+ * the overlay menu absorbs its own clicks via stopPropagation so the
+ * surrounding row click still navigates to the detail page.
+ */
+function EntryRowWithMenu({
+  entryId,
+  onDeleted,
+  children,
+}: {
+  entryId: string;
+  onDeleted: () => void;
+  children: React.ReactNode;
+}) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  return (
+    <div
+      className="group relative"
+      onContextMenu={(e) => {
+        e.preventDefault();
+        setMenuOpen((v) => !v);
+      }}
+    >
+      {children}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          setMenuOpen((v) => !v);
+        }}
+        aria-label="Entry options"
+        className="absolute right-3 top-3 rounded-md p-1.5 text-zinc-400 opacity-0 transition group-hover:opacity-100 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-white/10 dark:hover:text-zinc-200 focus-visible:opacity-100"
+      >
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="currentColor"
+          aria-hidden="true"
+        >
+          <circle cx="5" cy="12" r="2" />
+          <circle cx="12" cy="12" r="2" />
+          <circle cx="19" cy="12" r="2" />
+        </svg>
+      </button>
+      {menuOpen && (
+        <>
+          <div
+            className="fixed inset-0 z-30"
+            onClick={(e) => {
+              e.stopPropagation();
+              setMenuOpen(false);
+            }}
+          />
+          <div
+            className="absolute right-3 top-12 z-40 w-44 overflow-hidden rounded-md border border-zinc-200 bg-white shadow-lg dark:border-white/10 dark:bg-[#1E1E2E]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <EntryDeleteButton
+              entryId={entryId}
+              variant="menu-item"
+              onDeleted={() => {
+                setMenuOpen(false);
+                onDeleted();
+              }}
+            />
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 

@@ -6,6 +6,7 @@ import type { Mood } from "@acuity/shared";
 
 import { getAuthOptions } from "@/lib/auth";
 import { BackButton } from "@/components/back-button";
+import { EntryDeleteButtonWithRedirect } from "./entry-delete-button-wrapper";
 import { MoodIcon } from "@/components/mood-icon";
 
 import { ExtractionReview } from "./extraction-review";
@@ -61,7 +62,10 @@ export default async function EntryDetailPage({
   return (
     <div className="min-h-screen">
       <main className="mx-auto max-w-3xl px-6 py-10 animate-fade-in">
-        <BackButton className="mb-6" ariaLabel="Back to entries" />
+        <div className="mb-6 flex items-center justify-between gap-3">
+          <BackButton ariaLabel="Back to entries" />
+          <EntryDeleteButtonWithRedirect entryId={entry.id} />
+        </div>
 
         <header className="mb-8">
           <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-2">{date}</p>

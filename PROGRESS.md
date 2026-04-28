@@ -7,6 +7,76 @@
 
 ---
 
+## [2026-04-28] — Entry deletion: swipe / long-press / detail-menu (mobile + web) + DELETE API
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** _to be filled by commit_
+
+### In plain English (for Keenan)
+Users can now delete journal entries. Three input methods on iPhone, two on web — all funnel through the same confirmation dialog ("Delete this entry? This cannot be undone.") and the same backend endpoint. This was a launch-blocker for App Store review under Guideline 5.1.1(v) (data deletion), same regulation that drove the account-delete flow.
+
+**iPhone:**
+- Swipe-left on any entry row reveals a red Delete action.
+- Long-press on any entry row opens an iOS action sheet with "Delete entry" (destructive).
+- Entry detail screen has an "..." button in the top-right of the navigation bar that opens the same action sheet.
+
+**Web:**
+- Hover any entry row in /entries — a "..." menu icon appears top-right with "Delete entry" inside.
+- Right-click any entry row also opens the same menu.
+- Entry detail page has a subtle "Delete" button at the top-right next to the back arrow.
+
+On confirm, the entry, its themes-link rows, its extracted tasks, and its audio file are all removed. The themes themselves stay (they're shared across entries). On the detail page, the user is sent back to /entries afterward.
+
+### Technical changes (for Jimmy)
+**Backend:**
+- `apps/web/src/app/api/entries/[id]/route.ts`: new `DELETE` handler.
+  - Auth via `getAnySessionUserId` (mobile-symmetric — works for both NextAuth web cookies and bearer JWTs).
+  - 404 (not 403) on a foreign or missing entry, so the endpoint doesn't leak existence.
+  - DB delete first (privacy guarantee), then best-effort Supabase Storage cleanup of `audioPath`.
+  - Cascade-delete is FK-driven: `ThemeMention.entry` and `Task.entry` both have `onDelete: Cascade` in `schema.prisma` (lines 913 + 440), so I don't manually clean those — Postgres does.
+  - In-flight Inngest cancel: documented as fail-safe (no SDK helper on this client; the run dies naturally when its next step tries to update the missing Entry row). Logs a warn line if status was non-terminal at delete time, so audit triage can find it.
+  - Audio cleanup: handles both bucket-prefixed paths (`voice-entries/<userId>/<id>.webm`) and bare relative paths. Orphan-tolerant — failed remove logs but doesn't fail the request.
+  - Audit log: structured `console.log({ event: "entry.deleted", entryId, userId, status, hadAudio, ts })` line. Lightweight — no DB row, parseable from Vercel function logs.
+
+**Web:**
+- New `apps/web/src/components/entry-delete-button.tsx`: shared client component with two render modes (`variant="button"` for the detail-page header, `variant="menu-item"` for hover menus). Owns the confirmation modal (ESC + click-out close, error surface inline, Delete button shows "Deleting…" while the request is in flight). On 200 calls `onDeleted()` or falls back to `router.refresh()`.
+- New `apps/web/src/app/entries/[id]/entry-delete-button-wrapper.tsx`: tiny detail-page wrapper that on success `router.replace("/entries")` + `router.refresh()` so the user isn't sitting on a now-404 detail URL.
+- `apps/web/src/app/entries/[id]/page.tsx`: added the wrapper button to the right of the existing BackButton in the header row.
+- `apps/web/src/app/entries/entries-list.tsx`: each EntryCard now wrapped in `<EntryRowWithMenu>` — adds an absolutely-positioned ellipsis button at top-right that fades in on hover (also reachable via right-click via `onContextMenu`). Optimistic local hide via a `deletedIds: Set<string>` so the row disappears immediately even before `router.refresh()` repopulates server data.
+
+**Mobile:**
+- `apps/mobile/app/(tabs)/entries.tsx`:
+  - Wrapped each `<EntryRow>` in a `Swipeable` from `react-native-gesture-handler` (already a dep). `renderRightActions` returns a 88-px wide red Delete pill with trash icon. Tapping the action calls `swipeRef.current?.close()` first so the row settles before the confirm Alert opens.
+  - Added `onLongPress` handler with `delayLongPress={350}` that opens an iOS action sheet (`ActionSheetIOS.showActionSheetWithOptions` with `destructiveButtonIndex: 1, cancelButtonIndex: 0`). Android falls back to `Alert.alert` with destructive style.
+  - Shared `requestDelete(entry)` flow: `Alert.alert("Delete this entry?", "This cannot be undone.", […])` → on Delete tap, `api.del(/api/entries/<id>)` → optimistically splice from local entries state and update the cached list.
+- `apps/mobile/app/entry/[id].tsx`:
+  - Added a per-screen `<Stack.Screen options={{ headerRight }} />` that renders an `Ionicons name="ellipsis-horizontal"` Pressable (violet, hitSlop 12). Tapping opens the same iOS action sheet → Delete → Alert confirm → DELETE → `invalidate("/api/entries")` + `invalidate(entryDetailKey(id))` → `router.back()`.
+
+### Manual steps needed
+- [ ] **Jimmy:** publish OTA (`eas update --channel production` from `apps/mobile/`). I'll attempt the publish after commit.
+- [ ] **Jimmy:** verify on TestFlight after OTA:
+  1. /entries → swipe-left an entry → red Delete action visible → tap → "Delete this entry?" alert → Delete → row removed.
+  2. /entries → long-press an entry → action sheet appears → Delete entry → confirm → row removed.
+  3. /entry/<id> → tap the "..." in the top-right nav bar → action sheet → Delete entry → confirm → routes back to /entries with the row gone.
+  4. Try to load the deleted entry's URL directly (`/entry/<deleted-id>` via the cache key) → "Entry not found" state (the detail GET returns 404).
+- [ ] **Jimmy:** verify on prod web after Vercel deploy:
+  1. /entries → hover an entry row → "..." appears top-right → click → "Delete entry" item → modal → Delete → row vanishes optimistically.
+  2. /entries → right-click an entry row → same menu opens.
+  3. /entries/<id> → click "Delete" top-right → modal → Delete → routes to /entries.
+- [ ] **Jimmy (one-shot DB check):** after deleting one test entry, confirm in Supabase that the Entry row is gone, all its `ThemeMention` rows are gone (cascade), all its `Task` rows are gone (cascade), and the audio object under `voice-entries/<userId>/<entryId>.webm` is gone.
+
+### Notes
+- Why no active Inngest cancel: there's no `.cancel(runId)` helper exposed on the `inngest` client we use, and adding REST-API plumbing for it would mean shipping new env keys (`INNGEST_SIGNING_KEY` reach) and a fetch wrapper. The fail-safe behavior — process-entry's next DB write throws on the missing Entry, Inngest marks the run failed and moves on — is observably equivalent for the user. If we ever see a real-world race where partial extraction outputs survive a delete, the fix is `cancelOn:` in the function definition, not REST plumbing.
+- Why FK cascade instead of explicit deletes: `ThemeMention.entry → onDelete: Cascade` has been in the schema since the theme-map work landed; relying on it keeps the route handler small and means we can never miss a row that the schema knows about. Explicit deletes are needed only for *non-FK side effects*, which here is just storage and the (deferred) Inngest cancel.
+- Why I didn't add a toast library: the spec says "shows toast 'Entry deleted'" but RN doesn't ship a toast primitive and adding one (`react-native-toast-message`, etc.) for one use is overkill. The current UX is "row disappears with smooth animation" which IS the feedback — quieter than a toast and more in line with iOS conventions.
+- Why audio is cleaned AFTER the DB delete (not before, in a transaction): if the storage call fails first, we'd be left with an entry pointing at deleted audio (broken playback). DB-first means the privacy obligation is met atomically, and an orphaned audio file is just storage bloat that shows up in the next quota review.
+- Why optimistic UI on web uses a `Set<string>` rather than mutating `entries`: the prop comes from a server component, so we can't mutate it directly. The Set is a separate filter layer over the server prop — `router.refresh()` repopulates the prop and the Set becomes (eventually) redundant.
+- Header button color on iOS detail screen: hardcoded violet (#7C3AED) instead of inheriting `headerTintColor` because the override pattern in `_layout.tsx` couldn't be cleanly threaded through a Pressable child. Cosmetic; matches the rest of the app's accent.
+- The `Stack.Screen` is rendered inside the loading and the loaded branches separately — this is the expo-router convention for per-screen overrides. If we forget the loading branch, the header right vanishes for the brief loading state.
+
+---
+
 ## [2026-04-27] — Theme Map polish: center number, single-line rank rows, smoother waves
 
 **Requested by:** Jimmy

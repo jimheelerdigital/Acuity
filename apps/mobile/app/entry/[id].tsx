@@ -1,7 +1,12 @@
-import { useLocalSearchParams } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  ActionSheetIOS,
   ActivityIndicator,
+  Alert,
+  Platform,
+  Pressable,
   ScrollView,
   Text,
   View,
@@ -12,7 +17,7 @@ import { MOOD_LABELS, type EntryDTO, type TaskDTO } from "@acuity/shared";
 import { ExtractionReview } from "@/components/extraction-review";
 import { MoodIcon } from "@/components/mood-icon";
 import { api } from "@/lib/api";
-import { getCached, isStale, setCached } from "@/lib/cache";
+import { getCached, invalidate, isStale, setCached } from "@/lib/cache";
 
 type EntryDetail = EntryDTO & { tasks: TaskDTO[] };
 
@@ -24,6 +29,7 @@ function entryDetailKey(id: string): string {
 
 export default function EntryDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const router = useRouter();
   const cacheKey = id ? entryDetailKey(id) : null;
   const initialCached = cacheKey
     ? getCached<EntryDetailResponse>(cacheKey)
@@ -33,6 +39,65 @@ export default function EntryDetailScreen() {
     () => initialCached?.entry ?? null
   );
   const [loading, setLoading] = useState(() => !initialCached);
+
+  const requestDelete = useCallback(() => {
+    if (!id) return;
+    Alert.alert(
+      "Delete this entry?",
+      "This cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await api.del(`/api/entries/${id}`);
+              // Drop both this detail's cache and the list cache so
+              // the entries tab refetches fresh data on focus.
+              invalidate(entryDetailKey(id));
+              invalidate("/api/entries");
+              router.back();
+            } catch (err) {
+              const message =
+                err instanceof Error ? err.message : "Delete failed.";
+              Alert.alert("Couldn't delete entry", message);
+            }
+          },
+        },
+      ],
+      { cancelable: true }
+    );
+  }, [id, router]);
+
+  const openMenu = useCallback(() => {
+    if (Platform.OS === "ios") {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ["Cancel", "Delete entry"],
+          destructiveButtonIndex: 1,
+          cancelButtonIndex: 0,
+        },
+        (idx) => {
+          if (idx === 1) requestDelete();
+        }
+      );
+    } else {
+      Alert.alert(
+        "Entry options",
+        undefined,
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Delete entry",
+            style: "destructive",
+            onPress: requestDelete,
+          },
+        ],
+        { cancelable: true }
+      );
+    }
+  }, [requestDelete]);
 
   const reload = useCallback(() => {
     if (!cacheKey) return;
@@ -69,11 +134,36 @@ export default function EntryDetailScreen() {
     [entry?.createdAt]
   );
 
+  // Per-screen header override: adds an ellipsis button in the top
+  // right that opens the iOS action sheet (or Android Alert) with a
+  // destructive Delete option. Same flow as the swipe / long-press
+  // paths on the entries list.
+  const headerRight = useCallback(
+    () => (
+      <Pressable
+        onPress={openMenu}
+        hitSlop={12}
+        accessibilityRole="button"
+        accessibilityLabel="Entry options"
+      >
+        <Ionicons
+          name="ellipsis-horizontal"
+          size={22}
+          color={Platform.select({ ios: "#7C3AED", android: "#7C3AED" })}
+        />
+      </Pressable>
+    ),
+    [openMenu]
+  );
+
   if (loading) {
     return (
-      <View className="flex-1 bg-white dark:bg-[#1E1E2E] dark:bg-[#0B0B12] items-center justify-center">
-        <ActivityIndicator color="#7C3AED" />
-      </View>
+      <>
+        <Stack.Screen options={{ headerRight }} />
+        <View className="flex-1 bg-white dark:bg-[#1E1E2E] dark:bg-[#0B0B12] items-center justify-center">
+          <ActivityIndicator color="#7C3AED" />
+        </View>
+      </>
     );
   }
 
@@ -90,6 +180,7 @@ export default function EntryDetailScreen() {
       className="flex-1 bg-white dark:bg-[#1E1E2E] dark:bg-[#0B0B12]"
       contentContainerStyle={{ padding: 20, paddingBottom: 48, gap: 20 }}
     >
+      <Stack.Screen options={{ headerRight }} />
       {/* Header */}
       <View>
         <Text className="text-xs text-zinc-500 dark:text-zinc-400 mb-1">{date}</Text>

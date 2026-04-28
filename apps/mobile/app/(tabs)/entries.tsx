@@ -1,15 +1,19 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import {
+  ActionSheetIOS,
   ActivityIndicator,
+  Alert,
   FlatList,
+  Platform,
   Pressable,
   RefreshControl,
   Text,
   TextInput,
   View,
 } from "react-native";
+import { Swipeable } from "react-native-gesture-handler";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
@@ -67,6 +71,71 @@ export default function EntriesTab() {
     setRefreshing(true);
     load();
   }, [load]);
+
+  // Shared confirmation + DELETE flow used by all three input methods
+  // (swipe-left action, long-press context menu, entry-detail header).
+  // Optimistic local removal — the server cache (Vercel CDN) plus our
+  // own local cache will both pick up the new shape on next refocus.
+  const requestDelete = useCallback((entry: EntryDTO) => {
+    Alert.alert(
+      "Delete this entry?",
+      "This cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await api.del(`/api/entries/${entry.id}`);
+              setEntries((prev) => prev.filter((e) => e.id !== entry.id));
+              setCached(ENTRIES_CACHE_KEY, {
+                entries: entries.filter((e) => e.id !== entry.id),
+              });
+            } catch (err) {
+              const message =
+                err instanceof Error ? err.message : "Delete failed.";
+              Alert.alert("Couldn't delete entry", message);
+            }
+          },
+        },
+      ],
+      { cancelable: true }
+    );
+  }, [entries]);
+
+  const openContextMenu = useCallback(
+    (entry: EntryDTO) => {
+      if (Platform.OS === "ios") {
+        ActionSheetIOS.showActionSheetWithOptions(
+          {
+            options: ["Cancel", "Delete entry"],
+            destructiveButtonIndex: 1,
+            cancelButtonIndex: 0,
+          },
+          (idx) => {
+            if (idx === 1) requestDelete(entry);
+          }
+        );
+      } else {
+        // Android fallback — same single-action choice via Alert.
+        Alert.alert(
+          "Entry options",
+          undefined,
+          [
+            { text: "Cancel", style: "cancel" },
+            {
+              text: "Delete entry",
+              style: "destructive",
+              onPress: () => requestDelete(entry),
+            },
+          ],
+          { cancelable: true }
+        );
+      }
+    },
+    [requestDelete]
+  );
 
   // Filter — case-insensitive substring match against summary + themes
   // + transcript. Mood filter narrows further.
@@ -204,6 +273,8 @@ export default function EntriesTab() {
             <EntryRow
               entry={item}
               onPress={() => router.push(`/entry/${item.id}`)}
+              onLongPress={() => openContextMenu(item)}
+              onSwipeDelete={() => requestDelete(item)}
             />
           )}
         />
@@ -215,15 +286,55 @@ export default function EntriesTab() {
 function EntryRow({
   entry,
   onPress,
+  onLongPress,
+  onSwipeDelete,
 }: {
   entry: EntryDTO;
   onPress: () => void;
+  onLongPress?: () => void;
+  onSwipeDelete?: () => void;
 }) {
   const date = new Date(entry.createdAt);
   const dateLabel = formatRelativeDate(date);
+  const swipeRef = useRef<Swipeable | null>(null);
+
+  const renderRightActions = () => (
+    <Pressable
+      onPress={() => {
+        // Close swipe so the row settles back into the list before the
+        // confirm Alert fires; otherwise the row sits half-revealed
+        // behind the dialog.
+        swipeRef.current?.close();
+        onSwipeDelete?.();
+      }}
+      style={{
+        backgroundColor: "#EF4444",
+        justifyContent: "center",
+        alignItems: "center",
+        width: 88,
+        borderTopRightRadius: 16,
+        borderBottomRightRadius: 16,
+      }}
+    >
+      <Ionicons name="trash-outline" size={20} color="white" />
+      <Text style={{ color: "white", fontSize: 12, fontWeight: "600", marginTop: 4 }}>
+        Delete
+      </Text>
+    </Pressable>
+  );
+
   return (
+    <Swipeable
+      ref={swipeRef}
+      renderRightActions={onSwipeDelete ? renderRightActions : undefined}
+      friction={2}
+      rightThreshold={40}
+      overshootRight={false}
+    >
     <Pressable
       onPress={onPress}
+      onLongPress={onLongPress}
+      delayLongPress={350}
       className="rounded-2xl border border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-[#1E1E2E] px-4 py-3"
     >
       <View className="flex-row items-center gap-2 flex-wrap mb-1">
@@ -268,6 +379,7 @@ function EntryRow({
         </View>
       )}
     </Pressable>
+    </Swipeable>
   );
 }
 
