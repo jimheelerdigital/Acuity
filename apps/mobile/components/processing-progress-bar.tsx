@@ -1,28 +1,49 @@
-import { useEffect, useRef } from "react";
-import { Animated, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useEffect, useRef, useState } from "react";
+import { Animated, Easing, Text, View } from "react-native";
 
 /**
- * Determinate progress bar for the recording-processing screen on
- * mobile. Mirror of the web component — driven by Entry.status
- * transitions from useEntryPolling. Phase → percent → animated width
- * via Animated.timing so the bar visually advances smoothly between
- * polling ticks rather than jumping.
+ * Determinate progress bar + per-stage checklist for the recording-
+ * processing screen on mobile. Mirror of the web component — driven by
+ * Entry.status transitions from useEntryPolling. The bar's width
+ * animates between phase percentages with Animated.timing; below it,
+ * a vertical checklist of stages renders pending / active / complete
+ * states with circles, mirroring the web layout.
  *
- * Never shows 100% until phase === "COMPLETE". After 30s elapsed
- * without completion, swaps the elapsed counter for "Still working
- * on this — longer recordings take a bit more."
+ * Active row pulses (Animated.loop on opacity). Completed rows show a
+ * checkmark and an inline duration ("0.8s") computed from client-side
+ * phase-transition timestamps captured the moment each phase first
+ * arrives.
+ *
+ * Never shows 100% until phase === "COMPLETE". After 30 seconds
+ * elapsed without completion, the elapsed counter swaps for "Still
+ * working on this — longer recordings take a bit more.".
  */
 
-const PHASE_PROGRESS: Record<string, { pct: number; label: string }> = {
-  uploading: { pct: 20, label: "Uploading your recording…" },
-  QUEUED: { pct: 25, label: "Saving your recording…" },
-  TRANSCRIBING: { pct: 60, label: "Transcribing your reflection…" },
-  EXTRACTING: { pct: 90, label: "Pulling out themes and patterns…" },
-  PERSISTING: { pct: 95, label: "Almost done…" },
-  COMPLETE: { pct: 100, label: "Done" },
+const STAGES = [
+  { key: "uploading", label: "Uploading", pct: 20 },
+  { key: "QUEUED", label: "Saving", pct: 25 },
+  { key: "TRANSCRIBING", label: "Transcribing", pct: 60 },
+  { key: "EXTRACTING", label: "Extracting themes and patterns", pct: 90 },
+  { key: "PERSISTING", label: "Saving insights", pct: 95 },
+] as const;
+
+const PHASE_LABELS: Record<string, string> = {
+  uploading: "Uploading your recording…",
+  QUEUED: "Saving your recording…",
+  TRANSCRIBING: "Transcribing your reflection…",
+  EXTRACTING: "Pulling out themes and patterns…",
+  PERSISTING: "Almost done…",
+  COMPLETE: "Done",
 };
 
 const STILL_WORKING_THRESHOLD_SECONDS = 30;
+
+function stageIndex(phase: string | null): number {
+  if (!phase) return -1;
+  if (phase === "COMPLETE") return STAGES.length;
+  return STAGES.findIndex((s) => s.key === phase);
+}
 
 export function ProcessingProgressBar({
   phase,
@@ -31,20 +52,63 @@ export function ProcessingProgressBar({
   phase: string | null;
   elapsedSeconds: number;
 }) {
-  const fallback = { pct: 5, label: "Starting…" };
-  const config = phase ? PHASE_PROGRESS[phase] ?? fallback : fallback;
-  const widthAnim = useRef(new Animated.Value(config.pct)).current;
+  const idx = stageIndex(phase);
+  const headerLabel = (phase && PHASE_LABELS[phase]) ?? "Starting…";
+  const fillPct =
+    phase === "COMPLETE" ? 100 : idx >= 0 ? STAGES[idx].pct : 5;
+  const showStillWorking =
+    elapsedSeconds >= STILL_WORKING_THRESHOLD_SECONDS &&
+    phase !== "COMPLETE";
 
+  const widthAnim = useRef(new Animated.Value(fillPct)).current;
   useEffect(() => {
     Animated.timing(widthAnim, {
-      toValue: config.pct,
+      toValue: fillPct,
       duration: 700,
       useNativeDriver: false,
     }).start();
-  }, [config.pct, widthAnim]);
+  }, [fillPct, widthAnim]);
 
-  const showStillWorking =
-    elapsedSeconds >= STILL_WORKING_THRESHOLD_SECONDS && phase !== "COMPLETE";
+  const enteredAtRef = useRef<Record<string, number>>({});
+  const [, forceTick] = useState(0);
+  useEffect(() => {
+    if (phase === "COMPLETE") {
+      if (!enteredAtRef.current["__complete__"]) {
+        enteredAtRef.current["__complete__"] = Date.now();
+        forceTick((n) => n + 1);
+      }
+      return;
+    }
+    if (idx < 0) return;
+    const key = STAGES[Math.min(idx, STAGES.length - 1)].key;
+    if (!enteredAtRef.current[key]) {
+      enteredAtRef.current[key] = Date.now();
+      forceTick((n) => n + 1);
+    }
+  }, [idx, phase]);
+
+  // Pulsing opacity loop for the active circle.
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 0.45,
+          duration: 800,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 800,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [pulseAnim]);
 
   const widthInterpolation = widthAnim.interpolate({
     inputRange: [0, 100],
@@ -59,15 +123,73 @@ export function ProcessingProgressBar({
           style={{ width: widthInterpolation }}
         />
       </View>
+
       <View className="mt-4 items-center">
         <Text className="text-center text-base font-semibold text-zinc-100">
-          {config.label}
+          {headerLabel}
         </Text>
         <Text className="mt-1 text-center text-xs text-zinc-400">
           {showStillWorking
             ? "Still working on this — longer recordings take a bit more."
             : `${elapsedSeconds}s elapsed`}
         </Text>
+      </View>
+
+      <View className="mt-5 gap-2.5">
+        {STAGES.map((stage, i) => {
+          const done = i < idx;
+          const active = i === idx;
+          const startedAt = enteredAtRef.current[stage.key];
+          const nextKey = STAGES[i + 1]?.key;
+          const completedAt = nextKey
+            ? enteredAtRef.current[nextKey]
+            : enteredAtRef.current["__complete__"];
+          const durationMs =
+            done && startedAt && completedAt
+              ? completedAt - startedAt
+              : null;
+
+          const Circle = active ? Animated.View : View;
+          const circleStyle = active ? { opacity: pulseAnim } : undefined;
+
+          return (
+            <View
+              key={stage.key}
+              className="flex-row items-center gap-3"
+            >
+              <Circle
+                className={`h-5 w-5 items-center justify-center rounded-full border ${
+                  done
+                    ? "border-violet-500 bg-violet-500"
+                    : active
+                      ? "border-violet-500 bg-violet-500/20"
+                      : "border-white/10 bg-transparent"
+                }`}
+                style={circleStyle}
+              >
+                {done ? (
+                  <Ionicons name="checkmark" size={12} color="white" />
+                ) : null}
+              </Circle>
+              <Text
+                className={`flex-1 text-sm ${
+                  done
+                    ? "text-zinc-400"
+                    : active
+                      ? "text-zinc-50 font-medium"
+                      : "text-zinc-600"
+                }`}
+              >
+                {stage.label}
+              </Text>
+              {durationMs != null && (
+                <Text className="text-xs text-zinc-500">
+                  {(durationMs / 1000).toFixed(1)}s
+                </Text>
+              )}
+            </View>
+          );
+        })}
       </View>
     </View>
   );

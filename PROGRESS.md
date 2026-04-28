@@ -7,6 +7,43 @@
 
 ---
 
+## [2026-04-27] — Recording-processing screen: bring back the stage checklist beneath the progress bar
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** _to be filled by commit_
+
+### In plain English (for Keenan)
+The progress bar from the previous commit stays at the top of the wait screen, but now there's also a vertical checklist below it showing every processing stage and its status. Each stage is one of three states: pending (empty outlined circle, muted), active (filled violet circle that pulses), complete (filled violet circle with a checkmark + the time it took, like "0.8s"). The checklist updates in lockstep with the bar — when the bar advances to "Transcribing", the Transcribing row goes Active, the rows above mark Complete with their durations. Same combined view on web and on iPhone.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/processing-progress-bar.tsx`: kept the bar + headline label + still-working subline at top, then appended a 5-row `<ol>` mirroring the deleted Stepper layout (pulled from `2c2e840^:apps/web/src/app/home/record-button.tsx`). Stages: Uploading / Saving / Transcribing / Extracting themes and patterns / Saving insights — keys aligned to the existing phase enum (`uploading | QUEUED | TRANSCRIBING | EXTRACTING | PERSISTING`).
+  - Added a `useRef<Record<string, number>>` to stamp the wall-clock time each phase first arrives. On phase transition, the new useEffect writes the timestamp once. The `__complete__` sentinel is stamped when phase === "COMPLETE" so the last (PERSISTING) row gets a duration too.
+  - Per-row duration on completed rows: `(enteredAtRef[next] - enteredAtRef[stage]) / 1000` formatted to one decimal, rendered right-aligned in a `tabular-nums` span.
+  - Active circle uses Tailwind `animate-pulse` with a violet-500/20 background tint so it reads as the in-progress state. Done circles are solid violet-500 with a "✓" glyph; pending circles stay neutral border with no glyph.
+- `apps/mobile/components/processing-progress-bar.tsx`: full mobile mirror.
+  - `Animated.timing` keeps driving the bar width as before.
+  - Added `Animated.loop(Animated.sequence([…]))` opacity pulse for the active circle (NativeWind has no `animate-pulse` equivalent).
+  - Same enteredAt-ref pattern + per-row duration display via `(durationMs / 1000).toFixed(1)`.
+  - Done circles use `Ionicons name="checkmark"` for the glyph.
+- No changes needed in `record-button.tsx` (web) or `record.tsx` (mobile) — both already render `<ProcessingProgressBar />` and inherit the new combined layout.
+- `npm run build` (web) clean. Mobile `tsc --noEmit` clean for both touched files.
+
+### Manual steps needed
+- [ ] **Jimmy:** publish OTA. I'll attempt `eas update --channel production --message "checklist beneath progress bar"` from `apps/mobile/`. If EAS auth isn't cached, run from your machine.
+- [ ] **Jimmy:** verify on prod web after Vercel deploy: record short entry → bar fills + checklist shows the active row pulsing, completed rows showing checkmarks and per-stage durations like "0.6s", "8.2s", "1.1s".
+- [ ] **Jimmy:** verify on TestFlight after OTA: same combined layout on iPhone, active circle pulses, completed rows show durations.
+
+### Notes
+- Why the durations are computed client-side rather than read from the server: the polling endpoint exposes the *current* phase, not the timestamp each phase started. We could backfill that on the server (write `phaseStartedAt` columns to Entry on each transition), but the client-side computation is honest enough — it captures "wall-clock time the user perceived this phase taking" which is what the duration label communicates anyway. If we ever want server-truth durations (e.g. for support escalations: "your transcript took 22s, here's why"), that's a schema add, not a client fix.
+- Why the duration only renders on completed rows: by definition you can't show "0.8s" until the stage has ended. Active row stays clean — pulse is the only signal that work is happening. Pending rows show nothing.
+- The `__complete__` sentinel on `enteredAtRef` is the only way to stamp the *end* of the last (PERSISTING) stage, since there's no stage after it. Without it the last row's duration would never compute. Cost: one extra string in a Map of five keys; immaterial.
+- Active-circle pulse uses Tailwind `animate-pulse` on web (subtle 50%↔100% opacity) and Animated.loop on mobile (45%↔100% over 1.6s round-trip). Slight difference in timing/depth — acceptable since native and web have different render pipelines and the cross-platform "feel" is the same.
+- The `useState(0); forceTick((n) => n + 1)` pattern after the ref write is intentional — refs don't trigger re-renders, but I want the new timestamp visible on the next paint so the duration of the just-completed stage appears immediately. Cheap forced re-render once per phase transition.
+- Restored Stepper logic comes from commit `2c2e840^:apps/web/src/app/home/record-button.tsx` per the spec request. The original was 4 stages; the new combined view is 5 (added a separate "Uploading" row to mirror the bar's pre-polling phase).
+
+---
+
 ## [2026-04-27] — Weekly Insight empty state shows top reflected themes
 
 **Requested by:** Jimmy
