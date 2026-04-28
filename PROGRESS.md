@@ -11,7 +11,7 @@
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** _to be filled by commit_
+**Commit hash:** 2c2e840
 
 ### In plain English (for Keenan)
 After someone finishes a recording, the wait screen used to show a generic spinning loader (web) and a spinner-plus-checklist (mobile) — no real signal about how far along the processing was or how much longer they'd be staring at the screen. Replaced with a thin **purple progress bar** that fills as each real pipeline stage completes:
