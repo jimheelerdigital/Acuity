@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { KeyboardAwareScreen } from "@/components/keyboard-aware-screen";
 import { useAuth } from "@/contexts/auth-context";
 import {
   requestMagicLink,
@@ -170,8 +171,14 @@ export default function SignInScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-white dark:bg-[#0B0B12] px-6">
-      <View className="flex-1 justify-center">
+    <SafeAreaView className="flex-1 bg-white dark:bg-[#0B0B12]">
+      <KeyboardAwareScreen
+        contentContainerStyle={{
+          paddingHorizontal: 24,
+          paddingVertical: 24,
+          justifyContent: "center",
+        }}
+      >
         <View className="h-16 w-16 rounded-2xl bg-violet-600 items-center justify-center mb-8 self-center">
           <Text className="text-3xl" style={{ color: "white" }}>
             A
@@ -315,7 +322,7 @@ export default function SignInScreen() {
             Google client ID not set. Development build only.
           </Text>
         )}
-      </View>
+      </KeyboardAwareScreen>
     </SafeAreaView>
   );
 }

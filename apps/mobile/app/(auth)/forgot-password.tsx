@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Alert, Pressable, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { KeyboardAwareScreen } from "@/components/keyboard-aware-screen";
 import { requestPasswordReset } from "@/lib/auth";
 
 /**
@@ -62,8 +63,14 @@ export default function ForgotPasswordScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-white dark:bg-[#0B0B12] px-6">
-      <View className="flex-1 justify-center">
+    <SafeAreaView className="flex-1 bg-white dark:bg-[#0B0B12]">
+      <KeyboardAwareScreen
+        contentContainerStyle={{
+          paddingHorizontal: 24,
+          paddingVertical: 24,
+          justifyContent: "center",
+        }}
+      >
         <Text className="text-2xl font-bold text-zinc-900 dark:text-zinc-50 mb-1 text-center">
           Reset your password
         </Text>
@@ -106,7 +113,7 @@ export default function ForgotPasswordScreen() {
             </Pressable>
           </Link>
         </View>
-      </View>
+      </KeyboardAwareScreen>
     </SafeAreaView>
   );
 }

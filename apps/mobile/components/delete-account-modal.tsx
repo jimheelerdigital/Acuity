@@ -2,7 +2,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -141,9 +143,16 @@ export function DeleteAccountModal({
           <View style={{ width: 50 }} />
         </View>
 
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+        >
         <ScrollView
           contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode={
+            Platform.OS === "ios" ? "interactive" : "on-drag"
+          }
         >
           {/* Warning icon + headline */}
           <View style={{ alignItems: "center", marginTop: 20, marginBottom: 24 }}>
@@ -403,6 +412,7 @@ export function DeleteAccountModal({
             </Text>
           </Pressable>
         </ScrollView>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     </Modal>
   );
