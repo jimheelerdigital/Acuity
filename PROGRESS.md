@@ -7,6 +7,54 @@
 
 ---
 
+## [2026-04-27] — Recording-processing screen: spinner → determinate progress bar (web + mobile)
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** _to be filled by commit_
+
+### In plain English (for Keenan)
+After someone finishes a recording, the wait screen used to show a generic spinning loader (web) and a spinner-plus-checklist (mobile) — no real signal about how far along the processing was or how much longer they'd be staring at the screen. Replaced with a thin **purple progress bar** that fills as each real pipeline stage completes:
+
+- Uploading your recording → 0–20%
+- Saving your recording (queued) → ~25%
+- Transcribing your reflection → ~60%
+- Pulling out themes and patterns → ~90%
+- Almost done (saving) → ~95%
+- Done → 100%
+
+The bar advances on real backend events — the polling hook already exposes `Entry.status` transitions from the Inngest pipeline, so the percentages are tied to actual progress, not a fake timer. If processing takes more than 30 seconds, the elapsed counter under the bar swaps for "Still working on this — longer recordings take a bit more." so it doesn't feel stuck. Both web and iOS use the same phase mapping for consistency.
+
+### Technical changes (for Jimmy)
+- New shared component: `apps/web/src/components/processing-progress-bar.tsx`. Driven by `{ phase: string | null, elapsedSeconds: number }`. CSS `transition-[width] duration-700 ease-out` smooths width changes between phase transitions. Renders a 6px-tall track + violet-500 fill, label centered below. ARIA `role="progressbar"` with valuenow/min/max + label for accessibility.
+- New mobile mirror: `apps/mobile/components/processing-progress-bar.tsx`. RN `Animated.timing` with `useNativeDriver: false` (width animations require layout thread) interpolating Animated.Value 0–100 to "0%"–"100%" widths. Same phase→percent map.
+- `apps/web/src/app/home/record-button.tsx`:
+  - Replaced the `<Stepper>` (vertical list of 4 dots/checks) with `<ProcessingProgressBar />` for the `phase === "processing"` branch.
+  - Replaced the existing `phase === "uploading"` mini-bar (animate-pulse 25% width) with `<ProcessingProgressBar phase="uploading" elapsedSeconds={0} />` for visual consistency.
+  - Deleted the now-dead `Stepper` function + `STEPPER_PHASES` constant.
+- `apps/mobile/app/record.tsx`:
+  - `ProcessingView` no longer renders `<ActivityIndicator>` + 4-row checklist; just renders `<ProcessingProgressBar />`.
+  - The `state === "uploading"` branch (was a separate spinner-only view with "Uploading…" text) now renders the same component with `phase="uploading"` so the bar starts moving the moment the upload POST goes out.
+  - Removed unused `ActivityIndicator` import.
+- Phase→pct table identical on both platforms: `{ uploading: 20, QUEUED: 25, TRANSCRIBING: 60, EXTRACTING: 90, PERSISTING: 95, COMPLETE: 100 }`. Spec said "never show 100% until truly done" — the bar only hits 100% on the COMPLETE phase, which immediately transitions out of the screen on web (router.refresh) and out via expo-router nav on mobile.
+- Used the existing `useEntryPolling` hook on both platforms for the data source — no new polling, no fake timers, no estimated-progress code path.
+
+### Manual steps needed
+- [ ] **Jimmy:** publish EAS OTA — `eas update --channel production --message "spinner -> progress bar on recording-processing screen"` from `apps/mobile/`. (I'll attempt the publish after commit; if EAS auth isn't cached, you'll need to run it from your machine.)
+- [ ] **Jimmy:** verify on prod web after Vercel deploy: record a short entry on getacuity.io → after stop, see the bar fill smoothly across the 4 stages, label updates per stage, hits 100% only when result card appears.
+- [ ] **Jimmy:** verify on TestFlight Build 21 (or after OTA): same flow on iPhone, bar animates between phases, "Still working on this — longer recordings take a bit more." copy appears if processing crosses 30s.
+
+### Notes
+- Why driven by real phases not estimated progress: `useEntryPolling` already exposes `Entry.status` transitions on a 2-15s backoff. The phase string IS the progress signal — using it means the bar is honest. If a TRANSCRIBING phase happens to take 12s on one entry and 4s on another, the bar pauses at ~25% and then jumps to ~60% accordingly — the CSS/Animated transition smooths the jump over 700ms so it doesn't feel jarring.
+- Why no in-phase fake-creep animation (where the bar would visually inch forward inside a phase): adds complexity for marginal UX. The 700ms ease-out smoothing on phase-to-phase transitions already removes the discrete-jump feeling. If a phase legitimately takes >15s the elapsed counter is the right signal; past 30s the "Still working on this…" copy takes over.
+- Why the bar appears for the client-side `uploading` phase too (even though useEntryPolling hasn't started yet): without it, there'd be a jarring 1–3s gap where the user sees "stopped recording" then suddenly the polling-driven bar fills in at 25%. Showing the bar at 20% during upload means continuous visual feedback from stop-tap to terminal.
+- Why mobile uses `useNativeDriver: false`: width animations can't run on the native thread (only opacity/transform can). The trade-off is fine — bar is a single 1.5px-tall view, no perf concern.
+- The deleted Stepper component (4-row vertical checklist) was a perfectly valid UI pattern and we may want it back for a "pipeline visualization" debug screen later. Easy to restore from git history if needed (commit before removal: 30b4336).
+- AppState handling unchanged: `useEntryPolling` already keeps the polling timer running across backgrounding (the hook tolerates the JS thread pause and resumes on the next nextDelay tick). The bar component is purely a function of phase + elapsedSeconds, so it just renders correctly when the user returns.
+- The progress-bar component is the same conceptual shape on both platforms but I deliberately did NOT extract a shared package — the web version is JSX-with-Tailwind-classes, the mobile version is JSX-with-NativeWind-classes plus Animated. Cross-compiling those into one source isn't worth the abstraction tax for two ~70-line files.
+
+---
+
 ## [2026-04-27] — /life-matrix grid contrast + axis label breathing room
 
 **Requested by:** Jimmy

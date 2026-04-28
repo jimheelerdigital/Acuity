@@ -3,7 +3,6 @@ import { Audio, InterruptionModeIOS } from "expo-av";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   AppState,
   type AppStateStatus,
@@ -13,6 +12,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { ProcessingProgressBar } from "@/components/processing-progress-bar";
 import { useEntryPolling } from "@/hooks/use-entry-polling";
 import { api } from "@/lib/api";
 import { getToken } from "@/lib/auth";
@@ -387,10 +387,7 @@ export default function RecordScreen() {
             elapsedSeconds={poll.elapsedSeconds}
           />
         ) : state === "uploading" ? (
-          <View className="items-center gap-4">
-            <ActivityIndicator size="large" color="#7C3AED" />
-            <Text className="text-zinc-400 dark:text-zinc-500 text-sm">Uploading…</Text>
-          </View>
+          <ProcessingProgressBar phase="uploading" elapsedSeconds={0} />
         ) : state === "error" ? (
           <View className="items-center gap-4 px-4">
             <Ionicons name="alert-circle-outline" size={48} color="#EF4444" />
@@ -523,52 +520,9 @@ function ProcessingView({
   phase: string | null;
   elapsedSeconds: number;
 }) {
-  const steps: { key: string; label: string }[] = [
-    { key: "QUEUED", label: "Saving your recording" },
-    { key: "TRANSCRIBING", label: "Transcribing" },
-    { key: "EXTRACTING", label: "Extracting insights" },
-    { key: "PERSISTING", label: "Almost done" },
-  ];
-  const currentIndex = Math.max(
-    0,
-    steps.findIndex((s) => s.key === phase)
-  );
   return (
     <View className="w-full items-center">
-      <ActivityIndicator size="large" color="#7C3AED" />
-      <Text className="mt-6 text-zinc-800 dark:text-zinc-100 text-base font-semibold">
-        {steps[currentIndex]?.label ?? "Processing"}
-      </Text>
-      <Text className="mt-1 text-zinc-500 dark:text-zinc-400 text-xs">
-        {elapsedSeconds}s elapsed — usually under a minute
-      </Text>
-
-      <View className="mt-8 w-full max-w-xs gap-2">
-        {steps.map((step, i) => {
-          const done = i < currentIndex;
-          const current = i === currentIndex;
-          return (
-            <View key={step.key} className="flex-row items-center gap-3">
-              <View
-                className={`h-4 w-4 rounded-full ${
-                  done
-                    ? "bg-violet-500"
-                    : current
-                      ? "bg-violet-500/40 border border-violet-500"
-                      : "bg-zinc-800"
-                }`}
-              />
-              <Text
-                className={`text-sm ${
-                  done || current ? "text-zinc-700 dark:text-zinc-200" : "text-zinc-600 dark:text-zinc-300"
-                }`}
-              >
-                {step.label}
-              </Text>
-            </View>
-          );
-        })}
-      </View>
+      <ProcessingProgressBar phase={phase} elapsedSeconds={elapsedSeconds} />
     </View>
   );
 }

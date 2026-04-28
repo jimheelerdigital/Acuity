@@ -15,6 +15,7 @@ import {
   useEntryPolling,
   type PolledEntry,
 } from "@/hooks/use-entry-polling";
+import { ProcessingProgressBar } from "@/components/processing-progress-bar";
 
 type Phase =
   | "idle"
@@ -26,18 +27,6 @@ type Phase =
   | "timeout";
 
 const MAX_SECONDS = 120;
-
-/**
- * Progress stepper phases, driven by `Entry.status` transitions from
- * the polling hook. Order matters — the current phase is everything up
- * to and including the server-reported status.
- */
-const STEPPER_PHASES: { key: string; label: string }[] = [
-  { key: "QUEUED", label: "Saving your recording…" },
-  { key: "TRANSCRIBING", label: "Transcribing…" },
-  { key: "EXTRACTING", label: "Extracting insights…" },
-  { key: "PERSISTING", label: "Almost done…" },
-];
 
 export function RecordButton() {
   const router = useRouter();
@@ -241,14 +230,12 @@ export function RecordButton() {
             </p>
           </div>
         ) : phase === "uploading" ? (
-          <div className="w-full max-w-xs text-center space-y-3">
-            <p className="text-sm text-zinc-600 dark:text-zinc-300">Uploading audio…</p>
-            <div className="h-1.5 w-full rounded-full bg-zinc-100 dark:bg-white/10 overflow-hidden">
-              <div className="h-full rounded-full bg-violet-500 animate-pulse w-1/4" />
-            </div>
-          </div>
+          <ProcessingProgressBar phase="uploading" elapsedSeconds={0} />
         ) : phase === "processing" ? (
-          <Stepper currentPhase={poll.phase} elapsedSeconds={poll.elapsedSeconds} />
+          <ProcessingProgressBar
+            phase={poll.phase}
+            elapsedSeconds={poll.elapsedSeconds}
+          />
         ) : phase === "idle" ? (
           <>
             <div className="text-center lg:flex-1 lg:text-left">
@@ -304,63 +291,6 @@ export function RecordButton() {
           }}
         />
       )}
-    </div>
-  );
-}
-
-/**
- * 4-step stepper driven by Entry.status. Current phase highlights;
- * completed phases get a check.
- */
-function Stepper({
-  currentPhase,
-  elapsedSeconds,
-}: {
-  currentPhase: string | null;
-  elapsedSeconds: number;
-}) {
-  const currentIndex = Math.max(
-    0,
-    STEPPER_PHASES.findIndex((p) => p.key === currentPhase)
-  );
-
-  return (
-    <div className="w-full max-w-sm space-y-3">
-      <ol className="space-y-2">
-        {STEPPER_PHASES.map((step, i) => {
-          const done = i < currentIndex;
-          const active = i === currentIndex;
-          return (
-            <li key={step.key} className="flex items-center gap-3 text-sm">
-              <span
-                className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px] font-bold ${
-                  done
-                    ? "bg-emerald-500 border-emerald-500 text-white"
-                    : active
-                      ? "border-violet-500 text-violet-500 animate-pulse"
-                      : "border-zinc-200 dark:border-white/10 text-zinc-300 dark:text-zinc-600"
-                }`}
-              >
-                {done ? "✓" : i + 1}
-              </span>
-              <span
-                className={
-                  done
-                    ? "text-zinc-500 line-through"
-                    : active
-                      ? "text-zinc-900 font-medium"
-                      : "text-zinc-300"
-                }
-              >
-                {step.label}
-              </span>
-            </li>
-          );
-        })}
-      </ol>
-      <p className="text-xs text-zinc-400 dark:text-zinc-500 pl-8">
-        {elapsedSeconds}s elapsed
-      </p>
     </div>
   );
 }
