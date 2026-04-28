@@ -7,6 +7,24 @@
 
 ---
 
+## [2026-04-27] — /life-matrix radar polygon fill bumped 0.12 → 0.50
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** fa55a56
+
+### In plain English (for Keenan)
+On the dedicated Life Matrix page, the purple shape inside the radar was so transparent you could barely see it. Bumped the fill to be much denser so the shape reads clearly. Outline and vertex dots already looked good — only the inside fill needed work.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/app/insights/life-map.tsx`: `RadarChart` polygon `fillOpacity` 0.12 → 0.50. Stroke + vertex dots untouched.
+- No schema, no API, no mobile.
+
+### Manual steps needed
+- [ ] **Jimmy:** verify on /life-matrix as the reviewer account once Vercel redeploys: polygon shape clearly visible, no longer see-through.
+
+---
+
 ## [2026-04-27] — /home Life Matrix contrast pass + right-column h-full fix
 
 **Requested by:** Jimmy
