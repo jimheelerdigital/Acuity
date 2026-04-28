@@ -270,29 +270,29 @@ export default async function DashboardPage() {
               unlocked={userProg.unlocked.lifeMatrix}
             />
           </div>
-          {/* Right column — Weekly insight (top, content-sized) +
-              Goals snapshot (flex-1, stretches). `h-full` is the
-              critical bit: CSS grid stretches the cell to row height,
-              but the inner flex container only fills its content
-              height by default — so flex-1 on Goals had nothing to
-              grow into. With h-full the wrapper takes the full cell
-              height and Goals stretches to fill remaining space,
-              matching the bottom edge of LifeMatrixSnapshot on the
-              left. */}
-          <div className="flex h-full flex-col gap-6 lg:col-span-5">
+          {/* Right column — Weekly insight + Goals stacked at their
+              natural heights. Bottom-edge alignment is owned by CSS
+              grid stretching the cell + LifeMatrixSnapshot using
+              `h-full` to fill its cell to match the row's height
+              (set by whichever side is taller). No artificial
+              stretching of Goals — keeps Goals card sized to its
+              content; if there's leftover cell space the LEFT card
+              (Life Matrix) absorbs it via h-full instead of growing
+              the right column past it. */}
+          <div className="flex flex-col gap-6 lg:col-span-5">
             <WeeklyInsightCard
               report={weeklyReport}
               entryCount={totalEntryCount}
               unlocked={userProg.unlocked.weeklyReport}
             />
-            <GoalsSnapshotCard goals={snapshotGoals} className="flex-1" />
+            <GoalsSnapshotCard goals={snapshotGoals} />
           </div>
 
           {/* Row 4 — CONTEXT TIER. Recent sessions + Open tasks split
-              50/50 (was 7/5). Equal cols so the two lists balance
-              vertically — Open Tasks no longer leaves a hanging gap
-              on the right when Recent Sessions has 5 entries. */}
-          <section className="lg:col-span-6 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-[#1E1E2E]">
+              50/50. Both cards use `h-full` so whichever is shorter
+              stretches to match the taller — bottom edges line up via
+              grid stretching, no flex-1 tricks. */}
+          <section className="flex h-full flex-col lg:col-span-6 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-[#1E1E2E]">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
                 Recent sessions

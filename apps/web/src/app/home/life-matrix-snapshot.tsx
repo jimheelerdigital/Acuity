@@ -91,7 +91,7 @@ export function LifeMatrixSnapshot({
     .join(" ");
 
   return (
-    <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-[#1E1E2E]">
+    <section className="flex h-full flex-col rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-[#1E1E2E]">
       <div className="flex items-baseline justify-between">
         <div>
           <h2 className="text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">

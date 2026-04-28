@@ -77,7 +77,7 @@ export function OpenTasksCard({ initialTasks }: { initialTasks: OpenTask[] }) {
   };
 
   return (
-    <section className="lg:col-span-6 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-[#1E1E2E]">
+    <section className="flex h-full flex-col lg:col-span-6 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-[#1E1E2E]">
       <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
         Open tasks
       </h2>
