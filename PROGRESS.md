@@ -7,6 +7,30 @@
 
 ---
 
+## [2026-04-27] — Weekly Insight empty state shows top reflected themes
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** 7930e2c
+
+### In plain English (for Keenan)
+The Weekly Insight card on /home was leaving empty space at the bottom while users wait for their first weekly report (which only drops after 7 sessions). Filled that space with something useful: a small "What you've reflected on" chip list showing the top three themes the AI has been picking up from the user's recordings. Now the card carries signal even before Sunday's report lands.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/app/home/weekly-insight-card.tsx`: new optional `topThemes?: Array<{ name: string; count: number }>` prop. Empty state renders a chip list (theme name + ×count) below the existing progress bar when the array is non-empty. Hidden for true cold-start users.
+- `apps/web/src/app/home/page.tsx`: new `fetchTopThemes()` parallel fetch — `prisma.theme.findMany` ordered by `mentions._count desc`, take 3, filter `count > 0`. Passed to WeeklyInsightCard.
+- Once a user's first WeeklyReport lands, the empty state disappears entirely (the report's blockquote owns the card), so this is a transitional surface — just for the cold-start window.
+- No schema, no API, no mobile.
+
+### Manual steps needed
+- [ ] **Jimmy:** verify on /home as the reviewer account: Weekly Insight should now show 3 chips ("work ×6", "family ×4", "sleep ×3" or similar) below the progress bar, filling the previously-empty space.
+
+### Notes
+- Why mention count not Theme.createdAt: count surfaces what actually keeps coming up in the user's reflections. Recency would surface anything new, even if mentioned once. Same heuristic the future Theme Map uses.
+- The chip styling is intentionally violet to echo the report's "Read the full report →" violet accent — same brand color, suggesting the chips are a precursor to the report rather than a separate feature.
+
+---
+
 ## [2026-04-27] — /home row alignment via grid stretch + h-full (third pass, settled)
 
 **Requested by:** Jimmy
