@@ -24,6 +24,7 @@ export function WeeklyInsightCard({
   report,
   entryCount,
   unlocked,
+  topThemes,
 }: {
   report: {
     id: string;
@@ -38,6 +39,11 @@ export function WeeklyInsightCard({
    *  /insights page won't show the report yet either, so a quote
    *  here would point users at a gated destination. */
   unlocked: boolean;
+  /** Top 2-3 themes by mention count. Surfaced in the empty state
+   *  ("what you've reflected on") so the card carries some signal
+   *  before the first weekly report drops. Optional — if absent or
+   *  empty, the empty state is just progress copy. */
+  topThemes?: Array<{ name: string; count: number }>;
 }) {
   const snippet = pickSnippet(report);
   const hasContent = unlocked && report != null && snippet != null;
@@ -123,6 +129,34 @@ export function WeeklyInsightCard({
                 ? "1 more session unlocks it."
                 : `${ENTRIES_REQUIRED - entryCount} more sessions unlock it.`}
           </p>
+
+          {/* "What you've reflected on" — surfaces top themes from
+              recent entries while the user waits for their first
+              weekly report. Fills the otherwise-empty bottom of the
+              card with at-a-glance signal. Only renders when the
+              extraction pipeline has produced at least one theme. */}
+          {topThemes && topThemes.length > 0 && (
+            <div className="mt-6 border-t border-zinc-100 pt-4 dark:border-white/5">
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
+                What you&rsquo;ve reflected on
+              </p>
+              <ul className="mt-3 flex flex-wrap gap-2">
+                {topThemes.slice(0, 3).map((t) => (
+                  <li
+                    key={t.name}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50/50 px-2.5 py-1 dark:border-violet-900/40 dark:bg-violet-950/20"
+                  >
+                    <span className="text-xs font-medium text-violet-700 dark:text-violet-300">
+                      {t.name}
+                    </span>
+                    <span className="text-[10px] font-semibold tabular-nums text-violet-500/70 dark:text-violet-400/70">
+                      ×{t.count}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
     </section>

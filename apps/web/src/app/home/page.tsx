@@ -98,8 +98,9 @@ export default async function DashboardPage() {
   let weeklyReport: Awaited<ReturnType<typeof fetchLatestWeeklyReport>> = null;
   let totalEntryCount = 0;
   let snapshotGoals: SnapshotGoal[] = [];
+  let topThemes: Array<{ name: string; count: number }> = [];
   try {
-    [entries, tasks, lifemapAreas, weeklyReport, totalEntryCount, snapshotGoals] =
+    [entries, tasks, lifemapAreas, weeklyReport, totalEntryCount, snapshotGoals, topThemes] =
       await Promise.all([
         fetchEntries(userId),
         prisma.task.findMany({
@@ -114,11 +115,11 @@ export default async function DashboardPage() {
         }),
         fetchLatestWeeklyReport(userId),
         prisma.entry.count({ where: { userId } }),
-        // Top 3 goals for the snapshot card under Weekly insight.
-        // Status priority: IN_PROGRESS first, then NOT_STARTED, then
-        // anything else. Skip ARCHIVED + COMPLETE entirely — they
-        // belong in the goals page, not the dashboard glance.
         fetchSnapshotGoals(userId),
+        // Top 3 themes by ThemeMention count. Used by Weekly Insight
+        // card's empty state ("what you've reflected on") so the
+        // card carries signal before the first report drops.
+        fetchTopThemes(userId),
       ]);
   } catch (err) {
     console.error("[dashboard] Failed to load data:", err);
@@ -284,6 +285,7 @@ export default async function DashboardPage() {
               report={weeklyReport}
               entryCount={totalEntryCount}
               unlocked={userProg.unlocked.weeklyReport}
+              topThemes={topThemes}
             />
             <GoalsSnapshotCard goals={snapshotGoals} />
           </div>
@@ -352,6 +354,27 @@ async function fetchEntries(userId: string) {
       _count: { select: { tasks: true } },
     },
   });
+}
+
+async function fetchTopThemes(
+  userId: string
+): Promise<Array<{ name: string; count: number }>> {
+  const { prisma } = await import("@/lib/prisma");
+  // Theme ranked by ThemeMention count, descending. Take 3 — the
+  // Weekly Insight card slices to 3 anyway, and a tighter limit
+  // keeps the aggregate cheap.
+  const rows = await prisma.theme.findMany({
+    where: { userId },
+    select: {
+      name: true,
+      _count: { select: { mentions: true } },
+    },
+    orderBy: { mentions: { _count: "desc" } },
+    take: 3,
+  });
+  return rows
+    .map((r) => ({ name: r.name, count: r._count.mentions }))
+    .filter((r) => r.count > 0);
 }
 
 async function fetchSnapshotGoals(userId: string): Promise<SnapshotGoal[]> {
