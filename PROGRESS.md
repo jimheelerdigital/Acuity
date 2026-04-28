@@ -7,6 +7,45 @@
 
 ---
 
+## [2026-04-28] — Auto-blog pipeline with Google Search Console + Indexing API
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** c93ee17
+
+### In plain English (for Keenan)
+The blog now runs on full autopilot. Every day, the system picks a topic from a pre-loaded queue, writes a 1,400-2,200 word SEO blog post, validates it against quality rules (keyword placement, word count, no banned marketing phrases, FAQ section), and publishes it at a random time between 6am and 10pm UTC. Google gets pinged immediately so it knows to crawl the new page. Every night at 3am, a separate job checks how each blog post is performing via Google Search Console — posts that get zero impressions after 7 days, or very low traffic after 30/90 days, get automatically removed with a redirect to the best-performing post. You can see everything in the new "Auto Blog" tab in the admin dashboard, including a "Generate Now" button for testing and a "Kill" button to manually remove any post.
+
+### Technical changes (for Jimmy)
+- Installed `googleapis` package for Search Console + Indexing API access
+- New `lib/google/auth.ts`: shared service account auth helper (reuses existing `GA4_SERVICE_ACCOUNT_KEY`)
+- New `lib/google/search-console.ts`: `getUrlPerformance()` and `getPropertyPerformance()` for GSC data
+- New `lib/google/indexing.ts`: `notifyPublish()` and `notifyUnpublish()` with 3x retry + `IndexingLog` table
+- New `inngest/functions/auto-blog.ts`: `autoBlogGenerateFn` (cron 0 6 UTC + random 0-960min delay) and `autoBlogPruneFn` (cron 0 3 UTC)
+- Removed blog generation from `generateDailyFn` — content factory now produces 8 pieces/day (tweets, TikToks, ads, Reddit)
+- Prisma schema: new `BlogTopicQueue`, `IndexingLog`, `PruneLog` models; extended `ContentPiece` with `secondaryKeywords`, `faqSchema`, `foundingMemberSnapshot`, `impressions`, `clicks`, `lastGscSyncAt`, `publishedAt`, `redirectTo`; new `ContentStatus` values: `AUTO_PUBLISHED`, `PRUNED_DAY7/30/90`, `GENERATION_FAILED`
+- New admin tab "Auto Blog" with topic queue stats, recent posts table, prune log, GSC health, generate-now + kill buttons
+- Blog `[slug]` page now handles pruned posts with 301 redirects; sitemap + blog index include `AUTO_PUBLISHED` status
+- Approve + unpublish admin routes now fire-and-forget ping Google Indexing API
+- Extracted `slugify()` + `uniqueSlug()` to shared `lib/content-factory/slug.ts`
+- New `scripts/seed-blog-topics.ts` to populate initial topic queue (30 topics via Claude)
+
+### Manual steps needed
+- [ ] `npx prisma db push` from home Mac (Keenan — work Mac blocks Supabase ports)
+- [ ] `npx tsx scripts/seed-blog-topics.ts` to populate the topic queue with 30 starter topics (Keenan — run after db push)
+- [ ] Google Cloud Console: enable Search Console API + Indexing API for the existing service account project (Keenan / Jimmy)
+- [ ] Google Search Console: add the service account email as Owner of `sc-domain:getacuity.io` (Keenan / Jimmy)
+- [ ] Verify Inngest registers new functions: check https://app.inngest.com for `auto-blog-generate` and `auto-blog-prune` (Jimmy)
+
+### Notes
+- The system degrades gracefully if GSC/Indexing API are not set up yet — logs warnings, skips Google calls, generation still works
+- Pruner never makes destructive decisions on missing data — if GSC returns null, entire prune cycle is skipped
+- Pruner caps at 5 posts per run; if more qualify, it emails keenan@getacuity.io with the overflow list
+- Blog generation prompt includes full copy principles (banned phrases, CTA policy, internal linking to /for/* pages, founding member spots count)
+- Content factory admin tab now filters out BLOG type pieces since they flow through the auto-blog pipeline
+
+---
+
 ## [2026-04-28] — Entry deletion: swipe / long-press / detail-menu (mobile + web) + DELETE API
 
 **Requested by:** Jimmy
