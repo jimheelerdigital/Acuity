@@ -99,9 +99,17 @@ export default async function DashboardPage() {
   let totalEntryCount = 0;
   let snapshotGoals: SnapshotGoal[] = [];
   let topThemes: Array<{ name: string; count: number }> = [];
+  // Task groups for the Open Tasks card. Fetched separately from the
+  // main Promise.all + try/catch (2026-04-28) — the prior build hit
+  // SIGSEGV in Next's static-page worker right after this query was
+  // added to the parallel batch. Splitting it out is defense in depth:
+  // if the call fails or the build worker decides this single line is
+  // the straw that broke memory, the home page degrades to an empty
+  // groups array and OpenTasksCard's "Other" fallback bucket handles
+  // it gracefully.
   let taskGroups: { id: string; name: string; color: string; order: number }[] = [];
   try {
-    [entries, tasks, lifemapAreas, weeklyReport, totalEntryCount, snapshotGoals, topThemes, taskGroups] =
+    [entries, tasks, lifemapAreas, weeklyReport, totalEntryCount, snapshotGoals, topThemes] =
       await Promise.all([
         fetchEntries(userId),
         prisma.task.findMany({
@@ -121,16 +129,18 @@ export default async function DashboardPage() {
         // card's empty state ("what you've reflected on") so the
         // card carries signal before the first report drops.
         fetchTopThemes(userId),
-        // Task groups for the Open Tasks card so it can render
-        // WORK / PERSONAL / etc. headers like the /tasks page does.
-        prisma.taskGroup.findMany({
-          where: { userId },
-          select: { id: true, name: true, color: true, order: true },
-          orderBy: { order: "asc" },
-        }),
       ]);
   } catch (err) {
     console.error("[dashboard] Failed to load data:", err);
+  }
+  try {
+    taskGroups = await prisma.taskGroup.findMany({
+      where: { userId },
+      select: { id: true, name: true, color: true, order: true },
+      orderBy: { order: "asc" },
+    });
+  } catch (err) {
+    console.error("[dashboard] Failed to load task groups:", err);
   }
 
   // Greeting word picked client-side from the user's local hour —
