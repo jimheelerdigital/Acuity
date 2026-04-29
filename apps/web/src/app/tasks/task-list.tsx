@@ -376,7 +376,12 @@ function GroupSection({
         </svg>
       </button>
       {!collapsed && (
-        <ul>
+        // 2xl: 2-column grid within each TaskGroup section. Group
+        // header above stays full-width (rendered by the parent), so
+        // the section structure is preserved per the wide-desktop
+        // directive. At <2xl the original bordered-row layout reads;
+        // at 2xl: borders drop and gap-y separates rows visually.
+        <ul className="2xl:grid 2xl:grid-cols-2 2xl:gap-x-6 2xl:gap-y-0">
           {tasks.map((task, idx) => (
             <li
               key={task.id}
