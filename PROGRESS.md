@@ -7,6 +7,42 @@
 
 ---
 
+## [2026-04-29] — Fix wide-desktop dashboard sticky-rail overlap + ship Playwright visual audit
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** b98bcbc
+
+### In plain English (for Keenan)
+
+On wide external monitors (about 1920px and wider), the right-side card on the dashboard ("Weekly Insight" stacked over "What you're working on") was floating over the cards below it when you scrolled the page. So if you scrolled down to look at "Recent sessions" or "Open tasks", part of those cards got covered up by the floating insight cards. That's now fixed — the insight column now stops at the bottom of its own row instead of following you down the page into the cards underneath.
+
+We also shipped a small piece of internal infrastructure to catch this kind of layout bug before it reaches production. It's a script that opens the dashboard at 7 different screen widths (laptop, standard desktop, wide-desktop, 4K, etc.), takes screenshots of every consumer page, and saves them. From now on, any time we make a layout change we can run it before and after, eyeball the diff, and confirm we didn't break anything at any width. Future Keenan-readable shorthand: "ran the visual audit, no regressions."
+
+### Technical changes (for Jimmy)
+
+- Fixed: `apps/web/src/app/home/page.tsx`. The dashboard was a single 12-col grid containing three logical rows. position:sticky inside a CSS grid uses the nearest scrollport as containing block, NOT the grid cell — so the row-3 right rail kept following the user's scroll past row 3 and visually overlapped row 4 (Recent Sessions + Open Tasks). Restructured into three independent per-row grids inside a `space-y-6` wrapper, so the rail's containing block becomes its row's own grid wrapper. Sticky now stops at the bottom of row 3 as intended. Added `lg:items-start` on row 3 so the rail column doesn't stretch to row height (stretching defeats sticky — the column would fill the row, leaving sticky no room to travel). Dropped the now-redundant `2xl:self-start` on the rail wrapper. Added `min-w-0` to the rail wrapper so its column doesn't widen under intrinsic-min-content pressure.
+- Fixed: `apps/web/src/app/home/_sections/life-matrix.tsx`. Added `min-w-0` to the `lg:col-span-7` wrapper so the radar SVG (which has a `clamp(240px, 50%, 520px)` width) can't force its grid cell to widen — pre-empts cross-row column-width bleeding that could orphan Streak to its own row.
+- New file: `scripts/visual-audit.ts`. Playwright-headless harness that mints a NextAuth JWT via `next-auth/jwt`'s `encode` (using `NEXTAUTH_SECRET` + `AUDIT_USER_ID` from `.env.local`) and screenshots /home, /entries, /tasks, /goals, /life-matrix, /insights/theme-map at viewport widths 1024, 1280, 1400, 1536, 1920, 2240, 2560. Plus scrolled-state captures at >= 1536 for /home and /goals (the routes with sticky rails). Saves to `.tmp/visual-audit/{phase}/{route}/{width}.png`. Phase = "before" or "after" via CLI arg.
+- New env var: `AUDIT_USER_ID` in `apps/web/.env.local` — set to founder/test user's User.id so the audit script never has to drive an OAuth flow. Documented inline.
+- `package.json` (root): added `playwright` + `tsx` as devDependencies.
+- `.gitignore`: added `.tmp/` so audit screenshots (which contain real user data because they hit `AUDIT_USER_ID`'s account) never get committed.
+- Verification: ran the audit BEFORE the fix → captured `before/home/1920-scrolled.png` and `before/home/2240-scrolled.png` showing the rail overlapping Open Tasks. Applied the fix. Ran AFTER → same frames now clean. Spot-checked 7 widths × 6 routes for regressions across /goals, /entries, /tasks, /life-matrix, /insights/theme-map — none.
+
+### Manual steps needed
+
+- [ ] None for this fix — Vercel auto-redeploys on push.
+- [ ] Future task (split into separate PR, tracked in `scripts/visual-audit.ts` header): convert script to support `AUDIT_SEED=true` mode that seeds a synthetic user instead of pointing at `AUDIT_USER_ID`, then wire a CI job that runs visual-audit on every PR and posts diff thumbnails as a PR comment if any frame changed by >5%. Document at `docs/runbooks/visual-audit.md`.
+
+### Notes
+
+- Root cause was a sticky-positioning footgun in CSS Grid that's well-documented but easy to miss — a sticky element's containing block is the nearest ancestor with overflow other than `visible`, NOT the grid cell. So a sticky inside `<div class="grid">` sticks to the page scroll, not the grid row. The per-row-grid restructure is the canonical fix; the alternative (subgrid) doesn't have wide-enough browser support yet.
+- We shipped the original step-c sticky-rail change without verifying scroll behavior at wide widths. The visual-audit script is the deliberate response to that gap. Going forward: wide-desktop layout changes get audited before push, not after a user reports breakage.
+- One observed quirk while building the audit: Next.js dev server inherits `process.env` from its parent shell BEFORE loading `.env.local`, and Next does NOT override existing env vars. A stale shell `DATABASE_URL` from a long-dead Supabase project was leaking into the dev process and causing all queries to fail. Fixed by running dev under `env -i` with `.env.local` explicitly sourced. If the audit ever fails with "Couldn't load your dashboard" at first run, that's the cause — kill the shell or rerun with a clean env.
+- BUG 2 ("Streak orphaned at ~1400px") didn't reproduce in the captured screenshots, so the fix is preventive rather than confirmed for that specific symptom. The mathematical mechanism that could cause it (cross-row column constraints in CSS Grid) is eliminated by the per-row-grid restructure regardless.
+
+---
+
 ## [2026-04-29] — Fix trial email orchestrator + backfill script + kill deprecated waitlist drip
 
 **Requested by:** Keenan
