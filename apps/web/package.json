@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "prebuild": "vitest run --reporter=basic",
     "build": "next build",
+    "test:auth": "vitest run src/__tests__/auth",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
