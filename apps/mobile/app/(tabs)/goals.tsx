@@ -609,12 +609,26 @@ export default function GoalsTab() {
         {roots.length === 0 ? (
           <View className="rounded-2xl border border-dashed border-zinc-300 dark:border-white/10 px-6 py-16 items-center">
             <Ionicons name="flag-outline" size={36} color="#71717A" />
-            <Text className="mt-3 text-sm font-medium text-zinc-600 dark:text-zinc-300">
+            <Text className="mt-3 text-base font-semibold text-zinc-700 dark:text-zinc-200">
               No goals yet
             </Text>
-            <Text className="mt-1 text-xs text-zinc-500 dark:text-zinc-400 text-center max-w-xs">
-              Mention a goal in your daily debrief and we&apos;ll track it.
+            <Text className="mt-2 text-sm text-zinc-500 dark:text-zinc-400 text-center max-w-xs leading-relaxed">
+              Mention something you&rsquo;re working toward in a debrief
+              and we&rsquo;ll track it for you.
             </Text>
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(
+                  Haptics.ImpactFeedbackStyle.Medium
+                ).catch(() => {});
+                router.push("/(tabs)");
+              }}
+              className="mt-5 rounded-full bg-violet-600 px-5 py-2.5 active:opacity-90"
+            >
+              <Text className="text-sm font-semibold text-white">
+                Record a debrief →
+              </Text>
+            </Pressable>
           </View>
         ) : (
           <View style={{ gap: 16 }}>

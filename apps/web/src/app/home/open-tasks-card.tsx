@@ -143,12 +143,18 @@ export function OpenTasksCard({
       {tasks.length === 0 ? (
         <div className="mt-6 rounded-xl border border-dashed border-zinc-300 px-4 py-8 text-center dark:border-white/10">
           <div className="text-2xl mb-1.5">✅</div>
-          <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
+          <p className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
             Nothing on the list
           </p>
-          <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">
-            Record a session to extract new tasks.
+          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+            Acuity extracts tasks from your debriefs as you record.
           </p>
+          <a
+            href="/home#record"
+            className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-violet-600 transition hover:text-violet-500 active:scale-95 dark:text-violet-400"
+          >
+            Record a debrief →
+          </a>
         </div>
       ) : (
         <div className="mt-6 space-y-6">
