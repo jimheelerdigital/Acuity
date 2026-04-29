@@ -1,3 +1,21 @@
+// AUTH-CRITICAL FILE
+// This file owns the mobile Apple sign-in flow + mobile-callback-apple
+// POST. Any change REQUIRES manual verification of:
+//   - Mobile Apple sign-in first time (private-relay email path)
+//   - Mobile Apple sign-in returning user (cached name + email path)
+//   - Account-link path (existing email signs in via Apple → appleSubject
+//     attached to existing User row, no duplicate created)
+// on a real iOS device (TestFlight) before any OTA push.
+//
+// Apple privacy quirks:
+//   - email may be absent on subsequent sign-ins (Apple only shares it
+//     once); we cache it in expo-secure-store.
+//   - fullName is only present on the first auth; same caching strategy.
+//   - Use the `sub` claim from the identity token as the stable user id,
+//     NOT the email — emails can rotate.
+//
+// See docs/AUTH_HARDENING.md for the full test checklist.
+
 import * as AppleAuthentication from "expo-apple-authentication";
 import * as SecureStore from "expo-secure-store";
 

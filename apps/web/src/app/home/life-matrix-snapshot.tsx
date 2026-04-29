@@ -105,12 +105,16 @@ export function LifeMatrixSnapshot({
         </div>
       </div>
 
-      <div className="mt-4 flex flex-col items-center gap-5 lg:flex-row lg:items-center lg:gap-7">
+      <div className="mt-4 flex flex-1 flex-col items-center justify-center gap-5 lg:flex-row lg:items-center lg:gap-7">
         <svg
           viewBox={`0 0 ${SIZE} ${SIZE}`}
-          width={SIZE}
-          height={SIZE}
-          className="shrink-0"
+          // Fixed width/height removed; the SVG now scales with its
+          // container so the radar fills the card's vertical space
+          // instead of pinning to a 240px square. ViewBox stays 0 0
+          // 240 240 — the geometry is unchanged. The min-width keeps
+          // it readable on narrow viewports; max-width caps the lg+
+          // case so it doesn't get gigantic on wide cards.
+          className="aspect-square h-auto w-full max-w-[280px] shrink-0 lg:max-w-[260px]"
           aria-hidden="true"
         >
           {/* Concentric guide rings — three at 33%/66%/100% radius.

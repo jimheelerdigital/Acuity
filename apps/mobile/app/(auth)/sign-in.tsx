@@ -1,3 +1,24 @@
+// AUTH-CRITICAL FILE
+// Any change to this file or its render tree REQUIRES manual verification of:
+//   - Web Google OAuth (getacuity.io/auth/signin → Continue with Google)
+//   - Web Apple sign-in (if applicable)
+//   - Web email + password sign-in
+//   - Mobile Google OAuth (TestFlight)
+//   - Mobile Apple sign-in
+// before any OTA or production deploy.
+//
+// Past regressions:
+//   - 2026-04-28: KeyboardAwareScreen wrapper (commit f4297d1) silently broke
+//     Google OAuth on mobile — parent ScrollView re-layout dismissed the
+//     SFAuthenticationSession modal and promptAsync() returned `cancelled`.
+//     Reverted in 0149c6f.
+//   - 2026-04-28: Schema-vs-DB column drift on User.signupUtm* (commit
+//     48e9245 declared columns; prisma db push hadn't reached prod) broke
+//     web Google sign-in via P2022 in PrismaAdapter.createUser → bootstrap.
+//     Schema pushed; bootstrap-user hardened in 04b729f.
+//
+// See docs/AUTH_HARDENING.md for the full test checklist.
+
 import { Ionicons } from "@expo/vector-icons";
 import * as AppleAuthentication from "expo-apple-authentication";
 import { Link } from "expo-router";

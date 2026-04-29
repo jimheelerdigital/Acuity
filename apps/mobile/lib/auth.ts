@@ -1,3 +1,24 @@
+// AUTH-CRITICAL FILE
+// This file owns the mobile Google OAuth flow (useGoogleSignIn) and the
+// mobile-callback POST. Any change REQUIRES manual verification of:
+//   - Mobile Google OAuth (TestFlight, real device)
+//   - Mobile Apple sign-in (TestFlight, real device)
+//   - Mobile email + password sign-in (signInWithPassword)
+//   - Mobile magic link (requestMagicLink)
+// before any OTA push.
+//
+// expo-auth-session quirks:
+//   - useAuthRequest's `request.codeVerifier` reference is fragile across
+//     parent re-renders. Wrapping the sign-in screen in a ScrollView
+//     destabilized it (2026-04-28 incident, commit f4297d1, reverted in
+//     0149c6f). Do NOT add KeyboardAvoidingView/ScrollView around the
+//     screen that mounts useGoogleSignIn.
+//   - shouldAutoExchangeCode:false is intentional. The library's auto
+//     exchange silently fails on iOS in 7.0.10. Manual exchange via
+//     AuthSession.exchangeCodeAsync is what works.
+//
+// See docs/AUTH_HARDENING.md for the full test checklist.
+
 import * as AuthSession from "expo-auth-session";
 import * as Google from "expo-auth-session/providers/google";
 import Constants from "expo-constants";

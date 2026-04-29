@@ -1,3 +1,22 @@
+// AUTH-CRITICAL FILE
+// Any change to this file (NextAuth config, providers, callbacks, events,
+// adapter, session strategy, cookies) REQUIRES manual verification of:
+//   - Web Google OAuth (getacuity.io/auth/signin → Continue with Google)
+//   - Web email + password sign-in
+//   - Mobile Google OAuth (TestFlight)
+//   - Mobile Apple sign-in (TestFlight)
+// before any production deploy.
+//
+// Past regressions:
+//   - 2026-04-28: User.signupUtm* schema drift cascaded from PrismaAdapter
+//     .createUser through bootstrap-user → web OAuth ?error=Callback.
+//     Hardened in 04b729f.
+//   - 2026-04-24: User.isFoundingMember schema drift caused identical
+//     OAuth callback failure. Wrapped events.createUser in try/catch.
+//
+// Smoke test: GET /api/internal/auth-smoke-test (with SMOKE_TEST_TOKEN)
+// See docs/AUTH_HARDENING.md for the full test checklist.
+
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { PrismaClient } from "@prisma/client";
 import { type NextAuthOptions } from "next-auth";
@@ -209,7 +228,14 @@ export function getAuthOptions(): NextAuthOptions {
           try {
             const Sentry = await import("@sentry/nextjs");
             Sentry.captureException(err, {
-              tags: { stage: "events.createUser" },
+              tags: {
+                stage: "events.createUser",
+                // auth_route enables a project-wide Sentry filter:
+                // "any error tagged auth_route → Slack #launch-alerts +
+                // email Jim". See docs/AUTH_HARDENING.md §Sentry.
+                auth_route: "true",
+              },
+              level: "error",
               extra: { userId: user.id },
             });
           } catch {

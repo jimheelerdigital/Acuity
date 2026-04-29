@@ -1,5 +1,19 @@
 "use client";
 
+// AUTH-CRITICAL FILE
+// Any change to this file REQUIRES manual verification of:
+//   - Web Google OAuth (getacuity.io/auth/signin → Continue with Google)
+//   - Web email + password sign-in
+//   - Mobile Google OAuth (TestFlight)
+//   - Mobile Apple sign-in
+// before any production deploy.
+//
+// Past regressions:
+//   - 2026-04-28: User.signupUtm* schema drift broke OAuth callback; fix in
+//     04b729f hardened bootstrap-user.
+//
+// See docs/AUTH_HARDENING.md for the full test checklist.
+
 import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
