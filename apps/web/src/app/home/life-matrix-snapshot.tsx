@@ -91,7 +91,7 @@ export function LifeMatrixSnapshot({
     .join(" ");
 
   return (
-    <section className="flex h-full flex-col rounded-2xl border border-zinc-200 bg-white p-7 shadow-sm dark:border-white/10 dark:bg-[#1E1E2E]">
+    <section className="flex h-full flex-col rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6 lg:p-7 dark:border-white/10 dark:bg-[#1E1E2E]">
       {/* Header — eyebrow + headline. Bumped 2026-04-28 from text-xs/
           text-base to text-[13px]/text-2xl after a designer review
           flagged the previous header as visually weaker than the
@@ -105,7 +105,7 @@ export function LifeMatrixSnapshot({
           >
             Life Matrix
           </h2>
-          <p className="mt-2 text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+          <p className="mt-2 text-xl font-semibold tracking-tight md:text-2xl text-zinc-900 dark:text-zinc-50">
             {isEmpty
               ? "Your life, scoring up"
               : "Where you are right now"}
@@ -113,17 +113,29 @@ export function LifeMatrixSnapshot({
         </div>
       </div>
 
-      {/* Cluster: radar on left, stat list on right. Switched lg
-          alignment from justify-center (which centered the cluster
-          and left ~80px of empty card-edge space on each side) to
-          justify-between so the radar sits on the left edge and the
-          stat list extends to the right edge — numbers naturally
-          inset by the card's p-7 instead of hugging an arbitrary
-          280px column edge. */}
-      <div className="mt-7 flex flex-1 flex-col items-center justify-center gap-10 lg:flex-row lg:items-center lg:justify-between lg:gap-12">
+      {/* Cluster: radar on top, stat list full-width below.
+       *
+       * Always stacked (2026-04-28): the side-by-side layout never had
+       * enough room inside the dashboard's 7/12 column at typical
+       * viewports (≤1280px viewport - 272px sidebar = ≤1008px content,
+       * minus card padding leaves ≤350px per cluster column — too tight
+       * for "Career"/"Health" labels next to a hexagon).
+       *
+       * Stacked: radar centered at a calm 280-360px (clamp), legend
+       * gets the full card width below with proper breathing for
+       * names + scores. Reads better at every viewport from phone to
+       * 4K.
+       */}
+      <div className="mt-7 flex flex-1 flex-col items-center justify-center gap-8">
         <svg
           viewBox={`0 0 ${SIZE} ${SIZE}`}
-          className="aspect-square h-auto w-full max-w-[420px] shrink-0 lg:max-w-[360px]"
+          className="aspect-square h-auto w-full shrink-0"
+          // Fluid radar: clamp keeps it visually weighty without
+          // dominating a narrow card.
+          style={{
+            maxWidth: "min(360px, 100%)",
+            width: "clamp(240px, 50%, 360px)",
+          }}
           aria-hidden="true"
         >
           {/* Concentric guide rings — three at 33%/66%/100% radius.
@@ -196,12 +208,9 @@ export function LifeMatrixSnapshot({
             })}
         </svg>
 
-        {/* Right column. max-w-md gives stat rows a comfortable
-            440px lane that pairs with the 360px radar inside the
-            card without either side cramping. lg:mr-4 inset pulls
-            the column off the card's right padding so the numbers
-            sit ~52px from the card edge instead of hugging it. */}
-        <div className="w-full max-w-md lg:mr-4">
+        {/* Legend takes full card width below the radar. min-w-0 keeps
+            the legend's flex children honoring truncate properly. */}
+        <div className="w-full min-w-0">
           {isEmpty ? (
             <div>
               <p className="text-base leading-relaxed text-zinc-600 dark:text-zinc-300">
@@ -259,7 +268,7 @@ export function LifeMatrixSnapshot({
                       boxShadow: `0 0 8px ${a.color}55`,
                     }}
                   />
-                  <span className="flex-1 truncate text-[17px] font-medium text-zinc-600 dark:text-zinc-200">
+                  <span className="min-w-0 flex-1 truncate text-[17px] font-medium text-zinc-600 dark:text-zinc-200">
                     {a.name}
                   </span>
                   <span

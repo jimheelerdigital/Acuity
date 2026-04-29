@@ -36,7 +36,7 @@ export function GoalsSnapshotCard({
 }) {
   return (
     <section
-      className={`flex h-full flex-col rounded-2xl border border-zinc-200 bg-white p-7 shadow-sm dark:border-white/10 dark:bg-[#1E1E2E] ${
+      className={`flex h-full flex-col rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6 lg:p-7 dark:border-white/10 dark:bg-[#1E1E2E] ${
         className ?? ""
       }`}
     >
@@ -49,7 +49,7 @@ export function GoalsSnapshotCard({
       >
         Goals
       </h2>
-      <p className="mt-2 text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+      <p className="mt-2 text-xl font-semibold tracking-tight md:text-2xl text-zinc-900 dark:text-zinc-50">
         {goals.length === 0 ? "Nothing tracked yet" : "What you're working on"}
       </p>
 

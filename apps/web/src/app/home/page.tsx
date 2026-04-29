@@ -251,7 +251,7 @@ export default async function DashboardPage() {
             inside the StreakSummaryCard widget; on mobile the
             existing inline display is preserved. */}
         <div className="mb-6 text-center sm:text-left">
-          <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-50 lg:text-3xl">
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-3xl">
             <Greeting firstName={firstName} />
           </h1>
           <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
@@ -341,7 +341,7 @@ export default async function DashboardPage() {
               (eyebrow 13px / title 24px tracking-tight), p-7 padding,
               and `h-full` so whichever is shorter stretches to match
               the taller. */}
-          <section className="flex h-full flex-col lg:col-span-6 rounded-2xl border border-zinc-200 bg-white p-7 shadow-sm dark:border-white/10 dark:bg-[#1E1E2E]">
+          <section className="flex h-full flex-col lg:col-span-6 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6 lg:p-7 dark:border-white/10 dark:bg-[#1E1E2E]">
             <div className="flex items-baseline justify-between gap-3">
               <div>
                 <h2
@@ -350,7 +350,7 @@ export default async function DashboardPage() {
                 >
                   Recent sessions
                 </h2>
-                <p className="mt-2 text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+                <p className="mt-2 text-xl font-semibold tracking-tight md:text-2xl text-zinc-900 dark:text-zinc-50">
                   {entries.length === 0
                     ? "Nothing recorded yet"
                     : entries.length === 1
@@ -520,7 +520,7 @@ function TodaysPromptCard({
     ? `/home?goalId=${encodeURIComponent(goalId)}#record`
     : "/home#record";
   return (
-    <section className="lg:col-span-8 rounded-2xl border border-zinc-200 bg-gradient-to-br from-violet-50/60 via-white to-white p-7 shadow-sm dark:border-white/10 dark:from-violet-950/20 dark:via-[#1E1E2E] dark:to-[#1E1E2E]">
+    <section className="lg:col-span-8 rounded-2xl border border-zinc-200 bg-gradient-to-br from-violet-50/60 via-white to-white p-5 sm:p-6 lg:p-7 shadow-sm dark:border-white/10 dark:from-violet-950/20 dark:via-[#1E1E2E] dark:to-[#1E1E2E]">
       {label && (
         <p
           className="font-semibold uppercase text-violet-600 dark:text-violet-400"
@@ -590,7 +590,7 @@ function StreakSummaryCard({
   const flameActive = currentStreak >= 2;
 
   return (
-    <section className="flex h-full flex-col justify-between lg:col-span-4 rounded-2xl border border-zinc-200 bg-white p-7 shadow-sm dark:border-white/10 dark:bg-[#1E1E2E]">
+    <section className="flex h-full flex-col justify-between lg:col-span-4 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6 lg:p-7 dark:border-white/10 dark:bg-[#1E1E2E]">
       <div>
         <h2
           className="font-semibold uppercase text-zinc-400 dark:text-zinc-500"
@@ -609,7 +609,14 @@ function StreakSummaryCard({
           />
           <span
             className="font-semibold tabular-nums text-zinc-900 dark:text-zinc-50"
-            style={{ fontSize: 56, letterSpacing: "-2px", lineHeight: 1 }}
+            // Fluid streak number — clamps between 40px (narrow card)
+            // and 56px (wide card), tracking with viewport size so the
+            // streak never overflows its column on a tight layout.
+            style={{
+              fontSize: "clamp(40px, 5vw, 56px)",
+              letterSpacing: "-2px",
+              lineHeight: 1,
+            }}
           >
             {streakValue}
           </span>

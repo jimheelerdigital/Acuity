@@ -49,7 +49,7 @@ export function WeeklyInsightCard({
   const hasContent = unlocked && report != null && snippet != null;
 
   return (
-    <section className="rounded-2xl border border-zinc-200 bg-white p-7 shadow-sm dark:border-white/10 dark:bg-[#1E1E2E]">
+    <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6 lg:p-7 dark:border-white/10 dark:bg-[#1E1E2E]">
       <div className="flex items-baseline justify-between">
         <div>
           <h2
@@ -58,7 +58,7 @@ export function WeeklyInsightCard({
           >
             Weekly insight
           </h2>
-          <p className="mt-2 text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+          <p className="mt-2 text-xl font-semibold tracking-tight md:text-2xl text-zinc-900 dark:text-zinc-50">
             {hasContent
               ? formatWeekHeader(report!.weekStart, report!.weekEnd)
               : "Your first report is coming"}
