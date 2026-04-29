@@ -96,24 +96,34 @@ export async function bootstrapNewUser(params: {
     code = generateReferralCode();
   }
 
-  await prisma.user.update({
-    where: { id: userId },
-    data: {
-      subscriptionStatus: "TRIAL",
-      trialEndsAt,
-      referralCode: code,
-      isFoundingMember,
-      foundingMemberNumber,
-      ...(referredById ? { referredById } : {}),
-      ...(attribution?.utmSource ? { signupUtmSource: attribution.utmSource } : {}),
-      ...(attribution?.utmMedium ? { signupUtmMedium: attribution.utmMedium } : {}),
-      ...(attribution?.utmCampaign ? { signupUtmCampaign: attribution.utmCampaign } : {}),
-      ...(attribution?.utmContent ? { signupUtmContent: attribution.utmContent } : {}),
-      ...(attribution?.utmTerm ? { signupUtmTerm: attribution.utmTerm } : {}),
-      ...(attribution?.referrer ? { signupReferrer: attribution.referrer } : {}),
-      ...(attribution?.landingPath ? { signupLandingPath: attribution.landingPath } : {}),
-    },
-  });
+  // Trial / referral / attribution write. Wrapped so a missing
+  // recently-added column (schema declared, prod DB not yet pushed)
+  // doesn't cascade into Google OAuth callback failure.
+  //
+  // 2026-04-28 incident: the `signupUtm*` columns were schema-only
+  // for several hours; PrismaAdapter.createUser succeeded but THIS
+  // update threw P2022, the OAuth flow surfaced as ?error=Callback,
+  // user bounced back to /auth/signin with no actionable message.
+  //
+  // Strategy: try the full update; on P2022 ("column does not
+  // exist") strip the offending column and retry. Same shape as
+  // safeUpdateUser in /api/onboarding/update.
+  const fullData: Record<string, unknown> = {
+    subscriptionStatus: "TRIAL",
+    trialEndsAt,
+    referralCode: code,
+    isFoundingMember,
+    foundingMemberNumber,
+    ...(referredById ? { referredById } : {}),
+    ...(attribution?.utmSource ? { signupUtmSource: attribution.utmSource } : {}),
+    ...(attribution?.utmMedium ? { signupUtmMedium: attribution.utmMedium } : {}),
+    ...(attribution?.utmCampaign ? { signupUtmCampaign: attribution.utmCampaign } : {}),
+    ...(attribution?.utmContent ? { signupUtmContent: attribution.utmContent } : {}),
+    ...(attribution?.utmTerm ? { signupUtmTerm: attribution.utmTerm } : {}),
+    ...(attribution?.referrer ? { signupReferrer: attribution.referrer } : {}),
+    ...(attribution?.landingPath ? { signupLandingPath: attribution.landingPath } : {}),
+  };
+  await safeUpdateUserBootstrap(userId, fullData);
 
   await track(userId, "trial_started", {
     trialEndsAt: trialEndsAt.toISOString(),
@@ -222,4 +232,68 @@ export async function trialDaysForEmail(
   const daysSince =
     (Date.now() - deleted.deletedAt.getTime()) / (24 * 60 * 60 * 1000);
   return daysSince < LOOKBACK_DAYS ? REDUCED_TRIAL_DAYS : STANDARD_TRIAL_DAYS;
+}
+
+/**
+ * Update User during bootstrap, surviving schema-vs-DB column drift.
+ *
+ * If the prod DB is missing a column the schema declares, Prisma
+ * throws P2022 "column does not exist" on update. We catch that one
+ * specific error, strip the offending field from `data`, and retry —
+ * once per missing column, capped at the size of `data` to prevent
+ * pathological loops. Trial fields (subscriptionStatus, trialEndsAt,
+ * referralCode) always make it through; only the optional attribution
+ * fields get dropped if they're not yet on the DB.
+ *
+ * This mirrors safeUpdateUser in /api/onboarding/update — the same
+ * shape was needed there for User.targetCadence drift on 2026-04-27.
+ * Ideally `prisma db push` would always run before deploy, but the
+ * push has to come from a network that can reach Supabase directly,
+ * and that has been intermittent.
+ */
+async function safeUpdateUserBootstrap(
+  userId: string,
+  data: Record<string, unknown>
+): Promise<void> {
+  const { prisma } = await import("@/lib/prisma");
+  const remaining: Record<string, unknown> = { ...data };
+  const maxAttempts = Object.keys(remaining).length + 1;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      await prisma.user.update({ where: { id: userId }, data: remaining });
+      return;
+    } catch (err) {
+      const code =
+        typeof err === "object" && err && "code" in err
+          ? String((err as { code?: unknown }).code)
+          : "";
+      const msg = err instanceof Error ? err.message : String(err);
+      if (code !== "P2022" && !/column.*does not exist/i.test(msg)) {
+        throw err;
+      }
+
+      // Extract the offending column name. P2022 error message format:
+      //   "The column `User.signupUtmSource` does not exist..."
+      const match = msg.match(/column `?([\w.]+)`? does not exist/i);
+      const fullName = match?.[1] ?? "";
+      const colName = fullName.includes(".")
+        ? fullName.split(".").pop()!
+        : fullName;
+      if (!colName || !(colName in remaining)) {
+        // Couldn't parse the column name OR it isn't in our payload —
+        // not safe to retry blindly. Re-throw so it surfaces in logs.
+        throw err;
+      }
+
+      console.warn(
+        `[bootstrap-user] dropping ${colName} from update — column not yet pushed to DB. Schema fix on next deploy after \`prisma db push\`.`
+      );
+      delete remaining[colName];
+
+      // If we've stripped the entire payload there's nothing left to
+      // update. Bail successfully — the User row already exists.
+      if (Object.keys(remaining).length === 0) return;
+    }
+  }
 }
