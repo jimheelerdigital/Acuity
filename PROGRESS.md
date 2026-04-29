@@ -7,6 +7,43 @@
 
 ---
 
+## [2026-04-29] — Wide-desktop /goals page now shows a sticky goal-detail side rail
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** bdc94c6
+
+### In plain English (for Keenan)
+
+On wide external monitors (27"+), the Goals page used to have a huge empty band of whitespace to the right of the goals tree. We were leaving about 1000 pixels of screen real estate unused. Now, on those wide monitors, when you click a goal in the tree, the right side of the screen shows the full context for that goal — its description, every task underneath it, all the progress notes you've logged, when it was last mentioned in a debrief, and a quote from the most recent entry that referenced it. The rail "sticks" as you scroll the tree, so you can keep the context visible while you skim other goals.
+
+When the page first loads, the rail is pre-populated with whichever goal you've engaged with most recently — either the goal whose task you most recently checked off, or the goal you most recently mentioned in a recording, whichever happened later. So you land on the page already looking at the most relevant context, no extra click required.
+
+On laptops, phones, or anything narrower than ~1536px wide, the page looks exactly the same as before — no rail, full-width tree. This change only affects users on wide external monitors.
+
+### Technical changes (for Jimmy)
+
+- New file: `apps/web/src/app/goals/_components/goal-detail-rail.tsx` — presentation component (`GoalDetailRail`) + exported `GoalRailDetail` type + internal `GoalDetailRailSkeleton`. Renders header (title, status pill, lifeArea pill, last-mentioned relative timestamp, progress bar), full description (no truncation), full child-task list with done/active visual state, progress notes log newest-first, source entry as a linked quote card, and an "Open full detail →" footer link.
+- Modified: `apps/web/src/app/goals/goal-list.tsx`. Tree wrapped in a 2xl-only grid `2xl:grid-cols-[minmax(0,640px)_minmax(0,1fr)]` so the tree column is capped at 640px even on a 2240px shell. Rail mounts as `hidden 2xl:block 2xl:sticky 2xl:top-[88px]`. Added `selectedGoalId`, `detailCache` (Map<string, GoalRailDetail>), and `detailLoading` state. `handleSelectGoal` callback fetches `/api/goals/[id]` on cache miss and adapts the API response shape. Selected card gets a violet border + ring overlay. Title `<Link>` now uses `window.matchMedia("(min-width: 1536px)").matches` to decide between `e.preventDefault()` + select-rail (at 2xl) versus normal navigation (below 2xl).
+- Modified: `apps/web/src/app/goals/page.tsx`. Added server-side focus-goal computation: parallel `prisma.task.findFirst` (newest DONE task with goalId) + `prisma.goal.findFirst` (newest `lastMentionedAt`) + `prisma.goal.findFirst` (first non-archived root, fallback). Picks the goal whose signal is newest by timestamp comparison. Fetches initial detail server-side (single `findFirst` on the goal + tasks + most recent linked entry) shaped as `GoalRailDetail`, passes it to `<GoalList />` as `initialFocusDetail` so first paint isn't a skeleton.
+- No new env vars, no schema changes, no new API routes (re-uses existing `GET /api/goals/[id]`).
+- Architecture decision: chose Option G1 (sticky side rail with focus-goal default) over a 2-column tree split. A 2-column tree would have broken the parent → child → grandchild mental model that the indented tree relies on. The sticky rail keeps the tree intact while putting the wide-screen real estate to work as a context surface.
+
+### Manual steps needed
+
+- [ ] None — Vercel will auto-redeploy from main on push.
+
+### Notes
+
+- The 2xl: breakpoint = 1536px in Tailwind. Below that the rail is fully hidden (display:none) and the grid collapses to a single column, so smaller laptops and tablets render unchanged.
+- Title-click behavior is breakpoint-aware via `matchMedia` rather than rendering different markup — this avoids hydration mismatches and keeps the navigation semantics identical to the prior version on narrow viewports. SSR-safe: typeof window check guards the call.
+- `detailCache` is a Map seeded with the server-fetched initial detail, so re-clicking the same goal is instant (no fetch). Cache resets on full page reload, which is fine — the server pre-fetches the focus goal again.
+- Sticky `top-[88px]` is the desktop topbar height (h-[68px]) + 20px breathing room. If the topbar height changes, this offset needs to follow.
+- One small mismatch to revisit later: `/api/goals/[id]` returns a single `progress` field; the rail surfaces both `manualProgress` and `calculatedProgress`. For now both fields map to the same value. When rolled-up progress lands in the API, the client-side adapter in `handleSelectGoal` is the single place to update.
+- This is step (g) of a wider-desktop responsive polish push (steps a–g approved earlier in the session). Steps a–f shipped earlier today: app-shell cap raised to 2240px, /entries fluid container, /home life-matrix radar enlargement + sticky right rail + open-tasks 2-col grid, /tasks 2-col grid, /insights/theme-map radar enlargement, cookie-banner cross-device readback.
+
+---
+
 ## [2026-04-28] — Real-time founder signup notification emails
 
 **Requested by:** Keenan
