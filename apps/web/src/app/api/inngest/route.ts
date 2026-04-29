@@ -35,9 +35,10 @@ import { waitlistReactivationFn } from "@/inngest/functions/waitlist-reactivatio
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-// Upper bound for any single Inngest step invocation. On Hobby the effective
-// ceiling is 10s; on Pro it's 60s. See INNGEST_MIGRATION_PLAN.md §12.
-export const maxDuration = 60;
+// Upper bound for any single Inngest step invocation. Vercel Pro allows up
+// to 300s. Bumped from 60 to 300 because Claude generation calls can take
+// 60-90s and the previous 60s ceiling caused FUNCTION_INVOCATION_TIMEOUT.
+export const maxDuration = 300;
 
 const handler = serve({
   client: inngest,
