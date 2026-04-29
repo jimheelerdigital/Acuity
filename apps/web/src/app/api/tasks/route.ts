@@ -55,7 +55,14 @@ export async function GET(req: NextRequest) {
       (priorityOrder[a.priority] ?? 9) - (priorityOrder[b.priority] ?? 9)
   );
 
-  return NextResponse.json({ tasks });
+  // Per-user 20s cache. Tasks change frequently (user completes/snoozes)
+  // but the optimistic UI on /home + /tasks calls router.refresh on
+  // every mutation, which invalidates this entry in the browser cache.
+  // 20s of staleness on a stale-tab background is acceptable.
+  return NextResponse.json(
+    { tasks },
+    { headers: { "Cache-Control": "private, max-age=20" } }
+  );
 }
 
 export async function POST(req: NextRequest) {

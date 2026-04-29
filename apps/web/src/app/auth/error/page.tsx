@@ -1,6 +1,8 @@
 import Link from "next/link";
 
-export const dynamic = "force-dynamic";
+// Pure-markup page — no DB call, no auth read. force-dynamic was
+// cargo from the surrounding routes; dropped so this renders
+// statically at build and ships from edge cache.
 
 export default function AuthErrorPage() {
   return (

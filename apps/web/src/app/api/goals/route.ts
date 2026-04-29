@@ -50,7 +50,15 @@ export async function GET(req: NextRequest) {
     },
   });
 
-  return NextResponse.json({ goals });
+  // Per-user 30s cache. Goals change rarely mid-session; mutations
+  // (POST/PATCH/DELETE) call router.refresh() on the client to bust
+  // the cache entry immediately. 30s is short enough that an out-of-
+  // band change (Inngest extraction creating a new goal) shows up
+  // within reasonable bounds.
+  return NextResponse.json(
+    { goals },
+    { headers: { "Cache-Control": "private, max-age=30" } }
+  );
 }
 
 export async function POST(req: NextRequest) {

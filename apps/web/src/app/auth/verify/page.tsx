@@ -1,4 +1,5 @@
-export const dynamic = "force-dynamic";
+// Pure-markup page — no DB, no auth. force-dynamic was unnecessary;
+// dropped so this renders statically + ships from edge cache.
 
 export default function VerifyPage() {
   return (

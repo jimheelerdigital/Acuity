@@ -42,20 +42,27 @@ export async function GET(req: NextRequest) {
   const { getOrCreateUserMemory } = await import("@/lib/memory");
   const memory = await getOrCreateUserMemory(userId);
 
-  return NextResponse.json({
-    areas,
-    memory: {
-      totalEntries: memory.totalEntries,
-      firstEntryDate: memory.firstEntryDate,
-      recurringThemes: memory.recurringThemes,
-      recurringPeople: memory.recurringPeople,
-      recurringGoals: memory.recurringGoals,
-      careerMentions: memory.careerMentions,
-      healthMentions: memory.healthMentions,
-      relationshipsMentions: memory.relationshipsMentions,
-      financesMentions: memory.financesMentions,
-      personalMentions: memory.personalMentions,
-      otherMentions: memory.otherMentions,
+  // Per-user cache for 60s. The browser revalidates frequently while
+  // a user is actively reading /life-matrix; the data only changes
+  // when an entry is processed (Inngest, async). 60s of staleness on
+  // the radar is invisible. `private` so intermediaries don't share.
+  return NextResponse.json(
+    {
+      areas,
+      memory: {
+        totalEntries: memory.totalEntries,
+        firstEntryDate: memory.firstEntryDate,
+        recurringThemes: memory.recurringThemes,
+        recurringPeople: memory.recurringPeople,
+        recurringGoals: memory.recurringGoals,
+        careerMentions: memory.careerMentions,
+        healthMentions: memory.healthMentions,
+        relationshipsMentions: memory.relationshipsMentions,
+        financesMentions: memory.financesMentions,
+        personalMentions: memory.personalMentions,
+        otherMentions: memory.otherMentions,
+      },
     },
-  });
+    { headers: { "Cache-Control": "private, max-age=60" } }
+  );
 }
