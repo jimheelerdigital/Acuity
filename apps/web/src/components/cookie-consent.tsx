@@ -78,8 +78,55 @@ export function CookieConsentBanner() {
 
   useEffect(() => {
     setMounted(true);
-    const existing = readConsent();
-    if (!existing) setState("default");
+    const local = readConsent();
+    if (local) return; // localStorage wins → don't show
+
+    // No localStorage record. For logged-in users, try the server-
+    // side mirror (User.cookieConsent) before showing the banner —
+    // closes the cross-device / cleared-cache gap that bit users
+    // pre-2026-04-29.
+    //
+    // 204 = unauthenticated → fall through to the prompt.
+    // 200 with consent = null → no record on the server either,
+    //   show the prompt.
+    // 200 with consent set → hydrate localStorage and skip the prompt.
+    // network failure → show the prompt (fail-open is the right
+    //   default for a banner).
+    let cancelled = false;
+    fetch("/api/user/consent", { credentials: "include" })
+      .then((r) => (r.status === 200 ? r.json() : null))
+      .then((data: { consent?: ConsentRecord } | null) => {
+        if (cancelled) return;
+        const remote = data?.consent ?? null;
+        if (!remote) {
+          setState("default");
+          return;
+        }
+        // Version-tolerant: accept records ≤ CURRENT_VERSION. Only
+        // re-prompt if the stored record is from a NEWER version
+        // (which would mean the user has a more-recent build's
+        // record on another device — re-prompting here would lose
+        // info we don't understand).
+        if (
+          typeof remote.version === "number" &&
+          remote.version > CURRENT_VERSION
+        ) {
+          setState("default");
+          return;
+        }
+        try {
+          window.localStorage.setItem(STORAGE_KEY, JSON.stringify(remote));
+        } catch {
+          // localStorage disabled — fine, banner just won't dismiss.
+        }
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setState("default");
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   if (!mounted || state === "hidden") return null;

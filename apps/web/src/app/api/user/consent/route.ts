@@ -1,12 +1,20 @@
 /**
- * POST /api/user/consent
+ * /api/user/consent
  *
- * Mirrors the user's cookie/analytics consent to the DB for cross-
- * device continuity. Optional — unauthenticated callers silently 204
- * because localStorage is still the source of truth for script gating
- * on the client. This endpoint is belt + suspenders for logged-in
- * users so clearing localStorage or switching browsers doesn't require
- * re-consent.
+ * GET — for logged-in users with no local consent record (cleared
+ *   localStorage, new device, new browser). Returns the server-side
+ *   `User.cookieConsent` if present so the cookie banner can hydrate
+ *   localStorage instead of re-prompting. 204 for unauthenticated.
+ *
+ * POST — mirrors the user's choice to the DB for cross-device
+ *   continuity. Optional — unauthenticated callers silently 204
+ *   because localStorage is still the source of truth for script
+ *   gating on the client.
+ *
+ * The pre-2026-04-29 bug: writeback existed (POST) but readback
+ * didn't, so logged-in users on a fresh browser saw the banner
+ * again despite having dismissed it elsewhere. The GET handler
+ * closes that gap.
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -22,6 +30,18 @@ type ConsentBody = {
   analytics?: boolean;
   marketing?: boolean;
 };
+
+export async function GET(req: NextRequest) {
+  const userId = await getAnySessionUserId(req);
+  if (!userId) return new NextResponse(null, { status: 204 });
+
+  const { prisma } = await import("@/lib/prisma");
+  const u = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { cookieConsent: true },
+  });
+  return NextResponse.json({ consent: u?.cookieConsent ?? null });
+}
 
 export async function POST(req: NextRequest) {
   const userId = await getAnySessionUserId(req);
