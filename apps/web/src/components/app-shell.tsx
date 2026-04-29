@@ -114,7 +114,7 @@ function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-40 hidden w-[272px] flex-col border-r border-zinc-200 bg-[#FAFAF7] dark:border-white/10 dark:bg-[#0B0B12] lg:flex">
+    <aside className="fixed inset-y-0 left-0 z-40 hidden w-[272px] 2xl:w-[288px] flex-col border-r border-zinc-200 bg-[#FAFAF7] dark:border-white/10 dark:bg-[#0B0B12] lg:flex">
       {/* Logo — h-[68px] matches the top bar (DesktopTopbar) so the
           sidebar header and the top bar appear as one continuous
           horizontal edge across the viewport. If you change one of
@@ -234,9 +234,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <>
       <Sidebar />
-      <div className="lg:pl-[272px]">
+      <div className="lg:pl-[272px] 2xl:pl-[288px]">
         <DesktopTopbar />
-        <div className="lg:mx-auto lg:w-full lg:max-w-[1600px] lg:px-8 lg:py-6 xl:px-10">
+        {/* 2xl: shell cap bumped 1600 → 2240 (2026-04-29 wide-desktop
+            polish). Past 2240 the page sits centered with neutral
+            black gutters — past that width, content gets too wide for
+            comfortable reading. Sidebar grows 272 → 288 at the same
+            breakpoint; the pl-* below matches. */}
+        <div className="lg:mx-auto lg:w-full lg:max-w-[1600px] 2xl:max-w-[2240px] lg:px-8 lg:py-6 xl:px-10 2xl:px-12 2xl:py-8">
           {children}
         </div>
       </div>
