@@ -1,0 +1,41 @@
+name: RLS coverage
+
+# Fails the PR if a model is added to prisma/schema.prisma without
+# a matching entry in prisma/rls-allowlist.txt. Forces a deliberate
+# decision about Row-Level Security on every new table.
+#
+# Background: 2026-04-29 incident — six tables shipped without RLS,
+# three contained PII, exposed via the public anon key for up to 6
+# days. See docs/launch-audit-2026-04-26/14-rls-prevention.md.
+#
+# This is a schema-only check — no DB connection, no secrets. Runs
+# in ~10s. Wired to PR-level events so failures block merge but
+# never block production deploys (Vercel build path is unguarded).
+
+on:
+  pull_request:
+    paths:
+      - "prisma/schema.prisma"
+      - "prisma/rls-allowlist.txt"
+      - "scripts/check-rls-coverage.ts"
+      - ".github/workflows/rls-check.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "prisma/schema.prisma"
+      - "prisma/rls-allowlist.txt"
+
+jobs:
+  rls-coverage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      # tsx for direct .ts execution — no need for full repo install.
+      # Using --yes so npx doesn't prompt; cached after first run.
+      - name: Run RLS coverage check
+        run: npx --yes tsx scripts/check-rls-coverage.ts

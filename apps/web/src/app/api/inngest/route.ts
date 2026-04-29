@@ -23,6 +23,7 @@ import { cleanupGenerationJobsFn } from "@/inngest/functions/cleanup-generation-
 import { compressMemoryFn } from "@/inngest/functions/compress-memory";
 import { snapshotLifemapHistoryFn } from "@/inngest/functions/snapshot-lifemap-history";
 import { computeDailySnapshotFn } from "@/inngest/functions/compute-daily-snapshot";
+import { rlsAuditFn } from "@/inngest/functions/rls-audit";
 import { scanRedFlagsFn } from "@/inngest/functions/scan-red-flags";
 import { trialEmailOrchestratorFn } from "@/inngest/functions/trial-email-orchestrator";
 import { weeklyDigestFn } from "@/inngest/functions/weekly-digest";
@@ -57,6 +58,7 @@ const handler = serve({
     cleanupGenerationJobsFn,
     compressMemoryFn,
     computeDailySnapshotFn,
+    rlsAuditFn,
     scanRedFlagsFn,
     generateStateOfMeFn,
     stateOfMeAutoTickFn,

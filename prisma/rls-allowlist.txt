@@ -1,0 +1,63 @@
+# RLS coverage allowlist — every model in prisma/schema.prisma must
+# appear here with an explicit "rls" or "no-rls" annotation.
+#
+# Format:
+#   ModelName rls          # RLS enabled in prod (default; safe)
+#   ModelName no-rls       # intentionally exposed; short reason after #
+#
+# Adding a new model? Add a line here AND, if marked "rls", run:
+#   ALTER TABLE public."ModelName" ENABLE ROW LEVEL SECURITY;
+# in production after the schema push.
+#
+# Background: 2026-04-29 incident — six tables shipped without RLS,
+# three contained PII, exposed via the public anon key. See
+# docs/launch-audit-2026-04-26/14-rls-prevention.md.
+#
+# This file is enforced by scripts/check-rls-coverage.ts and the
+# .github/workflows/rls-check.yml CI workflow.
+
+Account rls
+AdminAuditLog rls
+BlogTopicQueue rls
+CalendarConnection rls
+ClaudeCallLog rls
+ContentBriefing rls
+ContentPiece rls
+DashboardSnapshot rls
+DataExport rls
+DeletedUser rls
+Entry rls
+ExperimentAssignment rls
+FeatureFlag rls
+FounderNotificationLog rls
+GenerationJob rls
+Goal rls
+GoalSuggestion rls
+HealthSnapshot rls
+IndexingLog rls
+LifeAudit rls
+LifeMapArea rls
+LifeMapAreaHistory rls
+MetaSpend rls
+ProgressSuggestion rls
+PruneLog rls
+RedFlag rls
+ReferralConversion rls
+Session rls
+StateOfMeReport rls
+StripeEvent rls
+Task rls
+TaskGroup rls
+Theme rls
+ThemeMention rls
+TrialEmailLog rls
+User rls
+UserDemographics rls
+UserFeatureOverride rls
+UserInsight rls
+UserLifeDimension rls
+UserMemory rls
+UserOnboarding rls
+VerificationToken rls
+Waitlist rls
+WeeklyReport rls
