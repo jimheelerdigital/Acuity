@@ -13,6 +13,11 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
+  GoalDetailRail,
+  type GoalRailDetail,
+} from "./_components/goal-detail-rail";
+
+import {
   GOAL_GROUPS,
   goalGroupForArea,
   type GoalGroupMeta,
@@ -96,7 +101,17 @@ const STATUS_STYLES: Record<string, { label: string; bg: string; text: string }>
   },
 };
 
-export function GoalList() {
+export function GoalList({
+  initialFocusGoalId = null,
+  initialFocusDetail = null,
+}: {
+  /** Server-computed focus goal — most recent task completion OR most
+   *  recent entry mention, whichever is later. Falls back to first
+   *  root in the tree if no recency signal exists. Null on first-time
+   *  users with empty trees. */
+  initialFocusGoalId?: string | null;
+  initialFocusDetail?: GoalRailDetail | null;
+} = {}) {
   const [roots, setRoots] = useState<Goal[] | null>(null);
   const [pendingSuggestions, setPendingSuggestions] = useState(0);
   const [includeArchived, setIncludeArchived] = useState(false);
@@ -107,6 +122,81 @@ export function GoalList() {
   );
   const [addSubgoalFor, setAddSubgoalFor] = useState<Goal | null>(null);
   const [showSuggestions, setShowSuggestions] = useState(false);
+
+  // 2xl: rail state. selectedGoalId always reflects the currently-
+  // displayed goal in the rail. detailCache memoizes per-goal fetches
+  // so re-clicks are instant. Pre-seeded with the server-computed
+  // focus goal so initial paint isn't a skeleton.
+  const [selectedGoalId, setSelectedGoalId] = useState<string | null>(
+    initialFocusGoalId
+  );
+  const [detailCache, setDetailCache] = useState<Map<string, GoalRailDetail>>(
+    () => {
+      const m = new Map<string, GoalRailDetail>();
+      if (initialFocusGoalId && initialFocusDetail) {
+        m.set(initialFocusGoalId, initialFocusDetail);
+      }
+      return m;
+    }
+  );
+  const [detailLoading, setDetailLoading] = useState(false);
+
+  const handleSelectGoal = useCallback(
+    (goalId: string) => {
+      setSelectedGoalId(goalId);
+      if (detailCache.has(goalId)) return;
+      setDetailLoading(true);
+      fetch(`/api/goals/${goalId}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((body) => {
+          if (!body) return;
+          // /api/goals/[id] returns { goal, linkedEntries }. Adapt to
+          // the rail's GoalRailDetail shape — the rail wants a small
+          // subset, not the full API payload.
+          const g = body.goal as {
+            id: string;
+            title: string;
+            description: string | null;
+            status: string;
+            lifeArea: string;
+            progress: number;
+            lastMentionedAt: string | null;
+            progressNotes: unknown[];
+          };
+          const linked = (body.linkedEntries ?? []) as Array<{
+            id: string;
+            summary: string | null;
+            createdAt: string;
+          }>;
+          const detail: GoalRailDetail = {
+            id: g.id,
+            title: g.title,
+            description: g.description,
+            status: g.status,
+            lifeArea: g.lifeArea,
+            // /api/goals/[id] returns the raw goal (single `progress`
+            // field). The rail surfaces both manual + calculated; the
+            // single field maps to both for now until rolled-up
+            // progress is exposed by this endpoint.
+            manualProgress: g.progress,
+            calculatedProgress: g.progress,
+            lastMentionedAt: g.lastMentionedAt,
+            tasks: [],
+            progressNotes: Array.isArray(g.progressNotes)
+              ? (g.progressNotes as GoalRailDetail["progressNotes"])
+              : [],
+            sourceEntry: linked[0] ?? null,
+          };
+          setDetailCache((prev) => {
+            const next = new Map(prev);
+            next.set(goalId, detail);
+            return next;
+          });
+        })
+        .finally(() => setDetailLoading(false));
+    },
+    [detailCache]
+  );
 
   const fetchTree = useCallback(async (withArchived = false) => {
     setLoading(true);
@@ -255,6 +345,14 @@ export function GoalList() {
         />
       )}
 
+      {/* 2xl: split into tree + sticky detail rail. <2xl: tree only.
+          The grid columns use minmax(0,640px) so the tree never exceeds
+          640 even on a 2240 shell — preserves the single-column reading
+          rhythm while letting the rail soak up the rest of the width.
+          gap-x-8 separates them; items-start keeps the rail's
+          `top-[88px]` sticky calculation honest. */}
+      <div className="2xl:grid 2xl:grid-cols-[minmax(0,640px)_minmax(0,1fr)] 2xl:items-start 2xl:gap-x-8">
+        <div>
       {totalGoals === 0 ? (
         <div className="rounded-2xl border border-dashed border-zinc-300 dark:border-white/10 px-6 py-16 text-center">
           <div className="text-3xl mb-3">🎯</div>
@@ -321,6 +419,8 @@ export function GoalList() {
                         onDelete={deleteGoal}
                         onToggleTask={toggleTask}
                         onAddSubgoal={setAddSubgoalFor}
+                        selectedGoalId={selectedGoalId}
+                        onSelectGoal={handleSelectGoal}
                       />
                     ))}
                   </div>
@@ -330,6 +430,19 @@ export function GoalList() {
           })}
         </div>
       )}
+        </div>
+        {/* Sticky right rail — 2xl: only. Hidden on smaller widths
+            (block hidden by the parent grid not applying). top-[88px]
+            sits below the desktop topbar (h-[68px]) + 20px breathing. */}
+        <div className="hidden 2xl:block 2xl:sticky 2xl:top-[88px]">
+          <GoalDetailRail
+            detail={
+              selectedGoalId ? detailCache.get(selectedGoalId) ?? null : null
+            }
+            loading={detailLoading}
+          />
+        </div>
+      </div>
 
       {addSubgoalFor && (
         <AddSubgoalModal
@@ -365,6 +478,8 @@ function GoalTreeNode({
   onDelete,
   onToggleTask,
   onAddSubgoal,
+  selectedGoalId,
+  onSelectGoal,
 }: {
   goal: Goal;
   depth: number;
@@ -374,8 +489,13 @@ function GoalTreeNode({
   onDelete: (id: string) => void;
   onToggleTask: (id: string, currentStatus: string) => void;
   onAddSubgoal: (goal: Goal) => void;
+  /** Currently-selected goal in the 2xl: rail. Threaded through the
+   *  recursion so any descendant can highlight + dispatch. */
+  selectedGoalId: string | null;
+  onSelectGoal: (id: string) => void;
 }) {
   const isExpanded = expanded.has(goal.id);
+  const isSelected = selectedGoalId === goal.id;
   const status = STATUS_STYLES[goal.status] ?? STATUS_STYLES.NOT_STARTED;
   const area = LIFE_AREA_META[goal.lifeArea] ?? {
     label: goal.lifeArea,
@@ -390,7 +510,13 @@ function GoalTreeNode({
 
   return (
     <div style={{ marginLeft: depth * 24 }}>
-      <div className="rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-4 py-3 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.04)] transition-all hover:shadow-[0_1px_3px_rgba(0,0,0,0.06),0_8px_20px_rgba(0,0,0,0.08)] dark:shadow-none dark:ring-1 dark:ring-white/5">
+      <div
+        className={`rounded-2xl border bg-white dark:bg-[#1E1E2E] px-4 py-3 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.04)] transition-all hover:shadow-[0_1px_3px_rgba(0,0,0,0.06),0_8px_20px_rgba(0,0,0,0.08)] dark:shadow-none dark:ring-1 dark:ring-white/5 ${
+          isSelected
+            ? "border-violet-500 dark:border-violet-400 ring-1 ring-violet-500/40 dark:ring-violet-400/40"
+            : "border-zinc-200 dark:border-white/10"
+        }`}
+      >
         <div className="flex items-start gap-3">
           {hasAnyChildren ? (
             <button
@@ -437,6 +563,20 @@ function GoalTreeNode({
 
             <Link
               href={`/goals/${goal.id}`}
+              onClick={(e) => {
+                // At 2xl: clicking the title swaps the sticky rail
+                // instead of navigating away. Below 2xl there's no
+                // rail, so the click falls through to a normal route
+                // change. matchMedia matches Tailwind's 2xl breakpoint
+                // (1536px). SSR-safe: window check guards the call.
+                if (
+                  typeof window !== "undefined" &&
+                  window.matchMedia("(min-width: 1536px)").matches
+                ) {
+                  e.preventDefault();
+                  onSelectGoal(goal.id);
+                }
+              }}
               className={`block text-sm leading-snug hover:text-violet-600 dark:hover:text-violet-400 transition ${
                 struck
                   ? "text-zinc-400 dark:text-zinc-500 line-through"
@@ -500,6 +640,8 @@ function GoalTreeNode({
               onDelete={onDelete}
               onToggleTask={onToggleTask}
               onAddSubgoal={onAddSubgoal}
+              selectedGoalId={selectedGoalId}
+              onSelectGoal={onSelectGoal}
             />
           ))}
         </div>
