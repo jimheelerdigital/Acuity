@@ -303,11 +303,17 @@ export function ThemeRings({
         </Text>
       </View>
 
-      {/* Rank list — single horizontal row per theme: dot, "01",
-          name (truncates), count (right-aligned), chevron. Row height
-          ~58px sits inside the 56-64 spec. Inter-row separators
-          replace the previous `gap: 6` so spacing reads tighter. */}
-      <View style={{ borderTopWidth: 0.5, borderTopColor: "rgba(255,255,255,0.06)", paddingTop: 4 }}>
+      {/* Rank list — redesigned 2026-04-28 (third iteration). Previous
+          versions wrapped on real devices because of flex/gap math
+          competing across 5 children. New layout uses just THREE
+          explicit columns:
+            [44px left rail: dot stacked on top of "01"] · [flex name] · [right meta: count + chevron, intrinsic width]
+          The middle column is the only flexible one and its single
+          Text child has flexShrink + numberOfLines so it always
+          truncates, never pushes the row. ChevronRight is grouped
+          inside the count's row so RN never lays them as separate
+          flex peers. */}
+      <View style={{ borderTopWidth: 0.5, borderTopColor: "rgba(255,255,255,0.06)", paddingTop: 8 }}>
         {rings.map((t, i) => {
           const p = SLOT_PALETTE[i];
           return (
@@ -319,41 +325,47 @@ export function ThemeRings({
                 alignItems: "center",
                 paddingVertical: 14,
                 paddingHorizontal: 4,
-                borderRadius: 8,
                 borderTopWidth: i === 0 ? 0 : 0.5,
                 borderTopColor: "rgba(255,255,255,0.05)",
                 backgroundColor: pressed ? "rgba(255,255,255,0.04)" : "transparent",
               })}
             >
-              {/* Why explicit marginRight instead of `gap: 12` on the
-                  Pressable: on narrow iPhones, the row sometimes
-                  wraps with `gap` even though flexWrap is the default
-                  nowrap — children appear stacked. Explicit margins +
-                  flexShrink on the name keep the row truly single-line. */}
+              {/* Left rail: dot above rank number, both centered in a
+                  fixed-width column. Stacking them vertically frees up
+                  horizontal space for the name. */}
               <View
                 style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: 999,
-                  marginRight: 10,
-                  backgroundColor: p.solid,
-                  shadowColor: p.solid,
-                  shadowOpacity: 1,
-                  shadowRadius: 6,
-                  shadowOffset: { width: 0, height: 0 },
-                }}
-              />
-              <Text
-                style={{
-                  fontSize: 13,
-                  fontWeight: "600",
-                  color: "rgba(168,168,180,0.5)",
-                  width: 22,
-                  marginRight: 10,
+                  width: 32,
+                  alignItems: "center",
+                  justifyContent: "center",
                 }}
               >
-                {String(i + 1).padStart(2, "0")}
-              </Text>
+                <View
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: 999,
+                    backgroundColor: p.solid,
+                    shadowColor: p.solid,
+                    shadowOpacity: 1,
+                    shadowRadius: 6,
+                    shadowOffset: { width: 0, height: 0 },
+                    marginBottom: 4,
+                  }}
+                />
+                <Text
+                  style={{
+                    fontSize: 11,
+                    fontWeight: "600",
+                    color: "rgba(168,168,180,0.55)",
+                    letterSpacing: 0.5,
+                  }}
+                >
+                  {String(i + 1).padStart(2, "0")}
+                </Text>
+              </View>
+
+              {/* Middle: theme name fills remaining width and truncates. */}
               <Text
                 numberOfLines={1}
                 ellipsizeMode="tail"
@@ -361,28 +373,40 @@ export function ThemeRings({
                   flex: 1,
                   flexShrink: 1,
                   minWidth: 0,
-                  fontSize: 16,
+                  fontSize: 17,
                   fontWeight: "500",
                   color: TEXT.primary,
                   letterSpacing: -0.1,
-                  marginRight: 10,
+                  marginLeft: 12,
+                  marginRight: 8,
                 }}
               >
                 {capitalize(t.name)}
               </Text>
-              <Text
+
+              {/* Right: count + chevron grouped so they're a single
+                  flex child, not two competing peers. */}
+              <View
                 style={{
-                  fontSize: 18,
-                  fontWeight: "500",
-                  color: "rgba(255,255,255,0.85)",
-                  letterSpacing: -0.3,
-                  textAlign: "right",
-                  marginRight: 6,
+                  flexDirection: "row",
+                  alignItems: "center",
                 }}
               >
-                {t.count}
-              </Text>
-              <ChevronRight size={14} color="rgba(168,168,180,0.5)" />
+                <Text
+                  style={{
+                    fontSize: 22,
+                    fontWeight: "500",
+                    color: "rgba(255,255,255,0.9)",
+                    letterSpacing: -0.4,
+                    textAlign: "right",
+                    minWidth: 28,
+                    marginRight: 6,
+                  }}
+                >
+                  {t.count}
+                </Text>
+                <ChevronRight size={16} color="rgba(168,168,180,0.5)" />
+              </View>
             </Pressable>
           );
         })}
