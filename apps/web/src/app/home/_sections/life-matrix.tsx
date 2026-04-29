@@ -21,7 +21,7 @@ export async function LifeMatrixSection({ userId }: { userId: string }) {
   ]);
 
   return (
-    <div className="lg:col-span-7">
+    <div className="min-w-0 lg:col-span-7">
       <LifeMatrixSnapshot
         areas={areas}
         entryCount={entryCount}

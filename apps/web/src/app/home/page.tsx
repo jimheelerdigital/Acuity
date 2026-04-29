@@ -175,41 +175,56 @@ export default async function DashboardPage() {
           />
         )}
 
-        {/* Dashboard grid. Each card is its own Suspense boundary —
-            slow queries on one card no longer gate the rest. */}
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:gap-6">
+        {/* Dashboard rows — each row is its own grid. The previous
+            single-grid implementation broke at wide widths because
+            position:sticky inside a CSS grid escapes its row: a
+            sticky child's containing block is the nearest scrollport,
+            not its grid cell, so the row-3 right rail kept following
+            the user's scroll past row 3 and visually overlapped row
+            4's Open Tasks card. Per-row grids put the rail back
+            inside a row-scoped containing block (the row's own grid
+            wrapper) so its sticky stop is the bottom of that row.
+            min-w-0 on the row-3 wrappers prevents intrinsic min-
+            content from any descendant (notably the radar SVG) from
+            forcing a column to widen. space-y-6 = the prior gap-6. */}
+        <div className="space-y-6">
           {/* Row 2 — Today's prompt + Streak */}
-          <Suspense fallback={<TodaysPromptSkeleton />}>
-            <TodaysPromptSection userId={userId} />
-          </Suspense>
-          <Suspense fallback={<StreakSummarySkeleton />}>
-            <StreakSummarySection userId={userId} />
-          </Suspense>
-
-          {/* Row 3 — Life Matrix + (Weekly insight stacked over Goals).
-              At 2xl: the right rail becomes sticky so power users
-              scrolling Recent Sessions keep the insight cards in view.
-              `self-start` prevents the column from stretching to row
-              height (which would defeat sticky). */}
-          <Suspense fallback={<LifeMatrixSkeleton />}>
-            <LifeMatrixSection userId={userId} />
-          </Suspense>
-          <div className="flex flex-col gap-6 lg:col-span-5 2xl:sticky 2xl:top-6 2xl:self-start">
-            <Suspense fallback={<WeeklyInsightSkeleton />}>
-              <WeeklyInsightSection userId={userId} />
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+            <Suspense fallback={<TodaysPromptSkeleton />}>
+              <TodaysPromptSection userId={userId} />
             </Suspense>
-            <Suspense fallback={<GoalsSnapshotSkeleton />}>
-              <GoalsSnapshotSection userId={userId} />
+            <Suspense fallback={<StreakSummarySkeleton />}>
+              <StreakSummarySection userId={userId} />
             </Suspense>
           </div>
 
+          {/* Row 3 — Life Matrix + (Weekly insight stacked over Goals).
+              `lg:items-start` so the rail column doesn't stretch to
+              row height (stretching defeats sticky — the column
+              would fill the row, leaving sticky no room to travel). */}
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:items-start">
+            <Suspense fallback={<LifeMatrixSkeleton />}>
+              <LifeMatrixSection userId={userId} />
+            </Suspense>
+            <div className="min-w-0 flex flex-col gap-6 lg:col-span-5 2xl:sticky 2xl:top-6">
+              <Suspense fallback={<WeeklyInsightSkeleton />}>
+                <WeeklyInsightSection userId={userId} />
+              </Suspense>
+              <Suspense fallback={<GoalsSnapshotSkeleton />}>
+                <GoalsSnapshotSection userId={userId} />
+              </Suspense>
+            </div>
+          </div>
+
           {/* Row 4 — Recent sessions + Open tasks */}
-          <Suspense fallback={<RecentSessionsSkeleton />}>
-            <RecentSessionsSection userId={userId} />
-          </Suspense>
-          <Suspense fallback={<OpenTasksSkeleton />}>
-            <OpenTasksSection userId={userId} />
-          </Suspense>
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+            <Suspense fallback={<RecentSessionsSkeleton />}>
+              <RecentSessionsSection userId={userId} />
+            </Suspense>
+            <Suspense fallback={<OpenTasksSkeleton />}>
+              <OpenTasksSection userId={userId} />
+            </Suspense>
+          </div>
         </div>
       </PageContainer>
     </div>

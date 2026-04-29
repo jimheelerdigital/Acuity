@@ -56,3 +56,7 @@ apps/mobile/dist/
 *.swp
 .vercel
 .env*.local
+
+# Visual-audit screenshots (scripts/visual-audit.ts) — contain real
+# user data from AUDIT_USER_ID and regenerate per run.
+.tmp/
