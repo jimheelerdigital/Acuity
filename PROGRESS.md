@@ -7,6 +7,36 @@
 
 ---
 
+## [2026-04-29] — Verified auto-blog Inngest step.run() fix + diagnosed root cause
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 777bfcb
+
+### In plain English (for Keenan)
+The auto-blog system has never published a post since it was built on April 28. The root cause: the original code used a plain JavaScript `setTimeout` to spread publish times randomly across the day. Vercel kills any function after 60 seconds. That delay alone could be up to 16 hours. Every single cron run was terminated before any blog generation even started. The fix (which landed via Jimmy's session) replaced `setTimeout` with Inngest's `step.sleep()` which holds the delay in the cloud instead of blocking Vercel. Every other operation (Claude generation, DB writes, Google indexing) is now wrapped in `step.run()` calls so each fits within the 60-second limit.
+
+**CRITICAL: You must verify `ENABLE_INNGEST_PIPELINE=1` is set in Vercel Production env vars.** If this is not set or is set to "0", ALL Inngest functions (including auto-blog) are blocked by a kill switch at the API route level. The function will never execute regardless of how correct the code is. Check Vercel → Project Settings → Environment Variables → look for `ENABLE_INNGEST_PIPELINE`. If missing, add it with value `1` and redeploy.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/inngest/functions/auto-blog.ts`: Confirmed the upstream triple-fix properly replaced `setTimeout` with `step.sleep("randomized-delay", ...)` and wrapped all operations in `step.run()`. The file now has 1x `step.sleep` + 5x `step.run` in autoBlogGenerateFn and 4x `step.run` in autoBlogPruneFn. Zero `setTimeout` calls remain.
+- No waitlistReactivationFn exists — the waitlist drip cron is a deprecated no-op at `/api/cron/waitlist-drip`. Trial email onboarding is handled by `trialEmailOrchestratorFn` which already uses `step.run()` correctly (verified at line 156).
+
+### Manual steps needed
+- [ ] **CRITICAL:** Verify `ENABLE_INNGEST_PIPELINE=1` is set in Vercel Production env vars (Keenan — if missing, add it, then redeploy from Vercel dashboard)
+- [ ] After confirming the env var, click "Generate Now" in /admin?tab=auto-blog to trigger a manual test run (Keenan)
+- [ ] Check Inngest dashboard (app.inngest.com → Functions → auto-blog-generate → Runs) for the test run — should show discrete steps completing, not a single inline call timing out (Keenan / Jimmy)
+- [ ] Verify a new blog post appears at /blog after the test run completes (Keenan)
+- [ ] Check ClaudeCallLog for entries with purpose "auto-blog-generate" to confirm Claude was called (Jimmy)
+
+### Notes
+- The previous diagnostic claimed a "triple-fix" never landed on auto-blog.ts. That was incorrect — the fix DID land via Jimmy's session (upstream commits between 0f274f4..de0f415). The confusion arose because this session's local copy hadn't pulled the latest remote.
+- What the original implementation (c93ee17) got wrong: used `await new Promise(resolve => setTimeout(resolve, delayMs))` for a delay up to 960 minutes. Vercel's `maxDuration = 60` (seconds) killed it immediately. All other DB + Claude calls were also inline awaits without step.run(), compounding the timeout risk.
+- What the fix does right: `step.sleep("randomized-delay", "${N}m")` tells Inngest to hold the delay in its cloud infrastructure. Vercel's function returns immediately. Inngest resumes the function after the delay by calling POST `/api/inngest` again for the next step.
+- The `ENABLE_INNGEST_PIPELINE` flag gates POST requests to `/api/inngest`. If off, Inngest Cloud can discover and register functions (GET/PUT work), but cannot invoke them (POST returns 503). This is intentional as a kill switch but must be ON for any Inngest function to execute.
+
+---
+
 ## [2026-04-29] — Wide-desktop /goals page now shows a sticky goal-detail side rail
 
 **Requested by:** Jimmy
