@@ -23,6 +23,7 @@ import {
 } from "@acuity/shared";
 
 import { MoodIcon } from "@/components/mood-icon";
+import { Skeleton, SkeletonCard } from "@/components/skeleton";
 import { api } from "@/lib/api";
 import { getCached, isStale, setCached } from "@/lib/cache";
 
@@ -233,8 +234,30 @@ export default function EntriesTab() {
       </View>
 
       {loading ? (
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color="#7C3AED" />
+        // Skeleton entry rows — match FlatList's loaded card footprint
+        // so the swap reads as content resolving, not as a spinner
+        // popping out and being replaced.
+        <View style={{ paddingHorizontal: 16, gap: 12, paddingTop: 8 }}>
+          {Array.from({ length: 5 }).map((_, i) => (
+            <SkeletonCard key={i}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  marginBottom: 8,
+                }}
+              >
+                <Skeleton width={120} height={14} />
+                <Skeleton width={48} height={14} />
+              </View>
+              <Skeleton width="100%" height={12} />
+              <Skeleton
+                width="80%"
+                height={12}
+                style={{ marginTop: 6 }}
+              />
+            </SkeletonCard>
+          ))}
         </View>
       ) : (
         <FlatList

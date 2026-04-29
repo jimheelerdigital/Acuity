@@ -35,6 +35,7 @@ import {
 } from "lucide-react-native";
 
 import { LockedFeatureCard } from "@/components/locked-feature-card";
+import { Skeleton, SkeletonCard } from "@/components/skeleton";
 import { api } from "@/lib/api";
 import { getCached, isStale, setCached } from "@/lib/cache";
 import { fetchUserProgression } from "@/lib/userProgression";
@@ -501,12 +502,35 @@ export default function GoalsTab() {
   }, []);
 
   if (loading && roots.length === 0) {
+    // Skeleton list — same footprint as the loaded tree's top level
+    // so the swap reads as data resolving in place.
     return (
-      <SafeAreaView
-        edges={["top"]}
-        className="flex-1 items-center justify-center bg-white dark:bg-[#0B0B12]"
-      >
-        <ActivityIndicator color="#7C3AED" />
+      <SafeAreaView edges={["top"]} className="flex-1 bg-white dark:bg-[#0B0B12]">
+        <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
+          <Skeleton width={100} height={28} style={{ marginBottom: 6 }} />
+          <Skeleton width={200} height={14} style={{ marginBottom: 20 }} />
+          <View style={{ gap: 12 }}>
+            {Array.from({ length: 4 }).map((_, i) => (
+              <SkeletonCard key={i}>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                  }}
+                >
+                  <Skeleton width="50%" height={16} />
+                  <Skeleton width={32} height={14} />
+                </View>
+                <Skeleton
+                  width="100%"
+                  height={6}
+                  radius={3}
+                  style={{ marginTop: 12 }}
+                />
+              </SkeletonCard>
+            ))}
+          </View>
+        </View>
       </SafeAreaView>
     );
   }

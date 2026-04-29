@@ -108,6 +108,13 @@ export default async function DashboardPage() {
   // groups array and OpenTasksCard's "Other" fallback bucket handles
   // it gracefully.
   let taskGroups: { id: string; name: string; color: string; order: number }[] = [];
+  // partialLoadError: when a parallel-batch fetch throws, we keep the
+  // page rendering with empty fallbacks (per the SIGSEGV defense
+  // above) BUT surface an inline banner so the user knows the
+  // dashboard is degraded — instead of silently showing empty
+  // widgets that look like "you haven't done anything." Phase 3 of
+  // the perf+polish push, audit item #3.
+  let partialLoadError = false;
   try {
     [entries, tasks, lifemapAreas, weeklyReport, totalEntryCount, snapshotGoals, topThemes] =
       await Promise.all([
@@ -132,6 +139,7 @@ export default async function DashboardPage() {
       ]);
   } catch (err) {
     console.error("[dashboard] Failed to load data:", err);
+    partialLoadError = true;
   }
   try {
     taskGroups = await prisma.taskGroup.findMany({
@@ -141,6 +149,7 @@ export default async function DashboardPage() {
     });
   } catch (err) {
     console.error("[dashboard] Failed to load task groups:", err);
+    partialLoadError = true;
   }
 
   // Greeting word picked client-side from the user's local hour —
@@ -190,6 +199,25 @@ export default async function DashboardPage() {
       <TrackPurchase />
       <PageContainer mobileWidth="5xl" className="animate-fade-in">
         <WelcomeBackBanner reduced={reducedTrial} daysLeft={trialDaysLeft} />
+
+        {partialLoadError && (
+          <section
+            role="alert"
+            className="mb-6 flex items-start gap-3 rounded-2xl border border-amber-300 bg-amber-50/60 px-5 py-4 dark:border-amber-900/40 dark:bg-amber-950/20"
+          >
+            <span className="text-lg leading-none" aria-hidden="true">⚠️</span>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
+                Some of your dashboard didn&apos;t load
+              </p>
+              <p className="mt-1 text-xs text-amber-800/80 dark:text-amber-300/80">
+                The data layer hiccupped on one or more queries. The cards
+                below may be incomplete. Refresh the page to retry — your
+                entries and reports are safe.
+              </p>
+            </div>
+          </section>
+        )}
 
         {user?.subscriptionStatus === "PAST_DUE" && (
           <section className="mb-6 rounded-2xl border border-amber-300 dark:border-amber-900/40 bg-amber-50/60 dark:bg-amber-950/20 px-5 py-4 flex items-start gap-3">

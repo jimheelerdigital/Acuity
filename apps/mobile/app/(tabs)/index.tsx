@@ -22,6 +22,7 @@ import {
 import { HomeFocusStack } from "@/components/home-focus-stack";
 import { MoodIcon } from "@/components/mood-icon";
 import { ProgressionChecklist } from "@/components/progression-checklist";
+import { Skeleton, SkeletonCard } from "@/components/skeleton";
 import { RecommendedActivity } from "@/components/recommended-activity";
 import { useAuth } from "@/contexts/auth-context";
 import { api } from "@/lib/api";
@@ -249,8 +250,28 @@ export default function DashboardTab() {
         </View>
 
         {loading ? (
-          <View className="py-8 items-center">
-            <ActivityIndicator color="#7C3AED" />
+          // Skeleton entry rows — match the loaded card footprint.
+          <View style={{ gap: 10 }}>
+            {Array.from({ length: 3 }).map((_, i) => (
+              <SkeletonCard key={i}>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    marginBottom: 8,
+                  }}
+                >
+                  <Skeleton width={100} height={12} />
+                  <Skeleton width={40} height={12} />
+                </View>
+                <Skeleton width="90%" height={14} />
+                <Skeleton
+                  width="70%"
+                  height={14}
+                  style={{ marginTop: 6 }}
+                />
+              </SkeletonCard>
+            ))}
           </View>
         ) : entries && entries.length === 0 ? (
           <View className="rounded-2xl border border-dashed border-zinc-200 dark:border-white/10 p-6 items-center">

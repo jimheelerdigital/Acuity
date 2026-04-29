@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { PRIORITY_COLOR } from "@acuity/shared";
+import { Skeleton, SkeletonCard } from "@/components/skeleton";
 import { api } from "@/lib/api";
 import { getCached, setCached } from "@/lib/cache";
 
@@ -382,12 +383,31 @@ export default function TasksTab() {
   ];
 
   if (loading) {
+    // Skeleton instead of a centered spinner — content takes >100ms
+    // and a spinner-then-list swap reads as two separate screens.
+    // Six placeholder rows match the typical loaded layout footprint.
     return (
       <SafeAreaView
-        className="flex-1 bg-white dark:bg-[#0B0B12] items-center justify-center"
+        className="flex-1 bg-white dark:bg-[#0B0B12]"
         edges={["top"]}
       >
-        <ActivityIndicator color="#7C3AED" />
+        <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
+          <Skeleton width={120} height={28} radius={6} style={{ marginBottom: 6 }} />
+          <Skeleton width={180} height={14} style={{ marginBottom: 16 }} />
+          <View style={{ flexDirection: "row", gap: 8, marginBottom: 16 }}>
+            <Skeleton width={70} height={28} radius={14} />
+            <Skeleton width={88} height={28} radius={14} />
+            <Skeleton width={76} height={28} radius={14} />
+          </View>
+          <View style={{ gap: 10 }}>
+            {Array.from({ length: 6 }).map((_, i) => (
+              <SkeletonCard key={i} style={{ padding: 14 }}>
+                <Skeleton width="60%" height={14} />
+                <Skeleton width="40%" height={11} style={{ marginTop: 8 }} />
+              </SkeletonCard>
+            ))}
+          </View>
+        </View>
       </SafeAreaView>
     );
   }
