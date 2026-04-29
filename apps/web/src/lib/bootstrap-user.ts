@@ -175,6 +175,25 @@ export async function bootstrapNewUser(params: {
     // eslint-disable-next-line no-console
     console.error("[bootstrap-user] welcome_day0 send failed:", err);
   }
+
+  // Notify founders (Keenan + Jimmy) of the new signup in real time.
+  // Fail-soft — same pattern as welcome_day0. Never blocks signup.
+  try {
+    const { notifyFoundersOfSignup } = await import(
+      "@/lib/founder-notifications"
+    );
+    await notifyFoundersOfSignup({
+      userId,
+      email,
+      isFoundingMember,
+      foundingMemberNumber,
+      trialDays,
+      attribution,
+    });
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error("[bootstrap-user] founder notification failed:", err);
+  }
 }
 
 /**

@@ -43,66 +43,66 @@ model VerificationToken {
 }
 
 model User {
-  id                     String       @id @default(cuid())
-  email                  String       @unique
-  emailVerified          DateTime?
+  id                            String               @id @default(cuid())
+  email                         String               @unique
+  emailVerified                 DateTime?
   // bcrypt hash for email/password accounts. Null for OAuth-only users
   // (Google sign-ins that never set a password). A user with a Google
   // Account row AND a passwordHash has linked both auth methods.
-  passwordHash           String?
+  passwordHash                  String?
   // Random token issued during the forgot-password flow. Cleared on
   // use or on natural expiry. @unique so the lookup in the reset
   // handler is indexed without a composite.
-  resetToken             String?      @unique
-  resetTokenExpires      DateTime?
-  name                   String?
-  image                  String?
-  avatarUrl              String?
-  stripeCustomerId       String?
-  stripeSubscriptionId   String?
-  stripeCurrentPeriodEnd DateTime?
-  subscriptionStatus     String       @default("TRIAL")
-  trialEndsAt            DateTime?
-  timezone               String       @default("America/Chicago")
+  resetToken                    String?              @unique
+  resetTokenExpires             DateTime?
+  name                          String?
+  image                         String?
+  avatarUrl                     String?
+  stripeCustomerId              String?
+  stripeSubscriptionId          String?
+  stripeCurrentPeriodEnd        DateTime?
+  subscriptionStatus            String               @default("TRIAL")
+  trialEndsAt                   DateTime?
+  timezone                      String               @default("America/Chicago")
   // DEPRECATED: superseded by notificationTime + notificationDays +
   // notificationsEnabled (added 2026-04-20 alongside the onboarding
   // notifications step). Left in place because a fresh schema diff
   // without it would drop column data from any env where it was set
   // manually; read paths should prefer `notificationTime`.
-  reminderTime           String       @default("21:00")
-  pushToken              String?
+  reminderTime                  String               @default("21:00")
+  pushToken                     String?
   // HH:MM in the user's timezone. Combined with `notificationDays`
   // to schedule the local reminder (mobile via expo-notifications)
   // or the daily email (web, future).
-  notificationTime       String       @default("21:00")
+  notificationTime              String               @default("21:00")
   // 0=Sunday..6=Saturday. Days the reminder fires. Empty array = no
   // days active (same effect as notificationsEnabled=false, but
   // preserves the preference the user last picked).
-  notificationDays       Int[]        @default([0, 1, 2, 3, 4, 5, 6])
-  notificationsEnabled   Boolean      @default(false)
+  notificationDays              Int[]                @default([0, 1, 2, 3, 4, 5, 6])
+  notificationsEnabled          Boolean              @default(false)
   // Granted manually via direct DB update (UPDATE "User" SET "isAdmin" = true WHERE email = '...').
   // Not self-service. Gates /admin/dashboard + /api/admin/*.
-  isAdmin                Boolean      @default(false)
+  isAdmin                       Boolean              @default(false)
   // Color-scheme preference. Null (default) → follow system / localStorage
   // whatever next-themes picks up. Set to "light" or "dark" when the
   // user explicitly picks via the toggle; we persist to the DB so the
   // preference survives across devices without relying on localStorage.
-  theme                  String?
+  theme                         String?
   // Streak tracking — incremented by the Inngest process-entry pipeline
   // after a successful recording persists. Day boundaries evaluated in
   // the user's `timezone` via date-fns-tz (same-day = no change,
   // next-calendar-day = +1, gap of 2+ days = reset to 1). Full rules in
   // apps/web/src/lib/streak.ts.
-  currentStreak          Int          @default(0)
-  longestStreak          Int          @default(0)
-  lastSessionDate        DateTime?
+  currentStreak                 Int                  @default(0)
+  longestStreak                 Int                  @default(0)
+  lastSessionDate               DateTime?
   // Highest milestone we've celebrated for this user (3, 7, 14, 30, 60,
   // 100, 365). NULL means no milestone fired yet. Set once and
   // monotonically increases — a user who drops from 100 back to 0 and
   // climbs again gets a new milestone toast only if they exceed
   // lastMilestone. (Originally 7/30/100; Phase 2 Run 2 2026-04-23
   // expanded to the full 3/7/14/30/60/100/365 ladder.)
-  lastStreakMilestone    Int?
+  lastStreakMilestone           Int?
   // Baseline currentStreak at the time milestone celebrations shipped
   // (Phase 2 Run 2 deploy). Default 0 for new users. Prevents the
   // retroactive dump where an existing user at streak 35 suddenly
@@ -110,101 +110,101 @@ model User {
   // Milestone fires only if threshold > milestoneBaselineStreak
   // (AND > lastStreakMilestone per the existing rule). Static after
   // the backfill migration; never updated by app code.
-  milestoneBaselineStreak Int          @default(0)
+  milestoneBaselineStreak       Int                  @default(0)
   // Cookie/analytics consent record — stored as JSON so we can evolve
   // the categories without a migration. Shape: { version:1, acceptedAt,
   // analytics:boolean, marketing:boolean }. Null = user has never seen
   // the banner or logged-in-from-another-device. Mirror of the
   // localStorage record on the client.
-  cookieConsent          Json?
+  cookieConsent                 Json?
   // Last-computed UserProgression snapshot, used to diff `recentlyUnlocked`
   // across sessions (see packages/shared/src/userProgression.ts). Shape is
   // the full UserProgression JSON. Null on users who've never hit the
   // /api/user/progression endpoint. Regenerated every time that endpoint
   // runs; stale snapshots are fine — they only seed the "what unlocked
   // since last check" diff.
-  progressionSnapshot    Json?
+  progressionSnapshot           Json?
   // First 100 signups are Founding Members — 30-day trial, badge, and
   // sequential number 1-100. After 100 the fields stay false/null and
   // new users get the standard 14-day trial.
-  isFoundingMember       Boolean      @default(false)
-  foundingMemberNumber   Int?
+  isFoundingMember              Boolean              @default(false)
+  foundingMemberNumber          Int?
   // Apple's stable per-user identifier (`sub` claim from the Apple ID
   // token). Set when a user signs in with Apple. Unique so the same
   // Apple ID maps to exactly one User row even when Apple's relayed
   // email rotates or the user opts out of email sharing on a later
   // sign-in. Null on users who've never signed in with Apple.
-  appleSubject           String?      @unique
+  appleSubject                  String?              @unique
   // Goal-setting cadence captured during onboarding step 8. One of
   // "daily" | "most_days" | "few_times_week". Doesn't change app
   // behavior or limit functionality — it's a self-reported intent
   // that downstream nudge / reminder / streak copy can reference.
   // Default "daily" reflects the recommended cadence for getting
   // value from Acuity (more entries → better extraction).
-  targetCadence          String?      @default("daily")
-  createdAt              DateTime     @default(now())
+  targetCadence                 String?              @default("daily")
+  createdAt                     DateTime             @default(now())
   // Last time the user loaded a page / opened the app. Updated
   // opportunistically from /api/user/me; not strongly durable.
   // Drives the onboarding smart-skip ("abandoned 30+ days ago →
   // silently mark complete") and future engagement signals.
-  lastSeenAt             DateTime?
+  lastSeenAt                    DateTime?
   // Unique short code (8 char, no ambiguous chars) the user shares
   // via their /?ref= link. Generated lazily on first /account view
   // or at signup — see lib/referrals.ts::generateReferralCode.
-  referralCode           String?      @unique
+  referralCode                  String?              @unique
   // ID of the user who referred them (if they signed up via a ?ref=
   // link). Null for self-directed signups. SetNull on referrer
   // delete so we don't lose the downstream graph.
-  referredById           String?
-  referredBy             User?        @relation("Referrals", fields: [referredById], references: [id], onDelete: SetNull)
-  referrals              User[]       @relation("Referrals")
+  referredById                  String?
+  referredBy                    User?                @relation("Referrals", fields: [referredById], references: [id], onDelete: SetNull)
+  referrals                     User[]               @relation("Referrals")
   // Subscription email toggles (W2). Default both on; unsubscribe
   // link in any digest footer flips the relevant boolean via a
   // token-based endpoint.
-  weeklyEmailEnabled     Boolean      @default(true)
-  monthlyEmailEnabled    Boolean      @default(true)
+  weeklyEmailEnabled            Boolean              @default(true)
+  monthlyEmailEnabled           Boolean              @default(true)
   // Dedup keys for the weekly/monthly digest Inngest crons. Scan
   // window uses (now - last*At < threshold) so a retried cron or
   // overlap doesn't double-send. Null = never sent.
-  lastWeeklyDigestAt     DateTime?
-  lastMonthlyDigestAt    DateTime?
-  accounts               Account[]
-  sessions               Session[]
-  entries                Entry[]
-  tasks                  Task[]
-  taskGroups             TaskGroup[]
-  goals                  Goal[]
-  weeklyReports          WeeklyReport[]
-  lifemapAreas           LifeMapArea[]
-  memory                 UserMemory?
-  lifeAudits             LifeAudit[]
-  onboarding             UserOnboarding?
-  demographics           UserDemographics?
-  userInsights           UserInsight[]
-  themes                 Theme[]
+  lastWeeklyDigestAt            DateTime?
+  lastMonthlyDigestAt           DateTime?
+  accounts                      Account[]
+  sessions                      Session[]
+  entries                       Entry[]
+  tasks                         Task[]
+  taskGroups                    TaskGroup[]
+  goals                         Goal[]
+  weeklyReports                 WeeklyReport[]
+  lifemapAreas                  LifeMapArea[]
+  memory                        UserMemory?
+  lifeAudits                    LifeAudit[]
+  onboarding                    UserOnboarding?
+  demographics                  UserDemographics?
+  userInsights                  UserInsight[]
+  themes                        Theme[]
   referralConversionsAsReferrer ReferralConversion[] @relation("ReferrerConversions")
   referralConversionsAsReferred ReferralConversion[] @relation("ReferredConversions")
-  dataExports            DataExport[]
-  healthSnapshots        HealthSnapshot[]
+  dataExports                   DataExport[]
+  healthSnapshots               HealthSnapshot[]
   // Apple Health connection state. True once the user accepts the
   // iOS HealthKit permission prompt; cleared when they revoke in
   // Settings or toggle off from Profile → Connected apps. Null on
   // Android / never-connected iOS accounts.
-  healthConnectedAt      DateTime?
-  stateOfMeReports       StateOfMeReport[]
-  lifeDimensions         UserLifeDimension[]
-  calendarConnections    CalendarConnection[]
+  healthConnectedAt             DateTime?
+  stateOfMeReports              StateOfMeReport[]
+  lifeDimensions                UserLifeDimension[]
+  calendarConnections           CalendarConnection[]
   // Preset template the user picked for their Life Matrix labels.
   // "DEFAULT" | "STUDENT" | "PARENT" | "CUSTOM" | null. Null means
   // the user has never customized — render the canonical labels.
-  lifeDimensionPreset    String?
+  lifeDimensionPreset           String?
   // Accrued referral reward days for users who AREN'T on trial when
   // their conversion fires (paid / past-due / free). Applied at the
   // next subscription renewal — TODO: hook this into the renewal
   // handler. For TRIAL referrers we extend `trialEndsAt` directly
   // and this column stays at 0. Capped indirectly via
   // REFERRAL_ANNUAL_CAP in lib/referrals.ts.
-  referralRewardDays     Int          @default(0)
+  referralRewardDays            Int                  @default(0)
 
   // Trial email sequence fields (2026-04-24). Drives the
   // trial-email-orchestrator Inngest function. firstRecordingAt /
@@ -217,22 +217,22 @@ model User {
   // link in every trial email footer.
   firstRecordingAt       DateTime?
   lastRecordingAt        DateTime?
-  totalRecordings        Int          @default(0)
-  onboardingTrack        String       @default("STANDARD")
-  onboardingUnsubscribed Boolean      @default(false)
+  totalRecordings        Int             @default(0)
+  onboardingTrack        String          @default("STANDARD")
+  onboardingUnsubscribed Boolean         @default(false)
   trialEmailLogs         TrialEmailLog[]
 
   // Signup attribution (first-touch UTM capture). Written once at signup
   // from the acuity_attribution cookie set on first landing page visit.
-  signupUtmSource        String?
-  signupUtmMedium        String?
-  signupUtmCampaign      String?
-  signupUtmContent       String?
-  signupUtmTerm          String?
-  signupReferrer         String?
-  signupLandingPath      String?
+  signupUtmSource   String?
+  signupUtmMedium   String?
+  signupUtmCampaign String?
+  signupUtmContent  String?
+  signupUtmTerm     String?
+  signupReferrer    String?
+  signupLandingPath String?
 
-  updatedAt              DateTime  @updatedAt
+  updatedAt DateTime @default(now()) @updatedAt
 
   @@index([createdAt])
 }
@@ -246,23 +246,23 @@ model User {
 // See apps/web/src/inngest/functions/trial-email-orchestrator.ts for
 // the scheduling logic + emailKey catalog.
 model TrialEmailLog {
-  id        String   @id @default(cuid())
+  id         String    @id @default(cuid())
   // userId is nullable — waitlist reactivation emails target Waitlist
   // records that may not have a User account yet.
-  userId    String?
-  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String?
+  user       User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
   // For waitlist reactivation emails — references Waitlist.id. Null
   // for standard trial emails.
   waitlistId String?
-  emailKey  String
-  sentAt    DateTime @default(now())
-  opened    Boolean? // null until Resend webhook lands
-  clicked   Boolean? // null until Resend webhook lands
-  openedAt  DateTime?
-  clickedAt DateTime?
+  emailKey   String
+  sentAt     DateTime  @default(now())
+  opened     Boolean? // null until Resend webhook lands
+  clicked    Boolean? // null until Resend webhook lands
+  openedAt   DateTime?
+  clickedAt  DateTime?
   // Resend message id — returned from resend.emails.send. Lets the
   // webhook tie delivery events back to a specific log row.
-  resendId  String?  @unique
+  resendId   String?   @unique
 
   @@unique([userId, emailKey])
   @@unique([waitlistId, emailKey])
@@ -284,8 +284,8 @@ model TrialEmailLog {
 // No FK to User (the point is that the User is gone). Email is the
 // only stable identifier.
 model DeletedUser {
-  email                String   @id
-  deletedAt            DateTime @default(now())
+  email                String    @id
+  deletedAt            DateTime  @default(now())
   originalCreatedAt    DateTime
   originalTrialEndedAt DateTime?
 }
@@ -345,29 +345,29 @@ model UserOnboarding {
 }
 
 model Entry {
-  id            String   @id @default(cuid())
-  userId        String
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                    String         @id @default(cuid())
+  userId                String
+  user                  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   // DEPRECATED: use audioPath. Will remove in Inngest PR 4 once the sync
   // path is retired. Sync path writes a signed URL here; async path leaves
   // this null and writes the object path to audioPath instead.
-  audioUrl      String?
+  audioUrl              String?
   // Supabase Storage object path, e.g. "voice-entries/${userId}/${entryId}.webm".
   // Not a URL — callers sign on demand via SECURITY_AUDIT.md §4 endpoint
   // (to be built). Populated by the async pipeline (ENABLE_INNGEST_PIPELINE=1).
-  audioPath     String?
-  duration      Int?
-  audioDuration Int?
-  transcript    String?
-  summary       String?
-  mood          String?
-  moodScore     Int?
-  energy        Int?
-  themes        String[]
-  wins          String[]
-  blockers      String[]
-  rawExtraction Json?
-  rawAnalysis   Json?
+  audioPath             String?
+  duration              Int?
+  audioDuration         Int?
+  transcript            String?
+  summary               String?
+  mood                  String?
+  moodScore             Int?
+  energy                Int?
+  themes                String[]
+  wins                  String[]
+  blockers              String[]
+  rawExtraction         Json?
+  rawAnalysis           Json?
   // OpenAI text-embedding-3-small output (1536 dims) on
   // `summary + transcript`. Populated by the extraction pipeline
   // post-Claude and by the backfill script. Null on legacy rows
@@ -375,7 +375,7 @@ model Entry {
   // no pgvector index. At 10k entries × 1536 dims × 4 bytes =
   // ~60MB max per-user read, well under memory limits; if we blow
   // past that we promote to pgvector.
-  embedding     Float[]
+  embedding             Float[]
   // Valid status values (enforced by app code, not schema — we keep this a
   // String for flexibility across Postgres versions):
   //   QUEUED       — Inngest event dispatched, not yet running (async path)
@@ -387,15 +387,15 @@ model Entry {
   //   FAILED       — unrecoverable; errorMessage populated
   //   PENDING      — LEGACY: used by sync path until it's retired (Inngest PR 4)
   //   PROCESSING   — LEGACY: sync path intermediate state, same retirement
-  status        String   @default("QUEUED")
+  status                String         @default("QUEUED")
   // User-safe error copy surfaced by onFailure handler when status=FAILED.
-  errorMessage  String?
+  errorMessage          String?
   // Narrows PARTIAL state — e.g. "extract-failed", "memory-update-failed",
   // "lifemap-update-failed". Always null unless status === "PARTIAL".
-  partialReason String?
+  partialReason         String?
   // Cross-reference into Inngest's run dashboard for observability. Written
   // by processEntryFn's first step. Null for sync-path entries.
-  inngestRunId  String?
+  inngestRunId          String?
   // Set when the user reviews the AI-extracted tasks + goals (see
   // /api/entries/[id]/commit-extraction) and confirms which to persist.
   // Null = extraction is complete but user hasn't reviewed yet, so the
@@ -404,25 +404,25 @@ model Entry {
   // Pre-2026-04-23 entries are backfilled to createdAt by the migration
   // so legacy entries don't get an unwanted review banner.
   extractionCommittedAt DateTime?
-  entryDate     DateTime @default(now())
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  entryDate             DateTime       @default(now())
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
   // Optional goal this entry is specifically "about" — set when the user
   // taps "Record about this goal" from a goal card/detail. When present,
   // the extraction pipeline splices the goal's title + description into
   // the Claude prompt so the AI treats the entry as goal-contextualized.
   // Null for standard recordings.
-  goalId        String?
-  goal          Goal?    @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  goalId                String?
+  goal                  Goal?          @relation(fields: [goalId], references: [id], onDelete: SetNull)
   // Optional life-dimension context. Set when the user opened the
   // recorder from a dimension detail screen via "Record about this".
   // Stored as the lowercase dimension key from DEFAULT_LIFE_AREAS
   // ("career" / "health" / "relationships" / "finances" / "personal" /
   // "other") so the extraction pipeline can splice the human-readable
   // area name into the Claude prompt without a DB join. Nullable.
-  dimensionContext String?
-  tasks         Task[]
-  themeMentions ThemeMention[]
+  dimensionContext      String?
+  tasks                 Task[]
+  themeMentions         ThemeMention[]
 
   @@index([userId, createdAt])
   // Composite for /api/entries-style queries that filter on status
@@ -434,22 +434,22 @@ model Entry {
 }
 
 model TaskGroup {
-  id             String   @id @default(cuid())
-  userId         String
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name           String
-  icon           String
-  color          String
-  order          Int      @default(0)
-  isDefault      Boolean  @default(false)
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name          String
+  icon          String
+  color         String
+  order         Int      @default(0)
+  isDefault     Boolean  @default(false)
   // True when the row was seeded automatically on first-task-fetch for
   // this user (vs. a group the user explicitly created from the
   // Settings UI). Lets future UX distinguish "we guessed this for you"
   // groups from "you made this" groups in the onboarding tooltip.
-  isAIGenerated  Boolean  @default(false)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  tasks          Task[]
+  isAIGenerated Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  tasks         Task[]
 
   @@unique([userId, name])
   @@index([userId, order])
@@ -471,16 +471,16 @@ model Task {
   // Goal Tree. null means the task is not attached to any goal. Set
   // by the suggestion-accept flow or manually from the goal detail.
   goalId       String?
-  goal         Goal?     @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  goal         Goal?      @relation(fields: [goalId], references: [id], onDelete: SetNull)
   text         String?
   title        String?
   description  String?
-  status       String    @default("OPEN")
-  priority     String    @default("MEDIUM")
+  status       String     @default("OPEN")
+  priority     String     @default("MEDIUM")
   dueDate      DateTime?
   snoozedUntil DateTime?
   completedAt  DateTime?
-  createdAt    DateTime  @default(now())
+  createdAt    DateTime   @default(now())
 
   @@index([goalId])
   // Hot path: /api/tasks GET filters `status: { not: "DONE" }` and
@@ -490,12 +490,12 @@ model Task {
 }
 
 model Goal {
-  id              String    @id @default(cuid())
-  userId          String
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title           String
-  description     String?
-  lifeArea        String    @default("PERSONAL")
+  id                  String               @id @default(cuid())
+  userId              String
+  user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title               String
+  description         String?
+  lifeArea            String               @default("PERSONAL")
   // Valid values (enforced by app code, kept as String for cross-version
   // Postgres compatibility):
   //   NOT_STARTED | IN_PROGRESS | ON_HOLD | COMPLETE | ARCHIVED
@@ -519,40 +519,40 @@ model Goal {
   //
   // Default on extraction-created goals stays NOT_STARTED; users flip
   // to IN_PROGRESS from the detail view when they actually start.
-  status          String    @default("NOT_STARTED")
-  targetDate      DateTime?
-  progress        Int       @default(0)
-  progressNotes   Json[]
-  entryRefs       String[]
+  status              String               @default("NOT_STARTED")
+  targetDate          DateTime?
+  progress            Int                  @default(0)
+  progressNotes       Json[]
+  entryRefs           String[]
   // Free-form user-authored notes (detail view textarea). Keeps the
   // AI-generated `description` separate from the reflection layer the
   // user adds after creation.
-  notes           String?
+  notes               String?
   // Last time any entry mentioned this goal (by title match during
   // extraction). Drives the "stale 7+ days" tier-1 recommended activity
   // surface so the user can refresh commitment.
-  lastMentionedAt DateTime?
+  lastMentionedAt     DateTime?
   // True once the user has edited title/description/status/progress/notes
   // from the detail view. Extraction pipeline respects this — won't
   // overwrite a user-edited goal with a later re-extraction.
-  editedByUser    Boolean   @default(false)
+  editedByUser        Boolean              @default(false)
   // Self-referential parent for the Goal Progression Tree. null = root.
   // App-layer enforces max depth = 4 and prevents cycles; a Prisma
   // CHECK constraint isn't portable across Postgres versions and a
   // runtime guard in the API covers the same cases.
-  parentGoalId    String?
-  parent          Goal?     @relation("GoalTree", fields: [parentGoalId], references: [id], onDelete: SetNull)
-  children        Goal[]    @relation("GoalTree")
+  parentGoalId        String?
+  parent              Goal?                @relation("GoalTree", fields: [parentGoalId], references: [id], onDelete: SetNull)
+  children            Goal[]               @relation("GoalTree")
   // Materialized path for subtree queries: "/rootId/midId/" style.
   // Recomputed on insert + on reparent. Null for legacy rows; the
   // tree API tolerates null and treats them as root-level.
-  treePath        String?
+  treePath            String?
   // 0 = root. 1..4 = descendants. Enforced at the API layer.
-  depth           Int       @default(0)
-  createdAt       DateTime  @default(now())
-  tasks           Task[]
-  entries         Entry[]
-  suggestions     GoalSuggestion[]
+  depth               Int                  @default(0)
+  createdAt           DateTime             @default(now())
+  tasks               Task[]
+  entries             Entry[]
+  suggestions         GoalSuggestion[]
   progressSuggestions ProgressSuggestion[]
 
   @@index([userId, status])
@@ -560,72 +560,72 @@ model Goal {
 }
 
 model WeeklyReport {
-  id              String   @id @default(cuid())
-  userId          String
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  weekStart       DateTime
-  weekEnd         DateTime
-  weekNumber      Int
-  year            Int
-  narrative       String?
-  insightBullets  String[]
-  moodArc         String?
-  topThemes       String[]
-  tasksOpened     Int      @default(0)
-  tasksClosed     Int      @default(0)
-  goalsProgressed String[]
-  entryCount      Int      @default(0)
+  id                   String    @id @default(cuid())
+  userId               String
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weekStart            DateTime
+  weekEnd              DateTime
+  weekNumber           Int
+  year                 Int
+  narrative            String?
+  insightBullets       String[]
+  moodArc              String?
+  topThemes            String[]
+  tasksOpened          Int       @default(0)
+  tasksClosed          Int       @default(0)
+  goalsProgressed      String[]
+  entryCount           Int       @default(0)
   // Valid status values (mirrors Entry.status vocabulary):
   //   QUEUED     — async path: Inngest event dispatched, not yet running
   //   GENERATING — Claude call in progress (sync path and async path)
   //   COMPLETE   — narrative + insightBullets + moodArc + topThemes populated
   //   FAILED     — unrecoverable; errorMessage populated
-  status          String   @default("QUEUED")
+  status               String    @default("QUEUED")
   // User-safe error copy surfaced by onFailure handler when status=FAILED.
-  errorMessage    String?
+  errorMessage         String?
   // Cross-reference into Inngest's run dashboard; populated by
   // generateWeeklyReportFn's first step.
-  inngestRunId    String?
+  inngestRunId         String?
   // Public share link. When non-null, /shared/weekly/[publicShareId]
   // renders a read-only view (no auth). Unique across all users so
   // the URL can't be guessed from a user id + week offset.
-  publicShareId         String?  @unique
-  publicShareExpiresAt  DateTime?
-  publicShareViewCount  Int      @default(0)
-  createdAt       DateTime @default(now())
+  publicShareId        String?   @unique
+  publicShareExpiresAt DateTime?
+  publicShareViewCount Int       @default(0)
+  createdAt            DateTime  @default(now())
 
   @@index([userId, createdAt])
 }
 
 model LifeMapArea {
-  id              String    @id @default(cuid())
-  userId          String
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  area            String    @default("")
-  name            String?
-  color           String?
-  icon            String?
-  sortOrder       Int       @default(0)
-  score           Int       @default(5)
-  summary         String?
-  activeGoals     Int       @default(0)
-  lastMentioned   DateTime?
-  trend           String?   // "up", "down", "stable"
-  weeklyDelta     Int?
-  monthlyDelta    Int?
-  mentionCount    Int       @default(0)
-  topThemes       String[]
-  insightSummary  String?
-  historicalHigh  Int       @default(0)
-  historicalLow   Int       @default(100)
-  baselineScore   Int       @default(50)
-  updatedAt       DateTime  @updatedAt
+  id             String    @id @default(cuid())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  area           String    @default("")
+  name           String?
+  color          String?
+  icon           String?
+  sortOrder      Int       @default(0)
+  score          Int       @default(5)
+  summary        String?
+  activeGoals    Int       @default(0)
+  lastMentioned  DateTime?
+  trend          String? // "up", "down", "stable"
+  weeklyDelta    Int?
+  monthlyDelta   Int?
+  mentionCount   Int       @default(0)
+  topThemes      String[]
+  insightSummary String?
+  historicalHigh Int       @default(0)
+  historicalLow  Int       @default(100)
+  baselineScore  Int       @default(50)
+  updatedAt      DateTime  @updatedAt
 }
 
 model UserMemory {
-  id        String @id @default(cuid())
-  userId    String @unique
-  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Compressed lifetime summary per area (AI-generated, updated incrementally).
   // Renamed 2026-04-19 to align with the canonical 6-area vocabulary
@@ -639,12 +639,12 @@ model UserMemory {
   otherSummary         String?
 
   // Lifetime mention counts per area
-  careerMentions       Int @default(0)
-  healthMentions       Int @default(0)
+  careerMentions        Int @default(0)
+  healthMentions        Int @default(0)
   relationshipsMentions Int @default(0)
-  financesMentions     Int @default(0)
-  personalMentions     Int @default(0)
-  otherMentions        Int @default(0)
+  financesMentions      Int @default(0)
+  personalMentions      Int @default(0)
+  otherMentions         Int @default(0)
 
   // Recurring patterns detected across all time
   recurringThemes Json[] // { area, theme, firstSeen, count, lastSeen }
@@ -652,12 +652,12 @@ model UserMemory {
   recurringGoals  Json[] // { goal, area, firstMentioned, status, mentionCount }
 
   // Baseline scores (lifetime average, updated slowly)
-  careerBaseline       Int @default(50)
-  healthBaseline       Int @default(50)
+  careerBaseline        Int @default(50)
+  healthBaseline        Int @default(50)
   relationshipsBaseline Int @default(50)
-  financesBaseline     Int @default(50)
-  personalBaseline     Int @default(50)
-  otherBaseline        Int @default(50)
+  financesBaseline      Int @default(50)
+  personalBaseline      Int @default(50)
+  otherBaseline         Int @default(50)
 
   // Total entries processed
   totalEntries   Int       @default(0)
@@ -670,46 +670,46 @@ model UserMemory {
 // Audit, Day 365 Annual Audit. One row per audit per user per kind.
 // IMPLEMENTATION_PLAN_PAYWALL.md §2.2.
 model LifeAudit {
-  id              String   @id @default(cuid())
-  userId          String
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   // Valid kinds: "TRIAL_DAY_14" | "QUARTERLY_90" | "ANNUAL_365".
   // Kept as String to avoid the Prisma-enum-vs-Postgres-version
   // awkwardness flagged elsewhere in the schema.
-  kind            String
+  kind           String
   // Window of entries the audit covered. For TRIAL_DAY_14 this is
   // the user's signup date through trialEndsAt.
-  periodStart     DateTime
-  periodEnd       DateTime
-  entryCount      Int
+  periodStart    DateTime
+  periodEnd      DateTime
+  entryCount     Int
   // The full audit narrative, including the closing "What comes next"
   // section. Renders as body copy on the audit view.
-  narrative       String   @db.Text
+  narrative      String   @db.Text
   // The Month-2 transition paragraph, duplicated out of `narrative`
   // for easy re-render / copy-paste / future A/B testing. Matches
   // §4.1's "Continue it →" closing.
-  closingLetter   String   @db.Text
+  closingLetter  String   @db.Text
   // { starting: [...], emerging: [...], fading: [...] } — theme arc
   // across the period.
-  themesArc       Json
+  themesArc      Json
   // Per-area score change (UPPER_CASE area enum → delta). Optional;
   // the degraded fallback may skip this.
-  lifeAreaDeltas  Json?
+  lifeAreaDeltas Json?
   // One-sentence emotional trajectory, e.g. "Started rough but landed
   // steady — the middle of week 2 was the turning point."
-  moodArc         String?
+  moodArc        String?
   // Valid status: "QUEUED" | "GENERATING" | "COMPLETE" | "FAILED".
-  status          String   @default("QUEUED")
+  status         String   @default("QUEUED")
   // User-safe error copy when status=FAILED.
-  errorMessage    String?
+  errorMessage   String?
   // Cross-reference into Inngest's run dashboard.
-  inngestRunId    String?
+  inngestRunId   String?
   // True when the template-based fallback fired instead of a real
   // Claude generation. Filtered out of quality metrics. Users never
   // know they got the fallback — voice is matched to the few-shot.
   // IMPLEMENTATION_PLAN_PAYWALL §7.3.
-  degraded        Boolean  @default(false)
-  createdAt       DateTime @default(now())
+  degraded       Boolean  @default(false)
+  createdAt      DateTime @default(now())
 
   @@index([userId, createdAt])
   @@index([userId, kind])
@@ -739,35 +739,35 @@ model ContentBriefing {
 }
 
 model ContentPiece {
-  id               String            @id @default(cuid())
-  type             ContentType
-  title            String
-  body             String            @db.Text
-  hook             String
-  cta              String
-  targetKeyword    String?
-  predictedScore   Float
-  sourceBriefingId String?
-  sourceBriefing   ContentBriefing?  @relation(fields: [sourceBriefingId], references: [id])
-  status           ContentStatus     @default(PENDING_REVIEW)
-  reviewedAt       DateTime?
-  reviewedBy       String?
-  editNotes        String?
-  finalBody        String?           @db.Text
+  id                     String           @id @default(cuid())
+  type                   ContentType
+  title                  String
+  body                   String           @db.Text
+  hook                   String
+  cta                    String
+  targetKeyword          String?
+  predictedScore         Float
+  sourceBriefingId       String?
+  sourceBriefing         ContentBriefing? @relation(fields: [sourceBriefingId], references: [id])
+  status                 ContentStatus    @default(PENDING_REVIEW)
+  reviewedAt             DateTime?
+  reviewedBy             String?
+  editNotes              String?
+  finalBody              String?          @db.Text
   distributedAt          DateTime?
   distributedUrl         String?
-  slug                   String?           @unique
+  slug                   String?          @unique
   metrics                Json?
-  secondaryKeywords      String[]          @default([])
+  secondaryKeywords      String[]         @default([])
   faqSchema              Json?
   foundingMemberSnapshot Int?
-  impressions            Int               @default(0)
-  clicks                 Int               @default(0)
+  impressions            Int              @default(0)
+  clicks                 Int              @default(0)
   lastGscSyncAt          DateTime?
   publishedAt            DateTime?
   redirectTo             String?
-  createdAt              DateTime          @default(now())
-  updatedAt              DateTime          @updatedAt
+  createdAt              DateTime         @default(now())
+  updatedAt              DateTime         @updatedAt
   blogTopic              BlogTopicQueue?
 
   @@index([type, status, createdAt])
@@ -884,19 +884,19 @@ model PruneLog {
 // option so the user can proceed without sharing anything. Used for
 // analytics segmentation and tailored insight copy, not for gating.
 model UserDemographics {
-  id             String   @id @default(cuid())
-  userId         String   @unique
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                   String   @id @default(cuid())
+  userId               String   @unique
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   // One of "18-24" | "25-34" | "35-44" | "45-54" | "55+"
-  ageRange       String?
+  ageRange             String?
   // One of "Male" | "Female" | "Non-binary" | "Prefer not to say"
-  gender         String?
+  gender               String?
   // ISO 3166-1 alpha-2 (e.g. "US", "GB"). IP-suggested default on the
   // client, user can override.
-  country        String?
+  country              String?
   // Multi-select: any of "Career" | "Relationships" | "Mental health"
   // | "Productivity" | "Curiosity" | "Other"
-  primaryReasons String[]
+  primaryReasons       String[]
   // Freeform elaboration when the user picks "Other" on primaryReasons.
   // Captures what they're actually here for that the preset chips
   // didn't cover — fuels cohort analysis without losing the long tail
@@ -907,19 +907,19 @@ model UserDemographics {
   // (a `prisma db push` without it would drop the column data). Read
   // path falls back to this when `lifeStages` is empty. New writes go
   // to `lifeStages` only.
-  lifeStage      String?
+  lifeStage            String?
   // Multi-select (2026-04-24). Any of "Student" | "Early career" |
   // "Established career" | "Parent" | "Retired" | "In transition" |
   // "Prefer not to say". Replaces the single-select `lifeStage` —
   // users routinely fit multiple roles (e.g. "Parent" + "Established
   // career"), so the original radio-button UX undercounted.
-  lifeStages     String[] @default([])
+  lifeStages           String[] @default([])
   // Freeform elaboration for lifeStage = "Other" or "In transition" —
   // both imply context the preset options don't carry (layoff?
   // caregiving? sabbatical? career change?). Null otherwise.
-  lifeStageCustom String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  lifeStageCustom      String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 }
 
 // Weekly snapshot of each user's LifeMapArea scores. Written by the
@@ -928,15 +928,15 @@ model UserDemographics {
 // "4 weeks ago" overlay polygon requires one snapshot per area per week.
 // No backfill; history starts the week this model ships.
 model LifeMapAreaHistory {
-  id         String   @id @default(cuid())
-  userId     String
+  id        String   @id @default(cuid())
+  userId    String
   // Which area (CAREER|HEALTH|...) — same vocabulary as LifeMapArea.area.
-  area       String
-  score      Int
+  area      String
+  score     Int
   // ISO date of the Sunday that begins the snapshot week (UTC midnight).
   // Unique per (userId, area, weekStart) so re-runs are idempotent.
-  weekStart  DateTime
-  createdAt  DateTime @default(now())
+  weekStart DateTime
+  createdAt DateTime @default(now())
 
   @@unique([userId, area, weekStart])
   @@index([userId, weekStart])
@@ -1024,20 +1024,20 @@ model ThemeMention {
 // sourceEntryId keeps provenance so the suggestion UI can show "from
 // your Oct 15 entry" with a deep link.
 model GoalSuggestion {
-  id            String    @id @default(cuid())
+  id            String   @id @default(cuid())
   userId        String
   // null when the suggestion is free-floating. Non-null anchors it to
   // a specific parent goal. onDelete: SetNull so deleting a parent goal
   // doesn't lose the suggestion — it becomes a top-level proposal.
   parentGoalId  String?
-  parentGoal    Goal?     @relation(fields: [parentGoalId], references: [id], onDelete: SetNull)
+  parentGoal    Goal?    @relation(fields: [parentGoalId], references: [id], onDelete: SetNull)
   suggestedText String
   sourceEntryId String?
   // "PENDING" | "ACCEPTED" | "DISMISSED" — String for cross-version
   // compatibility (same pattern as other status columns).
-  status        String    @default("PENDING")
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  status        String   @default("PENDING")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   @@index([userId, status])
   @@index([parentGoalId])
@@ -1053,30 +1053,30 @@ model GoalSuggestion {
 // sourceEntryId keeps provenance so the review UI can show the quote
 // that triggered the suggestion with a deep link back to the entry.
 model ProgressSuggestion {
-  id              String   @id @default(cuid())
-  userId          String
+  id                   String   @id @default(cuid())
+  userId               String
   // The goal this suggestion targets. Cascade delete — if the goal
   // is gone, the suggestion loses meaning.
-  goalId          String
-  goal            Goal     @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  goalId               String
+  goal                 Goal     @relation(fields: [goalId], references: [id], onDelete: Cascade)
   // Suggested progress value (0..100). Replaces the current Goal.progress
   // on accept. Int (not Float) to match Goal.progress semantics.
   suggestedProgressPct Int
   // The previous progress value the suggestion was computed against —
   // captured at suggestion time so the review UI can render "0 → 10%"
   // even if the user has manually edited the goal in the meantime.
-  priorProgressPct Int
+  priorProgressPct     Int
   // Short human-facing rationale pulled from the extraction. ~1-2
   // sentences, quotes a phrase from the transcript. e.g. "Your entry
   // mentioned 'closed our first $100k deal' — roughly 10% of the $1M
   // target."
-  rationale       String
-  sourceEntryId   String?
+  rationale            String
+  sourceEntryId        String?
   // "PENDING" | "ACCEPTED" | "DISMISSED" — String for cross-version
   // compatibility. Same pattern as GoalSuggestion.
-  status          String   @default("PENDING")
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  status               String   @default("PENDING")
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
   @@index([userId, status])
   @@index([goalId, status])
@@ -1087,7 +1087,7 @@ model ProgressSuggestion {
 // We short-circuit on id collision so repeated deliveries don't
 // double-write subscription state.
 model StripeEvent {
-  id          String   @id  // stripe event.id, e.g. "evt_1TL…"
+  id          String   @id // stripe event.id, e.g. "evt_1TL…"
   type        String
   processedAt DateTime @default(now())
 }
@@ -1098,12 +1098,12 @@ model StripeEvent {
 // Unique per (referrer, referred) so repeated conversions from the
 // same user don't double-count.
 model ReferralConversion {
-  id              String   @id @default(cuid())
-  referrerId      String
-  referrer        User     @relation("ReferrerConversions", fields: [referrerId], references: [id], onDelete: Cascade)
-  referredUserId  String
-  referredUser    User     @relation("ReferredConversions", fields: [referredUserId], references: [id], onDelete: Cascade)
-  convertedAt     DateTime @default(now())
+  id             String   @id @default(cuid())
+  referrerId     String
+  referrer       User     @relation("ReferrerConversions", fields: [referrerId], references: [id], onDelete: Cascade)
+  referredUserId String
+  referredUser   User     @relation("ReferredConversions", fields: [referredUserId], references: [id], onDelete: Cascade)
+  convertedAt    DateTime @default(now())
 
   @@unique([referrerId, referredUserId])
   @@index([referrerId])
@@ -1113,20 +1113,20 @@ model ReferralConversion {
 // signed-URL expires after 24h; next request blocked by 7-day
 // server-side throttle — see apps/web/src/app/api/user/export route.
 model DataExport {
-  id            String   @id @default(cuid())
-  userId        String
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   // "PENDING" | "PROCESSING" | "READY" | "FAILED" | "EXPIRED"
-  status        String   @default("PENDING")
+  status       String    @default("PENDING")
   // Signed Supabase URL to the zip in the user-exports bucket. Null
   // until status=READY.
-  downloadUrl   String?
+  downloadUrl  String?
   // After this instant the download link stops working. We still
   // retain the row for audit even after the object is deleted.
-  expiresAt     DateTime?
-  errorMessage  String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  expiresAt    DateTime?
+  errorMessage String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   @@index([userId, createdAt])
 }
@@ -1139,14 +1139,14 @@ model DataExport {
 model DashboardSnapshot {
   id             String   @id @default(cuid())
   date           DateTime @unique
-  mrr            Int      // cents
+  mrr            Int // cents
   totalSubs      Int
   dau            Int
   wau            Int
   mau            Int
   signupsThisDay Int
   aiCostCents    Int
-  metadata       Json     // flexible bucket for other metrics
+  metadata       Json // flexible bucket for other metrics
   createdAt      DateTime @default(now())
 }
 
@@ -1156,7 +1156,7 @@ model DashboardSnapshot {
 model MetaSpend {
   id         String   @id @default(cuid())
   weekStart  DateTime
-  campaign   String   // therapy | sleep | founders | decoded | weekly-report | main
+  campaign   String // therapy | sleep | founders | decoded | weekly-report | main
   spendCents Int
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
@@ -1169,7 +1169,7 @@ model MetaSpend {
 model RedFlag {
   id              String       @id @default(cuid())
   severity        FlagSeverity
-  category        String       // webhook | inngest | payment | trial | email | ai_budget
+  category        String // webhook | inngest | payment | trial | email | ai_budget
   title           String
   description     String
   affectedUserIds String[]
@@ -1184,25 +1184,40 @@ enum FlagSeverity {
   INFO
 }
 
+// Founder signup notification log. Records every attempt to email the
+// founders about a new signup — success or failure. Linked to the User
+// who triggered the notification.
+model FounderNotificationLog {
+  id              String   @id @default(cuid())
+  userId          String
+  recipientEmails String[]
+  success         Boolean
+  errorMessage    String?
+  createdAt       DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
 // Daily HealthKit snapshot. One row per (userId, date). Written by
 // the mobile app's Background Fetch worker which pulls yesterday's
 // HealthKit aggregates each morning. All metrics nullable because
 // HealthKit data availability varies by device + user permissions.
 // Insights layer reads this to compute mood/sleep correlations.
 model HealthSnapshot {
-  id             String   @id @default(cuid())
-  userId         String
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   // Local calendar date the metrics belong to (YYYY-MM-DD in the
   // user's timezone). Stored as DateTime with time=00:00:00 UTC so
   // query ranges stay simple; the timezone context lives on User.
-  date           DateTime
-  sleepHours     Float?
-  steps          Int?
-  avgHRV         Float?   // milliseconds, HealthKit's HKQuantityTypeIdentifierHeartRateVariabilitySDNN
-  activeMinutes  Int?     // Apple's "Exercise minutes" ring equivalent
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  date          DateTime
+  sleepHours    Float?
+  steps         Int?
+  avgHRV        Float? // milliseconds, HealthKit's HKQuantityTypeIdentifierHeartRateVariabilitySDNN
+  activeMinutes Int? // Apple's "Exercise minutes" ring equivalent
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   @@unique([userId, date])
   @@index([userId, date])
@@ -1257,27 +1272,27 @@ model UserLifeDimension {
 // columns. accessToken / refreshToken are nullable + intended to be
 // encrypted at rest by a KMS wrapper that lands with the OAuth flow.
 model CalendarConnection {
-  id           String   @id @default(cuid())
-  userId       String
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  provider     String
+  id                String    @id @default(cuid())
+  userId            String
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider          String
   // Provider-side account identifier (google sub, outlook oid, apple
   // principal URL). Unique per provider so the same user re-connecting
   // the same account is a no-op upsert.
   providerAccountId String
-  accessToken  String?  @db.Text
-  refreshToken String?  @db.Text
-  tokenExpiresAt DateTime?
+  accessToken       String?   @db.Text
+  refreshToken      String?   @db.Text
+  tokenExpiresAt    DateTime?
   // Last time we pulled events from this provider. Drives the
   // "Last synced" copy in /account and lets the ingest cron decide
   // when to re-fetch.
-  lastSyncedAt DateTime?
+  lastSyncedAt      DateTime?
   // When non-null, the connection is broken (revoked token, expired
   // refresh, etc.) — /account shows a "Reconnect" CTA.
-  lastErrorAt  DateTime?
-  lastError    String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  lastErrorAt       DateTime?
+  lastError         String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   @@unique([userId, provider])
   @@unique([provider, providerAccountId])
@@ -1293,27 +1308,27 @@ model CalendarConnection {
 // 22-char random token enables the /shared/state-of-me/[publicId]
 // public read-only view.
 model StateOfMeReport {
-  id              String   @id @default(cuid())
-  userId          String
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                   String    @id @default(cuid())
+  userId               String
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   // Inclusive period the report covers — typically [signup + 90N, now].
-  periodStart     DateTime
-  periodEnd       DateTime
+  periodStart          DateTime
+  periodEnd            DateTime
   // Full content bundle. Schema lives in
   // packages/shared/src/types.ts::StateOfMeContent — narrative
   // reflection + themes + emotional arc + life-matrix delta + goals
   // progress + key relationships + patterns-noticed + closing.
-  content         Json
+  content              Json
   // Valid: "QUEUED" | "GENERATING" | "COMPLETE" | "FAILED".
-  status          String   @default("QUEUED")
-  errorMessage    String?
-  inngestRunId    String?
-  degraded        Boolean  @default(false)
+  status               String    @default("QUEUED")
+  errorMessage         String?
+  inngestRunId         String?
+  degraded             Boolean   @default(false)
   // Public share link — same shape as WeeklyReport's.
   publicShareId        String?   @unique
   publicShareExpiresAt DateTime?
   publicShareViewCount Int       @default(0)
-  createdAt       DateTime @default(now())
+  createdAt            DateTime  @default(now())
 
   @@index([userId, createdAt])
 }
@@ -1331,29 +1346,29 @@ model StateOfMeReport {
 // Disabled features should 404 on the API + hide in the UI — never 403
 // (we don't want to leak the existence of a feature that's been pulled).
 model FeatureFlag {
-  id                 String   @id @default(cuid())
+  id                     String   @id @default(cuid())
   // Short, URL-safe slug. Referenced from code by exact string, so
   // renames are a coordinated schema + code change.
-  key                String   @unique
+  key                    String   @unique
   // Human-readable name shown in the admin UI.
-  name               String
-  description        String?
-  enabled            Boolean  @default(false)
+  name                   String
+  description            String?
+  enabled                Boolean  @default(false)
   // 0..100. Only consulted when `enabled=true` and no user override
   // applies. 100 = everyone passes; 0 = no one passes unless the
   // global `enabled=true` AND `requiredTier` logic lets them through
   // (in practice 0 is a kill switch).
-  rolloutPercentage  Int      @default(100)
+  rolloutPercentage      Int      @default(100)
   // Null = no tier gate. "FREE" or "PRO" restricts to users whose
   // User.subscriptionStatus matches the mapped tier.
-  requiredTier       String?
+  requiredTier           String?
   // A/B experiment support. When experimentVariants is non-empty,
   // the flag acts as an experiment — users are deterministically
   // bucketed into a variant based on hash(userId+key).
-  experimentVariants    String[]  @default([])
+  experimentVariants     String[] @default([])
   experimentTrafficSplit Json?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
 
   @@index([key])
 }
@@ -1407,12 +1422,12 @@ model UserFeatureOverride {
 // full event detail lives in `metadata` JSON. Use the helper at
 // lib/admin-audit.ts::logAdminAction so slugs stay consistent.
 model AdminAuditLog {
-  id            String   @id @default(cuid())
-  adminUserId   String
-  action        String
-  targetUserId  String?
-  metadata      Json?
-  createdAt     DateTime @default(now())
+  id           String   @id @default(cuid())
+  adminUserId  String
+  action       String
+  targetUserId String?
+  metadata     Json?
+  createdAt    DateTime @default(now())
 
   @@index([adminUserId, createdAt])
   @@index([targetUserId])
