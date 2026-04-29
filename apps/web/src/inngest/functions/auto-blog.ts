@@ -159,34 +159,61 @@ export const autoBlogGenerateFn = inngest.createFunction(
     ],
     retries: 1,
   },
-  async ({ event, logger }) => {
-    const { prisma } = await import("@/lib/prisma");
+  async ({ event, step, logger }) => {
     const skipDelay = (event?.data as { skipDelay?: boolean })?.skipDelay;
 
-    // Step 1: Random delay (06:00–22:00 UTC spread)
+    // ── Step 0: Random delay for cron-triggered runs ────────────────
     if (!skipDelay) {
       const delayMinutes = Math.floor(Math.random() * 960);
-      const delayMs = delayMinutes * 60 * 1000;
       logger.info(`[auto-blog] Sleeping ${delayMinutes} minutes before generating`);
-      await new Promise((resolve) => setTimeout(resolve, delayMs));
+      await step.sleep("random-delay", `${delayMinutes}m`);
     }
 
-    // Step 2: Topic queue health check — refill if low
-    const queuedCount = await prisma.blogTopicQueue.count({
-      where: { status: "QUEUED" },
+    // ── Step 1: Topic queue health check — refill if low ────────────
+    await step.run("topic-queue-health", async () => {
+      const { prisma } = await import("@/lib/prisma");
+      const queuedCount = await prisma.blogTopicQueue.count({
+        where: { status: "QUEUED" },
+      });
+
+      if (queuedCount < 30) {
+        logger.info(
+          `[auto-blog] Only ${queuedCount} topics queued — generating more`
+        );
+        await refillTopicQueue(prisma);
+      }
+      return { queuedCount };
     });
 
-    if (queuedCount < 30) {
-      logger.info(
-        `[auto-blog] Only ${queuedCount} topics queued — generating more`
-      );
-      await refillTopicQueue(prisma);
-    }
+    // ── Step 2: Pick the oldest QUEUED topic, mark IN_PROGRESS ──────
+    const topic = await step.run("pick-topic", async () => {
+      const { prisma } = await import("@/lib/prisma");
+      const t = await prisma.blogTopicQueue.findFirst({
+        where: { status: "QUEUED" },
+        orderBy: { createdAt: "asc" },
+      });
 
-    // Step 3: Pick the oldest QUEUED topic
-    const topic = await prisma.blogTopicQueue.findFirst({
-      where: { status: "QUEUED" },
-      orderBy: { createdAt: "asc" },
+      if (!t) return null;
+
+      await prisma.blogTopicQueue.update({
+        where: { id: t.id },
+        data: { status: "IN_PROGRESS" },
+      });
+
+      // Founding member snapshot (cheap query, bundle here)
+      const FOUNDING_MEMBER_CAP = 100;
+      const foundingCount = await prisma.user.count({
+        where: { isFoundingMember: true },
+      });
+
+      return {
+        id: t.id,
+        topic: t.topic,
+        persona: t.persona,
+        targetKeyword: t.targetKeyword,
+        searchIntent: t.searchIntent,
+        spotsLeft: Math.max(0, FOUNDING_MEMBER_CAP - foundingCount),
+      };
     });
 
     if (!topic) {
@@ -194,148 +221,163 @@ export const autoBlogGenerateFn = inngest.createFunction(
       return { status: "skipped", reason: "empty_queue" };
     }
 
-    await prisma.blogTopicQueue.update({
-      where: { id: topic.id },
-      data: { status: "IN_PROGRESS" },
+    // ── Step 3: Generate content (attempt 1) ────────────────────────
+    const attempt1 = await step.run("generate-attempt-1", async () => {
+      return generateAttempt(topic, topic.spotsLeft, logger, 1);
     });
 
-    // Step 4: Founding member snapshot
-    const FOUNDING_MEMBER_CAP = 100;
-    const foundingCount = await prisma.user.count({
-      where: { isFoundingMember: true },
-    });
-    const spotsLeft = Math.max(0, FOUNDING_MEMBER_CAP - foundingCount);
-
-    // Step 5: Generate the post
-    const { callClaude } = await import(
-      "@/lib/content-factory/claude-client"
-    );
-    const { extractJson } = await import("@/lib/content-factory/generate");
-    const { slugify, uniqueSlug } = await import(
-      "@/lib/content-factory/slug"
-    );
-
-    let post: AutoBlogResult | null = null;
-    let lastErrors: string[] = [];
-
-    for (let attempt = 0; attempt < 3; attempt++) {
-      try {
-        const raw = await callClaude({
-          purpose: "auto-blog-generate",
-          systemPrompt: buildSystemPrompt(topic, spotsLeft),
-          userPrompt: buildUserPrompt(topic),
-          maxTokens: 8000,
-        });
-
-        const parsed = JSON.parse(extractJson(raw)) as AutoBlogResult;
-        const validation = validateBlogPost(parsed);
-
-        if (validation.valid) {
-          post = parsed;
-          break;
-        }
-
-        lastErrors = validation.errors;
-        logger.warn(
-          `[auto-blog] Attempt ${attempt + 1} validation failed:`,
-          { errors: validation.errors }
-        );
-      } catch (err) {
-        lastErrors = [
-          err instanceof Error ? err.message : String(err),
-        ];
-        logger.error(`[auto-blog] Attempt ${attempt + 1} generation error:`, {
-          error: lastErrors[0],
-        });
-      }
+    // ── Step 4: Generate content (attempt 2, if needed) ─────────────
+    let result = attempt1;
+    if (!result.post) {
+      result = await step.run("generate-attempt-2", async () => {
+        return generateAttempt(topic, topic.spotsLeft, logger, 2);
+      });
     }
 
-    // All attempts failed
-    if (!post) {
-      await prisma.blogTopicQueue.update({
-        where: { id: topic.id },
-        data: { status: "SKIPPED" },
+    // ── Step 5: Generate content (attempt 3, if needed) ─────────────
+    if (!result.post) {
+      result = await step.run("generate-attempt-3", async () => {
+        return generateAttempt(topic, topic.spotsLeft, logger, 3);
       });
+    }
 
-      await prisma.contentPiece.create({
-        data: {
-          type: "BLOG",
-          title: topic.topic,
-          body: `Generation failed after 3 attempts. Errors: ${lastErrors.join("; ")}`,
-          hook: "",
-          cta: "",
-          targetKeyword: topic.targetKeyword,
-          predictedScore: 0,
-          status: "GENERATION_FAILED",
-        },
+    // ── All attempts failed → mark SKIPPED ──────────────────────────
+    if (!result.post) {
+      await step.run("mark-failed", async () => {
+        const { prisma } = await import("@/lib/prisma");
+        await prisma.blogTopicQueue.update({
+          where: { id: topic.id },
+          data: { status: "SKIPPED" },
+        });
+
+        await prisma.contentPiece.create({
+          data: {
+            type: "BLOG",
+            title: topic.topic,
+            body: `Generation failed after 3 attempts. Errors: ${(result.errors ?? []).join("; ")}`,
+            hook: "",
+            cta: "",
+            targetKeyword: topic.targetKeyword,
+            predictedScore: 0,
+            status: "GENERATION_FAILED",
+          },
+        });
       });
 
       logger.error("[auto-blog] All 3 attempts failed — topic skipped", {
         topicId: topic.id,
-        errors: lastErrors,
+        errors: result.errors,
       });
 
-      return { status: "failed", topicId: topic.id, errors: lastErrors };
+      return { status: "failed", topicId: topic.id, errors: result.errors };
     }
 
-    // Step 6: Publish
-    const slug = await uniqueSlug(prisma, slugify(post.title));
-    const distributedUrl = `https://getacuity.io/blog/${slug}`;
+    const post = result.post;
 
-    const piece = await prisma.contentPiece.create({
-      data: {
-        type: "BLOG",
-        title: post.title,
-        body: post.body,
-        hook: post.metaDescription,
-        cta: post.includeCta ? post.ctaPlacementHint : "",
-        targetKeyword: post.primaryKeyword,
-        predictedScore: 0.7,
-        status: "AUTO_PUBLISHED",
-        slug,
-        distributedAt: new Date(),
-        distributedUrl,
-        publishedAt: new Date(),
-        secondaryKeywords: post.secondaryKeywords,
-        faqSchema: post.faqSchema,
-        foundingMemberSnapshot: spotsLeft,
-      },
-    });
-
-    // Link topic to piece
-    await prisma.blogTopicQueue.update({
-      where: { id: topic.id },
-      data: {
-        status: "PUBLISHED",
-        publishedAt: new Date(),
-        contentPieceId: piece.id,
-      },
-    });
-
-    // Step 7: Notify Indexing API (fire-and-forget)
-    try {
-      const { notifyPublish } = await import("@/lib/google/indexing");
-      notifyPublish(distributedUrl).catch((err) =>
-        console.error("[auto-blog] Indexing notification failed:", err)
+    // ── Step 6: Publish — create ContentPiece + link topic ──────────
+    const published = await step.run("publish", async () => {
+      const { prisma } = await import("@/lib/prisma");
+      const { slugify, uniqueSlug } = await import(
+        "@/lib/content-factory/slug"
       );
-    } catch {
-      // Indexing module not available — degrade gracefully
-    }
+
+      const slug = await uniqueSlug(prisma, slugify(post.title));
+      const distributedUrl = `https://getacuity.io/blog/${slug}`;
+
+      const piece = await prisma.contentPiece.create({
+        data: {
+          type: "BLOG",
+          title: post.title,
+          body: post.body,
+          hook: post.metaDescription,
+          cta: post.includeCta ? post.ctaPlacementHint : "",
+          targetKeyword: post.primaryKeyword,
+          predictedScore: 0.7,
+          status: "AUTO_PUBLISHED",
+          slug,
+          distributedAt: new Date(),
+          distributedUrl,
+          publishedAt: new Date(),
+          secondaryKeywords: post.secondaryKeywords,
+          faqSchema: post.faqSchema,
+          foundingMemberSnapshot: topic.spotsLeft,
+        },
+      });
+
+      await prisma.blogTopicQueue.update({
+        where: { id: topic.id },
+        data: {
+          status: "PUBLISHED",
+          publishedAt: new Date(),
+          contentPieceId: piece.id,
+        },
+      });
+
+      return { pieceId: piece.id, slug, url: distributedUrl };
+    });
+
+    // ── Step 7: Notify Google Indexing API ───────────────────────────
+    await step.run("notify-indexing", async () => {
+      try {
+        const { notifyPublish } = await import("@/lib/google/indexing");
+        await notifyPublish(published.url);
+      } catch {
+        // Indexing module not available — degrade gracefully
+      }
+    });
 
     logger.info("[auto-blog] Published", {
       title: post.title,
-      slug,
-      url: distributedUrl,
+      slug: published.slug,
+      url: published.url,
     });
 
     return {
       status: "published",
-      pieceId: piece.id,
-      slug,
-      url: distributedUrl,
+      pieceId: published.pieceId,
+      slug: published.slug,
+      url: published.url,
     };
   }
 );
+
+/** Single Claude generation attempt — extracted for step.run() isolation. */
+async function generateAttempt(
+  topic: { topic: string; persona: string; targetKeyword: string; searchIntent: string },
+  spotsLeft: number,
+  logger: { warn: (...args: unknown[]) => void; error: (...args: unknown[]) => void },
+  attemptNum: number
+): Promise<{ post: AutoBlogResult | null; errors: string[] }> {
+  const { callClaude } = await import("@/lib/content-factory/claude-client");
+  const { extractJson } = await import("@/lib/content-factory/generate");
+
+  try {
+    const raw = await callClaude({
+      purpose: "auto-blog-generate",
+      systemPrompt: buildSystemPrompt(topic, spotsLeft),
+      userPrompt: buildUserPrompt(topic),
+      maxTokens: 8000,
+    });
+
+    const parsed = JSON.parse(extractJson(raw)) as AutoBlogResult;
+    const validation = validateBlogPost(parsed);
+
+    if (validation.valid) {
+      return { post: parsed, errors: [] };
+    }
+
+    logger.warn(`[auto-blog] Attempt ${attemptNum} validation failed:`, {
+      errors: validation.errors,
+    });
+    return { post: null, errors: validation.errors };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    logger.error(`[auto-blog] Attempt ${attemptNum} generation error:`, {
+      error: msg,
+    });
+    return { post: null, errors: [msg] };
+  }
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // AUTO-BLOG PRUNER

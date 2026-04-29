@@ -415,82 +415,178 @@ async function getRevenue(
   end: Date,
   _prevStart: Date,
   _prevEnd: Date,
-  _monthStart: Date
+  monthStart: Date
 ) {
-  const [payingSubs, trialUsers, pastDueUsers, recentPaying, churnedInPeriod, trialConverted, trialTotal] =
-    await Promise.all([
-      prisma.user.count({
-        where: {
-          subscriptionStatus: SUBSCRIPTION_STATUS.PRO,
-          stripeSubscriptionId: { not: null },
-        },
-      }),
-      prisma.user.count({
-        where: { subscriptionStatus: SUBSCRIPTION_STATUS.TRIAL },
-      }),
-      prisma.user.findMany({
-        where: { subscriptionStatus: SUBSCRIPTION_STATUS.PAST_DUE },
-        select: {
-          id: true,
-          email: true,
-          stripeCurrentPeriodEnd: true,
-          createdAt: true,
-        },
-        orderBy: { stripeCurrentPeriodEnd: "asc" },
-        take: 200,
-      }),
-      prisma.user.findMany({
-        where: {
-          subscriptionStatus: SUBSCRIPTION_STATUS.PRO,
-          stripeSubscriptionId: { not: null },
-        },
-        select: {
-          email: true,
-          createdAt: true,
-          stripeCurrentPeriodEnd: true,
-        },
-        orderBy: { createdAt: "desc" },
-        take: 50,
-      }),
-      // Churn = users who were paying customers (have a Stripe customer)
-      // and are now FREE. The Stripe webhook writes "FREE" — never
-      // "CANCELED". Filtering by stripeCustomerId IS NOT NULL excludes
-      // trial-expired-without-paying users from the churn numerator.
-      prisma.user.count({
-        where: {
-          subscriptionStatus: SUBSCRIPTION_STATUS.FREE,
-          stripeCustomerId: { not: null },
-          updatedAt: { gte: start, lte: end },
-        },
-      }),
-      prisma.user.count({
-        where: {
-          createdAt: { gte: start, lte: end },
-          subscriptionStatus: SUBSCRIPTION_STATUS.PRO,
-        },
-      }),
-      prisma.user.count({
-        where: {
-          createdAt: { gte: start, lte: end },
-        },
-      }),
-    ]);
+  // ── 30-day window for cost calculations ───────────────────────────
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000);
 
-  // MRR estimate: every paying sub × monthly price. Does NOT blend
-  // yearly subs ($99/yr ≈ $8.25/mo effective). Real Stripe-driven MRR
-  // (sum of active subscription prices) lands in Slice 3 once we add
-  // a Stripe API call. Until then this number reads slightly high for
-  // any annual-paying user. Acceptable at <100 paying users.
+  const [
+    payingSubs,
+    trialUsers,
+    pastDueUsers,
+    recentPaying,
+    churnedInPeriod,
+    trialConverted,
+    trialTotal,
+    claudeSpend30d,
+    claudeSpendMtd,
+    entriesThisMonth,
+    signupsThisMonth,
+    stripeCustomerCount,
+    adSpendRows,
+  ] = await Promise.all([
+    prisma.user.count({
+      where: {
+        subscriptionStatus: SUBSCRIPTION_STATUS.PRO,
+        stripeSubscriptionId: { not: null },
+      },
+    }),
+    prisma.user.count({
+      where: { subscriptionStatus: SUBSCRIPTION_STATUS.TRIAL },
+    }),
+    prisma.user.findMany({
+      where: { subscriptionStatus: SUBSCRIPTION_STATUS.PAST_DUE },
+      select: {
+        id: true,
+        email: true,
+        stripeCurrentPeriodEnd: true,
+        createdAt: true,
+      },
+      orderBy: { stripeCurrentPeriodEnd: "asc" },
+      take: 200,
+    }),
+    prisma.user.findMany({
+      where: {
+        subscriptionStatus: SUBSCRIPTION_STATUS.PRO,
+        stripeSubscriptionId: { not: null },
+      },
+      select: {
+        email: true,
+        createdAt: true,
+        stripeCurrentPeriodEnd: true,
+      },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    }),
+    // Churn = users who were paying customers (have a Stripe customer)
+    // and are now FREE. Uses updatedAt (added 2026-04-28) — falls back
+    // to 0 if column doesn't exist yet (pre-schema-push).
+    prisma.user.count({
+      where: {
+        subscriptionStatus: SUBSCRIPTION_STATUS.FREE,
+        stripeCustomerId: { not: null },
+        updatedAt: { gte: start, lte: end },
+      },
+    }).catch(() => 0),
+    prisma.user.count({
+      where: {
+        createdAt: { gte: start, lte: end },
+        subscriptionStatus: SUBSCRIPTION_STATUS.PRO,
+      },
+    }),
+    prisma.user.count({
+      where: {
+        createdAt: { gte: start, lte: end },
+      },
+    }),
+    // Claude spend last 30 days
+    prisma.$queryRaw<{ total: bigint | null }[]>`
+      SELECT COALESCE(SUM("costCents"), 0)::bigint as total
+      FROM "ClaudeCallLog"
+      WHERE "createdAt" >= ${thirtyDaysAgo}
+    `.catch(() => [{ total: BigInt(0) }]),
+    // Claude spend MTD
+    prisma.$queryRaw<{ total: bigint | null }[]>`
+      SELECT COALESCE(SUM("costCents"), 0)::bigint as total
+      FROM "ClaudeCallLog"
+      WHERE "createdAt" >= ${monthStart}
+    `.catch(() => [{ total: BigInt(0) }]),
+    // Entry count this month (for cost-per-recording)
+    prisma.entry.count({
+      where: { createdAt: { gte: monthStart } },
+    }).catch(() => 0),
+    // Signups this month (for cost-per-signup)
+    prisma.user.count({
+      where: { createdAt: { gte: monthStart } },
+    }),
+    // Stripe customer count (for fee estimation)
+    prisma.user.count({
+      where: { stripeCustomerId: { not: null } },
+    }),
+    // Ad spend for CAC calculation
+    prisma.metaSpend.findMany({
+      where: { weekStart: { gte: start, lte: end } },
+      select: { spendCents: true },
+    }).catch(() => [] as { spendCents: number }[]),
+  ]);
+
+  // ── Core revenue metrics ──────────────────────────────────────────
   const mrrCents = payingSubs * MONTHLY_PRICE_CENTS;
   const churnRate =
     payingSubs + churnedInPeriod > 0
       ? (churnedInPeriod / (payingSubs + churnedInPeriod)) * 100
       : 0;
-
   const conversionRate =
     trialTotal > 0 ? (trialConverted / trialTotal) * 100 : 0;
 
+  // ── True Cost of Revenue (last 30 days) ───────────────────────────
+  const claudeSpend30dCents = Number(claudeSpend30d[0]?.total ?? 0);
+  // Stripe fees: 2.9% + 30¢ per transaction. Estimate one transaction
+  // per paying sub per month (monthly billing).
+  const stripeFeeCents = Math.round(payingSubs * (MONTHLY_PRICE_CENTS * 0.029 + 30));
+  // Fixed costs prorated to 30 days (hardcoded — flag for Jimmy to
+  // update with real billing data when convenient)
+  const resendCostCents = 2000; // $20/mo flat
+  const vercelCostCents = 2000; // $20/mo Pro plan
+  const supabaseCostCents = 2500; // $25/mo
+  const totalCostCents =
+    claudeSpend30dCents + stripeFeeCents + resendCostCents + vercelCostCents + supabaseCostCents;
+
+  // ── Margin ────────────────────────────────────────────────────────
+  const grossMarginCents = mrrCents - totalCostCents;
+  const grossMarginPct = mrrCents > 0
+    ? Math.round((grossMarginCents / mrrCents) * 1000) / 10
+    : 0;
+
+  // ── Per-customer unit economics ───────────────────────────────────
+  const arpuCents = payingSubs > 0
+    ? Math.round(mrrCents / payingSubs)
+    : 0;
+  const avgCostPerCustomerCents = payingSubs > 0
+    ? Math.round(totalCostCents / payingSubs)
+    : 0;
+  const contributionMarginCents = arpuCents - avgCostPerCustomerCents;
+  // LTV = ARPU / monthly churn rate, capped at 36 months
+  const monthlyChurnRate = churnRate / 100;
+  const ltvCents = monthlyChurnRate > 0
+    ? Math.round(Math.min(arpuCents / monthlyChurnRate, arpuCents * 36))
+    : arpuCents * 36; // no churn = cap at 36 months
+
+  // CAC from ad spend
+  const totalAdSpendCents = adSpendRows.reduce(
+    (acc: number, r: { spendCents: number }) => acc + r.spendCents,
+    0
+  );
+  const signupsInPeriod = trialTotal > 0 ? trialTotal : 1;
+  const cacCents = totalAdSpendCents > 0
+    ? Math.round(totalAdSpendCents / signupsInPeriod)
+    : null;
+  const ltvCacRatio = cacCents && cacCents > 0
+    ? Math.round((ltvCents / cacCents) * 10) / 10
+    : null;
+
+  // ── AI Cost Breakdown (executive summary) ─────────────────────────
+  const claudeSpendMtdCents = Number(claudeSpendMtd[0]?.total ?? 0);
+  const budgetCents = 10000; // $100 budget
+  const costPerRecordingCents = entriesThisMonth > 0
+    ? Math.round((claudeSpendMtdCents / entriesThisMonth) * 10) / 10
+    : 0;
+  const costPerSignupCents = signupsThisMonth > 0
+    ? Math.round((claudeSpendMtdCents / signupsThisMonth) * 10) / 10
+    : 0;
+
   return {
+    // Existing fields
     mrrCents,
     payingSubs,
     trialUsers,
@@ -507,6 +603,40 @@ async function getRevenue(
       createdAt: u.createdAt.toISOString(),
       stripeCurrentPeriodEnd: u.stripeCurrentPeriodEnd?.toISOString() ?? null,
     })),
+    // New: True Cost of Revenue
+    costs: {
+      claudeApiCents: claudeSpend30dCents,
+      whisperCents: null as number | null, // Not tracked yet
+      stripeFeeCents,
+      resendCents: resendCostCents,
+      vercelCents: vercelCostCents,
+      supabaseCents: supabaseCostCents,
+      totalCents: totalCostCents,
+    },
+    // New: Margin
+    margin: {
+      grossMarginCents,
+      grossMarginPct,
+    },
+    // New: Per-customer unit economics
+    unitEconomics: {
+      arpuCents,
+      avgCostPerCustomerCents,
+      contributionMarginCents,
+      ltvCents,
+      cacCents,
+      ltvCacRatio,
+    },
+    // New: AI cost breakdown (executive summary)
+    aiSummary: {
+      claudeSpendMtdCents,
+      budgetCents,
+      budgetRemainingCents: budgetCents - claudeSpendMtdCents,
+      costPerRecordingCents,
+      costPerSignupCents,
+      entriesThisMonth,
+      signupsThisMonth,
+    },
   };
 }
 

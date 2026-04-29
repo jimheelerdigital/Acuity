@@ -264,6 +264,50 @@ const GUIDE_DATA: GuideSection[] = [
         action:
           "Email them with a direct link to update their card (Stripe Customer Portal).",
       },
+      {
+        name: "Gross Margin",
+        measures:
+          "Revenue minus all costs (Claude API, Stripe fees, hosting, email, database) as a percentage of revenue. The card shows green/yellow/red based on thresholds.",
+        matters:
+          "The single number that tells you whether the business is economically viable at its current scale. SaaS companies need high gross margins because the money left over has to fund growth, support, and product development.",
+        healthy: "Above 70%. Most healthy SaaS companies run 75\u201385%.",
+        redFlag: "Below 60%. At that point variable costs are eating too much of each dollar earned.",
+        action:
+          "Identify the biggest cost line (usually Claude API at this stage). Optimize prompts, reduce token usage, or batch operations. If hosting costs dominate, check whether you're over-provisioned.",
+      },
+      {
+        name: "Contribution Margin per Customer",
+        measures:
+          "ARPU minus the average cost to serve one customer. Tells you how much profit each paying user generates after covering their share of costs.",
+        matters:
+          "ARPU alone is misleading \u2014 a $12.99 ARPU means nothing if it costs $10 to serve each user. Contribution margin is the real per-customer profit. It also shows whether unit economics improve or degrade as you scale.",
+        healthy: "Above $8/customer at $12.99 ARPU.",
+        redFlag: "Below $5 \u2014 each customer barely covers their costs.",
+        action:
+          "Compare this month vs. last month. If it's shrinking, AI costs are scaling faster than revenue. Check cost-per-recording trend in the AI Cost Breakdown section.",
+      },
+      {
+        name: "LTV : CAC Ratio",
+        measures:
+          "Customer Lifetime Value divided by Customer Acquisition Cost. LTV is estimated as ARPU / monthly churn rate (capped at 36 months). CAC comes from ad spend data.",
+        matters:
+          "The benchmark for whether paid acquisition is profitable. Below 3:1 means you're spending too much to acquire customers relative to what they'll pay over their lifetime. Above 5:1 means you could afford to spend more on growth.",
+        healthy: "3:1 minimum. 5:1 or higher is excellent.",
+        redFlag: "Below 2:1 \u2014 you lose money on every acquired customer before they churn.",
+        action:
+          "If ratio is low: reduce CAC (pause expensive campaigns, lean into organic) or increase LTV (reduce churn, which is the bigger lever at early stage). If 'Awaiting CAC data' shows, you need ad spend data in the Ads tab first.",
+      },
+      {
+        name: "Cost per Recording / Cost per Signup",
+        measures:
+          "Claude API spend divided by total recordings (or signups) this month. Shows the marginal AI cost of each user action.",
+        matters:
+          "Early warning signal for whether AI costs scale sub-linearly (good \u2014 means costs grow slower than usage) or super-linearly (bad \u2014 means each new user costs more than the last). At early stage, cost-per-recording should decrease as you optimize prompts.",
+        healthy: "Cost per recording under $0.10. Cost per signup under $1.00.",
+        redFlag: "Cost per recording above $0.25 or trending upward month-over-month.",
+        action:
+          "Check which AI features are most expensive per call in the AI Costs tab. Optimize the heaviest prompt first \u2014 usually weekly report generation or extraction.",
+      },
     ],
   },
   {

@@ -232,6 +232,8 @@ model User {
   signupReferrer         String?
   signupLandingPath      String?
 
+  updatedAt              DateTime  @updatedAt
+
   @@index([createdAt])
 }
 
