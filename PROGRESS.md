@@ -7,6 +7,39 @@
 
 ---
 
+## [2026-04-29] — Decompose auto-blog Finalization step + bump Vercel timeout to 300s
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** e6c772f
+
+### In plain English (for Keenan)
+The auto-blog "Generate Now" button ran but timed out after 2 minutes 23 seconds. The Inngest dashboard showed two green steps (topic queue + pick topic) followed by one red "Finalization" step. That step was trying to do everything at once: call Claude 3 times, validate the output, create the blog post in the database, ping Google, and update the topic status — all in one block. Vercel killed it because it exceeded the timeout.
+
+Now every operation is its own separate step with its own timeout budget. Claude generation attempts 1, 2, and 3 are each their own step. Publishing is its own step. Google indexing is its own step. Plus there's a new auto-recovery step at the start that resets any topics stuck from a previous failed run — so the stuck topic from today's failure will automatically unstick on the next run.
+
+Also bumped the Vercel timeout from 60 seconds to 300 seconds (5 minutes) since we're on the Pro plan. Each individual step now has 5 minutes to complete instead of 1 minute.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/inngest/functions/auto-blog.ts`: Decomposed the single "generate-and-publish" step into 10 discrete steps: reset-stuck-topics, ensure-topic-queue-health, pick-next-topic, generate-attempt-1, generate-attempt-2 (conditional), generate-attempt-3 (conditional), mark-generation-failed (conditional), publish-content-piece, notify-google-indexing, mark-topic-published
+- New `callClaudeForBlog()` helper: each attempt writes the full HTML body directly to a ContentPiece row (staging status GENERATION_FAILED), then the publish step flips it to AUTO_PUBLISHED + sets slug. This avoids passing ~15KB HTML through Inngest step serialization.
+- Auto-recovery step at function start: resets BlogTopicQueue rows stuck in IN_PROGRESS for >10 minutes back to QUEUED
+- `apps/web/src/app/api/inngest/route.ts`: bumped `maxDuration` from 60 to 300 (Vercel Pro allows up to 300s per step invocation)
+- `scripts/reset-stuck-blog-topics.ts`: one-time cleanup script for the currently-stuck topic
+
+### Manual steps needed
+- [ ] Click "Generate Now" in /admin?tab=auto-blog to test (Keenan — the auto-recovery step will reset the stuck topic automatically, then generate a new post)
+- [ ] OR run `npx tsx scripts/reset-stuck-blog-topics.ts` to manually reset stuck topics before the next cron run (Keenan)
+- [ ] Check Inngest dashboard for the test run — should show 8+ discrete green steps, NOT one Finalization block (Keenan)
+- [ ] Verify a new blog post appears at /blog after the run completes (Keenan)
+
+### Notes
+- The previous step.run() refactor correctly replaced setTimeout with step.sleep() but still bundled Claude + validation + publishing into one "generate-and-publish" step. That step ran 3 Claude calls sequentially (retry loop), each taking ~60s, totaling ~180s — well beyond the 60s Vercel limit.
+- The fix uses a staging pattern: generate steps write to ContentPiece with status GENERATION_FAILED (staging), then the publish step flips to AUTO_PUBLISHED. This avoids the Inngest step serialization limit (~256KB but practically ~50KB for reliability).
+- maxDuration 300 gives each step 5 minutes. A single Claude call with 8000 max tokens takes 30-90s, well within the new budget.
+
+---
+
 ## [2026-04-29] — Verified auto-blog Inngest step.run() fix + diagnosed root cause
 
 **Requested by:** Keenan
