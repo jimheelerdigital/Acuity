@@ -201,7 +201,10 @@ export function TaskList() {
       {current.length === 0 ? (
         <EmptyState tab={activeTab} />
       ) : (
-        <div className="space-y-3">
+        // space-y-6 (was space-y-3) so each group section reads as
+        // its own block with breathing room between, matching the
+        // dashboard's section rhythm.
+        <div className="space-y-6">
           {sortedGroups.map((group) => {
             const groupTasks = tasksByGroup.get(group.id) ?? [];
             if (groupTasks.length === 0) return null;
@@ -324,27 +327,42 @@ function GroupSection({
   setMoveMenuTaskId: (id: string | null) => void;
 }) {
   return (
-    <div className="rounded-xl bg-white dark:bg-[#13131F] border border-zinc-200 dark:border-white/10 overflow-visible">
+    <div className="rounded-xl bg-white dark:bg-[#13131F] border border-zinc-200 dark:border-white/10 overflow-visible shadow-sm">
+      {/* Section header — bumped 2026-04-28 to match the dashboard's
+          shared eyebrow rhythm: 13px / 0.18em tracking, 9px dot with a
+          soft glow in the group color, colored bottom-underline so each
+          section reads as its own block. Was 12px / tracking-wider with
+          a flat 2px dot — too quiet next to the rich row content. */}
       <button
         type="button"
         onClick={onToggle}
-        className="w-full flex items-center justify-between px-4 py-2.5 text-left hover:bg-zinc-50 dark:hover:bg-white/5 transition"
+        className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-zinc-50 dark:hover:bg-white/5 transition border-b"
+        style={{ borderBottomColor: `${group.color}33` }}
       >
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           <span
-            className="block h-2 w-2 rounded-full"
-            style={{ backgroundColor: group.color }}
+            className="block h-2.5 w-2.5 rounded-full"
+            style={{
+              backgroundColor: group.color,
+              boxShadow: `0 0 8px ${group.color}66`,
+            }}
           />
-          <span className="text-xs font-semibold uppercase tracking-wider text-zinc-600 dark:text-zinc-300">
+          <span
+            className="font-semibold uppercase text-zinc-700 dark:text-zinc-200"
+            style={{ fontSize: 13, letterSpacing: "0.18em" }}
+          >
             {group.name}
           </span>
-          <span className="text-xs text-zinc-400 dark:text-zinc-500">
+          <span
+            className="font-medium tabular-nums text-zinc-400 dark:text-zinc-500"
+            style={{ fontSize: 13 }}
+          >
             {tasks.length}
           </span>
         </div>
         <svg
-          width="14"
-          height="14"
+          width="16"
+          height="16"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"

@@ -264,7 +264,11 @@ export function GoalList() {
           </p>
         </div>
       ) : (
-        <div className="space-y-6">
+        // space-y-8 (was space-y-6) so each life-area block has clearer
+        // separation. Section header gets a colored bottom-underline +
+        // dashboard's shared 13/0.18em eyebrow rhythm so groups read as
+        // distinct blocks instead of a continuous wash.
+        <div className="space-y-8">
           {groupedRoots.map(({ group, goals }) => {
             if (goals.length === 0) return null;
             const groupCollapsed = collapsedGroups.has(group.id);
@@ -273,18 +277,28 @@ export function GoalList() {
                 <button
                   type="button"
                   onClick={() => toggleGroupCollapse(group.id)}
-                  className="w-full flex items-center gap-3 mb-2 group"
+                  className="w-full flex items-center gap-3 mb-4 group pb-3 border-b"
+                  style={{ borderBottomColor: `${group.color}33` }}
                 >
                   <span
                     className="h-8 w-8 rounded-full flex items-center justify-center shrink-0"
-                    style={{ backgroundColor: group.color + "1A" }}
+                    style={{
+                      backgroundColor: group.color + "1A",
+                      boxShadow: `0 0 12px ${group.color}33`,
+                    }}
                   >
                     <GoalGroupIcon name={group.icon} color={group.color} />
                   </span>
-                  <span className="text-sm font-semibold uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
+                  <span
+                    className="font-semibold uppercase text-zinc-700 dark:text-zinc-200"
+                    style={{ fontSize: 13, letterSpacing: "0.18em" }}
+                  >
                     {group.label}
                   </span>
-                  <span className="text-xs font-medium text-zinc-400 dark:text-zinc-500 tabular-nums">
+                  <span
+                    className="font-medium tabular-nums text-zinc-400 dark:text-zinc-500"
+                    style={{ fontSize: 13 }}
+                  >
                     {goals.length}
                   </span>
                   <ChevronDown
