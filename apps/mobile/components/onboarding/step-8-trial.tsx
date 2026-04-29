@@ -52,8 +52,9 @@ export function Step8Trial() {
       </Text>
       <Text className="mt-3 text-base leading-relaxed text-zinc-600 dark:text-zinc-300">
         30 days free. On Day 30 you get your Life Audit — a long-form
-        read of your first month. After that, subscribe to keep
-        generating. Nothing disappears.
+        read of your first month. After that, your dashboard freezes
+        where it is — entries, insights, and audits don&rsquo;t go
+        anywhere. Continue on web to keep generating new content.
       </Text>
 
       <View className="mt-6 gap-3">
@@ -70,7 +71,7 @@ export function Step8Trial() {
         <TrialPoint
           icon="lock-closed-outline"
           title="After the trial"
-          body="Journal keeps working in read-only. Subscribe to generate new insights."
+          body="Journal keeps working in read-only. Continue on web to generate new insights."
         />
       </View>
 
