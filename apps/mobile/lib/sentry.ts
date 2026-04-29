@@ -1,7 +1,8 @@
 /**
  * Sentry init for the Expo / React Native app.
  *
- * SDK: @sentry/react-native 8.x. DSN via EXPO_PUBLIC_SENTRY_DSN so
+ * SDK: @sentry/react-native 7.x (pinned to Expo SDK 54's expected
+ * range; v8 ships with Expo SDK 55+). DSN via EXPO_PUBLIC_SENTRY_DSN so
  * it's embedded into the JS bundle; safe to expose (DSN is not a
  * secret, it just identifies the ingest endpoint).
  *
