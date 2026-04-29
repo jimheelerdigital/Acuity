@@ -7,6 +7,44 @@
 
 ---
 
+## [2026-04-28] — Waitlist reactivation two-email campaign
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** e465e64
+
+### In plain English (for Keenan)
+
+Built a two-email reactivation campaign for the 14 original waitlist signups who never created an account. You fire it from the admin dashboard (Trial Emails tab → "Waitlist Reactivation Campaign" section). It sends a first email immediately — personal tone, highlights the 30-day founding member trial. Four days later, if they still haven't signed up, they get a follow-up with a "last call on your Founding Member spot" urgency angle. Both emails link to the signup page with tracking so you can see where conversions come from.
+
+The campaign is one-shot — once you fire it, the button locks out and shows stats (eligible, sent, converted). Each email has an unsubscribe link that permanently stops future sends to that waitlist user. No email is ever sent twice to the same person.
+
+### Technical changes (for Jimmy)
+
+- `prisma/schema.prisma`: `TrialEmailLog.userId` is now nullable. New `waitlistId` field (nullable) with `@@unique([waitlistId, emailKey])` for idempotency on waitlist sends.
+- `apps/web/src/emails/waitlist-reactivation.ts`: Two email builders (`waitlistReactivation1Html`, `waitlistReactivation2Html`) using the `trialLayout` shell for brand consistency. UTM-tagged signup URLs.
+- `apps/web/src/inngest/functions/waitlist-reactivation.ts`: `waitlistReactivationFn` — event-triggered only (`waitlist/reactivation.requested`), not a cron. 4 steps: find-eligible, send-email-1, wait-4-days (step.sleep), send-email-2 (only for users who haven't converted). Registered in inngest route.
+- `apps/web/src/app/api/admin/waitlist-reactivation/route.ts`: GET returns campaign stats (eligible, sent, pending, conversions). POST fires the campaign (409 on re-fire).
+- `apps/web/src/app/admin/tabs/TrialEmailsTab.tsx`: New "Waitlist Reactivation Campaign" section with metric cards, confirmation modal, and post-fire lockout display.
+- `apps/web/src/lib/email-tokens.ts`: Added "waitlist" to `UnsubscribeKind`.
+- `apps/web/src/app/api/emails/unsubscribe/route.ts`: Extended to handle "waitlist" kind — updates `Waitlist.unsubscribed` instead of User flags.
+
+### Manual steps needed
+
+- [ ] **Keenan (from home network):** `npx prisma db push` — adds `TrialEmailLog.waitlistId` column and the unique constraint, makes `userId` nullable. **Must run before firing the campaign.**
+- [ ] **Keenan:** After deploy + schema push, go to `/admin` → Trial Emails tab → scroll to "Waitlist Reactivation Campaign" section. Confirm eligible count shows > 0. Click "Fire reactivation campaign now", confirm in the modal. Email 1 sends immediately; Email 2 follows 4 days later automatically.
+- [ ] **Keenan:** Verify Inngest dashboard shows "Waitlist — Reactivation Campaign" function with step runs after firing.
+
+### Notes
+
+- The campaign fires to all Waitlist records whose email does NOT exist in the User table and who haven't unsubscribed. Waitlist users who already converted to User accounts (founding members #1-14 who signed up) are automatically excluded.
+- `TrialEmailLog.userId` becoming nullable is safe — the existing `@@unique([userId, emailKey])` constraint still works for trial emails because userId is always populated for those. The new `@@unique([waitlistId, emailKey])` handles waitlist sends separately. Prisma treats null values as distinct in unique constraints, so there's no conflict.
+- The "from" address is `hello@getacuity.io`. Resend must have this sender domain verified (it should be, since other emails use the same domain).
+- Email 2's `step.sleep("wait-4-days", "4d")` is a real Inngest sleep — the function pauses and resumes after 4 days. Visible in the Inngest dashboard as a sleeping step.
+- The POST /api/admin/waitlist-reactivation endpoint returns 409 if any `waitlist_reactivation_1` log exists, preventing accidental re-fires. The UI reflects this by replacing the button with campaign stats.
+
+---
+
 ## [2026-04-28] — Auto-blog fix, Revenue tab 500, margin metrics
 
 **Requested by:** Keenan
