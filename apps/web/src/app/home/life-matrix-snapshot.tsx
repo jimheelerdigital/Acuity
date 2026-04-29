@@ -105,15 +105,14 @@ export function LifeMatrixSnapshot({
         </div>
       </div>
 
-      <div className="mt-4 flex flex-1 flex-col items-center justify-center gap-5 lg:flex-row lg:items-center lg:gap-8">
+      <div className="mt-6 flex flex-1 flex-col items-center justify-center gap-8 lg:flex-row lg:items-center lg:justify-center lg:gap-14">
         <svg
           viewBox={`0 0 ${SIZE} ${SIZE}`}
-          // Single-column legend on the right freed up significant
-          // horizontal space, so the radar can claim a much larger
-          // square. Caps still in place so it doesn't go absurd on
-          // ultra-wide displays. ViewBox stays 0 0 240 240 — the
-          // geometry is unchanged, only the rendered size grows.
-          className="aspect-square h-auto w-full max-w-[420px] shrink-0 lg:max-w-[400px]"
+          // Radar capped at 380px on lg+ so it has visual headroom
+          // alongside the constrained 280px legend column without
+          // either touching its respective card edge. The cluster
+          // is centered as a unit via justify-center on the row.
+          className="aspect-square h-auto w-full max-w-[420px] shrink-0 lg:max-w-[380px]"
           aria-hidden="true"
         >
           {/* Concentric guide rings — three at 33%/66%/100% radius.
@@ -186,7 +185,7 @@ export function LifeMatrixSnapshot({
             })}
         </svg>
 
-        <div className="flex-1">
+        <div className="w-full max-w-[280px]">
           {isEmpty ? (
             <div>
               <p className="text-sm text-zinc-600 dark:text-zinc-300">
@@ -214,24 +213,38 @@ export function LifeMatrixSnapshot({
               </p>
             </div>
           ) : (
-            // Single-column legend — was 2-col, but the radar was
-            // visibly small inside its container with two columns
-            // worth of legend eating the horizontal space. One
-            // column lets the radar grow ~50% larger on lg+ while
-            // still leaving room for name + score on every row.
-            <ul className="flex flex-col gap-2">
-              {ordered.map((a) => (
+            // Stat-list layout. The legend is constrained to a
+            // 280px column (set on the parent), so the score values
+            // sit a comfortable ~20px from the card-edge instead of
+            // hugging it. Three-part row:
+            //   - canonical-color dot (10px)
+            //   - area name, label-weight (text-sm zinc-300)
+            //   - score, value-weight (text-base semibold zinc-50,
+            //     tabular-nums for vertical-align across rows)
+            // Hairline bottom border on every row except the last
+            // gives the list quiet structure — financial-app stat
+            // rhythm rather than a wash of gap. Border opacity is
+            // intentionally subtle (white/[0.06]) so it reads as
+            // separator, not divider.
+            <ul className="flex flex-col">
+              {ordered.map((a, i) => (
                 <li
                   key={a.enum}
-                  className="flex items-center gap-3 text-sm text-zinc-600 dark:text-zinc-300"
+                  className={`flex items-center gap-3 py-2.5 ${
+                    i < ordered.length - 1
+                      ? "border-b border-zinc-200/60 dark:border-white/[0.06]"
+                      : ""
+                  }`}
                 >
                   <span
                     aria-hidden="true"
                     className="h-2.5 w-2.5 shrink-0 rounded-full"
                     style={{ backgroundColor: a.color }}
                   />
-                  <span className="flex-1 truncate">{a.name}</span>
-                  <span className="font-semibold tabular-nums text-zinc-800 dark:text-zinc-100">
+                  <span className="flex-1 truncate text-sm text-zinc-600 dark:text-zinc-300">
+                    {a.name}
+                  </span>
+                  <span className="text-base font-semibold tabular-nums text-zinc-900 dark:text-zinc-50">
                     {Math.round(a.score * 10)}
                   </span>
                 </li>
