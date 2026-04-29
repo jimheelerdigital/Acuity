@@ -49,13 +49,16 @@ export function WeeklyInsightCard({
   const hasContent = unlocked && report != null && snippet != null;
 
   return (
-    <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-[#1E1E2E]">
+    <section className="rounded-2xl border border-zinc-200 bg-white p-7 shadow-sm dark:border-white/10 dark:bg-[#1E1E2E]">
       <div className="flex items-baseline justify-between">
         <div>
-          <h2 className="text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
+          <h2
+            className="font-semibold uppercase text-zinc-400 dark:text-zinc-500"
+            style={{ fontSize: 13, letterSpacing: "0.18em" }}
+          >
             Weekly insight
           </h2>
-          <p className="mt-1 text-base font-semibold text-zinc-900 dark:text-zinc-50">
+          <p className="mt-2 text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
             {hasContent
               ? formatWeekHeader(report!.weekStart, report!.weekEnd)
               : "Your first report is coming"}
@@ -65,27 +68,25 @@ export function WeeklyInsightCard({
 
       {hasContent ? (
         <>
-          <figure className="mt-5">
-            {/* Vertical rule + serif-ish quote feel without a serif
-                font. Gives the snippet weight as the artifact it is —
-                "your own week, in one line, written by the AI" — vs
-                a generic data point. */}
-            <div className="border-l-2 border-violet-500 pl-4">
-              <blockquote className="text-[15px] leading-relaxed text-zinc-800 dark:text-zinc-100">
+          <figure className="mt-6">
+            {/* Vertical rule + quote feel without a serif font.
+                Gives the snippet weight as the artifact it is. */}
+            <div className="border-l-2 border-violet-500 pl-5">
+              <blockquote className="text-base leading-relaxed text-zinc-800 dark:text-zinc-100">
                 {snippet}
               </blockquote>
             </div>
           </figure>
 
-          <div className="mt-5 border-t border-zinc-100 pt-4 dark:border-white/5">
+          <div className="mt-6 border-t border-zinc-100 pt-5 dark:border-white/5">
             <Link
               href="/insights"
-              className="inline-flex items-center gap-1 text-sm font-semibold text-violet-600 transition hover:text-violet-500 dark:text-violet-400"
+              className="inline-flex items-center gap-1.5 text-[15px] font-semibold text-violet-600 transition hover:text-violet-500 dark:text-violet-400"
             >
               Read the full report
               <svg
-                width="14"
-                height="14"
+                width="16"
+                height="16"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -99,17 +100,17 @@ export function WeeklyInsightCard({
           </div>
         </>
       ) : (
-        <div className="mt-5">
+        <div className="mt-6">
           {/* Empty state framed as a progress indicator, not a void.
               Copy mirrors the wording used elsewhere ("Sunday after
               your 7th session") so the user encounters the same
               promise across screens. */}
-          <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
+          <p className="text-base leading-relaxed text-zinc-600 dark:text-zinc-300">
             Once you&rsquo;ve recorded {ENTRIES_REQUIRED} sessions, your
             first weekly report drops Sunday morning — a 400-word read
             on what kept coming up that week.
           </p>
-          <div className="mt-4 flex items-center gap-3">
+          <div className="mt-5 flex items-center gap-3">
             <div className="h-1.5 flex-1 rounded-full bg-zinc-100 dark:bg-white/10">
               <div
                 className="h-1.5 rounded-full bg-violet-500"
@@ -118,11 +119,11 @@ export function WeeklyInsightCard({
                 }}
               />
             </div>
-            <span className="text-xs font-medium tabular-nums text-zinc-500 dark:text-zinc-400">
+            <span className="text-sm font-medium tabular-nums text-zinc-500 dark:text-zinc-400">
               {entryCount} / {ENTRIES_REQUIRED}
             </span>
           </div>
-          <p className="mt-2 text-xs text-zinc-400 dark:text-zinc-500">
+          <p className="mt-2.5 text-sm text-zinc-400 dark:text-zinc-500">
             {Math.max(0, ENTRIES_REQUIRED - entryCount) === 0
               ? "Your report is queuing up."
               : ENTRIES_REQUIRED - entryCount === 1

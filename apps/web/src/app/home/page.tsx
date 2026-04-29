@@ -346,11 +346,23 @@ export default async function DashboardPage() {
 
 async function fetchEntries(userId: string) {
   const { prisma } = await import("@/lib/prisma");
+  // Explicit select — the EntryCard widget only renders id / summary /
+  // createdAt / themes / mood / energy / status + task count. Without
+  // this, Prisma returns every column including transcript (unbounded
+  // text), embedding (1536 floats = ~6KB/row), and rawAnalysis JSON.
+  // 7 entries × ~50KB savings = ~350KB cut from every dashboard load.
   return prisma.entry.findMany({
     where: { userId },
     orderBy: { createdAt: "desc" },
     take: 7,
-    include: {
+    select: {
+      id: true,
+      summary: true,
+      createdAt: true,
+      themes: true,
+      mood: true,
+      energy: true,
+      status: true,
       _count: { select: { tasks: true } },
     },
   });
@@ -440,23 +452,26 @@ function TodaysPromptCard({
     ? `/home?goalId=${encodeURIComponent(goalId)}#record`
     : "/home#record";
   return (
-    <section className="lg:col-span-8 rounded-2xl border border-zinc-200 bg-gradient-to-br from-violet-50/60 via-white to-white p-6 shadow-sm dark:border-white/10 dark:from-violet-950/20 dark:via-[#1E1E2E] dark:to-[#1E1E2E]">
+    <section className="lg:col-span-8 rounded-2xl border border-zinc-200 bg-gradient-to-br from-violet-50/60 via-white to-white p-7 shadow-sm dark:border-white/10 dark:from-violet-950/20 dark:via-[#1E1E2E] dark:to-[#1E1E2E]">
       {label && (
-        <p className="text-xs font-semibold uppercase tracking-widest text-violet-600 dark:text-violet-400">
+        <p
+          className="font-semibold uppercase text-violet-600 dark:text-violet-400"
+          style={{ fontSize: 13, letterSpacing: "0.18em" }}
+        >
           {label}
         </p>
       )}
-      <p className="mt-2 text-base font-medium leading-relaxed text-zinc-800 dark:text-zinc-100 lg:text-lg">
+      <p className="mt-3 text-lg font-medium leading-relaxed text-zinc-800 dark:text-zinc-100 lg:text-xl">
         {prompt}
       </p>
       <Link
         href={recordHref}
-        className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-violet-600 transition hover:text-violet-500 dark:text-violet-400"
+        className="mt-5 inline-flex items-center gap-1.5 text-[15px] font-semibold text-violet-600 transition hover:text-violet-500 dark:text-violet-400"
       >
         Record about this
         <svg
-          width="14"
-          height="14"
+          width="16"
+          height="16"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
@@ -486,11 +501,6 @@ function StreakSummaryCard({
   sessionsThisWeek: number;
   totalEntryCount: number;
 }) {
-  const streakLabel =
-    currentStreak === 0
-      ? "0-day streak"
-      : `${currentStreak}-day streak`;
-
   // Three-tier hint: brand-new user, has-been-recording, broke-streak.
   let hint: string;
   if (totalEntryCount === 0) {
@@ -504,25 +514,45 @@ function StreakSummaryCard({
         : `${sessionsThisWeek} sessions this week.`;
   }
 
+  // The streak number IS the data — should look like it. Big number,
+  // flame inline, sessions-this-week + hint stack as small footer.
+  // Pulled out the "X-day streak" wrapper because the unit (days) is
+  // implied by the flame + the small "day streak" label below.
+  const streakValue = currentStreak;
+  const flameActive = currentStreak >= 2;
+
   return (
-    <section className="lg:col-span-4 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-[#1E1E2E]">
-      <h2 className="text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
-        Streak
-      </h2>
-      <div className="mt-2 flex items-center gap-2">
-        <Flame
-          className={`h-6 w-6 ${
-            currentStreak >= 2
-              ? "text-orange-500"
-              : "text-zinc-300 dark:text-zinc-600"
-          }`}
-          aria-hidden="true"
-        />
-        <p className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-          {streakLabel}
-        </p>
+    <section className="flex h-full flex-col justify-between lg:col-span-4 rounded-2xl border border-zinc-200 bg-white p-7 shadow-sm dark:border-white/10 dark:bg-[#1E1E2E]">
+      <div>
+        <h2
+          className="font-semibold uppercase text-zinc-400 dark:text-zinc-500"
+          style={{ fontSize: 13, letterSpacing: "0.18em" }}
+        >
+          Streak
+        </h2>
+        <div className="mt-3 flex items-baseline gap-3">
+          <Flame
+            className={`h-9 w-9 self-center shrink-0 ${
+              flameActive ? "text-orange-500" : "text-zinc-300 dark:text-zinc-600"
+            }`}
+            aria-hidden="true"
+            fill={flameActive ? "currentColor" : "none"}
+            strokeWidth={flameActive ? 1.5 : 2}
+          />
+          <span
+            className="font-semibold tabular-nums text-zinc-900 dark:text-zinc-50"
+            style={{ fontSize: 56, letterSpacing: "-2px", lineHeight: 1 }}
+          >
+            {streakValue}
+          </span>
+          <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
+            {streakValue === 1 ? "day streak" : "day streak"}
+          </span>
+        </div>
       </div>
-      <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">{hint}</p>
+      <p className="mt-5 border-t border-zinc-100 pt-4 text-sm text-zinc-600 dark:border-white/5 dark:text-zinc-300">
+        {hint}
+      </p>
     </section>
   );
 }

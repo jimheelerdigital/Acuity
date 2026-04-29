@@ -198,9 +198,10 @@ export function LifeMatrixSnapshot({
 
         {/* Right column. max-w-md gives stat rows a comfortable
             440px lane that pairs with the 360px radar inside the
-            card without either side cramping. The empty-state copy
-            sits at the same width — same vertical rhythm. */}
-        <div className="w-full max-w-md">
+            card without either side cramping. lg:mr-4 inset pulls
+            the column off the card's right padding so the numbers
+            sit ~52px from the card edge instead of hugging it. */}
+        <div className="w-full max-w-md lg:mr-4">
           {isEmpty ? (
             <div>
               <p className="text-base leading-relaxed text-zinc-600 dark:text-zinc-300">

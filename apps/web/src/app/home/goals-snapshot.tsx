@@ -36,35 +36,44 @@ export function GoalsSnapshotCard({
 }) {
   return (
     <section
-      className={`rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-[#1E1E2E] ${
+      className={`flex h-full flex-col rounded-2xl border border-zinc-200 bg-white p-7 shadow-sm dark:border-white/10 dark:bg-[#1E1E2E] ${
         className ?? ""
       }`}
     >
-      <h2 className="text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
+      {/* Header — matches the dashboard's shared eyebrow + title
+          rhythm (13px / 0.18em tracking eyebrow, 24px tracking-tight
+          headline). */}
+      <h2
+        className="font-semibold uppercase text-zinc-400 dark:text-zinc-500"
+        style={{ fontSize: 13, letterSpacing: "0.18em" }}
+      >
         Goals
       </h2>
+      <p className="mt-2 text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+        {goals.length === 0 ? "Nothing tracked yet" : "What you're working on"}
+      </p>
 
       {goals.length === 0 ? (
-        <p className="mt-4 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
+        <p className="mt-5 text-base leading-relaxed text-zinc-600 dark:text-zinc-300">
           Goals show up here as Acuity hears commitments in your debriefs.
           Mention something you want to do and it&rsquo;ll appear for you
           to accept.
         </p>
       ) : (
-        <ul className="mt-4 space-y-3">
+        <ul className="mt-6 space-y-4">
           {goals.map((g) => {
             const progress = Math.max(0, Math.min(100, g.progress));
             return (
               <li key={g.id}>
                 <div className="flex items-baseline justify-between gap-3">
-                  <p className="flex-1 truncate text-sm font-medium text-zinc-800 dark:text-zinc-100">
+                  <p className="flex-1 truncate text-[15px] font-medium text-zinc-800 dark:text-zinc-100">
                     {g.title}
                   </p>
-                  <span className="shrink-0 text-xs font-medium tabular-nums text-zinc-500 dark:text-zinc-400">
+                  <span className="shrink-0 text-sm font-semibold tabular-nums text-zinc-700 dark:text-zinc-200">
                     {progress}%
                   </span>
                 </div>
-                <div className="mt-1.5 h-1.5 rounded-full bg-zinc-100 dark:bg-white/10">
+                <div className="mt-2 h-1.5 rounded-full bg-zinc-100 dark:bg-white/10">
                   <div
                     className="h-1.5 rounded-full bg-violet-500"
                     style={{ width: `${progress}%` }}
@@ -76,15 +85,16 @@ export function GoalsSnapshotCard({
         </ul>
       )}
 
-      <div className="mt-5 border-t border-zinc-100 pt-4 dark:border-white/5">
+      <div className="mt-auto border-t border-zinc-100 pt-5 dark:border-white/5"
+           style={{ marginTop: goals.length === 0 ? "auto" : "1.5rem" }}>
         <Link
           href="/goals"
-          className="inline-flex items-center gap-1 text-sm font-semibold text-violet-600 transition hover:text-violet-500 dark:text-violet-400"
+          className="inline-flex items-center gap-1.5 text-[15px] font-semibold text-violet-600 transition hover:text-violet-500 dark:text-violet-400"
         >
           {goals.length === 0 ? "Open Goals" : "See all goals"}
           <svg
-            width="14"
-            height="14"
+            width="16"
+            height="16"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
