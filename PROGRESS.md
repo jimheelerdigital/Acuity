@@ -7,6 +7,41 @@
 
 ---
 
+## [2026-04-29] — Fix trial email orchestrator + backfill script + kill deprecated waitlist drip
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 95a2dea
+
+### In plain English (for Keenan)
+The trial email sequence (the 14 emails that go out over your first 30 days — objection handling, pattern teases, user stories, reactivation for non-recorders, etc.) was never firing after the welcome email. The orchestrator function was in the code, registered correctly, and the logic was sound — but Inngest Cloud never synced it, so it never ran. The recent Inngest resync should have picked it up.
+
+Additionally, the per-user processing was happening in a single block that would eventually timeout as the user count grows. Refactored to process users in batches of 20, each in its own step with a fresh timeout.
+
+A backfill script is included for users who missed emails. Run it in dry-run mode first to see what would be sent, then with `--send` to actually dispatch. The script only sends the user's CURRENT-stage email (not past stages they've already graduated beyond) — so a Day 10 user gets `life_matrix_reveal`, not the Day 2 `objection_60sec` they missed.
+
+The old waitlist drip emails ("While you wait", "The feature our beta users can't stop talking about") that appeared in Resend are residual sends from before the cron was no-op'd. The cron route at `/api/cron/waitlist-drip` is already a complete no-op. No code path currently calls `DRIP_SEQUENCE` or sends those emails. They should have stopped by now.
+
+**Known issue — Apple Private Relay bounces:** Resend shows bounces from `@privaterelay.appleid.com` addresses. These are Apple Sign In "Hide My Email" proxy addresses that sometimes bounce when Apple's relay isn't configured to forward. This requires Apple Developer Console configuration by Jimmy — not a code fix.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/inngest/functions/trial-email-orchestrator.ts`: Refactored per-user processing from single inline loop to batched `step.run()` calls (BATCH_SIZE=20). Each batch gets its own Vercel timeout budget. The decision tree logic (track classification, nextEmailForUser) is unchanged — it was already correct.
+- `scripts/backfill-trial-emails.ts`: One-time catchup script. Dry-run by default, `--send` flag to dispatch. Only sends the user's current-stage email, not past stages. Logs every decision for review.
+- Waitlist drip: `/api/cron/waitlist-drip` was already a no-op (confirmed). `DRIP_SEQUENCE` in `lib/drip-emails.ts` is exported but never imported by any live code path. Old emails in Resend are residual — they'll stop on their own.
+
+### Manual steps needed
+- [ ] Verify Inngest dashboard shows "Trial onboarding email orchestrator" with hourly runs (Keenan — check app.inngest.com → Functions)
+- [ ] Run backfill dry-run: `npx tsx scripts/backfill-trial-emails.ts` to see which users would receive emails (Keenan — review output before sending)
+- [ ] If dry-run output looks right, run: `npx tsx scripts/backfill-trial-emails.ts --send` to dispatch the missed emails (Keenan)
+- [ ] Check Resend dashboard within 24h for new trial sequence emails (subjects like "60 seconds can't be enough data, right?" or "The thing you don't know you're repeating") (Keenan)
+
+### Notes
+- The orchestrator was always registered in `/api/inngest/route.ts` (line 66) and exported from `trial-email-orchestrator.ts`. The code was correct. The issue was that Inngest Cloud hadn't synced the updated function catalog — the same root cause that blocked auto-blog. The recent manual resync (Inngest dashboard → Apps → Sync) should have fixed this.
+- The old waitlist drip emails (subjects "While you wait" and "The feature our beta users can't stop talking about") correspond to `DRIP_SEQUENCE` steps 2 and 3 in `lib/drip-emails.ts`. The cron that sent them (`/api/cron/waitlist-drip`) has been a no-op since commit `7e7694c`. The emails seen in Resend 6 days ago were the last sends from before the no-op — no new sends should occur.
+- Apple Private Relay bounces: Users who signed up via Apple Sign In with "Hide My Email" get a `@privaterelay.appleid.com` relay address. If the relay isn't properly configured in Apple Developer Console, these bounce. Not a code issue — requires Jimmy to verify the relay domain configuration in the Apple Developer portal under Sign In with Apple → Email Communication.
+
+---
+
 ## [2026-04-29] — Decompose auto-blog Finalization step + bump Vercel timeout to 300s
 
 **Requested by:** Keenan
