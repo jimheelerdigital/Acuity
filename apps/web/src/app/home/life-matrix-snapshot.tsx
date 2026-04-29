@@ -105,16 +105,15 @@ export function LifeMatrixSnapshot({
         </div>
       </div>
 
-      <div className="mt-4 flex flex-1 flex-col items-center justify-center gap-5 lg:flex-row lg:items-center lg:gap-7">
+      <div className="mt-4 flex flex-1 flex-col items-center justify-center gap-5 lg:flex-row lg:items-center lg:gap-8">
         <svg
           viewBox={`0 0 ${SIZE} ${SIZE}`}
-          // Fixed width/height removed; the SVG now scales with its
-          // container so the radar fills the card's vertical space
-          // instead of pinning to a 240px square. ViewBox stays 0 0
-          // 240 240 — the geometry is unchanged. The min-width keeps
-          // it readable on narrow viewports; max-width caps the lg+
-          // case so it doesn't get gigantic on wide cards.
-          className="aspect-square h-auto w-full max-w-[280px] shrink-0 lg:max-w-[260px]"
+          // Single-column legend on the right freed up significant
+          // horizontal space, so the radar can claim a much larger
+          // square. Caps still in place so it doesn't go absurd on
+          // ultra-wide displays. ViewBox stays 0 0 240 240 — the
+          // geometry is unchanged, only the rendered size grows.
+          className="aspect-square h-auto w-full max-w-[420px] shrink-0 lg:max-w-[400px]"
           aria-hidden="true"
         >
           {/* Concentric guide rings — three at 33%/66%/100% radius.
@@ -215,19 +214,24 @@ export function LifeMatrixSnapshot({
               </p>
             </div>
           ) : (
-            <ul className="grid grid-cols-2 gap-x-5 gap-y-1.5">
+            // Single-column legend — was 2-col, but the radar was
+            // visibly small inside its container with two columns
+            // worth of legend eating the horizontal space. One
+            // column lets the radar grow ~50% larger on lg+ while
+            // still leaving room for name + score on every row.
+            <ul className="flex flex-col gap-2">
               {ordered.map((a) => (
                 <li
                   key={a.enum}
-                  className="flex items-center gap-2 text-xs text-zinc-600 dark:text-zinc-300"
+                  className="flex items-center gap-3 text-sm text-zinc-600 dark:text-zinc-300"
                 >
                   <span
                     aria-hidden="true"
-                    className="h-2 w-2 shrink-0 rounded-full"
+                    className="h-2.5 w-2.5 shrink-0 rounded-full"
                     style={{ backgroundColor: a.color }}
                   />
                   <span className="flex-1 truncate">{a.name}</span>
-                  <span className="font-medium tabular-nums text-zinc-700 dark:text-zinc-200">
+                  <span className="font-semibold tabular-nums text-zinc-800 dark:text-zinc-100">
                     {Math.round(a.score * 10)}
                   </span>
                 </li>
