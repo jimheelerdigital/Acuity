@@ -317,20 +317,25 @@ export function ThemeRings({
               style={({ pressed }) => ({
                 flexDirection: "row",
                 alignItems: "center",
-                gap: 12,
-                paddingVertical: 16,
-                paddingHorizontal: 8,
+                paddingVertical: 14,
+                paddingHorizontal: 4,
                 borderRadius: 8,
                 borderTopWidth: i === 0 ? 0 : 0.5,
                 borderTopColor: "rgba(255,255,255,0.05)",
                 backgroundColor: pressed ? "rgba(255,255,255,0.04)" : "transparent",
               })}
             >
+              {/* Why explicit marginRight instead of `gap: 12` on the
+                  Pressable: on narrow iPhones, the row sometimes
+                  wraps with `gap` even though flexWrap is the default
+                  nowrap — children appear stacked. Explicit margins +
+                  flexShrink on the name keep the row truly single-line. */}
               <View
                 style={{
-                  width: 9,
-                  height: 9,
+                  width: 8,
+                  height: 8,
                   borderRadius: 999,
+                  marginRight: 10,
                   backgroundColor: p.solid,
                   shadowColor: p.solid,
                   shadowOpacity: 1,
@@ -340,10 +345,11 @@ export function ThemeRings({
               />
               <Text
                 style={{
-                  fontSize: 14,
+                  fontSize: 13,
                   fontWeight: "600",
                   color: "rgba(168,168,180,0.5)",
-                  width: 26,
+                  width: 22,
+                  marginRight: 10,
                 }}
               >
                 {String(i + 1).padStart(2, "0")}
@@ -353,27 +359,30 @@ export function ThemeRings({
                 ellipsizeMode="tail"
                 style={{
                   flex: 1,
-                  fontSize: 17,
+                  flexShrink: 1,
+                  minWidth: 0,
+                  fontSize: 16,
                   fontWeight: "500",
                   color: TEXT.primary,
                   letterSpacing: -0.1,
+                  marginRight: 10,
                 }}
               >
                 {capitalize(t.name)}
               </Text>
               <Text
                 style={{
-                  fontSize: 22,
+                  fontSize: 18,
                   fontWeight: "500",
                   color: "rgba(255,255,255,0.85)",
-                  letterSpacing: -0.4,
+                  letterSpacing: -0.3,
                   textAlign: "right",
-                  minWidth: 40,
+                  marginRight: 6,
                 }}
               >
                 {t.count}
               </Text>
-              <ChevronRight size={16} color="rgba(168,168,180,0.5)" />
+              <ChevronRight size={14} color="rgba(168,168,180,0.5)" />
             </Pressable>
           );
         })}
