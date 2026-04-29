@@ -7,6 +7,49 @@
 
 ---
 
+## [2026-04-28] — Auto-blog fix, Revenue tab 500, margin metrics
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 0b920d9
+
+### In plain English (for Keenan)
+
+Three fixes in one pass:
+
+1. **Auto-blog "Generate Now" actually works now.** The button was silently failing — it looked like it fired, but nothing happened behind the scenes. Two bugs were stacked on top of each other: a feature flag was blocking the system from running any background jobs, and the blog generation job was trying to do everything in one 60-second window (which isn't enough time for three AI writing attempts + database saves + Google indexing). Now each piece of work runs in its own window, so the whole process can take up to 7 minutes safely.
+
+2. **Revenue tab no longer crashes.** It was throwing a 500 error because the code referenced a database column (`updatedAt` on the User table) that didn't exist yet. Fixed by adding the column to the schema and adding a safety net so the tab still loads even before the database is updated.
+
+3. **Revenue tab now shows real business economics.** You can now see: True Cost of Revenue (Claude API + Stripe fees + hosting + email + database), Gross Margin % with color-coded health indicator, Per-Customer Unit Economics (contribution margin, LTV, LTV:CAC ratio), and an AI cost summary showing cost-per-recording and cost-per-signup. The Guide tab explains each new metric.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/api/inngest/route.ts`: removed `ENABLE_INNGEST_PIPELINE` POST gate entirely. All three HTTP methods (GET/PUT/POST) now pass through to the Inngest handler unconditionally. The correct way to pause functions is via the Inngest Cloud dashboard (Functions → Pause), not by 503-ing the endpoint.
+- `apps/web/src/inngest/functions/auto-blog.ts`: refactored `autoBlogGenerateFn` from a single inline async body to 7 discrete `step.run()` calls: `topic-queue-health`, `pick-topic`, `generate-attempt-1/2/3`, `publish`, `notify-indexing`. Uses `step.sleep()` for the cron random delay instead of `setTimeout`. Each step gets its own 60-second Vercel timeout window.
+- `prisma/schema.prisma`: added `updatedAt DateTime @updatedAt` to the User model (was missing — the churn query referenced it but it didn't exist).
+- `apps/web/src/app/api/admin/metrics/route.ts`: fixed Revenue 500, added 6 new parallel queries (Claude spend 30d, Claude spend MTD, entries this month, signups this month, Stripe customer count, ad spend). Returns new `costs`, `margin`, `unitEconomics`, and `aiSummary` objects.
+- `apps/web/src/app/admin/tabs/RevenueTab.tsx`: new sections — Gross Margin card (color-coded), True Cost of Revenue table, Per-Customer Unit Economics grid, AI Cost Breakdown summary.
+- `apps/web/src/app/admin/tabs/GuideTab.tsx`: 4 new Revenue guide entries — Gross Margin, Contribution Margin per Customer, LTV:CAC Ratio, Cost per Recording/Signup.
+- Installed `recharts` and `@sentry/nextjs` (were missing from deps, pre-existing build issue).
+
+### Manual steps needed
+
+- [ ] **Keenan (from home network):** `npx prisma db push` — adds the `updatedAt` column to the User table. Until this runs, the churn rate on the Revenue tab will show 0% (the query falls back gracefully). Everything else works without it.
+- [ ] **Jimmy:** verify auto-blog in Inngest dashboard — visit Inngest Cloud → "acuity" app → Functions → "Auto Blog — Daily Generation". Confirm it shows 7 steps. Click "Generate Now" in /admin Auto Blog tab and watch the run complete in Inngest.
+- [ ] **Jimmy:** the `ENABLE_INNGEST_PIPELINE` env var in Vercel is now unused and can be removed from Production + Preview environments when convenient (no rush — it's inert).
+- [ ] **Jimmy:** update hardcoded cost values when real billing data is available — Resend ($20/mo), Vercel ($20/mo), Supabase ($25/mo) are placeholders in `apps/web/src/app/api/admin/metrics/route.ts` lines ~480-483.
+
+### Notes
+
+- The `ENABLE_INNGEST_PIPELINE` removal means ALL Inngest functions now execute when triggered (cron + event). This is the intended production behavior. If you need to pause a specific function without a deploy, use the Inngest Cloud dashboard (Functions → select function → Pause). The old flag was a blunt instrument that broke the registration handshake.
+- Stripe fee estimation uses 2.9% + 30¢ per paying subscriber per month. This is accurate for US domestic cards. International cards may be 3.9% + 30¢. The estimate is conservative.
+- LTV calculation caps at 36 months even with zero churn. This prevents infinite LTV from making the ratio meaningless.
+- Whisper costs show "Not tracked yet" in the cost table. If/when Whisper usage logging is added, the API already returns `whisperCents` — just populate it.
+- The churn query `.catch(() => 0)` fallback means churn displays as 0% until `prisma db push` adds the `updatedAt` column. After the push, it works correctly.
+
+---
+
 ## [2026-04-28] — Auth hardening: AUTH-CRITICAL markers, smoke endpoint, drift test, prebuild gate
 
 **Requested by:** Jimmy
