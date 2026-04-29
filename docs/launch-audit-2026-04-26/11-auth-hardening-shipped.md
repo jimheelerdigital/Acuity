@@ -29,7 +29,7 @@ Five checks: `env`, `schema`, `google`, `apple`, `credentials`. The `schema` che
 3. multiple missing columns — strips iteratively
 4. non-P2022 errors propagate (network failure shouldn't trigger drift recovery)
 
-`prebuild` script wired so `npm run build` runs vitest first. A failing test stops the Vercel deploy.
+`test:auth` npm script wired (`vitest run src/__tests__/auth`). Originally added a `prebuild` gate so failing tests would stop deploys, but that locked production for two consecutive pushes when the reporter flag turned out to be invalid — reverted in `8147d5e`. Tests now run via post-deploy hook or manual invocation. Build path is unguarded so test-infra failures can never block deploys.
 
 ### 4. Sentry tag
 

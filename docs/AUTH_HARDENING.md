@@ -91,7 +91,11 @@ All auth-related errors are tagged `auth_route: "true"` so Sentry can filter on 
 
 ## Integration tests (vitest)
 
-Run via `npm run test` from `apps/web`. The auth tests live at `apps/web/src/__tests__/auth/` and mock Prisma + NextAuth so they don't touch a real DB. They're wired into `npm run build` via `prebuild` script — a failing test stops the Vercel deploy.
+Run via `npm run test:auth` from `apps/web`. The auth tests live at `apps/web/src/__tests__/auth/` and mock Prisma + NextAuth so they don't touch a real DB.
+
+**They are deliberately NOT wired into the Vercel build.** A first attempt (commit 7fd52f8) added a `prebuild` vitest gate; the gate itself crashed on an invalid reporter flag and blocked production deploys for two consecutive pushes. Lesson: test-infrastructure failures must not be able to take down deploys, particularly when an emergency fix needs to ship. If the reporter ever changes versions, or vitest itself has a runtime bug, we don't want to sit on a broken deploy path.
+
+Instead, the tests are intended to run from a **post-deploy** hook or a separate CI workflow that can fail loudly without holding production hostage. Failures should page Slack, not block the build.
 
 **Existing coverage:**
 - `bootstrap-user-drift.test.ts` — exercises `safeUpdateUserBootstrap` against simulated P2022 errors. Covers the 2026-04-28 regression class.
