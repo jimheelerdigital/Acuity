@@ -7,6 +7,35 @@
 
 ---
 
+## [2026-04-28] — Mobile sign-in: revert KeyboardAwareScreen wrapper to fix Google OAuth bounce
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** 0149c6f
+
+### In plain English (for Keenan)
+The morning's keyboard-avoidance OTA had a side effect: tapping "Continue with Google" on the iPhone sign-in screen would briefly show the Google sign-in sheet, then dump users back to the Acuity sign-in page with no error message. Turned out the wrapper we added to keep keyboards from covering inputs was destabilizing the in-app browser session that Google sign-in needs to work. Removed the wrapper from the sign-in screen specifically. Onboarding, sign-up, password-reset, and the delete-account modal all keep the keyboard fix.
+
+### Technical changes (for Jimmy)
+- `apps/mobile/app/(auth)/sign-in.tsx`: removed `<KeyboardAwareScreen>` wrapper, restored the pre-`f4297d1` layout (`SafeAreaView className="flex-1 bg-white dark:bg-[#0B0B12] px-6"` + `<View className="flex-1 justify-center">`). Long inline comment in the JSX explains why this one screen opts out, so a future cleanup pass doesn't innocently re-add it.
+- Other screens (`sign-up`, `forgot-password`, `delete-account-modal`, onboarding shell) keep the wrapper. Only sign-in opts out because it mounts `expo-auth-session`'s `promptAsync()` which is fragile inside a ScrollView re-render.
+- EAS OTA published: update group `8f74c144-1b18-42b4-8d58-3c51cf46f8ac`, runtime 0.1.8, channel production.
+
+### Manual steps needed
+- [ ] **Jimmy:** verify on TestFlight after OTA installs. Sign-in → Continue with Google → should complete and route to dashboard. Apple sign-in and email/password paths should also still work (none of them use ScrollView around the auth-session modal).
+
+### The actual root cause
+The mobile Google flow uses `expo-auth-session`'s `Google.useAuthRequest({ shouldAutoExchangeCode: false })` + `promptAsync()`. `promptAsync()` opens an iOS `SFAuthenticationSession` modal via `WebBrowser.openAuthSessionAsync` under the hood. When the parent React Native view tree re-renders or the parent ScrollView re-lays-out during the modal session, the SFAuthenticationSession can fire its dismiss callback prematurely — `promptAsync()` resolves with `type: "cancel"` instead of `"success"`. Our `handleGoogle()` handler treats `cancelled` as a user-initiated dismiss and silently returns (no Alert), which exactly matches the symptom.
+
+The wrapper specifically: `<KeyboardAvoidingView><ScrollView>{children}</ScrollView></KeyboardAvoidingView>`. ScrollView's `flexGrow: 1` content container + `justifyContent: "center"` on a viewport-height container can trigger a brief re-layout when the modal browser presents — that's enough to dismiss the SFAuthenticationSession.
+
+### Notes
+- Why not fix the wrapper instead of dropping it from sign-in: the wrapper itself is correct for screens that need keyboard avoidance. The interaction with `expo-auth-session` is screen-specific. Sign-in has 2 short inputs and a tall stack of OAuth buttons — it's already vertically centered on the viewport, so the password field doesn't need avoidance to stay visible. The other screens (longer forms, more inputs) genuinely benefit. Surgical opt-out beats a global refactor.
+- Server-side Google OAuth was healthy at every probe-able layer during the investigation: NextAuth providers endpoint correct, OAuth start emits well-formed PKCE redirect, Google accepts the redirect_uri, env vars set, DB schema in sync. The failure was 100% client-side and never reached the server — Vercel logs during the user's repro were silent on the Google path, which is itself a clue (no `/api/auth/mobile-callback` POST means promptAsync never produced a token).
+- If anyone re-adds keyboard avoidance to sign-in.tsx in the future without testing the OAuth flow, the symptom will return silently. The block comment in the JSX is the breadcrumb.
+
+---
+
 ## [2026-04-28] — Acquisition funnel instrumentation + new Acquisition admin tab
 
 **Requested by:** Keenan
