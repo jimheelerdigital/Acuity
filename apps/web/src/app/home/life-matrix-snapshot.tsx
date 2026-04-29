@@ -130,11 +130,14 @@ export function LifeMatrixSnapshot({
         <svg
           viewBox={`0 0 ${SIZE} ${SIZE}`}
           className="aspect-square h-auto w-full shrink-0"
-          // Fluid radar: clamp keeps it visually weighty without
-          // dominating a narrow card.
+          // Fluid radar: clamp keeps it weighty without dominating a
+          // narrow card. Cap bumped 360 → 520 (2026-04-29 wide-
+          // desktop polish) so the radar grows on 27"+ external
+          // monitors where the shell expands to 2240px. `clamp` upper
+          // bound matches the maxWidth so the SVG never overshoots.
           style={{
-            maxWidth: "min(360px, 100%)",
-            width: "clamp(240px, 50%, 360px)",
+            maxWidth: "min(520px, 100%)",
+            width: "clamp(240px, 50%, 520px)",
           }}
           aria-hidden="true"
         >

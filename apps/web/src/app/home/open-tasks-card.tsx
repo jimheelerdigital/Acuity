@@ -181,7 +181,11 @@ export function OpenTasksCard({
                   {section.tasks.length}
                 </span>
               </div>
-              <ul className="space-y-2">
+              {/* 2xl: 2-column grid for tasks within each group.
+                  Group headers stay full-width (rendered above) so
+                  section structure stays intact. space-y-0 at 2xl
+                  because gap-2 owns both axes inside the grid. */}
+              <ul className="space-y-2 2xl:grid 2xl:grid-cols-2 2xl:gap-2 2xl:space-y-0">
                 {section.tasks.map((task) => {
                   const isPending = pending.has(task.id);
                   const title = task.title ?? task.text ?? "Untitled task";

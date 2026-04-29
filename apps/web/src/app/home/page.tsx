@@ -186,11 +186,15 @@ export default async function DashboardPage() {
             <StreakSummarySection userId={userId} />
           </Suspense>
 
-          {/* Row 3 — Life Matrix + (Weekly insight stacked over Goals) */}
+          {/* Row 3 — Life Matrix + (Weekly insight stacked over Goals).
+              At 2xl: the right rail becomes sticky so power users
+              scrolling Recent Sessions keep the insight cards in view.
+              `self-start` prevents the column from stretching to row
+              height (which would defeat sticky). */}
           <Suspense fallback={<LifeMatrixSkeleton />}>
             <LifeMatrixSection userId={userId} />
           </Suspense>
-          <div className="flex flex-col gap-6 lg:col-span-5">
+          <div className="flex flex-col gap-6 lg:col-span-5 2xl:sticky 2xl:top-6 2xl:self-start">
             <Suspense fallback={<WeeklyInsightSkeleton />}>
               <WeeklyInsightSection userId={userId} />
             </Suspense>
