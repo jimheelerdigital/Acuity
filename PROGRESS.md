@@ -11,7 +11,7 @@
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** _to be filled by commit_
+**Commit hash:** 8ba9df6
 
 ### In plain English (for Keenan)
 Theme Map (and any other feature gated behind a feature flag — Ask the Past Self, State of Me, goal-progression tree, health correlations, public share links, referral rewards) was throwing 500 errors in production. Pulled the actual exception from Vercel logs:
