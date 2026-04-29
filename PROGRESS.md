@@ -7,6 +7,48 @@
 
 ---
 
+## [2026-04-28] — Auth hardening: AUTH-CRITICAL markers, smoke endpoint, drift test, prebuild gate
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** 7fd52f8
+
+### In plain English (for Keenan)
+After two distinct sign-in regressions hit production within 24 hours (the keyboard-wrapper bug on mobile, the schema-drift bug on web), this is the prevention work that makes a third silent break much harder to ship. The five files that own authentication now carry a giant warning comment listing past regressions and the manual test checklist. We have a new health-check URL we can hit after every deploy that catches the exact pattern that broke us today *before* users hit it. We have a vitest test that runs before every Vercel build — if it fails, the deploy is blocked.
+
+Also bundled the small Life Matrix radar polish that was P2: the chart now scales to fill its card properly instead of looking lost in too much padding.
+
+### Technical changes (for Jimmy)
+- **AUTH-CRITICAL comment blocks** on `apps/web/src/lib/auth.ts`, `apps/web/src/app/auth/signin/page.tsx`, `apps/mobile/app/(auth)/sign-in.tsx`, `apps/mobile/lib/auth.ts`, `apps/mobile/lib/apple-auth.ts`. Each lists past regressions + the manual verification checklist.
+- **New `/api/internal/auth-smoke-test`** (token-gated via `SMOKE_TEST_TOKEN`). 5 health checks: env / schema (`prisma.user.findFirst` — leading indicator for column drift) / google provider / apple JWKS / bcrypt round-trip. Returns 200 with per-check booleans on health, 500 + `errors` object on any failure.
+- **New `apps/web/src/__tests__/auth/bootstrap-user-drift.test.ts`** — 4 vitest cases covering `safeUpdateUserBootstrap`. Mocks Prisma to throw P2022 on missing columns; asserts the helper strips and retries correctly. The exact regression class from this morning.
+- **`prebuild` script** added to `apps/web/package.json` that runs `vitest run --reporter=basic`. Vercel build now gates on tests passing.
+- **Sentry tag** `auth_route="true"` on `events.createUser` exception handler. Project-side alert rule (configured in Sentry dashboard separately) filters on that tag → Slack #launch-alerts.
+- **New docs/AUTH_HARDENING.md** — single source of truth: AUTH-CRITICAL files list, manual checklist, smoke test usage, Sentry rule, regression history, prevention rules.
+- **Status doc** `docs/launch-audit-2026-04-26/11-auth-hardening-shipped.md` — what shipped vs. queued.
+
+P2 also bundled:
+- `apps/web/src/app/home/life-matrix-snapshot.tsx`: radar SVG scales with its container (`w-full max-w-[280px] aspect-square` instead of fixed `240×240`). Card now feels proportional to its peers.
+
+### Manual steps needed
+- [ ] **Jimmy:** generate a smoke token and add to Vercel env (Production + Preview): `openssl rand -hex 32` → `SMOKE_TEST_TOKEN`.
+- [ ] **Jimmy:** smoke-test the endpoint after the next deploy: `curl -s "https://www.getacuity.io/api/internal/auth-smoke-test?token=$SMOKE_TEST_TOKEN" | jq` — expect `{"ok":true, "results":{"env":true,"schema":true,"google":true,"apple":true,"credentials":true}}`.
+- [ ] **Jimmy:** configure the Sentry alert rule (Project → Alerts → "Auth route errors → #launch-alerts"; filter on `tag.auth_route equals "true"`).
+- [ ] **Jimmy:** stand up the Vercel post-deploy hook + Slack webhook worker (separate repo per AUTH_HARDENING.md "Smoke test wiring").
+- [ ] **Jimmy:** schedule the 5 queued integration tests (google-oauth-flow, apple-oauth-flow, credentials-signin, mobile-google-callback, mobile-apple-callback) for a follow-up session. Scaffold + hardest case shipped today.
+
+### What did NOT ship today (and why)
+- 4 of the 5 planned integration tests are queued. Each requires more mocking surface (NextAuth internals for web, JWKS rotation for Apple). The scaffold + the regression-of-the-day are in. Rest is mechanical work for a future session.
+- Vercel post-deploy hook + Slack webhook worker — these are infrastructure-side, not code-side. The endpoint is ready; the wiring is on Jim.
+- Sentry alert rule itself is a dashboard config, not code.
+
+### Notes
+- The `schema` smoke check (`prisma.user.findFirst({})`) is the single most important leading-indicator for the bug class that's bitten us 3 times this month. If schema declares a column the prod DB doesn't have, this `findFirst` throws P2022 — which is exactly what NextAuth's adapter would throw later on real OAuth callbacks. Calling this in a 5min cron means we'd see drift breakage within 5 minutes of a deploy, in Slack, instead of finding out via user reports.
+- The `prebuild` gate is a real safety net but it only catches tests we've written. The bootstrap-user-drift test would have caught today's regression. The 4 queued tests would catch others. They're worth the time.
+- The AUTH-CRITICAL comment blocks are deliberately in the source files (not just docs) because file-edit-time is when the warning actually changes behavior — by the time someone reads docs/AUTH_HARDENING.md, they've usually already broken something.
+
+---
+
 ## [2026-04-28] — Theme Map 500: schema-vs-DB drift on FeatureFlag.experimentVariants
 
 **Requested by:** Jimmy
