@@ -22,6 +22,11 @@
  * User.trialEndsAt - 24h rather than hoursSinceSignup, because the
  * trial length varies (14 / 30 / 3 days depending on Founding Member
  * status + DeletedUser retention). Everything else keys off signup.
+ *
+ * 2026-04-29: Refactored per-user processing into batched step.run()
+ * calls so the function doesn't timeout with growing user counts.
+ * Each batch of 20 users gets its own step.run() with its own 300s
+ * Vercel timeout budget.
  */
 
 import { inngest } from "@/inngest/client";
@@ -59,25 +64,6 @@ function classifyTrack(
   return "STANDARD";
 }
 
-/**
- * Given a user's state, return the single emailKey that's due to send
- * right now. Null = nothing due. Order matters: the orchestrator only
- * sends ONE email per user per tick so a backfilled user (long Inngest
- * outage) catches up one step at a time — natural cadence.
- *
- * Spec details:
- *   - objection_60sec is STANDARD-only; skip if POWER_USER.
- *   - reactivation_* entirely replaces STANDARD once the track flips.
- *   - power_deepen fires on flip regardless of whether any earlier
- *     STANDARD emails already went out; power_referral_tease fires at
- *     day 8 POWER_USER.
- *   - POWER_USER still receives value_recap (day 12) and
- *     trial_ending_day13; other STANDARD emails are suppressed on
- *     POWER_USER per spec.
- *   - weekly_report_checkin fires 24h after the user's FIRST
- *     WeeklyReport.createdAt, not off signup.
- *   - trial_ending_day13 fires when User.trialEndsAt - now() <= 24h.
- */
 function nextEmailForUser(
   user: CandidateUser,
   track: Track,
@@ -86,32 +72,24 @@ function nextEmailForUser(
   const h = hoursSince(user.createdAt, now);
   const has = (k: TrialEmailKey) => user.sentKeys.has(k);
 
-  // Reactivation replaces the STANDARD lane wholesale from 48h on.
   if (track === "REACTIVATION") {
     if (!has("reactivation_friction") && h >= 48) return "reactivation_friction";
     if (!has("reactivation_social") && h >= 24 * 4) return "reactivation_social";
     if (!has("reactivation_final") && h >= 24 * 7) return "reactivation_final";
-    // Reactivation exits after the final email per spec — no further
-    // emails for this user regardless of trial status.
     return null;
   }
 
-  // trial_ending_day13 runs on both STANDARD and POWER_USER.
   if (!has("trial_ending_day13") && user.trialEndsAt) {
     const msUntilEnd = user.trialEndsAt.getTime() - now.getTime();
     const within24h = msUntilEnd <= 24 * 60 * 60 * 1000 && msUntilEnd > -6 * 60 * 60 * 1000;
     if (within24h) return "trial_ending_day13";
   }
 
-  // value_recap runs on both STANDARD and POWER_USER (day 12).
   if (!has("value_recap") && h >= 24 * 12) return "value_recap";
 
   if (track === "POWER_USER") {
     if (!has("power_deepen")) return "power_deepen";
     if (!has("power_referral_tease") && h >= 24 * 8) return "power_referral_tease";
-    // POWER_USER skips objection_60sec, pattern_tease, user_story,
-    // first_debrief_replay, life_matrix_reveal, weekly_report_checkin
-    // per spec ("Everything else is replaced").
     return null;
   }
 
@@ -138,6 +116,8 @@ function nextEmailForUser(
   return null;
 }
 
+const BATCH_SIZE = 20;
+
 export const trialEmailOrchestratorFn = inngest.createFunction(
   {
     id: "trial-email-orchestrator",
@@ -146,14 +126,11 @@ export const trialEmailOrchestratorFn = inngest.createFunction(
     retries: 2,
   },
   async ({ step, logger }) => {
-    const { prisma } = await import("@/lib/prisma");
     const now = new Date();
 
-    // Fetch all users in an active trial. Exclude unsubscribed +
-    // expired-trial users to keep the loop small. NOTE: step.run
-    // serializes via JSON, so Date fields come back as ISO strings —
-    // we rehydrate below before handing to date math.
+    // ── Step 1: Fetch all trial users ─────────────────────────────
     const rawUsers = await step.run("fetch-candidates", async () => {
+      const { prisma } = await import("@/lib/prisma");
       return prisma.user.findMany({
         where: {
           subscriptionStatus: "TRIAL",
@@ -177,7 +154,9 @@ export const trialEmailOrchestratorFn = inngest.createFunction(
       ...u,
       createdAt: new Date(u.createdAt),
       trialEndsAt: u.trialEndsAt ? new Date(u.trialEndsAt) : null,
-      firstRecordingAt: u.firstRecordingAt ? new Date(u.firstRecordingAt) : null,
+      firstRecordingAt: u.firstRecordingAt
+        ? new Date(u.firstRecordingAt)
+        : null,
     }));
 
     safeLog.info("trial-email-orchestrator.tick", {
@@ -185,89 +164,114 @@ export const trialEmailOrchestratorFn = inngest.createFunction(
       ts: now.toISOString(),
     });
 
-    let trackChanges = 0;
-    let sent = 0;
-    let skipped = 0;
+    if (users.length === 0) {
+      return { ts: now.toISOString(), candidates: 0, sent: 0, skipped: 0 };
+    }
 
-    for (const u of users) {
-      try {
-        const hSinceSignup = hoursSince(u.createdAt, now);
-        const computedTrack = classifyTrack(u, hSinceSignup);
+    // ── Step 2+: Process users in batches ─────────────────────────
+    // Each batch gets its own step.run() so it has a fresh timeout
+    // budget. With BATCH_SIZE=20 and ~1s per user, each batch takes
+    // ~20s — well within the 300s Vercel limit.
+    let totalSent = 0;
+    let totalSkipped = 0;
+    let totalTrackChanges = 0;
 
-        // Persist track change if it moved. Monotonic transitions
-        // only: STANDARD → REACTIVATION or STANDARD → POWER_USER.
-        // REACTIVATION and POWER_USER are terminal (a user who
-        // eventually records shouldn't retroactively collect STANDARD
-        // emails — they stay on their branch).
-        if (u.onboardingTrack === "STANDARD" && computedTrack !== "STANDARD") {
-          await prisma.user.update({
-            where: { id: u.id },
-            data: { onboardingTrack: computedTrack },
-          });
-          trackChanges++;
+    const batchCount = Math.ceil(users.length / BATCH_SIZE);
+
+    for (let b = 0; b < batchCount; b++) {
+      const batch = users.slice(b * BATCH_SIZE, (b + 1) * BATCH_SIZE);
+      const batchResult = await step.run(
+        `process-batch-${b}`,
+        async () => {
+          const { prisma } = await import("@/lib/prisma");
+          let sent = 0;
+          let skipped = 0;
+          let trackChanges = 0;
+
+          for (const u of batch) {
+            try {
+              const hSinceSignup = hoursSince(u.createdAt, now);
+              const computedTrack = classifyTrack(u, hSinceSignup);
+
+              if (
+                u.onboardingTrack === "STANDARD" &&
+                computedTrack !== "STANDARD"
+              ) {
+                await prisma.user.update({
+                  where: { id: u.id },
+                  data: { onboardingTrack: computedTrack },
+                });
+                trackChanges++;
+              }
+
+              const effectiveTrack =
+                u.onboardingTrack === "STANDARD"
+                  ? computedTrack
+                  : (u.onboardingTrack as Track);
+
+              const [logs, firstReport] = await Promise.all([
+                prisma.trialEmailLog.findMany({
+                  where: { userId: u.id },
+                  select: { emailKey: true },
+                }),
+                prisma.weeklyReport.findFirst({
+                  where: { userId: u.id, status: "COMPLETE" },
+                  orderBy: { createdAt: "asc" },
+                  select: { createdAt: true },
+                }),
+              ]);
+
+              const sentKeys = new Set<TrialEmailKey>(
+                logs.map((l) => l.emailKey as TrialEmailKey)
+              );
+
+              const candidate: CandidateUser = {
+                id: u.id,
+                createdAt: u.createdAt,
+                trialEndsAt: u.trialEndsAt,
+                firstRecordingAt: u.firstRecordingAt,
+                totalRecordings: u.totalRecordings,
+                onboardingTrack: u.onboardingTrack,
+                onboardingUnsubscribed: u.onboardingUnsubscribed,
+                sentKeys,
+                firstWeeklyReportAt: firstReport?.createdAt ?? null,
+              };
+
+              const nextKey = nextEmailForUser(candidate, effectiveTrack, now);
+              if (!nextKey) {
+                skipped++;
+                continue;
+              }
+
+              const result = await sendTrialEmail(u.id, nextKey);
+              if (result.sent) {
+                sent++;
+              } else {
+                skipped++;
+              }
+            } catch (err) {
+              console.error(
+                "[trial-email-orchestrator] per-user failure (non-fatal)",
+                { userId: u.id, error: err instanceof Error ? err.message : err }
+              );
+            }
+          }
+
+          return { sent, skipped, trackChanges };
         }
+      );
 
-        const effectiveTrack =
-          u.onboardingTrack === "STANDARD" ? computedTrack : (u.onboardingTrack as Track);
-
-        // Pull sent-key set + first-weekly-report timestamp in one go
-        // per user. Could be N+1 but candidate counts are small
-        // during beta (sub-1k active trials); revisit with a joined
-        // fetch if scale warrants.
-        const [logs, firstReport] = await Promise.all([
-          prisma.trialEmailLog.findMany({
-            where: { userId: u.id },
-            select: { emailKey: true },
-          }),
-          prisma.weeklyReport.findFirst({
-            where: { userId: u.id, status: "COMPLETE" },
-            orderBy: { createdAt: "asc" },
-            select: { createdAt: true },
-          }),
-        ]);
-
-        const sentKeys = new Set<TrialEmailKey>(
-          logs.map((l) => l.emailKey as TrialEmailKey)
-        );
-
-        const candidate: CandidateUser = {
-          id: u.id,
-          createdAt: u.createdAt,
-          trialEndsAt: u.trialEndsAt,
-          firstRecordingAt: u.firstRecordingAt,
-          totalRecordings: u.totalRecordings,
-          onboardingTrack: u.onboardingTrack,
-          onboardingUnsubscribed: u.onboardingUnsubscribed,
-          sentKeys,
-          firstWeeklyReportAt: firstReport?.createdAt ?? null,
-        };
-
-        const nextKey = nextEmailForUser(candidate, effectiveTrack, now);
-        if (!nextKey) {
-          skipped++;
-          continue;
-        }
-
-        const result = await sendTrialEmail(u.id, nextKey);
-        if (result.sent) {
-          sent++;
-        } else {
-          skipped++;
-        }
-      } catch (err) {
-        logger.error(
-          "[trial-email-orchestrator] per-user failure (non-fatal)",
-          { err, userId: u.id }
-        );
-      }
+      totalSent += batchResult.sent;
+      totalSkipped += batchResult.skipped;
+      totalTrackChanges += batchResult.trackChanges;
     }
 
     return {
       ts: now.toISOString(),
       candidates: users.length,
-      trackChanges,
-      sent,
-      skipped,
+      trackChanges: totalTrackChanges,
+      sent: totalSent,
+      skipped: totalSkipped,
     };
   }
 );
