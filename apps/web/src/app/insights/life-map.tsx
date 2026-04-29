@@ -441,7 +441,7 @@ function RadarChart({
           extra-radial offset don't clip on the long names ("Personal
           Growth", "Relationships"). 30px horizontal margin per side,
           10px vertical. */}
-      <svg viewBox="-30 -10 360 320" className="w-full max-w-[420px] h-auto">
+      <svg viewBox="-30 -10 360 320" className="w-full max-w-[420px] 2xl:max-w-[640px] h-auto">
         {/* Grid rings — outermost ring slightly stronger than the
             inner three so the chart's outer boundary is clear without
             competing with the data polygon. Class-based strokes scale
