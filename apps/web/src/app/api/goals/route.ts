@@ -28,9 +28,26 @@ export async function GET(req: NextRequest) {
 
   const { prisma } = await import("@/lib/prisma");
 
+  // Explicit select — drop progressNotes (Json[]), entryRefs (String[]),
+  // notes (text), treePath (string), depth, editedByUser, parentGoalId.
+  // The list/board UI consumes only the surfaced fields. /api/goals/[id]
+  // returns the full row for detail views. Saves ~5-50KB per goal on
+  // accounts with detailed progress notes; bigger reduction for power
+  // users with deep histories.
   const goals = await prisma.goal.findMany({
     where: { userId },
     orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      lifeArea: true,
+      status: true,
+      progress: true,
+      targetDate: true,
+      lastMentionedAt: true,
+      createdAt: true,
+    },
   });
 
   return NextResponse.json({ goals });

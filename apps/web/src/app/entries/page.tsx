@@ -24,11 +24,31 @@ export default async function EntriesPage() {
   if (!session?.user?.id) redirect("/auth/signin?callbackUrl=/entries");
 
   const { prisma } = await import("@/lib/prisma");
+  // Explicit select drops `embedding` (1536-float array, ~6KB/row) and
+  // `rawAnalysis` (Json) which the list never reads. Transcript stays
+  // because EntriesList's search filter scans transcript text. For 100
+  // rows, this saves roughly 600KB-1MB on every /entries load.
   const entries = await prisma.entry.findMany({
     where: { userId: session.user.id },
     orderBy: { createdAt: "desc" },
     take: 100,
-    include: {
+    select: {
+      id: true,
+      summary: true,
+      transcript: true,
+      themes: true,
+      // wins + blockers required by the EntryCard prop type. Cheap
+      // (small string arrays); keep until EntryCardProps is narrowed.
+      wins: true,
+      blockers: true,
+      mood: true,
+      moodScore: true,
+      energy: true,
+      status: true,
+      duration: true,
+      audioDuration: true,
+      createdAt: true,
+      entryDate: true,
       _count: { select: { tasks: true } },
     },
   });

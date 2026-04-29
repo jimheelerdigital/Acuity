@@ -417,6 +417,11 @@ model Entry {
   themeMentions ThemeMention[]
 
   @@index([userId, createdAt])
+  // Composite for /api/entries-style queries that filter on status
+  // alongside userId. Pre-2026-04-28 these forced an index scan +
+  // Filter rather than direct lookup. Hot path on dashboard +
+  // entries list. Audit item #6.
+  @@index([userId, status, createdAt])
   @@index([goalId])
 }
 
@@ -470,6 +475,10 @@ model Task {
   createdAt    DateTime  @default(now())
 
   @@index([goalId])
+  // Hot path: /api/tasks GET filters `status: { not: "DONE" }` and
+  // /home Open Tasks filters `status: { in: [...] }`. Both
+  // benefit from a userId+status composite index. Audit item #6.
+  @@index([userId, status])
 }
 
 model Goal {

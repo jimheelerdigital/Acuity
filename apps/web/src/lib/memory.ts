@@ -140,13 +140,27 @@ export async function updateUserMemory(
     },
   });
 
-  // Compress memory every 10 entries
+  // Compress memory every 10 entries — dispatched via Inngest so the
+  // Claude synthesis call doesn't block the recording-completion
+  // response. Pre-2026-04-28 this awaited compressMemory inline and
+  // added 5-20s to every 10th recording's response time. Audit item
+  // #1 from the perf+polish pass.
   const newTotal = memory.totalEntries + 1;
   if (newTotal % 10 === 0) {
     try {
-      await compressMemory(userId);
+      const { inngest } = await import("@/inngest/client");
+      await inngest.send({
+        name: "memory/compress",
+        data: { userId },
+      });
     } catch (err) {
-      console.error("[memory] compressMemory failed (non-fatal):", err);
+      // Dispatch failure is non-fatal; the compression will run on
+      // the next 10-multiple. Log so we notice if every dispatch is
+      // failing (would suggest a broken Inngest config).
+      console.error(
+        "[memory] inngest dispatch for memory/compress failed (non-fatal):",
+        err
+      );
     }
   }
 }

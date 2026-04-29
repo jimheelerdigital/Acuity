@@ -110,6 +110,13 @@ export async function GET(req: NextRequest) {
     mentionsFilter.createdAt.gte = windowStart;
   }
 
+  // Cap at 1000 mentions to bound CPU/memory on power users. The
+  // dashboard radar reads top-MAX_THEMES (typically 8-12) and
+  // sparkline + recent-entry projections for each — 1000 mentions is
+  // ~125 per theme on average, more than enough for both. Without
+  // this cap, users with thousands of historical mentions blew the
+  // route past 5s and caused 500 timeouts (2026-04-28 audit item #2).
+  const MAX_MENTIONS = 1000;
   const mentions = await prisma.themeMention.findMany({
     where: mentionsFilter,
     select: {
@@ -125,6 +132,7 @@ export async function GET(req: NextRequest) {
       },
     },
     orderBy: { createdAt: "desc" },
+    take: MAX_MENTIONS,
   });
 
   if (mentions.length === 0) {
@@ -161,8 +169,23 @@ export async function GET(req: NextRequest) {
   // contribute to the final coOccurrences list.
   const entryToThemes = new Map<string, Set<string>>();
 
+  // themeId → mentions[] (kept in createdAt-desc order to match the
+  // input findMany sort). Built ONCE during the aggregation loop so
+  // downstream per-theme projections (recentEntries, sparkline,
+  // themeEntriesAsc) iterate ONLY their own mentions rather than the
+  // full mentions array. Removes the O(themes × mentions) scan that
+  // pegged this route at 5-15s for power users.
+  const mentionsByTheme = new Map<string, typeof mentions>();
+
   for (const m of mentions) {
     entryIdSet.add(m.entryId);
+
+    const themeMentions = mentionsByTheme.get(m.themeId);
+    if (themeMentions) {
+      themeMentions.push(m);
+    } else {
+      mentionsByTheme.set(m.themeId, [m]);
+    }
     const existing = byTheme.get(m.themeId);
     const score = SENTIMENT_TO_SCORE[m.sentiment] ?? 0;
     if (existing) {
@@ -243,8 +266,8 @@ export async function GET(req: NextRequest) {
     // an ordered structure; easier to re-derive via a recent-first
     // scan of the mentions array.
     const seen: string[] = [];
-    for (const m of mentions) {
-      if (m.themeId !== theme.id) continue;
+    const themeMentions = mentionsByTheme.get(theme.id) ?? [];
+    for (const m of themeMentions) {
       if (seen.includes(m.entryId)) continue;
       seen.push(m.entryId);
       recentEntryIds.add(m.entryId);
@@ -309,8 +332,8 @@ export async function GET(req: NextRequest) {
         excerpt: string;
       }
     >();
-    for (const m of mentions) {
-      if (m.themeId !== t.id) continue;
+    const tMentions = mentionsByTheme.get(t.id) ?? [];
+    for (const m of tMentions) {
       if (perEntry.has(m.entryId)) continue;
       const entry = entryMap.get(m.entryId);
       if (!entry) continue;
@@ -360,8 +383,7 @@ export async function GET(req: NextRequest) {
     // timestamp. Mood is Entry.moodScore (1-10); null gets coerced to 5
     // (neutral baseline) so every entry has a defined y-position.
     const themeEntriesAsc: { id: string; timestamp: string; mood: number }[] = [];
-    for (const m of mentions) {
-      if (m.themeId !== t.id) continue;
+    for (const m of tMentions) {
       if (themeEntriesAsc.find((e) => e.id === m.entryId)) continue;
       const entry = entryMap.get(m.entryId);
       if (!entry) continue;

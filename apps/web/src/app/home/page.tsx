@@ -360,6 +360,11 @@ async function fetchEntries(userId: string) {
       summary: true,
       createdAt: true,
       themes: true,
+      // wins + blockers are required by the EntryCard prop type even
+      // though the current render doesn't surface them. Cheap (small
+      // string arrays); keep until EntryCardProps is narrowed.
+      wins: true,
+      blockers: true,
       mood: true,
       energy: true,
       status: true,

@@ -44,6 +44,10 @@ export async function GET(req: NextRequest) {
     ? undefined
     : { not: "ARCHIVED" as const };
 
+  // Task select narrowed — drop entry relation + heavy text fields
+  // the tree UI doesn't read. Goal stays full-row because
+  // buildGoalForest's signature expects the full Prisma Goal type
+  // (would need a separate refactor to narrow that).
   const [goals, tasks, pendingCount] = await Promise.all([
     prisma.goal.findMany({
       where: {
@@ -53,6 +57,16 @@ export async function GET(req: NextRequest) {
     }),
     prisma.task.findMany({
       where: { userId, goalId: { not: null } },
+      select: {
+        id: true,
+        title: true,
+        text: true,
+        status: true,
+        priority: true,
+        dueDate: true,
+        completedAt: true,
+        goalId: true,
+      },
     }),
     prisma.goalSuggestion.count({
       where: { userId, status: "PENDING" },
@@ -67,7 +81,14 @@ export async function GET(req: NextRequest) {
     else tasksByGoal.set(t.goalId, [t]);
   }
 
-  const roots = buildGoalForest(goals, tasksByGoal);
+  // buildGoalForest only reads task[].length — the narrowed select is
+  // safe at runtime. Cast to satisfy the typed signature (alternative:
+  // widen the signature in lib/goals.ts; out of scope for this perf
+  // pass).
+  const roots = buildGoalForest(
+    goals,
+    tasksByGoal as Parameters<typeof buildGoalForest>[1]
+  );
 
   return NextResponse.json({
     roots,

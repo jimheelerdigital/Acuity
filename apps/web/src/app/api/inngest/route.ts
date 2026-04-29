@@ -20,6 +20,7 @@ import {
 import { monthlyDigestFn } from "@/inngest/functions/monthly-digest";
 import { refreshLifeMapFn } from "@/inngest/functions/refresh-lifemap";
 import { cleanupGenerationJobsFn } from "@/inngest/functions/cleanup-generation-jobs";
+import { compressMemoryFn } from "@/inngest/functions/compress-memory";
 import { snapshotLifemapHistoryFn } from "@/inngest/functions/snapshot-lifemap-history";
 import { computeDailySnapshotFn } from "@/inngest/functions/compute-daily-snapshot";
 import { scanRedFlagsFn } from "@/inngest/functions/scan-red-flags";
@@ -53,6 +54,7 @@ const handler = serve({
     monthlyDigestFn,
     generateDataExportFn,
     cleanupGenerationJobsFn,
+    compressMemoryFn,
     computeDailySnapshotFn,
     scanRedFlagsFn,
     generateStateOfMeFn,
