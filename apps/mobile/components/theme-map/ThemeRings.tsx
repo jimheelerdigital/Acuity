@@ -303,89 +303,76 @@ export function ThemeRings({
         </Text>
       </View>
 
-      {/* Rank list — redesigned 2026-04-28 (third iteration). Previous
-          versions wrapped on real devices because of flex/gap math
-          competing across 5 children. New layout uses just THREE
-          explicit columns:
-            [44px left rail: dot stacked on top of "01"] · [flex name] · [right meta: count + chevron, intrinsic width]
-          The middle column is the only flexible one and its single
-          Text child has flexShrink + numberOfLines so it always
-          truncates, never pushes the row. ChevronRight is grouped
-          inside the count's row so RN never lays them as separate
-          flex peers. */}
-      <View style={{ borderTopWidth: 0.5, borderTopColor: "rgba(255,255,255,0.06)", paddingTop: 8 }}>
+      {/* Rank list — 4th iteration (2026-04-28).
+       *
+       * The screenshot revealed why the 3-column flex layout still
+       * wrapped: the OUTER card here is itself nested two levels deep
+       * (theme-map screen padding → ThemeRings card padding → rank
+       * row), leaving ~280px of inner width on a 390-wide phone.
+       * With a 22px count + chevron + dot + rank-number competing
+       * against a `flex: 1` name in 280px, RN's flex resolver
+       * sometimes pushes children to new visual lines.
+       *
+       * New approach: drop flex contention entirely. Each row is
+       * TWO blocks:
+       *   [Left] absolutely-anchored bullet stack — colored bar +
+       *          rank number. Drawn outside the row's text flow so
+       *          the text never has to compete with it.
+       *   [Right] paddingLeft offset that exactly clears the bullet,
+       *          then a single horizontal Text row: name (flex 1
+       *          truncating) + count + chevron, with strict widths.
+       *
+       * On any phone width, the right block has full available
+       * inner width minus the bullet's 28px gutter. Wrap is
+       * mathematically impossible — name truncates with ellipsis
+       * before count or chevron lose their slot.
+       */}
+      <View
+        style={{
+          marginTop: 4,
+          borderTopWidth: 0.5,
+          borderTopColor: "rgba(255,255,255,0.06)",
+          paddingTop: 4,
+        }}
+      >
         {rings.map((t, i) => {
           const p = SLOT_PALETTE[i];
+          const isLast = i === rings.length - 1;
           return (
             <Pressable
               key={`rank-${t.id}`}
               onPress={onTap ? () => onTap(t.id) : undefined}
               style={({ pressed }) => ({
-                flexDirection: "row",
-                alignItems: "center",
-                paddingVertical: 14,
-                paddingHorizontal: 4,
-                borderTopWidth: i === 0 ? 0 : 0.5,
-                borderTopColor: "rgba(255,255,255,0.05)",
+                position: "relative",
+                paddingVertical: 16,
+                paddingLeft: 28,
+                paddingRight: 4,
+                borderBottomWidth: isLast ? 0 : 0.5,
+                borderBottomColor: "rgba(255,255,255,0.05)",
                 backgroundColor: pressed ? "rgba(255,255,255,0.04)" : "transparent",
               })}
             >
-              {/* Left rail: dot above rank number, both centered in a
-                  fixed-width column. Stacking them vertically frees up
-                  horizontal space for the name. */}
+              {/* Color bar — vertical accent at the very left. Reads
+                  as a "rank stripe" and removes the dot from the
+                  inline flow, so it can never push siblings. */}
               <View
                 style={{
-                  width: 32,
-                  alignItems: "center",
-                  justifyContent: "center",
+                  position: "absolute",
+                  left: 4,
+                  top: "50%",
+                  transform: [{ translateY: -10 }],
+                  width: 3,
+                  height: 20,
+                  borderRadius: 2,
+                  backgroundColor: p.solid,
+                  shadowColor: p.solid,
+                  shadowOpacity: 0.7,
+                  shadowRadius: 6,
+                  shadowOffset: { width: 0, height: 0 },
                 }}
-              >
-                <View
-                  style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: 999,
-                    backgroundColor: p.solid,
-                    shadowColor: p.solid,
-                    shadowOpacity: 1,
-                    shadowRadius: 6,
-                    shadowOffset: { width: 0, height: 0 },
-                    marginBottom: 4,
-                  }}
-                />
-                <Text
-                  style={{
-                    fontSize: 11,
-                    fontWeight: "600",
-                    color: "rgba(168,168,180,0.55)",
-                    letterSpacing: 0.5,
-                  }}
-                >
-                  {String(i + 1).padStart(2, "0")}
-                </Text>
-              </View>
+              />
 
-              {/* Middle: theme name fills remaining width and truncates. */}
-              <Text
-                numberOfLines={1}
-                ellipsizeMode="tail"
-                style={{
-                  flex: 1,
-                  flexShrink: 1,
-                  minWidth: 0,
-                  fontSize: 17,
-                  fontWeight: "500",
-                  color: TEXT.primary,
-                  letterSpacing: -0.1,
-                  marginLeft: 12,
-                  marginRight: 8,
-                }}
-              >
-                {capitalize(t.name)}
-              </Text>
-
-              {/* Right: count + chevron grouped so they're a single
-                  flex child, not two competing peers. */}
+              {/* Single inline row: rank · name (truncates) · count · chevron. */}
               <View
                 style={{
                   flexDirection: "row",
@@ -394,12 +381,40 @@ export function ThemeRings({
               >
                 <Text
                   style={{
-                    fontSize: 22,
+                    fontSize: 12,
+                    fontWeight: "700",
+                    color: "rgba(168,168,180,0.55)",
+                    letterSpacing: 1,
+                    width: 22,
+                    marginRight: 10,
+                  }}
+                >
+                  {String(i + 1).padStart(2, "0")}
+                </Text>
+                <Text
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                  style={{
+                    flex: 1,
+                    flexShrink: 1,
+                    minWidth: 0,
+                    fontSize: 18,
                     fontWeight: "500",
-                    color: "rgba(255,255,255,0.9)",
-                    letterSpacing: -0.4,
+                    color: TEXT.primary,
+                    letterSpacing: -0.2,
+                    marginRight: 8,
+                  }}
+                >
+                  {capitalize(t.name)}
+                </Text>
+                <Text
+                  style={{
+                    fontSize: 24,
+                    fontWeight: "600",
+                    color: "rgba(255,255,255,0.92)",
+                    letterSpacing: -0.5,
                     textAlign: "right",
-                    minWidth: 28,
+                    minWidth: 32,
                     marginRight: 6,
                   }}
                 >
