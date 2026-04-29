@@ -91,13 +91,21 @@ export function LifeMatrixSnapshot({
     .join(" ");
 
   return (
-    <section className="flex h-full flex-col rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-[#1E1E2E]">
+    <section className="flex h-full flex-col rounded-2xl border border-zinc-200 bg-white p-7 shadow-sm dark:border-white/10 dark:bg-[#1E1E2E]">
+      {/* Header — eyebrow + headline. Bumped 2026-04-28 from text-xs/
+          text-base to text-[13px]/text-2xl after a designer review
+          flagged the previous header as visually weaker than the
+          radar+legend cluster below. The card is the dashboard's
+          biggest tile; its title should read like one. */}
       <div className="flex items-baseline justify-between">
         <div>
-          <h2 className="text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
+          <h2
+            className="font-semibold uppercase text-zinc-400 dark:text-zinc-500"
+            style={{ fontSize: 13, letterSpacing: "0.18em" }}
+          >
             Life Matrix
           </h2>
-          <p className="mt-1 text-base font-semibold text-zinc-900 dark:text-zinc-50">
+          <p className="mt-2 text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
             {isEmpty
               ? "Your life, scoring up"
               : "Where you are right now"}
@@ -105,14 +113,17 @@ export function LifeMatrixSnapshot({
         </div>
       </div>
 
-      <div className="mt-6 flex flex-1 flex-col items-center justify-center gap-8 lg:flex-row lg:items-center lg:justify-center lg:gap-14">
+      {/* Cluster: radar on left, stat list on right. Switched lg
+          alignment from justify-center (which centered the cluster
+          and left ~80px of empty card-edge space on each side) to
+          justify-between so the radar sits on the left edge and the
+          stat list extends to the right edge — numbers naturally
+          inset by the card's p-7 instead of hugging an arbitrary
+          280px column edge. */}
+      <div className="mt-7 flex flex-1 flex-col items-center justify-center gap-10 lg:flex-row lg:items-center lg:justify-between lg:gap-12">
         <svg
           viewBox={`0 0 ${SIZE} ${SIZE}`}
-          // Radar capped at 380px on lg+ so it has visual headroom
-          // alongside the constrained 280px legend column without
-          // either touching its respective card edge. The cluster
-          // is centered as a unit via justify-center on the row.
-          className="aspect-square h-auto w-full max-w-[420px] shrink-0 lg:max-w-[380px]"
+          className="aspect-square h-auto w-full max-w-[420px] shrink-0 lg:max-w-[360px]"
           aria-hidden="true"
         >
           {/* Concentric guide rings — three at 33%/66%/100% radius.
@@ -185,15 +196,19 @@ export function LifeMatrixSnapshot({
             })}
         </svg>
 
-        <div className="w-full max-w-[280px]">
+        {/* Right column. max-w-md gives stat rows a comfortable
+            440px lane that pairs with the 360px radar inside the
+            card without either side cramping. The empty-state copy
+            sits at the same width — same vertical rhythm. */}
+        <div className="w-full max-w-md">
           {isEmpty ? (
             <div>
-              <p className="text-sm text-zinc-600 dark:text-zinc-300">
+              <p className="text-base leading-relaxed text-zinc-600 dark:text-zinc-300">
                 Your six life areas — career, health, relationships,
                 finances, personal growth, other — get a score as
                 Acuity sees signal across your debriefs.
               </p>
-              <div className="mt-4 flex items-center gap-3">
+              <div className="mt-5 flex items-center gap-3">
                 <div className="h-1.5 flex-1 rounded-full bg-zinc-100 dark:bg-white/10">
                   <div
                     className="h-1.5 rounded-full bg-violet-500"
@@ -202,35 +217,34 @@ export function LifeMatrixSnapshot({
                     }}
                   />
                 </div>
-                <span className="text-xs font-medium tabular-nums text-zinc-500 dark:text-zinc-400">
+                <span className="text-sm font-medium tabular-nums text-zinc-500 dark:text-zinc-400">
                   {entryCount} / {ENTRIES_REQUIRED}
                 </span>
               </div>
-              <p className="mt-2 text-xs text-zinc-400 dark:text-zinc-500">
+              <p className="mt-2.5 text-sm text-zinc-400 dark:text-zinc-500">
                 {ENTRIES_REQUIRED - entryCount === 1
                   ? "1 more entry to unlock."
                   : `${Math.max(0, ENTRIES_REQUIRED - entryCount)} more entries to unlock.`}
               </p>
             </div>
           ) : (
-            // Stat-list layout. The legend is constrained to a
-            // 280px column (set on the parent), so the score values
-            // sit a comfortable ~20px from the card-edge instead of
-            // hugging it. Three-part row:
-            //   - canonical-color dot (10px)
-            //   - area name, label-weight (text-sm zinc-300)
-            //   - score, value-weight (text-base semibold zinc-50,
-            //     tabular-nums for vertical-align across rows)
-            // Hairline bottom border on every row except the last
-            // gives the list quiet structure — financial-app stat
-            // rhythm rather than a wash of gap. Border opacity is
-            // intentionally subtle (white/[0.06]) so it reads as
-            // separator, not divider.
+            // Stat-list — bumped 2026-04-28. Previous version used
+            // 14px names + 16px scores in a 280px column; numbers
+            // felt timid for the dashboard's biggest tile and the
+            // narrow column made everything cluster against an
+            // arbitrary mid-card edge. New row:
+            //   - 11px canonical-color dot
+            //   - 17px area name, font-medium label tier
+            //   - 28px score, font-semibold value tier with
+            //     tracking-tight + tabular-nums for column alignment
+            // Row pad py-3.5 (was py-2.5) — gives each datum its
+            // own breathing space. Hairline border keeps the
+            // financial-stat-list rhythm.
             <ul className="flex flex-col">
               {ordered.map((a, i) => (
                 <li
                   key={a.enum}
-                  className={`flex items-center gap-3 py-2.5 ${
+                  className={`flex items-center gap-4 py-3.5 ${
                     i < ordered.length - 1
                       ? "border-b border-zinc-200/60 dark:border-white/[0.06]"
                       : ""
@@ -239,12 +253,22 @@ export function LifeMatrixSnapshot({
                   <span
                     aria-hidden="true"
                     className="h-2.5 w-2.5 shrink-0 rounded-full"
-                    style={{ backgroundColor: a.color }}
+                    style={{
+                      backgroundColor: a.color,
+                      boxShadow: `0 0 8px ${a.color}55`,
+                    }}
                   />
-                  <span className="flex-1 truncate text-sm text-zinc-600 dark:text-zinc-300">
+                  <span className="flex-1 truncate text-[17px] font-medium text-zinc-600 dark:text-zinc-200">
                     {a.name}
                   </span>
-                  <span className="text-base font-semibold tabular-nums text-zinc-900 dark:text-zinc-50">
+                  <span
+                    className="font-semibold tabular-nums text-zinc-900 dark:text-zinc-50"
+                    style={{
+                      fontSize: 28,
+                      letterSpacing: "-0.6px",
+                      lineHeight: 1,
+                    }}
+                  >
                     {Math.round(a.score * 10)}
                   </span>
                 </li>
@@ -254,15 +278,15 @@ export function LifeMatrixSnapshot({
         </div>
       </div>
 
-      <div className="mt-5 border-t border-zinc-100 pt-4 dark:border-white/5">
+      <div className="mt-6 border-t border-zinc-100 pt-5 dark:border-white/5">
         <Link
           href="/life-matrix"
-          className="inline-flex items-center gap-1 text-sm font-semibold text-violet-600 transition hover:text-violet-500 dark:text-violet-400"
+          className="inline-flex items-center gap-1.5 text-[15px] font-semibold text-violet-600 transition hover:text-violet-500 dark:text-violet-400"
         >
           See full Life Matrix
           <svg
-            width="14"
-            height="14"
+            width="16"
+            height="16"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
