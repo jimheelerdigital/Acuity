@@ -530,15 +530,35 @@ const GroupSection = memo(function GroupSection({
     <View>
       <Pressable
         onPress={() => onToggle(group.id)}
-        className="flex-row items-center justify-between px-4 py-2 mt-2 mb-0.5 bg-zinc-50 dark:bg-[#13131F]"
+        // Stronger group separator (2026-04-28): bumped vertical pad
+        // 8 → 14, added a top hairline and a bottom accent in the
+        // group's color so each section reads as its own block. Was
+        // a flat strip that blended into the rows below.
+        style={{
+          marginTop: 16,
+          marginBottom: 6,
+          paddingHorizontal: 16,
+          paddingVertical: 10,
+          borderTopWidth: 0.5,
+          borderTopColor: "rgba(161,161,170,0.18)",
+          borderBottomWidth: 1,
+          borderBottomColor: `${group.color}33`,
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
       >
-        <View className="flex-row items-center gap-2">
+        <View className="flex-row items-center gap-2.5">
           <View
             style={{
-              width: 8,
-              height: 8,
-              borderRadius: 4,
+              width: 9,
+              height: 9,
+              borderRadius: 999,
               backgroundColor: group.color,
+              shadowColor: group.color,
+              shadowOpacity: 0.6,
+              shadowRadius: 6,
+              shadowOffset: { width: 0, height: 0 },
             }}
           />
           <Ionicons
@@ -546,16 +566,24 @@ const GroupSection = memo(function GroupSection({
             size={14}
             color={group.color}
           />
-          <Text className="text-xs font-semibold uppercase tracking-wider text-zinc-600 dark:text-zinc-300">
+          <Text
+            style={{
+              fontSize: 13,
+              fontWeight: "700",
+              letterSpacing: 1.6,
+              textTransform: "uppercase",
+              color: "#E4E4E7",
+            }}
+          >
             {group.name}
           </Text>
-          <Text className="text-xs text-zinc-400 dark:text-zinc-500">
+          <Text style={{ fontSize: 13, color: "rgba(168,168,180,0.6)", fontWeight: "500" }}>
             {tasks.length}
           </Text>
         </View>
         <Ionicons
           name={collapsed ? "chevron-forward" : "chevron-down"}
-          size={14}
+          size={16}
           color="#A1A1AA"
         />
       </Pressable>

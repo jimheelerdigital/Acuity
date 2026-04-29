@@ -60,11 +60,21 @@ export function GoalsSnapshotCard({
           to accept.
         </p>
       ) : (
-        <ul className="mt-6 space-y-4">
-          {goals.map((g) => {
+        // Hairline separator between rows so the list reads as a
+        // structured stat block, not three loose stripes.
+        <ul className="mt-5 flex flex-col">
+          {goals.map((g, i) => {
             const progress = Math.max(0, Math.min(100, g.progress));
+            const isLast = i === goals.length - 1;
             return (
-              <li key={g.id}>
+              <li
+                key={g.id}
+                className={`py-4 ${
+                  isLast
+                    ? ""
+                    : "border-b border-zinc-200/60 dark:border-white/[0.06]"
+                }`}
+              >
                 <div className="flex items-baseline justify-between gap-3">
                   <p className="flex-1 truncate text-[15px] font-medium text-zinc-800 dark:text-zinc-100">
                     {g.title}

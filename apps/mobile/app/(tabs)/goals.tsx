@@ -599,9 +599,24 @@ export default function GoalsTab() {
               const collapsed = collapsedGroups.has(group.id);
               return (
                 <View key={group.id}>
+                  {/* Stronger group header (2026-04-28): hairline
+                      top + colored bottom underline so each section
+                      reads as its own block. Eyebrow bumped 11px →
+                      13px / tracking 1.6 to match the dashboard's
+                      shared eyebrow rhythm. */}
                   <Pressable
                     onPress={() => toggleGroupCollapse(group.id)}
-                    className="flex-row items-center gap-3 mb-4"
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 10,
+                      paddingVertical: 10,
+                      marginBottom: 12,
+                      borderTopWidth: 0.5,
+                      borderTopColor: "rgba(161,161,170,0.18)",
+                      borderBottomWidth: 1,
+                      borderBottomColor: `${group.color}33`,
+                    }}
                   >
                     <View
                       style={{
@@ -616,12 +631,23 @@ export default function GoalsTab() {
                       <GoalGroupIcon name={group.icon} color={group.color} />
                     </View>
                     <Text
-                      style={{ letterSpacing: 1 }}
-                      className="text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400"
+                      style={{
+                        fontSize: 13,
+                        fontWeight: "700",
+                        letterSpacing: 1.6,
+                        textTransform: "uppercase",
+                        color: "#E4E4E7",
+                      }}
                     >
                       {group.label}
                     </Text>
-                    <Text className="text-xs font-medium text-zinc-400 dark:text-zinc-500">
+                    <Text
+                      style={{
+                        fontSize: 13,
+                        fontWeight: "500",
+                        color: "rgba(168,168,180,0.6)",
+                      }}
+                    >
                       {goals.length}
                     </Text>
                     <View style={{ flex: 1 }} />

@@ -99,8 +99,9 @@ export default async function DashboardPage() {
   let totalEntryCount = 0;
   let snapshotGoals: SnapshotGoal[] = [];
   let topThemes: Array<{ name: string; count: number }> = [];
+  let taskGroups: { id: string; name: string; color: string; order: number }[] = [];
   try {
-    [entries, tasks, lifemapAreas, weeklyReport, totalEntryCount, snapshotGoals, topThemes] =
+    [entries, tasks, lifemapAreas, weeklyReport, totalEntryCount, snapshotGoals, topThemes, taskGroups] =
       await Promise.all([
         fetchEntries(userId),
         prisma.task.findMany({
@@ -120,6 +121,13 @@ export default async function DashboardPage() {
         // card's empty state ("what you've reflected on") so the
         // card carries signal before the first report drops.
         fetchTopThemes(userId),
+        // Task groups for the Open Tasks card so it can render
+        // WORK / PERSONAL / etc. headers like the /tasks page does.
+        prisma.taskGroup.findMany({
+          where: { userId },
+          select: { id: true, name: true, color: true, order: true },
+          orderBy: { order: "asc" },
+        }),
       ]);
   } catch (err) {
     console.error("[dashboard] Failed to load data:", err);
@@ -291,31 +299,46 @@ export default async function DashboardPage() {
           </div>
 
           {/* Row 4 — CONTEXT TIER. Recent sessions + Open tasks split
-              50/50. Both cards use `h-full` so whichever is shorter
-              stretches to match the taller — bottom edges line up via
-              grid stretching, no flex-1 tricks. */}
-          <section className="flex h-full flex-col lg:col-span-6 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-[#1E1E2E]">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
-                Recent sessions
-              </h2>
+              50/50. Both cards use the dashboard-wide header pair
+              (eyebrow 13px / title 24px tracking-tight), p-7 padding,
+              and `h-full` so whichever is shorter stretches to match
+              the taller. */}
+          <section className="flex h-full flex-col lg:col-span-6 rounded-2xl border border-zinc-200 bg-white p-7 shadow-sm dark:border-white/10 dark:bg-[#1E1E2E]">
+            <div className="flex items-baseline justify-between gap-3">
+              <div>
+                <h2
+                  className="font-semibold uppercase text-zinc-400 dark:text-zinc-500"
+                  style={{ fontSize: 13, letterSpacing: "0.18em" }}
+                >
+                  Recent sessions
+                </h2>
+                <p className="mt-2 text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+                  {entries.length === 0
+                    ? "Nothing recorded yet"
+                    : entries.length === 1
+                      ? "1 entry this week"
+                      : `${entries.length} ${entries.length === 1 ? "entry" : "entries"} this week`}
+                </p>
+              </div>
               {entries.length > HOME_ENTRY_LIMIT && (
                 <Link
                   href="/entries"
-                  className="text-xs font-medium text-violet-600 hover:text-violet-500 dark:text-violet-400"
+                  className="shrink-0 text-[15px] font-semibold text-violet-600 hover:text-violet-500 dark:text-violet-400"
                 >
                   View all →
                 </Link>
               )}
             </div>
             {entries.length === 0 ? (
-              <EmptyState
-                icon="🎙️"
-                title="No entries yet"
-                description="Hit the record button and speak your mind."
-              />
+              <div className="mt-6">
+                <EmptyState
+                  icon="🎙️"
+                  title="No entries yet"
+                  description="Hit the record button and speak your mind."
+                />
+              </div>
             ) : (
-              <div className="space-y-3">
+              <div className="mt-6 space-y-3">
                 {entries.slice(0, HOME_ENTRY_LIMIT).map((e) => (
                   <EntryCard
                     key={e.id}
@@ -334,7 +357,9 @@ export default async function DashboardPage() {
               text: t.text,
               status: t.status,
               priority: t.priority,
+              groupId: t.groupId ?? null,
             }))}
+            groups={taskGroups}
           />
         </div>
       </PageContainer>
