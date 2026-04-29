@@ -1147,6 +1147,12 @@ export function LandingPage() {
       <section className="relative pt-36 pb-0 sm:pt-44 sm:pb-0 lg:pb-10 overflow-hidden">
         <ParallaxOrbs />
 
+        {/* Mobile ambient glow — lightweight CSS-only, no mouse tracking */}
+        <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden sm:hidden">
+          <div className="absolute top-16 left-1/2 -translate-x-1/2 h-[300px] w-[300px] rounded-full bg-violet-600/15 blur-[80px] animate-pulse-slow" />
+          <div className="absolute top-32 left-[20%] h-[200px] w-[200px] rounded-full bg-indigo-500/10 blur-[80px] animate-blob-drift" />
+        </div>
+
         <div className="relative mx-auto max-w-7xl px-6">
           <div className="flex flex-col lg:flex-row lg:items-center lg:gap-10">
             {/* Left content — center on mobile, left on desktop */}
@@ -1164,7 +1170,26 @@ export function LandingPage() {
                 </p>
               </Reveal>
 
-              {/* CTA — hidden on mobile, shown on desktop */}
+              {/* CTA — mobile version (inline in hero, not just sticky bar) */}
+              <Reveal delay={3}>
+                <div className="mt-8 flex flex-col items-center gap-3 lg:hidden">
+                  <Link
+                    href="/auth/signup?utm_campaign=home"
+                    onClick={trackInitiateCheckout}
+                    className="group relative rounded-full p-[2px] transition active:scale-95 overflow-hidden"
+                  >
+                    <span className="absolute inset-[-100%] animate-cta-shine" style={{ background: 'conic-gradient(from 0deg, transparent 0%, transparent 60%, #ffffff 75%, #B8A5FF 85%, transparent 100%)' }} />
+                    <span className="relative block rounded-full bg-[#7C5CFC] px-7 py-3.5 text-sm font-semibold text-white">
+                      Start Free Trial
+                    </span>
+                  </Link>
+                  <p className="text-xs text-[#A0A0B8]">
+                    No card. 90 seconds to set up.
+                  </p>
+                </div>
+              </Reveal>
+
+              {/* CTA — desktop version */}
               <Reveal delay={3}>
                 <div className="mt-10 hidden lg:flex flex-row items-start gap-3">
                   <Link
@@ -1316,6 +1341,48 @@ export function LandingPage() {
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* ───── MOBILE PHONE PREVIEW (compact, single card) ───── */}
+          <div className="mt-8 flex justify-center lg:hidden">
+            <Reveal delay={4}>
+              <div className="relative">
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[200px] h-[200px] rounded-full bg-[#7C5CFC]/15 blur-[60px] animate-pulse-slow" />
+                <div className="relative w-[220px] h-[380px] rounded-[2rem] bg-[#1E1E2E] p-2 shadow-2xl shadow-black/40 animate-float">
+                  <div className="h-full w-full rounded-[1.5rem] bg-[#13131F] p-4 flex flex-col gap-2 overflow-hidden">
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="text-[10px] text-[#A0A0B8]/60">9:41</div>
+                      <div className="flex gap-1">
+                        <div className="h-1.5 w-3 rounded-full bg-white/20" />
+                        <div className="h-1.5 w-1.5 rounded-full bg-white/20" />
+                      </div>
+                    </div>
+                    <div className="text-xs text-white font-semibold">Today&rsquo;s Debrief</div>
+                    <div className="rounded-xl border border-white/10 bg-[#1E1E2E] p-3 shadow-sm">
+                      <div className="text-[10px] text-[#A0A0B8] mb-2">Mood</div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        <span className="text-[10px] text-white font-medium">7.2</span>
+                      </div>
+                    </div>
+                    <div className="rounded-xl border border-white/10 bg-[#1E1E2E] p-3 shadow-sm">
+                      <div className="text-[10px] text-[#A0A0B8] mb-2">Extracted Tasks</div>
+                      <CascadingTasks
+                        tasks={[
+                          { text: "Email Q2 report", checked: true },
+                          { text: "Call the accountant" },
+                          { text: "Book dentist" },
+                        ]}
+                      />
+                    </div>
+                    <div className="rounded-xl border border-[#7C5CFC]/30 bg-[#7C5CFC]/10 p-2.5">
+                      <div className="text-[10px] text-violet-400 mb-0.5">Goal Tracked</div>
+                      <div className="text-[10px] text-[#A0A0B8]">&ldquo;Ship the beta&rdquo; — 4 of 5 entries</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </Reveal>
           </div>
 
           {/* ───── SOCIAL PROOF (inside hero) ───── */}
