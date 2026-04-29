@@ -1,8 +1,9 @@
+import { PageContainer } from "@/components/page-container";
 import { Skeleton, SkeletonCard } from "@/components/skeleton";
 
 export default function EntriesLoading() {
   return (
-    <div className="mx-auto max-w-3xl px-6 py-10">
+    <PageContainer mobileWidth="3xl">
       <Skeleton className="mb-2 h-9 w-40" />
       <Skeleton className="mb-6 h-4 w-56" />
       <Skeleton className="mb-4 h-10 w-full rounded-xl" />
@@ -11,7 +12,7 @@ export default function EntriesLoading() {
           <Skeleton key={i} className="h-8 w-20 shrink-0 rounded-full" />
         ))}
       </div>
-      <div className="space-y-3">
+      <div className="space-y-3 2xl:grid 2xl:grid-cols-2 2xl:gap-3 2xl:space-y-0">
         {Array.from({ length: 6 }).map((_, i) => (
           <SkeletonCard key={i}>
             <div className="flex items-center justify-between">
@@ -28,6 +29,6 @@ export default function EntriesLoading() {
           </SkeletonCard>
         ))}
       </div>
-    </div>
+    </PageContainer>
   );
 }

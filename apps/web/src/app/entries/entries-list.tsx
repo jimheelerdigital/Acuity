@@ -143,7 +143,10 @@ export function EntriesList({
           )}
         </div>
       ) : (
-        <div className="space-y-3">
+        // 2xl: 2-column grid for wide-desktop. <lg / lg / xl all stay
+        // single-column so reading rhythm is preserved at laptop
+        // widths. space-y-0 at 2xl because gap-3 owns both axes.
+        <div className="space-y-3 2xl:grid 2xl:grid-cols-2 2xl:gap-3 2xl:space-y-0">
           {filtered.map((e) => (
             <EntryRowWithMenu
               key={e.id}

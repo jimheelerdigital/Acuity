@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 
 import { getAuthOptions } from "@/lib/auth";
 import { BackButton } from "@/components/back-button";
+import { PageContainer } from "@/components/page-container";
 
 import { EntriesListSection } from "./_sections/list";
 import { EntriesListSkeleton } from "./_sections/skeletons";
@@ -36,7 +37,11 @@ export default async function EntriesPage() {
 
   return (
     <div className="min-h-screen">
-      <main className="mx-auto max-w-3xl px-6 py-10 animate-fade-in">
+      {/* PageContainer fluid lets the list expand to the shell's
+          width on lg+, up to 2240 at 2xl. The 2-column grid kicks in
+          at 2xl: inside entries-list.tsx — pre-2026-04-29 the page
+          was hard-capped at max-w-3xl regardless of viewport. */}
+      <PageContainer mobileWidth="3xl" className="animate-fade-in">
         <div className="mb-6">
           <BackButton className="mb-4" ariaLabel="Back to Home" />
           <h1 className="text-4xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
@@ -47,7 +52,7 @@ export default async function EntriesPage() {
         <Suspense fallback={<EntriesListSkeleton />}>
           <EntriesListSection userId={session.user.id} />
         </Suspense>
-      </main>
+      </PageContainer>
     </div>
   );
 }

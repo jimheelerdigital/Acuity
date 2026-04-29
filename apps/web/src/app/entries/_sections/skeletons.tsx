@@ -18,7 +18,7 @@ export function EntriesListSkeleton() {
           <Skeleton key={i} className="h-8 w-20 shrink-0 rounded-full" />
         ))}
       </div>
-      <div className="space-y-3">
+      <div className="space-y-3 2xl:grid 2xl:grid-cols-2 2xl:gap-3 2xl:space-y-0">
         {Array.from({ length: 6 }).map((_, i) => (
           <SkeletonCard key={i}>
             <div className="flex items-center justify-between">
