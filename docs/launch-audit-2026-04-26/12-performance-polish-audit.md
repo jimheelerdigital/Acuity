@@ -336,6 +336,24 @@ Effort key: S = <2 hours, M = half-day, L = full day+.
 
 ---
 
+## POST-LAUNCH FOLLOW-UPS
+
+### `getUserProgression` — cache via `unstable_cache` keyed on userId
+
+`/insights`, `/life-matrix`, `/goals`, and `/insights/theme-map` all share the same `page.tsx` shape: server component runs `await getUserProgression(session.user.id)` to drive a locked-feature gate, then renders either `<LockedFeatureCard/>` or the real client component. `/home` also calls it.
+
+The progression call hits `User`, `Entry` (lifetime), `Theme`, `Goal`, and `LifeMapArea` tables, then writes back a snapshot via `prisma.user.update`. Even with the explicit `id`-only selects in place, this is one of the heaviest shell-layer reads in the app, and it runs on every consumer page-route render.
+
+Wrap the body of `getUserProgression` in `unstable_cache` keyed on `userId` with a 30-second TTL. Invalidate via `revalidateTag(\`progression:\${userId}\`)` when an entry persists, a theme is created, a goal is upserted, or a life-area mention is incremented. Net effect: progression resolves instantly on every consumer page during a browsing session, with at most 30s of staleness for users not actively recording.
+
+Estimated impact: removes ~50–150ms from every consumer page's TTFB on warm cache. Free during cold cache; revalidation cost is bounded by the 30s window.
+
+Skipped from Phase 1–4 of the perf push because the wrapper file is shared across many surfaces and warrants its own targeted PR + a sweep of every mutation handler that should call `revalidateTag`. File-and-line locations:
+- `apps/web/src/lib/userProgression.ts` (the function itself)
+- Mutation sites that should invalidate on commit: `apps/web/src/app/api/entries/[id]/commit-extraction/route.ts`, `apps/web/src/app/api/goals/route.ts` (POST), `apps/web/src/app/api/themes/*` (any create paths), `apps/web/src/inngest/functions/process-entry.ts` (after persist step).
+
+---
+
 ## NOTES ON HOW THIS AUDIT WAS DONE
 
 - Four parallel sub-agents read the codebase: web perf, web polish, mobile (perf+polish combined), backend perf. No live profiling — agents read code only.
