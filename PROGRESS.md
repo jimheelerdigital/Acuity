@@ -7,6 +7,42 @@
 
 ---
 
+## [2026-04-28] — Real-time founder signup notification emails
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 2495721
+
+### In plain English (for Keenan)
+
+Every time someone signs up for Acuity, you and Jimmy now get an instant email at your @heelerdigital.com addresses. The email shows the person's name, email, whether they're a Founding Member (and which number), where they came from (UTM source, campaign, landing page, referrer), how many people signed up today, and how many Founding Member spots are claimed out of 100. There's a button that takes you straight to their profile in the admin dashboard.
+
+If the notification email fails for any reason (Resend outage, etc.), the signup still goes through perfectly. The notification never blocks anything.
+
+Also fixed a schema issue that would have wiped all production data during the next database migration — the `updatedAt` column added earlier today on the User table was missing a default value, which would have forced Prisma to reset the entire database to add it. Now it has `@default(now())` so existing rows get backfilled safely.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/emails/founder-signup-notification.ts`: HTML email template using `trialLayout` shell. Shows name, email, FM#, trial length, full UTM attribution, signup time, today's count, FM claimed count. "View in Admin Dashboard" button links to `/admin?tab=users&select=[email]`.
+- `apps/web/src/lib/founder-notifications.ts`: `notifyFoundersOfSignup()` — sends to `["keenan@heelerdigital.com", "jim@heelerdigital.com"]` via Resend. Logs every attempt (success/failure) to `FounderNotificationLog`. Optional Slack webhook via `SLACK_FOUNDER_WEBHOOK_URL` env var. Gated by `FOUNDER_NOTIFICATIONS_ENABLED` env var (default: enabled).
+- `apps/web/src/lib/bootstrap-user.ts`: Added `notifyFoundersOfSignup()` call after the `welcome_day0` email send (lines 180-193). Same fail-soft try/catch pattern.
+- `prisma/schema.prisma`: New `FounderNotificationLog` model (userId, recipientEmails, success, errorMessage, createdAt). Fixed `User.updatedAt` from `DateTime @updatedAt` to `DateTime @default(now()) @updatedAt` to prevent destructive migration.
+
+### Manual steps needed
+
+- [ ] **Keenan (from home network):** `npx prisma db push` — adds the `FounderNotificationLog` table and the `User.updatedAt` column (now safe with `@default(now())`). This single push covers all schema changes from today's session.
+- [ ] **Jimmy (optional):** If you want Slack notifications too, add `SLACK_FOUNDER_WEBHOOK_URL` to Vercel env vars (Production + Preview) with a Slack incoming webhook URL. The notification fires a one-liner: "New Acuity signup: [name] from [source] — Founding Member #N".
+- [ ] **Keenan/Jimmy (optional):** To silence notifications during testing or high-volume periods, set `FOUNDER_NOTIFICATIONS_ENABLED=false` in Vercel env vars. Default is enabled (no env var needed).
+
+### Notes
+
+- The notification fires inline during signup — not from a cron or webhook. Founders learn about a new signup within seconds. If Resend is slow, it adds ~500ms to the signup response; if Resend is down, the catch block swallows the error and signup proceeds normally.
+- `FounderNotificationLog` write is also wrapped in try/catch — if the table doesn't exist yet (pre-schema-push), the notification still sends but the log write silently fails. After the push, all future sends are logged.
+- The `User.updatedAt @default(now())` fix is critical — without it, `prisma db push` would have prompted for a full database reset to add the column to the 8 existing User rows. Now it backfills with `now()` and subsequent updates maintain it automatically via `@updatedAt`.
+- Recipient list is hardcoded in `FOUNDER_NOTIFICATION_RECIPIENTS` constant. Easy to update by editing the array — no UI needed at this scale.
+
+---
+
 ## [2026-04-28] — Waitlist reactivation two-email campaign
 
 **Requested by:** Keenan
