@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useMemo, useRef, useState } from "react";
 import {
@@ -87,6 +88,12 @@ export default function EntriesTab() {
           text: "Delete",
           style: "destructive",
           onPress: async () => {
+            // Heavy impact on confirm-destroy — same haptic the
+            // delete-account modal uses, so the destructive feel is
+            // consistent across surfaces.
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(
+              () => {}
+            );
             try {
               await api.del(`/api/entries/${entry.id}`);
               setEntries((prev) => prev.filter((e) => e.id !== entry.id));
@@ -200,8 +207,12 @@ export default function EntriesTab() {
             return (
               <Pressable
                 key={m}
-                onPress={() => setMoodFilter(m === "ALL" ? null : (m as Mood))}
-                className={`flex-row items-center gap-1.5 rounded-full px-3 py-1 border ${
+                onPress={() => {
+                  Haptics.selectionAsync().catch(() => {});
+                  setMoodFilter(m === "ALL" ? null : (m as Mood));
+                }}
+                hitSlop={10}
+                className={`flex-row items-center gap-1.5 rounded-full px-3 py-2 border ${
                   selected
                     ? "border-violet-500 bg-violet-500/10 dark:border-violet-400 dark:bg-violet-500/20"
                     : "border-zinc-200 bg-transparent dark:border-white/10"

@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Tabs, useRouter } from "expo-router";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { useEffect, useRef, useState } from "react";
+import * as Haptics from "expo-haptics";
 import { Animated, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -157,9 +158,15 @@ function CustomTabBar({
               }
               onPress={() => {
                 if (isCenter) {
+                  // Medium impact on the record button — primary
+                  // action of the app, deserves tactile weight.
+                  Haptics.impactAsync(
+                    Haptics.ImpactFeedbackStyle.Medium
+                  ).catch(() => {});
                   router.navigate("/(tabs)");
                   return;
                 }
+                Haptics.selectionAsync().catch(() => {});
                 navigation.navigate(tabKey);
               }}
               style={{

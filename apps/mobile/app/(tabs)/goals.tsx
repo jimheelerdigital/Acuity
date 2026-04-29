@@ -792,7 +792,7 @@ const TreeNode = memo(function TreeNode({
           {hasAny ? (
             <Pressable
               onPress={() => onToggleExpand(goal.id)}
-              hitSlop={8}
+              hitSlop={16}
               className="mt-1"
             >
               <Ionicons

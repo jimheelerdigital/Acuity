@@ -1,8 +1,9 @@
 "use client";
 
-import { Check } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+
+import { Checkbox } from "@/components/checkbox";
 
 /**
  * Interactive Open Tasks card on /home. Mirrors the mobile tasks-tab
@@ -187,24 +188,16 @@ export function OpenTasksCard({
                           : ""
                       }`}
                     >
-                      <button
-                        type="button"
-                        role="checkbox"
-                        aria-checked={isPending}
-                        aria-label={`Mark "${title}" complete`}
-                        onClick={() => {
+                      {/* Shared <Checkbox/> — same primitive /tasks
+                          uses now. Square 4px-radius, violet fill on
+                          checked. Phase 4 unification. */}
+                      <Checkbox
+                        checked={isPending}
+                        onChange={() => {
                           void completeTask(task.id);
                         }}
-                        className="grid h-5 w-5 shrink-0 place-items-center rounded-full border border-zinc-300 bg-white transition-colors hover:border-violet-500 hover:bg-violet-50 dark:border-white/20 dark:bg-transparent dark:hover:border-violet-400 dark:hover:bg-violet-950/30"
-                      >
-                        {isPending && (
-                          <Check
-                            className="h-3 w-3 text-violet-600 dark:text-violet-400"
-                            strokeWidth={3}
-                            aria-hidden="true"
-                          />
-                        )}
-                      </button>
+                        ariaLabel={`Mark "${title}" complete`}
+                      />
                       <button
                         type="button"
                         onClick={() => openDetail(task.id)}
