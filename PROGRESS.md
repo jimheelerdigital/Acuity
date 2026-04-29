@@ -7,6 +7,43 @@
 
 ---
 
+## [2026-04-28] — Theme Map 500: schema-vs-DB drift on FeatureFlag.experimentVariants
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** _to be filled by commit_
+
+### In plain English (for Keenan)
+Theme Map (and any other feature gated behind a feature flag — Ask the Past Self, State of Me, goal-progression tree, health correlations, public share links, referral rewards) was throwing 500 errors in production. Pulled the actual exception from Vercel logs:
+
+> `PrismaClientKnownRequestError P2022: The column FeatureFlag.experimentVariants does not exist in the current database`
+
+Same pattern as the User.targetCadence drift earlier this month: the schema declared two new columns on `FeatureFlag` (`experimentVariants` + `experimentTrafficSplit`) for an A/B-experiment system, but `npx prisma db push` from the home network never ran, so prod is missing them. Prisma's default `findUnique` projects every column the schema knows about; Postgres rejects the SELECT because two of those columns aren't there; every feature-flag check 500s; every flag-gated route 500s.
+
+Patched the gate evaluator to project ONLY the three columns it actually reads (`enabled`, `requiredTier`, `rolloutPercentage`) so it survives the drift. Theme Map should start rendering again the moment Vercel finishes deploying. The schema push is still pending — once it runs, this code keeps working unchanged (the narrow select is just defense in depth).
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/feature-flags.ts`:
+  - Replaced the `FeatureFlag` import from `@prisma/client` with a local `FlagGateRow` type that names exactly the three columns the gate evaluator reads.
+  - `loadFlag()` now does an explicit `select: { enabled, requiredTier, rolloutPercentage }` instead of letting Prisma project all FeatureFlag columns.
+  - Cache type updated to `Map<string, FlagGateRow | null>`.
+  - Comment block at the top of the new type explains the drift workaround pattern (cross-references `safeUpdateUser` and the deleteMany move from earlier).
+- Build clean (`npm run build` passes). The `googleapis` Module-not-found I hit on first build attempt was just stale local node_modules; `npm install` resolved it. Production builds via Vercel install fresh.
+
+### Manual steps needed
+- [ ] **Jimmy:** verify on prod after Vercel auto-deploy: open Theme Map on iPhone (TestFlight) and on /insights/theme-map web → no 500, data renders.
+- [ ] **Jimmy:** also affected (and now also fixed) — Ask Your Past Self, State of Me report, goal-progression tree, theme detail, health correlations, public share links, referral rewards. Spot-check one or two if the test account has them gated on.
+- [ ] **Jimmy:** still pending — `npx prisma db push` from home network for `FeatureFlag.experimentVariants` + `experimentTrafficSplit` (and any other schema-side adds since the last push). The narrow select keeps user-facing routes alive without it; admin Feature Flags tab queries with a default findMany and may still 500 there until the push runs.
+
+### Notes
+- How I found the exception: `vercel logs --status-code 500 --since 1h --environment production --json` returned the Prisma error directly. The `--query` flag also accepts `status:500 error` syntax. Stack trace pointed at `gateFeatureFlag → loadFlag` inside `/api/insights/theme-map`. No try/catch, no guesswork.
+- Why I didn't use `try/catch + return null on P2022`: the spec explicitly said don't ship a generic catch. The real fix is to not query the missing column at all. Narrow select is honest — we never lie about flag state, we just don't ask the DB for fields the gate doesn't use.
+- Why the per-request flag cache + override cache didn't shield us: the cache holds the result of the `findUnique`. The first call in any request hits the DB and throws — there's no cached row to fall back to.
+- Why I did NOT fix the admin's `/api/admin/feature-flags` route (which uses `prisma.featureFlag.findMany` with the same default projection): that route is admin-only, called from an admin tab UI, and is not on the user-facing critical path. Adding an explicit select there would defeat the admin's intent (it wants every column for the management table). The right fix for admin is the schema push. For now, the admin Feature Flags tab will still 500 until Jimmy pushes — flagged in the manual steps above.
+- This is the third schema drift incident in two weeks (`User.targetCadence`, then `User.appleSubject`, now `FeatureFlag.experimentVariants` + `experimentTrafficSplit`). The "any Prisma operation that returns the row's columns is brittle" note Jim wrote in the d980f4e commit's Notes is now empirically validated. A follow-up audit pass — grep all `prisma.*.{findUnique,findFirst,findMany}` calls without an explicit `select` and either narrow them or flag them — would prevent the next one. Out of scope for this fix.
+
+---
+
 ## [2026-04-28] — Mobile sign-in: revert KeyboardAwareScreen wrapper to fix Google OAuth bounce
 
 **Requested by:** Jimmy

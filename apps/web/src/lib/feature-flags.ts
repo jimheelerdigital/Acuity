@@ -1,8 +1,30 @@
 import "server-only";
 
-import type { FeatureFlag } from "@prisma/client";
-
 import { prisma } from "@/lib/prisma";
+
+/**
+ * Narrowed FeatureFlag projection — exactly the columns the gate
+ * evaluator reads (enabled / requiredTier / rolloutPercentage).
+ *
+ * Why narrowed instead of `FeatureFlag` from @prisma/client: the
+ * schema has columns the prod DB doesn't have yet (experimentVariants
+ * + experimentTrafficSplit, added schema-side but never `prisma db push`d
+ * from Jim's home network). The default findUnique projection includes
+ * those columns and Postgres throws P2022 — a 500 cascades to every
+ * route that calls gateFeatureFlag (theme-map, ask-past-self, state-
+ * of-me, goals tree, health correlations, referral rewards, public
+ * share links).
+ *
+ * Same workaround pattern Jim already established for User.targetCadence
+ * (see safeUpdateUser / deleteMany comments in user/delete + onboarding
+ * routes). Once `npx prisma db push` runs from home, this file keeps
+ * working unchanged — the narrow select is just defense in depth.
+ */
+type FlagGateRow = {
+  enabled: boolean;
+  requiredTier: string | null;
+  rolloutPercentage: number;
+};
 
 /**
  * Feature flag evaluator.
@@ -45,7 +67,7 @@ export const FEATURE_FLAG_KEYS = [
 export type FeatureFlagKey = (typeof FEATURE_FLAG_KEYS)[number];
 
 type FlagCache = {
-  flags: Map<string, FeatureFlag | null>;
+  flags: Map<string, FlagGateRow | null>;
   overrides: Map<string, Map<string, boolean>>;
 };
 
@@ -62,10 +84,19 @@ function getCache(): FlagCache {
   return flagCache;
 }
 
-async function loadFlag(key: string): Promise<FeatureFlag | null> {
+async function loadFlag(key: string): Promise<FlagGateRow | null> {
   const cache = getCache();
   if (cache.flags.has(key)) return cache.flags.get(key) ?? null;
-  const row = await prisma.featureFlag.findUnique({ where: { key } });
+  // Explicit select — never project experimentVariants /
+  // experimentTrafficSplit. See FlagGateRow comment.
+  const row = await prisma.featureFlag.findUnique({
+    where: { key },
+    select: {
+      enabled: true,
+      requiredTier: true,
+      rolloutPercentage: true,
+    },
+  });
   cache.flags.set(key, row);
   return row;
 }
