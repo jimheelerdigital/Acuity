@@ -247,8 +247,13 @@ model User {
 // the scheduling logic + emailKey catalog.
 model TrialEmailLog {
   id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // userId is nullable — waitlist reactivation emails target Waitlist
+  // records that may not have a User account yet.
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // For waitlist reactivation emails — references Waitlist.id. Null
+  // for standard trial emails.
+  waitlistId String?
   emailKey  String
   sentAt    DateTime @default(now())
   opened    Boolean? // null until Resend webhook lands
@@ -260,6 +265,7 @@ model TrialEmailLog {
   resendId  String?  @unique
 
   @@unique([userId, emailKey])
+  @@unique([waitlistId, emailKey])
   @@index([userId, sentAt])
   @@index([emailKey, sentAt])
 }

@@ -14,7 +14,7 @@ import { createHmac, timingSafeEqual } from "crypto";
 
 const DEFAULT_TTL_MS = 180 * 24 * 60 * 60 * 1000;
 
-export type UnsubscribeKind = "weekly" | "monthly" | "onboarding";
+export type UnsubscribeKind = "weekly" | "monthly" | "onboarding" | "waitlist";
 
 interface Payload {
   u: string; // userId
@@ -76,7 +76,8 @@ export function verifyUnsubscribeToken(
   if (
     payload.k !== "weekly" &&
     payload.k !== "monthly" &&
-    payload.k !== "onboarding"
+    payload.k !== "onboarding" &&
+    payload.k !== "waitlist"
   ) {
     return null;
   }

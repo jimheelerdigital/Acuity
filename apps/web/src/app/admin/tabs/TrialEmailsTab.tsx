@@ -15,6 +15,16 @@ interface TrialEmailsData {
   computedAt: number;
 }
 
+interface WaitlistReactivationData {
+  totalWaitlist: number;
+  eligibleCount: number;
+  email1Sent: number;
+  email2Sent: number;
+  pendingEmail2: number;
+  conversions: number;
+  campaignFiredAt: string | null;
+}
+
 const EMAIL_KEY_ORDER = [
   "welcome_day0",
   "first_debrief_replay",
@@ -39,6 +49,19 @@ export default function TrialEmailsTab() {
   const [resendKey, setResendKey] = useState("welcome_day0");
   const [resendStatus, setResendStatus] = useState<string | null>(null);
 
+  // Waitlist reactivation state
+  const [wlData, setWlData] = useState<WaitlistReactivationData | null>(null);
+  const [wlFiring, setWlFiring] = useState(false);
+  const [wlConfirm, setWlConfirm] = useState(false);
+  const [wlError, setWlError] = useState<string | null>(null);
+
+  const loadWaitlistData = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/waitlist-reactivation");
+      if (res.ok) setWlData((await res.json()) as WaitlistReactivationData);
+    } catch { /* silent */ }
+  }, []);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -56,10 +79,11 @@ export default function TrialEmailsTab() {
       if (!cancelled && res.ok) setData((await res.json()) as TrialEmailsData);
       if (!cancelled) setLoading(false);
     })();
+    loadWaitlistData();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [loadWaitlistData]);
 
   const handleResend = useCallback(async () => {
     if (!resendUserId.trim()) {
@@ -236,6 +260,132 @@ export default function TrialEmailsTab() {
         {resendStatus && (
           <p className="mt-3 text-xs text-white/60">{resendStatus}</p>
         )}
+      </div>
+
+      {/* ── Waitlist Reactivation Campaign ──────────────────────────── */}
+      <div className="rounded-lg bg-[#13131F] p-5 border border-white/5">
+        <h3 className="mb-4 text-sm font-semibold text-white/80">
+          Waitlist Reactivation Campaign
+        </h3>
+
+        {wlData ? (
+          <>
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 mb-4">
+              <MiniStat label="Eligible" value={wlData.eligibleCount} />
+              <MiniStat label="Email 1 Sent" value={wlData.email1Sent} />
+              <MiniStat label="Email 2 Sent" value={wlData.email2Sent} />
+              <MiniStat label="Pending Email 2" value={wlData.pendingEmail2} />
+              <MiniStat
+                label="Conversions"
+                value={wlData.conversions}
+                color={wlData.conversions > 0 ? "text-emerald-400" : undefined}
+              />
+              <MiniStat label="Total Waitlist" value={wlData.totalWaitlist} />
+            </div>
+
+            {wlData.campaignFiredAt ? (
+              <div className="rounded-md bg-emerald-900/10 border border-emerald-500/20 px-4 py-3">
+                <p className="text-sm text-emerald-300">
+                  Campaign sent on{" "}
+                  {new Date(wlData.campaignFiredAt).toLocaleDateString("en-US", {
+                    month: "long",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
+                  . Eligible: {wlData.eligibleCount + wlData.email1Sent}.
+                  Sent: {wlData.email1Sent}. Converted: {wlData.conversions}.
+                </p>
+              </div>
+            ) : (
+              <div>
+                {!wlConfirm ? (
+                  <button
+                    onClick={() => setWlConfirm(true)}
+                    disabled={wlData.eligibleCount === 0}
+                    className="rounded-md bg-[#7C5CFC] px-4 py-2 text-sm font-semibold text-white hover:bg-[#6E4BF4] disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {wlData.eligibleCount === 0
+                      ? "No eligible users"
+                      : "Fire reactivation campaign now"}
+                  </button>
+                ) : (
+                  <div className="rounded-md bg-amber-900/10 border border-amber-500/20 px-4 py-3">
+                    <p className="text-sm text-amber-300 mb-3">
+                      This will email <strong>{wlData.eligibleCount}</strong>{" "}
+                      waitlist users. Email 2 follows 4 days later for those who
+                      haven&apos;t signed up. This cannot be undone.
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={async () => {
+                          setWlFiring(true);
+                          setWlError(null);
+                          try {
+                            const res = await fetch(
+                              "/api/admin/waitlist-reactivation",
+                              { method: "POST" }
+                            );
+                            if (res.ok) {
+                              setWlConfirm(false);
+                              await loadWaitlistData();
+                            } else {
+                              const body = (await res.json().catch(() => ({}))) as {
+                                error?: string;
+                              };
+                              setWlError(
+                                body.error ?? `Failed (${res.status})`
+                              );
+                            }
+                          } catch {
+                            setWlError("Network error");
+                          } finally {
+                            setWlFiring(false);
+                          }
+                        }}
+                        disabled={wlFiring}
+                        className="rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-500 disabled:opacity-50"
+                      >
+                        {wlFiring ? "Sending..." : "Yes, send now"}
+                      </button>
+                      <button
+                        onClick={() => setWlConfirm(false)}
+                        className="rounded-md bg-white/10 px-4 py-2 text-sm font-semibold text-white hover:bg-white/20"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                    {wlError && (
+                      <p className="mt-2 text-xs text-red-400">{wlError}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </>
+        ) : (
+          <p className="text-sm text-white/30">Loading campaign data...</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function MiniStat({
+  label,
+  value,
+  color,
+}: {
+  label: string;
+  value: number;
+  color?: string;
+}) {
+  return (
+    <div className="rounded-md bg-white/[0.03] px-3 py-2">
+      <div className="text-[10px] uppercase tracking-wider text-white/30 mb-0.5">
+        {label}
+      </div>
+      <div className={`text-lg font-semibold tabular-nums ${color ?? "text-white"}`}>
+        {value}
       </div>
     </div>
   );

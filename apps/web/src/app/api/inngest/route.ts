@@ -30,6 +30,7 @@ import {
   autoBlogGenerateFn,
   autoBlogPruneFn,
 } from "@/inngest/functions/auto-blog";
+import { waitlistReactivationFn } from "@/inngest/functions/waitlist-reactivation";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -62,6 +63,7 @@ const handler = serve({
     trialEmailOrchestratorFn,
     autoBlogGenerateFn,
     autoBlogPruneFn,
+    waitlistReactivationFn,
   ],
 });
 

@@ -38,15 +38,24 @@ async function handle(req: NextRequest) {
 
   const { prisma } = await import("@/lib/prisma");
   try {
-    await prisma.user.update({
-      where: { id: parsed.userId },
-      data:
-        parsed.kind === "weekly"
-          ? { weeklyEmailEnabled: false }
-          : parsed.kind === "monthly"
-            ? { monthlyEmailEnabled: false }
-            : { onboardingUnsubscribed: true },
-    });
+    if (parsed.kind === "waitlist") {
+      // For waitlist reactivation emails, the token's userId field
+      // holds the Waitlist.id instead. Update the Waitlist row.
+      await prisma.waitlist.update({
+        where: { id: parsed.userId },
+        data: { unsubscribed: true },
+      });
+    } else {
+      await prisma.user.update({
+        where: { id: parsed.userId },
+        data:
+          parsed.kind === "weekly"
+            ? { weeklyEmailEnabled: false }
+            : parsed.kind === "monthly"
+              ? { monthlyEmailEnabled: false }
+              : { onboardingUnsubscribed: true },
+      });
+    }
   } catch {
     return htmlResponse(
       invalidPage("Could not update your preferences. Please try again."),
@@ -89,7 +98,14 @@ a{color:#A78BFA;text-decoration:none;font-weight:500}
 <body><div class="card">${body}</div></body></html>`;
 }
 
-function confirmedPage(kind: "weekly" | "monthly" | "onboarding"): string {
+function confirmedPage(kind: "weekly" | "monthly" | "onboarding" | "waitlist"): string {
+  if (kind === "waitlist") {
+    return pageShell(`
+      <div class="logo">✦</div>
+      <h1>You're unsubscribed.</h1>
+      <p>You won't receive any more emails from Acuity about your waitlist spot. If you change your mind, you can always sign up at <a href="https://getacuity.io">getacuity.io</a>.</p>
+    `);
+  }
   if (kind === "onboarding") {
     return pageShell(`
       <div class="logo">✦</div>
