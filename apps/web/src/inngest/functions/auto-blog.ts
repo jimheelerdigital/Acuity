@@ -79,6 +79,89 @@ interface AutoBlogResult {
   ctaPlacementHint: string;
 }
 
+// ─── Wrong-domain blocklist ────────────────────────────────────────────────
+
+const BLOCKED_ACUITY_DOMAINS = [
+  "acuity.how",
+  "acuity.app",
+  "acuityapp.com",
+  "acuity.com",
+  "useacuity.com",
+  "acuityapp.io",
+  "acuity.io",        // missing "get" prefix
+  "www.acuity.com",
+  "tryacuity.com",
+];
+
+// ─── External link verification ────────────────────────────────────────────
+
+async function checkUrl(url: string): Promise<boolean> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch(url, {
+      method: "HEAD",
+      signal: controller.signal,
+      redirect: "follow",
+      headers: { "User-Agent": "AcuityBot/1.0 (link-check)" },
+    });
+    clearTimeout(timeout);
+    return res.ok || res.status === 405 || res.status === 403;
+    // 405: some sites block HEAD but page exists
+    // 403: auth-gated but page exists (e.g., paywalled articles)
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Verifies external links in the post body via HEAD requests.
+ * Returns the body with dead links stripped (anchor text preserved)
+ * and a list of removed URLs for logging.
+ */
+async function verifyExternalLinks(
+  body: string
+): Promise<{ body: string; removedUrls: string[] }> {
+  const externalLinkRegex =
+    /<a\s+[^>]*href=["'](https?:\/\/[^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
+  const matches = [...body.matchAll(externalLinkRegex)];
+
+  if (matches.length === 0) return { body, removedUrls: [] };
+
+  // Deduplicate URLs to avoid checking the same one twice
+  const uniqueUrls = [...new Set(matches.map((m) => m[1]))];
+
+  // Check all URLs in parallel (max 8 concurrent to avoid hammering)
+  const results = new Map<string, boolean>();
+  const batchSize = 8;
+  for (let i = 0; i < uniqueUrls.length; i += batchSize) {
+    const batch = uniqueUrls.slice(i, i + batchSize);
+    const checks = await Promise.all(
+      batch.map(async (url) => ({
+        url,
+        alive: await checkUrl(url),
+      }))
+    );
+    for (const { url, alive } of checks) {
+      results.set(url, alive);
+    }
+  }
+
+  let cleanBody = body;
+  const removedUrls: string[] = [];
+
+  for (const match of matches) {
+    const [fullTag, url, anchorText] = match;
+    if (!results.get(url)) {
+      // Replace the dead <a> tag with just the anchor text
+      cleanBody = cleanBody.replace(fullTag, anchorText);
+      removedUrls.push(url);
+    }
+  }
+
+  return { body: cleanBody, removedUrls: [...new Set(removedUrls)] };
+}
+
 // ─── Validation ─────────────────────────────────────────────────────────────
 
 function validateBlogPost(
@@ -150,6 +233,28 @@ function validateBlogPost(
   if (brokenLinks.length > 0) {
     errors.push(
       `Broken internal links (do not exist): ${brokenLinks.join(", ")}`
+    );
+  }
+
+  // Check for wrong-domain Acuity links
+  const allExternalLinks =
+    post.body.match(/href=["'](https?:\/\/[^"']+)["']/gi) ?? [];
+  const wrongDomainLinks: string[] = [];
+  for (const match of allExternalLinks) {
+    const href = match.replace(/^href=["']/, "").replace(/["']$/, "");
+    try {
+      const hostname = new URL(href).hostname.replace(/^www\./, "");
+      if (BLOCKED_ACUITY_DOMAINS.some((d) => hostname === d || hostname === `www.${d}`)) {
+        wrongDomainLinks.push(href);
+      }
+    } catch {
+      // malformed URL — will be caught by external link verification
+    }
+  }
+
+  if (wrongDomainLinks.length > 0) {
+    errors.push(
+      `Wrong Acuity domain (use internal /for/* or /blog/* paths instead): ${wrongDomainLinks.join(", ")}`
     );
   }
 
@@ -477,6 +582,17 @@ async function callClaudeForBlog(
       return { valid: false, errors: validation.errors, pieceId: null };
     }
 
+    // Verify external links — strip any dead ones rather than failing
+    const { body: verifiedBody, removedUrls } = await verifyExternalLinks(
+      parsed.body
+    );
+    if (removedUrls.length > 0) {
+      console.warn(
+        `[auto-blog] Attempt ${attemptNumber}: stripped ${removedUrls.length} dead external links:`,
+        removedUrls
+      );
+    }
+
     // Write the full body to a ContentPiece now — the publish step
     // will flip its status and set slug/URL. This avoids passing
     // ~15KB of HTML through Inngest step return serialization.
@@ -484,7 +600,7 @@ async function callClaudeForBlog(
       data: {
         type: "BLOG",
         title: parsed.title,
-        body: parsed.body,
+        body: verifiedBody,
         hook: parsed.metaDescription,
         cta: parsed.includeCta ? parsed.ctaPlacementHint : "",
         targetKeyword: parsed.primaryKeyword,
@@ -820,7 +936,7 @@ ${
 
 Every post (CTA or not) ends with 2-3 internal links to related posts.
 
-INTERNAL LINKING — use at least 2 links from the lists below. ONLY use URLs from these lists. Do NOT invent or guess blog slugs.
+INTERNAL LINKING — use at least 2 links from the lists below. ONLY use URLs from these lists. Do NOT invent or guess internal link paths.
 
 /for/* persona pages (all valid):
 ${PERSONA_SLUGS.map((s) => `/for/${s}`).join(", ")}
@@ -829,6 +945,15 @@ ${
     ? `\n/blog/* posts (all valid — pick relevant ones):\n${blogSlugs.map((s) => `/blog/${s}`).join(", ")}`
     : "\nNo /blog/* posts published yet — use /for/* pages only."
 }
+
+EXTERNAL CITATIONS — link to 2-4 authoritative external sources per post to support claims. Good sources: peer-reviewed studies, university pages (.edu), government health sites (.gov), established publications (NYT, HBR, Psychology Today, etc.), official documentation.
+Rules for external links:
+- Every external link must use the EXACT, full URL you are confident exists (e.g., https://www.apa.org/monitor/2023/06/cover-story-expressive-writing)
+- Prefer homepage-level or well-known permalink URLs that are unlikely to break (e.g., https://www.psychologytoday.com rather than a deeply nested article you are not sure exists)
+- NEVER link to getacuity.io as an external link — all Acuity links must be internal (/for/*, /blog/*)
+- NEVER use these wrong domains for Acuity: acuity.how, acuity.app, acuityapp.com, acuity.com, useacuity.com
+- All external links must open in a new tab: target="_blank" rel="noopener noreferrer"
+- If you are not 100% certain a URL exists, do NOT include it. A post with zero external links is better than a post with broken external links.
 
 OUTPUT FORMAT — respond with a single JSON object:
 {
@@ -851,7 +976,8 @@ REQUIREMENTS:
 - 1,400 to 2,200 words
 - Primary keyword in H1, first 100 words, and at least one H2
 - At least 3 H2 sections
-- At least 2 internal links to /for/* or /blog/* posts
+- At least 2 internal links to /for/* or /blog/* posts (from the lists above ONLY)
+- 2-4 external citations to authoritative sources (with target="_blank" rel="noopener noreferrer")
 - FAQ section with 3+ questions and answers
 - Meta description: exactly 140-160 characters
 - Meta title: exactly 50-60 characters
