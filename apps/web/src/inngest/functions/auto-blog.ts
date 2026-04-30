@@ -82,7 +82,8 @@ interface AutoBlogResult {
 // ─── Validation ─────────────────────────────────────────────────────────────
 
 function validateBlogPost(
-  post: AutoBlogResult
+  post: AutoBlogResult,
+  validBlogSlugs: string[] = []
 ): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
   const textBody = post.body.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
@@ -121,6 +122,35 @@ function validateBlogPost(
   ).length;
   if (internalLinkCount < 2) {
     errors.push(`Only ${internalLinkCount} internal links, need at least 2`);
+  }
+
+  // Validate that all internal links point to real pages
+  const validPersonaSlugs = new Set(PERSONA_SLUGS);
+  const validBlogSlugSet = new Set(validBlogSlugs);
+
+  const allInternalLinks =
+    post.body.match(/href=["'](\/(?:for|blog)\/[^"']+)["']/gi) ?? [];
+  const brokenLinks: string[] = [];
+
+  for (const match of allInternalLinks) {
+    const href = match.replace(/^href=["']/, "").replace(/["']$/, "");
+    if (href.startsWith("/for/")) {
+      const slug = href.replace("/for/", "").replace(/\/$/, "");
+      if (!validPersonaSlugs.has(slug)) {
+        brokenLinks.push(href);
+      }
+    } else if (href.startsWith("/blog/")) {
+      const slug = href.replace("/blog/", "").replace(/\/$/, "");
+      if (!validBlogSlugSet.has(slug)) {
+        brokenLinks.push(href);
+      }
+    }
+  }
+
+  if (brokenLinks.length > 0) {
+    errors.push(
+      `Broken internal links (do not exist): ${brokenLinks.join(", ")}`
+    );
   }
 
   if (!post.faqSchema || post.faqSchema.length < 3) {
@@ -226,6 +256,22 @@ export const autoBlogGenerateFn = inngest.createFunction(
         where: { isFoundingMember: true },
       });
 
+      // Fetch all published blog slugs so Claude only links to real posts
+      const { BLOG_POSTS } = await import("@/lib/blog-posts");
+      const staticSlugs = BLOG_POSTS.map((p) => p.slug);
+      const dynamicPosts = await prisma.contentPiece.findMany({
+        where: {
+          type: "BLOG",
+          status: { in: ["DISTRIBUTED", "AUTO_PUBLISHED"] },
+          slug: { not: null },
+        },
+        select: { slug: true },
+      });
+      const dynamicSlugs = dynamicPosts
+        .map((p) => p.slug)
+        .filter((s): s is string => s !== null);
+      const allBlogSlugs = [...new Set([...staticSlugs, ...dynamicSlugs])];
+
       return {
         id: topic.id,
         topic: topic.topic,
@@ -233,6 +279,7 @@ export const autoBlogGenerateFn = inngest.createFunction(
         targetKeyword: topic.targetKeyword,
         searchIntent: topic.searchIntent,
         spotsLeft: Math.max(0, FOUNDING_MEMBER_CAP - foundingCount),
+        blogSlugs: allBlogSlugs,
       };
     });
 
@@ -240,7 +287,7 @@ export const autoBlogGenerateFn = inngest.createFunction(
     // Each Claude call gets its own step so it has a fresh timeout
     // budget. The call itself takes 30-90s depending on output length.
     const attempt1 = await step.run("generate-attempt-1", async () => {
-      return callClaudeForBlog(topicData, topicData.spotsLeft, 1);
+      return callClaudeForBlog(topicData, topicData.spotsLeft, 1, [], topicData.blogSlugs);
     });
 
     // ── Step 5: Generate content (attempt 2, if needed) ──────────
@@ -253,7 +300,7 @@ export const autoBlogGenerateFn = inngest.createFunction(
       });
       const attempt1Errors = result.errors ?? [];
       result = await step.run("generate-attempt-2", async () => {
-        return callClaudeForBlog(topicData, topicData.spotsLeft, 2, attempt1Errors);
+        return callClaudeForBlog(topicData, topicData.spotsLeft, 2, attempt1Errors, topicData.blogSlugs);
       });
     }
 
@@ -264,7 +311,7 @@ export const autoBlogGenerateFn = inngest.createFunction(
       });
       const attempt2Errors = result.errors ?? [];
       result = await step.run("generate-attempt-3", async () => {
-        return callClaudeForBlog(topicData, topicData.spotsLeft, 3, attempt2Errors);
+        return callClaudeForBlog(topicData, topicData.spotsLeft, 3, attempt2Errors, topicData.blogSlugs);
       });
     }
 
@@ -396,7 +443,8 @@ async function callClaudeForBlog(
   },
   spotsLeft: number,
   attemptNumber: number,
-  priorErrors: string[] = []
+  priorErrors: string[] = [],
+  blogSlugs: string[] = []
 ): Promise<GenerateAttemptResult> {
   try {
     const { prisma } = await import("@/lib/prisma");
@@ -413,13 +461,13 @@ async function callClaudeForBlog(
 
     const raw = await callClaude({
       purpose: "auto-blog-generate",
-      systemPrompt: buildSystemPrompt(topic, spotsLeft),
+      systemPrompt: buildSystemPrompt(topic, spotsLeft, blogSlugs),
       userPrompt,
       maxTokens: 8000,
     });
 
     const parsed = JSON.parse(extractJson(raw)) as AutoBlogResult;
-    const validation = validateBlogPost(parsed);
+    const validation = validateBlogPost(parsed, blogSlugs);
 
     if (!validation.valid) {
       console.warn(
@@ -731,7 +779,8 @@ function buildSystemPrompt(
     targetKeyword: string;
     searchIntent: string;
   },
-  spotsLeft: number
+  spotsLeft: number,
+  blogSlugs: string[] = []
 ): string {
   return `You are writing a blog post for Acuity — a voice journaling app.
 
@@ -771,9 +820,15 @@ ${
 
 Every post (CTA or not) ends with 2-3 internal links to related posts.
 
-INTERNAL LINKING — use at least 2 of these /for/* pages where relevant:
+INTERNAL LINKING — use at least 2 links from the lists below. ONLY use URLs from these lists. Do NOT invent or guess blog slugs.
+
+/for/* persona pages (all valid):
 ${PERSONA_SLUGS.map((s) => `/for/${s}`).join(", ")}
-Also link to other /blog/* posts if you know of relevant ones.
+${
+  blogSlugs.length > 0
+    ? `\n/blog/* posts (all valid — pick relevant ones):\n${blogSlugs.map((s) => `/blog/${s}`).join(", ")}`
+    : "\nNo /blog/* posts published yet — use /for/* pages only."
+}
 
 OUTPUT FORMAT — respond with a single JSON object:
 {
