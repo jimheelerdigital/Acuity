@@ -7,6 +7,34 @@
 
 ---
 
+## [2026-04-30] — Fix auto-blog generation failures by feeding validation errors into retries
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 2ed3e60
+
+### In plain English (for Keenan)
+
+The "Why Therapists Recommend Audio Journaling..." blog post failed to generate because the AI kept making the same mistakes three times in a row — it never learned what went wrong. Now when a blog post fails a quality check (wrong word count, missing keywords, meta description too long, etc.), the system tells the AI exactly what it got wrong before the next attempt. This should dramatically reduce generation failures. There's also a new "Retry" button on the Auto Blog admin page so you can re-queue any failed post with one click instead of waiting for the next daily run.
+
+### Technical changes (for Jimmy)
+
+- Modified `apps/web/src/inngest/functions/auto-blog.ts`: added `priorErrors` parameter to `callClaudeForBlog()`. On retry attempts 2 and 3, validation errors from the prior attempt are appended to the user prompt so Claude can self-correct (e.g., "Word count 1200 outside 1400-2200 range", "Primary keyword not in any H2").
+- New file: `apps/web/src/app/api/admin/auto-blog/retry/route.ts` — admin-only POST endpoint. Takes a `pieceId`, re-queues the matching SKIPPED BlogTopicQueue entry (or creates a new one), deletes the failed ContentPiece, and triggers immediate generation via Inngest event.
+- Modified `apps/web/src/app/admin/tabs/AutoBlogTab.tsx`: added "Retry" button (amber) for GENERATION_FAILED posts, wired to the new retry endpoint.
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- Root cause: all 3 generation attempts used identical prompts. If Claude failed validation on attempt 1 (e.g., meta description 138 chars instead of 140-160), it had no feedback to correct on attempts 2 and 3, so it repeated the same errors.
+- The "audio journaling therapy benefits" keyword is a 4-word long-tail phrase that must appear in the H1, first 100 words, and at least one H2 — strict placement rules that benefit from error feedback.
+- To retry the failed post: go to Admin > Auto Blog and click the amber "Retry" button next to the failed post. It will re-queue and trigger generation immediately.
+
+---
+
 ## [2026-04-29] — Fix wide-desktop dashboard sticky-rail overlap + ship Playwright visual audit
 
 **Requested by:** Jimmy
