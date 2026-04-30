@@ -244,13 +244,16 @@ export const autoBlogGenerateFn = inngest.createFunction(
     });
 
     // ── Step 5: Generate content (attempt 2, if needed) ──────────
+    // Feed prior validation errors into the prompt so Claude can
+    // self-correct instead of repeating the same mistakes.
     let result = attempt1;
     if (!result.valid) {
       logger.warn("[auto-blog] Attempt 1 failed, trying attempt 2", {
         errors: result.errors,
       });
+      const attempt1Errors = result.errors ?? [];
       result = await step.run("generate-attempt-2", async () => {
-        return callClaudeForBlog(topicData, topicData.spotsLeft, 2);
+        return callClaudeForBlog(topicData, topicData.spotsLeft, 2, attempt1Errors);
       });
     }
 
@@ -259,8 +262,9 @@ export const autoBlogGenerateFn = inngest.createFunction(
       logger.warn("[auto-blog] Attempt 2 failed, trying attempt 3", {
         errors: result.errors,
       });
+      const attempt2Errors = result.errors ?? [];
       result = await step.run("generate-attempt-3", async () => {
-        return callClaudeForBlog(topicData, topicData.spotsLeft, 3);
+        return callClaudeForBlog(topicData, topicData.spotsLeft, 3, attempt2Errors);
       });
     }
 
@@ -391,7 +395,8 @@ async function callClaudeForBlog(
     searchIntent: string;
   },
   spotsLeft: number,
-  attemptNumber: number
+  attemptNumber: number,
+  priorErrors: string[] = []
 ): Promise<GenerateAttemptResult> {
   try {
     const { prisma } = await import("@/lib/prisma");
@@ -400,10 +405,16 @@ async function callClaudeForBlog(
     );
     const { extractJson } = await import("@/lib/content-factory/generate");
 
+    const userPrompt =
+      priorErrors.length > 0
+        ? buildUserPrompt(topic) +
+          `\n\nIMPORTANT — your previous attempt failed validation with these errors:\n${priorErrors.map((e) => `- ${e}`).join("\n")}\nFix every issue listed above. Double-check word count, keyword placement, meta title/description character counts, and internal links before responding.`
+        : buildUserPrompt(topic);
+
     const raw = await callClaude({
       purpose: "auto-blog-generate",
       systemPrompt: buildSystemPrompt(topic, spotsLeft),
-      userPrompt: buildUserPrompt(topic),
+      userPrompt,
       maxTokens: 8000,
     });
 

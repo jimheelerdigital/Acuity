@@ -59,6 +59,7 @@ export default function AutoBlogTab() {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [killingId, setKillingId] = useState<string | null>(null);
+  const [retryingId, setRetryingId] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -101,6 +102,22 @@ export default function AutoBlogTab() {
       // silent
     } finally {
       setKillingId(null);
+    }
+  };
+
+  const handleRetry = async (pieceId: string) => {
+    setRetryingId(pieceId);
+    try {
+      await fetch("/api/admin/auto-blog/retry", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pieceId }),
+      });
+      fetchData();
+    } catch {
+      // silent
+    } finally {
+      setRetryingId(null);
     }
   };
 
@@ -278,6 +295,15 @@ export default function AutoBlogTab() {
                           className="rounded px-2 py-1 text-xs text-red-400 transition hover:bg-red-500/10 disabled:opacity-50"
                         >
                           {killingId === post.id ? "..." : "Kill"}
+                        </button>
+                      )}
+                      {post.status === "GENERATION_FAILED" && (
+                        <button
+                          onClick={() => handleRetry(post.id)}
+                          disabled={retryingId === post.id}
+                          className="rounded px-2 py-1 text-xs text-amber-400 transition hover:bg-amber-500/10 disabled:opacity-50"
+                        >
+                          {retryingId === post.id ? "..." : "Retry"}
                         </button>
                       )}
                     </td>
