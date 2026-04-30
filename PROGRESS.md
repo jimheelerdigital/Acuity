@@ -7,6 +7,40 @@
 
 ---
 
+## [2026-04-30] — Add external citations with link verification to auto-blog
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 6a800cd
+
+### In plain English (for Keenan)
+
+Blog posts now link to real external sources — studies, university pages, Psychology Today, government health sites — to back up their claims. Before a post goes live, every external link gets checked to make sure the page actually exists. If a link is dead, it gets quietly removed (the text stays, the link disappears) so readers never hit a 404. The system also hard-blocks any links that accidentally use wrong Acuity domains like "acuity.how" or "acuity.com" instead of proper internal links. Posts will now have 2-4 credible external citations mixed in naturally alongside the internal links to /for/* and /blog/* pages.
+
+### Technical changes (for Jimmy)
+
+- Modified `apps/web/src/inngest/functions/auto-blog.ts`:
+  - New `BLOCKED_ACUITY_DOMAINS` constant: blocklist of wrong Acuity domains (acuity.how, acuity.app, acuity.com, useacuity.com, acuity.io without "get" prefix, etc.)
+  - New `checkUrl(url)`: HEAD request with 5s timeout, treats 200/405/403 as "alive" (some sites block HEAD or paywall but page exists)
+  - New `verifyExternalLinks(body)`: extracts all external `<a>` tags, deduplicates URLs, checks in parallel (batches of 8), strips dead links by replacing `<a>` tag with its anchor text. Returns cleaned body + list of removed URLs for logging
+  - `validateBlogPost()`: added wrong-domain check — fails hard if any link uses a blocked Acuity domain
+  - `callClaudeForBlog()`: runs `verifyExternalLinks()` on the body after validation passes, saves the cleaned body to ContentPiece
+  - System prompt: new EXTERNAL CITATIONS section with sourcing rules, banned domain list, `target="_blank" rel="noopener noreferrer"` requirement, and instruction to omit links Claude isn't confident exist
+  - REQUIREMENTS section: added "2-4 external citations to authoritative sources"
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- External link verification is intentionally lenient: dead links are stripped silently rather than failing the whole generation attempt. This avoids burning retries over external URLs Claude can't control.
+- Wrong-domain Acuity links (acuity.how, acuity.com) are a hard validation failure because they're always wrong — Claude should use internal `/for/*` or `/blog/*` paths instead.
+- The HEAD check accepts 403 (paywalled articles) and 405 (sites that block HEAD method) as "alive" to avoid false positives on legitimate sources.
+- URL checks are batched 8 at a time to avoid hammering external servers and to stay within Vercel's timeout budget.
+
+---
+
 ## [2026-04-30] — Fix broken internal links in auto-generated blog posts
 
 **Requested by:** Keenan
