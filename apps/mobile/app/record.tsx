@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import * as Sentry from "@sentry/react-native";
 import { Audio, InterruptionModeIOS } from "expo-av";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -232,13 +233,36 @@ export default function RecordScreen() {
         });
       }, 1000);
     } catch (err) {
-      // Sentry captures the underlying error via initSentry; no local
-      // console.warn needed (and it'd ship to prod even with the
-      // transform-remove-console plugin because warn is excluded).
-      void err;
+      // The most common production cause is the iOS audio session being
+      // held by another app — phone call, FaceTime, Voice Memos, etc.
+      // expo-av surfaces this as a generic prepareToRecordAsync throw,
+      // so we re-check permission state to disambiguate the rarer
+      // "permission revoked between request and use" case from the
+      // dominant "audio session busy" case.
+      const nativeMessage = err instanceof Error ? err.message : String(err);
+      const nativeCode =
+        err && typeof err === "object" && "code" in err
+          ? String((err as { code?: unknown }).code)
+          : null;
+      Sentry.addBreadcrumb({
+        category: "audio",
+        level: "error",
+        message: "recording.start failed",
+        data: { nativeMessage, nativeCode },
+      });
+
+      const fresh = await Audio.getPermissionsAsync().catch(() => null);
+      if (fresh && !fresh.granted) {
+        Alert.alert(
+          "Microphone access required",
+          "Enable in Settings → Acuity → Microphone, then try again.",
+          [{ text: "OK", onPress: () => router.back() }]
+        );
+        return;
+      }
       Alert.alert(
         "Recording unavailable",
-        "Couldn't open the microphone. Try again or reload the app."
+        "Your phone is in use by another app or a call. End the call or close the other app, then try again."
       );
     }
   };
