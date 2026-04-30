@@ -7,6 +7,36 @@
 
 ---
 
+## [2026-04-30] — Fix broken internal links in auto-generated blog posts
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 6b35d3a
+
+### In plain English (for Keenan)
+
+Blog posts were linking to pages that don't exist. For example, a post might link to "/blog/mindful-journaling-tips" when that page was never published — clicking it would show a 404 error. This happened because the AI was told "link to other blog posts if you know of relevant ones" without being given an actual list, so it guessed URLs. Now the system looks up every real published blog post and persona page before generating, gives the AI an explicit list of valid URLs, and rejects any post that contains a link to a page that doesn't exist. No more broken links.
+
+### Technical changes (for Jimmy)
+
+- Modified `apps/web/src/inngest/functions/auto-blog.ts`:
+  - `pick-next-topic` step now fetches all published blog slugs from both `BLOG_POSTS` (static) and the ContentPiece table (dynamic/auto-published), deduplicates, and passes them through as `topicData.blogSlugs`
+  - `buildSystemPrompt()` now accepts `blogSlugs` param. Replaced vague "Also link to other /blog/* posts if you know of relevant ones" with an explicit slug list and the instruction "ONLY use URLs from these lists. Do NOT invent or guess blog slugs"
+  - `validateBlogPost()` now accepts `validBlogSlugs` param. Extracts all `/for/*` and `/blog/*` hrefs from the generated HTML, checks each against the valid sets (`PERSONA_SLUGS` and `validBlogSlugs`), and fails validation with the specific broken URLs if any don't match
+  - `callClaudeForBlog()` updated to thread `blogSlugs` through to both `buildSystemPrompt` and `validateBlogPost`
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- The /for/* persona pages were never the issue — all 24 exist via dynamic routing in `persona-pages.ts`. The problem was exclusively /blog/* links where Claude hallucinated slugs.
+- The validation error feedback from the prior commit means that if Claude does hallucinate a slug on attempt 1, it will get told "Broken internal links: /blog/fake-slug" and can correct on attempt 2.
+- If no blog posts are published yet, the prompt now says "No /blog/* posts published yet — use /for/* pages only" so Claude won't try to link to nonexistent blog posts.
+
+---
+
 ## [2026-04-30] — Fix auto-blog generation failures by feeding validation errors into retries
 
 **Requested by:** Keenan
