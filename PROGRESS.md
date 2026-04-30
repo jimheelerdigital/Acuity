@@ -7,6 +7,38 @@
 
 ---
 
+## [2026-04-30] — Recording-error message branches by cause (call vs. permission)
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** 10da170
+
+### In plain English (for Keenan)
+
+When the record button fails to start (most often because the user is on a phone call, FaceTime, or recording in another app), the error popup used to say a vague "Couldn't open the microphone." Now it tells the user exactly what's wrong: if mic permission was turned off, it points them to Settings; otherwise it tells them their phone is in use by another app or a call and to end that, then try again. We also log the underlying iOS error to Sentry so we can see in production whether most failures are calls, permissions, or something else.
+
+### Technical changes (for Jimmy)
+
+- Modified `apps/mobile/app/record.tsx` `startRecording()` catch block:
+  - Re-checks `Audio.getPermissionsAsync()` to disambiguate "permission revoked" from "audio session busy"
+  - Permission-denied branch: title "Microphone access required", body points to Settings → Acuity → Microphone, OK navigates back
+  - Default branch: title "Recording unavailable", body explains another app or a call is holding the mic
+  - Adds `Sentry.addBreadcrumb({ category: "audio", level: "error" })` with `nativeMessage` and `nativeCode` so the cause distribution is visible in Sentry events
+- Imported `* as Sentry from "@sentry/react-native"` (already a transitive dep via `lib/sentry.ts`)
+
+### Manual steps needed
+
+- [ ] Run `eas build --platform ios --profile production` from `apps/mobile/` (Jimmy)
+- [ ] Submit the resulting build to TestFlight; replace build 24 in App Store Connect before review submission (Jimmy)
+
+### Notes
+
+- Approach was pragmatic over perfect: expo-av doesn't expose AVAudioSession error codes through a stable JS API, so we re-check permission state (reliable signal) and default everything else to "audio session busy" (the dominant production cause based on user report).
+- The Sentry breadcrumb captures `error.code` if present and `error.message` always — gives us enough data to revisit branching if a different cause turns out to be common.
+- The pre-try permission flow at lines 182-193 still handles the "first-time deny" case directly; this catch path covers the rarer "granted then revoked between requests" edge.
+
+---
+
 ## [2026-04-30] — Add external citations with link verification to auto-blog
 
 **Requested by:** Keenan
