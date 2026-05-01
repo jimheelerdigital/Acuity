@@ -131,7 +131,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: "Psychologists have long known that verbalizing emotions helps regulate them. It’s called “affect labeling” — the simple act of putting feelings into words reduces activity in the amygdala, the brain’s fear center. This is why talking to a therapist helps even before they offer any advice. The act of speaking is itself therapeutic.",
+        text: `Psychologists have long known that verbalizing emotions helps regulate them. It\u2019s called \u201Caffect labeling\u201D \u2014 the simple act of putting feelings into words reduces activity in the amygdala, the brain\u2019s fear center. This is why <a href=”/for/therapy”>voice journaling between therapy sessions</a> helps even before a therapist offers any advice. The act of speaking is itself therapeutic.`,
       },
       {
         tag: "p",
@@ -384,7 +384,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: "The basic brain dump is powerful on its own. But when you add AI to the mix, it becomes transformative. An AI-powered app like Acuity takes your raw, unstructured voice dump and automatically extracts tasks, identifies emotional themes, tracks mood over time, and connects tonight’s entry to patterns from previous nights.",
+        text: `The basic brain dump is powerful on its own. But when you add AI to the mix, it becomes transformative. An AI-powered app like Acuity takes your raw, unstructured voice dump and automatically extracts tasks, identifies emotional themes, tracks mood over time, and connects tonight\u2019s entry to patterns from previous nights. If you struggle with <a href="/for/sleep">racing thoughts before sleep</a>, this is the fastest way to quiet your mind and wake up organized.`,
       },
       {
         tag: "p",
@@ -1054,7 +1054,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: "Racing thoughts before sleep don’t have to be your nightly reality. The solution isn’t to force your brain to be quiet — it’s to give it a reason to be quiet. When your open loops are closed, your worries are captured, and your brain trusts that nothing important will be forgotten, silence comes naturally. It takes 60 seconds. It works tonight. And it gets more powerful every night you do it.",
+        text: `Racing thoughts before sleep don\u2019t have to be your nightly reality. The solution isn\u2019t to force your brain to be quiet \u2014 it\u2019s to give it a reason to be quiet. When your open loops are closed, your worries are captured, and your brain trusts that nothing important will be forgotten, silence comes naturally. It takes 60 seconds. It works tonight. And it gets more powerful every night you do it. Learn more about how <a href="/for/sleep">Acuity\u2019s 60-second brain dump fixes racing thoughts before bed</a>.`,
       },
     ],
   },
@@ -1407,7 +1407,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: "AI in journaling apps is not a therapist, and it shouldn’t try to be. But used appropriately, it can be a powerful complement to mental health care.",
+        text: `AI in journaling apps is not a therapist, and it shouldn\u2019t try to be. But used appropriately, it can be a powerful complement to mental health care. See how <a href="/for/therapy">Acuity tracks emotional patterns between therapy sessions</a>.`,
       },
       {
         tag: "p",
@@ -1592,7 +1592,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: "Acuity automates much of this process. It takes your daily voice entries from the week, identifies recurring themes and tasks, tracks your mood and energy patterns, and generates a weekly summary that highlights what went well, what needs attention, and where your time actually went. The weekly review that used to take an hour now takes five minutes of reading.",
+        text: `Acuity automates much of this process. It takes your daily voice entries from the week, identifies recurring themes and tasks, tracks your mood and energy patterns, and generates a weekly summary that highlights what went well, what needs attention, and where your time actually went. The weekly review that used to take an hour now takes five minutes of reading. See how <a href="/for/founders">founders use Acuity as a nightly debrief system</a>, or learn more about the <a href="/for/weekly-report">AI-generated weekly report</a>.`,
       },
       {
         tag: "h2",
