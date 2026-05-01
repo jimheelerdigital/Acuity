@@ -7,6 +7,37 @@
 
 ---
 
+## [2026-04-30] — v1.1 slice 1: free-tier entitlement split (canExtractEntries)
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** ed88f75
+
+### In plain English (for Keenan)
+
+This is the foundation for v1.1's "free tier that's actually useful" redesign. After v1.1 ships, users whose trial ends won't be locked into read-only — they'll keep recording and getting transcripts of their entries forever. Only the AI part (themes, life matrix, weekly insights, goal extraction) becomes a Pro feature. This commit adds the rule that says "free users can record but can't get extraction"; the recording flow itself doesn't change yet — that's slice 2. Nothing user-visible has shifted today; this is the load-bearing spine the rest of v1.1 builds on.
+
+### Technical changes (for Jimmy)
+
+- New entitlement flag `canExtractEntries` added to `Entitlement` interface (`apps/web/src/lib/entitlements.ts`). PRO/TRIAL/PAST_DUE = true; FREE = false.
+- `entitlementSet()` partition refactored: `canRecord` now = `isActiveSide || isPostTrialFreeSide`. Every other `can*` flag still follows the active-side-only rule. The post-trial-free side keeps the journaling loop without leaking PRO features.
+- `requireEntitlement` in `apps/web/src/lib/paywall.ts` extended to accept `"canExtractEntries"` in its flag-key discriminated union.
+- Test suite at `apps/web/src/lib/entitlements.test.ts` reworked: `ACTIVE_FLAGS_TRUE` renamed to `PRO_ONLY_FLAGS` (canRecord excluded); `expectActive` / `expectLocked` helpers updated; new explicit FREE-post-trial shape test ("canRecord=true, canExtractEntries=false"); new property-test invariant ("canRecord is true across every recognized status").
+- All 27 entitlements tests pass.
+- Two design docs landed: `docs/v1-1/free-tier-redesign.md` (Phase 1 — architecture) and `docs/v1-1/free-tier-phase2-plan.md` (Phase 2 — build plan, with Jim's three approved refinements: banner names recent/older counts, /account gets a "Process older entries" surface, backfill-completion email mentions remaining older entries; soft-cap auto-flip is a weekly Inngest cron with 7-consecutive-cycle stickiness instead of a time-based trigger).
+
+### Manual steps needed
+
+- [ ] None for this slice. Slice 2 (Inngest pipeline branch) is the next user-visible change. Slice 2 won't start until the systemic key-leak postmortem and redaction fix (running in parallel) are both complete (Jimmy).
+
+### Notes
+
+- This is purely additive — no existing endpoints behave differently because no caller checks `canExtractEntries` yet. Slice 2 wires it into `process-entry.ts`.
+- The pre-existing tsc errors in `apps/web/src` (OverviewTab `blendedCac`, landing-component prefix, auto-blog Prisma type, google/auth args, recharts BarMouseEvent shape) are unrelated to this slice — confirmed via grep for entitle/paywall/canExtract/canRecord on the tsc output.
+- Per Jim's per-slice approval policy: slice 2 begins only after he reviews this slice in staging, the entitlements suite still passes, and the parallel postmortem/redaction work has shipped.
+
+---
+
 ## [2026-04-30] — Recording-error message branches by cause (call vs. permission)
 
 **Requested by:** Jimmy
