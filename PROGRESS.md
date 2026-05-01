@@ -15,6 +15,7 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 2. **Show the diff before pushing.** Per-slice approval gate. The author shows `git diff --stat` plus the full diff of each non-trivial file change to Jim, who confirms before push.
 3. **Production verification after deploy.** Re-run the same three-persona shape check (FREE / TRIAL / PRO) used in slice 1 against production data after each slice's deploy goes Ready. Pure-function verification + at least one live HTTP probe to confirm the deploy is responsive.
 4. **Pre-existing failures stay called out.** When the full suite returns failures unrelated to the current slice, confirm via `git stash` that they exist on `main` independently and report the count + cause in the slice's PROGRESS entry.
+5. **End-to-end recording verification uses `apps/web/scripts/verify-slice2-recording.ts`.** Persona accounts (PRO/TRIAL/FREE) live in production via `apps/web/scripts/seed-slice2-test-users.ts`. After any slice that touches the recording pipeline or its surrounding fields (entitlements, prompts, persistence, embedding, themes), record from each persona and run the verification script to confirm the FREE-vs-PRO branch contract holds. Both scripts stay in the repo as reusable verification tooling.
 
 ---
 
