@@ -19,6 +19,56 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-01] — v1.1 calendar slice C5a: server endpoints + planSyncOp wire-up
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** b6ea366
+
+### In plain English (for Keenan)
+
+This is the slice that turns calendar integration from "engine running with no pedals" into "engine you can actually drive — once we add the steering wheel." On the server side: when a user creates or completes a task, we now check "should this go to your calendar?" and if yes, mark it as pending. We added four new web addresses (URLs) the mobile app can talk to: one to connect a calendar, one to mark settings (auto-send on/off, all-day vs timed events), one to give the mobile app the queue of pending sync work, and one for the mobile app to report back what it actually did. Nothing visible to users yet — the next slice (C5b) builds the buttons and screens that let users see and interact with this. Until C5b ships, only mobile builds and curl can talk to these endpoints.
+
+### Technical changes (for Jimmy)
+
+- New file `apps/web/src/lib/enqueue-sync.ts` (150 lines): bridge between `/api/tasks` mutation routes and the C4 sync engine. Exports `enqueueSyncForTask(prisma, taskId, userId, action)` (does its own task + user reads) and `enqueueSyncForLoadedTask(...)` (for callers inside an existing transaction). Action map: `create | edit | reopen | manual` → kind `upsert`; `complete` → kind `complete`. When `planSyncOp` returns non-null, writes `Task.calendarSyncStatus = "PENDING"`. No executor call — Option α; mobile drains.
+- New file `apps/web/src/lib/enqueue-sync.test.ts` (170 lines, 10 tests): 5 happy paths (create / edit / complete / manual / reopen), 4 no-op gates (no provider, autoSend=false on fresh create, no dueDate, complete-without-prior-sync), 1 idempotency proof. All `vi.fn()` Prisma mocks.
+- Replaced `apps/web/src/app/api/integrations/calendar/connect/route.ts` (was 501 stub from v1.0). Real impl: validates `{ provider ∈ {ios_eventkit, google, outlook}, targetCalendarId (string ≤256), autoSendTasks?, defaultEventDuration? ∈ {ALL_DAY, TIMED} }`, writes the User row's calendar fields. Idempotent — re-calling replaces the prior connection. Gates: auth → canSyncCalendar entitlement (C1) → feature flag (calendar_integrations) → real handler.
+- New file `apps/web/src/app/api/integrations/calendar/sync-result/route.ts` (108 lines): POST. Body discriminated on `ok`: `{ taskId, ok=true, providerEventId }` or `{ taskId, ok=false, retryable, reason }`. Reason field bounded to 500 chars. Ownership-checked via `prisma.task.findFirst({ id, userId })` — returns 403 not 404 to avoid leaking task existence. Calls `applySyncResult` from C4.
+- New file `apps/web/src/app/api/integrations/calendar/drain/route.ts` (122 lines): GET. Returns up to 100 `CalendarSyncOp` entries for the caller's PENDING tasks, FIFO by createdAt. The composite index `@@index([userId, calendarSyncStatus])` from C3 supports the query. Uses `Promise.all` to fetch the user prefs + tasks in one round-trip pair. Returns `{ ops: [] }` and 200 if user isn't connected. Cache-Control: no-store.
+- New file `apps/web/src/app/api/integrations/calendar/settings/route.ts` (142 lines): PATCH. Optional fields `autoSendTasks | defaultEventDuration | targetCalendarId` — pass only what you're changing. Returns 409 if user isn't connected. Re-targeting calendars writes the new id but does NOT mark all SYNCED tasks PENDING again — mobile fires a separate re-sync call after the PATCH succeeds (deferred to C5b/C6).
+- Modified `apps/web/src/app/api/tasks/route.ts` (+40 lines):
+  - POST: after `prisma.task.create`, calls `enqueueSyncForTask(..., "create")`. Wrapped in try/catch + `safeLog.warn` so a calendar-sync failure never fails the task create.
+  - PATCH: dispatches on `body.action`. `complete` → enqueue `"complete"`; `reopen | edit` → enqueue `"edit"`; `snooze | move` → no-op (no calendar effect); `dismiss` already returned earlier (orphans the calendar event — see Notes).
+
+### Slice C5a verification
+
+- enqueue-sync tests: 10/10 pass
+- calendar-sync tests (C4): 30/30 still pass
+- Full apps/web vitest: 15/16 files pass, 201/205 tests pass. +23 tests over the C4 baseline of 178 (10 from enqueue-sync, 13 absorbed from the rebase that pulled in slice 3 + SEO work). Zero regressions. Same 4 pre-existing `auth-flows.test.ts` failures (`prisma.deletedUser` mock gap, in `docs/v1-1/backlog.md`).
+- No new tsc errors.
+
+### Manual steps needed
+
+- [ ] Production verification after Vercel deploy goes Ready: confirm the four new endpoints respond as expected for the three-persona shape (FREE / TRIAL / PRO). Quick smoke (Jimmy):
+  - `curl -X POST $URL/api/integrations/calendar/connect -d '{"provider":"ios_eventkit","targetCalendarId":"x"}'` from a FREE-cookie session → 402 SUBSCRIPTION_REQUIRED
+  - Same call from a TRIAL/PRO cookie session → 200 with the saved fields
+  - `curl $URL/api/integrations/calendar/drain` from PRO without a connected calendar → 200 with `{ops: []}`
+- [ ] After verification clears, slice C5b begins: web `/account/integrations-section.tsx` UI updates, locked-state UX surfaces for FREE users (Life Matrix locked card, Goals/Tasks/Theme Map locked, Pro pulse) per `docs/v1-1/free-tier-phase2-plan.md §B.2`, mobile placeholder integrations screen.
+
+### Notes
+
+- **Dismiss = orphan event (intentional Phase A limitation).** `/api/tasks` PATCH `action="dismiss"` returns BEFORE the task.update branch — the row is hard-deleted by `prisma.task.delete`. The corresponding calendar event becomes an orphan, same one-way property as disconnect. Documented inline in the wire-up. Proper delete-sync needs either a soft-delete column or a side-queue table — schema change deferred to post-launch.
+- **Drain is bounded at 100 ops/call.** Mobile re-calls when its local queue empties. Bounded payload prevents a backed-up queue from returning a multi-MB response.
+- **Connect is idempotent + replace-prior.** Re-calling overwrites the User row's calendar fields. Aligns with the "user disconnected then reconnected on a new device" mental model.
+- **Entitlement gating defense in depth.** Every endpoint runs `requireEntitlement("canSyncCalendar")` even though mobile UI will lock these flows out for FREE users — protects against a downgraded-mid-session user whose mobile cache still thinks they're PRO.
+- **Re-targeting orchestration deferred.** Settings PATCH writes the new targetCalendarId; mobile is responsible for re-flushing SYNCED tasks via a separate call after the PATCH succeeds. Keeps the route handler small + provider-agnostic.
+- **`/api/tasks` enqueue failures are non-fatal.** Try/catch + `safeLog.warn`. The task mutation succeeds even if enqueue errors; the C4 stuck-task cron is the safety net for anything that went silently wrong.
+- **Migration impact: zero behavior change for the current production cohort.** No existing user has `calendarConnectedProvider` set yet (C3 just added the column with default null). Connect endpoint is real but not yet linked from any UI. First user who connects via curl/mobile will start seeing PENDING rows; the C4 cron will escalate them to FAILED after 24h since no real EventKit drain exists yet (C6 closes that gap).
+- Followed slice protocol: full-suite vitest re-run, diff shown before push, baseline-red failures called out as pre-existing.
+
+---
+
 ## [2026-05-01] — v1.1 slice 3: day-14 trial-ended transactional email
 
 **Requested by:** Jimmy
