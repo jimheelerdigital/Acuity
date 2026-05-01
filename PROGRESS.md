@@ -20,6 +20,15 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-02] — Slice numbering correction for the merged workstream
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+
+The handoff entry below (next section, 2026-05-01) numbered the remaining free-tier slices as 4=backfill / 5=conversion surfaces / 6=locked-state / 7=soft cap. The corrected order, per the v1.1 phase 2 plan and Jim's 2026-05-01 evening sequencing prompt, is **4=locked-state UX surfaces (§B.2 — Pro pulse, Life Matrix locked, Goals locked, Tasks empty, Theme Map locked, Entry footer) / 5=backfill ("Process my history") / 6=soft cap (flag-off) / 7=polish**. Calendar C5b slots between slice 4 and slice 5 to share the §B.2 copy file. Calendar C6 slots between slice 5 and slice 6 (real EventKit + mobile foreground hook). Use this numbering going forward.
+
+---
+
 ## [2026-05-01] — Session handoff: free-tier + calendar workstreams merge
 
 **Requested by:** Jimmy
