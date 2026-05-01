@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { FoundingMemberBanner } from "@/components/founding-member-banner";
@@ -224,7 +225,7 @@ export function PulsingCTA({
     <Link
       href={href}
       onClick={trackInitiateCheckout}
-      className={`relative inline-flex items-center gap-2 rounded-full bg-[#7C5CFC] px-8 py-4 text-sm font-semibold text-white transition-all duration-300 hover:bg-[#6B4FE0] hover:shadow-xl hover:shadow-[#7C5CFC]/25 hover:-translate-y-0.5 active:scale-95 ${className}`}
+      className={`relative inline-flex items-center gap-2 rounded-full bg-[#7C5CFC] px-8 py-4 text-sm font-semibold text-white transition-all duration-300 hover:bg-[#6B4FE0] hover:shadow-xl hover:shadow-[#7C5CFC]/25 hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0A0F] ${className}`}
     >
       <span className="absolute inset-0 rounded-full bg-[#7C5CFC]/30 animate-pulse-ring" />
       <span className="relative z-10 flex items-center gap-2">{children}</span>
@@ -334,7 +335,7 @@ function LandingWhoItsFor() {
     >
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-1 transition hover:text-white relative after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-0 after:bg-violet-500 after:transition-all hover:after:w-full"
+        className="flex items-center gap-1 transition hover:text-white relative after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-0 after:bg-violet-500 after:transition-all hover:after:w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C5CFC] focus-visible:rounded-sm"
       >
         Who it's for
         <svg
@@ -441,7 +442,7 @@ export function LandingNav() {
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
         <div className="flex items-center gap-8">
           <Link href="/" className="flex items-center gap-2 group">
-            <img src="/AcuityLogoDark.png" alt="Acuity logo" className="shrink-0" style={{ width: 24, height: 24 }} />
+            <Image src="/AcuityLogoDark.png" alt="Acuity logo" width={24} height={24} className="shrink-0" />
             <span className="text-lg font-bold tracking-tight text-white">Acuity</span>
           </Link>
           <div className="hidden sm:flex items-center gap-6 text-sm text-[#A0A0B8]">
@@ -489,7 +490,7 @@ export function Footer() {
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <div className="flex items-center gap-2">
-              <img src="/AcuityLogoDark.png" alt="Acuity logo" className="shrink-0" style={{ width: 24, height: 24 }} />
+              <Image src="/AcuityLogoDark.png" alt="Acuity logo" width={24} height={24} className="shrink-0" />
               <span className="text-lg font-bold tracking-tight text-white">Acuity</span>
             </div>
             <p className="mt-2 text-sm text-[#A0A0B8] max-w-xs">

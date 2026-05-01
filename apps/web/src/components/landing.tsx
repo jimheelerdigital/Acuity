@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { FoundingMemberBanner } from "@/components/founding-member-banner";
@@ -1093,7 +1094,7 @@ export function LandingPage() {
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:py-5">
           <div className="flex items-center gap-8">
             <Link href="/" className="flex items-center gap-2 group">
-              <img src="/AcuityLogoDark.png" alt="Acuity logo" className="shrink-0" style={{ width: 24, height: 24 }} />
+              <Image src="/AcuityLogoDark.png" alt="Acuity logo" width={24} height={24} className="shrink-0" />
               <span className="text-lg font-bold tracking-tight">Acuity</span>
             </Link>
             <div className="hidden sm:flex items-center gap-6 text-sm text-[#A0A0B8]">
@@ -1961,7 +1962,7 @@ export function LandingPage() {
             {/* Brand column */}
             <div className="lg:col-span-2">
               <div className="flex items-center gap-2">
-                <img src="/AcuityLogoDark.png" alt="Acuity logo" className="shrink-0" style={{ width: 28, height: 28 }} />
+                <Image src="/AcuityLogoDark.png" alt="Acuity logo" width={28} height={28} className="shrink-0" />
                 <span className="text-xl font-bold tracking-tight">
                   Acuity
                 </span>
