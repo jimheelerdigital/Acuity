@@ -19,6 +19,41 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-01] — Comprehensive SEO and visibility audit
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 7fdd413
+
+### In plain English (for Keenan)
+
+We audited every inch of getacuity.io for search engine visibility — Google, Bing, and AI search engines like ChatGPT and Perplexity. The audit found three critical problems. First, the website is redirecting in the wrong direction (non-www to www) while telling Google the opposite, which confuses search engines about which version of the site to show in results. Second, all five of your best landing pages (/for/therapy, /for/founders, /for/sleep, /for/decoded, /for/weekly-report) plus 20+ persona pages are completely invisible to Google because they have a "noindex" tag — meaning all that custom copy is only reachable through paid ads, not organic search. Third, even if we removed the noindex, those pages aren't listed in the sitemap Google uses to discover pages. The audit also found the site has no llms.txt file (which helps AI search engines understand your site), no Bing Webmaster Tools setup (which powers ChatGPT search), and some inconsistencies with the free trial length (some pages say 30-day, some say 14-day). The full report is at audit/seo-audit-2026-05-01.md with 28 prioritized findings and an action plan.
+
+### Technical changes (for Jimmy)
+
+- Created `audit/seo-audit-2026-05-01.md` — 500-line audit report covering 10 sections: crawlability, metadata/OG, structured data, Core Web Vitals, mobile/accessibility, content SEO, AI search optimization, blog system, tracking infrastructure, and backlink signals
+- No code changes — this is an audit-only deliverable
+- Identified 4 P0 issues, 10 P1 issues, 14 P2 issues
+- Key code files flagged for fixes: `apps/web/src/app/for/*/layout.tsx` (noindex), `apps/web/src/app/sitemap.ts` (missing /for/ pages), `apps/web/src/app/robots.ts` (no AI bot rules), `apps/web/src/app/layout.tsx` (empty sameAs, missing theme-color, missing WebSite schema), `apps/web/src/app/page.tsx` (force-dynamic, unverified aggregateRating)
+
+### Manual steps needed
+
+- [ ] Fix Vercel domain redirect: set getacuity.io as primary domain, www redirects to non-www with 301 (Keenan — Vercel dashboard)
+- [ ] Verify Google Search Console is set up and sitemap submitted (Keenan)
+- [ ] Set up Bing Webmaster Tools and submit sitemap (Keenan)
+- [ ] Verify aggregateRating (4.9/5, 127 reviews) comes from a real public source — remove if not (Keenan / Jimmy)
+- [ ] Confirm whether the free trial is 14 days or 30 days so all copy can be corrected (Keenan)
+- [ ] Provide social profile URLs (Twitter/X, LinkedIn, Instagram) for Organization schema (Keenan)
+
+### Notes
+
+- The /for/ pages were intentionally noindexed in a prior session to prevent ad landing pages from diluting SEO signal toward pillar content (see commit message in sitemap.ts history). The original logic made sense when the pages were thin ad landers, but they have since been built out into 1,200-2,400 word substantive landing pages with unique copy, FAQ sections, and comparison tables. They are now high-quality content pages that should be indexed.
+- The domain redirect issue (307 non-www → www) is likely a Vercel domain configuration issue, not a code issue. The code consistently uses `getacuity.io` (non-www) in all canonical URLs, sitemap entries, and metadata. The fix is in the Vercel dashboard.
+- The aggregateRating in the SoftwareApplication schema is the highest-risk item. Google has been issuing manual actions for fabricated review counts. If the 127 reviews aren't on the App Store, G2, or Trustpilot, remove the aggregateRating block entirely.
+- The audit did not run Lighthouse — actual Core Web Vitals scores should be measured separately. The `force-dynamic` on the homepage is the most likely TTFB bottleneck.
+
+---
+
 ## [2026-05-01] — v1.1 slice 2 verification + verify-script bug fix
 
 **Requested by:** Jimmy
