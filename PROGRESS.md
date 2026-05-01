@@ -19,6 +19,66 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-01] — Execute all SEO audit fixes (C+ to B+)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** a0c23ba, 187cc09, 97409bc, 6265fe4, 2621996, 4e964a3
+
+### In plain English (for Keenan)
+
+We executed every fix from the SEO audit to take the site from a C+ to a B+. The biggest change: your five best landing pages (/for/therapy, /for/founders, /for/sleep, /for/decoded, /for/weekly-report) plus 20+ persona pages are now visible to Google. Before today, they were completely invisible — all that custom copy only worked for paid traffic. Now Google can find, crawl, and rank them. We also told Google about 39 pages on the site (up from 17), made the site visible to AI search engines like ChatGPT and Perplexity, removed a fake-looking "127 reviews" rating that could have triggered a Google penalty, fixed the free trial from "30 days" to "14 days" everywhere, added a related articles section to every blog post, and connected blog content to your landing pages with contextual links. The gap to an A grade is mostly things only you can do: fixing the domain redirect in Vercel, setting up search engine dashboards, and providing your social media URLs.
+
+### Technical changes (for Jimmy)
+
+**Phase 1 — Critical indexing (P0):**
+- `apps/web/src/app/for/*/layout.tsx` + `[slug]/layout.tsx`: `robots: { index: false }` → `index: true` on all 6 layout files (5 static + 1 dynamic)
+- `apps/web/src/app/sitemap.ts`: rebuilt to include /for/ pages (5 static + 20 dynamic personas) + /waitlist; removed /auth/signup; now 39+ URLs
+- `apps/web/src/app/layout.tsx`, `blog/[slug]/page.tsx`, `voice-journaling/page.tsx`: all JSON-LD logo URLs normalized from www.getacuity.io to getacuity.io
+- Twitter card type changed from `summary` to `summary_large_image` on all /for/ pages
+
+**Phase 2 — AI search (P1):**
+- `apps/web/public/llms.txt`: new 50-line file per llmstxt.org spec with product, use cases, articles sections
+- `apps/web/src/app/robots.ts`: added 6 AI user-agent blocks (GPTBot, ChatGPT-User, anthropic-ai, ClaudeBot, PerplexityBot, Google-Extended)
+
+**Phase 3 — Structured data (P1):**
+- `apps/web/src/app/layout.tsx`: Organization schema → @graph with Organization + WebSite (SearchAction for sitelinks), added email field, added theme-color meta
+- `apps/web/src/app/page.tsx`: removed unverifiable aggregateRating, fixed offer from "First month free" to "14-day free trial", FAQ answer updated to 14-day
+- `apps/web/src/app/waitlist/layout.tsx`: title/description updated from 30-day to 14-day trial
+- `apps/web/src/app/for/*/page.tsx` + `[slug]/page.tsx`: BreadcrumbList JSON-LD added to all /for/ pages
+- `apps/web/src/app/blog/[slug]/page.tsx`: image property added to both static and dynamic BlogPosting schemas
+
+**Phase 4 — Internal linking (P1/P2):**
+- `apps/web/src/lib/blog-posts.ts`: contextual links added in 4 blog posts to /for/therapy, /for/sleep, /for/founders, /for/weekly-report
+- `apps/web/src/app/blog/[slug]/page.tsx`: RelatedPosts component added showing 3 related articles after CTA on every blog post
+
+**Phase 5 — Performance (P2):**
+- `apps/web/src/components/landing.tsx`: 3 `<img>` → `<Image>` from next/image
+- `apps/web/src/components/landing-shared.tsx`: 2 `<img>` → `<Image>` from next/image
+
+**Phase 6 — Accessibility (P2):**
+- `apps/web/src/components/landing-shared.tsx`: focus-visible ring styles added to PulsingCTA and nav dropdown trigger
+
+### Manual steps needed
+
+1. [ ] Fix Vercel domain redirect: set getacuity.io as primary, www redirects to non-www with 301 (Keenan — Vercel dashboard)
+2. [ ] Verify Google Search Console is set up and submit sitemap https://getacuity.io/sitemap.xml (Keenan)
+3. [ ] Set up Bing Webmaster Tools and submit sitemap (Keenan — powers ChatGPT search)
+4. [ ] Provide social profile URLs (Twitter/X, LinkedIn, Instagram) for Organization schema sameAs array (Keenan)
+5. [ ] Confirm aggregateRating source — provide App Store/G2/Trustpilot link to re-add the 4.9/5 rating, or leave it removed (Keenan)
+6. [ ] Confirm free trial length is 14 days (updated in code) — if it should be 30, flag it (Keenan)
+7. [ ] Submit getacuity.io to HSTS preload list after domain redirect is stable for 1 week (Jimmy)
+8. [ ] Run Lighthouse audits on /, /for/therapy, /blog/voice-journaling-app to measure actual CWV baseline (Jimmy)
+
+### Notes
+
+- Self-grade after fixes: **B+** (was C+). The gap to A is the Vercel domain redirect (Keenan manual step), missing /about page (requires founder bio copy), and empty sameAs (requires social URLs).
+- 4 pre-existing test failures in auth-flows.test.ts (`prisma.deletedUser.findFirst is not a function`) — existed on main before this work, not caused by SEO changes.
+- Blog post text in blog-posts.ts uses curly/smart quotes. Internal link additions required template literals instead of double-quoted strings to avoid SWC parser errors. Future blog-posts.ts edits with HTML should use template literals.
+- Full followup list at `audit/seo-audit-2026-05-01-followups.md`.
+
+---
+
 ## [2026-05-01] — Comprehensive SEO and visibility audit
 
 **Requested by:** Keenan
