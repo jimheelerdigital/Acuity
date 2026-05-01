@@ -13,6 +13,21 @@ type Flag = {
   updatedAt: string;
 };
 
+/**
+ * Clamp arbitrary input to a valid rollout percentage.
+ * - Coerces strings to numbers
+ * - Floors fractions (rollout is integer-only on the server)
+ * - Rejects NaN / negative / >100 by clamping back into range
+ * Returns null when the input cannot be coerced (empty string, "abc"),
+ * letting the caller decide whether to keep the prior value or 0.
+ */
+function clampRollout(input: string | number): number | null {
+  if (input === "" || input === null || input === undefined) return null;
+  const n = typeof input === "number" ? input : Number(input);
+  if (!Number.isFinite(n)) return null;
+  return Math.max(0, Math.min(100, Math.floor(n)));
+}
+
 type Override = {
   id: string;
   userId: string;
@@ -117,24 +132,13 @@ export default function FeatureFlagsTab() {
                       </button>
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="range"
-                          min={0}
-                          max={100}
-                          value={f.rolloutPercentage}
-                          onChange={(e) =>
-                            patch(f.id, {
-                              rolloutPercentage: Number(e.target.value),
-                            })
-                          }
-                          disabled={busy[f.id]}
-                          className="accent-[#7C5CFC]"
-                        />
-                        <span className="w-10 text-right font-mono text-xs text-white/60">
-                          {f.rolloutPercentage}%
-                        </span>
-                      </div>
+                      <RolloutEditor
+                        savedValue={f.rolloutPercentage}
+                        disabled={busy[f.id]}
+                        onCommit={(value) =>
+                          patch(f.id, { rolloutPercentage: value })
+                        }
+                      />
                     </td>
                     <td className="px-4 py-3">
                       <select
@@ -167,6 +171,142 @@ export default function FeatureFlagsTab() {
       </section>
 
       <UserOverridesSection onMutation={loadFlags} />
+    </div>
+  );
+}
+
+/**
+ * Per-row rollout-percentage editor. Holds local state so typing or
+ * dragging doesn't fire a PATCH on every keystroke / drag-tick (the
+ * old behavior was that the range slider auto-saved on every value
+ * change, which made precise selection nearly impossible because each
+ * tick fired a network round-trip).
+ *
+ * Commit happens on:
+ *   - Pressing Enter in the number input
+ *   - Blurring the number input (after edit)
+ *   - Releasing the slider (mouseup / touchend / pointerup / blur)
+ *   - Clicking the explicit "Save" button (visible only when dirty)
+ *
+ * Local state syncs back to props when the prop changes (i.e. after a
+ * successful save the parent re-renders with the new server value).
+ */
+function RolloutEditor({
+  savedValue,
+  disabled,
+  onCommit,
+}: {
+  savedValue: number;
+  disabled: boolean;
+  onCommit: (value: number) => void;
+}) {
+  // `text` mirrors what's in the number input so partial input ("" while
+  // typing a new number) doesn't yo-yo back to the saved value mid-keystroke.
+  const [text, setText] = useState<string>(String(savedValue));
+  const [sliderValue, setSliderValue] = useState<number>(savedValue);
+
+  // Re-sync from props when the parent re-renders with a new saved value
+  // (e.g. after a successful PATCH from this same row, or after a list refresh).
+  useEffect(() => {
+    setText(String(savedValue));
+    setSliderValue(savedValue);
+  }, [savedValue]);
+
+  const parsed = clampRollout(text);
+  const dirty = parsed !== null && parsed !== savedValue;
+  const invalid = text.trim() !== "" && parsed === null;
+
+  function commit(): void {
+    if (parsed === null) {
+      // Reject the edit — restore the saved value
+      setText(String(savedValue));
+      setSliderValue(savedValue);
+      return;
+    }
+    if (parsed === savedValue) return;
+    onCommit(parsed);
+  }
+
+  return (
+    <div className="flex items-center gap-3">
+      <input
+        type="range"
+        min={0}
+        max={100}
+        step={1}
+        value={sliderValue}
+        onChange={(e) => {
+          const v = Number(e.target.value);
+          setSliderValue(v);
+          setText(String(v));
+        }}
+        onPointerUp={() => commit()}
+        onKeyUp={(e) => {
+          // Arrow-key adjustments commit on key release so keyboard users
+          // can tab through and step values without each Arrow firing a PATCH.
+          if (e.key.startsWith("Arrow") || e.key === "Home" || e.key === "End") {
+            commit();
+          }
+        }}
+        disabled={disabled}
+        aria-label="Rollout percentage slider"
+        aria-valuenow={sliderValue}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuetext={`${sliderValue} percent`}
+        className="accent-[#7C5CFC] flex-1 max-w-[160px]"
+      />
+      <input
+        type="number"
+        inputMode="numeric"
+        min={0}
+        max={100}
+        step={1}
+        value={text}
+        onChange={(e) => {
+          const raw = e.target.value;
+          setText(raw);
+          const n = clampRollout(raw);
+          if (n !== null) setSliderValue(n);
+        }}
+        onBlur={() => commit()}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            (e.target as HTMLInputElement).blur(); // triggers commit via onBlur
+          } else if (e.key === "Escape") {
+            // Discard the edit
+            setText(String(savedValue));
+            setSliderValue(savedValue);
+            (e.target as HTMLInputElement).blur();
+          }
+        }}
+        disabled={disabled}
+        aria-label="Rollout percentage"
+        aria-invalid={invalid || undefined}
+        className={`w-14 rounded-md bg-[#0A0A0F] px-2 py-1 text-right font-mono text-xs text-white outline-none ${
+          invalid
+            ? "ring-1 ring-red-500"
+            : dirty
+              ? "ring-1 ring-amber-400/60"
+              : ""
+        }`}
+      />
+      <span className="font-mono text-xs text-white/40">%</span>
+      {dirty && !invalid && (
+        <button
+          onClick={() => commit()}
+          disabled={disabled}
+          className="rounded-md bg-[#7C5CFC] px-2 py-1 text-xs font-medium text-white disabled:opacity-50"
+        >
+          Save
+        </button>
+      )}
+      {dirty && !invalid && (
+        <span className="text-xs text-white/40 font-mono">
+          {savedValue}%→{parsed}%
+        </span>
+      )}
     </div>
   );
 }
@@ -342,6 +482,14 @@ function NewOverrideForm({
     if (!flagKey && flagKeys[0]) setFlagKey(flagKeys[0]);
   }, [flagKeys, flagKey]);
 
+  // Surface why Save is disabled instead of silently swallowing clicks
+  // (the prior implementation just returned early on a too-short reason
+  // or empty flagKey, leaving the user wondering whether the click
+  // registered).
+  const reasonTrimmed = reason.trim();
+  const reasonTooShort = reasonTrimmed.length > 0 && reasonTrimmed.length < 3;
+  const canSubmit = flagKey !== "" && reasonTrimmed.length >= 3;
+
   return (
     <div className="rounded-md bg-[#0A0A0F] p-3">
       <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-white/40">
@@ -369,22 +517,31 @@ function NewOverrideForm({
         </select>
         <input
           type="text"
-          placeholder="Reason (required)"
+          placeholder="Reason (min 3 chars)"
           value={reason}
           onChange={(e) => setReason(e.target.value)}
-          className="rounded-md bg-[#13131F] px-2 py-2 text-sm text-white"
+          aria-invalid={reasonTooShort || undefined}
+          className={`rounded-md bg-[#13131F] px-2 py-2 text-sm text-white outline-none ${
+            reasonTooShort ? "ring-1 ring-red-500" : ""
+          }`}
         />
         <button
           onClick={() => {
-            if (!flagKey || reason.trim().length < 3) return;
-            onSubmit(flagKey, enabled, reason.trim());
+            if (!canSubmit) return;
+            onSubmit(flagKey, enabled, reasonTrimmed);
             setReason("");
           }}
-          className="rounded-md bg-[#7C5CFC] px-4 py-2 text-sm font-medium"
+          disabled={!canSubmit}
+          className="rounded-md bg-[#7C5CFC] px-4 py-2 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed"
         >
           Save
         </button>
       </div>
+      {reasonTooShort && (
+        <p className="mt-2 text-xs text-red-300">
+          Reason must be at least 3 characters.
+        </p>
+      )}
     </div>
   );
 }
