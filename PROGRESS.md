@@ -19,6 +19,51 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-01] — v1.1 calendar slice C4: provider-agnostic sync engine + Inngest drainer
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** 4e74c35
+
+### In plain English (for Keenan)
+
+This slice writes the brains of the calendar-sync system without plugging it into anything yet. The "brains" decide three things: (1) does this task need a calendar event? (2) when an event gets created, how do we update our database to remember it? (3) what do we do if a task gets stuck "pending" for too long? It's all tested with fake data and never touches a real calendar yet — that comes next slice. Critically, it never calls iOS or Google directly: per the architecture decision two slices ago, the actual writes happen on the user's phone, and the server just keeps score. End user impact: nothing visible yet. Foundation for C5 (the mobile app endpoints + the "Send to calendar" button that users see).
+
+### Technical changes (for Jimmy)
+
+- New file `apps/web/src/lib/calendar-sync.ts` (410 lines): provider-agnostic types + planner + apply + executor interface + two impls.
+  - Types: `CalendarProviderId` (`"ios_eventkit" | "google" | "outlook"`), `CalendarSyncOpKind` (`"upsert" | "complete" | "delete"`), `CalendarSyncStatus`, `CalendarSyncOp`, `CalendarSyncOpResult` (discriminated on `ok` + `retryable`).
+  - `planSyncOp(task, user, ctx?)` — pure function. Returns `CalendarSyncOp | null`. Gates: provider connected, target calendar set, dueDate present (for fresh upserts), autoSendTasks=true OR `ctx.manuallyRequested` OR task is a follow-up edit on already-synced row. Title sanitized (whitespace collapse, 200-char cap, same hygiene as `calendar-prompt.ts`).
+  - `applySyncResult(tx, result)` — idempotent state transition: ok=true → SYNCED + eventId + syncedAt; retryable → PENDING (no eventId/syncedAt write); non-retryable → FAILED. Accepts `PrismaClient` or transaction.
+  - `interface CalendarSyncExecutor { execute(op): Promise<CalendarSyncOpResult> }` — abstract.
+  - `NoopExecutor` (tests, returns ok=true with synthetic eventId), `MobileQueueExecutor` (Option α, returns ok=true preserving prior eventId — mobile completes the work).
+  - `selectStuckTaskIds(rows, now, thresholdMs?)` — pure-functional escalation selector for the cron.
+- New file `apps/web/src/lib/calendar-sync.test.ts` (377 lines, 30 tests): planSyncOp gating (8), happy paths (7), title sanitization (2), applySyncResult transitions + idempotency (4), NoopExecutor contract (3), MobileQueueExecutor contract (2), selectStuckTaskIds (4). All `vi.fn()` Prisma mocks; zero DB / network / SDK calls.
+- New file `apps/web/src/inngest/functions/drain-pending-calendar-tasks.ts` (120 lines): two-trigger Inngest function. Cron `*/30 * * * *` batches 200 PENDING-tasks-older-than-24h, calls `selectStuckTaskIds`, `prisma.task.updateMany` to FAILED. Event `calendar/sync.foreground-requested` placeholder for mobile foreground hook (counts + logs in C4; real per-task drain logic ships in C5/C6 when the mobile drain endpoint exists). Retries=3, matches `day-14-audit-cron`.
+- Modified `apps/web/src/app/api/inngest/route.ts`: imports + registers `drainPendingCalendarTasksFn` in the serve config.
+
+### Slice C4 verification
+
+- Calendar-sync tests: 30/30 pass (new)
+- Full apps/web vitest: 13/14 files pass, 178/182 tests pass. +30 tests over the C3 baseline of 148. Zero regressions.
+- 4 failing tests still the same pre-existing `auth-flows.test.ts` `deletedUser` mock gap (tracked in `docs/v1-1/backlog.md`).
+- No new tsc errors. The Prisma `tx` argument in tests uses `as unknown as Parameters<typeof applySyncResult>[0]` to avoid binding tests to the full Prisma client shape.
+
+### Manual steps needed
+
+- [ ] None for this slice. Vercel deploys the registration; Inngest Cloud picks up the new function on next handshake; cron starts firing on the next 30-min boundary. First tick will find 0 tasks (no row in production has `calendarSyncStatus = PENDING` yet — no caller writes that value until C5 wires `planSyncOp` into `/api/tasks`) (Jimmy).
+- [ ] Slice C5 (API endpoints + planSyncOp wire-up at /api/tasks routes + settings UI) starts after this lands.
+
+### Notes
+
+- Provider-agnostic by construction. Zero imports from `expo-calendar`, `googleapis`, or any provider SDK in any C4 file. The abstract executor interface is the only seam between this code and any future real adapter.
+- Idempotency proof at the test layer: `applySyncResult` re-applied with the same successful result writes the same fields with the same values (only `calendarSyncedAt` differs by clock — both Date instances). Means slice C5 can safely retry result-application from mobile without compounding writes.
+- Stuck-task threshold is 24h. Picked because Option α has up-to-24h propagation latency for users who don't open mobile daily; anything longer should escalate to the user as FAILED rather than sitting silently.
+- Inngest function uses the array-of-triggers form (`[{ cron: ... }, { event: ... }]`) — same shape as Inngest's docs for multi-trigger functions. The handler dispatches on `event?.name`.
+- Followed slice protocol: full-suite vitest re-run, diff shown before push, baseline-red failures called out as pre-existing per `docs/v1-1/backlog.md`.
+
+---
+
 ## [2026-05-01] — Execute all SEO audit fixes (C+ to B+)
 
 **Requested by:** Keenan
