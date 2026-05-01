@@ -349,6 +349,11 @@ export const processEntryFn = inngest.createFunction(
       const taskGroupNames = taskGroupRows.map((g) => g.name);
 
       const { extractFromTranscript } = await import("@/lib/pipeline");
+      const { isEnabled } = await import("@/lib/feature-flags");
+      const useDispositional = await isEnabled(
+        userId,
+        "v1_1_dispositional_themes"
+      );
       const todayISO = new Date().toISOString().split("T")[0];
       return extractFromTranscript(
         transcript,
@@ -356,7 +361,8 @@ export const processEntryFn = inngest.createFunction(
         memoryContext || undefined,
         goalContext,
         taskGroupNames,
-        entry.dimensionContext ?? null
+        entry.dimensionContext ?? null,
+        useDispositional
       );
     });
 

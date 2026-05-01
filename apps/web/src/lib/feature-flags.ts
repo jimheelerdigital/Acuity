@@ -62,6 +62,7 @@ export const FEATURE_FLAG_KEYS = [
   "monthly_email_digest",
   "data_export",
   "public_share_links",
+  "v1_1_dispositional_themes",
 ] as const;
 
 export type FeatureFlagKey = (typeof FEATURE_FLAG_KEYS)[number];

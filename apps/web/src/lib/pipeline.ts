@@ -103,7 +103,63 @@ export async function transcribeAudio(
 
 // ─── Step 3: Extract ─────────────────────────────────────────────────────────
 
-const EXTRACTION_SYSTEM_PROMPT = `You are Acuity's extraction engine. Your job is to analyse a user's nightly voice debrief and return a structured JSON object. Be empathetic, precise, and actionable.
+/**
+ * Theme-block guideline. Two variants:
+ *   - "legacy" (V0): the original "1-3 words" rule. Produces event-
+ *     level themes that don't recur ("Demo No-Shows", "anniversary
+ *     dinner"). 80% singletons in production by 2026-04-30 audit.
+ *   - "dispositional" (V5): the v1.1 rewrite. Steers Claude toward
+ *     dispositional patterns that recur across entries ("intention
+ *     without follow-through", "presence with family"). Phase 2
+ *     bench (docs/v1-1/theme-extraction-phase2.md) showed 6 patterns
+ *     recurring 2-3× across 20 sample entries vs zero for V0.
+ *
+ * Both variants emit the SAME JSON shape (`themes: [{ label, sentiment }]`)
+ * so `recordThemesFromExtraction` works unchanged either way. The
+ * variant only changes how Claude is steered to populate the array.
+ *
+ * Selection at call time via `useDispositionalThemes`, gated by the
+ * `v1_1_dispositional_themes` feature flag in process-entry.ts.
+ */
+const LEGACY_THEME_GUIDELINE =
+  "- Keep theme labels short (1-3 words). Per-theme sentiment reflects the user's emotional framing of that specific theme in this entry: POSITIVE if they expressed satisfaction/progress, NEGATIVE if strain/frustration, NEUTRAL if they mentioned it factually without strong valence. Up to 5 themes per entry.";
+
+const DISPOSITIONAL_THEME_GUIDELINE = `- Themes are DISPOSITIONAL PATTERNS, not event-level descriptions. A pattern is something that would plausibly recur across this user's future entries about completely different topics — describing HOW the user shows up, not WHAT happened today.
+
+  Internal two-step (do not include in output):
+  1. Surface: what literally happened today (a phrase you discard).
+  2. Pattern: the dispositional reading. Apply the RECURRENCE TEST: "Could this same label honestly fit an entry six months from now about a completely different domain (work vs family vs health vs hobbies)?" If no, drop the candidate.
+
+  Prefer these CANONICAL SHAPES — they describe dispositions and recur cleanly across users and topics:
+    "X compounding" / "X compounding into Y" — small disciplined acts adding up
+    "Y without explanation" / "Y without closure" — receiving outcomes without clarity
+    "Z over W" — choosing one orientation over another ("connection over performance", "presence over productivity", "clarity over cleverness", "reactive over deep work")
+    "defending K" — protecting time, energy, or attention from drift
+    "presence with M" — being undivided with people
+    "rules I break for myself" / "rules I break repeatedly" — gap between intent and action
+    "X as Y lever" — recognizing what changes what ("sleep as performance lever", "movement as cognitive fuel")
+    "noticing what restores me" / "noticing my own avoidance" — meta-awareness of self-state
+    "intention without follow-through" — recurring inability to execute on stated plans
+    "showing up tired" / "showing up scattered" — recurring posture under load
+
+  You are not limited to these shapes — new patterns are fine if they pass the recurrence test.
+
+  DO NOT return:
+    - Proper names of people, places, products, sports, hobbies, or domains. "Celtics", "Briarwood", "Keenan", "Mike", "golf", "karate", "demo", "anniversary" are entities — they belong in entity extraction (a separate pipeline shipping later), not in themes. Replace a person's name with the role they play in the pattern.
+    - Today-specific phrases. "Demo no-shows", "leg day reluctance", "anniversary dinner", "nice weather" are events. Drop them.
+    - Generic abstractions like "self-awareness", "productivity", "wellbeing", "fulfillment". Reframe as the specific dispositional posture ("noticing my own performing", "reactive over deep work").
+
+  Output rules:
+    - 0-3 themes per entry. Two themes is common when the entry is rich enough to expose a disposition + a recurring tension. One theme is fine for sparse entries. Empty array IS valid output for a single-line entry where no pattern emerges. Never pad to fill a quota.
+    - Sentiment: POSITIVE = a strength being leaned into; NEGATIVE = friction or frustration with the pattern; NEUTRAL = mentioned without strong valence.
+    - Lowercase labels except where genuinely required by grammar.
+    - Reuse is the goal — when a familiar pattern fits, prefer the familiar phrasing over inventing a new one.`;
+
+function buildExtractionSystemPrompt(useDispositional: boolean): string {
+  const themeGuideline = useDispositional
+    ? DISPOSITIONAL_THEME_GUIDELINE
+    : LEGACY_THEME_GUIDELINE;
+  return `You are Acuity's extraction engine. Your job is to analyse a user's nightly voice debrief and return a structured JSON object. Be empathetic, precise, and actionable.
 
 Return ONLY valid JSON matching this exact schema — no markdown, no prose:
 
@@ -162,11 +218,16 @@ Guidelines:
 - Only include goals if the user expressed a clear medium-to-long term aspiration
 - subGoalSuggestions: populate ONLY when the user references HOW they'll pursue an existing goal the memory context mentions. parentGoalText must match the phrasing of one of the user's existing goals. suggestedAction is the concrete next step. Skip if unsure — orphan suggestions get dropped.
 - progressSuggestions: populate ONLY when the transcript contains concrete, quantifiable evidence of progress on an existing user goal from the memory context — e.g. "closed our first $100k deal" against a "close $1M" goal. goalText must match an existing goal. suggestedProgressPct is the new total percent (not a delta) — infer from the numeric relationship when possible (e.g. $100k of $1M → 10), otherwise leave conservative. rationale is one short sentence that QUOTES a phrase from the transcript. Do NOT invent progress or guess percentages without clear evidence. Skip if unsure — these get shown to the user for validation before anything is written, so precision beats enthusiasm.
-- Keep theme labels short (1-3 words). Per-theme sentiment reflects the user's emotional framing of that specific theme in this entry: POSITIVE if they expressed satisfaction/progress, NEGATIVE if strain/frustration, NEUTRAL if they mentioned it factually without strong valence. Up to 5 themes per entry.
+${themeGuideline}
 - Insights should be reflective observations the user might not have noticed, or concrete next-step recommendations
 - moodScore should be a nuanced score that reflects the overall emotional tone
 - Today's date context will be provided in the user message
 ${LIFE_AREA_EXTRACTION_SCHEMA}`;
+}
+
+const LEGACY_EXTRACTION_SYSTEM_PROMPT = buildExtractionSystemPrompt(false);
+const DISPOSITIONAL_EXTRACTION_SYSTEM_PROMPT =
+  buildExtractionSystemPrompt(true);
 
 export async function extractFromTranscript(
   transcript: string,
@@ -174,7 +235,8 @@ export async function extractFromTranscript(
   memoryContext?: string,
   goalContext?: { title: string; description: string | null } | null,
   taskGroupNames?: string[],
-  dimensionContext?: string | null
+  dimensionContext?: string | null,
+  useDispositionalThemes = false
 ): Promise<ExtractionResult> {
   const contextBlock = memoryContext
     ? `Here is what you know about this user from their entire history with Acuity:\n${memoryContext}\n\nUse these historical patterns to enrich your extraction — for example, if a goal has been mentioned multiple times before, note it as recurring rather than new.\n\n`
@@ -221,10 +283,14 @@ export async function extractFromTranscript(
       }\nAnchor wins/blockers/tasks/insights to this goal when they clearly belong to it, and reuse the goal's existing phrasing rather than inventing a new name.\n\n`
     : "";
 
+  const systemPrompt = useDispositionalThemes
+    ? DISPOSITIONAL_EXTRACTION_SYSTEM_PROMPT
+    : LEGACY_EXTRACTION_SYSTEM_PROMPT;
+
   const message = await anthropic.messages.create({
     model: CLAUDE_MODEL,
     max_tokens: CLAUDE_MAX_TOKENS,
-    system: EXTRACTION_SYSTEM_PROMPT,
+    system: systemPrompt,
     messages: [
       {
         role: "user",
@@ -283,6 +349,20 @@ export async function extractFromTranscript(
       return null;
     })
     .filter((t): t is { label: string; sentiment: "POSITIVE" | "NEGATIVE" | "NEUTRAL" } => t !== null);
+
+  // Observability for the v1.1 dispositional-themes rollout. Logs
+  // which prompt variant produced this extraction's themes plus
+  // distribution stats so we can verify lab improvements
+  // (docs/v1-1/theme-extraction-phase2.md) hold at production scale.
+  // Theme labels are non-PII (no transcript content, no names by
+  // construction in V5). safeLog also redacts known-sensitive fields.
+  const { safeLog } = await import("./safe-log");
+  safeLog.info("extract.theme_prompt", {
+    variant: useDispositionalThemes ? "v5_dispositional" : "v0_legacy",
+    themeCount: themesDetailed.length,
+    labels: themesDetailed.map((t) => t.label),
+    transcriptLength: transcript.length,
+  });
 
   return {
     summary: String(parsed.summary ?? ""),

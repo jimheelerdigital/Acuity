@@ -135,6 +135,15 @@ const SEEDS: Seed[] = [
     rolloutPercentage: 100,
     requiredTier: null,
   },
+  {
+    key: "v1_1_dispositional_themes",
+    name: "v1.1 dispositional themes (V5 prompt)",
+    description:
+      "Replaces the legacy event-level theme prompt with the V5 dispositional-pattern prompt. Phase 2 bench (docs/v1-1/theme-extraction-phase2.md) showed 6 patterns recurring 2-3× across 20 sample entries vs 0 for the legacy prompt. Off at seed; ramp via rolloutPercentage.",
+    enabled: false,
+    rolloutPercentage: 0,
+    requiredTier: null,
+  },
 ];
 
 async function main() {
