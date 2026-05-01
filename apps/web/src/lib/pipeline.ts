@@ -39,24 +39,6 @@ const anthropic = new Anthropic({
   timeout: SDK_TIMEOUT_MS,
 });
 
-// DIAG (2026-05-01) — runtime evidence of which ANTHROPIC_API_KEY the
-// Vercel function instance is actually seeing. The dashboard shows
-// suffix "hwAA" but Anthropic Console reports that key has never been
-// used; production calls 401 with "invalid x-api-key". This logs the
-// last 4 chars only (never the full key) so we can compare to what
-// the dashboard claims is set. Fires once per cold-start and once per
-// extractFromTranscript invocation. Remove once the source is found.
-{
-  const k = process.env.ANTHROPIC_API_KEY;
-  // eslint-disable-next-line no-console
-  console.log(
-    "[anthropic-key-diag] cold-start suffix=" +
-      (k && k.length >= 4 ? k.slice(-4) : "(empty/short)") +
-      " length=" +
-      (k?.length ?? 0)
-  );
-}
-
 const STORAGE_BUCKET = "voice-entries";
 
 // ─── Step 1: Upload Audio ────────────────────────────────────────────────────
@@ -304,19 +286,6 @@ export async function extractFromTranscript(
   const systemPrompt = useDispositionalThemes
     ? DISPOSITIONAL_EXTRACTION_SYSTEM_PROMPT
     : LEGACY_EXTRACTION_SYSTEM_PROMPT;
-
-  // DIAG (2026-05-01) — per-call suffix log alongside the cold-start
-  // log at module-load. See the cold-start block above for context.
-  {
-    const k = process.env.ANTHROPIC_API_KEY;
-    // eslint-disable-next-line no-console
-    console.log(
-      "[anthropic-key-diag] extract-call suffix=" +
-        (k && k.length >= 4 ? k.slice(-4) : "(empty/short)") +
-        " length=" +
-        (k?.length ?? 0)
-    );
-  }
 
   const message = await anthropic.messages.create({
     model: CLAUDE_MODEL,
