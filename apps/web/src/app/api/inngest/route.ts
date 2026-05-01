@@ -7,6 +7,7 @@ import {
   researchBriefingFn,
 } from "@/inngest/functions/content-factory";
 import { day14AuditCronFn } from "@/inngest/functions/day-14-audit-cron";
+import { drainPendingCalendarTasksFn } from "@/inngest/functions/drain-pending-calendar-tasks";
 import { generateLifeAuditFn } from "@/inngest/functions/generate-life-audit";
 import { generateWeeklyReportFn } from "@/inngest/functions/generate-weekly-report";
 import { helloWorldFn } from "@/inngest/functions/hello-world";
@@ -67,6 +68,7 @@ const handler = serve({
     autoBlogGenerateFn,
     autoBlogPruneFn,
     waitlistReactivationFn,
+    drainPendingCalendarTasksFn,
   ],
 });
 
