@@ -19,6 +19,7 @@ import { powerReferralTease } from "./power-referral-tease";
 import { reactivationFinal } from "./reactivation-final";
 import { reactivationFriction } from "./reactivation-friction";
 import { reactivationSocial } from "./reactivation-social";
+import { trialEndedDay14 } from "./trial-ended-day14";
 import { trialEndingDay13 } from "./trial-ending-day13";
 import { userStory } from "./user-story";
 import { valueRecap } from "./value-recap";
@@ -36,6 +37,7 @@ export const TRIAL_EMAIL_TEMPLATES: Record<TrialEmailKey, TrialEmailTemplate> =
     life_matrix_reveal: lifeMatrixReveal,
     value_recap: valueRecap,
     trial_ending_day13: trialEndingDay13,
+    trial_ended_day14: trialEndedDay14,
     reactivation_friction: reactivationFriction,
     reactivation_social: reactivationSocial,
     reactivation_final: reactivationFinal,

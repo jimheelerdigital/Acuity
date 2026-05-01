@@ -39,6 +39,7 @@ export type TrialEmailKey =
   | "life_matrix_reveal"
   | "value_recap"
   | "trial_ending_day13"
+  | "trial_ended_day14"
   | "reactivation_friction"
   | "reactivation_social"
   | "reactivation_final"

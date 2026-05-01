@@ -34,9 +34,9 @@ import type { TrialEmailKey } from "@/emails/trial/registry";
 import { safeLog } from "@/lib/safe-log";
 import { hoursSince, sendTrialEmail } from "@/lib/trial-emails";
 
-type Track = "STANDARD" | "REACTIVATION" | "POWER_USER";
+export type Track = "STANDARD" | "REACTIVATION" | "POWER_USER";
 
-interface CandidateUser {
+export interface CandidateUser {
   id: string;
   createdAt: Date;
   trialEndsAt: Date | null;
@@ -64,7 +64,7 @@ function classifyTrack(
   return "STANDARD";
 }
 
-function nextEmailForUser(
+export function nextEmailForUser(
   user: CandidateUser,
   track: Track,
   now: Date
@@ -80,9 +80,30 @@ function nextEmailForUser(
   }
 
   if (!has("trial_ending_day13") && user.trialEndsAt) {
+    // Strictly future-only — once trialEndsAt is in the past, day14
+    // owns the slot ("your trial just ended"), not day13 ("your
+    // trial ends tomorrow"). Pre-v1.1 this branch had a 6h past-end
+    // cushion to absorb orchestrator misses; that cushion now causes
+    // day13 to drown out day14 for trials that ended 0-6h ago. The
+    // miss-absorption is no longer needed: a user who didn't get
+    // day13 still gets day14 for the same intent (acknowledge the
+    // transition), with copy that's actually accurate post-end.
     const msUntilEnd = user.trialEndsAt.getTime() - now.getTime();
-    const within24h = msUntilEnd <= 24 * 60 * 60 * 1000 && msUntilEnd > -6 * 60 * 60 * 1000;
-    if (within24h) return "trial_ending_day13";
+    const within24hPreEnd =
+      msUntilEnd > 0 && msUntilEnd <= 24 * 60 * 60 * 1000;
+    if (within24hPreEnd) return "trial_ending_day13";
+  }
+
+  // v1.1 slice 3 — day-14 trial-ended transactional email. Fires once
+  // trialEndsAt is in the past (within the last 24h). Mutually exclusive
+  // with trial_ending_day13: that branch requires trialEndsAt > now-6h
+  // (still effectively-active), this one requires trialEndsAt < now AND
+  // > now-24h (just expired). Idempotent via TrialEmailLog (sentKeys).
+  if (!has("trial_ended_day14") && user.trialEndsAt) {
+    const msSinceEnd = now.getTime() - user.trialEndsAt.getTime();
+    const justExpiredWithin24h =
+      msSinceEnd > 0 && msSinceEnd <= 24 * 60 * 60 * 1000;
+    if (justExpiredWithin24h) return "trial_ended_day14";
   }
 
   if (!has("value_recap") && h >= 24 * 12) return "value_recap";
@@ -129,13 +150,25 @@ export const trialEmailOrchestratorFn = inngest.createFunction(
     const now = new Date();
 
     // ── Step 1: Fetch all trial users ─────────────────────────────
+    // Includes the v1.1 day-14 cohort: users whose trialEndsAt fell
+    // within the last 24h but whose subscriptionStatus is still
+    // "TRIAL" (the Stripe webhook only flips status on subscription
+    // events, not on trial expiry — until they upgrade or get reaped
+    // by a future cron, the row's status stays "TRIAL"). The
+    // trial_ended_day14 branch in nextEmailForUser fires for them.
+    const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
     const rawUsers = await step.run("fetch-candidates", async () => {
       const { prisma } = await import("@/lib/prisma");
       return prisma.user.findMany({
         where: {
           subscriptionStatus: "TRIAL",
           onboardingUnsubscribed: false,
-          OR: [{ trialEndsAt: null }, { trialEndsAt: { gt: now } }],
+          OR: [
+            { trialEndsAt: null },
+            { trialEndsAt: { gt: now } },
+            // Day-14 cohort: trial just expired in the past 24h.
+            { trialEndsAt: { gt: dayAgo, lt: now } },
+          ],
         },
         select: {
           id: true,
