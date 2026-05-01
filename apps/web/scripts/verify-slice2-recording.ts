@@ -165,7 +165,12 @@ async function main() {
     console.log(`wins count:             ${entry.wins.length}`);
     console.log(`blockers count:         ${entry.blockers.length}`);
     console.log(`rawAnalysis present:    ${ynShort(entry.rawAnalysis !== null)}`);
-    console.log(`embedding present:      ${ynShort(entry.embedding !== null)}`);
+    // Entry.embedding is Prisma `Float[]` — defaults to [], never null.
+    // Ask-past route uses `Array.isArray && length > 0` for the same
+    // reason; mirror that here so the report tracks real embedding state.
+    const embeddingPopulated =
+      Array.isArray(entry.embedding) && entry.embedding.length > 0;
+    console.log(`embedding populated:    ${ynShort(embeddingPopulated)}`);
     console.log(`themeMention rows:      ${themeMentionCount}`);
     console.log(`tasks created:          ${taskCount}`);
     console.log(`goals touched (refs):   ${goalsTouched}`);
@@ -186,14 +191,14 @@ async function main() {
     if (isFreeBranch) {
       checks.push({ name: "themes empty", pass: entry.themes.length === 0 });
       checks.push({ name: "rawAnalysis null", pass: entry.rawAnalysis === null });
-      checks.push({ name: "embedding null", pass: entry.embedding === null });
+      checks.push({ name: "embedding empty array", pass: !embeddingPopulated });
       checks.push({ name: "zero themeMention rows", pass: themeMentionCount === 0 });
       checks.push({ name: "zero tasks created", pass: taskCount === 0 });
       checks.push({ name: "zero goals touched", pass: goalsTouched === 0 });
     } else {
       checks.push({ name: "themes non-empty", pass: entry.themes.length > 0 });
       checks.push({ name: "rawAnalysis non-null", pass: entry.rawAnalysis !== null });
-      checks.push({ name: "embedding non-null", pass: entry.embedding !== null });
+      checks.push({ name: "embedding non-empty", pass: embeddingPopulated });
       checks.push({ name: "≥1 themeMention row", pass: themeMentionCount > 0 });
     }
 

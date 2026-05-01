@@ -19,6 +19,41 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-01] — v1.1 slice 2 verification + verify-script bug fix
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** TBD-on-push
+
+### In plain English (for Keenan)
+
+We finished verifying that the free-vs-pro recording split works in production. Pro and Trial users get the full AI extraction (themes, tasks, life-area scoring); Free users get just the transcript and a one-sentence summary. Three test accounts (one per tier) recorded in production and we ran a script that checks the database to confirm each entry landed with the right shape. Pro passed 7/7 checks, Free passed 9/9. The Trial account also passed the structural checks but came back with empty themes — that's because the test recording was a single short sentence and the AI legitimately had nothing to surface; not a bug. While verifying we found a small bug in the verification script itself: it was checking for a database field being "null" but the field can never actually be null (it's an empty list by default), so it always reported "Yes" even when nothing had been stored. One-line fix lands here. We also flagged a related to-do for the upgrade-time backfill feature (slice 4) — when that ships, it'll need to also generate semantic-search embeddings for old free-tier entries; the original spec missed that step.
+
+### Technical changes (for Jimmy)
+
+- **`apps/web/scripts/verify-slice2-recording.ts`** — `Entry.embedding` is Prisma `Float[]` (defaults to `[]`, never null). Replaced `entry.embedding !== null` with `Array.isArray(entry.embedding) && entry.embedding.length > 0` at all three sites (display log, FREE assertion, PRO/TRIAL assertion). Renamed the report column "embedding present" → "embedding populated" and the assertion names "embedding null" → "embedding empty array" / "embedding non-null" → "embedding non-empty". Mirror of the same correctness fix the `ask-past` route at `apps/web/src/app/api/insights/ask-past/route.ts:128-130` already uses.
+- **`docs/v1-1/free-tier-phase2-plan.md`** — slice 4 sketch: added a new Step 2.5 between extraction and the `extracted=true` flip. The original spec called `extractFromTranscript` and persisted via the existing transaction, but that transaction does NOT include `embed-entry` (which fires AFTER persist at `process-entry.ts:570-588`). Without the new Step 2.5, upgraded users' pre-PRO history would be extracted but un-embedded, so Ask-Your-Past-Self semantic search wouldn't find their old entries. Cost: +$0.00002/entry (negligible).
+- **No pipeline change.** Confirmed both code paths early-return for FREE before `embed-entry`: `process-entry.ts:305` (Inngest path) returns `{ entryId, free: true }` before line 570; `pipeline.ts:581` (sync path) returns before line 793. The leak was entirely in the verify script.
+
+### Slice 2 production verification (post-fix re-run)
+
+- **PRO** (`jim+slice2pro@heelerdigital.com`, entry `cmon0imlc00013vh91tq54qhi`): **7/7 PASS** — full extraction (themes=2, themeMentions=2, lifeAreaMentions=1, rawAnalysis populated, embedding populated).
+- **TRIAL** (`jim+slice2trial@heelerdigital.com`, entry `cmon0kna40001m5rff65hp72d`): **5/7** — themes=0, themeMention rows=0. Not a slice 2 bug — sparse recording, V0 prompt legitimately emitted empty themes array. Will re-test with richer content.
+- **FREE** (`jim+slice2free@heelerdigital.com`, latest entry): **9/9 PASS** — transcript+summary only, no themes, no rawAnalysis, embedding empty array, zero themeMentions/tasks/goals/lifeAreaMentions. FREE branch behaves exactly as designed.
+
+### Manual steps needed
+
+- [ ] Re-record TRIAL account with a richer recording to confirm the V0 extractor populates themes when the input has substance (Jimmy)
+- [ ] Slice 4 implementation: when slice 4 lands, the backfill Inngest function MUST include the new Step 2.5 (embed-entry) per the updated phase 2 plan — otherwise Ask-Your-Past-Self stays blind to backfilled entries (Jimmy / future-us)
+
+### Notes
+
+- Verify script bug was a "non-null check on a Prisma scalar list" pitfall. Same shape can hide elsewhere — any check on `String[]`, `Int[]`, `Json` (when `@default({})`-ish), etc. Worth a sweep but out of scope here.
+- The FREE-tier embedding decision: stays PRO-only. Embeddings have exactly one consumer (Ask-Your-Past-Self semantic search), and that feature already requires extracted summaries to be useful — on FREE the summaries are one-sentence Haiku outputs, so semantic search would return shallow results even with embeddings. Keeping the loop simple: FREE = journaling, PRO = intelligence layer. Slice 4's upgrade-time backfill (with the new Step 2.5) closes the gap for users who upgrade later.
+- Slice protocol step 5 (recording verification) held: persona accounts seeded once via `apps/web/scripts/seed-slice2-test-users.ts`, recordings done from each tier in production, results captured here. Same pattern applies to future slices that touch the recording pipeline.
+
+---
+
 ## [2026-05-01] — v1.1 calendar slice C3: User + Task schema for calendar sync
 
 **Requested by:** Jimmy
