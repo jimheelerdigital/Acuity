@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { enqueueSyncForTask } from "@/lib/enqueue-sync";
 import { getAnySessionUserId } from "@/lib/mobile-auth";
 import { enforceUserRateLimit } from "@/lib/rate-limit";
+import { safeLog } from "@/lib/safe-log";
 import { ensureDefaultTaskGroups } from "@/lib/task-groups";
 import {
   boundedText,
@@ -127,6 +129,20 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  // Calendar sync (v1.1 slice C5a). Best-effort — a failure here
+  // never fails the task create. The stuck-task escalation cron
+  // (slice C4) catches anything that goes silently wrong.
+  try {
+    await enqueueSyncForTask(prisma, task.id, userId, "create");
+  } catch (err) {
+    safeLog.warn("calendar.enqueue.failed", {
+      userId,
+      taskId: task.id,
+      action: "create",
+      err: err instanceof Error ? err.message : "unknown",
+    });
+  }
+
   return NextResponse.json({ task }, { status: 201 });
 }
 
@@ -249,6 +265,30 @@ export async function PATCH(req: NextRequest) {
     where: { id: body.id },
     data,
   });
+
+  // Calendar sync (v1.1 slice C5a). Maps the action to a planner
+  // input. complete/reopen/edit fire enqueueSync; snooze/move stay
+  // no-ops (no calendar effect). dismiss already returned earlier
+  // — its calendar event becomes orphan (one-way sync property,
+  // documented in slice C5b UI copy).
+  const enqueueAction =
+    body.action === "complete"
+      ? ("complete" as const)
+      : body.action === "reopen" || body.action === "edit"
+        ? ("edit" as const)
+        : null;
+  if (enqueueAction) {
+    try {
+      await enqueueSyncForTask(prisma, body.id, userId, enqueueAction);
+    } catch (err) {
+      safeLog.warn("calendar.enqueue.failed", {
+        userId,
+        taskId: body.id,
+        action: enqueueAction,
+        err: err instanceof Error ? err.message : "unknown",
+      });
+    }
+  }
 
   return NextResponse.json({ task });
 }
