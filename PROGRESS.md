@@ -16,6 +16,53 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 3. **Production verification after deploy.** Re-run the same three-persona shape check (FREE / TRIAL / PRO) used in slice 1 against production data after each slice's deploy goes Ready. Pure-function verification + at least one live HTTP probe to confirm the deploy is responsive.
 4. **Pre-existing failures stay called out.** When the full suite returns failures unrelated to the current slice, confirm via `git stash` that they exist on `main` independently and report the count + cause in the slice's PROGRESS entry.
 5. **End-to-end recording verification uses `apps/web/scripts/verify-slice2-recording.ts`.** Persona accounts (PRO/TRIAL/FREE) live in production via `apps/web/scripts/seed-slice2-test-users.ts`. After any slice that touches the recording pipeline or its surrounding fields (entitlements, prompts, persistence, embedding, themes), record from each persona and run the verification script to confirm the FREE-vs-PRO branch contract holds. Both scripts stay in the repo as reusable verification tooling.
+6. **Typecheck before push must include the entire working tree, not just the slice's own files.** "Pre-existing tsc errors in unrelated files" is not a safe categorization — those files can land via a parallel slice in the same hour, and any of those errors might be runtime-fatal once the broken module loads. The 2026-05-01 slice C4 outage came from a 3-arg `inngest.createFunction` call (1 of the 16 calendar tsc errors I'd written off as "pre-existing relative to slice 3") that crashed `/api/inngest` page-data collection on every subsequent deploy until it was fixed. Going forward, a slice's typecheck pass owns ALL tsc errors visible on `main` at push time, regardless of which slice authored them — if any look runtime-fatal (invalid SDK signatures, missing imports, undefined function calls), block the push and surface to the appropriate workstream owner before shipping. `next.config.js` has `typescript.ignoreBuildErrors: true`, which means tsc errors don't fail the build but DO fail the runtime when the broken module is imported by a route at request time.
+
+---
+
+## [2026-05-01] — fix(calendar): unbreak production after C4's broken inngest.createFunction signature
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** 804ee23
+
+### In plain English (for Keenan)
+
+A bug in yesterday's calendar work (slice C4) broke the production server's ability to register its background jobs. Three back-to-back deploys after C4 all errored, including yesterday's free-tier slice 3 (the day-14 trial-end email), and Vercel rolled production back to a four-hour-old version that predates both. The bug: a single function was called with the wrong shape — three arguments instead of two — which made the build crash when it tried to wire up the background-job system. One-line shape fix: move a list of triggers into the function's config object instead of passing it as a separate argument. Same pattern every other background job in the codebase already uses. Production deploy will roll forward as soon as Vercel finishes building, and slice 3's day-14 email will start firing on the next hourly tick.
+
+### Technical changes (for Jimmy)
+
+- **`apps/web/src/inngest/functions/drain-pending-calendar-tasks.ts:35-45`** — folded the `[{cron: ".../30 .."}, {event: "calendar/sync.foreground-requested"}]` array from positional arg 2 into `config.triggers`. Now uses the canonical `inngest.createFunction({ id, name, retries, triggers: [...] }, async handler)` two-arg shape that every other Inngest function in the repo uses (`process-entry`, `trial-email-orchestrator`, `generate-weekly-report`, `day-14-audit-cron`, etc).
+
+### Root cause one-liner
+
+Slice C4 called `inngest.createFunction(config, triggersArray, handler)` (3 args) instead of `inngest.createFunction({...config, triggers: triggersArray}, handler)` (2 args). The SDK throws synchronously at module load, which makes Next.js page-data collection fail when it imports `/api/inngest/route.ts`, which fails the production build.
+
+### Deploy timeline before this fix
+
+| Commit | Deploy | Status |
+|---|---|---|
+| `e096122` SEO docs (~17:21 EDT) | `acuity-7qmghkfk6` | ✅ Ready — pre-C4 baseline (currently aliased) |
+| `735abb4` slice C4 (17:26) | none found | — (build presumably failed, deploy not in 9-deep list) |
+| `8a907b5` slice 3 | `acuity-j60tsvu0o` | ❌ Error (inherited C4 break) |
+| `39a682e` C4 docs | `acuity-r6wcdvoop` | ❌ Error |
+| `03191de` slice 3 PROGRESS | `acuity-197lw54yi` | ❌ Error |
+| `b6ea366` slice C5a (17:35) | (delayed) | (still building when fix landed) |
+
+C5a never had a successful deploy — it hadn't fired its build by the time slice 3 + PROGRESS deploys errored. So the question "how did C5a deploy succeed when C4 was broken?" has the answer: it didn't. C5a's deploy and this fix's deploy are now both building in parallel.
+
+### Manual steps needed
+
+- [ ] Confirm production rolls forward to a Ready deploy with the fix (Claude polling, will report)
+- [ ] Schema push for the calendar columns referenced by the remaining tsc errors (`Task.calendarSyncStatus`, `Task.calendarSyncedAt`, `Task.calendarEventId`) — those are tsc-only today (next.config has `ignoreBuildErrors: true`) but will be runtime-fatal the moment the calendar drain cron fires against the real Task table. Owns to slice C4/C5a (Jimmy)
+- [ ] Slice 3 verification (day14 cron spot-check) holds until production rolls forward (Jimmy)
+- [ ] Slice 4 holds until slice 3 verification is in (Jimmy)
+
+### Notes
+
+- **Slice protocol step 6 added** at the top of this file: typecheck before push must include the entire working tree. The 16 calendar tsc errors I categorized as "pre-existing relative to slice 3" included this runtime-fatal one. Calling them "unrelated" to my slice was correct in authorship terms but wrong operationally — once they landed via C4, they killed every subsequent deploy.
+- **`next.config.js` has `typescript.ignoreBuildErrors: true`.** That's why tsc-failing code can build successfully and then fail at runtime when the broken module loads. The 10 remaining calendar tsc errors (`calendarSyncStatus`, `calendarSyncedAt`, `calendarEventId` not on Task) are this same pattern — won't fail the next build, will fail when the cron fires.
+- **No test changes.** Vitest 201 passed / 4 pre-existing auth-flows failures (unchanged). The only change is the function-call shape.
 
 ---
 
