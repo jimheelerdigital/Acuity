@@ -22,7 +22,7 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** TBD-on-push
+**Commit hash:** e6de1b0
 
 ### In plain English (for Keenan)
 
