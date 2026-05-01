@@ -1,0 +1,50 @@
+# Acuity
+
+> Acuity is an AI journaling app that turns a 60-second nightly voice brain dump into extracted tasks, mood tracking, mental pattern detection, and weekly AI reports. $12.99/month with a 14-day free trial, no credit card required.
+
+## Product
+
+- [Homepage](https://getacuity.io): Main landing page with product overview, how it works, pricing, and FAQ.
+- [Waitlist / Free Trial](https://getacuity.io/waitlist): Sign up for a free trial of Acuity.
+- [Voice Journaling Guide](https://getacuity.io/voice-journaling): Comprehensive guide to voice journaling — what it is, why it works, and how to start.
+
+## Use Cases
+
+- [Acuity for Therapy](https://getacuity.io/for/therapy): AI emotional pattern tracking between therapy sessions — mood tracking, pattern detection, and weekly mental health reports.
+- [Acuity for Sleep](https://getacuity.io/for/sleep): 60-second brain dump before bed to quiet racing thoughts and improve sleep quality.
+- [Acuity for Founders](https://getacuity.io/for/founders): Nightly debrief for founders and executives — task extraction, goal tracking, and automated weekly debriefs.
+- [Acuity Weekly Report](https://getacuity.io/for/weekly-report): Every Sunday, AI writes a 400-word narrative of your week from your voice notes.
+- [Acuity Decoded](https://getacuity.io/for/decoded): Reveal subconscious patterns driving your moods, decisions, and habits with AI-powered analysis.
+- [Acuity for Anxiety](https://getacuity.io/for/anxiety): Nightly voice journaling to process anxious thoughts and track emotional patterns over time.
+- [Acuity for ADHD](https://getacuity.io/for/adhd): 60-second brain dump to externalize racing thoughts, extract tasks, and track focus patterns.
+- [Acuity for Burnout](https://getacuity.io/for/burnout): Track energy patterns and emotional load to catch burnout before it catches you.
+- [Acuity for Remote Workers](https://getacuity.io/for/remote-workers): End-of-day debrief for remote workers to separate work from personal life.
+- [Acuity for Students](https://getacuity.io/for/students): Voice journaling for academic and personal growth tracking.
+- [Acuity for Entrepreneurs](https://getacuity.io/for/entrepreneurs): Nightly performance system for high-growth operators.
+- [Acuity for Creatives](https://getacuity.io/for/creatives): Capture ideas, track creative patterns, and review your creative output weekly.
+- [Acuity for New Parents](https://getacuity.io/for/new-parents): 60-second debrief for overwhelmed parents to process the day and stay grounded.
+- [Acuity for Grief](https://getacuity.io/for/grief): Safe space to process loss through voice, with AI that tracks your healing patterns.
+- [Acuity for Overthinkers](https://getacuity.io/for/overthinkers): Empty your head in 60 seconds so your brain can stop looping.
+- [Acuity for Couples](https://getacuity.io/for/couples): Individual voice journaling that surfaces relationship patterns and communication gaps.
+- [Acuity for Career Change](https://getacuity.io/for/career-change): Track your decision-making process and emotional patterns during career transitions.
+
+## Articles
+
+- [The Best Voice Journaling App in 2026](https://getacuity.io/blog/voice-journaling-app): Why speaking beats writing for journaling, and what makes a great voice journaling app.
+- [How a Brain Dump Before Bed Changed My Sleep](https://getacuity.io/blog/brain-dump-before-bed): The science behind brain dumping before bed and how to build the habit.
+- [AI Journaling Apps in 2026: The Complete Guide](https://getacuity.io/blog/ai-journaling-app-2026): Features that matter most in an AI journaling app, from NLP to task extraction.
+- [Journaling for Mental Health: What the Research Says](https://getacuity.io/blog/journaling-for-mental-health): Evidence-based guide to using journaling for emotional wellbeing.
+- [The Ultimate Weekly Review Template](https://getacuity.io/blog/weekly-review-template): How to run a weekly review that actually improves your next week.
+- [How to Brain Dump](https://getacuity.io/blog/how-to-brain-dump): Step-by-step guide to brain dumping for clarity, sleep, and productivity.
+
+## Blog
+
+- [All Articles](https://getacuity.io/blog): Full blog with articles on voice journaling, AI journaling, mental health, productivity, and building nightly habits.
+
+## Company
+
+- **Contact:** hello@getacuity.io
+- **Pricing:** $12.99/month, 14-day free trial, no credit card required
+- **Founded by:** Keenan Assaraf (business) and Jimmy (technical)
+- **Category:** AI journaling, voice journaling, self-reflection, mental health technology
+- **Competitors:** Rosebud, Stoic, Reflection.app, Mindsera, Day One
