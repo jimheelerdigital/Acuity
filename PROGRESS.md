@@ -20,6 +20,53 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-01] — Session handoff: free-tier + calendar workstreams merge
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** (handoff note only — no code changes in this entry)
+
+### In plain English (for Keenan)
+
+The two parallel Claude sessions that have been working on Acuity v1.1 — one on the free-tier redesign (slices 1, 2, 3) and one on the calendar integration (slices C1 through C5a) — are merging into a single session going forward. Reason: the remaining free-tier work (slice 4 onward) and the remaining calendar work (slice C5b onward) need to touch the same screens — Life Matrix card, Goals tab, Tasks tab, Theme Map, and the home dashboard's locked-state surfaces. Keeping two sessions on those files would lead to merge conflicts and duplicate-but-different versions of the same component. The calendar session will own both workstreams from here; this session is closed.
+
+### What's live in production after this session
+
+- **v1.1 slice 1** (commit `ed88f75`) — `canExtractEntries` entitlement flag + partition split. Verified production via three-persona script.
+- **v1.1 slice 2** (commit `e6de1b0`) — Inngest pipeline FREE/PRO branch + Haiku summary. Verified production via three-persona recordings: PRO 7/7, TRIAL 5/7 (sparse-recording artifact, not a bug), FREE 9/9.
+- **v1.1 slice 2 verify-script fix** (commit `7fad3a9`) — `Float[]` length check instead of null check.
+- **v1.1 slice 3** (commit `8a907b5`) — day-14 trial-ended transactional email. In live deploy chain (ancestor of `804ee23`). `/api/inngest` returns 200 so the orchestrator + new template are registered. Cron fires hourly; first eligibility = TRIAL users with `trialEndsAt` in past 24h and no `trial_ended_day14` row in `TrialEmailLog`.
+- **C4 fix** (commit `804ee23`) — unbroke production after slice C4's 3-arg `inngest.createFunction` call. Three deploys had errored before this fix; production rolled forward to `acuity-7hi5nwsxy`.
+
+### What's NOT live yet (carries to calendar session)
+
+- **v1.1 slice 4** — upgrade-time "process my history" affordance + opt-in backfill Inngest function. Includes the new Step 2.5 (embed-entry during backfill) flagged in the slice 2 verification entry.
+- **v1.1 slice 5** — five conversion surfaces (Pro pulse on home, Tasks empty state, Goals locked card, Life Matrix locked card, Entry detail footer).
+- **v1.1 slice 6** — locked-state UI for Life Matrix card + Theme Map.
+- **v1.1 slice 7** — soft-cap mechanism + auto-flip cron (feature-flagged off at launch).
+- **v1.1 slice 3 verification** — spot-check Inngest cron logs over the next few days as real trials end. Confirm one `trial_ended_day14` per user, no duplicates.
+- **Calendar schema push** — `Task.calendarSyncStatus`, `Task.calendarSyncedAt`, `Task.calendarEventId` referenced in C4/C5a code but not yet on the Prisma `Task` model. 10 tsc errors today (non-fatal because of `ignoreBuildErrors: true`); will be runtime-fatal the moment the calendar drain cron fires those code paths against the real `Task` table.
+- **Slice 1 follow-on** — the day13 trial-ending email's window was tightened from "future-or-past-6h" to "strictly future" as part of slice 3. Pre-v1.1 the 6h past-end cushion was harmless; now day14 owns the post-end slot. Worth double-checking that no other code path assumed the old day13 6h cushion.
+
+### Persona accounts + verification tooling (still seeded, still usable)
+
+- `jim+slice2pro@heelerdigital.com / TestSlice2Pro!2026` — PRO
+- `jim+slice2trial@heelerdigital.com / TestSlice2Trial!2026` — TRIAL (14d active)
+- `jim+slice2free@heelerdigital.com / TestSlice2Free!2026` — FREE (7d expired)
+- `apps/web/scripts/seed-slice2-test-users.ts` — re-seeds idempotently
+- `apps/web/scripts/verify-slice2-recording.ts` — recording-shape audit; reads `--email`, `--user`, or `--entry`
+
+### Slice protocol carried forward
+
+All six steps at the top of this file apply to the merged workstream. Slice protocol step 6 (the working-tree typecheck rule) was added in this session as a direct consequence of the C4 outage — it's the load-bearing rule for avoiding repeats.
+
+### Notes
+
+- No code changes in this entry. It's a handoff marker so the next session has the right starting state.
+- Calendar session continues both workstreams from `eeb1ecc` (current `main` tip).
+
+---
+
 ## [2026-05-01] — fix(calendar): unbreak production after C4's broken inngest.createFunction signature
 
 **Requested by:** Jimmy
