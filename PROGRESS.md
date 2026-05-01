@@ -19,6 +19,54 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-01] — v1.1 calendar slice C3: User + Task schema for calendar sync
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** 4739d56
+
+### In plain English (for Keenan)
+
+The next foundation piece for calendar integration. This slice adds new fields to the User and Task tables in our database — without changing any user-visible behavior yet. Think of it as building the empty drawers before we put anything inside. The User table now has space for "which calendar did you connect," "what's your target calendar id," "do you want tasks auto-sent," "do you want all-day or timed events." The Task table now has space for "which calendar event does this task correspond to" and "is it synced yet?" Everything defaults sensibly (auto-send off, status not-synced) so existing users and existing tasks see exactly the same product as before. Nothing reads or writes these fields yet — the sync engine that fills them in is the next slice.
+
+### Technical changes (for Jimmy)
+
+- `prisma/schema.prisma` User additions:
+  - `calendarConnectedProvider String?` — `"ios_eventkit" | "google" | "outlook"`. String not enum, same convention as Entry.status / Task.status.
+  - `calendarConnectedAt DateTime?` — consent capture timestamp; gates retroactive privacy notifications.
+  - `targetCalendarId String?` — provider-side calendar id user picked (EventKit calendar id, Google calendarId, etc.).
+  - `autoSendTasks Boolean @default(false)` — per Decisions §2 (2026-05-01), opt-in default, reviewer-friendly for first ~50 App Reviews.
+  - `defaultEventDuration String @default("TIMED")` — `"ALL_DAY" | "TIMED"`. Default TIMED matches "I'll do this at $dueDate" mental model.
+- `prisma/schema.prisma` Task additions:
+  - `calendarEventId String?` — idempotency key for upsert/complete/delete operations against the user's calendar.
+  - `calendarSyncedAt DateTime?` — last successful sync; drives "synced 3m ago" UI badge.
+  - `calendarSyncStatus String @default("NOT_SYNCED")` — `NOT_SYNCED | PENDING | SYNCED | FAILED`. Default ensures every existing Task row gets the right value at prisma db push time without backfill.
+  - New index `@@index([userId, calendarSyncStatus])` — supports the mobile foreground hook's "find this user's PENDING tasks" drain query (Option α from scoping Decisions §1).
+- Pure additive migration. Pipeline.ts still has zero calendar references; entitlements/paywall unchanged from slice C1.
+- Intentionally narrower than scoping doc §8: omitted User.targetCalendarTitle, User.calendarAiContextEnabled, User.calendarLastSyncAt, Task.calendarProviderId, Task.calendarSyncError. None required for the locked v1.1 feature set; trivial to add later if a slice needs them.
+
+### Slice C3 verification
+
+- `npx prisma validate`: valid (env loaded)
+- `npx prisma format`: clean (auto-formatter applied)
+- `scripts/check-rls-coverage.ts`: OK — 45 models accounted for. No new models; User and Task already on the allowlist.
+- Full apps/web vitest: 12/13 files pass, 148/152 tests pass. No new tests needed (no application code reads these columns yet). 4 pre-existing `auth-flows.test.ts` failures unchanged from C1/C2 baseline.
+
+### Manual steps needed
+
+- [ ] Run `npx prisma db push` from home network (work Mac blocks Supabase ports). All 8 column adds + 1 index — no destructive changes (Jimmy).
+- [ ] After push, verify columns landed via `cd apps/web && npx tsx -e 'import { prisma } from "./src/lib/prisma"; prisma.user.findFirst({ select: { id: true, calendarConnectedProvider: true, autoSendTasks: true, defaultEventDuration: true } }).then(console.log).then(() => process.exit(0))'` (Jimmy).
+- [ ] Slice C4 (sync engine) starts after the push lands.
+
+### Notes
+
+- Production runtime is completely unaffected until `prisma db push` runs. Vercel deploys this commit, but no code reads or writes the new columns. Safe to merge whenever; safe to defer the push to whenever Jim's home network is available.
+- Rollback path: `git revert 4739d56 && npx prisma db push` reverses the source of truth and drops the columns cleanly. SQL-level rollback is 8 `ALTER TABLE DROP COLUMN` + 1 `DROP INDEX`. After C4 starts writing real sync state, rollback gets harder — at that point we'd need a graceful disconnect-all-users flow instead. C3 is the cheap-rollback window.
+- Index choice: `(userId, calendarSyncStatus)` is the right composite. Low cardinality on calendarSyncStatus (4 values) means the index is small; the userId prefix keeps it scoped per user. Same shape as the existing `(userId, status)` index added in audit item #6 — the mobile foreground hook's flush query is the moral equivalent of "Open Tasks" filtered by sync status.
+- Followed the slice protocol: full-suite vitest re-run (no regressions), diff shown before push, baseline-red failures called out.
+
+---
+
 ## [2026-05-01] — v1.1 calendar slice C2 pre-design: formatCalendarBlock + tests
 
 **Requested by:** Jimmy
