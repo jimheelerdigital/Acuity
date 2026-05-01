@@ -27,6 +27,7 @@ export async function requireEntitlement(
   flag: keyof Pick<
     Entitlement,
     | "canRecord"
+    | "canExtractEntries"
     | "canGenerateNewWeeklyReport"
     | "canGenerateNewLifeAudit"
     | "canGenerateMonthlyMemoir"

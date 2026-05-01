@@ -6,8 +6,12 @@ const NOW = new Date("2026-04-19T12:00:00Z");
 
 const day = (n: number) => new Date(NOW.getTime() + n * 24 * 60 * 60 * 1000);
 
-const ACTIVE_FLAGS_TRUE = [
-  "canRecord",
+// PRO-only flags — true on active-side (PRO/TRIAL/PAST_DUE) only.
+// canRecord is intentionally NOT in this list as of v1.1 — recording
+// is the FREE journaling loop. canExtractEntries replaces canRecord
+// as the canonical "PRO gate" inside this set.
+const PRO_ONLY_FLAGS = [
+  "canExtractEntries",
   "canGenerateNewWeeklyReport",
   "canGenerateNewLifeAudit",
   "canGenerateMonthlyMemoir",
@@ -15,13 +19,17 @@ const ACTIVE_FLAGS_TRUE = [
 ] as const;
 
 function expectActive(e: Entitlement) {
-  for (const flag of ACTIVE_FLAGS_TRUE) {
+  expect(e.canRecord, "canRecord should be true on active side").toBe(true);
+  for (const flag of PRO_ONLY_FLAGS) {
     expect(e[flag], `${flag} should be true`).toBe(true);
   }
 }
 
 function expectLocked(e: Entitlement) {
-  for (const flag of ACTIVE_FLAGS_TRUE) {
+  // v1.1: post-trial-free keeps canRecord = true (the journaling loop
+  // stays alive). Only the PRO-gated flags flip false.
+  expect(e.canRecord, "canRecord should be true even on post-trial-free").toBe(true);
+  for (const flag of PRO_ONLY_FLAGS) {
     expect(e[flag], `${flag} should be false`).toBe(false);
   }
 }
@@ -142,6 +150,23 @@ describe("entitlementsFor — expired TRIAL → post-trial free", () => {
 });
 
 describe("entitlementsFor — FREE", () => {
+  it("FREE post-trial: canRecord=true, canExtractEntries=false (v1.1 split)", () => {
+    // The load-bearing rule for the v1.1 free-tier redesign: FREE
+    // users keep recording but lose the extraction layer.
+    const e = entitlementsFor(
+      { subscriptionStatus: "FREE", trialEndsAt: null },
+      NOW
+    );
+    expect(e.canRecord).toBe(true);
+    expect(e.canExtractEntries).toBe(false);
+    expect(e.canGenerateNewWeeklyReport).toBe(false);
+    expect(e.canGenerateNewLifeAudit).toBe(false);
+    expect(e.canGenerateMonthlyMemoir).toBe(false);
+    expect(e.canRefreshLifeMap).toBe(false);
+    expect(e.canViewHistory).toBe(true);
+    expect(e.isPostTrialFree).toBe(true);
+  });
+
   it("trialEndsAt null → post-trial free", () => {
     const e = entitlementsFor(
       { subscriptionStatus: "FREE", trialEndsAt: null },
@@ -292,21 +317,38 @@ describe("entitlementsFor — invariants (property-style sweep)", () => {
     }
   });
 
-  it("active-side flags entail full generate permissions", () => {
-    // If the user is on the active side (isActive | isTrialing |
-    // isPastDue), every can* flag must be true. If they're on the
-    // post-trial-free side, every can* flag must be false.
+  it("PRO-only flags require active side", () => {
+    // v1.1 partition rule: PRO-only generate flags are true iff the
+    // user is on the active side (isActive | isTrialing | isPastDue).
+    // canRecord is excluded — it's true on BOTH the active side AND
+    // the post-trial-free side (the FREE journaling loop).
     for (const subscriptionStatus of STATUSES) {
       for (const offset of OFFSETS_DAYS) {
         const trialEndsAt = day(offset);
         const e = entitlementsFor({ subscriptionStatus, trialEndsAt }, NOW);
         const onActiveSide = e.isActive || e.isTrialing || e.isPastDue;
-        for (const flag of ACTIVE_FLAGS_TRUE) {
+        for (const flag of PRO_ONLY_FLAGS) {
           expect(
             e[flag],
             `${flag} for status=${subscriptionStatus}, offset=${offset}d, onActiveSide=${onActiveSide}`
           ).toBe(onActiveSide);
         }
+      }
+    }
+  });
+
+  it("canRecord is true everywhere except totally unknown / pathological states", () => {
+    // v1.1 invariant: every recognized status (PRO, TRIAL, PAST_DUE,
+    // FREE, CANCELED) lands canRecord=true. Unknown statuses fall
+    // through to post-trial-free which is also canRecord=true.
+    for (const subscriptionStatus of STATUSES) {
+      for (const offset of OFFSETS_DAYS) {
+        const trialEndsAt = day(offset);
+        const e = entitlementsFor({ subscriptionStatus, trialEndsAt }, NOW);
+        expect(
+          e.canRecord,
+          `canRecord for status=${subscriptionStatus}, offset=${offset}d`
+        ).toBe(true);
       }
     }
   });

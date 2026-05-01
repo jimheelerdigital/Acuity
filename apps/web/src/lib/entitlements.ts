@@ -17,8 +17,21 @@ export interface UserEntitlementInput {
 }
 
 export interface Entitlement {
-  /** Can record a new entry (gates POST /api/record). */
+  /**
+   * Can record a new entry (gates POST /api/record). After v1.1 this
+   * is true on FREE/post-trial-free as well — recording is the FREE
+   * journaling loop. Only the extraction layer (canExtractEntries) is
+   * PRO-gated.
+   */
   canRecord: boolean;
+  /**
+   * Can run new entries through the Claude extraction step (themes,
+   * tasks, goals, lifeAreaMentions, embeddings). PRO/TRIAL/PAST_DUE
+   * only. FREE recordings transcribe + get a one-sentence summary,
+   * then short-circuit the pipeline. v1.1 free-tier redesign — see
+   * docs/v1-1/free-tier-phase2-plan.md.
+   */
+  canExtractEntries: boolean;
   /** Can generate a new weekly report (gates POST /api/weekly). */
   canGenerateNewWeeklyReport: boolean;
   /** Can generate a new Day 14 / Quarterly / Annual life audit. */
@@ -130,17 +143,23 @@ function entitlementSet(
   overrides: Partial<Omit<Entitlement, "canViewHistory">>
 ): Entitlement {
   // The "active" partition (PRO, TRIAL, PAST_DUE) gets full generate
-  // permissions. The "post-trial-free" partition gets none. We pick
-  // the side based on whether the override sets isPostTrialFree.
+  // permissions. The "post-trial-free" partition is split into two
+  // sub-tiers as of v1.1: canRecord stays true (the FREE journaling
+  // loop), but every other can* flag including canExtractEntries
+  // requires PRO. See docs/v1-1/free-tier-phase2-plan.md slice 1.
   const isActiveSide =
     overrides.isPostTrialFree !== true && (
       overrides.isActive === true ||
       overrides.isTrialing === true ||
       overrides.isPastDue === true
     );
+  const isPostTrialFreeSide = overrides.isPostTrialFree === true;
 
   return {
-    canRecord: isActiveSide,
+    // canRecord is true on active-side AND on post-trial-free side.
+    // Recording is the FREE primary action; only extraction is PRO.
+    canRecord: isActiveSide || isPostTrialFreeSide,
+    canExtractEntries: isActiveSide,
     canGenerateNewWeeklyReport: isActiveSide,
     canGenerateNewLifeAudit: isActiveSide,
     canGenerateMonthlyMemoir: isActiveSide,
