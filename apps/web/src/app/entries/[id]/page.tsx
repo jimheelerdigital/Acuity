@@ -9,6 +9,7 @@ import { BackButton } from "@/components/back-button";
 import { EntryDeleteButtonWithRedirect } from "./entry-delete-button-wrapper";
 import { MoodIcon } from "@/components/mood-icon";
 
+import { EntryStatusGate } from "./entry-status-gate";
 import { ExtractionReview } from "./extraction-review";
 
 export const dynamic = "force-dynamic";
@@ -58,6 +59,7 @@ export default async function EntryDetailPage({
     year: "numeric",
   });
   const moodKey = entry.mood as Mood | null;
+  const isComplete = entry.status === "COMPLETE";
 
   return (
     <div className="min-h-screen">
@@ -84,10 +86,24 @@ export default async function EntryDetailPage({
           </div>
         </header>
 
-        <ExtractionReview entryId={entry.id} />
+        {/* Non-COMPLETE entries get the client gate: progress bar +
+            polling for in-flight states, retry-with-context for
+            PARTIAL / FAILED. The gate fires router.refresh() once
+            the polled status flips to COMPLETE so this server
+            component re-runs into the full extraction layout below. */}
+        {!isComplete && (
+          <EntryStatusGate
+            entryId={entry.id}
+            initialStatus={entry.status as never}
+            initialErrorMessage={entry.errorMessage}
+            initialPartialReason={entry.partialReason}
+          />
+        )}
+
+        {isComplete && <ExtractionReview entryId={entry.id} />}
 
         <div className="space-y-8">
-          {entry.summary && (
+          {isComplete && entry.summary && (
             <Section title="Summary">
               <p className="text-sm leading-relaxed text-zinc-700 dark:text-zinc-200 whitespace-pre-wrap">
                 {entry.summary}
@@ -95,7 +111,7 @@ export default async function EntryDetailPage({
             </Section>
           )}
 
-          {entry.themes.length > 0 && (
+          {isComplete && entry.themes.length > 0 && (
             <Section title="Themes">
               <div className="flex flex-wrap gap-2">
                 {entry.themes.map((t) => (
@@ -110,7 +126,7 @@ export default async function EntryDetailPage({
             </Section>
           )}
 
-          {entry.wins.length > 0 && (
+          {isComplete && entry.wins.length > 0 && (
             <Section title="Wins">
               <ul className="space-y-1.5">
                 {entry.wins.map((w, i) => (
@@ -126,7 +142,7 @@ export default async function EntryDetailPage({
             </Section>
           )}
 
-          {entry.blockers.length > 0 && (
+          {isComplete && entry.blockers.length > 0 && (
             <Section title="Blockers">
               <ul className="space-y-1.5">
                 {entry.blockers.map((b, i) => (
@@ -142,7 +158,7 @@ export default async function EntryDetailPage({
             </Section>
           )}
 
-          {entry.tasks.length > 0 && (
+          {isComplete && entry.tasks.length > 0 && (
             <Section title={`Tasks (${entry.tasks.length})`}>
               <div className="space-y-2">
                 {entry.tasks.map((t) => {
@@ -171,6 +187,10 @@ export default async function EntryDetailPage({
             </Section>
           )}
 
+          {/* Transcript stays ungated by status — for PARTIAL entries
+              the user's own words are still saved and worth surfacing
+              alongside the retry card. Empty transcript (FAILED before
+              transcribe step) skips this block via the truthy guard. */}
           {entry.transcript && (
             <Section title="Transcript">
               <p className="text-sm leading-relaxed text-zinc-500 dark:text-zinc-400 whitespace-pre-wrap">
