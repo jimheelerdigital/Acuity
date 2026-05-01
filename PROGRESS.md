@@ -19,6 +19,47 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-01] — v1.1 slice 3: day-14 trial-ended transactional email
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** 8a907b5
+
+### In plain English (for Keenan)
+
+When a user's 14-day Pro trial ends, their dashboard doesn't actually shut down anymore — under the v1.1 free-tier redesign, recording stays free forever, and only the AI layer (themes, weekly insights, Life Matrix) is Pro. Without an explicit email at the transition, users assume Acuity went away. This slice adds an automatic email that fires within 24 hours of trial end, telling them: "Your Acuity trial just ended — recording stays free forever, the intelligence layer is on Pro." Subject is "Your Acuity trial just ended"; the call-to-action is "Continue on web to unlock" linking to `/upgrade?src=trial_end_email`. No subscription pricing in the email, no "Subscribe" button — Apple-compliant copy that matches the existing pattern. The email is one-shot per user (fires exactly once, even if the cron runs again later) and rides on the existing trial-email-orchestrator that already manages the other 14 trial-sequence emails. No new database column needed.
+
+### Technical changes (for Jimmy)
+
+- **`apps/web/src/emails/trial/types.ts`** — added `"trial_ended_day14"` to the `TrialEmailKey` union.
+- **`apps/web/src/emails/trial/trial-ended-day14.ts` (new)** — email template. Subject `"Your Acuity trial just ended"`. Body uses the existing `trialLayout` / `trialButton` / `trialCard` primitives (consistent visual with the other 14 trial-sequence emails). v1.1 framing: *"Recording stays free forever. Themes, weekly insights, and your Life Matrix are on Pro — everything you generated during your trial stays where you left it."* CTA `"Continue on web to unlock"` → `/upgrade?src=trial_end_email`. Option C compliant per `docs/APPLE_IAP_DECISION.md` — no `$`, no `/mo`, no "Subscribe", no "Upgrade now".
+- **`apps/web/src/emails/trial/registry.ts`** — registered the new template under key `trial_ended_day14`.
+- **`apps/web/src/inngest/functions/trial-email-orchestrator.ts`**:
+  - Expanded the `fetch-candidates` WHERE clause to include the day-14 cohort: `subscriptionStatus="TRIAL"` AND `trialEndsAt > now-24h AND trialEndsAt < now`. (Stripe webhook only flips status on real subscription events, so just-expired trial users still match the TRIAL filter.)
+  - New branch in `nextEmailForUser`: returns `"trial_ended_day14"` when `0 < msSinceEnd ≤ 24h` AND `!has("trial_ended_day14")`. Idempotent via the existing `TrialEmailLog (userId, emailKey)` unique constraint — no new schema.
+  - **Tightened `trial_ending_day13`'s window** from `msUntilEnd > -6h` (6h past-end cushion) to `msUntilEnd > 0` (strictly future). The cushion was a defense against orchestrator misses, but it overlapped with the new day14 window and would drown day14 out for trials that ended 0–6h ago. Tests caught this. A missed day13 tick now gracefully degrades to day14, which is the better-fitting copy for a just-ended trial anyway.
+  - Exported `Track`, `CandidateUser`, and `nextEmailForUser` so the test file can call them.
+- **`apps/web/src/inngest/functions/trial-email-orchestrator.test.ts` (new)** — 13 tests: eligibility window (5 — 1h past, 23h59m past, 25h past, future, null), idempotency (1 — already-sent skips), mutual exclusion with day13 (2 — 12h before vs 12h after), REACTIVATION lane unaffected (1), template registry + render (3 — registered, subject string match, html shape + Option C compliance assertions), type exports (1).
+
+### Slice 3 test results
+
+- `apps/web/src/inngest/functions/trial-email-orchestrator.test.ts`: **13/13 PASS**
+- Full `apps/web` vitest: **191 passed / 4 failed**. The 4 failures are pre-existing `auth-flows.test.ts` (`prisma.deletedUser is not a function`) — same set documented in the slice 2 PROGRESS entry, confirmed via prior `git stash` test.
+- Typecheck: zero new tsc errors in slice 3 files. The +16 vs baseline are all in Jim's uncommitted calendar-sync work (`drain-pending-calendar-tasks.ts`, `calendar-sync.ts`) — pre-existing relative to slice 3.
+
+### Manual steps needed
+
+- [ ] Spot-check Inngest cron logs over the next few days as real trials end — confirm day14 fires once per user, no duplicates, idempotency holds (Jimmy)
+- [ ] Slice 4 starts only after slice 3 is verified green in production — locked-state UX (Life Matrix card / Goals tab / Tasks tab / Theme Map / Pro pulse) per `docs/v1-1/free-tier-phase2-plan.md` slices 5+6 (Jimmy)
+
+### Notes
+
+- **Schema decision:** no `User.day14EmailSentAt` column. The phase 2 plan §3 already specified `TrialEmailLog` is the idempotency surface, and adding a column would be a redundant second source of truth — the other 14 trial-sequence emails already use this pattern.
+- **Day13 window tightening was a real bug fix surfaced by the test suite.** Pre-v1.1, day13's 6h past-end cushion was harmless because nothing else fired in that slot. Once day14 was added, the cushion caused day13 to win for trials that ended 0–6h ago, sending "your trial ends tomorrow" copy after the trial had already ended. Strictly-future-only is correct.
+- **No schema change, no migration, no Vercel env var change.** Slice 3 is a pure code change. The new email will start firing on the next hourly cron tick after deploy.
+
+---
+
 ## [2026-05-01] — v1.1 calendar slice C4: provider-agnostic sync engine + Inngest drainer
 
 **Requested by:** Jimmy
