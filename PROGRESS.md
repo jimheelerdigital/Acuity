@@ -19,6 +19,43 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-01] — v1.1 calendar slice C2 pre-design: formatCalendarBlock + tests
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** 7858c4b
+
+### In plain English (for Keenan)
+
+Building the calendar-integration foundation in stages. This slice writes the function that will eventually let the AI know "you had 4 meetings today, anything stand out?" — but does NOT plug it into the recording pipeline yet. We're holding off on plugging it in because we're already running an A/B test on a different prompt change (V5 dispositional themes), and shipping two prompt changes at the same time would muddle which one moved the needle. Once V5 reaches 100% of users (about a week away), the calendar wire-up is a one-line plug. For now, this is dead code with comprehensive tests, ready to flip on the moment the soak window clears.
+
+### Technical changes (for Jimmy)
+
+- New file `apps/web/src/lib/calendar-prompt.ts` (246 lines): exports `formatCalendarBlock(input: CalendarBlockInput): string` plus the `CalendarEventInput` and `CalendarSource` types. Output shape matches `docs/v1-1/calendar-integration-scoping.md §4` — today block (event lines + day summary), yesterday rollup, past-week meeting count + peak day. Returns `""` when input has no useful events, so the eventual caller can `if (calendarBlock)` and skip the prepend cleanly.
+- Privacy invariants live in the TypeScript type itself: `CalendarEventInput` has no `location` / `notes` / `attendees` array fields — only `attendeesCount`. A buggy caller cannot accidentally pass restricted fields. `sanitizeTitle()` collapses whitespace and caps title length at 200 chars (defense against prompt-injection via crafted event titles).
+- New file `apps/web/src/lib/calendar-prompt.test.ts` (259 lines, 15 tests): empty input, single timed event, attendee count 0/1/N pluralization, all-day exclusion from meeting count, sort defense, yesterday rollup, past-week peak day, all-day exclusion from week count, 0-meeting week, prompt-injection title (newlines stripped), 200-char title truncation, mixed work/personal/shared sources, yesterday-only-no-today edge case.
+- New file `docs/v1-1/backlog.md`: first entry tracks the `deletedUser` prisma mock gap in `src/tests/auth-flows.test.ts` (4 baseline-red failures, ~10 min fix, doesn't gate any active slice).
+- `pipeline.ts` deliberately untouched — `grep -c "calendar" apps/web/src/lib/pipeline.ts` returns 0. Wire-up waits on V5 100%.
+
+### Slice C2 pre-design test results
+
+- `calendar-prompt.test.ts`: 15/15 pass (new)
+- Full apps/web suite: 12/13 files pass, 148/152 tests pass. +15 tests over the slice C1 baseline of 133. Zero regressions.
+- The 4 failing tests are still the same 4 pre-existing `auth-flows.test.ts` failures (`prisma.deletedUser is not a function`), now tracked in `docs/v1-1/backlog.md`.
+
+### Manual steps needed
+
+- [ ] None for this slice. The formatter is dead code until V5 100% rollout clears the C2 wire-up blocker (Jimmy).
+- [ ] Slice C3 (User/Task schema migration for calendar fields) is unblocked and starts next.
+
+### Notes
+
+- Locking the output format now means Phase A mobile (slice C5) can package the `CalendarBlockInput` JSON in the multipart upload to `/api/record` against the same shape the server will eventually expect. Phase A and the C2 wire-up can therefore proceed in parallel without coordination cost.
+- Calendar slice C2's actual wire-up will be a single optional parameter on `extractFromTranscript` and a single template-string interpolation in the user message. The work is in the formatter (now done) and in the privacy projection at the upload route (server-side defense in depth, slice C5 territory) — not in the pipeline.ts surgery itself.
+- Followed the slice protocol in this file: full-suite vitest re-run, diff shown before push, baseline-red failures called out and confirmed pre-existing via `git stash` + re-run on main.
+
+---
+
 ## [2026-04-30] — v1.1 slice 2: Inngest pipeline FREE/PRO branch + Haiku summary
 
 **Requested by:** Jimmy
