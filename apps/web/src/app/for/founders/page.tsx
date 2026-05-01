@@ -29,6 +29,20 @@ const WAITLIST = `/auth/signup?utm_campaign=${UTM}`;
 export default function FoundersPage() {
   return (
     <div className="min-h-screen bg-[#0A0A0F] text-white pb-24 sm:pb-0 overflow-x-hidden">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            itemListElement: [
+              { "@type": "ListItem", position: 1, name: "Home", item: "https://getacuity.io" },
+              { "@type": "ListItem", position: 2, name: "Use Cases", item: "https://getacuity.io/for/therapy" },
+              { "@type": "ListItem", position: 3, name: "Acuity for Founders", item: "https://getacuity.io/for/founders" },
+            ],
+          }),
+        }}
+      />
       <LandingNav />
 
       {/* ───── HERO ───── */}

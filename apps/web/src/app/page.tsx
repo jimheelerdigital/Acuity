@@ -23,13 +23,11 @@ const jsonLd = {
         price: "12.99",
         priceCurrency: "USD",
         name: "Pro",
-        description: "First month free. Unlimited voice entries, AI analysis, weekly reports, and Life Matrix.",
+        description: "14-day free trial. Unlimited voice entries, AI analysis, weekly reports, and Life Matrix.",
       },
-      aggregateRating: {
-        "@type": "AggregateRating",
-        ratingValue: "4.9",
-        ratingCount: "127",
-      },
+      // aggregateRating removed — Keenan must provide a verifiable public
+      // review source (App Store, G2, Trustpilot) before re-adding.
+      // Google penalizes unverifiable aggregate ratings.
     },
     {
       "@type": "FAQPage",
@@ -55,7 +53,7 @@ const jsonLd = {
           name: "How much does Acuity cost?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "Acuity costs $12.99/month with your 30-day free trial. No card. 90 seconds to set up.",
+            text: "Acuity costs $12.99/month with a 14-day free trial. No card required. 90 seconds to set up.",
           },
         },
         {
