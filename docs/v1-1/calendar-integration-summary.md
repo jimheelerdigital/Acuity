@@ -2,6 +2,8 @@
 
 **Full doc:** `docs/v1-1/calendar-integration-scoping.md`
 
+**Decisions locked 2026-05-01:** see "Decisions locked" section at bottom.
+
 ## What we're shipping (v1.1)
 
 Two calendar features for PRO + TRIAL users:
@@ -64,4 +66,21 @@ Outlook (Phase C), Google Calendar web (Phase B), two-way sync, calendar-derived
 
 ---
 
-Standing by for sign-off on the four decisions above and Phase 2 slicing approval.
+## Decisions locked (2026-05-01)
+
+The four open decisions in this doc were resolved by Jim:
+
+| # | Decision | Resolution |
+|---|---|---|
+| 1 | Where does EventKit write execute? | **Option α — mobile-side execution.** Web-created tasks queue with `calendarSyncStatus = PENDING` until the user's next mobile foreground; mobile flushes the queue then. Up to 24h propagation latency for users who don't open mobile daily. Web UI shows "open mobile to sync" hint when relevant. |
+| 2 | Default `autoSendTasks` at connect | **OFF.** Opt-in at connect time. Reviewer-friendly default for first ~50 App Reviews. Revisit flipping to ON after a clean review track record. |
+| 3 | Post-connect "Send all 47 existing tasks?" prompt default | **Skip.** Default is non-action; user must explicitly tap "Send all" to backfill. |
+| 4 | `canSyncCalendar` entitlement shape | **Adopt free-tier redesign's convention** — wait for that work's entitlement-shape changes to merge, then add `canSyncCalendar` matching whatever pattern (flat boolean, tier-keyed map, etc.) it settled on. |
+
+### Phase 2 sequencing — approved with blockers
+
+- **C1 (entitlement wiring + schema migration)** waits on free-tier redesign's entitlement-shape decisions to merge.
+- **C2 (calendar block in `pipeline.ts:extractFromTranscript`)** waits on **both** (a) V5 dispositional themes reaching 100% rollout under `v1_1_dispositional_themes`, AND (b) the production Anthropic 401 (diagnosed in the recent triage turn) being resolved. Until 401 is fixed, no extraction-pipeline change is testable end-to-end.
+- C3-C6 follow from C1+C2 per the original slice plan in this doc.
+
+Standing by for the blockers above to clear before any code in Phase 2 starts.

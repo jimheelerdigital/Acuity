@@ -624,6 +624,28 @@ Both parallel workstreams are clean. Calendar Phase 2 sequencing:
 
 ---
 
+## Decisions locked (2026-05-01)
+
+The four open decisions surfaced in this doc were resolved by Jim:
+
+1. **EventKit write execution location → Option α** (mobile-side execution). Web-created tasks queue `PENDING` until next mobile foreground; mobile flushes. Up to 24h sync latency for users who don't open mobile daily. Acceptable trade-off; saves the ~3 dev-days of push-driven infra (Option β).
+2. **Default `autoSendTasks` at connect → OFF.** Opt-in. Reviewer-friendly for first ~50 App Reviews; revisit flipping to ON after track record.
+3. **Post-connect "Send all 47 existing tasks?" prompt default → Skip.** User must explicitly tap "Send all" to backfill open tasks at connect time.
+4. **`canSyncCalendar` entitlement shape → wait on free-tier redesign's convention to merge.** Calendar slice C1 adopts whatever pattern free-tier settled on (flat boolean, tier-keyed map, etc.) rather than introducing a parallel shape.
+
+## Phase 2 sequencing — approved with blockers (2026-05-01)
+
+Slices C1-C6 from §10 are approved, with two hard blockers:
+
+- **C1 (schema + entitlement)** — blocked on free-tier redesign's entitlement-shape merge. Calendar adopts the matching shape after that lands.
+- **C2 (`calendarBlock` in `pipeline.ts`)** — blocked on **both**:
+  - V5 dispositional themes reaching 100% rollout under `v1_1_dispositional_themes` (avoids confounding production cohort data).
+  - Production Anthropic 401 (diagnosed in the recording-pipeline triage turn earlier this session) being resolved. Until the API key issue is fixed, no extraction-pipeline change is testable end-to-end.
+- **C3 (task sync engine)** — depends on C1 only.
+- **C4 (settings UI polish + post-connect backfill prompt)** — depends on C2, C3.
+- **C5 (Apple Review submission)** — depends on C2-C4 + privacy policy update.
+- **C6 (cohort flag ramp)** — depends on C5 reviewed + approved.
+
 ## Standing by
 
-For Phase 1 review. Single-page summary at `docs/v1-1/calendar-integration-summary.md` for quick decision review.
+For both blockers to clear (free-tier entitlement merge AND V5 100% rollout AND Anthropic 401 resolution) before any Phase 2 code starts. Single-page summary at `docs/v1-1/calendar-integration-summary.md`.
