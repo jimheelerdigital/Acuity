@@ -150,6 +150,63 @@ describe("requireEntitlement — canExtractEntries (PRO + TRIAL allow)", () => {
   });
 });
 
+describe("requireEntitlement — canSyncCalendar (PRO + TRIAL allow, v1.1 slice C1)", () => {
+  it("PRO allows canSyncCalendar", async () => {
+    findUniqueMock.mockResolvedValue({
+      subscriptionStatus: "PRO",
+      trialEndsAt: null,
+    });
+    const gate = await requireEntitlement("canSyncCalendar", "u1");
+    expect(gate.ok).toBe(true);
+  });
+
+  it("active TRIAL allows canSyncCalendar", async () => {
+    findUniqueMock.mockResolvedValue({
+      subscriptionStatus: "TRIAL",
+      trialEndsAt: day(7),
+    });
+    const gate = await requireEntitlement("canSyncCalendar", "u1");
+    expect(gate.ok).toBe(true);
+  });
+
+  it("PAST_DUE allows canSyncCalendar (Stripe grace)", async () => {
+    findUniqueMock.mockResolvedValue({
+      subscriptionStatus: "PAST_DUE",
+      trialEndsAt: null,
+    });
+    const gate = await requireEntitlement("canSyncCalendar", "u1");
+    expect(gate.ok).toBe(true);
+  });
+
+  it("FREE blocks canSyncCalendar with 402", async () => {
+    findUniqueMock.mockResolvedValue({
+      subscriptionStatus: "FREE",
+      trialEndsAt: null,
+    });
+    const gate = await requireEntitlement("canSyncCalendar", "u1");
+    expect(gate.ok).toBe(false);
+    if (gate.ok) return;
+    expect(gate.response.status).toBe(402);
+    const body = (await gate.response.json()) as {
+      error: string;
+      redirect: string;
+    };
+    expect(body.error).toBe("SUBSCRIPTION_REQUIRED");
+    expect(body.redirect).toContain("/upgrade");
+  });
+
+  it("expired TRIAL blocks canSyncCalendar with 402", async () => {
+    findUniqueMock.mockResolvedValue({
+      subscriptionStatus: "TRIAL",
+      trialEndsAt: day(-1),
+    });
+    const gate = await requireEntitlement("canSyncCalendar", "u1");
+    expect(gate.ok).toBe(false);
+    if (gate.ok) return;
+    expect(gate.response.status).toBe(402);
+  });
+});
+
 describe("requireEntitlement — PAST_DUE", () => {
   it("allows canRecord during Stripe grace window", async () => {
     findUniqueMock.mockResolvedValue({

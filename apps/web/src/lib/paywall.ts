@@ -32,6 +32,7 @@ export async function requireEntitlement(
     | "canGenerateNewLifeAudit"
     | "canGenerateMonthlyMemoir"
     | "canRefreshLifeMap"
+    | "canSyncCalendar"
   >,
   userId: string
 ): Promise<PaywallGate> {

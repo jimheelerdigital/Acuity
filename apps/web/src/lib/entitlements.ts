@@ -41,6 +41,21 @@ export interface Entitlement {
   /** Can refresh the Life Map (gates POST /api/lifemap/refresh). */
   canRefreshLifeMap: boolean;
   /**
+   * Can connect a calendar and sync Acuity tasks to it (v1.1 calendar
+   * integration). Same semantics as canExtractEntries: PRO/TRIAL/
+   * PAST_DUE only. FREE/post-trial-free does not get calendar
+   * integration — gating it is a deliberate conversion lever
+   * (docs/v1-1/calendar-integration-summary.md, Decisions §4).
+   *
+   * Gates:
+   *   - POST /api/integrations/calendar/connect (and future Phase B
+   *     OAuth start endpoints)
+   *   - The Task → calendar event sync engine (slice C3)
+   *   - The "AI context" pipeline.ts augmentation (slice C2)
+   *   - UI surfaces showing the connect flow (slice C5)
+   */
+  canSyncCalendar: boolean;
+  /**
    * Always true. Soft-transition decision: post-trial users keep
    * permanent access to everything they already created.
    */
@@ -164,6 +179,7 @@ function entitlementSet(
     canGenerateNewLifeAudit: isActiveSide,
     canGenerateMonthlyMemoir: isActiveSide,
     canRefreshLifeMap: isActiveSide,
+    canSyncCalendar: isActiveSide,
     canViewHistory: true,
 
     isTrialing: false,

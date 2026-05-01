@@ -16,6 +16,11 @@ const PRO_ONLY_FLAGS = [
   "canGenerateNewLifeAudit",
   "canGenerateMonthlyMemoir",
   "canRefreshLifeMap",
+  // v1.1 slice C1 — calendar integration. Same semantics as
+  // canExtractEntries: PRO/TRIAL/PAST_DUE allow, FREE/post-trial-free
+  // block. Gates POST /api/integrations/calendar/connect and the
+  // Task → calendar sync engine (slice C3+).
+  "canSyncCalendar",
 ] as const;
 
 function expectActive(e: Entitlement) {
