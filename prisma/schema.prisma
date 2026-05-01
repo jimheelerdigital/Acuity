@@ -232,6 +232,42 @@ model User {
   signupReferrer    String?
   signupLandingPath String?
 
+  // ── Calendar integration (v1.1 slice C3) ─────────────────────────
+  // See docs/v1-1/calendar-integration-scoping.md §8 + the locked
+  // Decisions block at the bottom. Phase A connects via iOS EventKit
+  // (proxies Google / Outlook / iCloud through the OS account
+  // integration — no server-side OAuth in v1.1). Phase B re-uses
+  // the existing CalendarConnection model with KMS-wrapped tokens.
+  //
+  // All fields nullable or with a safe default — pure additive
+  // migration, every existing row gets the right values without a
+  // backfill. Slice C5 wires the settings UI; nothing reads these
+  // columns until then.
+
+  // "ios_eventkit" | "google" | "outlook". Null = not connected.
+  // String not enum for cross-Postgres-version compatibility, same
+  // convention as Entry.status / Task.status.
+  calendarConnectedProvider String?
+  // Timestamp of consent capture. Records when the user clicked
+  // through the connect modal — used to gate retroactive privacy-
+  // policy notifications if the data-handling terms change later.
+  calendarConnectedAt       DateTime?
+  // Provider-side calendar id the user picked to sync tasks INTO.
+  // EventKit calendar id, Google calendarId, etc. Null until the
+  // connect flow completes. Cleared on disconnect.
+  targetCalendarId          String?
+  // Per Decisions §2 (2026-05-01): default OFF at connect, opt-in.
+  // Reviewer-friendly default for first ~50 App Reviews; flip to
+  // ON later after a clean review track record. When false, each
+  // task with a dueDate gets a manual "Send to calendar" button;
+  // when true, the sync engine auto-enqueues on Task mutations.
+  autoSendTasks             Boolean   @default(false)
+  // "ALL_DAY" | "TIMED". User preference for tasks with no specific
+  // time — should the calendar event be all-day or a timed block?
+  // Default TIMED matches the "I'll do this at $dueDate" mental
+  // model. Editable in /account/integrations.
+  defaultEventDuration      String    @default("TIMED")
+
   updatedAt DateTime @default(now()) @updatedAt
 
   @@index([createdAt])
@@ -482,11 +518,41 @@ model Task {
   completedAt  DateTime?
   createdAt    DateTime   @default(now())
 
+  // ── Calendar sync (v1.1 slice C3) ────────────────────────────────
+  // Pointer to the calendar event the sync engine created for this
+  // task. Idempotency key for upsert/complete/delete operations:
+  // null = no event exists; set = event exists at the user's
+  // provider; clears when the sync deletes the event OR when the
+  // user disconnects calendar (one-way sync property — the event
+  // persists in the user's calendar after disconnect, but Acuity
+  // loses its pointer + ability to manage it).
+  calendarEventId    String?
+  // Last successful sync timestamp. Drives "synced 3m ago" UI in
+  // the per-task calendar-status badge.
+  calendarSyncedAt   DateTime?
+  // "NOT_SYNCED" | "PENDING" | "SYNCED" | "FAILED". Default
+  // NOT_SYNCED so the prisma db push for this slice gives every
+  // existing row the correct value — no backfill needed. Drives
+  // the per-task UI badge:
+  //   NOT_SYNCED — no calendar icon (no dueDate, or auto-send off
+  //                and user hasn't tapped "Send to calendar")
+  //   PENDING    — pulsing dot (queued; mobile foreground hook
+  //                hasn't flushed it to EventKit yet — Option α
+  //                from the scoping doc Decisions §1)
+  //   SYNCED     — green check
+  //   FAILED     — red icon with retry on hover/tap
+  calendarSyncStatus String    @default("NOT_SYNCED")
+
   @@index([goalId])
   // Hot path: /api/tasks GET filters `status: { not: "DONE" }` and
   // /home Open Tasks filters `status: { in: [...] }`. Both
   // benefit from a userId+status composite index. Audit item #6.
   @@index([userId, status])
+  // Calendar sync queue — supports "find this user's PENDING tasks"
+  // queries the mobile foreground hook runs to drain its work queue.
+  // Low-cardinality on calendarSyncStatus (4 values) so the index is
+  // small; the userId prefix keeps it scoped.
+  @@index([userId, calendarSyncStatus])
 }
 
 model Goal {
