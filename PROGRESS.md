@@ -7,6 +7,59 @@
 
 ---
 
+## Slice protocol (v1.1 onward)
+
+When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-tier-phase2-plan.md):
+
+1. **Full-suite CI re-run, not just the touched test file.** Always run `npx vitest run` against the full `apps/web` suite (and `apps/mobile typecheck` when mobile is touched). Slice 1 missed a `paywall.test.ts` regression because the CI re-run was scoped to the file that changed. Touched-file-only is too narrow — entitlement / pricing / pipeline changes ripple into adjacent test files that don't import the touched file directly.
+2. **Show the diff before pushing.** Per-slice approval gate. The author shows `git diff --stat` plus the full diff of each non-trivial file change to Jim, who confirms before push.
+3. **Production verification after deploy.** Re-run the same three-persona shape check (FREE / TRIAL / PRO) used in slice 1 against production data after each slice's deploy goes Ready. Pure-function verification + at least one live HTTP probe to confirm the deploy is responsive.
+4. **Pre-existing failures stay called out.** When the full suite returns failures unrelated to the current slice, confirm via `git stash` that they exist on `main` independently and report the count + cause in the slice's PROGRESS entry.
+
+---
+
+## [2026-04-30] — v1.1 slice 2: Inngest pipeline FREE/PRO branch + Haiku summary
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** TBD-on-push
+
+### In plain English (for Keenan)
+
+Building on yesterday's slice 1, this is the actual code that splits the recording pipeline into two paths. When a free-tier user records, we still transcribe their words and write a one-sentence summary using a small fast AI (Anthropic Haiku — cheaper than the full extraction). We keep their streak counted and their recording stats logged. We skip the expensive AI work — themes, tasks, goals, life-matrix scoring, embedding for search — because that's what Pro pays for. Trial and Pro users get the full pipeline unchanged. End user impact: free users keep journaling without a paywall, but they don't get insights extracted from their entries.
+
+### Technical changes (for Jimmy)
+
+- New constant `CLAUDE_HAIKU_MODEL = "claude-haiku-4-5-20251001"` and `CLAUDE_HAIKU_MAX_TOKENS = 128` in `packages/shared/src/constants.ts`. 128 tokens covers the "one short sentence under 25 words" output budget.
+- New helper `apps/web/src/lib/free-summary.ts`: `summarizeForFreeTier(transcript)` — Anthropic SDK call, 30s timeout matching pipeline.ts, throws on empty/non-text response. ~$0.0007 per call.
+- `apps/web/src/inngest/functions/process-entry.ts` — new `compute-entitlement` step inserted after `transcribe-and-persist-transcript` (line 158). When `canExtractEntries === false`: runs `summarize-free` → `update-recording-stats-free` → `update-streak-free` (each its own `step.run` for retry isolation; recording-stats and streak are fail-soft per existing pattern), then returns `{ entryId, free: true }` and skips the full extraction path entirely. PRO/TRIAL/PAST_DUE flow is unchanged.
+- `apps/web/src/lib/pipeline.ts` — same branch in the sync-path orchestrator (lines 408-498). Required because `ENABLE_INNGEST_PIPELINE` is still flag-gated; both paths must honour the v1.1 entitlement split. FREE branch returns `{ entry, tasks: [], tasksCreated: 0, extraction: null }`; the `/api/record/route.ts:236` caller forwards `extraction: null` to the client (mobile already handles this case via `entryId` + `status`).
+- `apps/web/src/lib/free-summary.test.ts` (new): 6 tests covering the Haiku helper with a mocked Anthropic SDK — happy path, model assertion (Haiku, max_tokens=128), empty transcript rejection, no text block rejection, wrong block type rejection, whitespace-only response rejection.
+- `apps/web/src/lib/paywall.test.ts` — fixed slice-1 regression: the old test asserted "expired TRIAL blocks canRecord with 402"; under v1.1 rules, expired TRIAL allows canRecord (only canExtractEntries is gated). Replaced + added 6 new tests covering canExtractEntries across PRO / TRIAL-active / TRIAL-expired / FREE / PAST_DUE.
+
+### Slice 2 test results
+
+- `entitlements.test.ts`: 27/27 pass
+- `paywall.test.ts`: 13/13 pass (was 7; +6 v1.1 tests; 1 fixed regression)
+- `free-summary.test.ts`: 6/6 pass (new)
+- **v1.1 totals: 46/46**
+- Full apps/web suite: 128 pass / 4 fail. The 4 failures (`auth-flows.test.ts` — `prisma.deletedUser is not a function`) are pre-existing on main, confirmed via `git stash` test before push. Unrelated to slice 2.
+
+### Manual steps needed
+
+- [ ] None for this slice. Verification happens in production via the same three-persona shape check used for slice 1: FREE post-trial records → Haiku summary appears, status COMPLETE, no themes; TRIAL records → existing pipeline runs unchanged; PRO records → existing pipeline runs unchanged (Jimmy).
+- [ ] Slice 3 (day-14 transactional email) starts only after slice 2 verification.
+
+### Notes
+
+- Slice protocol updated at the top of this file: every slice's CI re-run runs the FULL `apps/web` vitest suite, not just the touched test file. Slice 1 missed the `paywall.test.ts` regression because of file-scoped re-runs.
+- The branching point is intentionally inside the Inngest function (not in `/api/record` route). Reasoning per design doc §2.2: keeps the FREE/PRO split decoupled from `ENABLE_INNGEST_PIPELINE` infrastructure flag, and the Inngest function already has the userId + DB context to compute entitlement at zero marginal cost.
+- Streaks stay free per Jim's open-question decision (4). FREE users keep their streak counted via the `update-streak-free` step.
+- The `tier: "FREE"` PostHog property is appended to `first_recording_completed` and `streak_milestone_hit` events when the FREE branch fires, so cohort dashboards can split conversion attribution by tier.
+- Haiku model ID is pinned (`claude-haiku-4-5-20251001`) for build reproducibility. Same convention as `CLAUDE_FLAGSHIP_MODEL = "claude-opus-4-7"`.
+
+---
+
 ## [2026-04-30] — v1.1 slice 1: free-tier entitlement split (canExtractEntries)
 
 **Requested by:** Jimmy

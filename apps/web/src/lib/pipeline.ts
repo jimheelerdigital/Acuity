@@ -405,6 +405,104 @@ export async function processEntry({
       throw new Error("Transcript too short — no speech detected");
     }
 
+    // ── FREE / PRO branch ─────────────────────────────────────────────────
+    // Mirror of process-entry.ts. Even though the sync path is being
+    // retired (see route.ts:38-41), it's still live; both paths must
+    // honour the v1.1 entitlement split or behavior diverges based on
+    // an unrelated infrastructure flag.
+    const userRow = await prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { subscriptionStatus: true, trialEndsAt: true },
+    });
+    const { entitlementsFor } = await import("@/lib/entitlements");
+    const ent = entitlementsFor(userRow);
+
+    if (!ent.canExtractEntries) {
+      // FREE branch — Haiku summary, recording stats, streak, return.
+      const { summarizeForFreeTier } = await import("@/lib/free-summary");
+      const summary = await summarizeForFreeTier(transcript);
+      const entryRow = await prisma.entry.update({
+        where: { id: entryId },
+        data: {
+          audioUrl,
+          audioDuration: durationSeconds ?? null,
+          transcript,
+          summary,
+          status: "COMPLETE",
+        },
+      });
+
+      // Recording stats — mirror of process-entry.ts step.
+      try {
+        const existingUser = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { firstRecordingAt: true },
+        });
+        if (existingUser) {
+          await prisma.user.update({
+            where: { id: userId },
+            data: {
+              firstRecordingAt:
+                existingUser.firstRecordingAt ?? entryRow.createdAt,
+              lastRecordingAt: entryRow.createdAt,
+              totalRecordings: { increment: 1 },
+            },
+          });
+        }
+      } catch (err) {
+        console.error(
+          "[pipeline] free-tier recording stats update failed (non-fatal):",
+          err
+        );
+      }
+
+      // Streak — mirror of process-entry.ts step.
+      try {
+        const user = await prisma.user.findUnique({
+          where: { id: userId },
+          select: {
+            timezone: true,
+            lastSessionDate: true,
+            currentStreak: true,
+            longestStreak: true,
+            lastStreakMilestone: true,
+          },
+        });
+        if (user) {
+          const { computeStreakUpdate } = await import("@/lib/streak");
+          const now = new Date();
+          const update = computeStreakUpdate({
+            now,
+            timezone: user.timezone || "America/Chicago",
+            lastSessionDate: user.lastSessionDate,
+            currentStreak: user.currentStreak,
+            longestStreak: user.longestStreak,
+            lastStreakMilestone: user.lastStreakMilestone,
+          });
+          await prisma.user.update({
+            where: { id: userId },
+            data: {
+              lastSessionDate: now,
+              currentStreak: update.currentStreak,
+              longestStreak: update.longestStreak,
+              lastStreakMilestone: update.milestoneHit
+                ? update.milestoneHit
+                : undefined,
+            },
+          });
+        }
+      } catch (err) {
+        console.error(
+          "[pipeline] free-tier streak update failed (non-fatal):",
+          err
+        );
+      }
+
+      return { entry: entryRow, tasks: [], tasksCreated: 0, extraction: null };
+    }
+
+    // ── PRO/TRIAL path (existing pipeline, unchanged) ────────────────────
+
     // ── Build memory context ──────────────────────────────────────────────
     const { buildMemoryContext } = await import("@/lib/memory");
     const memoryContext = await buildMemoryContext(userId);

@@ -60,13 +60,22 @@ describe("requireEntitlement — active TRIAL", () => {
   });
 });
 
-describe("requireEntitlement — expired TRIAL", () => {
-  it("blocks canRecord with 402 + SUBSCRIPTION_REQUIRED", async () => {
+describe("requireEntitlement — expired TRIAL (v1.1: FREE journaling loop)", () => {
+  it("ALLOWS canRecord — recording is the FREE primary action", async () => {
     findUniqueMock.mockResolvedValue({
       subscriptionStatus: "TRIAL",
       trialEndsAt: day(-1),
     });
     const gate = await requireEntitlement("canRecord", "u1");
+    expect(gate.ok).toBe(true);
+  });
+
+  it("blocks canExtractEntries with 402 + SUBSCRIPTION_REQUIRED", async () => {
+    findUniqueMock.mockResolvedValue({
+      subscriptionStatus: "TRIAL",
+      trialEndsAt: day(-1),
+    });
+    const gate = await requireEntitlement("canExtractEntries", "u1");
     expect(gate.ok).toBe(false);
     if (gate.ok) return;
     expect(gate.response.status).toBe(402);
@@ -79,7 +88,27 @@ describe("requireEntitlement — expired TRIAL", () => {
   });
 });
 
-describe("requireEntitlement — FREE", () => {
+describe("requireEntitlement — FREE (v1.1: FREE journaling loop)", () => {
+  it("ALLOWS canRecord", async () => {
+    findUniqueMock.mockResolvedValue({
+      subscriptionStatus: "FREE",
+      trialEndsAt: null,
+    });
+    const gate = await requireEntitlement("canRecord", "u1");
+    expect(gate.ok).toBe(true);
+  });
+
+  it("blocks canExtractEntries with 402", async () => {
+    findUniqueMock.mockResolvedValue({
+      subscriptionStatus: "FREE",
+      trialEndsAt: null,
+    });
+    const gate = await requireEntitlement("canExtractEntries", "u1");
+    expect(gate.ok).toBe(false);
+    if (gate.ok) return;
+    expect(gate.response.status).toBe(402);
+  });
+
   it("blocks canRefreshLifeMap", async () => {
     findUniqueMock.mockResolvedValue({
       subscriptionStatus: "FREE",
@@ -89,6 +118,35 @@ describe("requireEntitlement — FREE", () => {
     expect(gate.ok).toBe(false);
     if (gate.ok) return;
     expect(gate.response.status).toBe(402);
+  });
+});
+
+describe("requireEntitlement — canExtractEntries (PRO + TRIAL allow)", () => {
+  it("PRO allows canExtractEntries", async () => {
+    findUniqueMock.mockResolvedValue({
+      subscriptionStatus: "PRO",
+      trialEndsAt: null,
+    });
+    const gate = await requireEntitlement("canExtractEntries", "u1");
+    expect(gate.ok).toBe(true);
+  });
+
+  it("active TRIAL allows canExtractEntries", async () => {
+    findUniqueMock.mockResolvedValue({
+      subscriptionStatus: "TRIAL",
+      trialEndsAt: day(7),
+    });
+    const gate = await requireEntitlement("canExtractEntries", "u1");
+    expect(gate.ok).toBe(true);
+  });
+
+  it("PAST_DUE allows canExtractEntries (Stripe grace)", async () => {
+    findUniqueMock.mockResolvedValue({
+      subscriptionStatus: "PAST_DUE",
+      trialEndsAt: null,
+    });
+    const gate = await requireEntitlement("canExtractEntries", "u1");
+    expect(gate.ok).toBe(true);
   });
 });
 

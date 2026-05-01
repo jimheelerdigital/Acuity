@@ -216,3 +216,11 @@ export const CLAUDE_FLAGSHIP_MODEL = "claude-opus-4-7";
 // leaves headroom. Don't raise without measuring — longer tokens =
 // longer wall-clock = tighter per-step Hobby ceiling.
 export const CLAUDE_FLAGSHIP_MAX_TOKENS = 4096;
+
+// Haiku-4-5 powers the FREE-tier one-sentence summary. v1.1 free-tier
+// redesign: FREE recordings transcribe + get a tiny Haiku summary,
+// then short-circuit the extraction pipeline. ~$0.0007 per call at
+// our prompt sizes (vs ~$0.011 for Sonnet extraction). Output budget
+// is small — one sentence — so 128 tokens covers it.
+export const CLAUDE_HAIKU_MODEL = "claude-haiku-4-5-20251001";
+export const CLAUDE_HAIKU_MAX_TOKENS = 128;

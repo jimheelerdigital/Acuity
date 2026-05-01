@@ -158,6 +158,155 @@ export const processEntryFn = inngest.createFunction(
       });
     });
 
+    // ── FREE / PRO branch ────────────────────────────────────────────
+    // v1.1 free-tier redesign: after the transcript is persisted, fork
+    // on the user's entitlement. PRO/TRIAL/PAST_DUE run the full
+    // extraction pipeline (steps 3–8 below). FREE/expired-trial gets a
+    // one-sentence Haiku summary, recording-stats, streak, then exits
+    // without extraction/embedding/memory/lifemap. See docs/v1-1/
+    // free-tier-phase2-plan.md slice 2.
+    const entitlement = await step.run("compute-entitlement", async () => {
+      const user = await prisma.user.findUniqueOrThrow({
+        where: { id: userId },
+        select: { subscriptionStatus: true, trialEndsAt: true },
+      });
+      const { entitlementsFor } = await import("@/lib/entitlements");
+      const e = entitlementsFor(user);
+      return {
+        canExtractEntries: e.canExtractEntries,
+        isPostTrialFree: e.isPostTrialFree,
+      };
+    });
+
+    if (!entitlement.canExtractEntries) {
+      // FREE branch — one-sentence Haiku summary then short-circuit.
+      // Each substep is its own step.run so retry isolation is per-
+      // substep (a Haiku transient failure doesn't replay the streak
+      // bump or the recording-stats increment).
+      await step.run("summarize-free", async () => {
+        const entry = await prisma.entry.findUniqueOrThrow({
+          where: { id: entryId },
+          select: { transcript: true },
+        });
+        const transcript = entry.transcript ?? "";
+        const { summarizeForFreeTier } = await import("@/lib/free-summary");
+        const summary = await summarizeForFreeTier(transcript);
+        await prisma.entry.update({
+          where: { id: entryId },
+          data: { summary, status: "COMPLETE" },
+        });
+      });
+
+      await step.run("update-recording-stats-free", async () => {
+        const entry = await prisma.entry.findUnique({
+          where: { id: entryId },
+          select: { status: true, createdAt: true },
+        });
+        if (!entry || entry.status !== "COMPLETE") return;
+
+        const existing = await prisma.user.findUnique({
+          where: { id: userId },
+          select: {
+            firstRecordingAt: true,
+            createdAt: true,
+            signupUtmSource: true,
+            signupUtmCampaign: true,
+            foundingMemberNumber: true,
+          },
+        });
+        if (!existing) return;
+        const isFirstRecording = existing.firstRecordingAt === null;
+
+        await prisma.user.update({
+          where: { id: userId },
+          data: {
+            firstRecordingAt: existing.firstRecordingAt ?? entry.createdAt,
+            lastRecordingAt: entry.createdAt,
+            totalRecordings: { increment: 1 },
+          },
+        });
+
+        if (isFirstRecording) {
+          try {
+            const { track } = await import("@/lib/posthog");
+            const hoursSinceSignup = Math.round(
+              (entry.createdAt.getTime() - existing.createdAt.getTime()) /
+                (1000 * 60 * 60)
+            );
+            await track(userId, "first_recording_completed", {
+              hoursSinceSignup,
+              signupUtmSource: existing.signupUtmSource,
+              signupUtmCampaign: existing.signupUtmCampaign,
+              foundingMemberNumber: existing.foundingMemberNumber,
+              tier: "FREE",
+            });
+          } catch {
+            // PostHog failure is non-fatal
+          }
+        }
+      }).catch((err) => {
+        logger.error(
+          "[process-entry] update-recording-stats-free failed (non-fatal)",
+          { err }
+        );
+      });
+
+      await step.run("update-streak-free", async () => {
+        const user = await prisma.user.findUnique({
+          where: { id: userId },
+          select: {
+            timezone: true,
+            lastSessionDate: true,
+            currentStreak: true,
+            longestStreak: true,
+            lastStreakMilestone: true,
+          },
+        });
+        if (!user) return;
+
+        const { computeStreakUpdate } = await import("@/lib/streak");
+        const now = new Date();
+        const update = computeStreakUpdate({
+          now,
+          timezone: user.timezone || "America/Chicago",
+          lastSessionDate: user.lastSessionDate,
+          currentStreak: user.currentStreak,
+          longestStreak: user.longestStreak,
+          lastStreakMilestone: user.lastStreakMilestone,
+        });
+
+        await prisma.user.update({
+          where: { id: userId },
+          data: {
+            lastSessionDate: now,
+            currentStreak: update.currentStreak,
+            longestStreak: update.longestStreak,
+            lastStreakMilestone: update.milestoneHit
+              ? update.milestoneHit
+              : undefined,
+          },
+        });
+
+        if (update.milestoneHit) {
+          const { track } = await import("@/lib/posthog");
+          await track(userId, "streak_milestone_hit", {
+            milestone: update.milestoneHit,
+            currentStreak: update.currentStreak,
+            tier: "FREE",
+          });
+        }
+      }).catch((err) => {
+        logger.error(
+          "[process-entry] update-streak-free failed (non-fatal)",
+          { err }
+        );
+      });
+
+      return { entryId, free: true };
+    }
+
+    // ── PRO/TRIAL path (existing pipeline, unchanged) ─────────────────
+
     // Step 3: build memory context (Prisma read; sub-second).
     const memoryContext = await step.run("build-memory-context", async () => {
       const { buildMemoryContext } = await import("@/lib/memory");
