@@ -1,7 +1,7 @@
 import { notFound, permanentRedirect } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { getPostBySlug, getAllSlugs } from "@/lib/blog-posts";
+import { getPostBySlug, getAllSlugs, BLOG_POSTS } from "@/lib/blog-posts";
 
 export const revalidate = 300; // 5 minutes
 
@@ -145,6 +145,7 @@ function BlogJsonLdStatic({
         "@type": "BlogPosting",
         headline: post.title,
         description: post.metaDescription,
+        image: "https://getacuity.io/og-image.png",
         datePublished: post.publishedAt,
         dateModified: post.updatedAt,
         author: {
@@ -158,7 +159,7 @@ function BlogJsonLdStatic({
           url: "https://getacuity.io",
           logo: {
             "@type": "ImageObject",
-            url: "https://www.getacuity.io/AcuityLogo.png",
+            url: "https://getacuity.io/AcuityLogo.png",
           },
         },
         mainEntityOfPage: {
@@ -200,6 +201,7 @@ function BlogJsonLdDynamic({ post }: { post: DynamicPost }) {
         "@type": "BlogPosting",
         headline: post.title,
         description,
+        image: "https://getacuity.io/og-image.png",
         datePublished: publishedAt,
         dateModified: publishedAt,
         author: {
@@ -213,7 +215,7 @@ function BlogJsonLdDynamic({ post }: { post: DynamicPost }) {
           url: "https://getacuity.io",
           logo: {
             "@type": "ImageObject",
-            url: "https://www.getacuity.io/AcuityLogo.png",
+            url: "https://getacuity.io/AcuityLogo.png",
           },
         },
         mainEntityOfPage: {
@@ -324,6 +326,7 @@ export default async function BlogPostPage({ params }: Props) {
               })}
             </div>
             <BlogCta />
+            <RelatedPosts currentSlug={staticPost.slug} />
           </div>
         </article>
       </>
@@ -386,6 +389,7 @@ export default async function BlogPostPage({ params }: Props) {
             dangerouslySetInnerHTML={{ __html: htmlBody }}
           />
           <BlogCta />
+          <RelatedPosts currentSlug={params.slug} />
         </div>
       </article>
     </>
@@ -424,5 +428,30 @@ function BlogCta() {
         </Link>
       </div>
     </>
+  );
+}
+
+function RelatedPosts({ currentSlug }: { currentSlug: string }) {
+  const related = BLOG_POSTS.filter((p) => p.slug !== currentSlug).slice(0, 3);
+  if (related.length === 0) return null;
+
+  return (
+    <div className="mt-16">
+      <h2 className="text-xl font-bold mb-6 text-white">Related articles</h2>
+      <div className="grid gap-4 sm:grid-cols-3">
+        {related.map((post) => (
+          <Link
+            key={post.slug}
+            href={`/blog/${post.slug}`}
+            className="group rounded-lg border border-white/10 bg-[#13131F] p-5 transition hover:border-[#7C5CFC]/40"
+          >
+            <p className="text-xs text-[#A0A0B8] mb-2">{post.readingTime}</p>
+            <h3 className="text-sm font-semibold text-white group-hover:text-[#7C5CFC] transition-colors leading-snug">
+              {post.title}
+            </h3>
+          </Link>
+        ))}
+      </div>
+    </div>
   );
 }

@@ -60,6 +60,9 @@ export const metadata: Metadata = {
     index: true,
     follow: true,
   },
+  other: {
+    "theme-color": "#7C5CFC",
+  },
 };
 
 export default function RootLayout({
@@ -67,15 +70,31 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const organizationJsonLd = {
+  const structuredDataJsonLd = {
     "@context": "https://schema.org",
-    "@type": "Organization",
-    name: "Acuity",
-    url: "https://getacuity.io",
-    logo: "https://www.getacuity.io/AcuityLogo.png",
-    description:
-      "AI journaling app that turns a 60-second nightly voice brain dump into extracted tasks, mood tracking, mental pattern detection, and weekly AI reports.",
-    sameAs: [],
+    "@graph": [
+      {
+        "@type": "Organization",
+        name: "Acuity",
+        url: "https://getacuity.io",
+        logo: "https://getacuity.io/AcuityLogo.png",
+        description:
+          "AI journaling app that turns a 60-second nightly voice brain dump into extracted tasks, mood tracking, mental pattern detection, and weekly AI reports.",
+        email: "hello@getacuity.io",
+        // sameAs: Keenan to provide social profile URLs (Twitter/X, LinkedIn, Instagram)
+        sameAs: [],
+      },
+      {
+        "@type": "WebSite",
+        name: "Acuity",
+        url: "https://getacuity.io",
+        potentialAction: {
+          "@type": "SearchAction",
+          target: "https://getacuity.io/blog?q={search_term_string}",
+          "query-input": "required name=search_term_string",
+        },
+      },
+    ],
   };
 
   return (
@@ -87,7 +106,7 @@ export default function RootLayout({
       <head>
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredDataJsonLd) }}
         />
         {GOOGLE_SITE_VERIFICATION && (
           <meta name="google-site-verification" content={GOOGLE_SITE_VERIFICATION} />

@@ -8,7 +8,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   return {
     title: page.title,
     description: page.metaDescription,
-    robots: { index: false, follow: false },
+    robots: { index: true, follow: true },
     alternates: { canonical: `https://getacuity.io/for/${params.slug}` },
     openGraph: {
       title: page.title,
@@ -18,7 +18,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
       images: [{ url: "/og-image.png", width: 1200, height: 630 }],
     },
     twitter: {
-      card: "summary",
+      card: "summary_large_image",
       title: page.title,
       description: page.metaDescription,
     },

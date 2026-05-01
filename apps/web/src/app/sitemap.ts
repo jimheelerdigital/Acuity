@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { BLOG_POSTS } from "@/lib/blog-posts";
+import { getAllPersonaSlugs } from "@/lib/persona-pages";
 
 export const revalidate = 300; // 5 minutes
 
@@ -7,6 +8,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = "https://getacuity.io";
   const lastModified = new Date();
 
+  // ─── Core pages ──────────────────────────────────────────────────────────
   const staticPages: MetadataRoute.Sitemap = [
     {
       url: baseUrl,
@@ -15,9 +17,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 1.0,
     },
     {
-      url: `${baseUrl}/auth/signup`,
+      url: `${baseUrl}/voice-journaling`,
       lastModified,
-      changeFrequency: "weekly",
+      changeFrequency: "monthly",
       priority: 0.9,
     },
     {
@@ -27,14 +29,37 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     },
     {
-      url: `${baseUrl}/voice-journaling`,
+      url: `${baseUrl}/waitlist`,
       lastModified,
       changeFrequency: "monthly",
-      priority: 0.9,
+      priority: 0.6,
     },
   ];
 
-  // Static blog posts from blog-posts.ts
+  // ─── /for/ landing pages (static routes) ─────────────────────────────────
+  const staticForPages: MetadataRoute.Sitemap = [
+    "therapy",
+    "founders",
+    "sleep",
+    "decoded",
+    "weekly-report",
+  ].map((slug) => ({
+    url: `${baseUrl}/for/${slug}`,
+    lastModified,
+    changeFrequency: "monthly" as const,
+    priority: 0.8,
+  }));
+
+  // ─── /for/ persona pages (dynamic routes) ────────────────────────────────
+  const personaSlugs = getAllPersonaSlugs();
+  const personaPages: MetadataRoute.Sitemap = personaSlugs.map((slug) => ({
+    url: `${baseUrl}/for/${slug}`,
+    lastModified,
+    changeFrequency: "monthly" as const,
+    priority: 0.7,
+  }));
+
+  // ─── Static blog posts from blog-posts.ts ────────────────────────────────
   const staticBlogPages: MetadataRoute.Sitemap = BLOG_POSTS.map((post) => ({
     url: `${baseUrl}/blog/${post.slug}`,
     lastModified: new Date(post.updatedAt),
@@ -42,7 +67,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
-  // Dynamic blog posts from ContentPiece
+  // ─── Dynamic blog posts from ContentPiece ────────────────────────────────
   let dynamicBlogPages: MetadataRoute.Sitemap = [];
   try {
     const { prisma } = await import("@/lib/prisma");
@@ -67,5 +92,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // DB unavailable at build time — static posts only
   }
 
-  return [...staticPages, ...staticBlogPages, ...dynamicBlogPages];
+  return [
+    ...staticPages,
+    ...staticForPages,
+    ...personaPages,
+    ...staticBlogPages,
+    ...dynamicBlogPages,
+  ];
 }

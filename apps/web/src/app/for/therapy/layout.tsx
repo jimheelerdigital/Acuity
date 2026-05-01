@@ -4,7 +4,7 @@ export const metadata: Metadata = {
   title: "Acuity for Therapy — AI Emotional Pattern Tracking Between Sessions",
   description:
     "Track your emotional patterns nightly with AI. Acuity gives you the data to make therapy more effective — mood tracking, pattern detection, and weekly mental health reports for less than one copay.",
-  robots: { index: false, follow: false },
+  robots: { index: true, follow: true },
   alternates: { canonical: "https://getacuity.io/for/therapy" },
   openGraph: {
     title: "Acuity for Therapy — AI Emotional Pattern Tracking",
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
     images: [{ url: "/og-image.png", width: 1200, height: 630 }],
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: "Acuity for Therapy — AI Emotional Pattern Tracking",
     description:
       "Track your emotional patterns nightly with AI. Weekly mental health reports for less than one copay.",
