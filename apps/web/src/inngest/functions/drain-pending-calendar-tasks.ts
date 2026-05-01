@@ -37,11 +37,11 @@ export const drainPendingCalendarTasksFn = inngest.createFunction(
     id: "drain-pending-calendar-tasks",
     name: "Calendar sync — drain pending + escalate stuck",
     retries: 3,
+    triggers: [
+      { cron: "*/30 * * * *" },
+      { event: "calendar/sync.foreground-requested" },
+    ],
   },
-  [
-    { cron: "*/30 * * * *" },
-    { event: "calendar/sync.foreground-requested" },
-  ],
   async ({ event, step }) => {
     const { prisma } = await import("@/lib/prisma");
 
