@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { useState } from "react";
 import {
   BarChart3,
   CheckSquare,
@@ -15,6 +16,7 @@ import {
   Target,
 } from "lucide-react";
 
+import { RecordSheet } from "./record-sheet";
 import { SessionUserMenu } from "./user-menu";
 
 type NavItem = {
@@ -110,7 +112,7 @@ function SidebarLink({ item, active }: { item: NavItem; active: boolean }) {
   );
 }
 
-function Sidebar() {
+function Sidebar({ onOpenRecord }: { onOpenRecord: () => void }) {
   const pathname = usePathname();
 
   return (
@@ -136,16 +138,22 @@ function Sidebar() {
         </Link>
       </div>
 
-      {/* Record CTA */}
+      {/* Record CTA — opens RecordSheet modal in place. Previously this
+          was a <Link href="/home#record"> hash anchor, but the on-/home
+          RecordButton card is `lg:hidden`, so on desktop the click did
+          nothing visible (page scrolled to a hidden element). Now the
+          sidebar mounts the modal directly so recording works from any
+          authenticated route, not just /home. */}
       <div className="px-3 pt-4">
-        <Link
-          href="/home#record"
+        <button
+          type="button"
+          onClick={onOpenRecord}
           className="flex w-full items-center justify-center gap-2 rounded-lg bg-violet-600 px-3 text-white shadow-[0_4px_14px_rgba(124,58,237,0.35)] transition hover:bg-violet-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#FAFAF7] dark:focus-visible:ring-offset-[#0B0B12]"
           style={{ paddingTop: 16, paddingBottom: 16, fontSize: 17, fontWeight: 500 }}
         >
           <Mic className="h-[22px] w-[22px]" aria-hidden />
           Record
-        </Link>
+        </button>
       </div>
 
       {/* Nav sections */}
@@ -205,7 +213,12 @@ function DesktopTopbar() {
  */
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { data: session, status } = useSession();
+  // Sidebar Record button opens this. Lives on AppShell so the modal is
+  // available from any authenticated lg+ route, not just /home — and so
+  // the open/closed state survives nav between routes.
+  const [recordOpen, setRecordOpen] = useState(false);
 
   const bypass =
     !pathname ||
@@ -233,7 +246,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      <Sidebar />
+      <Sidebar onOpenRecord={() => setRecordOpen(true)} />
       <div className="lg:pl-[272px] 2xl:pl-[288px]">
         <DesktopTopbar />
         {/* 2xl: shell cap bumped 1600 → 2240 (2026-04-29 wide-desktop
@@ -245,6 +258,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {children}
         </div>
       </div>
+      {/* Universal Record modal. Rendered at the shell level so the
+          sidebar button works from any route. Reuses the same
+          RecordSheet component as /insights and /goals/[id] — no fork.
+          Generic context (no goalId / dimensionKey) so the entry isn't
+          anchored to a specific goal or life area; it's a daily debrief.
+          On record completion, route to the entry detail page so the
+          user lands on their freshly-processed entry, parallel to the
+          mobile flow at apps/mobile/app/record.tsx. */}
+      <RecordSheet
+        open={recordOpen}
+        onClose={() => setRecordOpen(false)}
+        context={{ type: "generic", label: "Daily debrief" }}
+        onRecordComplete={(entryId) => {
+          setRecordOpen(false);
+          router.push(`/entries/${entryId}`);
+        }}
+      />
     </>
   );
 }
