@@ -20,6 +20,47 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-02] — v1.1 slice 4-web: wire §B.2.1-§B.2.5 free-tier conversion surfaces
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** 1c4b0df
+
+### In plain English (for Keenan)
+
+Five of the six "this is a Pro feature" cards now appear for free post-trial users on the web app. On the home dashboard they see a Pro pulse teaser below today's prompt; on the insights page the Life Matrix and Theme Map are now locked Pro cards instead of the experiential ones; on the goals tab they see a Pro-required card at the top instead of the AI-suggestions placeholder; on the tasks tab the empty state replaces the generic "no tasks yet" with the Pro-conversion copy. Trial and Pro users see no change. The sixth surface — the entry-detail footer — already shipped in slice 4-foundation. Mobile mirrors come in slice 4-mobile.
+
+### Technical changes (for Jimmy)
+
+- New file `apps/web/src/lib/entitlements-fetch.ts` (~30 lines): `getUserEntitlement(userId)` — fetches the User row + computes the entitlement via the existing pure `entitlementsFor`. SSR companion to `requireEntitlement` (in `paywall.ts`, for API routes). Returns `null` on stale-session userId; callers treat null as "no entitlement," same behavior as FREE-side rendering.
+- Modified `apps/web/src/app/home/page.tsx` (+23 lines): §B.2.1 Pro pulse. Inline `entitlementsFor` against the User row already selected (`subscriptionStatus`, `trialEndsAt`) — no extra round-trip. Pro pulse renders below the today's-prompt row when FREE, full-width col-span-12, alongside not replacing the existing recommendation.
+- Modified `apps/web/src/app/insights/page.tsx` (+15/-2 lines): §B.2.2 + §B.2.5. The flagship Life Matrix + Theme Map cards now thread `isProLocked` BEFORE the existing `progression.unlocked.lifeMatrix / themeMap` checks. FREE → `ProLockedCard`; TRIAL/PRO + unlocked → existing real link card; TRIAL/PRO + low-data → existing experiential `LockedFeatureCard`.
+- Modified `apps/web/src/app/goals/page.tsx` (+24/-7 lines): §B.2.3. Same precedence — `isProLocked ? ProLockedCard : !goalSuggestions ? LockedFeatureCard : (nothing)`.
+- Modified `apps/web/src/app/tasks/page.tsx` (+10/-1 lines): server-component fetches entitlement via `getUserEntitlement`, passes `isLocked={canExtractEntries === false}` prop into the client `TaskList`.
+- Modified `apps/web/src/app/tasks/task-list.tsx` (+46/-4 lines): `TaskList` accepts `isLocked` prop; `EmptyState` accepts it and swaps to ProLocked copy for the `open` tab only when `isLocked` is true. Snoozed/completed tabs keep the generic empty state (not the conversion moment). Imports `FREE_TIER_LOCKED_COPY` + `freeTierUpgradeUrl` from `@acuity/shared` since the EmptyState body is rendered inline rather than via the `ProLockedCard` server component.
+
+### Slice 4-web verification
+
+- Full apps/web vitest: 16/17 files pass, 219/223 tests pass. Identical to the slice 4-foundation baseline (no new tests; the project's convention is library-test-only — route-integration tests aren't in scope per `IMPLEMENTATION_PLAN_PAYWALL.md`'s coverage rubric).
+- 4 pre-existing `auth-flows.test.ts` failures unchanged (tracked in `docs/v1-1/backlog.md`).
+- tsc: 7 total errors, ZERO new in any modified file. Verified via filter on `tasks/task-list`, `tasks/page`, `home/page`, `insights/page`, `goals/page`, `entitlements-fetch`, `pro-locked` paths.
+
+### Manual steps needed
+
+- [ ] None for this slice. Ship is fully gated by entitlement → safe for the existing TRIAL/PRO cohort (sees no change). Visual surfaces only show for FREE post-trial, of which there are currently 0 production users (all current accounts are TRIAL or PRO per slice 2 verification) (Jimmy).
+- [ ] Slice 4-mobile starts next: `apps/mobile/components/pro-locked-card.tsx` + wire all 6 §B.2 surfaces in mobile + clean up `/life-matrix` + `/insights/theme-map` direct-page entry points (deferred from this slice).
+
+### Notes
+
+- **Decision-tree precedence is intentional.** `isProLocked` is checked BEFORE the experiential `progression.unlocked.*` check at every surface. A FREE post-trial user with insufficient data sees the billing gate, not the experiential one. Reasoning: billing is the load-bearing constraint — once they upgrade, experiential gates apply normally.
+- **Tasks empty state — only the `open` tab.** Snoozed/Completed tabs keep their existing emoji empty state. The conversion moment is "I came to write a task and there's nothing here," not "browsing my completed list."
+- **Home Pro pulse renders alongside, not replacing today's prompt.** FREE users still get their (heuristic-fallback) recommendation from the existing pipeline. Pro pulse is the teaser-of-Pro card below.
+- **Direct `/life-matrix` and `/insights/theme-map` deep-link pages NOT yet wired.** A FREE user reaching those URLs by bookmark still sees the existing experiential card (the gate-by-data card, not the gate-by-tier card). Cleanest fix is at the page level — slice 4-mobile rolls these in alongside the mobile work since both pages render via shared LockedFeatureCard imports.
+- **Client-bundle hygiene.** `subscriptionStatus` and `trialEndsAt` never reach the client bundle. Server components compute the boolean and pass `isLocked` only.
+- Followed slice protocol: full-suite vitest re-run, diff shown before push, baseline-red failures called out.
+
+---
+
 ## [2026-05-02] — v1.1 slice 4-foundation: locked-state copy + ProLockedCard components
 
 **Requested by:** Jimmy
