@@ -171,6 +171,13 @@ export default function ProfileTab() {
           />
 
           <MenuItem
+            icon="calendar-outline"
+            label="Calendar"
+            sublabel="Send tasks to your iOS calendar"
+            onPress={() => router.push("/integrations")}
+          />
+
+          <MenuItem
             icon="heart-outline"
             label="Connect Apple Health"
             sublabel={

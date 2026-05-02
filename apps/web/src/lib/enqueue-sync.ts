@@ -68,60 +68,105 @@ const ACTION_TO_KIND: Record<TaskMutationAction, CalendarSyncOpKind> = {
  *   - Provider-agnostic. Does not import any provider SDK. Does not
  *     call any executor — sets PENDING and returns.
  */
+/**
+ * Detect Prisma's "column does not exist" error code (P2022).
+ *
+ * Used to gracefully short-circuit when the C3 calendar columns
+ * (calendarConnectedProvider, autoSendTasks, defaultEventDuration,
+ * targetCalendarId, calendarEventId, calendarSyncStatus) live in
+ * the schema + generated client but haven't yet been pushed to
+ * the production DB via `prisma db push`. The dashboard hotfix
+ * (commit 54af6c0) added explicit selects to the user-flow
+ * blockers; this helper closes the warn-spam gap on the
+ * /api/tasks call sites that try/catch around enqueue-sync. Once
+ * `db push` lands and the columns exist, this branch becomes a
+ * no-op (P2022 stops firing).
+ */
+function isMissingColumnError(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false;
+  const code = (err as { code?: unknown }).code;
+  if (code === "P2022") return true;
+  // PostgreSQL native error code 42703 = "undefined column" — same
+  // condition surfaced by raw queries that bypass Prisma's mapping.
+  const meta = (err as { meta?: { code?: unknown } }).meta;
+  if (meta && meta.code === "42703") return true;
+  // String-match fallback for cases where Prisma wraps the error
+  // before tagging the code (rare but seen on some pool-error paths).
+  const message = (err as { message?: unknown }).message;
+  return (
+    typeof message === "string" &&
+    /column .* does not exist/i.test(message)
+  );
+}
+
 export async function enqueueSyncForTask(
   tx: PrismaClient | Prisma.TransactionClient,
   taskId: string,
   userId: string,
   action: TaskMutationAction
 ): Promise<{ enqueued: boolean; reason?: string }> {
-  // Single round-trip read of the fields the planner needs from
-  // both Task and User. Wider selects would risk leaking unrelated
-  // fields into the planner's input contract.
-  const task = await tx.task.findFirst({
-    where: { id: taskId, userId },
-    select: {
-      id: true,
-      userId: true,
-      title: true,
-      text: true,
-      status: true,
-      dueDate: true,
-      calendarEventId: true,
-      calendarSyncStatus: true,
-    },
-  });
-  if (!task) return { enqueued: false, reason: "task-not-found" };
+  try {
+    // Single round-trip read of the fields the planner needs from
+    // both Task and User. Wider selects would risk leaking unrelated
+    // fields into the planner's input contract.
+    const task = await tx.task.findFirst({
+      where: { id: taskId, userId },
+      select: {
+        id: true,
+        userId: true,
+        title: true,
+        text: true,
+        status: true,
+        dueDate: true,
+        calendarEventId: true,
+        calendarSyncStatus: true,
+      },
+    });
+    if (!task) return { enqueued: false, reason: "task-not-found" };
 
-  const user = await tx.user.findUnique({
-    where: { id: userId },
-    select: {
-      calendarConnectedProvider: true,
-      targetCalendarId: true,
-      autoSendTasks: true,
-      defaultEventDuration: true,
-    },
-  });
-  if (!user) return { enqueued: false, reason: "user-not-found" };
+    const user = await tx.user.findUnique({
+      where: { id: userId },
+      select: {
+        calendarConnectedProvider: true,
+        targetCalendarId: true,
+        autoSendTasks: true,
+        defaultEventDuration: true,
+      },
+    });
+    if (!user) return { enqueued: false, reason: "user-not-found" };
 
-  const kind = ACTION_TO_KIND[action];
-  const op = planSyncOp(
-    task as TaskForPlanning,
-    user as UserForPlanning,
-    {
-      kind,
-      manuallyRequested: action === "manual",
+    const kind = ACTION_TO_KIND[action];
+    const op = planSyncOp(
+      task as TaskForPlanning,
+      user as UserForPlanning,
+      {
+        kind,
+        manuallyRequested: action === "manual",
+      }
+    );
+
+    if (!op) return { enqueued: false, reason: "no-op-needed" };
+
+    // Set PENDING. Mobile drains the queue next foreground.
+    await tx.task.update({
+      where: { id: taskId },
+      data: { calendarSyncStatus: "PENDING" },
+    });
+
+    return { enqueued: true };
+  } catch (err) {
+    // P2022 short-circuit — production DB hasn't yet had `prisma
+    // db push` run for the C3 calendar columns. Fail clean instead
+    // of throwing into the /api/tasks try/catch which logs a
+    // safeLog.warn for every task mutation. Drops the warn-spam to
+    // zero until the migration lands.
+    if (isMissingColumnError(err)) {
+      return { enqueued: false, reason: "schema-not-ready" };
     }
-  );
-
-  if (!op) return { enqueued: false, reason: "no-op-needed" };
-
-  // Set PENDING. Mobile drains the queue next foreground.
-  await tx.task.update({
-    where: { id: taskId },
-    data: { calendarSyncStatus: "PENDING" },
-  });
-
-  return { enqueued: true };
+    // Any other error: re-throw so the existing /api/tasks try/
+    // catch surfaces it. Real bugs should still light up Sentry.
+    throw err;
+  }
 }
 
 /**

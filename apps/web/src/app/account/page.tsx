@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 
 import { getAuthOptions } from "@/lib/auth";
+import { entitlementsFor } from "@/lib/entitlements";
 
 import AccountClient from "./account-client";
 
@@ -44,6 +45,17 @@ export default async function AccountPage({
     },
   });
 
+  // Slice C5b — drives the IntegrationsSection paywall variant.
+  // Uses the existing user select (no extra round-trip; no C3 calendar
+  // columns referenced — those would P2022 against prod until the
+  // db push lands).
+  const isProLocked = user
+    ? entitlementsFor({
+        subscriptionStatus: user.subscriptionStatus,
+        trialEndsAt: user.trialEndsAt,
+      }).canExtractEntries === false
+    : false;
+
   return (
     <AccountClient
       email={session.user.email}
@@ -57,6 +69,7 @@ export default async function AccountPage({
       trialEndsAt={user?.trialEndsAt?.toISOString() ?? null}
       weeklyEmailEnabled={user?.weeklyEmailEnabled ?? true}
       monthlyEmailEnabled={user?.monthlyEmailEnabled ?? true}
+      isProLocked={isProLocked}
       justUpgraded={searchParams?.upgrade === "success"}
     />
   );

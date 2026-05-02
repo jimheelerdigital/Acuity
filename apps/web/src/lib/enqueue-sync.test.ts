@@ -155,6 +155,85 @@ describe("enqueueSyncForLoadedTask — no-op paths", () => {
   });
 });
 
+describe("enqueueSyncForTask — P2022 short-circuit (slice C5b)", () => {
+  // The runtime helper does its own Prisma fetches; tests that aren't
+  // already exercising that path use enqueueSyncForLoadedTask. Here
+  // we mount a mock tx that throws P2022 and verify the helper
+  // catches it cleanly instead of bubbling to the route.
+  function buildPrismaWithP2022() {
+    const err = Object.assign(
+      new Error("column \"calendarConnectedProvider\" does not exist"),
+      { code: "P2022" }
+    );
+    const findFirst = vi.fn().mockRejectedValue(err);
+    const findUnique = vi.fn().mockRejectedValue(err);
+    const update = vi.fn().mockRejectedValue(err);
+    return {
+      tx: {
+        task: { findFirst, update },
+        user: { findUnique },
+      } as unknown as Parameters<
+        typeof import("./enqueue-sync").enqueueSyncForTask
+      >[0],
+      findFirst,
+      findUnique,
+      update,
+    };
+  }
+
+  it("returns schema-not-ready when Prisma throws P2022 on the task fetch", async () => {
+    const { enqueueSyncForTask } = await import("./enqueue-sync");
+    const { tx } = buildPrismaWithP2022();
+    const r = await enqueueSyncForTask(tx, "task-1", "user-1", "create");
+    expect(r.enqueued).toBe(false);
+    expect(r.reason).toBe("schema-not-ready");
+  });
+
+  it("re-throws non-P2022 errors so real bugs surface in Sentry", async () => {
+    const { enqueueSyncForTask } = await import("./enqueue-sync");
+    const otherErr = new Error("connection pool exhausted");
+    const tx = {
+      task: { findFirst: vi.fn().mockRejectedValue(otherErr) },
+      user: { findUnique: vi.fn() },
+    } as unknown as Parameters<
+      typeof import("./enqueue-sync").enqueueSyncForTask
+    >[0];
+    await expect(
+      enqueueSyncForTask(tx, "task-1", "user-1", "create")
+    ).rejects.toThrow("connection pool exhausted");
+  });
+
+  it("treats Postgres native 42703 as the same condition", async () => {
+    const { enqueueSyncForTask } = await import("./enqueue-sync");
+    const err = Object.assign(new Error("undefined column"), {
+      meta: { code: "42703" },
+    });
+    const tx = {
+      task: { findFirst: vi.fn().mockRejectedValue(err) },
+      user: { findUnique: vi.fn() },
+    } as unknown as Parameters<
+      typeof import("./enqueue-sync").enqueueSyncForTask
+    >[0];
+    const r = await enqueueSyncForTask(tx, "task-1", "user-1", "create");
+    expect(r.reason).toBe("schema-not-ready");
+  });
+
+  it("string-matches \"column ... does not exist\" when error code is missing", async () => {
+    const { enqueueSyncForTask } = await import("./enqueue-sync");
+    const err = new Error(
+      'PrismaClientKnownRequestError: column "autoSendTasks" does not exist on table "User"'
+    );
+    const tx = {
+      task: { findFirst: vi.fn().mockRejectedValue(err) },
+      user: { findUnique: vi.fn() },
+    } as unknown as Parameters<
+      typeof import("./enqueue-sync").enqueueSyncForTask
+    >[0];
+    const r = await enqueueSyncForTask(tx, "task-1", "user-1", "create");
+    expect(r.reason).toBe("schema-not-ready");
+  });
+});
+
 describe("enqueueSyncForLoadedTask — idempotency", () => {
   it("re-enqueueing the same action writes the same PENDING value", async () => {
     const { tx, update } = buildTxMock();

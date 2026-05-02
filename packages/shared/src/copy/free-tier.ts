@@ -26,7 +26,8 @@ export type FreeTierLockedSurfaceId =
   | "goals_suggestions_locked"
   | "tasks_empty_state"
   | "theme_map_locked"
-  | "entry_detail_footer";
+  | "entry_detail_footer"
+  | "calendar_connect_locked";
 
 export interface FreeTierLockedCopy {
   /** Surface id — used for analytics + the `src=` query param. */
@@ -112,6 +113,17 @@ export const FREE_TIER_LOCKED_COPY: Record<
   entry_detail_footer: {
     id: "entry_detail_footer",
     body: "Themes, tasks, and goal flags are a Pro thing. Continue on web →",
+    ctaLabel: "Continue on web →",
+  },
+
+  // Calendar slice C5b — locked state on /account/integrations + the
+  // mobile integrations placeholder screen. FREE post-trial users
+  // see this card instead of the connect flow.
+  calendar_connect_locked: {
+    id: "calendar_connect_locked",
+    eyebrow: "Pro",
+    title: "Tasks on your calendar",
+    body: "Send tasks with due dates straight to your Apple, Google, or Outlook calendar — they show up where you already plan your day. Free keeps the journal. Pro keeps the sync.",
     ctaLabel: "Continue on web →",
   },
 };

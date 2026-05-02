@@ -20,6 +20,10 @@ interface Props {
   trialEndsAt: string | null;
   weeklyEmailEnabled: boolean;
   monthlyEmailEnabled: boolean;
+  /** Slice C5b — true when canExtractEntries is false (FREE post-
+   *  trial). Drives whether IntegrationsSection renders the
+   *  ProLockedCard paywall variant or the connect-flow card. */
+  isProLocked: boolean;
   /** True when the page was rendered from a Stripe Checkout success
    *  redirect (`?upgrade=success`). Triggers the welcome banner,
    *  card highlight, and the webhook-race polling loop inside
@@ -40,6 +44,7 @@ export default function AccountClient({
   trialEndsAt,
   weeklyEmailEnabled,
   monthlyEmailEnabled,
+  isProLocked,
   justUpgraded,
 }: Props) {
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -117,9 +122,17 @@ export default function AccountClient({
           />
         </div>
 
-        {/* Integrations (calendar stubs — foundation only) */}
+        {/* Integrations — calendar slice C5b. FREE post-trial users
+            see the Pro-locked paywall card; PRO/TRIAL/PAST_DUE see
+            the "Connect from iOS app" placeholder. Connected-state
+            visibility lands after the C3 prisma db push migration
+            completes (deferred to follow-up — connection-state
+            fetch would currently P2022 against prod columns). */}
         <div id="integrations" className="scroll-mt-24">
-          <IntegrationsSection />
+          <IntegrationsSection
+            isProLocked={isProLocked}
+            connection={null}
+          />
         </div>
 
         {/* Data export */}
