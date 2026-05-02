@@ -583,7 +583,15 @@ export const processEntryFn = inngest.createFunction(
           data: { embedding: vec },
         });
       } catch (err) {
-        console.warn("[process-entry] embedding failed (non-fatal):", err);
+        // safeLog routes through Sentry's transport; console.warn
+        // does not. Embedding failures need observability so we can
+        // diagnose the gap from prod logs (2026-05-02 TRIAL embed
+        // gap was invisible until we re-instrumented this).
+        const { safeLog } = await import("@/lib/safe-log");
+        safeLog.warn("process-entry.embedding-failed", {
+          entryId,
+          err: err instanceof Error ? err.message : String(err),
+        });
       }
     });
 

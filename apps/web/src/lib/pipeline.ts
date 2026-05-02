@@ -803,7 +803,16 @@ export async function processEntry({
         });
       }
     } catch (err) {
-      console.warn("[pipeline] embedding failed (non-fatal):", err);
+      // safeLog routes through Sentry's transport; console.warn
+      // does not. Same fix as the Inngest path's embed step
+      // (see process-entry.ts) — observability first so the next
+      // failure surfaces in Sentry instead of being lost in
+      // Vercel function logs.
+      const { safeLog } = await import("@/lib/safe-log");
+      safeLog.warn("pipeline.embedding-failed", {
+        entryId,
+        err: err instanceof Error ? err.message : String(err),
+      });
     }
 
     return result;
