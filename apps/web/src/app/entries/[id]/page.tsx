@@ -8,6 +8,7 @@ import { getAuthOptions } from "@/lib/auth";
 import { BackButton } from "@/components/back-button";
 import { EntryDeleteButtonWithRedirect } from "./entry-delete-button-wrapper";
 import { MoodIcon } from "@/components/mood-icon";
+import { ProLockedFooter } from "@/components/pro-locked-card";
 
 import { EntryStatusGate } from "./entry-status-gate";
 import { ExtractionReview } from "./extraction-review";
@@ -110,6 +111,20 @@ export default async function EntryDetailPage({
               </p>
             </Section>
           )}
+
+          {/* §B.2.6 Free-tier locked footer. Heuristic: entry is
+              COMPLETE with a summary but no extraction artifacts →
+              the FREE/Haiku branch produced this entry, so the
+              user is FREE post-trial and themes/tasks/goal flags
+              are gated. We avoid fetching the entitlement here so
+              the page remains a thin server component. Inline
+              footer per spec — no Section wrapper. */}
+          {isComplete &&
+            entry.summary &&
+            entry.themes.length === 0 &&
+            entry.wins.length === 0 &&
+            entry.blockers.length === 0 &&
+            entry.tasks.length === 0 && <ProLockedFooter className="-mt-4" />}
 
           {isComplete && entry.themes.length > 0 && (
             <Section title="Themes">
