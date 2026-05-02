@@ -20,6 +20,54 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-02] — v1.1 slice 4-foundation: locked-state copy + ProLockedCard components
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** 071a033
+
+### In plain English (for Keenan)
+
+This is the foundation for v1.1's "make the free tier feel polished, not broken" UX redesign. It's invisible by itself — a single new file holds the exact words that will show up across six different "this is a Pro feature" surfaces (the Pro pulse on home, the locked Life Matrix card, the locked Goals card, the empty Tasks state, the locked Theme Map, and the small footer on entries). It also adds the two web components that render those words. One surface ships visible in this slice — the entry-detail footer: when a free user opens an old entry, they now see a quiet single-line "Themes, tasks, and goal flags are a Pro thing. Continue on web →" link instead of the empty space below the summary. The other five surfaces wire in slice 4-web; mobile mirrors come in slice 4-mobile. Single source of truth means a future copy edit is one file change, not six.
+
+### Technical changes (for Jimmy)
+
+- New `packages/shared/src/copy/free-tier.ts` (131 lines): exports `FREE_TIER_LOCKED_COPY: Record<FreeTierLockedSurfaceId, FreeTierLockedCopy>` for all 6 §B.2 surfaces (`pro_pulse_home`, `life_matrix_locked`, `goals_suggestions_locked`, `tasks_empty_state`, `theme_map_locked`, `entry_detail_footer`); `freeTierUpgradeUrl(baseUrl, surfaceId)` helper that emits `/upgrade?src=<surfaceId>` for funnel attribution. Trims trailing slashes on the baseUrl for canonical-shape URLs.
+- `packages/shared/src/index.ts`: added `export * from "./copy/free-tier"`. Web + mobile both import from `@acuity/shared`.
+- New `apps/web/src/components/pro-locked-card.tsx` (100 lines): `ProLockedCard` (full card with optional eyebrow + title + body + CTA) plus `ProLockedFooter` (inline single-line variant for entry-detail §B.2.6). Both render `<a target="_blank" rel="noopener noreferrer">` so iOS opens Safari natively — never an in-app WebView (§3.1.3(b) compliance). `data-surface-id` attribute for analytics debugging.
+- New `apps/web/src/lib/free-tier-copy.test.ts` (86 lines, 18 tests): banned-token sweep ($, /mo, Subscribe, Upgrade) across every surface's body/title/eyebrow; surface coverage check; eyebrow-normalization assertion ("Pro" not "PRO" / "Premium"); URL construction including trailing-slash trim. Lives in `apps/web/src/lib` because the project's vitest config only globs `apps/web/src/**/*.test.ts` — the shared package isn't in scope for the existing sweep.
+- Modified `apps/web/src/app/entries/[id]/page.tsx` (+15 lines): import `ProLockedFooter`, render after the Summary section when `isComplete && entry.summary && entry.themes.length === 0 && entry.wins.length === 0 && entry.blockers.length === 0 && entry.tasks.length === 0`. Heuristic for "FREE branch Haiku-only entry" — avoids fetching the entitlement at the server-component layer, keeps the page thin.
+
+### Architecture decision
+
+The new `ProLockedCard` does NOT extend `LockedFeatureCard`. They gate different concerns:
+- `LockedFeatureCard` (existing) — EXPERIENTIAL: "record more to unlock this view." Shown to TRIAL/PRO users on insufficient data. CTA is "Record now."
+- `ProLockedCard` (new) — BILLING: "this is a Pro thing." Shown to FREE post-trial users. CTA is "Continue on web →" opening Safari to /upgrade.
+
+A FREE post-trial user with insufficient data + a TRIAL user with insufficient data should see different things — the FREE user gets the upgrade nudge, the TRIAL user gets the experiential nudge. Two components keeps that clean.
+
+### Slice 4-foundation verification
+
+- `free-tier-copy.test.ts`: 18/18 pass (new)
+- Full apps/web vitest: 16/17 files pass, 219/223 tests pass. +18 new tests over the C5a baseline of 201. Zero regressions.
+- Same 4 pre-existing `auth-flows.test.ts` failures (`prisma.deletedUser` mock gap, in `docs/v1-1/backlog.md`).
+- tsc: 7 total errors, ZERO new in any slice file. All 7 are pre-existing in unrelated files (OverviewTab, landing prefix, auto-blog Prisma type, etc.).
+
+### Manual steps needed
+
+- [ ] None for this slice. The entry-detail footer is the only visible surface; it renders only for FREE-branch entries (Haiku-only, no extraction artifacts), which today only exist for users currently on the FREE tier per the slice 2 verification (Jimmy).
+- [ ] Slice 4-web (wire §B.2.1–§B.2.5 web surfaces) starts next.
+- [ ] Slice 4-mobile (mirror all 6 surfaces on mobile) follows 4-web.
+
+### Notes
+
+- The footer heuristic uses `entry.tasks` (a relation count via `entry.tasks.length`) — the page already includes this data, so no extra Prisma fetch.
+- Two slices ago the calendar work introduced `data-surface-id="..."` annotations on its locked cards (slice C5b territory). Same convention used here so PostHog/Sentry can group locked-state surfaces by the same attribute regardless of which workstream created them.
+- The footer's `className="-mt-4"` shrinks the gap from the Summary section so the inline footer reads as part of the summary block, not as a freestanding card. Visible spec is "below the one-sentence summary, small inline footer, single line."
+- Followed the slice protocol: full-suite vitest re-run, diff shown before push, pre-existing baseline-red failures called out (4 in `auth-flows.test.ts`).
+
+---
+
 ## [2026-05-02] — Slice numbering correction for the merged workstream
 
 **Requested by:** Jimmy
