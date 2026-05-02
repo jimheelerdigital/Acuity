@@ -20,6 +20,69 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-02] — v1.1 slice 4-mobile: closes the locked-state UX workstream (slice 4 fully shipped)
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** 6ae855d
+
+### In plain English (for Keenan)
+
+This is the final piece of slice 4 — the "make the free tier feel polished, not broken" UX redesign now ships across the iOS app too. Free post-trial users on mobile see the same six Pro-locked surfaces their web cohort sees: a Pro pulse on home, a Pro card where Life Matrix would be, a Pro card on the Goals tab, a Pro empty state on Tasks, a Pro card on the Theme Map screen, and a small "Continue on web →" line under entry summaries. It also cleaned up two web pages that were missed in slice 4-web — direct deep-links to /life-matrix and /insights/theme-map, where free users used to see the wrong "record more to unlock" card. End user impact: every place a Free user lands now tells them "this is a Pro thing — keep journaling on Free, or continue on web for the full read." Slice 4 is done; the calendar Connect-flow UI (C5b) is next, then the "Process my history" backfill is slice 5.
+
+### Technical changes (for Jimmy)
+
+- New file `apps/mobile/lib/free-tier.ts` (37 lines): `isFreeTierUser(user, now?)` boolean helper. Mirrors the FREE-side partition rules in `apps/web/src/lib/entitlements.ts:entitlementsFor` (which can't be imported from mobile — `import "server-only"`). PRO/PAST_DUE/active-TRIAL → not free; everything else (FREE, expired-TRIAL, CANCELED, unknown) → free. Refactor candidate noted in `docs/v1-1/backlog.md`.
+- New file `apps/mobile/components/pro-locked-card.tsx` (121 lines): `ProLockedCard` + `ProLockedFooter` for RN. Uses `expo-web-browser`'s `openBrowserAsync` (matches `lib/subscription.ts` pattern); reads from `@acuity/shared`'s `FREE_TIER_LOCKED_COPY` map keyed by surface id; baseUrl falls back to `https://app.getacuity.io` when `EXPO_PUBLIC_API_URL` isn't set.
+- Modified `apps/mobile/app/(tabs)/index.tsx`: §B.2.1 Pro pulse below today's prompt for FREE.
+- Modified `apps/mobile/app/(tabs)/insights.tsx`: §B.2.2 + §B.2.5 — billing-gate precedence over experiential `LockedFeatureCard` at both the Life Matrix hero and the Theme Map section.
+- Modified `apps/mobile/app/(tabs)/goals.tsx`: §B.2.3 — `isProLocked` precedence at the goal-suggestions card slot.
+- Modified `apps/mobile/app/(tabs)/tasks.tsx`: §B.2.4 — `EmptyState` accepts `isLocked` prop; swaps to ProLockedCard variant on the open tab only.
+- Modified `apps/mobile/app/entry/[id].tsx`: §B.2.6 — `ProLockedFooter` rendered inline below the summary when extraction artifacts are all empty (Haiku-only entry heuristic).
+- Modified `apps/mobile/app/insights/theme-map.tsx`: ProLockedCard precedence over the existing `<LockedState>` (which is the experiential gate-by-data state).
+- Modified `apps/web/src/app/life-matrix/page.tsx`: §B.2.2 — ProLockedCard precedence on the direct deep-link page (slice 4-web noted this as deferred; resolved here).
+- Modified `apps/web/src/app/insights/theme-map/page.tsx`: §B.2.5 — same pattern, preserves the BackButton + heading shell.
+
+### Slice 4 — overall completion summary
+
+All six §B.2 surfaces are now wired across mobile + web:
+
+| Surface | Mobile | Web (in-tab) | Web (direct page) |
+|---|---|---|---|
+| §B.2.1 Pro pulse on /home | ✅ 4-mobile | ✅ 4-web | n/a |
+| §B.2.2 Life Matrix locked | ✅ 4-mobile | ✅ 4-web | ✅ 4-mobile |
+| §B.2.3 Goals locked | ✅ 4-mobile | ✅ 4-web | n/a |
+| §B.2.4 Tasks empty state | ✅ 4-mobile | ✅ 4-web | n/a |
+| §B.2.5 Theme Map locked | ✅ 4-mobile | ✅ 4-web | ✅ 4-mobile |
+| §B.2.6 Entry detail footer | ✅ 4-mobile | ✅ 4-foundation | n/a |
+
+Decision-tree precedence is the same on every surface — `FREE post-trial → ProLockedCard` (billing) wins over `TRIAL/PRO + low-data → LockedFeatureCard` (experiential) wins over the unlocked real surface.
+
+### Slice 4-mobile verification
+
+- Full apps/web vitest: 16/17 files pass, 219/223 tests pass. Same baseline as slice 4-foundation/4-web. Zero regressions. Same 4 pre-existing `auth-flows.test.ts` failures.
+- apps/web tsc: same 7 pre-existing errors. **Zero new.**
+- apps/mobile tsc: **zero errors in `pro-locked-card.tsx` or `free-tier.ts`** (the new files). Pre-existing TS2786 React 18/19 type collisions on existing memo components in the modified files — baseline state, not introduced by this slice. **Now tracked in `docs/v1-1/backlog.md`** ("Mobile React 18/19 type collision").
+
+### Manual steps needed
+
+- [ ] None for the slice itself. Web deploys automatically via Vercel; mobile changes ship in the next EAS build (next mobile rebuild Jim does will pick them up, no rush — current production users are TRIAL/PRO and see no change) (Jimmy).
+- [ ] **Next slice: Calendar C5b** per the agreed sequence — UI for connect flow, FREE locked card on `/account/integrations`, mobile placeholder `apps/mobile/app/integrations.tsx`.
+- [ ] **After C5b: free-tier slice 5** — "Process my history" backfill upgrade affordance, with the embed step per slice 2 verification feedback.
+- [ ] Then C6 (real EventKit), then slice 6 (soft cap, flag-off), then slice 7 (polish).
+
+### Notes
+
+- **Decision-tree precedence is uniform across all 12 wired surfaces** (6 mobile + 5 web in-tab + 2 web direct pages — entry-detail footer is its own variant). `isProLocked` always checked first; experiential `LockedFeatureCard` second; unlocked real surface last.
+- **Mobile entitlement comes from `useAuth().user`.** `subscriptionStatus` and `trialEndsAt` are populated server-side via `/api/user/me` and refreshed on AppState foreground transitions (existing pattern from `auth-context.tsx`). Zero new round-trips for any of the surfaces.
+- **Two new backlog items added** (`docs/v1-1/backlog.md`):
+  - Mobile React 18/19 type collision (TS2786) on `TreeNode`, `TaskLeaf`, `EntryRow`, `GroupSection`, `TaskRow`, plus the `AuthContext.Provider`/`ThemeContext.Provider`. Type-only, no runtime impact, build is green.
+  - `isFreeTierUser` duplicates FREE-partition logic from `entitlements.ts`. Future refactor candidate: move the partition logic into `@acuity/shared` so mobile + web import one source.
+- **Calendar C5b dependency cleared.** Calendar C5b's locked-state for FREE users on `/account/integrations` will reuse `ProLockedCard` with a new `calendar_connect_locked` surface id added to the shared copy file. Pattern is identical to what slice 4 just landed.
+- Followed slice protocol: full-suite vitest re-run, diff shown before push, baseline-red failures called out, tsc errors scoped to new files (zero) vs modified files (pre-existing baseline, now tracked).
+
+---
+
 ## [2026-05-02] — v1.1 slice 4-web: wire §B.2.1-§B.2.5 free-tier conversion surfaces
 
 **Requested by:** Jimmy
