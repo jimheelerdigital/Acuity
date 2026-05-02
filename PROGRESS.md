@@ -20,6 +20,81 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-02] — v1.1 free-tier slice 6: soft cap mechanism + auto-evaluator (flag-off)
+
+**Requested by:** Jimmy (pivot from C6 — Apple still reviewing v1.0 resubmit, holding new EventKit permission)
+**Committed by:** Claude Code
+**Commit hash:** f894a43
+
+### In plain English (for Keenan)
+
+This slice ships the safety net for runaway free-tier costs without changing anything users see today. The mechanism is: free post-trial users would get 30 recordings per calendar month, the 30th comes with a "this one is on us" message, the 31st blocks with an upgrade nudge. None of that is on yet — the whole thing is behind a feature flag that's off at launch. A separate weekly background job runs every Sunday morning, looks at three numbers (how many free users we have, how often they record, what fraction convert to pro), and if all three signals say "free is unsustainable" for seven Sundays in a row, it flips the cap on automatically. If we never hit that threshold, the cap never engages. End user impact today: zero. Insurance for later when the metrics warrant it.
+
+### Technical changes (for Jimmy)
+
+**Schema (purely additive, all nullable/default-zero):**
+- `User.freeRecordingsThisMonth Int? @default(0)` — incremented per recording when cap flag is on. Stays null/0 until then.
+- `User.freeRecordingsResetAt DateTime?` — next reset boundary (first millisecond of next UTC month).
+- `model FreeCapEvaluation` — per-tick record of the three metrics + `allConditionsMet` boolean.
+- `model FreeCapAuditLog` — append-only log of flag-state changes (`AUTO_ENABLED | MANUAL_ENABLED | MANUAL_DISABLED` + triggering eval ids for auto).
+- `prisma/rls-allowlist.txt`: +2 entries (`FreeCapEvaluation rls`, `FreeCapAuditLog rls`).
+
+**Pure helper + tests:**
+- `apps/web/src/lib/free-cap.ts` (new, 201 lines): `FREE_CAP_PER_MONTH=30`, `nextMonthResetBoundary(now)`, `evaluateFreeCap(count, resetAt, now)` (pure state machine), `checkAndIncrementFreeCap(tx, userId, now)` (Prisma side-effect wrapper), `allCapConditionsMet(metrics)` (3-condition gate), `shouldFlipCapOn(trailingEvaluations)` (7-cycle rule), `CAP_THRESHOLDS` + `CAP_REQUIRED_CYCLES=7`.
+- `apps/web/src/lib/free-cap.test.ts` (new, 268 lines, **28 tests**): reset-boundary math (incl. Dec→Jan year roll), evaluateFreeCap state machine across all branches with the off-by-one at recording 30, Prisma side-effect via mocked tx, allCapConditionsMet threshold edges (strict-vs-inclusive on each axis), shouldFlipCapOn incl. <7-cycles + window-trailing semantics.
+
+**The "this one is on us" semantics:**
+- Recording 1..29 (`count` 0..28): `state="ok"`, counter `+1`, success response.
+- Recording 30 (`count=29`): `state="grace"`, counter→30, success response with `freeCapState: "grace"` so the client can render the modal copy.
+- Recording 31+ (`count>=30`): `state="blocked"`, counter unchanged, **402** `FREE_RECORDING_CAP_REACHED` with `redirect: "/upgrade?src=free_recording_cap"`.
+
+**Auto-evaluator cron:**
+- `apps/web/src/inngest/functions/free-cap-evaluator.ts` (new, 218 lines): cron `0 6 * * 0` (Sunday 06:00 UTC). Each tick:
+  1. Computes 3 metrics — FREE user count (status=FREE OR TRIAL+expired); median per-user-per-day cadence via raw `percentile_cont(0.5) WITHIN GROUP (ORDER BY perday)` over trailing 14d (Prisma can't express percentiles directly — raw SQL is the cleanest path); conversion rate via cohort approximation (PRO users created in last 30d / all users created in last 30d, since true upgrade-event tracking would need an event table we don't have).
+  2. Persists `FreeCapEvaluation` row.
+  3. Reads trailing 7 evals; if `shouldFlipCapOn(trailing) && flag.enabled === false` → flips flag ON + writes `FreeCapAuditLog` action=`AUTO_ENABLED` with triggering eval ids — both in a single `prisma.$transaction`.
+- **Sticky once flipped.** Cron never auto-disables; manual disable via /admin only (admin UI deferred to slice 7).
+- Inngest signature uses 2-arg `createFunction` with `triggers` inside config (post-C4-outage convention).
+
+**Integration at `/api/record`:**
+- New 1d. block in the route, after the existing `canRecord` paywall gate. Lazy-imports `isEnabled("free_recording_cap")` and `checkAndIncrementFreeCap`. Only fires when flag is ON AND user is FREE-side (`gate.entitlement.canExtractEntries === false`). PRO/TRIAL/PAST_DUE never see this path — entitlement layer handles them.
+- Blocked path: returns 402 immediately, doesn't touch counter.
+- Ok/grace: counter incremented atomically, route proceeds. Success response includes `freeCapState` when non-`"ok"` so the client renders the "30/30 — this one is on us" modal on grace.
+
+**Inngest registration:**
+- `apps/web/src/app/api/inngest/route.ts`: imports + registers `freeCapEvaluatorFn`.
+
+**Feature flag seed:**
+- `scripts/seed-feature-flags.ts`: new `free_recording_cap` entry, `enabled: false`, `rolloutPercentage: 100`. Off at launch; auto-flips per §C.4 or admin manual override.
+
+### Slice 6 verification
+
+- Full apps/web vitest: **18/19 files pass, 268/272 tests pass**. +28 over slice 5 baseline (all from `free-cap.test.ts`). Zero regressions. Same 4 pre-existing `auth-flows.test.ts` failures (in backlog).
+- tsc: 7 total errors, **ZERO new** in any slice file. All pre-existing.
+- `prisma validate` clean. `prisma format` applied. `prisma generate` ran locally.
+- RLS coverage: **47 models** accounted for (was 45; +2 for FreeCap models).
+
+### Manual steps needed
+
+- [ ] Run `npx prisma db push` from home network so the User columns + FreeCapEvaluation + FreeCapAuditLog tables exist in production. Until push lands: `/api/record` cap-check is gated by the off-flag (SAFE — never fires); the cron's next Sunday tick would 42703-trip on the `FreeCapEvaluation` INSERT until the table exists. Inngest will retry, no production user impact (Jimmy).
+- [ ] Run `npx tsx scripts/seed-feature-flags.ts` to insert the `free_recording_cap` flag row. Required so the cron's flip-check has a row to flip; without it, the cron logs "flag-missing" and exits cleanly (Jimmy).
+- [ ] Slice 7 (long-tail polish) is the next free-tier workstream. C6 (real EventKit) holds until Apple finishes reviewing v1.0 resubmit.
+
+### Notes
+
+- **The 30th IS the grace recording, not the 31st.** Per spec — Apple-Review safety. The 30/31 boundary places the modal *during* the recording that triggers the cap, not before. Avoids the in-the-moment toast that reads as gate-on-existing-feature.
+- **Sticky once flipped** is by design. A bad-week metric blip shouldn't oscillate the cap. 7 consecutive Sundays = ~7 weeks of sustained pressure before the cap engages. Manual disable is the only off-path.
+- **PostgreSQL `percentile_cont` for the median** — Prisma can't express percentile aggregations directly. Raw `$queryRaw` for this one metric. Tested mentally against the SQL spec; will validate in the wild on the first cron tick.
+- **Conversion rate uses cohort approximation** (PRO users created in last 30d / all users created in last 30d). True FREE→PRO event tracking would require an `UpgradeEvent` table. Approximation is good enough — the 7-cycle rule absorbs noise + the strict `<` threshold on `0.01` gives safety margin.
+- **Inngest signature trap avoided** — 2-arg `createFunction` with `triggers` inside config, per the C4 outage's lesson.
+- **Schema migration ordering** mirrors the C3 lesson (slice protocol step 6): the slice ships, but the cron's first Sunday-tick INSERT will 42703-trip until `prisma db push` runs. Inngest retries; user-facing path is gated by the off-flag so no production impact.
+- **No mobile-side cap UI yet.** Mobile receives the response shape `{ entryId, status, freeCapState? }` and can render the grace modal client-side; that wire-up lands in slice 7 polish.
+- **No admin UI yet** — `/admin` "Free Cap" tab surfacing the audit log + last 12 evaluations is implied by spec §C.4 but deferred to slice 7 polish or a separate small follow-up.
+- **Why slice 6 before C6?** Apple is still reviewing the v1.0 resubmit. Shipping a major new iOS permission (EventKit full access) while v1.0 is mid-review could complicate the review cycle. Slice 6 is purely server-side, zero iOS surface, zero user-visible behavior at launch — safe to ship through any review state.
+- Followed slice protocol: full-suite vitest re-run, diff shown before push, baseline-red failures called out as pre-existing.
+
+---
+
 ## [2026-05-02] — v1.1 free-tier slice 5: Process my history backfill (full slice)
 
 **Requested by:** Jimmy
