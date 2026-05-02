@@ -67,6 +67,35 @@ export async function POST(req: NextRequest) {
   const gate = await requireEntitlement("canRecord", userId);
   if (!gate.ok) return gate.response;
 
+  // ── 1d. v1.1 slice 6: FREE soft cap (flag-off at launch) ───────────────
+  // Only enforced when the `free_recording_cap` feature flag is on.
+  // The flag is auto-flipped by the free-cap-evaluator weekly cron
+  // when 7 consecutive Sundays meet the §C.4 conditions (sticky).
+  // PRO/TRIAL/PAST_DUE users are NEVER capped — entitlement layer
+  // handles those above; this only fires when canRecord=true on a
+  // FREE post-trial user (canExtractEntries=false).
+  let freeCapState: "ok" | "grace" | "blocked" = "ok";
+  {
+    const { isEnabled } = await import("@/lib/feature-flags");
+    const capOn = await isEnabled(userId, "free_recording_cap");
+    if (capOn && gate.entitlement.canExtractEntries === false) {
+      const { prisma: prismaForCap } = await import("@/lib/prisma");
+      const { checkAndIncrementFreeCap } = await import("@/lib/free-cap");
+      freeCapState = await checkAndIncrementFreeCap(prismaForCap, userId);
+      if (freeCapState === "blocked") {
+        return NextResponse.json(
+          {
+            error: "FREE_RECORDING_CAP_REACHED",
+            message:
+              "You've reached the 30 free recordings for this month. Continue on web →",
+            redirect: "/upgrade?src=free_recording_cap",
+          },
+          { status: 402 }
+        );
+      }
+    }
+  }
+
   // ── 2. Parse + validate (shared between both paths) ─────────────────────
   let formData: FormData;
   try {
@@ -206,7 +235,14 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json(
-      { entryId: entry.id, status: "QUEUED" },
+      {
+        entryId: entry.id,
+        status: "QUEUED",
+        // v1.1 slice 6 — surface the cap state so the client can
+        // render the "30/30 — this one is on us" modal on the
+        // grace recording. "ok" is the no-op default.
+        ...(freeCapState !== "ok" ? { freeCapState } : {}),
+      },
       { status: 202 }
     );
   }
@@ -235,6 +271,8 @@ export async function POST(req: NextRequest) {
         transcript: result.entry.transcript,
         extraction: result.extraction,
         tasksCreated: result.tasksCreated,
+        // v1.1 slice 6 — same cap-state surface as the async path.
+        ...(freeCapState !== "ok" ? { freeCapState } : {}),
       },
       { status: 201 }
     );

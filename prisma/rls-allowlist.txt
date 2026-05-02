@@ -30,6 +30,8 @@ Entry rls
 ExperimentAssignment rls
 FeatureFlag rls
 FounderNotificationLog rls
+FreeCapAuditLog rls
+FreeCapEvaluation rls
 GenerationJob rls
 Goal rls
 GoalSuggestion rls

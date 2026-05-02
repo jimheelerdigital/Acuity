@@ -286,6 +286,22 @@ model User {
   backfillStartedAt         DateTime?
   backfillCompletedAt       DateTime?
 
+  // ── v1.1 free-tier slice 6 — soft cap (flag-off at launch) ──────
+  // Per docs/v1-1/free-tier-phase2-plan.md §C.4. Both fields are
+  // nullable + default-zero so the column add is purely additive
+  // and the cap stays inert until the `free_recording_cap` feature
+  // flag flips on (manual or via the auto-evaluator cron).
+  //
+  // freeRecordingsThisMonth: incremented on each successful FREE
+  //   recording when the cap flag is on. Reset semantics live in
+  //   `apps/web/src/lib/free-cap.ts:evaluateFreeCap` — natural
+  //   calendar-month boundary (UTC).
+  // freeRecordingsResetAt: timestamp of the next reset boundary.
+  //   When NULL, the helper falls back to "compute from createdAt
+  //   relative to current UTC month."
+  freeRecordingsThisMonth Int?      @default(0)
+  freeRecordingsResetAt   DateTime?
+
   updatedAt DateTime @default(now()) @updatedAt
 
   @@index([createdAt])
@@ -1531,4 +1547,49 @@ model AdminAuditLog {
   @@index([adminUserId, createdAt])
   @@index([targetUserId])
   @@index([createdAt])
+}
+
+// v1.1 free-tier slice 6 — soft cap evaluator's per-tick record.
+// One row per Sunday 06:00 UTC cron tick. The 7-consecutive-cycle
+// rule reads the trailing 7 rows; the cron flips the
+// `free_recording_cap` feature flag on if all 7 have
+// `allConditionsMet = true` AND the flag is currently off (per
+// docs/v1-1/free-tier-phase2-plan.md §C.4 — sticky once flipped).
+//
+// Append-only by convention. Nothing reads or mutates rows after
+// the evaluator writes them.
+model FreeCapEvaluation {
+  id               String   @id @default(cuid())
+  evaluatedAt      DateTime @default(now())
+  // Total FREE-tier user count at evaluation time (post-trial-free,
+  // i.e. canExtractEntries=false rows).
+  freeUserCount    Int
+  // Median recordings/user/day across FREE users over the trailing
+  // 14 days. Float — meaningful precision below 1.
+  medianCadence    Float
+  // FREE → PRO conversion rate over the trailing 30 days. 0..1.
+  conversionRate   Float
+  // True when (a) freeUserCount > 25000 AND (b) medianCadence >= 0.7
+  // AND (c) conversionRate < 0.01. The 7-cycle aggregate is what
+  // triggers the flip; this row records the per-cycle decision.
+  allConditionsMet Boolean
+
+  @@index([evaluatedAt])
+}
+
+// v1.1 free-tier slice 6 — append-only audit log of cap-flag state
+// changes. Surfaces in /admin so we can see when + why the cap
+// engaged (and by whom — manual disable is the only off-path).
+model FreeCapAuditLog {
+  id                      String   @id @default(cuid())
+  timestamp               DateTime @default(now())
+  // "AUTO_ENABLED" | "MANUAL_ENABLED" | "MANUAL_DISABLED"
+  action                  String
+  // FreeCapEvaluation ids that triggered this auto-flip. Empty
+  // string array for manual actions.
+  triggeringEvaluationIds String[]
+  // Free-form admin note for manual actions. Null for auto.
+  notes                   String?
+
+  @@index([timestamp])
 }

@@ -144,6 +144,15 @@ const SEEDS: Seed[] = [
     rolloutPercentage: 0,
     requiredTier: null,
   },
+  {
+    key: "free_recording_cap",
+    name: "v1.1 FREE recording soft cap (30/month)",
+    description:
+      "When ON, FREE post-trial users get 30 free recordings per UTC month. The 30th is a grace recording with paywall copy; the 31st is blocked. PRO/TRIAL/PAST_DUE never affected. Auto-flipped by the free-cap-evaluator Inngest cron when all three conditions hold for 7 consecutive Sundays (FREE_USER_COUNT > 25k, median cadence ≥ 0.7/user/day over 14d, FREE→PRO conversion < 1% over 30d). Sticky once flipped — manual disable only. See docs/v1-1/free-tier-phase2-plan.md §C.4.",
+    enabled: false,
+    rolloutPercentage: 100,
+    requiredTier: null,
+  },
 ];
 
 async function main() {

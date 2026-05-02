@@ -9,6 +9,7 @@ import {
 import { backfillExtractionsFn } from "@/inngest/functions/backfill-extractions";
 import { day14AuditCronFn } from "@/inngest/functions/day-14-audit-cron";
 import { drainPendingCalendarTasksFn } from "@/inngest/functions/drain-pending-calendar-tasks";
+import { freeCapEvaluatorFn } from "@/inngest/functions/free-cap-evaluator";
 import { generateLifeAuditFn } from "@/inngest/functions/generate-life-audit";
 import { generateWeeklyReportFn } from "@/inngest/functions/generate-weekly-report";
 import { helloWorldFn } from "@/inngest/functions/hello-world";
@@ -71,6 +72,7 @@ const handler = serve({
     waitlistReactivationFn,
     drainPendingCalendarTasksFn,
     backfillExtractionsFn,
+    freeCapEvaluatorFn,
   ],
 });
 
