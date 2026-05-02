@@ -20,6 +20,64 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-02] — fix(prod): unbreak dashboard after C3 schema-vs-prod-DB drift
+
+**Requested by:** Jimmy (production-down ticket)
+**Committed by:** Claude Code
+**Commit hash:** 54af6c0
+**Sentry REF:** 3863552433
+
+### In plain English (for Keenan)
+
+The dashboard was returning "Couldn't load your dashboard" for everyone tonight. Root cause: a couple weeks ago we added new columns to our database for the calendar feature (slice C3). The CODE that uses those columns shipped, but the database in production never got the new columns added (Jim runs that step from home and hasn't been on home network yet). For most pages this didn't matter because they were already targeted with explicit lists of columns to fetch — but a few key dashboard queries fetched "all columns of a task," which now includes the calendar columns that don't exist in production. Postgres rejected the query. Dashboard broke. This hotfix narrows those queries to explicit lists of columns, skipping the calendar ones for now, so production renders again. Once Jim runs the database migration from home, we can re-broaden them back.
+
+### Technical changes (for Jimmy)
+
+- **Diagnosis correction:** the failure point was NOT `entitlements-fetch.ts` (slice 4-web's helper). That file already selects only `subscriptionStatus` + `trialEndsAt`. The real culprits were broad `prisma.task.findMany`/`findFirst`/`create`/`update` calls without explicit `select`. Vercel's Prisma client generation (against the C3 schema in code) made the client expect calendar columns the prod DB doesn't have → P2022 on every default-projection Task query.
+- **Files patched** (page-render blockers + secondary writes):
+  - `apps/web/src/app/home/_sections/open-tasks.tsx` — `findMany` in the /home dashboard's open-tasks section. Was the primary `/home` outage path.
+  - `apps/web/src/app/api/tasks/route.ts` — four sites: `findMany` (GET), `findFirst` (PATCH ownership), `create` (POST return value), `update` (PATCH return value). The post-write RETURNING projections were the silent killers — Prisma issues `RETURNING calendar*` columns even when the user code doesn't reference them.
+  - `apps/web/src/app/api/weekly/route.ts` — `findMany` task count.
+  - `apps/web/src/app/api/task-groups/recategorize/route.ts` — `update` RETURNING.
+- Each fix is the same pattern: add `select: { id: true, ...pre-C3 columns }` to project only known-good columns. Re-broaden to default projection (or include the new calendar fields) once `db push` lands in production.
+
+### Out of scope (still at-risk but not user-flow blockers)
+
+- `apps/web/src/lib/enqueue-sync.ts` — reads C3 columns deliberately. Wrapped in try/catch at the /api/tasks call site so failure is non-fatal — logs `safeLog.warn("calendar.enqueue.failed")` once per task mutation but the route still returns 200. Acceptable noise until db push lands.
+- `/api/integrations/calendar/*` (drain, sync-result, settings) — read C3 columns but aren't called from any UI yet. Mobile EventKit drain ships in C6.
+- `apps/web/src/inngest/functions/drain-pending-calendar-tasks.ts` — Inngest cron `*/30`. First few ticks will fail with P2022 until db push lands. Stuck-task escalation is a no-op for now (no tasks have `calendarSyncStatus = PENDING` in prod since enqueue-sync's outer try/catch suppresses writes).
+
+### Hotfix verification
+
+- Full apps/web vitest: 16/17 files pass, 219/223 tests pass. Same baseline as slice 4-mobile. Zero regressions.
+- Manual production smoke (Jim, after Vercel deploy goes Ready):
+  - Load `/home` as TRIAL/PRO/FREE — should render fully (open tasks card populated, no "Couldn't load your dashboard" toast)
+  - Load `/tasks` — list renders with current open tasks
+  - Load `/goals` — page renders (goals tree was already safe via existing explicit select at `/api/goals/tree:58`)
+  - POST `/api/tasks` to create a task — should succeed; check `safeLog` for the expected `calendar.enqueue.failed` warn (non-fatal, expected until db push lands)
+
+### Manual steps needed (Jim — when home network access restored)
+
+- [ ] Run `npx prisma db push` from home network. After it lands, the C3 calendar columns exist in prod and the suppressed enqueue-sync warns stop firing.
+- [ ] After db push: optionally re-broaden the explicit selects in this hotfix to default projections (cosmetic — the explicit selects work fine indefinitely).
+- [ ] Confirm `/api/inngest` cron's drain-pending-calendar-tasks fires cleanly on the next 30-min tick (no P2022 on the underlying `prisma.task.findMany` / `task.updateMany`).
+
+### Lesson for slice protocol step 6
+
+Step 6 was added after the C4 outage: "typecheck the entire working tree at push time, regardless of which slice authored each error." This incident extends that lesson — **schema migrations require both code AND db push to land before downstream slices commit code that depends on the schema**. Slice C3 committed schema in code on the assumption db push would follow within hours; in practice the work-network constraint stretched that to days, and slice C4/C5a/4-foundation/4-web all built on the assumption that backfired tonight.
+
+Going forward: when a slice introduces a Prisma schema delta, the slice protocol's "manual steps needed" must include a hard gate — "do not start downstream slices until db push has been verified in production." If that gate isn't acceptable for cadence reasons, downstream slices must add explicit selects defensively until the migration lands.
+
+Adding this as a backlog entry to update the slice protocol at the top of PROGRESS.md (separate cleanup pass — not blocking this hotfix).
+
+### Notes
+
+- Sentry REF 3863552433 maps to the underlying P2022 — Prisma's "column does not exist" error code. Production logs would have shown column names like `calendarEventId`, `calendarSyncedAt`, `calendarSyncStatus` in the error context.
+- The Vercel-side Prisma client regeneration (from `npx prisma generate` in the build step) is what introduced the divergence. The build itself succeeded (next.config.js has `typescript.ignoreBuildErrors: true`), but every default-projection Task query 500'd at request time.
+- Followed slice protocol's emergency variant: full vitest re-run, diff captured for review, root cause documented before push.
+
+---
+
 ## [2026-05-02] — v1.1 slice 4-mobile: closes the locked-state UX workstream (slice 4 fully shipped)
 
 **Requested by:** Jimmy
