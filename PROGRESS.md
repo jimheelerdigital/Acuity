@@ -20,6 +20,90 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-02] — v1.1 free-tier slice 5: Process my history backfill (full slice)
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** 20cf8e9
+
+### In plain English (for Keenan)
+
+The "Process my history" upgrade affordance is live end-to-end. When a user upgrades from free to trial or pro, the next time they load `/home` they see a banner: "Process the entries you recorded on free?" with a count of recent (60-day window) entries plus a note about older entries available from `/account`. Tap "Yes" → confirmation modal → server dispatches an Inngest job that re-runs the full extraction pipeline (themes, wins, blockers, tasks, embedding) on each pre-pro entry. Tap "No thanks" → banner stays gone permanently. After the job finishes, an email lands: "Acuity processed your past entries" with a footnote about older entries if any remain. From `/account`, users can re-trigger the older-entries pass any time. Critically, this fixes the slice 2 verification gap: backfilled entries get embeddings too, so they show up in semantic search ("Ask Your Past Self") instead of being invisible. End user impact: upgrading from free now feels like Acuity has been listening the whole time, not like the dashboard suddenly works going forward but ignores everything you said before.
+
+### Technical changes (for Jimmy)
+
+**Schema (prisma db push already run from home network):**
+- `Entry.extracted Boolean @default(false)` — canonical flag set when the full extraction pipeline completes. FREE/Haiku branch leaves false; PRO branch sets true at end of persist-extraction.
+- `User.backfillPromptDismissedAt DateTime?` — sticky across status changes. Set on Yes-confirm OR No-thanks. Suppresses the home banner forever for that user.
+- `User.backfillStartedAt DateTime?` — in-flight indicator.
+- `User.backfillCompletedAt DateTime?` — set by the Inngest fn at run end.
+- `@@index([userId, extracted, createdAt])` on Entry — backfill scanner hot path.
+
+**Pure helper + tests:**
+- `apps/web/src/lib/backfill-extractions.ts` (new, 100 lines): `BACKFILL_WINDOW_RECENT_DAYS=60` + `backfillWindowCutoff(window)` + `isBackfillEligible(entry, window)` + `selectBackfillCandidates(entries, window)`. Pure functions; no Prisma plumbing.
+- `apps/web/src/lib/backfill-extractions.test.ts` (new, 142 lines, 15 tests): cutoff math both windows, eligibility predicate (extracted/rawAnalysis/status/transcript/window), partition.
+
+**Inngest function:**
+- `apps/web/src/inngest/functions/backfill-extractions.ts` (new, 322 lines):
+  - Event `entry/backfill.requested`. Payload `{ userId, requestedAt, window?: "recent"|"older" }`.
+  - Concurrency `key: "event.data.userId", limit: 1`. Stops a double-tap from running two passes; the WHERE filter dedupes the work either way.
+  - Per-entry `step.run("process-entry-${id}")` covers full extract → persist transaction → embed → flag sequence. Inngest retries the whole step on transient failure; idempotent because the WHERE filter excludes already-flagged entries on replay.
+  - Per-entry pipeline reuses existing primitives: `extractFromTranscript` (V5-flag-aware via the user's `v1_1_dispositional_themes` flag — read once at run start), `recordThemesFromExtraction`, `buildEmbedText` + `embedText`. Embed failure logs to `safeLog.warn("backfill.embedding-failed")` but doesn't block the `extracted` flag flip — addresses the slice 2 verification gap (FREE-tier backfilled entries would otherwise be invisible to Ask-Your-Past-Self semantic search).
+  - Poison-transcript handling: per-entry catch sets `extracted = true, partialReason = "backfill-extract-failed"` so the loop doesn't retry. Per spec §A.4 step 3.
+  - Final step: count older-window remainder, set `backfillCompletedAt`, send completion email via Resend.
+  - **Inngest signature uses 2-arg createFunction with `triggers` inside config** (post-C4-outage convention; learned the hard way 2026-05-01).
+  - **Prisma JSON null filter uses `{ equals: Prisma.DbNull }`** — correct syntax for SQL-NULL on Json columns.
+  - **Defensive Date parse on `entry.createdAt`** because Inngest serializes `step.run` return values as JSON (Date → ISO string round-trip).
+- `MAX_ENTRIES_PER_RUN = 200` belt-and-suspenders cap on top of the 60-day window. Realistic worst case: 60 entries × $0.011 Claude = $0.66/user.
+
+**API routes:**
+- `apps/web/src/app/api/backfill/start/route.ts` (new, 136 lines): POST. Auth + `requireEntitlement("canExtractEntries")` gate (FREE post-trial returns 402). Rate-limited via `userWrite` tier. Counts both windows in one `Promise.all`. Sets `backfillStartedAt + backfillPromptDismissedAt` together (Yes-confirm = banner-suppressed forever). Dispatches `entry/backfill.requested`. Body `{ window?: "recent"|"older" }` defaults to recent.
+- `apps/web/src/app/api/backfill/dismiss/route.ts` (new, 37 lines): POST. Sets `backfillPromptDismissedAt = now()`. Idempotent. No body. Auth-gated only.
+
+**Web banner:**
+- `apps/web/src/components/backfill-banner.tsx` (new, 154 lines): client component. Two-state surface — banner + confirmation modal. Posts to `/api/backfill/start` (Yes flow) or `/api/backfill/dismiss` (No-thanks flow). `router.refresh()` after either path so the banner disappears via the server-side gate re-evaluating.
+- `apps/web/src/app/home/page.tsx` (+64): server-side gate computes `showBackfillPrompt` from `entitlementsFor(user).canExtractEntries && !backfillPromptDismissedAt && !backfillStartedAt`. If true, runs two `prisma.entry.count` calls in parallel for the recent + older buckets. Banner mounts above the dashboard grid only when `showBackfillPrompt && recentCount > 0`. Server gate keeps the client bundle clean.
+
+**/account "Process older entries" surface:**
+- `apps/web/src/app/account/backfill-older-card.tsx` (new, 125 lines): client component with cost-warned modal ("can take 10-20 minutes"). Surfaces only when `olderBackfillCount > 0` AND user is PRO-side AND no in-flight run.
+- `apps/web/src/app/account/page.tsx` (+69): now fetches the calendar fields from User (re-enabled — slice C5b had `connection={null}` hardcoded until db push) plus a `backfillStartedAt`/`backfillCompletedAt` pair. Computes older-count via the same WHERE-shape as the route. Builds `CalendarConnectionSummary | null` for IntegrationsSection.
+- `apps/web/src/app/account/account-client.tsx` (+47): three new props (`calendarConnection`, `olderBackfillCount`, `backfillInFlight`) threaded through. Mounts `BackfillOlderEntriesCard` after the IntegrationsSection.
+
+**Connected-state re-enable (resolves slice C5b deferral):**
+- `account-client.tsx` now passes `connection={calendarConnection}` to `IntegrationsSection` instead of `null`. The connected-state card (already in the file from slice C5b) renders for PRO/TRIAL users who've completed the iOS connect flow. Mobile EventKit ships in slice C6.
+
+**Email:**
+- `apps/web/src/emails/backfill-complete.ts` (new, 83 lines): "Acuity processed your past entries". `{{#if olderCount}}` block per spec — only appears when older entries remain. Uses Resend via the existing `getResendClient()` pattern from `apps/web/src/lib/founder-notifications.ts`.
+
+**Inngest registration:**
+- `apps/web/src/app/api/inngest/route.ts` (+2): import + register `backfillExtractionsFn`.
+
+### Slice 5 verification
+
+- Full apps/web vitest: 17/18 files pass, **240/244 tests pass**. **+15 over slice C5b baseline** (all from `backfill-extractions.test.ts`). Zero regressions. Same 4 pre-existing `auth-flows.test.ts` failures (in `docs/v1-1/backlog.md`).
+- tsc: 7 total errors, **ZERO new** in any slice file. Verified via filter on `backfill`, `home/page`, `account/page`, `account-client`, `integrations-section` paths.
+- Schema: `prisma validate` clean, `prisma format` applied, `prisma generate` ran locally. Production migration was already done by Jim from home network earlier today.
+
+### Manual steps needed
+
+- [ ] None for this slice. Ships entirely behind existing entitlement and auth gates. The Inngest fn doesn't fire until a user explicitly opts in via the banner or /account button. Vercel-side `prisma generate` runs on next build and aligns the client with the now-pushed schema. (Jimmy)
+- [ ] Optional verification after Vercel deploy: log in as the seeded `jim+slice2trial@heelerdigital.com` (TRIAL, has un-extracted FREE entries from slice 2 verification), confirm banner appears on /home, tap Yes, watch the Inngest dashboard for the `entry/backfill.requested` run. Completion email lands at the test email.
+- [ ] Re-run `apps/web/scripts/backfill-entry-embeddings.ts` from home if there are any TRIAL entries with empty embeddings from before today's observability fix landed.
+
+### Notes
+
+- **Idempotency is built into the WHERE filter, not into a per-user lock.** A user could double-tap; Inngest's per-user concurrency=1 dedupes the runs, and the `extracted=false AND rawAnalysis IS NULL` filter excludes anything the first run completed. Net effect: at most one full pass per user concurrent + zero double-extractions per entry. This is cheaper than wiring an explicit "in-progress" lock that needs cleanup on crash.
+- **Cost cap is 60 days by default.** Per Jim's pushback A in the phase 2 plan — bounds worst case at $0.66/user. Older-entries pass is opt-in from /account, cost-warned in the modal copy.
+- **Embed failures fail-soft.** Per the 2026-05-02 observability incident, `safeLog.warn` instead of `console.warn` so Sentry catches them. The standalone `apps/web/scripts/backfill-entry-embeddings.ts` script remains the catch-all for stragglers.
+- **No "Process recent entries" card on /account.** Spec called for two cards (recent + older); the home banner already handles recent, and surfacing both on /account would be confusing UX. Recent-window re-runs implicitly when the home banner re-shows (it doesn't, post-dismiss). Reconsider if support tickets surface a need.
+- **Connected-state card on /account/integrations is now active** — `connection={null}` swap from slice C5b deferral resolved alongside this slice since both touch the same calendar-fields fetch surface.
+- **TRIAL users see the banner.** `canExtractEntries` is true on PRO+TRIAL+PAST_DUE; FREE post-trial does not see the banner (they see the §B.2 paywalls instead, not a backfill prompt — they don't have permission to backfill).
+- **Inngest signature trap avoided.** Used the 2-arg `createFunction` form with `triggers` inside the config object, per the C4 outage's lesson (slice protocol step 6).
+- **Prisma JSON-null filter trap avoided.** Initial draft used `{ equals: null }` which is a tsc error; correct syntax is `{ equals: Prisma.DbNull }` for SQL-NULL on Json columns. Caught at tsc gate before push.
+- Followed slice protocol: full-suite vitest re-run, diff shown before push, baseline-red failures called out as pre-existing.
+
+---
+
 ## [2026-05-02] — v1.1 calendar slice C5b: connect UI + FREE locked card + enqueue-sync P2022 short-circuit
 
 **Requested by:** Jimmy
