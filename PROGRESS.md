@@ -20,6 +20,61 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-02] — fix(observability): embedding failures use safeLog (+ diagnosis correction)
+
+**Requested by:** Jimmy (TRIAL re-verification surfaced an empty-embedding entry)
+**Committed by:** Claude Code
+**Commit hash:** aec0ec8
+
+### In plain English (for Keenan)
+
+A trial-tier user's recording came out fine — transcript, summary, themes all worked — except the AI vector that powers "Ask Your Past Self" semantic search came back empty. The hypothesis going in was that this was the same database-column-mismatch bug we hotfixed earlier today, but it isn't. The actual code path that writes embeddings only ever touches the Entry table, and the Entry table didn't get any new columns from the calendar work. So this is a different problem — most likely a one-off OpenAI hiccup that was being swallowed silently by error handling that logged to Vercel's own server logs but never reached Sentry where we'd actually see it. This fix swaps the silent log for our standard logger so the next time it happens, Sentry catches it and we'll know what actually went wrong. The existing missing-embedding entry will be backfilled by a script Jim runs once this is live.
+
+### Diagnosis correction
+
+The TRIAL re-verification flagged an entry with `embedding=[]` and proposed it might be the same C3 schema bomb that hit the dashboard earlier today (commit `54af6c0`). It is NOT.
+
+Why the C3 hypothesis doesn't hold:
+- C3 schema (commit `4739d56`) added 5 columns to `User` and 3 to `Task`. **Entry was untouched.**
+- The embed-entry step's two Prisma queries are both Entry-only:
+  - `prisma.entry.findUnique({ where, select: { summary, transcript } })` — explicit, minimal select.
+  - `prisma.entry.update({ where, data: { embedding } })` — default RETURNING projects only Entry's own columns. None of Entry's columns were added in C3.
+- No Task or User RETURNING in the embed pipeline anywhere.
+
+So the existing hotfix `54af6c0` does not apply, and adding explicit selects to the embed step would be misdirected. The real cause for the gap is most likely one of:
+1. OpenAI transient (rate limit, 5xx, network).
+2. `embedText` shape error ("Unexpected embedding shape: empty dims") — OpenAI returned an empty `data` array.
+3. Inngest step caching — if the step was previously cached as "succeeded with no return," replays don't re-run the body and the entry stays embedding-less indefinitely.
+
+The fail-soft try/catch on both call sites swallowed the error to a plain `console.warn`, which Vercel function logs see but Sentry doesn't.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/inngest/functions/process-entry.ts`: embed-entry step.run catch block now uses `safeLog.warn("process-entry.embedding-failed", { entryId, err })` instead of `console.warn`. Lazy import keeps the safe-log module out of the cold-start critical path.
+- `apps/web/src/lib/pipeline.ts`: same fix on the sync-path mirror — `safeLog.warn("pipeline.embedding-failed", ...)`. Both paths share the same observability surface from here on.
+
+Three-line change at each call site. No retry logic, no sentinel values, no schema work, no API contract changes.
+
+### Hotfix verification
+
+- Full apps/web vitest: 16/17 files pass, 219/223 tests pass. Same baseline as the dashboard hotfix. Zero regressions.
+- Same 4 pre-existing `auth-flows.test.ts` failures (in backlog).
+- No new tsc errors. No new tests needed (one-line behavior change inside an existing try/catch).
+
+### Manual steps needed
+
+- [ ] After Vercel deploys: run `apps/web/scripts/backfill-entry-embeddings.ts` to backfill the TRIAL entry with `embedding=[]` plus any other gaps (Jimmy). OpenAI is up, embeddings are cheap (~$0.0001/entry).
+- [ ] When the next embed failure fires post-deploy: pull the Sentry event (will appear under `process-entry.embedding-failed` or `pipeline.embedding-failed`) and confirm the actual error class. THEN decide whether to add retry logic / a pending-retry schema flag.
+- [ ] `npx prisma db push` from home network still pending (separate hotfix).
+
+### Notes
+
+- The diagnosis correction is the more important artifact here than the code change. Two production bugs in one day looking superficially similar (silent failures, fail-soft try/catches, possible Prisma column issues) is exactly the situation where pattern-matching can lead you astray. Recording the "this is NOT the same bug as 54af6c0" in PROGRESS so the next responder doesn't waste time re-investigating.
+- The Inngest step-caching theory (3 above) is interesting and worth verifying when the next failure fires. If the step body returns undefined on both success and caught-error paths, Inngest may dedupe — meaning a transient first-run failure permanently wedges the entry. Sentinel-value return ({ embedded: true } vs { embedded: false, reason }) would distinguish, but per Jim's call we wait for data before refactoring.
+- Followed slice protocol's emergency variant: full vitest re-run, diff captured, root cause documented.
+
+---
+
 ## [2026-05-02] — fix(prod): unbreak dashboard after C3 schema-vs-prod-DB drift
 
 **Requested by:** Jimmy (production-down ticket)
