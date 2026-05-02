@@ -23,8 +23,10 @@ import { HomeFocusStack } from "@/components/home-focus-stack";
 import { MoodIcon } from "@/components/mood-icon";
 import { ProgressionChecklist } from "@/components/progression-checklist";
 import { Skeleton, SkeletonCard } from "@/components/skeleton";
+import { ProLockedCard } from "@/components/pro-locked-card";
 import { RecommendedActivity } from "@/components/recommended-activity";
 import { useAuth } from "@/contexts/auth-context";
+import { isFreeTierUser } from "@/lib/free-tier";
 import { api } from "@/lib/api";
 import { getCached, isStale, setCached } from "@/lib/cache";
 import { fetchUserProgression } from "@/lib/userProgression";
@@ -233,6 +235,14 @@ export default function DashboardTab() {
             label={homeData?.recommendation?.label}
             goalId={homeData?.recommendation?.goalId}
           />
+        )}
+
+        {/* §B.2.1 Pro pulse — alongside today's prompt for FREE
+            post-trial users. Mobile mirror of the web home surface. */}
+        {isFreeTierUser(user) && (
+          <View className="mb-6">
+            <ProLockedCard surfaceId="pro_pulse_home" />
+          </View>
         )}
 
         {/* Recent sessions */}

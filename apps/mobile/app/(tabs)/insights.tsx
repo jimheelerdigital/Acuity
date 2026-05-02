@@ -22,10 +22,13 @@ import { ComparisonsCard } from "@/components/comparisons-card";
 import { LifeMapRadar } from "@/components/life-map-radar";
 import { LockedFeatureCard } from "@/components/locked-feature-card";
 import { MoodIcon } from "@/components/mood-icon";
+import { ProLockedCard } from "@/components/pro-locked-card";
 import { UserInsightsCard } from "@/components/user-insights-card";
+import { useAuth } from "@/contexts/auth-context";
 import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
 import { getCached, isStale, setCached } from "@/lib/cache";
+import { isFreeTierUser } from "@/lib/free-tier";
 import { fetchUserProgression } from "@/lib/userProgression";
 
 const INSIGHTS_ENTRIES_KEY = "/api/entries";
@@ -86,6 +89,8 @@ const MOOD_COLORS: Record<string, string> = {
 
 export default function InsightsTab() {
   const router = useRouter();
+  const { user } = useAuth();
+  const isProLocked = isFreeTierUser(user);
   const { resolved: resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
   const [entries, setEntries] = useState<EntryDTO[]>(
@@ -234,7 +239,13 @@ export default function InsightsTab() {
         </View>
 
         {/* ─── 1. LIFE MATRIX — hero ─────────────────────────────────── */}
-        {progression && !progression.unlocked.lifeMatrix ? (
+        {/* §B.2.2 — billing gate (FREE post-trial) takes precedence
+            over the experiential gate. */}
+        {isProLocked ? (
+          <View className="mb-6">
+            <ProLockedCard surfaceId="life_matrix_locked" />
+          </View>
+        ) : progression && !progression.unlocked.lifeMatrix ? (
           <View className="mb-6">
             <LockedFeatureCard
               unlockKey="lifeMatrix"
@@ -463,7 +474,12 @@ export default function InsightsTab() {
         ) : null}
 
         {/* ─── 3. THEME MAP ────────────────────────────────────────── */}
-        {progression && !progression.unlocked.themeMap ? (
+        {/* §B.2.5 — billing gate (FREE post-trial) takes precedence. */}
+        {isProLocked ? (
+          <View className="mb-4">
+            <ProLockedCard surfaceId="theme_map_locked" />
+          </View>
+        ) : progression && !progression.unlocked.themeMap ? (
           <View className="mb-4">
             <LockedFeatureCard
               unlockKey="themeMap"

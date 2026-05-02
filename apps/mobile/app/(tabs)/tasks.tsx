@@ -15,9 +15,12 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { PRIORITY_COLOR } from "@acuity/shared";
+import { ProLockedCard } from "@/components/pro-locked-card";
 import { Skeleton, SkeletonCard } from "@/components/skeleton";
+import { useAuth } from "@/contexts/auth-context";
 import { api } from "@/lib/api";
 import { getCached, setCached } from "@/lib/cache";
+import { isFreeTierUser } from "@/lib/free-tier";
 
 type Task = {
   id: string;
@@ -85,6 +88,8 @@ function makeVisitSnapshot(list: Task[]): VisitSnapshot {
 
 export default function TasksTab() {
   const router = useRouter();
+  const { user } = useAuth();
+  const isLocked = isFreeTierUser(user);
   const [tasks, setTasks] = useState<Task[]>(
     () => getCached<{ tasks: Task[] }>(TASKS_CACHE_KEY)?.tasks ?? []
   );
@@ -467,7 +472,7 @@ export default function TasksTab() {
         </View>
 
         {current.length === 0 ? (
-          <EmptyState tab={activeTab} />
+          <EmptyState tab={activeTab} isLocked={isLocked} />
         ) : (
           <View>
             {sortedGroups.map((group) => {
@@ -776,7 +781,19 @@ function Checkbox({
   );
 }
 
-function EmptyState({ tab }: { tab: Tab }) {
+function EmptyState({ tab, isLocked }: { tab: Tab; isLocked: boolean }) {
+  // §B.2.4 — FREE post-trial users on the open tab see the
+  // ProLockedCard variant. Other tabs (snoozed/completed) keep the
+  // generic empty state since they're not the primary conversion
+  // moment. Same precedence as web TaskList.
+  if (isLocked && tab === "open") {
+    return (
+      <View className="mt-12 px-4">
+        <ProLockedCard surfaceId="tasks_empty_state" />
+      </View>
+    );
+  }
+
   const config = {
     open: {
       icon: "checkmark-done-outline" as const,

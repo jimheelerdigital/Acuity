@@ -35,9 +35,12 @@ import {
 } from "lucide-react-native";
 
 import { LockedFeatureCard } from "@/components/locked-feature-card";
+import { ProLockedCard } from "@/components/pro-locked-card";
 import { Skeleton, SkeletonCard } from "@/components/skeleton";
+import { useAuth } from "@/contexts/auth-context";
 import { api } from "@/lib/api";
 import { getCached, isStale, setCached } from "@/lib/cache";
+import { isFreeTierUser } from "@/lib/free-tier";
 import { fetchUserProgression } from "@/lib/userProgression";
 
 const GOALS_TREE_KEY = "/api/goals/tree";
@@ -271,6 +274,8 @@ const ACTION_TO_STATUS: Record<string, string> = {
 
 export default function GoalsTab() {
   const router = useRouter();
+  const { user } = useAuth();
+  const isProLocked = isFreeTierUser(user);
   const [includeArchived, setIncludeArchived] = useState(false);
 
   const initialCacheKey = treeCacheKey(includeArchived);
@@ -561,13 +566,22 @@ export default function GoalsTab() {
           What you&apos;re working toward. Tap to open, + to add a sub-step.
         </Text>
 
-        {progression && !progression.unlocked.goalSuggestions && (
+        {/* §B.2.3 — billing gate (FREE post-trial) takes precedence
+            over the experiential gate (TRIAL/PRO low-data). */}
+        {isProLocked ? (
           <View className="mb-5">
-            <LockedFeatureCard
-              unlockKey="goalSuggestions"
-              progression={progression}
-            />
+            <ProLockedCard surfaceId="goals_suggestions_locked" />
           </View>
+        ) : (
+          progression &&
+          !progression.unlocked.goalSuggestions && (
+            <View className="mb-5">
+              <LockedFeatureCard
+                unlockKey="goalSuggestions"
+                progression={progression}
+              />
+            </View>
+          )
         )}
 
         {progression?.unlocked.goalSuggestions && pendingSuggestions > 0 && (

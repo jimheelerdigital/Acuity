@@ -3,8 +3,10 @@ import { redirect } from "next/navigation";
 
 import { BackButton } from "@/components/back-button";
 import { getAuthOptions } from "@/lib/auth";
+import { getUserEntitlement } from "@/lib/entitlements-fetch";
 import { getUserProgression } from "@/lib/userProgression";
 import { LockedFeatureCard } from "@/components/locked-feature-card";
+import { ProLockedCard } from "@/components/pro-locked-card";
 import { PageContainer } from "@/components/page-container";
 
 import { ThemeMapClient } from "./theme-map-client";
@@ -27,11 +29,24 @@ export default async function ThemeMapPage() {
   if (!session?.user?.id) redirect("/auth/signin?callbackUrl=/insights/theme-map");
 
   const progression = await getUserProgression(session.user.id);
+  // §B.2.5 — direct deep-link entry point for Theme Map. FREE
+  // post-trial users see the billing gate (slice 4-mobile picks up
+  // this fix the slice 4-web noted as deferred).
+  const entitlement = await getUserEntitlement(session.user.id);
+  const isProLocked = entitlement?.canExtractEntries === false;
 
   return (
     <div className="min-h-screen">
       <PageContainer mobileWidth="2xl">
-        {progression.unlocked.themeMap ? (
+        {isProLocked ? (
+          <>
+            <BackButton className="mb-6" ariaLabel="Back to Insights" />
+            <h1 className="mb-4 text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+              Theme Map
+            </h1>
+            <ProLockedCard surfaceId="theme_map_locked" />
+          </>
+        ) : progression.unlocked.themeMap ? (
           <ThemeMapClient />
         ) : (
           <>

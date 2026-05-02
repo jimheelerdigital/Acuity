@@ -16,6 +16,7 @@ import { MOOD_LABELS, type EntryDTO, type TaskDTO } from "@acuity/shared";
 
 import { ExtractionReview } from "@/components/extraction-review";
 import { MoodIcon } from "@/components/mood-icon";
+import { ProLockedFooter } from "@/components/pro-locked-card";
 import { api } from "@/lib/api";
 import { getCached, invalidate, isStale, setCached } from "@/lib/cache";
 
@@ -210,6 +211,20 @@ export default function EntryDetailScreen() {
           </Text>
         </Section>
       )}
+
+      {/* §B.2.6 Free-tier locked footer. Heuristic: entry has a
+          summary but no extraction artifacts → FREE/Haiku branch
+          produced this entry. Mirror of the web entry-detail
+          footer in slice 4-foundation. */}
+      {entry.summary &&
+        entry.themes.length === 0 &&
+        entry.wins.length === 0 &&
+        entry.blockers.length === 0 &&
+        entry.tasks.length === 0 && (
+          <View className="mb-6 -mt-3">
+            <ProLockedFooter />
+          </View>
+        )}
 
       {/* Themes */}
       {entry.themes.length > 0 && (

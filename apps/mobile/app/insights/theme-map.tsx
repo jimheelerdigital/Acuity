@@ -10,9 +10,12 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { api } from "@/lib/api";
+import { isFreeTierUser } from "@/lib/free-tier";
 
 import { StickyBackButton } from "@/components/back-button";
+import { ProLockedCard } from "@/components/pro-locked-card";
 import { LockedState } from "@/components/theme-map/LockedState";
+import { useAuth } from "@/contexts/auth-context";
 import {
   ThemeMapDashboard,
   type DashboardTheme,
@@ -72,6 +75,8 @@ const UNLOCK_THRESHOLD = 10;
 
 export default function ThemeMapScreen() {
   const router = useRouter();
+  const { user } = useAuth();
+  const isProLocked = isFreeTierUser(user);
   const [window_, setWindow] = useState<TimeWindow>("month");
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -193,7 +198,15 @@ export default function ThemeMapScreen() {
           </View>
         )}
 
-        {!error && locked && <LockedState count={entryCount} />}
+        {!error && isProLocked && (
+          <View style={{ marginTop: 16 }}>
+            <ProLockedCard surfaceId="theme_map_locked" />
+          </View>
+        )}
+
+        {!error && !isProLocked && locked && (
+          <LockedState count={entryCount} />
+        )}
 
         {!error && !locked && data && (
           <>

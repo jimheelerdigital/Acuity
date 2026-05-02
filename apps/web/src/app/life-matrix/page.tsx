@@ -2,8 +2,10 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 
 import { getAuthOptions } from "@/lib/auth";
+import { getUserEntitlement } from "@/lib/entitlements-fetch";
 import { getUserProgression } from "@/lib/userProgression";
 import { LockedFeatureCard } from "@/components/locked-feature-card";
+import { ProLockedCard } from "@/components/pro-locked-card";
 import { PageContainer } from "@/components/page-container";
 
 import { LifeMap } from "../insights/life-map";
@@ -20,6 +22,11 @@ export default async function LifeMatrixPage() {
   if (!session?.user?.id) redirect("/auth/signin?callbackUrl=/life-matrix");
 
   const progression = await getUserProgression(session.user.id);
+  // §B.2.2 — direct deep-link entry point for Life Matrix. FREE
+  // post-trial users see the billing gate (slice 4-mobile picks up
+  // this fix the slice 4-web noted as deferred).
+  const entitlement = await getUserEntitlement(session.user.id);
+  const isProLocked = entitlement?.canExtractEntries === false;
 
   return (
     <div className="min-h-screen">
@@ -37,7 +44,9 @@ export default async function LifeMatrixPage() {
           </p>
         </header>
 
-        {progression.unlocked.lifeMatrix ? (
+        {isProLocked ? (
+          <ProLockedCard surfaceId="life_matrix_locked" />
+        ) : progression.unlocked.lifeMatrix ? (
           <LifeMap />
         ) : (
           <LockedFeatureCard unlockKey="lifeMatrix" progression={progression} />
