@@ -13,6 +13,19 @@ export async function OpenTasksSection({ userId }: { userId: string }) {
   const [tasks, groups] = await Promise.all([
     prisma.task.findMany({
       where: { userId, status: { in: ["TODO", "IN_PROGRESS", "OPEN"] } },
+      // Explicit select — production DB doesn't yet have the C3
+      // calendarEventId/calendarSyncedAt/calendarSyncStatus columns
+      // (db push pending). Default projection would trigger P2022
+      // and fail every dashboard render. Re-broaden the select once
+      // the migration lands.
+      select: {
+        id: true,
+        title: true,
+        text: true,
+        status: true,
+        priority: true,
+        groupId: true,
+      },
       orderBy: [{ priority: "desc" }, { createdAt: "desc" }],
       take: 10,
     }),

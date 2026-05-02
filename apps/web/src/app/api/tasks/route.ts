@@ -41,7 +41,26 @@ export async function GET(req: NextRequest) {
       userId: userId,
       ...(all ? {} : { status: { not: "DONE" } }),
     },
-    include: { entry: { select: { entryDate: true } } },
+    // Explicit select — see open-tasks.tsx for context. Production
+    // DB doesn't yet have C3 calendar columns. Re-broaden once db
+    // push lands.
+    select: {
+      id: true,
+      userId: true,
+      entryId: true,
+      groupId: true,
+      goalId: true,
+      text: true,
+      title: true,
+      description: true,
+      status: true,
+      priority: true,
+      dueDate: true,
+      snoozedUntil: true,
+      completedAt: true,
+      createdAt: true,
+      entry: { select: { entryDate: true } },
+    },
     orderBy: { createdAt: "desc" },
   });
 
@@ -127,6 +146,26 @@ export async function POST(req: NextRequest) {
       dueDate: body.dueDate ? new Date(body.dueDate) : null,
       groupId,
     },
+    // Explicit select — Prisma's default RETURNING projects every
+    // model column, including the C3 calendar columns that don't
+    // yet exist in production. Without this, task.create fails
+    // with P2022. Re-broaden once db push lands.
+    select: {
+      id: true,
+      userId: true,
+      entryId: true,
+      groupId: true,
+      goalId: true,
+      text: true,
+      title: true,
+      description: true,
+      status: true,
+      priority: true,
+      dueDate: true,
+      snoozedUntil: true,
+      completedAt: true,
+      createdAt: true,
+    },
   });
 
   // Calendar sync (v1.1 slice C5a). Best-effort — a failure here
@@ -165,9 +204,12 @@ export async function PATCH(req: NextRequest) {
 
   const { prisma } = await import("@/lib/prisma");
 
-  // Verify ownership
+  // Verify ownership. Explicit select to avoid the C3-columns
+  // P2022 (see top of file). We only check truthiness, so id
+  // alone is enough.
   const existing = await prisma.task.findFirst({
     where: { id: body.id, userId: userId },
+    select: { id: true },
   });
   if (!existing) {
     return NextResponse.json({ error: "Task not found" }, { status: 404 });
@@ -264,6 +306,24 @@ export async function PATCH(req: NextRequest) {
   const task = await prisma.task.update({
     where: { id: body.id },
     data,
+    // Explicit select — see task.create above. Same C3-columns
+    // P2022 risk on the post-update RETURNING projection.
+    select: {
+      id: true,
+      userId: true,
+      entryId: true,
+      groupId: true,
+      goalId: true,
+      text: true,
+      title: true,
+      description: true,
+      status: true,
+      priority: true,
+      dueDate: true,
+      snoozedUntil: true,
+      completedAt: true,
+      createdAt: true,
+    },
   });
 
   // Calendar sync (v1.1 slice C5a). Maps the action to a planner

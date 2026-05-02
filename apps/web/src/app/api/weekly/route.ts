@@ -83,6 +83,10 @@ export async function POST(req: NextRequest) {
 
   const tasks = await prisma.task.findMany({
     where: { userId, createdAt: { gte: weekAgo } },
+    // Explicit select — production DB doesn't yet have C3 calendar
+    // columns. Default projection would trigger P2022. We only
+    // need status here; minimal fields.
+    select: { id: true, status: true },
   });
   const tasksOpened = tasks.length;
   const tasksClosed = tasks.filter((t) => t.status === "DONE").length;

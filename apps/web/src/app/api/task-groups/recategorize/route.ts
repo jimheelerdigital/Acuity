@@ -69,6 +69,10 @@ export async function POST(req: NextRequest) {
     await prisma.task.update({
       where: { id: task.id },
       data: { groupId },
+      // Explicit select — production DB doesn't yet have C3
+      // calendar columns. Without this, the post-update RETURNING
+      // projection triggers P2022.
+      select: { id: true },
     });
     updated += 1;
   }
