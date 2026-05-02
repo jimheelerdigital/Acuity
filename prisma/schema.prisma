@@ -268,6 +268,24 @@ model User {
   // model. Editable in /account/integrations.
   defaultEventDuration      String    @default("TIMED")
 
+  // ── v1.1 free-tier slice 5 — "Process my history" backfill ──────
+  // After a FREE→PRO/TRIAL upgrade, the user can opt into running
+  // their pre-PRO entries through the full extraction pipeline.
+  // See docs/v1-1/free-tier-phase2-plan.md §A.5 for the user flow.
+  // All three are nullable; the banner reads them lazily on /home.
+  //
+  // backfillPromptDismissedAt — set when user taps "No thanks" or
+  //   when they confirm "Yes, process them" (banner suppression is
+  //   the same in either case; sticky across status changes).
+  // backfillStartedAt        — set when /api/backfill/start
+  //   dispatches the Inngest event. Used by the in-flight indicator
+  //   on /home and to suppress duplicate banners.
+  // backfillCompletedAt      — set by the Inngest fn when the last
+  //   eligible entry is processed. Drives the completion email.
+  backfillPromptDismissedAt DateTime?
+  backfillStartedAt         DateTime?
+  backfillCompletedAt       DateTime?
+
   updatedAt DateTime @default(now()) @updatedAt
 
   @@index([createdAt])
@@ -460,7 +478,22 @@ model Entry {
   tasks                 Task[]
   themeMentions         ThemeMention[]
 
+  // v1.1 free-tier slice 5 — flag set when the entry has been run
+  // through the full extraction pipeline (themes/wins/blockers/
+  // tasks/embedding). FREE branch leaves this false; PRO branch
+  // sets true at end of persist-extraction. Backfill targets
+  // `extracted = false AND rawAnalysis IS NULL`. Both conditions
+  // are checked for safety pre-SQL-backfill of historical PRO
+  // entries (`UPDATE Entry SET extracted = true WHERE rawAnalysis
+  // IS NOT NULL` runs separately from db push).
+  extracted Boolean @default(false)
+
   @@index([userId, createdAt])
+  // Backfill scanner hot path — find all FREE-tier-only entries
+  // for a user. Composite covers the (userId, extracted=false,
+  // recency) filter; rawAnalysis null-check is small enough not
+  // to need its own index.
+  @@index([userId, extracted, createdAt])
   // Composite for /api/entries-style queries that filter on status
   // alongside userId. Pre-2026-04-28 these forced an index scan +
   // Filter rather than direct lookup. Hot path on dashboard +

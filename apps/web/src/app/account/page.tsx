@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 
@@ -30,8 +31,9 @@ export default async function AccountPage({
   }
 
   const { prisma } = await import("@/lib/prisma");
+  const userId = session.user.id;
   const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
+    where: { id: userId },
     select: {
       notificationTime: true,
       notificationDays: true,
@@ -42,19 +44,75 @@ export default async function AccountPage({
       trialEndsAt: true,
       weeklyEmailEnabled: true,
       monthlyEmailEnabled: true,
+      // Calendar fields — re-enabled in slice 5 now that prisma db
+      // push has landed the C3 columns.
+      calendarConnectedProvider: true,
+      calendarConnectedAt: true,
+      targetCalendarId: true,
+      autoSendTasks: true,
+      defaultEventDuration: true,
+      // Backfill state — drives the /account "Process older entries"
+      // button visibility + the in-flight indicator.
+      backfillStartedAt: true,
+      backfillCompletedAt: true,
     },
   });
 
   // Slice C5b — drives the IntegrationsSection paywall variant.
-  // Uses the existing user select (no extra round-trip; no C3 calendar
-  // columns referenced — those would P2022 against prod until the
-  // db push lands).
   const isProLocked = user
     ? entitlementsFor({
         subscriptionStatus: user.subscriptionStatus,
         trialEndsAt: user.trialEndsAt,
       }).canExtractEntries === false
     : false;
+
+  // Slice 5 — count older-window backfill candidates so the
+  // /account "Process older entries" button can render the live
+  // remainder. Skipped for FREE users (the entire backfill flow
+  // is canExtractEntries-gated). Single COUNT, runs alongside
+  // the user fetch implicitly via the page render.
+  let olderBackfillCount = 0;
+  if (user && !isProLocked) {
+    const { backfillWindowCutoff } = await import(
+      "@/lib/backfill-extractions"
+    );
+    const cutoff = backfillWindowCutoff("older");
+    olderBackfillCount = await prisma.entry.count({
+      where: {
+        userId,
+        extracted: false,
+        rawAnalysis: { equals: Prisma.DbNull },
+        status: "COMPLETE",
+        transcript: { not: null },
+        createdAt: { lte: cutoff.lte! },
+      },
+    });
+  }
+
+  // Calendar connection summary — surfaces in IntegrationsSection's
+  // connected-state card. Defensive: returns null if any of the
+  // required fields are missing (e.g. never-connected user) so the
+  // component renders the "Connect from iOS app" placeholder.
+  const calendarConnection =
+    user && user.calendarConnectedProvider
+      ? {
+          provider: user.calendarConnectedProvider,
+          connectedAt: user.calendarConnectedAt,
+          targetCalendarId: user.targetCalendarId,
+          autoSendTasks: user.autoSendTasks,
+          defaultEventDuration: user.defaultEventDuration,
+        }
+      : null;
+
+  // Backfill in-flight indicator — Inngest's per-user concurrency=1
+  // means a stale startedAt with no completedAt past the worst-case
+  // run-time (~5min for the 60-day window) is the signal. We render
+  // a "Processing…" affordance in account UI rather than letting
+  // the user re-trigger a no-op.
+  const backfillInFlight =
+    !!user?.backfillStartedAt &&
+    (!user.backfillCompletedAt ||
+      user.backfillStartedAt.getTime() > user.backfillCompletedAt.getTime());
 
   return (
     <AccountClient
@@ -70,6 +128,9 @@ export default async function AccountPage({
       weeklyEmailEnabled={user?.weeklyEmailEnabled ?? true}
       monthlyEmailEnabled={user?.monthlyEmailEnabled ?? true}
       isProLocked={isProLocked}
+      calendarConnection={calendarConnection}
+      olderBackfillCount={olderBackfillCount}
+      backfillInFlight={backfillInFlight}
       justUpgraded={searchParams?.upgrade === "success"}
     />
   );

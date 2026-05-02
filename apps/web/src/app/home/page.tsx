@@ -8,9 +8,13 @@ import { TrackCompleteRegistration, TrackPurchase } from "@/components/meta-pixe
 import { WelcomeBackBanner } from "@/components/welcome-back-banner";
 import { HomeFocusStack } from "@/components/home-focus-stack";
 import { ProgressionChecklist } from "@/components/progression-checklist";
+import { Prisma } from "@prisma/client";
+
 import { entitlementsFor } from "@/lib/entitlements";
+import { backfillWindowCutoff } from "@/lib/backfill-extractions";
 import { computeProgressionState, type ProgressionState } from "@/lib/progression";
 import { getUserProgression } from "@/lib/userProgression";
+import { BackfillBanner } from "@/components/backfill-banner";
 import { PageContainer } from "@/components/page-container";
 import { ProLockedCard } from "@/components/pro-locked-card";
 import { RecordButton } from "./record-button";
@@ -79,6 +83,12 @@ export default async function DashboardPage() {
       trialEndsAt: true,
       currentStreak: true,
       subscriptionStatus: true,
+      // v1.1 slice 5 — drives the backfill banner. backfillStartedAt
+      // distinguishes "in flight" vs "never asked"; banner renders
+      // only when both are null AND user is PRO-side AND there's at
+      // least one eligible entry (counted below).
+      backfillPromptDismissedAt: true,
+      backfillStartedAt: true,
       onboarding: { select: { progressionChecklist: true } },
     },
   });
@@ -94,6 +104,48 @@ export default async function DashboardPage() {
     : null;
 
   const userProg = await getUserProgression(userId);
+
+  // v1.1 slice 5 — backfill banner gating. PRO-side users with
+  // un-extracted entries in the 60d window who haven't dismissed
+  // the prompt see the banner. Single Prisma count, runs in
+  // parallel with the rest of the dashboard reads.
+  const showBackfillPrompt =
+    user &&
+    !user.backfillPromptDismissedAt &&
+    !user.backfillStartedAt &&
+    entitlementsFor({
+      subscriptionStatus: user.subscriptionStatus,
+      trialEndsAt: user.trialEndsAt,
+    }).canExtractEntries;
+
+  const cutoffRecent = backfillWindowCutoff("recent");
+  const cutoffOlder = backfillWindowCutoff("older");
+  const [recentCount, olderCount] = showBackfillPrompt
+    ? await Promise.all([
+        prisma.entry.count({
+          where: {
+            userId,
+            extracted: false,
+            rawAnalysis: { equals: Prisma.DbNull },
+            status: "COMPLETE",
+            transcript: { not: null },
+            createdAt: { gt: cutoffRecent.gt! },
+          },
+        }),
+        prisma.entry.count({
+          where: {
+            userId,
+            extracted: false,
+            rawAnalysis: { equals: Prisma.DbNull },
+            status: "COMPLETE",
+            transcript: { not: null },
+            createdAt: { lte: cutoffOlder.lte! },
+          },
+        }),
+      ])
+    : [0, 0];
+
+  const renderBackfillBanner = showBackfillPrompt && recentCount > 0;
 
   // §B.2.1 — FREE post-trial users see a Pro pulse teaser card
   // alongside today's prompt. The user row already has the fields
@@ -184,6 +236,18 @@ export default async function DashboardPage() {
             items={progression.items}
             completedCount={progression.completedCount}
             totalVisibleCount={progression.totalVisibleCount}
+          />
+        )}
+
+        {/* v1.1 slice 5 — "Process my history" backfill banner.
+            Shown above the dashboard grid for newly-PRO users who
+            still have un-extracted FREE-tier entries. Server-
+            computed gate; client component owns the dispatch +
+            dismiss side effects. */}
+        {renderBackfillBanner && (
+          <BackfillBanner
+            recentCount={recentCount}
+            olderCount={olderCount}
           />
         )}
 

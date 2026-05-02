@@ -5,8 +5,12 @@ import { useEffect, useRef, useState } from "react";
 
 import { ThemeToggle } from "@/components/theme-toggle";
 
-import { IntegrationsSection } from "./integrations-section";
+import {
+  IntegrationsSection,
+  type CalendarConnectionSummary,
+} from "./integrations-section";
 import { LifeDimensionsSection } from "./life-dimensions-section";
+import { BackfillOlderEntriesCard } from "./backfill-older-card";
 
 interface Props {
   email: string;
@@ -24,6 +28,19 @@ interface Props {
    *  trial). Drives whether IntegrationsSection renders the
    *  ProLockedCard paywall variant or the connect-flow card. */
   isProLocked: boolean;
+  /** Slice 5 — calendar connection summary from C3 columns (re-
+   *  enabled now that prisma db push has landed). null when the
+   *  user hasn't connected; non-null renders the connected state
+   *  card in IntegrationsSection. */
+  calendarConnection: CalendarConnectionSummary | null;
+  /** Slice 5 — count of pre-60d entries that haven't been
+   *  extracted. Drives the "Process older entries (N remaining)"
+   *  card visibility. Zero or non-PRO hides it. */
+  olderBackfillCount: number;
+  /** Slice 5 — true when an in-flight backfill run hasn't
+   *  completed yet. Disables the "Process older entries" button
+   *  + shows a "Processing…" indicator. */
+  backfillInFlight: boolean;
   /** True when the page was rendered from a Stripe Checkout success
    *  redirect (`?upgrade=success`). Triggers the welcome banner,
    *  card highlight, and the webhook-race polling loop inside
@@ -45,6 +62,9 @@ export default function AccountClient({
   weeklyEmailEnabled,
   monthlyEmailEnabled,
   isProLocked,
+  calendarConnection,
+  olderBackfillCount,
+  backfillInFlight,
   justUpgraded,
 }: Props) {
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -122,18 +142,29 @@ export default function AccountClient({
           />
         </div>
 
-        {/* Integrations — calendar slice C5b. FREE post-trial users
-            see the Pro-locked paywall card; PRO/TRIAL/PAST_DUE see
-            the "Connect from iOS app" placeholder. Connected-state
-            visibility lands after the C3 prisma db push migration
-            completes (deferred to follow-up — connection-state
-            fetch would currently P2022 against prod columns). */}
+        {/* Integrations — calendar slice C5b + slice 5 connection
+            re-enable. FREE post-trial users see the Pro-locked
+            paywall card; PRO/TRIAL/PAST_DUE see either the
+            "Connect from iOS app" placeholder or the connected-
+            state card depending on calendarConnection. */}
         <div id="integrations" className="scroll-mt-24">
           <IntegrationsSection
             isProLocked={isProLocked}
-            connection={null}
+            connection={calendarConnection}
           />
         </div>
+
+        {/* Slice 5 — "Process older entries" surface. Persistent
+            re-trigger for the 60d+ bucket. Hidden for FREE and
+            for users with zero olderCount. */}
+        {!isProLocked && olderBackfillCount > 0 && (
+          <div id="backfill" className="scroll-mt-24">
+            <BackfillOlderEntriesCard
+              olderCount={olderBackfillCount}
+              inFlight={backfillInFlight}
+            />
+          </div>
+        )}
 
         {/* Data export */}
         <div id="export" className="scroll-mt-24">
