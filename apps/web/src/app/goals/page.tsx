@@ -2,8 +2,10 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 
 import { getAuthOptions } from "@/lib/auth";
+import { getUserEntitlement } from "@/lib/entitlements-fetch";
 import { getUserProgression } from "@/lib/userProgression";
 import { LockedFeatureCard } from "@/components/locked-feature-card";
+import { ProLockedCard } from "@/components/pro-locked-card";
 import { PageContainer } from "@/components/page-container";
 import { GoalList } from "./goal-list";
 import type { GoalRailDetail } from "./_components/goal-detail-rail";
@@ -16,6 +18,12 @@ export default async function GoalsPage() {
 
   const userId = session.user.id;
   const progression = await getUserProgression(userId);
+  // §B.2.3 — FREE post-trial users see ProLockedCard for goals
+  // suggestions (the AI sub-goal flagging is the gated feature).
+  // TRIAL/PRO with low data still see the experiential
+  // LockedFeatureCard until the goalSuggestions threshold is hit.
+  const entitlement = await getUserEntitlement(userId);
+  const isProLocked = entitlement?.canExtractEntries === false;
 
   // ── Server-side focus-goal computation ───────────────────────────
   // 2xl: rail needs a default goal so the first paint isn't a
@@ -142,13 +150,19 @@ export default async function GoalsPage() {
   return (
     <div className="min-h-screen">
       <PageContainer mobileWidth="3xl" className="animate-fade-in">
-        {!progression.unlocked.goalSuggestions && (
+        {isProLocked ? (
           <div className="mb-6">
-            <LockedFeatureCard
-              unlockKey="goalSuggestions"
-              progression={progression}
-            />
+            <ProLockedCard surfaceId="goals_suggestions_locked" />
           </div>
+        ) : (
+          !progression.unlocked.goalSuggestions && (
+            <div className="mb-6">
+              <LockedFeatureCard
+                unlockKey="goalSuggestions"
+                progression={progression}
+              />
+            </div>
+          )
         )}
         <GoalList
           initialFocusGoalId={focusGoalId}

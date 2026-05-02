@@ -1,7 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { PRIORITY_COLOR } from "@acuity/shared";
+import {
+  FREE_TIER_LOCKED_COPY,
+  freeTierUpgradeUrl,
+  PRIORITY_COLOR,
+} from "@acuity/shared";
 
 type Task = {
   id: string;
@@ -33,7 +37,7 @@ type Tab = "open" | "snoozed" | "completed";
 
 const UNGROUPED_KEY = "__ungrouped__";
 
-export function TaskList() {
+export function TaskList({ isLocked = false }: { isLocked?: boolean }) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [groups, setGroups] = useState<TaskGroup[]>([]);
   const [loading, setLoading] = useState(true);
@@ -199,7 +203,7 @@ export function TaskList() {
       </div>
 
       {current.length === 0 ? (
-        <EmptyState tab={activeTab} />
+        <EmptyState tab={activeTab} isLocked={isLocked} />
       ) : (
         // space-y-6 (was space-y-3) so each group section reads as
         // its own block with breathing room between, matching the
@@ -826,7 +830,41 @@ function TaskEditModal({
   );
 }
 
-function EmptyState({ tab }: { tab: Tab }) {
+function EmptyState({ tab, isLocked }: { tab: Tab; isLocked: boolean }) {
+  // §B.2.4 — when the user is FREE post-trial AND the open-tab
+  // list is empty, the empty state is the conversion surface
+  // ("No tasks here yet — Acuity used to spot these..."). Other
+  // tabs (snoozed/completed) keep the generic empty state since
+  // they're not the primary conversion moment.
+  if (isLocked && tab === "open") {
+    const copy = FREE_TIER_LOCKED_COPY.tasks_empty_state;
+    const href = freeTierUpgradeUrl(
+      "https://app.getacuity.io",
+      "tasks_empty_state"
+    );
+    return (
+      <section
+        data-surface-id="tasks_empty_state"
+        className="rounded-2xl border border-zinc-200 bg-gradient-to-br from-violet-50/40 to-white px-6 py-12 text-center dark:border-white/10 dark:from-violet-950/10 dark:to-[#1E1E2E]"
+      >
+        <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
+          {copy.title}
+        </h3>
+        <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
+          {copy.body}
+        </p>
+        <a
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-5 inline-flex items-center gap-1.5 rounded-full bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
+        >
+          {copy.ctaLabel}
+        </a>
+      </section>
+    );
+  }
+
   const config = {
     open: {
       icon: "✅",

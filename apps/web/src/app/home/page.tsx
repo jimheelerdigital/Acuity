@@ -8,9 +8,11 @@ import { TrackCompleteRegistration, TrackPurchase } from "@/components/meta-pixe
 import { WelcomeBackBanner } from "@/components/welcome-back-banner";
 import { HomeFocusStack } from "@/components/home-focus-stack";
 import { ProgressionChecklist } from "@/components/progression-checklist";
+import { entitlementsFor } from "@/lib/entitlements";
 import { computeProgressionState, type ProgressionState } from "@/lib/progression";
 import { getUserProgression } from "@/lib/userProgression";
 import { PageContainer } from "@/components/page-container";
+import { ProLockedCard } from "@/components/pro-locked-card";
 import { RecordButton } from "./record-button";
 import { Greeting } from "./greeting";
 
@@ -92,6 +94,16 @@ export default async function DashboardPage() {
     : null;
 
   const userProg = await getUserProgression(userId);
+
+  // §B.2.1 — FREE post-trial users see a Pro pulse teaser card
+  // alongside today's prompt. The user row already has the fields
+  // entitlementsFor needs; no extra DB round-trip.
+  const isProLocked = user
+    ? entitlementsFor({
+        subscriptionStatus: user.subscriptionStatus,
+        trialEndsAt: user.trialEndsAt,
+      }).canExtractEntries === false
+    : false;
 
   const firstName = session.user.name?.split(" ")[0] ?? "there";
   const currentStreak = user?.currentStreak ?? 0;
@@ -197,6 +209,17 @@ export default async function DashboardPage() {
               <StreakSummarySection userId={userId} />
             </Suspense>
           </div>
+
+          {/* §B.2.1 Pro pulse — alongside today's prompt for FREE
+              post-trial users. Renders a smaller teaser card with
+              the locked Pro prompt example below the main prompt
+              row so it reads as a "preview of what Pro adds"
+              rather than a paywall blocking the main content. */}
+          {isProLocked && (
+            <div className="lg:col-span-12">
+              <ProLockedCard surfaceId="pro_pulse_home" />
+            </div>
+          )}
 
           {/* Row 3 — Life Matrix + (Weekly insight stacked over Goals).
               `lg:items-start` so the rail column doesn't stretch to

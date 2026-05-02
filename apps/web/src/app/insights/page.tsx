@@ -3,11 +3,13 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 
 import { getAuthOptions } from "@/lib/auth";
+import { getUserEntitlement } from "@/lib/entitlements-fetch";
 import { getUserProgression } from "@/lib/userProgression";
 import { ComparisonsCard } from "@/components/comparisons-card";
 import { HealthCorrelationsCard } from "@/components/health-correlations-card";
 import { UserInsightsCard } from "@/components/user-insights-card";
 import { LockedFeatureCard } from "@/components/locked-feature-card";
+import { ProLockedCard } from "@/components/pro-locked-card";
 import { PageContainer } from "@/components/page-container";
 
 import { InsightsView } from "./insights-view";
@@ -21,6 +23,11 @@ export default async function InsightsPage() {
   if (!session?.user?.id) redirect("/auth/signin");
 
   const progression = await getUserProgression(session.user.id);
+  // §B.2.2 + §B.2.5 — FREE post-trial users see ProLockedCard
+  // (billing gate) instead of either the link or the experiential
+  // LockedFeatureCard. TRIAL/PRO users see existing behavior.
+  const entitlement = await getUserEntitlement(session.user.id);
+  const isProLocked = entitlement?.canExtractEntries === false;
 
   return (
     <div className="min-h-screen">
@@ -40,7 +47,9 @@ export default async function InsightsPage() {
         {/* Featured destinations — Life Matrix and Theme Map get prime
             real estate since they're the signature views of the product. */}
         <div className="mb-10 grid grid-cols-1 gap-4 lg:grid-cols-2">
-          {progression.unlocked.lifeMatrix ? (
+          {isProLocked ? (
+            <ProLockedCard surfaceId="life_matrix_locked" />
+          ) : progression.unlocked.lifeMatrix ? (
             <Link
               href="/life-matrix"
               className="group block rounded-2xl border border-zinc-200 dark:border-white/10 bg-gradient-to-br from-violet-50 to-white dark:from-violet-950/30 dark:to-[#1E1E2E] p-6 transition hover:border-violet-300 dark:hover:border-violet-700/50"
@@ -67,7 +76,9 @@ export default async function InsightsPage() {
             <LockedFeatureCard unlockKey="lifeMatrix" progression={progression} />
           )}
 
-          {progression.unlocked.themeMap ? (
+          {isProLocked ? (
+            <ProLockedCard surfaceId="theme_map_locked" />
+          ) : progression.unlocked.themeMap ? (
             <Link
               href="/insights/theme-map"
               className="group block rounded-2xl border border-zinc-200 dark:border-white/10 bg-gradient-to-br from-indigo-50 to-white dark:from-indigo-950/30 dark:to-[#1E1E2E] p-6 transition hover:border-indigo-300 dark:hover:border-indigo-700/50"
