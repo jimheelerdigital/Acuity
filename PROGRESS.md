@@ -20,6 +20,61 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-02] — v1.1 calendar slice C5b: connect UI + FREE locked card + enqueue-sync P2022 short-circuit
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** 8dd4284
+
+### In plain English (for Keenan)
+
+Calendar slice C5b ships the real connect-flow surface plus a small defensive fix to quiet some warning spam. On the web `/account` page, free post-trial users now see a "Pro feature: Tasks on your calendar — continue on web" card; trial and pro users see a "Connect from iOS app" card explaining the actual connect flow ships in the next mobile release. On mobile, Profile → Calendar opens a placeholder screen with the same branching. Together with the enqueue-sync hardening (which silently skips calendar work when the database migration hasn't run yet), this means: free users see a polished paywall surface, paying users see a clear "coming soon — here's what to expect" explanation, and the server stops logging false-positive warnings while we wait for Jim to run the database migration tonight. Real iOS calendar wiring (slice C6) and the connected-state UI (post-migration follow-up) are the next two pieces.
+
+### Technical changes (for Jimmy)
+
+**Enqueue-sync P2022 short-circuit:**
+- `apps/web/src/lib/enqueue-sync.ts`: wrapped the entire `enqueueSyncForTask` body in try/catch. New `isMissingColumnError(err)` detector matches three signatures — Prisma `code: "P2022"`, Postgres native `meta.code: "42703"`, and a string-match `"column ... does not exist"` fallback for the rare case Prisma wraps the error before tagging it. On match → returns `{ enqueued: false, reason: "schema-not-ready" }`. Any other error is re-thrown so real bugs still light up Sentry via `/api/tasks`'s existing `safeLog.warn` catch.
+- Result: `calendar.enqueue.failed` warn-spam stops on every task POST/PATCH until db push lands. Post-migration the catch never fires and the helper runs normally.
+- `apps/web/src/lib/enqueue-sync.test.ts`: +4 tests covering each detector path + the re-throw behavior for non-P2022 errors.
+
+**Calendar C5b — web UI:**
+- Replaced `apps/web/src/app/account/integrations-section.tsx` (was the v1.0 "Coming after beta" stub with three disabled provider cards). New three-state component:
+  - **State 1** (FREE post-trial): `ProLockedCard` for the new `calendar_connect_locked` surface id.
+  - **State 2** (PRO/TRIAL/PAST_DUE not yet connected): `ConnectOnMobileCard` placeholder explaining EventKit ships in next mobile release; web Google OAuth is Phase B post-launch.
+  - **State 3** (PRO/TRIAL/PAST_DUE already connected): `ConnectedStateCard` showing provider + autoSendTasks + defaultEventDuration. **Currently unreachable** because `connection={null}` is hardcoded — fetching calendar fields would P2022 against prod until db push. Component lives in code today; one-line swap to enable post-migration.
+- `apps/web/src/app/account/page.tsx`: computes `isProLocked` via `entitlementsFor` on the existing user select (no extra DB round-trip, no C3-column references). Threads through to AccountClient.
+- `apps/web/src/app/account/account-client.tsx`: new `isProLocked` prop forwarded to `IntegrationsSection`. `connection={null}` always for now.
+
+**Calendar C5b — mobile placeholder:**
+- New file `apps/mobile/app/integrations.tsx` (98 lines). Mirrors the web three-state pattern: FREE → `ProLockedCard`; PRO → "Coming in next update" card with privacy disclosure (only event titles/times/attendee counts; never location/notes/emails). No EventKit code in this slice — that's C6.
+- `apps/mobile/app/(tabs)/profile.tsx`: new Calendar `MenuItem` routes to `/integrations`. Slotted between Reminders and Apple Health.
+
+**Shared copy:**
+- `packages/shared/src/copy/free-tier.ts`: added `calendar_connect_locked` surface id with verbatim §B.2-style copy. Eyebrow "Pro", title "Tasks on your calendar", body "...Free keeps the journal. Pro keeps the sync.", CTA "Continue on web →". Apple Review compliance enforced by the existing loop-driven test in `free-tier-copy.test.ts` (banned-token sweep + CTA shape).
+
+### Slice C5b verification
+
+- Full apps/web vitest: 16/17 files pass, **225/229 tests pass**. **+6 over slice 4-mobile baseline** (4 P2022 short-circuit + 2 from the new copy surface's loop-driven Apple Review tests). Zero regressions.
+- Same 4 pre-existing `auth-flows.test.ts` failures (tracked in `docs/v1-1/backlog.md`).
+- tsc: 7 total errors, **ZERO new** — verified via filter on `enqueue-sync`, `integrations-section`, `account-client`, `account/page`, `free-tier`. All 7 are pre-existing in unrelated files.
+
+### Manual steps needed
+
+- [ ] None for this slice — ships entirely client-rendering and via existing API surfaces. FREE/TRIAL/PRO users all see the right card based on `entitlementsFor`'s existing partition. Production runtime impact is zero on TRIAL/PRO and improved-not-degraded on FREE (paywall surface where there used to be a "Coming after beta" placeholder).
+- [ ] When Jim runs `npx prisma db push` from home tonight: post-migration follow-up commits the calendar-fields fetch on `/account/page.tsx` (defensive try/catch wrapper) and replaces `connection={null}` with the real `CalendarConnectionSummary`. Connected-state card becomes reachable.
+- [ ] Slice C6 (real EventKit on iOS) is the next calendar workstream.
+- [ ] Free-tier slice 5 (Process my history backfill with embed step) is the next free-tier workstream.
+
+### Notes
+
+- **Three-state component pattern:** including `ConnectedStateCard` JSX in the file even though it's currently unreachable was the deliberate design call. Alternatives considered: (a) don't include the JSX → post-migration commit needs both data plumbing AND new component code in one diff; (b) defensive fetch with try/catch on the page → adds Prisma surface for a fetch that's a no-op until db push; (c) hardcode `connection={null}` → chosen, post-migration is a one-line swap. Component stays unit-testable in isolation.
+- **isProLocked source uniformity:** `/account/page.tsx` computes it inline via `entitlementsFor` on the existing user select — same pattern as `/home/page.tsx` from slice 4-web. The standalone `getUserEntitlement` helper from slice 4-web's `entitlements-fetch.ts` is for pages that don't already select user fields; the inline form is preferred when you're already there.
+- **Mobile placeholder is informational only.** It explicitly states EventKit access will be requested only on user-initiated Connect (never at app launch) — pre-empts the iOS 17 reviewer concern flagged in `docs/v1-1/calendar-integration-scoping.md §7`.
+- **Apple Review compliance** for the `calendar_connect_locked` copy is automatic — the loop-driven `BANNED` token sweep in `free-tier-copy.test.ts` runs against every entry in `FREE_TIER_LOCKED_COPY`, so adding a new surface id is a one-file change that gets full coverage. 18 → 20 tests.
+- Followed slice protocol: full-suite vitest re-run, diff shown before push, baseline-red failures called out as pre-existing.
+
+---
+
 ## [2026-05-02] — fix(observability): embedding failures use safeLog (+ diagnosis correction)
 
 **Requested by:** Jimmy (TRIAL re-verification surfaced an empty-embedding entry)
