@@ -80,6 +80,49 @@ export interface Entitlement {
   isPastDue: boolean;
 }
 
+// ─── Dual-source subscription helpers (Phase 4, 2026-05-03) ────
+//
+// Pure boolean predicates over `subscriptionSource`. Used by the
+// conflict-policy UI (Phase 5) and the manage-subscription routing
+// (Phase 6) to decide whether a user goes to Stripe Customer Portal
+// or to "open iOS Settings → Subscriptions" copy.
+//
+// Important: these helpers do NOT gate access. They route UI flow.
+// `entitlementsFor` remains the single source of truth for "can
+// this user do X" — it reads `subscriptionStatus` only, regardless
+// of source. A user with `subscriptionStatus = "PRO"` gets full
+// permissions whether the source is "apple" or "stripe".
+//
+// `isAppleSubscription` returns true iff the source is literally
+// "apple". Returns false for null source (never-subscribed, FREE,
+// TRIAL pre-Phase-4-backfill). The intent is "does this user's
+// active sub belong to Apple?", so an unsubscribed user is correctly
+// false on both helpers.
+//
+// `isStripeSubscription` mirror.
+//
+// Defensive note: a row could theoretically have BOTH source set
+// AND data from the other path (e.g. a stale stripeCustomerId on
+// an apple-source user). The helpers don't enforce mutual exclusion
+// — they trust subscriptionSource as the single attribution column.
+// Phase 2 receipt-verification + Phase 5 conflict-policy together
+// prevent the dual-attribution race in the first place.
+export interface SubscriptionSourceInput {
+  subscriptionSource?: string | null;
+}
+
+export function isAppleSubscription(
+  user: SubscriptionSourceInput | null | undefined
+): boolean {
+  return user?.subscriptionSource === "apple";
+}
+
+export function isStripeSubscription(
+  user: SubscriptionSourceInput | null | undefined
+): boolean {
+  return user?.subscriptionSource === "stripe";
+}
+
 /**
  * Compute the entitlement set for a user.
  *

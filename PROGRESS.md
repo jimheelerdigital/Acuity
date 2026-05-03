@@ -20,6 +20,82 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-03] — Dual-source subscription model: Phase 1 (App Store Connect doc) + Phase 4 (schema + helpers + tests)
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hashes:** 8b42883 (Phase 1 doc), PENDING (Phase 4 code)
+
+### In plain English (for Keenan)
+
+Apple rejected v1.0 twice despite our defense, so we're pivoting to add native iOS in-app purchase under Apple's Small Business Program (15% commission instead of the standard 30%) while keeping the existing web Stripe path. A user who subscribes on iOS will see their Pro access on the web; a user who subscribes on web will see their Pro access on iOS — same account, same Pro, two purchase sources. Tonight's two pieces are: (1) the runbook Jim follows on Apple's side to enroll in the Small Business Program and create the iOS subscription product, and (2) the database changes our backend needs to track which platform a subscription came from. The iOS app code, the receipt-verification webhook, and the new paywall UI are all separate phases that come later. Tonight's schema change is purely additive (no existing data is touched, no existing flow changes); a small SQL command will run after the migration to label every existing paid user as "stripe" so the system knows which platform their sub belongs to.
+
+### Technical changes (for Jimmy)
+
+**Phase 1 — `docs/v1-1/iap-app-store-connect-setup.md` (8b42883):**
+- Step-by-step SBP enrollment + eligibility check (proceeds < $1M last year; standard sole-prop / single-LLC structure passes).
+- App Store Connect product creation walkthrough (Subscription Group "Acuity Pro", product `com.heelerdigital.acuity.pro.monthly`, $12.99/mo Tier 13).
+- **Pricing correction:** the workstream prompt said $9.99/mo. Web is **$12.99/mo, $99/yr** (verified in `apps/web/src/app/upgrade/upgrade-plan-picker.tsx`). Doc recommends matching $12.99 for cross-platform parity.
+- **Annual at launch?** Recommend NO — single monthly tier keeps the review surface small + receipt-verification logic simpler. Add annual in v1.2 once IAP path has 14 days of stable runtime. Web stays the conversion-optimized funnel.
+- Sandbox tester creation for TestFlight IAP testing (5-min compressed renewal cycle documented).
+- Review-screenshot spec + Phase-3 dependency callout.
+- IAP product review notes — verbatim text Jim pastes into ASC.
+- Two **hard "do not submit" gates**: (1) don't submit build until SBP shows Enrolled (30% commission is hard to undo retroactively); (2) don't enable IAP in production until Phase 2 receipt-verification webhook is live (Apple takes payment but DB doesn't flip otherwise).
+- Action checklist split: Jim's manual Apple-side work vs. CC's codebase work.
+
+**Phase 4 — schema + helpers + tests (this commit):**
+
+*Schema additions to `User` (purely additive, all nullable, no defaults that affect existing rows):*
+- `subscriptionSource String?` — `"stripe" | "apple" | null`. Single source attribution per row.
+- `appleOriginalTransactionId String? @unique` — Apple's stable cross-renewal identifier; the `@unique` constraint prevents two users claiming the same sub.
+- `appleProductId String?` — e.g. `"com.heelerdigital.acuity.pro.monthly"`.
+- `appleEnvironment String?` — `"sandbox" | "production"`. Helps with TestFlight debugging.
+- `appleLatestReceiptInfo Json?` — last verified receipt payload for replay debugging.
+
+*Entitlement helpers in `apps/web/src/lib/entitlements.ts`:*
+- New `isAppleSubscription(user)` and `isStripeSubscription(user)` — pure boolean predicates over `subscriptionSource`. Mutually exclusive (string equality on different values). Used by the Phase 5 conflict-policy UI and the Phase 6 manage-subscription routing. **`entitlementsFor()` itself is unchanged** — access gating still reads `subscriptionStatus` only, so a "PRO" user gets the same permissions whether the source is Apple or Stripe.
+
+*Tests — `apps/web/src/lib/subscription-source.test.ts` (new, 19 tests):*
+- Helper partition: returns false for null/undefined/missing, case-sensitive, mutually exclusive, fail-closed on unknown source values (e.g., a future "google_play" returns false on both).
+- Backfill SQL semantics encoded as a `shouldBackfillToStripe(row)` predicate matching the planned UPDATE filter exactly. Catches semantic drift if the SQL is reworded later.
+- Post-backfill cross-check: helpers behave correctly on backfilled rows (PRO/Stripe → "stripe", FREE → null, future apple → "apple").
+
+### Slice verification
+
+- Full apps/web vitest: **21/21 files pass, 303/303 tests pass.** +19 tests from `subscription-source.test.ts`. Zero regressions.
+- tsc: 7 errors, all pre-existing baseline in 4 files (OverviewTab, landing, auto-blog, google/auth). **Zero new** in any Phase 4 file.
+- `prisma format` applied. `prisma validate` clean. `prisma generate` ran locally so `Prisma.User` types include the new columns.
+- RLS allowlist: no change — `User` already covered.
+
+### Manual steps needed
+
+- [ ] **Phase 1 (Apple side, parallel to Phase 4):** start SBP enrollment NOW (24-48h activation) per `docs/v1-1/iap-app-store-connect-setup.md §2`. The activation timeline is the critical path. (Jim)
+- [ ] **Phase 4 (DB side):**
+  1. **`npx prisma db push` from home network.** Adds 5 nullable columns to User. No data migration. The `@unique` on `appleOriginalTransactionId` is a partial unique index (Postgres allows multiple NULLs), so existing NULL rows don't conflict.
+  2. **Backfill SQL after `db push` succeeds:**
+     ```sql
+     UPDATE "User"
+     SET "subscriptionSource" = 'stripe'
+     WHERE "subscriptionStatus" IN ('PRO', 'TRIAL', 'PAST_DUE')
+       AND "stripeCustomerId" IS NOT NULL
+       AND "subscriptionSource" IS NULL;
+     ```
+     Predicate matches `shouldBackfillToStripe` from the test file. Run via `psql` on `DIRECT_URL` or paste into Supabase SQL editor. Returns the count of updated rows; expected to match `SELECT COUNT(*) FROM "User" WHERE subscriptionStatus IN ('PRO','TRIAL','PAST_DUE') AND stripeCustomerId IS NOT NULL` taken before the UPDATE. (Jim)
+- [ ] No env changes. No Inngest changes. No Stripe webhook changes.
+- [ ] **Hard hold:** do not enable any iOS IAP path in production until Phase 2 (receipt-verification endpoint + App Store Server Notifications V2 webhook) ships. Apple-side payment without DB-side verification = orphaned charges.
+
+### Notes
+
+- **Schema-bomb-defense pattern (per slice C3 / C5b lessons):** any new code path that READS the new columns MUST use explicit `select` until db push lands in production. The Phase 4 helpers don't fetch User rows themselves — they accept `SubscriptionSourceInput` shapes the caller passes in — so Phase 4 itself is push-safe (callers are existing routes whose `select` clauses don't include the new columns). Phase 2/5/6 must add the new columns to their `select` lists explicitly.
+- **`@unique` on `appleOriginalTransactionId` is the cleanest race-defense.** Two users in two devices both completing the same Apple sub purchase (rare but possible if family-shared Apple ID + signed into different web accounts) would otherwise both flip to PRO with the same Apple receipt. The unique constraint makes the second `update` fail at the SQL layer, blocking the duplicate cleanly.
+- **Why a single `subscriptionSource` column instead of inferring from data presence (`stripeCustomerId IS NOT NULL` ? "stripe" : "apple")?** Inference would be wrong for canceled-Stripe-then-resubscribed-Apple users (they have BOTH `stripeCustomerId` set AND an Apple sub). The explicit column is the source of truth.
+- **`appleLatestReceiptInfo` as JSON, not normalized columns:** Apple's receipt payload shape changes across StoreKit versions. Replay-debugging benefits from the raw structure. We can always project a column out of it later if a specific field becomes hot.
+- **Helpers are read-only/predicate-only.** No write helper for `setSubscriptionSource(...)` because the only writes happen at sub-creation time inside specific webhook/IAP-verification handlers (Phase 2 + the existing Stripe `checkout.session.completed`); centralizing them via a setter would obscure the call sites without adding safety.
+- **`entitlementsFor` deliberately unchanged.** Access gating is invariant under source. A user with `subscriptionStatus = "PRO"` gets full permissions whether the source is Apple, Stripe, or null (the latter is anomalous — null source on PRO would mean "we lost track of where this sub came from" but we still grant access; never punish the user for our metadata gap).
+- **Followed slice protocol:** full-suite vitest re-run, tsc whole-tree, `prisma validate`, baseline-red files called out as pre-existing. 5 nullable columns are safe to ship pre-db-push because every consuming code path is also new (Phase 2/5/6).
+
+---
+
 ## [2026-05-03] — TRIAL embedding backfill no-op + slice 2 verifier 7/7 PASS
 
 **Requested by:** Jimmy

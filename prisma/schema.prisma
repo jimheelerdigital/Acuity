@@ -43,26 +43,60 @@ model VerificationToken {
 }
 
 model User {
-  id                            String               @id @default(cuid())
-  email                         String               @unique
-  emailVerified                 DateTime?
+  id                     String    @id @default(cuid())
+  email                  String    @unique
+  emailVerified          DateTime?
   // bcrypt hash for email/password accounts. Null for OAuth-only users
   // (Google sign-ins that never set a password). A user with a Google
   // Account row AND a passwordHash has linked both auth methods.
-  passwordHash                  String?
+  passwordHash           String?
   // Random token issued during the forgot-password flow. Cleared on
   // use or on natural expiry. @unique so the lookup in the reset
   // handler is indexed without a composite.
-  resetToken                    String?              @unique
-  resetTokenExpires             DateTime?
-  name                          String?
-  image                         String?
-  avatarUrl                     String?
-  stripeCustomerId              String?
-  stripeSubscriptionId          String?
-  stripeCurrentPeriodEnd        DateTime?
-  subscriptionStatus            String               @default("TRIAL")
-  trialEndsAt                   DateTime?
+  resetToken             String?   @unique
+  resetTokenExpires      DateTime?
+  name                   String?
+  image                  String?
+  avatarUrl              String?
+  stripeCustomerId       String?
+  stripeSubscriptionId   String?
+  stripeCurrentPeriodEnd DateTime?
+  subscriptionStatus     String    @default("TRIAL")
+  trialEndsAt            DateTime?
+
+  // ─── Dual-source subscription model (Phase 4, 2026-05-03) ────
+  // Apple rejected v1.0 twice under §3.1.1 despite our 3.1.3(b)
+  // multiplatform-service framing. Pivoting to add native iOS IAP
+  // under the Apple Small Business Program (15% commission) in
+  // parallel with the existing web Stripe path. Both paths
+  // converge on the same subscriptionStatus so cross-platform
+  // access works either way.
+  //
+  // subscriptionSource attribution (additive, single source per row):
+  //   - "stripe" — sub was created via web Stripe Checkout
+  //   - "apple"  — sub was created via iOS native IAP
+  //   - null     — never subscribed (FREE/TRIAL/etc.) OR a row
+  //                that pre-dates this column (backfilled to
+  //                'stripe' for paid rows; null otherwise)
+  // The conflict policy in Phase 5 reads this to render
+  // "you already have an active sub via Apple — manage in iOS
+  // Settings → Subscriptions" copy on the web /upgrade page (and
+  // the reverse on iOS).
+  subscriptionSource String?
+
+  // appleOriginalTransactionId — Apple's stable identifier for a
+  // subscription across renewals. @unique because each Apple sub
+  // has exactly one originalTransactionId; preventing two User
+  // rows from claiming the same sub is the cleanest race-defense.
+  // Receipt verification (Phase 2) reads + writes this column.
+  appleOriginalTransactionId    String?              @unique
+  appleProductId                String? // e.g. "com.heelerdigital.acuity.pro.monthly"
+  appleEnvironment              String? // "sandbox" | "production"
+  // appleLatestReceiptInfo: last verified receipt payload. JSON
+  // because Apple's payload shape is large + drifts across
+  // StoreKit versions; replay-debugging benefits from keeping the
+  // raw structure rather than projecting it column-by-column.
+  appleLatestReceiptInfo        Json?
   timezone                      String               @default("America/Chicago")
   // DEPRECATED: superseded by notificationTime + notificationDays +
   // notificationsEnabled (added 2026-04-20 alongside the onboarding
