@@ -20,6 +20,69 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-03] — TRIAL embedding backfill no-op + slice 2 verifier 7/7 PASS
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** N/A (admin script run, no code changes)
+
+### In plain English (for Keenan)
+
+The "missing embedding" problem flagged yesterday is already fixed. We re-ran the backfill script that fills in missing semantic-search vectors against production: it scanned all 59 completed entries and found that every one of them already has an embedding. Nothing needed re-embedding. Then we ran the slice 2 verifier against the TRIAL test account — every check passed. The pipeline is healthy across the board.
+
+### Technical changes (for Jimmy)
+
+No code changes — this was an admin script run + verification.
+
+**Ran from work-network with explicit env source (`set -a && source apps/web/.env.local && set +a`):**
+
+1. `apps/web/scripts/backfill-entry-embeddings.ts` (no args) →
+
+   ```
+   [backfill-embeddings] Scanning 59 COMPLETE entries (force=false)…
+   [backfill-embeddings] Processed 59/59 · embedded 0 · skipped 59
+   [backfill-embeddings] DONE. 59 entries scanned, 0 embedded, 59 skipped.
+   ```
+
+   All 59 entries had non-empty `embedding` arrays at scan time. The TRIAL gap from yesterday has already been filled (likely by a prior manual run after the slice 5 observability fix landed).
+
+2. `apps/web/scripts/verify-slice2-recording.ts --email jim+slice2trial@heelerdigital.com` →
+
+   ```
+   Entry: cmoodio3400014zd9ayudlm1y
+   User:  jim+slice2trial@heelerdigital.com  (TRIAL)
+   Created: 2026-05-02T13:24:40.433Z
+   ──────────────────────────────────────────────────────
+   status:               COMPLETE
+   transcript present:   Y
+   summary present:      Y
+   themes count:         2
+   wins count:           2
+   blockers count:       1
+   rawAnalysis present:  Y
+   embedding populated:  Y
+   themeMention rows:    2
+   tasks created:        0
+   goals touched:        0
+   lifeAreaMentions hit: 3
+   ──────────────────────────────────────────────────────
+   PASS — 7/7 checks (PRO/TRIAL branch)
+   ```
+
+### Manual steps needed
+
+- [ ] None. Embedding pipeline is healthy; TRIAL persona's most recent entry has full PRO/TRIAL-branch artifacts.
+
+### Notes
+
+- **The backfill scanner scopes to `WHERE status = "COMPLETE"`.** Embeddings are persisted only after extraction completes; partial/failed entries can't be re-embedded until they re-process. So 59 == "all eligible production entries today." 0 in the gap, 0 to fix.
+- **`force=false` (default) skips entries that already have a non-empty embedding.** If we ever want to re-embed every entry (e.g., to upgrade to text-embedding-3-large), pass `--force`.
+- **Env loading caveat I tripped over:** the verify script uses `import "dotenv/config"` which loads `.env`, not `.env.local`. Running with `set -a && source apps/web/.env.local && set +a && npx tsx ...` in the same shell as the script invocation works because the parent shell's env is inherited. Each Bash tool call is a fresh shell, so this idiom must be on the same command line.
+- **Same Supabase reachability as prior sessions** — work-network does NOT block Supabase from this Mac. Some tooling paths (e.g. `dotenv/config` loading) report `Can't reach database server` if the env var isn't set, which presents identically to the network-block error and caused me to mis-diagnose this last night. Network was never the issue; env loading was.
+- This run resolves the day-1 TRIAL gap concern from `docs/v1-1/sentry-pass-2026-05-02.md §2.1`. No follow-up backfill needed.
+
+---
+
 ## [2026-05-03] — V5 cohort attribution column — unblocks data-driven ramp decisions
 
 **Requested by:** Jimmy
