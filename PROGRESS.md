@@ -24,7 +24,7 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hashes:** 8b42883 (Phase 1 doc), PENDING (Phase 4 code)
+**Commit hashes:** 8b42883 (Phase 1 doc), e29e311 (Phase 4 code)
 
 ### In plain English (for Keenan)
 
