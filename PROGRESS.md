@@ -20,6 +20,116 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-03] — Dual-source subscription Phase 3a: mobile StoreKit 2 wrapper + Subscribe sheet + Profile/Paywall updates + Restore button
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** PENDING
+
+### In plain English (for Keenan)
+
+Phase 3a — the mobile-side wiring for the new in-app subscription path. iOS users on the free tier will now have a "Subscribe" entry point in the Profile menu and on the post-trial paywall, alongside the existing "Continue on web" link (Apple requires both stay visible). The Subscribe screen presents a single tier — Acuity Pro at $12.99/month, matching web — and walks the user through Apple's purchase sheet, sends the receipt to our backend, and unlocks Pro on success. There's also a "Restore Purchases" button on every screen that mentions Pro (Apple-required for review). All of this is dead code in production builds for now: it's gated behind a build-time flag that's currently OFF, so users see no change until Jim flips the flag in the app config and rebuilds for TestFlight after the Small Business Program enrolls. The 8 locked-state cards on the dashboard will get the second "Subscribe in app" CTA in Phase 3b — split out per the size cap on this slice. End-user impact today: zero. Wiring ready for the moment the gate flips.
+
+### Technical changes (for Jimmy)
+
+**Pure decision functions in `@acuity/shared` (testable in apps/web vitest):**
+- `packages/shared/src/iap-flow.ts` (new, 286 lines):
+  - `classifyVerifyResponse({ status, body })` → `success | idempotent-success | ux-conflict (manage-on-web | contact-support | show-error) | transient-error (retryable | not)`. Single source of truth for branching the verify-receipt response.
+  - `classifyPurchaseError(err)` → 5-state enum (`user-cancelled | payment-not-allowed | deferred | network | store-unknown`) with `silent` flag. Defensive against react-native-iap shape drift across versions.
+  - `purchaseErrorMessage(kind)` → user-facing copy (null when silent).
+  - `classifyRestoreOutcome({ totalAvailable, successfulVerifies, errors })` → `none | restored | error`.
+- `packages/shared/src/index.ts`: re-exports `./iap-flow`.
+
+**Tests — `apps/web/src/lib/iap-flow.test.ts` (new, 274 lines, 29 tests):**
+- All 7 verify-response statuses + body codes.
+- All 5 purchase-error code aliases, silent flag, fallback paths.
+- All 3 restore-outcome shapes including the "totalAvailable but all-failed" recovery path.
+
+**Mobile — feature-flag gate + product constants:**
+- `apps/mobile/lib/iap-config.ts` (new, 38 lines): `isIapEnabled()` reads `Constants.expoConfig.extra.iapEnabled` (default false). `IAP_MONTHLY_PRODUCT_ID = "com.heelerdigital.acuity.pro.monthly"` matches the `ALLOWED_PRODUCT_IDS` set on the backend (Phase 2). Build-time gate, not remote — operator-controlled by EAS profile, safer than runtime-flipping while users could be mid-purchase.
+
+**Mobile — react-native-iap wrapper:**
+- `apps/mobile/lib/iap.ts` (new, 420 lines): thin wrapper around react-native-iap.
+  - `initIap()` — connects to StoreKit. Idempotent. Returns false on flag-off / non-iOS / load failure.
+  - `getMonthlyProduct()` — fetches `[com.heelerdigital.acuity.pro.monthly]` from Apple. Returns null on flag-off / no products / error.
+  - `purchaseMonthly()` — presents Apple sheet. Returns `{ kind: "success", transactionId, receipt } | { kind: "error", errorKind, message }`. **Does NOT call `finishTransaction`** — that's the Subscribe sheet's job AFTER backend verify succeeds (Apple's "verify-then-finish" pattern from StoreKit 2).
+  - `verifyAndFinish({ transactionId, receipt })` — POSTs to `/api/iap/verify-receipt`, branches via `classifyVerifyResponse`. Calls `finishTransaction` ONLY on `success` / `idempotent-success`; transient errors leave the transaction unfinished so StoreKit re-surfaces it on retry.
+  - `restorePurchases()` — `getAvailablePurchases()` → cycles each through `verifyAndFinish` → returns `RestoreOutcome`.
+  - `subscribeToPurchaseUpdates(cb)` — listener for renewal / deferred-resolved events, returns unsubscribe.
+  - `disconnectIap()` — best-effort `endConnection`. Idempotent.
+  - All entry points short-circuit through `loadIapModule()` which checks Platform + flag + dynamic-import availability. Flag-off builds never spin StoreKit.
+- `apps/mobile/types/react-native-iap.d.ts` (new, 41 lines): minimal type declaration shim. The package is added to `package.json` but `npm install` is Jim's step; this keeps tsc clean until install lands. Real types take precedence once installed.
+- `apps/mobile/package.json` (+1): `react-native-iap: ^13.0.0`.
+- `apps/mobile/app.json` (+2): `react-native-iap` added to `plugins[]`; `extra.iapEnabled: false` (the gate).
+
+**Mobile — Subscribe screen:**
+- `apps/mobile/app/subscribe.tsx` (new, 410 lines): full screen handling all UX states (loading, product-loaded, purchasing, success, error, conflict). Full feature list, $12.99/month price card, "Subscribe" primary CTA, "Continue on web" secondary, RestorePurchasesButton, fine print ("auto-renews monthly, cancel in iOS Settings"). UX conflict handling:
+  - 409 ACTIVE_STRIPE_SUB → Alert with "Continue on web" linking to `/account?src=mobile_iap_active_stripe`.
+  - 409 ANOTHER_USER_OWNS_TRANSACTION → Alert with "Contact support" linking to `mailto:`.
+  - 502 / network → inline error in the card; user can retry.
+  - User-cancelled → silent (no error shown), screen stays open for retry.
+  - When `isIapEnabled() === false` OR non-iOS, renders an "Unavailable" fallback that just opens `/upgrade` on web.
+
+**Mobile — Restore Purchases component:**
+- `apps/mobile/components/restore-purchases-button.tsx` (new, 85 lines): compact pressable. Self-hides on Android + flag-off builds. Three outcome alerts (`none | restored | error`) routed via `classifyRestoreOutcome`. Calls `onRestored` callback after success so parent screens can refresh user state and dismiss.
+
+**Mobile — Profile tab (`apps/mobile/app/(tabs)/profile.tsx`, +83/-25):**
+- `subscriptionSource` now read from `useAuth().user`. Three new derived booleans: `isAppleSub`, `isStripeSub`, `showInAppSubscribe`.
+- New "Subscribe" menu item shown to FREE users on iOS when `isIapEnabled()`. Pushes `/subscribe`.
+- Existing "Manage plan on web" stays visible alongside (3.1.3(b) requires both paths).
+- New "Manage in iOS Settings" menu item for Apple-source PRO users — deep-links to `https://apps.apple.com/account/subscriptions`.
+- Existing "Manage subscription" (Stripe Customer Portal) gated to Stripe-source PRO users only.
+- RestorePurchasesButton mounted at the bottom of the menu (Apple-required affordance).
+- `refresh` destructured from `useAuth` so the Restore callback can re-fetch user state.
+
+**Mobile — Paywall modal (`apps/mobile/app/paywall.tsx`, +50/-10):**
+- When `showInAppSubscribe`: primary CTA flips to "Subscribe in app" (pushes `/subscribe`); "Continue on web" stays as a secondary outline button.
+- When flag-off / Android: original layout unchanged.
+- RestorePurchasesButton added below "Remind me later".
+- Footer copy updated to reflect both paths exist.
+
+**Backend — `/api/user/me` projection (+5):**
+- Added `subscriptionSource: true` to the select clause so mobile receives the field in the user payload.
+
+**Mobile User type (`apps/mobile/lib/auth.ts`, +4):**
+- `subscriptionSource?: "stripe" | "apple" | null` added to the `User` type.
+
+### Slice verification
+
+- Full apps/web vitest: **23/23 files pass, 362/362 tests pass.** +29 from `iap-flow.test.ts`. Zero regressions.
+- Web tsc: 7 errors total, all pre-existing baseline in 4 unrelated files (OverviewTab, landing, auto-blog, google/auth). **Zero new** in any Phase 3a file.
+- Mobile tsc: 118 total. 114 TS2786 (React 18/19 split documented in `docs/v1-1/backlog.md`; baseline was 116 — delta +0 from this slice's own React-pinning since react-native-iap is dynamic-imported). 3 typed-routes manifest gaps (the new `/subscribe` push ×2 + the pre-existing `/integrations` push ×1 — same pattern, regenerates on next `expo start`). 1 other minor pre-existing baseline error.
+- `prisma format` not needed (no schema changes).
+- `react-native-iap` dynamic-imported via `loadIapModule()` so tsc-error-on-missing-types resolves via the type shim until install lands.
+
+### Manual steps needed
+
+- [ ] **Jim runs `npm install` from the workspace root** to pull `react-native-iap@^13.0.0` into `apps/mobile`. The dependency is declared in `package.json` but the lockfile + node_modules need a real install. (Jimmy)
+- [ ] **No db push needed** — Phase 3a touches no schema. Phase 2's `IapNotificationLog` push is the prior schema step (Jim ran it per the previous commit's manual-steps list).
+- [ ] **No env vars needed for Phase 3a itself.** The Phase 2 env vars (`APPLE_IAP_KEY_ID` / `ISSUER_ID` / `PRIVATE_KEY`) are still required before the IAP flag is flipped on, but the mobile build with the flag OFF doesn't need them.
+- [ ] **TestFlight build instructions (when ready):**
+  1. `cd apps/mobile && eas build --profile preview --platform ios` (or whatever the existing TestFlight profile is called).
+  2. The build will include react-native-iap's native module — EAS handles the iOS provisioning-profile capability for "In-App Purchase".
+  3. **Do NOT flip `iapEnabled: true` in app.json yet.** Leave it false; users get the existing "Continue on web" experience.
+  4. When SBP is Enrolled + the IAP product is `Ready to Submit` + Phase 2 env vars are in Vercel + the webhook URL is registered in App Store Connect, flip `extra.iapEnabled: true` in app.json (or the relevant EAS profile env override) and rebuild.
+  5. Verify the test flow with a Sandbox tester account before flipping the flag in production.
+- [ ] **Phase 3b** ships next — adds the "Subscribe in app" CTA alongside "Continue on web" on every locked-state surface (8 screens: /home, /life-matrix, /goals, /tasks, /insights, /insights/theme-map, /entries/[id], /account/integrations). Defers per the per-slice line cap on this slice.
+
+### Notes
+
+- **Build-time flag, not remote.** `Constants.expoConfig.extra.iapEnabled` is set in `app.json` and overridable per EAS profile. No runtime-flipping. Three reasons: (1) the IAP path is heavyweight (StoreKit init, sheet presentation, real-money flow); (2) flipping mid-flow could surface inconsistent UI to users in the middle of a purchase; (3) the operator wants build-version-correlated lever pulls when Apple-side state changes (SBP enrollment, product activation).
+- **3.1.3(b) compliance check.** Apple's rule is: you cannot REMOVE the external-subscription link in favor of the IAP one; you must offer BOTH. Phase 3a complies — every screen with a "Subscribe in app" CTA also keeps "Continue on web." Profile menu has both as separate items. Paywall stacks them as primary + secondary. Subscribe sheet has the in-app primary + a "Continue on web" link below.
+- **`finishTransaction` is server-confirmed.** The Subscribe sheet calls `verifyAndFinish` which only finishes the StoreKit transaction AFTER the backend returns 200 (success or idempotent). Network errors leave the transaction unfinished — StoreKit will surface it again on next listener tick, and the user can retry without re-paying. This matches Apple's StoreKit 2 documentation.
+- **Apple Settings deep-link** for Manage-Apple-Subscription uses `https://apps.apple.com/account/subscriptions` — this is the documented stable URL Apple provides. iOS handles it via the App Store app, which navigates to Settings → Apple ID → Subscriptions.
+- **react-native-iap type shim** — `apps/mobile/types/react-native-iap.d.ts` lets tsc compile cleanly until `npm install` lands. Once installed, the bundled types take precedence (TS module-declaration resolution prefers the more specific declaration). Safe to leave the shim in place permanently.
+- **Pure decision functions in `@acuity/shared`** because mobile has no test runner. Same dedup pattern as slice 7's `isFreeTierUser`. apps/web's vitest harness can run them directly via `import { ... } from "@acuity/shared"`. 29 tests cover the verify-response branching, purchase-error normalization, and restore-outcome classification.
+- **Why no listener for purchase-updated wired up at the AuthProvider level yet?** Deferred to Phase 3b alongside the locked-state CTA additions. The current Subscribe sheet handles the inline-purchase happy path; the listener catches background events (deferred-payment approvals, Family Sharing pulls). Wiring it at app level requires adding a hook to AuthProvider — that's an extra surface that doesn't pay off until the flag is on.
+- **Phase split rationale.** Phase 3 estimated at 1500+ lines if shipped whole. Phase 3a covers the foundation (wrapper + Subscribe + Profile + Paywall + Restore + tests = 1554 new lines + 155 modified). Phase 3b will add the "Subscribe in app" CTA to the 8 locked-state surfaces (pure UI additions, no new logic) and wire the AuthProvider-level listener. Cleanly split at boundary 3 per the prompt's instruction.
+- **Production behavior unchanged — confirmed.** The flag default is false. With the flag off, every entry point falls back to the existing "Continue on web" path. The Subscribe screen renders an "unavailable" fallback. The Profile tab hides the new menu items. The Paywall modal renders its original layout. RestorePurchasesButton self-hides on every surface.
+- Followed slice protocol: full-suite vitest re-run (+29), tsc whole-tree on web + mobile, baseline-red files called out as pre-existing per `docs/v1-1/backlog.md`. No schema changes; no Inngest changes; no Stripe changes.
+
+---
+
 ## [2026-05-03] — Dual-source subscription Phase 2: receipt verify + Apple Server Notifications V2 webhook
 
 **Requested by:** Jimmy

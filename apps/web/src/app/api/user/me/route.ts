@@ -37,6 +37,11 @@ export async function GET(req: NextRequest) {
       name: true,
       image: true,
       subscriptionStatus: true,
+      // Phase 4 dual-source: surfaced so mobile can route
+      // "Manage subscription" to the right place (Stripe Customer
+      // Portal vs iOS Settings → Subscriptions). Null on FREE +
+      // never-subscribed users.
+      subscriptionSource: true,
       trialEndsAt: true,
       // stripeCurrentPeriodEnd is the renewal date once
       // subscriptionStatus flips to PRO. Exposed so the account-page

@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
+import { Platform } from "react-native";
 import { useState } from "react";
 import {
   ActivityIndicator,
@@ -11,7 +12,9 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { RestorePurchasesButton } from "@/components/restore-purchases-button";
 import { api } from "@/lib/api";
+import { isIapEnabled } from "@/lib/iap-config";
 
 /**
  * Native paywall screen for post-trial users. Per
@@ -33,6 +36,15 @@ import { api } from "@/lib/api";
 export default function PaywallScreen() {
   const router = useRouter();
   const [opening, setOpening] = useState(false);
+
+  // Phase 3a — surface in-app subscribe as the primary CTA on iOS
+  // when the build-time IAP flag is on. "Continue on web" is
+  // demoted to the secondary slot but stays visible per 3.1.3(b).
+  const showInAppSubscribe = Platform.OS === "ios" && isIapEnabled();
+
+  const openSubscribe = () => {
+    router.replace("/subscribe");
+  };
 
   const openUpgrade = async () => {
     setOpening(true);
@@ -110,26 +122,64 @@ export default function PaywallScreen() {
         </View>
 
         <View className="mt-auto pt-10 gap-3">
-          <Pressable
-            onPress={openUpgrade}
-            disabled={opening}
-            className="rounded-full bg-violet-600 py-4 items-center"
-            style={{
-              opacity: opening ? 0.85 : 1,
-              shadowColor: "#7C3AED",
-              shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: 0.35,
-              shadowRadius: 12,
-            }}
-          >
-            {opening ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text className="text-white text-sm font-semibold">
-                Continue on web
-              </Text>
-            )}
-          </Pressable>
+          {showInAppSubscribe ? (
+            <>
+              {/* Primary — in-app StoreKit purchase. Phase 3a. */}
+              <Pressable
+                onPress={openSubscribe}
+                disabled={opening}
+                className="rounded-full bg-violet-600 py-4 items-center"
+                style={{
+                  shadowColor: "#7C3AED",
+                  shadowOffset: { width: 0, height: 0 },
+                  shadowOpacity: 0.35,
+                  shadowRadius: 12,
+                }}
+              >
+                <Text className="text-white text-sm font-semibold">
+                  Subscribe in app
+                </Text>
+              </Pressable>
+
+              {/* Secondary — external Safari to /upgrade. Stays
+                  visible per 3.1.3(b). */}
+              <Pressable
+                onPress={openUpgrade}
+                disabled={opening}
+                className="rounded-full border border-violet-600/40 py-4 items-center"
+              >
+                {opening ? (
+                  <ActivityIndicator color="#A78BFA" />
+                ) : (
+                  <Text className="text-violet-400 text-sm font-semibold">
+                    Continue on web
+                  </Text>
+                )}
+              </Pressable>
+            </>
+          ) : (
+            // Flag-off + Android: external-only path, unchanged.
+            <Pressable
+              onPress={openUpgrade}
+              disabled={opening}
+              className="rounded-full bg-violet-600 py-4 items-center"
+              style={{
+                opacity: opening ? 0.85 : 1,
+                shadowColor: "#7C3AED",
+                shadowOffset: { width: 0, height: 0 },
+                shadowOpacity: 0.35,
+                shadowRadius: 12,
+              }}
+            >
+              {opening ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text className="text-white text-sm font-semibold">
+                  Continue on web
+                </Text>
+              )}
+            </Pressable>
+          )}
 
           <Pressable
             onPress={() => router.back()}
@@ -139,14 +189,16 @@ export default function PaywallScreen() {
             <Text className="text-zinc-500 dark:text-zinc-400 text-sm">Remind me later</Text>
           </Pressable>
 
-          {/* Apple Review 3.1.3(b) Multiplatform Services compliance.
-              We are allowed to reference the web, but we must not
-              direct users to a specific purchase flow in IAP terms.
-              "Continue on web" reads as a navigation affordance, not
-              a sale. docs/APPLE_IAP_DECISION.md §6. */}
+          {/* Restore Purchases — Apple-required affordance. Self-
+              hides on Android + flag-off builds. */}
+          <RestorePurchasesButton onRestored={() => router.back()} />
+
+          {/* 3.1.3(b) compliance footnote. Updated to reflect both
+              paths now exist. */}
           <Text className="text-[10px] text-zinc-600 dark:text-zinc-300 text-center mt-4 leading-snug">
-            Subscriptions are managed through your Acuity web account.
-            Manage or cancel any time at getacuity.io.
+            {showInAppSubscribe
+              ? "Subscribe in the app or on the web. Either path unlocks the same Pro features across all your devices."
+              : "Subscriptions are managed through your Acuity web account. Manage or cancel any time at getacuity.io."}
           </Text>
         </View>
       </ScrollView>

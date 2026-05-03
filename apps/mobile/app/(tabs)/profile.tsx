@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import * as Linking from "expo-linking";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
@@ -12,13 +13,15 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { DeleteAccountModal } from "@/components/delete-account-modal";
+import { RestorePurchasesButton } from "@/components/restore-purchases-button";
 import { useAuth } from "@/contexts/auth-context";
 import { useTheme, type ThemeChoice } from "@/contexts/theme-context";
+import { isIapEnabled } from "@/lib/iap-config";
 import { openSubscriptionPortal } from "@/lib/subscription";
 
 export default function ProfileTab() {
   const router = useRouter();
-  const { user, signOut, deleteAccount } = useAuth();
+  const { user, signOut, deleteAccount, refresh } = useAuth();
   const [signingOut, setSigningOut] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
@@ -40,12 +43,27 @@ export default function ProfileTab() {
   const name = user?.name ?? "Acuity User";
   const email = user?.email ?? "—";
   const subStatus = user?.subscriptionStatus ?? "FREE";
+  const subSource = user?.subscriptionSource ?? null;
   const isPro = subStatus === "PRO";
-  // Only show "Manage subscription" when the user actually has a
-  // Stripe customer behind their PRO status. Comped / reviewer
+  const isAppleSub = subSource === "apple";
+  const isStripeSub = subSource === "stripe";
+  // Only show Stripe "Manage subscription" when the user actually
+  // has a Stripe customer behind their PRO status. Comped / reviewer
   // accounts are PRO without a Stripe row — the portal call would
   // 400 NoSubscription, surfacing as a confusing dead-end Alert.
-  const canManageSubscription = isPro && user?.hasStripeCustomer === true;
+  const canManageStripeSubscription =
+    isPro && isStripeSub && user?.hasStripeCustomer === true;
+  // Phase 3a — show in-app Subscribe entry point for FREE users on
+  // iOS when the build-time IAP flag is on. Falls back to the web
+  // "Manage plan on web" link when the flag is off OR on Android.
+  const showInAppSubscribe =
+    !isPro && Platform.OS === "ios" && isIapEnabled();
+  // For Apple-source PRO users, route Manage to iOS Settings
+  // (Apple's deep link). For Stripe-source PRO users, the existing
+  // openSubscriptionPortal flow handles it.
+  const handleManageAppleSubscription = () => {
+    void Linking.openURL("https://apps.apple.com/account/subscriptions");
+  };
 
   // Days remaining on the current paid period — used by the delete
   // modal to spell out forfeiture. Null on non-PRO users, missing
@@ -123,34 +141,52 @@ export default function ProfileTab() {
 
         {/* Menu */}
         <View className="gap-2">
+          {/* Phase 3a — FREE users see "Subscribe" (in-app, iOS only,
+              flag-on) AND "Manage plan on web" (3.1.3(b) requires the
+              external link to remain alongside any IAP entry point). */}
+          {showInAppSubscribe && (
+            <MenuItem
+              icon="sparkles-outline"
+              label="Subscribe"
+              sublabel="Acuity Pro — full debriefs, weekly reports, calendar"
+              onPress={() => router.push("/subscribe")}
+            />
+          )}
           {!isPro && (
-            // Copy deliberately avoids "Upgrade" / "Subscribe" / "$"
-            // per docs/APPLE_IAP_DECISION.md (Option C / App Store
-            // Review Guideline 3.1.1). Opens Safari (external
-            // browser), never an in-app WebView. The foreground-
-            // refresh hook in auth-context picks up the new
-            // subscriptionStatus when the user returns.
+            // 3.1.3(b) Multiplatform Service compliance. Opens Safari
+            // (external browser), never an in-app WebView. Stays
+            // visible alongside the in-app Subscribe option above.
             <MenuItem
               icon="globe-outline"
               label="Manage plan on web"
               sublabel="Opens your account in a browser"
               onPress={() => {
                 const url = `${process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000"}/upgrade?src=mobile_profile`;
-                import("expo-linking").then((Linking) =>
-                  Linking.openURL(url)
-                );
+                void Linking.openURL(url);
               }}
             />
           )}
 
-          {canManageSubscription && (
-            // Apple Guideline 3.1.2 — in-app subscription management.
-            // Opens the Stripe Customer Portal in the system in-app
-            // browser tab (SafariViewController on iOS). Customer is
-            // looked up server-side by user.id, not email, so this
-            // works for Apple private-relay accounts. Hidden on
-            // PRO-without-customer accounts (App Store reviewer seed,
-            // comped accounts) to avoid the dead-end portal call.
+          {/* Phase 3a — Apple-source PRO users get the iOS Settings
+              deep-link instead of the Stripe Portal. Apple's only
+              supported subscription-management surface for IAP. */}
+          {isPro && isAppleSub && (
+            <MenuItem
+              icon="settings-outline"
+              label="Manage in iOS Settings"
+              sublabel="Cancel, change plan, view in Apple ID"
+              onPress={handleManageAppleSubscription}
+            />
+          )}
+
+          {canManageStripeSubscription && (
+            // Apple Guideline 3.1.2 — in-app subscription management
+            // for Stripe-sourced subs. Opens the Stripe Customer
+            // Portal in SafariViewController. Customer is looked up
+            // server-side by user.id, not email, so this works for
+            // Apple private-relay accounts. Hidden on PRO-without-
+            // customer accounts (App Store reviewer seed, comped
+            // accounts) to avoid the dead-end portal call.
             <MenuItem
               icon="card-outline"
               label="Manage subscription"
@@ -160,6 +196,11 @@ export default function ProfileTab() {
               }}
             />
           )}
+
+          {/* Apple App Review requires a Restore Purchases affordance
+              on every screen that presents subscription state. The
+              button self-hides on Android + flag-off builds. */}
+          <RestorePurchasesButton onRestored={refresh} />
 
           <ThemeMenuItem />
 

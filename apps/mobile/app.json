@@ -176,7 +176,8 @@
           "url": "https://sentry.io/"
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      "react-native-iap"
     ],
     "experiments": {
       "typedRoutes": true
@@ -187,6 +188,7 @@
       },
       "apiUrl": "https://www.getacuity.io",
       "googleIosClientId": "657670168959-l1qn5imd2ad8fdbp96pius9a6cpi5hdl.apps.googleusercontent.com",
+      "iapEnabled": false,
       "eas": {
         "projectId": "dc4dcfc3-54f4-44e8-bc84-dfcedb8ba533"
       }

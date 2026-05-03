@@ -39,6 +39,10 @@ export type User = {
   email: string;
   image: string | null;
   subscriptionStatus?: string;
+  // Phase 4 dual-source: "stripe" | "apple" | null. Drives the
+  // Profile-tab routing for Manage-subscription (Stripe Customer
+  // Portal on web vs iOS Settings → Subscriptions for Apple users).
+  subscriptionSource?: "stripe" | "apple" | null;
   // ISO-8601 string — matches what /api/user/me returns. Null for
   // freshly-created users before the createUser event writes it,
   // or for users who existed before the 2026-04-20 backfill.
