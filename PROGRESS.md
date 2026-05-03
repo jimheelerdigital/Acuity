@@ -24,7 +24,7 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** PENDING
+**Commit hash:** 8c0a7ed
 
 ### In plain English (for Keenan)
 
@@ -3423,7 +3423,7 @@ Four things visible on Build 13 in TestFlight were broken: the "Home" label unde
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** PENDING
+**Commit hash:** 8c0a7ed
 
 ### In plain English (for Keenan)
 Before: tapping a task's checkbox instantly yanked it off the Open list — no visual confirmation, no undo, just "where'd it go?" This reshapes the rhythm: tapping a box fills it purple and strikes the title, but the task stays on the Open list for the rest of your current visit. Tap it again to undo (strike removed, box empties). Leave the Tasks tab — to Home, Goals, Insights, Entries, or any detail screen — and the next time you come back, the boxes you checked have moved to Done. The Done tab works the same way in reverse: un-checking something keeps it on Done with the strike removed, and moves it to Open next visit. No timers, no "are you sure" dialogs — just the natural rhythm of "work through a list, then flip away when you're done."
@@ -3456,7 +3456,7 @@ Before: tapping a task's checkbox instantly yanked it off the Open list — no v
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** PENDING
+**Commit hash:** 8c0a7ed
 
 ### In plain English (for Keenan)
 For the past two TestFlight builds (9 and 10), the mobile app was silently shipping without checkboxes on the Tasks tab, without back buttons on detail screens, and without a lot of the interactive polish Keenan saw on web. Every attempt to fix it (bumping versions, clearing OTA caches, reinstalling) failed because the root cause was completely different from what we assumed — a React Native quirk in the new rendering engine (Fabric) silently erases any tappable element written with the "dynamic style" pattern. 34 tappable elements across the app were affected. This commit rewrites every one of them to the static-style pattern that Fabric renders correctly. Build 13 will ship to TestFlight with checkboxes, back buttons, and every tappable polish item visible exactly as designed. The 14-day wild goose chase through OTA caches, build binaries, and device reinstalls was a rendering-engine bug, not a pipeline bug.
