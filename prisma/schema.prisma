@@ -1643,3 +1643,30 @@ model FreeCapAuditLog {
 
   @@index([timestamp])
 }
+
+// Phase 2 dual-source — Apple App Store Server Notifications V2
+// idempotency tombstone + audit log. Apple retries delivery on
+// 5xx so the same notification can land multiple times; we ack
+// each one but only mutate User state on the first.
+//
+// notificationUUID — Apple's per-event identifier; @unique so
+// the second insert race-fails cleanly and the handler can short-
+// circuit. payload keeps the full decoded JWS body (transaction
+// info inlined) for replay/debugging — Apple's payload shape
+// changes across StoreKit versions, so a normalized projection
+// would rot.
+//
+// Read by /api/iap/notifications. Written on every accepted
+// notification (whether or not it triggered a User mutation).
+model IapNotificationLog {
+  id               String   @id @default(cuid())
+  notificationUUID String   @unique
+  // "DID_RENEW" | "DID_FAIL_TO_RENEW" | "EXPIRED" | "REFUND" |
+  // "REVOKE" | "DID_CHANGE_RENEWAL_STATUS" | (any future Apple type)
+  type             String
+  processedAt      DateTime @default(now())
+  payload          Json
+
+  @@index([processedAt])
+  @@index([type])
+}

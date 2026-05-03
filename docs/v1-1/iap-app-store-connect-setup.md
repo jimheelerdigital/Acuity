@@ -259,7 +259,85 @@ If we localize web later (e.g. Spanish), bundle the iOS localization in the same
 
 ---
 
-## §13 — Cross-references
+## §13 — API Keys + Webhook URL (Phase 2)
+
+Phase 2 (`/api/iap/verify-receipt` + `/api/iap/notifications`) is shipped. Before either endpoint can do real work, **Jim must create the App Store Connect API Key + register the webhook URL**. Both are Apple-side actions, both happen AFTER SBP shows Enrolled.
+
+### §13.1 Create the App Store Connect API Key
+
+The key is what our backend uses to authenticate to Apple's `/inApps/v1/transactions/{id}` API. Without it, `/api/iap/verify-receipt` returns 502 `APPLE_AUTH_FAILED` on every call (intentional fail-closed).
+
+1. Sign in to https://appstoreconnect.apple.com → **Users and Access** → **Integrations** tab → **App Store Server API** in the left sidebar (NOT the App Store Connect API tab — that's a different API).
+2. Click **+** to generate a new key.
+3. Form:
+   - **Name:** `Acuity Backend — In-App Purchase` (or any internal name; not user-facing).
+   - **Access:** **In-App Purchase** (this scope is required; "Customer Service" alone is insufficient).
+4. Click **Generate**. Apple shows the **Key ID** (10-char string) and **Issuer ID** (UUID) on the resulting page. **Copy both**.
+5. Click the **Download API Key** button. The `.p8` file is delivered ONCE — Apple does not let you re-download. Save it somewhere durable.
+6. The downloaded file will look like:
+   ```
+   -----BEGIN PRIVATE KEY-----
+   MIGT...
+   -----END PRIVATE KEY-----
+   ```
+
+### §13.2 Env vars to add
+
+Add these three to **both** `apps/web/.env.local` (Jim's local dev) AND Vercel (production + preview):
+
+| Var | Value | Where to find it |
+|-----|-------|------------------|
+| `APPLE_IAP_KEY_ID` | The 10-char Key ID from §13.1 step 4 | App Store Connect → Users and Access → Integrations → key row |
+| `APPLE_IAP_ISSUER_ID` | The UUID from §13.1 step 4 (e.g. `57246542-96fe-1a63-e053-0824d011072a`) | Same page header |
+| `APPLE_IAP_PRIVATE_KEY` | Full PEM contents of the `.p8` file (BEGIN/END markers + body) | The downloaded `.p8` |
+
+For Vercel, paste the PEM contents into the value field — Vercel preserves newlines correctly. Do NOT base64-wrap or escape; the `jose` library expects the raw PEM.
+
+### §13.3 Register the webhook URL for App Store Server Notifications V2
+
+Apple POSTs subscription lifecycle events (`DID_RENEW`, `EXPIRED`, `REFUND`, etc.) to a URL we register per-app. The webhook URL is `https://www.getacuity.io/api/iap/notifications`.
+
+1. App Store Connect → **My Apps → Acuity** → **App Information** (left sidebar).
+2. Scroll to **App Store Server Notifications**. There are **two URL fields** (production + sandbox).
+3. **Production URL:** `https://www.getacuity.io/api/iap/notifications`. **Version:** select `V2`.
+4. **Sandbox URL:** same — `https://www.getacuity.io/api/iap/notifications`. The endpoint reads `data.environment` from the inbound payload to distinguish, so we don't need a separate URL.
+5. Click **Save** at the top right.
+
+Apple sends a test notification (`TEST` type) immediately after save — that's a good way to verify the env vars + URL are correct. The test notification logs to Vercel as `iap.notifications.log-only` with `reason="unhandled notification type: TEST"` (since TEST isn't in our switch).
+
+### §13.4 Sandbox vs production routing in our code
+
+The endpoints handle both environments transparently:
+
+- `/api/iap/verify-receipt`: when calling Apple's `/inApps/v1/transactions/{id}`, we try **production first**, fall back to **sandbox** on 404. This matches Apple's recommended pattern for apps that don't always know their own environment (TestFlight builds use sandbox; App Store builds use production).
+- `/api/iap/notifications`: Apple's notification payload includes `data.environment` ("Sandbox" | "Production"). We persist this verbatim to `User.appleEnvironment` so support tickets can quickly identify TestFlight-side issues.
+
+### §13.5 Pre-launch readiness checklist
+
+Before submitting v1.1 for review:
+
+- [ ] SBP shows "Enrolled" in Agreements, Tax, and Banking.
+- [ ] Subscription product `com.heelerdigital.acuity.pro.monthly` shows "Ready to Submit" in App Store Connect.
+- [ ] All three env vars configured in Vercel **production** AND **preview** environments.
+- [ ] Notification webhook URL registered, Version V2, both prod + sandbox slots filled.
+- [ ] Test notification arrived (visible in `IapNotificationLog` table OR Vercel runtime logs as `iap.notifications.log-only` for type=TEST).
+- [ ] Sandbox tester account created (§8) and signed into a TestFlight build.
+- [ ] Phase 3 mobile StoreKit client ships at the same time as the build that exercises this path. Without Phase 3, the endpoints exist but nothing calls them.
+
+If any item is missing, the v1.1 build will pass App Review but iOS purchases will silently fail (Apple takes payment; our DB doesn't flip; user sees Pro UI gated off). **Don't submit v1.1 to ship IAP without all six checkmarks.**
+
+### §13.6 Two new endpoints (Phase 2 reference)
+
+| Method + Path | Auth | Purpose | Notes |
+|---|---|---|---|
+| `POST /api/iap/verify-receipt` | NextAuth session OR mobile bearer JWT | Verify a fresh StoreKit purchase, flip User to PRO + apple | Idempotent on re-verify; 409 on cross-source / cross-user conflict |
+| `POST /api/iap/notifications` | Apple-signed JWS (no session — Apple calls us) | React to renewal/expiration/refund lifecycle events | Idempotent via `IapNotificationLog.notificationUUID @unique`; status-guarded so Stripe-source rows never mutate |
+
+Both are `runtime: nodejs` (need `node:crypto` for X.509 chain validation).
+
+---
+
+## §14 — Cross-references
 
 - Web pricing source: `apps/web/src/app/upgrade/upgrade-plan-picker.tsx`
 - Phase 4 schema: `prisma/schema.prisma` (User.subscriptionSource + appleOriginalTransactionId etc., shipped in this same sweep)

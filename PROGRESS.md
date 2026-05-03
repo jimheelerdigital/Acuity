@@ -20,6 +20,92 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-03] — Dual-source subscription Phase 2: receipt verify + Apple Server Notifications V2 webhook
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** PENDING
+
+### In plain English (for Keenan)
+
+Phase 2 of the dual-source pivot — the backend that handles iOS in-app purchases. Two new endpoints went up: one the iOS app will call after a successful purchase to confirm the user really paid (the receipt-verification endpoint), and one Apple itself calls whenever something happens to a user's subscription — renewal, billing failure, expiration, refund, family-sharing pull (the notifications webhook). Both endpoints are wired with the same protective patterns we use elsewhere: a Stripe-side user can never have their subscription state changed by an Apple event, the same Apple subscription can never be claimed by two different accounts, retries from Apple are deduplicated so the same event isn't applied twice, and every state change is logged. None of this is hooked up to anything user-visible yet — Phase 3 (the iOS app code) is what calls these endpoints. So this phase is "build the receiver before the sender." When Phase 3 ships, the wiring is ready.
+
+### Technical changes (for Jimmy)
+
+**Schema (additive, single new table):**
+- `IapNotificationLog` — idempotency tombstone + audit log for App Store Server Notifications V2.
+  - `id`, `notificationUUID @unique`, `type String`, `processedAt`, `payload Json`.
+  - `@@index([processedAt])`, `@@index([type])` for support-ticket replay.
+- `prisma/rls-allowlist.txt`: +1 entry (`IapNotificationLog rls`).
+
+**Library — `apps/web/src/lib/apple-iap.ts` (new, 688 lines):**
+
+*Outbound (call Apple):*
+- `readAppleApiConfig()` — reads three env vars, throws cleanly if missing (callers map to 502 APPLE_AUTH_FAILED).
+- `signAppStoreConnectJwt(config)` — ES256 JWT, 20-min expiry, `aud="appstoreconnect-v1"`, signed via `jose.SignJWT` + `importPKCS8`.
+- `fetchTransactionInfo(transactionId, config)` — GET `/inApps/v1/transactions/{id}`. Production first, falls back to Sandbox on 404 (Apple's recommended pattern). Returns either `{ ok: true, info }` or `{ ok: false, code, diagnostic }` with sanitized error codes (`APPLE_AUTH_FAILED | TRANSACTION_NOT_FOUND | APPLE_HTTP_ERROR | INVALID_JWS | MISSING_FIELDS`).
+- `decodeSignedTransactionInfo(jws, env)` — extracts `transactionId`, `originalTransactionId`, `productId`, `expiresDate`, `environment`, raw payload.
+
+*Inbound (verify Apple):*
+- `verifyAppleSignedJws(jws)` — full security-critical chain validation:
+  1. Parse JWS protected header, extract `x5c[]`.
+  2. Build `X509Certificate` per entry.
+  3. For each pair, verify cert[i] signed by cert[i+1].`publicKey` (`X509Certificate.verify(parentKey)`).
+  4. Verify the tail cert is signed by the embedded `APPLE_ROOT_CA_G3_PEM` constant (no JWKS round-trip — root is hardcoded and version-controlled).
+  5. Validity-period check (notBefore/notAfter) on every cert.
+  6. Verify the JWS signature via the leaf cert's public key (`compactVerify`).
+  7. Decode the payload to JSON and return.
+- `APPLE_ROOT_CA_G3_PEM` — embedded as a string constant. Self-signed Apple Root CA, anchor of trust.
+
+*Pure decision functions (testable without Prisma):*
+- `decideReceiptVerify(info, currentUser, otherOwner)` → `{ action: "write" | "idempotent-noop" | "conflict" }`. Conflict codes: `BAD_PRODUCT | EXPIRED_RECEIPT | ANOTHER_USER_OWNS_TRANSACTION | ACTIVE_STRIPE_SUB`.
+- `decideNotificationAction(type, user)` → `{ action: "set-status" | "ignore" | "skip-stripe-source" | "log-only" }`. Status-guarded: any `subscriptionSource === "stripe"` row is skipped without write. The mapping per notification type: DID_RENEW→PRO, DID_FAIL_TO_RENEW→PAST_DUE (only if currently PRO), EXPIRED→FREE, REFUND→FREE, REVOKE→FREE, DID_CHANGE_RENEWAL_STATUS+CONSUMPTION_REQUEST+unknown→log-only.
+
+*Whitelisted product IDs:*
+- `ALLOWED_PRODUCT_IDS = Set(["com.heelerdigital.acuity.pro.monthly"])` — single tier per Phase 1 §4 recommendation. Annual lands in v1.2.
+
+**Routes:**
+
+- `apps/web/src/app/api/iap/verify-receipt/route.ts` (new, 224 lines): POST. Auth via `getAnySessionUserId` (web cookie OR mobile bearer). Body `{ receipt, productId, transactionId }`. Pulls config → fetches Apple → cross-checks productId match → reads currentUser + otherOwner in parallel `Promise.all` → calls `decideReceiptVerify` → branches: `write`/`idempotent-noop`/`conflict`. Apple-side errors logged via `safeLog.error` with sanitized codes; the cross-user transaction collision logs as `iap.verify-receipt.transaction-collision` (P0-worthy when it happens). Trial-clock collateral: a successful Apple verify nulls `trialEndsAt` and `stripeCurrentPeriodEnd` so /account UI surfaces the Apple state cleanly.
+- `apps/web/src/app/api/iap/notifications/route.ts` (new, 253 lines): POST. No session — Apple is the caller. Body `{ signedPayload }`. Validates JWS via `verifyAppleSignedJws` → 401 on invalid/missing-x5c/bad-chain. Tombstones `notificationUUID` (P2002 → 200 ack and skip). Decodes the inner `signedTransactionInfo` (without re-verifying — covered by outer chain) to get `originalTransactionId`. Locates target user by `appleOriginalTransactionId`. Calls `decideNotificationAction`. Branches: `ignore` / `skip-stripe-source` / `log-only` / `set-status`. Every path logs structured to `safeLog`; every status change writes a single column on User.
+
+**Tests — `apps/web/src/lib/apple-iap.test.ts` (new, 345 lines, 30 tests):**
+- `decideReceiptVerify`: happy path, BAD_PRODUCT, EXPIRED_RECEIPT, cross-user collision, ACTIVE_STRIPE_SUB block, FREE-Stripe-user allowed-to-resubscribe via Apple, idempotent re-verify, family-sharing-handoff write.
+- `decideNotificationAction`: status-guard sweep on every type (Stripe-source → skip; null source → treat-as-Apple), DID_RENEW grace-recovery, DID_FAIL_TO_RENEW only-if-PRO, EXPIRED idempotency, REFUND/REVOKE strip, log-only types, unknown-future-type forward-compat.
+- `ALLOWED_PRODUCT_IDS`: monthly is in, annual isn't yet.
+
+**Documentation:**
+- `docs/v1-1/iap-app-store-connect-setup.md` §13 (new) — API key creation + the three env vars (`APPLE_IAP_KEY_ID`, `APPLE_IAP_ISSUER_ID`, `APPLE_IAP_PRIVATE_KEY`), webhook URL registration, sandbox-vs-production routing, pre-launch readiness checklist (6 items), reference table for both new endpoints.
+
+### Slice verification
+
+- Full apps/web vitest: **22/22 files pass, 333/333 tests pass.** +30 from `apple-iap.test.ts`. Zero regressions.
+- tsc: 7 errors total, all pre-existing baseline in 4 unrelated files (OverviewTab, landing, auto-blog, google/auth). **Zero new** in any Phase 2 file. Caught one tsc error during the slice (Prisma Json column type mismatch on `appleLatestReceiptInfo`); fixed via the existing `as unknown as object` cast pattern (matches `process-entry.ts`'s `rawAnalysis` cast).
+- `prisma format` applied. `prisma validate` clean. `prisma generate` ran locally so the new model types resolve.
+- RLS allowlist updated (`IapNotificationLog rls`).
+
+### Manual steps needed
+
+- [ ] **`npx prisma db push` from home network.** Adds the `IapNotificationLog` table. Pure additive; no data migration. (Jimmy)
+- [ ] **AFTER SBP shows Enrolled (per `docs/v1-1/iap-app-store-connect-setup.md §2`):** generate the App Store Connect API Key per §13.1 and add the three env vars (`APPLE_IAP_KEY_ID`, `APPLE_IAP_ISSUER_ID`, `APPLE_IAP_PRIVATE_KEY`) to **both** `apps/web/.env.local` AND Vercel (production + preview). Without these, `/api/iap/verify-receipt` returns 502 APPLE_AUTH_FAILED on every call — fail-closed by design. (Jimmy)
+- [ ] **AFTER env vars deploy:** register the webhook URL `https://www.getacuity.io/api/iap/notifications` in App Store Connect → App Information → App Store Server Notifications. Version V2. Both production AND sandbox slots get the same URL — the endpoint reads `data.environment` from the payload to disambiguate. Apple sends a test notification on save; verify it lands as `iap.notifications.log-only` with `type=TEST` in Vercel logs. (Jimmy)
+- [ ] No Inngest changes. No Stripe changes (the W-A status-guard pattern is mirrored on the Apple side; both webhooks are now race-defended in the same shape).
+- [ ] **Hard hold:** do NOT submit v1.1 with IAP enabled until Phase 3 mobile StoreKit client ships AND the SBP-Enrolled / env-configured / webhook-registered checkboxes are all complete. The endpoints existing without callers is fine; the endpoints existing without env config = silent 502 on every iOS purchase.
+
+### Notes
+
+- **Why embed Apple Root CA G3 as a constant rather than fetch from a JWKS endpoint?** Notification payloads are security-critical — flipping a user from PRO to FREE because of a forged `EXPIRED` event would be customer-impacting. Fetching the trust anchor over the network creates an MITM vector against the trust anchor itself. Apple distributes the root cert at https://www.apple.com/certificateauthority/AppleRootCA-G3.cer; embedding the verified PEM in version control means a successful attack requires compromising both Apple's CA and our git history. If Apple rotates the root (no announced rotation since 2014), update the constant in this file — single source of truth.
+- **JWS chain validation uses `node:crypto.X509Certificate.verify(parentKey)`.** This is the bit that gets the security exactly right: each cert MUST be signed by the next, and the tail cert MUST be signed by AppleRootCA-G3. Implementing this without a SDK was deliberate — the `@apple/app-store-server-library` is heavyweight + pulls native deps, and chain validation is the security-critical core that we want in our own audit surface.
+- **Inner `signedTransactionInfo` is decoded without re-verifying its chain.** The outer notification JWS is chain-validated; Apple guarantees the inner payload was signed by the same chain. Re-validating would be 2x compute for zero security gain. If Apple ever changes this guarantee, the verification call is a one-line addition to the route.
+- **Production-first / sandbox-fallback pattern in `fetchTransactionInfo`** matches Apple's recommended pattern. TestFlight builds use sandbox; App Store builds use production. Apple's own docs say "always try production first, fall back to sandbox on 404."
+- **Status guard mirrors W-A Stripe §4.4 fix.** A canceled Stripe-source user receiving a stale Apple notification should not be resurrected as PRO/PAST_DUE — `decideNotificationAction` returns `skip-stripe-source` for any `subscriptionSource === "stripe"` row regardless of notification type. The pure-function decision is unit-tested in 3 places (DID_RENEW / EXPIRED / REFUND on Stripe-source).
+- **`ANOTHER_USER_OWNS_TRANSACTION` 409 is logged to `safeLog.error`, not `.warn`.** This case shouldn't happen — `User.appleOriginalTransactionId @unique` prevents the DB write at the SQL layer — but if we ever see it, that's evidence of a forged receipt or family-sharing edge case worth investigating. Promoted to error severity so Sentry surfaces it (once safeLog→Sentry routing is wired per the W2 backlog item).
+- **"Dead code until Phase 3"** — verified: no production caller exists for `/api/iap/verify-receipt` until the Phase 3 mobile StoreKit client lands. `/api/iap/notifications` is reachable by Apple itself, but Apple won't fire events for a product nobody has bought, so it stays effectively dormant. Both endpoints are deployed-but-inert. Production behavior is unchanged.
+- **`runtime: nodejs` declared on both routes** — required for `node:crypto.X509Certificate`. Edge runtime would fail at first cert parse.
+- Followed slice protocol: full-suite vitest re-run (+30), tsc whole-tree (one new error caught + fixed during slice; zero new at push), `prisma validate`, baseline-red files called out as pre-existing per docs/v1-1/backlog.md.
+
+---
+
 ## [2026-05-03] — Dual-source subscription model: Phase 1 (App Store Connect doc) + Phase 4 (schema + helpers + tests)
 
 **Requested by:** Jimmy

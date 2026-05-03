@@ -33,6 +33,7 @@ FounderNotificationLog rls
 FreeCapAuditLog rls
 FreeCapEvaluation rls
 GenerationJob rls
+IapNotificationLog rls
 Goal rls
 GoalSuggestion rls
 HealthSnapshot rls
