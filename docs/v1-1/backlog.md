@@ -102,4 +102,24 @@ Same approach as the existing slice 2 persona verifier (`apps/web/scripts/verify
 
 ---
 
+## V5 cohort attribution gap (no `Entry.themePromptVersion`)
+
+**Status:** New 2026-05-02. Surfaced during the V5 day-1 soak attempt.
+
+**Symptom:** the schema does not record which extraction prompt version produced an Entry. `Entry`, `Theme`, `ThemeMention` have no `promptVersion` / `themePromptVersion` / `extractionVersion` field. The `feature-flags::isEnabled` layer decides at runtime whether the V5 dispositional prompt or the legacy prompt fires for a given extraction, but doesn't persist a fingerprint.
+
+**Impact:** **measurement is impossible.** `apps/web/scripts/theme-distribution.ts` cannot split V5 vs legacy cohorts from production data. So the day-1 soak attempt could not produce the comparison the ramp gating was designed to use. The flag is currently HELD at 12% pending this fix (see `docs/v1-1/v5-soak-day1.md`).
+
+**Fix path:**
+1. Add `Entry.themePromptVersion String?` column (or an enum if we decide enum-ification is worth it).
+2. Pipeline writes `themePromptVersion: isV5Enabled ? "v5_dispositional" : "v0_legacy"` at extraction-persist time.
+3. Backfill all historical entries to `"v0_legacy"` (single SQL `UPDATE Entry SET themePromptVersion = 'v0_legacy' WHERE themePromptVersion IS NULL` after db push).
+4. Extend `theme-distribution.ts` with `--cohort=v5_dispositional|v0_legacy|both` filter; default to a side-by-side report.
+
+**Estimate:** 30 min code + Jim's home-network db push + 30 min script. ~2 hours end-to-end.
+
+**Why backlog:** the V5 ramp is currently HELD at 12%, so the immediate decision (don't bump, don't rollback) is unblocked. The fix is needed before the NEXT ramp decision (25% bump or 0% rollback). Until either of those decisions is forced, this isn't urgent.
+
+---
+
 ## (Future entries land here as they emerge.)
