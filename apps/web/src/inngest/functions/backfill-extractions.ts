@@ -178,6 +178,15 @@ export const backfillExtractionsFn = inngest.createFunction(
                   blockers: extraction.blockers,
                   rawAnalysis: extraction as unknown as object,
                   extracted: true,
+                  // W-B (2026-05-03): the backfill pipeline mirrors
+                  // process-entry's V5 flag awareness — useDispositional
+                  // is read once at run start (line 128) and applied to
+                  // every entry in this run. Persist the variant so
+                  // backfilled entries are first-class members of
+                  // theme-distribution.ts cohort comparisons.
+                  themePromptVersion: useDispositional
+                    ? "v5_dispositional"
+                    : "v0_legacy",
                 },
                 select: { id: true, createdAt: true },
               });

@@ -504,6 +504,22 @@ model Entry {
   // IS NOT NULL` runs separately from db push).
   extracted Boolean @default(false)
 
+  // V5 cohort attribution (W-B, 2026-05-03). Per-entry record of
+  // which extraction prompt produced this entry's themes:
+  //   - "v0_legacy"        — the original event-level theme prompt
+  //   - "v5_dispositional" — the v1.1 dispositional-pattern prompt
+  //                          (gated by `v1_1_dispositional_themes`
+  //                          feature flag, ramp-controlled)
+  // Null on legacy rows pre-W-B until the backfill SQL runs (see
+  // docs/v1-1/backlog.md "V5 cohort attribution gap"). Null also
+  // means "we don't know" — entries created between commit
+  // b8a1b4d (V5 prompt landed, 2026-05-01T02:57:32Z) and W-B
+  // ship (2026-05-03) cannot be retroactively attributed because
+  // we didn't persist the variant at extract time.
+  // Read by `apps/web/scripts/theme-distribution.ts` for cohort
+  // comparison reports.
+  themePromptVersion String?
+
   @@index([userId, createdAt])
   // Backfill scanner hot path — find all FREE-tier-only entries
   // for a user. Composite covers the (userId, extracted=false,

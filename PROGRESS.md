@@ -20,6 +20,63 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-03] — V5 cohort attribution column — unblocks data-driven ramp decisions
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** PENDING
+
+### In plain English (for Keenan)
+
+We've been holding the V5 themes ramp at 12% because we couldn't tell which entries had been extracted by the new prompt vs the old one — there was no record of it on the entry itself. This patch adds that record. From now on, every new entry that runs through the extraction pipeline gets stamped with which prompt produced it. Entries from before today don't have the stamp; for those, we'll run a small SQL command after the schema migration that says "everything created before the V5 prompt was even committed must have been the old prompt." The reporting script that compares the two cohorts now reads this column instead of trying to guess from the entry's date. Net: next time we run the report, we'll have a real V5-vs-legacy comparison, and the ramp decision can be data-driven instead of held.
+
+### Technical changes (for Jimmy)
+
+**Schema (additive, single nullable column — safe):**
+- `Entry.themePromptVersion String?` — null on legacy rows pre-W-B; `"v0_legacy"` or `"v5_dispositional"` going forward.
+
+**Pipeline writes (the three places that produce extractions):**
+- `apps/web/src/inngest/functions/process-entry.ts`: lifted the `useDispositional = await isEnabled(userId, "v1_1_dispositional_themes")` read into its own `step.run("read-dispositional-flag")` so both the extract step AND the persist step can reference it. The persist step now writes `themePromptVersion: useDispositional ? "v5_dispositional" : "v0_legacy"`.
+- `apps/web/src/lib/pipeline.ts` (sync path): hard-coded `themePromptVersion: "v0_legacy"` on the persist transaction. The sync path never opts into V5 (the call to `extractFromTranscript` doesn't pass the flag — it defaults false), so the value is always known to be legacy.
+- `apps/web/src/inngest/functions/backfill-extractions.ts`: re-uses the run-level `useDispositional` already read at line 128, writes the same variant to backfilled entries so they're first-class members of cohort comparisons.
+
+**theme-distribution.ts cohort filter (replaces date-cutoff inference):**
+- New `--cohort=both|v0_legacy|v5_dispositional` arg. Default `both` emits per-cohort sections plus a combined "all" view AND surfaces `cohortEntryCounts` (v0/v5/null/total) so a reader sees the sample sizes side by side.
+- SQL change: ThemeMention → Theme join now also joins Entry to pull `e."themePromptVersion"`. The cohort filter happens in app memory after the query, which keeps the SQL grep-able and lets us add a "null/unattributable" bucket for the gap rows.
+- Refactor: the metric computation is now a `computeMetrics(rows, totalEntries, themesCreatedInWindow)` helper that runs once per cohort.
+
+### Manual steps needed
+
+- [ ] **Run `npx prisma db push` from home network.** Adds the single nullable column. No data migration. Entry table is hot but the column is nullable with no default — should be fast even on production scale. (Jimmy)
+- [ ] **Run the backfill SQL after `db push` succeeds:**
+  ```sql
+  UPDATE "Entry"
+  SET "themePromptVersion" = 'v0_legacy'
+  WHERE "createdAt" < '2026-05-01T02:57:32Z'
+    AND "themePromptVersion" IS NULL;
+  ```
+  Cutoff = commit `b8a1b4d`'s authored timestamp (V5 prompt code landed). Anything before is definitively legacy; anything after is unattributable (we didn't persist the variant at extract time, and the flag was bumped from 0% → 12% sometime within the window). The post-cutoff null entries stay null and are reported as `null_unattributable` in cohort summaries. Run from `psql` via `DIRECT_URL` or paste into Supabase SQL editor. (Jimmy)
+- [ ] **First post-backfill report run:** once enough V5 entries accumulate (~50+ for the percentile metrics to be readable — likely a 14-30 day window at 12% rollout), re-run `apps/web/scripts/theme-distribution.ts --days=30 --cohort=both`. The output will surface real V5 vs legacy `singleMentionPct` + `p90` for the first time. Decision tree per `docs/v1-1/v5-soak-day1.md §"Recommendation"`: V5 better → bump to 25%; V5 regression → roll back to 0%; within-noise → cautiously bump to 25% to grow the sample. (Jimmy)
+- [ ] No env changes. No Inngest re-register needed.
+
+### Slice verification
+
+- Full apps/web vitest: **20/20 files pass, 284/284 tests pass.** Zero regressions. No new tests added — single-column persist + script update; persist sites covered by end-to-end recording verification.
+- tsc: 7 errors, all pre-existing baseline in 4 files (OverviewTab, landing, auto-blog, google/auth). **Zero new** in any W-B file.
+- `prisma format` applied. `prisma validate` clean. `prisma generate` ran locally.
+- RLS allowlist: no change — `Entry` already covered.
+
+### Notes
+
+- **Why lift `useDispositional` out of the extract step rather than passing it through the extraction result?** The result type (`ExtractionResult` in `@acuity/shared`) is content, not metadata. Mixing metadata into the content type would force every consumer to know about a field they don't care about.
+- **Why "v0_legacy" / "v5_dispositional" as plain strings, not an enum?** Prisma enums are awkward to extend cross-environment, and we'll likely add `v6_*` variants. Same precedent as `Entry.status` / `Entry.partialReason`.
+- **The backfill cutoff is the commit timestamp, not the flag-flip timestamp.** Pre-`b8a1b4d`, the V5 prompt code didn't exist — those entries are *definitively* legacy. Post-`b8a1b4d` but pre-flag-bump, the flag was at 0% rollout so they're effectively legacy too, but I left those as null because we have no persisted record proving it.
+- **Sync pipeline always writes "v0_legacy"** because the call site never opts into V5. If the sync path is ever wired to honor the flag, the call site at `pipeline.ts:613` would need to pass `useDispositional` AND the persist site would need to mirror it. Documented inline.
+- **`cohortEntryCounts` at the top of every report** so the reader sees sample sizes before reading any percentile. With small windows + 12% rollout, V5 may have <20 entries — the count makes the noise floor visible.
+- Followed slice protocol: full-suite vitest re-run, tsc whole-tree, `prisma validate`, baseline-red files called out as pre-existing.
+
+---
+
 ## [2026-05-03] — Stripe webhook §4.4 hotfix + race-shape sweep across upgrade-direction handlers
 
 **Requested by:** Jimmy

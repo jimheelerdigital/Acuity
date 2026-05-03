@@ -639,6 +639,13 @@ export async function processEntry({
           blockers: extraction.blockers,
           rawAnalysis: extraction as unknown as object,
           status: "COMPLETE",
+          // W-B (2026-05-03): the sync pipeline never opts into the
+          // V5 dispositional prompt — extractFromTranscript is called
+          // above (line 613) without the useDispositionalThemes flag,
+          // so it always defaults to legacy. Hard-code "v0_legacy"
+          // here. If the sync path ever wires the flag through, the
+          // call site would need to mirror the async pattern.
+          themePromptVersion: "v0_legacy",
         },
       });
 

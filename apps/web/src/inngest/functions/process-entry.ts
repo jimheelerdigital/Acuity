@@ -313,6 +313,20 @@ export const processEntryFn = inngest.createFunction(
       return buildMemoryContext(userId);
     });
 
+    // Read the V5 prompt-variant flag once, captured in the closure so
+    // both step.run("extract") AND step.run("persist-extraction") can
+    // reference it. Idempotent feature-flag read — recomputed on
+    // Inngest replay, no side effects, sub-millisecond. Lifted out of
+    // the extract step (W-B, 2026-05-03) so the persist step can write
+    // Entry.themePromptVersion without re-reading.
+    const useDispositional = await step.run(
+      "read-dispositional-flag",
+      async () => {
+        const { isEnabled } = await import("@/lib/feature-flags");
+        return isEnabled(userId, "v1_1_dispositional_themes");
+      }
+    );
+
     // Step 4: extract structured data via Claude. Uses the exact same
     // prompt + parser as the sync pipeline (`lib/pipeline.ts`). When
     // the entry was recorded from a goal card (Entry.goalId set), we
@@ -349,11 +363,6 @@ export const processEntryFn = inngest.createFunction(
       const taskGroupNames = taskGroupRows.map((g) => g.name);
 
       const { extractFromTranscript } = await import("@/lib/pipeline");
-      const { isEnabled } = await import("@/lib/feature-flags");
-      const useDispositional = await isEnabled(
-        userId,
-        "v1_1_dispositional_themes"
-      );
       const todayISO = new Date().toISOString().split("T")[0];
       return extractFromTranscript(
         transcript,
@@ -389,6 +398,13 @@ export const processEntryFn = inngest.createFunction(
             blockers: extraction.blockers,
             rawAnalysis: extraction as unknown as object,
             status: "COMPLETE",
+            // W-B (2026-05-03): persist which prompt produced
+            // this entry's themes so theme-distribution.ts can
+            // split V5 vs legacy cohorts. Read from the closure
+            // captured by the extract-themes step (line 353).
+            themePromptVersion: useDispositional
+              ? "v5_dispositional"
+              : "v0_legacy",
           },
         });
 
