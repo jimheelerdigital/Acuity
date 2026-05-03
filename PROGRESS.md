@@ -20,6 +20,61 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-02] — v1.1 free-tier slice 7: long-tail polish (admin Free Cap tab, mobile grace modal, isFreeTierUser dedup, auth-flows test fix)
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** PENDING
+
+### In plain English (for Keenan)
+
+Slice 7 closes out the free-tier redesign with the small finishing pieces that didn't warrant their own slice. There's a new "Free Cap" tab in /admin where you can see whether the soft cap is currently on or off, eyeball the last 12 weekly evaluations the cron has computed (so you can see how close we are to the 7-Sunday auto-trigger), and manually flip the cap on or off with optional notes — required because the cron is sticky-on and the only off-path is human. On mobile, when the cap is eventually on and a free user records their 30th entry of the month, they'll now see the "30 of 30 — this one is on us" modal before the entry detail loads, so the messaging fires exactly once on the recording that triggers the cap. Behind the scenes, the FREE-tier predicate that mobile uses to decide whether to show locked surfaces was duplicated between web and mobile — that's now consolidated into the shared package so the rule can never drift. And the four pre-existing test failures we'd been carrying since slice 1 are now fixed (they were testing an old method name on a Prisma mock). End user impact today: zero net user-facing behavior change (cap is still off), but the operator can now flip the cap and the wiring is ready for when the cron flips it.
+
+### Technical changes (for Jimmy)
+
+**Admin Free Cap tab:**
+- `apps/web/src/app/admin/tabs/FreeCapTab.tsx` (new, 364 lines): client tab with four sections — current state + manual toggle, auto-evaluator thresholds (live from `CAP_THRESHOLDS` so this can't drift from the cron's gate), recent evaluations table (last 12), audit log table (last 30). Includes a "trailing met-count" derivation (`countTrailingMet`) so an operator sees "6/7" without manually scanning the Met column.
+- `apps/web/src/app/api/admin/free-cap/route.ts` (new, 51 lines): GET — returns flag + cycles + audit + thresholds in one round-trip via `Promise.all`. `requireAdmin` gated.
+- `apps/web/src/app/api/admin/free-cap/toggle/route.ts` (new, 97 lines): POST `{ enabled, notes? }`. Updates `featureFlag.update` + writes `FreeCapAuditLog` (action `MANUAL_ENABLED`/`MANUAL_DISABLED`) in a `prisma.$transaction`. Calls `resetFeatureFlagCache()` so the per-request cache doesn't serve stale state. Mirrors the existing flag-toggle pattern. 409 on no-op.
+- `apps/web/src/lib/admin-audit.ts` (+1): new `FREE_CAP_MANUAL_TOGGLE: "free_cap.manual_toggle"` action slug for the generic `AdminAuditLog` row written alongside the FreeCapAuditLog row.
+- `apps/web/src/app/admin/admin-dashboard.tsx` (+4): registers the tab in the lazy-import map, the TABS array, the `showTimeRange` exclusion list, and the activeTab switch.
+
+**Mobile grace modal:**
+- `apps/mobile/app/record.tsx` (+23): `UploadResponse` now declares an optional `freeCapState?: "grace" | "blocked"`. After the `await res.json()` and before nav, when `freeCapState === "grace"`, the upload flow awaits a Promise wrapping `Alert.alert("30 of 30 — this one is on us", "You've used your free recordings for this month. Continue on web → for unlimited reflection.", …, { cancelable: false })` so the modal blocks the transition exactly once. The 402 BLOCKED case still routes to `/paywall` as today.
+
+**isFreeTierUser dedup:**
+- `packages/shared/src/free-tier.ts` (new, 47 lines): canonical `isFreeTierUser` predicate. Accepts both `Date` (server) and ISO `string` (client/mobile) for `trialEndsAt` so callers don't have to remember which form they have. Mirrors the partition rule in `entitlementsFor`.
+- `packages/shared/src/index.ts` (+1): re-exports `./free-tier`.
+- `apps/mobile/lib/free-tier.ts`: collapsed to a 9-line re-export from `@acuity/shared`. All seven mobile callsites unchanged (they import from `@/lib/free-tier`).
+- `apps/web/src/lib/free-tier-shared.test.ts` (new, 116 lines, 11 tests): covers all 6 partition branches plus ISO string acceptance, invalid string fallback, missing fields, and null/undefined input.
+
+**Auth-flows test baseline-red fix:**
+- `apps/web/src/tests/auth-flows.test.ts`: 5 mocks of `prisma.deletedUser.findUnique` → `findFirst` to match production `bootstrap-user.ts:245` (which uses `findFirst({ where: { email: { in: candidates } }, orderBy: { deletedAt: "desc" } })`). The fifth mock additionally updated to assert against `where.email.in` (array) rather than `where.email` (string), reflecting the candidates-list query shape introduced when canonical-vs-literal email lookup landed.
+
+### Slice 7 verification
+
+- Full apps/web vitest: **20/20 files pass, 284/284 tests pass.** +12 from slice 6 (11 new in `free-tier-shared.test.ts`, +1 from the auth-flows mock-shape fix that previously errored under different premise; net the four red-baseline tests now pass plus 11 new). **Zero pre-existing failures left.**
+- tsc: 7 total errors across 4 files (`OverviewTab.tsx`, `landing.tsx`, `auto-blog.ts`, `google/auth.ts`), all pre-existing baseline from slice 6 — **ZERO new** in any slice 7 file. Audited each — none are in import paths a request-time route hits, none match the C4 invalid-signature pattern.
+- `prisma validate` not run (zero schema changes this slice).
+- Manual smoke: ran the new tests in isolation (`vitest run free-tier-shared`) — all 11 green.
+
+### Manual steps needed
+
+- [ ] None blocking. The new admin tab works against the existing schema (slice 6's `prisma db push` already provisioned the `FreeCapEvaluation` + `FreeCapAuditLog` tables). The `free_recording_cap` flag was seeded in slice 6 (Jim ran `seed-feature-flags.ts` from home network). (Jimmy)
+- [ ] Optional: navigate to `/admin?tab=free-cap` after deploy and confirm the tab loads with `flag.enabled=false`, empty cycles (until first Sunday cron tick), empty audit log. Test the manual toggle + revert (writes two FreeCapAuditLog rows; can be deleted via Supabase if you don't want test data on the panel).
+
+### Notes
+
+- **Why `Alert.alert` wrapped in a Promise rather than a custom modal component?** The grace modal fires on the FREE side, behind a feature flag that's currently off, on a code path the user hits at most once a month — building a bespoke modal component for that frequency would be over-investment. Native Alert is consistent with the existing 402/429 error surfaces in the same file.
+- **The shared `isFreeTierUser` accepts both `Date` and `string` deliberately.** Server payloads sometimes serialize Dates as ISO strings before they reach a client component (Next.js page-data, NextAuth session JSON, mobile API response). Forcing callers to normalize would push that branching into seven mobile files and would defeat the dedup. The runtime cost is one `instanceof` check per call; trivial.
+- **Sticky-on plus manual disable is the entire toggle protocol.** The cron never auto-disables. The admin tab's "Manually disable" button is the only off-path. A manual disable also doesn't cause the cron to re-flip while disabled — but because the cron only re-flips when `flag.enabled === false` AND 7-cycle conditions hold, a disable resets the count-towards-trigger only insofar as the next 7 weeks need to all-meet again. This is the intended semantics per spec §C.4.
+- **The auth-flows fix was a baseline-red test, not a regression caused by slice 7.** The four failures pre-dated this slice but were called out across slices 1-6 as "in backlog." Closing them as part of slice 7 polish.
+- **No `/admin` audit-log row emitted for the auto-enabled flip.** That fires from the Inngest cron (no admin user in the request context) — only manual flips through this slice's POST route emit an `AdminAuditLog` row. The `FreeCapAuditLog` table is the canonical record for both.
+- **Slice 7 closes the v1.1 free-tier workstream.** Slices 1-7 ship the entitlement split, pipeline branching, day-14 emails, locked-state UX, history-backfill flow, soft cap mechanism, and now the operator surface. C6 (real EventKit on iOS) holds until Apple clears the v1.0 resubmit.
+- Followed slice protocol: full-suite vitest re-run, diff shown before push, the previously-pre-existing failures are now fixed not skipped.
+
+---
+
 ## [2026-05-02] — v1.1 free-tier slice 6: soft cap mechanism + auto-evaluator (flag-off)
 
 **Requested by:** Jimmy (pivot from C6 — Apple still reviewing v1.0 resubmit, holding new EventKit permission)

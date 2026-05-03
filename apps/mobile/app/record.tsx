@@ -63,6 +63,11 @@ type State =
 type UploadResponse = {
   entryId: string;
   status?: string;
+  // v1.1 free-tier slice 6 — surfaces when the cap flag is on AND
+  // this recording is the user's 30th of the month. "grace" → show
+  // the "this one is on us" modal before navigating to detail.
+  // "ok" is omitted by the server; "blocked" is a 402, not 201/202.
+  freeCapState?: "grace" | "blocked";
 };
 
 export default function RecordScreen() {
@@ -356,6 +361,24 @@ export default function RecordScreen() {
           }
 
           const body = (await res.json()) as UploadResponse;
+
+          // v1.1 slice 6 — grace recording (30/30, "this one is on
+          // us"). The server already accepted the recording and
+          // bumped the counter; the modal is informational. Show
+          // it before transitioning so the user sees the messaging
+          // exactly once on the recording that triggers the cap.
+          // Pure visual layer — both async and sync paths call into
+          // the same flow afterward via the resolved promise.
+          if (body.freeCapState === "grace") {
+            await new Promise<void>((resolve) => {
+              Alert.alert(
+                "30 of 30 — this one is on us",
+                "You've used your free recordings for this month. Continue on web → for unlimited reflection.",
+                [{ text: "OK", onPress: () => resolve() }],
+                { cancelable: false }
+              );
+            });
+          }
 
           // Async path — poll for completion.
           if (res.status === 202 && body.entryId) {

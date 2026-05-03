@@ -19,6 +19,7 @@ export const ADMIN_ACTIONS = {
   USER_EXTEND_TRIAL: "user.extend_trial",
   USER_SEND_MAGIC_LINK: "user.send_magic_link",
   METRIC_DRILLDOWN: "admin.metric.drilldown",
+  FREE_CAP_MANUAL_TOGGLE: "free_cap.manual_toggle",
 } as const;
 
 export type AdminAction =

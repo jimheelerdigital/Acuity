@@ -88,10 +88,14 @@ describe("trialDaysForEmail — reduced-trial logic (pentest T-07 fix)", () => {
   });
 
   it("returns 14 days for a never-seen email (null prisma lookup)", async () => {
+    // bootstrap-user.ts:245 calls `findFirst` (orderBy
+    // deletedAt desc) — mocks must match the method
+    // actually invoked or the call resolves to undefined
+    // and trialDaysForEmail throws TypeError. Slice 7 fix.
     vi.doMock("@/lib/prisma", () => ({
       prisma: {
         deletedUser: {
-          findUnique: async () => null,
+          findFirst: async () => null,
         },
       },
     }));
@@ -104,7 +108,7 @@ describe("trialDaysForEmail — reduced-trial logic (pentest T-07 fix)", () => {
     vi.doMock("@/lib/prisma", () => ({
       prisma: {
         deletedUser: {
-          findUnique: async () => ({
+          findFirst: async () => ({
             email: "returned@example.com",
             deletedAt: tenDaysAgo,
             originalCreatedAt: new Date(0),
@@ -122,7 +126,7 @@ describe("trialDaysForEmail — reduced-trial logic (pentest T-07 fix)", () => {
     vi.doMock("@/lib/prisma", () => ({
       prisma: {
         deletedUser: {
-          findUnique: async () => ({
+          findFirst: async () => ({
             email: "longago@example.com",
             deletedAt: hundredDaysAgo,
             originalCreatedAt: new Date(0),
@@ -139,7 +143,7 @@ describe("trialDaysForEmail — reduced-trial logic (pentest T-07 fix)", () => {
     vi.doMock("@/lib/prisma", () => ({
       prisma: {
         deletedUser: {
-          findUnique: async () => {
+          findFirst: async () => {
             throw new Error("should not be called");
           },
         },
@@ -150,12 +154,19 @@ describe("trialDaysForEmail — reduced-trial logic (pentest T-07 fix)", () => {
   });
 
   it("normalizes email casing before lookup", async () => {
-    let lookedUp = "";
+    // bootstrap-user.ts:246 looks up by `{ email: { in: [...] } }`
+    // — the candidates list always includes the canonical lowercased
+    // form (and the literal lowercased form when they differ). For
+    // a same-canonical case the array is single-element; verify the
+    // lookup includes the lowercased value either way.
+    let lookedUpCandidates: string[] = [];
     vi.doMock("@/lib/prisma", () => ({
       prisma: {
         deletedUser: {
-          findUnique: async (q: { where: { email: string } }) => {
-            lookedUp = q.where.email;
+          findFirst: async (q: {
+            where: { email: { in: string[] } };
+          }) => {
+            lookedUpCandidates = q.where.email.in;
             return null;
           },
         },
@@ -163,7 +174,7 @@ describe("trialDaysForEmail — reduced-trial logic (pentest T-07 fix)", () => {
     }));
     const { trialDaysForEmail } = await import("@/lib/bootstrap-user");
     await trialDaysForEmail("MixedCase@Example.COM");
-    expect(lookedUp).toBe("mixedcase@example.com");
+    expect(lookedUpCandidates).toContain("mixedcase@example.com");
   });
 });
 

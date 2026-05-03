@@ -5,3 +5,4 @@ export * from "./daily-prompts";
 export * from "./progression";
 export * from "./userProgression";
 export * from "./copy/free-tier";
+export * from "./free-tier";

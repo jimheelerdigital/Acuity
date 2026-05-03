@@ -19,6 +19,7 @@ const AICostsTab = dynamic(() => import("./tabs/AICostsTab"));
 const ContentFactoryTab = dynamic(() => import("./tabs/ContentFactoryTab"));
 const RedFlagsTab = dynamic(() => import("./tabs/RedFlagsTab"));
 const FeatureFlagsTab = dynamic(() => import("./tabs/FeatureFlagsTab"));
+const FreeCapTab = dynamic(() => import("./tabs/FreeCapTab"));
 const UsersTab = dynamic(() => import("./tabs/UsersTab"));
 const TrialEmailsTab = dynamic(() => import("./tabs/TrialEmailsTab"));
 const GuideTab = dynamic(() => import("./tabs/GuideTab"));
@@ -38,6 +39,7 @@ const TABS = [
   { key: "auto-blog", label: "Auto Blog" },
   { key: "red-flags", label: "Red Flags" },
   { key: "feature-flags", label: "Feature Flags" },
+  { key: "free-cap", label: "Free Cap" },
   { key: "users", label: "Users" },
   { key: "trial-emails", label: "Trial Emails" },
   { key: "guide", label: "Guide" },
@@ -118,6 +120,7 @@ export default function AdminDashboard() {
     activeTab !== "auto-blog" &&
     activeTab !== "acquisition" &&
     activeTab !== "feature-flags" &&
+    activeTab !== "free-cap" &&
     activeTab !== "users" &&
     activeTab !== "trial-emails" &&
     activeTab !== "guide";
@@ -208,6 +211,7 @@ export default function AdminDashboard() {
             <RedFlagsTab start={startStr} end={endStr} />
           )}
           {activeTab === "feature-flags" && <FeatureFlagsTab />}
+          {activeTab === "free-cap" && <FreeCapTab />}
           {activeTab === "users" && <UsersTab />}
           {activeTab === "trial-emails" && <TrialEmailsTab />}
           {activeTab === "guide" && <GuideTab />}
