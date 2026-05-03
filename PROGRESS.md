@@ -20,6 +20,86 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-03] — Multi-workstream sweep: Apple v1.1 prep, backlog cleanup, Sentry pass, V5 soak, Stripe audit, Calendar C5c
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hashes:** a411cd1 (W1), 1c14e20 (W4), acc016f (W2), d03d3ba (W3), d784996 (W6), PENDING (W5)
+
+### In plain English (for Keenan)
+
+Six pieces of work tonight, all in one sitting. (1) Drafted everything we'll need when Apple opens the v1.1 review — the "What's New" copy, a re-statement of why our locked-state surfaces and the calendar placeholder are still 3.1.3(b)-compliant, and a brand-new reviewer account that exercises the FREE post-trial experience. (2) Closed two backlog items that slice 7 already fixed and figured out the actual root cause behind the mobile-side TypeScript noise we've been carrying (it's a workspace-wide React-types split between web and mobile that npm can't reconcile — documented two real fix paths). (3) Ran a code-level Sentry pass — found that a logger we thought was reaching Sentry actually isn't (it's just routing to Vercel logs), but the events still land in a structured form, so it's a routing fix not a signal-loss issue. (4) Tried to make the V5 themes ramp decision and discovered we have no way to attribute which entries were extracted by V5 vs the legacy prompt — so the ramp is HELD at 12% until we add a small column to track that. (5) Audited the Stripe webhook end-to-end and surfaced one real edge-case bug worth fixing (a late payment-failed retry can resurrect a canceled user as PAST_DUE) and four smaller cleanup items — none worth a hotfix tonight. (6) Shipped Calendar C5c — Pro/Trial users on web and mobile can now flip auto-send-tasks, choose between timed and all-day default events, and disconnect the calendar entirely. The actual EventKit hookup still waits on Apple clearing v1.0.
+
+### Technical changes (for Jimmy)
+
+**W1 — Apple v1.1 prep (a411cd1, docs only):**
+- `docs/v1-1/app-store-whats-new.md` — production "What's New in v1.1" copy + alt short version + rubric notes (no banned words, free-tier behavior leads).
+- `docs/v1-1/app-review-notes-v1-1.md` — addendum to v1.0 review notes covering FREE locked-state surfaces (/home, /life-matrix, /goals, /tasks, /insights, /entries/[id]), the calendar placeholder, full 3.1.3(b) checklist, 5-row risk register, no purchase-pathway proofs.
+- `docs/v1-1/reviewer-account-v1-1.md` — creds (`jim+applereview-v11@heelerdigital.com` / `m6d&s9DWdVn%fLKU`) + seed runbook + verification checklist.
+- `apps/web/scripts/seed-v11-reviewer.ts` — allowlisted FREE-tier reviewer seed (8 entries, 6 LifeMapAreas, 2 Goals, 3 Tasks, 1 WeeklyReport, no LifeAudit, `extracted=false` on all entries to mirror real FREE-tier shape and trigger the slice 5 backfill banner).
+
+**W4 — Backlog cleanup (1c14e20):**
+- `docs/v1-1/backlog.md`: marked auth-flows mock and isFreeTierUser dedup as RESOLVED (slice 7). Upgraded the mobile React 18/19 entry's diagnosis from "peerDependency resolution issue" to actual root cause: web pins `@types/react@^18.3.0` (Next.js 14), mobile pins `~19.1.0` (Expo SDK 54). Two real fix paths documented (pnpm migration with `nohoist`, OR Next.js 15 + React 19 upgrade). Added 2 new entries: 7-error apps/web tsc baseline (none runtime-fatal) and reviewer-account verifier gap.
+
+**W2 — Sentry pass (acc016f, docs only):**
+- `docs/v1-1/sentry-pass-2026-05-02.md` — code-level observability audit + manual-query runbook (no Sentry CLI auth in env so couldn't pull events directly).
+- **Top finding:** `safeLog.warn` / `safeLog.error` do **not** route to Sentry — they're `console.warn` / `console.error`. The slice 5 PROGRESS narrative ("safeLog routes through Sentry's transport") was wrong. Vercel logs receive structured signal; Sentry only sees auto-instrumented uncaught throws + 2 explicit `Sentry.captureException` sites (`global-error.tsx`, `auth.ts:230`). Filed as backlog candidate, not urgent.
+- Two smaller findings: `/api/record` cap-block has no observability event when flag flips on; several `pipeline.ts` + `bootstrap-user.ts` sites still use raw `console.error` for non-fatal failures.
+- Six manual queries documented for Jim to run (3 Sentry, 3 Vercel logs).
+
+**W3 — V5 themes ramp + soak doc (d03d3ba, docs only):**
+- `docs/v1-1/v5-soak-day1.md` — full diagnostic: two infrastructure gaps prevented the cohort comparison the user asked for. (a) Network: this Mac can't reach Supabase (work-network port block — same constraint as `prisma db push`). Confirmed via direct script attempt. (b) Schema: there is NO per-entry record of which prompt version produced an Entry (`Entry.themePromptVersion` doesn't exist). At 12% rollout, the date-cutoff workaround would conflate ~88% legacy with ~12% V5 in the post-flip window — date split is structurally wrong. **Decision: HOLD at 12%.** Did not bump (no validated improvement signal); did not roll back (no validated regression signal).
+- `docs/v1-1/backlog.md` (+1 entry): V5 cohort attribution gap — the work needed before any future ramp/rollback decision is data-driven.
+
+**W6 — Stripe webhook audit (d784996, docs only):**
+- `docs/v1-1/stripe-webhook-audit.md` — mapped every event we listen to (5 handled, 7 unhandled), walked 5 edge cases (upgrade race, payment-failed, cancel, resubscribe, refund), 9-row triage table.
+- **Real findings:**
+  - §4.4 (medium): a late `invoice.payment_failed` retry can resurrect a canceled user as PAST_DUE if the timing crosses with their cancel. 30-min fix (status guard before downgrade).
+  - §4.2 (low): `User.stripeCustomerId` lacks `@unique` — `updateMany` could theoretically fan out (in practice it doesn't because we always pass `metadata.userId`).
+  - §4.5 (low): `charge.refunded` unhandled — refund without cancel leaves user as PRO indefinitely.
+  - §4.7 (low): `customer.deleted` unhandled — orphaned `stripeCustomerId`.
+  - §4.1 (low): `/account?upgrade=success` vs webhook arrival race — verify UX behavior.
+- **No hotfix needed.** 5 backlog entries proposed.
+
+**W5 — Calendar C5c, settings UI (PENDING commit):**
+
+*New API endpoints:*
+- `apps/web/src/app/api/integrations/calendar/disconnect/route.ts` (new, 81 lines): POST clears `calendarConnectedProvider`, `calendarConnectedAt`, `targetCalendarId`. Preserves `autoSendTasks` + `defaultEventDuration` so reconnect honors the user's last preferences. Does NOT delete already-created calendar events (per scoping doc §9 — "leave existing events alone; stop creating new ones") and does NOT call any provider revoke endpoint. 409 if not currently connected.
+- `apps/web/src/app/api/integrations/calendar/settings/route.ts`: added `GET` export alongside the existing `PATCH`. Returns `{ connected: boolean; calendar: { provider, connectedAt, targetCalendarId, autoSendTasks, defaultEventDuration } | null }`. Mobile uses this on screen mount so the settings reflect current server state without piggybacking on `/api/user/me`.
+
+*Web UI:*
+- `apps/web/src/app/account/integrations-settings.tsx` (new, 249 lines): client component. Surfaces auto-send toggle, default-duration radio, target-calendar read-only display, disconnect button. Optimistic update pattern on toggle/radio (write locally → PATCH → revert on error). Disconnect uses `window.confirm` with copy clarifying that existing events stay where they are. `router.refresh()` after disconnect so the page re-renders with the placeholder card.
+- `apps/web/src/app/account/integrations-section.tsx` (-31, +11): replaced the read-only `ConnectedStateCard` body with the new `<IntegrationsSettings>` mount. Removed the deprecated `SettingRow` helper (subsumed by the new component). Server-side narrows `defaultEventDuration` from `string` to the `"ALL_DAY" | "TIMED"` union before passing to the client.
+
+*Mobile UI:*
+- `apps/mobile/app/integrations.tsx` (+277): added a `ConnectedOrPlaceholder` wrapper that fetches `/api/integrations/calendar/settings` on mount, branches on the `connected` discriminator. When connected, renders `<ConnectedCard>` with the same controls as web (RN `Switch` for the toggle, `Pressable` radio buttons for duration, `Alert.alert` for the disconnect confirm). Optimistic update + revert pattern preserved. When not connected, renders the existing C5b "Coming in next update" placeholder unchanged. Loading + error states handled with `ActivityIndicator` + retry button.
+
+### Slice C5c verification
+
+- Full apps/web vitest: **20/20 files pass, 284/284 tests pass.** No new tests added (UI-only slice — the API routes inherit the existing entitlement gate's coverage). Zero regressions.
+- Web tsc: 7 errors total, all pre-existing in 4 files (OverviewTab, landing.tsx, auto-blog.ts, google/auth.ts) — same baseline as slice 6/7. **Zero new** in any C5c file.
+- Mobile tsc: 116 baseline TS2786 errors (React 18/19 split documented in `docs/v1-1/backlog.md`). **Zero in `app/integrations.tsx`** specifically.
+- `prisma validate` not run (zero schema changes this slice — that's the point).
+
+### Manual steps needed
+
+- [ ] None blocking. The new endpoints inherit the existing `requireEntitlement("canSyncCalendar")` gate and the `calendar_integrations` feature flag (gateFeatureFlag is on the `connect` route only, not on settings/disconnect — settings can be edited even if the flag flips off, which is intentional). The schema is unchanged. (Jimmy)
+- [ ] Optional: log in as a PRO/TRIAL user with a test calendar connection and verify the toggle flips, the radio swap holds, and disconnect routes cleanly back to the "Connect from iOS app" placeholder.
+- [ ] **C6 still held until Apple clears v1.0** — real EventKit ships there.
+
+### Notes
+
+- **Mobile fetches state on mount, web hydrates from the server-rendered page.** Asymmetric by design. The web `/account` page already fetches calendar fields server-side for the IntegrationsSection's connected-state branch (added in slice 5), so adding a client-side fetch would duplicate the work and complicate hydration. Mobile has no equivalent SSR layer; calling `/api/integrations/calendar/settings` GET on mount is the cleanest way for it to reflect server truth.
+- **Optimistic update + revert** is implemented on both platforms. Toggle/radio changes immediately mutate local state, then PATCH; on error, the local state reverts and an inline error (web) or Alert (mobile) surfaces. This avoids the "tap toggle → wait 800ms → spinner → done" UX that an awaited PATCH would produce.
+- **Disconnect preserves preferences** (autoSendTasks + defaultEventDuration). Reconnect via `/api/integrations/calendar/connect` doesn't reset them unless the new call passes a different value. Same pattern as Stripe customer-id reuse on resubscribe — cancellation doesn't wipe history.
+- **No "delete created events on disconnect"** affordance. Per scoping doc §9 the user mental model is "stop creating new ones; existing ones stay." If users complain, mobile can add a separate "Clean up Acuity events on my calendar" button that fans out an EventKit `removeEvent` per `Task.calendarEventId`. Not in scope for C5c.
+- **The targetCalendarId picker is deliberately deferred.** Without the EventKit list call (slice C6), there's no way to surface a meaningful list of calendars in the UI — the value is an opaque provider-side ID. The current UI shows it read-only ("Currently syncing to: <id>") with copy explaining users can re-target from iOS today; the picker materializes once C6 lands.
+- **Why no per-call rate limit on the settings PATCH?** It's already auth-gated AND entitlement-gated AND a single-row update — the realistic abuse pattern is "user spams the toggle." Optimistic update already absorbs that on the client; the server takes a quick `prisma.user.update`. Not worth adding a Redis rate-limit tier for. If Sentry surfaces abuse, easy to add later.
+- **Followed slice protocol:** full-suite vitest re-run, tsc whole-tree on web + mobile, baseline-red counts called out as pre-existing per docs/v1-1/backlog.md. No schema changes; no Inngest function changes; no Stripe-handler changes (W6 was diagnostic only).
+- **Sweep summary across all 6 workstreams:** zero hotfixes shipped; six docs added; one real code slice (C5c). Three findings worth re-reading: safeLog → Sentry routing gap (W2), V5 cohort-attribution measurement gap blocking ramp decision (W3), and the late-retry payment-failed → PAST_DUE resurrection bug (W6 §4.4).
+
+---
+
 ## [2026-05-02] — v1.1 free-tier slice 7: long-tail polish (admin Free Cap tab, mobile grace modal, isFreeTierUser dedup, auth-flows test fix)
 
 **Requested by:** Jimmy

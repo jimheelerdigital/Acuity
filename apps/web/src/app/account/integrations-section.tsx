@@ -22,6 +22,8 @@
 
 import { ProLockedCard } from "@/components/pro-locked-card";
 
+import { IntegrationsSettings } from "./integrations-settings";
+
 export interface CalendarConnectionSummary {
   provider: string | null; // "ios_eventkit" | "google" | "outlook" | null
   connectedAt: Date | null;
@@ -109,11 +111,15 @@ function ConnectedStateCard({
         year: "numeric",
       })
     : null;
-  const durationLabel =
-    connection.defaultEventDuration === "ALL_DAY" ? "All-day" : "Timed (1h)";
+
+  // Server-side narrowing — IntegrationsSettings only accepts the
+  // typed Duration union. The server-fetched value is a string, so
+  // coerce to the canonical union here (TIMED is the schema default).
+  const initialDuration =
+    connection.defaultEventDuration === "ALL_DAY" ? "ALL_DAY" : "TIMED";
 
   return (
-    <div className="mt-5 space-y-4 rounded-lg border border-zinc-200 dark:border-white/10 p-5">
+    <div className="mt-5 rounded-lg border border-zinc-200 dark:border-white/10 p-5">
       <div className="flex items-center justify-between gap-3">
         <div>
           <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
@@ -130,31 +136,11 @@ function ConnectedStateCard({
         </span>
       </div>
 
-      <dl className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        <SettingRow
-          label="Auto-send tasks"
-          value={connection.autoSendTasks ? "On" : "Off"}
-        />
-        <SettingRow label="Default event" value={durationLabel} />
-      </dl>
-
-      <p className="text-[11px] leading-relaxed text-zinc-500 dark:text-zinc-400">
-        Settings (auto-send, default duration, target calendar) are
-        edited from the iOS app today. Disconnect ships in a follow-up.
-      </p>
-    </div>
-  );
-}
-
-function SettingRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-md bg-zinc-50 dark:bg-white/5 px-3 py-2">
-      <dt className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
-        {label}
-      </dt>
-      <dd className="mt-0.5 text-sm text-zinc-700 dark:text-zinc-200">
-        {value}
-      </dd>
+      <IntegrationsSettings
+        initialAutoSendTasks={connection.autoSendTasks}
+        initialDefaultEventDuration={initialDuration}
+        targetCalendarId={connection.targetCalendarId}
+      />
     </div>
   );
 }

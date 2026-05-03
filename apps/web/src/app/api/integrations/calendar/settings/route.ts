@@ -1,8 +1,16 @@
 /**
- * PATCH /api/integrations/calendar/settings
+ * GET    /api/integrations/calendar/settings
+ * PATCH  /api/integrations/calendar/settings
  *
- * Mutate a connected user's calendar preferences without re-running
- * the full connect flow. Used by the settings UI for:
+ * GET — read the connected user's calendar preferences. Used by
+ * mobile (slice C5c) when it mounts the integrations screen so the
+ * settings reflect current state without round-tripping the whole
+ * /api/user/me payload. Returns 200 with the connection summary,
+ * including a `connected: boolean` discriminator so the client can
+ * branch on shape without 404 special-casing.
+ *
+ * PATCH — mutate a connected user's calendar preferences without
+ * re-running the full connect flow. Used by the settings UI for:
  *   - autoSendTasks toggle
  *   - defaultEventDuration radio
  *   - targetCalendarId picker (re-targeting to a different calendar)
@@ -22,8 +30,8 @@
  * fires via a follow-up call mobile makes after the settings PATCH
  * succeeds. This keeps the route handler small + provider-agnostic.
  *
- * Gated by canSyncCalendar. Requires a connected provider — 409 if
- * the user hasn't run /connect first (settings PATCH on a
+ * Gated by canSyncCalendar. PATCH requires a connected provider —
+ * 409 if the user hasn't run /connect first (settings PATCH on a
  * disconnected user is meaningless).
  */
 
@@ -37,6 +45,46 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const VALID_DURATIONS = ["ALL_DAY", "TIMED"] as const;
+
+export async function GET(req: NextRequest) {
+  const userId = await getAnySessionUserId(req);
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const gated = await requireEntitlement("canSyncCalendar", userId);
+  if (!gated.ok) return gated.response;
+
+  const { prisma } = await import("@/lib/prisma");
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      calendarConnectedProvider: true,
+      calendarConnectedAt: true,
+      targetCalendarId: true,
+      autoSendTasks: true,
+      defaultEventDuration: true,
+    },
+  });
+
+  if (!user || !user.calendarConnectedProvider) {
+    return NextResponse.json({
+      connected: false,
+      calendar: null,
+    });
+  }
+
+  return NextResponse.json({
+    connected: true,
+    calendar: {
+      provider: user.calendarConnectedProvider,
+      connectedAt: user.calendarConnectedAt,
+      targetCalendarId: user.targetCalendarId,
+      autoSendTasks: user.autoSendTasks,
+      defaultEventDuration: user.defaultEventDuration,
+    },
+  });
+}
 
 export async function PATCH(req: NextRequest) {
   const userId = await getAnySessionUserId(req);
