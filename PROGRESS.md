@@ -20,6 +20,65 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-03] — Dual-source subscription Phase 3b: "Subscribe in app" CTA on the 8 locked-state surfaces
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** PENDING
+
+### In plain English (for Keenan)
+
+Phase 3b — the small-but-symbolic addition that follow-ups Phase 3a. The eight FREE-tier locked cards on the iPhone app (the "Pro" preview cards on Home, Goals, Tasks, Insights, Theme Map, Life Matrix, Entry detail, and Calendar integrations) now show TWO buttons: "Subscribe in app" alongside the existing "Continue on web →". Apple requires both stay visible — that's the textbook 3.1.3(b) Multiplatform Service compliance pattern. None of the changes are visible to users today because the in-app subscribe path is gated by the same build-time flag as Phase 3a, currently OFF in production. When Jim flips the flag for TestFlight, every locked card on iOS gets the dual-CTA layout automatically; no per-screen changes were needed because the buttons live in two shared components (ProLockedCard for full cards, ProLockedFooter for the inline entry-detail link). One file, eight surfaces, both behaviors.
+
+### Technical changes (for Jimmy)
+
+**Single-file change — `apps/mobile/components/pro-locked-card.tsx` (+98/-29):**
+- Imports `useRouter` from expo-router and `isIapEnabled` from `@/lib/iap-config`. Reads `Platform` from react-native (already imported via expo's RN bundle).
+- Computes `showInAppSubscribe = Platform.OS === "ios" && isIapEnabled()` once per render.
+- **`ProLockedCard` (full card variant):**
+  - When `showInAppSubscribe`: renders both buttons in a horizontal `flex-row flex-wrap gap-2` layout. "Subscribe in app" (filled violet, primary) → `router.push("/subscribe")`. "Continue on web →" (outlined zinc, secondary) → existing `WebBrowser.openBrowserAsync` flow.
+  - When flag-off / Android: original single-CTA layout unchanged. Outlined chevron-forward link to `/upgrade?src=<surfaceId>`.
+- **`ProLockedFooter` (entry-detail inline variant):**
+  - When `showInAppSubscribe`: renders both as compact stacked links. "Subscribe in app" (violet, top) and the existing single-line "...Continue on web →" body (zinc, below). Vertical stack because horizontal-gap reads as "two unrelated affordances" in a footer context.
+  - When flag-off / Android: original single tap-target unchanged.
+
+**8 mount sites consume the change transparently — no per-surface diff needed:**
+| Surface | Component | surfaceId |
+|---------|-----------|-----------|
+| `apps/mobile/app/(tabs)/index.tsx` (home) | ProLockedCard | `pro_pulse_home` |
+| `apps/mobile/app/(tabs)/goals.tsx` | ProLockedCard | `goals_suggestions_locked` |
+| `apps/mobile/app/(tabs)/tasks.tsx` | ProLockedCard | `tasks_empty_state` |
+| `apps/mobile/app/(tabs)/insights.tsx` | ProLockedCard | `theme_map_locked` + `life_matrix_locked` |
+| `apps/mobile/app/insights/theme-map.tsx` | ProLockedCard | `theme_map_locked` |
+| `apps/mobile/app/integrations.tsx` | ProLockedCard | `calendar_connect_locked` |
+| `apps/mobile/app/entries/[id]/page.tsx` (web has the locked footer; mobile mirror) | ProLockedFooter | `entry_detail_footer` |
+| `apps/mobile/app/(tabs)/index.tsx` (Life Matrix card on home) | ProLockedCard | `life_matrix_locked` |
+
+### Slice verification
+
+- Full apps/web vitest: **23/23 files pass, 362/362 tests pass.** Zero new tests required — the dual-CTA logic is ~15 lines of branching, the underlying `isIapEnabled` predicate is already tested via Phase 3a's `iap-flow.test.ts`, and the shared copy strings are unchanged. Existing `free-tier-copy.test.ts` (which enforces "no $/Subscribe/Upgrade" in `FREE_TIER_LOCKED_COPY`) passes — the new "Subscribe in app" string is a UI label outside the audited copy map.
+- Web tsc: 7 errors total, all pre-existing baseline. **Zero new** in Phase 3b file.
+- Mobile tsc: 120 total. 114 TS2786 React 18/19 baseline (documented in `docs/v1-1/backlog.md`). 5 typed-routes manifest gaps — Phase 3a's `/subscribe` ×3 + the pre-existing `/integrations` ×1 + Phase 3b's `/subscribe` ×2 (the new pro-locked-card push call sites). Same regenerates-on-next-`expo start` pattern.
+- `react-native-iap@13.0.4` is now installed in `node_modules` (Jim ran `npm install` per the Phase 3a manual-step list — visible in the lockfile diff). The Phase 3a type shim at `apps/mobile/types/react-native-iap.d.ts` is now redundant (bundled types from the package take precedence) but harmless; can be removed when convenient.
+
+### Manual steps needed
+
+- [ ] None for Phase 3b itself. Pure UI addition; no schema, no env, no deploy risk beyond the existing flag-off posture.
+- [ ] **TestFlight verification path (when ready):** flip `extra.iapEnabled: true` in `apps/mobile/app.json` (or the relevant EAS profile env override), rebuild, and verify on each of the 8 surfaces that BOTH buttons render, "Subscribe in app" pushes `/subscribe`, and "Continue on web →" still opens Safari. Same Sandbox tester flow as Phase 3a §TestFlight build instructions.
+- [ ] Phase 3a's redundant type shim (`apps/mobile/types/react-native-iap.d.ts`) can be deleted at any time. Not blocking; not a regression risk. Follow-up cleanup item.
+
+### Notes
+
+- **Why one file change covers eight surfaces.** Slice 4-mobile centralized all FREE-tier locked-state copy + UI in `pro-locked-card.tsx` + the shared `FREE_TIER_LOCKED_COPY` map. Phase 3b only needed to extend the rendering layer of the two component variants; the eight mount sites continue to call `<ProLockedCard surfaceId="..." />` exactly as before. This is the same architectural-payoff that made the slice 7 dedup of `isFreeTierUser` cheap.
+- **3.1.3(b) defense holds.** Apple's rule: external-link MUST stay visible alongside any in-app subscription option. The dual-button layout makes both options equally tap-able. The text "Continue on web →" is preserved verbatim from the FREE_TIER_LOCKED_COPY map; the new "Subscribe in app" string is a UI-only label, not stored in the audited copy map.
+- **`flex-wrap` on the button row** so the two buttons don't horizontally overflow on the narrowest iPhone (iPhone SE). When the labels are short enough they sit side-by-side; when wide, the second wraps under the first. Tested mentally against the iPhone SE width (320pt with 24pt page padding = 272pt available; "Subscribe in app" + "Continue on web →" + spacing fits at default text size, wraps cleanly at larger Dynamic Type sizes).
+- **`ProLockedFooter` uses vertical stack instead of side-by-side.** The entry-detail page is a long scroll and the footer sits inline at the bottom; horizontal-gap reads as "two related-but-different things" rather than "two ways to do the same thing." Vertical stack with the in-app link first (visual primary) reads correctly.
+- **Production behavior unchanged — confirmed.** `iapEnabled: false` in production app.json. With the flag off, every ProLockedCard mount renders the original single-button layout. Users see no change.
+- **No new tests added for the rendering branch.** The branch is `if (isIapEnabled() && Platform.OS === "ios")` — the predicate itself is already covered, and rendering React Native components under jsdom would require a new vitest config (the apps/web harness uses `environment: "node"` per `vitest.config.ts`). Snapshot or behavioral mobile-component tests are a multi-slice infrastructure investment outside Phase 3b's scope.
+- Followed slice protocol: full-suite vitest re-run, tsc whole-tree on web + mobile, baseline-red files called out as pre-existing. No schema changes; no Inngest changes; no Stripe changes.
+
+---
+
 ## [2026-05-03] — Dual-source subscription Phase 3a: mobile StoreKit 2 wrapper + Subscribe sheet + Profile/Paywall updates + Restore button
 
 **Requested by:** Jimmy
