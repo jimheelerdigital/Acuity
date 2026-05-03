@@ -20,6 +20,49 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-03] — Stripe webhook §4.4 hotfix + race-shape sweep across upgrade-direction handlers
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** PENDING
+
+### In plain English (for Keenan)
+
+A real edge-case bug surfaced in last night's Stripe audit: if Stripe retried an old "your payment failed" notice for a user who has since canceled, our webhook would silently un-cancel them and put them back in the "your card just bounced" state. They'd suddenly see Pro access and a payment-failed banner for a subscription they no longer have. This patch closes that gap, plus two other handlers that had the same shape (a late "you paid" event resurrecting a canceled user as Pro; a late subscription-update event doing the same). Behavior change: a Stripe event that arrives after the user has canceled is now a quiet no-op — we still acknowledge it to Stripe so it stops retrying, but we don't touch the canceled user's row.
+
+### Technical changes (for Jimmy)
+
+**`apps/web/src/app/api/stripe/webhook/route.ts`** — three handlers gain a `subscriptionStatus: { not: "FREE" }` guard on the `updateMany` WHERE clause. Atomic — no read/then/write race.
+
+- **`invoice.payment_failed` (the §4.4 fix):** both the `findMany` (used to drive the email) and the `updateMany` (the actual PAST_DUE write) gain the FREE guard. Result: a canceled user neither gets the row write nor receives a payment-failed email about a card that's no longer on file. Webhook still 200-acks so Stripe stops retrying.
+- **`invoice.payment_succeeded`:** same race shape. A late successful-payment event for a sub the user already canceled would have flipped FREE → PRO. Now blocked. PAST_DUE → PRO is preserved (the intended dunning-recovery path).
+- **`customer.subscription.updated`:** same race when mapping to PRO or PAST_DUE. A canceled user now stays FREE regardless of stale active/past_due events. The FREE→FREE write (Stripe firing `status=canceled` for a sub we already wrote FREE for) is unrestricted because it's terminal-direction.
+
+**Untouched on purpose:**
+- `customer.subscription.deleted` — terminal-direction (writes FREE only). No guard needed.
+- `checkout.session.completed` — user-initiated (no race; the user is intentionally subscribing). No guard needed.
+
+### Slice verification
+
+- Full apps/web vitest: **20/20 files pass, 284/284 tests pass.** Zero regressions. No new tests added — the change is small, well-localized, and the webhook has no existing test harness; building one for this single change would dwarf the change itself. Filed as a follow-up backlog item.
+- tsc: 7 errors, all pre-existing baseline in 4 files (OverviewTab, landing, auto-blog, google/auth). **Zero new** in the webhook file.
+
+### Manual steps needed
+
+- [ ] None blocking. Change is purely code-level; no schema, no env, no Inngest. Vercel auto-deploys on push. (Jimmy)
+- [ ] Optional verification: pick a recently-canceled user from production (status=FREE, has stripeCustomerId), and replay an old `invoice.payment_failed` from Stripe Dashboard → Webhooks → resend. Confirm the user stays FREE and no email fires.
+
+### Notes
+
+- **Why a WHERE-clause guard rather than a read-then-write check?** Atomicity. A `findUnique → if not FREE → update` pattern has a window where another handler could change the row between read and write. The WHERE filter makes the no-op truly atomic — Postgres skips the row at the SQL level. Same defensive pattern used in slice 6's `evaluateFreeCap` Prisma transaction.
+- **The findMany guard mirrors the updateMany guard intentionally.** They live in the same handler block and need the same predicate to stay coherent — otherwise we'd email canceled users about non-existent payment failures while correctly skipping their row update. Mirror them or comment them; mirroring is cheaper.
+- **`stripeSubscriptionId` is NOT nulled on the FREE-side guarded paths.** A canceled user's `stripeSubscriptionId` is already null (zeroed by `customer.subscription.deleted`). If somehow a FREE user has a non-null `stripeSubscriptionId`, this fix doesn't repair it — that's separate cleanup. None of the handlers we're fixing would be the surface that creates that orphan state, so leaving alone.
+- **W6 audit's other findings (§4.1 success-redirect race, §4.2 missing @unique, §4.5 charge.refunded, §4.7 customer.deleted) are NOT addressed in this hotfix.** They're tracked as backlog items in `docs/v1-1/stripe-webhook-audit.md §5`. None match the §4.4 race shape (resurrection of FREE user) so they don't fold into this commit.
+- **Backlog candidate surfaced:** webhook test harness. Currently the file has zero unit tests — the change ships purely on code review + manual replay verification. A test fixture that mocks `prisma.user.findMany`/`updateMany` per handler would be the right next step. ~1 hour of work; not blocking.
+- Followed slice protocol: full-suite vitest re-run, tsc whole-tree, baseline-red files called out as pre-existing per docs/v1-1/backlog.md. No schema changes; no Inngest changes.
+
+---
+
 ## [2026-05-03] — Multi-workstream sweep: Apple v1.1 prep, backlog cleanup, Sentry pass, V5 soak, Stripe audit, Calendar C5c
 
 **Requested by:** Jimmy

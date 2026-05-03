@@ -126,8 +126,18 @@ export async function POST(req: NextRequest) {
 
       const sub = invoice.subscription as string | null;
 
+      // Status guard (W-A audit, 2026-05-03): never resurrect a
+      // canceled user (subscriptionStatus="FREE") back to PRO. A
+      // late or out-of-order Stripe event for a sub the user has
+      // already canceled would otherwise un-cancel them silently.
+      // The WHERE filter makes the no-op atomic — no read/write race.
+      // PAST_DUE → PRO is the intended dunning recovery path, so
+      // it's allowed (FREE is the only excluded state).
       await prisma.user.updateMany({
-        where: { stripeCustomerId: customerId },
+        where: {
+          stripeCustomerId: customerId,
+          subscriptionStatus: { not: "FREE" },
+        },
         data: {
           subscriptionStatus: "PRO",
           ...(sub ? { stripeSubscriptionId: sub } : {}),
@@ -152,17 +162,36 @@ export async function POST(req: NextRequest) {
       // dashboard keyed on this status. Stripe's own retry schedule
       // will fire invoice.payment_succeeded when the card is fixed;
       // that handler flips us back to PRO.
+      //
+      // Status guard (W-A audit §4.4 fix, 2026-05-03): the audit at
+      // docs/v1-1/stripe-webhook-audit.md §4.4 flagged a real race —
+      // a late Stripe retry for an old failed invoice could resurrect
+      // a user who has since canceled (FREE) back into PAST_DUE. The
+      // user would see Pro access and a "your payment failed" banner
+      // for a sub that no longer exists. WHERE filter blocks FREE →
+      // PAST_DUE so the update is a no-op for canceled users; we
+      // still 200-ack the webhook so Stripe stops retrying.
+      // The findMany also adds the same guard so we don't email a
+      // canceled user about a card that's no longer on file.
       const users = await prisma.user.findMany({
-        where: { stripeCustomerId: customerId },
+        where: {
+          stripeCustomerId: customerId,
+          subscriptionStatus: { not: "FREE" },
+        },
         select: { id: true, email: true, name: true },
       });
       await prisma.user.updateMany({
-        where: { stripeCustomerId: customerId },
+        where: {
+          stripeCustomerId: customerId,
+          subscriptionStatus: { not: "FREE" },
+        },
         data: { subscriptionStatus: "PAST_DUE" },
       });
 
       // Best-effort email nudge so the user knows to update their
-      // payment method before Stripe's dunning period ends.
+      // payment method before Stripe's dunning period ends. Only
+      // sent to users we actually downgraded — canceled users
+      // were filtered out by the findMany above.
       try {
         const { sendPaymentFailedEmail } = await import("@/emails/payment-failed");
         for (const u of users) {
@@ -194,8 +223,19 @@ export async function POST(req: NextRequest) {
         nextStatus = "FREE";
 
       if (nextStatus) {
+        // Status guard (W-A audit, 2026-05-03): same race shape as
+        // invoice.payment_failed/succeeded — a late subscription.updated
+        // with status="active" or "past_due" arriving after a user
+        // has been canceled (FREE) would resurrect them. WHERE
+        // filter blocks the upgrade direction; FREE → FREE (the
+        // canceled→canceled no-op) is also fine; FREE writes are
+        // unrestricted because they're terminal-direction (cancel).
+        const where =
+          nextStatus === "FREE"
+            ? { stripeCustomerId: customerId }
+            : { stripeCustomerId: customerId, subscriptionStatus: { not: "FREE" } };
         await prisma.user.updateMany({
-          where: { stripeCustomerId: customerId },
+          where,
           data: {
             subscriptionStatus: nextStatus,
             stripeSubscriptionId: sub.id,
