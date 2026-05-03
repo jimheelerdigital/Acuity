@@ -24,7 +24,7 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** PENDING
+**Commit hash:** 02644e4
 
 ### In plain English (for Keenan)
 
