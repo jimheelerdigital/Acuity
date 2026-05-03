@@ -24,7 +24,7 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hashes:** a411cd1 (W1), 1c14e20 (W4), acc016f (W2), d03d3ba (W3), d784996 (W6), PENDING (W5)
+**Commit hashes:** a411cd1 (W1), 1c14e20 (W4), acc016f (W2), d03d3ba (W3), d784996 (W6), 6d06234 (W5)
 
 ### In plain English (for Keenan)
 
