@@ -20,6 +20,34 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-04] — Audit: blog trim/prune policy
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** e4bded0
+
+### In plain English (for Keenan)
+
+Audited the automated blog pruning system. Finding: a policy exists and is fully built (ships posts to "pruned" status, 301-redirects to the best performer, pings Google to deindex). However, it may have been no-oping since launch if the Google Search Console API credentials were never configured — the manual steps from April 28 are still unchecked. The audit also identifies that the 7-day prune trigger is too aggressive (should be 21 days) and there's no "improve before deleting" step.
+
+### Technical changes (for Jimmy)
+
+- `audit/blog-trim-policy-audit-2026-05-04.md`: full audit document covering autoBlogPruneFn, manual kill endpoint, blog route 301 handling, sitemap exclusion, GSC/Indexing API integration, schema fields, and gap analysis vs. ideal policy.
+- No code changes.
+
+### Manual steps needed
+
+- [ ] Verify GSC API credentials are configured (Keenan/Jimmy): check if `GA4_SERVICE_ACCOUNT_KEY` is set, service account is Owner in Search Console, and Search Console + Indexing APIs are enabled in GCP.
+- [ ] Check Inngest run history for `auto-blog-prune` — has it ever completed a full cycle with actual prune actions? (Jimmy)
+
+### Notes
+
+- The pruner gracefully no-ops when GSC returns null, so it may have been silently skipping every night since April 28 without any error alerts.
+- Recommendation is Option B (extend existing policy): raise threshold to 21 days, add URL Inspection API check, add "improve" tier before auto-pruning. ~4-6 hours of work.
+- Full audit at `audit/blog-trim-policy-audit-2026-05-04.md`.
+
+---
+
 ## [2026-05-04] — Stripe backlog cleanup: @unique on stripeCustomerId + verified upgrade-success race + spec'd 2 unhandled events
 
 **Requested by:** Jimmy
