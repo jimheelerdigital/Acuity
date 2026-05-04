@@ -2,6 +2,8 @@ import "server-only";
 
 import { type JWT, decode } from "next-auth/jwt";
 
+import { safeLog } from "@/lib/safe-log";
+
 /**
  * Mobile session helper — extracts + verifies a NextAuth JWT from the
  * `Authorization: Bearer <token>` header. The mobile app has no
@@ -25,7 +27,20 @@ async function getMobileSessionFromBearer(
   req: Request
 ): Promise<JWT | null> {
   const authHeader = req.headers.get("authorization");
-  if (!authHeader?.toLowerCase().startsWith("bearer ")) return null;
+  if (!authHeader?.toLowerCase().startsWith("bearer ")) {
+    // Diagnostic instrumentation (2026-05-03 Keenan OAuth 401 ticket):
+    // distinguish "no Authorization header" from "header malformed".
+    // Both currently silently return null, making the
+    // /api/auth/mobile-callback → /api/user/me 401 race impossible
+    // to root-cause from logs alone. Header length only — never
+    // log the value (token or otherwise).
+    if (authHeader !== null) {
+      safeLog.warn("mobile-auth.bad-header-format", {
+        headerLen: authHeader.length,
+      });
+    }
+    return null;
+  }
 
   const raw = authHeader.slice(7).trim();
   if (!raw) return null;
@@ -40,8 +55,27 @@ async function getMobileSessionFromBearer(
 
   try {
     const token = await decode({ token: raw, secret });
+    if (!token?.id) {
+      // Decoded successfully but payload missing the id field. Signals
+      // a token shape mismatch (encode site set wrong claims) rather
+      // than a signature/encryption failure.
+      safeLog.warn("mobile-auth.decode-empty", {
+        hasToken: Boolean(token),
+        hasId: typeof token?.id === "string",
+        rawLen: raw.length,
+      });
+    }
     return token;
-  } catch {
+  } catch (err) {
+    // Was: silent return null. The catch swallowed JWE-decryption
+    // failures, signature mismatches, expiry — every interesting case.
+    // Log just the error message + token length (NEVER the token
+    // itself) so the next 401 retry surfaces which of the three
+    // failure modes is firing.
+    safeLog.warn("mobile-auth.decode-failed", {
+      message: err instanceof Error ? err.message : String(err),
+      rawLen: raw.length,
+    });
     return null;
   }
 }

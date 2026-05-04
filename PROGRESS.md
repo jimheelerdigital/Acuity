@@ -20,6 +20,62 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-03] — Diagnostic instrumentation: mobile-auth bearer-decode failure modes (Keenan OAuth 401 ticket)
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** PENDING
+
+### In plain English (for Keenan)
+
+Keenan reproduced "Google sign-in returns to the app but stays on the login screen" on TestFlight build 25. The Vercel logs showed the server side IS working — Google validates the token, the server issues a session JWT, returns 200 — but immediately after, the very next request from the app (asking "who am I?") returns 401. Three retries, three identical patterns. The 401 is silent — the server-side code that decodes the bearer token swallows every failure into a bare `catch` block and returns null, so we have no log telling us WHICH of three possible reasons it's failing: header missing, token corrupt, or decoded-but-empty. This patch adds three small log lines to that decoder so the next time Keenan retries, we'll see exactly what's wrong. No fix yet — we wait for the diagnostic data, then ship the fix as a follow-up. Zero user-facing change; instrumentation only.
+
+### Technical changes (for Jimmy)
+
+**Single-file change — `apps/web/src/lib/mobile-auth.ts` (+36/-2):**
+
+Three new `safeLog.warn` call sites in `getMobileSessionFromBearer`:
+
+1. `mobile-auth.bad-header-format` — fires when Authorization header is present but doesn't start with `bearer ` (lowercased). Logs only `headerLen` (never the value). Distinguishes "client sent something weird" from "client sent nothing."
+
+2. `mobile-auth.decode-failed` — replaces the bare `catch {}`. Logs `message` (the JWE/JWS error from `next-auth/jwt::decode`) + `rawLen` of the bearer attempted. Signals a signature mismatch, expired token, or `NEXTAUTH_SECRET` rotation.
+
+3. `mobile-auth.decode-empty` — fires when `decode()` succeeds but the resulting JWT lacks `id`. Logs `hasToken` + `hasId` + `rawLen`. Signals a payload-shape mismatch between `issueMobileSessionToken` and the decoder.
+
+**Deliberate non-changes:**
+- The "no Authorization header at all" path stays silent (returns null without logging) — that case is normal for unauthenticated requests and would create log noise.
+- No changes to the encode side (`mobile-session.ts`), no changes to the route handlers, no schema changes.
+
+### Slice verification
+
+- Full apps/web vitest: **23/23 files pass, 362/362 tests pass.** Zero regressions. No new tests added — the instrumentation is observability only and the existing helper coverage in route tests still passes.
+- tsc: 7 errors, all pre-existing baseline. **Zero new** in `mobile-auth.ts`.
+- No schema changes; no Inngest changes; no Stripe changes.
+
+### Manual steps needed
+
+- [ ] **None for the instrumentation itself.** Auto-deploys on push. (Jimmy)
+- [ ] **After deploy lands (~1 min):** ask Keenan to retry Google sign-in once. The next attempt will surface one of:
+  - `mobile-auth.bad-header-format` → client is sending a malformed Authorization header (curly-quote space, non-ASCII, etc.)
+  - No log on the 401 → no Authorization header sent at all → SecureStore race on the mobile side
+  - `mobile-auth.decode-failed` with a JWE/JWS error message → token corruption, signature mismatch, or `NEXTAUTH_SECRET` rotation
+  - `mobile-auth.decode-empty` → encode/decode payload-shape mismatch
+- [ ] **Apple sign-in control test:** ask Keenan to also try Apple sign-in. If Apple ALSO 401s on `/api/user/me`, the bug is in the bearer-decode path itself (more interesting). If Apple succeeds, the bug is Google-specific.
+- [ ] **Wipe + reinstall:** ask Keenan to delete Acuity and reinstall from TestFlight. If OAuth works after a clean install, the cause was a stale SecureStore from a prior failed attempt — fix is on the mobile client side (force-clear SecureStore on sign-out failure) and we never need to deploy a server fix.
+- [ ] **Do NOT push a fix yet.** Wait for the diagnostic data from Keenan's retry. Once we know which of the three modes is firing, the fix is trivial and surgical.
+
+### Notes
+
+- **Why three separate event names instead of one with a "failureMode" field?** Easier to grep in Vercel logs. `safeLog` event names are first-class search terms; mode strings are buried in payload. With three names, "is mobile-auth healthy?" is one filter pattern (`-mobile-auth.bad-header-format -mobile-auth.decode-failed -mobile-auth.decode-empty`) → emptiness = clean.
+- **Token never logged.** `rawLen` is the only token-adjacent value emitted. Even at debug levels it would be a security violation to log the bearer; we have a structured-log policy enforced by `safeLog`'s redaction map but the bearer doesn't match any of those patterns, so we'd have to manually exclude it. Length alone is enough to distinguish "token is suspiciously short/truncated" from "token looks like a normal JWE."
+- **The "no Authorization header at all" path is intentionally still silent.** Unauthenticated polling is normal — every dashboard page-load path probes this when checking session state, and adding a log would generate hundreds per hour. The diagnostic difference between "not sent" and "decode failed" comes from log presence vs absence, not from a positive log on the not-sent case.
+- **This is a temporary diagnostic patch, not a permanent surface.** Once we identify the failure mode and ship the fix, the `decode-empty` and `decode-failed` logs are worth keeping (real signal); the `bad-header-format` log can stay too (cheap, useful). Don't expect this to be revertable — it's quietly good observability either way.
+- **Hard hold on the actual fix.** Per the prompt, no fix is being pushed in this commit. The next iteration ships AFTER Keenan's retry surfaces the failure mode.
+- **No production behavior change.** Same return values, same status codes, same auth semantics. Pure instrumentation.
+- Followed slice protocol: full-suite vitest re-run, tsc whole-tree, baseline-red files called out as pre-existing per `docs/v1-1/backlog.md`. Zero schema changes.
+
+---
+
 ## [2026-05-03] — Dual-source subscription Phase 3b: "Subscribe in app" CTA on the 8 locked-state surfaces
 
 **Requested by:** Jimmy
