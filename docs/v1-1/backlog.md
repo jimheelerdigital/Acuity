@@ -122,4 +122,46 @@ Same approach as the existing slice 2 persona verifier (`apps/web/scripts/verify
 
 ---
 
+## Stripe webhook: handle `charge.refunded`
+
+**Status:** New 2026-05-04 (W2 sweep). Spec'd, not implemented.
+
+**Origin:** docs/v1-1/stripe-webhook-audit.md §4.5. Apple is fine — the gap is on the Stripe side.
+
+**Symptom:** when Stripe issues a refund without the user also canceling the subscription, our webhook is a no-op (default branch in `apps/web/src/app/api/stripe/webhook/route.ts`). The user's `subscriptionStatus` stays `PRO` even though the payment was returned. They keep access for the rest of the period at no cost.
+
+**Spec:**
+- New `case "charge.refunded":` in the dispatcher.
+- Read `charge.customer` (string) and `charge.refunded` (bool) and the `charge.payment_intent` (string).
+- Look up the User by `stripeCustomerId` with the FREE-guard pattern (`subscriptionStatus: { not: "FREE" }`) — same shape as the W-A §4.4 fix so a stale event for a canceled user is a no-op.
+- Decision: full refund AND `charge.payment_intent` matches the most recent invoice that activated the subscription → flip `subscriptionStatus = "FREE"`, null `stripeSubscriptionId` and `stripeCurrentPeriodEnd`. Send a (best-effort) email letting them know access ends.
+- Decision: partial refund OR refund of an old invoice → log only, don't touch state. Stripe issues partial refunds for various adjustments; we don't want to terminate access on a $0.50 fee correction.
+- Idempotency-protected by the existing `StripeEvent.id` tombstone at the dispatcher.
+
+**Why backlog and not blocked:** refunds are rare (manual customer-service request) and we'd usually pair the refund with a manual cancel anyway. The risk is a customer-service rep refunds without canceling, the user gets a free month. Acceptable until refund volume increases.
+
+**Estimate:** 30 min code + 30 min tests. ~1 hour end-to-end.
+
+---
+
+## Stripe webhook: handle `customer.deleted`
+
+**Status:** New 2026-05-04 (W2 sweep). Spec'd, not implemented.
+
+**Origin:** docs/v1-1/stripe-webhook-audit.md §4.7.
+
+**Symptom:** when a Stripe Customer is deleted (admin action in dashboard), our `User.stripeCustomerId` stays as the orphaned ID. Next checkout attempt would try to use the deleted customer ID and fail at the Stripe API call, returning a confusing error to the user.
+
+**Spec:**
+- New `case "customer.deleted":` in the dispatcher.
+- Read `customer.id`.
+- `prisma.user.updateMany({ where: { stripeCustomerId: id }, data: { stripeCustomerId: null, stripeSubscriptionId: null, stripeCurrentPeriodEnd: null, subscriptionStatus: existing === "PRO" ? "FREE" : existing } })` — null the customer link, downgrade if active. The W-A FREE-guard isn't needed here because going FROM any state TO FREE is fine (terminal direction).
+- New checkout will create a fresh customer when the user re-subscribes.
+
+**Why backlog:** Stripe customer deletion is exceptionally rare in production. Currently no automation triggers it; only manual dashboard action. A user landing on `/upgrade` post-deletion would just create a fresh checkout flow, slightly slower than the cached-customer path but functionally fine.
+
+**Estimate:** 20 min code + 20 min tests. ~40 min.
+
+---
+
 ## (Future entries land here as they emerge.)

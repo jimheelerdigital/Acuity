@@ -58,7 +58,14 @@ model User {
   name                   String?
   image                  String?
   avatarUrl              String?
-  stripeCustomerId       String?
+  // @unique added 2026-05-04 (W6 audit §4.2). In practice no two
+  // users have ever shared a stripeCustomerId — we always pass
+  // metadata.userId on Checkout creation, producing 1:1 mapping —
+  // but the constraint enforces it at the SQL layer, defending
+  // against any future code path that might fan out an updateMany.
+  // Pre-flight duplicate scan ran 2026-05-04, returned 0 collisions
+  // across the production User table.
+  stripeCustomerId       String?   @unique
   stripeSubscriptionId   String?
   stripeCurrentPeriodEnd DateTime?
   subscriptionStatus     String    @default("TRIAL")

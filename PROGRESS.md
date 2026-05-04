@@ -20,6 +20,58 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-04] — Stripe backlog cleanup: @unique on stripeCustomerId + verified upgrade-success race + spec'd 2 unhandled events
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** PENDING
+
+### In plain English (for Keenan)
+
+Tonight's Stripe-related cleanup. The W6 audit flagged four lower-severity items. (1) Adds a database constraint that prevents two Acuity accounts from ever sharing the same Stripe customer record — defensive cleanup, low risk, ran a duplicate-check on production first and confirmed zero collisions. (2) Investigated the "post-checkout race" concern: turns out the existing code already has a polished 15-second polling loop that catches the webhook flip and updates the UI live. No fix needed; the audit was overly conservative. (3) Two unhandled webhook events (refund-without-cancel, customer-deletion) are spec'd in the backlog with concrete implementation plans for when refund volume justifies the work. End-user impact today: zero behavioral change.
+
+### Technical changes (for Jimmy)
+
+**Schema (single column, additive constraint):**
+- `prisma/schema.prisma:67` — `stripeCustomerId String? @unique`. Was bare `String?` before. Pre-flight scan via `apps/web/scripts/check-dup-stripe.ts` (probe script, removed) confirmed: 1 row with `stripeCustomerId` set, 0 duplicates. Constraint applies cleanly on db push.
+
+**No code changes for upgrade-success race (W6 §4.1):**
+- Investigated `apps/web/src/app/account/account-client.tsx:600+` (`SubscriptionSection`). Existing implementation already handles the webhook-arrival window:
+  1. Server renders `/account` with `justUpgraded={searchParams.upgrade === "success"}` from URL param
+  2. Client mounts; if `status !== "PRO"` and `justUpgraded`, kicks off poll loop
+  3. Polls `/api/user/me` every 1.5s up to 10 attempts (15s window)
+  4. Flips UI to PRO when the webhook lands
+  5. Friendly "payment went through — refresh in a moment" timeout fallback if 15s elapses
+- Verdict: the audit's "Verify UX behavior" finding is satisfied. The polling code shipped 2026-04-24; W6 missed it during the original audit pass. Updated the audit doc backlog cross-ref.
+
+**Backlog entries — `docs/v1-1/backlog.md`:**
+- New: "Stripe webhook: handle `charge.refunded`" — full spec including the FREE-guard pattern (mirrors W-A §4.4), partial-refund vs full-refund decision tree, ~1 hour total estimate.
+- New: "Stripe webhook: handle `customer.deleted`" — full spec for nulling the orphaned customer link + optionally downgrading active subs, ~40 min estimate.
+- Both entries describe the change in enough detail that a future slice ships in one pass.
+
+### Slice verification
+
+- Full apps/web vitest: **23/23 files pass, 362/362 tests pass.** Zero regressions; schema-only change with no logic delta.
+- tsc: 7 errors, all pre-existing baseline. **Zero new** in the schema or anywhere.
+- `prisma format` applied. `prisma validate` clean. `prisma generate` ran locally.
+- Probe SQL: `SELECT "stripeCustomerId", COUNT(*) FROM "User" WHERE "stripeCustomerId" IS NOT NULL GROUP BY "stripeCustomerId" HAVING COUNT(*) > 1` returned 0 rows. `@unique` will apply without conflict.
+
+### Manual steps needed
+
+- [ ] **`npx prisma db push` from home network.** Adds the `@unique` constraint to `User.stripeCustomerId` as a partial unique index (Postgres allows multiple NULLs). Pre-flight scan ran clean — push will apply without rejection. (Jimmy)
+- [ ] No env changes. No Inngest changes. No Stripe webhook handler changes (the §4.4 FREE-guard is already shipped per commit 8c0a7ed).
+- [ ] When refund volume justifies it, ship the two backlog entries (`charge.refunded` + `customer.deleted`). Both have full specs in `docs/v1-1/backlog.md`. Estimated ~1.5 hours combined.
+
+### Notes
+
+- **Why a partial unique index is the right call here:** Postgres `@unique` on a nullable column treats every NULL as distinct, so the FREE-tier majority (no Stripe customer) is unaffected. Only paid users get the duplicate-defense, which is exactly the surface that needed it.
+- **Pre-flight duplicate scan was essential, not optional.** A naive `@unique` add on production data would fail the migration if duplicates existed. The probe script confirmed clean state before db push, which removes the rollback risk entirely.
+- **The upgrade-success race "fix" turned out to be already shipped.** Lesson for future audit passes: when a finding says "Verify UX behavior," actually read the relevant client code rather than synthesizing a fix from the spec. Saved a slice's worth of work tonight.
+- **The two backlog specs are deliberate full-detail.** Both follow the same pattern as the W-A status-guard on `payment_failed` — that pattern was a small finding with big leverage; the same shape applies cleanly to the refund and customer-deleted cases.
+- Followed slice protocol: full-suite vitest re-run, tsc whole-tree, baseline-red files called out as pre-existing per `docs/v1-1/backlog.md`. `prisma validate` clean.
+
+---
+
 ## [2026-05-03] — Diagnostic instrumentation: mobile-auth bearer-decode failure modes (Keenan OAuth 401 ticket)
 
 **Requested by:** Jimmy
