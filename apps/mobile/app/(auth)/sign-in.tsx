@@ -55,7 +55,7 @@ type Loading = "google" | "apple" | "password" | "magic" | null;
  *      app/auth-callback.tsx exchanges for a JWT.
  */
 export default function SignInScreen() {
-  const { refresh } = useAuth();
+  const { setAuthenticatedUser } = useAuth();
   const { signIn: googleSignIn, ready, hasClientId } = useGoogleSignIn();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -98,7 +98,13 @@ export default function SignInScreen() {
       );
       return;
     }
-    await refresh();
+    // Use the user we just received from the callback rather than
+    // refresh()'ing through SecureStore. iOS Keychain has a brief
+    // window where setItemAsync resolves before getItemAsync sees
+    // the value — refresh() reads null, /api/user/me returns 401
+    // (no Authorization header), and the user is stranded on the
+    // sign-in screen. Diagnosed 2026-05-04 across multiple users.
+    setAuthenticatedUser(result.user);
   }
 
   async function handleGoogle() {
@@ -123,7 +129,8 @@ export default function SignInScreen() {
       );
       return;
     }
-    await refresh();
+    // See handleApple comment — same SecureStore race avoidance.
+    setAuthenticatedUser(result.user);
   }
 
   async function handlePassword() {
@@ -143,7 +150,12 @@ export default function SignInScreen() {
       );
       return;
     }
-    await refresh();
+    // See handleApple comment — same SecureStore race avoidance.
+    // Applies uniformly to all sign-in paths even though the bug
+    // was first reported on Google + Apple; the password path uses
+    // the same setToken→refresh sequence and is exposed to the
+    // same race.
+    setAuthenticatedUser(result.user);
   }
 
   async function handleMagic() {

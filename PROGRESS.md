@@ -20,6 +20,64 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-05] — OAuth 401 fix: bypass SecureStore race on post-sign-in refresh
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** PENDING
+
+### In plain English (for Keenan)
+
+Fix for "OAuth completes but stays on the login screen" — the bug that was hitting both Jim and Keenan on TestFlight build 25 across both Google AND Apple sign-in. Server side was working perfectly: Google validates the token, Apple validates the token, our backend issues a fresh session JWT and returns 200. The mobile client stored the token in iOS Keychain and then immediately tried to use it — but iOS Keychain has a brief window where the just-stored value isn't queryable yet, so the next request to "who am I?" went out without an Authorization header, the server returned 401, and the client's auth state got reset back to "logged out." Three retries later, same thing. The fix: instead of round-tripping the user state through the iOS Keychain after sign-in, just use the user we already received from the callback. The server already told us who we are; no reason to ask again. End-user impact: sign-in works first try.
+
+### Technical changes (for Jimmy)
+
+**Diagnosis** (from `/api/user/me` log analysis 2026-05-05):
+- Five `mobile-callback` successes (4 Google for user `cmnt026kn`, 1 Apple for user `cmom8jmpk`) within 30 minutes — server side healthy.
+- Five matching `/api/user/me` 401s within ~1s of each, all with **empty `logs[]`** — meaning none of the three instrumented `mobile-auth` events fired.
+- The instrumented `mobile-auth.ts:26-37` only returns null silently when `authHeader === null` (the no-Authorization-header case). So the request had no bearer.
+- `NEXTAUTH_SECRET` confirmed stable at 28 days old via `vercel env ls production` — secret rotation ruled out.
+- Multi-user (Jim AND Keenan) on the same TestFlight build = systemic, not stale-SecureStore-on-one-account.
+
+**Root cause:** iOS Keychain `setItemAsync` resolves before the value is queryable on a subsequent `getItemAsync`. `lib/auth.ts::callMobileCallback` awaits `setToken(body.sessionToken)`, returns ok, sign-in.tsx then calls `await refresh()` which calls `getToken()` — and gets null. `api.get('/api/user/me')` omits the Authorization header (per `api.ts:33-36`). Server returns 401. The 401 handler in `auth-context.refresh()` then calls `clearSession()` which DELETES the token, ensuring subsequent retries also fail.
+
+**Fix:** skip `refresh()` after sign-in; set the user directly from the callback response. The server already returned the authoritative user state in `body.user`; re-asking via `/api/user/me` was redundant AND race-prone.
+
+*New AuthContext API:*
+- `apps/mobile/contexts/auth-context.tsx` (+22): `setAuthenticatedUser(user: User)` exposed via `useAuth()`. Pure React state setter (`setUser` + `setLoading(false)`); no SecureStore round-trip. Caller must have already called `setToken()` so subsequent `api.*` calls eventually pick up the bearer (after Keychain settles).
+
+*Sign-in handlers updated:*
+- `apps/mobile/app/(auth)/sign-in.tsx` (+18/-3): `handleApple`, `handleGoogle`, `handlePassword` all replace `await refresh()` with `setAuthenticatedUser(result.user)`. Magic-link's `handleMagic` is unchanged — it sends an email; actual sign-in completion happens in `auth-callback.tsx` (mobile-complete path) which is not in scope for this fix but uses the same setToken→refresh pattern and likely needs the same treatment in a follow-up if magic-link breaks similarly.
+
+*Removed deprecated import:*
+- `refresh` no longer destructured from `useAuth()` in sign-in.tsx (replaced by `setAuthenticatedUser`).
+
+### Slice verification
+
+- Full apps/web vitest: **23/23 files pass, 362/362 tests pass.** Zero regressions; this is a mobile-only change but vitest is the authoritative gate.
+- Web tsc: 7 errors, all pre-existing baseline. **Zero new** in any slice file.
+- Mobile tsc: only the existing TS2786 React 18/19 baseline errors (documented in `docs/v1-1/backlog.md`, analyzed in `docs/v1-1/react-18-19-collision-fix-paths.md`). No new errors from this slice — the `AuthContext.Provider` baseline error pre-dates this change and persists.
+- No schema changes; no Inngest changes; no Stripe changes.
+
+### Manual steps needed
+
+- [ ] **Jim runs `eas build --profile preview --platform ios`** + submits to TestFlight to ship the fix to the actual device. The fix is a mobile-side change; Vercel auto-deploy doesn't reach the iOS bundle. (Jimmy)
+- [ ] **After build lands on TestFlight:** Jim retries Google sign-in to confirm the fix. If it works, Keenan retries on his side too. Verifying `/api/user/me` 401s drop to zero is a quick check via `vercel logs --project acuity-web --since 30m --query "/api/user/me" --status-code 401 --json --no-follow`.
+- [ ] **Diagnostic instrumentation in `mobile-auth.ts` stays in place** per the user's instruction. Cheap, gives us data if anything similar surfaces. Can be removed in a future polish pass.
+- [ ] Magic-link sign-in path (`auth-callback.tsx::mobile-complete`) shares the same setToken→refresh pattern. If a user reports magic-link breakage with similar symptoms, apply the same setAuthenticatedUser swap there. Tracking as a known-similar follow-up; not blocking.
+
+### Notes
+
+- **Why this works regardless of the exact race timing.** The iOS Keychain race is a "the value isn't queryable yet but will be soon" condition. By the time the user navigates around the app and triggers any subsequent `api.get`, the Keychain has settled and `getToken()` returns the value. The fix bypasses the immediate post-sign-in `getToken()` call — the only window where the race is exposed.
+- **The token IS still stored.** `setToken()` in `callMobileCallback` is awaited and succeeds; the value lands in Keychain and is queryable shortly after. We just don't read it back synchronously in the sign-in flow. Subsequent app behavior (every `api.*` call after sign-in) reads from Keychain normally.
+- **Why not also fix `auth-callback.tsx`?** That's the magic-link return-from-email path. Same pattern, same risk, but no reported symptoms there yet (lower volume, longer click-to-app-open window may give Keychain enough time to settle naturally). Fix-on-demand if it surfaces.
+- **Why apply to password path uniformly?** The password sign-in path uses the same `setToken` → `refresh()` shape and is exposed to the same race. Better to apply the fix uniformly than to have one race-prone path lurking.
+- **The `clearSession()` in the 401 catch-handler is now correct again.** Previously it was wiping good tokens because of the race; now that the race is bypassed, a real 401 (server-rejected bearer) correctly triggers cleanup.
+- **Diagnostic instrumentation kept.** Per Jim's instruction. The three `mobile-auth.*` events are cheap (only fire on edge cases) and give us forensic value if similar symptoms ever recur.
+- Followed slice protocol: full-suite vitest re-run, tsc whole-tree on web + mobile, baseline-red files called out as pre-existing per `docs/v1-1/backlog.md`.
+
+---
+
 ## [2026-05-05] — Fix RLS coverage CI failure (BlogPrunerRun + PruneLog)
 
 **Requested by:** Keenan

@@ -28,6 +28,23 @@ type AuthState = {
   signOut: () => Promise<void>;
   refresh: () => Promise<void>;
   /**
+   * Set the authenticated user directly from a known-good source
+   * (e.g. the response body of mobile-callback / mobile-login /
+   * mobile-complete). Bypasses the SecureStore round-trip that
+   * `refresh()` does — necessary because iOS Keychain's
+   * setItemAsync resolves before the value is queryable on a
+   * subsequent getItemAsync, and `refresh()` ends up reading null
+   * and 401-ing on `/api/user/me`. Diagnosed 2026-05-04 against
+   * Vercel logs (mobile-callback.success → /api/user/me 401 with
+   * empty logs[] = no Authorization header attached).
+   *
+   * Caller is responsible for having already stored the session
+   * token via `setToken()` so subsequent api.* calls have it. This
+   * setter is only the in-memory state hop needed to route past
+   * the sign-in screen without waiting for the next refresh tick.
+   */
+  setAuthenticatedUser: (user: User) => void;
+  /**
    * Permanently delete the signed-in account. Calls
    * POST /api/user/delete with `{ confirm: "DELETE" }`. Caller (the
    * modal) gates the call on the user typing DELETE; this helper
@@ -42,6 +59,7 @@ const AuthContext = createContext<AuthState>({
   loading: true,
   signOut: async () => {},
   refresh: async () => {},
+  setAuthenticatedUser: () => {},
   deleteAccount: async () => ({ ok: false, error: "Not initialized" }),
 });
 
@@ -169,9 +187,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { ok: true };
   }, [user?.id]);
 
+  // Direct setter for the post-OAuth flow — see the AuthState comment
+  // above. Stable identity via useCallback so the provider value
+  // doesn't churn every render and break consumers' useEffect deps.
+  const setAuthenticatedUser = useCallback((next: User) => {
+    setUser(next);
+    setLoading(false);
+  }, []);
+
   return (
     <AuthContext.Provider
-      value={{ user, loading, signOut, refresh, deleteAccount }}
+      value={{
+        user,
+        loading,
+        signOut,
+        refresh,
+        setAuthenticatedUser,
+        deleteAccount,
+      }}
     >
       {children}
     </AuthContext.Provider>
