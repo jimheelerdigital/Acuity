@@ -18,6 +18,7 @@
 
 Account rls
 AdminAuditLog rls
+BlogPrunerRun no-rls    # operational logging table for blog pruner cron, no PII — only stores blog post slugs, URLs, GSC coverage states, and timestamps
 BlogTopicQueue rls
 CalendarConnection rls
 ClaudeCallLog rls
@@ -43,7 +44,7 @@ LifeMapArea rls
 LifeMapAreaHistory rls
 MetaSpend rls
 ProgressSuggestion rls
-PruneLog rls
+PruneLog no-rls    # legacy operational logging table from initial pruner implementation (commit c93ee17), no PII — superseded by BlogPrunerRun, kept for backwards compatibility, candidate for removal
 RedFlag rls
 ReferralConversion rls
 Session rls
