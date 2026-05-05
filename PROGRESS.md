@@ -20,6 +20,52 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-05] — Blog pruner v2: 21-day threshold, URL Inspection API, three-tier actions, 410 Gone, dry-run mode
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 2222cb8, 395bf81, 3fe40e9
+
+### In plain English (for Keenan)
+
+The blog pruner has been completely upgraded based on yesterday's audit. It's now much smarter about deciding which posts to remove. Instead of blindly deleting any post with zero impressions after 7 days, it now: (1) waits 21 days (giving Google time to actually crawl the post), (2) checks Google's URL Inspection API to confirm Google has seen and rejected the post (not just that it's still in the crawl queue), (3) decides whether to improve the post (if it targets your ideal customer), consolidate it with another post, or trim it entirely, (4) returns a proper "410 Gone" HTTP response for trimmed posts instead of redirecting to a random other post.
+
+Most importantly: **it's in dry-run mode for the next 14 days** (until May 18). It will evaluate every post nightly but won't actually delete anything. You can see exactly what it would do at `/admin/blog-pruner-log`. After reviewing the dry-run results, set `BLOG_PRUNER_DRY_RUN=false` in Vercel to enable live trimming.
+
+The pruner will also now alert you loudly if the Google Search Console credentials aren't configured — instead of silently doing nothing every night.
+
+### Technical changes (for Jimmy)
+
+- `prisma/schema.prisma`: new `BlogPrunerRun` model (run_date, post_id, post_url, days_since_publish, coverage_state, impressions, clicks, recommended_action, would_trim_at, actual_action_taken, is_dry_run, run_status). New `TRIMMED` value in `ContentStatus` enum.
+- `apps/web/src/lib/google/url-inspection.ts`: new module — `inspectUrl()` calls `urlInspection.index.inspect`, classifies result as indexed/discovered_not_indexed/crawled_not_indexed/excluded/unknown. `batchInspectUrls()` handles rate limiting (1.2s between calls).
+- `apps/web/src/inngest/functions/auto-blog.ts`: complete rewrite of `autoBlogPruneFn` (v2). New steps: auth-precheck → fetch posts → fetch GSC data → sync → identify candidates (21+ days, <5 impressions) → URL Inspection → evaluate-and-log → execute trims (if not dry run). ICP keyword matching via `matchesIcp()` heuristic.
+- `apps/web/src/app/api/blog-gone/[slug]/route.ts`: new route handler returning HTTP 410 Gone with noindex headers for TRIMMED posts.
+- `apps/web/src/app/blog/[slug]/page.tsx`: TRIMMED status → `notFound()` (fallback if API route not hit directly).
+- `apps/web/src/app/api/admin/auto-blog/kill/route.ts`: manual kill now sets TRIMMED status instead of PRUNED_DAY7.
+- `apps/web/src/app/admin/blog-pruner-log/page.tsx` + API route: new admin page showing 30 days of pruner runs with "Would Trim" filter.
+
+### Manual steps needed
+
+- [ ] **`npx prisma db push` from home network** (Keenan). Adds BlogPrunerRun table and TRIMMED enum value. Work Mac blocks Supabase ports.
+- [ ] **Add `BLOG_PRUNER_DRY_RUN=true` to Vercel env vars** (Keenan). This is the default, but explicitly setting it documents the intent. Flip to `false` on or after 2026-05-18 after reviewing dry-run results.
+- [ ] **Verify GSC API credentials are working** (Keenan/Jimmy). The pruner now surfaces auth failures clearly, but the underlying setup must be done:
+  1. **Google Cloud Console** → APIs & Services → Library → search "Search Console API" → Enable. Same for "Web Search Indexing API" (Indexing API).
+  2. **Google Cloud Console** → IAM & Admin → Service Accounts → find the service account whose JSON key is in `GA4_SERVICE_ACCOUNT_KEY`. Copy its email address (e.g., `acuity-analytics@acuity-XXXX.iam.gserviceaccount.com`).
+  3. **Google Search Console** → Settings → Users and permissions → Add user → paste the service account email → set permission to "Owner" → Add.
+  4. **Verify**: after next deploy, check `/admin/blog-pruner-log` the morning after 03:00 UTC. If you see "auth_failure" in run_status, one of the above steps is incomplete.
+- [ ] **Optional: Add `SLACK_WEBHOOK_URL` or `ALERT_EMAIL` to Vercel env vars** (Keenan/Jimmy). If set, the pruner sends an alert on auth failure instead of only logging to the database.
+- [ ] **Optional: Verify Inngest registered the updated function** — check https://app.inngest.com for `auto-blog-prune` (should show "Auto Blog — Performance Pruner (v2)" in the function list).
+
+### Notes
+
+- **Dry-run flip date: 2026-05-18.** The pruner runs every night in evaluation mode. After 14 days, review `/admin/blog-pruner-log` — if the "would trim" recommendations look correct, flip `BLOG_PRUNER_DRY_RUN=false`.
+- **The 5-post-per-run cap is still in place** for live mode. If more than 5 posts qualify for trimming in a single night, the overflow gets emailed to `ALERT_EMAIL` (or `keenan@getacuity.io` as fallback).
+- **Legacy PRUNED_DAY7/30/90 posts still work** — the blog route still handles them with 301 redirects as before. Only new trims use the TRIMMED + 410 pattern.
+- **URL Inspection API has a 2,000 requests/day quota.** The pruner only inspects candidates (21+ days, <5 impressions), so this limit won't be hit unless hundreds of posts are underperforming simultaneously.
+- Pre-existing tsc errors: 2 (OverviewTab generic, google/auth JWT constructor). Zero new errors introduced. All 362 vitest tests pass.
+
+---
+
 ## [2026-05-04] — Audit: blog trim/prune policy
 
 **Requested by:** Keenan
