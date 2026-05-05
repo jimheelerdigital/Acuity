@@ -54,8 +54,8 @@ export async function POST(req: NextRequest) {
   await prisma.contentPiece.update({
     where: { id: pieceId },
     data: {
-      status: "PRUNED_DAY7",
-      redirectTo: bestRedirect?.slug ?? null,
+      status: "TRIMMED",
+      redirectTo: null, // 410 Gone — no redirect
     },
   });
 
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
       reason: "manual_kill",
       impressions: piece.impressions,
       clicks: piece.clicks,
-      redirectedToSlug: bestRedirect?.slug ?? null,
+      redirectedToSlug: null,
     },
   });
 

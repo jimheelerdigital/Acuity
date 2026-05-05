@@ -38,6 +38,7 @@ async function getDynamicPost(slug: string): Promise<DynamicPost | null> {
             "PRUNED_DAY7",
             "PRUNED_DAY30",
             "PRUNED_DAY90",
+            "TRIMMED",
           ],
         },
       },
@@ -337,7 +338,13 @@ export default async function BlogPostPage({ params }: Props) {
   const dynamicPost = await getDynamicPost(params.slug);
   if (!dynamicPost) notFound();
 
-  // Pruned posts redirect to the best-performing live post
+  // Trimmed posts return 410 Gone via /api/blog-gone/[slug] route handler.
+  // If the request reaches here (middleware bypass), fall through to notFound().
+  if (dynamicPost.status === "TRIMMED") {
+    notFound();
+  }
+
+  // Legacy pruned posts redirect to the best-performing live post
   if (dynamicPost.redirectTo && dynamicPost.status.startsWith("PRUNED_")) {
     permanentRedirect(`/blog/${dynamicPost.redirectTo}`);
   }
