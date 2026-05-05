@@ -20,6 +20,33 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-05] — Fix RLS coverage CI failure (BlogPrunerRun + PruneLog)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 0b8a103
+
+### In plain English (for Keenan)
+
+The automated security check that runs on every push was failing because the new pruner logging table wasn't registered in the "RLS allowlist" — a checklist that ensures every database table has explicit security rules. Fixed by adding both pruner tables as intentionally exempt from row-level security (they contain no user data, just blog post URLs and timestamps). The CI workflow now passes green.
+
+### Technical changes (for Jimmy)
+
+- `prisma/rls-allowlist.txt`: added `BlogPrunerRun no-rls`, changed `PruneLog` from `rls` to `no-rls`. Both are operational logging tables with zero PII — written by cron, read by admin-authed pages.
+- `docs/tech-debt/pruner-tables.md`: documents eventual consolidation of PruneLog into BlogPrunerRun (~30 min cleanup, low priority).
+- RLS workflow run #10 passes (confirmed via `gh run view`).
+
+### Manual steps needed
+
+None.
+
+### Notes
+
+- PruneLog was previously marked `rls` but it contains no user-identifiable data (only contentPieceId, reason, impressions, clicks, redirectedToSlug). Changed to `no-rls` to match reality. No ALTER TABLE needed since we're opting OUT of RLS.
+- PruneLog is still actively used by the pruner and admin UI — not dead code. Tech debt doc tracks eventual consolidation into BlogPrunerRun.
+
+---
+
 ## [2026-05-05] — Blog pruner v2: 21-day threshold, URL Inspection API, three-tier actions, 410 Gone, dry-run mode
 
 **Requested by:** Keenan
