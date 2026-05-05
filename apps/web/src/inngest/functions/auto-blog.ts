@@ -625,16 +625,140 @@ async function callClaudeForBlog(
 
 // ═══════════════════════════════════════════════════════════════════════════
 // AUTO-BLOG PRUNER — uses Inngest step.run()
+//
+// Evaluates published blog posts for trimming based on:
+// 1. Age threshold: 21+ days since publish (Google's median crawl time
+//    for new domains is 7-14 days; 21 ensures we're past the crawl
+//    queue and looking at actual indexing decisions)
+// 2. URL Inspection API: only trim posts confirmed as "crawled_not_indexed"
+// 3. Three-tier action: improve / consolidate / trim
+// 4. Dry-run mode (default for first 14 days): logs what it WOULD do
+//    without taking any action on posts
 // ═══════════════════════════════════════════════════════════════════════════
+
+// ─── ICP keywords for "improve" classification ────────────────────────────
+// Posts matching these keywords target Acuity's ideal customer profiles and
+// should be flagged for manual rewrite rather than trimmed.
+const ICP_KEYWORDS = [
+  "founder", "founders", "entrepreneur", "startup",
+  "knowledge worker", "remote work", "productivity",
+  "adhd", "anxiety", "mental health", "burnout", "stress",
+  "journaling", "journal", "voice journal", "brain dump",
+  "reflection", "self-awareness", "mindfulness",
+  "therapist", "therapy", "counseling",
+  "goal", "goals", "goal tracking", "habit",
+  "creative", "creatives", "writer", "writing",
+  "freelancer", "solopreneur", "manager",
+  "student", "nurse", "teacher", "coach",
+  "sleep", "insomnia", "mood", "mood tracking",
+  "weekly review", "weekly report", "life review",
+];
+
+/**
+ * Check if a post's content matches Acuity's ICP topics.
+ * Uses a simple keyword heuristic against title, slug, and targetKeyword.
+ */
+function matchesIcp(post: {
+  slug: string | null;
+  title?: string;
+  targetKeyword?: string | null;
+}): boolean {
+  const text = [
+    post.slug ?? "",
+    post.title ?? "",
+    post.targetKeyword ?? "",
+  ]
+    .join(" ")
+    .toLowerCase();
+
+  return ICP_KEYWORDS.some((kw) => text.includes(kw));
+}
 
 export const autoBlogPruneFn = inngest.createFunction(
   {
     id: "auto-blog-prune",
-    name: "Auto Blog — Performance Pruner",
+    name: "Auto Blog — Performance Pruner (v2)",
     triggers: [{ cron: "0 3 * * *" }],
     retries: 1,
   },
   async ({ logger, step }) => {
+    const isDryRun = process.env.BLOG_PRUNER_DRY_RUN !== "false";
+
+    // ── Step 0: Auth pre-check ────────────────────────────────────
+    const authCheck = await step.run("auth-precheck", async () => {
+      const raw = process.env.GA4_SERVICE_ACCOUNT_KEY;
+      if (!raw) {
+        return { ok: false as const, error: "GA4_SERVICE_ACCOUNT_KEY env var not set", email: "" };
+      }
+      try {
+        const creds = JSON.parse(raw);
+        if (!creds.client_email || !creds.private_key) {
+          return { ok: false as const, error: "GA4_SERVICE_ACCOUNT_KEY missing client_email or private_key", email: "" };
+        }
+        return { ok: true as const, error: "", email: creds.client_email as string };
+      } catch {
+        return { ok: false as const, error: "GA4_SERVICE_ACCOUNT_KEY is not valid JSON", email: "" };
+      }
+    });
+
+    if (!authCheck.ok) {
+      const authError = authCheck.error;
+      // Log auth failure to BlogPrunerRun and alert
+      await step.run("log-auth-failure", async () => {
+        const { prisma } = await import("@/lib/prisma");
+        await prisma.blogPrunerRun.create({
+          data: {
+            postId: "N/A",
+            postUrl: null,
+            daysSincePublish: 0,
+            coverageState: null,
+            recommendedAction: "none",
+            actualActionTaken: null,
+            isDryRun,
+            runStatus: "auth_failure",
+          },
+        });
+
+        // Alert via webhook or email if configured
+        const webhookUrl = process.env.SLACK_WEBHOOK_URL;
+        const alertEmail = process.env.ALERT_EMAIL;
+
+        if (webhookUrl) {
+          try {
+            await fetch(webhookUrl, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                text: `🚨 Blog Pruner auth failure: ${authError}. The pruner cannot run until this is fixed. Check Vercel env vars.`,
+              }),
+            });
+          } catch {
+            // Non-fatal
+          }
+        }
+
+        if (alertEmail) {
+          try {
+            const { getResendClient } = await import("@/lib/resend");
+            const resend = getResendClient();
+            await resend.emails.send({
+              from: process.env.EMAIL_FROM ?? "noreply@getacuity.io",
+              to: alertEmail,
+              subject: "Blog Pruner: Auth Failure — cannot run",
+              html: `<p>The blog pruner failed its auth pre-check:</p><p><strong>${authError}</strong></p><p>Fix: ensure GA4_SERVICE_ACCOUNT_KEY is set in Vercel env vars with valid JSON containing client_email and private_key. The service account must be added as Owner in Google Search Console for sc-domain:getacuity.io.</p>`,
+            });
+          } catch {
+            // Non-fatal
+          }
+        }
+      });
+
+      logger.error("[auto-blog-prune] Auth pre-check failed", {
+        error: authError,
+      });
+      return { status: "auth_failure", error: authError };
+    }
+
     // ── Step 1: Fetch published blog posts ────────────────────────
     const posts = await step.run("fetch-published-posts", async () => {
       const { prisma } = await import("@/lib/prisma");
@@ -647,6 +771,7 @@ export const autoBlogPruneFn = inngest.createFunction(
         select: {
           id: true,
           slug: true,
+          title: true,
           distributedUrl: true,
           publishedAt: true,
           targetKeyword: true,
@@ -654,7 +779,6 @@ export const autoBlogPruneFn = inngest.createFunction(
           clicks: true,
         },
       });
-      // Serialize dates for Inngest step return
       return rows.map((r) => ({
         ...r,
         publishedAt: r.publishedAt?.toISOString() ?? null,
@@ -663,10 +787,10 @@ export const autoBlogPruneFn = inngest.createFunction(
 
     if (posts.length === 0) {
       logger.info("[auto-blog-prune] No published posts to check");
-      return { synced: 0, pruned: 0 };
+      return { synced: 0, evaluated: 0, actions: {} };
     }
 
-    // ── Step 2: Fetch GSC data ────────────────────────────────────
+    // ── Step 2: Fetch GSC performance data ────────────────────────
     const gscData = await step.run("fetch-gsc-data", async () => {
       const { getPropertyPerformance } = await import(
         "@/lib/google/search-console"
@@ -675,10 +799,26 @@ export const autoBlogPruneFn = inngest.createFunction(
     });
 
     if (!gscData) {
+      // Log as auth failure — GSC returned null means credentials aren't working
+      await step.run("log-gsc-failure", async () => {
+        const { prisma } = await import("@/lib/prisma");
+        await prisma.blogPrunerRun.create({
+          data: {
+            postId: "N/A",
+            postUrl: null,
+            daysSincePublish: 0,
+            coverageState: null,
+            recommendedAction: "none",
+            actualActionTaken: null,
+            isDryRun,
+            runStatus: "auth_failure",
+          },
+        });
+      });
       logger.warn(
         "[auto-blog-prune] GSC data unavailable — skipping prune cycle"
       );
-      return { synced: 0, pruned: 0, reason: "gsc_unavailable" };
+      return { synced: 0, evaluated: 0, reason: "gsc_unavailable" };
     }
 
     // ── Step 3: Sync GSC data to posts ────────────────────────────
@@ -692,8 +832,10 @@ export const autoBlogPruneFn = inngest.createFunction(
       const updatedPosts: Array<{
         id: string;
         slug: string | null;
+        title: string;
         url: string | null;
         publishedAt: string | null;
+        targetKeyword: string | null;
         impressions: number;
         clicks: number;
       }> = [];
@@ -718,8 +860,10 @@ export const autoBlogPruneFn = inngest.createFunction(
         updatedPosts.push({
           id: post.id,
           slug: post.slug,
+          title: post.title,
           url: post.distributedUrl,
           publishedAt: post.publishedAt,
+          targetKeyword: post.targetKeyword,
           impressions,
           clicks,
         });
@@ -732,72 +876,190 @@ export const autoBlogPruneFn = inngest.createFunction(
       `[auto-blog-prune] Synced GSC data for ${syncResult.synced} posts`
     );
 
-    // ── Step 4: Compute prune candidates + execute ────────────────
-    const pruneResult = await step.run("apply-pruning-ladder", async () => {
-      const { prisma } = await import("@/lib/prisma");
-
+    // ── Step 4: Filter to candidates (21+ days, low impressions) ──
+    const candidates = await step.run("identify-candidates", async () => {
       const now = new Date();
-      const toPrune: Array<{
-        id: string;
-        slug: string | null;
-        url: string | null;
-        reason: string;
-        impressions: number;
-        clicks: number;
-      }> = [];
+      // Minimum age: 21 days. Google's median crawl time for new domains
+      // is 7-14 days; 21 ensures we're past the crawl queue and looking
+      // at actual indexing decisions rather than crawl lag.
+      const MIN_AGE_DAYS = 21;
 
-      for (const post of syncResult.posts) {
-        if (!post.publishedAt) continue;
-        const publishedAt = new Date(post.publishedAt);
-        const ageDays = Math.floor(
-          (now.getTime() - publishedAt.getTime()) / (1000 * 60 * 60 * 24)
+      return syncResult.posts
+        .filter((post) => {
+          if (!post.publishedAt) return false;
+          const publishedAt = new Date(post.publishedAt);
+          const ageDays = Math.floor(
+            (now.getTime() - publishedAt.getTime()) / (1000 * 60 * 60 * 24)
+          );
+          // Only evaluate posts that are 21+ days old AND have < 5 impressions
+          return ageDays >= MIN_AGE_DAYS && post.impressions < 5;
+        })
+        .map((post) => {
+          const publishedAt = new Date(post.publishedAt!);
+          const ageDays = Math.floor(
+            (now.getTime() - publishedAt.getTime()) / (1000 * 60 * 60 * 24)
+          );
+          return { ...post, ageDays };
+        });
+    });
+
+    if (candidates.length === 0) {
+      logger.info("[auto-blog-prune] No trim candidates (all posts healthy or < 21 days old)");
+      return { synced: syncResult.synced, evaluated: 0, actions: {} };
+    }
+
+    // ── Step 5: URL Inspection API — check coverage state ─────────
+    const inspectionResults = await step.run(
+      "inspect-candidate-urls",
+      async () => {
+        const { batchInspectUrls } = await import(
+          "@/lib/google/url-inspection"
         );
+        const urls = candidates
+          .map((c) => c.url)
+          .filter((u): u is string => u !== null);
 
-        if (ageDays < 7) continue;
+        if (urls.length === 0) return {};
 
-        let reason: string | null = null;
-
-        if (ageDays >= 7 && post.impressions === 0) {
-          reason = "day7";
-        } else if (
-          ageDays >= 30 &&
-          post.impressions < 50 &&
-          post.clicks < 2
-        ) {
-          reason = "day30";
-        } else if (ageDays >= 90 && post.impressions < 200) {
-          reason = "day90";
+        const results = await batchInspectUrls(urls);
+        // Serialize Map for Inngest step return
+        const serialized: Record<
+          string,
+          { coverageState: string; error?: string }
+        > = {};
+        for (const [url, result] of results) {
+          serialized[url] = {
+            coverageState: result.coverageState,
+            error: result.error,
+          };
         }
+        return serialized;
+      }
+    );
 
-        if (reason) {
-          toPrune.push({
-            id: post.id,
-            slug: post.slug,
-            url: post.url,
-            reason,
-            impressions: post.impressions,
-            clicks: post.clicks,
+    // ── Step 6: Classify actions + log to BlogPrunerRun ───────────
+    const evaluationResult = await step.run(
+      "evaluate-and-log",
+      async () => {
+        const { prisma } = await import("@/lib/prisma");
+
+        const actions = {
+          improve: 0,
+          consolidate: 0,
+          trim: 0,
+          keep: 0,
+          unknown: 0,
+        };
+
+        const trimCandidates: Array<{
+          id: string;
+          slug: string | null;
+          url: string | null;
+          ageDays: number;
+          impressions: number;
+          clicks: number;
+        }> = [];
+
+        for (const candidate of candidates) {
+          const inspection = candidate.url
+            ? inspectionResults[candidate.url]
+            : null;
+          const coverageState = inspection?.coverageState ?? "unknown";
+
+          let recommendedAction: string;
+
+          if (coverageState === "indexed") {
+            // Google has it indexed — keep regardless of low impressions
+            recommendedAction = "keep";
+            actions.keep++;
+          } else if (coverageState === "discovered_not_indexed") {
+            // Not yet crawled — just wait
+            recommendedAction = "keep";
+            actions.keep++;
+          } else if (coverageState === "crawled_not_indexed") {
+            // THE trim signal — Google saw it and rejected it.
+            // Decide: improve, consolidate, or trim
+            if (matchesIcp(candidate)) {
+              // Targets our ICP — worth rewriting, not deleting
+              recommendedAction = "improve";
+              actions.improve++;
+            } else {
+              // Off-topic or low quality — eligible for trim
+              recommendedAction = "trim";
+              actions.trim++;
+              trimCandidates.push(candidate);
+            }
+          } else if (coverageState === "excluded") {
+            // Already excluded by policy — no action needed
+            recommendedAction = "keep";
+            actions.keep++;
+          } else {
+            // Unknown state — flag for manual review
+            recommendedAction = "unknown";
+            actions.unknown++;
+          }
+
+          // Log every evaluated candidate to BlogPrunerRun
+          await prisma.blogPrunerRun.create({
+            data: {
+              postId: candidate.id,
+              postUrl: candidate.url,
+              postSlug: candidate.slug,
+              daysSincePublish: candidate.ageDays,
+              coverageState,
+              impressions: candidate.impressions,
+              clicks: candidate.clicks,
+              recommendedAction,
+              wouldTrimAt: recommendedAction === "trim" ? new Date() : null,
+              actualActionTaken: isDryRun ? null : undefined,
+              isDryRun,
+              runStatus: "evaluated",
+            },
           });
         }
+
+        return { actions, trimCandidates };
       }
+    );
 
-      // Cap at 5 prunes per run
+    logger.info("[auto-blog-prune] Evaluation complete", {
+      isDryRun,
+      ...evaluationResult.actions,
+    });
+
+    // ── Step 7: Execute trim actions (skipped in dry-run mode) ────
+    if (isDryRun) {
+      logger.info(
+        "[auto-blog-prune] DRY RUN — no actions taken. Set BLOG_PRUNER_DRY_RUN=false to enable."
+      );
+      return {
+        synced: syncResult.synced,
+        evaluated: candidates.length,
+        isDryRun: true,
+        actions: evaluationResult.actions,
+      };
+    }
+
+    // Live mode — execute trims (cap at 5 per run)
+    const trimResult = await step.run("execute-trims", async () => {
+      const { prisma } = await import("@/lib/prisma");
+
       const pruneCap = 5;
-      const pruneSlice = toPrune.slice(0, pruneCap);
+      const toTrim = evaluationResult.trimCandidates.slice(0, pruneCap);
 
-      if (toPrune.length > pruneCap) {
-        // Send notification email about overflow
+      if (evaluationResult.trimCandidates.length > pruneCap) {
+        // Overflow notification
         try {
           const { getResendClient } = await import("@/lib/resend");
           const resend = getResendClient();
-          const overflow = toPrune.slice(pruneCap);
+          const overflow = evaluationResult.trimCandidates.slice(pruneCap);
           await resend.emails.send({
             from: process.env.EMAIL_FROM ?? "noreply@getacuity.io",
-            to: "keenan@getacuity.io",
-            subject: `Auto-Blog Pruner: ${overflow.length} additional posts need review`,
-            html: `<p>The auto-blog pruner hit its 5-post cap. These ${overflow.length} posts would also be pruned:</p>
-              <ul>${overflow.map((p) => `<li>${p.slug} — ${p.reason} (${p.impressions} imp, ${p.clicks} clicks)</li>`).join("")}</ul>
-              <p>Review at /admin?tab=auto-blog</p>`,
+            to: process.env.ALERT_EMAIL ?? "keenan@getacuity.io",
+            subject: `Blog Pruner: ${overflow.length} additional posts need review`,
+            html: `<p>The blog pruner hit its 5-post cap. These ${overflow.length} posts would also be trimmed:</p>
+              <ul>${overflow.map((p) => `<li>${p.slug} — ${p.ageDays} days old (${p.impressions} imp, ${p.clicks} clicks)</li>`).join("")}</ul>
+              <p>Review at /admin/blog-pruner-log</p>`,
           });
         } catch (err) {
           console.error(
@@ -807,52 +1069,39 @@ export const autoBlogPruneFn = inngest.createFunction(
         }
       }
 
-      // Find best redirect target
-      const bestRedirect = await prisma.contentPiece.findFirst({
-        where: {
-          type: "BLOG",
-          status: { in: ["DISTRIBUTED", "AUTO_PUBLISHED"] },
-          slug: { not: null },
-        },
-        orderBy: { clicks: "desc" },
-        select: { slug: true },
-      });
-      const redirectSlug = bestRedirect?.slug ?? null;
+      let trimmed = 0;
 
-      const statusMap: Record<string, string> = {
-        day7: "PRUNED_DAY7",
-        day30: "PRUNED_DAY30",
-        day90: "PRUNED_DAY90",
-      };
-
-      for (const candidate of pruneSlice) {
-        const targetSlug =
-          redirectSlug && redirectSlug !== candidate.slug
-            ? redirectSlug
-            : null;
-
+      for (const candidate of toTrim) {
+        // Mark as TRIMMED — the blog route will return 410 Gone
         await prisma.contentPiece.update({
           where: { id: candidate.id },
           data: {
-            status: statusMap[candidate.reason] as
-              | "PRUNED_DAY7"
-              | "PRUNED_DAY30"
-              | "PRUNED_DAY90",
-            redirectTo: targetSlug,
+            status: "TRIMMED",
+            redirectTo: null, // No redirect — 410 Gone instead
           },
         });
 
         await prisma.pruneLog.create({
           data: {
             contentPieceId: candidate.id,
-            reason: candidate.reason,
+            reason: `trim_crawled_not_indexed_day${candidate.ageDays}`,
             impressions: candidate.impressions,
             clicks: candidate.clicks,
-            redirectedToSlug: targetSlug,
+            redirectedToSlug: null,
           },
         });
 
-        // Fire-and-forget indexing notification
+        // Update the BlogPrunerRun record with actual action
+        await prisma.blogPrunerRun.updateMany({
+          where: {
+            postId: candidate.id,
+            isDryRun: false,
+            actualActionTaken: null,
+          },
+          data: { actualActionTaken: "trimmed_410" },
+        });
+
+        // Notify Google Indexing API
         if (candidate.url) {
           try {
             const { notifyUnpublish } = await import(
@@ -863,23 +1112,33 @@ export const autoBlogPruneFn = inngest.createFunction(
             // Non-fatal
           }
         }
+
+        trimmed++;
       }
 
       return {
-        pruned: pruneSlice.length,
-        overflow: Math.max(0, toPrune.length - pruneCap),
+        trimmed,
+        overflow: Math.max(
+          0,
+          evaluationResult.trimCandidates.length - pruneCap
+        ),
       };
     });
 
     logger.info("[auto-blog-prune] Complete", {
       synced: syncResult.synced,
-      ...pruneResult,
+      evaluated: candidates.length,
+      ...trimResult,
+      actions: evaluationResult.actions,
     });
 
     return {
       synced: syncResult.synced,
-      pruned: pruneResult.pruned,
-      overflow: pruneResult.overflow,
+      evaluated: candidates.length,
+      isDryRun: false,
+      trimmed: trimResult.trimmed,
+      overflow: trimResult.overflow,
+      actions: evaluationResult.actions,
     };
   }
 );

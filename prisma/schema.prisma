@@ -977,6 +977,7 @@ enum ContentStatus {
   PRUNED_DAY7
   PRUNED_DAY30
   PRUNED_DAY90
+  TRIMMED
   GENERATION_FAILED
 }
 
@@ -1049,6 +1050,26 @@ model PruneLog {
   redirectedToSlug String?
 
   @@index([prunedAt])
+}
+
+model BlogPrunerRun {
+  id                String   @id @default(cuid())
+  runDate           DateTime @default(now())
+  postId            String
+  postUrl           String?
+  postSlug          String?
+  daysSincePublish  Int
+  coverageState     String?
+  impressions       Int      @default(0)
+  clicks            Int      @default(0)
+  recommendedAction String
+  wouldTrimAt       DateTime?
+  actualActionTaken String?
+  isDryRun          Boolean  @default(true)
+  runStatus         String   @default("evaluated")
+
+  @@index([runDate])
+  @@index([recommendedAction])
 }
 
 // Optional demographic metadata collected during onboarding step 3.
