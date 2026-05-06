@@ -20,6 +20,60 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-05] — Revert react-native-iap to unblock OAuth-fix EAS build (RCT-Folly + Expo SDK 54 incompat)
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** PENDING
+
+### In plain English (for Keenan)
+
+The OAuth-fix EAS build failed at the iOS pod-install step because of a known incompatibility between react-native-iap and Expo SDK 54 — the IAP package wants a piece of native code (RCT-Folly) that SDK 54 doesn't expose the same way anymore. Since the IAP feature is gated OFF in production anyway (the `iapEnabled` flag is false until SBP enrollment completes), removing the package temporarily costs us zero functionality and unblocks the OAuth fix from reaching TestFlight today. The Subscribe screen, the in-app subscribe button on the Paywall, and the dual-CTA on locked cards all already had a fallback path for "IAP unavailable" — those fallbacks now activate. Users see the existing "Continue on web" experience, which is what production has been showing them all along anyway. We'll bring IAP back in a future build with a proper compatibility fix (one of two known workarounds — adding a config flag, or migrating to expo-iap).
+
+### Technical changes (for Jimmy)
+
+**Removals:**
+- `apps/mobile/package.json` (-1): `react-native-iap: "^13.0.0"` removed.
+- `apps/mobile/app.json` (-1): `"react-native-iap"` removed from plugins[]. This is what triggers the iOS native module install during `expo prebuild`; without it, pods stay clean.
+- `package-lock.json`: regenerated via `npm install` (lockfile no longer references react-native-iap or its transitive deps; verified via `grep -c "\"react-native-iap\":"` returning 0).
+
+**Stubbed:**
+- `apps/mobile/lib/iap.ts` (-450/+~80): stripped of all `import("react-native-iap")` references. Public API surface preserved (`initIap`, `getMonthlyProduct`, `purchaseMonthly`, `verifyAndFinish`, `restorePurchases`, `subscribeToPurchaseUpdates`, types) so all call sites in `subscribe.tsx`, `restore-purchases-button.tsx`, `pro-locked-card.tsx`, `paywall.tsx`, `(tabs)/profile.tsx` continue to typecheck unchanged. Every function returns its flag-off / unavailable response. The wrapper's full body (with the dynamic-import pattern) is recoverable from git history at commit `9aec449` for re-introduction.
+
+**Untouched (deliberate):**
+- `apps/mobile/lib/iap-config.ts` — `isIapEnabled()` still reads `Constants.expoConfig.extra.iapEnabled` (still `false`).
+- `apps/mobile/types/react-native-iap.d.ts` — the type shim from Phase 3a stays in place. Harmless when the package is absent (TS still references the declared module shape from the shim); will become helpful again when the package is re-added.
+- All UI surfaces using IAP — `subscribe.tsx`, `paywall.tsx`, `profile.tsx`, `pro-locked-card.tsx`, `restore-purchases-button.tsx`. Each gates on `isIapEnabled()`, which is `false` in production. Behavior in TestFlight + production: identical to pre-Phase-3a (single "Continue on web" CTA on every surface).
+- `apps/web/src/lib/apple-iap.ts` (Phase 2 backend): unchanged. `/api/iap/verify-receipt` and `/api/iap/notifications` endpoints are still live but no caller exists, so they remain dormant.
+- `@acuity/shared/iap-flow.ts` and its 29 vitest tests: unchanged (pure decision logic, no platform deps).
+
+### Slice verification
+
+- Full apps/web vitest: **23/23 files pass, 362/362 tests pass.** Zero regressions; this is a mobile-side change but vitest is the authoritative gate.
+- Web tsc: 7 errors total, all pre-existing baseline in 4 unrelated files (OverviewTab, landing, auto-blog, google/auth). **Zero new** in any slice file.
+- Mobile tsc: same baseline as Phase 3a/3b — only the documented React 18/19 TS2786 noise + 5 typed-routes manifest gaps for `/subscribe` and `/integrations` (regenerates on next `expo start`). **Zero new errors from this slice.** `iap.ts` typechecks clean against the stub bodies.
+- `npm install` ran clean. Lockfile regenerated. `node_modules/react-native-iap` is gone.
+
+### Manual steps needed
+
+- [ ] **Jim runs `eas build --profile preview --platform ios`** + submits to TestFlight. This time pod install should succeed cleanly (no RNIap pod = no RCT-Folly resolution attempt). The OAuth fix from commit `8c2734a` ships with this build. (Jimmy)
+- [ ] **After TestFlight install + Jim retries Google sign-in** (and Keenan retries on his side): verify `/api/user/me` 401s drop to zero via `vercel logs --project acuity-web --since 30m --query "/api/user/me" --status-code 401 --json --no-follow`.
+- [ ] **Future IAP re-introduction (separate slice when EAS credits + bandwidth permit):** two known workarounds, in priority order:
+  1. **`with-folly-no-coroutines: true` plugin option** — one-line config in `app.json` plugins[] entry (pass options object instead of bare string). Documented at https://hyochan.github.io/react-native-iap/docs/installation/. Lowest-cost attempt; verify locally via `expo prebuild` + `pod install` BEFORE kicking the EAS build.
+  2. **Migrate to expo-iap** (https://hyochan.github.io/expo-iap/) — same author as react-native-iap, Expo Module API, designed for SDK 54+. API differs slightly (`getPurchaseHistory` → `getPurchaseHistories` etc.). Wrapper at `apps/mobile/lib/iap.ts` would need updating. ~1-2 hours of work.
+
+### Notes
+
+- **Why not try the `with-folly-no-coroutines` workaround in this slice?** Two reasons: (1) it's unverified locally, and another failed EAS build costs money on pay-as-you-go. (2) The OAuth fix is blocking real users RIGHT NOW; getting it to TestFlight today matters more than preserving Phase 3a/3b's IAP surface, which is dead code in production anyway. Try the workaround in a follow-up slice with no time pressure.
+- **Why preserve the Phase 3 UI surfaces?** The Subscribe screen, RestorePurchasesButton, dual-CTA on locked cards, etc. are all gated by `isIapEnabled()` which returns `false` in production. They render their fallback paths (single "Continue on web" CTA, "Unavailable" screen). Behavior is identical to pre-Phase-3a in the production-flag-off state. Removing the components would be churn for zero functional gain.
+- **Why preserve the type shim?** `apps/mobile/types/react-native-iap.d.ts` declares the module shape. With the package removed, the shim is the only declaration TS sees — and since `iap.ts` no longer references the module, the shim is unused. Harmless; deletion is a polish item.
+- **The Phase 2 backend endpoints stay live.** `/api/iap/verify-receipt` and `/api/iap/notifications` are reachable by HTTP. No caller exists (mobile wrapper is stubbed; Apple won't fire notifications until the IAP product is configured + active). They remain dormant. No change to web behavior.
+- **The cohort attribution column from W-B (`Entry.themePromptVersion`) is unaffected.** That's a server-side schema column unrelated to mobile IAP.
+- **Recovery path is clean.** When IAP is re-introduced: `git revert` this commit (or cherry-pick the `iap.ts` body from `9aec449`), restore package.json + app.json, choose workaround #1 or #2, verify locally, then EAS build. The wrapper's interface preserved across this revert means call sites don't change.
+- Followed slice protocol: full-suite vitest re-run, tsc whole-tree on web + mobile, baseline-red files called out as pre-existing per `docs/v1-1/backlog.md`. No schema changes, no Inngest changes, no Stripe changes.
+
+---
+
 ## [2026-05-05] — OAuth 401 fix: bypass SecureStore race on post-sign-in refresh
 
 **Requested by:** Jimmy

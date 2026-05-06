@@ -176,8 +176,7 @@
           "url": "https://sentry.io/"
         }
       ],
-      "expo-web-browser",
-      "react-native-iap"
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true
