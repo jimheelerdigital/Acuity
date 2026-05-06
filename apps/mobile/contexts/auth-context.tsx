@@ -77,6 +77,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const appState = useRef(AppState.currentState);
+  // Tracks whether the very first refresh after AuthProvider mount
+  // has completed. Used to discriminate "user is genuinely signed
+  // out" (cold launch, getToken=null) from "keychain returned null
+  // transiently" (warm refresh fired by AppState change). See the
+  // gated !token branch in refresh() for the rationale.
+  const initialRefreshDone = useRef(false);
 
   /**
    * Refresh the current user state. Three cases:
@@ -93,8 +99,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const token = await getToken();
       if (!token) {
-        setUser(null);
-        tokenBridge.set(null);
+        // Cold launch only: a null token at the very first refresh
+        // means the user is genuinely signed out. Clear state so
+        // the AuthGate routes to sign-in.
+        //
+        // Warm refresh (foreground from background, OAuth modal
+        // dismiss): a null token here is suspicious. Two known
+        // failure modes converge on this branch and should NOT
+        // be allowed to wipe state:
+        //   1. iOS keychain returns null transiently because the
+        //      preceding setItemAsync hasn't settled (the same
+        //      SecureStore race we've been chasing across builds
+        //      27-29).
+        //   2. AppState fires inactive→active during the OAuth
+        //      Safari modal dismiss, calling refresh() seconds
+        //      after handleApple/handleGoogle/handlePassword has
+        //      populated the bridge — but before SecureStore has
+        //      committed, so getToken returns null and (pre-fix)
+        //      this branch wiped the freshly-set bridge.
+        // Trust the existing state on warm refreshes. If the
+        // session truly died, the next /api/user/me call will 401
+        // and the 401 catch below handles it.
+        if (!initialRefreshDone.current) {
+          setUser(null);
+          tokenBridge.set(null);
+        }
         return;
       }
       // Hydrate the synchronous bridge from whatever getToken
@@ -147,6 +176,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(stored);
       }
     } finally {
+      initialRefreshDone.current = true;
       setLoading(false);
     }
   }, []);

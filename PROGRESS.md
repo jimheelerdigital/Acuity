@@ -20,6 +20,44 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-06] — Build 30: refresh() is no longer destructive on null-token reads (Layer 5 — the actual root cause)
+
+**Requested by:** Jimmy (build 29 with tokenBridge still failed — bearer not attaching post-sign-in AND backgrounding for seconds wipes auth entirely)
+**Committed by:** Claude Code
+**Commit hash:** _backfill_
+
+### In plain English (for Keenan)
+
+The last three TestFlight builds tried to fix sign-in by adding redundant cache layers for the login token. None of them worked. The actual cause turned out to be something simpler and more embarrassing: when iOS handed control back to the app — either after dismissing the Google sign-in browser, or just after the user backgrounded the app for a few seconds — the app would re-check the user's login state, fail to read it from the iOS keychain (which has a brief settling delay), and **delete the freshly-saved login token in response.** Every defensive cache we added was being wiped immediately by the re-check.
+
+This change makes the re-check safe: if the keychain returns nothing on a warm re-check, assume it's a transient blip and trust the existing login state. Only clear login state on a definitive signal — explicit sign-out, or a server response that says "this user no longer exists." The first cold-launch check (when the app boots) still treats a missing token as "user is signed out" so the sign-in screen shows correctly on first launch.
+
+### Technical changes (for Jimmy)
+
+- `apps/mobile/contexts/auth-context.tsx`:
+  - Added `initialRefreshDone` ref. Flips to `true` in the `finally` block of the first `refresh()` call.
+  - In the `!token` branch of `refresh()`, `setUser(null)` and `tokenBridge.set(null)` are now gated behind `!initialRefreshDone.current`. Cold launch with a null token still routes to sign-in; warm refresh with a null token is treated as "keychain returned null transiently — keep current state."
+  - The 401 catch and 200-with-no-user branches still clear state explicitly (positive signals from server). `signOut()` still clears explicitly. No change to those paths.
+- Per-slice gates: vitest 362/362, web tsc 7-baseline unchanged, mobile tsc 115-baseline (no new errors from touched files; pre-existing TS2786 `AuthContext.Provider` JSX type from @types/react bigint conflict still present, unchanged).
+
+### Manual steps needed
+
+- [ ] Jim: `eas build --profile production --platform ios` (build 30 — the FINAL EAS build per Jim's call)
+- [ ] Jim: `eas submit --profile production --platform ios --latest`
+- [ ] Jim: install build 30, sign in, immediately background the app for 5+ seconds, foreground, confirm home screen still renders entries
+- [ ] Jim: check Vercel logs for `mobile-auth.no-header` events for his userId (should be zero post-sign-in)
+
+### Notes
+
+- This is Layer 5 of the SecureStore-race manifestation. The root cause was in MY OWN BUILD-29 CODE: I added `tokenBridge.set(null)` to the `refresh()` `!token` branch, which compounded a long-standing bug where `setUser(null)` in the same branch was wiping React state on every warm refresh that hit a transient keychain null read.
+- The mechanism that triggers warm refresh during sign-in: iOS transitions the parent app through `inactive` when `ASWebAuthenticationSession` (the Safari modal used by `expo-auth-session` for Google OAuth) presents AND when it dismisses. Our AppState listener at `auth-context.tsx:163-172` matches `prev.match(/inactive|background/)` and fires `refresh()` on the dismiss transition. That refresh ran seconds after `setAuthenticatedUser` populated the bridge — but before SecureStore had committed the write — and `getToken()` returned null. The pre-fix `!token` branch then wiped the bridge.
+- The same mechanism explains "backgrounding for seconds wipes auth entirely": user backgrounds → iOS suspends → user resumes → `inactive→active` transition fires `refresh()` → keychain returns null briefly while resuming → state wiped → AuthGate routes to sign-in.
+- Why the earlier Layer-1 OAuth fix (`setAuthenticatedUser` bypass, commit 8c2734a) appeared to work: it routed past the sign-in screen on the OAuth path, but didn't address the AppState-triggered refresh that fired moments later. The Apple/password paths shipped 2026-05-04 added the same `setAuthenticatedUser` hand-off but inherited the same warm-refresh wipe.
+- The 401 catch branch and the 200-with-no-user branch still explicitly clear state. Those are positive signals from the server — the session truly died (rejected JWT, deleted user). Only the ambiguous null-token-read path is now defensive.
+- If build 30 still doesn't fix it, the AppState→refresh hypothesis is wrong and we go deeper. But this matches both reported symptoms with one mechanism and one minimal fix.
+
+---
+
 ## [2026-05-06] — Build 29: `tokenBridge` synchronous bearer cache (Layer 4 SecureStore-race fix)
 
 **Requested by:** Jimmy (build 28 in-memory cache didn't hold in production — `mobile-auth.no-header` events confirmed bearer still missing on every post-sign-in API call)
