@@ -17,6 +17,7 @@ import {
   signOut as clearSession,
   type User,
 } from "@/lib/auth";
+import { tokenBridge } from "@/lib/token-bridge";
 
 export type DeleteAccountResult =
   | { ok: true }
@@ -42,8 +43,17 @@ type AuthState = {
    * token via `setToken()` so subsequent api.* calls have it. This
    * setter is only the in-memory state hop needed to route past
    * the sign-in screen without waiting for the next refresh tick.
+   *
+   * The optional `token` argument writes through to `tokenBridge`
+   * (lib/token-bridge.ts) — a synchronous module-level cache that
+   * api.ts reads first when attaching the Authorization header.
+   * Sign-in handlers (handleGoogle/handleApple/handlePassword in
+   * app/(auth)/sign-in.tsx) pass it explicitly so the very next
+   * api call has the bearer in hand without needing the SecureStore
+   * round-trip OR the lib/auth memoryToken closure to be intact —
+   * see lib/token-bridge.ts for the full rationale.
    */
-  setAuthenticatedUser: (user: User) => void;
+  setAuthenticatedUser: (user: User, token?: string) => void;
   /**
    * Permanently delete the signed-in account. Calls
    * POST /api/user/delete with `{ confirm: "DELETE" }`. Caller (the
@@ -84,8 +94,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const token = await getToken();
       if (!token) {
         setUser(null);
+        tokenBridge.set(null);
         return;
       }
+      // Hydrate the synchronous bridge from whatever getToken
+      // resolved (SecureStore on cold launch, lib/auth memoryToken
+      // on hot reads). Cheap idempotent assignment; lets the next
+      // api call read the bearer without hitting SecureStore even
+      // before any sign-in event in this session.
+      tokenBridge.set(token);
 
       try {
         const data = await api.get<{ user?: User }>("/api/user/me");
@@ -98,6 +115,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // explicitly told us the user no longer exists; clearing
         // local state is the right call here.
         setUser(null);
+        tokenBridge.set(null);
         await clearSession();
       } catch (err) {
         const status = (err as { status?: number }).status;
@@ -157,6 +175,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // No server call — mobile sign-out is local-only (see lib/auth.ts
     // signOut() for rationale).
     await clearSession();
+    tokenBridge.set(null);
     setUser(null);
   }, []);
 
@@ -208,7 +227,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Direct setter for the post-OAuth flow — see the AuthState comment
   // above. Stable identity via useCallback so the provider value
   // doesn't churn every render and break consumers' useEffect deps.
-  const setAuthenticatedUser = useCallback((next: User) => {
+  // When a token is supplied (sign-in path), write it through to the
+  // synchronous tokenBridge so api.ts can attach the bearer on the
+  // very next request without going through SecureStore or relying
+  // on lib/auth's memoryToken closure (Layer 4 fix — see
+  // lib/token-bridge.ts for the full rationale).
+  const setAuthenticatedUser = useCallback((next: User, token?: string) => {
+    if (token) tokenBridge.set(token);
     setUser(next);
     setLoading(false);
   }, []);

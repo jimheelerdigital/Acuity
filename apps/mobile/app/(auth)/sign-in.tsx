@@ -104,7 +104,13 @@ export default function SignInScreen() {
     // the value — refresh() reads null, /api/user/me returns 401
     // (no Authorization header), and the user is stranded on the
     // sign-in screen. Diagnosed 2026-05-04 across multiple users.
-    setAuthenticatedUser(result.user);
+    //
+    // Build 29 (2026-05-06): also hand the sessionToken to the
+    // setter so it writes into tokenBridge synchronously. Builds
+    // 27-28 relied on lib/auth's memoryToken closure populating
+    // correctly, but production diagnostics showed the closure
+    // wasn't holding — see lib/token-bridge.ts for the saga.
+    setAuthenticatedUser(result.user, result.sessionToken);
   }
 
   async function handleGoogle() {
@@ -129,8 +135,9 @@ export default function SignInScreen() {
       );
       return;
     }
-    // See handleApple comment — same SecureStore race avoidance.
-    setAuthenticatedUser(result.user);
+    // See handleApple comment — same SecureStore race avoidance,
+    // same build-29 tokenBridge hand-off.
+    setAuthenticatedUser(result.user, result.sessionToken);
   }
 
   async function handlePassword() {
@@ -154,8 +161,8 @@ export default function SignInScreen() {
     // Applies uniformly to all sign-in paths even though the bug
     // was first reported on Google + Apple; the password path uses
     // the same setToken→refresh sequence and is exposed to the
-    // same race.
-    setAuthenticatedUser(result.user);
+    // same race. Build-29 tokenBridge hand-off applies here too.
+    setAuthenticatedUser(result.user, result.sessionToken);
   }
 
   async function handleMagic() {

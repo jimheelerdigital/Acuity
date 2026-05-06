@@ -20,6 +20,52 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-06] — Build 29: `tokenBridge` synchronous bearer cache (Layer 4 SecureStore-race fix)
+
+**Requested by:** Jimmy (build 28 in-memory cache didn't hold in production — `mobile-auth.no-header` events confirmed bearer still missing on every post-sign-in API call)
+**Committed by:** Claude Code
+**Commit hash:** _backfill_
+
+### In plain English (for Keenan)
+
+Mobile sign-in still wasn't working on TestFlight build 28. Users could log in successfully, but the home screen stayed empty because every API request that followed sign-in was being rejected — the app wasn't sending its login proof along with the requests, even though we'd already fixed that twice in the past 24 hours.
+
+This change adds a third, redundant safety net: a tiny "token bridge" that the sign-in screen hands the login proof to directly the moment the server confirms the user. The API client checks this bridge first on every request, so it never has to ask the iOS keychain (which has been the unreliable link in the chain). If build 29 still doesn't work, we'll know it's not the bearer-attach plumbing.
+
+### Technical changes (for Jimmy)
+
+- New file: `apps/mobile/lib/token-bridge.ts` — module-level `let bridgeToken: string | null = null` with `tokenBridge.set/get`. Standalone module to avoid creating a circular import (`auth-context → api → auth-context`) that would have re-introduced the same module-loading risk this fix is trying to dodge.
+- `apps/mobile/contexts/auth-context.tsx`:
+  - `setAuthenticatedUser` signature changed to `(user: User, token?: string) => void`. Optional token writes through to `tokenBridge.set(token)` synchronously.
+  - `refresh()` now hydrates the bridge from `getToken()` on cold-launch reads, and clears it on no-token / 200-with-no-user paths.
+  - `signOut()` clears the bridge.
+  - Imports `tokenBridge` from `@/lib/token-bridge`.
+- `apps/mobile/lib/api.ts`:
+  - `buildHeaders()` reads `tokenBridge.get() ?? (await getToken())`. Bridge is synchronous — no await tick between read and `headers.set("Authorization", ...)`.
+  - `upload()` (multipart audio) updated identically.
+- `apps/mobile/lib/auth.ts`: `PasswordSignInResult` and `SignInResult` ok-shapes gain `sessionToken: string`; `signInWithPassword`, `completeMobileMagicLink`, and the Google `callMobileCallback` return it. Magic-link path's auth-callback.tsx still calls `refresh()` and ignores the new field — bridge gets hydrated through the cold-launch code path.
+- `apps/mobile/lib/apple-auth.ts`: `AppleSignInResult` ok-shape gains `sessionToken: string`; `signInWithApple` returns it.
+- `apps/mobile/app/(auth)/sign-in.tsx`: `handleApple`, `handleGoogle`, `handlePassword` call `setAuthenticatedUser(result.user, result.sessionToken)`.
+- Per-slice gates: vitest 362/362 passing, web tsc 7-baseline unchanged, mobile tsc 120-baseline unchanged. No new errors traced to touched files (only pre-existing TS2786 `AuthContext.Provider` JSX type from the @types/react bigint conflict in mobile workspace).
+
+### Manual steps needed
+
+- [ ] Jim: `eas build --profile production --platform ios` (build 29)
+- [ ] Jim: `eas submit --profile production --platform ios --latest`
+- [ ] Jim: wait for Apple processing, install build 29 on TestFlight, retry sign-in
+- [ ] Jim: confirm home screen renders entries / `/api/user/me` and `/api/entries` return 200 (no `mobile-auth.no-header` events for his userId)
+
+### Notes
+
+- This is the FOURTH layer of SecureStore-race manifestation. Prior layers: 8c2734a (OAuth routing bypass via `setAuthenticatedUser`), 32f1faa (onboarding lock + shell fail-soft), 3bf1778 (in-memory `memoryToken` cache in lib/auth.ts), and now this (synchronous bridge in a separate, single-load module).
+- Why build 28's `memoryToken` didn't hold in production despite working locally: working hypothesis is a Hermes/Metro module-loading quirk producing two evaluation contexts for `lib/auth.ts` in the production bundle, so `setToken`'s memoryToken write happened in one closure and `getToken`'s read in another. Diagnosed by `mobile-auth.no-header` instrumentation (commit 10c375b) firing 13+ times across `/api/entries`, `/api/user/me`, `/api/home`, `/api/user/progression` for Jim's userId on build 28.
+- Bridge lives in its own file (`lib/token-bridge.ts`) rather than `contexts/auth-context.tsx` as originally planned. `auth-context.tsx` already imports `lib/api`, and `lib/api` is the read site for the bridge — co-locating bridge with provider creates a cycle. Standalone module gives Metro the simplest possible dependency graph for the load path that matters for this fix.
+- 401 catch in `refresh()` deliberately does NOT clear the bridge — c2965c9 (riding this build) established that transient 401s shouldn't permanently wipe a valid session. The bridge survives 401s for the same reason; AuthGate kicks user to sign-in, and `setAuthenticatedUser(user, freshToken)` overwrites on re-auth.
+- Magic-link path (`completeMobileMagicLink` → `auth-callback.tsx`) does NOT use `setAuthenticatedUser`. It still relies on `setToken` → `refresh()` → bridge hydration via the cold-launch code path. Acceptable because (a) magic-link flow never hit the no-header issue in production logs, and (b) refresh() now hydrates the bridge on every successful `getToken()`. If we see magic-link 401s after build 29 we'll thread the token through this path too.
+- 7 web tsc baseline errors and 120 mobile tsc baseline errors are all pre-existing — `OverviewTab.tsx blendedCac`, recharts `BarMouseEvent`, landing copy `prefix`, `auto-blog.ts` PrismaClient widening, `google/auth.ts` argument count on web; @types/react bigint TS2786 noise on mobile. Verified via grep that none of the 120 mobile errors point to lines I introduced — only `auth-context.tsx(243,6)` (the unchanged `<AuthContext.Provider>` JSX site) appears, which is pre-existing.
+
+---
+
 ## [2026-05-06] — `mobile-auth.no-header` diagnostic + break the 401 → clearSession feedback loop
 
 **Requested by:** Jimmy (build 28 still 401s on Jim's home screen; Jim getting kicked back to sign-in after backgrounding)

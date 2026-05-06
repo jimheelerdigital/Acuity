@@ -45,7 +45,7 @@ const NAME_CACHE_PREFIX = "acuity_apple_name_";
 const EMAIL_CACHE_PREFIX = "acuity_apple_email_";
 
 export type AppleSignInResult =
-  | { ok: true; user: User }
+  | { ok: true; user: User; sessionToken: string }
   | {
       ok: false;
       reason:
@@ -181,5 +181,5 @@ export async function signInWithApple(): Promise<AppleSignInResult> {
   await setToken(body.sessionToken);
   await setStoredUser(body.user);
 
-  return { ok: true, user: body.user };
+  return { ok: true, user: body.user, sessionToken: body.sessionToken };
 }

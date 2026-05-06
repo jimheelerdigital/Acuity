@@ -151,7 +151,7 @@ export function publicApiBaseUrl(): string {
 // ─── Email / password ─────────────────────────────────────────────
 
 export type PasswordSignInResult =
-  | { ok: true; user: User }
+  | { ok: true; user: User; sessionToken: string }
   | { ok: false; reason: "InvalidCredentials" | "EmailNotVerified" | "RateLimited" | "NetworkError"; detail?: string };
 
 /**
@@ -186,7 +186,7 @@ export async function signInWithPassword(
     }
     await setToken(body.sessionToken);
     await setStoredUser(body.user);
-    return { ok: true, user: body.user };
+    return { ok: true, user: body.user, sessionToken: body.sessionToken };
   } catch (err) {
     return {
       ok: false,
@@ -311,7 +311,7 @@ export async function completeMobileMagicLink(
     }
     await setToken(body.sessionToken);
     await setStoredUser(body.user);
-    return { ok: true, user: body.user };
+    return { ok: true, user: body.user, sessionToken: body.sessionToken };
   } catch (err) {
     return {
       ok: false,
@@ -393,7 +393,7 @@ export type AuthDebug = {
 };
 
 export type SignInResult =
-  | { ok: true; user: User }
+  | { ok: true; user: User; sessionToken: string }
   | {
       ok: false;
       reason: "cancelled" | "no_token" | "server_error";
@@ -625,7 +625,7 @@ export function useGoogleSignIn() {
       };
       await setToken(body.sessionToken);
       await setStoredUser(body.user);
-      return { ok: true, user: body.user };
+      return { ok: true, user: body.user, sessionToken: body.sessionToken };
     } catch (err) {
       debug.callbackError =
         err instanceof Error ? err.message : "network failure";

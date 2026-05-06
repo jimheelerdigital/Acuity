@@ -1,6 +1,7 @@
 import Constants from "expo-constants";
 
 import { getToken } from "@/lib/auth";
+import { tokenBridge } from "@/lib/token-bridge";
 
 /**
  * API client for the Next.js backend. Pulls the base URL from
@@ -9,6 +10,19 @@ import { getToken } from "@/lib/auth";
  * dev can point at localhost. Every request auto-attaches the
  * Bearer token from SecureStore when present — the web backend's
  * `getAnySessionUserId` helper reads it and authorizes the request.
+ *
+ * Bearer attach order (Layer 4 fix, build 29 — see
+ * lib/token-bridge.ts for the full saga):
+ *   1. tokenBridge.get() — synchronous, populated by sign-in handlers
+ *      and refresh(). If present we use it without an await tick;
+ *      this is the only path that survived in production after the
+ *      previous three layers of SecureStore-race fixes proved
+ *      insufficient.
+ *   2. await getToken() — fallback for cold-launch reads before any
+ *      sign-in event, hits lib/auth's in-memory cache then SecureStore.
+ *      The refresh() useEffect typically populates the bridge during
+ *      AuthProvider mount, so this path mostly serves the very first
+ *      render between the provider mount and refresh resolution.
  */
 
 function apiBaseUrl(): string {
@@ -30,7 +44,7 @@ async function buildHeaders(
   if (hasBody && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
-  const token = await getToken();
+  const token = tokenBridge.get() ?? (await getToken());
   if (token && !headers.has("Authorization")) {
     headers.set("Authorization", `Bearer ${token}`);
   }
@@ -87,7 +101,7 @@ export const api = {
    * auto-sets multipart boundary when it sees a FormData body.
    */
   upload: async <T>(path: string, formData: FormData): Promise<T> => {
-    const token = await getToken();
+    const token = tokenBridge.get() ?? (await getToken());
     const headers: HeadersInit = {};
     if (token) headers["Authorization"] = `Bearer ${token}`;
     const res = await fetch(`${apiBaseUrl()}${path}`, {
