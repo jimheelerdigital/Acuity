@@ -38,6 +38,24 @@ async function getMobileSessionFromBearer(
       safeLog.warn("mobile-auth.bad-header-format", {
         headerLen: authHeader.length,
       });
+    } else {
+      // 2026-05-06 escalation: build 28 still 401s on Jim's
+      // /api/entries with empty logs[]. Need to definitively
+      // distinguish "header genuinely absent" (client-side bearer-
+      // attach bug) from "header sent but filtered by edge/runtime
+      // before reaching this handler" (platform issue). Path is
+      // included so we can scope to bearer-required routes — yes
+      // this fires on every unauthenticated dashboard poll, but
+      // the noise is acceptable while diagnosing.
+      try {
+        safeLog.warn("mobile-auth.no-header", {
+          path: new URL(req.url).pathname,
+        });
+      } catch {
+        // URL parse failure is itself a useful signal — fall back
+        // to a path-less log so we still see the event.
+        safeLog.warn("mobile-auth.no-header", { path: "<unparsable>" });
+      }
     }
     return null;
   }

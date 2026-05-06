@@ -20,6 +20,68 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-06] — `mobile-auth.no-header` diagnostic + break the 401 → clearSession feedback loop
+
+**Requested by:** Jimmy (build 28 still 401s on Jim's home screen; Jim getting kicked back to sign-in after backgrounding)
+**Committed by:** Claude Code
+**Commit hash:** PENDING
+
+### In plain English (for Keenan)
+
+Jim's installed build 28 (the in-memory token cache fix from yesterday) but his entries STILL aren't loading and he keeps getting kicked back to sign-in whenever he backgrounds the app for a second. We confirmed the cache fix code IS in build 28 (verified the build's git commit), but the bearer is still not reaching the server on his requests. This patch does two things at once: (1) adds a server-side log that fires whenever a request arrives without an Authorization header, so we can definitively confirm "client isn't sending the header" vs "header is being filtered between client and server" — without needing another mobile build. (2) Stops the auto-clear-session-on-401 loop. Currently any 401 wipes the user's token and routes them back to sign-in; after this fix, a 401 just shows them the sign-in screen WITHOUT destroying their session, so a transient 401 (which we keep hitting for various reasons during this debugging cycle) doesn't permanently brick their app. End-user impact: even if Jim's underlying bearer-attach issue persists, he won't get kicked back to sign-in every time he switches apps, and we'll have the diagnostic data to fix the root cause.
+
+### Technical changes (for Jimmy)
+
+**Server-side diagnostic — `apps/web/src/lib/mobile-auth.ts` (+18):**
+- New `else` branch in `getMobileSessionFromBearer` when `authHeader === null`. Fires `safeLog.warn("mobile-auth.no-header", { path })` so we can definitively confirm the header is genuinely missing on Jim's requests (vs. being stripped between client and server somewhere).
+- The previous "no-header" path was deliberately silent to avoid noise on dashboard polls (which are correctly unauthenticated). We're temporarily re-enabling it because Jim's bug needs the signal more than we need clean logs.
+- Auto-deploys via Vercel in ~60s. Jim retests on the SAME build 28 — no EAS rebuild required for this side.
+
+**Mobile fix — `apps/mobile/contexts/auth-context.tsx` (+22/-3):**
+- `refresh()`'s 401 catch handler **no longer calls `clearSession()`**. Replaced with `setUser(null)` only.
+- The 200-with-no-user path (server explicitly says "user doesn't exist") still calls `clearSession()` — that's a real sign-out signal.
+- The "real" sign-out path (Profile → Sign out → `signOut()` in auth-context.tsx) is unchanged — explicit user action still clears properly.
+- Net change: only the **server-rejected-401-on-/api/user/me** path is loosened.
+
+### Why removing `clearSession` from the 401 catch handler is safe
+
+- **`clearSession` was a destructive recovery path triggered by a noisy signal.** A 401 can mean (a) token expired, (b) `NEXTAUTH_SECRET` rotated, (c) user deleted, (d) the bearer-attach race we've been debugging, (e) server transient hiccup. Only (a)/(b)/(c) warrant destroying the local session; (d)/(e) are recoverable.
+- **Without `clearSession`, the worst case is "user sees sign-in screen again."** They can re-authenticate, which overwrites the token. No data loss, no harder-to-fix state.
+- **With `clearSession`, the worst case is "transient 401 permanently wipes the session."** That's what's hitting Jim — the bearer-attach race produces a 401, the catch handler nukes the token + memoryToken cache, every subsequent retry has no bearer either.
+- **The "should the user re-sign-in?" decision is now driven by the AuthGate's `if (!user)` rule** rather than by the catch handler's destructive cleanup. AuthGate sees `user === null` → routes to sign-in. Same UX outcome, recoverable state.
+
+### Slice verification
+
+- Full apps/web vitest: **23/23 files pass, 362/362 tests pass.** Zero regressions.
+- Web tsc: 7-baseline, zero new errors.
+- Mobile tsc: only the pre-existing React 18/19 TS2786 noise on `AuthContext.Provider` (documented in `docs/v1-1/backlog.md` and `react-18-19-collision-fix-paths.md`). Zero new errors from slice.
+- No schema, Inngest, or Stripe changes.
+
+### Manual steps needed
+
+- [ ] **Vercel auto-deploys in ~60s.** Confirm via `vercel ls acuity-web | head -3`.
+- [ ] **Confirm with Jim:** TestFlight → Acuity → build number should show **28**. If it shows 26 or 27, he's on a cached older install and the analysis doesn't apply (delete + reinstall TestFlight).
+- [ ] **After Vercel deploy lands:** Jim retries on build 28 (no rebuild needed for the server diagnostic). Then we pull `mobile-auth.no-header` logs:
+  ```bash
+  vercel logs --project acuity-web --since 30m \
+    --query "mobile-auth.no-header" --json --no-follow
+  ```
+- [ ] **Jim's "kicked back to sign-in" symptom won't be fixed until build 29 ships** with the mobile clearSession-removal. The server-side diagnostic doesn't address that — only the durable mobile fix does. If we want Jim unblocked NOW on the loop, EAS production build 29 is the next step.
+- [ ] **Decision tree based on diagnostic data:**
+  - If `mobile-auth.no-header` fires for Jim's user → confirms client-side bearer-attach bug. Next slice: client-side instrumentation OR a different fix to setToken/getToken (potentially passing the token explicitly through the api.ts upload-style path that doesn't share buildHeaders).
+  - If no `mobile-auth.no-header` AND still 401 → header is sent but filtered between Jim's device and our handler. Investigate Vercel edge / iOS network-extension / VPN.
+
+### Notes
+
+- **The `mobile-auth.no-header` log generates more noise than the prior silent-default.** Every unauthenticated dashboard poll will now log it. Acceptable cost while debugging — once we identify the root cause, the log can stay (it's still useful for monitoring) or be made path-conditional (only log for bearer-required routes like `/api/entries`, `/api/user/me`).
+- **The `URL(req.url)` parse is wrapped in try/catch.** Defensive: a malformed URL would otherwise crash the handler, causing a 500 instead of a 401. The fallback path emits the same event with `path: "<unparsable>"` so we still see the signal.
+- **Build 28 confirmation cross-checked with `eas build:list`** — appBuildVersion 28, gitCommitHash `ae369664c87551e2d0f9ef43d5554d71b97988b5`, which `git merge-base --is-ancestor 3bf1778` confirms includes the in-memory cache fix.
+- **OTA channel ruled out** — latest published EAS Update is on runtime version 0.1.8; build 28 is on 1.0.0. Different runtime versions → no OTA override possible. Build 28 runs its own embedded JS.
+- **The mobile-side change in this commit will not reach Jim's phone until EAS build 29 ships.** Per the user's strategy: deploy server-side diagnostic NOW (no EAS cost), wait for the diagnostic data, then decide if the mobile fix needs to ride a rebuild or if removing clearSession alone is the durable fix.
+- Followed slice protocol: full-suite vitest re-run, tsc whole-tree, baseline-red files called out as pre-existing per `docs/v1-1/backlog.md`. No schema, Inngest, or Stripe changes.
+
+---
+
 ## [2026-05-05] — In-memory token cache fixes the SecureStore race for ALL post-sign-in API calls (entries, /me, goals, tasks, etc.)
 
 **Requested by:** Jimmy (Jim signed in successfully via 32f1faa but home screen showed empty entries — 15 × 401 on `/api/entries` over 38 seconds)

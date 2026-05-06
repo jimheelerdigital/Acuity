@@ -94,14 +94,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           await setStoredUser(data.user);
           return;
         }
-        // 200 with no user — treat as signed-out
+        // 200 with no user — treat as signed-out. Server has
+        // explicitly told us the user no longer exists; clearing
+        // local state is the right call here.
         setUser(null);
         await clearSession();
       } catch (err) {
         const status = (err as { status?: number }).status;
         if (status === 401) {
-          // Server rejected our bearer token; boot the user.
-          await clearSession();
+          // 2026-05-06 fix: was previously calling clearSession()
+          // here, which deletes the bearer token from SecureStore +
+          // memoryToken cache. That created a feedback loop —
+          // a single 401 (which can fire transiently for many
+          // reasons including the bearer-attach race we've been
+          // debugging across three slices) would permanently wipe
+          // a valid session, kicking the user back to sign-in
+          // every time the foreground-refresh hook ran. Now we
+          // only setUser(null) so the AuthGate shows sign-in, but
+          // the underlying token survives. If the user signs in
+          // again, setToken just overwrites; if the 401 was
+          // transient, the next refresh tick (next foreground or
+          // tab focus) recovers automatically.
+          //
+          // The "real" sign-out path (Profile → Sign out →
+          // signOut() in auth-context) still calls clearSession
+          // explicitly. This catch handler only changes the
+          // server-rejected-401 path.
           setUser(null);
           return;
         }
