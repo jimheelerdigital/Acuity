@@ -24,7 +24,7 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 **Requested by:** Jimmy (build 28 still 401s on Jim's home screen; Jim getting kicked back to sign-in after backgrounding)
 **Committed by:** Claude Code
-**Commit hash:** PENDING
+**Commit hash:** 10c375b
 
 ### In plain English (for Keenan)
 
