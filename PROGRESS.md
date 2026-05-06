@@ -24,7 +24,7 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 **Requested by:** Jimmy (build 28 in-memory cache didn't hold in production — `mobile-auth.no-header` events confirmed bearer still missing on every post-sign-in API call)
 **Committed by:** Claude Code
-**Commit hash:** _backfill_
+**Commit hash:** b55ab43
 
 ### In plain English (for Keenan)
 
