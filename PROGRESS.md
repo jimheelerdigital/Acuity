@@ -24,7 +24,7 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 **Requested by:** Jimmy (Jim signed in successfully via 32f1faa but home screen showed empty entries — 15 × 401 on `/api/entries` over 38 seconds)
 **Committed by:** Claude Code
-**Commit hash:** PENDING
+**Commit hash:** 3bf1778
 
 ### In plain English (for Keenan)
 
