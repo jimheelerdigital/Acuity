@@ -24,7 +24,7 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 **Requested by:** Jimmy (Jim locked in onboarding on TestFlight preview build)
 **Committed by:** Claude Code
-**Commit hash:** PENDING
+**Commit hash:** 32f1faa
 
 ### In plain English (for Keenan)
 
