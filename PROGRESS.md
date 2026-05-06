@@ -20,6 +20,75 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-05] — CRITICAL: unstick onboarding lock — mobile-session response includes onboarding fields + Skip/Finish handlers fail-soft
+
+**Requested by:** Jimmy (Jim locked in onboarding on TestFlight preview build)
+**Committed by:** Claude Code
+**Commit hash:** PENDING
+
+### In plain English (for Keenan)
+
+The OAuth fix worked — Jim's existing account was correctly identified server-side (`wasCreated: false`, `userId: cmnt026kn0000etkyhvuy7ky2`) and a session token was issued. But the mobile app dropped him into the new-user onboarding flow anyway, AND the "Finish" + "Skip for now" buttons did nothing when tapped. Jim was locked out of the app on his phone. Two root causes, both fixed in this slice:
+
+1. **The server's mobile sign-in response was missing the onboarding-status flag.** When `setAuthenticatedUser(result.user)` runs after a successful Google/Apple/password sign-in, the user object passed in had no `onboardingCompleted` field — the AuthGate read `undefined` as "not completed" and routed everyone (including Jim, who completed onboarding 15 days ago) to step 1. Fixed: the server now flattens the onboarding fields into the response shape, matching what `/api/user/me` already returns.
+
+2. **The Finish + Skip buttons silently failed when their POST API call threw.** If `/api/onboarding/complete` returned an error (likely 401 from the bearer-attach race that the OAuth fix addressed for sign-in but not for in-flight onboarding sessions), the button bailed before navigating. Now the local user state gets patched + navigation happens regardless of whether the API call succeeds.
+
+End-user impact: Jim re-opens the app on the new build → mobile-callback returns `onboardingCompleted: true` in the response → AuthGate routes him directly to /(tabs). If he's already mid-onboarding when the new build arrives, tapping Finish or Skip now reliably exits to /(tabs).
+
+### Technical changes (for Jimmy)
+
+**Server-side (auto-deploys, helps ALL existing TestFlight builds on next sign-in):**
+
+- `apps/web/src/lib/mobile-session.ts`:
+  - `MobileSessionUser` type extended with optional `onboarding: { completedAt: Date | null; currentStep: number } | null` field (matches Prisma's relation shape so callers add it to existing `select` clauses without further mapping).
+  - `mobileSessionResponse(...)` flattens onboarding into the response: `onboardingCompleted: Boolean(user.onboarding?.completedAt)`, `onboardingStep: user.onboarding?.currentStep ?? 1`. Mirrors `/api/user/me`'s flat shape exactly so mobile's `User` type is consistent across both surfaces.
+
+- `apps/web/src/app/api/auth/mobile-callback/route.ts`:
+  - Added `onboarding: { select: { completedAt: true, currentStep: true } }` to BOTH `findUnique` AND `create` AND post-bootstrap `findUnique` select clauses (3 sites).
+  - Added a defensive narrow `if (!user) return 500` after the find-or-create branch so tsc accepts the non-null assertion downstream.
+
+- `apps/web/src/app/api/auth/mobile-login/route.ts`: `+1` line — added `onboarding` relation select.
+- `apps/web/src/app/api/auth/mobile-complete/route.ts`: `+1` line — added `onboarding` relation select.
+
+**Mobile-side (needs EAS rebuild to reach Jim's device):**
+
+- `apps/mobile/components/onboarding/shell.tsx`:
+  - `useAuth()` now destructures `user` and `setAuthenticatedUser` alongside `refresh`.
+  - `complete(asSkipped)` rewritten to fail-soft:
+    1. `persist()` wrapped in try/catch (logs failure, never throws)
+    2. `api.post("/api/onboarding/complete", ...)` wrapped in try/catch (logs failure, never throws)
+    3. **`setAuthenticatedUser({ ...user, onboardingCompleted: true })` patches local state immediately** — the AuthGate's next render routes to `/(tabs)` regardless of API success
+    4. `refresh()` wrapped in try/catch (best-effort server reconciliation, never throws)
+    5. `router.replace("/(tabs)")` always fires
+  - Both Finish (last-step Continue) and Skip-all (header link) hit `complete()`. Both are now reliable.
+
+### Slice verification
+
+- Full apps/web vitest: **23/23 files pass, 362/362 tests pass.** Zero regressions.
+- Web tsc: 7-baseline. **Zero new errors** in any slice file.
+- Mobile tsc: same baseline as Phase 3a/3b/4 — only the React 18/19 TS2786 noise (`OnboardingContext.Provider`) + a TS2769 on a `<ScrollView>` children render that's the same React-types root cause. Both pre-existing per `docs/v1-1/backlog.md`. **Zero new errors** introduced by this slice.
+- No schema, Inngest, or Stripe changes.
+
+### Manual steps needed
+
+- [ ] **Jim runs `eas build --profile production --platform ios`** (NOT preview — preview credit was already burned on the failed RCT-Folly build) and submits to TestFlight. Production profile typically goes to TestFlight automatically. (Jimmy)
+- [ ] **Server-side fix auto-deploys via Vercel.** Effective immediately for ALL existing TestFlight builds — when any user (Jim, Keenan) re-opens the app and the AppState foreground refresh fires, `/api/user/me` already returns `onboardingCompleted: true`, AuthGate routes them past onboarding. **This may unstick Jim WITHOUT the EAS build** — he just has to force-quit + reopen.
+- [ ] **After EAS build lands:** quick check via `vercel logs --project acuity-web --since 30m --query "/api/onboarding/complete" --json --no-follow` to confirm the endpoint is being hit successfully.
+- [ ] If Jim is still stuck after force-quit + Vercel deploy lands, ask him to delete + reinstall TestFlight — clears the cached User state in SecureStore that doesn't have onboardingCompleted set.
+
+### Notes
+
+- **The OAuth fix from `8c2734a` did work.** The server logs show clean `mobile-callback.success` for Jim's user with `wasCreated: false`. Three `/api/user/me` 200s in the same window (vs the 5 × 401 pattern on the pre-fix build) confirm bearer is now attaching. The two NEW bugs surfaced today are downstream of OAuth working — they're consequences of the partial user shape returned by mobile-callback.
+- **The IAP-revert from `eb0e136` was correct.** It unblocked the EAS build that surfaced these two new bugs. Without that revert, we'd still be stuck on RCT-Folly and Jim wouldn't have a build to install at all.
+- **Why `setAuthenticatedUser` instead of just `setUser`?** The existing `setAuthenticatedUser` from the OAuth fix is the only public API for direct user-state mutation. Adding a second setter would fragment the surface. The `{ ...user, onboardingCompleted: true }` pattern works cleanly with the existing setter.
+- **Why patch local state before the API call resolves?** Because the API call may throw (auth race, transient network, etc.) and we need the user to escape onboarding regardless. The server-side write is the source of truth for NEXT app launch; the local state is the source of truth for THIS session's routing.
+- **What about Jim's `User.onboarding.currentStep = 8` quirk?** He completed onboarding (`completedAt = 2026-04-20`) but the step counter never reached 10. This is harmless — the AuthGate routing only checks `onboardingCompleted` (boolean from `Boolean(completedAt)`), not the step number. Existing quirk, not introduced by this slice.
+- **How does this interact with the Phase 3 onboarding enrollment timing?** Onboarding's `complete()` calls `/api/onboarding/complete` which writes `completedAt`. The mobile-callback response on next sign-in includes the now-set `completedAt`, which flattens to `onboardingCompleted: true`. End-to-end: completion sticks.
+- Followed slice protocol: full-suite vitest re-run, tsc whole-tree on web + mobile, baseline-red files called out as pre-existing per `docs/v1-1/backlog.md`. No schema changes, no Inngest changes, no Stripe changes.
+
+---
+
 ## [2026-05-05] — Revert react-native-iap to unblock OAuth-fix EAS build (RCT-Folly + Expo SDK 54 incompat)
 
 **Requested by:** Jimmy

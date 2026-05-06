@@ -76,6 +76,7 @@ export async function POST(req: NextRequest) {
       emailVerified: true,
       subscriptionStatus: true,
       trialEndsAt: true,
+      onboarding: { select: { completedAt: true, currentStep: true } },
     },
   });
   if (!user) {

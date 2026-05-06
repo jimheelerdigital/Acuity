@@ -57,7 +57,7 @@ export function OnboardingShell({
   children,
 }: Props) {
   const router = useRouter();
-  const { refresh } = useAuth();
+  const { user, refresh, setAuthenticatedUser } = useAuth();
   const [canContinue, setCanContinue] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   // Per-step captured form state. Survives step remounts inside this
@@ -184,21 +184,49 @@ export function OnboardingShell({
     async (asSkipped: boolean) => {
       setSubmitting(true);
       try {
-        // Persist last step's captured data if any, then mark complete.
-        await persist();
-        await api.post("/api/onboarding/complete", {
-          skipped: asSkipped,
-          skippedAtStep: asSkipped ? step : undefined,
-        });
-        // Pull fresh `onboardingCompleted` from the server so the
-        // AuthGate sees the flip without waiting for the next refresh.
-        await refresh();
+        // Persist last step's captured data — best-effort, never blocks nav.
+        try {
+          await persist();
+        } catch (err) {
+          console.warn("[onboarding-complete] persist failed:", err);
+        }
+        // Tell the server we're done — best-effort, never blocks nav.
+        // If this throws (auth race, network, server hiccup) the user
+        // stays trapped in onboarding under the old behavior. Now we
+        // log + continue, and the local AuthGate-routing fallback
+        // below ensures the user reaches /(tabs).
+        try {
+          await api.post("/api/onboarding/complete", {
+            skipped: asSkipped,
+            skippedAtStep: asSkipped ? step : undefined,
+          });
+        } catch (err) {
+          console.warn("[onboarding-complete] API failed:", err);
+        }
+        // Patch the in-memory user state so the AuthGate
+        // (apps/mobile/app/_layout.tsx) sees onboardingCompleted=true
+        // immediately, routing to /(tabs) on the next render. Belt-
+        // and-suspenders: also explicit router.replace below.
+        // Critical-path bugfix 2026-05-05 — without this, Jim was
+        // locked in onboarding because /api/onboarding/complete was
+        // failing (likely the same bearer-attach race the OAuth fix
+        // bypassed) and the function bailed before refresh+navigate.
+        if (user) {
+          setAuthenticatedUser({ ...user, onboardingCompleted: true });
+        }
+        // Best-effort refresh to align with server state. Failure here
+        // is fine — local state already says "done."
+        try {
+          await refresh();
+        } catch (err) {
+          console.warn("[onboarding-complete] refresh failed:", err);
+        }
         router.replace("/(tabs)");
       } finally {
         setSubmitting(false);
       }
     },
-    [persist, refresh, router, step]
+    [persist, refresh, router, setAuthenticatedUser, step, user]
   );
 
   const skipAll = useCallback(() => {

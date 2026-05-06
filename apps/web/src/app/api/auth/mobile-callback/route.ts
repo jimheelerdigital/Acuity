@@ -229,6 +229,7 @@ export async function POST(req: NextRequest) {
       image: true,
       subscriptionStatus: true,
       trialEndsAt: true,
+      onboarding: { select: { completedAt: true, currentStep: true } },
     },
   });
 
@@ -248,6 +249,7 @@ export async function POST(req: NextRequest) {
         image: true,
         subscriptionStatus: true,
         trialEndsAt: true,
+        onboarding: { select: { completedAt: true, currentStep: true } },
       },
     });
     wasCreated = true;
@@ -267,9 +269,20 @@ export async function POST(req: NextRequest) {
         image: true,
         subscriptionStatus: true,
         trialEndsAt: true,
+        onboarding: { select: { completedAt: true, currentStep: true } },
       },
     });
     if (refreshed) user = refreshed;
+  }
+
+  // After find-or-create + optional refresh, narrow `user` for tsc.
+  // The branch above guarantees user is non-null (else-create-then-
+  // assign), but TS needs the explicit narrow.
+  if (!user) {
+    return NextResponse.json(
+      { error: "User lookup failed" },
+      { status: 500 }
+    );
   }
 
   // ── Issue NextAuth-compatible session JWT ──────────────────────

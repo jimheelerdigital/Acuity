@@ -22,6 +22,23 @@ export type MobileSessionUser = {
   image: string | null;
   subscriptionStatus?: string | null;
   trialEndsAt?: Date | null;
+  // Onboarding flags — flattened into the response below so the
+  // mobile AuthGate (apps/mobile/app/_layout.tsx) can route the
+  // user to /(tabs) vs /onboarding immediately after sign-in.
+  // Without these, `setAuthenticatedUser(result.user)` in the
+  // post-OAuth fix (commit 8c2734a) leaves `onboardingCompleted`
+  // undefined → `!undefined` is true → existing users get routed
+  // through onboarding. Surfaced 2026-05-05 when Jim's preview
+  // build dropped him into the onboarding flow despite his
+  // 2026-04-20 completion.
+  //
+  // Accepts the raw Prisma relation shape to keep call sites
+  // simple — they just add `onboarding: { select: { completedAt:
+  // true, currentStep: true } }` to their existing select.
+  onboarding?: {
+    completedAt: Date | null;
+    currentStep: number;
+  } | null;
 };
 
 export async function issueMobileSessionToken(
@@ -72,6 +89,10 @@ export function mobileSessionResponse(params: {
       image: user.image,
       subscriptionStatus: user.subscriptionStatus ?? null,
       trialEndsAt: user.trialEndsAt ? user.trialEndsAt.toISOString() : null,
+      // Match the flat shape /api/user/me returns so mobile's
+      // AuthGate routes existing users past onboarding correctly.
+      onboardingCompleted: Boolean(user.onboarding?.completedAt),
+      onboardingStep: user.onboarding?.currentStep ?? 1,
     },
   };
 }
