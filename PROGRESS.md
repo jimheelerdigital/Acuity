@@ -20,6 +20,89 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-05] — In-memory token cache fixes the SecureStore race for ALL post-sign-in API calls (entries, /me, goals, tasks, etc.)
+
+**Requested by:** Jimmy (Jim signed in successfully via 32f1faa but home screen showed empty entries — 15 × 401 on `/api/entries` over 38 seconds)
+**Committed by:** Claude Code
+**Commit hash:** PENDING
+
+### In plain English (for Keenan)
+
+This is the third (and we expect final) layer of an iOS Keychain bug we've been peeling back over the last 24 hours. Earlier fixes addressed sign-in routing and onboarding routing — both worked, but Jim's home screen was still empty after sign-in because every API call to fetch his entries was returning 401. Server logs showed 15 attempts in 38 seconds, all without an Authorization header. The token was being stored in the iOS Keychain on sign-in, but the keychain wasn't returning it back when the home tab tried to read it. This patch keeps a copy of the token in plain JavaScript memory after sign-in, so every subsequent API call uses that copy directly — no Keychain round-trip. The Keychain is still written for app restarts (cold launch reads it back) and still cleared on sign-out. End-user impact: home screen, entries, insights, goals, tasks all start populating with the user's actual data again.
+
+### Technical changes (for Jimmy)
+
+**Single-file change — `apps/mobile/lib/auth.ts` (+38/-1):**
+
+```ts
+let memoryToken: string | null = null;
+
+export async function getToken(): Promise<string | null> {
+  if (memoryToken) return memoryToken;            // hot path — memory hit
+  const stored = await SecureStore.getItemAsync(TOKEN_KEY);
+  if (stored) memoryToken = stored;               // hydrate cache on cold launch
+  return stored;
+}
+
+export async function setToken(token: string): Promise<void> {
+  memoryToken = token;                             // memory FIRST — sidesteps race
+  await SecureStore.setItemAsync(TOKEN_KEY, token);
+}
+
+export async function clearToken(): Promise<void> {
+  memoryToken = null;
+  await SecureStore.deleteItemAsync(TOKEN_KEY);
+}
+```
+
+That's it. Every existing call site for `getToken/setToken/clearToken` works unchanged. Three caller surfaces immediately benefit:
+1. `apps/mobile/lib/api.ts::buildHeaders` — every `api.get/post/patch/del` now reliably attaches the Bearer.
+2. `apps/mobile/lib/iap.ts::iapPostHeaders` — same path (currently stubbed but the call site is preserved).
+3. `apps/mobile/contexts/auth-context.tsx::refresh` — the `if (!token)` early return no longer fires spuriously on the post-sign-in tick.
+
+### Architectural learning — three layers of the same iOS Keychain race
+
+This is the THIRD manifestation of the SecureStore write→read settling delay we've fixed in 24 hours. Each was a different downstream consequence of the same underlying behavior:
+
+| Layer | Surface | Symptom | Fix | Commit |
+|---|---|---|---|---|
+| 1 | Sign-in routing | OAuth completes, app stays on login screen (refresh()'s `getToken()` returned null → /api/user/me 401 → `clearSession` wiped the token) | `setAuthenticatedUser(result.user)` bypass — set React state directly from the callback response, never round-trip SecureStore | `8c2734a` |
+| 2 | Onboarding routing | Existing user routed into step 1; Skip/Finish silently failed | (a) Server returns `onboardingCompleted` in mobile-session response (b) `complete()` patches local user state + fail-soft on API errors | `32f1faa` |
+| 3 | Post-sign-in API calls (`/api/entries`, `/api/user/me`, `/api/home`, etc.) | Home screen empty; user signed in but all data fetches 401 | In-memory token cache — `getToken()` checks memory first, falls back to SecureStore on cold launch only | THIS SLICE |
+
+**The pattern (worth memorializing for future code):** iOS Keychain (via expo-secure-store) on Expo SDK 54 / RN 0.81 has a write-acknowledgement-vs-read-visibility delay. `SecureStore.setItemAsync` resolves before `SecureStore.getItemAsync` can return the just-stored value. Empirically, the delay can be **persistent** (the production logs showed 15 × 401 over 38 seconds — not a millisecond race).
+
+**Architectural rule for future code:** **never write-then-read SecureStore in the same JS execution context expecting the read to see the write.** Either:
+1. Pass the value explicitly through React state / function arguments (Layer 1 + 2's pattern).
+2. Layer an in-memory cache in front of SecureStore for any value that's hot-read post-write (Layer 3's pattern).
+
+SecureStore should be thought of as **eventual-consistency persistence** — a cold-launch hydration source, NOT a synchronous fetch path. Any code that does `await SecureStore.setItemAsync(k, v)` followed by `await SecureStore.getItemAsync(k)` in the same flow is a latent bug.
+
+### Slice verification
+
+- Full apps/web vitest: **23/23 files pass, 362/362 tests pass.** Zero regressions.
+- Web tsc: 7-baseline, zero new.
+- Mobile tsc: **`apps/mobile/lib/auth.ts` typechecks clean**. Same baseline TS2786 React 18/19 noise elsewhere (documented in `docs/v1-1/backlog.md`).
+- No schema, Inngest, or Stripe changes.
+
+### Manual steps needed
+
+- [ ] **Jim runs `eas build --profile production --platform ios`**. Production profile auto-submits to TestFlight. Both Jim and Keenan can install. (Jimmy)
+- [ ] **After install + Jim signs in:** verify entries render. Quick log check via `vercel logs --project acuity-web --since 30m --query "/api/entries" --status-code 200 --json --no-follow` should show 200s, not the 15 × 401 pattern from before.
+- [ ] **Sign-out flow regression test:** tap Sign out → confirm app routes to /sign-in (`clearToken` nulls memory + SecureStore; refresh() reads null → setUser(null)).
+- [ ] **Cold-launch test:** force-quit + reopen → app should retain sign-in (memory empty → reads SecureStore → finds the token → restores session).
+
+### Notes
+
+- **Cold launch is the only place SecureStore is still hot-read.** When the app starts fresh, `memoryToken` is null. The first `getToken()` call (via auth-context's `refresh` on mount) reads SecureStore. By that point the keychain has had session-end time to settle, so the read returns reliably. Cache populates from there.
+- **Sign-out semantics preserved.** `clearToken` nulls memory FIRST then deletes the keychain entry. If the keychain delete fails (e.g., entry already missing), memory has already been cleared — the user is signed-out from the runtime's perspective regardless.
+- **Why memory-first on writes (not last)?** Because the bug we're fixing is "the read after the write returns null." If we wrote to keychain first and then to memory, an in-flight `getToken()` running between those two awaits could still hit the keychain race. Memory-first guarantees zero window where the just-stored token is invisible.
+- **What about web?** Web doesn't use this code path — `apps/web` uses NextAuth cookies and never calls `getToken/setToken`. The bug + fix are mobile-only.
+- **Why three slices instead of one architectural revamp?** Each layer surfaced AS a user-reported bug, and each layer's fix needed to ship FAST to unblock real users (Keenan stuck on login → Jim stuck on login → Jim stuck in onboarding → Jim stuck with empty home screen). Stacking the three patterns into one slice would have delayed every user-blocking fix by 12+ hours. Splitting them into three commits also gives clean blame-trail evidence: each layer has the symptom + the fix linked in its PROGRESS entry.
+- Followed slice protocol: full-suite vitest re-run, tsc whole-tree on web + mobile, baseline-red files called out as pre-existing per `docs/v1-1/backlog.md`. No schema changes, no Inngest changes, no Stripe changes.
+
+---
+
 ## [2026-05-05] — CRITICAL: unstick onboarding lock — mobile-session response includes onboarding fields + Skip/Finish handlers fail-soft
 
 **Requested by:** Jimmy (Jim locked in onboarding on TestFlight preview build)

@@ -73,16 +73,53 @@ export type User = {
 };
 
 // ─── Secure storage ────────────────────────────────────────────────
+//
+// In-memory token cache (2026-05-05 fix): iOS Keychain has a race where
+// `SecureStore.setItemAsync` resolves before a subsequent
+// `SecureStore.getItemAsync` can read the value. The OAuth fix in
+// `8c2734a` worked around this for the sign-in routing decision by
+// bypassing `refresh()`, but every downstream `api.*` call (entries,
+// life-matrix, goals, tasks, /api/user/me foreground-refresh) still
+// hits `getToken()` and reads SecureStore. Production logs after
+// Jim's successful sign-in showed 15 × 401 on `/api/entries` over 38
+// seconds with empty `logs[]` (no Authorization header attached) —
+// the keychain consistently returned null.
+//
+// Layering an in-memory cache in front of SecureStore makes the
+// keychain a hydration source on cold launch, not a hot read on every
+// API call. After `setToken` runs, the next `getToken()` returns the
+// new value from memory immediately. SecureStore is still written
+// (so the token survives app restart) and still read on cold launch
+// (when `memoryToken` is null and the keychain has had session-end
+// time to settle). Net effect: bearer attaches reliably on every
+// post-sign-in API call.
+//
+// `clearToken` nulls both layers so sign-out and 401-driven cleanup
+// work identically to before.
+
+let memoryToken: string | null = null;
 
 export async function getToken(): Promise<string | null> {
-  return SecureStore.getItemAsync(TOKEN_KEY);
+  // Hot path — sign-in has already populated memory. Return without
+  // touching the keychain, sidestepping the setItem→getItem race.
+  if (memoryToken) return memoryToken;
+  // Cold path — first call after app launch. Hydrate from SecureStore;
+  // if a value is present, cache it so subsequent calls skip the
+  // keychain entirely.
+  const stored = await SecureStore.getItemAsync(TOKEN_KEY);
+  if (stored) memoryToken = stored;
+  return stored;
 }
 
 export async function setToken(token: string): Promise<void> {
+  // Update memory FIRST so any in-flight getToken() resolves with
+  // the new value even if the keychain write is still committing.
+  memoryToken = token;
   await SecureStore.setItemAsync(TOKEN_KEY, token);
 }
 
 export async function clearToken(): Promise<void> {
+  memoryToken = null;
   await SecureStore.deleteItemAsync(TOKEN_KEY);
 }
 
