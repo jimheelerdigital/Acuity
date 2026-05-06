@@ -24,7 +24,7 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 **Requested by:** Jimmy (build 29 with tokenBridge still failed — bearer not attaching post-sign-in AND backgrounding for seconds wipes auth entirely)
 **Committed by:** Claude Code
-**Commit hash:** _backfill_
+**Commit hash:** 2f3ea04
 
 ### In plain English (for Keenan)
 
