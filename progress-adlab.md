@@ -65,3 +65,20 @@ Add these to `.env.local` and Vercel:
 - [ ] Keenan: `npx prisma db push` from home network to create adlab_* tables
 - [ ] Keenan: Add META_ACCESS_TOKEN, META_AD_ACCOUNT_ID, META_API_VERSION, IDEOGRAM_API_KEY, HEYGEN_API_KEY to Vercel env vars
 
+### [2026-05-06] Phase 2 — Project Config UI
+
+**Commit:** da5b80a
+
+**Built:**
+- Full CRUD API routes for AdLabProject (list, create, get, update, delete)
+- Project list page with table view (name, slug, CPL, budget, created, edit/delete actions)
+- New/Edit form with all fields: brand voice guide, structured audience JSON editor (age, geo, interests, pain points, desires, identity markers as tag inputs), repeating USP fields, banned phrases tag input, image style prompt, logo URL, Meta integration, conversion config, video toggle
+- Zod validation on API routes, inline error display on form
+- Project detail page with summary cards (read-only view of all config)
+- Dollars-to-cents conversion on save, cents-to-dollars on load
+- Seed endpoint at POST /api/admin/adlab/projects/seed — creates Acuity project pre-populated with real product config
+
+**Manual steps needed:**
+- [ ] Keenan: after `prisma db push`, hit POST /api/admin/adlab/projects/seed to create the Acuity project (or create via UI at /admin/adlab/projects/new)
+- [ ] Keenan: fill in metaAdAccountId and metaPixelId on the Acuity project once Meta system user is set up
+
