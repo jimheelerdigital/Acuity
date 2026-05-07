@@ -20,6 +20,33 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-06] — Tighten blog post typography for cleaner reading
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 9604b67
+
+### In plain English (for Keenan)
+
+Blog posts on the site were using an oversized font and loose spacing that made them harder to read than they should be. The text is now smaller and tighter — matching the cleaner look of the hand-written posts. Every auto-published blog post (past and future) automatically picks up this change because the styling lives in the rendering page, not in the posts themselves.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/blog/[slug]/page.tsx`: dynamic post prose container changed from `prose-lg` to `prose-base`, added explicit overrides: `prose-h2:text-2xl prose-h2:tracking-tight prose-h2:mt-12 prose-h2:mb-4`, `prose-h3:text-xl prose-h3:mt-8 prose-h3:mb-3`, `prose-p:text-base prose-p:mb-5`, `prose-li:text-base`
+- No changes to the auto-blog Inngest function or its generation prompt — the auto-poster outputs bare semantic HTML (no embedded classes), so the rendering page controls all typography
+- Dynamic post path now matches the static post path's sizing exactly (both use text-base / text-2xl / text-xl)
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- The auto-poster's system prompt in `auto-blog.ts` generates semantic HTML only (h1-h3, p, a, ul/li, blockquote) with no CSS classes. This clean separation means all typography changes are a single-file edit on the rendering side.
+- `prose-lg` was inflating base font to ~18px and adding ~30% more vertical spacing to every element. `prose-base` brings it back to 16px with tighter margins.
+
+---
+
 ## [2026-05-06] — Build 30: refresh() is no longer destructive on null-token reads (Layer 5 — the actual root cause)
 
 **Requested by:** Jimmy (build 29 with tokenBridge still failed — bearer not attaching post-sign-in AND backgrounding for seconds wipes auth entirely)
