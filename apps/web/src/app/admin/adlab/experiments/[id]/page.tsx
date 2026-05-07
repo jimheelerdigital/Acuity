@@ -6,12 +6,14 @@ import { Loader2, CheckCircle2, ChevronDown, ChevronUp, Sparkles, RefreshCw, Shi
 
 interface Creative {
   id: string;
+  creativeType: string;
   headline: string;
   primaryText: string;
   description: string;
   cta: string;
   imageUrl: string | null;
   videoUrl: string | null;
+  generationPrompt: string | null;
   complianceStatus: string;
   complianceNotes: string | null;
   approved: boolean;
@@ -209,18 +211,35 @@ export default function ExperimentDetailPage() {
               generating={generatingFor.has(angle.id)}
             />
 
-            {/* Creatives under this angle */}
-            {angle.creatives.length > 0 && (
-              <div className="ml-8 mt-3 grid gap-3 sm:grid-cols-3">
-                {angle.creatives.map((creative) => (
-                  <CreativeCard
-                    key={creative.id}
-                    creative={creative}
-                    onToggleApprove={() => toggleApprove(creative.id, creative.approved)}
-                  />
-                ))}
-              </div>
-            )}
+            {/* Creatives under this angle — grouped by type */}
+            {angle.creatives.length > 0 && (() => {
+              const imageCreatives = angle.creatives.filter((c) => c.creativeType === "image");
+              const videoCreatives = angle.creatives.filter((c) => c.creativeType === "video");
+              return (
+                <div className="ml-8 mt-3 space-y-4">
+                  {imageCreatives.length > 0 && (
+                    <div>
+                      <p className="text-[10px] font-medium text-[#A0A0B8] uppercase tracking-wider mb-2">Image Creatives</p>
+                      <div className="grid gap-3 sm:grid-cols-3">
+                        {imageCreatives.map((creative) => (
+                          <CreativeCard key={creative.id} creative={creative} onToggleApprove={() => toggleApprove(creative.id, creative.approved)} />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {videoCreatives.length > 0 && (
+                    <div>
+                      <p className="text-[10px] font-medium text-[#A0A0B8] uppercase tracking-wider mb-2">Video Creatives</p>
+                      <div className="grid gap-3 sm:grid-cols-3">
+                        {videoCreatives.map((creative) => (
+                          <CreativeCard key={creative.id} creative={creative} onToggleApprove={() => toggleApprove(creative.id, creative.approved)} />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         ))}
       </div>
@@ -346,13 +365,27 @@ function CreativeCard({
     <div
       className={`rounded-lg border bg-[#1E1E2E] overflow-hidden transition ${COMPLIANCE_COLORS[creative.complianceStatus] || "border-white/10"}`}
     >
-      {creative.imageUrl && (
+      {creative.creativeType === "image" && creative.imageUrl && (
         <div className="aspect-square bg-black/20">
           <img
             src={creative.imageUrl}
             alt={creative.headline}
             className="w-full h-full object-cover"
           />
+        </div>
+      )}
+      {creative.creativeType === "video" && creative.videoUrl && (
+        <div className="aspect-square bg-black/20">
+          <video
+            src={creative.videoUrl}
+            controls
+            className="w-full h-full object-cover"
+          />
+        </div>
+      )}
+      {creative.creativeType === "video" && !creative.videoUrl && (
+        <div className="aspect-square bg-black/20 flex items-center justify-center">
+          <span className="text-xs text-[#A0A0B8]">Video pending</span>
         </div>
       )}
 
@@ -363,6 +396,13 @@ function CreativeCard({
 
         <div className="flex items-center justify-between pt-1">
           <div className="flex items-center gap-1.5">
+            <span className={`rounded px-1.5 py-0.5 text-[9px] font-medium ${
+              creative.creativeType === "video"
+                ? "bg-sky-500/15 text-sky-400"
+                : "bg-[#7C5CFC]/15 text-[#7C5CFC]"
+            }`}>
+              {creative.creativeType}
+            </span>
             <span className="rounded bg-white/10 px-1.5 py-0.5 text-[9px] text-[#A0A0B8] font-mono">
               {creative.cta}
             </span>

@@ -20,10 +20,12 @@ const ComplianceResultSchema = z.object({
 });
 
 async function checkCreative(
-  creative: { id: string; headline: string; primaryText: string; description: string; cta: string },
+  creative: { id: string; headline: string; primaryText: string; description: string; cta: string; creativeType?: string; generationPrompt?: string | null },
   bannedPhrases: string[]
 ): Promise<z.infer<typeof ComplianceResultSchema>> {
-  const systemPrompt = `You are a Meta Ads compliance reviewer. Check the ad copy below against Meta's advertising policies.
+  const isVideo = creative.creativeType === "video";
+
+  const systemPrompt = `You are a Meta Ads compliance reviewer. Check the ad ${isVideo ? "copy AND spoken video script" : "copy"} below against Meta's advertising policies.
 
 FLAG if the ad contains ANY of these violations:
 1. PERSONAL ATTRIBUTES: Uses "you" in a way that implies inferred traits (race, religion, financial status, sexual orientation, mental/physical condition). Example flagged: "Are you struggling with anxiety?" Example OK: "Many people find relief through daily reflection."
@@ -34,6 +36,7 @@ FLAG if the ad contains ANY of these violations:
 6. SENSATIONAL LANGUAGE: Excessive exclamation marks, all caps, clickbait.
 7. PROHIBITED CONTENT: Weapons, drugs, adult content, discrimination.
 8. THIRD-PARTY INFRINGEMENT: Unauthorized use of trademarks or celebrity names.
+${isVideo ? "\n9. VIDEO-SPECIFIC: Spoken claims that would violate Meta policy when heard (health guarantees, income claims, personal attribute assumptions). The script text is the spoken content — review it as if a viewer would hear it." : ""}
 
 ALSO FLAG if the ad contains any of these project-specific banned phrases:
 ${bannedPhrases.map((p) => `- "${p}"`).join("\n")}
@@ -41,11 +44,11 @@ ${bannedPhrases.map((p) => `- "${p}"`).join("\n")}
 Return ONLY a JSON object: { "status": "passed" | "flagged", "notes": "brief explanation", "flaggedReasons": ["reason1", ...] }
 If passed, flaggedReasons should be an empty array.`;
 
-  const userPrompt = `Check this ad copy:
+  const userPrompt = `Check this ad ${isVideo ? "(video creative)" : "(image creative)"}:
 Headline: ${creative.headline}
 Primary Text: ${creative.primaryText}
 Description: ${creative.description}
-CTA: ${creative.cta}`;
+CTA: ${creative.cta}${isVideo && creative.generationPrompt ? `\n\nSpoken Video Script:\n${creative.generationPrompt}` : ""}`;
 
   try {
     const raw = await callAdLabClaude({
@@ -67,7 +70,7 @@ export async function POST(req: NextRequest) {
 
   const { creativeId, experimentId } = await req.json();
 
-  let creatives: { id: string; headline: string; primaryText: string; description: string; cta: string }[];
+  let creatives: { id: string; headline: string; primaryText: string; description: string; cta: string; creativeType?: string; generationPrompt?: string | null }[];
   let bannedPhrases: string[] = [];
 
   if (creativeId) {
@@ -88,7 +91,7 @@ export async function POST(req: NextRequest) {
         angles: {
           include: {
             creatives: {
-              select: { id: true, headline: true, primaryText: true, description: true, cta: true },
+              select: { id: true, headline: true, primaryText: true, description: true, cta: true, creativeType: true, generationPrompt: true },
             },
           },
         },

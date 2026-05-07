@@ -1736,6 +1736,11 @@ enum AdLabAdStatus {
   killed
 }
 
+enum AdLabCreativeType {
+  image
+  video
+}
+
 enum AdLabDecisionType {
   kill
   scale
@@ -1761,6 +1766,7 @@ model AdLabProject {
   conversionEvent           String?
   conversionObjective       String             @default("OUTCOME_LEADS")
   learnedPatterns           Json               @default("[]")
+  imageEnabled              Boolean            @default(true)
   videoEnabled              Boolean            @default(false)
   createdAt                 DateTime           @default(now())
   experiments               AdLabExperiment[]
@@ -1805,13 +1811,14 @@ model AdLabCreative {
   id               String                  @id @default(cuid())
   angleId          String
   angle            AdLabAngle              @relation(fields: [angleId], references: [id], onDelete: Cascade)
+  creativeType     AdLabCreativeType       @default(image)
   headline         String
   primaryText      String                  @db.Text
   description      String
   cta              String
   imageUrl         String?
   videoUrl         String?
-  imagePrompt      String?                 @db.Text
+  generationPrompt String?                 @db.Text
   complianceStatus AdLabComplianceStatus   @default(pending)
   complianceNotes  String?                 @db.Text
   approved         Boolean                 @default(false)

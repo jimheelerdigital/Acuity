@@ -128,21 +128,62 @@ export async function uploadImage(imageUrl: string): Promise<string> {
   return hash;
 }
 
+export async function uploadVideo(videoUrl: string): Promise<string> {
+  await getApi();
+  const account = await getAdAccount();
+
+  const video = await account.createAdVideo([], {
+    file_url: videoUrl,
+  });
+
+  const videoId = video?.id;
+  if (!videoId) throw new Error("Failed to get video ID from Meta upload");
+
+  // Poll until video is processed (Meta needs ~30-60s)
+  for (let i = 0; i < 12; i++) {
+    await new Promise((r) => setTimeout(r, 5_000));
+    const sdk = await getSdk();
+    const v = new sdk.default.AdVideo(videoId);
+    const status = await v.get(["status"]);
+    if (status?.status?.video_status === "ready") return videoId;
+  }
+
+  // Return anyway — Meta may still process it
+  return videoId;
+}
+
 export async function createAdCreative(params: AdCreativeParams) {
   await getApi();
   const account = await getAdAccount();
 
-  const objectStorySpec: Record<string, unknown> = {
-    page_id: params.pageId,
-    link_data: {
-      message: params.primaryText,
-      link: params.linkUrl,
-      name: params.headline,
-      description: params.description,
-      call_to_action: { type: params.cta },
-      ...(params.imageHash ? { image_hash: params.imageHash } : {}),
-    },
-  };
+  let objectStorySpec: Record<string, unknown>;
+
+  if (params.videoId) {
+    // Video creative
+    objectStorySpec = {
+      page_id: params.pageId,
+      video_data: {
+        video_id: params.videoId,
+        message: params.primaryText,
+        title: params.headline,
+        link_description: params.description,
+        call_to_action: { type: params.cta, value: { link: params.linkUrl } },
+      },
+    };
+  } else {
+    // Image creative
+    objectStorySpec = {
+      page_id: params.pageId,
+      link_data: {
+        message: params.primaryText,
+        link: params.linkUrl,
+        name: params.headline,
+        description: params.description,
+        call_to_action: { type: params.cta },
+        ...(params.imageHash ? { image_hash: params.imageHash } : {}),
+      },
+    };
+  }
 
   const creative = await account.createAdCreative([], {
     name: params.name,

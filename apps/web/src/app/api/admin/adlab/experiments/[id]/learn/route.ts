@@ -21,8 +21,13 @@ const LearningResultSchema = z.object({
     persona: z.string(),
     avgCplCents: z.number(),
   })),
+  winningCreativeType: z.object({
+    overall: z.string(),
+    byPersona: z.array(z.object({ persona: z.string(), type: z.string() })).optional(),
+  }).optional(),
   copyPatterns: z.array(z.string()),
   visualPatterns: z.array(z.string()),
+  scriptPatterns: z.array(z.string()).optional(),
   recommendations: z.array(z.string()),
 });
 
@@ -76,9 +81,10 @@ export async function POST(
           angleSurface: angle.valueSurface,
           anglePersona: angle.targetPersona,
           hypothesis: angle.hypothesis,
+          creativeType: creative.creativeType,
           headline: creative.headline,
           primaryText: creative.primaryText,
-          imagePrompt: creative.imagePrompt,
+          generationPrompt: creative.generationPrompt,
           status: ad.status,
           totalSpendCents: totalSpend,
           totalConversions,
@@ -93,10 +99,13 @@ export async function POST(
 Return a JSON object with:
 - winningValueSurfaces: array of { surface, avgCplCents } sorted by lowest CPL
 - cheapestPersonas: array of { persona, avgCplCents } sorted by lowest CPL
+- winningCreativeType: { overall: "image" | "video", byPersona: [{ persona, type }] } — which format won overall and per persona
 - copyPatterns: 3-5 string patterns from winning ad copy (hook structure, length, tone)
-- visualPatterns: 3-5 string patterns from winning ad image prompts (composition, color, subject)
+- visualPatterns: 3-5 string patterns from winning IMAGE ad prompts (composition, color, subject)
+- scriptPatterns: 3-5 string patterns from winning VIDEO ad scripts (hook structure, pacing, CTA placement)
 - recommendations: 2-3 concrete directions for the next experiment
 
+Each ad has a creativeType field ("image" or "video"). Compare performance across formats.
 Only include data-backed observations. If a metric is null or zero, note it but don't fabricate conclusions.`;
 
   try {
@@ -115,13 +124,17 @@ Only include data-backed observations. If a metric is null or zero, note it but 
       ...result.winningValueSurfaces.map((s) => `- ${s.surface}: $${(s.avgCplCents / 100).toFixed(2)} CPL`),
       "\n## Cheapest Personas",
       ...result.cheapestPersonas.map((p) => `- ${p.persona}: $${(p.avgCplCents / 100).toFixed(2)} CPL`),
+      result.winningCreativeType ? `\n## Creative Format Winner\n- Overall: ${result.winningCreativeType.overall}` : "",
+      result.winningCreativeType?.byPersona?.length ? result.winningCreativeType.byPersona.map((p) => `- ${p.persona}: ${p.type}`).join("\n") : "",
       "\n## Copy Patterns",
       ...result.copyPatterns.map((p) => `- ${p}`),
-      "\n## Visual Patterns",
+      "\n## Image Visual Patterns",
       ...result.visualPatterns.map((p) => `- ${p}`),
+      result.scriptPatterns?.length ? "\n## Video Script Patterns" : "",
+      ...(result.scriptPatterns || []).map((p) => `- ${p}`),
       "\n## Recommendations",
       ...result.recommendations.map((r) => `- ${r}`),
-    ].join("\n");
+    ].filter(Boolean).join("\n");
 
     await prisma.adLabExperiment.update({
       where: { id: params.id },

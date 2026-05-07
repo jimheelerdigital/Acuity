@@ -51,7 +51,7 @@ export async function GET(req: NextRequest) {
   }
 
   const syncResults: { adId: string; success: boolean }[] = [];
-  const decisions: { adId: string; type: string; rationale: string }[] = [];
+  const decisions: { adId: string; type: string; rationale: string; creativeType: string }[] = [];
 
   // ── Step 1: Sync metrics ──────────────────────────────────────────
   for (const ad of ads) {
@@ -190,7 +190,7 @@ export async function GET(req: NextRequest) {
       await prisma.adLabDecision.create({
         data: { adId: ad.id, decisionType: "kill", rationale },
       });
-      decisions.push({ adId: ad.id, type: "kill", rationale });
+      decisions.push({ adId: ad.id, type: "kill", rationale, creativeType: (ad.creative as Record<string, unknown>).creativeType as string || "image" });
     } else if (decisionType === "scale") {
       const currentBudget = ad.dailyBudgetCents || project.dailyBudgetCentsPerVariant;
       const newBudget = Math.min(
@@ -218,7 +218,7 @@ export async function GET(req: NextRequest) {
           newBudgetCents: newBudget,
         },
       });
-      decisions.push({ adId: ad.id, type: "scale", rationale });
+      decisions.push({ adId: ad.id, type: "scale", rationale, creativeType: (ad.creative as Record<string, unknown>).creativeType as string || "image" });
     } else {
       // Only log maintain if no decision in last 24h
       const recentDecision = await prisma.adLabDecision.findFirst({
@@ -289,7 +289,7 @@ export async function GET(req: NextRequest) {
       `\nMetrics synced: ${syncResults.filter((r) => r.success).length}/${syncResults.length}`,
       `Decisions made: ${decisions.length}`,
       decisions.length > 0
-        ? `\n## Decisions\n${decisions.map((d) => `- **${d.type.toUpperCase()}** ad ${d.adId.slice(0, 8)}: ${d.rationale}`).join("\n")}`
+        ? `\n## Decisions\n${decisions.map((d) => `- **${d.type.toUpperCase()}** [${d.creativeType}] ad ${d.adId.slice(0, 8)}: ${d.rationale}`).join("\n")}`
         : "",
       concluded.length > 0
         ? `\n## Experiments Concluded\n${concluded.map((id) => `- Experiment ${id.slice(0, 8)}`).join("\n")}`

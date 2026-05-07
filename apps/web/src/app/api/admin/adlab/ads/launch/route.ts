@@ -92,7 +92,8 @@ export async function POST(req: NextRequest) {
     // 2. For each approved creative, create ad set + ad
     for (const creative of approvedCreatives) {
       try {
-        const adsetName = `${project.slug} | exp_${experiment.id} | ${creative.angle.valueSurface} | creative_${creative.id}`;
+        const creativeType = (creative as Record<string, unknown>).creativeType as string || "image";
+        const adsetName = `${project.slug} | exp_${experiment.id} | ${creativeType} | ${creative.angle.valueSurface} | creative_${creative.id}`;
 
         const adsetId = await meta.createAdSet({
           campaignId,
@@ -107,9 +108,26 @@ export async function POST(req: NextRequest) {
           },
         });
 
-        // Upload image if exists
+        // Upload asset based on creative type
         let imageHash: string | undefined;
-        if (creative.imageUrl) {
+        let videoId: string | undefined;
+
+        if (creativeType === "video" && creative.videoUrl) {
+          // Upload video to Meta — retry once on failure (common for video processing)
+          for (let attempt = 0; attempt < 2; attempt++) {
+            try {
+              videoId = await meta.uploadVideo(creative.videoUrl);
+              break;
+            } catch (vidErr) {
+              if (attempt === 0) {
+                console.warn("[adlab] Video upload attempt 1 failed, retrying in 10s:", vidErr);
+                await new Promise((r) => setTimeout(r, 10_000));
+              } else {
+                console.error("[adlab] Video upload failed after retry:", vidErr);
+              }
+            }
+          }
+        } else if (creative.imageUrl) {
           try {
             imageHash = await meta.uploadImage(creative.imageUrl);
           } catch (imgErr) {
@@ -123,6 +141,7 @@ export async function POST(req: NextRequest) {
           name: `${project.slug}_creative_${creative.id}`,
           pageId: "", // TODO: add pageId to project config
           imageHash,
+          videoId,
           headline: creative.headline,
           primaryText: creative.primaryText,
           description: creative.description,
