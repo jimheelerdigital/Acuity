@@ -12,7 +12,7 @@
 
 **First project:** Acuity. System is project-agnostic via configuration.
 
-**Stack:** Next.js (existing), Prisma (existing), Supabase (existing), Anthropic API, Meta Marketing API via facebook-nodejs-business-sdk, Ideogram API, HeyGen API, Resend (existing), Vercel cron (existing).
+**Stack:** Next.js (existing), Prisma (existing), Supabase (existing), Anthropic API, OpenAI (gpt-image-2 for image creatives), Meta Marketing API via facebook-nodejs-business-sdk, HeyGen API (video creatives), Resend (existing), Vercel cron (existing).
 
 **Human gates:** Keenan approves angles before creative; Keenan approves creatives before launch. Kill and scale decisions execute automatically.
 
@@ -39,7 +39,7 @@ Add these to `.env.local` and Vercel:
 | `META_ACCESS_TOKEN` | Meta Marketing API system user token | Needs adding |
 | `META_AD_ACCOUNT_ID` | Meta ad account (act_XXXXXXXXX format) | Needs adding |
 | `META_API_VERSION` | Meta API version (default v21.0) | Needs adding |
-| `IDEOGRAM_API_KEY` | Ideogram image generation API | Needs adding |
+| `OPENAI_API_KEY` | OpenAI gpt-image-2 for image creatives | Already exists (used by Whisper/embeddings) |
 | `HEYGEN_API_KEY` | HeyGen video avatar API | Needs adding |
 | `RESEND_API_KEY` | Transactional email | Already exists |
 
@@ -169,3 +169,48 @@ Add these to `.env.local` and Vercel:
 **Manual steps needed:**
 - [ ] Keenan: `npx prisma db push` from home network (includes all adlab_* tables + heroImageUrl column)
 - [ ] All env vars listed in the table above must be added to Vercel before first real experiment
+
+### [2026-05-07] Refactor — Replace Ideogram with gpt-image-2 + HeyGen dual-category architecture
+
+**Requested by:** Keenan
+**Commit:** a73e553
+
+**Architectural change:**
+- **Removed:** Ideogram API entirely (was used for image generation). IDEOGRAM_API_KEY removed from .env.local and docs.
+- **Added:** gpt-image-2 (OpenAI) for image creatives — project logo passed as a reference image input, no compositing or post-processing needed. Uses existing OPENAI_API_KEY.
+- **Added:** HeyGen video creatives as a parallel ad category. Claude generates a 25-second avatar script per copy variant, HeyGen renders it, video uploaded to Supabase Storage.
+- **Result:** Every experiment now produces two parallel sets of creatives (image + video) from the same 3 copy variants, giving clean format-vs-format performance data.
+
+**Schema changes:**
+- New enum: `AdLabCreativeType` (image, video)
+- New field on `AdLabCreative`: `creativeType` (defaults to "image" for existing rows)
+- New field on `AdLabProject`: `imageEnabled` (Boolean, default true)
+- Renamed field: `imagePrompt` → `generationPrompt` (stores image prompt OR video script)
+
+**Files changed:**
+- `prisma/schema.prisma`: new enum + fields
+- `apps/web/src/app/api/admin/adlab/creatives/generate/route.ts`: full rewrite — gpt-image-2 + HeyGen + Supabase upload
+- `apps/web/src/app/api/admin/adlab/creatives/compliance/route.ts`: video script content scanned for spoken-language violations
+- `apps/web/src/app/api/admin/adlab/ads/launch/route.ts`: video upload with retry, video_data creative spec
+- `apps/web/src/lib/adlab/meta.ts`: uploadVideo function, video_data branch in createAdCreative
+- `apps/web/src/app/api/admin/adlab/cron/route.ts`: creativeType in decisions + email
+- `apps/web/src/app/api/admin/adlab/experiments/[id]/learn/route.ts`: image-vs-video format analysis, scriptPatterns field
+- `apps/web/src/app/admin/adlab/experiments/[id]/page.tsx`: creatives grouped by Image/Video, video player, type badges
+
+**Env var changes:**
+- Removed: `IDEOGRAM_API_KEY`
+- Confirmed in use: `OPENAI_API_KEY` (already exists for Whisper/embeddings)
+- Required: `HEYGEN_API_KEY` (for video creatives)
+
+**Manual steps needed:**
+- [ ] Keenan: `npx prisma db push` from home network (adds creativeType, generationPrompt, imageEnabled columns)
+- [ ] Keenan: Confirm OPENAI_API_KEY is set in Vercel (already used by Whisper — should be there)
+- [ ] Keenan: Add HEYGEN_API_KEY to Vercel if not present
+- [ ] Keenan: Remove IDEOGRAM_API_KEY from Vercel env vars
+- [ ] Keenan: Create public Supabase Storage bucket named "adlab-creatives" (Storage → New Bucket → Public ON)
+- [ ] Redeploy after env var changes
+
+**Notes:**
+- HeyGen avatar/voice IDs are hardcoded to defaults (Anna_public_3_20240108 / neutral voice). Should be made configurable per project in a future pass.
+- gpt-image-2 is called via `openai.images.generate()` with model "gpt-image-1" (the API model name). Logo reference image download + base64 encoding happens inline.
+- If neither imageEnabled nor videoEnabled is true on a project, creative generation produces nothing — the endpoint returns an empty array.
