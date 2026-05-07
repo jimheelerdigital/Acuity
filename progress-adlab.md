@@ -49,5 +49,19 @@ Add these to `.env.local` and Vercel:
 
 ## Phase Log
 
-_(Entries added top-down as each phase completes)_
+### [2026-05-06] Phase 1 — Foundation, Schema, Admin Shell
+
+**Commit:** 5a43d44
+
+**Built:**
+- 7 Prisma models: AdLabProject, AdLabExperiment, AdLabAngle, AdLabCreative, AdLabAd, AdLabDailyMetric, AdLabDecision
+- 5 enums: AdLabExperimentStatus, AdLabValueSurface, AdLabComplianceStatus, AdLabAdStatus, AdLabDecisionType
+- Middleware gate on `/admin/adlab/*` — checks email = `keenan@heelerdigital.com`
+- Sidebar layout with nav (Dashboard, Projects, Experiments, Performance, Settings)
+- 5 placeholder pages matching Acuity admin dark theme
+- Env var placeholders in `.env.local` (META_ACCESS_TOKEN, META_AD_ACCOUNT_ID, META_API_VERSION, IDEOGRAM_API_KEY, HEYGEN_API_KEY)
+
+**Manual steps needed:**
+- [ ] Keenan: `npx prisma db push` from home network to create adlab_* tables
+- [ ] Keenan: Add META_ACCESS_TOKEN, META_AD_ACCOUNT_ID, META_API_VERSION, IDEOGRAM_API_KEY, HEYGEN_API_KEY to Vercel env vars
 
