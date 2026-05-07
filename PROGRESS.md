@@ -20,6 +20,61 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-06] — AdLab: full 8-phase automated ad system
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** a3b11b8
+
+### In plain English (for Keenan)
+
+AdLab is now built and live inside the Acuity admin dashboard at `/admin/adlab`. It's an automated ad research, creative generation, launch, and optimization system. Here's what it does end-to-end:
+
+1. You configure a project once (brand voice, audience, USPs, Meta ad account, target cost per lead)
+2. You write a topic brief ("test pain-point hooks vs outcome hooks for founders")
+3. The system generates 8 angle hypotheses using Claude, scores them, and shows them as cards
+4. You pick the best angles, and it generates 3 ad creative variants per angle (copy via Claude, images via Ideogram)
+5. It runs compliance checks against Meta's ad policy before you can launch
+6. You review everything, approve what looks good, and click "Launch Live" — it creates the campaign, ad sets, and ads on Meta
+7. Every morning at 9am UTC, it syncs performance data from Meta, and automatically kills underperformers and scales winners
+8. When an experiment concludes (14 days or 2+ winners), it analyzes what worked and feeds those patterns into the next experiment
+
+You never have to log into Meta Ads Manager, write ad copy, or check performance manually. The system handles it.
+
+### Technical changes (for Jimmy)
+
+- **8 build phases shipped in sequence**, each building on the last:
+  - Phase 1: 7 Prisma models (AdLabProject, AdLabExperiment, AdLabAngle, AdLabCreative, AdLabAd, AdLabDailyMetric, AdLabDecision), 5 enums, middleware gate, sidebar layout
+  - Phase 2: Full CRUD for project config (Zod validation, structured audience JSON editor, dollars/cents conversion)
+  - Phase 3: Research agent (Claude Sonnet for 8 angle hypotheses + scoring, retry on parse failure)
+  - Phase 4: Creative generator (Claude for copy, Ideogram for images, HeyGen video stub)
+  - Phase 5: Compliance checker (Claude screens against Meta policy + project banned phrases)
+  - Phase 6: Meta Ads launcher (facebook-nodejs-business-sdk, ABO campaign structure, PAUSED → explicit Launch Live)
+  - Phase 7: Daily cron at 09:00 UTC (Meta Insights sync, kill/scale/maintain decisions, email summary via Resend)
+  - Phase 8: Learning loop (Claude analyzes concluded experiments, feeds patterns into future research)
+- **26 routes total**: 10 pages + 16 API routes
+- **New files**: `apps/web/src/lib/adlab/claude.ts`, `apps/web/src/lib/adlab/meta.ts`, `apps/web/vercel.json`
+- **New dependency**: `facebook-nodejs-business-sdk`
+- Full progress log in `progress-adlab.md` at repo root
+
+### Manual steps needed
+
+- [ ] Keenan: `npx prisma db push` from home network (creates all adlab_* tables)
+- [ ] Keenan: Add to Vercel env vars: META_ACCESS_TOKEN, META_AD_ACCOUNT_ID, META_API_VERSION, IDEOGRAM_API_KEY, HEYGEN_API_KEY, CRON_SECRET
+- [ ] Keenan: After db push, hit POST /api/admin/adlab/projects/seed to create the Acuity project (or create via UI)
+- [ ] Jimmy: Create Meta system user token with ads_management permission
+- [ ] Keenan: Fill in metaAdAccountId and metaPixelId on the Acuity project
+
+### Notes
+
+- AdLab is 100% isolated from existing Acuity code: separate Prisma models (adlab_* tables), separate API routes (/api/admin/adlab/*), separate lib (lib/adlab/*). No existing routes or schemas were modified.
+- The Meta SDK is dynamically imported at runtime to avoid build failures when META_ACCESS_TOKEN isn't set. If the token is missing, Meta API calls throw a clear error rather than crashing the build.
+- The cron job uses CRON_SECRET for auth (same pattern as Vercel's built-in cron protection).
+- All Claude calls use Sonnet (cheaper than Opus) and are logged to the existing ClaudeCallLog table with `adlab-` purpose prefixes.
+- The "Launch Live" action is explicitly gated behind a user click — no auto-launch on creative approval. This is documented in code comments and enforced by the API.
+
+---
+
 ## [2026-05-06] — Shorter blog posts + DALL-E hero images for auto-blog
 
 **Requested by:** Keenan
