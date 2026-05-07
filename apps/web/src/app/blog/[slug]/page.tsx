@@ -392,7 +392,7 @@ export default async function BlogPostPage({ params }: Props) {
           </div>
           <div className="h-px bg-white/10 mb-12" />
           <div
-            className="prose prose-invert prose-lg max-w-none prose-headings:text-white prose-headings:font-bold prose-p:text-[#A0A0B8] prose-p:leading-[1.8] prose-a:text-[#7C5CFC] prose-strong:text-white prose-li:text-[#A0A0B8] prose-blockquote:border-[#7C5CFC]/40 prose-blockquote:text-[#A0A0B8]"
+            className="prose prose-invert prose-base max-w-none prose-headings:text-white prose-headings:font-bold prose-h2:text-2xl prose-h2:tracking-tight prose-h2:mt-12 prose-h2:mb-4 prose-h3:text-xl prose-h3:mt-8 prose-h3:mb-3 prose-p:text-[#A0A0B8] prose-p:text-base prose-p:leading-[1.8] prose-p:mb-5 prose-a:text-[#7C5CFC] prose-strong:text-white prose-li:text-[#A0A0B8] prose-li:text-base prose-blockquote:border-[#7C5CFC]/40 prose-blockquote:text-[#A0A0B8]"
             dangerouslySetInnerHTML={{ __html: htmlBody }}
           />
           <BlogCta />
