@@ -1,8 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
-import { Loader2, CheckCircle2, ChevronDown, ChevronUp } from "lucide-react";
+import { Loader2, CheckCircle2, ChevronDown, ChevronUp, Sparkles, RefreshCw, Shield } from "lucide-react";
+
+interface Creative {
+  id: string;
+  headline: string;
+  primaryText: string;
+  description: string;
+  cta: string;
+  imageUrl: string | null;
+  videoUrl: string | null;
+  complianceStatus: string;
+  complianceNotes: string | null;
+  approved: boolean;
+}
 
 interface Angle {
   id: string;
@@ -12,6 +25,7 @@ interface Angle {
   researchNotes: string;
   score: number;
   advanced: boolean;
+  creatives: Creative[];
 }
 
 interface Experiment {
@@ -19,6 +33,7 @@ interface Experiment {
   topicBrief: string;
   status: string;
   createdAt: string;
+  conclusionSummary: string | null;
   project: { name: string; slug: string };
   angles: Angle[];
 }
@@ -41,27 +56,32 @@ const STATUS_COLORS: Record<string, string> = {
   concluded: "bg-[#7C5CFC]/20 text-[#7C5CFC]",
 };
 
+const COMPLIANCE_COLORS: Record<string, string> = {
+  pending: "border-zinc-500/30",
+  passed: "border-emerald-500/30",
+  flagged: "border-amber-500/50",
+};
+
 export default function ExperimentDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [experiment, setExperiment] = useState<Experiment | null>(null);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [advancing, setAdvancing] = useState(false);
+  const [generatingFor, setGeneratingFor] = useState<Set<string>>(new Set());
+  const [complianceRunning, setComplianceRunning] = useState(false);
 
-  useEffect(() => {
-    loadExperiment();
-  }, [id]);
-
-  async function loadExperiment() {
+  const loadExperiment = useCallback(async () => {
     const res = await fetch(`/api/admin/adlab/experiments/${id}`);
     if (res.ok) {
       const data = await res.json();
       setExperiment(data);
-      // Pre-select already advanced angles
       setSelected(new Set(data.angles.filter((a: Angle) => a.advanced).map((a: Angle) => a.id)));
     }
     setLoading(false);
-  }
+  }, [id]);
+
+  useEffect(() => { loadExperiment(); }, [loadExperiment]);
 
   function toggleAngle(angleId: string) {
     setSelected((prev) => {
@@ -75,15 +95,49 @@ export default function ExperimentDetailPage() {
   async function advanceSelected() {
     if (selected.size === 0) return;
     setAdvancing(true);
-
     await fetch("/api/admin/adlab/angles", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ angleIds: [...selected], advanced: true }),
     });
-
     await loadExperiment();
     setAdvancing(false);
+  }
+
+  async function generateCreatives(angleId: string) {
+    setGeneratingFor((prev) => new Set(prev).add(angleId));
+    await fetch("/api/admin/adlab/creatives/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ angleId }),
+    });
+    await loadExperiment();
+    setGeneratingFor((prev) => {
+      const next = new Set(prev);
+      next.delete(angleId);
+      return next;
+    });
+  }
+
+  async function toggleApprove(creativeId: string, currentApproved: boolean) {
+    await fetch(`/api/admin/adlab/creatives/${creativeId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ approved: !currentApproved }),
+    });
+    await loadExperiment();
+  }
+
+  async function runCompliance() {
+    if (!experiment) return;
+    setComplianceRunning(true);
+    await fetch("/api/admin/adlab/creatives/compliance", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ experimentId: experiment.id }),
+    });
+    await loadExperiment();
+    setComplianceRunning(false);
   }
 
   if (loading) {
@@ -99,7 +153,8 @@ export default function ExperimentDetailPage() {
   }
 
   const sortedAngles = [...experiment.angles].sort((a, b) => b.score - a.score);
-  const hasAdvanced = experiment.angles.some((a) => a.advanced);
+  const allCreatives = experiment.angles.flatMap((a) => a.creatives);
+  const hasCreatives = allCreatives.length > 0;
 
   return (
     <>
@@ -117,11 +172,8 @@ export default function ExperimentDetailPage() {
         </div>
       </div>
 
-      {/* Angles */}
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-white">
-          Angle Hypotheses ({experiment.angles.length})
-        </h2>
+      {/* Action bar */}
+      <div className="flex items-center gap-3 mb-6 flex-wrap">
         {experiment.status === "awaiting_approval" && (
           <button
             onClick={advanceSelected}
@@ -132,17 +184,44 @@ export default function ExperimentDetailPage() {
             Advance Selected ({selected.size})
           </button>
         )}
+        {hasCreatives && (
+          <button
+            onClick={runCompliance}
+            disabled={complianceRunning}
+            className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-4 py-2 text-sm text-[#A0A0B8] hover:text-white hover:border-white/20 transition disabled:opacity-50"
+          >
+            {complianceRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Shield className="h-4 w-4" />}
+            Run Compliance Check
+          </button>
+        )}
       </div>
 
-      <div className="space-y-3">
+      {/* Angles + Creatives */}
+      <div className="space-y-6">
         {sortedAngles.map((angle) => (
-          <AngleCard
-            key={angle.id}
-            angle={angle}
-            isSelected={selected.has(angle.id)}
-            onToggle={() => toggleAngle(angle.id)}
-            selectable={experiment.status === "awaiting_approval"}
-          />
+          <div key={angle.id}>
+            <AngleCard
+              angle={angle}
+              isSelected={selected.has(angle.id)}
+              onToggle={() => toggleAngle(angle.id)}
+              selectable={experiment.status === "awaiting_approval"}
+              onGenerate={() => generateCreatives(angle.id)}
+              generating={generatingFor.has(angle.id)}
+            />
+
+            {/* Creatives under this angle */}
+            {angle.creatives.length > 0 && (
+              <div className="ml-8 mt-3 grid gap-3 sm:grid-cols-3">
+                {angle.creatives.map((creative) => (
+                  <CreativeCard
+                    key={creative.id}
+                    creative={creative}
+                    onToggleApprove={() => toggleApprove(creative.id, creative.approved)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
         ))}
       </div>
     </>
@@ -154,11 +233,15 @@ function AngleCard({
   isSelected,
   onToggle,
   selectable,
+  onGenerate,
+  generating,
 }: {
   angle: Angle;
   isSelected: boolean;
   onToggle: () => void;
   selectable: boolean;
+  onGenerate: () => void;
+  generating: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
 
@@ -187,7 +270,7 @@ function AngleCard({
         )}
 
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
             <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${SURFACE_COLORS[angle.valueSurface] || ""}`}>
               {angle.valueSurface.replace("_", " ")}
             </span>
@@ -201,13 +284,41 @@ function AngleCard({
 
           <p className="text-sm text-white leading-relaxed">{angle.hypothesis}</p>
 
-          <button
-            onClick={() => setExpanded(!expanded)}
-            className="flex items-center gap-1 mt-2 text-xs text-[#A0A0B8] hover:text-white transition-colors"
-          >
-            Research notes
-            {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-          </button>
+          <div className="flex items-center gap-3 mt-2">
+            <button
+              onClick={() => setExpanded(!expanded)}
+              className="flex items-center gap-1 text-xs text-[#A0A0B8] hover:text-white transition-colors"
+            >
+              Notes {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+            </button>
+
+            {angle.advanced && angle.creatives.length === 0 && (
+              <button
+                onClick={onGenerate}
+                disabled={generating}
+                className="flex items-center gap-1 text-xs text-[#7C5CFC] hover:text-[#9B7FFF] transition-colors"
+              >
+                {generating ? (
+                  <><Loader2 className="h-3 w-3 animate-spin" /> Generating...</>
+                ) : (
+                  <><Sparkles className="h-3 w-3" /> Generate Creatives</>
+                )}
+              </button>
+            )}
+            {angle.advanced && angle.creatives.length > 0 && (
+              <button
+                onClick={onGenerate}
+                disabled={generating}
+                className="flex items-center gap-1 text-xs text-[#A0A0B8] hover:text-white transition-colors"
+              >
+                {generating ? (
+                  <><Loader2 className="h-3 w-3 animate-spin" /> Regenerating...</>
+                ) : (
+                  <><RefreshCw className="h-3 w-3" /> Regenerate</>
+                )}
+              </button>
+            )}
+          </div>
 
           {expanded && (
             <p className="mt-2 text-xs text-[#A0A0B8] whitespace-pre-line leading-relaxed">
@@ -219,6 +330,70 @@ function AngleCard({
         <div className="shrink-0 flex items-center justify-center h-8 w-8 rounded-lg bg-white/5 text-sm font-bold text-white">
           {angle.score}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function CreativeCard({
+  creative,
+  onToggleApprove,
+}: {
+  creative: Creative;
+  onToggleApprove: () => void;
+}) {
+  return (
+    <div
+      className={`rounded-lg border bg-[#1E1E2E] overflow-hidden transition ${COMPLIANCE_COLORS[creative.complianceStatus] || "border-white/10"}`}
+    >
+      {creative.imageUrl && (
+        <div className="aspect-square bg-black/20">
+          <img
+            src={creative.imageUrl}
+            alt={creative.headline}
+            className="w-full h-full object-cover"
+          />
+        </div>
+      )}
+
+      <div className="p-3 space-y-2">
+        <p className="text-xs font-semibold text-white leading-snug">{creative.headline}</p>
+        <p className="text-[11px] text-[#A0A0B8] leading-relaxed">{creative.primaryText}</p>
+        <p className="text-[10px] text-[#A0A0B8]">{creative.description}</p>
+
+        <div className="flex items-center justify-between pt-1">
+          <div className="flex items-center gap-1.5">
+            <span className="rounded bg-white/10 px-1.5 py-0.5 text-[9px] text-[#A0A0B8] font-mono">
+              {creative.cta}
+            </span>
+            <span className={`rounded px-1.5 py-0.5 text-[9px] font-medium ${
+              creative.complianceStatus === "passed"
+                ? "bg-emerald-500/15 text-emerald-400"
+                : creative.complianceStatus === "flagged"
+                  ? "bg-amber-500/15 text-amber-400"
+                  : "bg-zinc-500/15 text-zinc-400"
+            }`}>
+              {creative.complianceStatus}
+            </span>
+          </div>
+
+          <button
+            onClick={onToggleApprove}
+            className={`rounded px-2 py-0.5 text-[10px] font-medium transition ${
+              creative.approved
+                ? "bg-emerald-500/15 text-emerald-400"
+                : "bg-white/5 text-[#A0A0B8] hover:text-white"
+            }`}
+          >
+            {creative.approved ? "Approved" : "Approve"}
+          </button>
+        </div>
+
+        {creative.complianceStatus === "flagged" && creative.complianceNotes && (
+          <p className="text-[10px] text-amber-400 leading-relaxed mt-1">
+            {creative.complianceNotes}
+          </p>
+        )}
       </div>
     </div>
   );

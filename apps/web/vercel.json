@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/admin/adlab/cron",
+      "schedule": "0 9 * * *"
+    }
+  ]
+}

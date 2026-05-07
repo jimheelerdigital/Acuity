@@ -27,6 +27,7 @@
     "bcryptjs": "^3.0.3",
     "date-fns": "^4.1.0",
     "date-fns-tz": "^3.2.0",
+    "facebook-nodejs-business-sdk": "^24.0.1",
     "geist": "^1.7.0",
     "googleapis": "^171.4.0",
     "inngest": "^4.2.4",
