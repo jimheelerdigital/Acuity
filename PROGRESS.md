@@ -24,7 +24,7 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 **Requested by:** Jimmy (build 30 didn't fix the bug; entries-don't-load and 4-second-logout still present. Three EAS builds, three failures, hundreds in pay-as-you-go credits. No more hypothesis-driven fixes — instrument and read the data.)
 **Committed by:** Claude Code
-**Commit hash:** _backfill_
+**Commit hash:** b1d8d82
 
 ### In plain English (for Keenan)
 
