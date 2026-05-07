@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { Metadata } from "next";
 import { BLOG_POSTS } from "@/lib/blog-posts";
 
@@ -23,6 +24,7 @@ interface BlogCard {
   excerpt: string;
   publishedAt: string;
   readingTime: string;
+  heroImageUrl?: string | null;
 }
 
 async function getDynamicPosts(): Promise<BlogCard[]> {
@@ -41,6 +43,7 @@ async function getDynamicPosts(): Promise<BlogCard[]> {
         hook: true,
         body: true,
         distributedAt: true,
+        heroImageUrl: true,
       },
     });
 
@@ -53,6 +56,7 @@ async function getDynamicPosts(): Promise<BlogCard[]> {
         excerpt: p.hook,
         publishedAt: (p.distributedAt ?? new Date()).toISOString(),
         readingTime,
+        heroImageUrl: p.heroImageUrl,
       };
     });
   } catch {
@@ -110,25 +114,38 @@ export default async function BlogIndex() {
             <Link
               key={post.slug}
               href={`/blog/${post.slug}`}
-              className="group rounded-xl border border-white/10 bg-[#13131F] p-6 transition-all duration-300 hover:border-[#7C5CFC]/40 hover:-translate-y-1 hover:shadow-lg hover:shadow-[#7C5CFC]/5"
+              className="group rounded-xl border border-white/10 bg-[#13131F] overflow-hidden transition-all duration-300 hover:border-[#7C5CFC]/40 hover:-translate-y-1 hover:shadow-lg hover:shadow-[#7C5CFC]/5"
             >
-              <div className="flex items-center gap-3 text-xs text-[#A0A0B8] mb-4">
-                <time dateTime={post.publishedAt}>
-                  {new Date(post.publishedAt).toLocaleDateString("en-US", {
-                    month: "long",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
-                </time>
-                <span className="text-white/20">|</span>
-                <span>{post.readingTime}</span>
+              {post.heroImageUrl && (
+                <div className="relative w-full aspect-[16/9]">
+                  <Image
+                    src={post.heroImageUrl}
+                    alt={post.title}
+                    fill
+                    className="object-cover transition-transform duration-300 group-hover:scale-105"
+                    sizes="(max-width: 640px) 100vw, 50vw"
+                  />
+                </div>
+              )}
+              <div className="p-6">
+                <div className="flex items-center gap-3 text-xs text-[#A0A0B8] mb-4">
+                  <time dateTime={post.publishedAt}>
+                    {new Date(post.publishedAt).toLocaleDateString("en-US", {
+                      month: "long",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
+                  </time>
+                  <span className="text-white/20">|</span>
+                  <span>{post.readingTime}</span>
+                </div>
+                <h2 className="text-lg font-bold leading-snug mb-3 group-hover:text-[#7C5CFC] transition-colors">
+                  {post.title}
+                </h2>
+                <p className="text-sm text-[#A0A0B8] leading-relaxed line-clamp-3">
+                  {post.excerpt}
+                </p>
               </div>
-              <h2 className="text-lg font-bold leading-snug mb-3 group-hover:text-[#7C5CFC] transition-colors">
-                {post.title}
-              </h2>
-              <p className="text-sm text-[#A0A0B8] leading-relaxed line-clamp-3">
-                {post.excerpt}
-              </p>
             </Link>
           ))}
         </div>

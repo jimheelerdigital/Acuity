@@ -70,6 +70,7 @@ interface AutoBlogResult {
   metaDescription: string;
   heroH1: string;
   body: string;
+  heroImagePrompt?: string;
   estimatedReadTime: number;
   primaryKeyword: string;
   secondaryKeywords: string[];
@@ -172,8 +173,8 @@ function validateBlogPost(
   const textBody = post.body.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
   const wordCount = textBody.split(/\s+/).filter(Boolean).length;
 
-  if (wordCount < 1400 || wordCount > 2200) {
-    errors.push(`Word count ${wordCount} outside 1400-2200 range`);
+  if (wordCount < 800 || wordCount > 1400) {
+    errors.push(`Word count ${wordCount} outside 800-1400 range`);
   }
 
   const h1Match = post.body.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
@@ -190,8 +191,8 @@ function validateBlogPost(
   }
 
   const h2Matches = post.body.match(/<h2[^>]*>/gi) ?? [];
-  if (h2Matches.length < 3) {
-    errors.push(`Only ${h2Matches.length} H2s, need at least 3`);
+  if (h2Matches.length < 2) {
+    errors.push(`Only ${h2Matches.length} H2s, need at least 2`);
   }
 
   const h2KeywordMatch = (post.body.match(/<h2[^>]*>([\s\S]*?)<\/h2>/gi) ?? [])
@@ -489,6 +490,33 @@ export const autoBlogGenerateFn = inngest.createFunction(
 
     logger.info("[auto-blog] Published", publishResult);
 
+    // ── Step 7b: Generate hero image via DALL-E + Supabase ──────
+    // Runs after publish so the post goes live immediately even if
+    // image generation is slow or fails. heroImageUrl is backfilled.
+    const heroImagePrompt = result.heroImagePrompt;
+    if (heroImagePrompt) {
+      await step.run("generate-hero-image", async () => {
+        const { generateAndStoreBlogImage } = await import(
+          "@/lib/blog-image"
+        );
+        const imageUrl = await generateAndStoreBlogImage(
+          publishResult.slug,
+          heroImagePrompt
+        );
+        if (imageUrl) {
+          const { prisma } = await import("@/lib/prisma");
+          await prisma.contentPiece.update({
+            where: { id: publishResult.pieceId },
+            data: { heroImageUrl: imageUrl },
+          });
+          logger.info("[auto-blog] Hero image saved", { imageUrl });
+        } else {
+          logger.warn("[auto-blog] Hero image generation failed — post published without image");
+        }
+        return { imageUrl };
+      });
+    }
+
     // ── Step 8: Notify Google Indexing API ───────────────────────
     await step.run("notify-google-indexing", async () => {
       try {
@@ -536,6 +564,7 @@ interface GenerateAttemptResult {
   valid: boolean;
   errors: string[];
   pieceId: string | null;
+  heroImagePrompt?: string;
 }
 
 async function callClaudeForBlog(
@@ -612,7 +641,12 @@ async function callClaudeForBlog(
       },
     });
 
-    return { valid: true, errors: [], pieceId: piece.id };
+    return {
+      valid: true,
+      errors: [],
+      pieceId: piece.id,
+      heroImagePrompt: parsed.heroImagePrompt,
+    };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error(
@@ -1171,9 +1205,10 @@ PRODUCT CONTEXT:
 
 VOICE RULES:
 - Direct, specific, zero-fluff. Smart friend explaining, not marketing blog.
-- Short paragraphs (max 3 sentences)
+- Short paragraphs (max 2 sentences). Tight. Every sentence earns its place.
 - Specifics over abstractions
 - No fabricated stats — cite real linkable sources or frame qualitatively
+- Get to the point fast — no throat-clearing intros
 
 BANNED PHRASES (never use these):
 "unlock", "elevate", "journey", "transform", "AI-powered", "seamless", "game-changer",
@@ -1222,6 +1257,7 @@ OUTPUT FORMAT — respond with a single JSON object:
   "metaDescription": "140-160 character meta description",
   "heroH1": "H1 heading (include primary keyword)",
   "body": "<full HTML with h2, h3, p tags, FAQ section, internal links>",
+  "heroImagePrompt": "A concise DALL-E image prompt (1-2 sentences) for a hero image. Abstract, editorial style — no text, no logos, no faces. Moody lighting, muted purple/indigo tones on dark background. Should evoke the post's theme visually.",
   "estimatedReadTime": 7,
   "primaryKeyword": "${topic.targetKeyword}",
   "secondaryKeywords": ["kw1", "kw2", "kw3"],
@@ -1232,9 +1268,9 @@ OUTPUT FORMAT — respond with a single JSON object:
 }
 
 REQUIREMENTS:
-- 1,400 to 2,200 words
+- 800 to 1,400 words
 - Primary keyword in H1, first 100 words, and at least one H2
-- At least 3 H2 sections
+- At least 2 H2 sections
 - At least 2 internal links to /for/* or /blog/* posts (from the lists above ONLY)
 - 2-4 external citations to authoritative sources (with target="_blank" rel="noopener noreferrer")
 - FAQ section with 3+ questions and answers

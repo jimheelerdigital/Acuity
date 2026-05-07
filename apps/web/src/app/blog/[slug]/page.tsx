@@ -1,4 +1,5 @@
 import { notFound, permanentRedirect } from "next/navigation";
+import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { getPostBySlug, getAllSlugs, BLOG_POSTS } from "@/lib/blog-posts";
@@ -22,6 +23,7 @@ interface DynamicPost {
   finalBody: string | null;
   status: string;
   redirectTo: string | null;
+  heroImageUrl: string | null;
 }
 
 async function getDynamicPost(slug: string): Promise<DynamicPost | null> {
@@ -53,6 +55,7 @@ async function getDynamicPost(slug: string): Promise<DynamicPost | null> {
         finalBody: true,
         status: true,
         redirectTo: true,
+        heroImageUrl: true,
       },
     }) as DynamicPost | null;
   } catch {
@@ -123,11 +126,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       type: "article",
       publishedTime: publishedAt,
       authors: ["Keenan Assaraf"],
+      ...(dynamicPost.heroImageUrl
+        ? { images: [{ url: dynamicPost.heroImageUrl, width: 1792, height: 1024 }] }
+        : {}),
     },
     twitter: {
       card: "summary_large_image",
       title: dynamicPost.title,
       description,
+      ...(dynamicPost.heroImageUrl ? { images: [dynamicPost.heroImageUrl] } : {}),
     },
   };
 }
@@ -202,7 +209,7 @@ function BlogJsonLdDynamic({ post }: { post: DynamicPost }) {
         "@type": "BlogPosting",
         headline: post.title,
         description,
-        image: "https://getacuity.io/og-image.png",
+        image: post.heroImageUrl ?? "https://getacuity.io/og-image.png",
         datePublished: publishedAt,
         dateModified: publishedAt,
         author: {
@@ -390,7 +397,21 @@ export default async function BlogPostPage({ params }: Props) {
               {dynamicPost.hook}
             </p>
           </div>
-          <div className="h-px bg-white/10 mb-12" />
+          {dynamicPost.heroImageUrl && (
+            <div className="relative w-full aspect-[16/9] rounded-xl overflow-hidden mb-12">
+              <Image
+                src={dynamicPost.heroImageUrl}
+                alt={dynamicPost.title}
+                fill
+                className="object-cover"
+                sizes="(max-width: 768px) 100vw, 768px"
+                priority
+              />
+            </div>
+          )}
+          {!dynamicPost.heroImageUrl && (
+            <div className="h-px bg-white/10 mb-12" />
+          )}
           <div
             className="prose prose-invert prose-base max-w-none prose-headings:text-white prose-headings:font-bold prose-h2:text-2xl prose-h2:tracking-tight prose-h2:mt-12 prose-h2:mb-4 prose-h3:text-xl prose-h3:mt-8 prose-h3:mb-3 prose-p:text-[#A0A0B8] prose-p:text-base prose-p:leading-[1.8] prose-p:mb-5 prose-a:text-[#7C5CFC] prose-strong:text-white prose-li:text-[#A0A0B8] prose-li:text-base prose-blockquote:border-[#7C5CFC]/40 prose-blockquote:text-[#A0A0B8]"
             dangerouslySetInnerHTML={{ __html: htmlBody }}
