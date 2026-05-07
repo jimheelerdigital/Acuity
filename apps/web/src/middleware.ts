@@ -27,12 +27,19 @@ export default withAuth(
           "/goals",
           "/insights",
           "/upgrade",
+          "/admin/adlab",
         ];
         const { pathname } = req.nextUrl;
         const isProtected = protectedPaths.some(
           (p) => pathname === p || pathname.startsWith(p + "/")
         );
         if (!isProtected) return true;
+
+        // AdLab requires specific admin email
+        if (pathname.startsWith("/admin/adlab")) {
+          return !!token && token.email === "keenan@heelerdigital.com";
+        }
+
         return !!token;
       },
     },
@@ -49,6 +56,8 @@ export const config = {
     "/goals/:path*",
     "/insights/:path*",
     "/upgrade/:path*",
+    // AdLab admin
+    "/admin/adlab/:path*",
     // Root path — needed for app.getacuity.io redirect
     "/",
   ],

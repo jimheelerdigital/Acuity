@@ -1699,3 +1699,177 @@ model IapNotificationLog {
   @@index([processedAt])
   @@index([type])
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ADLAB — Automated Ad Research, Creative Generation, Launch & Optimization
+// All models prefixed AdLab, all tables prefixed adlab_
+// ═══════════════════════════════════════════════════════════════════════════
+
+enum AdLabExperimentStatus {
+  draft
+  awaiting_approval
+  live
+  concluded
+}
+
+enum AdLabValueSurface {
+  problem
+  outcome
+  social_proof
+  mechanism
+  story
+  comparison
+  identity
+  urgency
+}
+
+enum AdLabComplianceStatus {
+  pending
+  passed
+  flagged
+}
+
+enum AdLabAdStatus {
+  live
+  paused
+  scaled
+  killed
+}
+
+enum AdLabDecisionType {
+  kill
+  scale
+  maintain
+  manual
+}
+
+model AdLabProject {
+  id                        String             @id @default(cuid())
+  name                      String
+  slug                      String             @unique
+  brandVoiceGuide           String             @db.Text
+  targetAudience            Json
+  usps                      Json
+  bannedPhrases             String[]           @default([])
+  imageStylePrompt          String             @db.Text
+  logoUrl                   String?
+  targetCplCents            Int
+  dailyBudgetCentsPerVariant Int
+  testDurationDays          Int                @default(14)
+  metaAdAccountId           String?
+  metaPixelId               String?
+  conversionEvent           String?
+  conversionObjective       String             @default("OUTCOME_LEADS")
+  learnedPatterns           Json               @default("[]")
+  videoEnabled              Boolean            @default(false)
+  createdAt                 DateTime           @default(now())
+  experiments               AdLabExperiment[]
+
+  @@map("adlab_projects")
+}
+
+model AdLabExperiment {
+  id                String                  @id @default(cuid())
+  projectId         String
+  project           AdLabProject            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  topicBrief        String                  @db.Text
+  status            AdLabExperimentStatus   @default(draft)
+  metaCampaignId    String?
+  launchedAt        DateTime?
+  concludedAt       DateTime?
+  conclusionSummary String?                 @db.Text
+  createdAt         DateTime                @default(now())
+  angles            AdLabAngle[]
+
+  @@index([projectId, status])
+  @@map("adlab_experiments")
+}
+
+model AdLabAngle {
+  id             String            @id @default(cuid())
+  experimentId   String
+  experiment     AdLabExperiment   @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  hypothesis     String            @db.Text
+  targetPersona  String
+  valueSurface   AdLabValueSurface
+  researchNotes  String            @db.Text
+  score          Int               @default(0)
+  advanced       Boolean           @default(false)
+  creatives      AdLabCreative[]
+
+  @@index([experimentId])
+  @@map("adlab_angles")
+}
+
+model AdLabCreative {
+  id               String                  @id @default(cuid())
+  angleId          String
+  angle            AdLabAngle              @relation(fields: [angleId], references: [id], onDelete: Cascade)
+  headline         String
+  primaryText      String                  @db.Text
+  description      String
+  cta              String
+  imageUrl         String?
+  videoUrl         String?
+  imagePrompt      String?                 @db.Text
+  complianceStatus AdLabComplianceStatus   @default(pending)
+  complianceNotes  String?                 @db.Text
+  approved         Boolean                 @default(false)
+  ads              AdLabAd[]
+
+  @@index([angleId])
+  @@map("adlab_creatives")
+}
+
+model AdLabAd {
+  id              String          @id @default(cuid())
+  creativeId      String
+  creative        AdLabCreative   @relation(fields: [creativeId], references: [id], onDelete: Cascade)
+  metaCampaignId  String?
+  metaAdsetId     String?
+  metaAdId        String?
+  status          AdLabAdStatus   @default(live)
+  launchedAt      DateTime?
+  dailyBudgetCents Int?
+  decisionReason  String?         @db.Text
+  metrics         AdLabDailyMetric[]
+  decisions       AdLabDecision[]
+
+  @@index([creativeId])
+  @@index([status])
+  @@map("adlab_ads")
+}
+
+model AdLabDailyMetric {
+  id          String   @id @default(cuid())
+  adId        String
+  ad          AdLabAd  @relation(fields: [adId], references: [id], onDelete: Cascade)
+  date        DateTime @db.Date
+  impressions Int      @default(0)
+  clicks      Int      @default(0)
+  ctr         Float    @default(0)
+  spendCents  Int      @default(0)
+  conversions Int      @default(0)
+  cplCents    Int?
+  frequency   Float    @default(0)
+  cpcCents    Int?
+
+  @@unique([adId, date])
+  @@index([adId])
+  @@map("adlab_daily_metrics")
+}
+
+model AdLabDecision {
+  id               String              @id @default(cuid())
+  adId             String
+  ad               AdLabAd             @relation(fields: [adId], references: [id], onDelete: Cascade)
+  decisionType     AdLabDecisionType
+  rationale        String              @db.Text
+  executedAt       DateTime            @default(now())
+  priorBudgetCents Int?
+  newBudgetCents   Int?
+
+  @@index([adId])
+  @@index([executedAt])
+  @@map("adlab_decisions")
+}
