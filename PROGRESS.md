@@ -24,7 +24,7 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 **Requested by:** Jimmy (instrumentation surfaced the actual bug — Vercel's `www.getacuity.io` 308-redirects to apex `getacuity.io`, and the cross-origin redirect drops the Authorization header per Fetch spec)
 **Committed by:** Claude Code
-**Commit hash:** _backfill_
+**Commit hash:** e6b4546
 
 ### In plain English (for Keenan)
 
