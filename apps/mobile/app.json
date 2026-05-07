@@ -185,7 +185,7 @@
       "router": {
         "origin": false
       },
-      "apiUrl": "https://www.getacuity.io",
+      "apiUrl": "https://getacuity.io",
       "googleIosClientId": "657670168959-l1qn5imd2ad8fdbp96pius9a6cpi5hdl.apps.googleusercontent.com",
       "iapEnabled": false,
       "eas": {

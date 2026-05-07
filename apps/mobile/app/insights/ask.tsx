@@ -62,7 +62,7 @@ export default function AskPastSelfScreen() {
         </Text>
         <Pressable
           onPress={() =>
-            WebBrowser.openBrowserAsync("https://www.getacuity.io/insights/ask")
+            WebBrowser.openBrowserAsync("https://getacuity.io/insights/ask")
           }
           style={{
             paddingHorizontal: 24,

@@ -20,6 +20,49 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-07] — Build 32: ROOT CAUSE FIX — mobile config www→apex (308 redirect was stripping Authorization header)
+
+**Requested by:** Jimmy (instrumentation surfaced the actual bug — Vercel's `www.getacuity.io` 308-redirects to apex `getacuity.io`, and the cross-origin redirect drops the Authorization header per Fetch spec)
+**Committed by:** Claude Code
+**Commit hash:** _backfill_
+
+### In plain English (for Keenan)
+
+We finally found the bug that's been breaking mobile sign-in for 24 hours. It was not the keychain, not the token cache, not the refresh logic, not anything about how we save or read the login proof. It was one wrong character in our config: the mobile app was hitting `www.getacuity.io`, but our website's actual address is `getacuity.io` (no www). When the app sent a request to www, our server told it "redirect to non-www" — and per internet security rules, browsers and apps automatically strip the login proof from redirects between different domain names (to avoid leaking it). So the app's first request DID have the login attached. The redirected follow-up request did NOT. The server then said "no login, 401." Every TestFlight build was hitting this same wall. None of the previous fixes touched it because the auth code was correct the whole time.
+
+This change updates 9 places in the mobile config from `www.getacuity.io` to `getacuity.io`. After this lands and Jim hot-reloads in the simulator, sign-in should just work.
+
+### Technical changes (for Jimmy)
+
+- `apps/mobile/app.json` `extra.apiUrl`: `https://www.getacuity.io` → `https://getacuity.io`
+- `apps/mobile/eas.json` preview env `EXPO_PUBLIC_API_URL`: same change
+- `apps/mobile/eas.json` production env `EXPO_PUBLIC_API_URL`: same change
+- `apps/mobile/lib/api.ts` `apiBaseUrl()` literal fallback: same change
+- `apps/mobile/lib/auth.ts` `apiBaseUrl()` literal fallback: same change
+- `apps/mobile/lib/debug-log.ts` `apiBaseUrl()` literal fallback: same change
+- `apps/mobile/hooks/use-entry-polling.ts` `apiBaseUrl()` literal fallback: same change
+- `apps/mobile/app/insights/ask.tsx` `WebBrowser.openBrowserAsync` URL: same change (consistency, not load-bearing)
+- `apps/mobile/app/insights/state-of-me.tsx` `WebBrowser.openBrowserAsync` URL: same change (consistency, not load-bearing)
+- Per-slice gates: vitest 362/362, mobile tsc 115-baseline unchanged. Web tsc: 89 errors (up from 7 baseline) — 82 new errors are all `'adLabXxx' does not exist on PrismaClient` in `apps/web/src/app/api/admin/adlab/**` and `OverviewTab.tsx`, awaiting Keenan's `npx prisma db push` per the AdLab slice's manual steps. None caused by THIS slice; admin-route-only; mobile auth unaffected.
+
+### Manual steps needed
+
+- [x] Jim: hot-reload Metro in sim (Cmd+R), retest sign-in. Should work without a rebuild.
+- [ ] Jim: package as build 32 to TestFlight (`eas build --profile production --platform ios` then `eas submit --latest`).
+- [ ] Keenan: `npx prisma db push` from home network to clear the 82 adlab schema-pending tsc errors (separate from this slice — owed to AdLab manual steps).
+- [ ] Optional: remove or gate `/api/_debug/client-log` and the mobile `debugLog` instrumentation once Jim confirms build 32 is healthy (TODO comment in route file flags this).
+
+### Notes
+
+- Diagnostic that proved this: curl test showed `https://www.getacuity.io/api/entries` with `Authorization: Bearer X` returns `308` redirect to `https://getacuity.io/api/entries`. Per WHATWG Fetch spec, the redirect drops Authorization on cross-origin (different host = different origin). Apex direct hit returns 401 with `mobile-auth.bad-header-format` or `decode-failed` firing — header preserved. Server's instrumentation never logged `decode-failed` for any of Jim's sim runs because decode never ran; only `mobile-auth.no-header` fired (25 events in the 30 minutes covering the sim window). The header was simply not arriving at the route handler, full stop.
+- Why the client's `api.response` event reported `hadAuth: true` despite the 401: that field reads the CLIENT's `Headers.has("Authorization")` post-`.set()`. It only verifies the client built the headers object correctly; it does not observe what actually reached the wire (or survived a redirect). The instrumentation was correct; the interpretation got us off course briefly.
+- Web users were never affected by this bug. Browsers handle the www → apex redirect via the cookie-session mechanism: `Set-Cookie` sets a domain-scoped cookie on apex, and the redirect target re-attaches the cookie automatically. Authorization headers don't have that scope/inheritance behavior — they're per-request, attached by the caller, and stripped on cross-origin redirect by spec. Only the mobile bearer-bearer flow is exposed.
+- Builds 27-31 each shipped a different theory of what was wrong. None ever touched the actual cause. The instrumentation slice (build 31) was the only one that produced the data needed to find this — without `mobile-auth.no-header` firing exclusively (and `decode-failed` never firing), we'd never have known to suspect a header-stripping mechanism between client and server.
+- Vercel's `www` → apex behavior is the project's normal redirect setup. Both hostnames serve the same project; `www.getacuity.io` is configured as a "redirect to apex" alias. This is a common Vercel default and not something to "fix" on the server side. Mobile config was the wrong half of the canonical-host pair.
+- After the canonical-host fix lands and is verified, the heavy instrumentation in builds 31 should be removed — every API call currently fires a fire-and-forget POST to `/api/_debug/client-log` from mobile. That's fine for diagnosis but will balloon log volume in production over time. TODO comment in `apps/web/src/app/api/_debug/client-log/route.ts` flags this for cleanup.
+
+---
+
 ## [2026-05-07] — Build 31: pure client-side instrumentation slice — capture the actual timeline before proposing any more fixes
 
 **Requested by:** Jimmy (build 30 didn't fix the bug; entries-don't-load and 4-second-logout still present. Three EAS builds, three failures, hundreds in pay-as-you-go credits. No more hypothesis-driven fixes — instrument and read the data.)
