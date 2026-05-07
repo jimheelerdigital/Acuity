@@ -1,5 +1,6 @@
 import Constants from "expo-constants";
 
+import { debugLog } from "@/lib/debug-log";
 import { getToken } from "@/lib/auth";
 import { tokenBridge } from "@/lib/token-bridge";
 
@@ -38,16 +39,25 @@ function apiBaseUrl(): string {
 
 async function buildHeaders(
   extra?: HeadersInit,
-  hasBody = true
+  hasBody = true,
+  path = "<unknown>"
 ): Promise<Headers> {
   const headers = new Headers(extra);
   if (hasBody && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
-  const token = tokenBridge.get() ?? (await getToken());
+  const bridgeVal = tokenBridge.get();
+  const token = bridgeVal ?? (await getToken());
+  const source = bridgeVal ? "bridge" : token ? "getToken" : "null";
   if (token && !headers.has("Authorization")) {
     headers.set("Authorization", `Bearer ${token}`);
   }
+  debugLog("api.buildHeaders", {
+    path,
+    source,
+    tokenLen: token?.length ?? 0,
+    authAttached: headers.has("Authorization"),
+  });
   return headers;
 }
 
@@ -56,10 +66,16 @@ async function request<T>(
   opts: RequestInit = {},
   { hasBody = true }: { hasBody?: boolean } = {}
 ): Promise<T> {
-  const headers = await buildHeaders(opts.headers, hasBody);
+  const headers = await buildHeaders(opts.headers, hasBody, path);
   const res = await fetch(`${apiBaseUrl()}${path}`, {
     ...opts,
     headers,
+  });
+  debugLog("api.response", {
+    path,
+    status: res.status,
+    hadAuth: headers.has("Authorization"),
+    method: opts.method ?? "GET",
   });
 
   if (!res.ok) {
@@ -101,13 +117,24 @@ export const api = {
    * auto-sets multipart boundary when it sees a FormData body.
    */
   upload: async <T>(path: string, formData: FormData): Promise<T> => {
-    const token = tokenBridge.get() ?? (await getToken());
+    const bridgeVal = tokenBridge.get();
+    const token = bridgeVal ?? (await getToken());
+    debugLog("api.upload.headers", {
+      path,
+      source: bridgeVal ? "bridge" : token ? "getToken" : "null",
+      tokenLen: token?.length ?? 0,
+    });
     const headers: HeadersInit = {};
     if (token) headers["Authorization"] = `Bearer ${token}`;
     const res = await fetch(`${apiBaseUrl()}${path}`, {
       method: "POST",
       headers,
       body: formData,
+    });
+    debugLog("api.upload.response", {
+      path,
+      status: res.status,
+      hadAuth: Boolean(token),
     });
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));

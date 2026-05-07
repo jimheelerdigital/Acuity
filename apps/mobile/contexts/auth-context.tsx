@@ -17,6 +17,7 @@ import {
   signOut as clearSession,
   type User,
 } from "@/lib/auth";
+import { debugLog } from "@/lib/debug-log";
 import { tokenBridge } from "@/lib/token-bridge";
 
 export type DeleteAccountResult =
@@ -74,9 +75,24 @@ const AuthContext = createContext<AuthState>({
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, _setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const appState = useRef(AppState.currentState);
+  // Wrapped setter — every call to setUser(null) flows through here
+  // so we get a stack trace + caller tag attached to the diagnostic
+  // event. Non-null setUser calls are also logged but without stack
+  // (those are positive signals from sign-in / /api/user/me).
+  const setUser = useCallback(
+    (next: User | null, where: string = "unknown") => {
+      if (next === null) {
+        debugLog("setUser.null", { where }, { withStack: true });
+      } else {
+        debugLog("setUser.value", { where, userId: next.id });
+      }
+      _setUser(next);
+    },
+    []
+  );
   // Tracks whether the very first refresh after AuthProvider mount
   // has completed. Used to discriminate "user is genuinely signed
   // out" (cold launch, getToken=null) from "keychain returned null
@@ -96,8 +112,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * so offline app launches don't flash the sign-in screen.
    */
   const refresh = useCallback(async () => {
+    debugLog("auth.refresh.entry", {
+      initialDone: initialRefreshDone.current,
+    });
     try {
       const token = await getToken();
+      debugLog("auth.refresh.token", {
+        hasToken: token !== null,
+        len: token?.length ?? 0,
+      });
       if (!token) {
         // Cold launch only: a null token at the very first refresh
         // means the user is genuinely signed out. Clear state so
@@ -120,8 +143,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Trust the existing state on warm refreshes. If the
         // session truly died, the next /api/user/me call will 401
         // and the 401 catch below handles it.
+        debugLog("auth.refresh.no-token-branch", {
+          initialDone: initialRefreshDone.current,
+          willClear: !initialRefreshDone.current,
+        });
         if (!initialRefreshDone.current) {
-          setUser(null);
+          setUser(null, "refresh.cold-launch-no-token");
           tokenBridge.set(null);
         }
         return;
@@ -136,18 +163,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const data = await api.get<{ user?: User }>("/api/user/me");
         if (data.user?.id) {
-          setUser(data.user);
+          debugLog("auth.refresh.me-200-with-user", { userId: data.user.id });
+          setUser(data.user, "refresh.me-200");
           await setStoredUser(data.user);
           return;
         }
         // 200 with no user — treat as signed-out. Server has
         // explicitly told us the user no longer exists; clearing
         // local state is the right call here.
-        setUser(null);
+        debugLog("auth.refresh.me-200-no-user");
+        setUser(null, "refresh.me-200-no-user");
         tokenBridge.set(null);
         await clearSession();
       } catch (err) {
         const status = (err as { status?: number }).status;
+        debugLog("auth.refresh.me-error", {
+          status: status ?? null,
+          message: err instanceof Error ? err.message : String(err),
+        });
         if (status === 401) {
           // 2026-05-06 fix: was previously calling clearSession()
           // here, which deletes the bearer token from SecureStore +
@@ -167,18 +200,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // signOut() in auth-context) still calls clearSession
           // explicitly. This catch handler only changes the
           // server-rejected-401 path.
-          setUser(null);
+          setUser(null, "refresh.me-401");
           return;
         }
         // Network or transient error — keep the cached user so the
         // app stays usable until the next refresh tick.
         const stored = await getStoredUser();
-        setUser(stored);
+        debugLog("auth.refresh.network-error-fallback", {
+          hasStored: stored !== null,
+        });
+        setUser(stored, "refresh.network-error-stored");
       }
     } finally {
       initialRefreshDone.current = true;
       setLoading(false);
     }
+  }, [setUser]);
+
+  // Track AuthProvider mount/unmount so we can prove (or disprove)
+  // that the provider is being torn down by Hermes/Expo on
+  // background/resume — one of the working hypotheses for
+  // build-30's failure.
+  useEffect(() => {
+    debugLog("AuthProvider.mount");
+    return () => {
+      debugLog("AuthProvider.unmount", {}, { withStack: true });
+    };
   }, []);
 
   useEffect(() => {
@@ -191,23 +238,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // background→active transition so local state catches up without
   // requiring a sign-out / sign-in cycle.
   useEffect(() => {
+    debugLog("AppState.listener.attach");
     const sub = AppState.addEventListener("change", (next: AppStateStatus) => {
       const prev = appState.current;
       appState.current = next;
-      if (prev.match(/inactive|background/) && next === "active") {
+      const willRefresh =
+        Boolean(prev.match(/inactive|background/)) && next === "active";
+      debugLog("AppState.change", { prev, next, willRefresh });
+      if (willRefresh) {
         refresh();
       }
     });
-    return () => sub.remove();
+    return () => {
+      debugLog("AppState.listener.detach");
+      sub.remove();
+    };
   }, [refresh]);
 
   const signOut = useCallback(async () => {
+    debugLog("auth-context.signOut.entry", {}, { withStack: true });
     // No server call — mobile sign-out is local-only (see lib/auth.ts
     // signOut() for rationale).
     await clearSession();
     tokenBridge.set(null);
-    setUser(null);
-  }, []);
+    setUser(null, "auth-context.signOut");
+  }, [setUser]);
 
   /**
    * Permanently delete the account. Server cascades the User row
@@ -250,9 +305,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { ok: false, status, error: message };
     }
     await clearSession();
-    setUser(null);
+    setUser(null, "deleteAccount");
     return { ok: true };
-  }, [user?.id]);
+  }, [user?.id, setUser]);
 
   // Direct setter for the post-OAuth flow — see the AuthState comment
   // above. Stable identity via useCallback so the provider value
@@ -262,11 +317,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // very next request without going through SecureStore or relying
   // on lib/auth's memoryToken closure (Layer 4 fix — see
   // lib/token-bridge.ts for the full rationale).
-  const setAuthenticatedUser = useCallback((next: User, token?: string) => {
-    if (token) tokenBridge.set(token);
-    setUser(next);
-    setLoading(false);
-  }, []);
+  const setAuthenticatedUser = useCallback(
+    (next: User, token?: string) => {
+      debugLog("setAuthenticatedUser.entry", {
+        userId: next.id,
+        hasToken: Boolean(token),
+        tokenLen: token?.length ?? 0,
+      });
+      if (token) tokenBridge.set(token);
+      setUser(next, "setAuthenticatedUser");
+      setLoading(false);
+    },
+    [setUser]
+  );
 
   return (
     <AuthContext.Provider

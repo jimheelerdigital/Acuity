@@ -20,6 +20,50 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-07] — Build 31: pure client-side instrumentation slice — capture the actual timeline before proposing any more fixes
+
+**Requested by:** Jimmy (build 30 didn't fix the bug; entries-don't-load and 4-second-logout still present. Three EAS builds, three failures, hundreds in pay-as-you-go credits. No more hypothesis-driven fixes — instrument and read the data.)
+**Committed by:** Claude Code
+**Commit hash:** _backfill_
+
+### In plain English (for Keenan)
+
+We've shipped three TestFlight builds trying to fix the sign-in bug, each based on a different theory of what was going wrong. None worked. We're done guessing. This build adds heavy diagnostic logging to every step of sign-in — every token read, every state change, every app foreground/background event — that streams to our server in real time. Jim installs this build, signs in, reproduces the bugs, and we read the actual sequence of events on his device from our logs. THEN we propose a fix based on what actually happened, not a hypothesis. No fix is shipped in this build.
+
+### Technical changes (for Jimmy)
+
+- **New endpoint** `apps/web/src/app/api/_debug/client-log/route.ts`:
+  - `POST /api/_debug/client-log` accepts `{ event, timestamp, payload }` (max 8 KB body), emits `safeLog.info("client.<event>", payload)`. No auth required by design — captures pre-auth events. TODO comment to remove or gate the endpoint after diagnosis lands.
+- **New file** `apps/mobile/lib/debug-log.ts`:
+  - `debugLog(event, payload, { withStack? })` — fire-and-forget POST, no await, silent on failure.
+  - Module-level session id generated once per app launch (`s-{base36 timestamp}-{base36 random}`) attached to every event so we can filter Vercel logs by session.
+  - `withStack: true` captures up to 6 frames of `new Error().stack` for events where caller identity matters (clearToken, clearStoredUser, lib/auth.signOut, auth-context.signOut, AuthProvider.unmount, setUser(null), tokenBridge.set).
+  - Local dev: `__DEV__` branch echoes to console; production builds DCE the branch (no console noise on TestFlight).
+- **Instrumented call sites** (mobile):
+  - `lib/token-bridge.ts`: `set` (with stack), `get`
+  - `lib/auth.ts`: `getToken` (entry, hit-memory, store-read), `setToken` (entry, store-written), `clearToken` (with stack), `setStoredUser`, `clearStoredUser` (with stack), `signOut` (with stack), Google `useGoogleSignIn.signIn` (entry, promptAsync.start/return/threw), `callMobileCallback` (entry/response/body/return-ok/threw), `signInWithPassword` (entry/response), `completeMobileMagicLink` (entry/response).
+  - `lib/apple-auth.ts`: `signInWithApple` (entry, unavailable, credential.received, no-identity-token, callback.response/body, return-ok).
+  - `lib/api.ts`: `buildHeaders` (every call — path, source: bridge/getToken/null, tokenLen, authAttached), `request` response (path, status, hadAuth, method), `upload` (headers, response).
+  - `contexts/auth-context.tsx`: AuthProvider mount + unmount (with stack), AppState.listener attach/detach + every `change` event (prev/next/willRefresh), `refresh()` (entry/token/each branch: cold-launch-no-token, me-200-with-user, me-200-no-user, me-error, me-401, network-error-fallback), wrapped `setUser` (every call logs with `where` tag — null calls include stack), `setAuthenticatedUser`, `signOut` (with stack), `deleteAccount`.
+  - `app/(auth)/sign-in.tsx`: `screen.mount`, `handleApple/handleGoogle/handlePassword` entry + result + setAuthenticatedUser-called.
+- Per-slice gates: vitest 362/362, web tsc 7-baseline unchanged, mobile tsc 115-baseline unchanged.
+
+### Manual steps needed
+
+- [ ] Jim: pivot to local simulator path (`npx expo run:ios --device "iPhone 16e"` with `EXPO_PUBLIC_API_URL=https://www.getacuity.io` set explicitly to dodge the eas.json development-profile localhost override). Avoid burning a fourth EAS credit before we have the diagnosis.
+- [ ] Jim or Claude: pull all `client.*` events from Vercel logs covering the reproduction window, filter by sessionId (find Jim's via any `setUser.value` event with `userId === <jim's id>`, then group by `payload.sessionId`).
+- [ ] Reconstruct timeline → identify actual cause → propose fix in a SEPARATE slice.
+
+### Notes
+
+- This build does **not** fix the bug. It only adds logging.
+- The instrumentation is opt-in-by-build: a non-instrumented build (e.g. when we revert this) won't hit the endpoint at all. The endpoint itself is open (no auth) but body-size capped at 8 KB and event names capped at 64 chars. After we have the diagnosis, the endpoint should be REMOVED or gated by build-version header — leaving an open log-injection sink in production long-term is unwise. TODO comment in the route file flags this.
+- The `setUser` wrap in `auth-context.tsx` adds a `where` tag to every state change. Critical events — null sets — also capture a stack. This is the most load-bearing piece of instrumentation for the "4-second logout" symptom: when state goes null, we will know exactly which code path triggered it.
+- Stack traces from `new Error().stack` in Hermes/RN are JS-level, not native. Sufficient to identify the JS caller chain. Frames trimmed to remove the Error constructor frame.
+- The session id is base36-encoded random — NOT cryptographically unique, just collision-resistant enough for diagnostic filtering.
+
+---
+
 ## [2026-05-06] — AdLab: full 8-phase automated ad system
 
 **Requested by:** Keenan
