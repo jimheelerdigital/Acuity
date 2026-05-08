@@ -20,6 +20,47 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-08] — Strip build-31 instrumentation pre-App-Review (debugLog calls, debug-log.ts, /api/_debug/client-log endpoint)
+
+**Requested by:** Jimmy (build 33 verified working on TestFlight — entries load, backgrounding survives, auth stable. Time to remove the diagnostic surface before App Review.)
+**Committed by:** Claude Code
+**Commit hash:** _backfill_
+
+### In plain English (for Keenan)
+
+A few days ago we shipped heavy diagnostic logging to find the sign-in bug. That logging fired on every API call and POSTed to a server endpoint we used to read the timeline of events. The bug was found and fixed; the logging is no longer needed. Leaving it in production is unwise — every API call would burn a no-op POST round-trip, and the server endpoint accepts un-authenticated writes that anyone could spam. This change removes all of it. The app behaves identically; it just no longer chats with itself.
+
+### Technical changes (for Jimmy)
+
+- **Reverted every `debugLog()` call site** from the build-31 slice (`b1d8d82`):
+  - `apps/mobile/contexts/auth-context.tsx`: removed import, restored plain `useState<User | null>` dispatcher (was wrapped to log every `setUser` call with a stack-tagged `where` argument), removed mount/unmount logging, restored compact AppState listener (no `willRefresh` logging), restored compact `signOut`/`deleteAccount`/`setAuthenticatedUser`. The `initialRefreshDone` ref + warm-refresh defensiveness from build 30 (`2f3ea04`) is preserved — that was a real fix, not instrumentation.
+  - `apps/mobile/lib/auth.ts`: removed import, stripped `debugLog` from `getToken/setToken/clearToken/getStoredUser/setStoredUser/clearStoredUser/signOut`, the Google `useGoogleSignIn.signIn` flow (entry / promptAsync.start/return/threw), `callMobileCallback` (entry / response / body / return-ok / threw), `signInWithPassword`, `completeMobileMagicLink`.
+  - `apps/mobile/lib/api.ts`: removed import, restored `buildHeaders(extra?, hasBody)` signature (build-31 had added a `path` param solely for logging), restored compact `request` (no response logging) and `upload` (no headers/response logging). Bearer attach order from build-29 (tokenBridge first, getToken fallback) is preserved.
+  - `apps/mobile/lib/apple-auth.ts`: removed import + every `debugLog` call (entry / unavailable / credential.received / no-identity-token / callback.response / callback.body / return-ok).
+  - `apps/mobile/lib/token-bridge.ts`: removed import; `set/get` are now silent. Module-level cache and the saga-comment header at the top are preserved.
+  - `apps/mobile/app/(auth)/sign-in.tsx`: removed import + screen-mount beacon + handler entry/result/post-setAuthenticatedUser-called calls in handleApple/handleGoogle/handlePassword. Build-29 tokenBridge hand-off comments preserved as historical record.
+- **Deleted files (via `git rm`):**
+  - `apps/mobile/lib/debug-log.ts` — the fire-and-forget client wrapper.
+  - `apps/web/src/app/api/_debug/client-log/route.ts` — the server sink. Parent `_debug/` directory removed automatically when its only child was deleted.
+- **Untouched (intentional)**: the v15 react-native-iap re-introduction (`59b8f2f`), the custom Folly-flag plugin (`2646b40`), the www→apex auth fix (`e6b4546`), the `initialRefreshDone` warm-refresh fix (`2f3ea04`), the `tokenBridge` synchronous bearer cache (`b55ab43`).
+- Per-slice gates: vitest 362/362, web tsc 89-baseline unchanged, mobile tsc 115-baseline unchanged.
+
+### Manual steps needed
+
+- [ ] Jim: flip `iapEnabled: false` → `true` in `apps/mobile/app.json` (`extra.iapEnabled`) and ship build 34 for paywall screenshot capture.
+- [ ] Jim: `eas build --profile production --platform ios` (build 34, with iapEnabled flipped); install on TestFlight; capture paywall screenshot per Apple App Review's required artifacts.
+- [ ] After screenshot: flip `iapEnabled` back to `false` (or keep on, depending on whether you want IAP live for App Review — discuss before flipping in submission build).
+
+### Notes
+
+- **Why not keep instrumentation off-by-default**: every `debugLog()` call site was unconditional — the `__DEV__` branch only suppressed the local Metro `console.log`, but the fire-and-forget `fetch` to `/api/_debug/client-log` ran in production. There's no env-gated form of "off in production but available for next debug cycle" without restructuring the wrapper. If we need diagnostics again, this slice is a 30-line revert away in git history (`b1d8d82` is the full instrumentation commit; cherry-picking restores everything).
+- **Why the `setUser` wrapper revert was straightforward**: the wrapped pattern only added a `where` string argument to every call site for debugging. The underlying `useState` dispatch behavior was unchanged — `_setUser(next)` was always called with the same value. Reverting drops the wrapper and all `where` arguments at the same time. No behavioral change.
+- **Why the `path` param on `buildHeaders` could be removed cleanly**: it was a parameter added in build-31 solely so the response logger could include the path. With logging gone, the path was unused; reverting the signature back to the pre-build-31 shape avoids dead arguments.
+- **Confirmed grep clean**: post-revert `grep -rn "debugLog\|@/lib/debug-log\|/api/_debug" apps/mobile apps/web/src` (excluding the two deleted files) returned zero matches. No orphaned imports, no orphaned references.
+- **iapEnabled stays false for THIS slice.** Flipping it is the next slice (build 34, paywall-screenshot).
+
+---
+
 ## [2026-05-08] — Custom Folly-flag plugin: fix arm64 link error from build 32 (F14LinkCheck symbol mismatch)
 
 **Requested by:** Jimmy (build 32 EAS failed at link with `Undefined symbols for architecture arm64: folly::f14::detail::F14LinkCheck<(...)1>::check() Referenced from: libRNReanimated.a CSSAnimationsRegistry.o` — the v15 react-native-iap plugin's Folly patch was incomplete)

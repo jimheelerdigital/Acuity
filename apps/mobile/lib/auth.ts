@@ -26,8 +26,6 @@ import * as SecureStore from "expo-secure-store";
 import * as WebBrowser from "expo-web-browser";
 import { useMemo } from "react";
 
-import { debugLog } from "@/lib/debug-log";
-
 // Required for expo-auth-session on web + some Expo Go edge cases.
 // No-op on native iOS but safe to call anywhere.
 WebBrowser.maybeCompleteAuthSession();
@@ -102,50 +100,31 @@ export type User = {
 let memoryToken: string | null = null;
 
 export async function getToken(): Promise<string | null> {
-  debugLog("getToken.entry", {
-    memoryTokenLen: memoryToken?.length ?? 0,
-  });
   // Hot path — sign-in has already populated memory. Return without
   // touching the keychain, sidestepping the setItem→getItem race.
-  if (memoryToken) {
-    debugLog("getToken.hit-memory", { len: memoryToken.length });
-    return memoryToken;
-  }
+  if (memoryToken) return memoryToken;
   // Cold path — first call after app launch. Hydrate from SecureStore;
   // if a value is present, cache it so subsequent calls skip the
   // keychain entirely.
   const stored = await SecureStore.getItemAsync(TOKEN_KEY);
-  debugLog("getToken.store-read", {
-    storedLen: stored?.length ?? 0,
-    storedNull: stored === null,
-  });
   if (stored) memoryToken = stored;
   return stored;
 }
 
 export async function setToken(token: string): Promise<void> {
-  debugLog("setToken.entry", { len: token?.length ?? 0 });
   // Update memory FIRST so any in-flight getToken() resolves with
   // the new value even if the keychain write is still committing.
   memoryToken = token;
   await SecureStore.setItemAsync(TOKEN_KEY, token);
-  debugLog("setToken.store-written", { len: token?.length ?? 0 });
 }
 
 export async function clearToken(): Promise<void> {
-  debugLog(
-    "clearToken.entry",
-    { hadMemoryLen: memoryToken?.length ?? 0 },
-    { withStack: true }
-  );
   memoryToken = null;
   await SecureStore.deleteItemAsync(TOKEN_KEY);
-  debugLog("clearToken.done");
 }
 
 export async function getStoredUser(): Promise<User | null> {
   const raw = await SecureStore.getItemAsync(USER_KEY);
-  debugLog("getStoredUser", { hasRaw: Boolean(raw) });
   if (!raw) return null;
   try {
     return JSON.parse(raw) as User;
@@ -155,12 +134,10 @@ export async function getStoredUser(): Promise<User | null> {
 }
 
 export async function setStoredUser(user: User): Promise<void> {
-  debugLog("setStoredUser", { userId: user.id });
   await SecureStore.setItemAsync(USER_KEY, JSON.stringify(user));
 }
 
 export async function clearStoredUser(): Promise<void> {
-  debugLog("clearStoredUser", {}, { withStack: true });
   await SecureStore.deleteItemAsync(USER_KEY);
 }
 
@@ -187,7 +164,6 @@ export async function signInWithPassword(
   email: string,
   password: string
 ): Promise<PasswordSignInResult> {
-  debugLog("password.signIn.entry");
   try {
     const res = await fetch(`${apiBaseUrl()}/api/auth/mobile-login`, {
       method: "POST",
@@ -199,13 +175,6 @@ export async function signInWithPassword(
       sessionToken?: string;
       user?: User;
     };
-    debugLog("password.signIn.response", {
-      status: res.status,
-      ok: res.ok,
-      hasSessionToken: Boolean(body.sessionToken),
-      sessionTokenLen: body.sessionToken?.length ?? 0,
-      hasUser: Boolean(body.user),
-    });
     if (!res.ok || !body.sessionToken || !body.user) {
       const reason =
         body.error === "EmailNotVerified"
@@ -322,7 +291,6 @@ export async function requestPasswordReset(
 export async function completeMobileMagicLink(
   token: string
 ): Promise<PasswordSignInResult> {
-  debugLog("magic-link.complete.entry", { tokenLen: token.length });
   try {
     const res = await fetch(`${apiBaseUrl()}/api/auth/mobile-complete`, {
       method: "POST",
@@ -334,12 +302,6 @@ export async function completeMobileMagicLink(
       sessionToken?: string;
       user?: User;
     };
-    debugLog("magic-link.complete.response", {
-      status: res.status,
-      ok: res.ok,
-      hasSessionToken: Boolean(body.sessionToken),
-      hasUser: Boolean(body.user),
-    });
     if (!res.ok || !body.sessionToken || !body.user) {
       return {
         ok: false,
@@ -360,7 +322,6 @@ export async function completeMobileMagicLink(
 }
 
 export async function signOut(): Promise<void> {
-  debugLog("lib/auth.signOut.entry", {}, { withStack: true });
   // Mobile sign-out is local-only: the NextAuth JWT issued by
   // /api/auth/mobile-callback is a bearer token with no server-side
   // revocation list (revoking would require a blocklist table or
@@ -369,7 +330,6 @@ export async function signOut(): Promise<void> {
   // the only thing authenticating mobile API calls.
   await clearToken();
   await clearStoredUser();
-  debugLog("lib/auth.signOut.done");
 }
 
 // ─── Google OAuth ───────────────────────────────────────────────────
@@ -517,7 +477,6 @@ export function useGoogleSignIn() {
   // is opaque without seeing the prior steps.
 
   const signIn = async (): Promise<SignInResult> => {
-    debugLog("google.signIn.entry");
     // Accumulator — every failure return attaches this so the UI can
     // surface a readable diagnostic. Temporary debug aid.
     const debug: AuthDebug = { redirectUri };
@@ -534,13 +493,8 @@ export function useGoogleSignIn() {
 
     let promptResult: AuthSession.AuthSessionResult;
     try {
-      debugLog("google.promptAsync.start");
       promptResult = await promptAsync();
-      debugLog("google.promptAsync.return", { type: promptResult.type });
     } catch (err) {
-      debugLog("google.promptAsync.threw", {
-        message: err instanceof Error ? err.message : String(err),
-      });
       return {
         ok: false,
         reason: "server_error",
@@ -645,7 +599,6 @@ export function useGoogleSignIn() {
     idToken: string,
     debug: AuthDebug
   ): Promise<SignInResult> => {
-    debugLog("google.callMobileCallback.entry", { idTokenLen: idToken.length });
 
     try {
       const res = await fetch(`${apiBaseUrl()}/api/auth/mobile-callback`, {
@@ -654,7 +607,6 @@ export function useGoogleSignIn() {
         body: JSON.stringify({ googleIdToken: idToken }),
       });
       debug.callbackStatus = res.status;
-      debugLog("google.callMobileCallback.response", { status: res.status, ok: res.ok });
       if (!res.ok) {
         const body = (await res.json().catch(() => ({}))) as {
           error?: string;
@@ -671,18 +623,10 @@ export function useGoogleSignIn() {
         sessionToken: string;
         user: User;
       };
-      debugLog("google.callMobileCallback.body", {
-        sessionTokenLen: body.sessionToken?.length ?? 0,
-        userId: body.user?.id,
-      });
       await setToken(body.sessionToken);
       await setStoredUser(body.user);
-      debugLog("google.callMobileCallback.return-ok", { userId: body.user.id });
       return { ok: true, user: body.user, sessionToken: body.sessionToken };
     } catch (err) {
-      debugLog("google.callMobileCallback.threw", {
-        message: err instanceof Error ? err.message : String(err),
-      });
       debug.callbackError =
         err instanceof Error ? err.message : "network failure";
       return {

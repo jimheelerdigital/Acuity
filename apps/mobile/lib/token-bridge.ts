@@ -40,28 +40,13 @@
  * site — top-level imports from auth-context and api — with no
  * cycle, giving Metro the simplest possible dependency graph.
  */
-import { debugLog } from "@/lib/debug-log";
-
 let bridgeToken: string | null = null;
 
 export const tokenBridge = {
   set(token: string | null): void {
-    debugLog(
-      "tokenBridge.set",
-      {
-        prevLen: bridgeToken?.length ?? 0,
-        nextLen: token?.length ?? 0,
-        clearing: token === null,
-      },
-      { withStack: true }
-    );
     bridgeToken = token;
   },
   get(): string | null {
-    debugLog("tokenBridge.get", {
-      hit: bridgeToken !== null,
-      len: bridgeToken?.length ?? 0,
-    });
     return bridgeToken;
   },
 };

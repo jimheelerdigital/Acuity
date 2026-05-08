@@ -19,7 +19,6 @@
 import * as AppleAuthentication from "expo-apple-authentication";
 import * as SecureStore from "expo-secure-store";
 
-import { debugLog } from "@/lib/debug-log";
 import {
   publicApiBaseUrl,
   setStoredUser,
@@ -67,9 +66,7 @@ export async function isAppleSignInAvailable(): Promise<boolean> {
 }
 
 export async function signInWithApple(): Promise<AppleSignInResult> {
-  debugLog("apple.signIn.entry");
   if (!(await isAppleSignInAvailable())) {
-    debugLog("apple.signIn.unavailable");
     return { ok: false, reason: "Unavailable" };
   }
 
@@ -95,13 +92,7 @@ export async function signInWithApple(): Promise<AppleSignInResult> {
     };
   }
 
-  debugLog("apple.credential.received", {
-    hasIdentityToken: Boolean(credential.identityToken),
-    hasFullName: Boolean(credential.fullName),
-    hasEmail: Boolean(credential.email),
-  });
   if (!credential.identityToken) {
-    debugLog("apple.signIn.no-identity-token");
     return { ok: false, reason: "NoIdentityToken" };
   }
 
@@ -170,7 +161,6 @@ export async function signInWithApple(): Promise<AppleSignInResult> {
     };
   }
 
-  debugLog("apple.callback.response", { status: res.status, ok: res.ok });
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
     return { ok: false, reason: "ServerRejected", detail };
@@ -180,12 +170,6 @@ export async function signInWithApple(): Promise<AppleSignInResult> {
     sessionToken?: string;
     user?: User;
   } | null;
-  debugLog("apple.callback.body", {
-    hasSessionToken: Boolean(body?.sessionToken),
-    sessionTokenLen: body?.sessionToken?.length ?? 0,
-    hasUser: Boolean(body?.user),
-    userId: body?.user?.id,
-  });
   if (!body?.sessionToken || !body?.user) {
     return {
       ok: false,
@@ -197,6 +181,5 @@ export async function signInWithApple(): Promise<AppleSignInResult> {
   await setToken(body.sessionToken);
   await setStoredUser(body.user);
 
-  debugLog("apple.signIn.return-ok", { userId: body.user.id });
   return { ok: true, user: body.user, sessionToken: body.sessionToken };
 }

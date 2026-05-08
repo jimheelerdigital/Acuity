@@ -41,7 +41,6 @@ import {
   useGoogleSignIn,
 } from "@/lib/auth";
 import { isAppleSignInAvailable, signInWithApple } from "@/lib/apple-auth";
-import { debugLog } from "@/lib/debug-log";
 
 type Loading = "google" | "apple" | "password" | "magic" | null;
 
@@ -80,24 +79,9 @@ export default function SignInScreen() {
     };
   }, []);
 
-  // Beacon on sign-in mount — emits the session id in plain text so
-  // Jim can read it off the screen and tell us which sessionId to
-  // filter Vercel logs by. Only fires when the sign-in screen
-  // mounts (i.e. the user is signed-out and routing here).
-  useEffect(() => {
-    debugLog("sign-in.screen.mount");
-  }, []);
-
   async function handleApple() {
-    debugLog("sign-in.handleApple.entry");
     setLoading("apple");
     const result = await signInWithApple();
-    debugLog("sign-in.handleApple.result", {
-      ok: result.ok,
-      reason: result.ok ? null : result.reason,
-      sessionTokenLen: result.ok ? result.sessionToken?.length ?? 0 : 0,
-      userId: result.ok ? result.user.id : null,
-    });
     setLoading(null);
 
     if (!result.ok) {
@@ -127,11 +111,9 @@ export default function SignInScreen() {
     // correctly, but production diagnostics showed the closure
     // wasn't holding — see lib/token-bridge.ts for the saga.
     setAuthenticatedUser(result.user, result.sessionToken);
-    debugLog("sign-in.handleApple.setAuthenticatedUser-called");
   }
 
   async function handleGoogle() {
-    debugLog("sign-in.handleGoogle.entry", { ready });
     if (!ready) {
       Alert.alert(
         "Not ready",
@@ -143,12 +125,6 @@ export default function SignInScreen() {
     }
     setLoading("google");
     const result = await googleSignIn();
-    debugLog("sign-in.handleGoogle.result", {
-      ok: result.ok,
-      reason: result.ok ? null : result.reason,
-      sessionTokenLen: result.ok ? result.sessionToken?.length ?? 0 : 0,
-      userId: result.ok ? result.user.id : null,
-    });
     setLoading(null);
 
     if (!result.ok) {
@@ -162,20 +138,12 @@ export default function SignInScreen() {
     // See handleApple comment — same SecureStore race avoidance,
     // same build-29 tokenBridge hand-off.
     setAuthenticatedUser(result.user, result.sessionToken);
-    debugLog("sign-in.handleGoogle.setAuthenticatedUser-called");
   }
 
   async function handlePassword() {
-    debugLog("sign-in.handlePassword.entry");
     if (!email.trim() || !password) return;
     setLoading("password");
     const result = await signInWithPassword(email.trim(), password);
-    debugLog("sign-in.handlePassword.result", {
-      ok: result.ok,
-      reason: result.ok ? null : result.reason,
-      sessionTokenLen: result.ok ? result.sessionToken?.length ?? 0 : 0,
-      userId: result.ok ? result.user.id : null,
-    });
     setLoading(null);
 
     if (!result.ok) {
@@ -195,7 +163,6 @@ export default function SignInScreen() {
     // the same setToken→refresh sequence and is exposed to the
     // same race. Build-29 tokenBridge hand-off applies here too.
     setAuthenticatedUser(result.user, result.sessionToken);
-    debugLog("sign-in.handlePassword.setAuthenticatedUser-called");
   }
 
   async function handleMagic() {
