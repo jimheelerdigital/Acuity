@@ -24,7 +24,7 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 **Requested by:** Jimmy (build 32 EAS failed at link with `Undefined symbols for architecture arm64: folly::f14::detail::F14LinkCheck<(...)1>::check() Referenced from: libRNReanimated.a CSSAnimationsRegistry.o` — the v15 react-native-iap plugin's Folly patch was incomplete)
 **Committed by:** Claude Code
-**Commit hash:** _backfill_
+**Commit hash:** 2646b40
 
 ### In plain English (for Keenan)
 
