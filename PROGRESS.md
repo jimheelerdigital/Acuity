@@ -20,6 +20,49 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-08] — Re-introduce react-native-iap (v15 Nitro) — RCT-Folly issue solved via plugin's with-folly-no-coroutines patch
+
+**Requested by:** Jimmy (after manual TEST-notification verification was skipped — Apple's web UI doesn't surface a button in current ASC; real notifications will land when actual subs happen)
+**Committed by:** Claude Code
+**Commit hash:** _backfill_
+
+### In plain English (for Keenan)
+
+The IAP (in-app purchase) code path was stubbed out 3 days ago because the underlying library couldn't compile against Expo SDK 54. We've now re-enabled it. The iOS purchase flow still won't activate for users — the `iapEnabled` flag stays at false until we have a paywall screenshot and Jim flips it for TestFlight. This is the structural piece: the library is back in the project, the iOS build succeeds, and the wrapper code is wired up so flipping the flag is the only remaining step.
+
+### Technical changes (for Jimmy)
+
+- `apps/mobile/package.json`: re-added `react-native-iap@^15.2.3` (we initially tried v13.0.0 per the eb0e136 PROGRESS notes, but verified empirically that v13 still fails pod install with `Unable to find a specification for RCT-Folly` because v13's plugin doesn't actually implement `with-folly-no-coroutines` despite the deprecated docs claiming it does — only v15+ does, and only when nested under `ios:`).
+- `apps/mobile/app.json` plugins[]: added `["react-native-iap", { "ios": { "with-folly-no-coroutines": true } }]`. The plugin patches the generated Podfile's `post_install` hook with three preprocessor defines (`FOLLY_NO_CONFIG=1`, `FOLLY_CFG_NO_COROUTINES=1`, `FOLLY_HAS_COROUTINES=0`) on every pod target, sidestepping Expo SDK 54's prebuilt-RN Folly version that includes coroutine headers (`<folly/coro/*>`) which aren't vendored.
+- `apps/mobile/lib/iap.ts` rewritten against v15's Nitro API (was the v9aec449 v13 implementation, then a stub since eb0e136). Key v13→v15 mappings:
+  - `getSubscriptions({skus})` → `fetchProducts({skus, type:'subs'})`. Result shape changed: Product fields renamed `productId`→`id`, `localizedPrice`→`displayPrice`. Mapped at the `IapProduct` boundary so call sites don't change.
+  - `requestSubscription({sku})` → `requestPurchase({request:{apple:{sku}}, type:'subs'})`. Returns `Purchase | Purchase[] | null` — handle the array case for batched/deferred transactions.
+  - Purchase field: `transactionReceipt` → `purchaseToken` (unified iOS-JWS / Android-token). The `PurchaseResult.receipt` we POST to `/api/iap/verify-receipt` is now this purchaseToken value.
+  - `finishTransaction({purchase: {transactionId} as never})` → `finishTransaction({purchase, isConsumable: false})`. v15 requires the full Purchase object. To preserve `verifyAndFinish({transactionId, receipt})`'s public signature, added an in-memory `purchaseCache: Map<transactionId, Purchase>`, populated by `purchaseMonthly`, `restorePurchases`, and `purchaseUpdatedListener`. `finishCachedTransaction(transactionId)` looks up the Purchase and falls back to `getAvailablePurchases` find-by-id on cache miss.
+  - Public surface preserved exactly: `initIap`, `disconnectIap`, `getMonthlyProduct`, `purchaseMonthly`, `verifyAndFinish`, `restorePurchases`, `subscribeToPurchaseUpdates`, types `IapProduct`, `PurchaseResult`, `PurchaseUpdateListener`. No call site (subscribe.tsx, restore-purchases-button.tsx) changes.
+- Hand-rolled `RNIAP` interface (covers only the 7 v15 functions we use). Reason: v15's full export types use deeply-generic `QueryField<K>`/`MutationField<K>` mapped types over a Nitro-spec arg map that TypeScript's bundler resolution doesn't fully infer through the package's `react-native` export condition. Using `typeof import("react-native-iap")` produced TS2339 errors at every call site even though the symbols exist at runtime — verified empirically. The minimal interface dodges this AND stays robust to v15.x patch additions/removals we don't care about.
+- Per-slice gates: vitest 362/362, web tsc 89-baseline unchanged (slice doesn't touch web), mobile tsc 115-baseline unchanged (no new errors traced to lib/iap.ts after the typed-interface fix).
+- **`pod install` succeeded locally** (28s, 103 dependencies, 105 total pods). Empirical proof the plugin workaround actually resolves the Folly issue this time. We didn't burn an EAS credit on an unverified config.
+- `iapEnabled` flag stays at `false` in `app.json extra` per Jim's instruction — waiting on paywall screenshot before flipping.
+
+### Manual steps needed
+
+- [ ] Jim: `eas build --profile production --platform ios` (build 32 will carry both this and the build-31 instrumentation; once verified clean we ship a follow-up that strips instrumentation).
+- [ ] Jim: `eas submit --profile production --platform ios --latest`.
+- [ ] Jim: install build 32 on TestFlight, navigate to Subscribe sheet (which the iapEnabled-false path currently hides — need to temporarily flip locally OR add a build-time toggle for QA), confirm it doesn't crash.
+- [ ] Jim: capture paywall screenshot once `iapEnabled` is flipped on a verification build.
+
+### Notes
+
+- **Why we burned a verification cycle on v13 first**: the eb0e136 PROGRESS comment in lib/iap.ts said the documented workaround was `["react-native-iap", { "with-folly-no-coroutines": true }]` (top-level option). I verified this empirically against the installed v13.0.4 plugin source — the option doesn't exist in v13's plugin code, the entire iOS-side plugin handler is missing in v13, and pod install reproduced the exact same RCT-Folly error from eb0e136. Reading v15.2.3's source separately revealed the option DOES exist in v15 but is nested under `ios:`. This is a real evolution of the library, not a configuration mistake on the eb0e136 side — v15's `withIapIosFollyWorkaround` plugin handler is new in the Nitro rewrite. The stub comment that prescribed the wrong nesting can stay in git history; the new lib/iap.ts heading documents the correct v15 incantation.
+- **iOS deployment target = 15.1** (current Podfile). v15's NitroIap.podspec requires iOS 15+, so we're aligned. If we ever bump deployment target down (unlikely), this re-introduces the constraint.
+- **Bundle size delta**: react-native-iap v15.2.3 + its Nitro/openiap dependencies add ~800KB to the iOS binary (estimated from pod count delta — 105 pods total, 103 deps). Negligible vs the ~20MB baseline. Android delta will be larger when we ship Android (Google Play Billing brings ~2MB). Acceptable.
+- **TypeScript inference quirk worth documenting**: v15's `QueryField<K>` / `MutationField<K>` generic mapped types over the Nitro-spec arg map don't fully resolve under `moduleResolution: "bundler"` + `customConditions: ["react-native"]` (Expo's default). The `src/index.ts` raw source resolves but trips over `react-native-nitro-modules` side-effect import chains. Net effect: `typeof import("react-native-iap")` reports TS2339 at every named-export access. Hand-rolling a minimal interface for the surface we use is the cheapest workaround and arguably the right architectural decision (we don't actually want a 30-method dependency surface, we want 7 functions with stable types).
+- **v15's bigger architectural shift**: the library is now a Nitro module backed by `openiap` (a cross-platform IAP layer). Future maintenance burden is lower because openiap absorbs StoreKit 2 / Google Play Billing API surface volatility. The migration path to expo-iap (mentioned in the eb0e136 stub comment) is no longer needed — v15 effectively IS the modern Expo-friendly IAP surface, just under the same package name.
+- **Test coverage unchanged**: `iap-flow.ts` and `iap-flow.test.ts` in `@acuity/shared` are pure decision logic (input → outcome enum) — they don't import react-native-iap and don't change with this slice. The 362-test vitest suite still passes.
+
+---
+
 ## [2026-05-07] — Build 32: ROOT CAUSE FIX — mobile config www→apex (308 redirect was stripping Authorization header)
 
 **Requested by:** Jimmy (instrumentation surfaced the actual bug — Vercel's `www.getacuity.io` 308-redirects to apex `getacuity.io`, and the cross-origin redirect drops the Authorization header per Fetch spec)
