@@ -24,7 +24,7 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 **Requested by:** Jimmy (after manual TEST-notification verification was skipped — Apple's web UI doesn't surface a button in current ASC; real notifications will land when actual subs happen)
 **Committed by:** Claude Code
-**Commit hash:** _backfill_
+**Commit hash:** 59b8f2f
 
 ### In plain English (for Keenan)
 
