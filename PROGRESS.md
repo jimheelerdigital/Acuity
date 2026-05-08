@@ -20,6 +20,50 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-08] — Custom Folly-flag plugin: fix arm64 link error from build 32 (F14LinkCheck symbol mismatch)
+
+**Requested by:** Jimmy (build 32 EAS failed at link with `Undefined symbols for architecture arm64: folly::f14::detail::F14LinkCheck<(...)1>::check() Referenced from: libRNReanimated.a CSSAnimationsRegistry.o` — the v15 react-native-iap plugin's Folly patch was incomplete)
+**Committed by:** Claude Code
+**Commit hash:** _backfill_
+
+### In plain English (for Keenan)
+
+The previous build attempt failed at the very last stage — the linker — because two parts of the iOS app disagreed on a low-level Folly setting. The library we re-added (react-native-iap) shipped a partial fix for one half of the problem but left another piece unset, and a different library (RNReanimated, used for animations) ended up compiling against the wrong configuration. The arm64 link failed because one piece said "use SIMD intrinsics" and the linked library said "don't use SIMD intrinsics."
+
+This change adds a tiny custom plugin that completes the configuration: it sets the missing `FOLLY_MOBILE=1` and `FOLLY_USE_LIBCPP=1` flags on every Pod target, matching what React Native expects everywhere. Verified locally with a real `xcodebuild` for iOS Simulator on Apple Silicon (same arm64 architecture as EAS) — build linked cleanly, app binary produced. No EAS credit burned this time.
+
+### Technical changes (for Jimmy)
+
+- **New file** `apps/mobile/plugins/with-folly-mobile-flag.js` (~85 lines including the diagnosis docblock): an Expo config plugin that uses `withPodfile` from `expo/config-plugins` to insert a second post_install patch immediately after the iap plugin's anchor (`post_install do |installer|`). The patch iterates `installer.pods_project.targets` and adds `FOLLY_MOBILE=1` + `FOLLY_USE_LIBCPP=1` to each target's `GCC_PREPROCESSOR_DEFINITIONS` (idempotent — checks for an existing `FOLLY_MOBILE` substring before appending). Includes a sentinel-comment guard so re-running prebuild on an already-patched Podfile is a no-op. Throws if the anchor is missing (so a future Podfile shape change surfaces loudly instead of silently shipping a broken Podfile).
+- `apps/mobile/app.json` plugins[]: appended `"./plugins/with-folly-mobile-flag.js"` AFTER the `react-native-iap` entry so my plugin runs second and finds the iap plugin's anchor in place.
+- Per-slice gates: vitest 362/362, web tsc 89-baseline unchanged, mobile tsc 115-baseline unchanged.
+
+### Verification (load-bearing — done locally before push per Jim's instruction)
+
+- `npx expo prebuild --platform ios --clean --no-install` → `✔ Finished prebuild`
+- Generated Podfile contains BOTH post_install patches (3 sentinels matched: 1 from my plugin's comment, 2 from the iap plugin's block headers) and all 5 FOLLY defines (`FOLLY_NO_CONFIG=1`, `FOLLY_CFG_NO_COROUTINES=1`, `FOLLY_HAS_COROUTINES=0`, `FOLLY_MOBILE=1`, `FOLLY_USE_LIBCPP=1`)
+- `cd ios && pod install` → `Pod installation complete! 103 dependencies, 105 total pods`
+- `xcodebuild -workspace Acuity.xcworkspace -scheme Acuity -configuration Debug -destination 'generic/platform=iOS Simulator' -derivedDataPath /tmp/acuity-build CODE_SIGNING_ALLOWED=NO build` → exit 0, `Acuity.app` produced with both `x86_64` AND `arm64` slices. `nm` on the linked binary returned **zero** `F14LinkCheck` symbols (resolved at link, stripped as cold-path dead code by LTO — exactly the documented intent). Same arm64 architecture as the failing EAS target, same RNReanimated dep, same Folly dep — link succeeded.
+
+### Manual steps needed
+
+- [ ] Jim: `eas build --profile production --platform ios` (build 33). The local xcodebuild repro means we have arm64-link confidence before submitting.
+- [ ] Jim: `eas submit --profile production --platform ios --latest`.
+- [ ] Jim: install build 33 on TestFlight, sign in, confirm home screen renders entries (the auth fix from `e6b4546` should still work).
+- [ ] After auth + IAP-compile-clean confirmed: ship a follow-up slice that strips the build-31 instrumentation (`debugLog()` calls + `/api/_debug/client-log` route + `apps/mobile/lib/debug-log.ts`).
+- [ ] Optional: capture paywall screenshot once `iapEnabled` is flipped on a verification build.
+
+### Notes
+
+- **Root cause was missing Folly defines, not target filtering.** Initial hypothesis (per Jim) was that the iap plugin's patch didn't match RNReanimated. Investigated: the iap plugin DOES iterate `installer.pods_project.targets.each` (no filter), so RNReanimated did receive the patch. The actual issue was incompleteness of the patch — it added `FOLLY_NO_CONFIG=1` + the two coroutine defines but missed `FOLLY_MOBILE=1` + `FOLLY_USE_LIBCPP=1`. Standard RN's `folly_compiler_flags` is `-DFOLLY_NO_CONFIG -DFOLLY_MOBILE=1 -DFOLLY_USE_LIBCPP=1` — three defines together. The iap plugin took half. Pods that already had FOLLY_MOBILE=1 in their podspec's OTHER_CFLAGS (most React-* pods) compiled OK; pods that didn't (RNReanimated, possibly others) compiled with the asymmetric NO_CONFIG-but-no-MOBILE state. Without folly-config.h AND without FOLLY_MOBILE=1, F14IntrinsicsAvailability.h's `!FOLLY_MOBILE` branch flips, intrinsics activate, mode=Simd (1), object file references `F14LinkCheck<1>::check()`. The prebuilt ReactNativeDependencies Folly was compiled with FOLLY_MOBILE=1 → only `F14LinkCheck<None=0>::check()` exists → link fails with the exact symbol from the EAS log.
+- **Why this won't be caught upstream by react-native-iap.** v15's plugin code in `node_modules/react-native-iap/plugin/build/withIAP.js` only adds the three defines (NO_CONFIG, CFG_NO_COROUTINES, HAS_COROUTINES). The plugin author may have intended FOLLY_MOBILE to come from elsewhere in the toolchain, but on Expo SDK 54's prebuilt-RN setup it doesn't reliably reach RNReanimated. We could file an upstream issue + PR to add the missing defines, but waiting on a release would block our shipping. The local plugin pins this at the project level and is a one-line removal once upstream fixes it.
+- **Plugin order matters for the post_install merge.** My plugin's `withPodfile` mutator runs AFTER the iap plugin's because we're listed second in app.json plugins[]. The replace-anchor logic puts my snippet immediately after `post_install do |installer|`, which means my block ends up BEFORE the iap block in the resulting Podfile. Order of FOLLY_* additions doesn't matter — both blocks iterate all targets and add different keys, no overwrite — but the deterministic order makes future grep-based debugging easier.
+- **Build artifacts inspected**: `Acuity.app` came out as a fat binary with x86_64 + arm64. Apple Silicon Macs natively build arm64-slice; both slices linked clean. `lipo -info` confirmed both architectures present. `nm` on the binary searched for `F14LinkCheck` and `F14IntrinsicsMode` symbols — zero matches. LTO eliminates the link-check sentinels at -O0 Debug too because the references are in cold paths (exception-handling rehash).
+- **Why xcodebuild Simulator was the right verification, not Device.** The F14 link check is a compile-flag mismatch, not a code-signing or arch-specific runtime issue. Simulator builds on Apple Silicon use the same arm64 toolchain, same Folly headers, same RNReanimated podspec. If the link error were arm64-host-specific (which it is per the EAS log), an arm64 simulator link is a sufficient repro — and faster (no provisioning profile, no deployment target validation). The build target was `generic/platform=iOS Simulator`, which on Apple Silicon produced a fat binary including arm64. EAS uses linux-amd64 build hosts but cross-compiles for arm64 device target via the iOS toolchain — the relevant fact is the toolchain's arm64 link, which we exercised here.
+- **iapEnabled stays false.** No flag flips in this slice — purely a build-system fix.
+
+---
+
 ## [2026-05-08] — Re-introduce react-native-iap (v15 Nitro) — RCT-Folly issue solved via plugin's with-folly-no-coroutines patch
 
 **Requested by:** Jimmy (after manual TEST-notification verification was skipped — Apple's web UI doesn't surface a button in current ASC; real notifications will land when actual subs happen)

@@ -184,7 +184,8 @@
             "with-folly-no-coroutines": true
           }
         }
-      ]
+      ],
+      "./plugins/with-folly-mobile-flag.js"
     ],
     "experiments": {
       "typedRoutes": true
