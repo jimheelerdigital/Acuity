@@ -24,7 +24,7 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 **Requested by:** Jimmy (build 33 verified working on TestFlight — entries load, backgrounding survives, auth stable. Time to remove the diagnostic surface before App Review.)
 **Committed by:** Claude Code
-**Commit hash:** _backfill_
+**Commit hash:** 866aa4d
 
 ### In plain English (for Keenan)
 
