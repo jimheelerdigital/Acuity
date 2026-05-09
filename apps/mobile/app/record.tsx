@@ -17,6 +17,7 @@ import { ProcessingProgressBar } from "@/components/processing-progress-bar";
 import { useEntryPolling } from "@/hooks/use-entry-polling";
 import { api } from "@/lib/api";
 import { getToken } from "@/lib/auth";
+import { invalidate } from "@/lib/cache";
 
 /**
  * Recording modal. One screen, one state machine. Consolidates the
@@ -116,6 +117,24 @@ export default function RecordScreen() {
   useEffect(() => {
     if (!polledEntryId) return;
     if (poll.status === "complete" || poll.status === "partial") {
+      // Invalidate every cache key that derives from entry state so
+      // the next visit to Insights / Home / Entries refetches fresh
+      // data instead of showing stale cache. Most visible symptom
+      // pre-fix (Keenan TestFlight, 2026-05-09): the Life Matrix
+      // radar on the Insights tab kept showing values from the first
+      // entry and never updated. The cache module's stale-while-
+      // revalidate pattern with 30s TTL meant a quick tab-switch
+      // post-recording landed on cached data; user thought the
+      // radar was frozen.
+      //
+      // /api/weekly is intentionally NOT invalidated — weekly reports
+      // require explicit generation; single-entry events don't change
+      // them.
+      invalidate("/api/lifemap");
+      invalidate("/api/lifemap/trend");
+      invalidate("/api/entries");
+      invalidate("/api/home");
+      invalidate("/api/user/progression");
       // Route to the entry detail screen. router.replace so a back
       // swipe from detail goes to the dashboard, not back to a
       // post-record spinner.

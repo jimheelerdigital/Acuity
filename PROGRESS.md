@@ -20,6 +20,44 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-09] — Slice B (Keenan TestFlight bugs): Life Matrix auto-refreshes after each recording
+
+**Requested by:** Jimmy (Slice B of 3 bundling Keenan's TestFlight bugs; this fixes Bug 3 — Life Matrix radar showing initial values from first entry and never refreshing after subsequent recordings)
+**Committed by:** Claude Code
+**Commit hash:** _backfill_
+
+### In plain English (for Keenan)
+
+You'd record an entry and the Life Matrix radar wouldn't budge — it kept showing values from your first recording. Cause: the app caches data for 30 seconds to avoid showing a loading spinner every time you switch tabs. If you recorded a new entry and tabbed to Insights within those 30 seconds, you'd see the cached pre-recording values. The fix tells the cache to throw away the entry-derived data the moment a recording finishes processing, so when you tab to Insights, the radar refetches and shows the updated picture.
+
+### Technical changes (for Jimmy)
+
+- `apps/mobile/app/record.tsx`:
+  - Imported `invalidate` from `@/lib/cache` (the existing cache primitive — already used by entry/[id].tsx for the same pattern after entry edits).
+  - In the polling-completion effect (the same `useEffect` that routes to `/entry/[id]` on `poll.status === "complete" || "partial"`), call `invalidate()` for every cache key derived from entry state, BEFORE the `router.replace`. This empties the in-memory cache for those paths; the next visit to any tab using one of them refetches from the server instead of serving 30s-stale data.
+  - Keys invalidated: `/api/lifemap`, `/api/lifemap/trend`, `/api/entries`, `/api/home`, `/api/user/progression`. Deliberately NOT invalidating `/api/weekly` — weekly reports require explicit generation; single-entry events don't change them.
+- Per-slice gates: vitest 367/367, web tsc 89-baseline unchanged, mobile tsc 115-baseline unchanged.
+
+### Manual steps needed
+
+- [ ] Slice C (multiple reminders) lands next, requires Keenan's prisma db push from home network.
+- [ ] After all 3 slices: EAS build 35.
+
+### Notes
+
+- **Why invalidate the entire keys (not just mark stale):** the cache module exposes `invalidate(key)` which deletes the entry, AND `isStale(key)` which checks TTL. Marking stale would still serve cached data on first paint (stale-while-revalidate pattern). Deleting forces a fresh fetch with a brief loader on the next tab visit. For a just-recorded entry the user EXPECTS fresh data; the fresh fetch is the correct UX, even at the cost of a sub-second loader.
+- **Why these 5 keys specifically:**
+  - `/api/lifemap` — radar data, the user's direct complaint
+  - `/api/lifemap/trend` — trend view on same screen, also derives from entry state
+  - `/api/entries` — entry list (insights, home, entries tabs all share this string key — invalidating one path-key clears all consumers)
+  - `/api/home` — home payload includes recent entries summary
+  - `/api/user/progression` — unlock progression depends on entry count (insights + home both consume)
+- **Cache module observation:** `apps/mobile/lib/cache.ts` uses the API path AS the cache key — `getCached("/api/lifemap")` means the key string IS the path. Each unique path has at most one cache entry; invalidating "/api/entries" clears the data for every screen that reads from that path. This collision-by-design simplifies the invalidation surface.
+- **Race window:** there's a brief window between `poll.status === "complete"` firing and the user actually tabbing back to Insights. If during that window something fetches `/api/lifemap` (e.g., a different screen has it in scope), the cache is repopulated before the user sees Insights. In practice the user's flow goes record → entry detail → tabs → Insights, and only the entry detail screen is in scope between them. Entry detail doesn't fetch `/api/lifemap`. Safe.
+- **iapEnabled stays true.** Mobile-only invalidation logic, no flag flips.
+
+---
+
 ## [2026-05-09] — Slice A (Keenan TestFlight bugs): recording cap 120s→300s + light-mode contrast on processing-progress-bar
 
 **Requested by:** Jimmy (bundling Keenan's 4 TestFlight bugs into one EAS build alongside the IAP fix; this slice ships bugs 1 + 2)
