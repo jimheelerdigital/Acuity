@@ -24,7 +24,7 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 **Requested by:** Jimmy (Slice C of 3 bundling Keenan's TestFlight bugs; this fixes Bug 4 — single-reminder limitation surfaced as a common ask. Confirmed at-home tonight to run prisma db push end-to-end after the slice lands.)
 **Committed by:** Claude Code
-**Commit hash:** _backfill_
+**Commit hash:** f4ce37d
 
 ### In plain English (for Keenan)
 
