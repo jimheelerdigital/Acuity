@@ -24,7 +24,7 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 **Requested by:** Jimmy (build 34 paywall test surfaced two bugs — purchase succeeded on Apple's side but app didn't transition to PRO, and a red error banner persisted on the paywall after Apple's "You're all set" confirmation; launch blocker before App Review)
 **Committed by:** Claude Code
-**Commit hash:** _backfill_
+**Commit hash:** b4e779d
 
 ### In plain English (for Keenan)
 
