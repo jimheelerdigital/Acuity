@@ -108,6 +108,15 @@ export default function SubscribeScreen() {
         receipt: result.receipt,
       });
       if (verify.kind === "success" || verify.kind === "idempotent-success") {
+        // Defensive clear: even though the entry-of-handlePurchase
+        // setErrorMsg(null) at line ~96 already cleared any prior
+        // error before this attempt, clearing on success too avoids
+        // any future code path that might set an error mid-purchase
+        // (e.g., a transient retry inside verifyAndFinish) from
+        // bleeding through to the post-success UI. The user's
+        // build-34 paywall report flagged a stuck red banner; this
+        // belt-and-suspenders close-out is part of the fix.
+        setErrorMsg(null);
         // Refresh user state so the dashboard reflects PRO.
         await refresh();
         Alert.alert(

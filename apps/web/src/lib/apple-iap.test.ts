@@ -1,9 +1,11 @@
+import { generateKeyPairSync } from "node:crypto";
 import { describe, expect, it } from "vitest";
 
 import {
   ALLOWED_PRODUCT_IDS,
   decideNotificationAction,
   decideReceiptVerify,
+  fetchTransactionInfo,
   type AppleTransactionInfo,
   type UserStateForNotification,
   type UserStateForVerify,
@@ -341,5 +343,147 @@ describe("decideNotificationAction", () => {
       expect(d.action).toBe("set-status");
       if (d.action === "set-status") expect(d.nextStatus).toBe("PRO");
     });
+  });
+});
+
+// ─── fetchTransactionInfo — Production→Sandbox fallback ──────────
+//
+// Locks in the 2026-05-09 fix: production returning 401 now triggers
+// a sandbox retry (was: 404-only). Build-34's TestFlight purchase
+// failed because Apple's production endpoint returns 401 for
+// sandbox-only transactionIds, and the pre-fix code bailed without
+// retrying sandbox. These tests use a real generated EC P-256 key
+// for JWT signing (so signAppStoreConnectJwt completes) and a mock
+// `fetchImpl` to simulate Apple's response codes — Apple's actual
+// JWT-decode + cert chain are not exercised because we only test
+// the failure-path control flow.
+
+function generateTestJwtConfig() {
+  const { privateKey } = generateKeyPairSync("ec", { namedCurve: "P-256" });
+  return {
+    keyId: "TESTKEYID01",
+    issuerId: "00000000-0000-0000-0000-000000000000",
+    privateKeyPem: privateKey
+      .export({ type: "pkcs8", format: "pem" })
+      .toString(),
+  };
+}
+
+function mockResponse(status: number, body: object = {}): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+describe("fetchTransactionInfo — environment fallback", () => {
+  const config = generateTestJwtConfig();
+  const txId = "2000000001";
+
+  it("Production 404 → falls back to Sandbox (legacy behavior preserved)", async () => {
+    const calls: string[] = [];
+    const fetchImpl = (url: string | URL) => {
+      const u = String(url);
+      calls.push(u);
+      if (u.includes("api.storekit.itunes.apple.com")) {
+        return Promise.resolve(mockResponse(404));
+      }
+      // Sandbox 200 with malformed signedTransactionInfo to short-
+      // circuit the JWS decode path; we only verify that sandbox
+      // WAS called.
+      return Promise.resolve(
+        mockResponse(200, { signedTransactionInfo: "not-a-real-jws" })
+      );
+    };
+    const result = await fetchTransactionInfo(
+      txId,
+      config,
+      fetchImpl as unknown as typeof fetch
+    );
+    expect(calls).toHaveLength(2);
+    expect(calls[0]).toContain("api.storekit.itunes.apple.com");
+    expect(calls[1]).toContain("api.storekit-sandbox.itunes.apple.com");
+    // The decode will fail, but that's fine — we just verified the
+    // fallback path was taken.
+    expect(result.ok).toBe(false);
+  });
+
+  it("Production 401 → falls back to Sandbox (NEW: 2026-05-09 fix for build-34 TestFlight)", async () => {
+    const calls: string[] = [];
+    const fetchImpl = (url: string | URL) => {
+      const u = String(url);
+      calls.push(u);
+      if (u.includes("api.storekit.itunes.apple.com")) {
+        return Promise.resolve(mockResponse(401));
+      }
+      return Promise.resolve(
+        mockResponse(200, { signedTransactionInfo: "not-a-real-jws" })
+      );
+    };
+    const result = await fetchTransactionInfo(
+      txId,
+      config,
+      fetchImpl as unknown as typeof fetch
+    );
+    expect(calls).toHaveLength(2);
+    expect(calls[1]).toContain("api.storekit-sandbox.itunes.apple.com");
+    expect(result.ok).toBe(false); // JWS decode fails on the stub
+  });
+
+  it("Production 401 + Sandbox 401 → returns combined diagnostic (genuine credentials issue)", async () => {
+    const calls: string[] = [];
+    const fetchImpl = (url: string | URL) => {
+      calls.push(String(url));
+      return Promise.resolve(mockResponse(401));
+    };
+    const result = await fetchTransactionInfo(
+      txId,
+      config,
+      fetchImpl as unknown as typeof fetch
+    );
+    expect(calls).toHaveLength(2);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.code).toBe("APPLE_AUTH_FAILED");
+      expect(result.diagnostic).toContain("Production:");
+      expect(result.diagnostic).toContain("Sandbox:");
+    }
+  });
+
+  it("Production 500 → does NOT fall back to Sandbox (HTTP error, not env-related)", async () => {
+    const calls: string[] = [];
+    const fetchImpl = (url: string | URL) => {
+      calls.push(String(url));
+      return Promise.resolve(mockResponse(500));
+    };
+    const result = await fetchTransactionInfo(
+      txId,
+      config,
+      fetchImpl as unknown as typeof fetch
+    );
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toContain("api.storekit.itunes.apple.com");
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.code).toBe("APPLE_HTTP_ERROR");
+    }
+  });
+
+  it("Production network error → does NOT fall back to Sandbox", async () => {
+    const calls: string[] = [];
+    const fetchImpl = (url: string | URL) => {
+      calls.push(String(url));
+      return Promise.reject(new Error("ECONNRESET"));
+    };
+    const result = await fetchTransactionInfo(
+      txId,
+      config,
+      fetchImpl as unknown as typeof fetch
+    );
+    expect(calls).toHaveLength(1);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.code).toBe("APPLE_HTTP_ERROR");
+    }
   });
 });

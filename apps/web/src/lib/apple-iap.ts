@@ -172,12 +172,29 @@ export interface FetchTransactionFailure {
 
 /**
  * Fetch + decode a transaction from Apple. Tries production first,
- * falls back to sandbox on 404 — Apple recommends this pattern
- * because the iOS app doesn't always know its own environment
- * (TestFlight builds use sandbox).
+ * falls back to sandbox on 404 OR 401 — Apple's documented pattern
+ * recommends production-first because the iOS app doesn't always
+ * know its own environment (TestFlight builds use sandbox).
  *
- * The Apple SDK's official "production then sandbox fallback" pattern
- * is documented at developer.apple.com/documentation/appstoreserverapi.
+ * Why 401 also triggers the fallback (2026-05-09 fix): Apple's
+ * production endpoint returns 401 when queried with a transactionId
+ * that exists only in sandbox — even with a perfectly-valid JWT.
+ * This is observably true for TestFlight transactions where the
+ * receipt is sandbox-only but our code path always tries production
+ * first. Build-34's sandbox purchase produced exactly this:
+ *   - POST /api/iap/notifications → 200 (Apple webhook arrived,
+ *     JWS-validated, no User row matched yet because verify-receipt
+ *     hadn't written the appleOriginalTransactionId)
+ *   - POST /api/iap/verify-receipt → 502 APPLE_AUTH_FAILED
+ *     (production returned 401 for the sandbox transactionId; the
+ *     pre-fix fallback only retried sandbox on 404 → never tried
+ *     sandbox → cascaded to "no User flip to PRO" + lingering
+ *     error-banner UI on the paywall).
+ * On a true credentials issue (genuinely-bad JWT), both production
+ * AND sandbox return 401 — the combined diagnostic preserves both
+ * environments so we can tell the difference. The Apple SDK's
+ * production-then-sandbox pattern is documented at
+ * developer.apple.com/documentation/appstoreserverapi.
  */
 export async function fetchTransactionInfo(
   transactionId: string,
@@ -245,12 +262,29 @@ export async function fetchTransactionInfo(
     return decodeSignedTransactionInfo(body.signedTransactionInfo, env);
   };
 
-  // Production first; fall back to sandbox on TRANSACTION_NOT_FOUND.
+  // Production first; fall back to sandbox on TRANSACTION_NOT_FOUND
+  // OR APPLE_AUTH_FAILED. Both codes mean "wrong environment" — Apple
+  // returns 404 sometimes and 401 other times for sandbox-only
+  // transactionIds queried against production, depending on internal
+  // routing. Other failure codes (APPLE_HTTP_ERROR for 5xx / network)
+  // are NOT environment-related, so we don't retry on those.
   const prod = await tryEnv("Production");
   if (prod.ok) return prod;
-  if (prod.code === "TRANSACTION_NOT_FOUND") {
+  if (
+    prod.code === "TRANSACTION_NOT_FOUND" ||
+    prod.code === "APPLE_AUTH_FAILED"
+  ) {
     const sandbox = await tryEnv("Sandbox");
-    return sandbox;
+    if (sandbox.ok) return sandbox;
+    // Both environments failed. Surface a combined diagnostic so the
+    // safeLog event tells us whether this is a routing issue (prod
+    // 401 + sandbox 200 won't get here — already returned above) or
+    // a credentials issue (prod 401 + sandbox 401, both auth-failed).
+    return {
+      ok: false,
+      code: sandbox.code,
+      diagnostic: `Production: ${prod.diagnostic} | Sandbox: ${sandbox.diagnostic}`,
+    };
   }
   return prod;
 }

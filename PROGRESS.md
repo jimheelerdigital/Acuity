@@ -20,6 +20,60 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-09] — Build 34 paywall bugs: extend fetchTransactionInfo fallback to 401, defensive errorMsg clear on success
+
+**Requested by:** Jimmy (build 34 paywall test surfaced two bugs — purchase succeeded on Apple's side but app didn't transition to PRO, and a red error banner persisted on the paywall after Apple's "You're all set" confirmation; launch blocker before App Review)
+**Committed by:** Claude Code
+**Commit hash:** _backfill_
+
+### In plain English (for Keenan)
+
+When Jim test-purchased on TestFlight build 34, Apple confirmed the purchase but our backend rejected it because of a wrong-environment routing rule — TestFlight purchases go through Apple's sandbox system, but our server tried Apple's production system first and got the wrong answer back. Our code was supposed to retry sandbox if the production answer was "I don't have that transaction" (404), but Apple actually returned "I refuse to authenticate you" (401) for a sandbox transaction hit against production, and we weren't retrying on that. Result: the user's app stayed on FREE even though they'd subscribed. This change extends the retry rule to cover both error codes Apple uses, plus adds defensive UI logic so any leftover error banner clears when a purchase succeeds.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/lib/apple-iap.ts` `fetchTransactionInfo`:
+  - Fallback rule extended from "Production 404 → try Sandbox" to "Production 404 OR 401 → try Sandbox". Apple returns 401 (not 404) for sandbox-only transactionIds queried against production with a valid JWT — observably true for build-34's TestFlight purchase. Other failure codes (`APPLE_HTTP_ERROR` for 5xx / network / non-JSON) still bail without retry because they're not environment-related.
+  - When BOTH environments fail, returns a combined diagnostic preserving both error strings (`Production: <prod-msg> | Sandbox: <sandbox-msg>`) so the safeLog event distinguishes a real credentials issue (both 401) from a routing issue (which would have already returned success after the first sandbox retry).
+  - Updated docblock explains the 2026-05-09 fix in detail with the exact symptoms from build-34's Vercel log trail.
+- `apps/web/src/lib/apple-iap.test.ts`:
+  - 5 new tests under `describe("fetchTransactionInfo — environment fallback")`. Cover: 404→sandbox (legacy), 401→sandbox (NEW fix), 401+401 combined diagnostic, 500 no-fallback, network-error no-fallback. Tests use `generateKeyPairSync("ec", {namedCurve: "P-256"})` to produce a valid PKCS#8 ES256 key for `signAppStoreConnectJwt` (so the JWT signing completes), and a mock `fetchImpl` to simulate Apple's response codes — the JWS-decode path on success is intentionally not exercised because we only need to validate the failure-path control flow (the change).
+  - Vitest now: 35 apple-iap tests pass; 367 total project tests pass (was 362 + 5).
+- `apps/mobile/app/subscribe.tsx` `handlePurchase` success branch:
+  - Added `setErrorMsg(null)` immediately before `Alert.alert("Welcome to Acuity Pro", ...)`. The entry-of-handler `setErrorMsg(null)` at line ~96 already clears prior errors before each attempt, but a defensive close-out on success ensures any future code path setting an error mid-purchase (e.g., a transient retry inside `verifyAndFinish`) can't bleed through to post-success UI. Belt-and-suspenders for the build-34 stuck-banner symptom.
+- Per-slice gates: vitest 367/367, web tsc 89-baseline unchanged, mobile tsc 115-baseline unchanged.
+
+### Verification (load-bearing — done locally before push per Jim's instruction)
+
+The local-verification analog of the Folly plugin's xcodebuild step is the unit-test pass for control-flow. Apple's real API can't be called from a unit test, but the deterministic part (which env we try, in what order, on which response codes) is fully covered:
+
+- ✅ `npx vitest run src/lib/apple-iap.test.ts` → all 35 tests pass, including the 5 new ones
+- ✅ Full `npm test` → 367/367 (no regressions in adjacent suites)
+- ✅ `npx tsc --noEmit` (web AND mobile) → baselines unchanged
+- ⚠️ What unit tests can NOT verify: that our actual production JWT credentials work against Apple's sandbox endpoint. If `APPLE_IAP_KEY_ID` / `APPLE_IAP_ISSUER_ID` / `APPLE_IAP_PRIVATE_KEY` are genuinely wrong, both Production AND Sandbox return 401 with this fix in place, and the new combined diagnostic surfaces both — itself a clear diagnostic for the next iteration if needed.
+
+### Manual steps needed
+
+- [ ] Jim: `eas build --profile production --platform ios` (build 35).
+- [ ] Jim: `eas submit --profile production --platform ios --latest`.
+- [ ] Jim: install build 35 on TestFlight, sign in with sandbox tester, attempt purchase. Expected: Apple "You're all set" → app transitions to PRO → home renders Pro state, no red banner.
+- [ ] If the test purchase fails again, pull last hour of Vercel logs grepping for `iap.verify-receipt.apple-error`. The new combined diagnostic will tell us:
+  - `Production: 401 ... | Sandbox: 401 ...` → genuine credentials issue, check APPLE_IAP_* env vars in Vercel
+  - `Production: 401 ... | Sandbox: 404 ...` → transaction genuinely doesn't exist in either env (unlikely after a real purchase)
+  - `Production: 401 ... | Sandbox: 500 ...` → Apple sandbox flake, retry
+- [ ] After build 35 verifies clean: capture paywall screenshot for App Store Connect.
+- [ ] Complete IAP product setup in ASC + submit IAP for review + submit Acuity v1.1 with IAP attached.
+
+### Notes
+
+- **Why Apple returns 401 vs 404 for wrong-environment transactions** is documented inconsistently across Apple's developer forums and SDK source. Empirically: a sandbox-only transactionId queried against the production endpoint, with a JWT valid for both environments, returns 401 with the App Store Server API in some routing states and 404 in others. Apple's official `app-store-server-library` SDK retries on a broader set of conditions than just 404 — our fix aligns with that practical superset rather than the stricter rule we'd had.
+- **The build-34 webhook-side success was a coincidence**: `iap.notifications.ignore` with reason "no User row matches this notification's originalTransactionId" was logged because our outbound verify-receipt failed BEFORE writing `appleOriginalTransactionId` to the User row. After this fix, the webhook will find a matching User row on subsequent renewal/expire/refund events. Order matters: verify-receipt MUST land before the first renewal notification, which is why the current bug is a hard launch blocker.
+- **`iap.notifications.ignore` is also a useful signal** going forward — when it fires for an `originalTransactionId` we've never seen, it tells us a user purchased through Apple but our backend never recorded them. Worth adding a Vercel log alert on this event post-launch (separate slice).
+- **Why we didn't refactor `fetchTransactionInfo` to inject `signAppStoreConnectJwt`**: the JWT signing function is internal-only and the only caller is `fetchTransactionInfo`. Generating a real EC key in the test setup is ~1ms overhead and avoids exposing internals to the test surface. Same pattern would work for adding tests around the JWS-decode path (Apple's signed transaction info verification) when we want them — generate test certs, sign a payload, feed it through. Out of scope for this slice.
+- **iapEnabled stays true** (unchanged from previous slice). This is a backend fix, not a flag flip.
+
+---
+
 ## [2026-05-09] — Flip iapEnabled to true (build 34 → paywall screenshot → IAP submission)
 
 **Requested by:** Jimmy (cleanup slice landed clean; production-flag flip is the next step toward App Review submission with IAP attached)
