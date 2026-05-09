@@ -24,7 +24,7 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 **Requested by:** Jimmy (bundling Keenan's 4 TestFlight bugs into one EAS build alongside the IAP fix; this slice ships bugs 1 + 2)
 **Committed by:** Claude Code
-**Commit hash:** _backfill_
+**Commit hash:** dd32eef
 
 ### In plain English (for Keenan)
 
