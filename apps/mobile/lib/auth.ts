@@ -70,6 +70,20 @@ export type User = {
   notificationTime?: string;
   notificationDays?: number[];
   notificationsEnabled?: boolean;
+  // Multi-reminder list (Slice C, 2026-05-09). When present + non-
+  // empty, the Reminders settings screen renders these as the
+  // authoritative list. Legacy single-time fields above are kept in
+  // sync via server-side dual-write and used as a fallback for older
+  // payloads (lazy backfill on first GET creates a row from them).
+  reminders?: Reminder[];
+};
+
+export type Reminder = {
+  id: string;
+  time: string;          // HH:MM local
+  daysActive: number[];  // 0=Sunday..6=Saturday
+  enabled: boolean;      // per-reminder toggle (master is User.notificationsEnabled)
+  sortOrder: number;
 };
 
 // ─── Secure storage ────────────────────────────────────────────────

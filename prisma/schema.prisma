@@ -227,6 +227,13 @@ model User {
   referralConversionsAsReferred ReferralConversion[] @relation("ReferredConversions")
   dataExports                   DataExport[]
   healthSnapshots               HealthSnapshot[]
+  // Multi-reminder support (2026-05-09 Slice C). Replaces the single-
+  // time `notificationTime` + `notificationDays` + `notificationsEnabled`
+  // pattern. Legacy fields kept for backwards compat with not-yet-
+  // updated mobile clients; server-side dual-writes keep them in sync.
+  // After the next ~2 mobile-build cycles, the legacy fields can be
+  // dropped in a follow-up cleanup slice.
+  reminders                     UserReminder[]
   // Apple Health connection state. True once the user accepts the
   // iOS HealthKit permission prompt; cleared when they revoke in
   // Settings or toggle off from Profile → Connected apps. Null on
@@ -453,6 +460,49 @@ model UserOnboarding {
   progressionChecklist   Json?
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
+}
+
+// Multi-reminder support (2026-05-09 Slice C). One row per reminder
+// the user has configured. Replaces the single User.notificationTime
+// + notificationDays + notificationsEnabled fields, which remain on
+// User as legacy fallback while older mobile builds cycle out (the
+// server dual-writes both shapes during transition).
+//
+// Backfill: every existing User gets one row created from their
+// legacy fields by `apps/web/scripts/backfill-user-reminders.ts`,
+// run once after `prisma db push`. Lazy backfill on first GET also
+// works as a safety net for users not covered by the script.
+//
+// Server-side cap: 5 reminders per user (enforced in PUT
+// /api/account/reminders). More than that is symptomatic of using
+// reminders as a task manager; raise later if there's evidence
+// users want it.
+model UserReminder {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // HH:MM in the user's local timezone. Same format as the legacy
+  // User.notificationTime field.
+  time       String
+  // 0=Sunday..6=Saturday. Active days for THIS reminder (per-reminder
+  // schedule, NOT shared across all reminders). Empty array = dormant
+  // — keeps the reminder configured but stops it firing without
+  // forcing the user to delete and recreate.
+  daysActive Int[]    @default([0, 1, 2, 3, 4, 5, 6])
+  // Per-reminder enable. Master enable still lives on User (single
+  // notificationsEnabled). This lets users keep multiple reminders
+  // configured but toggle individual ones off without losing the
+  // configuration.
+  enabled    Boolean  @default(true)
+  // Display order. Stored explicitly so the UI can show reminders in
+  // creation order (or user-customized order) rather than sorted by
+  // time-of-day, which would shuffle "morning standup" and "evening
+  // reflection" awkwardly.
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([userId])
 }
 
 model Entry {

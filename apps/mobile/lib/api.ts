@@ -92,6 +92,13 @@ export const api = {
       ...opts,
     }),
 
+  put: <T>(path: string, body: unknown, opts?: RequestInit) =>
+    request<T>(path, {
+      method: "PUT",
+      body: JSON.stringify(body),
+      ...opts,
+    }),
+
   del: <T>(path: string, opts?: RequestInit) =>
     request<T>(path, { method: "DELETE", ...opts }, { hasBody: false }),
 

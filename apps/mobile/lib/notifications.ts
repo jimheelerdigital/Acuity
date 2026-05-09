@@ -203,6 +203,107 @@ export async function applyReminderSchedule({
 }
 
 /**
+ * Multi-reminder scheduler (Slice C, 2026-05-09). Cancel-then-
+ * reschedule a list of N reminders, each with its own time + days +
+ * enabled flag. Master `enabled` cuts the entire list.
+ *
+ * Identifier scheme: `acuity:reminder:<reminderId>:<weekday>`. Each
+ * reminder gets up to 7 scheduled OS triggers (one per active
+ * weekday). The shared ID_PREFIX means `cancelAllReminders` still
+ * clears every identifier we own — single-time AND multi-reminder
+ * flows share the cancel surface.
+ *
+ * Returns a per-reminder breakdown so the caller can show "3
+ * reminders scheduled" etc. and surface permission state cleanly.
+ */
+export type MultiReminderInput = {
+  id: string;
+  time: string; // "HH:MM"
+  daysActive: number[]; // 0..6, Sun=0
+  enabled: boolean;
+};
+
+export type MultiScheduleOutcome =
+  | { kind: "scheduled"; totalTriggers: number; remindersScheduled: number }
+  | { kind: "disabled" }
+  | { kind: "permission-denied" };
+
+export async function applyMultiReminderSchedule({
+  masterEnabled,
+  reminders,
+}: {
+  masterEnabled: boolean;
+  reminders: MultiReminderInput[];
+}): Promise<MultiScheduleOutcome> {
+  await cancelAllReminders();
+
+  if (!masterEnabled || reminders.length === 0) {
+    return { kind: "disabled" };
+  }
+
+  // Pre-filter reminders that contribute zero triggers — disabled OR
+  // empty daysActive. If after filtering nothing remains, treat the
+  // whole save as a disable so the UI surfaces "no active reminders"
+  // rather than "scheduled 0".
+  const active = reminders.filter(
+    (r) => r.enabled && r.daysActive.length > 0
+  );
+  if (active.length === 0) {
+    return { kind: "disabled" };
+  }
+
+  const status = await getPermissionStatus();
+  if (status !== "granted") {
+    return { kind: "permission-denied" };
+  }
+
+  const weekOfYear = weekOfYearNow();
+
+  let totalTriggers = 0;
+  await Promise.all(
+    active.flatMap((reminder) => {
+      const [hourStr, minuteStr] = reminder.time.split(":");
+      const hour = Number(hourStr);
+      const minute = Number(minuteStr);
+      if (!Number.isFinite(hour) || !Number.isFinite(minute)) {
+        // Skip a reminder with malformed time rather than failing the
+        // whole batch. Server-side validation should prevent this,
+        // but defensive on client too.
+        return [];
+      }
+      return reminder.daysActive.map((weekday) => {
+        totalTriggers += 1;
+        return Notifications.scheduleNotificationAsync({
+          identifier: `${ID_PREFIX}${reminder.id}:${weekday}`,
+          content: {
+            title: "Acuity",
+            body: pickBody(weekday, weekOfYear),
+            sound: "default",
+            data: { deepLink: "acuity://", reminderId: reminder.id },
+          },
+          trigger: {
+            type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
+            // expo-notifications uses 1-based Sunday=1; our API uses
+            // 0..6 with Sun=0. Map at the boundary (same as the
+            // single-time scheduler above).
+            weekday: weekday + 1,
+            hour,
+            minute,
+            repeats: true,
+          },
+        });
+      });
+    })
+  );
+
+  return {
+    kind: "scheduled",
+    totalTriggers,
+    remindersScheduled: active.length,
+  };
+}
+
+/**
  * Debug helper — returns the identifiers of every reminder we have
  * scheduled right now. Not used in production code; handy from the
  * dev console or a future "Send test reminder" affordance.

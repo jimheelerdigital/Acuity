@@ -58,6 +58,21 @@ export async function GET(req: NextRequest) {
       notificationTime: true,
       notificationDays: true,
       notificationsEnabled: true,
+      // Multi-reminder list (Slice C, 2026-05-09). Mobile reads this
+      // to render the Reminders settings screen with N reminders.
+      // Empty array on accounts that haven't opted into reminders;
+      // legacy single-time fields above kept in sync via dual-write
+      // for not-yet-updated clients.
+      reminders: {
+        select: {
+          id: true,
+          time: true,
+          daysActive: true,
+          enabled: true,
+          sortOrder: true,
+        },
+        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+      },
       weeklyEmailEnabled: true,
       monthlyEmailEnabled: true,
       referralCode: true,

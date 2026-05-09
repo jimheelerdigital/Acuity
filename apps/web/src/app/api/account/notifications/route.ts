@@ -1,16 +1,22 @@
 /**
  * POST /api/account/notifications
  *
- * Update the signed-in user's reminder preferences. Same validation as
- * the onboarding step 9 write, just split into its own route because
- * /account posts outside of the onboarding flow and the onboarding
- * endpoint blocks writes once completedAt is set.
+ * Update the signed-in user's reminder preferences (single-reminder
+ * shape). Kept for backwards compat with mobile builds before Slice C
+ * (2026-05-09 multi-reminder support).
  *
  * Body: {
  *   notificationTime?: "HH:MM",
  *   notificationDays?: number[] (0..6),
  *   notificationsEnabled?: boolean
  * }
+ *
+ * Slice C dual-write: when this endpoint updates the legacy User.*
+ * fields, it ALSO upserts the user's primary UserReminder row
+ * (sortOrder=0) so the new model stays in sync. Older clients keep
+ * working; newer clients see consistent state. After all clients
+ * migrate to /api/account/reminders, this endpoint becomes a thin
+ * shim and can be removed in a follow-up cleanup.
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -61,6 +67,54 @@ export async function POST(req: NextRequest) {
       notificationsEnabled: true,
     },
   });
+
+  // Slice C dual-write: keep the user's primary UserReminder
+  // (sortOrder=0) in sync with the legacy fields. If they have no
+  // reminders yet, create one. If they have one, update it. If they
+  // have multiple, only the primary is touched — the secondary
+  // reminders managed via /api/account/reminders stay as-is. This is
+  // the "single-time clients keep working" path; multi-reminder
+  // clients use /api/account/reminders directly.
+  try {
+    const primary = await prisma.userReminder.findFirst({
+      where: { userId },
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+    });
+    if (primary) {
+      await prisma.userReminder.update({
+        where: { id: primary.id },
+        data: {
+          time: user.notificationTime,
+          daysActive: user.notificationDays,
+          enabled: user.notificationsEnabled,
+        },
+      });
+    } else if (
+      user.notificationsEnabled ||
+      user.notificationTime !== "21:00"
+    ) {
+      // Mirror the conservative-create policy from the bulk backfill
+      // and lazy-GET — only materialize a UserReminder row when the
+      // user has actually engaged with the feature.
+      await prisma.userReminder.create({
+        data: {
+          userId,
+          time: user.notificationTime,
+          daysActive: user.notificationDays,
+          enabled: user.notificationsEnabled,
+          sortOrder: 0,
+        },
+      });
+    }
+  } catch (err) {
+    // Dual-write is best-effort. The legacy fields ARE the source of
+    // truth for old clients; if the new-model write fails we don't
+    // want to break those callers. Surfaced via console for review.
+    console.warn(
+      "[account/notifications] dual-write to UserReminder failed:",
+      err
+    );
+  }
 
   return NextResponse.json({ ok: true, user });
 }

@@ -231,6 +231,64 @@ export async function POST(req: NextRequest) {
       : Promise.resolve(),
   ]);
 
+  // Slice C dual-write (2026-05-09): if the onboarding write touched
+  // notificationTime/Days/Enabled, mirror the values into the user's
+  // primary UserReminder row so the multi-reminder model stays in
+  // sync. Onboarding step 9 still writes single-time; user can add
+  // more reminders later via the settings screen. Best-effort —
+  // legacy fields ARE the source of truth at onboarding time, so a
+  // dual-write failure logs but doesn't fail onboarding.
+  const touchedReminderFields =
+    "notificationTime" in userUpdates ||
+    "notificationDays" in userUpdates ||
+    "notificationsEnabled" in userUpdates;
+  if (touchedReminderFields) {
+    try {
+      const userAfter = await prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          notificationTime: true,
+          notificationDays: true,
+          notificationsEnabled: true,
+        },
+      });
+      if (userAfter) {
+        const primary = await prisma.userReminder.findFirst({
+          where: { userId },
+          orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+        });
+        if (primary) {
+          await prisma.userReminder.update({
+            where: { id: primary.id },
+            data: {
+              time: userAfter.notificationTime,
+              daysActive: userAfter.notificationDays,
+              enabled: userAfter.notificationsEnabled,
+            },
+          });
+        } else if (
+          userAfter.notificationsEnabled ||
+          userAfter.notificationTime !== "21:00"
+        ) {
+          await prisma.userReminder.create({
+            data: {
+              userId,
+              time: userAfter.notificationTime,
+              daysActive: userAfter.notificationDays,
+              enabled: userAfter.notificationsEnabled,
+              sortOrder: 0,
+            },
+          });
+        }
+      }
+    } catch (err) {
+      console.warn(
+        "[onboarding/update] dual-write to UserReminder failed:",
+        err
+      );
+    }
+  }
+
   return NextResponse.json({ ok: true });
 }
 

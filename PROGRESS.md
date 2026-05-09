@@ -20,6 +20,53 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-09] — Slice C (Keenan TestFlight bugs): Multiple reminders — UserReminder sub-model + N-reminder UI
+
+**Requested by:** Jimmy (Slice C of 3 bundling Keenan's TestFlight bugs; this fixes Bug 4 — single-reminder limitation surfaced as a common ask. Confirmed at-home tonight to run prisma db push end-to-end after the slice lands.)
+**Committed by:** Claude Code
+**Commit hash:** _backfill_
+
+### In plain English (for Keenan)
+
+Up until now you could only set ONE reminder time. Now you can set up to 5 — each with its own time AND its own days-of-week pattern. So "morning standup at 9am Mon-Fri" plus "evening reflection at 9pm daily" is one config. The Reminders settings screen got a redesign: each reminder is its own card with a time picker, day toggles, and an enable switch. Add/remove buttons let you manage the list. The master "Reminders on/off" toggle at the top still cuts everything (matches user expectation that one switch should silence the app).
+
+Onboarding stays single-time — we ask for one reminder during signup and let users add more later in settings. That keeps the onboarding flow short for new users while still surfacing the multi-reminder feature post-onboarding.
+
+### Technical changes (for Jimmy)
+
+- **Schema** (`prisma/schema.prisma`): new `UserReminder` model + `reminders UserReminder[]` relation on User. Legacy `notificationTime` / `notificationDays` / `notificationsEnabled` fields KEPT on User as backwards-compat fallback while older mobile builds cycle out — server dual-writes both shapes. Per-reminder fields: `time`, `daysActive`, `enabled`, `sortOrder`. `@@index([userId])` for the list-by-user lookup pattern.
+- **New API**: `apps/web/src/app/api/account/reminders/route.ts`:
+  - `GET` — returns user's reminders sorted by `sortOrder` then `createdAt`. Lazy backfill: if zero rows AND user has any non-default legacy notification preference, creates one row from legacy fields and returns it. Conservative skip if `!notificationsEnabled && notificationTime === "21:00"` (user never engaged with the feature).
+  - `PUT` — atomic replace-list. Body: `{ reminders: [{ time, daysActive, enabled, sortOrder }, ...] }`. Server-enforced cap of 5 reminders. Validates time format (`HH:MM`), days subset (`0..6`), enabled boolean. Atomic transaction: `deleteMany` + `update legacy fields` + `createManyAndReturn` so a partial failure doesn't leave the user with split state.
+- **Backfill script** `apps/web/scripts/backfill-user-reminders.ts`: idempotent one-off — for every User with no UserReminder rows, creates one from legacy fields. Skips users with default-unengaged notification state to avoid noise rows. Keenan runs after `prisma db push` from home network.
+- **`/api/user/me`**: response now includes `reminders: [{ id, time, daysActive, enabled, sortOrder }]` array alongside the legacy `notificationTime/Days/Enabled` fields. Both shapes are sent until older clients cycle out.
+- **`/api/account/notifications`** (legacy single-time endpoint): kept working for not-yet-updated mobile clients. Now ALSO dual-writes — upserts the user's primary UserReminder (`sortOrder=0`) when called. If user has multiple reminders configured via the new endpoint, only the primary is touched; secondary reminders stay as-is.
+- **`/api/onboarding/update`**: same dual-write pattern — when step 9 saves `notificationTime/Days/Enabled`, the primary UserReminder is upserted. Onboarding step 9 UI itself stays single-time per the design call.
+- **Mobile `lib/auth.ts`**: `User.reminders?: Reminder[]` field added; `Reminder` type exported.
+- **Mobile `lib/notifications.ts`**: new `applyMultiReminderSchedule({ masterEnabled, reminders })` function. Identifier scheme `acuity:reminder:<reminderId>:<weekday>` so each reminder has up to 7 OS-scheduled triggers; cancel-by-prefix continues to work for both single-time AND multi-reminder paths. Existing `applyReminderSchedule` (single-time) kept for the onboarding step-9 caller.
+- **Mobile `app/reminders.tsx`**: full rewrite — list of N `<ReminderRow>` cards, each with its own time picker (reuses `ReminderTimePicker`), per-row day toggles, per-row enable switch, delete button. Master enable at top cuts the whole list. "+ Add reminder" button below list, hides at 5. Save: PUT to `/api/account/reminders`, then `applyMultiReminderSchedule`, then a separate POST to `/api/account/notifications` to update the master `notificationsEnabled` flag (which lives on User, not on per-reminder rows).
+- **Mobile `lib/api.ts`**: added `api.put<T>(path, body, opts?)` helper alongside the existing `get/post/patch/del/upload`. PUT was the only verb the surface didn't expose.
+- Per-slice gates: vitest 367/367 unchanged, mobile tsc 115-baseline unchanged, web tsc went from 89 → 15 (net positive: `npx prisma generate` regenerated the client with both AdLab + UserReminder types, resolving 74 pre-existing AdLab "schema-pending" tsc errors as a side effect; production runtime behavior for those routes is unchanged because they still need Keenan's prisma db push to actually create the tables, but the client types now match the schema either way). None of the 15 remaining errors trace to Slice C code.
+
+### Manual steps needed
+
+- [ ] Keenan: `npx prisma db push` from home network (creates `UserReminder` table + index; also lands the AdLab tables that have been pending since 2026-05-06).
+- [ ] Keenan: `npx tsx apps/web/scripts/backfill-user-reminders.ts` from home network. Output should report `backfilled=N skipped=M alreadyHadReminders=0` where N+M ≈ total user count. Idempotent — safe to re-run.
+- [ ] Verify in Supabase: `SELECT COUNT(*) FROM "UserReminder";` ≥ count of users with non-default notification preferences.
+- [ ] After all 3 slices land + Keenan completes db push + backfill: EAS build 35 carrying the IAP sandbox-fallback fix (b4e779d), Slice A (recording cap + light-mode contrast), Slice B (Life Matrix refresh), Slice C (multiple reminders).
+
+### Notes
+
+- **Why dual-write instead of just deprecating the legacy fields immediately:** older mobile builds in the wild (and during the next ~2 build cycles) read `notificationTime/Days/Enabled` from `/api/user/me`. Hard-cutting those fields would break those clients. Dual-writing keeps both shapes valid; new clients write through `/api/account/reminders`, all clients read both. After ~2 build cycles ship and the analytics show no client reads of the legacy fields, a follow-up cleanup slice can drop them from the schema.
+- **Why per-reminder daysActive (vs. shared days for all reminders):** per the design call. More flexibility ("morning standup M-F" + "evening reflection daily") at the cost of slightly more UI surface. The `UserReminder` model carries `daysActive` directly so this is structural — no migration needed if we ever wanted to flip back to shared.
+- **Why server-enforced cap of 5:** more than that gets noisy and is symptomatic of using reminders as a task manager (which we have a separate Tasks feature for). Easy to raise in code if support requests warrant it.
+- **Lazy backfill in GET `/api/account/reminders`:** belt-and-suspenders alongside the bulk script. If the bulk script misses any user (e.g., a User row created between `prisma db push` and Keenan running the backfill), the lazy path materializes one row from their legacy fields on first read. Single-call cost paid once per user, never on subsequent calls.
+- **Mobile UI defaults**: a fresh-state Reminders screen with no server reminders shows ONE empty row (`09:00`, all days, enabled, isDraft=true) so the user has something to edit. Marked `isDraft` so it's only persisted on Save. After Save, server-assigned ids replace the draft id.
+- **iapEnabled stays true.** Notification config is unrelated to IAP.
+- **Shipping with Slices A + B in build 35:** the 4 bugs from Keenan's testing ship as one EAS round. Build 35 = IAP fallback (b4e779d) + Slice A + Slice B + Slice C. After build 35 verifies on TestFlight, Jim submits v1.1 to App Review with IAP attached.
+
+---
+
 ## [2026-05-09] — Slice B (Keenan TestFlight bugs): Life Matrix auto-refreshes after each recording
 
 **Requested by:** Jimmy (Slice B of 3 bundling Keenan's TestFlight bugs; this fixes Bug 3 — Life Matrix radar showing initial values from first entry and never refreshing after subsequent recordings)
