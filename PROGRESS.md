@@ -20,6 +20,47 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-09] — Flip iapEnabled to true (build 34 → paywall screenshot → IAP submission)
+
+**Requested by:** Jimmy (cleanup slice landed clean; production-flag flip is the next step toward App Review submission with IAP attached)
+**Committed by:** Claude Code
+**Commit hash:** _backfill_
+
+### In plain English (for Keenan)
+
+This single-line change turns on the in-app purchase flow that's been compiled, gated, and dormant in the app for a few weeks. Until now the IAP code path was wired up but inert — every entry point short-circuited because of a build-time flag set to false. Flipping it to true means the Subscribe screen, Profile menu's "Subscribe" item, Paywall's "Subscribe in app" CTA, and the dual-CTA on locked cards all start using StoreKit when this build lands on TestFlight. We need that for the paywall screenshot Apple's reviewers want, and for the IAP product itself to be reviewable.
+
+### Technical changes (for Jimmy)
+
+- `apps/mobile/app.json` `extra.iapEnabled`: `false` → `true`. That's the entire diff. Every IAP entry point in `apps/mobile/lib/iap.ts` reads `isIapEnabled()` (which reads `Constants.expoConfig.extra.iapEnabled` at build time); flipping this single flag activates them all in one shot.
+- Per-slice gates: vitest 362/362, web tsc 89-baseline unchanged, mobile tsc 115-baseline unchanged. (No code changes; `Constants.expoConfig.extra` is typed as `unknown` in the wrapper, so flipping the JSON value doesn't shift any tsc inference.)
+
+### Manual steps needed
+
+- [ ] Jim: `eas build --profile production --platform ios` (build 34, with iapEnabled: true)
+- [ ] Jim: `eas submit --profile production --platform ios --latest`
+- [ ] Jim: provision a Sandbox tester in App Store Connect → Users and Access → Sandbox if you don't already have one (required for $0 sandbox transactions on the screenshot device)
+- [ ] Jim: on TestFlight device, sign into Sandbox account via Settings → App Store → Sandbox Account
+- [ ] Jim: install build 34, navigate to Subscribe sheet, capture paywall screenshot per Apple's required artifact spec (1290×2796 for 6.7" iPhone, JPG/PNG, no chrome)
+- [ ] Jim: complete IAP product setup in App Store Connect — tax category, availability (territories), screenshot upload, review notes (sandbox account credentials + repro steps for reviewer)
+- [ ] Jim: submit IAP product for review in ASC
+- [ ] Jim: submit Acuity v1.1 to App Review with IAP attached
+
+### Notes
+
+- **Pre-flip Apple-side check** (worth confirming before building): the v1.1 monthly subscription product status in ASC → My Apps → Acuity → Subscriptions should be "Approved" or "Ready to Submit" — not "Missing Metadata" / "Developer Action Needed". If it's still in metadata-missing state, `fetchProducts({skus: [IAP_MONTHLY_PRODUCT_ID], type: "subs"})` returns an empty array on TestFlight, the Subscribe sheet falls back to the "Continue on web" path, and the screenshot won't show the in-app purchase row.
+- **Sandbox vs Production token behavior on TestFlight**: TestFlight builds use sandbox StoreKit by default (Apple's documented behavior — production receipts only after public release). The `/api/iap/verify-receipt` endpoint accepts both sandbox and production receipts, so verification works against either. The reviewer's test purchase will hit sandbox; real users post-launch hit production; same code path.
+- **What activates with the flip**: 
+  1. `apps/mobile/app/subscribe.tsx` Subscribe sheet (was rendering an "Unavailable" fallback)
+  2. `apps/mobile/components/restore-purchases-button.tsx` Restore Purchases link (was self-hidden)
+  3. `apps/mobile/components/pro-locked-card.tsx` dual-CTA on locked cards
+  4. Paywall modal at `apps/mobile/app/paywall.tsx` "Subscribe in app" CTA (was secondary-only)
+  5. Profile menu "Subscribe" entry for FREE iOS users / "Manage in iOS Settings" for Apple-source PRO users
+- **Rollback path**: if the screenshot capture flow surfaces any live issue, this is a single-line revert to `false` + new EAS build. The IAP code path returning to dormant state is identical to its build-32/33 behavior since none of the wrapper functions persist state outside `tokenBridge`/`memoryToken` (which are unrelated to IAP).
+- **Why not a CI-gated env flag**: Expo's `Constants.expoConfig.extra` is sourced from `app.json` at build time, not at runtime. There's no way to flip this for production-only without separate `app.json` files or a custom plugin. The simplest path is the single-line flip + EAS build, which is how the original Phase 3a slice (`9aec449`) shipped it.
+
+---
+
 ## [2026-05-08] — Strip build-31 instrumentation pre-App-Review (debugLog calls, debug-log.ts, /api/_debug/client-log endpoint)
 
 **Requested by:** Jimmy (build 33 verified working on TestFlight — entries load, backgrounding survives, auth stable. Time to remove the diagnostic surface before App Review.)

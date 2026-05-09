@@ -196,7 +196,7 @@
       },
       "apiUrl": "https://getacuity.io",
       "googleIosClientId": "657670168959-l1qn5imd2ad8fdbp96pius9a6cpi5hdl.apps.googleusercontent.com",
-      "iapEnabled": false,
+      "iapEnabled": true,
       "eas": {
         "projectId": "dc4dcfc3-54f4-44e8-bc84-dfcedb8ba533"
       }
