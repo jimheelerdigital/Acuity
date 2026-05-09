@@ -215,7 +215,7 @@ export default function DashboardTab() {
             Record your brain dump
           </Text>
           <Text className="text-violet-200 text-xs mt-1">
-            Up to 2 minutes
+            Up to 5 minutes
           </Text>
         </Pressable>
 

@@ -117,7 +117,10 @@ export function ProcessingProgressBar({
 
   return (
     <View className="w-full max-w-sm items-stretch">
-      <View className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+      {/* Track + fill. Light-mode track is zinc-200 (was bg-white/10
+          which is invisible on white). Fill stays violet-500 in both
+          modes. 2026-05-09 contrast fix from Keenan's TestFlight test. */}
+      <View className="h-1.5 w-full overflow-hidden rounded-full bg-zinc-200 dark:bg-white/10">
         <Animated.View
           className="h-full rounded-full bg-violet-500"
           style={{ width: widthInterpolation }}
@@ -125,10 +128,10 @@ export function ProcessingProgressBar({
       </View>
 
       <View className="mt-4 items-center">
-        <Text className="text-center text-base font-semibold text-zinc-100">
+        <Text className="text-center text-base font-semibold text-zinc-900 dark:text-zinc-100">
           {headerLabel}
         </Text>
-        <Text className="mt-1 text-center text-xs text-zinc-400">
+        <Text className="mt-1 text-center text-xs text-zinc-500 dark:text-zinc-400">
           {showStillWorking
             ? "Still working on this — longer recordings take a bit more."
             : `${elapsedSeconds}s elapsed`}
@@ -163,7 +166,7 @@ export function ProcessingProgressBar({
                     ? "border-violet-500 bg-violet-500"
                     : active
                       ? "border-violet-500 bg-violet-500/20"
-                      : "border-white/10 bg-transparent"
+                      : "border-zinc-300 bg-transparent dark:border-white/10"
                 }`}
                 style={circleStyle}
               >
@@ -174,10 +177,10 @@ export function ProcessingProgressBar({
               <Text
                 className={`flex-1 text-sm ${
                   done
-                    ? "text-zinc-400"
+                    ? "text-zinc-500 dark:text-zinc-400"
                     : active
-                      ? "text-zinc-50 font-medium"
-                      : "text-zinc-600"
+                      ? "text-zinc-900 dark:text-zinc-50 font-medium"
+                      : "text-zinc-400 dark:text-zinc-600"
                 }`}
               >
                 {stage.label}

@@ -49,7 +49,16 @@ import { getToken } from "@/lib/auth";
  * app backgrounds.
  */
 
-const MAX_SECONDS = 120; // matches /api/record server cap
+// Hard cap on recording length. Bumped 120s → 300s on 2026-05-09 after
+// Keenan's TestFlight test surfaced "user hits a wall mid-recording" —
+// the original 2-minute cap was set to "match" /api/record's Vercel
+// function maxDuration of 120s, but the upload-handler request
+// completes in seconds regardless of audio length (Whisper transcription
+// runs async via Inngest after the request returns). 5min covers ~95%
+// of journaling sessions; transcription cost delta is ~$0.018 per
+// recording — trivial. Beyond 5min Whisper's per-file 25MB ceiling
+// becomes the next constraint.
+const MAX_SECONDS = 300;
 const UPLOAD_RETRY_SCHEDULE_MS = [2000, 4000, 8000];
 
 type State =
@@ -472,17 +481,28 @@ export default function RecordScreen() {
           </View>
         ) : (
           <View className="items-center gap-10">
-            {/* Timer */}
+            {/* Timer — shows elapsed / max when recording so the cap is
+                visible at a glance. Color shifts to amber in the last
+                30s so the user has time to wrap up rather than
+                hitting an unannounced wall. */}
             <View className="items-center gap-1">
               <Text className="text-zinc-800 dark:text-zinc-100 text-lg font-medium">
                 {state === "recording" ? "Recording" : "Ready"}
               </Text>
-              <Text className="text-zinc-600 dark:text-zinc-300 text-5xl font-mono tabular-nums">
-                {formatTime(state === "recording" ? elapsed : 0)}
+              <Text
+                className={`text-5xl font-mono tabular-nums ${
+                  state === "recording" && MAX_SECONDS - elapsed <= 30
+                    ? "text-amber-500"
+                    : "text-zinc-600 dark:text-zinc-300"
+                }`}
+              >
+                {state === "recording"
+                  ? `${formatTime(elapsed)} / ${formatTime(MAX_SECONDS)}`
+                  : formatTime(0)}
               </Text>
               {state === "idle" && (
                 <Text className="text-zinc-500 dark:text-zinc-400 text-xs mt-1">
-                  Up to 2 minutes. Talk as long as you need.
+                  Up to 5 minutes. Talk as long as you need.
                 </Text>
               )}
             </View>
@@ -527,9 +547,12 @@ export default function RecordScreen() {
                 : "Tap to start your brain dump"}
             </Text>
 
-            {/* Progress bar when recording */}
+            {/* Progress bar when recording. Light-mode track uses
+                zinc-200 so the empty portion remains visible against
+                the light-mode bg; dark-mode keeps the original
+                zinc-800 track. */}
             {state === "recording" && (
-              <View className="w-48 h-1 rounded-full bg-zinc-800">
+              <View className="w-48 h-1 rounded-full bg-zinc-200 dark:bg-zinc-800">
                 <View
                   className="h-1 rounded-full bg-red-500"
                   style={{ width: `${(elapsed / MAX_SECONDS) * 100}%` }}

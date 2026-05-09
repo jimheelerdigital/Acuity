@@ -20,6 +20,53 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-09] — Slice A (Keenan TestFlight bugs): recording cap 120s→300s + light-mode contrast on processing-progress-bar
+
+**Requested by:** Jimmy (bundling Keenan's 4 TestFlight bugs into one EAS build alongside the IAP fix; this slice ships bugs 1 + 2)
+**Committed by:** Claude Code
+**Commit hash:** _backfill_
+
+### In plain English (for Keenan)
+
+Two recording-flow fixes:
+
+1. **No more 2-minute wall.** The old hard stop at 2 minutes was a leftover dev constraint, not a cost cap. The recording cap now goes to 5 minutes, and the timer on the recording screen shows "X:XX / 5:00" while you're recording instead of just "X:XX" so the cap is visible at a glance. The countdown turns amber in the last 30 seconds so you have time to wrap up rather than getting cut off.
+
+2. **Upload-progress screen now legible in light mode.** The "Saving your recording / Uploading / Transcribing / Extracting / Saving insights" stages were illegible on a white background — they were styled assuming a dark background only. Every text and border color now has a light-mode variant matching the rest of the app's pattern.
+
+### Technical changes (for Jimmy)
+
+- `apps/mobile/app/record.tsx`:
+  - `MAX_SECONDS = 120` → `300`. Updated docblock explains the dev-constraint origin (was set to "match" /api/record's Vercel maxDuration=120, but the upload-handler request completes in seconds regardless of audio length — Whisper transcription runs async via Inngest after the request returns).
+  - Recording-state timer changed from `formatTime(elapsed)` → `${formatTime(elapsed)} / ${formatTime(MAX_SECONDS)}` so the cap is always visible. Color shifts to `text-amber-500` when remaining ≤ 30s (warning state).
+  - Idle-state copy "Up to 2 minutes" → "Up to 5 minutes".
+  - Bottom progress bar's track changed from `bg-zinc-800` (invisible on light bg) to `bg-zinc-200 dark:bg-zinc-800`.
+- `apps/mobile/app/(tabs)/index.tsx` line 218: home-screen "Up to 2 minutes" CTA copy → "Up to 5 minutes".
+- `apps/mobile/components/processing-progress-bar.tsx`: full light-mode variant pass:
+  - Track: `bg-white/10` → `bg-zinc-200 dark:bg-white/10`
+  - Header label: `text-zinc-100` → `text-zinc-900 dark:text-zinc-100`
+  - Elapsed-seconds text: `text-zinc-400` → `text-zinc-500 dark:text-zinc-400`
+  - Pending-stage circle border: `border-white/10` → `border-zinc-300 bg-transparent dark:border-white/10`
+  - Pending-stage label: `text-zinc-600` → `text-zinc-400 dark:text-zinc-600`
+  - Active-stage label: `text-zinc-50` → `text-zinc-900 dark:text-zinc-50`
+  - Done-stage label: `text-zinc-400` → `text-zinc-500 dark:text-zinc-400`
+- Per-slice gates: vitest 367/367 (unchanged), web tsc 89-baseline unchanged, mobile tsc 115-baseline unchanged.
+
+### Manual steps needed
+
+- [ ] Slice B (Life Matrix refresh) lands next.
+- [ ] Slice C (multiple reminders) lands after that, with the prisma db push from Keenan's home network.
+- [ ] After all 3 slices: EAS build 35 carrying the IAP sandbox-fallback fix (b4e779d) + Slices A + B + C.
+
+### Notes
+
+- **No server-side change for Bug 1.** /api/record's `maxDuration = 120` Vercel function timeout stays as-is — the upload-handler request never approaches that limit even for 5-min audio (~2.4MB at 64kbps uploads in well under 30s on any reasonable connection). Whisper's per-file 25MB ceiling is the next hard limit; at 64kbps mono that's ~52 minutes of audio, so we're nowhere near it.
+- **Cost delta for raising the cap:** Whisper's per-minute pricing means 5min recordings cost ~$0.03 vs 2min at ~$0.012 — about $0.018 extra per recording. At 100 recordings/day that's $1.80/day delta — well within tolerable range. Most users don't actually hit 5min; expected real-world delta is much smaller.
+- **Why amber at 30s remaining (not red):** red would conflict with the recording-button color (already red while recording). Amber provides a clear "time's running out" signal without competing with the active-state visuals. Tested mentally against the dark-mode recording UI; visually distinct from both the red "stop" button and the violet accent.
+- **iapEnabled stays true.** Bug 4 (multiple reminders, Slice C) will require schema change + prisma db push from Keenan's home network — flagged as a manual step in that slice's PROGRESS entry when it lands.
+
+---
+
 ## [2026-05-09] — Build 34 paywall bugs: extend fetchTransactionInfo fallback to 401, defensive errorMsg clear on success
 
 **Requested by:** Jimmy (build 34 paywall test surfaced two bugs — purchase succeeded on Apple's side but app didn't transition to PRO, and a red error banner persisted on the paywall after Apple's "You're all set" confirmation; launch blocker before App Review)
