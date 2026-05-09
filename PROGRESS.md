@@ -24,7 +24,7 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 **Requested by:** Jimmy (cleanup slice landed clean; production-flag flip is the next step toward App Review submission with IAP attached)
 **Committed by:** Claude Code
-**Commit hash:** _backfill_
+**Commit hash:** ab21f1f
 
 ### In plain English (for Keenan)
 
