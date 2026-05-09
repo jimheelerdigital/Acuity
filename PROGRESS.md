@@ -24,7 +24,7 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 **Requested by:** Jimmy (Slice B of 3 bundling Keenan's TestFlight bugs; this fixes Bug 3 — Life Matrix radar showing initial values from first entry and never refreshing after subsequent recordings)
 **Committed by:** Claude Code
-**Commit hash:** _backfill_
+**Commit hash:** 2022920
 
 ### In plain English (for Keenan)
 
