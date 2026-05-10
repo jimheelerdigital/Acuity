@@ -581,7 +581,7 @@ export async function verifyAndFinish(input: {
   // real production credential issues. Production EAS Release
   // builds compile with __DEV__ === false, so the bypass NEVER
   // fires there. Belt-and-suspenders: the credential smoke test at
-  // POST /api/iap/_credentials-smoke independently verifies real
+  // POST /api/iap/credentials-smoke independently verifies real
   // Apple credentials by calling Apple's /inApps/v1/notifications/
   // test endpoint, which doesn't require any transactionId. Run
   // that smoke test before any EAS build to confirm credentials

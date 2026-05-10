@@ -20,6 +20,46 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-10] — Smoke endpoint rename (route 404) + CLI smoke script for cold-start credential verification
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+
+The credential check tool we shipped earlier today was returning a "page not found" error because of a Next.js naming rule. Renamed it to a working URL and ALSO added a command-line version Jim can run from his laptop without needing to log in or wait for Vercel to redeploy. One command now confirms whether Apple's credentials are good to go before we burn another TestFlight build credit.
+
+### Technical changes (for Jimmy)
+
+- **Renamed** `apps/web/src/app/api/iap/_credentials-smoke/` → `apps/web/src/app/api/iap/credentials-smoke/`. Next.js App Router treats `_*` folders as private (opt-out of routing), so `/api/iap/_credentials-smoke` 404'd with the default Next.js HTML page. Underscored URL was a naming hygiene attempt that hit framework convention. Admin gate inside the route makes the leading underscore cosmetic anyway.
+- **Updated docblock** in the renamed route to record the rename + reason.
+- **NEW CLI** `apps/web/scripts/smoke-iap-credentials.ts` (~95 lines):
+  - Loads `.env.local` via `dotenv` (resolved deterministically from `__dirname`, not `process.cwd()` — the script lives in `apps/web/scripts/` and reads from `apps/web/.env.local` regardless of where `tsx` is invoked from).
+  - Imports the same `readAppleApiConfig` + `signAppStoreConnectJwt` from `@/lib/apple-iap` that the production verify-receipt path uses.
+  - Probes Apple Production + Sandbox `/inApps/v1/notifications/test` in parallel.
+  - Human-readable output (✅/❌ markers, key/issuer length previews, per-env messages).
+  - Exit codes: 0 = both 200, 2 = credentials invalid, 1 = config/sign error.
+  - Run: `cd apps/web && npx tsx scripts/smoke-iap-credentials.ts`
+- **Why CLI duplicates the endpoint instead of replacing it**: the endpoint is for ongoing credential rotation verification (admin-gated, prod env, calls from any signed-in admin browser tab). The CLI is for cold-start smoke testing during launch prep — bypasses auth gate, Vercel routing, and browser cookies. A "works on CLI but fails on Vercel" result definitively isolates the issue to deployed env vars vs structurally bad credentials.
+- Single-char comment update in `apps/mobile/lib/iap.ts` to reflect new URL.
+- Per-slice gates: tsc clean for the renamed route + new CLI script. Pre-existing tsc errors on `main` unchanged (admin tabs, adlab, blog-image, etc.) — none in IAP code path.
+
+### Manual steps needed — gating EAS build 36
+
+- [ ] Jim runs the CLI smoke from home network: `cd apps/web && npx tsx scripts/smoke-iap-credentials.ts`
+- [ ] Paste the output. Two outcomes:
+  - **Both 200** → credentials valid → proceed with EAS build 36.
+  - **Either 401** → real credentials bug → regenerate .p8 in App Store Connect, update `APPLE_IAP_PRIVATE_KEY` in Vercel env (preserve PEM newlines), redeploy, re-run smoke test before EAS spend.
+
+### Notes
+
+- `_*` folder = private in Next.js App Router. Leading-underscore URLs always 404 in App Router, regardless of `route.ts` contents. If we ever want a "hidden-feeling" URL again, use a slug like `internal-` or `ops-` instead.
+- The CLI imports use `@/lib/apple-iap`. tsx resolves the `@/*` path alias via `apps/web/tsconfig.json` — works the same as production code paths, no separate config needed.
+- The `Content-Length: 0` header on the Apple test-notification POST is preserved from the endpoint version. Apple's API expects no body but some HTTP runtimes elide the header on bodyless POSTs; explicit zero keeps behavior predictable across runtimes (Node's fetch vs Vercel edge runtime vs whatever).
+
+---
+
 ## [2026-05-10] — Slice D follow-up: credential smoke endpoint + bypass widening + transactionId="0" anomaly documented
 
 **Requested by:** Jimmy (Slice D's first sim test exposed three things — bypass condition was too narrow, transactionId="0" needed root-cause documentation, and we have no way to confirm Apple credentials are valid before EAS spend. This slice adds all three.)
@@ -32,8 +72,8 @@ We added a "smoke test" tool that confirms Apple's credentials are working befor
 
 ### Technical changes (for Jimmy)
 
-- **NEW endpoint** `apps/web/src/app/api/iap/_credentials-smoke/route.ts` (~140 lines):
-  - `POST /api/iap/_credentials-smoke`
+- **NEW endpoint** `apps/web/src/app/api/iap/credentials-smoke/route.ts` (~140 lines):
+  - `POST /api/iap/credentials-smoke`
   - Auth: admin-only (`isAdmin === true` on the User row). Operations / debugging tool, not user-facing.
   - Mechanism: signs JWT via existing `signAppStoreConnectJwt` (same code path as production verify-receipt) → calls Apple's `POST /inApps/v1/notifications/test` on BOTH Production and Sandbox in parallel.
   - Response shape:
@@ -67,7 +107,7 @@ This slice's purpose is the smoke test. Jim runs it BEFORE any EAS spend.
 
 ```bash
 SESSION_TOKEN="<paste your bearer token from a signed-in mobile session OR use a web cookie>"
-curl -s -X POST https://getacuity.io/api/iap/_credentials-smoke \
+curl -s -X POST https://getacuity.io/api/iap/credentials-smoke \
   -H "Authorization: Bearer $SESSION_TOKEN" \
   -H "Content-Length: 0" | jq .
 ```

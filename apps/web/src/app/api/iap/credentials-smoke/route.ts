@@ -1,5 +1,11 @@
 /**
- * POST /api/iap/_credentials-smoke
+ * POST /api/iap/credentials-smoke
+ *
+ * NOTE: originally created at /api/iap/_credentials-smoke for naming
+ * hygiene; renamed 2026-05-10 because Next.js App Router treats
+ * underscore-prefixed folders as private (opt-out of routing) — the
+ * underscored URL 404s. Admin gate makes the leading underscore
+ * cosmetic anyway.
  *
  * Apple App Store Server API JWT credential validator. Built 2026-05-10
  * to gate EAS build 36 — we needed a way to definitively confirm
