@@ -39,7 +39,16 @@
 
 import { config as loadDotenv } from "dotenv";
 import { resolve } from "node:path";
-import { importPKCS8, SignJWT } from "jose";
+import { importPKCS8, SignJWT, decodeJwt, decodeProtectedHeader } from "jose";
+
+// Bundle ID is REQUIRED in App Store Server API JWT payload as the
+// `bid` claim. App Store Connect API (apps/users/builds management)
+// does NOT need bid — only App Store Server API does. Missing-bid
+// produces 401 from Apple with a generic "signing mismatch" message
+// indistinguishable from a genuinely bad .p8 — which is exactly what
+// our 2026-05-10 production logs showed. Apple's spec is at
+// developer.apple.com/documentation/appstoreserverapi/generating_json_web_tokens_for_api_requests
+const APP_BUNDLE_ID = "com.heelerdigital.acuity";
 
 // Load .env.local from apps/web/. The script lives in apps/web/scripts/
 // and process.cwd() is wherever the user invoked tsx from — be
@@ -83,7 +92,7 @@ async function signAppStoreConnectJwt(
   config: AppleApiJwtConfig
 ): Promise<string> {
   const key = await importPKCS8(config.privateKeyPem, "ES256");
-  return new SignJWT({})
+  return new SignJWT({ bid: APP_BUNDLE_ID })
     .setProtectedHeader({ alg: "ES256", kid: config.keyId, typ: "JWT" })
     .setIssuer(config.issuerId)
     .setIssuedAt()
@@ -111,6 +120,14 @@ async function probeEnvironment(
 ): Promise<ProbeResult> {
   const url = `https://${APPLE_API_HOST[env]}/inApps/v1/notifications/test`;
   let status: number | null = null;
+  // Show truncated bearer so the user can verify it's the JWT they
+  // expect without leaking the full signed token to logs/screenshots.
+  // The header (alg/kid) + payload (iss/iat/exp/aud/bid) are already
+  // logged separately above — those carry the diagnostic info. The
+  // signature portion is what we redact.
+  const jwtPreview = `${jwt.slice(0, 24)}...${jwt.slice(-12)} (length=${jwt.length})`;
+  console.log(`\n[${env}] POST ${url}`);
+  console.log(`[${env}] Authorization: Bearer ${jwtPreview}`);
   try {
     const res = await fetch(url, {
       method: "POST",
@@ -120,14 +137,23 @@ async function probeEnvironment(
       },
     });
     status = res.status;
+    const responseText = await res.text().catch(() => "");
+    console.log(`[${env}] HTTP ${status}`);
+    console.log(`[${env}] Response body: ${responseText || "<empty>"}`);
     if (status === 200) {
-      const body = (await res.json().catch(() => null)) as {
-        testNotificationToken?: unknown;
-      } | null;
-      const token =
-        body && typeof body.testNotificationToken === "string"
-          ? body.testNotificationToken
-          : null;
+      let token: string | null = null;
+      try {
+        const body = JSON.parse(responseText) as {
+          testNotificationToken?: unknown;
+        };
+        token =
+          typeof body.testNotificationToken === "string"
+            ? body.testNotificationToken
+            : null;
+      } catch {
+        // 200 with non-JSON body shouldn't happen; surface it via the
+        // already-logged responseText.
+      }
       return {
         env,
         status,
@@ -142,7 +168,7 @@ async function probeEnvironment(
         status,
         ok: false,
         message:
-          "401 — JWT signing/keyId/issuerId mismatch. The .p8 key may have been revoked in App Store Connect.",
+          "401 — Apple rejected the JWT. See response body above for Apple's error code. Common causes: missing `bid` claim, kid mismatch, issuer mismatch, .p8 revoked, key propagation lag (5-15min after key creation).",
         testNotificationToken: null,
       };
     }
@@ -156,12 +182,11 @@ async function probeEnvironment(
         testNotificationToken: null,
       };
     }
-    const text = await res.text().catch(() => "");
     return {
       env,
       status,
       ok: false,
-      message: `Unexpected status ${status}. Response (truncated): ${text.slice(0, 200)}`,
+      message: `Unexpected status ${status}. See response body above.`,
       testNotificationToken: null,
     };
   } catch (err) {
@@ -197,6 +222,8 @@ async function main() {
   );
   console.log(`  privateKeyPem length: ${config.privateKeyPem.length} chars`);
 
+  console.log(`  bundleId (bid claim): ${APP_BUNDLE_ID}`);
+
   console.log("\n[smoke-iap-credentials] Signing JWT...");
   let jwt: string;
   try {
@@ -212,6 +239,31 @@ async function main() {
     process.exit(1);
   }
   console.log(`  JWT signed (length: ${jwt.length} chars)`);
+
+  // Decode-and-print so the user can verify the exact claims Apple
+  // will see. jose's decodeJwt/decodeProtectedHeader don't verify the
+  // signature — pure parsing only. Safe: no secret material is
+  // exposed (the .p8 isn't in the JWT — only its derived public-key-
+  // verifiable signature is, and that's truncated above).
+  const header = decodeProtectedHeader(jwt);
+  const payload = decodeJwt(jwt);
+  const nowSec = Math.floor(Date.now() / 1000);
+  console.log("\n[smoke-iap-credentials] Decoded JWT header:");
+  console.log(`  ${JSON.stringify(header, null, 2)}`);
+  console.log("[smoke-iap-credentials] Decoded JWT payload:");
+  console.log(`  ${JSON.stringify(payload, null, 2)}`);
+  console.log(
+    `[smoke-iap-credentials] Clock check: nowSec=${nowSec} | iat=${payload.iat} (delta=${(payload.iat ?? 0) - nowSec}s) | exp=${payload.exp} (in ${(payload.exp ?? 0) - nowSec}s)`
+  );
+  console.log("[smoke-iap-credentials] Apple required claims for App Store Server API:");
+  console.log("  header.alg = 'ES256'    →", header.alg === "ES256" ? "✓" : `✗ got ${String(header.alg)}`);
+  console.log("  header.kid present      →", header.kid ? "✓" : "✗ missing");
+  console.log("  header.typ = 'JWT'      →", header.typ === "JWT" ? "✓" : `✗ got ${String(header.typ)}`);
+  console.log("  payload.iss present     →", payload.iss ? "✓" : "✗ missing");
+  console.log("  payload.iat present     →", payload.iat ? "✓" : "✗ missing");
+  console.log("  payload.exp ≤ iat+60min →", payload.iat && payload.exp && payload.exp - payload.iat <= 3600 ? "✓" : "✗ FAILS");
+  console.log("  payload.aud = 'appstoreconnect-v1' →", payload.aud === "appstoreconnect-v1" ? "✓" : `✗ got ${String(payload.aud)}`);
+  console.log("  payload.bid present     →", typeof payload.bid === "string" ? `✓ (${payload.bid})` : "✗ MISSING — App Store Server API requires this");
 
   console.log("\n[smoke-iap-credentials] Calling Apple in parallel...");
   const [production, sandbox] = await Promise.all([

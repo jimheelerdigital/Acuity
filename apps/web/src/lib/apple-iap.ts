@@ -49,6 +49,24 @@ export const ALLOWED_PRODUCT_IDS = new Set([
   "com.heelerdigital.acuity.pro.monthly",
 ]);
 
+// ─── Bundle ID for JWT bid claim ──────────────────────────────
+//
+// REQUIRED by App Store Server API JWT spec. Different from App Store
+// Connect API (apps/users/builds management) which does NOT need bid
+// — that's why off-the-shelf JWT signer examples written for ASC API
+// omit it and break on App Store Server API endpoints. Apple's gate-
+// way rejects bid-less JWTs with 401 + a generic "signing mismatch"
+// error message, indistinguishable from a revoked .p8.
+//
+// 2026-05-10 incident: build 36 TestFlight purchase produced a real
+// txn (2000001167524741) that verify-receipt 401'd against BOTH
+// Production and Sandbox. Regenerating the .p8 + Key ID + Issuer ID
+// did NOT fix it because the missing claim was the JWT bug, not
+// credential validity. Adding bid resolved it.
+//
+// Spec: developer.apple.com/documentation/appstoreserverapi/generating_json_web_tokens_for_api_requests
+const APP_BUNDLE_ID = "com.heelerdigital.acuity";
+
 // ─── Apple Root CA — G3 ───────────────────────────────────────
 //
 // Self-signed root that anchors the App Store Server Notifications
@@ -111,7 +129,7 @@ export async function signAppStoreConnectJwt(
   config: AppleApiJwtConfig
 ): Promise<string> {
   const key = await importPKCS8(config.privateKeyPem, "ES256");
-  return new SignJWT({})
+  return new SignJWT({ bid: APP_BUNDLE_ID })
     .setProtectedHeader({ alg: "ES256", kid: config.keyId, typ: "JWT" })
     .setIssuer(config.issuerId)
     .setIssuedAt()
