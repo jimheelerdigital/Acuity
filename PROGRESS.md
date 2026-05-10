@@ -24,7 +24,7 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 **Requested by:** Jimmy (Slice D's first sim test exposed three things — bypass condition was too narrow, transactionId="0" needed root-cause documentation, and we have no way to confirm Apple credentials are valid before EAS spend. This slice adds all three.)
 **Committed by:** Claude Code
-**Commit hash:** _backfill_
+**Commit hash:** f0e3ed7
 
 ### In plain English (for Keenan)
 
