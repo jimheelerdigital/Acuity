@@ -20,6 +20,230 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-10] — Slice D follow-up: credential smoke endpoint + bypass widening + transactionId="0" anomaly documented
+
+**Requested by:** Jimmy (Slice D's first sim test exposed three things — bypass condition was too narrow, transactionId="0" needed root-cause documentation, and we have no way to confirm Apple credentials are valid before EAS spend. This slice adds all three.)
+**Committed by:** Claude Code
+**Commit hash:** _backfill_
+
+### In plain English (for Keenan)
+
+We added a "smoke test" tool that confirms Apple's credentials are working before we spend money on a TestFlight build. It hits a special Apple endpoint that says "yes, your credentials are valid" or "no, they're broken" without needing any real purchase. Plus two smaller fixes from the sim test session: a tighter handling of the synthetic test purchases and a comment explaining why test purchases produce a weird "0" transaction ID (it's a known quirk of Apple's testing framework, not a bug in our code).
+
+### Technical changes (for Jimmy)
+
+- **NEW endpoint** `apps/web/src/app/api/iap/_credentials-smoke/route.ts` (~140 lines):
+  - `POST /api/iap/_credentials-smoke`
+  - Auth: admin-only (`isAdmin === true` on the User row). Operations / debugging tool, not user-facing.
+  - Mechanism: signs JWT via existing `signAppStoreConnectJwt` (same code path as production verify-receipt) → calls Apple's `POST /inApps/v1/notifications/test` on BOTH Production and Sandbox in parallel.
+  - Response shape:
+    ```json
+    {
+      "ok": true | false,
+      "production": { "status": 200|401|..., "ok": true|false, "message": "...", "testNotificationToken": "..." | null },
+      "sandbox":    { "status": 200|401|..., "ok": true|false, "message": "...", "testNotificationToken": "..." | null },
+      "credentialsPreview": { "keyId": "ABCD***", "issuerId": "12345678***", "privateKeyPemLength": 244 },
+      "interpretation": "Both Apple environments accepted our JWT. Credentials are valid; safe to proceed with EAS build."
+    }
+    ```
+  - Side effect: 200 from Apple ALSO triggers a webhook to our `/api/iap/notifications` endpoint with `notificationType: "TEST"` — verifies inbound JWS validation too.
+  - Apple rate-limited at 1 request per minute. Smoke test surfaces this as `429` with a clear message.
+  - Doesn't require any real transaction or product to exist — pure JWT validation.
+- **`apps/mobile/lib/iap.ts` — `__DEV__` bypass widened**:
+  - Old: `__DEV__ && status === 400 && bodyCode === "TRANSACTION_NOT_FOUND"`
+  - New: `__DEV__ && ((status === 400 && bodyCode === "TRANSACTION_NOT_FOUND") || (status === 502 && bodyCode === "APPLE_AUTH_FAILED"))`
+  - Empirical reason: synthetic .storekit purchases produce `transactionId: "0"` which Apple rejects at the JWT layer (401 from both envs), not the lookup layer (404). The 502 APPLE_AUTH_FAILED case was the one we actually saw in sim testing 2026-05-09.
+  - The bypass would mask a genuine credential failure in dev — that's why the smoke endpoint above exists separately. `__DEV__` is `false` in EAS Release builds, so production users see the real flow.
+- **`apps/mobile/lib/iap.ts` — `transactionId="0"` anomaly documented in the listener path**:
+  - Inline comment explains: native Swift bridge at `openiap/packages/apple/Sources/Helpers/StoreKitTypesBridge.swift:110` does `let transactionId = String(transaction.id)`. StoreKit Test framework's synthetic transactions emit `Transaction.id == 0` (UInt64 default) until commit. Real Apple sandbox + production transactions always have proper 16-19 digit IDs (verified against build-34's TestFlight log).
+  - **Not a production bug** — affects synthetic StoreKit Test purchases only. The dev bypass handles the side effect (verify-receipt rejection).
+- Per-slice gates: vitest 367/367 unchanged, web tsc 15-baseline unchanged, mobile tsc 115-baseline unchanged.
+
+### Manual steps needed — gating EAS build 36
+
+This slice's purpose is the smoke test. Jim runs it BEFORE any EAS spend.
+
+#### Step 1 — Run the credential smoke test (Jim, from home network)
+
+```bash
+SESSION_TOKEN="<paste your bearer token from a signed-in mobile session OR use a web cookie>"
+curl -s -X POST https://getacuity.io/api/iap/_credentials-smoke \
+  -H "Authorization: Bearer $SESSION_TOKEN" \
+  -H "Content-Length: 0" | jq .
+```
+
+(Or hit it via a logged-in browser tab — admin-gated, so signed-in admin user works either way.)
+
+#### Step 2 — Decide based on result
+
+| Smoke test result | Meaning | Action |
+|---|---|---|
+| `"ok": true` (both `production.status === 200` AND `sandbox.status === 200`) | Apple credentials are healthy in both environments | **Proceed with EAS build 36.** Wrapper rewrite verified end-to-end via sim; credentials independently verified. |
+| `production.status === 401` AND `sandbox.status === 401` | Apple credentials are genuinely broken | **HALT EAS.** Regenerate the .p8 in App Store Connect → Users and Access → Keys (revoke old + create new In-App Purchase scope key). Update `APPLE_IAP_PRIVATE_KEY` in Vercel env (preserving newlines via the `\n` escape in env var or multi-line PEM in Vercel UI). Redeploy. Re-run smoke test. |
+| `production.status === 200` BUT `sandbox.status === 401` (or vice versa) | One env's API key was revoked or refreshed asymmetrically | Investigate which one. App Store Connect API keys are shared between env unless explicitly scoped — usually means the key needs full re-setup. |
+| `configError: true` | One of `APPLE_IAP_KEY_ID` / `APPLE_IAP_ISSUER_ID` / `APPLE_IAP_PRIVATE_KEY` is missing in Vercel | Set the missing var(s); redeploy; retry. |
+| `signError: true` | JWT signing failed on our side — usually `APPLE_IAP_PRIVATE_KEY` PEM format issue (missing newlines, BEGIN/END markers absent) | Fix env var format; redeploy; retry. |
+| `429` | Apple rate limit (1 req/min) | Wait 60s, retry. |
+
+#### Step 3 — On `ok: true`, run EAS build 36
+
+Build 36 carries:
+- v15 listener-based `purchaseMonthly` (Slice D code, already on main from prior commits — verify)
+- This slice's bypass widening + transactionId comment + smoke endpoint
+
+```bash
+eas build --profile production --platform ios
+eas submit --profile production --platform ios --latest
+```
+
+Test on TestFlight with sandbox tester. Real transactions will produce real transactionIds (not "0") and real Apple verify-receipt responses (not the sim-bypass synthetic flow). The sim test verified the listener wiring; the credential smoke test verified the JWT signing; build 36's TestFlight test exercises the full real flow.
+
+### Notes
+
+- **Why the smoke endpoint stays in production long-term**: useful for ongoing credential rotation. Apple recommends rotating App Store Connect API keys periodically. After every rotation: redeploy → hit smoke test → confirm both envs still 200. Catches rotation mistakes before they manifest as user-visible IAP failures.
+- **Why admin-only and not session-only**: the endpoint reveals credential validity (a 401 response is itself a useful piece of information for an attacker probing for misconfiguration) AND triggers Apple webhook side-effects. Operations tool, not user-facing. Admin gate keeps the surface small.
+- **What the `credentialsPreview` field reveals**: just the first 4 chars of keyId and first 8 chars of issuerId, plus the PEM length. Enough to confirm "yes the env vars I think are set are actually loaded" without leaking actual credentials. SafeLog policy continues — no full credential dump anywhere.
+- **The smoke endpoint duplicates `APPLE_API_HOST`** (already a constant in `apple-iap.ts`). Two-line duplication; not worth a refactor for a single-call site. If the host map ever grows, extract.
+- **Why we don't auto-call the smoke test from CI** before EAS: the smoke test mutates state (triggers a real webhook, hits Apple's rate limit). Better as an on-demand operations tool than CI noise.
+
+### After smoke + EAS build 36
+
+If TestFlight verification on build 36 passes (sandbox purchase → PRO state transition → no red banner): capture paywall screenshot → submit IAP product to ASC review → submit Acuity v1.1 to App Review with IAP attached.
+
+---
+
+## [2026-05-09] — Slice D: v15 listener-based purchaseMonthly + .storekit sim-test rig + __DEV__ bypass
+
+**Requested by:** Jimmy (build 35 IAP test failed with the same "No purchase returned from StoreKit" red banner from build 34. Diagnosis: our `purchaseMonthly()` treated `requestPurchase`'s return value as the resolved Purchase, which is a v13 promise-based pattern. v15 documents `requestPurchase` as event-based — the Purchase arrives via `purchaseUpdatedListener`, not the return value. Slice rewrites the wrapper against the actual v15 contract AND adds a local sim-test rig so future IAP changes verify before EAS spend.)
+**Committed by:** Claude Code
+**Commit hash:** _backfill_
+
+### In plain English (for Keenan)
+
+Why builds 32-35 didn't fix the IAP problem: the underlying library (react-native-iap) changed its contract between v13 and v15. v13 used to return the purchase result when you called `requestPurchase`. v15 returns nothing — the result arrives later through a separate event listener. Our wrapper code was still reading the return value, getting nothing, and immediately giving up before the actual purchase result could arrive. That's why every test purchase showed "No purchase returned from StoreKit" instantly even though Apple's purchase sheet appeared and processed normally.
+
+This rewrite uses the correct event-listener pattern. We also added a StoreKit Configuration file (Apple's officially-supported way to test in-app purchases against a local fixture) so we can verify future IAP changes locally in the iOS Simulator before paying for an EAS build. The __DEV__ bypass lets the success-state UI render in sim against synthetic transactions that Apple's real servers don't recognize.
+
+### Technical changes (for Jimmy)
+
+- **`apps/mobile/lib/iap.ts` — `purchaseMonthly()` rewritten** against v15's event-driven contract:
+  - Module-level `purchaseInFlight: boolean` flag bails concurrent re-entry with a silent error (Apple's HIG already prevents real double-tap; this catches programmatic re-entry only).
+  - `Promise<PurchaseResult>` factory wraps a one-shot listener pair:
+    - `purchaseUpdatedListener((purchase) => settle({success}))` — filters by productId so other queued unfinished txns don't settle our promise
+    - `purchaseErrorListener((err) => settle({error}))` — covers user cancel, payment-declined, store-unavailable
+  - 90s timeout via `setTimeout` covers the "Apple sheet dismissed without an event firing" edge case. Silent-message error so the user just sees no banner and can retry.
+  - `requestPurchase()` is fire-and-forget per v15 contract — its Promise's `.catch` handles validation rejections that DON'T flow through the error listener (e.g., E_NOT_PREPARED, missing sku).
+  - Single-shot `settle()` cleans up subscriptions + timer; subsequent events no-op.
+  - Field reads stay v15-aware: `transactionId` from `purchase.transactionId`, `receipt` from `purchase.purchaseToken`.
+- **`apps/mobile/lib/iap.ts` — `verifyAndFinish()` __DEV__ bypass** (~10 lines, gated):
+  - When `__DEV__ === true` AND server returns 400 with `code: "TRANSACTION_NOT_FOUND"`, fabricate `{ kind: "idempotent-success" }` outcome locally and skip to `finishCachedTransaction`. Lets the success-state UX render in sim against synthetic .storekit transactions that Apple's real Production+Sandbox endpoints don't recognize (they'd both 404 → server returns 400 TRANSACTION_NOT_FOUND).
+  - `__DEV__` is `false` in production EAS Release builds, so TestFlight/App Store users see the real flow. The bypass only fires in `expo run:ios` Debug builds.
+  - Pre-existing latent bug fixed alongside: the `body = ... as typeof body;` cast on line 516 was resolving to `null` (TS control-flow analysis narrows `body` to its `null` initializer at that exact line). Replaced with a named `VerifyResponseBody` type — surfaced when the new __DEV__ bypass first read `body.code` and tsc reported "Property 'code' does not exist on type 'never'".
+- **Typed `RNIAP` interface extended** with `purchaseErrorListener` (we didn't use it pre-fix). Same minimal-permissive shape as the existing `purchaseUpdatedListener`.
+- **`apps/mobile/storekit-test/Acuity.storekit`** (NEW): StoreKit Configuration file fixture for the v1.1 monthly subscription product. Version-controlled; lives outside `ios/` (which is gitignored) so `expo prebuild --clean` doesn't wipe it. One-time manual Xcode wiring step documented below.
+- Per-slice gates: vitest 367/367 unchanged, web tsc 15-baseline unchanged, mobile tsc 115-baseline unchanged.
+
+### Manual sim-test verification protocol (Jim runs before approving push)
+
+This slice ships ONLY after Jim runs the sim test end-to-end and confirms each step. No EAS until sim verification passes.
+
+#### One-time Xcode wiring (per-prebuild setup)
+
+1. Open Xcode: `open /Users/jcunningham525/projects/Acuity/apps/mobile/ios/Acuity.xcworkspace`
+2. From the menu bar: **Product → Scheme → Edit Scheme...** (or Cmd+Shift+,)
+3. Select the **Run** action in the left sidebar
+4. Click the **Options** tab at the top
+5. Find the **StoreKit Configuration** dropdown (near the bottom of the Options pane)
+6. Click the dropdown → **Choose...**
+7. Navigate to and select: `/Users/jcunningham525/projects/Acuity/apps/mobile/storekit-test/Acuity.storekit`
+8. Click **Close** to dismiss the scheme editor
+
+The wiring lives in `Acuity.xcodeproj/xcshareddata/xcschemes/Acuity.xcscheme` — Xcode persists it in the project bundle. If you ever run `expo prebuild --clean`, the `ios/` directory is regenerated and the scheme reverts; redo steps 2-8 once.
+
+#### Launch sim build with __DEV__ enabled
+
+```bash
+cd /Users/jcunningham525/projects/Acuity/apps/mobile
+EXPO_PUBLIC_API_URL=https://getacuity.io npx expo run:ios --device "iPhone 16e"
+```
+
+(Substitute "iPhone 16e" for whatever sim is booted; `xcrun simctl list devices booted` lists current sims.)
+
+First run: ~3-10 min (pod install + Xcode compile). Metro stays attached; `__DEV__ === true` automatically because `expo run:ios` builds the Debug config.
+
+#### Test 1: Successful purchase end-to-end
+
+| Step | Action | Expected | Pass? |
+|---|---|---|---|
+| 1.1 | Sign into the app via your usual account (sandbox tester NOT required — .storekit file mocks the store entirely) | Home screen renders | ☐ |
+| 1.2 | Navigate to Profile → Subscribe (or any locked card → Subscribe) | Subscribe screen appears with **"$12.99 / month"** product card | ☐ |
+| 1.3 | Tap **Subscribe — $12.99/month** button | StoreKit purchase sheet appears (sim version — slightly different visual from real sandbox, but functional) | ☐ |
+| 1.4 | Tap **Subscribe** in the sheet to confirm the purchase | Sheet animates away; ~1-3 second pause while verify-receipt runs; then **"Welcome to Acuity Pro"** alert appears | ☐ |
+| 1.5 | Tap **OK** on the Welcome alert | Returns to previous screen; Profile/Paywall surfaces should now reflect PRO state | ☐ |
+| 1.6 | Confirm NO red error banner showed at any point | No "No purchase returned from StoreKit" red banner anywhere | ☐ |
+| 1.7 | In Metro terminal, scroll back through logs — confirm `[iap] __DEV__ sim bypass: TRANSACTION_NOT_FOUND treated as idempotent-success` appeared | Bypass log line visible (proof that verify-receipt was called and the dev bypass kicked in) | ☐ |
+
+#### Test 2: Verify Vercel logs show the verify-receipt call landed
+
+In a separate terminal (anywhere — doesn't have to be the project root):
+
+```bash
+vercel logs --environment production --since 5m --no-follow --limit 50 -x | grep -B 1 -A 6 "iap.verify-receipt"
+```
+
+Expected output: at least one entry like:
+```
+λ POST /api/iap/verify-receipt   400
+[iap.verify-receipt.apple-error] { ..., code: "TRANSACTION_NOT_FOUND", transactionId: "<sim-synthetic-id>" }
+```
+
+| Step | Action | Expected | Pass? |
+|---|---|---|---|
+| 2.1 | Run the vercel logs command above | At least one POST /api/iap/verify-receipt with status 400 + iap.verify-receipt.apple-error event | ☐ |
+| 2.2 | Confirm the transactionId in the log matches a numeric synthetic id (e.g., `1000000000000001`) — proof that the listener fired with our purchase + the wrapper passed it through to verify-receipt | TransactionId visible in log payload | ☐ |
+| 2.3 | Confirm the apple-error diagnostic shows the combined `Production: ... | Sandbox: ...` format from b4e779d (proves both env paths attempted) | Combined diagnostic visible | ☐ |
+
+#### Test 3: User cancellation path
+
+| Step | Action | Expected | Pass? |
+|---|---|---|---|
+| 3.1 | Navigate back to Profile → Subscribe | Subscribe screen appears | ☐ |
+| 3.2 | Tap **Subscribe — $12.99/month** | StoreKit sheet appears | ☐ |
+| 3.3 | Tap **Cancel** (or swipe down to dismiss) without confirming | Sheet animates away; NO "Welcome to Pro" alert; NO red error banner; user stays on Subscribe screen | ☐ |
+| 3.4 | Confirm Subscribe button is tappable again (purchaseInFlight flag cleared) | Button no longer disabled | ☐ |
+
+#### Test 4: Concurrent-purchase guard (optional, harder to trigger manually)
+
+| Step | Action | Expected | Pass? |
+|---|---|---|---|
+| 4.1 | Tap **Subscribe** twice rapidly before the StoreKit sheet appears | Only ONE sheet appears (Apple HIG behavior + our purchaseInFlight flag); second tap silently no-ops | ☐ |
+
+If all of Tests 1-3 pass, sim verification is complete. Test 4 is nice-to-have.
+
+### Approval gate
+
+Once Jim confirms all checkboxes pass, push to main → EAS build 36.
+
+If any step fails, **stop and report which one** — don't push, don't EAS. The sim rig exists exactly to catch this before paying for a build.
+
+### Manual steps needed
+
+- [ ] Jim: complete the one-time Xcode StoreKit Configuration wiring (steps 1-8 above)
+- [ ] Jim: run `npx expo run:ios` and execute Tests 1, 2, 3 (and optionally 4) per the checklist above
+- [ ] Jim: report pass/fail per checkbox; on full pass, approve push
+- [ ] After push: EAS build 36 carrying this slice + IAP sandbox-fallback (b4e779d) + Slices A/B/C from the Keenan-bugs round
+
+### Notes
+
+- **Why `__DEV__` is the right gate** for the bypass: it's `true` in `expo run:ios` Debug builds (where we want the bypass) and `false` in production EAS builds (where we want the real flow). No env-var, no app.json flag, no per-build configuration drift. TestFlight + App Store builds compile in Release config which sets `__DEV__ = false`.
+- **Why `apps/mobile/storekit-test/` and not `apps/mobile/ios/`**: `ios/` is gitignored (regenerated by `expo prebuild`). The `.storekit` file outside `ios/` survives prebuild and stays in version control. Cost: one-time manual Xcode scheme wiring per fresh prebuild.
+- **What this rig DOES verify**: the v15 listener-based wrapper rewrite end-to-end (listener fires → wrapper extracts Purchase → verifyAndFinish gets called → finishCachedTransaction → success UX). This is the actual bug the slice fixes.
+- **What this rig does NOT verify**: real Apple App Store Server API auth (the b4e779d fix path). Synthetic .storekit transactions can never be authenticated against Apple's real servers — that's only verifiable on TestFlight with real sandbox transactions. The b4e779d fix has unit-test coverage for the control-flow change, plus the diagnostic-readout instrumentation; sim doesn't add new verification there.
+- **iapEnabled stays true.**
+- **Future IAP changes can use this rig**: any time we touch the wrapper, run the sim test BEFORE EAS. Cuts the iteration time from hours-to-burned-credit to minutes-and-zero-cost.
+
+---
+
 ## [2026-05-09] — Slice C (Keenan TestFlight bugs): Multiple reminders — UserReminder sub-model + N-reminder UI
 
 **Requested by:** Jimmy (Slice C of 3 bundling Keenan's TestFlight bugs; this fixes Bug 4 — single-reminder limitation surfaced as a common ask. Confirmed at-home tonight to run prisma db push end-to-end after the slice lands.)

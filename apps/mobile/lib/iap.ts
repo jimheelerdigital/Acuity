@@ -115,6 +115,9 @@ type RNIAP = {
   purchaseUpdatedListener(
     listener: (purchase: IapPurchaseLike) => void
   ): IapEventSubscription;
+  purchaseErrorListener(
+    listener: (error: IapPurchaseLike) => void
+  ): IapEventSubscription;
 };
 
 let modulePromise: Promise<RNIAP | null> | null = null;
@@ -295,23 +298,59 @@ export type PurchaseResult =
   | { kind: "error"; errorKind: PurchaseErrorKind; message: string | null };
 
 /**
- * Present Apple's purchase sheet for the monthly subscription.
- * Returns either a success with the transaction handles needed
- * for backend verification, or a normalized error.
+ * v15 contract gate. The native module's `requestPurchase` is
+ * documented event-based — its return value is "the dispatched
+ * purchase payload, do not rely on it for the actual outcome"
+ * (per the JSDoc + impl comment in node_modules/react-native-iap/
+ * src/index.ts:1537-1556 and the @remarks in the d.ts at line 294).
+ * The Purchase arrives via `purchaseUpdatedListener`; errors via
+ * `purchaseErrorListener`.
+ *
+ * Build 35's failure was that we treated the return value as the
+ * resolved Purchase (a v13 promise-based pattern preserved verbatim
+ * during the v15 rewrite). The wrapper bailed with "No purchase
+ * returned from StoreKit" before the listener could fire — verify-
+ * receipt was never called, the User row stayed unchanged. 24h of
+ * Vercel logs after Jim's build-35 sandbox purchase had ZERO hits
+ * on /api/iap/verify-receipt or /api/iap/notifications.
+ *
+ * This rewrite uses the canonical v15 listener pattern:
+ *   1. Attach one-shot purchaseUpdatedListener + purchaseErrorListener
+ *      BEFORE firing requestPurchase.
+ *   2. Call requestPurchase — discard its return value per v15 docs.
+ *      Catch synchronous rejections (validation errors like missing
+ *      sku, E_NOT_PREPARED) which DON'T flow through the error
+ *      listener.
+ *   3. Race the listeners against a 90s timeout.
+ *   4. Settle once — first event wins, subscriptions removed,
+ *      timeout cleared. Subsequent events no-op.
+ *
+ * Concurrent-purchase protection: module-level `purchaseInFlight`
+ * flag bails a second concurrent call with a silent error. Apple's
+ * HIG already prevents legit double-tap scenarios; this is
+ * belt-and-suspenders.
  *
  * IMPORTANT: do NOT call `finishTransaction` here. Apple's StoreKit
  * 2 model is "verify-then-finish" — finishing before backend
  * verification means the receipt is gone if the network call fails.
  * The Subscribe sheet calls `verifyAndFinish` AFTER this returns
  * success.
- *
- * v15 detail: requestPurchase returns Purchase | Purchase[] | null.
- * For subs on iOS we expect a single Purchase, but we handle the
- * array case defensively (in case Apple returns batched
- * transactions, e.g., a deferred Ask-to-Buy that resolves alongside
- * the immediate purchase).
  */
+
+let purchaseInFlight = false;
+
+const PURCHASE_LISTENER_TIMEOUT_MS = 90_000;
+
 export async function purchaseMonthly(): Promise<PurchaseResult> {
+  if (purchaseInFlight) {
+    // Concurrent attempt — silent bail. Apple's UX prevents real
+    // double-tap; this catches programmatic re-entry only.
+    return {
+      kind: "error",
+      errorKind: "store-unknown",
+      message: null,
+    };
+  }
   if (!(await initIap())) {
     return {
       kind: "error",
@@ -327,44 +366,132 @@ export async function purchaseMonthly(): Promise<PurchaseResult> {
       message: "In-app purchases unavailable",
     };
   }
+
+  purchaseInFlight = true;
   try {
-    const result = await RNIap.requestPurchase({
-      request: { apple: { sku: IAP_MONTHLY_PRODUCT_ID } },
-      type: "subs",
+    return await new Promise<PurchaseResult>((resolve) => {
+      let resolved = false;
+      let updateSub: IapEventSubscription | undefined;
+      let errorSub: IapEventSubscription | undefined;
+      let timer: ReturnType<typeof setTimeout> | undefined;
+
+      const settle = (result: PurchaseResult) => {
+        if (resolved) return;
+        resolved = true;
+        try {
+          updateSub?.remove();
+        } catch {
+          /* ignore */
+        }
+        try {
+          errorSub?.remove();
+        } catch {
+          /* ignore */
+        }
+        if (timer) clearTimeout(timer);
+        resolve(result);
+      };
+
+      try {
+        // Filter listener by productId so any other queued
+        // unfinished transactions Apple delivers concurrently don't
+        // settle our promise. Only OUR sku (IAP_MONTHLY_PRODUCT_ID)
+        // counts as the answer.
+        updateSub = RNIap.purchaseUpdatedListener((purchase) => {
+          if (
+            stringField(purchase.productId) !== IAP_MONTHLY_PRODUCT_ID
+          ) {
+            return; // not ours, keep waiting
+          }
+          cachePurchase(purchase);
+          // transactionId == "0" anomaly (sim-only, documented
+          // 2026-05-10): StoreKit Test framework's synthetic
+          // transactions emit `Transaction.id = 0` (UInt64 default)
+          // until commit. The native Swift bridge in openiap-apple
+          // (StoreKitTypesBridge.swift:110) maps this verbatim:
+          //   `let transactionId = String(transaction.id)`
+          // so we receive "0" through Nitro for fresh synthetic
+          // purchases. Real Apple sandbox + production transactions
+          // ALWAYS have proper 16-19 digit IDs (verified empirically
+          // against build-34's TestFlight log: "2000001167217428");
+          // this anomaly is StoreKit-Test-specific and not a
+          // production bug. The sim flow handles it via the
+          // __DEV__ bypass in verifyAndFinish — Apple's
+          // /inApps/v1/transactions/0 query 401s, our combined
+          // diagnostic returns APPLE_AUTH_FAILED, the bypass fires.
+          // No fallback to originalTransactionIdentifierIOS would
+          // help (the same Swift bridge's line 155 explicitly nils
+          // it when originalID == 0 — same default-zero issue).
+          const transactionId = stringField(purchase.transactionId) ?? "";
+          const receipt = stringField(purchase.purchaseToken) ?? "";
+          if (!transactionId) {
+            settle({
+              kind: "error",
+              errorKind: "store-unknown",
+              message: "StoreKit returned a purchase without transactionId",
+            });
+            return;
+          }
+          settle({ kind: "success", transactionId, receipt });
+        });
+
+        errorSub = RNIap.purchaseErrorListener((err) => {
+          const c = classifyPurchaseError(err as never);
+          settle({
+            kind: "error",
+            errorKind: c.kind,
+            message: c.silent ? null : purchaseErrorMessage(c.kind),
+          });
+        });
+      } catch (err) {
+        // Listener attach failed (unusual — typically a Nitro-not-
+        // initialized state). Surface and bail cleanly.
+        settle({
+          kind: "error",
+          errorKind: "store-unknown",
+          message:
+            err instanceof Error
+              ? err.message
+              : "Couldn't attach purchase listeners",
+        });
+        return;
+      }
+
+      // Timeout: catches the "user dismissed Apple's sheet without
+      // an event firing" edge case + any deeper stuck state. 90s is
+      // chosen as a buffer beyond Apple's own internal sheet
+      // timeouts (a few minutes for slow networks, but typically
+      // resolves in seconds). Silent error message — the user just
+      // sees no banner and can retry.
+      timer = setTimeout(() => {
+        settle({
+          kind: "error",
+          errorKind: "store-unknown",
+          message: null,
+        });
+      }, PURCHASE_LISTENER_TIMEOUT_MS);
+
+      // Fire the request. Return value is discardable per v15
+      // contract; the listeners above carry the actual outcome.
+      // BUT: synchronous-ish rejections from the store (validation
+      // errors like missing sku, E_NOT_PREPARED) DON'T flow through
+      // the error listener — they reject this promise directly. The
+      // .catch() handles those. .then() is intentionally absent —
+      // we don't process the returned value at all.
+      RNIap.requestPurchase({
+        request: { apple: { sku: IAP_MONTHLY_PRODUCT_ID } },
+        type: "subs",
+      }).catch((err) => {
+        const c = classifyPurchaseError(err as never);
+        settle({
+          kind: "error",
+          errorKind: c.kind,
+          message: c.silent ? null : purchaseErrorMessage(c.kind),
+        });
+      });
     });
-    // Normalize array-or-single into the first non-null Purchase.
-    const purchase = (
-      Array.isArray(result) ? result[0] : result
-    ) as Record<string, unknown> | null | undefined;
-    if (!purchase) {
-      return {
-        kind: "error",
-        errorKind: "store-unknown",
-        message: "No purchase returned from StoreKit",
-      };
-    }
-    cachePurchase(purchase);
-    const purchaseRec = purchase;
-    const transactionId = stringField(purchaseRec.transactionId) ?? "";
-    // v15 unified token: iOS purchaseToken is the JWS we POST to the
-    // backend (equivalent of v13's transactionReceipt for our verify
-    // endpoint).
-    const receipt = stringField(purchaseRec.purchaseToken) ?? "";
-    if (!transactionId) {
-      return {
-        kind: "error",
-        errorKind: "store-unknown",
-        message: "StoreKit returned a purchase without transactionId",
-      };
-    }
-    return { kind: "success", transactionId, receipt };
-  } catch (err) {
-    const c = classifyPurchaseError(err as never);
-    return {
-      kind: "error",
-      errorKind: c.kind,
-      message: c.silent ? null : purchaseErrorMessage(c.kind),
-    };
+  } finally {
+    purchaseInFlight = false;
   }
 }
 
@@ -384,14 +511,13 @@ export async function verifyAndFinish(input: {
   transactionId: string;
   receipt: string;
 }): Promise<VerifyReceiptOutcome> {
-  let body:
-    | {
-        ok?: unknown;
-        code?: unknown;
-        error?: unknown;
-        idempotent?: unknown;
-      }
-    | null = null;
+  type VerifyResponseBody = {
+    ok?: unknown;
+    code?: unknown;
+    error?: unknown;
+    idempotent?: unknown;
+  };
+  let body: VerifyResponseBody | null = null;
   let status = 0;
   try {
     const res = await fetch(`${api.baseUrl()}/api/iap/verify-receipt`, {
@@ -404,13 +530,74 @@ export async function verifyAndFinish(input: {
       }),
     });
     status = res.status;
-    body = (await res.json().catch(() => null)) as typeof body;
+    // Cast via the named type instead of `as typeof body` — the
+    // latter resolves to `null` at this exact line because TS's
+    // control-flow has narrowed body to its initialized null value
+    // (and `as null` poisons every downstream access). Pre-existing
+    // latent bug surfaced when the __DEV__ bypass added new reads
+    // off body.code.
+    body = (await res.json().catch(() => null)) as VerifyResponseBody | null;
   } catch (err) {
     return {
       kind: "transient-error",
       message: err instanceof Error ? err.message : "Network error",
       retryable: true,
     };
+  }
+
+  // ─── __DEV__ sim-test bypass (NOT shipped to production) ──────
+  // When running locally against an Xcode StoreKit Configuration
+  // file (apps/mobile/storekit-test/Acuity.storekit), purchase
+  // transactionIds are synthetic and Apple's real Production +
+  // Sandbox endpoints can't verify them. Two failure modes
+  // observed during sim testing 2026-05-09 to 2026-05-10:
+  //
+  //   (a) status 400 + code "TRANSACTION_NOT_FOUND" — Apple's
+  //       endpoint accepted the JWT, looked up the transactionId,
+  //       didn't find it. fetchTransactionInfo's b4e779d fallback
+  //       hit Sandbox, also got 404. Our route maps the combined
+  //       TRANSACTION_NOT_FOUND to status 400.
+  //
+  //   (b) status 502 + code "APPLE_AUTH_FAILED" — Apple's endpoint
+  //       returned 401 from BOTH environments. This happens when
+  //       the synthetic transactionId is structurally invalid
+  //       enough that Apple rejects the request at the JWT layer
+  //       BEFORE doing the lookup. Empirically, transactionId="0"
+  //       (the StoreKit Test default for uncommitted synthetic
+  //       transactions — see the next comment block) consistently
+  //       produces this code path. Our route maps APPLE_AUTH_FAILED
+  //       to 502.
+  //
+  // Both cases mean "synthetic txn unverifiable against real Apple"
+  // — neither indicates a real bug. The bypass fabricates an
+  // idempotent-success outcome locally so the wrapper proceeds to
+  // finishCachedTransaction → success-state UX (Welcome to Pro
+  // alert). Lets us end-to-end-test the v15 listener rewrite
+  // without a real Apple sandbox account or TestFlight build.
+  //
+  // CRITICAL: case (b) ALSO matches the "real credentials are
+  // genuinely bad" failure mode in production (e.g., revoked .p8
+  // key). The __DEV__ gate is what keeps the bypass from masking
+  // real production credential issues. Production EAS Release
+  // builds compile with __DEV__ === false, so the bypass NEVER
+  // fires there. Belt-and-suspenders: the credential smoke test at
+  // POST /api/iap/_credentials-smoke independently verifies real
+  // Apple credentials by calling Apple's /inApps/v1/notifications/
+  // test endpoint, which doesn't require any transactionId. Run
+  // that smoke test before any EAS build to confirm credentials
+  // are healthy independently of this sim bypass.
+  const bodyCode =
+    body && typeof body.code === "string" ? body.code : null;
+  const isDevMockBypass =
+    __DEV__ &&
+    ((status === 400 && bodyCode === "TRANSACTION_NOT_FOUND") ||
+      (status === 502 && bodyCode === "APPLE_AUTH_FAILED"));
+  if (isDevMockBypass) {
+    console.log(
+      `[iap] __DEV__ sim bypass: ${bodyCode} treated as idempotent-success (synthetic .storekit txn)`
+    );
+    await finishCachedTransaction(input.transactionId);
+    return { kind: "idempotent-success" };
   }
 
   const outcome = classifyVerifyResponse({ status, body });

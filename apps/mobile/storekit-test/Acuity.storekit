@@ -1,0 +1,54 @@
+{
+  "identifier" : "acuity-storekit-test",
+  "nonRenewingSubscriptions" : [],
+  "products" : [],
+  "settings" : {
+    "_applicationInternalID" : "6762633410",
+    "_developerTeamID" : "",
+    "_failTransactionsEnabled" : false,
+    "_lastSynchronizedDate" : 0,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_storeKitErrors" : []
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "group-acuity-pro",
+      "localizations" : [
+        {
+          "description" : "Full debriefs, weekly reports, calendar sync, and pattern recognition.",
+          "displayName" : "Acuity Pro",
+          "locale" : "en_US"
+        }
+      ],
+      "name" : "Acuity Pro",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [],
+          "codeOffers" : [],
+          "displayPrice" : "12.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "sub-acuity-pro-monthly",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Full debriefs on every recording. Themes, weekly reports, Life Matrix, calendar sync.",
+              "displayName" : "Acuity Pro Monthly",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.heelerdigital.acuity.pro.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Acuity Pro Monthly",
+          "subscriptionGroupID" : "group-acuity-pro",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}
