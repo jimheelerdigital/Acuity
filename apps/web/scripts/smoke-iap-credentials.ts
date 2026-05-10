@@ -39,17 +39,58 @@
 
 import { config as loadDotenv } from "dotenv";
 import { resolve } from "node:path";
+import { importPKCS8, SignJWT } from "jose";
 
 // Load .env.local from apps/web/. The script lives in apps/web/scripts/
 // and process.cwd() is wherever the user invoked tsx from — be
 // deterministic about the env source.
 loadDotenv({ path: resolve(__dirname, "../.env.local") });
 
-import {
-  readAppleApiConfig,
-  signAppStoreConnectJwt,
-  type AppleEnvironment,
-} from "@/lib/apple-iap";
+// JWT signing logic is INLINED here (rather than imported from
+// @/lib/apple-iap) because that module has `import "server-only"` at
+// the top, which throws when imported via plain tsx — that import is
+// a Next.js sentinel that only resolves correctly in the Next.js
+// runtime. Inlining keeps the script self-contained at the cost of a
+// few duplicated lines; the duplication is acceptable because (a)
+// Apple's JWT contract is fixed and unlikely to change, and (b) the
+// CLI exists specifically to bypass the Next.js runtime, so coupling
+// it back to a Next-only module defeats the purpose. If the JWT
+// claims ever drift, update both this file and apps/web/src/lib/
+// apple-iap.ts together — they must produce byte-identical JWTs for
+// the smoke result to be a valid signal about production behavior.
+
+type AppleEnvironment = "Production" | "Sandbox";
+
+interface AppleApiJwtConfig {
+  keyId: string;
+  issuerId: string;
+  privateKeyPem: string;
+}
+
+function readAppleApiConfig(): AppleApiJwtConfig {
+  const keyId = process.env.APPLE_IAP_KEY_ID;
+  const issuerId = process.env.APPLE_IAP_ISSUER_ID;
+  const privateKeyPem = process.env.APPLE_IAP_PRIVATE_KEY;
+  if (!keyId || !issuerId || !privateKeyPem) {
+    throw new Error(
+      "Apple IAP env not configured — set APPLE_IAP_KEY_ID, APPLE_IAP_ISSUER_ID, APPLE_IAP_PRIVATE_KEY"
+    );
+  }
+  return { keyId, issuerId, privateKeyPem };
+}
+
+async function signAppStoreConnectJwt(
+  config: AppleApiJwtConfig
+): Promise<string> {
+  const key = await importPKCS8(config.privateKeyPem, "ES256");
+  return new SignJWT({})
+    .setProtectedHeader({ alg: "ES256", kid: config.keyId, typ: "JWT" })
+    .setIssuer(config.issuerId)
+    .setIssuedAt()
+    .setExpirationTime("20m")
+    .setAudience("appstoreconnect-v1")
+    .sign(key);
+}
 
 const APPLE_API_HOST: Record<AppleEnvironment, string> = {
   Production: "api.storekit.itunes.apple.com",
