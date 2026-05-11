@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Loader2, CheckCircle2, ChevronDown, ChevronUp, Sparkles, RefreshCw, Shield, Copy, Trash2 } from "lucide-react";
+import { Loader2, CheckCircle2, ChevronDown, ChevronUp, Sparkles, RefreshCw, Shield, Copy, Trash2, Rocket, XCircle } from "lucide-react";
 
 interface DailyMetric {
   spendCents: number;
@@ -88,6 +88,11 @@ export default function ExperimentDetailPage() {
   const [complianceRunning, setComplianceRunning] = useState(false);
   const [complianceMessage, setComplianceMessage] = useState<string | null>(null);
   const [finalizing, setFinalizing] = useState(false);
+  const [launching, setLaunching] = useState(false);
+  const [launchResult, setLaunchResult] = useState<{ campaignId: string; campaignName: string; created: { creativeId: string }[]; errors: { creativeId: string; error: string }[] } | null>(null);
+  const [activating, setActivating] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [launchError, setLaunchError] = useState<string | null>(null);
 
   const loadExperiment = useCallback(async () => {
     const res = await fetch(`/api/admin/adlab/experiments/${id}`);
@@ -202,6 +207,74 @@ export default function ExperimentDetailPage() {
     });
     await loadExperiment();
     setFinalizing(false);
+  }
+
+  async function launchCampaign() {
+    if (!experiment) return;
+    setLaunching(true);
+    setLaunchError(null);
+    setLaunchResult(null);
+
+    try {
+      const res = await fetch("/api/admin/adlab/ads/launch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ experimentId: experiment.id }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setLaunchError(data.error || "Launch failed");
+      } else {
+        setLaunchResult(data);
+      }
+    } catch {
+      setLaunchError("Network error during launch");
+    }
+    setLaunching(false);
+  }
+
+  async function activateCampaign() {
+    if (!experiment) return;
+    setActivating(true);
+    try {
+      const res = await fetch("/api/admin/adlab/ads/activate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ experimentId: experiment.id }),
+      });
+      if (res.ok) {
+        setLaunchResult(null);
+        await loadExperiment();
+      } else {
+        const data = await res.json();
+        setLaunchError(data.error || "Activation failed");
+      }
+    } catch {
+      setLaunchError("Network error during activation");
+    }
+    setActivating(false);
+  }
+
+  async function cancelCampaign() {
+    if (!experiment) return;
+    const confirmed = confirm("This will delete the campaign and all ad sets/ads on Meta. Continue?");
+    if (!confirmed) return;
+
+    setCancelling(true);
+    try {
+      await fetch("/api/admin/adlab/ads/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ experimentId: experiment.id }),
+      });
+      setLaunchResult(null);
+      setLaunchError(null);
+      await loadExperiment();
+    } catch {
+      setLaunchError("Cancel failed");
+    }
+    setCancelling(false);
   }
 
   function cloneWinningAds() {
@@ -342,12 +415,16 @@ export default function ExperimentDetailPage() {
           </span>
         )}
 
-        {/* Launch ready indicator */}
-        {launchReadyCount > 0 && experiment.status === "awaiting_approval" && (
-          <span className="inline-flex items-center gap-1.5 rounded-lg bg-[#7C5CFC]/10 border border-[#7C5CFC]/20 px-3 py-2 text-xs text-[#7C5CFC]">
-            <Sparkles className="h-3.5 w-3.5" />
-            {launchReadyCount} ready to launch
-          </span>
+        {/* Launch Campaign button */}
+        {launchReadyCount > 0 && experiment.status === "awaiting_approval" && !launchResult && (
+          <button
+            onClick={launchCampaign}
+            disabled={launching}
+            className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-50"
+          >
+            {launching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Rocket className="h-4 w-4" />}
+            Launch Campaign ({launchReadyCount} creative{launchReadyCount === 1 ? "" : "s"})
+          </button>
         )}
 
         {/* Clone for concluded experiments */}
@@ -361,6 +438,65 @@ export default function ExperimentDetailPage() {
           </button>
         )}
       </div>
+
+      {/* Launch error */}
+      {launchError && (
+        <div className="mb-6 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+          {launchError}
+        </div>
+      )}
+
+      {/* Launch confirmation panel — shown after campaign created in PAUSED state */}
+      {launchResult && (
+        <div className="mb-6 rounded-xl border border-emerald-500/30 bg-[#13131F] p-6">
+          <h3 className="text-base font-semibold text-white mb-1">Campaign Ready (PAUSED)</h3>
+          <p className="text-xs text-[#A0A0B8] mb-4">
+            Campaign <span className="font-mono text-white">{launchResult.campaignName}</span> created with {launchResult.created.length} ad{launchResult.created.length === 1 ? "" : "s"}.
+            {launchResult.errors.length > 0 && (
+              <span className="text-amber-400"> {launchResult.errors.length} failed — see below.</span>
+            )}
+          </p>
+
+          {launchResult.errors.length > 0 && (
+            <div className="mb-4 space-y-1">
+              {launchResult.errors.map((e, i) => (
+                <p key={i} className="text-xs text-red-400">
+                  Creative {e.creativeId.slice(0, 8)}: {e.error}
+                </p>
+              ))}
+            </div>
+          )}
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={activateCampaign}
+              disabled={activating || cancelling}
+              className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-50"
+            >
+              {activating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Rocket className="h-4 w-4" />}
+              Launch Live
+            </button>
+            <button
+              onClick={cancelCampaign}
+              disabled={activating || cancelling}
+              className="inline-flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/5 px-5 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition disabled:opacity-50"
+            >
+              {cancelling ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
+              Cancel & Delete
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Live experiment indicator */}
+      {experiment.status === "live" && (
+        <div className="mb-6 rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-5 py-4">
+          <div className="flex items-center gap-2">
+            <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-sm font-medium text-emerald-400">Campaign is live</span>
+          </div>
+        </div>
+      )}
 
       {/* Angles + Creatives */}
       <div className="space-y-6">
