@@ -17,6 +17,7 @@ import {
   signOut as clearSession,
   type User,
 } from "@/lib/auth";
+import { recoverPurchasesIfNeeded, resetRecoveryDebounce } from "@/lib/iap";
 import { tokenBridge } from "@/lib/token-bridge";
 
 export type DeleteAccountResult =
@@ -185,6 +186,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     refresh();
   }, [refresh]);
 
+  // IAP recovery on user-load. Fires once per session (debounced inside
+  // recoverPurchasesIfNeeded) when we have a signed-in user whose
+  // local state is NOT PRO. Handles users who purchased on a prior
+  // install or build (e.g., build-34 with the missing-bid JWT bug)
+  // and arrive at build-37 with Apple knowing they're subscribed but
+  // our User row stuck at TRIAL/FREE. Silent no-op on Android / flag-
+  // off / module-unavailable. If recovery succeeds (Apple confirmed
+  // active sub + verify-receipt promoted the User row), the next
+  // refresh() will pull the new PRO state from the server.
+  useEffect(() => {
+    if (!user) return;
+    if (user.subscriptionStatus === "PRO") return;
+    let cancelled = false;
+    (async () => {
+      const outcome = await recoverPurchasesIfNeeded();
+      if (cancelled) return;
+      if (outcome.kind === "restored") {
+        // Pull the refreshed user state so subscriptionStatus flips
+        // to PRO without waiting for the next AppState transition.
+        await refresh();
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user, refresh]);
+
   // Foreground-refresh pattern (docs/APPLE_IAP_DECISION.md §5):
   // when the user returns from Safari-based upgrade checkout, the
   // server's subscriptionStatus may have changed. Re-fetch on any
@@ -207,6 +235,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await clearSession();
     tokenBridge.set(null);
     setUser(null);
+    // Reset IAP recovery debounce so a subsequent sign-in (possibly
+    // by a different user on the same device) gets a fresh recovery
+    // pass. Without this, the same-session sign-out → sign-in cycle
+    // would skip recovery because the prior user already ran it.
+    resetRecoveryDebounce();
   }, []);
 
   /**

@@ -174,6 +174,9 @@ export async function disconnectIap(): Promise<void> {
   // Clear the cache too — any cached purchases belong to the prior
   // connection's lifetime.
   purchaseCache.clear();
+  // And let the recovery flow run again on next reconnect — the
+  // user may have purchased on another device since we last looked.
+  recoveryRanThisSession = false;
 }
 
 // ─── Purchase cache ───────────────────────────────────────────
@@ -698,6 +701,74 @@ export async function restorePurchases(): Promise<RestoreOutcome> {
     errors,
     verifiedTransactionIds,
   });
+}
+
+// ─── Background recovery ──────────────────────────────────────
+
+/**
+ * Auto-recover entitlements for a returning user. Wraps `restorePurchases`
+ * with session-once debounce + re-entrancy guard so it's safe to call
+ * from multiple lifecycle hooks (app launch, sign-in, subscribe-screen
+ * mount) without duplicating Apple API roundtrips.
+ *
+ * Why this exists: TestFlight build 34 had a missing-`bid` JWT bug that
+ * caused every verify-receipt call to 401 against Apple. Users who
+ * purchased during that window have a real Apple sandbox subscription
+ * but a User row stuck at TRIAL/FREE. Without this recovery, they'd see
+ * the paywall on every launch even though they're already paying — they'd
+ * have to manually tap Restore Purchases. Recovery runs it for them.
+ *
+ * Also handles general-case state divergence:
+ *   - Reinstall on the same Apple ID (new local install but Apple
+ *     knows about existing sub from the prior install).
+ *   - Sign-in on a new device when sub was purchased on an old one.
+ *   - Web purchase + mobile reinstall (Stripe sub side; this function
+ *     only runs Apple recovery, but the symmetric pattern applies).
+ *
+ * Debounce: by default fires once per session. Pass `{ force: true }`
+ * to bypass (e.g., when the user explicitly navigates to Subscribe
+ * and we want a fresh check regardless of prior runs).
+ *
+ * Re-entrancy: in-flight calls return `{ kind: "none" }` immediately
+ * to prevent overlapping verify-receipt loops.
+ *
+ * Platform / flag gates: silent no-op on Android / flag-off / module-
+ * unavailable. Always safe to call regardless of state.
+ *
+ * Returns the same `RestoreOutcome` as `restorePurchases` so callers
+ * can show a success alert ("Welcome back — your subscription was
+ * restored") if they want. Most callers will just discard the result.
+ */
+
+let recoveryInFlight = false;
+let recoveryRanThisSession = false;
+
+export async function recoverPurchasesIfNeeded(
+  options?: { force?: boolean }
+): Promise<RestoreOutcome> {
+  const force = options?.force === true;
+  if (Platform.OS !== "ios") return { kind: "none" };
+  if (!isIapEnabled()) return { kind: "none" };
+  if (recoveryInFlight) return { kind: "none" };
+  if (recoveryRanThisSession && !force) return { kind: "none" };
+  recoveryInFlight = true;
+  try {
+    const outcome = await restorePurchases();
+    recoveryRanThisSession = true;
+    return outcome;
+  } finally {
+    recoveryInFlight = false;
+  }
+}
+
+/**
+ * Reset the session-once debounce so the next `recoverPurchasesIfNeeded`
+ * call without `force: true` runs again. Call this on sign-out so a
+ * subsequent sign-in (possibly by a different user on the same device)
+ * gets a fresh recovery check.
+ */
+export function resetRecoveryDebounce(): void {
+  recoveryRanThisSession = false;
 }
 
 // ─── Listener for background StoreKit events ──────────────────

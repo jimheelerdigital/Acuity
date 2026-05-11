@@ -5,6 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useAuth } from "@/contexts/auth-context";
 import { completeMobileMagicLink } from "@/lib/auth";
+import { recoverPurchasesIfNeeded } from "@/lib/iap";
 
 /**
  * Deep-link handler for magic-link sign-in.
@@ -57,6 +58,15 @@ export default function AuthCallbackScreen() {
         return;
       }
       await refresh();
+      // Force a fresh IAP recovery check on sign-in. The user might
+      // have purchased a subscription on a prior install or device
+      // that our local User row doesn't reflect yet — recovery hits
+      // Apple's getAvailablePurchases + verify-receipt to reconcile.
+      // Fire-and-forget; if it succeeds the auth-context's user-load
+      // effect (in AuthProvider) will see the refreshed PRO state on
+      // its next tick. We don't await it to avoid blocking the
+      // (tabs) nav below — Apple's API can be slow on cold launch.
+      void recoverPurchasesIfNeeded({ force: true });
       // AuthGate in the root _layout.tsx will route to (tabs) once
       // user becomes non-null. Nudge to /(tabs) explicitly in case
       // we're still mounted when the auth state resolves.

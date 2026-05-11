@@ -20,6 +20,7 @@ import {
   getMonthlyProduct,
   initIap,
   purchaseMonthly,
+  recoverPurchasesIfNeeded,
   verifyAndFinish,
   type IapProduct,
 } from "@/lib/iap";
@@ -52,7 +53,7 @@ import { isIapEnabled } from "@/lib/iap-config";
 
 export default function SubscribeScreen() {
   const router = useRouter();
-  const { refresh } = useAuth();
+  const { user, refresh } = useAuth();
   const [product, setProduct] = useState<IapProduct | null>(null);
   const [loadState, setLoadState] = useState<"idle" | "loading" | "error">(
     "loading"
@@ -89,6 +90,37 @@ export default function SubscribeScreen() {
     if (!flagOn || !isIos) return;
     void loadProduct();
   }, [flagOn, isIos, loadProduct]);
+
+  // Subscribe-screen mount recovery. If the user arrived here despite
+  // not being PRO, give Apple a chance to tell us about an existing
+  // sub before they re-tap Subscribe. Forces past the session-once
+  // debounce because the user explicitly navigated to a purchase
+  // surface — we want fresh-Apple state, not a stale earlier read.
+  // Same shape as AuthProvider's recovery hook; the inner re-entrancy
+  // guard prevents both from racing.
+  useEffect(() => {
+    if (!flagOn || !isIos) return;
+    if (user?.subscriptionStatus === "PRO") return;
+    let cancelled = false;
+    (async () => {
+      const outcome = await recoverPurchasesIfNeeded({ force: true });
+      if (cancelled) return;
+      if (outcome.kind === "restored") {
+        await refresh();
+        // Fire the same "Welcome to Pro" confirmation the post-
+        // purchase happy path shows — same user-visible result, just
+        // restored from prior purchase rather than freshly bought.
+        Alert.alert(
+          "Welcome back to Acuity Pro",
+          "Your existing subscription was restored. New entries will get the full debrief.",
+          [{ text: "OK", onPress: () => router.back() }]
+        );
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [flagOn, isIos, user?.subscriptionStatus, refresh, router]);
 
   const handlePurchase = async () => {
     if (purchasing) return;

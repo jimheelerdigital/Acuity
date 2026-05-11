@@ -162,6 +162,7 @@ export function classifyVerifyResponse(
 
 export type PurchaseErrorKind =
   | "user-cancelled"
+  | "already-owned"
   | "payment-not-allowed"
   | "deferred"
   | "network"
@@ -208,6 +209,40 @@ export function classifyPurchaseError(err: IapErrorShape | null | undefined): {
   ) {
     return { kind: "user-cancelled", silent: true };
   }
+  // Already-owned detection. Apple StoreKit doesn't have a single
+  // canonical code for "user already subscribed to this product" —
+  // empirically it surfaces as various codes depending on the build
+  // surface (TestFlight vs sim, sandbox vs prod, freshly-purchased
+  // vs cross-device-restored). Match defensively: standard codes from
+  // Android Billing + iOS heuristics + message-substring fallback for
+  // the "You're already subscribed" / "Already purchased" copy Apple
+  // sometimes emits as a generic error.
+  //
+  // Order matters: cancel check above runs first because Apple's
+  // "already subscribed" dialog can be dismissed (which fires
+  // cancel) — that path should stay silent.
+  //
+  // Why this matters at v1.1 launch: users who installed build 34's
+  // TestFlight (which had the missing-bid JWT bug + no recovery
+  // flow), purchased a sandbox sub, and then upgraded to build 37
+  // are left in a state where Apple knows they're subscribed but
+  // our User row is still TRIAL. Re-attempting Subscribe in build
+  // 37 returns this error class. The wrapper-side recovery flow
+  // (recoverPurchasesIfNeeded in lib/iap.ts) handles the silent
+  // case; this UI string is the fallback when recovery hasn't fired
+  // yet, telling the user explicitly to tap Restore.
+  if (
+    codeStr === "E_ALREADY_OWNED" ||
+    codeStr === "E_PRODUCT_ALREADY_OWNED" ||
+    codeStr === "E_ITEM_ALREADY_OWNED" ||
+    msg.includes("already own") ||
+    msg.includes("already purchase") ||
+    msg.includes("already subscribe") ||
+    msg.includes("already a subscriber") ||
+    msg.includes("currently subscribed")
+  ) {
+    return { kind: "already-owned", silent: false };
+  }
   if (codeStr === "E_DEFERRED_PAYMENT" || codeNum === 6 || responseCode === 6) {
     return { kind: "deferred", silent: false };
   }
@@ -232,6 +267,8 @@ export function purchaseErrorMessage(kind: PurchaseErrorKind): string | null {
   switch (kind) {
     case "user-cancelled":
       return null;
+    case "already-owned":
+      return "You already have an active subscription. Tap Restore Purchases below.";
     case "payment-not-allowed":
       return "In-app purchases are restricted on this device. Check Screen Time → Content & Privacy Restrictions.";
     case "deferred":

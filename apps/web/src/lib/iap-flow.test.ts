@@ -203,6 +203,45 @@ describe("classifyPurchaseError", () => {
       silent: false,
     });
   });
+
+  it("already-owned via Android-style code → already-owned not-silent", () => {
+    expect(classifyPurchaseError({ code: "E_ALREADY_OWNED" })).toEqual({
+      kind: "already-owned",
+      silent: false,
+    });
+    expect(classifyPurchaseError({ code: "E_PRODUCT_ALREADY_OWNED" })).toEqual({
+      kind: "already-owned",
+      silent: false,
+    });
+    expect(classifyPurchaseError({ code: "E_ITEM_ALREADY_OWNED" })).toEqual({
+      kind: "already-owned",
+      silent: false,
+    });
+  });
+
+  it("already-owned via iOS message-string heuristics", () => {
+    expect(
+      classifyPurchaseError({ code: "E_UNKNOWN", message: "You already own this product" })
+    ).toEqual({ kind: "already-owned", silent: false });
+    expect(
+      classifyPurchaseError({ code: "E_UNKNOWN", message: "Already purchased" })
+    ).toEqual({ kind: "already-owned", silent: false });
+    expect(
+      classifyPurchaseError({ code: "E_UNKNOWN", message: "You're already subscribed to this." })
+    ).toEqual({ kind: "already-owned", silent: false });
+    expect(
+      classifyPurchaseError({ message: "You are currently subscribed to Acuity Pro." })
+    ).toEqual({ kind: "already-owned", silent: false });
+  });
+
+  it("user-cancelled takes precedence over already-owned (dialog dismiss)", () => {
+    // If Apple's "already subscribed" dialog is dismissed, code is
+    // cancel — that path stays silent so we don't surface a redundant
+    // error banner on top of the user's intentional dismiss.
+    expect(
+      classifyPurchaseError({ code: "E_USER_CANCELLED", message: "Already subscribed" })
+    ).toEqual({ kind: "user-cancelled", silent: true });
+  });
 });
 
 describe("purchaseErrorMessage", () => {
@@ -215,6 +254,7 @@ describe("purchaseErrorMessage", () => {
     expect(purchaseErrorMessage("deferred")).toMatch(/Ask to Buy/);
     expect(purchaseErrorMessage("network")).toMatch(/Network/);
     expect(purchaseErrorMessage("store-unknown")).toMatch(/try again/i);
+    expect(purchaseErrorMessage("already-owned")).toMatch(/Restore Purchases/);
   });
 });
 
