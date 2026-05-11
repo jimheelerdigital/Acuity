@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Loader2, CheckCircle2, ChevronDown, ChevronUp, Sparkles, RefreshCw, Shield, Copy, Trash2, Rocket, XCircle } from "lucide-react";
+import { Loader2, CheckCircle2, ChevronDown, ChevronUp, Sparkles, RefreshCw, Shield, Copy, Trash2, Rocket, XCircle, Upload, ImageIcon, X as XIcon, Info } from "lucide-react";
 
 interface DailyMetric {
   spendCents: number;
@@ -43,6 +43,13 @@ interface Angle {
   creatives: Creative[];
 }
 
+interface ReferenceImage {
+  id: string;
+  imageUrl: string;
+  caption: string | null;
+  createdAt: string;
+}
+
 interface Experiment {
   id: string;
   topicBrief: string;
@@ -50,6 +57,7 @@ interface Experiment {
   createdAt: string;
   conclusionSummary: string | null;
   project: { name: string; slug: string };
+  referenceImages: ReferenceImage[];
   angles: Angle[];
 }
 
@@ -92,6 +100,9 @@ export default function ExperimentDetailPage() {
   const [launchResult, setLaunchResult] = useState<{ campaignId: string; campaignName: string; created: { creativeId: string }[]; errors: { creativeId: string; error: string }[] } | null>(null);
   const [activating, setActivating] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [refImagesOpen, setRefImagesOpen] = useState(false);
+  const [uploadingRefs, setUploadingRefs] = useState(false);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [launchError, setLaunchError] = useState<string | null>(null);
 
   const loadExperiment = useCallback(async () => {
@@ -277,6 +288,37 @@ export default function ExperimentDetailPage() {
     setCancelling(false);
   }
 
+  async function uploadReferenceImages(files: FileList) {
+    if (!experiment || files.length === 0) return;
+    setUploadingRefs(true);
+    const formData = new FormData();
+    formData.append("experimentId", experiment.id);
+    for (let i = 0; i < files.length; i++) {
+      formData.append("files", files[i]);
+    }
+    await fetch("/api/admin/adlab/reference-images", {
+      method: "POST",
+      body: formData,
+    });
+    await loadExperiment();
+    setUploadingRefs(false);
+  }
+
+  async function updateRefCaption(imageId: string, caption: string) {
+    await fetch(`/api/admin/adlab/reference-images/${imageId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ caption }),
+    });
+  }
+
+  async function deleteRefImage(imageId: string) {
+    await fetch(`/api/admin/adlab/reference-images/${imageId}`, {
+      method: "DELETE",
+    });
+    await loadExperiment();
+  }
+
   function cloneWinningAds() {
     if (!experiment) return;
 
@@ -361,6 +403,92 @@ export default function ExperimentDetailPage() {
           <p className="text-xs text-[#A0A0B8] mb-1">Topic Brief</p>
           <p className="text-sm text-white">{experiment.topicBrief}</p>
         </div>
+      </div>
+
+      {/* Reference Images — collapsible */}
+      <div className="mb-6 rounded-xl border border-white/10 bg-[#13131F] overflow-hidden">
+        <button
+          onClick={() => setRefImagesOpen(!refImagesOpen)}
+          className="flex items-center justify-between w-full px-5 py-3 text-left"
+        >
+          <div className="flex items-center gap-2">
+            <ImageIcon className="h-4 w-4 text-[#A0A0B8]" />
+            <span className="text-sm font-medium text-white">
+              Reference Images
+              {experiment.referenceImages.length > 0 && (
+                <span className="ml-1.5 text-[#A0A0B8]">({experiment.referenceImages.length})</span>
+              )}
+            </span>
+          </div>
+          <ChevronDown className={`h-4 w-4 text-[#A0A0B8] transition-transform ${refImagesOpen ? "rotate-180" : ""}`} />
+        </button>
+
+        {refImagesOpen && (
+          <div className="px-5 pb-5 border-t border-white/5 pt-4">
+            {/* Upload area */}
+            <label className="flex flex-col items-center gap-2 rounded-lg border-2 border-dashed border-white/10 hover:border-[#7C5CFC]/30 bg-white/[0.02] px-6 py-5 cursor-pointer transition mb-4">
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={(e) => e.target.files && uploadReferenceImages(e.target.files)}
+                disabled={uploadingRefs}
+              />
+              {uploadingRefs ? (
+                <Loader2 className="h-5 w-5 text-[#A0A0B8] animate-spin" />
+              ) : (
+                <Upload className="h-5 w-5 text-[#A0A0B8]" />
+              )}
+              <span className="text-xs text-[#A0A0B8]">
+                {uploadingRefs ? "Uploading..." : "Click to upload competitor ads, inspiration images"}
+              </span>
+            </label>
+
+            {/* Gallery */}
+            {experiment.referenceImages.length > 0 && (
+              <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
+                {experiment.referenceImages.map((img) => (
+                  <div key={img.id} className="shrink-0 w-36">
+                    <div
+                      className="relative aspect-square rounded-lg overflow-hidden bg-black/20 cursor-pointer group"
+                      onClick={() => setLightboxUrl(img.imageUrl)}
+                    >
+                      <img src={img.imageUrl} alt={img.caption || "Reference"} className="w-full h-full object-cover" />
+                      <button
+                        onClick={(e) => { e.stopPropagation(); deleteRefImage(img.id); }}
+                        className="absolute top-1 right-1 rounded-full bg-black/60 p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <XIcon className="h-3 w-3 text-white" />
+                      </button>
+                    </div>
+                    <input
+                      type="text"
+                      defaultValue={img.caption || ""}
+                      placeholder="Caption..."
+                      onBlur={(e) => updateRefCaption(img.id, e.target.value)}
+                      className="mt-1.5 w-full rounded border border-white/10 bg-transparent px-2 py-1 text-[10px] text-[#A0A0B8] outline-none focus:border-[#7C5CFC] placeholder-[#A0A0B8]/40"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Future toggle placeholder */}
+            <div className="mt-3 flex items-center gap-2">
+              <div className="relative h-4 w-7 rounded-full bg-white/10 cursor-not-allowed">
+                <div className="absolute top-0.5 left-0.5 h-3 w-3 rounded-full bg-white/30" />
+              </div>
+              <span className="text-[10px] text-[#A0A0B8]/60">Use as creative direction</span>
+              <div className="group relative">
+                <Info className="h-3 w-3 text-[#A0A0B8]/40" />
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block rounded bg-[#1E1E2E] border border-white/10 px-2 py-1 text-[9px] text-[#A0A0B8] whitespace-nowrap z-10">
+                  Coming soon — feed reference images into the creative generation prompt
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Action bar */}
@@ -543,6 +671,27 @@ export default function ExperimentDetailPage() {
           </div>
         ))}
       </div>
+
+      {/* Lightbox modal */}
+      {lightboxUrl && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+          onClick={() => setLightboxUrl(null)}
+        >
+          <button
+            onClick={() => setLightboxUrl(null)}
+            className="absolute top-4 right-4 rounded-full bg-white/10 p-2 text-white hover:bg-white/20 transition"
+          >
+            <XIcon className="h-5 w-5" />
+          </button>
+          <img
+            src={lightboxUrl}
+            alt="Reference"
+            className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </>
   );
 }

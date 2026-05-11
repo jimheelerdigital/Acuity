@@ -20,6 +20,7 @@ export async function GET(
     where: { id: params.id },
     include: {
       project: { select: { name: true, slug: true } },
+      referenceImages: { orderBy: { createdAt: "asc" } },
       angles: {
         include: {
           creatives: {

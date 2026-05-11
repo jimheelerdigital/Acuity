@@ -1836,9 +1836,22 @@ model AdLabExperiment {
   conclusionSummary String?                 @db.Text
   createdAt         DateTime                @default(now())
   angles            AdLabAngle[]
+  referenceImages   AdLabReferenceImage[]
 
   @@index([projectId, status])
   @@map("adlab_experiments")
+}
+
+model AdLabReferenceImage {
+  id           String          @id @default(cuid())
+  experimentId String
+  experiment   AdLabExperiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  imageUrl     String
+  caption      String?
+  createdAt    DateTime        @default(now())
+
+  @@index([experimentId])
+  @@map("adlab_reference_images")
 }
 
 model AdLabAngle {
