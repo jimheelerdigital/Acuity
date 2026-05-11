@@ -288,6 +288,13 @@ All schema, pages, API endpoints, middleware, Meta integration, monitoring rules
 
 **Confirmed working:** Both image and video creatives already upload to Supabase `adlab-creatives` bucket (was already implemented, just needed error surfacing)
 
+### [2026-05-11] Fix — Remove all logo handling from image generation
+
+**Requested by:** Keenan
+**Commit:** 185456e
+
+**Changed:** Removed all logo handling from image generation. No more `images.edit()`, logo download, buffer conversion, `toFile()`, or logo placement prompt instructions. Image gen now uses only `images.generate()` with `gpt-image-2`. Prompt = `imageStylePrompt` + scene description from angle/headline. 3-second rate limit delay preserved.
+
 **Manual steps needed:** None
 
 **Everything else passes:**
