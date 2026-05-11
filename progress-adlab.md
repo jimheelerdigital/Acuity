@@ -275,6 +275,21 @@ All schema, pages, API endpoints, middleware, Meta integration, monitoring rules
 
 **Manual steps needed:** None — deploys automatically.
 
+### [2026-05-11] Fix — Image gen model/params/rate-limit
+
+**Requested by:** Keenan
+**Commit:** 37020f7
+
+**Fixed:**
+1. **Model string**: `gpt-image-1` → `gpt-image-2` in all 4 references (edit call, generate fallback, error log, comment)
+2. **Bad parameter**: removed `quality` param from both `images.edit()` and `images.generate()` — not accepted by the endpoint
+3. **Rate limiting**: added 3-second delay between image generation calls to stay under OpenAI's 5/min limit
+4. **Upload error surfacing**: upload failures for both image and video creatives now logged with `[adlab]` prefix and returned in API response as `uploadErrors` array so the UI can show which creatives failed
+
+**Confirmed working:** Both image and video creatives already upload to Supabase `adlab-creatives` bucket (was already implemented, just needed error surfacing)
+
+**Manual steps needed:** None
+
 **Everything else passes:**
 - All 7 models, 6 enums, 7 @@map directives correct
 - All 26 routes building (10 pages + 16 API)
