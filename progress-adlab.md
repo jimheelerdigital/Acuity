@@ -340,9 +340,28 @@ All schema, pages, API endpoints, middleware, Meta integration, monitoring rules
 
 **Manual steps needed:** None
 
+### [2026-05-11] Feature — Reference image uploads on experiments
+
+**Requested by:** Keenan
+**Commit:** 374dc97
+
+**Built:**
+- New `AdLabReferenceImage` model (id, experimentId, imageUrl, caption, createdAt) mapped to `adlab_reference_images`
+- Collapsible "Reference Images" section on experiment detail page, below topic brief, above angles
+- Click-to-upload area (accepts multiple images) — uploads to Supabase `adlab-creatives` bucket as `ref_{experimentId}_{timestamp}.png`
+- Horizontal scrollable thumbnail gallery with:
+  - Click to expand in full-screen lightbox modal
+  - Inline caption input (saves on blur)
+  - Delete button with storage cleanup
+- Disabled "Use as creative direction" toggle with "Coming soon" tooltip — placeholder for future gpt-image-2 reference input
+- API: POST /api/admin/adlab/reference-images (multipart upload), PUT/DELETE /api/admin/adlab/reference-images/[id]
+
+**Manual steps needed:**
+- [ ] Keenan: `npx prisma db push` from home network to create `adlab_reference_images` table
+
 **Everything else passes:**
-- All 7 models, 6 enums, 7 @@map directives correct
-- All 27 routes building (10 pages + 17 API)
+- All 8 models, 6 enums, 8 @@map directives correct
+- All 29 routes building (10 pages + 19 API)
 - Middleware gates to keenan@heelerdigital.com
 - Ideogram fully removed (zero references)
 - No sharp imports for compositing
