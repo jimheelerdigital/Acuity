@@ -74,11 +74,14 @@ export async function POST(req: NextRequest) {
   const created: { creativeId: string; adId: string; adsetId: string }[] = [];
 
   try {
-    // 1. Create campaign
-    const campaignName = `${project.slug} | exp_${experiment.id}`;
+    // 1. Create campaign — use experiment-level overrides if set, fall back to project defaults
+    const campaignName = (experiment as Record<string, unknown>).campaignName as string
+      || `${project.slug} | exp_${experiment.id}`;
+    const campaignObjective = (experiment as Record<string, unknown>).campaignObjective as string
+      || project.conversionObjective;
     const campaignId = await meta.createCampaign({
       name: campaignName,
-      objective: project.conversionObjective,
+      objective: campaignObjective,
     });
 
     // Save campaign ID on experiment
@@ -95,12 +98,16 @@ export async function POST(req: NextRequest) {
         const creativeType = (creative as Record<string, unknown>).creativeType as string || "image";
         const adsetName = `${project.slug} | exp_${experiment.id} | ${creativeType} | ${creative.angle.valueSurface} | creative_${creative.id}`;
 
+        const expRecord = experiment as Record<string, unknown>;
+        const adsetBudget = (expRecord.adSetDailyBudgetCents as number) || project.dailyBudgetCentsPerVariant;
+        const convEvent = (expRecord.optimizationEvent as string) || project.conversionEvent || "Lead";
+
         const adsetId = await meta.createAdSet({
           campaignId,
           name: adsetName,
-          dailyBudgetCents: project.dailyBudgetCentsPerVariant,
+          dailyBudgetCents: adsetBudget,
           pixelId: project.metaPixelId!,
-          conversionEvent: project.conversionEvent || "Lead",
+          conversionEvent: convEvent,
           targetAudience: {
             ageMin: (audience.ageMin as number) || 25,
             ageMax: (audience.ageMax as number) || 55,

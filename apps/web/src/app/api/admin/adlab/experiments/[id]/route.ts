@@ -16,27 +16,57 @@ export async function GET(
   const guard = await requireAdmin();
   if (!guard.ok) return guard.response;
 
-  const experiment = await prisma.adLabExperiment.findUnique({
-    where: { id: params.id },
-    include: {
-      project: { select: { name: true, slug: true } },
-      referenceImages: { orderBy: { createdAt: "asc" } },
-      angles: {
-        include: {
-          creatives: {
-            include: {
-              ads: {
-                include: {
-                  metrics: true,
+  // Try with referenceImages first; fall back without if the table doesn't exist yet
+  let experiment;
+  try {
+    experiment = await prisma.adLabExperiment.findUnique({
+      where: { id: params.id },
+      include: {
+        project: { select: { name: true, slug: true } },
+        referenceImages: { orderBy: { createdAt: "asc" } },
+        angles: {
+          include: {
+            creatives: {
+              include: {
+                ads: {
+                  include: {
+                    metrics: true,
+                  },
                 },
               },
             },
           },
+          orderBy: { score: "desc" },
         },
-        orderBy: { score: "desc" },
       },
-    },
-  });
+    });
+  } catch {
+    // referenceImages table may not exist yet — query without it
+    experiment = await prisma.adLabExperiment.findUnique({
+      where: { id: params.id },
+      include: {
+        project: { select: { name: true, slug: true } },
+        angles: {
+          include: {
+            creatives: {
+              include: {
+                ads: {
+                  include: {
+                    metrics: true,
+                  },
+                },
+              },
+            },
+          },
+          orderBy: { score: "desc" },
+        },
+      },
+    });
+    // Attach empty referenceImages so the UI doesn't break
+    if (experiment) {
+      (experiment as Record<string, unknown>).referenceImages = [];
+    }
+  }
 
   if (!experiment) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });

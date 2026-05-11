@@ -1825,18 +1825,25 @@ model AdLabProject {
 }
 
 model AdLabExperiment {
-  id                String                  @id @default(cuid())
-  projectId         String
-  project           AdLabProject            @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  topicBrief        String                  @db.Text
-  status            AdLabExperimentStatus   @default(draft)
-  metaCampaignId    String?
-  launchedAt        DateTime?
-  concludedAt       DateTime?
-  conclusionSummary String?                 @db.Text
-  createdAt         DateTime                @default(now())
-  angles            AdLabAngle[]
-  referenceImages   AdLabReferenceImage[]
+  id                    String                  @id @default(cuid())
+  projectId             String
+  project               AdLabProject            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  topicBrief            String                  @db.Text
+  status                AdLabExperimentStatus   @default(draft)
+  metaCampaignId        String?
+  campaignName          String?
+  campaignObjective     String?
+  specialAdCategories   String[]                @default([])
+  campaignTags          String[]                @default([])
+  adSetDailyBudgetCents Int?
+  optimizationEvent     String?
+  placementType         String?
+  launchedAt            DateTime?
+  concludedAt           DateTime?
+  conclusionSummary     String?                 @db.Text
+  createdAt             DateTime                @default(now())
+  angles                AdLabAngle[]
+  referenceImages       AdLabReferenceImage[]
 
   @@index([projectId, status])
   @@map("adlab_experiments")

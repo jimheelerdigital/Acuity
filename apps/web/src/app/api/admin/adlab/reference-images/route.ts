@@ -46,12 +46,21 @@ export async function POST(req: NextRequest) {
       .from("adlab-creatives")
       .getPublicUrl(filename);
 
-    const row = await prisma.adLabReferenceImage.create({
-      data: {
-        experimentId,
-        imageUrl: data.publicUrl,
-      },
-    });
+    let row;
+    try {
+      row = await prisma.adLabReferenceImage.create({
+        data: {
+          experimentId,
+          imageUrl: data.publicUrl,
+        },
+      });
+    } catch (err) {
+      console.error("[adlab] Reference image DB insert failed (table may not exist yet):", err instanceof Error ? err.message : err);
+      return NextResponse.json(
+        { error: "Reference images table not available — run prisma db push first" },
+        { status: 500 }
+      );
+    }
 
     created.push({ id: row.id, imageUrl: row.imageUrl });
   }

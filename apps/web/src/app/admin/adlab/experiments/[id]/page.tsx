@@ -57,7 +57,7 @@ interface Experiment {
   createdAt: string;
   conclusionSummary: string | null;
   project: { name: string; slug: string };
-  referenceImages: ReferenceImage[];
+  referenceImages?: ReferenceImage[];
   angles: Angle[];
 }
 
@@ -415,8 +415,8 @@ export default function ExperimentDetailPage() {
             <ImageIcon className="h-4 w-4 text-[#A0A0B8]" />
             <span className="text-sm font-medium text-white">
               Reference Images
-              {experiment.referenceImages.length > 0 && (
-                <span className="ml-1.5 text-[#A0A0B8]">({experiment.referenceImages.length})</span>
+              {(experiment.referenceImages ?? []).length > 0 && (
+                <span className="ml-1.5 text-[#A0A0B8]">({(experiment.referenceImages ?? []).length})</span>
               )}
             </span>
           </div>
@@ -446,9 +446,9 @@ export default function ExperimentDetailPage() {
             </label>
 
             {/* Gallery */}
-            {experiment.referenceImages.length > 0 && (
+            {(experiment.referenceImages ?? []).length > 0 && (
               <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
-                {experiment.referenceImages.map((img) => (
+                {(experiment.referenceImages ?? []).map((img) => (
                   <div key={img.id} className="shrink-0 w-36">
                     <div
                       className="relative aspect-square rounded-lg overflow-hidden bg-black/20 cursor-pointer group"
