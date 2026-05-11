@@ -11,7 +11,7 @@ import { prisma } from "@/lib/prisma";
 import { callAdLabClaude, extractJson } from "@/lib/adlab/claude";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const maxDuration = 120; // two sequential Anthropic calls with large system prompt
 
 const VALUE_SURFACES = [
   "problem",

@@ -10,6 +10,7 @@ import { prisma } from "@/lib/prisma";
 import * as meta from "@/lib/adlab/meta";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   const guard = await requireAdmin();
