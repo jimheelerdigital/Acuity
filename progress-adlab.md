@@ -311,6 +311,18 @@ All schema, pages, API endpoints, middleware, Meta integration, monitoring rules
 
 **Manual steps needed:** None
 
+### [2026-05-11] Feature — Auto-unapprove flagged creatives + Meta policy guardrails
+
+**Requested by:** Keenan
+**Commit:** f26f1f0
+
+**Built:**
+1. **Auto-unapprove**: Compliance endpoint now sets `approved=false` on any creative it flags. Flagged creatives can never stay approved. UI shows amber banner: "X creatives were flagged and auto-unapproved. Edit the copy and re-check, or generate new variants."
+2. **Meta policy guardrails**: Copy generation system prompt now includes strict rules — no you/your implying personal attributes, no medical/mental health conditions directed at reader, no before/after framing, use third-person general framing instead. This prevents most compliance flags at generation time rather than catching them after.
+3. **Launch-ready indicator**: Purple badge shows "N ready to launch" when at least 1 creative is both approved and compliance-passed.
+
+**Manual steps needed:** None
+
 **Everything else passes:**
 - All 7 models, 6 enums, 7 @@map directives correct
 - All 26 routes building (10 pages + 16 API)
