@@ -47,7 +47,7 @@ async function generateImageWithLogo(
 
   try {
     // If logo is available, use images.edit() with logo as reference image.
-    // gpt-image-1 accepts up to 16 reference images via the edit endpoint.
+    // gpt-image-2 accepts up to 16 reference images via the edit endpoint.
     // Without a logo, fall back to images.generate().
     if (logoUrl) {
       try {
@@ -55,21 +55,17 @@ async function generateImageWithLogo(
         if (logoRes.ok) {
           const logoBuf = Buffer.from(await logoRes.arrayBuffer());
           const ext = (logoRes.headers.get("content-type") || "image/png").includes("png") ? "png" : "webp";
-          const logoFile = await openai().files.create
-            ? undefined // not needed — toFile works directly
-            : undefined;
 
           // Convert buffer to File-like for the SDK
           const { toFile } = await import("openai/uploads");
           const file = await toFile(logoBuf, `logo.${ext}`);
 
           const response = await openai().images.edit({
-            model: "gpt-image-1",
+            model: "gpt-image-2",
             image: file,
             prompt,
             n: 1,
             size: "1024x1024",
-            quality: "medium",
           });
 
           const b64 = response.data?.[0]?.b64_json;
@@ -84,16 +80,15 @@ async function generateImageWithLogo(
 
     // Fallback: generate without reference image
     const response = await openai().images.generate({
-      model: "gpt-image-1",
+      model: "gpt-image-2",
       prompt,
       n: 1,
       size: "1024x1024",
-      quality: "medium",
     });
 
     const b64 = response.data?.[0]?.b64_json;
     if (!b64) {
-      console.error("[adlab] gpt-image-1 returned no image data");
+      console.error("[adlab] gpt-image-2 returned no image data");
       return null;
     }
 
@@ -282,10 +277,18 @@ Return ONLY a JSON array of exactly 3 objects, each with: headline, primaryText,
   }
 
   const allCreated: string[] = [];
+  const uploadErrors: { creativeId: string; error: string }[] = [];
 
   // ── Step 2: CATEGORY 1 — Image creatives (gpt-image-2) ───────────
   if (project.imageEnabled) {
-    for (const variant of copyVariants) {
+    for (let vi = 0; vi < copyVariants.length; vi++) {
+      const variant = copyVariants[vi];
+
+      // Rate limit: 3s delay between image generation calls (5/min limit)
+      if (vi > 0) {
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+      }
+
       const imagePrompt = [
         project.imageStylePrompt,
         `Scene: Visual metaphor for "${angle.hypothesis}" targeting ${angle.targetPersona}.`,
@@ -295,7 +298,6 @@ Return ONLY a JSON array of exactly 3 objects, each with: headline, primaryText,
 
       const imageResult = await generateImageWithLogo(imagePrompt, project.logoUrl);
 
-      let imageUrl: string | null = null;
       // Create the creative row first to get an ID for the filename
       const creative = await prisma.adLabCreative.create({
         data: {
@@ -312,7 +314,7 @@ Return ONLY a JSON array of exactly 3 objects, each with: headline, primaryText,
       });
 
       if (imageResult) {
-        imageUrl = await uploadToSupabase(
+        const imageUrl = await uploadToSupabase(
           imageResult.imageBuffer,
           `${creative.id}.png`,
           "image/png"
@@ -322,7 +324,12 @@ Return ONLY a JSON array of exactly 3 objects, each with: headline, primaryText,
             where: { id: creative.id },
             data: { imageUrl },
           });
+        } else {
+          console.error(`[adlab] Supabase upload failed for image creative ${creative.id}`);
+          uploadErrors.push({ creativeId: creative.id, error: "Image upload to Supabase failed" });
         }
+      } else {
+        console.warn(`[adlab] Image generation returned null for creative ${creative.id}`);
       }
 
       allCreated.push(creative.id);
@@ -376,7 +383,12 @@ Keep it conversational, direct, 75-90 spoken words. Return only the script text,
             where: { id: creative.id },
             data: { videoUrl },
           });
+        } else {
+          console.error(`[adlab] Supabase upload failed for video creative ${creative.id}`);
+          uploadErrors.push({ creativeId: creative.id, error: "Video upload to Supabase failed" });
         }
+      } else {
+        console.warn(`[adlab] HeyGen video generation returned null for creative ${creative.id}`);
       }
 
       allCreated.push(creative.id);
@@ -387,5 +399,8 @@ Keep it conversational, direct, 75-90 spoken words. Return only the script text,
     where: { id: { in: allCreated } },
   });
 
-  return NextResponse.json({ creatives });
+  return NextResponse.json({
+    creatives,
+    ...(uploadErrors.length > 0 ? { uploadErrors } : {}),
+  });
 }
