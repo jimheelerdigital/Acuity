@@ -379,6 +379,28 @@ All schema, pages, API endpoints, middleware, Meta integration, monitoring rules
 - [ ] Keenan: `npx prisma db push` from home network (adds campaign settings columns + reference images table)
 
 **Everything else passes:**
+### [2026-05-11] Fix — maxDuration on all AdLab API routes
+
+**Requested by:** Keenan
+**Commit:** 6f0b785
+
+**Fixed:** Research endpoint was timing out on Vercel (default 10s limit). Bumped from 60s to 120s since it makes two sequential Anthropic calls. Added maxDuration=60 to ads/cancel (was the only route missing it that calls an external API).
+
+**All routes now covered:**
+
+| Route | maxDuration | Reason |
+|-------|------------|--------|
+| research | 120s | 2 sequential Anthropic calls |
+| creatives/generate | 300s | image gen + HeyGen polling |
+| creatives/compliance | 120s | batch Anthropic calls |
+| ads/launch | 120s | Meta campaign + ad creation |
+| ads/activate | 60s | Meta status flips |
+| ads/cancel | 60s | Meta campaign delete |
+| cron | 300s | metrics sync + decisions for all ads |
+| experiments/[id]/learn | 60s | single Anthropic call |
+
+**Manual steps needed:** None — NOT PUSHED YET (waiting for go-ahead)
+
 - All 8 models, 6 enums, 8 @@map directives correct
 - All 29 routes building (10 pages + 19 API)
 - Middleware gates to keenan@heelerdigital.com
