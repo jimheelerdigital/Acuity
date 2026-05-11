@@ -20,7 +20,7 @@ interface AdLabClaudeParams {
 
 export async function callAdLabClaude(params: AdLabClaudeParams): Promise<string> {
   const { purpose, systemPrompt, userPrompt, maxTokens = 4000 } = params;
-  const model = "claude-sonnet-4-5-20241022";
+  const model = "claude-sonnet-4-5-20250514";
   const { prisma } = await import("@/lib/prisma");
 
   console.log(`[adlab-claude] Calling model=${model} purpose=${purpose} maxTokens=${maxTokens}`);
