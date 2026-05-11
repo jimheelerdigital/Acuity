@@ -297,6 +297,20 @@ All schema, pages, API endpoints, middleware, Meta integration, monitoring rules
 
 **Manual steps needed:** None
 
+### [2026-05-11] Feature — Auto-cleanup unapproved items at each approval gate
+
+**Requested by:** Keenan
+**Commit:** 125182e
+
+**Built:**
+- **Angle cleanup**: "Advance Selected" now deletes all non-selected angles from the experiment (with confirmation dialog). After cleanup, the button is replaced with a green "N angles advanced" badge and checkboxes disappear.
+- **Creative cleanup**: New "Finalize Creatives" button (red, with trash icon) deletes all unapproved + flagged creatives AND removes their files from Supabase `adlab-creatives` storage bucket. After cleanup, shows a green "N creatives approved" badge.
+- **Confirmation dialogs**: Both cleanup actions prompt "This will permanently delete X unapproved [angles/creatives]. Continue?" before executing.
+- New API endpoint: `POST /api/admin/adlab/creatives/finalize` — handles creative deletion + storage file removal.
+- Updated `PUT /api/admin/adlab/angles` — now accepts `experimentId` and deletes non-advanced angles in the same call.
+
+**Manual steps needed:** None
+
 **Everything else passes:**
 - All 7 models, 6 enums, 7 @@map directives correct
 - All 26 routes building (10 pages + 16 API)
