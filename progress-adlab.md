@@ -233,6 +233,24 @@ All schema, pages, API endpoints, middleware, Meta integration, monitoring rules
 
 4. **NOT BUILT — "Clone winning ads" button** (non-blocking): Spec'd in Phase 8 for concluded experiment view but never implemented.
 
+### [2026-05-11] Fix — Audit Punch List (all 4 items resolved)
+
+**Requested by:** Keenan
+**Commit:** 16657ea
+
+**Fixed:**
+
+1. **Logo reference image now works** — switched from `images.generate()` to `images.edit()` which is the correct gpt-image-1 endpoint for reference image input. Logo downloaded from `project.logoUrl`, converted via OpenAI SDK `toFile()`, passed as the `image` parameter. Falls back to `images.generate()` (no logo) if download fails.
+
+2. **`imageEnabled` toggle added** — wired through create/update API Zod schemas, project form (toggle next to videoEnabled), and project detail view. Projects can now turn image creative generation on/off.
+
+3. **`CRON_SECRET` added to .env.local** — placeholder with comment noting value must match Vercel.
+
+4. **"Clone winning ads" button built** — visible on concluded experiments. Finds top 2 scaled/live ads by lowest CPL, builds a topic brief from their winning hypotheses + headlines, navigates to `/experiments/new?brief=...` with the brief pre-filled. The new experiment form reads the `brief` query param on load.
+
+**Manual steps needed:**
+- [ ] Keenan: Set a real `CRON_SECRET` value in both .env.local and Vercel (any random string, must match)
+
 **Everything else passes:**
 - All 7 models, 6 enums, 7 @@map directives correct
 - All 26 routes building (10 pages + 16 API)
