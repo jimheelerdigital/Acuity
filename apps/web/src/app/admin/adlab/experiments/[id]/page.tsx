@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Loader2, CheckCircle2, ChevronDown, ChevronUp, Sparkles, RefreshCw, Shield, Copy } from "lucide-react";
+import { Loader2, CheckCircle2, ChevronDown, ChevronUp, Sparkles, RefreshCw, Shield, Copy, Trash2 } from "lucide-react";
 
 interface DailyMetric {
   spendCents: number;
@@ -86,6 +86,7 @@ export default function ExperimentDetailPage() {
   const [advancing, setAdvancing] = useState(false);
   const [generatingFor, setGeneratingFor] = useState<Set<string>>(new Set());
   const [complianceRunning, setComplianceRunning] = useState(false);
+  const [finalizing, setFinalizing] = useState(false);
 
   const loadExperiment = useCallback(async () => {
     const res = await fetch(`/api/admin/adlab/experiments/${id}`);
@@ -109,12 +110,21 @@ export default function ExperimentDetailPage() {
   }
 
   async function advanceSelected() {
-    if (selected.size === 0) return;
+    if (selected.size === 0 || !experiment) return;
+
+    const unapprovedCount = experiment.angles.filter((a) => !selected.has(a.id)).length;
+    if (unapprovedCount > 0) {
+      const confirmed = confirm(
+        `This will permanently delete ${unapprovedCount} unapproved angle${unapprovedCount === 1 ? "" : "s"}. Continue?`
+      );
+      if (!confirmed) return;
+    }
+
     setAdvancing(true);
     await fetch("/api/admin/adlab/angles", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ angleIds: [...selected], advanced: true }),
+      body: JSON.stringify({ angleIds: [...selected], experimentId: experiment.id }),
     });
     await loadExperiment();
     setAdvancing(false);
@@ -156,10 +166,35 @@ export default function ExperimentDetailPage() {
     setComplianceRunning(false);
   }
 
+  async function finalizeCreatives() {
+    if (!experiment) return;
+
+    const allCreatives = experiment.angles.flatMap((a) => a.creatives);
+    const toDeleteCount = allCreatives.filter((c) => !c.approved || c.complianceStatus === "flagged").length;
+
+    if (toDeleteCount === 0) {
+      alert("Nothing to clean up — all creatives are approved and compliant.");
+      return;
+    }
+
+    const confirmed = confirm(
+      `This will permanently delete ${toDeleteCount} unapproved/flagged creative${toDeleteCount === 1 ? "" : "s"} and their storage files. Continue?`
+    );
+    if (!confirmed) return;
+
+    setFinalizing(true);
+    await fetch("/api/admin/adlab/creatives/finalize", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ experimentId: experiment.id }),
+    });
+    await loadExperiment();
+    setFinalizing(false);
+  }
+
   function cloneWinningAds() {
     if (!experiment) return;
 
-    // Find all ads with metrics, compute CPL for each
     const adsWithCpl = experiment.angles.flatMap((angle) =>
       angle.creatives.flatMap((creative) =>
         creative.ads
@@ -171,7 +206,6 @@ export default function ExperimentDetailPage() {
               cpl: totalConversions > 0 ? totalSpend / totalConversions : Infinity,
               hypothesis: angle.hypothesis,
               headline: creative.headline,
-              primaryText: creative.primaryText,
               valueSurface: angle.valueSurface,
               targetPersona: angle.targetPersona,
             };
@@ -179,7 +213,6 @@ export default function ExperimentDetailPage() {
       )
     );
 
-    // Sort by CPL ascending, take top 2
     adsWithCpl.sort((a, b) => a.cpl - b.cpl);
     const winners = adsWithCpl.slice(0, 2);
 
@@ -188,7 +221,6 @@ export default function ExperimentDetailPage() {
       return;
     }
 
-    // Build a topic brief from winning patterns
     const brief = [
       `Follow-up experiment based on winners from experiment ${experiment.id.slice(0, 8)}.`,
       "",
@@ -197,11 +229,10 @@ export default function ExperimentDetailPage() {
         `${i + 1}. [${w.valueSurface}] ${w.hypothesis} — headline: "${w.headline}" (CPL: $${w.cpl === Infinity ? "N/A" : (w.cpl / 100).toFixed(2)})`
       ),
       "",
-      "Generate new angle variations that extend these winning directions. Test different hooks and framings while staying in the same value surface territory.",
+      "Generate new angle variations that extend these winning directions.",
     ].join("\n");
 
-    const params = new URLSearchParams({ brief });
-    router.push(`/admin/adlab/experiments/new?${params.toString()}`);
+    router.push(`/admin/adlab/experiments/new?${new URLSearchParams({ brief })}`);
   }
 
   if (loading) {
@@ -219,6 +250,9 @@ export default function ExperimentDetailPage() {
   const sortedAngles = [...experiment.angles].sort((a, b) => b.score - a.score);
   const allCreatives = experiment.angles.flatMap((a) => a.creatives);
   const hasCreatives = allCreatives.length > 0;
+  const allAnglesAdvanced = experiment.angles.length > 0 && experiment.angles.every((a) => a.advanced);
+  const hasUnapprovedCreatives = allCreatives.some((c) => !c.approved || c.complianceStatus === "flagged");
+  const approvedCount = allCreatives.filter((c) => c.approved).length;
 
   return (
     <>
@@ -238,7 +272,8 @@ export default function ExperimentDetailPage() {
 
       {/* Action bar */}
       <div className="flex items-center gap-3 mb-6 flex-wrap">
-        {experiment.status === "awaiting_approval" && (
+        {/* Advance angles — show button if not all advanced yet, otherwise show count */}
+        {experiment.status === "awaiting_approval" && !allAnglesAdvanced && (
           <button
             onClick={advanceSelected}
             disabled={selected.size === 0 || advancing}
@@ -248,6 +283,14 @@ export default function ExperimentDetailPage() {
             Advance Selected ({selected.size})
           </button>
         )}
+        {allAnglesAdvanced && (
+          <span className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 text-xs text-emerald-400">
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            {experiment.angles.length} angle{experiment.angles.length === 1 ? "" : "s"} advanced
+          </span>
+        )}
+
+        {/* Compliance check */}
         {hasCreatives && (
           <button
             onClick={runCompliance}
@@ -258,6 +301,28 @@ export default function ExperimentDetailPage() {
             Run Compliance Check
           </button>
         )}
+
+        {/* Finalize creatives — only show if there are unapproved ones to clean */}
+        {hasCreatives && hasUnapprovedCreatives && (
+          <button
+            onClick={finalizeCreatives}
+            disabled={finalizing}
+            className="inline-flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/5 px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 transition disabled:opacity-50"
+          >
+            {finalizing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+            Finalize Creatives
+          </button>
+        )}
+
+        {/* Show approved count when all are finalized */}
+        {hasCreatives && !hasUnapprovedCreatives && approvedCount > 0 && (
+          <span className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 text-xs text-emerald-400">
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            {approvedCount} creative{approvedCount === 1 ? "" : "s"} approved
+          </span>
+        )}
+
+        {/* Clone for concluded experiments */}
         {experiment.status === "concluded" && (
           <button
             onClick={cloneWinningAds}
@@ -277,7 +342,7 @@ export default function ExperimentDetailPage() {
               angle={angle}
               isSelected={selected.has(angle.id)}
               onToggle={() => toggleAngle(angle.id)}
-              selectable={experiment.status === "awaiting_approval"}
+              selectable={experiment.status === "awaiting_approval" && !allAnglesAdvanced}
               onGenerate={() => generateCreatives(angle.id)}
               generating={generatingFor.has(angle.id)}
             />
