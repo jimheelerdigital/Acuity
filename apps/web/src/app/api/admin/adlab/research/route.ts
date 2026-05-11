@@ -41,6 +41,7 @@ const ScoreSchema = z.array(
 );
 
 export async function POST(req: NextRequest) {
+  try {
   const guard = await requireAdmin();
   if (!guard.ok) return guard.response;
 
@@ -48,6 +49,8 @@ export async function POST(req: NextRequest) {
   if (!experimentId) {
     return NextResponse.json({ error: "experimentId required" }, { status: 400 });
   }
+
+  console.log("[adlab-research] Starting research for experiment:", experimentId);
 
   const experiment = await prisma.adLabExperiment.findUnique({
     where: { id: experimentId },
@@ -59,8 +62,10 @@ export async function POST(req: NextRequest) {
   }
 
   const project = experiment.project;
-  const audience = project.targetAudience as Record<string, unknown>;
-  const learnedPatterns = project.learnedPatterns as unknown[];
+  const audience = (project.targetAudience ?? {}) as Record<string, unknown>;
+  const learnedPatterns = (project.learnedPatterns ?? []) as unknown[];
+
+  console.log("[adlab-research] Project loaded:", project.name, "| brandVoiceGuide:", !!project.brandVoiceGuide, "| audience:", !!project.targetAudience, "| usps:", Array.isArray(project.usps), "| bannedPhrases:", Array.isArray(project.bannedPhrases));
 
   // ── Step 1: Generate 8 angle hypotheses ───────────────────────────
   const systemPrompt = `You are an expert direct-response advertising strategist. Your job is to generate testable ad angle hypotheses for split testing on Meta (Facebook/Instagram).
@@ -70,8 +75,8 @@ PROJECT CONFIG:
 - Brand voice: ${project.brandVoiceGuide}
 - Target audience: ${JSON.stringify(audience, null, 2)}
 - USPs: ${JSON.stringify(project.usps)}
-- Banned phrases (never use): ${project.bannedPhrases.join(", ")}
-${learnedPatterns.length > 0 ? `\nPast winning patterns from this project (use as priors, not constraints):\n${JSON.stringify(learnedPatterns, null, 2)}` : ""}
+- Banned phrases (never use): ${(project.bannedPhrases ?? []).join(", ")}
+${Array.isArray(learnedPatterns) && learnedPatterns.length > 0 ? `\nPast winning patterns from this project (use as priors, not constraints):\n${JSON.stringify(learnedPatterns, null, 2)}` : ""}
 
 VALUE SURFACE DEFINITIONS:
 - problem: Lead with the pain the user already feels
@@ -189,4 +194,14 @@ Return ONLY a JSON array of { "index": <0-7>, "score": <1-10> } objects.`;
     angles: created,
     status: "awaiting_approval",
   });
+
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    const stack = error instanceof Error ? error.stack : undefined;
+    console.error("[adlab-research] Research endpoint error:", message, stack);
+    return NextResponse.json(
+      { error: message },
+      { status: 500 }
+    );
+  }
 }

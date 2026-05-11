@@ -23,6 +23,7 @@ export async function callAdLabClaude(params: AdLabClaudeParams): Promise<string
   const model = "claude-sonnet-4-5-20241022";
   const { prisma } = await import("@/lib/prisma");
 
+  console.log(`[adlab-claude] Calling model=${model} purpose=${purpose} maxTokens=${maxTokens}`);
   const start = Date.now();
   try {
     const response = await anthropic.messages.create({
@@ -56,6 +57,7 @@ export async function callAdLabClaude(params: AdLabClaudeParams): Promise<string
       .map((b) => b.text)
       .join("");
   } catch (err) {
+    console.error(`[adlab-claude] Call failed: model=${model} purpose=${purpose}`, err instanceof Error ? err.message : err);
     const durationMs = Date.now() - start;
     await prisma.claudeCallLog.create({
       data: {
