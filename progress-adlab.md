@@ -214,3 +214,33 @@ Add these to `.env.local` and Vercel:
 - HeyGen avatar/voice IDs are hardcoded to defaults (Anna_public_3_20240108 / neutral voice). Should be made configurable per project in a future pass.
 - gpt-image-2 is called via `openai.images.generate()` with model "gpt-image-1" (the API model name). Logo reference image download + base64 encoding happens inline.
 - If neither imageEnabled nor videoEnabled is true on a project, creative generation produces nothing — the endpoint returns an empty array.
+
+### [2026-05-11] Audit — Full System Review
+
+**Requested by:** Keenan
+
+**Result: 42/46 items DONE, 3 PARTIAL, 1 NOT BUILT**
+
+All schema, pages, API endpoints, middleware, Meta integration, monitoring rules, and learning loop are complete and building. Four issues found:
+
+**Punch list (priority order):**
+
+1. **BUG — Logo reference image dead code** (blocking): The creative generator downloads the project logo and encodes it to base64, but the `images` array is never actually passed to the `openai().images.generate()` call. Generated images have no logo. Needs the correct parameter shape for passing reference images to gpt-image-1.
+
+2. **MISSING — `imageEnabled` not in project form or API** (non-blocking, defaults to true): Schema field exists, creative generator checks it, but the project form, API Zod schemas, and detail view don't expose it. Can't toggle image generation off from the UI.
+
+3. **MISSING — `CRON_SECRET` not in .env.local** (blocking for cron): Cron endpoint checks bearer token against this. Without it, daily metrics sync will fail auth. Needs adding to .env.local and Vercel.
+
+4. **NOT BUILT — "Clone winning ads" button** (non-blocking): Spec'd in Phase 8 for concluded experiment view but never implemented.
+
+**Everything else passes:**
+- All 7 models, 6 enums, 7 @@map directives correct
+- All 26 routes building (10 pages + 16 API)
+- Middleware gates to keenan@heelerdigital.com
+- Ideogram fully removed (zero references)
+- No sharp imports for compositing
+- HeyGen fully implemented (not a stub)
+- Meta launcher uses ABO, handles image + video, has retry logic
+- Kill/scale rules match spec exactly
+- Learning loop appends patterns, research agent injects them
+- Daily email includes creativeType breakdown
