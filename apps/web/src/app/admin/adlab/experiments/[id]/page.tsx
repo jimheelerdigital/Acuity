@@ -104,6 +104,8 @@ export default function ExperimentDetailPage() {
   const [uploadingRefs, setUploadingRefs] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [launchError, setLaunchError] = useState<string | null>(null);
+  const [generateAllRunning, setGenerateAllRunning] = useState(false);
+  const [generateAllProgress, setGenerateAllProgress] = useState<string | null>(null);
 
   const loadExperiment = useCallback(async () => {
     const res = await fetch(`/api/admin/adlab/experiments/${id}`);
@@ -362,6 +364,70 @@ export default function ExperimentDetailPage() {
     router.push(`/admin/adlab/experiments/new?${new URLSearchParams({ brief })}`);
   }
 
+  async function generateAllCreatives() {
+    if (!experiment) return;
+
+    const anglesNeedingCreatives = experiment.angles.filter(
+      (a) => a.advanced && a.creatives.length === 0
+    );
+
+    if (anglesNeedingCreatives.length === 0) {
+      alert("All advanced angles already have creatives.");
+      return;
+    }
+
+    setGenerateAllRunning(true);
+    let succeeded = 0;
+    let failed = 0;
+
+    for (let i = 0; i < anglesNeedingCreatives.length; i++) {
+      const angle = anglesNeedingCreatives[i];
+      setGenerateAllProgress(
+        `Generating creatives for angle ${i + 1} of ${anglesNeedingCreatives.length}...`
+      );
+
+      try {
+        setGeneratingFor((prev) => new Set(prev).add(angle.id));
+        const res = await fetch("/api/admin/adlab/creatives/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ angleId: angle.id }),
+        });
+        if (res.ok) {
+          succeeded++;
+        } else {
+          failed++;
+          console.error(`[adlab] Generate All: angle ${angle.id} returned ${res.status}`);
+        }
+      } catch (err) {
+        failed++;
+        console.error(`[adlab] Generate All: angle ${angle.id} failed:`, err);
+      } finally {
+        setGeneratingFor((prev) => {
+          const next = new Set(prev);
+          next.delete(angle.id);
+          return next;
+        });
+      }
+
+      // Refresh to show newly created creatives in real-time
+      await loadExperiment();
+
+      // 5-second pause between angles to avoid OpenAI rate limits (skip after last)
+      if (i < anglesNeedingCreatives.length - 1) {
+        await new Promise((r) => setTimeout(r, 5_000));
+      }
+    }
+
+    setGenerateAllProgress(
+      `Generated creatives for ${succeeded} of ${anglesNeedingCreatives.length} angle${anglesNeedingCreatives.length === 1 ? "" : "s"}.${failed > 0 ? ` ${failed} failed.` : ""}`
+    );
+    setGenerateAllRunning(false);
+
+    // Clear summary after 10 seconds
+    setTimeout(() => setGenerateAllProgress(null), 10_000);
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -381,6 +447,7 @@ export default function ExperimentDetailPage() {
   const hasUnapprovedCreatives = allCreatives.some((c) => !c.approved || c.complianceStatus === "flagged");
   const approvedCount = allCreatives.filter((c) => c.approved).length;
   const launchReadyCount = allCreatives.filter((c) => c.approved && c.complianceStatus === "passed").length;
+  const anglesWithoutCreatives = experiment.angles.filter((a) => a.advanced && a.creatives.length === 0).length;
 
   return (
     <>
@@ -508,6 +575,39 @@ export default function ExperimentDetailPage() {
           <span className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 text-xs text-emerald-400">
             <CheckCircle2 className="h-3.5 w-3.5" />
             {experiment.angles.length} angle{experiment.angles.length === 1 ? "" : "s"} advanced
+          </span>
+        )}
+
+        {/* Generate All Creatives */}
+        {allAnglesAdvanced && anglesWithoutCreatives > 0 && (
+          <div className="relative group">
+            <button
+              onClick={generateAllCreatives}
+              disabled={generateAllRunning}
+              className="inline-flex items-center gap-2 rounded-lg bg-[#7C5CFC] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] disabled:opacity-50"
+            >
+              {generateAllRunning ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Sparkles className="h-4 w-4" />
+              )}
+              {generateAllRunning
+                ? generateAllProgress
+                : `Generate All Creatives (${anglesWithoutCreatives})`}
+            </button>
+            {!generateAllRunning && (
+              <div className="absolute top-full left-0 mt-1 hidden group-hover:block rounded bg-[#1E1E2E] border border-white/10 px-3 py-2 text-[10px] text-[#A0A0B8] whitespace-nowrap z-10">
+                Sequentially generates 3 image creatives per angle. Takes ~30-60 seconds per angle.
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Generate All progress summary (shown after completion) */}
+        {!generateAllRunning && generateAllProgress && anglesWithoutCreatives === 0 && (
+          <span className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 text-xs text-emerald-400">
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            {generateAllProgress}
           </span>
         )}
 

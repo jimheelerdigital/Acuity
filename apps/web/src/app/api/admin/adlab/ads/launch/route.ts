@@ -16,6 +16,16 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 120;
 
 export async function POST(req: NextRequest) {
+  // Verify SDK loads correctly
+  try {
+    const mod = await import("facebook-nodejs-business-sdk");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const bizSdk = (mod as any).default ?? mod;
+    console.log("[adlab-launch] SDK loaded:", typeof bizSdk.FacebookAdsApi);
+  } catch (err) {
+    console.error("[adlab-launch] SDK failed to load:", err);
+  }
+
   const guard = await requireAdmin();
   if (!guard.ok) return guard.response;
 

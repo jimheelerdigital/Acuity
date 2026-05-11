@@ -8,29 +8,38 @@
 
 // Dynamic import to avoid build-time destructure failures when
 // META_ACCESS_TOKEN is not set (the SDK tries to init on import).
-let _sdk: typeof import("facebook-nodejs-business-sdk") | null = null;
+// The SDK uses module.exports (CJS), so dynamic import may or may not
+// wrap it in .default depending on the bundler. We normalize here.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let _bizSdk: any = null;
 
-async function getSdk() {
-  if (!_sdk) _sdk = await import("facebook-nodejs-business-sdk");
-  return _sdk;
+async function getBizSdk() {
+  if (!_bizSdk) {
+    const mod = await import("facebook-nodejs-business-sdk");
+    // CJS→ESM interop: default export may be at mod.default or mod itself
+    _bizSdk = (mod as any).default ?? mod;
+  }
+  return _bizSdk;
 }
 
 async function getApi() {
-  const sdk = await getSdk();
+  const bizSdk = await getBizSdk();
   const token = process.env.META_ACCESS_TOKEN;
   if (!token) throw new Error("META_ACCESS_TOKEN not configured");
 
-  const api = sdk.default.FacebookAdsApi.init(token);
+  const { FacebookAdsApi } = bizSdk;
+  const api = FacebookAdsApi.init(token);
   api.setDebug(process.env.NODE_ENV === "development");
   return api;
 }
 
 async function getAdAccount() {
-  const sdk = await getSdk();
+  const bizSdk = await getBizSdk();
   await getApi(); // ensure initialized
   const accountId = process.env.META_AD_ACCOUNT_ID;
   if (!accountId) throw new Error("META_AD_ACCOUNT_ID not configured");
-  return new sdk.default.AdAccount(accountId.startsWith("act_") ? accountId : `act_${accountId}`);
+  const { AdAccount } = bizSdk;
+  return new AdAccount(accountId.startsWith("act_") ? accountId : `act_${accountId}`);
 }
 
 interface CampaignParams {
@@ -142,8 +151,8 @@ export async function uploadVideo(videoUrl: string): Promise<string> {
   // Poll until video is processed (Meta needs ~30-60s)
   for (let i = 0; i < 12; i++) {
     await new Promise((r) => setTimeout(r, 5_000));
-    const sdk = await getSdk();
-    const v = new sdk.default.AdVideo(videoId);
+    const bizSdk = await getBizSdk();
+    const v = new bizSdk.AdVideo(videoId);
     const status = await v.get(["status"]);
     if (status?.status?.video_status === "ready") return videoId;
   }
@@ -214,39 +223,39 @@ export async function createAd(params: CreateAdParams) {
 }
 
 export async function setStatus(objectId: string, type: "campaign" | "adset" | "ad", status: "ACTIVE" | "PAUSED") {
-  const sdk = await getSdk();
+  const bizSdk = await getBizSdk();
   await getApi();
 
   if (type === "campaign") {
-    const campaign = new sdk.default.Campaign(objectId);
+    const campaign = new bizSdk.Campaign(objectId);
     await campaign.update([], { status });
   } else if (type === "adset") {
-    const adset = new sdk.default.AdSet(objectId);
+    const adset = new bizSdk.AdSet(objectId);
     await adset.update([], { status });
   } else {
-    const ad = new sdk.default.Ad(objectId);
+    const ad = new bizSdk.Ad(objectId);
     await ad.update([], { status });
   }
 }
 
 export async function updateAdSetBudget(adsetId: string, dailyBudgetCents: number) {
-  const sdk = await getSdk();
+  const bizSdk = await getBizSdk();
   await getApi();
-  const adset = new sdk.default.AdSet(adsetId);
+  const adset = new bizSdk.AdSet(adsetId);
   await adset.update([], { daily_budget: dailyBudgetCents });
 }
 
 export async function deleteCampaign(campaignId: string) {
-  const sdk = await getSdk();
+  const bizSdk = await getBizSdk();
   await getApi();
-  const campaign = new sdk.default.Campaign(campaignId);
+  const campaign = new bizSdk.Campaign(campaignId);
   await campaign.delete([]);
 }
 
 export async function getAdInsights(adId: string, since: string, until: string) {
-  const sdk = await getSdk();
+  const bizSdk = await getBizSdk();
   await getApi();
-  const ad = new sdk.default.Ad(adId);
+  const ad = new bizSdk.Ad(adId);
 
   const insights = await ad.getInsights(
     ["impressions", "clicks", "ctr", "spend", "actions", "frequency", "cpc"],

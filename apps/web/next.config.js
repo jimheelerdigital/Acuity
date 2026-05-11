@@ -157,6 +157,11 @@ const securityHeaders = [
 
 const nextConfig = {
   reactStrictMode: true,
+  experimental: {
+    // facebook-nodejs-business-sdk is a CJS package that webpack can't resolve
+    // at build time. Mark it as external so it's loaded via require() at runtime.
+    serverComponentsExternalPackages: ["facebook-nodejs-business-sdk"],
+  },
   typescript: {
     ignoreBuildErrors: true,
   },
