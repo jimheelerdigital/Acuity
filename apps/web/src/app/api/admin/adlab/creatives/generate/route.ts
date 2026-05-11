@@ -36,49 +36,13 @@ function openai(): OpenAI {
   return _openai;
 }
 
-async function generateImageWithLogo(
-  prompt: string,
-  logoUrl: string | null
-): Promise<{ imageBuffer: Buffer } | null> {
+async function generateImage(prompt: string): Promise<{ imageBuffer: Buffer } | null> {
   if (!process.env.OPENAI_API_KEY) {
     console.warn("[adlab] OPENAI_API_KEY not set, skipping image generation");
     return null;
   }
 
   try {
-    // If logo is available, use images.edit() with logo as reference image.
-    // gpt-image-2 accepts up to 16 reference images via the edit endpoint.
-    // Without a logo, fall back to images.generate().
-    if (logoUrl) {
-      try {
-        const logoRes = await fetch(logoUrl);
-        if (logoRes.ok) {
-          const logoBuf = Buffer.from(await logoRes.arrayBuffer());
-          const ext = (logoRes.headers.get("content-type") || "image/png").includes("png") ? "png" : "webp";
-
-          // Convert buffer to File-like for the SDK
-          const { toFile } = await import("openai/uploads");
-          const file = await toFile(logoBuf, `logo.${ext}`);
-
-          const response = await openai().images.edit({
-            model: "gpt-image-2",
-            image: file,
-            prompt,
-            n: 1,
-            size: "1024x1024",
-          });
-
-          const b64 = response.data?.[0]?.b64_json;
-          if (b64) {
-            return { imageBuffer: Buffer.from(b64, "base64") };
-          }
-        }
-      } catch (err) {
-        console.warn("[adlab] Logo-based edit failed, falling back to generate:", err instanceof Error ? err.message : err);
-      }
-    }
-
-    // Fallback: generate without reference image
     const response = await openai().images.generate({
       model: "gpt-image-2",
       prompt,
@@ -293,10 +257,9 @@ Return ONLY a JSON array of exactly 3 objects, each with: headline, primaryText,
         project.imageStylePrompt,
         `Scene: Visual metaphor for "${angle.hypothesis}" targeting ${angle.targetPersona}.`,
         `The ad headline is "${variant.headline}".`,
-        "Use the provided reference image as the brand logo. Place it in the bottom-right corner at approximately 5% of the image width. Use the logo file exactly as provided — do not stylize, recolor, recreate, or redesign it.",
       ].join("\n");
 
-      const imageResult = await generateImageWithLogo(imagePrompt, project.logoUrl);
+      const imageResult = await generateImage(imagePrompt);
 
       // Create the creative row first to get an ID for the filename
       const creative = await prisma.adLabCreative.create({
