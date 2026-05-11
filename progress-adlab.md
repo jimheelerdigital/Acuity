@@ -411,3 +411,25 @@ All schema, pages, API endpoints, middleware, Meta integration, monitoring rules
 - Kill/scale rules match spec exactly
 - Learning loop appends patterns, research agent injects them
 - Daily email includes creativeType breakdown
+
+### [2026-05-11] Fix — Meta SDK import + Generate All Creatives button
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 7187ee5
+
+### In plain English (for Keenan)
+Two changes: (1) The "Launch Campaign" button was crashing because the Meta Ads SDK wasn't loading correctly — fixed the import so it works. (2) Added a "Generate All Creatives" button that creates image/video creatives for every approved angle in one click, one at a time, so you don't have to click "Generate" on each angle individually.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/adlab/meta.ts`: Rewrote SDK initialization — the `facebook-nodejs-business-sdk` package uses a CJS default export. The old code accessed `sdk.default.FacebookAdsApi` which was `undefined` in the ESM dynamic import context. Fixed with `(mod.default ?? mod)` normalization pattern across all 7 functions that construct SDK classes.
+- `apps/web/next.config.js`: Added `facebook-nodejs-business-sdk` to `experimental.serverComponentsExternalPackages` — webpack was failing to resolve the package at build time because it wasn't installed (was in package.json but never `npm install`ed). Package now installed + externalized.
+- `apps/web/src/app/api/admin/adlab/ads/launch/route.ts`: Added `console.log('[adlab-launch] SDK loaded:', typeof bizSdk.FacebookAdsApi)` inside the POST handler for deploy verification.
+- `apps/web/src/app/admin/adlab/experiments/[id]/page.tsx`: New "Generate All Creatives" button — appears when advanced angles exist without creatives. Processes angles sequentially with 5s pause between each to avoid OpenAI rate limits. Shows real-time progress ("Generating creatives for angle 2 of 5..."), refreshes UI after each angle so creatives appear progressively, skips angles that already have creatives, continues on failure with error logging.
+
+### Manual steps needed
+None
+
+### Notes
+- The SDK was listed in `apps/web/package.json` but was never actually `npm install`ed — the node_modules directory didn't have it. This was likely masked by the dynamic import + `ignoreBuildErrors: true` in earlier builds.
+- The `(mod.default ?? mod)` pattern handles both cases: if the bundler wraps the CJS export in `.default` (standard ESM interop), it uses that; if the module is already unwrapped, it falls through. This is the canonical way to handle CJS→ESM interop with dynamic imports.
