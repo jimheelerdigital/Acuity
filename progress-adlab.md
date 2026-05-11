@@ -251,6 +251,19 @@ All schema, pages, API endpoints, middleware, Meta integration, monitoring rules
 **Manual steps needed:**
 - [ ] Keenan: Set a real `CRON_SECRET` value in both .env.local and Vercel (any random string, must match)
 
+### [2026-05-11] Admin Dashboard — AdLab Entry Point
+
+**Requested by:** Keenan
+**Commit:** 2baa31d
+
+**Built:**
+- Prominent AdLab link card on the main `/admin` dashboard, placed between the header quick-links row and the tab bar
+- Flask icon + "AdLab" title + "Ad Research & Optimization — angles, creatives, Meta launch, auto-monitoring" subtitle
+- Purple accent border matching existing admin theme, hover state with chevron arrow
+- Links to `/admin/adlab`
+
+**Manual steps needed:** None
+
 **Everything else passes:**
 - All 7 models, 6 enums, 7 @@map directives correct
 - All 26 routes building (10 pages + 16 API)
