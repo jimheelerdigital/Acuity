@@ -323,9 +323,26 @@ All schema, pages, API endpoints, middleware, Meta integration, monitoring rules
 
 **Manual steps needed:** None
 
+### [2026-05-11] Fix — Launch Campaign button wired into experiment UI
+
+**Requested by:** Keenan
+**Commit:** aafe88b
+
+**Fixed:** The Launch button was never added to the experiment detail page — only a "ready to launch" badge existed. The API endpoints (launch, activate, cancel) were built in Phase 6 but never connected to the UI.
+
+**Added:**
+- Green "Launch Campaign (N creatives)" button — visible when experiment is `awaiting_approval` and at least 1 creative is approved + compliance-passed
+- Full launch flow: button calls POST /ads/launch → confirmation panel shows PAUSED campaign details → "Launch Live" or "Cancel & Delete"
+- Loading states on all three actions (launch, activate, cancel)
+- Error display surfaces exact Meta API error messages
+- "Campaign is live" indicator with pulsing green dot after activation
+- Cancel has confirmation dialog before deleting the Meta campaign
+
+**Manual steps needed:** None
+
 **Everything else passes:**
 - All 7 models, 6 enums, 7 @@map directives correct
-- All 26 routes building (10 pages + 16 API)
+- All 27 routes building (10 pages + 17 API)
 - Middleware gates to keenan@heelerdigital.com
 - Ideogram fully removed (zero references)
 - No sharp imports for compositing
