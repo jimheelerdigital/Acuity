@@ -357,7 +357,26 @@ All schema, pages, API endpoints, middleware, Meta integration, monitoring rules
 - API: POST /api/admin/adlab/reference-images (multipart upload), PUT/DELETE /api/admin/adlab/reference-images/[id]
 
 **Manual steps needed:**
-- [ ] Keenan: `npx prisma db push` from home network to create `adlab_reference_images` table
+- [ ] Keenan: `npx prisma db push` from home network to create `adlab_reference_images` table + add new experiment columns
+
+### [2026-05-11] Fix — Make all new fields optional to unblock pre-migration
+
+**Requested by:** Keenan
+**Commit:** 9a9baea
+
+**Problem:** Experiment queries broke with "Experiment not found" because the `referenceImages` include tried to query a table that didn't exist yet (no migration run).
+
+**Fixed:**
+- Added 7 optional campaign settings fields to `AdLabExperiment`: `campaignName`, `campaignObjective`, `specialAdCategories`, `campaignTags`, `adSetDailyBudgetCents`, `optimizationEvent`, `placementType` — all nullable or with empty defaults
+- Experiment detail API: try/catch fallback queries without `referenceImages` if the table doesn't exist, attaches empty array
+- Reference image upload: try/catch on DB insert, returns clear "run prisma db push" error
+- Launch endpoint: uses experiment-level overrides with project fallbacks (`experiment.campaignObjective ?? project.conversionObjective`, etc.)
+- UI: optional chaining on `referenceImages` everywhere
+
+**App works without migration now.** All new columns get added when Keenan runs `prisma db push`.
+
+**Manual steps needed:**
+- [ ] Keenan: `npx prisma db push` from home network (adds campaign settings columns + reference images table)
 
 **Everything else passes:**
 - All 8 models, 6 enums, 8 @@map directives correct
