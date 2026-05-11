@@ -86,6 +86,7 @@ export default function ExperimentDetailPage() {
   const [advancing, setAdvancing] = useState(false);
   const [generatingFor, setGeneratingFor] = useState<Set<string>>(new Set());
   const [complianceRunning, setComplianceRunning] = useState(false);
+  const [complianceMessage, setComplianceMessage] = useState<string | null>(null);
   const [finalizing, setFinalizing] = useState(false);
 
   const loadExperiment = useCallback(async () => {
@@ -157,11 +158,22 @@ export default function ExperimentDetailPage() {
   async function runCompliance() {
     if (!experiment) return;
     setComplianceRunning(true);
-    await fetch("/api/admin/adlab/creatives/compliance", {
+    setComplianceMessage(null);
+    const res = await fetch("/api/admin/adlab/creatives/compliance", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ experimentId: experiment.id }),
     });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.flaggedCount > 0) {
+        setComplianceMessage(
+          `${data.flaggedCount} creative${data.flaggedCount === 1 ? " was" : "s were"} flagged and auto-unapproved. Edit the copy and re-check, or generate new variants.`
+        );
+      } else {
+        setComplianceMessage(null);
+      }
+    }
     await loadExperiment();
     setComplianceRunning(false);
   }
@@ -253,9 +265,17 @@ export default function ExperimentDetailPage() {
   const allAnglesAdvanced = experiment.angles.length > 0 && experiment.angles.every((a) => a.advanced);
   const hasUnapprovedCreatives = allCreatives.some((c) => !c.approved || c.complianceStatus === "flagged");
   const approvedCount = allCreatives.filter((c) => c.approved).length;
+  const launchReadyCount = allCreatives.filter((c) => c.approved && c.complianceStatus === "passed").length;
 
   return (
     <>
+      {/* Compliance flagged message */}
+      {complianceMessage && (
+        <div className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-400">
+          {complianceMessage}
+        </div>
+      )}
+
       <div className="mb-8">
         <div className="flex items-center gap-2 mb-1.5">
           <span className="text-xs text-[#A0A0B8]">{experiment.project.name}</span>
@@ -319,6 +339,14 @@ export default function ExperimentDetailPage() {
           <span className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 text-xs text-emerald-400">
             <CheckCircle2 className="h-3.5 w-3.5" />
             {approvedCount} creative{approvedCount === 1 ? "" : "s"} approved
+          </span>
+        )}
+
+        {/* Launch ready indicator */}
+        {launchReadyCount > 0 && experiment.status === "awaiting_approval" && (
+          <span className="inline-flex items-center gap-1.5 rounded-lg bg-[#7C5CFC]/10 border border-[#7C5CFC]/20 px-3 py-2 text-xs text-[#7C5CFC]">
+            <Sparkles className="h-3.5 w-3.5" />
+            {launchReadyCount} ready to launch
           </span>
         )}
 

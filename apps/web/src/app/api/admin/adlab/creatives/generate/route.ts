@@ -220,6 +220,16 @@ CONSTRAINTS:
 
 Each variant should test a meaningfully different hook or angle framing while staying true to the hypothesis.
 
+CRITICAL — All ad copy must comply with Meta's advertising policies. Follow these rules strictly:
+
+- NEVER use 'you' or 'your' in a way that implies the reader has a specific personal attribute — including health conditions, mental health status, financial status, race, religion, sexual orientation, or disability. 'Your therapist' implies the reader is in therapy. 'You pay $150/hr' implies the reader's spending. Rewrite to use general framing: 'Therapy covers 50 minutes' not 'Your therapist gets 50 minutes.'
+- NEVER reference specific medical or mental health conditions, treatments, or diagnoses — even indirectly. 'ADHD' 'anxiety' 'depression' 'therapy' as something the reader does are all violations when directed at the reader with 'you/your.'
+- NEVER use before/after framing that implies a personal transformation.
+- NEVER make health claims or promise therapeutic outcomes.
+- NEVER reference financial status or spending habits directed at the reader.
+- USE third-person or general framing instead: 'Most people forget what they said by Tuesday' not 'You forget what you said by Tuesday.' 'Therapy covers 1 hour a week' not 'Your therapist gets 50 minutes.'
+- The copy can reference therapy, mental health, and productivity as TOPICS — just never attribute them to the specific reader using 'you/your.'
+
 Return ONLY a JSON array of exactly 3 objects, each with: headline, primaryText, description, cta`;
 
   let copyVariants: z.infer<typeof CreativesArraySchema>;

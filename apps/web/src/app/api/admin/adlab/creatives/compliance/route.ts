@@ -120,6 +120,8 @@ export async function POST(req: NextRequest) {
           data: {
             complianceStatus: result.status,
             complianceNotes: result.notes + (result.flaggedReasons.length > 0 ? `\nReasons: ${result.flaggedReasons.join(", ")}` : ""),
+            // Auto-unapprove flagged creatives — a flagged creative can never stay approved
+            ...(result.status === "flagged" ? { approved: false } : {}),
           },
         });
         return { id: creative.id, status: result.status, notes: result.notes };
@@ -128,5 +130,12 @@ export async function POST(req: NextRequest) {
     results.push(...batchResults);
   }
 
-  return NextResponse.json({ checked: results.length, results });
+  const flaggedCount = results.filter((r) => r.status === "flagged").length;
+
+  return NextResponse.json({
+    checked: results.length,
+    results,
+    flaggedCount,
+    flaggedAutoUnapproved: flaggedCount,
+  });
 }
