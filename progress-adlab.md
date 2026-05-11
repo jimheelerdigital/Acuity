@@ -264,6 +264,15 @@ All schema, pages, API endpoints, middleware, Meta integration, monitoring rules
 
 **Manual steps needed:** None
 
+### [2026-05-11] Fix — Correct Anthropic model string
+
+**Requested by:** Keenan
+**Commit:** 29387da
+
+**Fixed:** AdLab Claude caller was using `claude-sonnet-4-5-20241022` (doesn't exist, 404). Changed to `claude-sonnet-4-5-20250514`. Single occurrence in `apps/web/src/lib/adlab/claude.ts`.
+
+**Manual steps needed:** None — deploys automatically.
+
 **Everything else passes:**
 - All 7 models, 6 enums, 7 @@map directives correct
 - All 26 routes building (10 pages + 16 API)
