@@ -24,7 +24,11 @@ export async function GET(
         include: {
           creatives: {
             include: {
-              ads: true,
+              ads: {
+                include: {
+                  metrics: true,
+                },
+              },
             },
           },
         },

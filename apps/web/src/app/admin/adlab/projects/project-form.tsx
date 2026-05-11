@@ -30,6 +30,7 @@ interface ProjectFormData {
   metaPixelId: string;
   conversionEvent: string;
   conversionObjective: string;
+  imageEnabled: boolean;
   videoEnabled: boolean;
 }
 
@@ -63,6 +64,7 @@ const DEFAULT_DATA: ProjectFormData = {
   metaPixelId: "",
   conversionEvent: "",
   conversionObjective: "OUTCOME_LEADS",
+  imageEnabled: true,
   videoEnabled: false,
 };
 
@@ -368,6 +370,21 @@ export function ProjectForm({ initialData, projectId, mode }: ProjectFormProps) 
         <label className="flex items-center gap-3 cursor-pointer">
           <div
             className={`relative h-5 w-9 rounded-full transition-colors ${
+              data.imageEnabled ? "bg-[#7C5CFC]" : "bg-white/20"
+            }`}
+            onClick={() => updateField("imageEnabled", !data.imageEnabled)}
+          >
+            <div
+              className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
+                data.imageEnabled ? "translate-x-4" : "translate-x-0.5"
+              }`}
+            />
+          </div>
+          <span className="text-sm text-[#A0A0B8]">Image creatives enabled (OpenAI gpt-image)</span>
+        </label>
+        <label className="flex items-center gap-3 cursor-pointer">
+          <div
+            className={`relative h-5 w-9 rounded-full transition-colors ${
               data.videoEnabled ? "bg-[#7C5CFC]" : "bg-white/20"
             }`}
             onClick={() => updateField("videoEnabled", !data.videoEnabled)}
@@ -378,7 +395,7 @@ export function ProjectForm({ initialData, projectId, mode }: ProjectFormProps) 
               }`}
             />
           </div>
-          <span className="text-sm text-[#A0A0B8]">Video enabled (HeyGen)</span>
+          <span className="text-sm text-[#A0A0B8]">Video creatives enabled (HeyGen)</span>
         </label>
       </Section>
 

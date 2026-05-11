@@ -30,6 +30,7 @@ interface Project {
   metaPixelId: string | null;
   conversionEvent: string | null;
   conversionObjective: string;
+  imageEnabled: boolean;
   videoEnabled: boolean;
   createdAt: string;
 }
@@ -83,7 +84,8 @@ export default function ProjectDetailPage() {
           <Row label="Test Duration" value={`${project.testDurationDays} days`} />
           <Row label="Conversion Objective" value={project.conversionObjective} />
           <Row label="Conversion Event" value={project.conversionEvent || "Not set"} />
-          <Row label="Video Enabled" value={project.videoEnabled ? "Yes" : "No"} />
+          <Row label="Image Creatives" value={project.imageEnabled ? "Yes" : "No"} />
+          <Row label="Video Creatives" value={project.videoEnabled ? "Yes" : "No"} />
         </Card>
 
         {/* Meta Integration */}

@@ -46,41 +46,54 @@ async function generateImageWithLogo(
   }
 
   try {
-    // Download logo if available — pass as reference image to gpt-image-2
-    const images: Array<{ source: { type: "base64"; media_type: string; data: string } }> = [];
-
+    // If logo is available, use images.edit() with logo as reference image.
+    // gpt-image-1 accepts up to 16 reference images via the edit endpoint.
+    // Without a logo, fall back to images.generate().
     if (logoUrl) {
       try {
         const logoRes = await fetch(logoUrl);
         if (logoRes.ok) {
           const logoBuf = Buffer.from(await logoRes.arrayBuffer());
-          const contentType = logoRes.headers.get("content-type") || "image/png";
-          images.push({
-            source: {
-              type: "base64",
-              media_type: contentType,
-              data: logoBuf.toString("base64"),
-            },
+          const ext = (logoRes.headers.get("content-type") || "image/png").includes("png") ? "png" : "webp";
+          const logoFile = await openai().files.create
+            ? undefined // not needed — toFile works directly
+            : undefined;
+
+          // Convert buffer to File-like for the SDK
+          const { toFile } = await import("openai/uploads");
+          const file = await toFile(logoBuf, `logo.${ext}`);
+
+          const response = await openai().images.edit({
+            model: "gpt-image-1",
+            image: file,
+            prompt,
+            n: 1,
+            size: "1024x1024",
+            quality: "medium",
           });
+
+          const b64 = response.data?.[0]?.b64_json;
+          if (b64) {
+            return { imageBuffer: Buffer.from(b64, "base64") };
+          }
         }
       } catch (err) {
-        console.warn("[adlab] Failed to download logo for reference:", err);
+        console.warn("[adlab] Logo-based edit failed, falling back to generate:", err instanceof Error ? err.message : err);
       }
     }
 
-    // Call gpt-image-2 via the images.generate endpoint
+    // Fallback: generate without reference image
     const response = await openai().images.generate({
       model: "gpt-image-1",
       prompt,
       n: 1,
       size: "1024x1024",
       quality: "medium",
-    } as Parameters<typeof openai extends () => infer R ? R["images"]["generate"] : never>[0]);
+    });
 
-    // gpt-image-1 returns base64 by default
     const b64 = response.data?.[0]?.b64_json;
     if (!b64) {
-      console.error("[adlab] gpt-image-2 returned no image data");
+      console.error("[adlab] gpt-image-1 returned no image data");
       return null;
     }
 

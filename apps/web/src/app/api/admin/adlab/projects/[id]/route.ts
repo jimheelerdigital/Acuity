@@ -36,6 +36,7 @@ const UpdateProjectSchema = z.object({
   metaPixelId: z.string().optional(),
   conversionEvent: z.string().optional(),
   conversionObjective: z.string().optional(),
+  imageEnabled: z.boolean().optional(),
   videoEnabled: z.boolean().optional(),
 });
 

@@ -1,8 +1,20 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useParams } from "next/navigation";
-import { Loader2, CheckCircle2, ChevronDown, ChevronUp, Sparkles, RefreshCw, Shield } from "lucide-react";
+import { useParams, useRouter } from "next/navigation";
+import { Loader2, CheckCircle2, ChevronDown, ChevronUp, Sparkles, RefreshCw, Shield, Copy } from "lucide-react";
+
+interface DailyMetric {
+  spendCents: number;
+  conversions: number;
+}
+
+interface Ad {
+  id: string;
+  status: string;
+  dailyBudgetCents: number | null;
+  metrics: DailyMetric[];
+}
 
 interface Creative {
   id: string;
@@ -17,6 +29,7 @@ interface Creative {
   complianceStatus: string;
   complianceNotes: string | null;
   approved: boolean;
+  ads: Ad[];
 }
 
 interface Angle {
@@ -66,6 +79,7 @@ const COMPLIANCE_COLORS: Record<string, string> = {
 
 export default function ExperimentDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const [experiment, setExperiment] = useState<Experiment | null>(null);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -142,6 +156,54 @@ export default function ExperimentDetailPage() {
     setComplianceRunning(false);
   }
 
+  function cloneWinningAds() {
+    if (!experiment) return;
+
+    // Find all ads with metrics, compute CPL for each
+    const adsWithCpl = experiment.angles.flatMap((angle) =>
+      angle.creatives.flatMap((creative) =>
+        creative.ads
+          .filter((ad) => ad.status === "scaled" || ad.status === "live")
+          .map((ad) => {
+            const totalSpend = ad.metrics.reduce((s, m) => s + m.spendCents, 0);
+            const totalConversions = ad.metrics.reduce((s, m) => s + m.conversions, 0);
+            return {
+              cpl: totalConversions > 0 ? totalSpend / totalConversions : Infinity,
+              hypothesis: angle.hypothesis,
+              headline: creative.headline,
+              primaryText: creative.primaryText,
+              valueSurface: angle.valueSurface,
+              targetPersona: angle.targetPersona,
+            };
+          })
+      )
+    );
+
+    // Sort by CPL ascending, take top 2
+    adsWithCpl.sort((a, b) => a.cpl - b.cpl);
+    const winners = adsWithCpl.slice(0, 2);
+
+    if (winners.length === 0) {
+      alert("No scaled or live ads with metrics to clone from.");
+      return;
+    }
+
+    // Build a topic brief from winning patterns
+    const brief = [
+      `Follow-up experiment based on winners from experiment ${experiment.id.slice(0, 8)}.`,
+      "",
+      "Winning patterns to build on:",
+      ...winners.map((w, i) =>
+        `${i + 1}. [${w.valueSurface}] ${w.hypothesis} — headline: "${w.headline}" (CPL: $${w.cpl === Infinity ? "N/A" : (w.cpl / 100).toFixed(2)})`
+      ),
+      "",
+      "Generate new angle variations that extend these winning directions. Test different hooks and framings while staying in the same value surface territory.",
+    ].join("\n");
+
+    const params = new URLSearchParams({ brief });
+    router.push(`/admin/adlab/experiments/new?${params.toString()}`);
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -194,6 +256,15 @@ export default function ExperimentDetailPage() {
           >
             {complianceRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Shield className="h-4 w-4" />}
             Run Compliance Check
+          </button>
+        )}
+        {experiment.status === "concluded" && (
+          <button
+            onClick={cloneWinningAds}
+            className="inline-flex items-center gap-2 rounded-lg border border-[#7C5CFC]/30 bg-[#7C5CFC]/10 px-4 py-2 text-sm text-[#7C5CFC] hover:bg-[#7C5CFC]/20 transition"
+          >
+            <Copy className="h-4 w-4" />
+            Clone winning ads with new variants
           </button>
         )}
       </div>

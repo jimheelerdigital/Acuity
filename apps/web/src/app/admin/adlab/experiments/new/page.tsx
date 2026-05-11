@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
 interface Project {
@@ -12,9 +12,10 @@ interface Project {
 
 export default function NewExperimentPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectId, setProjectId] = useState("");
-  const [topicBrief, setTopicBrief] = useState("");
+  const [topicBrief, setTopicBrief] = useState(searchParams.get("brief") || "");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [researching, setResearching] = useState(false);
