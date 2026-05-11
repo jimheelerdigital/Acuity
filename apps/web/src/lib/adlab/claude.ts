@@ -1,5 +1,5 @@
 /**
- * AdLab-specific Claude caller. Uses claude-sonnet-4-5 (cheaper than Opus)
+ * AdLab-specific Claude caller. Uses claude-sonnet-4-6
  * and logs all calls to ClaudeCallLog with "adlab-*" purpose prefixes.
  */
 
@@ -20,7 +20,7 @@ interface AdLabClaudeParams {
 
 export async function callAdLabClaude(params: AdLabClaudeParams): Promise<string> {
   const { purpose, systemPrompt, userPrompt, maxTokens = 4000 } = params;
-  const model = "claude-sonnet-4-5-20250514";
+  const model = "claude-sonnet-4-6";
   const { prisma } = await import("@/lib/prisma");
 
   console.log(`[adlab-claude] Calling model=${model} purpose=${purpose} maxTokens=${maxTokens}`);
