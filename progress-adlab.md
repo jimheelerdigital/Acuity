@@ -269,7 +269,9 @@ All schema, pages, API endpoints, middleware, Meta integration, monitoring rules
 **Requested by:** Keenan
 **Commit:** 29387da
 
-**Fixed:** AdLab Claude caller was using `claude-sonnet-4-5-20241022` (doesn't exist, 404). Changed to `claude-sonnet-4-5-20250514`. Single occurrence in `apps/web/src/lib/adlab/claude.ts`.
+**Fixed:** AdLab Claude caller model string corrected. `claude-sonnet-4-5-20241022` → `claude-sonnet-4-5-20250514` → `claude-sonnet-4-6` (the current valid Sonnet model ID). Both prior strings returned 404 from the Anthropic API. Single source of truth in `apps/web/src/lib/adlab/claude.ts`.
+
+**Latest commit:** 9be2ad3
 
 **Manual steps needed:** None — deploys automatically.
 
