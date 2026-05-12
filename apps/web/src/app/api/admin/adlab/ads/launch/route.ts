@@ -83,13 +83,17 @@ export async function POST(req: NextRequest) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function logMetaError(step: string, err: any) {
     console.error(`[adlab-launch] ${step} failed`);
-    console.error("[adlab-launch] Meta API error:", JSON.stringify(err, null, 2));
+    // Use Object.getOwnPropertyNames to capture non-enumerable properties the SDK hides
+    console.error("[adlab-launch] Full error:", JSON.stringify(err, Object.getOwnPropertyNames(err), 2));
     console.error("[adlab-launch] Error body:", err?.response?.body || err?.body || err?.message);
+    // Meta SDK sometimes puts the real error in _data
+    if (err?._data) console.error("[adlab-launch] Error _data:", JSON.stringify(err._data, null, 2));
+    if (err?.response) console.error("[adlab-launch] Error response:", JSON.stringify(err.response, null, 2));
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function extractErrorDetail(err: any): string {
-    const body = err?.response?.body || err?.body;
+    const body = err?.response?.body || err?.body || err?._data;
     if (body) return typeof body === "string" ? body : JSON.stringify(body);
     return err?.message || String(err);
   }

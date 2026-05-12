@@ -50,14 +50,19 @@ interface CampaignParams {
 export async function createCampaign(params: CampaignParams) {
   await getApi();
   const account = await getAdAccount();
+  const accountId = process.env.META_AD_ACCOUNT_ID;
+  console.log("[adlab-meta] Using ad account:", accountId);
 
-  const campaign = await account.createCampaign([], {
+  const payload = {
     name: params.name,
     objective: params.objective,
     status: "PAUSED",
     special_ad_categories: ["NONE"],
     buying_type: "AUCTION",
-  });
+  };
+  console.log("[adlab-meta] Campaign create payload:", JSON.stringify(payload, null, 2));
+
+  const campaign = await account.createCampaign([], payload);
 
   return campaign.id;
 }
@@ -92,7 +97,7 @@ export async function createAdSet(params: AdSetParams) {
   // TODO: Map interest names to Meta interest IDs via Interest Search API.
   // For now, use broad targeting (Advantage+) and let Meta optimize.
 
-  const adset = await account.createAdSet([], {
+  const payload = {
     name: params.name,
     campaign_id: params.campaignId,
     daily_budget: params.dailyBudgetCents, // Meta API takes cents
@@ -104,8 +109,10 @@ export async function createAdSet(params: AdSetParams) {
     },
     targeting,
     status: "PAUSED",
-    // Advantage+ automatic placements
-  });
+  };
+  console.log("[adlab-meta] Ad set create payload:", JSON.stringify(payload, null, 2));
+
+  const adset = await account.createAdSet([], payload);
 
   return adset.id;
 }
@@ -194,10 +201,13 @@ export async function createAdCreative(params: AdCreativeParams) {
     };
   }
 
-  const creative = await account.createAdCreative([], {
+  const payload = {
     name: params.name,
     object_story_spec: objectStorySpec,
-  });
+  };
+  console.log("[adlab-meta] Ad creative create payload:", JSON.stringify(payload, null, 2));
+
+  const creative = await account.createAdCreative([], payload);
 
   return creative.id;
 }
@@ -212,12 +222,15 @@ export async function createAd(params: CreateAdParams) {
   await getApi();
   const account = await getAdAccount();
 
-  const ad = await account.createAd([], {
+  const payload = {
     name: params.name,
     adset_id: params.adsetId,
     creative: { creative_id: params.creativeId },
     status: "PAUSED",
-  });
+  };
+  console.log("[adlab-meta] Ad create payload:", JSON.stringify(payload, null, 2));
+
+  const ad = await account.createAd([], payload);
 
   return ad.id;
 }
