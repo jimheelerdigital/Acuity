@@ -20,6 +20,30 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-12] — Fix AdLab admin dashboard crash on null fields after prisma db push
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** c004683
+
+### In plain English (for Keenan)
+The AdLab admin pages were crashing with a blank screen after the latest database update. Several fields (like target interests, page ID, USPs, banned phrases, and audience details) could come back empty from the database, and the UI wasn't handling that — it tried to count or loop through "nothing" and blew up. Now every field that can be empty has a safe fallback, so the admin pages load even when project data is incomplete.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/app/admin/adlab/projects/[id]/page.tsx`: Added null-coalescing for `targetAudience` (full object + all sub-arrays: geo, interests, painPoints, desires, identityMarkers), `usps`, and `bannedPhrases`. Updated interface types to reflect nullable `Json` fields from Prisma.
+- `apps/web/src/app/admin/adlab/projects/[id]/edit/page.tsx`: Convert null API response fields (`metaPageId`, `targetInterests`, `usps`, `bannedPhrases`, `landingPageUrl`, `logoUrl`, `conversionEvent`, `metaAdAccountId`, `metaPixelId`) to safe defaults (empty string or empty array) before passing to `ProjectForm`.
+- `apps/web/src/app/admin/adlab/projects/project-form.tsx`: Null-coalesce every nullable `initialData` field against `DEFAULT_DATA` during state initialization, including per-field fallbacks for `targetAudience` sub-arrays to prevent null from overriding default empty arrays via spread.
+
+### Manual steps needed
+None
+
+### Notes
+- The root cause is that `targetInterests` (Json?), `metaPageId` (String?), and other optional fields on `AdLabProject` in Prisma return `null` from the DB when unset. The original UI code assumed these would always be arrays/strings.
+- The project detail page, edit page, and form component were the three crash points. Dashboard, experiments list, experiment detail, performance, and settings pages were already null-safe.
+- The `targetAudience` field is `Json` (not nullable in schema), but its sub-properties could be null if the JSON was stored with missing keys, so we guard those too.
+
+---
+
 ## [2026-05-12] — Auto Blog Pruner: increase evaluation threshold from 21 to 56 days
 
 **Requested by:** Keenan
