@@ -596,3 +596,44 @@ You can now set which page your Meta ads link to on a per-project basis. There's
 ### Notes
 - The field is nullable so existing projects continue to work without migration issues. The launch endpoint falls back to "https://getacuity.io" when null.
 - UTM parameters are appended after the base URL: `?utm_source=meta&utm_medium=paid&utm_campaign={experimentId}&utm_content={creativeId}`.
+
+### [2026-05-12] Feat — Complete AdLab launch readiness (7 items)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 468b4ce
+
+### In plain English (for Keenan)
+AdLab is now ready for its first real Meta ad launch. Seven changes: (1) You can now set your Facebook Page ID in project settings -- required before launching any ads. (2) Fixed a docs typo about the Meta API version. (3) You can now search and select specific audience interests from Meta's database (e.g. "productivity", "meditation") instead of relying on broad targeting. (4) Reference images you upload on experiments can now be used as stylistic direction for generated ad images -- toggle it on and the AI uses your reference to guide the visual style. (5) The Performance page now shows real analytics: date range picker, spend/conversion/CPL summary cards, and a sortable table of every ad with full metrics. (6) The Settings page shows which API keys are configured (green check / red X), lets you test your Meta connection, and run the daily monitoring cron manually. (7) Removed HeyGen video generation -- it wasn't being used and was dead code.
+
+### Technical changes (for Jimmy)
+- `prisma/schema.prisma`: Added `metaPageId String?` and `targetInterests Json?` to `AdLabProject`
+- `apps/web/src/app/api/admin/adlab/projects/route.ts` + `[id]/route.ts`: Added `metaPageId` and `targetInterests` to Zod schemas
+- `apps/web/src/app/api/admin/adlab/projects/seed/route.ts`: Added `metaPageId: ""` to seed data
+- `apps/web/src/app/admin/adlab/projects/project-form.tsx`: Added Facebook Page ID field in Meta Integration section, interest search UI with live Meta API search + selectable chips, removed videoEnabled toggle
+- `apps/web/src/app/admin/adlab/projects/[id]/page.tsx`: Added Page ID row, Meta Ad Interests display, removed Video Creatives row
+- `apps/web/src/app/api/admin/adlab/ads/launch/route.ts`: metaPageId guard (returns 400 if missing), passes metaPageId to createAdCreative, passes targetInterests to createAdSet
+- `apps/web/src/lib/adlab/meta.ts`: `targetInterests` param on `createAdSet`, maps to `targeting.flexible_spec[0].interests`. Removed unused `interests` from old targetAudience interface.
+- `apps/web/src/app/api/admin/adlab/interests/search/route.ts`: NEW -- proxies Meta Graph API `/search?type=adinterest` with debounced query
+- `apps/web/src/app/api/admin/adlab/creatives/generate/route.ts`: Accepts `useReferenceImages` flag, loads first AdLabReferenceImage, uses `images.edit()` with reference image for stylistic direction, falls back to `images.generate()`. All HeyGen code removed (generateHeyGenVideo function, video script generation, video creative creation loop).
+- `apps/web/src/app/admin/adlab/experiments/[id]/page.tsx`: "Coming soon" toggle replaced with functional toggle controlling `useRefImages` state, passed to both single and batch generate calls
+- `apps/web/src/app/api/admin/adlab/performance/route.ts`: NEW -- aggregates AdLabDailyMetric by ad with date range filtering
+- `apps/web/src/app/admin/adlab/performance/page.tsx`: Full rewrite -- date range picker, 6 summary cards (spend, conversions, CPL, CTR, impressions, clicks), sortable table with 10 columns, links to experiment detail, empty state
+- `apps/web/src/app/api/admin/adlab/settings/status/route.ts`: NEW -- returns boolean for each env var
+- `apps/web/src/app/api/admin/adlab/settings/test-meta/route.ts`: NEW -- calls Meta API to verify credentials, returns account info
+- `apps/web/src/app/api/admin/adlab/settings/run-cron/route.ts`: NEW -- triggers cron endpoint with CRON_SECRET
+- `apps/web/src/app/admin/adlab/settings/page.tsx`: Full rewrite -- env var status dashboard, Test Meta Connection button with account info display, Run Cron button with result display
+- `progress-adlab.md`: Fixed META_API_VERSION default from v21.0 to v25.0
+
+### Manual steps needed
+- [ ] Keenan: `npx prisma db push` from home network to add `metaPageId` and `targetInterests` columns to `adlab_projects`
+- [ ] Keenan: Set Facebook Page ID on the Acuity project in AdLab (Project settings -> Meta Integration -> Facebook Page ID)
+- [ ] Keenan: Optionally add target interests on the Acuity project (Project settings -> Target Interests section)
+- [ ] Keenan: Create Supabase Storage bucket "adlab-creatives" if not already done (Storage -> New Bucket -> Public ON)
+
+### Notes
+- `metaPageId` is the Facebook Page ID (numeric), not the page username. Find it on your Facebook Page -> About -> Page Transparency -> Page ID.
+- Interest targeting uses Meta's `flexible_spec` format which is "any of these interests" (OR logic). If no interests are selected, targeting falls back to broad/Advantage+ which lets Meta's algorithm find the best audience.
+- Reference image direction uses `images.edit()` with the first uploaded reference image. If the edit call fails (e.g. image format issues), it falls back to `images.generate()` silently.
+- HeyGen removal only touches the generation code. The `videoEnabled` field, `creativeType` enum, and `videoUrl` field remain in the schema. The launch route still handles video uploads for any existing video creatives. Video can be re-added later with a different provider.
+- Settings page env var checks run server-side and never expose actual values -- only boolean "set or not set".
