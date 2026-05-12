@@ -133,6 +133,10 @@ export async function createAdSet(params: AdSetParams) {
     ];
   }
 
+  // Advantage Audience: required by Meta v25 API. Enabled (1) to let Meta
+  // find the best converters within our age/geo/interest parameters.
+  targeting.targeting_automation = { advantage_audience: 1 };
+
   // Placement: only set publisher_platforms for MANUAL; omit for Advantage+ (Meta default)
   const placementFields: Record<string, unknown> = {};
   if (params.placementType === "MANUAL") {
