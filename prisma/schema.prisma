@@ -1816,6 +1816,7 @@ model AdLabProject {
   conversionEvent           String?
   conversionObjective       String             @default("OUTCOME_LEADS")
   learnedPatterns           Json               @default("[]")
+  landingPageUrl            String?
   imageEnabled              Boolean            @default(true)
   videoEnabled              Boolean            @default(false)
   createdAt                 DateTime           @default(now())

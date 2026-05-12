@@ -30,6 +30,7 @@ interface ProjectFormData {
   metaPixelId: string;
   conversionEvent: string;
   conversionObjective: string;
+  landingPageUrl: string;
   imageEnabled: boolean;
   videoEnabled: boolean;
 }
@@ -64,6 +65,7 @@ const DEFAULT_DATA: ProjectFormData = {
   metaPixelId: "",
   conversionEvent: "",
   conversionObjective: "OUTCOME_LEADS",
+  landingPageUrl: "",
   imageEnabled: true,
   videoEnabled: false,
 };
@@ -115,6 +117,7 @@ export function ProjectForm({ initialData, projectId, mode }: ProjectFormProps) 
       dailyBudgetCentsPerVariant: Math.round(data.dailyBudgetCentsPerVariant * 100),
       usps: data.usps.filter((u) => u.trim()),
       logoUrl: data.logoUrl || null,
+      landingPageUrl: data.landingPageUrl || null,
     };
 
     try {
@@ -365,6 +368,15 @@ export function ProjectForm({ initialData, projectId, mode }: ProjectFormProps) 
             onChange={(e) => updateField("logoUrl", e.target.value)}
             className={inputClass}
             placeholder="https://getacuity.io/AcuityLogo.png"
+          />
+        </Field>
+        <Field label="Landing Page URL">
+          <input
+            type="url"
+            value={data.landingPageUrl}
+            onChange={(e) => updateField("landingPageUrl", e.target.value)}
+            className={inputClass}
+            placeholder="https://getacuity.io"
           />
         </Field>
         <label className="flex items-center gap-3 cursor-pointer">

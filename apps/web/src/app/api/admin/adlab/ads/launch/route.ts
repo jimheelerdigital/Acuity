@@ -212,7 +212,7 @@ export async function POST(req: NextRequest) {
             primaryText: creative.primaryText,
             description: creative.description,
             cta: creative.cta,
-            linkUrl: `https://getacuity.io?utm_source=meta&utm_medium=paid&utm_campaign=${experiment.id}&utm_content=${creative.id}`,
+            linkUrl: `${(project as Record<string, unknown>).landingPageUrl || "https://getacuity.io"}?utm_source=meta&utm_medium=paid&utm_campaign=${experiment.id}&utm_content=${creative.id}`,
           });
           console.log(`[adlab-launch] Ad creative created for ${creativeLabel}:`, metaCreativeId);
         } catch (err) {
