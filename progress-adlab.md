@@ -571,3 +571,28 @@ Meta was rejecting our ad sets because "UK" isn't a valid country code — Meta 
 ### Notes
 - Meta uses ISO 3166-1 alpha-2 codes. "UK" is reserved but not assigned — "GB" (Great Britain and Northern Ireland) is the correct code. This is one of the most common country code mistakes in ad tech integrations.
 - The correction happens at two layers: Zod transforms catch it on save (so the DB always has correct codes), and `normalizeCountryCodes()` catches it at runtime (safety net for existing bad data).
+
+### [2026-05-12] Feat — Add landingPageUrl to project config + use in ad creative
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** d98b50f
+
+### In plain English (for Keenan)
+You can now set which page your Meta ads link to on a per-project basis. There's a new "Landing Page URL" field in the project settings. If you leave it blank, ads default to https://getacuity.io. The URL automatically gets UTM tracking parameters appended so you can see which experiment and creative drove each click.
+
+### Technical changes (for Jimmy)
+- `prisma/schema.prisma`: Added `landingPageUrl String?` to `AdLabProject` model
+- `apps/web/src/app/api/admin/adlab/projects/route.ts`: Added `landingPageUrl` to `CreateProjectSchema` (Zod `z.string().url().optional().nullable()`)
+- `apps/web/src/app/api/admin/adlab/projects/[id]/route.ts`: Added `landingPageUrl` to `UpdateProjectSchema`
+- `apps/web/src/app/admin/adlab/projects/project-form.tsx`: New URL input field with placeholder "https://getacuity.io", wired to form state, sends null when empty
+- `apps/web/src/app/admin/adlab/projects/[id]/page.tsx`: Displays landing page URL in project detail (shows "https://getacuity.io (default)" when null)
+- `apps/web/src/app/api/admin/adlab/ads/launch/route.ts`: Uses `project.landingPageUrl` as base URL in ad creative `linkUrl`, falls back to "https://getacuity.io"
+
+### Manual steps needed
+- [ ] Keenan: `npx prisma db push` from home network to add `landingPageUrl` column to `adlab_projects` table
+- [ ] Keenan: Set landing page URL on the Acuity project in AdLab settings (or leave blank to keep defaulting to getacuity.io)
+
+### Notes
+- The field is nullable so existing projects continue to work without migration issues. The launch endpoint falls back to "https://getacuity.io" when null.
+- UTM parameters are appended after the base URL: `?utm_source=meta&utm_medium=paid&utm_campaign={experimentId}&utm_content={creativeId}`.
