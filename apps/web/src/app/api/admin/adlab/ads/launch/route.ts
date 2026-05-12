@@ -11,6 +11,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-guard";
 import { prisma } from "@/lib/prisma";
 import * as meta from "@/lib/adlab/meta";
+import { redactAccessToken } from "@/lib/adlab/meta";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -81,9 +82,15 @@ export async function POST(req: NextRequest) {
   }
 
   const metaPageId = (project as Record<string, unknown>).metaPageId as string | null;
-  if (!metaPageId) {
+  const landingPageUrl = (project as Record<string, unknown>).landingPageUrl as string | null;
+
+  // Fail fast: validate required fields before any Meta API calls
+  const missingFields: string[] = [];
+  if (!metaPageId) missingFields.push("metaPageId (Facebook Page ID)");
+  if (!landingPageUrl) missingFields.push("landingPageUrl");
+  if (missingFields.length > 0) {
     return NextResponse.json(
-      { error: "Set your Facebook Page ID in project settings before launching" },
+      { error: `Project missing required fields: ${missingFields.join(", ")}. Update in project settings before launching.` },
       { status: 400 }
     );
   }
@@ -92,18 +99,45 @@ export async function POST(req: NextRequest) {
   function logMetaError(step: string, err: any) {
     console.error(`[adlab-launch] ${step} failed`);
     // Use Object.getOwnPropertyNames to capture non-enumerable properties the SDK hides
-    console.error("[adlab-launch] Full error:", JSON.stringify(err, Object.getOwnPropertyNames(err), 2));
-    console.error("[adlab-launch] Error body:", err?.response?.body || err?.body || err?.message);
-    // Meta SDK sometimes puts the real error in _data
-    if (err?._data) console.error("[adlab-launch] Error _data:", JSON.stringify(err._data, null, 2));
-    if (err?.response) console.error("[adlab-launch] Error response:", JSON.stringify(err.response, null, 2));
+    // Redact access_token from all logged strings to prevent token leaks
+    try {
+      console.error("[adlab-launch] Full error:", redactAccessToken(JSON.stringify(err, Object.getOwnPropertyNames(err), 2)));
+    } catch { console.error("[adlab-launch] Full error:", redactAccessToken(String(err))); }
+    const body = err?.response?.body || err?.body || err?.message;
+    if (body) console.error("[adlab-launch] Error body:", redactAccessToken(typeof body === "string" ? body : JSON.stringify(body)));
+    if (err?._data) console.error("[adlab-launch] Error _data:", redactAccessToken(JSON.stringify(err._data, null, 2)));
+    if (err?.response) console.error("[adlab-launch] Error response:", redactAccessToken(JSON.stringify(err.response, null, 2)));
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function extractErrorDetail(err: any): string {
     const body = err?.response?.body || err?.body || err?._data;
-    if (body) return typeof body === "string" ? body : JSON.stringify(body);
-    return err?.message || String(err);
+    const raw = body ? (typeof body === "string" ? body : JSON.stringify(body)) : (err?.message || String(err));
+    return redactAccessToken(raw);
+  }
+
+  // Clean up orphaned campaign: if experiment has a metaCampaignId but zero ads with metaAdsetId,
+  // the prior launch failed mid-way. Delete the orphan from Meta and clear it before retrying.
+  const existingCampaignId = (experiment as Record<string, unknown>).metaCampaignId as string | null;
+  if (existingCampaignId) {
+    const adsWithAdsets = await prisma.adLabAd.count({
+      where: {
+        metaCampaignId: existingCampaignId,
+        metaAdsetId: { not: null },
+      },
+    });
+    if (adsWithAdsets === 0) {
+      console.log("[adlab-launch] Cleaning up orphaned campaign:", existingCampaignId);
+      try {
+        await meta.deleteCampaign(existingCampaignId);
+      } catch (err) {
+        console.warn("[adlab-launch] Failed to delete orphaned campaign (may already be gone):", redactAccessToken(String(err)));
+      }
+      await prisma.adLabExperiment.update({
+        where: { id: experimentId },
+        data: { metaCampaignId: null },
+      });
+    }
   }
 
   const errors: { creativeId: string; error: string }[] = [];
@@ -158,6 +192,7 @@ export async function POST(req: NextRequest) {
         let adsetId: string;
         try {
           const projectInterests = (project as Record<string, unknown>).targetInterests as { id: string; name: string }[] | null;
+          const placementType = (expRecord.placementType as string) || null;
           adsetId = await meta.createAdSet({
             campaignId,
             name: adsetName,
@@ -170,6 +205,7 @@ export async function POST(req: NextRequest) {
               geo: (audience.geo as string[]) || ["US"],
             },
             targetInterests: projectInterests || undefined,
+            placementType,
           });
           console.log(`[adlab-launch] Ad set created for ${creativeLabel}:`, adsetId);
         } catch (err) {
@@ -212,16 +248,23 @@ export async function POST(req: NextRequest) {
         });
         let metaCreativeId: string;
         try {
+          // Build landing URL with UTM params using URL/URLSearchParams
+          const linkUrl = new URL(landingPageUrl!);
+          linkUrl.searchParams.set("utm_source", "meta");
+          linkUrl.searchParams.set("utm_medium", "paid");
+          linkUrl.searchParams.set("utm_campaign", experiment.id);
+          linkUrl.searchParams.set("utm_content", creative.id);
+
           metaCreativeId = await meta.createAdCreative({
             name: `${project.slug}_creative_${creative.id}`,
-            pageId: metaPageId,
+            pageId: metaPageId!,
             imageHash,
             videoId,
             headline: creative.headline,
             primaryText: creative.primaryText,
             description: creative.description,
             cta: creative.cta,
-            linkUrl: `${(project as Record<string, unknown>).landingPageUrl || "https://getacuity.io"}?utm_source=meta&utm_medium=paid&utm_campaign=${experiment.id}&utm_content=${creative.id}`,
+            linkUrl: linkUrl.toString(),
           });
           console.log(`[adlab-launch] Ad creative created for ${creativeLabel}:`, metaCreativeId);
         } catch (err) {
@@ -269,6 +312,24 @@ export async function POST(req: NextRequest) {
     }
 
     console.log(`[adlab-launch] Done. Created: ${created.length}, Errors: ${errors.length}`);
+
+    // If ALL ad sets failed, delete the orphaned campaign from Meta and clear the reference
+    if (created.length === 0 && errors.length > 0) {
+      console.log("[adlab-launch] All ad sets failed — deleting orphaned campaign:", campaignId);
+      try {
+        await meta.deleteCampaign(campaignId);
+      } catch (delErr) {
+        console.warn("[adlab-launch] Failed to delete orphaned campaign:", redactAccessToken(String(delErr)));
+      }
+      await prisma.adLabExperiment.update({
+        where: { id: experimentId },
+        data: { metaCampaignId: null },
+      });
+      return NextResponse.json(
+        { error: "All ad sets failed to create — campaign deleted", errors },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({
       campaignId,

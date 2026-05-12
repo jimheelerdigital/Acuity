@@ -103,6 +103,7 @@ Show artifacts (the weekly report, the memoir PDF), not mechanisms.`,
       metaAdAccountId: "", // To be filled
       metaPixelId: "", // To be filled
       metaPageId: "", // To be filled
+      landingPageUrl: "https://getacuity.io",
       conversionEvent: "Lead",
       conversionObjective: "OUTCOME_LEADS",
       videoEnabled: false,

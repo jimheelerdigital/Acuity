@@ -29,7 +29,8 @@ export async function POST(req: NextRequest) {
   try {
     await meta.deleteCampaign(experiment.metaCampaignId);
   } catch (err) {
-    console.warn("[adlab] Campaign delete failed (may already be deleted):", err);
+    const { redactAccessToken } = await import("@/lib/adlab/meta");
+    console.warn("[adlab] Campaign delete failed (may already be deleted):", redactAccessToken(String(err)));
   }
 
   // Delete local ad records

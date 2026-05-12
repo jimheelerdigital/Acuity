@@ -6,6 +6,13 @@
  * No auto-launch on creative approval.
  */
 
+/**
+ * Strip access_token values from strings (URLs, error bodies) before logging.
+ */
+export function redactAccessToken(str: string): string {
+  return str.replace(/access_token=[^&\s"']+/gi, "access_token=REDACTED");
+}
+
 // Dynamic import to avoid build-time destructure failures when
 // META_ACCESS_TOKEN is not set (the SDK tries to init on import).
 // The SDK uses module.exports (CJS), so dynamic import may or may not
@@ -104,6 +111,7 @@ interface AdSetParams {
     geo?: string[];
   };
   targetInterests?: { id: string; name: string }[];
+  placementType?: string | null;
 }
 
 export async function createAdSet(params: AdSetParams) {
@@ -125,24 +133,50 @@ export async function createAdSet(params: AdSetParams) {
     ];
   }
 
-  const payload = {
+  // Placement: only set publisher_platforms for MANUAL; omit for Advantage+ (Meta default)
+  const placementFields: Record<string, unknown> = {};
+  if (params.placementType === "MANUAL") {
+    placementFields.publisher_platforms = ["facebook", "instagram"];
+  }
+
+  const payload: Record<string, unknown> = {
     name: params.name,
     campaign_id: params.campaignId,
     daily_budget: params.dailyBudgetCents, // Meta API takes cents
     optimization_goal: "OFFSITE_CONVERSIONS",
     billing_event: "IMPRESSIONS",
+    bid_strategy: "LOWEST_COST_WITHOUT_CAP",
+    destination_type: "WEBSITE",
+    start_time: new Date().toISOString(),
     promoted_object: {
       pixel_id: params.pixelId,
       custom_event_type: params.conversionEvent,
     },
     targeting,
     status: "PAUSED",
+    ...placementFields,
   };
   console.log("[adlab-meta] Ad set create payload:", JSON.stringify(payload, null, 2));
 
   const adset = await account.createAdSet([], payload);
 
   return adset.id;
+}
+
+// ─── CTA type mapping ──────────────────────────────────────────────────────
+const CTA_MAP: Record<string, string> = {
+  "sign up": "SIGN_UP",
+  "sign_up": "SIGN_UP",
+  "learn more": "LEARN_MORE",
+  "learn_more": "LEARN_MORE",
+  "download": "DOWNLOAD",
+  "get offer": "GET_OFFER",
+  "get_offer": "GET_OFFER",
+  "subscribe": "SUBSCRIBE",
+};
+
+export function mapCtaType(cta: string): string {
+  return CTA_MAP[cta.toLowerCase().trim()] || "LEARN_MORE";
 }
 
 interface AdCreativeParams {
@@ -200,6 +234,7 @@ export async function createAdCreative(params: AdCreativeParams) {
   await getApi();
   const account = await getAdAccount();
 
+  const ctaType = mapCtaType(params.cta);
   let objectStorySpec: Record<string, unknown>;
 
   if (params.videoId) {
@@ -211,7 +246,7 @@ export async function createAdCreative(params: AdCreativeParams) {
         message: params.primaryText,
         title: params.headline,
         link_description: params.description,
-        call_to_action: { type: params.cta, value: { link: params.linkUrl } },
+        call_to_action: { type: ctaType, value: { link: params.linkUrl } },
       },
     };
   } else {
@@ -223,7 +258,7 @@ export async function createAdCreative(params: AdCreativeParams) {
         link: params.linkUrl,
         name: params.headline,
         description: params.description,
-        call_to_action: { type: params.cta },
+        call_to_action: { type: ctaType, value: { link: params.linkUrl } },
         ...(params.imageHash ? { image_hash: params.imageHash } : {}),
       },
     };
