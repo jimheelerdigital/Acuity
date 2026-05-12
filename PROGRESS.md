@@ -20,6 +20,27 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-12] — Auto Blog Pruner: increase evaluation threshold from 21 to 56 days
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 6faf7a4
+
+### In plain English (for Keenan)
+The blog pruner was evaluating posts for removal after just 3 weeks. That's not enough time for Google to crawl, index, and start showing impressions on a newer domain. Changed to 8 weeks (56 days) so posts get a fair chance before being flagged for pruning.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/inngest/functions/auto-blog.ts`: `MIN_AGE_DAYS` changed from 21 to 56 in the pruner's candidate filter step. Updated all comments and log messages referencing the old 21-day window.
+
+### Manual steps needed
+None
+
+### Notes
+- The <5 impressions threshold is unchanged. A post needs both 56+ days of age AND fewer than 5 impressions to be considered for pruning.
+- Dry-run mode (`BLOG_PRUNER_DRY_RUN`) is still the default. No posts will actually be trimmed until that env var is set to "false".
+
+---
+
 ## [2026-05-12] — Auto Blog: fix hero images, cut costs 25%, loosen validation, add admin tools
 
 **Requested by:** Keenan
