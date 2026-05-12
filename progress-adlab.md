@@ -529,3 +529,23 @@ None
 
 ### Notes
 - The Meta SDK error object often has enumerable properties stripped. Standard `JSON.stringify(err)` produces `{}` for most SDK errors. Using `Object.getOwnPropertyNames` forces serialization of `message`, `stack`, and any SDK-specific hidden fields.
+
+### [2026-05-12] Fix — Add is_adset_budget_sharing_enabled and correct API version
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** eaa0988
+
+### In plain English (for Keenan)
+Two fixes for the Meta campaign launch that was failing: (1) Meta now requires a field saying budget is managed at the ad set level, not the campaign level — we were missing it. (2) The Meta SDK was calling an older API version (v24.0) instead of the v25.0 we intended. Both are fixed.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/adlab/meta.ts`: Added `is_adset_budget_sharing_enabled: false` to the campaign create payload — required by Meta for ABO (ad-set-level budget) campaigns.
+- `apps/web/src/lib/adlab/meta.ts`: Overrode `FacebookAdsApi.VERSION` static getter via `Object.defineProperty` to use `process.env.META_API_VERSION` or default to `"v25.0"`. The SDK v24.0.1 hardcodes `VERSION` as a static getter returning `"v24.0"` with no setter method, so `defineProperty` is the only way to override it.
+
+### Manual steps needed
+None
+
+### Notes
+- The SDK (`facebook-nodejs-business-sdk@24.0.1`) defines `VERSION` as a static getter (`static get VERSION() { return 'v24.0'; }`) — there is no `setApiVersion()` method. The `Object.defineProperty` override replaces the getter on the class prototype, which is safe because `getApi()` is called before every SDK operation.
+- `is_adset_budget_sharing_enabled: false` explicitly tells Meta this campaign uses ABO (ad set budget optimization) rather than CBO (campaign budget optimization). Without it, Meta returns an "Invalid parameter" error for ABO campaigns.
