@@ -20,6 +20,56 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-12] — Brand unification: regenerate all icon/logo assets from finalized icon.png + cofounder email signatures
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+
+The splash screen + every web/email logo were using older placeholder artwork (flat purple diamond + "Acuity" text) while the finalized iOS app icon — the layered purple crystal — only existed on the actual app icon. Anywhere a logo appeared (loading screen, web header, email banner, signup page, browser tab favicon), users were seeing the old version. We regenerated all of those from the finalized icon so the brand is consistent everywhere. Also updated every email signature from "Keenan" to "Jim & Keenan / Cofounders" so the emails reflect both founders.
+
+### Technical changes (for Jimmy)
+
+Asset regeneration from `apps/mobile/assets/icon.png` (1024×1024, the finalized iOS app icon) as the master source:
+
+- `apps/mobile/assets/adaptive-icon.png`: regenerated from master (Android adaptive icon foreground)
+- `apps/mobile/assets/favicon.png`: regenerated (was 123 bytes / essentially empty Expo default, now 2.2KB legible 48×48)
+- `apps/mobile/assets/splash.png`: composed via PIL — icon 372×372 centered on a 1242×2436 canvas color-matched to the icon's own background `#15131D` so there's no visible square outline at the icon edges. iOS resize-mode "contain" handles per-device scaling.
+- `apps/web/public/AcuityLogo.png` + `AcuityLogoDark.png`: both replaced with 1024×1024 copies of master. They were already byte-identical duplicates (same MD5) before this change; the "Dark" filename stays because 30+ call sites reference it — renaming would be a separate refactor.
+- `apps/web/public/apple-touch-icon.png` (180×180), `icon-512.png`, `icon-192.png`, `favicon-96x96.png`: downscaled from master via sips
+- `apps/web/public/favicon.ico`: multi-resolution .ico (16/32/48/64) regenerated via PIL
+- `apps/web/public/acuity-logo.png` + `acuity-logo copy.png`: DELETED. Both were dead 761KB duplicates with zero call sites (grep across src/ returned nothing).
+
+`apps/mobile/app.json`:
+- `splash.backgroundColor`: `#09090B` → `#15131D` to match the icon's own canvas, eliminating the visible square at splash dismiss
+- `android.adaptiveIcon.backgroundColor`: same `#09090B` → `#15131D`
+
+Email signature update across 18 templates:
+- `— Keenan` → `— Jim &amp; Keenan` (15 trial-sequence emails: first-debrief-replay, life-matrix-reveal, objection-60sec, pattern-tease, power-deepen, power-referral-tease, reactivation-final, reactivation-friction, reactivation-social, trial-ended-day14 [with `&mdash;` variant], trial-ending-day13, user-story, value-recap, weekly-report-checkin, welcome-day0)
+- `Founder, Acuity` → `Cofounders, Acuity` (welcome-verify, welcome-day0, waitlist-reactivation — the three templates with the two-line role subtitle)
+- No founder signature in digest/utility/password-reset/magic-link/payment-failed templates — those don't use a founder voice, unchanged.
+
+In-app "sparkle" icons (Ionicons `sparkles-outline` in subscribe, paywall, profile, progress-suggestion-banner, extraction-review, onboarding/step-10-ready): intentionally KEPT — they're AI/magic semantic markers, not logo placeholders. Different visual function from the icon itself.
+
+Per-slice gates: vitest 370/370 pass, web tsc clean for touched files. Asset legibility verified by viewing icon.png downscaled to 24×24 and 48×48 in the slice prep — the crystal shape stays recognizable at small sizes, so no commissioned small-size variant needed.
+
+### Manual steps needed
+
+- [ ] **EAS build 38** (Jimmy): rebuild iOS to bundle the new splash.png + adaptive-icon.png into TestFlight. Splash assets ship via the native build, not OTA — until 38 is installed, TestFlight users see build-37's placeholder splash.
+- [ ] **App Store submission** (Jimmy): submit v1.1 from build 38 once installed + verified. The brand unification was the last cosmetic gate before review.
+- [ ] **Resend SPF record** (Jimmy, carried over from prior slice): still needed long-term — `v=spf1 include:_spf.resend.com ~all` on `getacuity.io` TXT. Email slice's combined template dodges the worst of content-side filtering, but SPF is the right structural fix.
+
+### Notes
+
+- Decision to keep `AcuityLogoDark.png` as a separate file (not symlink, not delete-and-redirect): 30+ call sites import it across web/landing/admin/auth pages. A clean rename is a separate slice. For now, the two files are byte-identical copies, which keeps existing imports working and means there's only ONE actual logo image asset in the brand.
+- Splash canvas color `#15131D` differs from the app interior `#09090B`. The slight delta during splash dismiss is barely perceptible (both colors read as "near black"), and matching the canvas to the icon's own background was the right trade-off — a visible square outline at the icon edges is worse than a subtle fade-to-darker on dismiss. If we ever re-render the icon with a transparent or `#09090B` background, we can revert app.json to `#09090B` simultaneously.
+- The "purple diamond placeholder" Jim flagged on TestFlight build 37 was the literal splash.png file — confirmed by viewing before/after side-by-side. The decorative Ionicons sparkles in-app share the same purple color but are intentional AI/magic markers, not the placeholder.
+- All regenerated assets use `sips -z` (built-in macOS, no extra dep) for resize, and PIL for composition + .ico packaging. The PIL composition script lives at `/tmp/compose-splash.py` and was intentionally NOT committed — it's a one-off and the output is the artifact.
+
+---
+
 ## [2026-05-12] — Consolidate signup verification + welcome into one email
 
 **Requested by:** Jimmy

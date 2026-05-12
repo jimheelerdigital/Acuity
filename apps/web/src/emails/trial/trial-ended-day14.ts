@@ -68,7 +68,7 @@ export const trialEndedDay14: TrialEmailTemplate = {
       </tr>
       <tr>
         <td>
-          <p style="margin:0;font-size:16px;color:#FFFFFF;font-weight:600;">&mdash; Keenan</p>
+          <p style="margin:0;font-size:16px;color:#FFFFFF;font-weight:600;">&mdash; Jim &amp; Keenan</p>
         </td>
       </tr>
     `;

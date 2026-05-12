@@ -34,12 +34,12 @@ export const welcomeDay0: TrialEmailTemplate = {
       </tr>
       <tr>
         <td style="padding-bottom:4px;">
-          <p style="margin:0;font-size:16px;color:#FFFFFF;font-weight:600;">— Keenan</p>
+          <p style="margin:0;font-size:16px;color:#FFFFFF;font-weight:600;">— Jim &amp; Keenan</p>
         </td>
       </tr>
       <tr>
         <td style="padding-bottom:24px;">
-          <p style="margin:0;font-size:13px;color:#A0A0B8;">Founder, Acuity</p>
+          <p style="margin:0;font-size:13px;color:#A0A0B8;">Cofounders, Acuity</p>
         </td>
       </tr>
       <tr>

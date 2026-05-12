@@ -21,7 +21,7 @@ function p(text: string): string {
 }
 
 function sig(): string {
-  return `<tr><td style="padding-bottom:0;"><p style="margin:0;font-size:16px;color:#FFFFFF;font-weight:600;">— Keenan</p><p style="margin:4px 0 0;font-size:14px;color:#A0A0B8;">Founder, Acuity</p></td></tr>`;
+  return `<tr><td style="padding-bottom:0;"><p style="margin:0;font-size:16px;color:#FFFFFF;font-weight:600;">— Jim &amp; Keenan</p><p style="margin:4px 0 0;font-size:14px;color:#A0A0B8;">Cofounders, Acuity</p></td></tr>`;
 }
 
 // ─── Email 1 ────────────────────────────────────────────────────────

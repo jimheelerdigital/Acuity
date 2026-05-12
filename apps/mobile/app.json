@@ -10,7 +10,7 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#09090B"
+      "backgroundColor": "#15131D"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -141,7 +141,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#09090B"
+        "backgroundColor": "#15131D"
       },
       "package": "com.heelerdigital.acuity",
       "permissions": [

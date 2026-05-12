@@ -44,7 +44,7 @@ export const reactivationFinal: TrialEmailTemplate = {
       </tr>
       <tr>
         <td style="padding-top:16px;">
-          <p style="margin:0;font-size:16px;color:#FFFFFF;font-weight:600;">— Keenan</p>
+          <p style="margin:0;font-size:16px;color:#FFFFFF;font-weight:600;">— Jim &amp; Keenan</p>
         </td>
       </tr>
     `;
