@@ -20,6 +20,30 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-12] — Auto Blog: fix year references and prevent future posts from using outdated years
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 7897d9e
+
+### In plain English (for Keenan)
+Blog posts were being generated with "2024" or "2025" as the current year — things like "best journaling apps in 2024" or "top tips for 2025." Two fixes: (1) future posts now automatically know the current year and are explicitly told never to use 2024 or 2025 as "this year," and (2) there's a new "Fix Year References" button in Admin > Auto Blog that scans all existing published posts, finds the ones with wrong years, and surgically swaps just the year to 2026 without regenerating the whole post.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/inngest/functions/auto-blog.ts`: Added a `CURRENT YEAR` instruction block at the top of `buildSystemPrompt()` using `new Date().getFullYear()`. Dynamically tells Claude the current year and explicitly bans the two prior years in titles, headings, and body copy.
+- `apps/web/src/app/api/admin/blog/fix-years/route.ts`: NEW — POST endpoint, admin-gated via `requireAdmin()`. Queries all `AUTO_PUBLISHED` / `DISTRIBUTED` ContentPiece records. Uses regex patterns to detect "2024"/"2025" in current-year contexts (e.g. "in 2024", "best X for 2025", "2024 guide"). For each match, calls Claude with a targeted prompt that only swaps the year number without rewriting the post. Updates title, metaDescription (hook), and body in the DB. Returns scan/candidate/updated counts. `maxDuration: 300` for large backlogs.
+- `apps/web/src/app/admin/tabs/AutoBlogTab.tsx`: Added "Fix Year References" button in header actions bar and result display banner.
+
+### Manual steps needed
+- [ ] Keenan: After deploy, click "Fix Year References" in Admin > Auto Blog to fix existing posts with wrong years
+
+### Notes
+- The fix-years endpoint uses Claude to do the replacement rather than a blind find-replace because some "2024" references are legitimate historical citations (e.g. "a 2024 study found...") and should not be changed. Claude is instructed to only swap years used in a current-year context.
+- The endpoint processes posts sequentially to avoid rate-limiting Claude. For a large backlog this could take a few minutes — `maxDuration` is set to 300s.
+- The dynamic year injection in the system prompt means this stays correct rolling into 2027+ without any code changes.
+
+---
+
 ## [2026-05-12] — Fix AdLab admin dashboard crash on null fields after prisma db push
 
 **Requested by:** Keenan
