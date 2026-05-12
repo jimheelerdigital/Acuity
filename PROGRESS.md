@@ -20,6 +20,27 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-12] — AdLab: add Advantage Audience flag for Meta v25 API
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** d503dbd
+
+### In plain English (for Keenan)
+Meta's latest API version requires every ad set to explicitly say whether it wants Advantage Audience (Meta's AI audience expansion) turned on or off. Without it, ad set creation was being rejected. Now it's set to "on" — Meta will use our age, geo, and interest targeting as a starting point but expand to find the best converters automatically.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/adlab/meta.ts`: Added `targeting.targeting_automation = { advantage_audience: 1 }` to the `createAdSet()` targeting object, right after interest targeting.
+
+### Manual steps needed
+None
+
+### Notes
+- This is a v25 API requirement. Previous API versions defaulted to enabled; v25 makes it explicit.
+- `advantage_audience: 1` (enabled) is the right choice for our broad-targeting strategy. If we ever want to run strict-audience tests, we'd need to pass 0 instead.
+
+---
+
 ## [2026-05-12] — AdLab: fix all nine Meta launch pipeline issues
 
 **Requested by:** Keenan
