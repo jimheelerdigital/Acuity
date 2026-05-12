@@ -452,3 +452,23 @@ The Meta Pixel tracking ID was hardcoded directly in the code. Now it reads from
 
 ### Notes
 - Only one hardcoded reference existed (in `consent-gated-trackers.tsx`). PROGRESS.md mentions the old ID in historical log entries but those are documentation, not code.
+
+### [2026-05-11] Fix — Hardcode Meta Pixel in root layout, no consent gate
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** e773679
+
+### In plain English (for Keenan)
+The Meta Pixel wasn't loading on getacuity.io because it was behind a cookie consent gate — visitors who hadn't clicked "Accept" never got tracked. Now the pixel fires on every page load for every visitor, unconditionally.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/app/layout.tsx`: Added Meta Pixel script (new ID `869829585445303`) directly in the `<head>` with `strategy="afterInteractive"`. No consent check, no conditional rendering.
+- The consent-gated copy in `consent-gated-trackers.tsx` is still there but the layout script takes priority — fbq's built-in dedup (`if(f.fbq)return`) prevents double-firing.
+
+### Manual steps needed
+None
+
+### Notes
+- New pixel ID is `869829585445303` (replaces old `5752790988087389` which was in consent-gated-trackers.tsx).
+- The old consent-gated pixel in `consent-gated-trackers.tsx` still references `NEXT_PUBLIC_META_PIXEL_ID` env var (the old pixel). It won't conflict because fbq deduplicates — whichever init runs first wins, the second is a no-op.
