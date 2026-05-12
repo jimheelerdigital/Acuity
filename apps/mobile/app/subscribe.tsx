@@ -224,12 +224,16 @@ export default function SubscribeScreen() {
   return (
     <SafeAreaView
       className="flex-1 bg-white dark:bg-[#0B0B12]"
-      edges={["bottom"]}
+      edges={["top", "bottom"]}
     >
       <ScrollView
         contentContainerStyle={{ flexGrow: 1, padding: 24, paddingBottom: 40 }}
       >
-        {/* Close button top-right */}
+        {/* Close button top-right. Respecting the top safe-area edge
+            on the wrapping SafeAreaView keeps this pressable below the
+            iOS status bar — without "top" in edges the X overlapped
+            wifi/signal/battery icons and was mostly untappable on
+            build 38 TestFlight. */}
         <View className="flex-row justify-end mb-4">
           <Pressable
             onPress={() => router.back()}
@@ -411,7 +415,7 @@ function UnavailableScreen({
   return (
     <SafeAreaView
       className="flex-1 bg-white dark:bg-[#0B0B12]"
-      edges={["bottom"]}
+      edges={["top", "bottom"]}
     >
       <ScrollView
         contentContainerStyle={{ flexGrow: 1, padding: 24, paddingBottom: 40 }}

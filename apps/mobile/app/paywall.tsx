@@ -69,13 +69,15 @@ export default function PaywallScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white dark:bg-[#1E1E2E] dark:bg-[#0B0B12]" edges={["bottom"]}>
+    <SafeAreaView className="flex-1 bg-white dark:bg-[#1E1E2E] dark:bg-[#0B0B12]" edges={["top", "bottom"]}>
       <ScrollView
         contentContainerStyle={{ flexGrow: 1, padding: 24, paddingBottom: 40 }}
       >
         {/* Close button top-right — a standard modal-dismiss
             affordance in addition to the "Remind me later" button
-            below. Belt + suspenders. */}
+            below. Belt + suspenders. Top safe-area edge required on
+            the wrapping SafeAreaView — bottom-only edges left the X
+            tucked under iOS status bar icons (build-38 regression). */}
         <View className="flex-row justify-end mb-4">
           <Pressable
             onPress={() => router.back()}
