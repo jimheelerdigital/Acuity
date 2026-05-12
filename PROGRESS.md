@@ -20,6 +20,44 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-12] — Auto Blog: fix hero images, cut costs 25%, loosen validation, add admin tools
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 2b509a4
+
+### In plain English (for Keenan)
+The auto blog was failing about half the time and never generating header images. Three root causes fixed: (1) images were being uploaded with the wrong file format label so Supabase rejected them silently, (2) the Supabase storage bucket might not have existed, (3) the quality checks on generated posts were so strict that good posts were being thrown away. Now posts are shorter (saving ~25% on AI costs), the image pipeline self-heals if the storage bucket is missing, and you have two new admin buttons: "Regen Image" on any post to regenerate its header image, and "Backfill Missing Images" to generate images for all existing posts that don't have one.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/blog-image.ts`: Full rewrite. Switched from DALL-E 3 (URL download) to gpt-image-2 (b64_json, no URL step). Fixed content type from `image/webp` to `image/png` and filename from `.webp` to `.png`. Added `ensureBucket()` that programmatically creates the `blog-images` Supabase bucket if it doesn't exist (public, self-healing).
+- `apps/web/src/inngest/functions/auto-blog.ts` validation changes:
+  - Word count: 800-1400 to 600-1050 target (540-1155 with 10% tolerance)
+  - Keyword in H1/H2/first-100-words: hard failure to soft warning (logged)
+  - Broken internal links: hard failure to soft warning (Claude sometimes invents plausible slugs)
+  - FAQ schema: hard failure (3+ required) to soft warning (nice to have)
+  - Meta description: 140-160 chars to 120-170 chars
+  - Meta title: 50-60 chars to 40-65 chars
+  - Internal links minimum: 2 to 1
+- `apps/web/src/inngest/functions/auto-blog.ts` system prompt: word count target updated to 600-1050
+- `apps/web/src/inngest/functions/auto-blog.ts` topic picker: now checks `scheduledFor <= now` first, falls back to oldest queued
+- `apps/web/src/inngest/functions/auto-blog.ts` URL checker: timeout 5s to 10s, 429 treated as valid, network timeouts treated as valid (avoid false positives)
+- `apps/web/src/app/api/admin/blog/regenerate-image/route.ts`: NEW -- regenerate hero image for a specific post
+- `apps/web/src/app/api/admin/blog/backfill-images/route.ts`: NEW -- generate images for all posts with null heroImageUrl
+- `apps/web/src/app/admin/tabs/AutoBlogTab.tsx`: "Regen Image" button per post, "Backfill Missing Images" button in header
+
+### Manual steps needed
+- [ ] Keenan: After deploy, click "Backfill Missing Images" in Admin > Auto Blog to generate images for all existing posts
+- [ ] Keenan: Verify the `blog-images` Supabase bucket exists (it will self-create on first image gen, but check Storage to confirm)
+
+### Notes
+- Items 9 (internal link validation against live DB) and 10 (reading time on blog cards) were already implemented. Item 9 queries published blog slugs in the topic picker step and passes them to validation. Item 10 calculates and displays reading time on blog/page.tsx line 140.
+- The `scheduledFor` field on BlogTopicQueue is now respected. To schedule a topic for a specific date, set `scheduledFor` to the desired date and the daily cron will pick it up on that day.
+- External link verification now treats timeouts and 429s as valid links. Many authoritative sites (NYT, HBR) block HEAD requests or rate-limit bots, causing false positive dead-link detection that was stripping valid citations from posts.
+- The gpt-image-2 switch aligns blog images with AdLab (same model, same API key). DALL-E 3 is no longer used anywhere in the codebase.
+
+---
+
 ## [2026-05-12] — AdLab: complete launch readiness (7 items)
 
 **Requested by:** Keenan
