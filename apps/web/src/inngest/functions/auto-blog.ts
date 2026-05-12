@@ -687,9 +687,8 @@ async function callClaudeForBlog(
 // AUTO-BLOG PRUNER — uses Inngest step.run()
 //
 // Evaluates published blog posts for trimming based on:
-// 1. Age threshold: 21+ days since publish (Google's median crawl time
-//    for new domains is 7-14 days; 21 ensures we're past the crawl
-//    queue and looking at actual indexing decisions)
+// 1. Age threshold: 56+ days since publish (8 weeks gives Google ample
+//    time to crawl, index, and surface impressions before we evaluate)
 // 2. URL Inspection API: only trim posts confirmed as "crawled_not_indexed"
 // 3. Three-tier action: improve / consolidate / trim
 // 4. Dry-run mode (default for first 14 days): logs what it WOULD do
@@ -936,13 +935,12 @@ export const autoBlogPruneFn = inngest.createFunction(
       `[auto-blog-prune] Synced GSC data for ${syncResult.synced} posts`
     );
 
-    // ── Step 4: Filter to candidates (21+ days, low impressions) ──
+    // ── Step 4: Filter to candidates (56+ days, low impressions) ──
     const candidates = await step.run("identify-candidates", async () => {
       const now = new Date();
-      // Minimum age: 21 days. Google's median crawl time for new domains
-      // is 7-14 days; 21 ensures we're past the crawl queue and looking
-      // at actual indexing decisions rather than crawl lag.
-      const MIN_AGE_DAYS = 21;
+      // Minimum age: 56 days (8 weeks). Gives Google ample time to crawl,
+      // index, and surface impressions before we evaluate for pruning.
+      const MIN_AGE_DAYS = 56;
 
       return syncResult.posts
         .filter((post) => {
@@ -951,7 +949,7 @@ export const autoBlogPruneFn = inngest.createFunction(
           const ageDays = Math.floor(
             (now.getTime() - publishedAt.getTime()) / (1000 * 60 * 60 * 24)
           );
-          // Only evaluate posts that are 21+ days old AND have < 5 impressions
+          // Only evaluate posts that are 56+ days old AND have < 5 impressions
           return ageDays >= MIN_AGE_DAYS && post.impressions < 5;
         })
         .map((post) => {
@@ -964,7 +962,7 @@ export const autoBlogPruneFn = inngest.createFunction(
     });
 
     if (candidates.length === 0) {
-      logger.info("[auto-blog-prune] No trim candidates (all posts healthy or < 21 days old)");
+      logger.info("[auto-blog-prune] No trim candidates (all posts healthy or < 56 days old)");
       return { synced: syncResult.synced, evaluated: 0, actions: {} };
     }
 
