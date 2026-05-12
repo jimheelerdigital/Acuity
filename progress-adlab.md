@@ -433,3 +433,22 @@ None
 ### Notes
 - The SDK was listed in `apps/web/package.json` but was never actually `npm install`ed — the node_modules directory didn't have it. This was likely masked by the dynamic import + `ignoreBuildErrors: true` in earlier builds.
 - The `(mod.default ?? mod)` pattern handles both cases: if the bundler wraps the CJS export in `.default` (standard ESM interop), it uses that; if the module is already unwrapped, it falls through. This is the canonical way to handle CJS→ESM interop with dynamic imports.
+
+### [2026-05-11] Feat — Replace hardcoded Meta Pixel with env var
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** bbd4fa8
+
+### In plain English (for Keenan)
+The Meta Pixel tracking ID was hardcoded directly in the code. Now it reads from an environment variable instead, so the ID isn't baked into the repo and can be changed per environment without a code change.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/consent-gated-trackers.tsx`: replaced `const META_PIXEL_ID = "5752790988087389"` with `process.env.NEXT_PUBLIC_META_PIXEL_ID`. Added guard so pixel script only renders when the env var is set (matches GA pattern).
+- `apps/web/.env.local`: added `NEXT_PUBLIC_META_PIXEL_ID="5752790988087389"` (gitignored)
+
+### Manual steps needed
+- [ ] Keenan: Add `NEXT_PUBLIC_META_PIXEL_ID=5752790988087389` to Vercel env vars, then redeploy
+
+### Notes
+- Only one hardcoded reference existed (in `consent-gated-trackers.tsx`). PROGRESS.md mentions the old ID in historical log entries but those are documentation, not code.
