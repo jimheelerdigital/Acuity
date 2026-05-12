@@ -38,7 +38,7 @@ Show artifacts (the weekly report, the memoir PDF), not mechanisms.`,
       targetAudience: {
         ageMin: 25,
         ageMax: 55,
-        geo: ["US", "CA", "UK", "AU"],
+        geo: ["US", "CA", "GB", "AU"],
         interests: [
           "productivity",
           "self-improvement",

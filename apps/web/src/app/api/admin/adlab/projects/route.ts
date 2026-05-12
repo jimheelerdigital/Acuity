@@ -18,7 +18,13 @@ const CreateProjectSchema = z.object({
   targetAudience: z.object({
     ageMin: z.number().min(13).max(65).default(25),
     ageMax: z.number().min(18).max(65).default(55),
-    geo: z.array(z.string()).default([]),
+    geo: z.array(z.string()).default([]).transform((codes) =>
+      codes.map((c) => {
+        const u = c.toUpperCase();
+        const fixes: Record<string, string> = { UK: "GB", EN: "GB" };
+        return fixes[u] || u;
+      })
+    ),
     interests: z.array(z.string()).default([]),
     painPoints: z.array(z.string()).default([]),
     desires: z.array(z.string()).default([]),

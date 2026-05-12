@@ -71,6 +71,27 @@ export async function createCampaign(params: CampaignParams) {
   return campaign.id;
 }
 
+// Meta uses ISO 3166-1 alpha-2 codes. Map common mistakes.
+const COUNTRY_CODE_FIXES: Record<string, string> = {
+  UK: "GB",
+  EN: "GB",
+};
+
+function normalizeCountryCodes(codes: string[]): string[] {
+  return codes.map((code) => {
+    const upper = code.toUpperCase();
+    const fixed = COUNTRY_CODE_FIXES[upper];
+    if (fixed) {
+      console.log(`[adlab-meta] Country code auto-corrected: "${upper}" → "${fixed}"`);
+      return fixed;
+    }
+    if (upper.length !== 2) {
+      console.warn(`[adlab-meta] Suspicious country code (not 2 chars): "${upper}"`);
+    }
+    return upper;
+  });
+}
+
 interface AdSetParams {
   campaignId: string;
   name: string;
@@ -95,7 +116,7 @@ export async function createAdSet(params: AdSetParams) {
   if (params.targetAudience.ageMax) targeting.age_max = params.targetAudience.ageMax;
   if (params.targetAudience.geo?.length) {
     targeting.geo_locations = {
-      countries: params.targetAudience.geo,
+      countries: normalizeCountryCodes(params.targetAudience.geo),
     };
   }
   // TODO: Map interest names to Meta interest IDs via Interest Search API.
