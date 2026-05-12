@@ -492,3 +492,21 @@ None
 
 ### Notes
 - `NEXT_PUBLIC_META_PIXEL_ID` env var is now unused — can be removed from Vercel and .env.local whenever convenient, but leaving it does no harm.
+
+### [2026-05-12] Fix — Detailed Meta API error logging in launch endpoint
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 246f53f
+
+### In plain English (for Keenan)
+When launching a campaign, the system now logs exactly which Meta API call failed and what error Meta returned. Before, errors were swallowed and you'd just see a generic "failed" message. Now Vercel logs will show the full error from Meta so we can debug launch failures instantly.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/app/api/admin/adlab/ads/launch/route.ts`: Each Meta SDK call (campaign creation, ad set creation, image upload, video upload, ad creative creation, ad creation) now has its own try/catch. Added `logMetaError()` helper that logs: full JSON-stringified error, `error.response.body` or `error.body` or `error.message`. Added `extractErrorDetail()` helper that pulls the same into API responses. Step-by-step `console.log` before each call (e.g. `[adlab-launch] Creating ad set for image creative abc12345...`). If ad set or ad creative creation fails, that creative is skipped with `continue` rather than crashing the whole loop.
+
+### Manual steps needed
+None
+
+### Notes
+- The error response body from Meta's SDK is typically at `error.response.body` — this is where the actual error code and message live (e.g. "Invalid parameter", "Insufficient permissions"). The previous code only logged `error.message` which is usually just a generic Node error string.
