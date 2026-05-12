@@ -549,3 +549,25 @@ None
 ### Notes
 - The SDK (`facebook-nodejs-business-sdk@24.0.1`) defines `VERSION` as a static getter (`static get VERSION() { return 'v24.0'; }`) — there is no `setApiVersion()` method. The `Object.defineProperty` override replaces the getter on the class prototype, which is safe because `getApi()` is called before every SDK operation.
 - `is_adset_budget_sharing_enabled: false` explicitly tells Meta this campaign uses ABO (ad set budget optimization) rather than CBO (campaign budget optimization). Without it, Meta returns an "Invalid parameter" error for ABO campaigns.
+
+### [2026-05-12] Fix — Auto-correct country codes for Meta targeting (UK → GB)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 18ee035
+
+### In plain English (for Keenan)
+Meta was rejecting our ad sets because "UK" isn't a valid country code — Meta uses the international standard "GB" for United Kingdom. The system now automatically corrects common mistakes like "UK" and "EN" to "GB" in three places: when you save a project, when creatives launch, and in the default Acuity seed data.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/adlab/meta.ts`: Added `normalizeCountryCodes()` function with a `COUNTRY_CODE_FIXES` map (UK→GB, EN→GB). Called in `createAdSet()` before passing geo codes to Meta. Logs corrections and warns on suspicious (non-2-char) codes.
+- `apps/web/src/app/api/admin/adlab/projects/route.ts`: Added Zod `.transform()` on the `geo` array in `CreateProjectSchema` — auto-corrects codes on save.
+- `apps/web/src/app/api/admin/adlab/projects/[id]/route.ts`: Same Zod transform in `UpdateProjectSchema`.
+- `apps/web/src/app/api/admin/adlab/projects/seed/route.ts`: Fixed hardcoded `"UK"` → `"GB"` in the Acuity seed data.
+
+### Manual steps needed
+- [ ] Keenan: If the Acuity project already exists in the database with "UK" in its geo array, edit the project in the AdLab UI and re-save — the Zod transform will auto-correct it. Or re-run the seed endpoint after deleting the existing project.
+
+### Notes
+- Meta uses ISO 3166-1 alpha-2 codes. "UK" is reserved but not assigned — "GB" (Great Britain and Northern Ireland) is the correct code. This is one of the most common country code mistakes in ad tech integrations.
+- The correction happens at two layers: Zod transforms catch it on save (so the DB always has correct codes), and `normalizeCountryCodes()` catches it at runtime (safety net for existing bad data).
