@@ -47,8 +47,18 @@ export async function bootstrapNewUser(params: {
     referrer?: string;
     landingPath?: string;
   };
+  /**
+   * Suppress the inline welcome_day0 trial email send. Email/password
+   * signup paths set this to true because they fire a combined
+   * welcome+verify email separately (apps/web/src/emails/welcome-verify.ts)
+   * — bundling avoids the dual-email-in-inbox confusion that hit the
+   * 2026-05-12 TestFlight signup test. OAuth + magic-link paths (which
+   * have pre-verified emails and don't send a verify email) leave this
+   * undefined so they still get welcome_day0 inline.
+   */
+  skipWelcomeEmail?: boolean;
 }): Promise<void> {
-  const { userId, email, referralCodeFromSignup, attribution } = params;
+  const { userId, email, referralCodeFromSignup, attribution, skipWelcomeEmail } = params;
   const { prisma } = await import("@/lib/prisma");
   const { track } = await import("@/lib/posthog");
   const { generateReferralCode, resolveReferrerByCode } = await import(
@@ -168,12 +178,19 @@ export async function bootstrapNewUser(params: {
   // brick signup. The TrialEmailLog unique constraint makes this safe
   // to re-invoke on a retried signup path: the second attempt returns
   // `already_sent` without re-dispatching.
-  try {
-    const { sendTrialEmail } = await import("@/lib/trial-emails");
-    await sendTrialEmail(userId, "welcome_day0");
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error("[bootstrap-user] welcome_day0 send failed:", err);
+  //
+  // Email/password signup paths pass skipWelcomeEmail=true because they
+  // send a combined welcome+verify email separately. OAuth + magic-link
+  // paths still get welcome_day0 here (their emails are pre-verified so
+  // they don't need a verify CTA at all).
+  if (!skipWelcomeEmail) {
+    try {
+      const { sendTrialEmail } = await import("@/lib/trial-emails");
+      await sendTrialEmail(userId, "welcome_day0");
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error("[bootstrap-user] welcome_day0 send failed:", err);
+    }
   }
 
   // Notify founders (Keenan + Jimmy) of the new signup in real time.

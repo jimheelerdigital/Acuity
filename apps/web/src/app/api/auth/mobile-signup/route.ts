@@ -14,8 +14,9 @@
 
 import { NextRequest, NextResponse } from "next/server";
 
-import { verificationEmail } from "@/emails/verification";
+import { welcomeVerifyEmail } from "@/emails/welcome-verify";
 import { randomToken } from "@/lib/auth-tokens";
+import { signUnsubscribeToken } from "@/lib/email-tokens";
 import { hashPassword, validatePassword } from "@/lib/passwords";
 import {
   checkRateLimit,
@@ -102,7 +103,15 @@ export async function POST(req: NextRequest) {
     userId = created.id;
 
     const { bootstrapNewUser } = await import("@/lib/bootstrap-user");
-    await bootstrapNewUser({ userId, email, referralCodeFromSignup: referralCode });
+    // skipWelcomeEmail=true: we send a combined welcome+verify email
+    // below, replacing the prior dual-email pattern that confused users
+    // (verification email landed in spam, welcome-day0 in inbox).
+    await bootstrapNewUser({
+      userId,
+      email,
+      referralCodeFromSignup: referralCode,
+      skipWelcomeEmail: true,
+    });
   }
 
   await prisma.verificationToken.create({
@@ -114,8 +123,25 @@ export async function POST(req: NextRequest) {
   });
 
   if (!existing || !existing.emailVerified) {
+    // Re-read foundingMemberNumber + name from the user row — bootstrap
+    // set the founding rank above (first 100 signups). The combined
+    // welcome+verify email surfaces it in the P.S. for inbox social
+    // proof.
+    const userRow = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { name: true, foundingMemberNumber: true },
+    });
+    const firstName =
+      (userRow?.name ?? name ?? "").trim().split(/\s+/)[0] || "friend";
+
     const verifyUrl = `${publicOrigin(req)}/api/auth/verify-email?token=${encodeURIComponent(verifyToken)}`;
-    const { subject, html } = verificationEmail(verifyUrl);
+    const unsubscribeUrl = `${publicOrigin(req)}/api/emails/unsubscribe?token=${encodeURIComponent(signUnsubscribeToken(userId, "onboarding"))}`;
+    const { subject, html } = welcomeVerifyEmail({
+      firstName,
+      verifyUrl,
+      unsubscribeUrl,
+      foundingMemberNumber: userRow?.foundingMemberNumber ?? null,
+    });
     const { getResendClient } = await import("@/lib/resend");
     await getResendClient().emails.send({
       from: process.env.EMAIL_FROM ?? "Acuity <hello@getacuity.io>",

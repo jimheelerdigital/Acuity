@@ -20,6 +20,43 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-12] — Consolidate signup verification + welcome into one email
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+
+New email/password signups used to get TWO emails simultaneously — a short "Verify your email" transactional that consistently landed in spam, and a longer founder-tone "You're in" welcome that landed in inbox. Users on the 2026-05-12 TestFlight signup test clicked the welcome email's button thinking it was the verify link, got nothing useful, and were stuck because they couldn't sign in without the verification step. We now send a single combined welcome+verify email — same warm founder tone as before, but the verify button is the primary CTA at the top. One email, one decision, no confusion.
+
+### Technical changes (for Jimmy)
+
+- **NEW** `apps/web/src/emails/welcome-verify.ts` — combined template. Subject: `"Welcome to Acuity — verify your email"`. Uses the richer trial-email shell (which delivers reliably) instead of the minimal auth shell (which doesn't on this domain). Verify CTA at the top, "what's next" debrief copy below, Founding Member P.S. at the bottom.
+- **NEW** `apps/web/scripts/preview-welcome-verify-email.ts` — local renderer + optional Resend test-send (`--send-to=`). Output: `/tmp/welcome-verify-preview.html`.
+- **MODIFIED** `apps/web/src/app/api/auth/mobile-signup/route.ts` + `apps/web/src/app/api/auth/signup/route.ts`:
+  - Send `welcomeVerifyEmail()` instead of `verificationEmail()`.
+  - Re-read `name` + `foundingMemberNumber` from User row post-bootstrap (the row is now hydrated when we render).
+  - Pass `skipWelcomeEmail: true` to `bootstrapNewUser` so welcome_day0 doesn't fire alongside the new combined email.
+- **MODIFIED** `apps/web/src/lib/bootstrap-user.ts`: new optional `skipWelcomeEmail?: boolean`. Email/password signup paths set it true; OAuth + magic-link paths (which have pre-verified emails and don't need a verify CTA) leave it undefined → unchanged behavior, still get welcome_day0 inline.
+- **MODIFIED** `apps/web/src/emails/trial/welcome-day0.ts`: copy edit `"That's it. No setup. No streak. Just talk."` → `"Quick setup, then your first debrief."` Template stays for OAuth/magic-link signup paths.
+- **MODIFIED** new welcome-verify.ts: same closing line `"Quick setup, then your first debrief."` — honest about onboarding without losing the low-friction vibe.
+- `verification.ts` template kept in repo (no callers now; left as a fallback in case we ever need a verify-only flow again).
+
+### Manual steps needed
+
+- [ ] **Backlog — v1.2 onboarding redesign** (Jimmy/Keenan): reduce onboarding to the absolute minimum required before first recording. Either (a) skip the onboarding flow entirely and ask for context inline post-first-recording, or (b) make the existing onboarding non-blocking so users can record first and fill out their profile after. Goal: align actual flow with the "talk first" pitch from email + landing copy. Currently the "Quick setup" language in the welcome email is the honest acknowledgement; v1.2 should aim to make even that unnecessary.
+- [ ] **Backlog — DNS** (Jimmy): add SPF record to `getacuity.io` TXT: `v=spf1 include:_spf.resend.com ~all`. Current state: DKIM (resend._domainkey) and DMARC (`p=none`) are present but SPF is missing. Combined with short-transactional content patterns, this is why verification.ts was consistently spam-binned while welcome-day0 wasn't. The combined email dodges the worst of the content-side filtering, but SPF is still the right long-term fix. After SPF lands, consider tightening DMARC `p=none` → `p=quarantine`.
+
+### Notes
+
+- Resend test-send via `cd apps/web && npx tsx scripts/preview-welcome-verify-email.ts --send-to=your-email@example.com` requires `RESEND_API_KEY` in `apps/web/.env.local`. Render-only mode (no `--send-to`) doesn't.
+- The decision to keep `verification.ts` and `welcome-day0.ts` rather than delete them: both stay because welcome-day0 still fires for OAuth signup paths (Apple/Google/magic-link), and verification.ts is a useful primitive if we ever need a verify-only flow (e.g., email change confirmation). Dead code today on the signup path specifically, but neither is unused project-wide.
+- The "Quick setup, then your first debrief." line is intentionally vague about WHAT the setup is — the user finds out by clicking through. Trades a beat of curiosity for honesty about the flow vs. the prior "No setup. Just talk." which was wishful.
+- Per-slice gates: vitest 370/370 ✓, web tsc clean for touched files. Preview rendered at /tmp/welcome-verify-preview.html (4513 chars).
+
+---
+
 ## [2026-05-10] — Smoke endpoint rename (route 404) + CLI smoke script for cold-start credential verification
 
 **Requested by:** Jimmy

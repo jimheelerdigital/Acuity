@@ -21,8 +21,9 @@
 
 import { NextRequest, NextResponse } from "next/server";
 
-import { verificationEmail } from "@/emails/verification";
+import { welcomeVerifyEmail } from "@/emails/welcome-verify";
 import { randomToken } from "@/lib/auth-tokens";
+import { signUnsubscribeToken } from "@/lib/email-tokens";
 import { hashPassword, validatePassword } from "@/lib/passwords";
 import {
   checkRateLimit,
@@ -129,10 +130,13 @@ export async function POST(req: NextRequest) {
     // Matrix + UserMemory + trial_started event.
     const { bootstrapNewUser } = await import("@/lib/bootstrap-user");
     const attr = body?.attribution;
+    // skipWelcomeEmail=true: combined welcome+verify email goes out
+    // below — see mobile-signup for full rationale.
     await bootstrapNewUser({
       userId,
       email,
       referralCodeFromSignup: referralCode,
+      skipWelcomeEmail: true,
       attribution: attr ? {
         utmSource: attr.utm_source,
         utmMedium: attr.utm_medium,
@@ -162,9 +166,22 @@ export async function POST(req: NextRequest) {
   // consistency we still generate the token and could use it for
   // a welcome email later. Skipping send keeps inbox noise down.
   if (!existing || !existing.emailVerified) {
+    const userRow = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { name: true, foundingMemberNumber: true },
+    });
+    const firstName =
+      (userRow?.name ?? name ?? "").trim().split(/\s+/)[0] || "friend";
+
     const origin = req.nextUrl.origin;
     const verifyUrl = `${origin}/api/auth/verify-email?token=${encodeURIComponent(verifyToken)}`;
-    const { subject, html } = verificationEmail(verifyUrl);
+    const unsubscribeUrl = `${origin}/api/emails/unsubscribe?token=${encodeURIComponent(signUnsubscribeToken(userId, "onboarding"))}`;
+    const { subject, html } = welcomeVerifyEmail({
+      firstName,
+      verifyUrl,
+      unsubscribeUrl,
+      foundingMemberNumber: userRow?.foundingMemberNumber ?? null,
+    });
     const { getResendClient } = await import("@/lib/resend");
     await getResendClient().emails.send({
       from: process.env.EMAIL_FROM ?? "Acuity <hello@getacuity.io>",
