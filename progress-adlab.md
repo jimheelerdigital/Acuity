@@ -510,3 +510,22 @@ None
 
 ### Notes
 - The error response body from Meta's SDK is typically at `error.response.body` — this is where the actual error code and message live (e.g. "Invalid parameter", "Insufficient permissions"). The previous code only logged `error.message` which is usually just a generic Node error string.
+
+### [2026-05-12] Fix — Log Meta API payloads for debugging
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 1b21589
+
+### In plain English (for Keenan)
+When Meta says "Invalid parameter" we now see exactly what payload was sent — every field of every API call is logged. This makes it possible to see which specific field Meta is rejecting without guessing.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/adlab/meta.ts`: Added `console.log("[adlab-meta] ... payload:", JSON.stringify(payload, null, 2))` before every Meta SDK call: `createCampaign`, `createAdSet`, `createAdCreative`, `createAd`. Also logs `META_AD_ACCOUNT_ID` at campaign creation time.
+- `apps/web/src/app/api/admin/adlab/ads/launch/route.ts`: `logMetaError` now uses `Object.getOwnPropertyNames(err)` to capture non-enumerable error properties the SDK hides. Also checks `err._data` and `err.response` which are where the Meta SDK sometimes stores the actual error details. `extractErrorDetail` also checks `err._data`.
+
+### Manual steps needed
+None
+
+### Notes
+- The Meta SDK error object often has enumerable properties stripped. Standard `JSON.stringify(err)` produces `{}` for most SDK errors. Using `Object.getOwnPropertyNames` forces serialization of `message`, `stack`, and any SDK-specific hidden fields.
