@@ -20,7 +20,7 @@
       "bundleIdentifier": "com.heelerdigital.acuity",
       "usesAppleSignIn": true,
       "infoPlist": {
-        "NSMicrophoneUsageDescription": "Acuity uses your microphone to record your daily voice entries.",
+        "NSMicrophoneUsageDescription": "Acuity uses your microphone to record voice entries, which are transcribed and analyzed to surface themes, tasks, and insights from what you said.",
         "ITSAppUsesNonExemptEncryption": false,
         "CFBundleURLTypes": [
           {
@@ -159,7 +159,7 @@
       [
         "expo-av",
         {
-          "microphonePermission": "Acuity uses your microphone to record your daily voice entries."
+          "microphonePermission": "Acuity uses your microphone to record voice entries, which are transcribed and analyzed to surface themes, tasks, and insights from what you said."
         }
       ],
       [

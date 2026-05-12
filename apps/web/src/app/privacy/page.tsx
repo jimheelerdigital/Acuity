@@ -7,7 +7,7 @@ export const metadata = {
   robots: { index: true, follow: true },
 };
 
-const LAST_UPDATED = "April 19, 2026";
+const LAST_UPDATED = "May 12, 2026";
 
 export default function PrivacyPage() {
   return (
@@ -179,9 +179,9 @@ export default function PrivacyPage() {
               </li>
               <li>
                 <strong className="text-white">Stripe</strong> &mdash;
-                processes subscription payments. Stripe handles your
-                payment-card details directly; Acuity never receives
-                them.{" "}
+                processes subscription payments on the web. Stripe
+                handles your payment-card details directly; Acuity
+                never receives them.{" "}
                 <a
                   href="https://stripe.com/privacy"
                   target="_blank"
@@ -189,6 +189,24 @@ export default function PrivacyPage() {
                   className="underline hover:text-white"
                 >
                   stripe.com/privacy
+                </a>
+                .
+              </li>
+              <li>
+                <strong className="text-white">Apple</strong> &mdash;
+                processes auto-renewing subscription payments made
+                through our iOS app via Apple in-app purchase. The
+                transaction is billed to your Apple ID; Acuity
+                receives the transaction identifier and renewal state
+                from Apple&rsquo;s App Store Server API but never
+                receives your payment-card details.{" "}
+                <a
+                  href="https://www.apple.com/legal/privacy"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline hover:text-white"
+                >
+                  apple.com/legal/privacy
                 </a>
                 .
               </li>

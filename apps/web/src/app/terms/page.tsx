@@ -7,7 +7,7 @@ export const metadata = {
   robots: { index: true, follow: true },
 };
 
-const LAST_UPDATED = "April 19, 2026";
+const LAST_UPDATED = "May 12, 2026";
 
 export default function TermsPage() {
   return (
@@ -135,24 +135,60 @@ export default function TermsPage() {
               </li>
               <li>
                 <strong className="text-white">Subscription.</strong>{" "}
-                When you subscribe, you authorise us (via Stripe) to
+                When you subscribe, you authorise us (via Stripe on
+                the web, or Apple via in-app purchase on iOS) to
                 charge you $12.99 per month or $99 per year, depending
                 on the plan you select. The subscription renews
                 automatically at the end of each billing period until
                 you cancel.
               </li>
               <li>
-                <strong className="text-white">Cancellation.</strong>{" "}
-                You can cancel any time from your account settings or
-                the Stripe billing portal. Cancellation takes effect at
-                the end of the current billing period; you keep access
-                until then.
+                <strong className="text-white">In-app purchase (iOS).</strong>{" "}
+                If you subscribe through our iOS app, the transaction
+                is processed by Apple and billed to your Apple ID.
+                Apple&rsquo;s standard auto-renewing subscription
+                terms apply: payment is charged at confirmation of
+                purchase, the subscription renews automatically unless
+                you cancel at least 24 hours before the end of the
+                current period, and your Apple ID is charged for
+                renewal within 24 hours prior to the end of the
+                current period. You can manage or cancel the
+                subscription at any time in iOS Settings &rarr; Apple
+                ID &rarr; Subscriptions, or via the App Store app.
+                Apple&rsquo;s{" "}
+                <a
+                  href="https://www.apple.com/legal/internet-services/itunes/"
+                  className="underline hover:text-white"
+                >
+                  Media Services Terms
+                </a>{" "}
+                also apply to in-app purchases.
               </li>
               <li>
-                <strong className="text-white">Refunds.</strong> We
-                don&rsquo;t prorate or refund partial months. If you
-                cancel mid-month, you keep paid access until the end of
-                that month and won&rsquo;t be charged again.
+                <strong className="text-white">Cancellation.</strong>{" "}
+                For web subscriptions, you can cancel any time from
+                your account settings or the Stripe billing portal.
+                For iOS in-app purchases, cancel via iOS Settings
+                &rarr; Apple ID &rarr; Subscriptions. Cancellation
+                takes effect at the end of the current billing period;
+                you keep access until then.
+              </li>
+              <li>
+                <strong className="text-white">Refunds.</strong> For
+                web subscriptions, we don&rsquo;t prorate or refund
+                partial months &mdash; if you cancel mid-month, you
+                keep paid access until the end of that month and
+                won&rsquo;t be charged again. For iOS in-app
+                purchases, refunds are governed by Apple&rsquo;s
+                policy; request them at{" "}
+                <a
+                  href="https://reportaproblem.apple.com"
+                  className="underline hover:text-white"
+                >
+                  reportaproblem.apple.com
+                </a>
+                . Acuity cannot process refunds for App Store
+                transactions directly.
               </li>
               <li>
                 <strong className="text-white">Price changes.</strong>{" "}

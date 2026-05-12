@@ -195,6 +195,54 @@ export default function PaywallScreen() {
               hides on Android + flag-off builds. */}
           <RestorePurchasesButton onRestored={() => router.back()} />
 
+          {/* App Store Guideline 3.1.2(a) — auto-renewing subscription
+              disclosure. Paywall doesn't directly fire StoreKit (the
+              "Subscribe in app" button routes to /subscribe which is
+              the commit surface) but reviewers can interpret "any
+              paid feature surface" broadly. Defensive disclosure keeps
+              both screens compliant. Same verbatim Apple copy as
+              subscribe.tsx — see that file's docblock for spec link. */}
+          {showInAppSubscribe && (
+            <>
+              <Text className="text-[11px] text-zinc-500 dark:text-zinc-400 text-center mt-6 leading-relaxed">
+                Payment will be charged to your Apple ID account at
+                the confirmation of purchase. Subscription
+                automatically renews unless it is canceled at least
+                24 hours before the end of the current period. Your
+                account will be charged for renewal within 24 hours
+                prior to the end of the current period at $12.99
+                /month. You can manage and cancel your subscriptions
+                by going to your account settings on the App Store
+                after purchase.
+              </Text>
+              <View className="flex-row justify-center gap-3 mt-3">
+                <Text
+                  className="text-[11px] text-violet-400 underline"
+                  onPress={() =>
+                    void WebBrowser.openBrowserAsync(
+                      "https://getacuity.io/terms"
+                    )
+                  }
+                >
+                  Terms of Use
+                </Text>
+                <Text className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                  ·
+                </Text>
+                <Text
+                  className="text-[11px] text-violet-400 underline"
+                  onPress={() =>
+                    void WebBrowser.openBrowserAsync(
+                      "https://getacuity.io/privacy"
+                    )
+                  }
+                >
+                  Privacy Policy
+                </Text>
+              </View>
+            </>
+          )}
+
           {/* 3.1.3(b) compliance footnote. Updated to reflect both
               paths now exist. */}
           <Text className="text-[10px] text-zinc-600 dark:text-zinc-300 text-center mt-4 leading-snug">

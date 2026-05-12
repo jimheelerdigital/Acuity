@@ -20,6 +20,52 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-12] — App Store §3.1.2 compliance: subscription disclosure + Terms/Privacy alignment + mic copy
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+
+Build 38 TestFlight test surfaced that our in-app subscription screen was missing the legal disclaimer Apple requires for any auto-renewing subscription (the "payment charged to Apple ID, auto-renews unless canceled 24h before…" boilerplate). This is the #1 cause of App Store rejections for new subscription apps. We added the exact Apple-mandated copy plus tappable Terms of Use + Privacy Policy links. Updated the Terms and Privacy pages to also cover Apple in-app purchases (they previously only mentioned Stripe). Plus a small improvement to the microphone permission prompt so users see clearer language about what we do with the recording.
+
+### Technical changes (for Jimmy)
+
+- `apps/mobile/app/subscribe.tsx`: added §3.1.2 disclosure block under the Restore button. Verbatim Apple boilerplate (4-sentence "Payment will be charged... Subscription automatically renews... Your account will be charged for renewal... You can manage and cancel..."). Renewal price interpolates `product?.localizedPrice ?? "$12.99"` so it matches the live fetched Apple product. Two tappable text-onPress links for Terms of Use + Privacy Policy via `WebBrowser.openBrowserAsync`. Inline comment cites the guideline URL.
+- `apps/mobile/app/paywall.tsx`: same disclosure block + Terms/Privacy links, wrapped in `{showInAppSubscribe && ...}` so Android / flag-off builds don't see it. Hardcoded `$12.99/month` here since paywall doesn't fetch the product. Defensive — paywall doesn't directly fire StoreKit (purchase commits on /subscribe) but adding it reduces reject surface from strict reviewers.
+- `apps/web/src/app/terms/page.tsx` §5 (Subscription & billing): split Subscription clause into web (Stripe) + iOS (Apple) paths. NEW clause "In-app purchase (iOS)" with auto-renew terms, charged-at-confirmation, 24-hour cancel window, iOS Settings cancellation path, link to Apple Media Services Terms. Refunds clause now routes iOS refunds to reportaproblem.apple.com (Acuity cannot process App Store refunds directly). LAST_UPDATED → May 12, 2026.
+- `apps/web/src/app/privacy/page.tsx`: added Apple as a third-party processor between Stripe and Resend. Discloses Apple ID billing, App Store Server API transaction-ID receipt, no payment-card-details access. Link to apple.com/legal/privacy. LAST_UPDATED → May 12, 2026.
+- `apps/mobile/app.json`: mic permission copy updated in both `NSMicrophoneUsageDescription` and the expo-av plugin's `microphonePermission` (two copies of the same string, kept in sync). Old: "Acuity uses your microphone to record your daily voice entries." New: "Acuity uses your microphone to record voice entries, which are transcribed and analyzed to surface themes, tasks, and insights from what you said." More transparent about the transcription/AI step.
+
+Other launch-readiness items audited and CONFIRMED OK in this slice — none required new code:
+- Restore Purchases button present on both subscribe + paywall ✓
+- Apple Sign In implemented in sign-in.tsx ✓
+- Account deletion flow wired (Profile → Delete account → /api/user/delete) ✓
+- Manage Subscription deep link in profile.tsx (https://apps.apple.com/account/subscriptions) ✓
+- Privacy nutrition labels (NSPrivacyCollectedDataTypes) declare all 9 relevant types ✓
+- Sentry is the only analytics SDK on mobile; all three Sentry data types (CrashData, PerformanceData, UserID) disclosed ✓
+- Onboarding NOT a paywall gate (Step 8 just captures targetCadence; paywall lives separately at /paywall + /subscribe) ✓
+
+Per-slice gates: vitest 370/370 pass, web tsc clean for touched files, mobile tsc no new errors.
+
+### Manual steps needed
+
+- [ ] **EAS build 40** (Jimmy): rebuild iOS so the new disclosure copy + mic permission text + paywall disclosure ship in the binary. Build 39 (with the X-button safe-area fix) stays parked on EAS — never submitted because it doesn't carry these legal disclosures, and OTA updates aren't reliable for App Review. Build 40 carries: safe-area fix (was 39) + this slice's §3.1.2 disclosures + paywall disclosures + mic copy.
+- [ ] **Submit build 40 to TestFlight + App Store** (Jimmy): after install + verification of disclosure text rendering correctly.
+- [ ] **App Store Connect review information** (Jimmy): IAP product review screenshot uploaded (the subscribe.tsx screen, taken from a real device or sandbox tester install — covers subscription title, length, price, description, terms+privacy links, Apple boilerplate, Subscribe button). Demo account creds from `apps/web/scripts/seed-iap-reviewer.ts`. Notes explaining how to reach the subscribe screen (Profile → Acuity Pro or post-trial paywall).
+- [ ] **Resend SPF DNS record** (Jimmy, still outstanding): `v=spf1 include:_spf.resend.com ~all` on getacuity.io TXT. Long-term deliverability fix; combined welcome+verify email already dodges the worst of content-side filtering but SPF is the structural fix.
+
+### Notes
+
+- Apple's §3.1.2(a) boilerplate is required VERBATIM. Paraphrasing or trimming any of the four sentences is a reliable rejection cause. Future devs editing this copy: do not "improve" the wording. The Apple-cited URL in the inline comment links to the live guideline.
+- Renewal price interpolation on subscribe.tsx uses `product?.localizedPrice` (fetched live from Apple) with fallback `"$12.99"`. The hardcoded fallback matches the storekit-test fixture + production product price; if we ever change the product price, this fallback needs to change too OR we trust Apple's localized price 100%.
+- Paywall.tsx hardcoded `$12.99/month` was a tradeoff — paywall doesn't call `getMonthlyProduct()` so threading the live price would require additional API or async state. Acceptable today because we only have one product and one price; revisit if we ever offer annual / multi-tier.
+- The `<Text onPress>` pattern for inline links (instead of wrapping in Pressable) is intentional — keeps tap targets sized to the text glyphs (no oversized hit areas spilling into surrounding copy) and respects React Native's typography flow.
+- Terms page Apple clause cross-references Apple's Media Services Terms URL — that's the canonical Apple-side terms doc that's referenced in App Store Connect for in-app purchases. Apple reviewers cross-checking find a consistent legal frame.
+
+---
+
 ## [2026-05-12] — Brand unification: regenerate all icon/logo assets from finalized icon.png + cofounder email signatures
 
 **Requested by:** Jimmy

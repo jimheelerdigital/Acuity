@@ -371,11 +371,56 @@ export default function SubscribeScreen() {
             router.back();
           }} />
 
+          {/* App Store Guideline 3.1.2(a) — auto-renewing subscription
+              disclosure. The four-sentence boilerplate below is
+              Apple's required verbatim copy for every screen that
+              commits an auto-renewing IAP. Removing or paraphrasing
+              any of it is a reliable rejection cause. Functional
+              Terms + Privacy links are also mandated and must open
+              the actual policy pages (not in-app screens).
+              See: developer.apple.com/app-store/review/guidelines/#3.1.2 */}
+          <Text className="text-[11px] text-zinc-500 dark:text-zinc-400 text-center mt-6 leading-relaxed">
+            Payment will be charged to your Apple ID account at the
+            confirmation of purchase. Subscription automatically
+            renews unless it is canceled at least 24 hours before the
+            end of the current period. Your account will be charged
+            for renewal within 24 hours prior to the end of the
+            current period at {product?.localizedPrice ?? "$12.99"}
+            /month. You can manage and cancel your subscriptions by
+            going to your account settings on the App Store after
+            purchase.
+          </Text>
+          <View className="flex-row justify-center gap-3 mt-3">
+            <Text
+              className="text-[11px] text-violet-400 underline"
+              onPress={() =>
+                void WebBrowser.openBrowserAsync(
+                  "https://getacuity.io/terms"
+                )
+              }
+            >
+              Terms of Use
+            </Text>
+            <Text className="text-[11px] text-zinc-500 dark:text-zinc-400">
+              ·
+            </Text>
+            <Text
+              className="text-[11px] text-violet-400 underline"
+              onPress={() =>
+                void WebBrowser.openBrowserAsync(
+                  "https://getacuity.io/privacy"
+                )
+              }
+            >
+              Privacy Policy
+            </Text>
+          </View>
+
           <Text className="text-[10px] text-zinc-500 dark:text-zinc-400 text-center mt-4 leading-snug">
             Your existing entries stay free. Acuity Pro unlocks the
             AI debrief layer on every new recording. Cross-platform —
             sign in on the web with the same account to use Pro
-            there too. Cancel any time in iOS Settings.
+            there too.
           </Text>
         </View>
       </ScrollView>
