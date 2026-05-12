@@ -28,6 +28,9 @@ async function getApi() {
   if (!token) throw new Error("META_ACCESS_TOKEN not configured");
 
   const { FacebookAdsApi } = bizSdk;
+  // Override SDK default API version (v24.0) with env var or v25.0
+  const apiVersion = process.env.META_API_VERSION || "v25.0";
+  Object.defineProperty(FacebookAdsApi, "VERSION", { get: () => apiVersion });
   const api = FacebookAdsApi.init(token);
   api.setDebug(process.env.NODE_ENV === "development");
   return api;
@@ -59,6 +62,7 @@ export async function createCampaign(params: CampaignParams) {
     status: "PAUSED",
     special_ad_categories: ["NONE"],
     buying_type: "AUCTION",
+    is_adset_budget_sharing_enabled: false,
   };
   console.log("[adlab-meta] Campaign create payload:", JSON.stringify(payload, null, 2));
 
