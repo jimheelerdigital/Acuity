@@ -1215,7 +1215,11 @@ function buildSystemPrompt(
   spotsLeft: number,
   blogSlugs: string[] = []
 ): string {
+  const currentYear = new Date().getFullYear();
+
   return `You are writing a blog post for Acuity — a voice journaling app.
+
+CURRENT YEAR: ${currentYear}. Never reference ${currentYear - 1} or ${currentYear - 2} as the current year. All "best of" or "top X in [year]" content must use ${currentYear}. Do not use outdated years in titles, headings, or body copy.
 
 PRODUCT CONTEXT:
 - Users do a 60-second voice entry (called a "brain dump" in public copy, "debrief" internally)

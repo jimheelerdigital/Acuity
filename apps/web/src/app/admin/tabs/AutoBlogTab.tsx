@@ -63,6 +63,8 @@ export default function AutoBlogTab() {
   const [regenImageId, setRegenImageId] = useState<string | null>(null);
   const [backfilling, setBackfilling] = useState(false);
   const [backfillResult, setBackfillResult] = useState<string | null>(null);
+  const [fixingYears, setFixingYears] = useState(false);
+  const [fixYearsResult, setFixYearsResult] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -143,6 +145,27 @@ export default function AutoBlogTab() {
     }
   };
 
+  const handleFixYears = async () => {
+    setFixingYears(true);
+    setFixYearsResult(null);
+    try {
+      const res = await fetch("/api/admin/blog/fix-years", { method: "POST" });
+      const data = await res.json();
+      if (data.updated > 0) {
+        setFixYearsResult(
+          `Fixed year references in ${data.updated} of ${data.candidates} candidates (${data.scanned} scanned)`
+        );
+      } else {
+        setFixYearsResult(data.message || "No outdated year references found.");
+      }
+      fetchData();
+    } catch {
+      setFixYearsResult("Fix years failed");
+    } finally {
+      setFixingYears(false);
+    }
+  };
+
   const handleRetry = async (pieceId: string) => {
     setRetryingId(pieceId);
     try {
@@ -189,6 +212,13 @@ export default function AutoBlogTab() {
         </div>
         <div className="flex items-center gap-2">
           <button
+            onClick={handleFixYears}
+            disabled={fixingYears}
+            className="rounded-lg border border-white/10 px-4 py-2 text-sm text-zinc-400 transition hover:text-white hover:border-white/20 disabled:opacity-50"
+          >
+            {fixingYears ? "Fixing..." : "Fix Year References"}
+          </button>
+          <button
             onClick={handleBackfill}
             disabled={backfilling}
             className="rounded-lg border border-white/10 px-4 py-2 text-sm text-zinc-400 transition hover:text-white hover:border-white/20 disabled:opacity-50"
@@ -205,7 +235,12 @@ export default function AutoBlogTab() {
         </div>
       </div>
 
-      {/* Backfill result */}
+      {/* Action results */}
+      {fixYearsResult && (
+        <div className="rounded-lg border border-[#7C5CFC]/30 bg-[#7C5CFC]/10 px-4 py-2 text-sm text-[#7C5CFC]">
+          {fixYearsResult}
+        </div>
+      )}
       {backfillResult && (
         <div className="rounded-lg border border-[#7C5CFC]/30 bg-[#7C5CFC]/10 px-4 py-2 text-sm text-[#7C5CFC]">
           {backfillResult}
