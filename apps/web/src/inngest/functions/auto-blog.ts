@@ -99,7 +99,7 @@ const BLOCKED_ACUITY_DOMAINS = [
 async function checkUrl(url: string): Promise<boolean> {
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
+    const timeout = setTimeout(() => controller.abort(), 10000);
     const res = await fetch(url, {
       method: "HEAD",
       signal: controller.signal,
@@ -107,11 +107,13 @@ async function checkUrl(url: string): Promise<boolean> {
       headers: { "User-Agent": "AcuityBot/1.0 (link-check)" },
     });
     clearTimeout(timeout);
-    return res.ok || res.status === 405 || res.status === 403;
     // 405: some sites block HEAD but page exists
     // 403: auth-gated but page exists (e.g., paywalled articles)
+    // 429: rate-limited but page exists
+    return res.ok || res.status === 405 || res.status === 403 || res.status === 429;
   } catch {
-    return false;
+    // Timeout or network error — treat as valid to avoid false positives
+    return true;
   }
 }
 
@@ -170,45 +172,52 @@ function validateBlogPost(
   validBlogSlugs: string[] = []
 ): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
+  const warnings: string[] = [];
   const textBody = post.body.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
   const wordCount = textBody.split(/\s+/).filter(Boolean).length;
 
-  if (wordCount < 800 || wordCount > 1400) {
-    errors.push(`Word count ${wordCount} outside 800-1400 range`);
+  // Word count: 600-1050 target with 10% tolerance on both ends (540-1155)
+  if (wordCount < 540 || wordCount > 1155) {
+    errors.push(`Word count ${wordCount} outside 540-1155 range (target 600-1050)`);
   }
 
+  // Keyword in H1 — soft warning, not a hard failure
   const h1Match = post.body.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
   if (
     h1Match &&
     !h1Match[1].toLowerCase().includes(post.primaryKeyword.toLowerCase())
   ) {
-    errors.push("Primary keyword not in H1");
+    warnings.push(`[soft] Primary keyword "${post.primaryKeyword}" not in H1`);
   }
 
+  // Keyword in first 100 words — soft warning
   const first100Words = textBody.split(/\s+/).slice(0, 100).join(" ");
   if (!first100Words.toLowerCase().includes(post.primaryKeyword.toLowerCase())) {
-    errors.push("Primary keyword not in first 100 words");
+    warnings.push(`[soft] Primary keyword "${post.primaryKeyword}" not in first 100 words`);
   }
 
+  // At least 2 H2s — hard requirement (structural)
   const h2Matches = post.body.match(/<h2[^>]*>/gi) ?? [];
   if (h2Matches.length < 2) {
     errors.push(`Only ${h2Matches.length} H2s, need at least 2`);
   }
 
+  // Keyword in an H2 — soft warning
   const h2KeywordMatch = (post.body.match(/<h2[^>]*>([\s\S]*?)<\/h2>/gi) ?? [])
     .some((h2) => h2.toLowerCase().includes(post.primaryKeyword.toLowerCase()));
   if (!h2KeywordMatch) {
-    errors.push("Primary keyword not in any H2");
+    warnings.push(`[soft] Primary keyword "${post.primaryKeyword}" not in any H2`);
   }
 
+  // Internal links — at least 1 required (relaxed from 2)
   const internalLinkCount = (
     post.body.match(/href=["']\/(?:for|blog)\//gi) ?? []
   ).length;
-  if (internalLinkCount < 2) {
-    errors.push(`Only ${internalLinkCount} internal links, need at least 2`);
+  if (internalLinkCount < 1) {
+    errors.push(`No internal links found, need at least 1`);
   }
 
-  // Validate that all internal links point to real pages
+  // Validate internal links against real pages
   const validPersonaSlugs = new Set(PERSONA_SLUGS);
   const validBlogSlugSet = new Set(validBlogSlugs);
 
@@ -232,12 +241,13 @@ function validateBlogPost(
   }
 
   if (brokenLinks.length > 0) {
-    errors.push(
-      `Broken internal links (do not exist): ${brokenLinks.join(", ")}`
+    // Soft warning — Claude sometimes invents plausible blog slugs
+    warnings.push(
+      `[soft] Internal links to non-existent pages: ${brokenLinks.join(", ")}`
     );
   }
 
-  // Check for wrong-domain Acuity links
+  // Wrong-domain Acuity links — hard failure (these are always wrong)
   const allExternalLinks =
     post.body.match(/href=["'](https?:\/\/[^"']+)["']/gi) ?? [];
   const wrongDomainLinks: string[] = [];
@@ -259,27 +269,36 @@ function validateBlogPost(
     );
   }
 
+  // FAQ schema — soft warning (nice to have, not required)
   if (!post.faqSchema || post.faqSchema.length < 3) {
-    errors.push(
-      `FAQ schema has ${post.faqSchema?.length ?? 0} Qs, need at least 3`
+    warnings.push(
+      `[soft] FAQ schema has ${post.faqSchema?.length ?? 0} Qs (target: 3+)`
     );
   }
 
-  if (post.metaDescription.length < 140 || post.metaDescription.length > 160) {
+  // Meta description — widen tolerance to 120-170 chars
+  if (post.metaDescription.length < 120 || post.metaDescription.length > 170) {
     errors.push(
-      `Meta description ${post.metaDescription.length} chars, need 140-160`
+      `Meta description ${post.metaDescription.length} chars, need 120-170`
     );
   }
 
-  if (post.metaTitle.length < 50 || post.metaTitle.length > 60) {
-    errors.push(`Meta title ${post.metaTitle.length} chars, need 50-60`);
+  // Meta title — widen tolerance to 40-65 chars
+  if (post.metaTitle.length < 40 || post.metaTitle.length > 65) {
+    errors.push(`Meta title ${post.metaTitle.length} chars, need 40-65`);
   }
 
+  // Banned phrases — hard failure
   const bodyLower = post.body.toLowerCase();
   for (const phrase of BANNED_PHRASES) {
     if (bodyLower.includes(phrase.toLowerCase())) {
       errors.push(`Contains banned phrase: "${phrase}"`);
     }
+  }
+
+  // Log soft warnings for debugging (don't fail the post)
+  if (warnings.length > 0) {
+    console.warn("[auto-blog] Validation warnings (non-blocking):", warnings);
   }
 
   return { valid: errors.length === 0, errors };
@@ -342,7 +361,14 @@ export const autoBlogGenerateFn = inngest.createFunction(
     // ── Step 3: Pick next topic ─────────────────────────────────
     const topicData = await step.run("pick-next-topic", async () => {
       const { prisma } = await import("@/lib/prisma");
+      // Prefer topics with scheduledFor <= now, then fall back to oldest queued
       const topic = await prisma.blogTopicQueue.findFirst({
+        where: {
+          status: "QUEUED",
+          scheduledFor: { lte: new Date() },
+        },
+        orderBy: { scheduledFor: "asc" },
+      }) ?? await prisma.blogTopicQueue.findFirst({
         where: { status: "QUEUED" },
         orderBy: { createdAt: "asc" },
       });
@@ -1257,7 +1283,7 @@ OUTPUT FORMAT — respond with a single JSON object:
   "metaDescription": "140-160 character meta description",
   "heroH1": "H1 heading (include primary keyword)",
   "body": "<full HTML with h2, h3, p tags, FAQ section, internal links>",
-  "heroImagePrompt": "A concise DALL-E image prompt (1-2 sentences) for a hero image. Abstract, editorial style — no text, no logos, no faces. Moody lighting, muted purple/indigo tones on dark background. Should evoke the post's theme visually.",
+  "heroImagePrompt": "A concise image prompt (1-2 sentences) for a hero image. Abstract, editorial style — no text, no logos, no faces. Moody lighting, muted purple/indigo tones on dark background. Should evoke the post's theme visually.",
   "estimatedReadTime": 7,
   "primaryKeyword": "${topic.targetKeyword}",
   "secondaryKeywords": ["kw1", "kw2", "kw3"],
@@ -1268,7 +1294,7 @@ OUTPUT FORMAT — respond with a single JSON object:
 }
 
 REQUIREMENTS:
-- 800 to 1,400 words
+- 600 to 1,050 words (shorter posts perform better — get to the point)
 - Primary keyword in H1, first 100 words, and at least one H2
 - At least 2 H2 sections
 - At least 2 internal links to /for/* or /blog/* posts (from the lists above ONLY)

@@ -60,6 +60,9 @@ export default function AutoBlogTab() {
   const [generating, setGenerating] = useState(false);
   const [killingId, setKillingId] = useState<string | null>(null);
   const [retryingId, setRetryingId] = useState<string | null>(null);
+  const [regenImageId, setRegenImageId] = useState<string | null>(null);
+  const [backfilling, setBackfilling] = useState(false);
+  const [backfillResult, setBackfillResult] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -102,6 +105,41 @@ export default function AutoBlogTab() {
       // silent
     } finally {
       setKillingId(null);
+    }
+  };
+
+  const handleRegenImage = async (pieceId: string) => {
+    setRegenImageId(pieceId);
+    try {
+      const res = await fetch("/api/admin/blog/regenerate-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pieceId }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        console.error("Regen failed:", err);
+      }
+      fetchData();
+    } catch {
+      // silent
+    } finally {
+      setRegenImageId(null);
+    }
+  };
+
+  const handleBackfill = async () => {
+    setBackfilling(true);
+    setBackfillResult(null);
+    try {
+      const res = await fetch("/api/admin/blog/backfill-images", { method: "POST" });
+      const data = await res.json();
+      setBackfillResult(data.message || "Done");
+      fetchData();
+    } catch {
+      setBackfillResult("Backfill failed");
+    } finally {
+      setBackfilling(false);
     }
   };
 
@@ -149,14 +187,30 @@ export default function AutoBlogTab() {
             {stats.totalPublished} published, {stats.totalPruned} pruned
           </p>
         </div>
-        <button
-          onClick={handleGenerateNow}
-          disabled={generating}
-          className="rounded-lg bg-[#7C5CFC] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#6B4FE0] disabled:opacity-50"
-        >
-          {generating ? "Generating..." : "Generate Now"}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleBackfill}
+            disabled={backfilling}
+            className="rounded-lg border border-white/10 px-4 py-2 text-sm text-zinc-400 transition hover:text-white hover:border-white/20 disabled:opacity-50"
+          >
+            {backfilling ? "Backfilling..." : "Backfill Missing Images"}
+          </button>
+          <button
+            onClick={handleGenerateNow}
+            disabled={generating}
+            className="rounded-lg bg-[#7C5CFC] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#6B4FE0] disabled:opacity-50"
+          >
+            {generating ? "Generating..." : "Generate Now"}
+          </button>
+        </div>
       </div>
+
+      {/* Backfill result */}
+      {backfillResult && (
+        <div className="rounded-lg border border-[#7C5CFC]/30 bg-[#7C5CFC]/10 px-4 py-2 text-sm text-[#7C5CFC]">
+          {backfillResult}
+        </div>
+      )}
 
       {/* Topic Queue */}
       <div className="rounded-xl border border-white/10 bg-[#1E1E2E] p-5">
@@ -288,24 +342,35 @@ export default function AutoBlogTab() {
                       </span>
                     </td>
                     <td className="py-2">
-                      {post.status === "AUTO_PUBLISHED" && (
-                        <button
-                          onClick={() => handleKill(post.id)}
-                          disabled={killingId === post.id}
-                          className="rounded px-2 py-1 text-xs text-red-400 transition hover:bg-red-500/10 disabled:opacity-50"
-                        >
-                          {killingId === post.id ? "..." : "Kill"}
-                        </button>
-                      )}
-                      {post.status === "GENERATION_FAILED" && (
-                        <button
-                          onClick={() => handleRetry(post.id)}
-                          disabled={retryingId === post.id}
-                          className="rounded px-2 py-1 text-xs text-amber-400 transition hover:bg-amber-500/10 disabled:opacity-50"
-                        >
-                          {retryingId === post.id ? "..." : "Retry"}
-                        </button>
-                      )}
+                      <div className="flex gap-1">
+                        {post.status === "AUTO_PUBLISHED" && (
+                          <>
+                            <button
+                              onClick={() => handleRegenImage(post.id)}
+                              disabled={regenImageId === post.id}
+                              className="rounded px-2 py-1 text-xs text-[#7C5CFC] transition hover:bg-[#7C5CFC]/10 disabled:opacity-50"
+                            >
+                              {regenImageId === post.id ? "..." : "Regen Image"}
+                            </button>
+                            <button
+                              onClick={() => handleKill(post.id)}
+                              disabled={killingId === post.id}
+                              className="rounded px-2 py-1 text-xs text-red-400 transition hover:bg-red-500/10 disabled:opacity-50"
+                            >
+                              {killingId === post.id ? "..." : "Kill"}
+                            </button>
+                          </>
+                        )}
+                        {post.status === "GENERATION_FAILED" && (
+                          <button
+                            onClick={() => handleRetry(post.id)}
+                            disabled={retryingId === post.id}
+                            className="rounded px-2 py-1 text-xs text-amber-400 transition hover:bg-amber-500/10 disabled:opacity-50"
+                          >
+                            {retryingId === post.id ? "..." : "Retry"}
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}

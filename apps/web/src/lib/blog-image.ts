@@ -1,11 +1,13 @@
 /**
  * Blog hero image generation + Supabase Storage upload.
  *
- * Pipeline: DALL-E 3 generates from a prompt → download raw bytes →
+ * Pipeline: gpt-image-2 generates from a prompt (b64_json) →
  * upload to Supabase Storage `blog-images` bucket → return public URL.
  *
  * Fire-and-forget safe: if any step fails, returns null so the blog
  * post still publishes without a hero image.
+ *
+ * Self-heals: creates the blog-images bucket if it doesn't exist.
  */
 
 import OpenAI from "openai";
@@ -15,14 +17,40 @@ function openai(): OpenAI {
   if (!cachedClient) {
     cachedClient = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
-      timeout: 60_000,
+      timeout: 120_000,
     });
   }
   return cachedClient;
 }
 
 /**
- * Generate a hero image via DALL-E 3 and upload to Supabase Storage.
+ * Ensure the blog-images bucket exists, creating it if needed.
+ */
+async function ensureBucket(): Promise<boolean> {
+  try {
+    const { supabase } = await import("@/lib/supabase.server");
+    const { data: buckets } = await supabase.storage.listBuckets();
+    const exists = buckets?.some((b) => b.name === "blog-images");
+    if (!exists) {
+      console.warn("[blog-image] blog-images bucket not found — creating it now");
+      const { error } = await supabase.storage.createBucket("blog-images", {
+        public: true,
+      });
+      if (error) {
+        console.error("[blog-image] Failed to create bucket:", error.message);
+        return false;
+      }
+      console.log("[blog-image] blog-images bucket created successfully");
+    }
+    return true;
+  } catch (err) {
+    console.error("[blog-image] Bucket check failed:", err);
+    return false;
+  }
+}
+
+/**
+ * Generate a hero image via gpt-image-2 and upload to Supabase Storage.
  * Returns the public URL or null on failure.
  */
 export async function generateAndStoreBlogImage(
@@ -30,38 +58,34 @@ export async function generateAndStoreBlogImage(
   imagePrompt: string
 ): Promise<string | null> {
   try {
-    // 1. Generate image via DALL-E 3
+    // 0. Ensure bucket exists
+    const bucketReady = await ensureBucket();
+    if (!bucketReady) return null;
+
+    // 1. Generate image via gpt-image-2 (b64_json — no URL download needed)
     const response = await openai().images.generate({
-      model: "dall-e-3",
+      model: "gpt-image-2",
       prompt: imagePrompt,
       n: 1,
-      size: "1792x1024",
-      quality: "standard",
-      style: "vivid",
+      size: "1536x1024",
     });
 
-    const imageUrl = response.data[0]?.url;
-    if (!imageUrl) {
-      console.error("[blog-image] DALL-E returned no URL");
+    const b64 = response.data?.[0]?.b64_json;
+    if (!b64) {
+      console.error("[blog-image] gpt-image-2 returned no image data");
       return null;
     }
 
-    // 2. Download the image bytes (DALL-E URLs expire after ~1 hour)
-    const imageRes = await fetch(imageUrl);
-    if (!imageRes.ok) {
-      console.error("[blog-image] Failed to download DALL-E image:", imageRes.status);
-      return null;
-    }
-    const imageBuffer = Buffer.from(await imageRes.arrayBuffer());
+    const imageBuffer = Buffer.from(b64, "base64");
 
-    // 3. Upload to Supabase Storage
+    // 2. Upload to Supabase Storage as PNG
     const { supabase } = await import("@/lib/supabase.server");
-    const filePath = `${slug}.webp`;
+    const filePath = `${slug}.png`;
 
     const { error: uploadError } = await supabase.storage
       .from("blog-images")
       .upload(filePath, imageBuffer, {
-        contentType: "image/webp",
+        contentType: "image/png",
         upsert: true,
       });
 
@@ -70,7 +94,7 @@ export async function generateAndStoreBlogImage(
       return null;
     }
 
-    // 4. Get the public URL
+    // 3. Get the public URL
     const { data: publicUrlData } = supabase.storage
       .from("blog-images")
       .getPublicUrl(filePath);
