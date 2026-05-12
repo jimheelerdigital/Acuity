@@ -111,10 +111,7 @@ export default function RootLayout({
         {GOOGLE_SITE_VERIFICATION && (
           <meta name="google-site-verification" content={GOOGLE_SITE_VERIFICATION} />
         )}
-        {/* Third-party trackers (GA, Hotjar, Meta Pixel) are no longer
-            loaded here — they're mounted by <ConsentGatedTrackers/> in
-            the body below, conditional on the user's cookie consent.
-            GDPR / ePrivacy compliance + SOC 2 Privacy P2. */}
+        {/* Meta Pixel — fires unconditionally on every page load */}
         <Script id="meta-pixel" strategy="afterInteractive">
           {`
             !function(f,b,e,v,n,t,s)
@@ -129,6 +126,11 @@ export default function RootLayout({
             fbq('track', 'PageView');
           `}
         </Script>
+        <noscript>
+          <img height="1" width="1" style={{ display: "none" }}
+            src="https://www.facebook.com/tr?id=869829585445303&ev=PageView&noscript=1"
+          />
+        </noscript>
         <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
         <link rel="shortcut icon" href="/favicon.ico" />
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
