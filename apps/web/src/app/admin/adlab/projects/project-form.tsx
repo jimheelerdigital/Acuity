@@ -86,8 +86,28 @@ export function ProjectForm({ initialData, projectId, mode }: ProjectFormProps) 
   const [data, setData] = useState<ProjectFormData>({
     ...DEFAULT_DATA,
     ...initialData,
-    targetAudience: { ...DEFAULT_DATA.targetAudience, ...(initialData?.targetAudience as TargetAudience) },
+    targetAudience: (() => {
+      const base = DEFAULT_DATA.targetAudience;
+      const init = (initialData?.targetAudience ?? {}) as Partial<TargetAudience>;
+      return {
+        ageMin: init.ageMin ?? base.ageMin,
+        ageMax: init.ageMax ?? base.ageMax,
+        geo: init.geo ?? base.geo,
+        interests: init.interests ?? base.interests,
+        painPoints: init.painPoints ?? base.painPoints,
+        desires: init.desires ?? base.desires,
+        identityMarkers: init.identityMarkers ?? base.identityMarkers,
+      };
+    })(),
     usps: initialData?.usps?.length ? initialData.usps : [""],
+    targetInterests: initialData?.targetInterests ?? DEFAULT_DATA.targetInterests,
+    metaPageId: initialData?.metaPageId ?? DEFAULT_DATA.metaPageId,
+    bannedPhrases: initialData?.bannedPhrases ?? DEFAULT_DATA.bannedPhrases,
+    logoUrl: initialData?.logoUrl ?? DEFAULT_DATA.logoUrl,
+    landingPageUrl: initialData?.landingPageUrl ?? DEFAULT_DATA.landingPageUrl,
+    conversionEvent: initialData?.conversionEvent ?? DEFAULT_DATA.conversionEvent,
+    metaAdAccountId: initialData?.metaAdAccountId ?? DEFAULT_DATA.metaAdAccountId,
+    metaPixelId: initialData?.metaPixelId ?? DEFAULT_DATA.metaPixelId,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);

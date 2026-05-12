@@ -13,14 +13,14 @@ interface Project {
   targetAudience: {
     ageMin: number;
     ageMax: number;
-    geo: string[];
-    interests: string[];
-    painPoints: string[];
-    desires: string[];
-    identityMarkers: string[];
-  };
-  usps: string[];
-  bannedPhrases: string[];
+    geo: string[] | null;
+    interests: string[] | null;
+    painPoints: string[] | null;
+    desires: string[] | null;
+    identityMarkers: string[] | null;
+  } | null;
+  usps: string[] | null;
+  bannedPhrases: string[] | null;
   imageStylePrompt: string;
   logoUrl: string | null;
   targetCplCents: number;
@@ -62,7 +62,17 @@ export default function ProjectDetailPage() {
     return <p className="text-sm text-red-400">Project not found.</p>;
   }
 
-  const audience = project.targetAudience;
+  const audience = project.targetAudience ?? {
+    ageMin: 0,
+    ageMax: 0,
+    geo: [],
+    interests: [],
+    painPoints: [],
+    desires: [],
+    identityMarkers: [],
+  };
+  const usps = project.usps ?? [];
+  const bannedPhrases = project.bannedPhrases ?? [];
 
   return (
     <>
@@ -101,11 +111,11 @@ export default function ProjectDetailPage() {
         {/* Target Audience */}
         <Card title="Target Audience">
           <Row label="Age Range" value={`${audience.ageMin} - ${audience.ageMax}`} />
-          <TagRow label="Geo" tags={audience.geo} />
-          <TagRow label="Interests" tags={audience.interests} />
-          <TagRow label="Pain Points" tags={audience.painPoints} />
-          <TagRow label="Desires" tags={audience.desires} />
-          <TagRow label="Identity Markers" tags={audience.identityMarkers} />
+          <TagRow label="Geo" tags={audience.geo ?? []} />
+          <TagRow label="Interests" tags={audience.interests ?? []} />
+          <TagRow label="Pain Points" tags={audience.painPoints ?? []} />
+          <TagRow label="Desires" tags={audience.desires ?? []} />
+          <TagRow label="Identity Markers" tags={audience.identityMarkers ?? []} />
           {project.targetInterests && project.targetInterests.length > 0 && (
             <TagRow label="Meta Ad Interests" tags={project.targetInterests.map(i => i.name)} />
           )}
@@ -113,9 +123,9 @@ export default function ProjectDetailPage() {
 
         {/* USPs */}
         <Card title="USPs">
-          {project.usps.length > 0 ? (
+          {usps.length > 0 ? (
             <ul className="space-y-1.5">
-              {project.usps.map((usp, i) => (
+              {usps.map((usp, i) => (
                 <li key={i} className="text-sm text-[#A0A0B8] flex gap-2">
                   <span className="text-[#7C5CFC] shrink-0">-</span>
                   {usp}
@@ -150,10 +160,10 @@ export default function ProjectDetailPage() {
         </Card>
 
         {/* Banned Phrases */}
-        {project.bannedPhrases.length > 0 && (
+        {bannedPhrases.length > 0 && (
           <Card title="Banned Phrases" span2>
             <div className="flex flex-wrap gap-1.5">
-              {project.bannedPhrases.map((phrase, i) => (
+              {bannedPhrases.map((phrase, i) => (
                 <span
                   key={i}
                   className="rounded-md bg-red-500/10 border border-red-500/20 px-2 py-0.5 text-xs text-red-400"

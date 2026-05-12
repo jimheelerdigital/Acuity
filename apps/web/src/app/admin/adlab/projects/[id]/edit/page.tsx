@@ -15,11 +15,20 @@ export default function EditProjectPage() {
     fetch(`/api/admin/adlab/projects/${id}`)
       .then((r) => r.json())
       .then((data) => {
-        // Convert cents back to dollars for the form
+        // Convert cents back to dollars and null fields to safe defaults for the form
         setProject({
           ...data,
           targetCplCents: data.targetCplCents / 100,
           dailyBudgetCentsPerVariant: data.dailyBudgetCentsPerVariant / 100,
+          metaPageId: data.metaPageId ?? "",
+          targetInterests: data.targetInterests ?? [],
+          usps: data.usps ?? [""],
+          bannedPhrases: data.bannedPhrases ?? [],
+          landingPageUrl: data.landingPageUrl ?? "",
+          logoUrl: data.logoUrl ?? "",
+          conversionEvent: data.conversionEvent ?? "",
+          metaAdAccountId: data.metaAdAccountId ?? "",
+          metaPixelId: data.metaPixelId ?? "",
         });
       })
       .finally(() => setLoading(false));
