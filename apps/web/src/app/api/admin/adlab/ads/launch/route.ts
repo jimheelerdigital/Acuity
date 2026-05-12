@@ -80,6 +80,20 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function logMetaError(step: string, err: any) {
+    console.error(`[adlab-launch] ${step} failed`);
+    console.error("[adlab-launch] Meta API error:", JSON.stringify(err, null, 2));
+    console.error("[adlab-launch] Error body:", err?.response?.body || err?.body || err?.message);
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function extractErrorDetail(err: any): string {
+    const body = err?.response?.body || err?.body;
+    if (body) return typeof body === "string" ? body : JSON.stringify(body);
+    return err?.message || String(err);
+  }
+
   const errors: { creativeId: string; error: string }[] = [];
   const created: { creativeId: string; adId: string; adsetId: string }[] = [];
 
@@ -89,10 +103,23 @@ export async function POST(req: NextRequest) {
       || `${project.slug} | exp_${experiment.id}`;
     const campaignObjective = (experiment as Record<string, unknown>).campaignObjective as string
       || project.conversionObjective;
-    const campaignId = await meta.createCampaign({
-      name: campaignName,
-      objective: campaignObjective,
-    });
+
+    console.log("[adlab-launch] Creating campaign:", { campaignName, campaignObjective });
+
+    let campaignId: string;
+    try {
+      campaignId = await meta.createCampaign({
+        name: campaignName,
+        objective: campaignObjective,
+      });
+      console.log("[adlab-launch] Campaign created:", campaignId);
+    } catch (err) {
+      logMetaError("Campaign creation", err);
+      return NextResponse.json(
+        { error: "Campaign creation failed", detail: extractErrorDetail(err) },
+        { status: 500 }
+      );
+    }
 
     // Save campaign ID on experiment
     await prisma.adLabExperiment.update({
@@ -104,74 +131,107 @@ export async function POST(req: NextRequest) {
 
     // 2. For each approved creative, create ad set + ad
     for (const creative of approvedCreatives) {
+      const creativeType = (creative as Record<string, unknown>).creativeType as string || "image";
+      const creativeLabel = `${creativeType} creative ${creative.id.slice(0, 8)}`;
+
       try {
-        const creativeType = (creative as Record<string, unknown>).creativeType as string || "image";
         const adsetName = `${project.slug} | exp_${experiment.id} | ${creativeType} | ${creative.angle.valueSurface} | creative_${creative.id}`;
 
         const expRecord = experiment as Record<string, unknown>;
         const adsetBudget = (expRecord.adSetDailyBudgetCents as number) || project.dailyBudgetCentsPerVariant;
         const convEvent = (expRecord.optimizationEvent as string) || project.conversionEvent || "Lead";
 
-        const adsetId = await meta.createAdSet({
-          campaignId,
-          name: adsetName,
-          dailyBudgetCents: adsetBudget,
-          pixelId: project.metaPixelId!,
-          conversionEvent: convEvent,
-          targetAudience: {
-            ageMin: (audience.ageMin as number) || 25,
-            ageMax: (audience.ageMax as number) || 55,
-            geo: (audience.geo as string[]) || ["US"],
-          },
-        });
+        // Create ad set
+        console.log(`[adlab-launch] Creating ad set for ${creativeLabel}:`, { adsetName, adsetBudget, convEvent });
+        let adsetId: string;
+        try {
+          adsetId = await meta.createAdSet({
+            campaignId,
+            name: adsetName,
+            dailyBudgetCents: adsetBudget,
+            pixelId: project.metaPixelId!,
+            conversionEvent: convEvent,
+            targetAudience: {
+              ageMin: (audience.ageMin as number) || 25,
+              ageMax: (audience.ageMax as number) || 55,
+              geo: (audience.geo as string[]) || ["US"],
+            },
+          });
+          console.log(`[adlab-launch] Ad set created for ${creativeLabel}:`, adsetId);
+        } catch (err) {
+          logMetaError(`Ad set creation for ${creativeLabel}`, err);
+          errors.push({ creativeId: creative.id, error: `Ad set creation failed: ${extractErrorDetail(err)}` });
+          continue;
+        }
 
         // Upload asset based on creative type
         let imageHash: string | undefined;
         let videoId: string | undefined;
 
         if (creativeType === "video" && creative.videoUrl) {
-          // Upload video to Meta — retry once on failure (common for video processing)
+          console.log(`[adlab-launch] Uploading video for ${creativeLabel}:`, creative.videoUrl);
           for (let attempt = 0; attempt < 2; attempt++) {
             try {
               videoId = await meta.uploadVideo(creative.videoUrl);
+              console.log(`[adlab-launch] Video uploaded for ${creativeLabel}:`, videoId);
               break;
             } catch (vidErr) {
+              logMetaError(`Video upload attempt ${attempt + 1} for ${creativeLabel}`, vidErr);
               if (attempt === 0) {
-                console.warn("[adlab] Video upload attempt 1 failed, retrying in 10s:", vidErr);
                 await new Promise((r) => setTimeout(r, 10_000));
-              } else {
-                console.error("[adlab] Video upload failed after retry:", vidErr);
               }
             }
           }
         } else if (creative.imageUrl) {
+          console.log(`[adlab-launch] Uploading image for ${creativeLabel}:`, creative.imageUrl);
           try {
             imageHash = await meta.uploadImage(creative.imageUrl);
+            console.log(`[adlab-launch] Image uploaded for ${creativeLabel}:`, imageHash);
           } catch (imgErr) {
-            console.warn("[adlab] Image upload failed:", imgErr);
+            logMetaError(`Image upload for ${creativeLabel}`, imgErr);
           }
         }
 
         // Create ad creative object on Meta
-        // TODO: pageId needs to be configurable per project
-        const metaCreativeId = await meta.createAdCreative({
-          name: `${project.slug}_creative_${creative.id}`,
-          pageId: "", // TODO: add pageId to project config
-          imageHash,
-          videoId,
-          headline: creative.headline,
-          primaryText: creative.primaryText,
-          description: creative.description,
-          cta: creative.cta,
-          linkUrl: `https://getacuity.io?utm_source=meta&utm_medium=paid&utm_campaign=${experiment.id}&utm_content=${creative.id}`,
+        console.log(`[adlab-launch] Creating ad creative for ${creativeLabel}:`, {
+          imageHash, videoId, headline: creative.headline, cta: creative.cta,
         });
+        let metaCreativeId: string;
+        try {
+          // TODO: pageId needs to be configurable per project
+          metaCreativeId = await meta.createAdCreative({
+            name: `${project.slug}_creative_${creative.id}`,
+            pageId: "", // TODO: add pageId to project config
+            imageHash,
+            videoId,
+            headline: creative.headline,
+            primaryText: creative.primaryText,
+            description: creative.description,
+            cta: creative.cta,
+            linkUrl: `https://getacuity.io?utm_source=meta&utm_medium=paid&utm_campaign=${experiment.id}&utm_content=${creative.id}`,
+          });
+          console.log(`[adlab-launch] Ad creative created for ${creativeLabel}:`, metaCreativeId);
+        } catch (err) {
+          logMetaError(`Ad creative creation for ${creativeLabel}`, err);
+          errors.push({ creativeId: creative.id, error: `Ad creative creation failed: ${extractErrorDetail(err)}` });
+          continue;
+        }
 
         // Create the ad
-        const metaAdId = await meta.createAd({
-          name: `${project.slug}_ad_${creative.id}`,
-          adsetId,
-          creativeId: metaCreativeId,
-        });
+        console.log(`[adlab-launch] Creating ad for ${creativeLabel}`);
+        let metaAdId: string;
+        try {
+          metaAdId = await meta.createAd({
+            name: `${project.slug}_ad_${creative.id}`,
+            adsetId,
+            creativeId: metaCreativeId,
+          });
+          console.log(`[adlab-launch] Ad created for ${creativeLabel}:`, metaAdId);
+        } catch (err) {
+          logMetaError(`Ad creation for ${creativeLabel}`, err);
+          errors.push({ creativeId: creative.id, error: `Ad creation failed: ${extractErrorDetail(err)}` });
+          continue;
+        }
 
         // Save to database
         await prisma.adLabAd.create({
@@ -187,12 +247,15 @@ export async function POST(req: NextRequest) {
 
         created.push({ creativeId: creative.id, adId: metaAdId, adsetId });
       } catch (err) {
+        logMetaError(`Unexpected error for ${creativeLabel}`, err);
         errors.push({
           creativeId: creative.id,
-          error: err instanceof Error ? err.message : String(err),
+          error: extractErrorDetail(err),
         });
       }
     }
+
+    console.log(`[adlab-launch] Done. Created: ${created.length}, Errors: ${errors.length}`);
 
     return NextResponse.json({
       campaignId,
@@ -202,8 +265,9 @@ export async function POST(req: NextRequest) {
       status: errors.length > 0 ? "partial" : "ready",
     });
   } catch (err) {
+    logMetaError("Top-level launch", err);
     return NextResponse.json(
-      { error: "Campaign creation failed", detail: err instanceof Error ? err.message : String(err) },
+      { error: "Campaign creation failed", detail: extractErrorDetail(err) },
       { status: 500 }
     );
   }
