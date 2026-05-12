@@ -102,6 +102,7 @@ Show artifacts (the weekly report, the memoir PDF), not mechanisms.`,
       testDurationDays: 14,
       metaAdAccountId: "", // To be filled
       metaPixelId: "", // To be filled
+      metaPageId: "", // To be filled
       conversionEvent: "Lead",
       conversionObjective: "OUTCOME_LEADS",
       videoEnabled: false,

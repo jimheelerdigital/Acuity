@@ -1,9 +1,10 @@
 /**
  * POST /api/admin/adlab/creatives/generate — generate creatives for an angle.
- * Accepts { angleId }. Generates:
- *   - 3 copy variants via Claude (shared between image and video)
+ * Accepts { angleId, useReferenceImages? }. Generates:
+ *   - 3 copy variants via Claude
  *   - 3 image creatives via gpt-image-2 (if project.imageEnabled)
- *   - 3 video creatives via HeyGen (if project.videoEnabled)
+ *   - If useReferenceImages is true and experiment has reference images,
+ *     uses images.edit() with the first reference image for stylistic direction
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -15,7 +16,7 @@ import { prisma } from "@/lib/prisma";
 import { callAdLabClaude, extractJson } from "@/lib/adlab/claude";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 300; // images + videos can be slow
+export const maxDuration = 300;
 
 const CreativeSchema = z.object({
   headline: z.string().max(40),
@@ -36,13 +37,41 @@ function openai(): OpenAI {
   return _openai;
 }
 
-async function generateImage(prompt: string): Promise<{ imageBuffer: Buffer } | null> {
+async function generateImage(prompt: string, referenceImageUrl?: string): Promise<{ imageBuffer: Buffer } | null> {
   if (!process.env.OPENAI_API_KEY) {
     console.warn("[adlab] OPENAI_API_KEY not set, skipping image generation");
     return null;
   }
 
   try {
+    // If a reference image is provided, use images.edit() for stylistic direction
+    if (referenceImageUrl) {
+      try {
+        console.log("[adlab] Using reference image for creative direction:", referenceImageUrl);
+        const imgRes = await fetch(referenceImageUrl);
+        if (imgRes.ok) {
+          const imgBuffer = Buffer.from(await imgRes.arrayBuffer());
+          const file = await OpenAI.toFile(imgBuffer, "reference.png", { type: "image/png" });
+
+          const response = await openai().images.edit({
+            model: "gpt-image-2",
+            image: file,
+            prompt,
+            n: 1,
+            size: "1024x1024",
+          });
+
+          const b64 = response.data?.[0]?.b64_json;
+          if (b64) {
+            return { imageBuffer: Buffer.from(b64, "base64") };
+          }
+        }
+      } catch (refErr) {
+        console.warn("[adlab] Reference image edit failed, falling back to generate:", refErr instanceof Error ? refErr.message : refErr);
+      }
+    }
+
+    // Standard generation (no reference image or fallback)
     const response = await openai().images.generate({
       model: "gpt-image-2",
       prompt,
@@ -91,94 +120,13 @@ async function uploadToSupabase(
   }
 }
 
-// ─── HeyGen video generation ─────────────────────────────────────────────
-
-async function generateHeyGenVideo(script: string): Promise<Buffer | null> {
-  const apiKey = process.env.HEYGEN_API_KEY;
-  if (!apiKey) {
-    console.warn("[adlab] HEYGEN_API_KEY not set, skipping video generation");
-    return null;
-  }
-
-  try {
-    // Create video
-    const createRes = await fetch("https://api.heygen.com/v2/video/generate", {
-      method: "POST",
-      headers: {
-        "X-Api-Key": apiKey,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        video_inputs: [
-          {
-            character: {
-              type: "avatar",
-              avatar_id: "Anna_public_3_20240108", // Default avatar — make configurable per project later
-              avatar_style: "normal",
-            },
-            voice: {
-              type: "text",
-              input_text: script,
-              voice_id: "2d5b0e6cf36f460aa7fc47e3eee4ba54", // Default neutral voice
-            },
-          },
-        ],
-        dimension: { width: 1080, height: 1080 },
-      }),
-    });
-
-    if (!createRes.ok) {
-      console.error("[adlab] HeyGen create failed:", createRes.status, await createRes.text());
-      return null;
-    }
-
-    const { data } = await createRes.json();
-    const videoId = data?.video_id;
-    if (!videoId) {
-      console.error("[adlab] HeyGen returned no video_id");
-      return null;
-    }
-
-    // Poll for completion (max 5 minutes, 10s intervals)
-    for (let i = 0; i < 30; i++) {
-      await new Promise((r) => setTimeout(r, 10_000));
-
-      const statusRes = await fetch(`https://api.heygen.com/v1/video_status.get?video_id=${videoId}`, {
-        headers: { "X-Api-Key": apiKey },
-      });
-
-      if (!statusRes.ok) continue;
-
-      const statusData = await statusRes.json();
-      if (statusData.data?.status === "completed") {
-        const videoUrl = statusData.data.video_url;
-        if (!videoUrl) return null;
-
-        // Download video
-        const videoRes = await fetch(videoUrl);
-        if (!videoRes.ok) return null;
-        return Buffer.from(await videoRes.arrayBuffer());
-      } else if (statusData.data?.status === "failed") {
-        console.error("[adlab] HeyGen video failed:", statusData.data.error);
-        return null;
-      }
-    }
-
-    console.error("[adlab] HeyGen video timed out after 5 minutes");
-    return null;
-  } catch (err) {
-    console.error("[adlab] HeyGen error:", err);
-    return null;
-  }
-}
-
 // ─── Main endpoint ────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
   const guard = await requireAdmin();
   if (!guard.ok) return guard.response;
 
-  const { angleId } = await req.json();
+  const { angleId, useReferenceImages } = await req.json();
   if (!angleId) {
     return NextResponse.json({ error: "angleId required" }, { status: 400 });
   }
@@ -197,6 +145,23 @@ export async function POST(req: NextRequest) {
   }
 
   const project = angle.experiment.project;
+
+  // Load reference images if requested
+  let referenceImageUrl: string | undefined;
+  if (useReferenceImages) {
+    try {
+      const refImages = await prisma.adLabReferenceImage.findMany({
+        where: { experimentId: angle.experimentId },
+        orderBy: { createdAt: "asc" },
+        take: 1,
+      });
+      if (refImages.length > 0) {
+        referenceImageUrl = refImages[0].imageUrl;
+      }
+    } catch {
+      console.warn("[adlab] Could not load reference images (table may not exist yet)");
+    }
+  }
 
   // ── Step 1: Generate 3 copy variants via Claude ───────────────────
   const systemPrompt = `You are an expert Meta Ads copywriter. Generate 3 creative variants for a Facebook/Instagram ad.
@@ -253,7 +218,7 @@ Return ONLY a JSON array of exactly 3 objects, each with: headline, primaryText,
   const allCreated: string[] = [];
   const uploadErrors: { creativeId: string; error: string }[] = [];
 
-  // ── Step 2: CATEGORY 1 — Image creatives (gpt-image-2) ───────────
+  // ── Step 2: Image creatives (gpt-image-2) ───────────────────────────
   if (project.imageEnabled) {
     for (let vi = 0; vi < copyVariants.length; vi++) {
       const variant = copyVariants[vi];
@@ -269,7 +234,7 @@ Return ONLY a JSON array of exactly 3 objects, each with: headline, primaryText,
         `The ad headline is "${variant.headline}".`,
       ].join("\n");
 
-      const imageResult = await generateImage(imagePrompt);
+      const imageResult = await generateImage(imagePrompt, referenceImageUrl);
 
       // Create the creative row first to get an ID for the filename
       const creative = await prisma.adLabCreative.create({
@@ -303,65 +268,6 @@ Return ONLY a JSON array of exactly 3 objects, each with: headline, primaryText,
         }
       } else {
         console.warn(`[adlab] Image generation returned null for creative ${creative.id}`);
-      }
-
-      allCreated.push(creative.id);
-    }
-  }
-
-  // ── Step 3: CATEGORY 2 — Video creatives (HeyGen) ────────────────
-  if (project.videoEnabled) {
-    for (const variant of copyVariants) {
-      const scriptPrompt = `Write a 25-second video ad script for an avatar spokesperson.
-Structure: Hook (5s, match this headline angle: "${variant.headline}") → Value (15s, core benefit) → CTA (5s, action: "${variant.cta}").
-Product: ${project.name}. Angle: ${angle.hypothesis}. Persona: ${angle.targetPersona}.
-Keep it conversational, direct, 75-90 spoken words. Return only the script text, no formatting.`;
-
-      let script = "";
-      try {
-        script = await callAdLabClaude({
-          purpose: "creative-video-script",
-          systemPrompt: "You are a video ad scriptwriter. Return only the spoken script text.",
-          userPrompt: scriptPrompt,
-          maxTokens: 500,
-        });
-      } catch {
-        console.warn("[adlab] Video script generation failed");
-        continue;
-      }
-
-      const creative = await prisma.adLabCreative.create({
-        data: {
-          angleId,
-          creativeType: "video",
-          headline: variant.headline,
-          primaryText: variant.primaryText,
-          description: variant.description,
-          cta: variant.cta,
-          generationPrompt: script,
-          complianceStatus: "pending",
-          approved: false,
-        },
-      });
-
-      const videoBuffer = await generateHeyGenVideo(script);
-      if (videoBuffer) {
-        const videoUrl = await uploadToSupabase(
-          videoBuffer,
-          `${creative.id}.mp4`,
-          "video/mp4"
-        );
-        if (videoUrl) {
-          await prisma.adLabCreative.update({
-            where: { id: creative.id },
-            data: { videoUrl },
-          });
-        } else {
-          console.error(`[adlab] Supabase upload failed for video creative ${creative.id}`);
-          uploadErrors.push({ creativeId: creative.id, error: "Video upload to Supabase failed" });
-        }
-      } else {
-        console.warn(`[adlab] HeyGen video generation returned null for creative ${creative.id}`);
       }
 
       allCreated.push(creative.id);

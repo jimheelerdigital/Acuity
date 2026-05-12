@@ -31,6 +31,8 @@ interface Project {
   conversionEvent: string | null;
   conversionObjective: string;
   landingPageUrl: string | null;
+  metaPageId: string | null;
+  targetInterests: { id: string; name: string }[] | null;
   imageEnabled: boolean;
   videoEnabled: boolean;
   createdAt: string;
@@ -87,13 +89,13 @@ export default function ProjectDetailPage() {
           <Row label="Conversion Event" value={project.conversionEvent || "Not set"} />
           <Row label="Landing Page URL" value={project.landingPageUrl || "https://getacuity.io (default)"} />
           <Row label="Image Creatives" value={project.imageEnabled ? "Yes" : "No"} />
-          <Row label="Video Creatives" value={project.videoEnabled ? "Yes" : "No"} />
         </Card>
 
         {/* Meta Integration */}
         <Card title="Meta Integration">
           <Row label="Ad Account ID" value={project.metaAdAccountId || "Not set"} mono />
           <Row label="Pixel ID" value={project.metaPixelId || "Not set"} mono />
+          <Row label="Page ID" value={project.metaPageId || "Not set"} mono />
         </Card>
 
         {/* Target Audience */}
@@ -104,6 +106,9 @@ export default function ProjectDetailPage() {
           <TagRow label="Pain Points" tags={audience.painPoints} />
           <TagRow label="Desires" tags={audience.desires} />
           <TagRow label="Identity Markers" tags={audience.identityMarkers} />
+          {project.targetInterests && project.targetInterests.length > 0 && (
+            <TagRow label="Meta Ad Interests" tags={project.targetInterests.map(i => i.name)} />
+          )}
         </Card>
 
         {/* USPs */}

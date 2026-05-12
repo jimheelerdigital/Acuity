@@ -38,7 +38,7 @@ Add these to `.env.local` and Vercel:
 | `ANTHROPIC_API_KEY` | Claude API for research/creatives/compliance/learning | Already exists |
 | `META_ACCESS_TOKEN` | Meta Marketing API system user token | Needs adding |
 | `META_AD_ACCOUNT_ID` | Meta ad account (act_XXXXXXXXX format) | Needs adding |
-| `META_API_VERSION` | Meta API version (default v21.0) | Needs adding |
+| `META_API_VERSION` | Meta API version (default v25.0) | Needs adding |
 | `OPENAI_API_KEY` | OpenAI gpt-image-2 for image creatives | Already exists (used by Whisper/embeddings) |
 | `HEYGEN_API_KEY` | HeyGen video avatar API | Needs adding |
 | `RESEND_API_KEY` | Transactional email | Already exists |

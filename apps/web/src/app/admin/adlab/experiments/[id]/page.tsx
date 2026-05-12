@@ -97,6 +97,7 @@ export default function ExperimentDetailPage() {
   const [complianceMessage, setComplianceMessage] = useState<string | null>(null);
   const [finalizing, setFinalizing] = useState(false);
   const [launching, setLaunching] = useState(false);
+  const [useRefImages, setUseRefImages] = useState(false);
   const [launchResult, setLaunchResult] = useState<{ campaignId: string; campaignName: string; created: { creativeId: string }[]; errors: { creativeId: string; error: string }[] } | null>(null);
   const [activating, setActivating] = useState(false);
   const [cancelling, setCancelling] = useState(false);
@@ -154,7 +155,7 @@ export default function ExperimentDetailPage() {
     await fetch("/api/admin/adlab/creatives/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ angleId }),
+      body: JSON.stringify({ angleId, useReferenceImages: useRefImages }),
     });
     await loadExperiment();
     setGeneratingFor((prev) => {
@@ -391,7 +392,7 @@ export default function ExperimentDetailPage() {
         const res = await fetch("/api/admin/adlab/creatives/generate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ angleId: angle.id }),
+          body: JSON.stringify({ angleId: angle.id, useReferenceImages: useRefImages }),
         });
         if (res.ok) {
           succeeded++;
@@ -541,19 +542,22 @@ export default function ExperimentDetailPage() {
               </div>
             )}
 
-            {/* Future toggle placeholder */}
-            <div className="mt-3 flex items-center gap-2">
-              <div className="relative h-4 w-7 rounded-full bg-white/10 cursor-not-allowed">
-                <div className="absolute top-0.5 left-0.5 h-3 w-3 rounded-full bg-white/30" />
+            {/* Toggle: use reference images as creative direction */}
+            <label className="mt-3 flex items-center gap-2 cursor-pointer">
+              <div
+                className={`relative h-4 w-7 rounded-full transition-colors ${useRefImages ? "bg-[#7C5CFC]" : "bg-white/10"}`}
+                onClick={() => setUseRefImages(!useRefImages)}
+              >
+                <div className={`absolute top-0.5 h-3 w-3 rounded-full bg-white transition-transform ${useRefImages ? "translate-x-3" : "translate-x-0.5"}`} />
               </div>
-              <span className="text-[10px] text-[#A0A0B8]/60">Use as creative direction</span>
+              <span className={`text-[10px] ${useRefImages ? "text-[#7C5CFC]" : "text-[#A0A0B8]/60"}`}>Use as creative direction</span>
               <div className="group relative">
                 <Info className="h-3 w-3 text-[#A0A0B8]/40" />
                 <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block rounded bg-[#1E1E2E] border border-white/10 px-2 py-1 text-[9px] text-[#A0A0B8] whitespace-nowrap z-10">
-                  Coming soon — feed reference images into the creative generation prompt
+                  When enabled, the first reference image is passed to gpt-image-2 as stylistic direction
                 </div>
               </div>
-            </div>
+            </label>
           </div>
         )}
       </div>

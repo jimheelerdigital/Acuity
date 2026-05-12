@@ -80,6 +80,14 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const metaPageId = (project as Record<string, unknown>).metaPageId as string | null;
+  if (!metaPageId) {
+    return NextResponse.json(
+      { error: "Set your Facebook Page ID in project settings before launching" },
+      { status: 400 }
+    );
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function logMetaError(step: string, err: any) {
     console.error(`[adlab-launch] ${step} failed`);
@@ -149,6 +157,7 @@ export async function POST(req: NextRequest) {
         console.log(`[adlab-launch] Creating ad set for ${creativeLabel}:`, { adsetName, adsetBudget, convEvent });
         let adsetId: string;
         try {
+          const projectInterests = (project as Record<string, unknown>).targetInterests as { id: string; name: string }[] | null;
           adsetId = await meta.createAdSet({
             campaignId,
             name: adsetName,
@@ -160,6 +169,7 @@ export async function POST(req: NextRequest) {
               ageMax: (audience.ageMax as number) || 55,
               geo: (audience.geo as string[]) || ["US"],
             },
+            targetInterests: projectInterests || undefined,
           });
           console.log(`[adlab-launch] Ad set created for ${creativeLabel}:`, adsetId);
         } catch (err) {
@@ -202,10 +212,9 @@ export async function POST(req: NextRequest) {
         });
         let metaCreativeId: string;
         try {
-          // TODO: pageId needs to be configurable per project
           metaCreativeId = await meta.createAdCreative({
             name: `${project.slug}_creative_${creative.id}`,
-            pageId: "", // TODO: add pageId to project config
+            pageId: metaPageId,
             imageHash,
             videoId,
             headline: creative.headline,

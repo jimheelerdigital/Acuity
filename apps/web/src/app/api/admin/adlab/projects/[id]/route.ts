@@ -43,6 +43,8 @@ const UpdateProjectSchema = z.object({
   conversionEvent: z.string().optional(),
   conversionObjective: z.string().optional(),
   landingPageUrl: z.string().url().nullable().optional(),
+  metaPageId: z.string().nullable().optional(),
+  targetInterests: z.array(z.object({ id: z.string(), name: z.string() })).nullable().optional(),
   imageEnabled: z.boolean().optional(),
   videoEnabled: z.boolean().optional(),
 });

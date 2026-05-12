@@ -42,6 +42,8 @@ const CreateProjectSchema = z.object({
   conversionEvent: z.string().optional().default(""),
   conversionObjective: z.string().default("OUTCOME_LEADS"),
   landingPageUrl: z.string().url().optional().nullable().default(null),
+  metaPageId: z.string().optional().default(""),
+  targetInterests: z.array(z.object({ id: z.string(), name: z.string() })).optional().nullable().default(null),
   imageEnabled: z.boolean().default(true),
   videoEnabled: z.boolean().default(false),
 });

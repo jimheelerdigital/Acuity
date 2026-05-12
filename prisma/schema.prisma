@@ -1813,10 +1813,12 @@ model AdLabProject {
   testDurationDays          Int                @default(14)
   metaAdAccountId           String?
   metaPixelId               String?
+  metaPageId                String?
   conversionEvent           String?
   conversionObjective       String             @default("OUTCOME_LEADS")
   learnedPatterns           Json               @default("[]")
   landingPageUrl            String?
+  targetInterests           Json?
   imageEnabled              Boolean            @default(true)
   videoEnabled              Boolean            @default(false)
   createdAt                 DateTime           @default(now())

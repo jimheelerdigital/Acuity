@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { X, Plus, Upload, Loader2 } from "lucide-react";
+import { X, Plus, Upload, Loader2, Search } from "lucide-react";
 
 interface TargetAudience {
   ageMin: number;
@@ -28,9 +28,11 @@ interface ProjectFormData {
   testDurationDays: number;
   metaAdAccountId: string;
   metaPixelId: string;
+  metaPageId: string;
   conversionEvent: string;
   conversionObjective: string;
   landingPageUrl: string;
+  targetInterests: { id: string; name: string }[];
   imageEnabled: boolean;
   videoEnabled: boolean;
 }
@@ -63,9 +65,11 @@ const DEFAULT_DATA: ProjectFormData = {
   testDurationDays: 14,
   metaAdAccountId: "",
   metaPixelId: "",
+  metaPageId: "",
   conversionEvent: "",
   conversionObjective: "OUTCOME_LEADS",
   landingPageUrl: "",
+  targetInterests: [],
   imageEnabled: true,
   videoEnabled: false,
 };
@@ -118,6 +122,8 @@ export function ProjectForm({ initialData, projectId, mode }: ProjectFormProps) 
       usps: data.usps.filter((u) => u.trim()),
       logoUrl: data.logoUrl || null,
       landingPageUrl: data.landingPageUrl || null,
+      metaPageId: data.metaPageId || null,
+      targetInterests: data.targetInterests.length > 0 ? data.targetInterests : null,
     };
 
     try {
@@ -394,21 +400,6 @@ export function ProjectForm({ initialData, projectId, mode }: ProjectFormProps) 
           </div>
           <span className="text-sm text-[#A0A0B8]">Image creatives enabled (OpenAI gpt-image)</span>
         </label>
-        <label className="flex items-center gap-3 cursor-pointer">
-          <div
-            className={`relative h-5 w-9 rounded-full transition-colors ${
-              data.videoEnabled ? "bg-[#7C5CFC]" : "bg-white/20"
-            }`}
-            onClick={() => updateField("videoEnabled", !data.videoEnabled)}
-          >
-            <div
-              className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
-                data.videoEnabled ? "translate-x-4" : "translate-x-0.5"
-              }`}
-            />
-          </div>
-          <span className="text-sm text-[#A0A0B8]">Video creatives enabled (HeyGen)</span>
-        </label>
       </Section>
 
       {/* Ad Config */}
@@ -478,6 +469,16 @@ export function ProjectForm({ initialData, projectId, mode }: ProjectFormProps) 
             />
           </Field>
         </div>
+        <Field label="Facebook Page ID" error={errors.metaPageId}>
+          <input
+            type="text"
+            value={data.metaPageId}
+            onChange={(e) => updateField("metaPageId", e.target.value)}
+            className={inputClass}
+            placeholder="XXXXXXXXX"
+          />
+          <p className="mt-1 text-[10px] text-[#A0A0B8]/60">Required to launch ads. Find this in your Facebook Page &rarr; About &rarr; Page ID</p>
+        </Field>
         <Field label="Conversion Event">
           <input
             type="text"
@@ -487,6 +488,21 @@ export function ProjectForm({ initialData, projectId, mode }: ProjectFormProps) 
             placeholder="Lead, CompleteRegistration, Purchase..."
           />
         </Field>
+      </Section>
+
+      {/* Target Interests (Meta) */}
+      <Section title="Target Interests (Meta)">
+        <InterestSearch
+          selected={data.targetInterests}
+          onAdd={(interest) => {
+            if (!data.targetInterests.find((i) => i.id === interest.id)) {
+              updateField("targetInterests", [...data.targetInterests, interest]);
+            }
+          }}
+          onRemove={(id) => {
+            updateField("targetInterests", data.targetInterests.filter((i) => i.id !== id));
+          }}
+        />
       </Section>
 
       {/* Submit */}
@@ -601,6 +617,110 @@ function TagField({
         >
           Add
         </button>
+      </div>
+    </div>
+  );
+}
+
+function InterestSearch({
+  selected,
+  onAdd,
+  onRemove,
+}: {
+  selected: { id: string; name: string }[];
+  onAdd: (interest: { id: string; name: string }) => void;
+  onRemove: (id: string) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<{ id: string; name: string; audienceSize: number | null }[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [debounceTimer, setDebounceTimer] = useState<NodeJS.Timeout | null>(null);
+
+  const search = useCallback((q: string) => {
+    if (q.length < 2) {
+      setResults([]);
+      return;
+    }
+    setSearching(true);
+    fetch(`/api/admin/adlab/interests/search?q=${encodeURIComponent(q)}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) setResults(data);
+      })
+      .finally(() => setSearching(false));
+  }, []);
+
+  function handleChange(value: string) {
+    setQuery(value);
+    if (debounceTimer) clearTimeout(debounceTimer);
+    setDebounceTimer(setTimeout(() => search(value), 400));
+  }
+
+  return (
+    <div>
+      <p className="text-xs text-[#A0A0B8] mb-3">
+        Search Meta&apos;s ad interest database to target specific audiences. Leave empty for broad/Advantage+ targeting.
+      </p>
+      {selected.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mb-3">
+          {selected.map((i) => (
+            <span
+              key={i.id}
+              className="inline-flex items-center gap-1 rounded-md bg-[#7C5CFC]/15 px-2 py-0.5 text-xs text-[#7C5CFC]"
+            >
+              {i.name}
+              <button type="button" onClick={() => onRemove(i.id)}>
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+      <div className="relative">
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#A0A0B8]/50" />
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => handleChange(e.target.value)}
+              className={`${inputClass} pl-8`}
+              placeholder="Search interests (e.g. productivity, meditation...)"
+            />
+          </div>
+          {searching && <Loader2 className="h-4 w-4 text-[#A0A0B8] animate-spin self-center" />}
+        </div>
+        {results.length > 0 && (
+          <div className="absolute top-full left-0 right-0 mt-1 rounded-lg border border-white/10 bg-[#1E1E2E] shadow-lg z-20 max-h-48 overflow-y-auto">
+            {results.map((r) => {
+              const alreadySelected = selected.some((s) => s.id === r.id);
+              return (
+                <button
+                  key={r.id}
+                  type="button"
+                  disabled={alreadySelected}
+                  onClick={() => {
+                    onAdd({ id: r.id, name: r.name });
+                    setQuery("");
+                    setResults([]);
+                  }}
+                  className={`w-full text-left px-3 py-2 text-sm border-b border-white/5 last:border-0 transition-colors ${
+                    alreadySelected
+                      ? "text-[#A0A0B8]/40 cursor-not-allowed"
+                      : "text-white hover:bg-white/5 cursor-pointer"
+                  }`}
+                >
+                  <span>{r.name}</span>
+                  {r.audienceSize && (
+                    <span className="ml-2 text-[10px] text-[#A0A0B8]">
+                      ~{(r.audienceSize / 1_000_000).toFixed(1)}M
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

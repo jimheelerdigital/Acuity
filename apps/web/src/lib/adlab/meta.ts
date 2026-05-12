@@ -102,8 +102,8 @@ interface AdSetParams {
     ageMin?: number;
     ageMax?: number;
     geo?: string[];
-    interests?: string[];
   };
+  targetInterests?: { id: string; name: string }[];
 }
 
 export async function createAdSet(params: AdSetParams) {
@@ -119,8 +119,11 @@ export async function createAdSet(params: AdSetParams) {
       countries: normalizeCountryCodes(params.targetAudience.geo),
     };
   }
-  // TODO: Map interest names to Meta interest IDs via Interest Search API.
-  // For now, use broad targeting (Advantage+) and let Meta optimize.
+  if (params.targetInterests?.length) {
+    targeting.flexible_spec = [
+      { interests: params.targetInterests.map((i) => ({ id: i.id, name: i.name })) },
+    ];
+  }
 
   const payload = {
     name: params.name,
