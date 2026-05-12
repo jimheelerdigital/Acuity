@@ -20,6 +20,44 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-12] — AdLab: fix all nine Meta launch pipeline issues
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 6104f93
+
+### In plain English (for Keenan)
+The AdLab "Launch Campaign" button was failing because of nine separate issues in how we talk to Meta's ad API. Ads were being rejected for missing required fields (bid strategy, destination type, start time), the call-to-action buttons weren't being mapped to Meta's format, landing page URLs weren't being validated before launch, and failed launches were leaving orphaned campaigns on Meta. All nine issues are fixed — the pipeline now validates everything upfront, builds proper UTM-tagged landing URLs, maps CTAs correctly, handles failures cleanly, and redacts your Meta access token from error logs so it never leaks.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/adlab/meta.ts`:
+  - Added `redactAccessToken()` export — strips `access_token=...` from strings before logging
+  - Added `mapCtaType()` export — maps human-readable CTA strings ("Sign Up", "Learn More") to Meta enums ("SIGN_UP", "LEARN_MORE"), defaults to "LEARN_MORE"
+  - `createAdSet()`: added `bid_strategy: "LOWEST_COST_WITHOUT_CAP"`, `destination_type: "WEBSITE"`, `start_time: new Date().toISOString()` to payload. Added `placementType` param — "MANUAL" sets `publisher_platforms: ["facebook", "instagram"]`, anything else defaults to Advantage+.
+  - `createAdCreative()`: CTA now mapped via `mapCtaType()`. Image creative `link_data` now includes `call_to_action.value.link` (was missing, Meta requires it).
+- `apps/web/src/app/api/admin/adlab/ads/launch/route.ts`:
+  - Early validation: checks `metaPageId` AND `landingPageUrl` before any Meta API calls. Returns 400 listing which fields are missing.
+  - Orphaned campaign cleanup: if experiment has a `metaCampaignId` but zero `AdLabAd` records with `metaAdsetId`, deletes the orphan from Meta and clears `metaCampaignId` before retrying.
+  - All-fail cleanup: if every ad set fails, deletes the just-created campaign from Meta and clears `metaCampaignId`. Returns 500 with error list.
+  - UTM params: rebuilt using `URL`/`URLSearchParams` instead of string concatenation. Appends `utm_source=meta`, `utm_medium=paid`, `utm_campaign={experimentId}`, `utm_content={creativeId}`.
+  - `placementType` wired from `experiment.placementType` to `createAdSet()`.
+  - `logMetaError()` and `extractErrorDetail()` now redact access tokens from all output.
+- `apps/web/src/app/api/admin/adlab/ads/cancel/route.ts`: redact access token in campaign delete error log.
+- `apps/web/src/app/api/admin/adlab/projects/seed/route.ts`: added `landingPageUrl: "https://getacuity.io"` to seed data.
+
+### Manual steps needed
+- [ ] Keenan: Update the Acuity project's `landingPageUrl` in Admin > AdLab > Projects > Acuity > Edit to the correct signup URL (currently defaults to https://getacuity.io)
+- [ ] Keenan: Ensure `metaPageId` is set on the project before attempting to launch
+
+### Notes
+- No schema changes — no `prisma db push` needed.
+- The `bid_strategy` fix resolves the "Bid amount or bid constraints required" rejection from Meta's v25 API.
+- The `destination_type: "WEBSITE"` fix is required for OUTCOME_SALES campaigns on v25 but is harmless for OUTCOME_LEADS.
+- The orphan cleanup is idempotent — re-launching after a failure will clean up the orphan automatically before creating a fresh campaign.
+- CTA mapping defaults to "LEARN_MORE" for any unrecognized value, so existing creatives with unusual CTA strings won't break.
+
+---
+
 ## [2026-05-12] — Auto Blog: fix year references and prevent future posts from using outdated years
 
 **Requested by:** Keenan
