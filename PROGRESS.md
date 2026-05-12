@@ -20,6 +20,33 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-12] — AdLab: complete launch readiness (7 items)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 468b4ce
+
+### In plain English (for Keenan)
+AdLab is now ready for its first real Meta ad launch. You can set your Facebook Page ID in project settings (required to launch), search and select specific audience interests from Meta's database, use reference images as stylistic direction for generated ad images, see real analytics on the Performance page, check API key status and test your Meta connection on Settings, and HeyGen video generation has been removed since it wasn't being used.
+
+### Technical changes (for Jimmy)
+- Full details in `progress-adlab.md` under the "[2026-05-12] Feat -- Complete AdLab launch readiness" entry
+- 18 files changed, 5 new API routes created
+- Schema: added `metaPageId String?` and `targetInterests Json?` to `AdLabProject`
+- New routes: `interests/search`, `performance`, `settings/status`, `settings/test-meta`, `settings/run-cron`
+- Full rewrites: `performance/page.tsx`, `settings/page.tsx`, `creatives/generate/route.ts`
+- HeyGen code fully removed from creative generation
+
+### Manual steps needed
+- [ ] Keenan: `npx prisma db push` from home network
+- [ ] Keenan: Set Facebook Page ID on the Acuity project in AdLab settings
+- [ ] Keenan: Create Supabase "adlab-creatives" bucket if not already done
+
+### Notes
+- See `progress-adlab.md` for the full detailed entry with all file paths and architectural notes.
+
+---
+
 ## [2026-05-12] — App Store §3.1.2 compliance: subscription disclosure + Terms/Privacy alignment + mic copy
 
 **Requested by:** Jimmy
