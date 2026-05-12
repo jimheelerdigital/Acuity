@@ -472,3 +472,23 @@ None
 ### Notes
 - New pixel ID is `869829585445303` (replaces old `5752790988087389` which was in consent-gated-trackers.tsx).
 - The old consent-gated pixel in `consent-gated-trackers.tsx` still references `NEXT_PUBLIC_META_PIXEL_ID` env var (the old pixel). It won't conflict because fbq deduplicates — whichever init runs first wins, the second is a no-op.
+
+### [2026-05-11] Fix — Install Meta Pixel directly in root layout (final)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** af455c3
+
+### In plain English (for Keenan)
+The Meta Pixel now fires on every single page load across the entire site — no cookie consent required, no env vars, no conditional logic. The old pixel (5752790988087389) has been fully removed. Only the new pixel (869829585445303) fires. Also added the noscript fallback image tag so the pixel tracks even when JavaScript is disabled.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/app/layout.tsx`: Meta Pixel script (`869829585445303`) in `<head>` with `strategy="afterInteractive"` + `<noscript>` fallback `<img>` tag. No consent check.
+- `apps/web/src/components/consent-gated-trackers.tsx`: Removed all Meta Pixel code — deleted `META_PIXEL_ID` constant, removed `marketing` consent state, removed the pixel `<Script>` block. File now only handles GA + Contentsquare consent gating.
+- Old pixel ID `5752790988087389` no longer exists in any code file (only in historical progress log entries).
+
+### Manual steps needed
+None
+
+### Notes
+- `NEXT_PUBLIC_META_PIXEL_ID` env var is now unused — can be removed from Vercel and .env.local whenever convenient, but leaving it does no harm.
