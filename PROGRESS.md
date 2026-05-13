@@ -20,6 +20,43 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-13] — AdLab: Human-readable names for campaigns, ads, and image downloads
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 21f3f3d
+
+### In plain English (for Keenan)
+Meta Ads Manager was full of names like `acuity_ad_clx8xyz789` which made it impossible to tell which ad was which. Now everything in Meta uses readable names:
+- **Campaign:** "Acuity | Sleep Anxiety Experiment | May 2026"
+- **Ad Set:** "Acuity | Sleep Anxiety | Problem: Racing thoughts keep you up | Image"
+- **Ad Creative:** "Acuity | Problem: Racing thoughts keep you up | "Can't shut your brain off?""
+- **Ad:** "Acuity | Racing thoughts keep you up | "Can't shut your brain off?""
+
+Downloaded images also have readable filenames now — instead of `abc12345_problem_def67890.png` you get `sleep-anxiety_problem_racing-thoughts-keep-you-up_1.png`.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/app/api/admin/adlab/ads/launch/route.ts`:
+  - Added `slug()` helper to sanitize text for Meta object names
+  - Campaign name: `{project.name} | {topicBrief} | {month year}` (was `{slug} | exp_{id}`)
+  - Ad set name: `{project.name} | {topicBrief} | {surface}: {hypothesis} | {type}` (was `{slug} | exp_{id} | {type} | {surface} | creative_{id}`)
+  - Ad creative name: `{project.name} | {surface}: {hypothesis} | "{headline}"` (was `{slug}_creative_{id}`)
+  - Ad name: `{project.name} | {hypothesis} | "{headline}"` (was `{slug}_ad_{id}`)
+- `apps/web/src/app/admin/adlab/experiments/[id]/page.tsx`:
+  - `makeFilename()` now takes `topicBrief`, `surface`, `hypothesis`, and `index` instead of raw IDs
+  - `CreativeCard` props changed from `experimentId`/`angleName` to `topicBrief`/`angleSurface`/`angleHypothesis`/`creativeIndex`
+  - "Download All" also uses the new naming scheme
+
+### Manual steps needed
+None — naming changes only apply to future campaign launches. Existing campaigns in Meta keep their old names.
+
+### Notes
+- The `slug()` helper strips special characters and truncates to keep Meta names within reasonable length (campaigns ~80 chars, ad sets ~120 chars).
+- Existing campaigns in Meta Ads Manager won't be renamed — this only affects new launches.
+- Image download filenames use hyphen-separated slugs with an index number (1-based) per angle.
+
+---
+
 ## [2026-05-13] — AdLab: Image download buttons on experiment detail page
 
 **Requested by:** Keenan
