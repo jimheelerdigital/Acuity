@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, CheckCircle2, XCircle, Wifi, Play } from "lucide-react";
+import { Loader2, CheckCircle2, XCircle, Wifi, Play, Flame } from "lucide-react";
 
 interface EnvStatus {
   [key: string]: boolean;
@@ -24,6 +24,15 @@ interface CronResult {
   status?: number;
 }
 
+interface WarmupResult {
+  done: boolean;
+  total: number;
+  successes: number;
+  failures: number;
+  callNum?: number;
+  endpoint?: string;
+}
+
 export default function SettingsPage() {
   const [envStatus, setEnvStatus] = useState<EnvStatus | null>(null);
   const [loadingEnv, setLoadingEnv] = useState(true);
@@ -31,6 +40,8 @@ export default function SettingsPage() {
   const [testingMeta, setTestingMeta] = useState(false);
   const [cronResult, setCronResult] = useState<CronResult | null>(null);
   const [runningCron, setRunningCron] = useState(false);
+  const [warmupResult, setWarmupResult] = useState<WarmupResult | null>(null);
+  const [runningWarmup, setRunningWarmup] = useState(false);
 
   useEffect(() => {
     fetch("/api/admin/adlab/settings/status")
@@ -62,6 +73,38 @@ export default function SettingsPage() {
       setCronResult({ ok: false, error: "Network error" });
     } finally {
       setRunningCron(false);
+    }
+  }
+
+  async function runWarmup() {
+    setRunningWarmup(true);
+    setWarmupResult(null);
+    try {
+      const res = await fetch("/api/admin/adlab/warmup", { method: "POST" });
+      if (!res.ok || !res.body) {
+        setWarmupResult({ done: true, total: 200, successes: 0, failures: 200 });
+        return;
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (value) buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+        for (const line of lines) {
+          if (line.trim()) {
+            const parsed: WarmupResult = JSON.parse(line);
+            setWarmupResult(parsed);
+          }
+        }
+        if (done) break;
+      }
+    } catch {
+      setWarmupResult({ done: true, total: 200, successes: 0, failures: 200 });
+    } finally {
+      setRunningWarmup(false);
     }
   }
 
@@ -135,6 +178,56 @@ export default function SettingsPage() {
                 </div>
               ) : (
                 <p>{metaResult.error || "Connection failed"}</p>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Warm Up API */}
+        <div className="rounded-xl border border-white/10 bg-[#13131F] p-6">
+          <h3 className="text-base font-semibold text-white mb-2">API Warm-Up</h3>
+          <p className="text-xs text-[#A0A0B8] mb-4">
+            Make 200 successful read calls to the Meta Ads API to build call history and improve the success-rate ratio for Standard Access review. Takes ~2 minutes.
+          </p>
+          <button
+            onClick={runWarmup}
+            disabled={runningWarmup}
+            className="inline-flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-500 transition disabled:opacity-50"
+          >
+            {runningWarmup ? <Loader2 className="h-4 w-4 animate-spin" /> : <Flame className="h-4 w-4" />}
+            {runningWarmup ? "Warming Up…" : "Warm Up API"}
+          </button>
+          {warmupResult && (
+            <div className="mt-4 space-y-2">
+              {/* Progress bar */}
+              {runningWarmup && warmupResult.callNum && (
+                <div>
+                  <div className="flex justify-between text-xs text-[#A0A0B8] mb-1">
+                    <span>Call {warmupResult.callNum} / {warmupResult.total}</span>
+                    <span>{Math.round((warmupResult.callNum / warmupResult.total) * 100)}%</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-white/10 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-amber-500 transition-all duration-300"
+                      style={{ width: `${(warmupResult.callNum / warmupResult.total) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+              {/* Result summary */}
+              {warmupResult.done && (
+                <div className={`rounded-lg border p-4 text-sm ${
+                  warmupResult.failures === 0
+                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+                    : warmupResult.successes > 0
+                      ? "border-amber-500/30 bg-amber-500/10 text-amber-400"
+                      : "border-red-500/30 bg-red-500/10 text-red-400"
+                }`}>
+                  <p className="font-semibold">Warm-up complete</p>
+                  <p>Total calls: {warmupResult.total}</p>
+                  <p>Successes: {warmupResult.successes}</p>
+                  <p>Failures: {warmupResult.failures}</p>
+                </div>
               )}
             </div>
           )}
