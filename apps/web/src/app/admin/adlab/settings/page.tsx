@@ -84,7 +84,7 @@ export default function SettingsPage() {
     try {
       const res = await fetch("/api/admin/adlab/warmup", { method: "POST" });
       if (!res.ok || !res.body) {
-        setWarmupResult({ done: true, total: 200, successes: 0, failures: 200 });
+        setWarmupResult({ done: true, total: 100, successes: 0, failures: 100 });
         return;
       }
       const reader = res.body.getReader();
@@ -104,7 +104,7 @@ export default function SettingsPage() {
         if (done) break;
       }
     } catch {
-      setWarmupResult({ done: true, total: 200, successes: 0, failures: 200 });
+      setWarmupResult({ done: true, total: 100, successes: 0, failures: 100 });
     } finally {
       setRunningWarmup(false);
     }
@@ -189,7 +189,7 @@ export default function SettingsPage() {
         <div className="rounded-xl border border-white/10 bg-[#13131F] p-6">
           <h3 className="text-base font-semibold text-white mb-2">API Warm-Up</h3>
           <p className="text-xs text-[#A0A0B8] mb-4">
-            Make 200 successful read calls to the Meta Ads API to build call history and improve the success-rate ratio for Standard Access review. Takes ~8 minutes.
+            Makes 100 successful read calls per run. Takes ~3-4 minutes. Run multiple times with 15 minute gaps to build history.
           </p>
           <button
             onClick={runWarmup}
@@ -199,6 +199,9 @@ export default function SettingsPage() {
             {runningWarmup ? <Loader2 className="h-4 w-4 animate-spin" /> : <Flame className="h-4 w-4" />}
             {runningWarmup ? "Warming Up…" : "Warm Up API"}
           </button>
+          {runningWarmup && !warmupResult?.callNum && (
+            <p className="mt-3 text-xs text-[#A0A0B8]">Running... this takes ~3-4 minutes</p>
+          )}
           {warmupResult && (
             <div className="mt-4 space-y-2">
               {/* Progress bar */}

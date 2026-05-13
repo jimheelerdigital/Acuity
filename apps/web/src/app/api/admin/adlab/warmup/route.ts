@@ -1,9 +1,10 @@
 /**
- * POST /api/admin/adlab/warmup — Make 200 successful read calls to Meta Ads API
+ * POST /api/admin/adlab/warmup — Make 100 successful read calls to Meta Ads API
  * to build call history and improve the success-rate ratio for Standard Access review.
  *
  * Only uses ad account info reads (3 field variations) since campaigns/adsets/ads/insights
  * endpoints require Standard Access tier and fail at Limited tier.
+ * Run multiple times with 15-minute gaps to build history.
  * Streams progress as newline-delimited JSON so the UI can show live updates.
  */
 
@@ -18,8 +19,8 @@ const ENDPOINTS = [
   { label: "account info (meta)", path: "?fields=business_name,created_time,owner" },
 ] as const;
 
-const TOTAL_CALLS = 200;
-const DELAY_MS = 2500;
+const TOTAL_CALLS = 100;
+const DELAY_MS = 2000;
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
