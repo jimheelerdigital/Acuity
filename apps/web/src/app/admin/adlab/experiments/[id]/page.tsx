@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Loader2, CheckCircle2, ChevronDown, ChevronUp, Sparkles, RefreshCw, Shield, Copy, Trash2, Rocket, XCircle, Upload, ImageIcon, X as XIcon, Info } from "lucide-react";
+import { Loader2, CheckCircle2, ChevronDown, ChevronUp, Sparkles, RefreshCw, Shield, Copy, Trash2, Rocket, XCircle, Upload, ImageIcon, X as XIcon, Info, Download } from "lucide-react";
 
 interface DailyMetric {
   spendCents: number;
@@ -59,6 +59,24 @@ interface Experiment {
   project: { name: string; slug: string };
   referenceImages?: ReferenceImage[];
   angles: Angle[];
+}
+
+async function downloadImage(url: string, filename: string) {
+  const res = await fetch(url);
+  const blob = await res.blob();
+  const blobUrl = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = blobUrl;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(blobUrl);
+}
+
+function makeFilename(experimentId: string, angleName: string, creativeId: string): string {
+  const safe = angleName.replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40).toLowerCase();
+  return `${experimentId.slice(0, 8)}_${safe}_${creativeId.slice(0, 8)}.png`;
 }
 
 const SURFACE_COLORS: Record<string, string> = {
@@ -751,10 +769,25 @@ export default function ExperimentDetailPage() {
                 <div className="ml-8 mt-3 space-y-4">
                   {imageCreatives.length > 0 && (
                     <div>
-                      <p className="text-[10px] font-medium text-[#A0A0B8] uppercase tracking-wider mb-2">Image Creatives</p>
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-[10px] font-medium text-[#A0A0B8] uppercase tracking-wider">Image Creatives</p>
+                        <button
+                          onClick={async () => {
+                            const withImages = imageCreatives.filter((c) => c.imageUrl);
+                            for (const c of withImages) {
+                              await downloadImage(c.imageUrl!, makeFilename(experiment.id, angle.valueSurface, c.id));
+                              await new Promise((r) => setTimeout(r, 300));
+                            }
+                          }}
+                          className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-medium text-[#A0A0B8] hover:text-white bg-white/5 hover:bg-white/10 transition"
+                        >
+                          <Download className="h-3 w-3" />
+                          Download All ({imageCreatives.filter((c) => c.imageUrl).length})
+                        </button>
+                      </div>
                       <div className="grid gap-3 sm:grid-cols-3">
                         {imageCreatives.map((creative) => (
-                          <CreativeCard key={creative.id} creative={creative} onToggleApprove={() => toggleApprove(creative.id, creative.approved)} />
+                          <CreativeCard key={creative.id} creative={creative} onToggleApprove={() => toggleApprove(creative.id, creative.approved)} experimentId={experiment.id} angleName={angle.valueSurface} />
                         ))}
                       </div>
                     </div>
@@ -764,7 +797,7 @@ export default function ExperimentDetailPage() {
                       <p className="text-[10px] font-medium text-[#A0A0B8] uppercase tracking-wider mb-2">Video Creatives</p>
                       <div className="grid gap-3 sm:grid-cols-3">
                         {videoCreatives.map((creative) => (
-                          <CreativeCard key={creative.id} creative={creative} onToggleApprove={() => toggleApprove(creative.id, creative.approved)} />
+                          <CreativeCard key={creative.id} creative={creative} onToggleApprove={() => toggleApprove(creative.id, creative.approved)} experimentId={experiment.id} angleName={angle.valueSurface} />
                         ))}
                       </div>
                     </div>
@@ -910,21 +943,32 @@ function AngleCard({
 function CreativeCard({
   creative,
   onToggleApprove,
+  experimentId,
+  angleName,
 }: {
   creative: Creative;
   onToggleApprove: () => void;
+  experimentId: string;
+  angleName: string;
 }) {
   return (
     <div
       className={`rounded-lg border bg-[#1E1E2E] overflow-hidden transition ${COMPLIANCE_COLORS[creative.complianceStatus] || "border-white/10"}`}
     >
       {creative.creativeType === "image" && creative.imageUrl && (
-        <div className="aspect-square bg-black/20">
+        <div className="relative aspect-square bg-black/20 group">
           <img
             src={creative.imageUrl}
             alt={creative.headline}
             className="w-full h-full object-cover"
           />
+          <button
+            onClick={() => downloadImage(creative.imageUrl!, makeFilename(experimentId, angleName, creative.id))}
+            className="absolute bottom-2 right-2 rounded-lg bg-black/70 p-1.5 text-white/70 opacity-0 group-hover:opacity-100 hover:text-white hover:bg-black/90 transition"
+            title="Download image"
+          >
+            <Download className="h-4 w-4" />
+          </button>
         </div>
       )}
       {creative.creativeType === "video" && creative.videoUrl && (
