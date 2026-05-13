@@ -20,6 +20,33 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-13] — AdLab: Image download buttons on experiment detail page
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 2bccfaf
+
+### In plain English (for Keenan)
+On the experiment detail page where you see generated ad images, each image now has a download button that appears when you hover over it. Click it and the image saves straight to your computer with a useful filename like `abc12345_problem_def67890.png`. There's also a "Download All" button at the top of each angle's image section that downloads every image for that angle in sequence.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/app/admin/adlab/experiments/[id]/page.tsx`:
+  - Added `downloadImage()` helper: fetches image URL, creates blob, triggers browser download via `URL.createObjectURL` + hidden anchor click
+  - Added `makeFilename()` helper: builds `{experimentId}_{angleSurface}_{creativeId}.png` from IDs
+  - `CreativeCard` now accepts `experimentId` and `angleName` props for filename generation
+  - Image preview has hover-reveal download button (absolute positioned, bottom-right)
+  - "Download All (N)" button added above each angle's image creatives grid, downloads sequentially with 300ms gap
+
+### Manual steps needed
+None
+
+### Notes
+- Uses fetch + blob + createObjectURL pattern instead of direct link to ensure the browser downloads the file rather than navigating to it (Supabase URLs open in a new tab by default).
+- The 300ms gap between downloads in "Download All" prevents browsers from blocking rapid sequential downloads.
+- Filenames use truncated IDs (first 8 chars) and sanitized angle surface names to stay readable.
+
+---
+
 ## [2026-05-13] — AdLab: Fix warmup timeout — 100 calls at 2s intervals
 
 **Requested by:** Keenan
