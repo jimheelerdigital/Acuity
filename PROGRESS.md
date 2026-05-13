@@ -20,6 +20,46 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-12] — AdLab: complete performance dashboard with 7 sections
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 3b2232f
+
+### In plain English (for Keenan)
+The AdLab Performance page was a basic table. Now it's a full analytics dashboard with everything you need to evaluate experiments: summary cards comparing all-time vs recent performance, an experiment overview table you can sort and click through, two trend charts (daily spend/conversions and daily CPL with your target line), a detailed ad table where you can expand any row to see the full decision log, an AI cost breakdown showing what you're spending on Claude and image generation vs ad spend, a CSV export button, and date range controls that filter everything on the page.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/app/api/admin/adlab/performance/route.ts`: Complete rewrite. Now returns:
+  - `summary.allTime` + `summary.range` — parallel metric sets for all-time vs date-range comparison
+  - `summary.activeExperiments`, `summary.liveAds`, `summary.concludedExperiments` — counts from DB
+  - `experiments[]` — per-experiment aggregation with totalAds, spend, conversions, avgCpl, avgCtr, bestAngle (lowest CPL with conversions)
+  - `dailySeries[]` — time-series rows keyed by date with `spend_{expId}`, `conv_{expId}`, `cpl_{expId}` for each experiment
+  - `ads[]` — ad-level detail including `decisions[]` (full AdLabDecision records), `angleHypothesis`, `angleSurface`, `primaryText`, `decisionsCount`
+  - `aiCosts[]` — Claude call counts/tokens/cost from ClaudeCallLog (purpose startsWith "adlab"), image gen counts from AdLabCreative, estimated cost at $0.02/image
+  - `targetCplCents` — from first AdLabProject for the CPL reference line
+  - `experimentLabels` — truncated topic briefs for chart legends
+- `apps/web/src/app/admin/adlab/performance/page.tsx`: Complete rewrite. 7 sections:
+  1. Experiment overview table — sortable by any column, click navigates to experiment detail
+  2. Trend charts — Recharts LineChart: dual-axis spend/conversions + CPL with ReferenceLine at target
+  3. Ad detail table — 12 columns sortable, click to expand inline decision log per ad
+  4. Summary cards — 8 cards with all-time value + date-range sub-value
+  5. AI cost tracking — table with Claude calls/tokens/cost + image gens/cost + all-in total row
+  6. CSV export — browser-side Blob download of all ad data
+  7. Date range filter — preset buttons (7d/14d/30d/90d/all) + custom date inputs
+
+### Manual steps needed
+None
+
+### Notes
+- Recharts v3.8.1 was already in dependencies — no new packages needed.
+- The AI cost tracking groups all adlab Claude calls into one bucket since ClaudeCallLog doesn't have an experiment FK. Image gens are tracked per experiment via AdLabCreative.angle.experimentId.
+- Chart data is keyed by experiment ID to support multi-experiment comparison. Colors are assigned by index from a 10-color palette.
+- The CSV export respects the active date range filter and includes all visible columns.
+- Empty states show helpful messages explaining what needs to happen to generate data.
+
+---
+
 ## [2026-05-12] — AdLab: skip ad creative when image upload fails
 
 **Requested by:** Keenan
