@@ -232,6 +232,10 @@ export async function POST(req: NextRequest) {
               }
             }
           }
+          if (!videoId) {
+            errors.push({ creativeId: creative.id, error: "Video upload failed after 2 attempts" });
+            continue;
+          }
         } else if (creative.imageUrl) {
           console.log(`[adlab-launch] Uploading image for ${creativeLabel}:`, creative.imageUrl);
           try {
@@ -239,6 +243,10 @@ export async function POST(req: NextRequest) {
             console.log(`[adlab-launch] Image uploaded for ${creativeLabel}:`, imageHash);
           } catch (imgErr) {
             logMetaError(`Image upload for ${creativeLabel}`, imgErr);
+          }
+          if (!imageHash) {
+            errors.push({ creativeId: creative.id, error: "Image upload failed — skipping creative to avoid ad with no image" });
+            continue;
           }
         }
 
