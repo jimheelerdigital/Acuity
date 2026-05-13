@@ -20,6 +20,40 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-13] — Website: meta tags, hero copy, and site-wide SEO metadata
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 09cf421
+
+### In plain English (for Keenan)
+Three SEO changes in one commit. First, the homepage meta title is now "Acuity — One Minute a Day. A Life of Clarity." and the description leads with "The AI journal that listens." — this is what shows up in Google results and when someone shares the link on social media. Second, the hero subheading on the homepage now calls Acuity "the AI voice journal that turns your daily debrief into action" instead of the old "daily debrief that turns what you're thinking about into what you're doing." Third, every public page on the site now has SEO-optimized meta descriptions with target keywords (AI journal, voice journal, daily debrief, mood tracking, goal tracking, pattern detection, weekly report) and consistent social card images.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/app/layout.tsx`: Updated default title, description, og:title, og:description, twitter:title, twitter:description, og:image alt text, and Organization JSON-LD description
+- `apps/web/src/app/page.tsx`: Updated SoftwareApplication and FAQ JSON-LD descriptions with new keyword language
+- `apps/web/src/components/landing.tsx`: Hero subheading text rewrite (line ~1170)
+- `apps/web/src/app/blog/page.tsx`: Added og:image, twitter card + image, keyword-enriched descriptions
+- `apps/web/src/app/voice-journaling/page.tsx`: Added og:image, twitter:image, updated descriptions with "voice journal app" and "daily debrief"
+- `apps/web/src/app/waitlist/layout.tsx`: Added pricing ($12.99/mo), twitter:image, keyword updates
+- `apps/web/src/app/for/therapy/layout.tsx`: Title and descriptions updated with "AI mood tracking", "pattern detection", "AI voice journal"; added twitter:image
+- `apps/web/src/app/for/sleep/layout.tsx`: Added "brain dump app" keyword to title and descriptions; added twitter:image
+- `apps/web/src/app/for/decoded/layout.tsx`: New title "AI Pattern Detection for Your Life"; descriptions updated with "AI voice journal", "daily debrief"; added twitter:image
+- `apps/web/src/app/for/founders/layout.tsx`: Changed "Nightly" to "Daily" in title; descriptions updated with "AI journal", "daily journal app", "task extraction"; added twitter:image
+- `apps/web/src/app/for/weekly-report/layout.tsx`: Descriptions updated with "daily voice journal", "daily debrief entries"; added twitter:image
+
+### Manual steps needed
+None
+
+### Notes
+- Skipped /support, /privacy, /terms per instructions — those don't need keyword optimization.
+- Skipped /blog/[slug] — individual posts are auto-generated from DB content.
+- The /for/[slug] dynamic persona pages pull metadata from `getPersonaBySlug()` — those would need a separate data update if keyword changes are wanted there.
+- All og:title now matches the page title and og:description matches the page description across every updated page.
+- Every page that was missing twitter:images now has `/og-image.png` set.
+
+---
+
 ## [2026-05-13] — AdLab: Fix warmup rate limiting — slower calls + early stop
 
 **Requested by:** Keenan
