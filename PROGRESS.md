@@ -20,6 +20,29 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-13] — AdLab: Meta API warm-up route for Standard Access approval
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 572582f
+
+### In plain English (for Keenan)
+Meta rejected our app for Standard Access because too many of our recent API calls were errors (from all the debugging during launch). This adds a "Warm Up API" button to the AdLab Settings page that fires off 200 successful read-only calls to Meta — reading your account info, campaign lists, ad set lists, ad lists, and performance insights. It takes about 2 minutes to run and shows you a live progress bar. After running it, the success rate on your last 500 calls will be much higher, which is what Meta checks when reviewing the app.
+
+### Technical changes (for Jimmy)
+- New file: `apps/web/src/app/api/admin/adlab/warmup/route.ts` — POST endpoint, admin-gated via `requireAdmin()`. Rotates through 5 Graph API read endpoints (account info, campaigns, adsets, ads, insights), 40 calls each = 200 total. 500ms delay between calls. Uses direct `fetch` to `graph.facebook.com` with the same `META_ACCESS_TOKEN` and `META_AD_ACCOUNT_ID` env vars. Streams progress as newline-delimited JSON (NDJSON) so the UI can show live updates. `maxDuration` set to 300s.
+- Modified: `apps/web/src/app/admin/adlab/settings/page.tsx` — Added "Warm Up API" section with amber-styled button, live progress bar that updates every 20 calls via NDJSON streaming, and a final summary showing total/successes/failures. Uses `ReadableStream` reader to consume the streamed response.
+
+### Manual steps needed
+None — just click the button on the Settings page after deploy.
+
+### Notes
+- Uses direct `fetch` to the Graph API rather than the facebook-nodejs-business-sdk, same pattern as the existing test-meta endpoint. The calls still register under our app because they use the same access token.
+- The insights endpoint may return empty data if no ads have run recently — that's fine, a successful empty response still counts as a successful API call for Meta's ratio calculation.
+- If you need more than 200 calls, just click the button again. Each run adds 200 more successful calls to the history.
+
+---
+
 ## [2026-05-12] — AdLab: complete performance dashboard with 7 sections
 
 **Requested by:** Keenan
