@@ -20,6 +20,28 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-13] — AdLab: Fix warmup timeout — 100 calls at 2s intervals
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 378663a
+
+### In plain English (for Keenan)
+The warm-up button was timing out on Vercel because 200 calls at 2.5-second intervals took longer than Vercel's 5-minute function limit. Now it makes 100 calls per run at 2-second intervals (~3-4 minutes total), which fits safely under the timeout. To build up 200+ calls of history, just click the button twice with a 15-minute gap between runs. The button now shows a "Running... this takes ~3-4 minutes" message while it's working.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/app/api/admin/adlab/warmup/route.ts`: TOTAL_CALLS reduced from 200 to 100, DELAY_MS reduced from 2500 to 2000. Rate limit detection (error codes 80004/4) still stops immediately.
+- `apps/web/src/app/admin/adlab/settings/page.tsx`: Updated description text, added "Running..." message that shows before first progress update arrives, fixed fallback error totals from 200 to 100.
+
+### Manual steps needed
+None
+
+### Notes
+- 100 calls × 2s = 200s of delay + API round-trip time ≈ 210-230s total, well under the 300s Vercel Pro timeout.
+- Rate limit detection is unchanged — if Meta returns error code 80004 or 4, it stops immediately.
+
+---
+
 ## [2026-05-13] — Website: meta tags, hero copy, and site-wide SEO metadata
 
 **Requested by:** Keenan
