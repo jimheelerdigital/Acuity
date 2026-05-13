@@ -74,9 +74,12 @@ async function downloadImage(url: string, filename: string) {
   URL.revokeObjectURL(blobUrl);
 }
 
-function makeFilename(experimentId: string, angleName: string, creativeId: string): string {
-  const safe = angleName.replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40).toLowerCase();
-  return `${experimentId.slice(0, 8)}_${safe}_${creativeId.slice(0, 8)}.png`;
+function slugify(text: string, maxLen = 40): string {
+  return text.replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, maxLen).replace(/-$/, "").toLowerCase();
+}
+
+function makeFilename(topicBrief: string, surface: string, hypothesis: string, index: number): string {
+  return `${slugify(topicBrief, 30)}_${surface}_${slugify(hypothesis, 35)}_${index + 1}.png`;
 }
 
 const SURFACE_COLORS: Record<string, string> = {
@@ -774,8 +777,9 @@ export default function ExperimentDetailPage() {
                         <button
                           onClick={async () => {
                             const withImages = imageCreatives.filter((c) => c.imageUrl);
-                            for (const c of withImages) {
-                              await downloadImage(c.imageUrl!, makeFilename(experiment.id, angle.valueSurface, c.id));
+                            for (let idx = 0; idx < withImages.length; idx++) {
+                              const c = withImages[idx];
+                              await downloadImage(c.imageUrl!, makeFilename(experiment.topicBrief, angle.valueSurface, angle.hypothesis, idx));
                               await new Promise((r) => setTimeout(r, 300));
                             }
                           }}
@@ -786,8 +790,8 @@ export default function ExperimentDetailPage() {
                         </button>
                       </div>
                       <div className="grid gap-3 sm:grid-cols-3">
-                        {imageCreatives.map((creative) => (
-                          <CreativeCard key={creative.id} creative={creative} onToggleApprove={() => toggleApprove(creative.id, creative.approved)} experimentId={experiment.id} angleName={angle.valueSurface} />
+                        {imageCreatives.map((creative, idx) => (
+                          <CreativeCard key={creative.id} creative={creative} onToggleApprove={() => toggleApprove(creative.id, creative.approved)} topicBrief={experiment.topicBrief} angleSurface={angle.valueSurface} angleHypothesis={angle.hypothesis} creativeIndex={idx} />
                         ))}
                       </div>
                     </div>
@@ -796,8 +800,8 @@ export default function ExperimentDetailPage() {
                     <div>
                       <p className="text-[10px] font-medium text-[#A0A0B8] uppercase tracking-wider mb-2">Video Creatives</p>
                       <div className="grid gap-3 sm:grid-cols-3">
-                        {videoCreatives.map((creative) => (
-                          <CreativeCard key={creative.id} creative={creative} onToggleApprove={() => toggleApprove(creative.id, creative.approved)} experimentId={experiment.id} angleName={angle.valueSurface} />
+                        {videoCreatives.map((creative, idx) => (
+                          <CreativeCard key={creative.id} creative={creative} onToggleApprove={() => toggleApprove(creative.id, creative.approved)} topicBrief={experiment.topicBrief} angleSurface={angle.valueSurface} angleHypothesis={angle.hypothesis} creativeIndex={idx} />
                         ))}
                       </div>
                     </div>
@@ -943,13 +947,17 @@ function AngleCard({
 function CreativeCard({
   creative,
   onToggleApprove,
-  experimentId,
-  angleName,
+  topicBrief,
+  angleSurface,
+  angleHypothesis,
+  creativeIndex,
 }: {
   creative: Creative;
   onToggleApprove: () => void;
-  experimentId: string;
-  angleName: string;
+  topicBrief: string;
+  angleSurface: string;
+  angleHypothesis: string;
+  creativeIndex: number;
 }) {
   return (
     <div
@@ -963,7 +971,7 @@ function CreativeCard({
             className="w-full h-full object-cover"
           />
           <button
-            onClick={() => downloadImage(creative.imageUrl!, makeFilename(experimentId, angleName, creative.id))}
+            onClick={() => downloadImage(creative.imageUrl!, makeFilename(topicBrief, angleSurface, angleHypothesis, creativeIndex))}
             className="absolute bottom-2 right-2 rounded-lg bg-black/70 p-1.5 text-white/70 opacity-0 group-hover:opacity-100 hover:text-white hover:bg-black/90 transition"
             title="Download image"
           >

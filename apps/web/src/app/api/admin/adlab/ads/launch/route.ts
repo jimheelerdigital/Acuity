@@ -16,6 +16,11 @@ import { redactAccessToken } from "@/lib/adlab/meta";
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
 
+/** Truncate a string to a readable slug for Meta object names. */
+function slug(text: string, maxLen = 40): string {
+  return text.replace(/[^a-zA-Z0-9 ]+/g, "").trim().replace(/\s+/g, " ").slice(0, maxLen).trim();
+}
+
 export async function POST(req: NextRequest) {
   // Verify SDK loads correctly
   try {
@@ -145,8 +150,10 @@ export async function POST(req: NextRequest) {
 
   try {
     // 1. Create campaign — use experiment-level overrides if set, fall back to project defaults
+    const topicSlug = slug(experiment.topicBrief, 50);
+    const month = new Date().toLocaleDateString("en-US", { month: "short", year: "numeric" });
     const campaignName = (experiment as Record<string, unknown>).campaignName as string
-      || `${project.slug} | exp_${experiment.id}`;
+      || `${project.name} | ${topicSlug} | ${month}`;
     const campaignObjective = (experiment as Record<string, unknown>).campaignObjective as string
       || project.conversionObjective;
 
@@ -181,7 +188,9 @@ export async function POST(req: NextRequest) {
       const creativeLabel = `${creativeType} creative ${creative.id.slice(0, 8)}`;
 
       try {
-        const adsetName = `${project.slug} | exp_${experiment.id} | ${creativeType} | ${creative.angle.valueSurface} | creative_${creative.id}`;
+        const angleSlug = slug(creative.angle.hypothesis, 50);
+        const surface = creative.angle.valueSurface;
+        const adsetName = `${project.name} | ${topicSlug} | ${surface}: ${angleSlug} | ${creativeType}`;
 
         const expRecord = experiment as Record<string, unknown>;
         const adsetBudget = (expRecord.adSetDailyBudgetCents as number) || project.dailyBudgetCentsPerVariant;
@@ -264,7 +273,7 @@ export async function POST(req: NextRequest) {
           linkUrl.searchParams.set("utm_content", creative.id);
 
           metaCreativeId = await meta.createAdCreative({
-            name: `${project.slug}_creative_${creative.id}`,
+            name: `${project.name} | ${surface}: ${angleSlug} | "${slug(creative.headline, 40)}"`,
             pageId: metaPageId!,
             imageHash,
             videoId,
@@ -286,7 +295,7 @@ export async function POST(req: NextRequest) {
         let metaAdId: string;
         try {
           metaAdId = await meta.createAd({
-            name: `${project.slug}_ad_${creative.id}`,
+            name: `${project.name} | ${angleSlug} | "${slug(creative.headline, 40)}"`,
             adsetId,
             creativeId: metaCreativeId,
           });
