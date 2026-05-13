@@ -20,6 +20,26 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-12] — AdLab: force age_max to 65 for Advantage+ audience
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 90dbbbc
+
+### In plain English (for Keenan)
+Meta requires age_max to be at least 65 when Advantage+ audience is turned on. Our project had age_max set to 55, which caused ad set creation to fail with "Maximum age is below threshold." Now age_max is automatically bumped to 65 when Advantage+ is active — Meta's algorithm still focuses delivery on your actual 25-55 target range, this is just a technical floor requirement.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/adlab/meta.ts`: In `createAdSet()`, age_max is clamped via `Math.max(ageMax, 65)` when `advantage_audience` is enabled. If advantage_audience were ever set to 0, the original age_max from project settings would be used as-is.
+
+### Manual steps needed
+None
+
+### Notes
+- This is a companion fix to the Advantage Audience flag added in commit d503dbd. Meta v25 enforces both: the flag must be present AND age_max must be >= 65 when it's enabled.
+
+---
+
 ## [2026-05-12] — AdLab: add Advantage Audience flag for Meta v25 API
 
 **Requested by:** Keenan
