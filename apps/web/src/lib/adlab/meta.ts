@@ -121,7 +121,11 @@ export async function createAdSet(params: AdSetParams) {
   const targeting: Record<string, unknown> = {};
 
   if (params.targetAudience.ageMin) targeting.age_min = params.targetAudience.ageMin;
-  if (params.targetAudience.ageMax) targeting.age_max = params.targetAudience.ageMax;
+  // Advantage+ audience requires age_max >= 65; the algorithm still optimizes
+  // toward the actual target range, this is just Meta's floor requirement.
+  const useAdvantageAudience = true; // matches targeting_automation below
+  const ageMax = params.targetAudience.ageMax;
+  if (ageMax) targeting.age_max = useAdvantageAudience ? Math.max(ageMax, 65) : ageMax;
   if (params.targetAudience.geo?.length) {
     targeting.geo_locations = {
       countries: normalizeCountryCodes(params.targetAudience.geo),
