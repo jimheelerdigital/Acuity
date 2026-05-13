@@ -20,6 +20,27 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-13] — AdLab: Fix warmup route — use only ad account reads
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 32634b7
+
+### In plain English (for Keenan)
+The warm-up button was making 53 failed calls out of 200 because some of the endpoints it was hitting (campaigns, ad sets, ads, insights) require Standard Access — the exact thing we're trying to get approved for. Now it only reads your ad account info using 3 different field combos, which all work at the Limited access tier. Every call should succeed, so hitting the button once will add 200 clean successes to your API history. Any failures now show the specific error message so we can diagnose issues.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/app/api/admin/adlab/warmup/route.ts`: Replaced 5 endpoints (account info, campaigns, adsets, ads, insights × 40 each) with 3 ad account field variations rotated across 200 calls. Added detailed error streaming — each failure now includes Meta error code and subcode in both the server log and the NDJSON stream to the UI.
+
+### Manual steps needed
+None — redeploy happens on push, then click the button again.
+
+### Notes
+- The 3 field variations are: `name,account_status,currency,timezone_name` / `name,balance,amount_spent` / `business_name,created_time,owner`. All are read-only account fields available at Limited tier.
+- If `balance` or `owner` fields fail on your account, we can swap them for other account-level fields like `funding_source`, `spend_cap`, etc.
+
+---
+
 ## [2026-05-13] — AdLab: Meta API warm-up route for Standard Access approval
 
 **Requested by:** Keenan
