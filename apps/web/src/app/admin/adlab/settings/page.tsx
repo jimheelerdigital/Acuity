@@ -31,6 +31,8 @@ interface WarmupResult {
   failures: number;
   callNum?: number;
   endpoint?: string;
+  rateLimited?: boolean;
+  message?: string;
 }
 
 export default function SettingsPage() {
@@ -187,7 +189,7 @@ export default function SettingsPage() {
         <div className="rounded-xl border border-white/10 bg-[#13131F] p-6">
           <h3 className="text-base font-semibold text-white mb-2">API Warm-Up</h3>
           <p className="text-xs text-[#A0A0B8] mb-4">
-            Make 200 successful read calls to the Meta Ads API to build call history and improve the success-rate ratio for Standard Access review. Takes ~2 minutes.
+            Make 200 successful read calls to the Meta Ads API to build call history and improve the success-rate ratio for Standard Access review. Takes ~8 minutes.
           </p>
           <button
             onClick={runWarmup}
@@ -223,7 +225,8 @@ export default function SettingsPage() {
                       ? "border-amber-500/30 bg-amber-500/10 text-amber-400"
                       : "border-red-500/30 bg-red-500/10 text-red-400"
                 }`}>
-                  <p className="font-semibold">Warm-up complete</p>
+                  <p className="font-semibold">{warmupResult.rateLimited ? "Rate limited" : "Warm-up complete"}</p>
+                  {warmupResult.message && <p>{warmupResult.message}</p>}
                   <p>Total calls: {warmupResult.total}</p>
                   <p>Successes: {warmupResult.successes}</p>
                   <p>Failures: {warmupResult.failures}</p>

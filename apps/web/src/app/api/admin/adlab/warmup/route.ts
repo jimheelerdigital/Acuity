@@ -19,7 +19,7 @@ const ENDPOINTS = [
 ] as const;
 
 const TOTAL_CALLS = 200;
-const DELAY_MS = 500;
+const DELAY_MS = 2500;
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
@@ -61,8 +61,17 @@ export async function POST() {
             failures++;
             const errMsg = `${data.error.message} (code ${data.error.code}, subcode ${data.error.error_subcode ?? "none"})`;
             console.log(`[warmup] Call ${callNum}/${TOTAL_CALLS} FAIL (${endpoint.label}): ${errMsg}`);
-            // Stream individual failures so the UI can surface them
             controller.enqueue(encoder.encode(JSON.stringify({ type: "error", callNum, endpoint: endpoint.label, error: errMsg }) + "\n"));
+
+            // Rate limit — stop immediately to avoid racking up failures
+            if (data.error.code === 80004 || data.error.code === 4) {
+              const msg = `Stopped early — rate limited after ${successes} successful calls. Wait 15 minutes before running again.`;
+              console.log(`[warmup] ${msg}`);
+              const summary = { done: true, total: callNum, successes, failures, rateLimited: true, message: msg };
+              controller.enqueue(encoder.encode(JSON.stringify(summary) + "\n"));
+              controller.close();
+              return;
+            }
           } else {
             successes++;
           }
