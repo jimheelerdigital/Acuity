@@ -20,6 +20,28 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-13] — AdLab: Fix warmup rate limiting — slower calls + early stop
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 623ba0a
+
+### In plain English (for Keenan)
+The warm-up button was hitting Meta's rate limit around call 115 because it was firing too fast (every 0.5 seconds). Now it waits 2.5 seconds between calls, which keeps it under the limit. If Meta does rate-limit you anyway, it stops immediately instead of continuing to pile up failures — you'll see a message telling you to wait 15 minutes before trying again. The button now says it takes ~8 minutes (200 calls × 2.5s).
+
+### Technical changes (for Jimmy)
+- `apps/web/src/app/api/admin/adlab/warmup/route.ts`: Delay increased from 500ms to 2500ms. Added early termination when Meta returns error code 80004 or 4 (rate limit) — streams a final summary with `rateLimited: true` and a human-readable message, then closes the stream.
+- `apps/web/src/app/admin/adlab/settings/page.tsx`: Updated time estimate to ~8 minutes. Added `rateLimited` and `message` fields to `WarmupResult` interface. Result summary now shows "Rate limited" heading and the message when applicable.
+
+### Manual steps needed
+None
+
+### Notes
+- Meta's rate limit for the Marketing API at Limited tier is roughly 200 calls/hour for ad account reads. At 2.5s intervals we make ~24 calls/min = 200 in ~8.3 min, which should stay under the limit.
+- Error code 4 is Meta's general "too many calls" code; 80004 is the Marketing API-specific rate limit code. We check both.
+
+---
+
 ## [2026-05-13] — AdLab: Fix warmup route — use only ad account reads
 
 **Requested by:** Keenan
