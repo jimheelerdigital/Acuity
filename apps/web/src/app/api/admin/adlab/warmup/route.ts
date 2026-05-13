@@ -2,7 +2,8 @@
  * POST /api/admin/adlab/warmup — Make 200 successful read calls to Meta Ads API
  * to build call history and improve the success-rate ratio for Standard Access review.
  *
- * Rotates through 5 read endpoints, 40 calls each, with 500ms delay between calls.
+ * Only uses ad account info reads (3 field variations) since campaigns/adsets/ads/insights
+ * endpoints require Standard Access tier and fail at Limited tier.
  * Streams progress as newline-delimited JSON so the UI can show live updates.
  */
 
@@ -12,15 +13,12 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300; // ~100s expected, 300s ceiling
 
 const ENDPOINTS = [
-  { label: "account info", path: "?fields=name,account_status,currency,timezone_name" },
-  { label: "campaigns", path: "/campaigns?fields=name,status&limit=5" },
-  { label: "adsets", path: "/adsets?fields=name,status&limit=5" },
-  { label: "ads", path: "/ads?fields=name,status&limit=5" },
-  { label: "insights", path: "/insights?fields=impressions,clicks,spend&date_preset=last_30d" },
+  { label: "account info (basic)", path: "?fields=name,account_status,currency,timezone_name" },
+  { label: "account info (spend)", path: "?fields=name,balance,amount_spent" },
+  { label: "account info (meta)", path: "?fields=business_name,created_time,owner" },
 ] as const;
 
-const CALLS_PER_ENDPOINT = 40;
-const TOTAL_CALLS = ENDPOINTS.length * CALLS_PER_ENDPOINT;
+const TOTAL_CALLS = 200;
 const DELAY_MS = 500;
 
 function sleep(ms: number) {
@@ -61,13 +59,18 @@ export async function POST() {
 
           if (data.error) {
             failures++;
-            console.log(`[warmup] Call ${callNum}/${TOTAL_CALLS} FAIL (${endpoint.label}): ${data.error.message}`);
+            const errMsg = `${data.error.message} (code ${data.error.code}, subcode ${data.error.error_subcode ?? "none"})`;
+            console.log(`[warmup] Call ${callNum}/${TOTAL_CALLS} FAIL (${endpoint.label}): ${errMsg}`);
+            // Stream individual failures so the UI can surface them
+            controller.enqueue(encoder.encode(JSON.stringify({ type: "error", callNum, endpoint: endpoint.label, error: errMsg }) + "\n"));
           } else {
             successes++;
           }
         } catch (err) {
           failures++;
-          console.log(`[warmup] Call ${callNum}/${TOTAL_CALLS} ERROR (${endpoint.label}): ${err instanceof Error ? err.message : "unknown"}`);
+          const errMsg = err instanceof Error ? err.message : "unknown";
+          console.log(`[warmup] Call ${callNum}/${TOTAL_CALLS} ERROR (${endpoint.label}): ${errMsg}`);
+          controller.enqueue(encoder.encode(JSON.stringify({ type: "error", callNum, endpoint: endpoint.label, error: errMsg }) + "\n"));
         }
 
         // Log progress every 20 calls
