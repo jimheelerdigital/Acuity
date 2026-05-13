@@ -20,6 +20,26 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-12] — AdLab: skip ad creative when image upload fails
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** d35f7ce
+
+### In plain English (for Keenan)
+When an image failed to upload to Meta, the system was still creating the ad — which meant ads going live with no image, just the landing page's fallback thumbnail. Now if the image upload fails, that creative is skipped entirely and you'll see it listed in the launch errors. If every creative's image fails, the campaign is cleaned up automatically (same behavior as the existing all-fail cleanup).
+
+### Technical changes (for Jimmy)
+- `apps/web/src/app/api/admin/adlab/ads/launch/route.ts`: Added `continue` guards after image upload (`!imageHash`) and video upload (`!videoId`) failures. Pushes an error entry and skips to the next creative instead of proceeding to `createAdCreative`.
+
+### Manual steps needed
+None
+
+### Notes
+- The existing all-fail cleanup (delete campaign from Meta if `created.length === 0 && errors.length > 0`) already covers the case where every creative's upload fails.
+
+---
+
 ## [2026-05-12] — AdLab: force age_max to 65 for Advantage+ audience
 
 **Requested by:** Keenan
