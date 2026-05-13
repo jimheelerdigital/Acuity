@@ -4,20 +4,23 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Voice Journaling: The Complete Guide to Journaling by Talking",
   description:
-    "Learn how voice journaling works, why it beats written journaling for most people, and how to build a nightly voice journal habit. The definitive guide for 2026.",
+    "Learn how voice journaling works, why a voice journal app beats written journaling for most people, and how to build a daily debrief habit with AI insights. The definitive guide for 2026.",
   alternates: { canonical: "https://getacuity.io/voice-journaling" },
   openGraph: {
     title: "Voice Journaling: The Complete Guide to Journaling by Talking",
     description:
-      "Learn how voice journaling works, why it beats written journaling for most people, and how to build a nightly voice journal habit.",
+      "Learn how voice journaling works, why a voice journal app beats written journaling, and how to build a daily debrief habit with AI insights.",
     url: "https://getacuity.io/voice-journaling",
     type: "article",
+    siteName: "Acuity",
+    images: [{ url: "/og-image.png", width: 1200, height: 630 }],
   },
   twitter: {
     card: "summary_large_image",
     title: "Voice Journaling: The Complete Guide",
     description:
-      "Why talking is better than typing for journaling — and how to start tonight.",
+      "Why a voice journal beats typing — and how to start your daily debrief tonight.",
+    images: ["/og-image.png"],
   },
 };
 
@@ -28,7 +31,7 @@ const jsonLd = {
       "@type": "Article",
       headline: "Voice Journaling: The Complete Guide to Journaling by Talking",
       description:
-        "Learn how voice journaling works, why it beats written journaling for most people, and how to build a nightly voice journal habit.",
+        "Learn how voice journaling works, why a voice journal app beats written journaling for most people, and how to build a daily debrief habit with AI insights.",
       datePublished: "2026-04-17",
       dateModified: "2026-04-17",
       author: {

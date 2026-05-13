@@ -31,11 +31,11 @@ const playfair = Playfair_Display({
 
 export const metadata: Metadata = {
   title: {
-    default: "Acuity — AI Journaling App | Nightly Voice Brain Dump",
+    default: "Acuity — One Minute a Day. A Life of Clarity.",
     template: "%s | Acuity",
   },
   description:
-    "The AI journaling app that turns a 60-second nightly voice brain dump into extracted tasks, mood tracking, mental pattern detection, and weekly AI reports.",
+    "The AI journal that listens. Record your daily debrief by voice — AI extracts tasks, tracks goals, detects life patterns, and delivers your weekly report. No typing. No prompts. Just talk.",
   metadataBase: new URL("https://getacuity.io"),
   alternates: {
     canonical: "https://getacuity.io",
@@ -44,16 +44,16 @@ export const metadata: Metadata = {
     type: "website",
     url: "https://getacuity.io",
     siteName: "Acuity",
-    title: "Acuity — AI Journaling App | Nightly Voice Brain Dump",
+    title: "Acuity — One Minute a Day. A Life of Clarity.",
     description:
-      "The AI journaling app that turns a 60-second nightly voice brain dump into extracted tasks, mood tracking, mental pattern detection, and weekly AI reports.",
-    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "Acuity — AI voice journaling app for nightly brain dumps" }],
+      "The AI journal that listens. Record your daily debrief by voice — AI extracts tasks, tracks goals, detects life patterns, and delivers your weekly report. No typing. No prompts. Just talk.",
+    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "Acuity — AI voice journal for your daily debrief" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Acuity — AI Journaling App | Nightly Voice Brain Dump",
+    title: "Acuity — One Minute a Day. A Life of Clarity.",
     description:
-      "Turn a 60-second nightly voice brain dump into tasks, mood tracking, pattern detection, and weekly AI reports.",
+      "The AI journal that listens. Record your daily debrief by voice — AI extracts tasks, tracks goals, detects life patterns, and delivers your weekly report.",
     images: ["/og-image.png"],
   },
   robots: {
@@ -79,7 +79,7 @@ export default function RootLayout({
         url: "https://getacuity.io",
         logo: "https://getacuity.io/AcuityLogo.png",
         description:
-          "AI journaling app that turns a 60-second nightly voice brain dump into extracted tasks, mood tracking, mental pattern detection, and weekly AI reports.",
+          "The AI voice journal that turns your daily debrief into action. Task extraction, goal tracking, pattern detection, and weekly reports — all from a 60-second voice recording.",
         email: "hello@getacuity.io",
         // sameAs: Keenan to provide social profile URLs (Twitter/X, LinkedIn, Instagram)
         sameAs: [],

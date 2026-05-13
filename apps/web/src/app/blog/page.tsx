@@ -8,13 +8,22 @@ export const revalidate = 300; // 5 minutes
 export const metadata: Metadata = {
   title: "Blog — Acuity",
   description:
-    "Articles on voice journaling, AI journaling apps, mental health, productivity, brain dumping, and building nightly habits.",
+    "Articles on AI journaling, voice journaling, personal productivity, mood tracking, goal tracking, and building a daily journal habit.",
   alternates: { canonical: "https://getacuity.io/blog" },
   openGraph: {
     title: "Blog — Acuity",
     description:
-      "Articles on voice journaling, AI journaling apps, mental health, productivity, and building nightly habits.",
+      "Articles on AI journaling, voice journaling, personal productivity, mood tracking, and building a daily journal habit.",
     url: "https://getacuity.io/blog",
+    siteName: "Acuity",
+    images: [{ url: "/og-image.png", width: 1200, height: 630 }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Blog — Acuity",
+    description:
+      "Articles on AI journaling, voice journaling, personal productivity, and mood tracking.",
+    images: ["/og-image.png"],
   },
 };
 

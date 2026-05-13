@@ -14,7 +14,7 @@ const jsonLd = {
       "@type": "SoftwareApplication",
       name: "Acuity",
       description:
-        "AI journaling app that turns a 60-second nightly voice brain dump into extracted tasks, mood tracking, mental pattern detection, and weekly AI reports.",
+        "The AI voice journal that turns your daily debrief into action. Task extraction, goal tracking, mood tracking, pattern detection, and weekly reports — all from a 60-second voice recording.",
       url: "https://getacuity.io",
       applicationCategory: "HealthApplication",
       operatingSystem: "Web, iOS, Android",
@@ -37,7 +37,7 @@ const jsonLd = {
           name: "What is Acuity?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "Acuity is an AI journaling app where you speak freely for 60 seconds each night. AI automatically extracts your tasks, tracks your goals, detects mental patterns, and writes a weekly narrative report about your life.",
+            text: "Acuity is an AI voice journal where you speak freely for 60 seconds each day. AI automatically extracts your tasks, tracks your goals, detects life patterns, and writes a weekly report about your week.",
           },
         },
         {
@@ -45,7 +45,7 @@ const jsonLd = {
           name: "How does Acuity work?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "Open Acuity at night, hit record, and speak freely for 60 seconds. AI transcribes your voice, extracts tasks and goals, scores your mood, detects emotional patterns, and every Sunday delivers a written report about your week.",
+            text: "Open Acuity any time of day, hit record, and talk for 60 seconds. The AI voice journal transcribes your daily debrief, extracts tasks, tracks goals, scores your mood, detects patterns, and every Sunday delivers your weekly report.",
           },
         },
         {

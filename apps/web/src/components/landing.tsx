@@ -1167,7 +1167,7 @@ export function LandingPage() {
 
               <Reveal delay={2}>
                 <p className="mt-8 text-base text-[#C0C0D0] leading-relaxed max-w-lg mx-auto lg:mx-0">
-                  Acuity is the daily debrief that turns what you&rsquo;re thinking about into what you&rsquo;re doing. Talk for 60 seconds, any time of day — it catches your tasks, tracks the goals you keep circling, and helps you monitor the patterns that leave you stuck.
+                  Acuity is the AI voice journal that turns your daily debrief into action. Talk any time of day — it catches your tasks, tracks the goals you keep circling, and surfaces the patterns you can&rsquo;t see on your own.
                 </p>
               </Reveal>
 
