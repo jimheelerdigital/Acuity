@@ -28,7 +28,7 @@ const WAITLIST = `/auth/signup?utm_campaign=${UTM}`;
 
 export default function FoundersPage() {
   return (
-    <div className="min-h-screen bg-[#0A0A0F] text-white pb-24 sm:pb-0 overflow-x-hidden">
+    <div className="min-h-screen bg-[#0F0D0B] text-white pb-24 sm:pb-0 overflow-x-hidden">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -53,7 +53,7 @@ export default function FoundersPage() {
             <HeroHeadline text="Your daily debrief. 60 seconds. AI does the rest." />
           </Reveal>
           <Reveal delay={1}>
-            <p className="mt-6 text-lg text-[#A0A0B8] leading-relaxed max-w-2xl mx-auto">
+            <p className="mt-6 text-lg text-[#B0A898] leading-relaxed max-w-2xl mx-auto">
               Every day you carry 40 unfinished thoughts. Acuity captures
               every task, tracks every goal, and writes your weekly debrief
               automatically.
@@ -66,7 +66,7 @@ export default function FoundersPage() {
               </PulsingCTA>
               <a
                 href="#how-it-works"
-                className="rounded-xl border border-white/10 px-7 py-3.5 text-sm font-semibold text-[#A0A0B8] transition hover:border-white/20 hover:bg-white/5 active:scale-95"
+                className="rounded-xl border border-white/10 px-7 py-3.5 text-sm font-semibold text-[#B0A898] transition hover:border-white/20 hover:bg-white/5 active:scale-95"
               >
                 See how it works
               </a>
@@ -106,7 +106,7 @@ export default function FoundersPage() {
               "Less mental overhead outside work",
             ].map((stat, i) => (
               <Reveal key={i} delay={Math.min(i + 1, 3) as 1 | 2 | 3}>
-                <div className="rounded-xl border border-white/10 bg-[#13131F] p-6 text-center">
+                <div className="rounded-xl border border-white/10 bg-[#151210] p-6 text-center">
                   <div className="h-10 w-10 rounded-xl bg-[#7C5CFC]/10 flex items-center justify-center mb-4 mx-auto">
                     <svg className="h-5 w-5 text-[#7C5CFC]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -127,7 +127,7 @@ export default function FoundersPage() {
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl text-center mb-4">
               What Acuity extracts from a founder debrief
             </h2>
-            <p className="text-center text-[#A0A0B8] mb-12">
+            <p className="text-center text-[#B0A898] mb-12">
               From a single 60-second recording, Acuity automatically extracts:
             </p>
           </Reveal>
@@ -160,7 +160,7 @@ export default function FoundersPage() {
               },
             ].map((item, i) => (
               <Reveal key={i} delay={Math.min(i + 1, 5) as 1 | 2 | 3 | 4 | 5}>
-                <div className="flex items-center gap-4 rounded-xl border border-white/10 bg-[#13131F] p-5 transition-all duration-300 hover:shadow-md hover:-translate-y-0.5">
+                <div className="flex items-center gap-4 rounded-xl border border-white/10 bg-[#151210] p-5 transition-all duration-300 hover:shadow-md hover:-translate-y-0.5">
                   <div className="h-10 w-10 rounded-xl bg-violet-500/10 flex items-center justify-center shrink-0">
                     <svg
                       className="h-5 w-5 text-violet-600"
@@ -176,7 +176,7 @@ export default function FoundersPage() {
                       />
                     </svg>
                   </div>
-                  <p className="text-sm text-[#A0A0B8] font-medium">{item.text}</p>
+                  <p className="text-sm text-[#B0A898] font-medium">{item.text}</p>
                 </div>
               </Reveal>
             ))}
@@ -238,13 +238,13 @@ export default function FoundersPage() {
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl text-center mb-4">
               Your Sunday morning debrief. Written by AI.
             </h2>
-            <p className="text-center text-[#A0A0B8] mb-12">
+            <p className="text-center text-[#B0A898] mb-12">
               Framed as a performance report, not a wellness diary.
             </p>
           </Reveal>
 
           <Reveal delay={1}>
-            <div className="rounded-2xl border border-white/10 bg-[#13131F] p-8 shadow-sm">
+            <div className="rounded-2xl border border-white/10 bg-[#151210] p-8 shadow-sm">
               <div className="grid gap-4 sm:grid-cols-2">
                 {[
                   "Task completion rate this week",
@@ -268,7 +268,7 @@ export default function FoundersPage() {
                         d="M5 13l4 4L19 7"
                       />
                     </svg>
-                    <span className="text-sm text-[#A0A0B8]">{item}</span>
+                    <span className="text-sm text-[#B0A898]">{item}</span>
                   </div>
                 ))}
               </div>
@@ -298,7 +298,7 @@ export default function FoundersPage() {
       </section>
 
       {/* ───── COMPOUNDING INTELLIGENCE ───── */}
-      <section className="px-6 py-24 sm:py-32 bg-[#13131F] text-white">
+      <section className="px-6 py-24 sm:py-32 bg-[#151210] text-white">
         <div className="mx-auto max-w-3xl text-center">
           <Reveal>
             <h2 className="text-3xl font-bold tracking-tight sm:text-5xl">
@@ -355,7 +355,7 @@ export default function FoundersPage() {
                 7 minutes a week.
               </span>
             </h2>
-            <p className="mt-4 text-lg text-[#A0A0B8] mb-8">
+            <p className="mt-4 text-lg text-[#B0A898] mb-8">
               That's the total time investment. In return:
             </p>
           </Reveal>
@@ -382,7 +382,7 @@ export default function FoundersPage() {
                       d="M5 13l4 4L19 7"
                     />
                   </svg>
-                  <span className="text-sm text-[#A0A0B8]">{item}</span>
+                  <span className="text-sm text-[#B0A898]">{item}</span>
                 </div>
               ))}
             </div>

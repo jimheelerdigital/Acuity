@@ -136,7 +136,7 @@ export default function RootLayout({
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
         <link rel="manifest" href="/site.webmanifest" />
       </head>
-      <body className="bg-[#FAFAF7] text-zinc-900 antialiased dark:bg-[#0B0B12] dark:text-zinc-50">
+      <body className="bg-[#FAFAF7] text-zinc-900 antialiased dark:bg-[#0F0D0B] dark:text-zinc-50">
         <Providers>
           <ConsentGatedTrackers />
           <GoogleAnalytics />

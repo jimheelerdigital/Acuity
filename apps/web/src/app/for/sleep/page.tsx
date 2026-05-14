@@ -27,7 +27,7 @@ const WAITLIST = `/auth/signup?utm_campaign=${UTM}`;
 
 export default function SleepPage() {
   return (
-    <div className="min-h-screen bg-[#0A0A0F] text-white pb-24 sm:pb-0 overflow-x-hidden">
+    <div className="min-h-screen bg-[#0F0D0B] text-white pb-24 sm:pb-0 overflow-x-hidden">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -52,7 +52,7 @@ export default function SleepPage() {
             <HeroHeadline text="Can't sleep because your brain won't stop?" />
           </Reveal>
           <Reveal delay={1}>
-            <p className="mt-6 text-lg text-[#A0A0B8] leading-relaxed max-w-2xl mx-auto">
+            <p className="mt-6 text-lg text-[#B0A898] leading-relaxed max-w-2xl mx-auto">
               Racing thoughts at night aren't a sleep problem — they're an
               unprocessed thoughts problem. Acuity gives you 60 seconds to get it all
               out before bed.
@@ -65,7 +65,7 @@ export default function SleepPage() {
               </PulsingCTA>
               <a
                 href="#how-it-works"
-                className="rounded-xl border border-white/10 px-7 py-3.5 text-sm font-semibold text-[#A0A0B8] transition hover:border-white/20 hover:bg-white/5 active:scale-95"
+                className="rounded-xl border border-white/10 px-7 py-3.5 text-sm font-semibold text-[#B0A898] transition hover:border-white/20 hover:bg-white/5 active:scale-95"
               >
                 See how it works
               </a>
@@ -82,10 +82,10 @@ export default function SleepPage() {
       <SocialProofBar />
 
       {/* ───── THE RELATABLE OPENING ───── */}
-      <section className="px-6 py-24 sm:py-32 bg-[#13131F]">
+      <section className="px-6 py-24 sm:py-32 bg-[#151210]">
         <div className="mx-auto max-w-2xl text-center">
           <Reveal>
-            <div className="space-y-4 text-xl sm:text-2xl font-medium text-[#A0A0B8] leading-relaxed">
+            <div className="space-y-4 text-xl sm:text-2xl font-medium text-[#B0A898] leading-relaxed">
               <p className="text-white">It's 11pm.</p>
               <p className="text-white">You should be asleep.</p>
               <p>
@@ -105,11 +105,11 @@ export default function SleepPage() {
       <section className="px-6 py-24 sm:py-32">
         <div className="mx-auto max-w-3xl">
           <Reveal>
-            <div className="rounded-2xl border border-white/10 bg-[#13131F] p-8 sm:p-12 shadow-sm">
+            <div className="rounded-2xl border border-white/10 bg-[#151210] p-8 sm:p-12 shadow-sm">
               <h2 className="text-2xl font-bold tracking-tight sm:text-3xl mb-4">
                 Why your brain won't stop.
               </h2>
-              <p className="text-[#A0A0B8] leading-relaxed">
+              <p className="text-[#B0A898] leading-relaxed">
                 Your mind treats unprocessed thoughts like open browser tabs. They stay
                 active, consuming energy, until they're acknowledged and filed. The
                 debrief is the oldest sleep trick in existence — getting
@@ -194,7 +194,7 @@ export default function SleepPage() {
         ]}
       />
       <div className="text-center -mt-6 mb-12">
-        <p className="text-xs text-[#A0A0B8]/60 italic">Based on user-reported survey data</p>
+        <p className="text-xs text-[#B0A898]/60 italic">Based on user-reported survey data</p>
       </div>
 
       {/* ───── NIGHTLY RITUAL ───── */}
@@ -204,7 +204,7 @@ export default function SleepPage() {
             <h2 className="text-3xl font-bold tracking-tight sm:text-5xl">
               Make it part of your daily wind-down.
             </h2>
-            <p className="mt-6 text-lg text-[#A0A0B8] leading-relaxed">
+            <p className="mt-6 text-lg text-[#B0A898] leading-relaxed">
               Acuity works best as a daily ritual. Same time
               each day — many people use it right before they put their phone down. 60 seconds.
               Everything out. Mind clear.
@@ -213,25 +213,25 @@ export default function SleepPage() {
 
           <Reveal delay={1}>
             <div className="mt-12 grid gap-6 sm:grid-cols-2 max-w-lg mx-auto">
-              <div className="rounded-2xl border border-white/10 bg-[#1E1E2E] p-6 shadow-sm">
+              <div className="rounded-2xl border border-white/10 bg-[#1C1917] p-6 shadow-sm">
                 <div className="h-10 w-10 rounded-xl bg-violet-500/10 flex items-center justify-center mb-4 mx-auto">
                   <svg className="h-5 w-5 text-violet-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
                   </svg>
                 </div>
                 <h3 className="text-sm font-semibold mb-1">Daily reminder</h3>
-                <p className="text-xs text-[#A0A0B8]">
+                <p className="text-xs text-[#B0A898]">
                   Set a custom time to get your daily debrief reminder
                 </p>
               </div>
-              <div className="rounded-2xl border border-white/10 bg-[#1E1E2E] p-6 shadow-sm">
+              <div className="rounded-2xl border border-white/10 bg-[#1C1917] p-6 shadow-sm">
                 <div className="h-10 w-10 rounded-xl bg-emerald-500/10 flex items-center justify-center mb-4 mx-auto">
                   <svg className="h-5 w-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z" />
                   </svg>
                 </div>
                 <h3 className="text-sm font-semibold mb-1">Streak tracking</h3>
-                <p className="text-xs text-[#A0A0B8]">
+                <p className="text-xs text-[#B0A898]">
                   Build your streak and watch consistency compound
                 </p>
               </div>

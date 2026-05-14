@@ -28,7 +28,7 @@ const WAITLIST = `/auth/signup?utm_campaign=${UTM}`;
 
 export default function TherapyPage() {
   return (
-    <div className="min-h-screen bg-[#0A0A0F] text-white overflow-x-hidden pb-24 sm:pb-0">
+    <div className="min-h-screen bg-[#0F0D0B] text-white overflow-x-hidden pb-24 sm:pb-0">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -53,7 +53,7 @@ export default function TherapyPage() {
             <HeroHeadline text="What if you had a therapist who listened every single day?" />
           </Reveal>
           <Reveal delay={1}>
-            <p className="mt-6 text-lg text-[#A0A0B8] leading-relaxed max-w-2xl mx-auto">
+            <p className="mt-6 text-lg text-[#B0A898] leading-relaxed max-w-2xl mx-auto">
               Acuity listens to your 60-second daily debrief, tracks your emotional
               patterns, and writes your weekly mental health report — for less than
               the cost of one therapy copay.
@@ -66,7 +66,7 @@ export default function TherapyPage() {
               </PulsingCTA>
               <a
                 href="#how-it-works"
-                className="rounded-xl border border-white/10 px-7 py-3.5 text-sm font-semibold text-[#A0A0B8] transition hover:border-white/20 hover:bg-white/5 active:scale-95"
+                className="rounded-xl border border-white/10 px-7 py-3.5 text-sm font-semibold text-[#B0A898] transition hover:border-white/20 hover:bg-white/5 active:scale-95"
               >
                 See how it works
               </a>
@@ -223,7 +223,7 @@ export default function TherapyPage() {
       <section className="px-6 py-24 sm:py-32">
         <div className="mx-auto max-w-2xl">
           <Reveal>
-            <div className="rounded-xl border border-white/10 bg-[#13131F] p-8 sm:p-10">
+            <div className="rounded-xl border border-white/10 bg-[#151210] p-8 sm:p-10">
               <div className="flex items-center gap-1 mb-4">
                 {[...Array(5)].map((_, i) => (
                   <svg key={i} className="h-4 w-4 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
@@ -231,7 +231,7 @@ export default function TherapyPage() {
                   </svg>
                 ))}
               </div>
-              <blockquote className="text-base sm:text-lg text-[#A0A0B8] leading-relaxed italic">
+              <blockquote className="text-base sm:text-lg text-[#B0A898] leading-relaxed italic">
                 "I stopped going to therapy because of the cost. Acuity gives me the pattern recognition I was getting in sessions — at a fraction of the price."
               </blockquote>
               <div className="mt-6 flex items-center gap-3">
@@ -260,14 +260,14 @@ export default function TherapyPage() {
               { title: "Weekly report", desc: "Every Sunday, a narrative about your emotional week — wins, spirals, blind spots." },
             ].map((f, i) => (
               <Reveal key={i} delay={Math.min(i + 1, 3) as 1 | 2 | 3}>
-                <div className="rounded-xl border border-white/10 bg-[#13131F] p-6 text-center">
+                <div className="rounded-xl border border-white/10 bg-[#151210] p-6 text-center">
                   <div className="h-10 w-10 rounded-xl bg-[#7C5CFC]/10 flex items-center justify-center mb-4 mx-auto">
                     <svg className="h-5 w-5 text-[#7C5CFC]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
                     </svg>
                   </div>
                   <h3 className="text-sm font-semibold text-white mb-2">{f.title}</h3>
-                  <p className="text-xs text-[#A0A0B8] leading-relaxed">{f.desc}</p>
+                  <p className="text-xs text-[#B0A898] leading-relaxed">{f.desc}</p>
                 </div>
               </Reveal>
             ))}

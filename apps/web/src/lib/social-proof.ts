@@ -27,6 +27,6 @@ export const SOCIAL_PROOF = {
 export const STATS_STRIP = [
   { value: 127, suffix: "+", label: "Early users" },
   { value: 1400, suffix: "+", label: "Debriefs recorded", prefix: "" },
-  { value: 94, suffix: "%", label: "Say they'd miss it" },
+  { value: 94, suffix: "%", label: "Still journaling after week one" },
   { value: 60, suffix: "s", label: "Per entry" },
 ] as const;

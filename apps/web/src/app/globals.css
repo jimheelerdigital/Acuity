@@ -102,11 +102,28 @@ details .faq-answer > div {
 
 /* Pricing card glow */
 @keyframes pricing-glow {
-  0%, 100% { box-shadow: 0 0 20px rgba(124,92,252,0.0); }
-  50% { box-shadow: 0 0 30px rgba(124,92,252,0.15), 0 0 60px rgba(124,92,252,0.05); }
+  0%, 100% { box-shadow: 0 0 20px rgba(212,165,116,0.0); }
+  50% { box-shadow: 0 0 30px rgba(212,165,116,0.12), 0 0 60px rgba(212,165,116,0.04); }
 }
 .animate-pricing-glow {
   animation: pricing-glow 3s ease-in-out infinite;
+}
+
+/* Warm card hover glow */
+.warm-card-hover {
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
+}
+.warm-card-hover:hover {
+  box-shadow: 0 8px 32px rgba(212,165,116,0.08), 0 0 0 1px rgba(212,165,116,0.1);
+}
+
+/* Gentle fade-up animation for staggered cards */
+@keyframes gentle-fade-up {
+  0% { opacity: 0; transform: translateY(24px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.animate-gentle-fade-up {
+  animation: gentle-fade-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 /* Fix mobile text highlight/selection artifacts on gradient and animated text */

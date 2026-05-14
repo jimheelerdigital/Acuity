@@ -22,6 +22,14 @@ const config: Config = {
           800: "#5B21B6",
           900: "#4C1D95",
         },
+        warm: {
+          amber: "#D4A574",
+          gold: "#C9956B",
+          muted: "#B0A898",
+          bg: "#0F0D0B",
+          card: "#151210",
+          "card-inner": "#1C1917",
+        },
       },
       fontFamily: {
         sans: ["var(--font-inter)", "system-ui", "sans-serif"],

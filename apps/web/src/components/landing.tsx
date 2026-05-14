@@ -103,7 +103,7 @@ function WhoItsForDropdown() {
       </button>
 
       <div
-        className={`absolute left-0 top-full mt-2 w-[640px] max-w-[calc(100vw-2rem)] rounded-xl border border-white/10 bg-[#13131F] shadow-2xl transition-all duration-200 origin-top ${
+        className={`absolute left-0 top-full mt-2 w-[640px] max-w-[calc(100vw-2rem)] rounded-xl border border-white/[0.06] bg-[#151210] shadow-2xl transition-all duration-200 origin-top ${
           open
             ? "opacity-100 scale-y-100 translate-y-0"
             : "opacity-0 scale-y-95 -translate-y-1 pointer-events-none"
@@ -111,7 +111,7 @@ function WhoItsForDropdown() {
       >
         <div className="flex">
           {/* Featured column */}
-          <div className="w-[280px] border-r border-white/5 py-3">
+          <div className="w-[280px] border-r border-white/[0.04] py-3">
             <div className="px-4 pb-2">
               <span className="text-[10px] font-semibold uppercase tracking-widest text-[#7C5CFC]">Featured</span>
             </div>
@@ -123,7 +123,7 @@ function WhoItsForDropdown() {
                 className="block px-4 py-2.5 transition-all duration-150 border-l-2 border-transparent hover:border-violet-500 hover:bg-white/5"
               >
                 <div className="text-sm font-medium text-white">{item.title}</div>
-                <div className="text-xs text-[#A0A0B8] mt-0.5 leading-snug">{item.description}</div>
+                <div className="text-xs text-[#B0A898] mt-0.5 leading-snug">{item.description}</div>
               </Link>
             ))}
           </div>
@@ -134,7 +134,7 @@ function WhoItsForDropdown() {
               <div>
                 <span className="text-[10px] font-semibold uppercase tracking-widest text-[#7C5CFC] block mb-2">Mental Health</span>
                 {WHO_MENTAL.map((item) => (
-                  <Link key={item.href} href={item.href} onClick={close} className="block py-1.5 text-sm text-[#A0A0B8] transition hover:text-white">
+                  <Link key={item.href} href={item.href} onClick={close} className="block py-1.5 text-sm text-[#B0A898] transition hover:text-white">
                     {item.label}
                   </Link>
                 ))}
@@ -142,7 +142,7 @@ function WhoItsForDropdown() {
               <div>
                 <span className="text-[10px] font-semibold uppercase tracking-widest text-[#7C5CFC] block mb-2">Lifestyle</span>
                 {WHO_LIFESTYLE.map((item) => (
-                  <Link key={item.href} href={item.href} onClick={close} className="block py-1.5 text-sm text-[#A0A0B8] transition hover:text-white">
+                  <Link key={item.href} href={item.href} onClick={close} className="block py-1.5 text-sm text-[#B0A898] transition hover:text-white">
                     {item.label}
                   </Link>
                 ))}
@@ -150,7 +150,7 @@ function WhoItsForDropdown() {
               <div>
                 <span className="text-[10px] font-semibold uppercase tracking-widest text-[#7C5CFC] block mb-2">Professionals</span>
                 {WHO_PROS.map((item) => (
-                  <Link key={item.href} href={item.href} onClick={close} className="block py-1.5 text-sm text-[#A0A0B8] transition hover:text-white">
+                  <Link key={item.href} href={item.href} onClick={close} className="block py-1.5 text-sm text-[#B0A898] transition hover:text-white">
                     {item.label}
                   </Link>
                 ))}
@@ -407,7 +407,7 @@ function CascadingTasks({
       {tasks.map((task, i) => (
         <div
           key={task.text}
-          className="flex items-center gap-2 text-xs text-[#A0A0B8] transition-all duration-500"
+          className="flex items-center gap-2 text-xs text-[#B0A898] transition-all duration-500"
           style={{
             opacity: i < visibleCount ? 1 : 0,
             transform: i < visibleCount ? "translateX(0)" : "translateX(20px)",
@@ -499,7 +499,7 @@ function CostComparison() {
             >
               {line.fraction}
             </span>
-            <span className="text-lg text-[#A0A0B8]">{line.label}</span>
+            <span className="text-lg text-[#B0A898]">{line.label}</span>
           </div>
           {!line.highlight && (
             <div className="h-2 w-full rounded-full bg-white/10 overflow-hidden">
@@ -773,7 +773,7 @@ function LifeMatrixRadar() {
         <div className="flex-1 min-w-0 max-w-xs">
           {activeArea ? (
             <div
-              className="rounded-xl border-l-4 bg-[#13131F] p-5 shadow-sm transition-all duration-500 animate-fade-in"
+              className="rounded-xl border-l-4 bg-[#151210] p-5 shadow-sm transition-all duration-500 animate-fade-in"
               style={{ borderColor: activeArea.color }}
               key={activeArea.label}
             >
@@ -784,7 +784,7 @@ function LifeMatrixRadar() {
                   {activeArea.target}/100
                 </span>
               </div>
-              <p className="text-sm text-[#A0A0B8] leading-relaxed">
+              <p className="text-sm text-[#B0A898] leading-relaxed">
                 {AREA_INSIGHTS[activeArea.label]}
               </p>
             </div>
@@ -793,7 +793,7 @@ function LifeMatrixRadar() {
               {MATRIX_AREAS.map((area) => (
                 <div key={area.label} className="flex items-center gap-3">
                   <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: area.color }} />
-                  <span className="text-sm font-medium text-[#A0A0B8] w-28">{area.label}</span>
+                  <span className="text-sm font-medium text-[#B0A898] w-28">{area.label}</span>
                   <div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden">
                     <div className="h-full rounded-full transition-all duration-1000" style={{ backgroundColor: area.color, width: `${area.target}%` }} />
                   </div>
@@ -802,7 +802,7 @@ function LifeMatrixRadar() {
               ))}
             </div>
           ) : (
-            <div className="text-sm text-[#A0A0B8]/60 italic">
+            <div className="text-sm text-[#B0A898]/60 italic">
               Mapping your life areas...
             </div>
           )}
@@ -827,160 +827,7 @@ const matrixFeatures = [
   },
 ];
 
-/* ═══════════════════════════════════════════
-   Animated growth chart
-   ═══════════════════════════════════════════ */
-
-const GROWTH_LINES = [
-  { label: "Health", color: "#14B8A6", points: [32, 35, 38, 42, 40, 48, 52, 55, 60, 58, 65, 72] },
-  { label: "Career", color: "#3B82F6", points: [28, 30, 35, 33, 40, 45, 50, 55, 58, 62, 68, 75] },
-  { label: "Relationships", color: "#F43F5E", points: [45, 42, 48, 50, 52, 55, 53, 60, 65, 68, 72, 78] },
-  { label: "Growth", color: "#22C55E", points: [20, 25, 28, 35, 38, 42, 48, 52, 58, 63, 70, 80] },
-  { label: "Wealth", color: "#F59E0B", points: [40, 38, 42, 44, 45, 48, 50, 53, 55, 58, 62, 65] },
-  { label: "Spirituality", color: "#A855F7", points: [15, 18, 22, 25, 30, 35, 38, 42, 45, 50, 55, 60] },
-];
-
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
-function GrowthChart() {
-  const [progress, setProgress] = useState(0);
-  const ref = useRef<HTMLDivElement>(null);
-  const started = useRef(false);
-  const frameRef = useRef(0);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting && !started.current) {
-          started.current = true;
-          animate();
-          obs.unobserve(el);
-        }
-      },
-      { threshold: 0.3 }
-    );
-    obs.observe(el);
-    return () => {
-      obs.disconnect();
-      cancelAnimationFrame(frameRef.current);
-    };
-  }, []);
-
-  function animate() {
-    setProgress(0);
-    const start = performance.now();
-    const duration = 3000;
-    function tick(now: number) {
-      const p = Math.min((now - start) / duration, 1);
-      const eased = 1 - Math.pow(1 - p, 3);
-      setProgress(eased);
-      if (p < 1) {
-        frameRef.current = requestAnimationFrame(tick);
-      }
-    }
-    frameRef.current = requestAnimationFrame(tick);
-  }
-
-  const w = 800;
-  const h = 300;
-  const padL = 40;
-  const padR = 20;
-  const padT = 20;
-  const padB = 40;
-  const chartW = w - padL - padR;
-  const chartH = h - padT - padB;
-  const numPoints = 12;
-
-  function toPath(points: number[]): string {
-    const visibleCount = Math.floor(progress * numPoints) + 1;
-    const partialProgress = (progress * numPoints) % 1;
-
-    return points.slice(0, visibleCount).map((val, i) => {
-      const x = padL + (i / (numPoints - 1)) * chartW;
-      let y = padT + chartH - (val / 100) * chartH;
-      // Partial last point
-      if (i === visibleCount - 1 && i > 0 && visibleCount <= numPoints) {
-        const prevY = padT + chartH - (points[i - 1] / 100) * chartH;
-        y = prevY + (y - prevY) * partialProgress;
-      }
-      return `${i === 0 ? "M" : "L"} ${x} ${y}`;
-    }).join(" ");
-  }
-
-  return (
-    <div ref={ref} className="rounded-2xl border border-white/10 bg-[#13131F] p-3 sm:p-6 overflow-hidden">
-      {/* Legend */}
-      <div className="flex flex-wrap gap-3 sm:gap-4 mb-4 justify-center">
-        {GROWTH_LINES.map((line) => (
-          <div key={line.label} className="flex items-center gap-1.5">
-            <div className="h-2 w-2 rounded-full" style={{ backgroundColor: line.color }} />
-            <span className="text-[10px] sm:text-xs text-[#A0A0B8]">{line.label}</span>
-          </div>
-        ))}
-      </div>
-
-      <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-auto">
-        {/* Y-axis grid lines */}
-        {[0, 25, 50, 75, 100].map((val) => {
-          const y = padT + chartH - (val / 100) * chartH;
-          return (
-            <g key={val}>
-              <line x1={padL} y1={y} x2={w - padR} y2={y} stroke="rgba(255,255,255,0.1)" strokeWidth="0.5" />
-              <text x={padL - 8} y={y + 3} textAnchor="end" fontSize="11" fill="#A0A0B8">
-                {val}
-              </text>
-            </g>
-          );
-        })}
-
-        {/* X-axis month labels */}
-        {MONTHS.map((month, i) => {
-          const x = padL + (i / (numPoints - 1)) * chartW;
-          return (
-            <text key={month} x={x} y={h - 8} textAnchor="middle" fontSize="11" fill="#A0A0B8">
-              {month}
-            </text>
-          );
-        })}
-
-        {/* Growth lines */}
-        {GROWTH_LINES.map((line) => (
-          <path
-            key={line.label}
-            d={toPath(line.points)}
-            fill="none"
-            stroke={line.color}
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            opacity="0.8"
-          />
-        ))}
-
-        {/* Dots at the current leading edge */}
-        {progress > 0 && GROWTH_LINES.map((line) => {
-          const visibleCount = Math.min(Math.floor(progress * numPoints) + 1, numPoints);
-          const idx = visibleCount - 1;
-          const x = padL + (idx / (numPoints - 1)) * chartW;
-          const y = padT + chartH - (line.points[idx] / 100) * chartH;
-          return (
-            <circle
-              key={line.label}
-              cx={x}
-              cy={y}
-              r="3"
-              fill={line.color}
-              stroke="white"
-              strokeWidth="1.5"
-            />
-          );
-        })}
-      </svg>
-    </div>
-  );
-}
+/* GrowthChart removed — replaced by emotional moments section */
 
 /* ═══════════════════════════════════════════
    Feature icon SVGs (replace emojis)
@@ -1086,18 +933,18 @@ export function LandingPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#0A0A0F] text-white pb-24 sm:pb-0 overflow-x-hidden">
+    <div className="min-h-screen bg-[#0F0D0B] text-white pb-24 sm:pb-0 overflow-x-hidden">
       {/* ───── BANNER + NAVBAR (both fixed) ───── */}
       <div className="fixed top-0 inset-x-0 z-50">
         <FoundingMemberBanner />
-        <nav className="bg-[#0A0A0F] sm:bg-[#0A0A0F]/80 sm:backdrop-blur-md border-b border-white/5">
+        <nav className="bg-[#0F0D0B] sm:bg-[#0F0D0B]/80 sm:backdrop-blur-md border-b border-white/[0.04]">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:py-5">
           <div className="flex items-center gap-8">
             <Link href="/" className="flex items-center gap-2 group">
               <Image src="/AcuityLogoDark.png" alt="Acuity logo" width={24} height={24} className="shrink-0" />
               <span className="text-lg font-bold tracking-tight">Acuity</span>
             </Link>
-            <div className="hidden sm:flex items-center gap-6 text-sm text-[#A0A0B8]">
+            <div className="hidden sm:flex items-center gap-6 text-sm text-[#B0A898]">
               <a
                 href="#"
                 className="transition hover:text-white relative after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-0 after:bg-violet-500 after:transition-all hover:after:w-full"
@@ -1128,7 +975,7 @@ export function LandingPage() {
           <div className="flex items-center gap-4">
             <Link
               href="/auth/signin"
-              className="text-sm font-medium text-[#A0A0B8] transition hover:text-white"
+              className="text-sm font-medium text-[#B0A898] transition hover:text-white"
             >
               Sign in
             </Link>
@@ -1166,7 +1013,7 @@ export function LandingPage() {
               </Reveal>
 
               <Reveal delay={2}>
-                <p className="mt-8 text-base text-[#C0C0D0] leading-relaxed max-w-lg mx-auto lg:mx-0">
+                <p className="mt-8 text-base text-[#D0C8BC] leading-relaxed max-w-lg mx-auto lg:mx-0">
                   Acuity is the AI voice journal that turns your daily debrief into action. Talk any time of day — it catches your tasks, tracks the goals you keep circling, and surfaces the patterns you can&rsquo;t see on your own.
                 </p>
               </Reveal>
@@ -1184,7 +1031,7 @@ export function LandingPage() {
                       Start Free Trial
                     </span>
                   </Link>
-                  <p className="text-xs text-[#A0A0B8]">
+                  <p className="text-xs text-[#B0A898]">
                     No card. 90 seconds to set up.
                   </p>
                 </div>
@@ -1205,12 +1052,12 @@ export function LandingPage() {
                   </Link>
                   <a
                     href="#how-it-works"
-                    className="rounded-xl border border-white/10 px-7 py-3.5 text-sm font-semibold text-[#A0A0B8] transition hover:border-white/30 hover:bg-white/10 active:scale-95"
+                    className="rounded-xl border border-white/[0.06] px-7 py-3.5 text-sm font-semibold text-[#B0A898] transition hover:border-white/30 hover:bg-white/10 active:scale-95"
                   >
                     See how it works
                   </a>
                 </div>
-                <p className="mt-3 text-xs text-[#A0A0B8] hidden lg:block">
+                <p className="mt-3 text-xs text-[#B0A898] hidden lg:block">
                   No card. 90 seconds to set up.
                 </p>
               </Reveal>
@@ -1223,11 +1070,11 @@ export function LandingPage() {
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] lg:w-[400px] lg:h-[400px] rounded-full bg-[#7C5CFC]/15 blur-[80px] animate-pulse-slow" />
 
                 {/* Phone 1 (back) — Weekly Report */}
-                <div className="absolute right-0 top-6 w-[200px] sm:w-[230px] lg:w-[260px] xl:w-[280px] h-[400px] sm:h-[450px] lg:h-[500px] xl:h-[540px] rounded-[2rem] bg-[#1E1E2E] p-2 shadow-2xl shadow-black/40 rotate-3 animate-float">
-                  <div className="h-full w-full rounded-[1.5rem] bg-[#13131F] p-4 flex flex-col gap-2.5 overflow-hidden">
+                <div className="absolute right-0 top-6 w-[200px] sm:w-[230px] lg:w-[260px] xl:w-[280px] h-[400px] sm:h-[450px] lg:h-[500px] xl:h-[540px] rounded-[2rem] bg-[#1C1917] p-2 shadow-2xl shadow-black/40 rotate-3 animate-float">
+                  <div className="h-full w-full rounded-[1.5rem] bg-[#151210] p-4 flex flex-col gap-2.5 overflow-hidden">
                     {/* Status bar */}
                     <div className="flex items-center justify-between mb-1">
-                      <div className="text-[10px] text-[#A0A0B8]/60">9:41</div>
+                      <div className="text-[10px] text-[#B0A898]/60">9:41</div>
                       <div className="flex gap-1">
                         <div className="h-1.5 w-3 rounded-full bg-white/20" />
                         <div className="h-1.5 w-1.5 rounded-full bg-white/20" />
@@ -1236,11 +1083,11 @@ export function LandingPage() {
                     <div className="text-xs text-white font-semibold">
                       Weekly Report
                     </div>
-                    <div className="text-[10px] text-[#A0A0B8]/60">
+                    <div className="text-[10px] text-[#B0A898]/60">
                       Apr 14 – Apr 20
                     </div>
-                    <div className="rounded-xl border border-white/10 bg-[#1E1E2E] p-3 shadow-sm">
-                      <div className="text-[10px] text-[#A0A0B8] mb-2">
+                    <div className="rounded-xl border border-white/[0.06] bg-[#1C1917] p-3 shadow-sm">
+                      <div className="text-[10px] text-[#B0A898] mb-2">
                         Mood This Week
                       </div>
                       <div className="h-10">
@@ -1250,25 +1097,25 @@ export function LandingPage() {
                         />
                       </div>
                       <div className="flex justify-between mt-1">
-                        <span className="text-[8px] text-[#A0A0B8]/40">Mon</span>
-                        <span className="text-[8px] text-[#A0A0B8]/40">Sun</span>
+                        <span className="text-[8px] text-[#B0A898]/40">Mon</span>
+                        <span className="text-[8px] text-[#B0A898]/40">Sun</span>
                       </div>
                     </div>
                     <div className="rounded-xl border border-[#7C5CFC]/20 bg-[#7C5CFC]/5 p-3 shadow-sm">
                       <div className="text-[10px] text-violet-400 mb-1">
                         Pattern Detected
                       </div>
-                      <div className="text-[10px] text-[#A0A0B8] leading-relaxed">
+                      <div className="text-[10px] text-[#B0A898] leading-relaxed">
                         Best mood on days you exercised. Worst after meetings past 6 PM.
                       </div>
                     </div>
-                    <div className="rounded-xl border border-white/10 bg-[#1E1E2E] p-3 shadow-sm">
-                      <div className="text-[10px] text-[#A0A0B8] mb-1.5">
+                    <div className="rounded-xl border border-white/[0.06] bg-[#1C1917] p-3 shadow-sm">
+                      <div className="text-[10px] text-[#B0A898] mb-1.5">
                         Goals
                       </div>
                       <div className="space-y-1.5">
                         <div>
-                          <div className="flex justify-between text-[10px] text-[#A0A0B8] mb-0.5">
+                          <div className="flex justify-between text-[10px] text-[#B0A898] mb-0.5">
                             <span>Exercise</span>
                             <span className="text-emerald-400">3/5</span>
                           </div>
@@ -1277,7 +1124,7 @@ export function LandingPage() {
                           </div>
                         </div>
                         <div>
-                          <div className="flex justify-between text-[10px] text-[#A0A0B8] mb-0.5">
+                          <div className="flex justify-between text-[10px] text-[#B0A898] mb-0.5">
                             <span>Ship beta</span>
                             <span className="text-violet-400">70%</span>
                           </div>
@@ -1291,11 +1138,11 @@ export function LandingPage() {
                 </div>
 
                 {/* Phone 2 (front) — Today's Debrief */}
-                <div className="absolute left-0 top-0 w-[200px] sm:w-[230px] lg:w-[260px] xl:w-[280px] h-[400px] sm:h-[450px] lg:h-[500px] xl:h-[540px] rounded-[2rem] bg-[#1E1E2E] p-2 shadow-2xl shadow-black/50 -rotate-3 z-10 animate-float">
-                  <div className="h-full w-full rounded-[1.5rem] bg-[#13131F] p-4 flex flex-col gap-2.5 overflow-hidden">
+                <div className="absolute left-0 top-0 w-[200px] sm:w-[230px] lg:w-[260px] xl:w-[280px] h-[400px] sm:h-[450px] lg:h-[500px] xl:h-[540px] rounded-[2rem] bg-[#1C1917] p-2 shadow-2xl shadow-black/50 -rotate-3 z-10 animate-float">
+                  <div className="h-full w-full rounded-[1.5rem] bg-[#151210] p-4 flex flex-col gap-2.5 overflow-hidden">
                     {/* Status bar */}
                     <div className="flex items-center justify-between mb-1">
-                      <div className="text-[10px] text-[#A0A0B8]/60">9:41</div>
+                      <div className="text-[10px] text-[#B0A898]/60">9:41</div>
                       <div className="flex gap-1">
                         <div className="h-1.5 w-3 rounded-full bg-white/20" />
                         <div className="h-1.5 w-1.5 rounded-full bg-white/20" />
@@ -1310,8 +1157,8 @@ export function LandingPage() {
                         7.2
                       </div>
                     </div>
-                    <div className="rounded-xl border border-white/10 bg-[#1E1E2E] p-3 shadow-sm">
-                      <div className="text-[10px] text-[#A0A0B8] mb-2">
+                    <div className="rounded-xl border border-white/[0.06] bg-[#1C1917] p-3 shadow-sm">
+                      <div className="text-[10px] text-[#B0A898] mb-2">
                         Extracted Tasks
                       </div>
                       <CascadingTasks
@@ -1322,11 +1169,11 @@ export function LandingPage() {
                         ]}
                       />
                     </div>
-                    <div className="rounded-xl border border-white/10 bg-[#1E1E2E] p-3 shadow-sm">
-                      <div className="text-[10px] text-[#A0A0B8] mb-1">
+                    <div className="rounded-xl border border-white/[0.06] bg-[#1C1917] p-3 shadow-sm">
+                      <div className="text-[10px] text-[#B0A898] mb-1">
                         Theme
                       </div>
-                      <div className="text-[10px] text-[#A0A0B8]">
+                      <div className="text-[10px] text-[#B0A898]">
                         Productive but stretched thin. Mentioned &ldquo;deadline&rdquo; 3x.
                       </div>
                     </div>
@@ -1334,7 +1181,7 @@ export function LandingPage() {
                       <div className="text-[10px] text-violet-400 mb-1">
                         Goal Tracked
                       </div>
-                      <div className="text-[10px] text-[#A0A0B8]">
+                      <div className="text-[10px] text-[#B0A898]">
                         &ldquo;Ship the beta&rdquo; — mentioned 4 of last 5 entries
                       </div>
                     </div>
@@ -1349,25 +1196,25 @@ export function LandingPage() {
             <Reveal delay={4}>
               <div className="relative">
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[200px] h-[200px] rounded-full bg-[#7C5CFC]/15 blur-[60px] animate-pulse-slow" />
-                <div className="relative w-[220px] h-[380px] rounded-[2rem] bg-[#1E1E2E] p-2 shadow-2xl shadow-black/40 animate-float">
-                  <div className="h-full w-full rounded-[1.5rem] bg-[#13131F] p-4 flex flex-col gap-2 overflow-hidden">
+                <div className="relative w-[220px] h-[380px] rounded-[2rem] bg-[#1C1917] p-2 shadow-2xl shadow-black/40 animate-float">
+                  <div className="h-full w-full rounded-[1.5rem] bg-[#151210] p-4 flex flex-col gap-2 overflow-hidden">
                     <div className="flex items-center justify-between mb-1">
-                      <div className="text-[10px] text-[#A0A0B8]/60">9:41</div>
+                      <div className="text-[10px] text-[#B0A898]/60">9:41</div>
                       <div className="flex gap-1">
                         <div className="h-1.5 w-3 rounded-full bg-white/20" />
                         <div className="h-1.5 w-1.5 rounded-full bg-white/20" />
                       </div>
                     </div>
                     <div className="text-xs text-white font-semibold">Today&rsquo;s Debrief</div>
-                    <div className="rounded-xl border border-white/10 bg-[#1E1E2E] p-3 shadow-sm">
-                      <div className="text-[10px] text-[#A0A0B8] mb-2">Mood</div>
+                    <div className="rounded-xl border border-white/[0.06] bg-[#1C1917] p-3 shadow-sm">
+                      <div className="text-[10px] text-[#B0A898] mb-2">Mood</div>
                       <div className="flex items-center gap-1.5">
                         <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
                         <span className="text-[10px] text-white font-medium">7.2</span>
                       </div>
                     </div>
-                    <div className="rounded-xl border border-white/10 bg-[#1E1E2E] p-3 shadow-sm">
-                      <div className="text-[10px] text-[#A0A0B8] mb-2">Extracted Tasks</div>
+                    <div className="rounded-xl border border-white/[0.06] bg-[#1C1917] p-3 shadow-sm">
+                      <div className="text-[10px] text-[#B0A898] mb-2">Extracted Tasks</div>
                       <CascadingTasks
                         tasks={[
                           { text: "Email Q2 report", checked: true },
@@ -1378,7 +1225,7 @@ export function LandingPage() {
                     </div>
                     <div className="rounded-xl border border-[#7C5CFC]/30 bg-[#7C5CFC]/10 p-2.5">
                       <div className="text-[10px] text-violet-400 mb-0.5">Goal Tracked</div>
-                      <div className="text-[10px] text-[#A0A0B8]">&ldquo;Ship the beta&rdquo; — 4 of 5 entries</div>
+                      <div className="text-[10px] text-[#B0A898]">&ldquo;Ship the beta&rdquo; — 4 of 5 entries</div>
                     </div>
                   </div>
                 </div>
@@ -1393,7 +1240,7 @@ export function LandingPage() {
             <div className="flex items-center gap-1">
               <span className="text-amber-400 font-bold text-sm">{SOCIAL_PROOF.rating} ★</span>
             </div>
-            <p className="text-sm text-[#A0A0B8]">
+            <p className="text-sm text-[#B0A898]">
               Join {SOCIAL_PROOF.underHeroCount} people already using Acuity
             </p>
               </div>
@@ -1403,7 +1250,7 @@ export function LandingPage() {
       </section>
 
       {/* ───── STATS TICKER ───── */}
-      <section className="py-8 lg:py-10 px-6 border-y border-white/5 bg-[#13131F]/50 backdrop-blur">
+      <section className="py-8 lg:py-10 px-6 border-y border-white/[0.04] bg-[#151210]/50 backdrop-blur">
         <div className="mx-auto max-w-6xl">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 text-center">
             {stats.map((stat, i) => (
@@ -1415,7 +1262,7 @@ export function LandingPage() {
                     prefix={stat.prefix}
                   />
                 </div>
-                <div className="mt-1 text-sm text-[#A0A0B8]">{stat.label}</div>
+                <div className="mt-1 text-sm text-[#B0A898]">{stat.label}</div>
               </Reveal>
             ))}
           </div>
@@ -1427,7 +1274,7 @@ export function LandingPage() {
       <section className="py-10 px-6 overflow-hidden">
         <div className="mx-auto max-w-2xl text-center">
           <Reveal>
-            <h3 className="text-lg font-semibold text-[#A0A0B8]">
+            <h3 className="text-lg font-semibold text-[#B0A898]">
               Used by people who want to understand themselves
             </h3>
           </Reveal>
@@ -1435,14 +1282,14 @@ export function LandingPage() {
             {["S", "M", "P", "A", "J", "R"].map((letter, i) => (
               <div
                 key={i}
-                className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-[#0A0A0F] bg-[#1E1E2E] text-sm font-semibold text-[#A0A0B8] transition-all hover:scale-110 hover:z-10 cursor-default opacity-0 animate-fade-in-up"
+                className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-[#0F0D0B] bg-[#1C1917] text-sm font-semibold text-[#B0A898] transition-all hover:scale-110 hover:z-10 cursor-default opacity-0 animate-fade-in-up"
                 style={{ animationDelay: `${i * 100}ms`, animationFillMode: 'forwards' }}
               >
                 {letter}
               </div>
             ))}
             <div
-              className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-[#0A0A0F] bg-[#7C5CFC] text-xs font-semibold text-white transition-all hover:scale-110 opacity-0 animate-fade-in-up"
+              className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-[#0F0D0B] bg-[#7C5CFC] text-xs font-semibold text-white transition-all hover:scale-110 opacity-0 animate-fade-in-up"
               style={{ animationDelay: '600ms', animationFillMode: 'forwards' }}
             >
               +99
@@ -1456,8 +1303,8 @@ export function LandingPage() {
           onMouseEnter={() => setTickerPaused(true)}
           onMouseLeave={() => setTickerPaused(false)}
         >
-          <div className="absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-[#0A0A0F] to-transparent z-10" />
-          <div className="absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-[#0A0A0F] to-transparent z-10" />
+          <div className="absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-[#0F0D0B] to-transparent z-10" />
+          <div className="absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-[#0F0D0B] to-transparent z-10" />
           <div className="overflow-hidden">
             <div
               className="flex gap-12 animate-ticker w-max"
@@ -1466,7 +1313,7 @@ export function LandingPage() {
               {[...tickerItems, ...tickerItems, ...tickerItems].map((item, i) => (
                 <span
                   key={i}
-                  className="shrink-0 text-sm font-medium text-[#A0A0B8]/60 whitespace-nowrap"
+                  className="shrink-0 text-sm font-medium text-[#B0A898]/60 whitespace-nowrap"
                 >
                   {item}
                 </span>
@@ -1484,7 +1331,7 @@ export function LandingPage() {
               <h2 className="text-3xl font-bold tracking-tight sm:text-5xl">
                 How it works
               </h2>
-              <p className="mt-4 text-[#A0A0B8] text-lg">
+              <p className="mt-4 text-[#B0A898] text-lg">
                 Three steps. Sixty seconds. Zero effort.
               </p>
             </div>
@@ -1495,11 +1342,11 @@ export function LandingPage() {
             <div className="flex flex-col gap-8 lg:items-center lg:flex-row">
               <div className="flex-1">
                 <Reveal>
-                  <div className="inline-flex items-center gap-2 rounded-full bg-[#1E1E2E] px-3 py-1 text-xs font-semibold text-[#A0A0B8] uppercase tracking-wider mb-4">
+                  <div className="inline-flex items-center gap-2 rounded-full bg-[#D4A574]/10 px-3 py-1 text-xs font-semibold text-[#D4A574] uppercase tracking-wider mb-4">
                     Step 1
                   </div>
                   <h3 className="text-3xl font-bold sm:text-4xl">Record</h3>
-                  <p className="mt-4 text-lg text-[#A0A0B8] leading-relaxed max-w-md">
+                  <p className="mt-4 text-lg text-[#B0A898] leading-relaxed max-w-md">
                     Hit record. Speak freely for 60 seconds about your day, your
                     worries, your wins — whatever comes to mind.
                   </p>
@@ -1507,9 +1354,9 @@ export function LandingPage() {
               </div>
               <div className="flex-1 flex justify-center">
                 <Reveal delay={1}>
-                  <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-[#1E1E2E] p-2 shadow-xl">
-                    <div className="h-full w-full rounded-[2rem] bg-[#13131F] p-5 flex flex-col overflow-hidden">
-                      <div className="text-xs text-[#A0A0B8] font-medium mb-auto">
+                  <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-[#1C1917] p-2 shadow-xl">
+                    <div className="h-full w-full rounded-[2rem] bg-[#151210] p-5 flex flex-col overflow-hidden">
+                      <div className="text-xs text-[#B0A898] font-medium mb-auto">
                         Recording
                       </div>
                       <div className="flex flex-col items-center justify-center flex-1 gap-4">
@@ -1531,7 +1378,7 @@ export function LandingPage() {
                         <div className="text-xl font-bold text-white font-mono">
                           0:47
                         </div>
-                        <div className="text-xs text-[#A0A0B8]">
+                        <div className="text-xs text-[#B0A898]">
                           Speak freely...
                         </div>
                       </div>
@@ -1545,11 +1392,11 @@ export function LandingPage() {
             <div className="flex flex-col gap-8 lg:items-center lg:flex-row-reverse">
               <div className="flex-1">
                 <Reveal>
-                  <div className="inline-flex items-center gap-2 rounded-full bg-[#1E1E2E] px-3 py-1 text-xs font-semibold text-[#A0A0B8] uppercase tracking-wider mb-4">
+                  <div className="inline-flex items-center gap-2 rounded-full bg-[#D4A574]/10 px-3 py-1 text-xs font-semibold text-[#D4A574] uppercase tracking-wider mb-4">
                     Step 2
                   </div>
                   <h3 className="text-3xl font-bold sm:text-4xl">Extract</h3>
-                  <p className="mt-4 text-lg text-[#A0A0B8] leading-relaxed max-w-md">
+                  <p className="mt-4 text-lg text-[#B0A898] leading-relaxed max-w-md">
                     By morning, your tasks are on a list, your goals are tracked,
                     and your mood is scored. You didn&rsquo;t type a word.
                   </p>
@@ -1557,14 +1404,14 @@ export function LandingPage() {
               </div>
               <div className="flex-1 flex justify-center">
                 <Reveal delay={1}>
-                  <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-[#1E1E2E] p-2 shadow-xl">
-                    <div className="h-full w-full rounded-[2rem] bg-[#13131F] p-5 flex flex-col overflow-hidden">
-                      <div className="text-xs text-[#A0A0B8] font-medium mb-3">
+                  <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-[#1C1917] p-2 shadow-xl">
+                    <div className="h-full w-full rounded-[2rem] bg-[#151210] p-5 flex flex-col overflow-hidden">
+                      <div className="text-xs text-[#B0A898] font-medium mb-3">
                         AI Extraction
                       </div>
                       <div className="space-y-2.5 flex-1">
-                        <div className="rounded-xl border border-white/10 bg-[#1E1E2E] p-3 shadow-sm">
-                          <div className="text-[10px] text-[#A0A0B8] uppercase tracking-wider mb-1.5">
+                        <div className="rounded-xl border border-white/[0.06] bg-[#1C1917] p-3 shadow-sm">
+                          <div className="text-[10px] text-[#B0A898] uppercase tracking-wider mb-1.5">
                             Tasks
                           </div>
                           <CascadingTasks
@@ -1579,7 +1426,7 @@ export function LandingPage() {
                           <div className="text-[10px] text-violet-600 uppercase tracking-wider mb-1">
                             Goal
                           </div>
-                          <div className="text-xs text-[#A0A0B8]">
+                          <div className="text-xs text-[#B0A898]">
                             "Ship the beta this week"
                           </div>
                         </div>
@@ -1587,7 +1434,7 @@ export function LandingPage() {
                           <div className="text-[10px] text-emerald-600 uppercase tracking-wider mb-1">
                             Mood
                           </div>
-                          <div className="text-xs text-[#A0A0B8]">
+                          <div className="text-xs text-[#B0A898]">
                             Energized but slightly anxious
                           </div>
                         </div>
@@ -1602,25 +1449,25 @@ export function LandingPage() {
             <div className="flex flex-col gap-8 lg:items-center lg:flex-row">
               <div className="flex-1">
                 <Reveal>
-                  <div className="inline-flex items-center gap-2 rounded-full bg-[#1E1E2E] px-3 py-1 text-xs font-semibold text-[#A0A0B8] uppercase tracking-wider mb-4">
+                  <div className="inline-flex items-center gap-2 rounded-full bg-[#D4A574]/10 px-3 py-1 text-xs font-semibold text-[#D4A574] uppercase tracking-wider mb-4">
                     Step 3
                   </div>
                   <h3 className="text-3xl font-bold sm:text-4xl">Reflect</h3>
-                  <p className="mt-4 text-lg text-[#A0A0B8] leading-relaxed max-w-md">
+                  <p className="mt-4 text-lg text-[#B0A898] leading-relaxed max-w-md">
                     Every Sunday morning, a 400-word narrative of your week. What weighed on you, what moved, what you kept coming back to.
                   </p>
                 </Reveal>
               </div>
               <div className="flex-1 flex justify-center">
                 <Reveal delay={1}>
-                  <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-[#1E1E2E] p-2 shadow-xl">
-                    <div className="h-full w-full rounded-[2rem] bg-[#13131F] p-5 flex flex-col overflow-hidden">
-                      <div className="text-xs text-[#A0A0B8] font-medium mb-3">
+                  <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-[#1C1917] p-2 shadow-xl">
+                    <div className="h-full w-full rounded-[2rem] bg-[#151210] p-5 flex flex-col overflow-hidden">
+                      <div className="text-xs text-[#B0A898] font-medium mb-3">
                         Weekly Report
                       </div>
                       <div className="space-y-2.5 flex-1">
-                        <div className="rounded-xl border border-white/10 bg-[#1E1E2E] p-3 shadow-sm">
-                          <div className="text-[10px] text-[#A0A0B8] uppercase tracking-wider mb-2">
+                        <div className="rounded-xl border border-white/[0.06] bg-[#1C1917] p-3 shadow-sm">
+                          <div className="text-[10px] text-[#B0A898] uppercase tracking-wider mb-2">
                             Mood this week
                           </div>
                           <div className="h-10">
@@ -1630,20 +1477,20 @@ export function LandingPage() {
                             />
                           </div>
                         </div>
-                        <div className="rounded-xl border border-white/10 bg-[#1E1E2E] p-3 shadow-sm">
-                          <div className="text-[10px] text-[#A0A0B8] uppercase tracking-wider mb-1">
+                        <div className="rounded-xl border border-white/[0.06] bg-[#1C1917] p-3 shadow-sm">
+                          <div className="text-[10px] text-[#B0A898] uppercase tracking-wider mb-1">
                             Pattern
                           </div>
-                          <div className="text-xs text-[#A0A0B8]">
+                          <div className="text-xs text-[#B0A898]">
                             Best mood on days you exercised. Worst on days with
                             meetings after 6pm.
                           </div>
                         </div>
-                        <div className="rounded-xl border border-white/10 bg-[#1E1E2E] p-3 shadow-sm">
-                          <div className="text-[10px] text-[#A0A0B8] uppercase tracking-wider mb-1">
+                        <div className="rounded-xl border border-white/[0.06] bg-[#1C1917] p-3 shadow-sm">
+                          <div className="text-[10px] text-[#B0A898] uppercase tracking-wider mb-1">
                             Top 3 Actions
                           </div>
-                          <div className="space-y-1 text-xs text-[#A0A0B8]">
+                          <div className="space-y-1 text-xs text-[#B0A898]">
                             <div>1. Block mornings for deep work</div>
                             <div>2. No meetings after 5pm</div>
                             <div>3. Exercise before noon</div>
@@ -1672,10 +1519,10 @@ export function LandingPage() {
                 Your mind has patterns.
                 <br />
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-500 to-indigo-500">
-                  We decode them.
+                  We help you see them.
                 </span>
               </h2>
-              <p className="mt-4 text-[#A0A0B8] text-base max-w-xl mx-auto">
+              <p className="mt-4 text-[#B0A898] text-base max-w-xl mx-auto">
                 Every debrief maps your strengths, surfaces your blind spots,
                 and shows you exactly where to focus next.
               </p>
@@ -1685,6 +1532,11 @@ export function LandingPage() {
           {/* Radar + live insight panel */}
           <Reveal delay={1}>
             <LifeMatrixRadar />
+          </Reveal>
+          <Reveal delay={2}>
+            <p className="text-center mt-8 text-sm text-[#B0A898]/70 italic">
+              You don&rsquo;t have to do anything with this. It builds itself.
+            </p>
           </Reveal>
         </div>
       </section>
@@ -1703,53 +1555,99 @@ export function LandingPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
               </svg>
             </Link>
-            <p className="mt-3 text-sm text-[#A0A0B8]">
+            <p className="mt-3 text-sm text-[#B0A898]">
               No card required · Cancel anytime
             </p>
           </div>
         </Reveal>
       </section>
 
-      {/* ───── TRACK PROGRESS — ANIMATED GROWTH CHART ───── */}
+      {/* ───── EMOTIONAL MOMENTS ───── */}
       <section className="px-6 py-16 sm:py-20 lg:py-24">
-        <div className="mx-auto max-w-6xl">
+        <div className="mx-auto max-w-5xl">
           <Reveal>
-            <div className="text-center mb-12">
-              <p className="text-xs font-semibold uppercase tracking-widest text-[#7C5CFC] mb-4">
-                Track Progress
+            <div className="text-center mb-16">
+              <p className="text-xs font-semibold uppercase tracking-widest text-[#D4A574] mb-4">
+                Why it matters
               </p>
               <h2 className="text-3xl font-bold tracking-tight text-white sm:text-5xl">
-                Growth you can see.
-                <br />
-                <span className="text-[#A0A0B8]">Automatically.</span>
+                The moments that make it worth it.
               </h2>
-              <p className="mt-4 text-[#A0A0B8] text-base max-w-lg mx-auto">
-                Every area of your life trends upward over time. No manual logging — just talk, and watch the lines climb.
+              <p className="mt-4 text-[#B0A898] text-lg max-w-xl mx-auto">
+                Real things Acuity has surfaced for people like you.
               </p>
             </div>
           </Reveal>
 
-          <Reveal delay={1}>
-            <GrowthChart />
+          <div className="grid gap-6 sm:grid-cols-3">
+            {[
+              {
+                icon: (
+                  <svg className="h-5 w-5 text-[#D4A574]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a1.526 1.526 0 011.037-.443 48.282 48.282 0 005.68-.494c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
+                  </svg>
+                ),
+                quote: "You mentioned your sister 14 times this month. You haven\u2019t called her in 6 weeks.",
+                label: "From a weekly report",
+              },
+              {
+                icon: (
+                  <svg className="h-5 w-5 text-[#D4A574]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                  </svg>
+                ),
+                quote: "Every Monday you talk about feeling behind. By Wednesday you\u2019ve caught up. You might not be behind \u2014 you might just hate Mondays.",
+                label: "Pattern detected after 3 weeks",
+              },
+              {
+                icon: (
+                  <svg className="h-5 w-5 text-[#D4A574]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+                  </svg>
+                ),
+                quote: "You said \u2018I feel like myself again\u2019 for the first time since March.",
+                label: "Spotted in an evening debrief",
+              },
+            ].map((card, i) => (
+              <Reveal key={i} delay={Math.min(i + 1, 3) as 1 | 2 | 3}>
+                <div className="rounded-2xl border border-white/[0.06] bg-[#151210] p-7 warm-card-hover h-full flex flex-col">
+                  <div className="h-10 w-10 rounded-xl bg-[#D4A574]/10 flex items-center justify-center mb-5">
+                    {card.icon}
+                  </div>
+                  <blockquote className="text-base text-[#F5F0EB] leading-relaxed italic flex-1">
+                    &ldquo;{card.quote}&rdquo;
+                  </blockquote>
+                  <p className="mt-5 text-xs text-[#D4A574] font-medium uppercase tracking-wider">
+                    {card.label}
+                  </p>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+
+          <Reveal delay={3}>
+            <p className="text-center mt-12 text-[#B0A898] text-sm">
+              Yours will be different. That&rsquo;s the point.
+            </p>
           </Reveal>
         </div>
       </section>
 
       {/* ───── USE-CASE SCENARIOS ───── */}
-      <section className="px-6 py-16 sm:py-20 lg:py-24 bg-[#13131F]/50">
+      <section className="px-6 py-16 sm:py-20 lg:py-24 bg-[#151210]/50">
         <div className="mx-auto max-w-5xl">
           <Reveal>
             <h2 className="text-center text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl mb-4">
               Fits your life. Not the other way around.
             </h2>
-            <p className="text-center text-[#A0A0B8] text-lg mb-16 max-w-xl mx-auto">
+            <p className="text-center text-[#B0A898] text-lg mb-16 max-w-xl mx-auto">
               People use Acuity at different times, in different places, for different reasons. Here are two.
             </p>
           </Reveal>
 
           <div className="grid gap-8 sm:grid-cols-2">
             <Reveal delay={1}>
-              <div className="rounded-2xl border border-white/10 bg-[#13131F] p-8">
+              <div className="rounded-2xl border border-white/[0.06] bg-[#151210] p-8">
                 <div className="flex items-center gap-2 mb-4">
                   <div className="h-8 w-8 rounded-full bg-amber-500/10 flex items-center justify-center">
                     <svg className="h-4 w-4 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" /></svg>
@@ -1757,12 +1655,12 @@ export function LandingPage() {
                   <span className="text-xs font-semibold uppercase tracking-wider text-amber-400">Morning</span>
                 </div>
                 <h3 className="text-lg font-bold text-white mb-3">James, 34 — over morning coffee</h3>
-                <p className="text-sm text-[#A0A0B8] leading-relaxed">
+                <p className="text-sm text-[#B0A898] leading-relaxed">
                   &ldquo;Yesterday&rsquo;s meeting with the team still bothers me. I think what&rsquo;s really going on is I feel like no one heard my idea. Also need to call the insurance company and finish that proposal...&rdquo;
                 </p>
-                <div className="mt-4 rounded-lg border border-white/5 bg-[#1E1E2E] p-3">
+                <div className="mt-4 rounded-lg border border-white/[0.04] bg-[#1C1917] p-3">
                   <div className="text-[10px] text-violet-400 uppercase tracking-wider mb-1">Acuity extracted</div>
-                  <div className="text-xs text-[#A0A0B8] space-y-1">
+                  <div className="text-xs text-[#B0A898] space-y-1">
                     <div>&#x2022; Feeling unheard at work (recurring theme — 4th mention)</div>
                     <div>&#x2022; Call insurance company</div>
                     <div>&#x2022; Finish proposal</div>
@@ -1772,7 +1670,7 @@ export function LandingPage() {
             </Reveal>
 
             <Reveal delay={2}>
-              <div className="rounded-2xl border border-white/10 bg-[#13131F] p-8">
+              <div className="rounded-2xl border border-white/[0.06] bg-[#151210] p-8">
                 <div className="flex items-center gap-2 mb-4">
                   <div className="h-8 w-8 rounded-full bg-indigo-500/10 flex items-center justify-center">
                     <svg className="h-4 w-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" /></svg>
@@ -1780,12 +1678,12 @@ export function LandingPage() {
                   <span className="text-xs font-semibold uppercase tracking-wider text-indigo-400">Evening</span>
                 </div>
                 <h3 className="text-lg font-bold text-white mb-3">Priya, 29 — winding down after a long day</h3>
-                <p className="text-sm text-[#A0A0B8] leading-relaxed">
+                <p className="text-sm text-[#B0A898] leading-relaxed">
                   &ldquo;Good day actually. Got through the presentation and it went better than I expected. I&rsquo;m proud of myself for not overthinking it. Need to remember to book the flights for next month...&rdquo;
                 </p>
-                <div className="mt-4 rounded-lg border border-white/5 bg-[#1E1E2E] p-3">
+                <div className="mt-4 rounded-lg border border-white/[0.04] bg-[#1C1917] p-3">
                   <div className="text-[10px] text-violet-400 uppercase tracking-wider mb-1">Acuity extracted</div>
-                  <div className="text-xs text-[#A0A0B8] space-y-1">
+                  <div className="text-xs text-[#B0A898] space-y-1">
                     <div>&#x2022; Mood: confident, relieved (up from anxious yesterday)</div>
                     <div>&#x2022; Book flights for next month</div>
                     <div>&#x2022; Pattern: confidence rises after facing fears</div>
@@ -1805,7 +1703,7 @@ export function LandingPage() {
             <h2 className="text-center text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
               What people say after week one
             </h2>
-            <p className="mx-auto mt-4 text-center text-[#A0A0B8] text-lg">
+            <p className="mx-auto mt-4 text-center text-[#B0A898] text-lg">
               The first weekly report is the moment it clicks.
             </p>
           </Reveal>
@@ -1813,20 +1711,20 @@ export function LandingPage() {
           <div className="mt-16 grid gap-8 sm:grid-cols-3">
             {testimonials.map((t, i) => (
               <Reveal key={t.name} delay={Math.min(i + 1, 3) as 1 | 2 | 3}>
-                <figure className="group rounded-2xl border border-white/10 bg-[#13131F] p-6 shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+                <figure className="group rounded-2xl border border-white/[0.06] bg-[#151210] p-6 shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
                   <div className="flex items-center gap-1 mb-4">
                     <span className="text-amber-400 font-bold text-xs">{SOCIAL_PROOF.rating} ★</span>
                   </div>
-                  <blockquote className="text-sm leading-relaxed text-[#A0A0B8]">
+                  <blockquote className="text-sm leading-relaxed text-[#B0A898]">
                     "{t.quote}"
                   </blockquote>
                   <figcaption className="mt-5 flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#1E1E2E] text-sm font-bold text-[#A0A0B8] transition-colors group-hover:bg-[#7C5CFC]/20 group-hover:text-[#7C5CFC]">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#1C1917] text-sm font-bold text-[#B0A898] transition-colors group-hover:bg-[#7C5CFC]/20 group-hover:text-[#7C5CFC]">
                       {t.name[0]}
                     </div>
                     <div>
                       <div className="text-sm font-semibold">{t.name}</div>
-                      <div className="text-xs text-[#A0A0B8]/60">{t.role}</div>
+                      <div className="text-xs text-[#B0A898]/60">{t.role}</div>
                     </div>
                   </figcaption>
                 </figure>
@@ -1841,7 +1739,7 @@ export function LandingPage() {
         <div className="mx-auto max-w-3xl flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
           {["Audio deleted within 24hrs", "No card required", "Cancel anytime", "30-day free trial"].map((item, i) => (
             <Reveal key={i} delay={Math.min(i, 3) as 0 | 1 | 2 | 3}>
-              <div className="flex items-center gap-2 text-sm text-[#A0A0B8]">
+              <div className="flex items-center gap-2 text-sm text-[#B0A898]">
                 <svg className="h-4 w-4 text-emerald-400 shrink-0 animate-check-pulse" style={{ animationDelay: `${i * 0.5}s` }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
                 </svg>
@@ -1859,7 +1757,7 @@ export function LandingPage() {
             <h2 className="text-3xl font-bold tracking-tight sm:text-5xl">
               Simple pricing
             </h2>
-            <p className="mt-4 text-[#A0A0B8] text-lg">
+            <p className="mt-4 text-[#B0A898] text-lg">
               One plan. Everything included. Cancel anytime.
             </p>
           </Reveal>
@@ -1869,7 +1767,7 @@ export function LandingPage() {
               {/* Shimmer border effect */}
               <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-r from-violet-400 via-indigo-400 to-violet-400 opacity-0 group-hover:opacity-100 transition-opacity duration-500 animate-shimmer blur-[1px]" />
 
-              <div className="relative rounded-2xl border border-white/10 bg-[#13131F] p-8 text-left shadow-sm animate-pricing-glow">
+              <div className="relative rounded-2xl border border-white/[0.06] bg-[#151210] p-8 text-left shadow-sm animate-pricing-glow">
                 <p className="text-sm font-semibold uppercase tracking-wider text-[#7C5CFC]">
                   Pro
                 </p>
@@ -1877,13 +1775,13 @@ export function LandingPage() {
                   <span className="text-5xl font-extrabold">
                     $12.99
                   </span>
-                  <span className="text-[#A0A0B8]">/month</span>
+                  <span className="text-[#B0A898]">/month</span>
                 </p>
-                <p className="mt-2 text-sm text-[#A0A0B8]">
+                <p className="mt-2 text-sm text-[#B0A898]">
                   No card. 90 seconds to set up.
                 </p>
 
-                <ul className="mt-8 space-y-3 text-sm text-[#A0A0B8]">
+                <ul className="mt-8 space-y-3 text-sm text-[#B0A898]">
                   {pricingFeatures.map((f) => (
                     <li key={f} className="flex items-start gap-2.5">
                       <svg
@@ -1924,7 +1822,7 @@ export function LandingPage() {
       <section className="px-6 py-16 sm:py-20">
         <div className="mx-auto max-w-3xl text-center">
           <Reveal>
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-sm text-[#A0A0B8] mb-6">
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/5 px-4 py-1.5 text-sm text-[#B0A898] mb-6">
               <svg className="h-4 w-4 text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
               FAQ
             </span>
@@ -1935,18 +1833,18 @@ export function LandingPage() {
             </h2>
           </Reveal>
           <Reveal delay={2}>
-            <p className="text-[#A0A0B8] mb-4 max-w-xl mx-auto">
+            <p className="text-[#B0A898] mb-4 max-w-xl mx-auto">
               Have questions about Acuity and how it turns your daily debrief into action? Our FAQs cover everything you need to get started.
             </p>
           </Reveal>
         </div>
         <div className="mx-auto max-w-3xl mt-8">
           <Reveal delay={2}>
-            <div className="rounded-2xl border border-white/10 bg-[#13131F] divide-y divide-white/10">
+            <div className="rounded-2xl border border-white/[0.06] bg-[#151210] divide-y divide-white/10">
               {[
                 { q: "What is Acuity and how does it work?", a: "Acuity is a daily shutdown ritual. You talk for 60 seconds about whatever is on your mind — tasks, worries, ideas, things that happened. By morning, your tasks are on a list, your mood is scored, and your goals are tracked. Every Sunday, a 400-word story of your week lands on your phone. You talk. Acuity does the rest." },
                 { q: "Is this actually private?", a: "Your audio is deleted within 24 hours of transcription. Transcripts are encrypted at rest. We use OpenAI Whisper for transcription and Anthropic Claude for analysis — under their API terms, your data is processed and returned, never used to train their models. We never sell your data." },
-                { q: "Do I have to use it every night?", a: "No. But people who record 4+ times in week one see dramatically better weekly reports. The AI needs a few data points before it can spot patterns. Most people settle into 4\u20135 recordings per week." },
+                { q: "Do I have to use it every day?", a: "No. But people who record 4+ times in week one see dramatically better weekly reports. The AI needs a few data points before it can spot patterns. Most people settle into 4\u20135 recordings per week." },
                 { q: "What if I don't know what to say?", a: "That's the point. Just talk. Say whatever is on your mind. The messier, the better — Acuity pulls the signal out of the noise. There are no prompts to answer and no format to follow." },
                 { q: "Is this just a journaling app?", a: "No. You don't write anything. You talk for 60 seconds. Acuity extracts tasks, tracks goals over time, scores your mood, and writes you a weekly narrative. A journal records what you write down. Acuity catches what you'd otherwise forget." },
                 { q: "How is Acuity different from voice notes or other recording apps?", a: "Voice notes store audio. Acuity processes it. Within minutes your recording becomes a task list, a mood score, a goal-tracking update, and a data point that feeds into your weekly report. The recording is the input, not the output." },
@@ -1958,12 +1856,12 @@ export function LandingPage() {
                 <details key={i} className="group">
                   <summary className="flex cursor-pointer items-center justify-between px-6 py-5 text-left">
                     <h3 className="text-base font-semibold text-white pr-4">{faq.q}</h3>
-                    <span className="shrink-0 text-[#A0A0B8] transition-transform duration-300 group-open:rotate-45 text-xl leading-none">+</span>
+                    <span className="shrink-0 text-[#B0A898] transition-transform duration-300 group-open:rotate-45 text-xl leading-none">+</span>
                   </summary>
                   <div className="faq-answer">
                     <div>
                       <div className="px-6 pb-5">
-                        <p className="text-sm text-[#A0A0B8] leading-relaxed">{faq.a}</p>
+                        <p className="text-sm text-[#B0A898] leading-relaxed">{faq.a}</p>
                       </div>
                     </div>
                   </div>
@@ -1977,23 +1875,23 @@ export function LandingPage() {
       {/* ───── CTA BANNER ───── */}
       <section className="px-6 py-16 sm:py-20">
         <Reveal>
-          <div className="mx-auto max-w-4xl rounded-3xl bg-zinc-900 p-6 sm:p-12 lg:p-16 text-center text-white relative overflow-hidden">
+          <div className="mx-auto max-w-4xl rounded-3xl bg-[#1C1917] p-6 sm:p-12 lg:p-16 text-center text-white relative overflow-hidden border border-[#D4A574]/10">
             {/* Subtle animated accents */}
-            <div className="absolute top-0 right-0 h-72 w-72 rounded-full bg-violet-600/20 -translate-y-1/3 translate-x-1/4 blur-3xl animate-blob-drift" />
-            <div className="absolute bottom-0 left-0 h-56 w-56 rounded-full bg-indigo-600/20 translate-y-1/3 -translate-x-1/4 blur-3xl animate-blob-drift-2" />
+            <div className="absolute top-0 right-0 h-72 w-72 rounded-full bg-[#D4A574]/10 -translate-y-1/3 translate-x-1/4 blur-3xl animate-blob-drift" />
+            <div className="absolute bottom-0 left-0 h-56 w-56 rounded-full bg-violet-600/15 translate-y-1/3 -translate-x-1/4 blur-3xl animate-blob-drift-2" />
 
             <div className="relative">
-              <p className="text-sm font-medium text-violet-400 mb-4 uppercase tracking-wider">
+              <p className="text-sm font-medium text-[#D4A574] mb-4 uppercase tracking-wider">
                 No card. 90 seconds to set up.
               </p>
               <h2 className="text-3xl font-bold sm:text-5xl tracking-tight">
                 Your first debrief takes
                 <br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-indigo-400">
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#D4A574] to-violet-400">
                   60 seconds.
                 </span>
               </h2>
-              <p className="mt-5 text-[#A0A0B8] text-lg max-w-md mx-auto">
+              <p className="mt-5 text-[#B0A898] text-lg max-w-md mx-auto">
                 Start today. Wake up to extracted tasks, tracked goals, and a
                 clearer picture of your life.
               </p>
@@ -2008,7 +1906,7 @@ export function LandingPage() {
                     Start Free Trial
                   </span>
                 </Link>
-                <span className="text-sm text-[#A0A0B8]">
+                <span className="text-sm text-[#B0A898]">
                   Then $12.99/month · cancel anytime
                 </span>
               </div>
@@ -2018,7 +1916,7 @@ export function LandingPage() {
       </section>
 
       {/* ───── FOOTER ───── */}
-      <footer className="border-t border-white/10 px-6 py-16 bg-[#08080D]">
+      <footer className="border-t border-white/[0.06] px-6 py-16 bg-[#0D0B09]">
         <div className="mx-auto max-w-7xl">
           <div className="grid gap-8 lg:gap-12 lg:grid-cols-5">
             {/* Brand column */}
@@ -2029,20 +1927,20 @@ export function LandingPage() {
                   Acuity
                 </span>
               </div>
-              <p className="mt-3 text-sm text-[#A0A0B8] max-w-xs leading-relaxed">
+              <p className="mt-3 text-sm text-[#B0A898] max-w-xs leading-relaxed">
                 Talk for 60 seconds. Wake up to a clearer picture of your life. Your daily shutdown ritual.
               </p>
               <div className="mt-6 flex items-center gap-4">
-                <a href="https://apps.apple.com" aria-label="Download on iPhone" className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-[#A0A0B8] transition hover:text-white hover:border-white/20">
+                <a href="https://apps.apple.com" aria-label="Download on iPhone" className="inline-flex items-center gap-2 rounded-lg border border-white/[0.06] bg-white/5 px-3 py-2 text-xs text-[#B0A898] transition hover:text-white hover:border-white/20">
                   <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
                   iPhone
                 </a>
-                <a href="https://play.google.com" aria-label="Download on Android" className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-[#A0A0B8] transition hover:text-white hover:border-white/20">
+                <a href="https://play.google.com" aria-label="Download on Android" className="inline-flex items-center gap-2 rounded-lg border border-white/[0.06] bg-white/5 px-3 py-2 text-xs text-[#B0A898] transition hover:text-white hover:border-white/20">
                   <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M3.18 23.04L13.3 12.96 3.18.96C2.55 1.2 2.13 1.8 2.13 2.52v18.96c0 .72.42 1.32 1.05 1.56zm1.38.66l11.28-6.36-2.52-2.46-8.76 8.82zm14.64-8.28c.48-.3.78-.78.78-1.38s-.3-1.08-.78-1.38L16.2 11.4l-2.76 2.76 2.76 2.76 3-.48zm-14.64-8.7l8.76 8.82 2.52-2.46L4.56 6.72z"/></svg>
                   Android
                 </a>
               </div>
-              <p className="mt-6 text-xs text-[#A0A0B8]">
+              <p className="mt-6 text-xs text-[#B0A898]">
                 Need help? <a href="mailto:hello@getacuity.io" className="text-violet-400 hover:text-violet-300 transition">hello@getacuity.io</a>
               </p>
             </div>
@@ -2050,7 +1948,7 @@ export function LandingPage() {
             {/* Link columns */}
             <div>
               <h3 className="text-xs font-semibold uppercase tracking-wider text-white/80 mb-4">Product</h3>
-              <ul className="space-y-3 text-sm text-[#A0A0B8]">
+              <ul className="space-y-3 text-sm text-[#B0A898]">
                 <li><a href="/" className="transition hover:text-white hover:underline underline-offset-4">Home</a></li>
                 <li><a href="/auth/signup" className="transition hover:text-white hover:underline underline-offset-4">Start Free Trial</a></li>
                 <li><a href="/auth/signin" className="transition hover:text-white hover:underline underline-offset-4">Sign In</a></li>
@@ -2061,7 +1959,7 @@ export function LandingPage() {
             </div>
             <div>
               <h3 className="text-xs font-semibold uppercase tracking-wider text-white/80 mb-4">Resources</h3>
-              <ul className="space-y-3 text-sm text-[#A0A0B8]">
+              <ul className="space-y-3 text-sm text-[#B0A898]">
                 <li><a href="/voice-journaling" className="transition hover:text-white hover:underline underline-offset-4">Voice Journaling Guide</a></li>
                 <li><a href="/blog" className="transition hover:text-white hover:underline underline-offset-4">Blog</a></li>
                 <li><a href="/#weekly-report" className="transition hover:text-white hover:underline underline-offset-4">Weekly Report</a></li>
@@ -2070,7 +1968,7 @@ export function LandingPage() {
             </div>
             <div>
               <h3 className="text-xs font-semibold uppercase tracking-wider text-white/80 mb-4">Company</h3>
-              <ul className="space-y-3 text-sm text-[#A0A0B8]">
+              <ul className="space-y-3 text-sm text-[#B0A898]">
                 <li><a href="/terms" className="transition hover:text-white hover:underline underline-offset-4">Terms</a></li>
                 <li><a href="/privacy" className="transition hover:text-white hover:underline underline-offset-4">Privacy</a></li>
                 <li><a href="mailto:hello@getacuity.io" className="transition hover:text-white hover:underline underline-offset-4">Contact</a></li>
@@ -2079,11 +1977,11 @@ export function LandingPage() {
             </div>
           </div>
 
-          <div className="mt-12 pt-8 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p className="text-xs text-[#A0A0B8]">
+          <div className="mt-12 pt-8 border-t border-white/[0.06] flex flex-col sm:flex-row items-center justify-between gap-4">
+            <p className="text-xs text-[#B0A898]">
               &copy; {new Date().getFullYear()} Acuity. All rights reserved.
             </p>
-            <div className="flex items-center gap-6 text-xs text-[#A0A0B8]">
+            <div className="flex items-center gap-6 text-xs text-[#B0A898]">
               <a href="/terms" className="transition hover:text-white">Terms</a>
               <a href="/privacy" className="transition hover:text-white">Privacy</a>
               <a href="mailto:hello@getacuity.io" className="transition hover:text-white">Support</a>
@@ -2094,7 +1992,7 @@ export function LandingPage() {
 
       {/* ───── STICKY MOBILE CTA ───── */}
       <div className="fixed bottom-0 inset-x-0 z-40 sm:hidden">
-        <div className="bg-[#0A0A0F]/95 backdrop-blur-lg border-t border-white/10 px-4 py-3">
+        <div className="bg-[#0F0D0B]/95 backdrop-blur-lg border-t border-white/[0.06] px-4 py-3">
           <Link
             href="/auth/signup?utm_campaign=home"
             onClick={trackInitiateCheckout}
@@ -2105,7 +2003,7 @@ export function LandingPage() {
               Start Free Trial
             </span>
           </Link>
-          <p className="mt-1.5 text-center text-xs text-[#A0A0B8]">
+          <p className="mt-1.5 text-center text-xs text-[#B0A898]">
             No card. 90 seconds to set up.
           </p>
         </div>

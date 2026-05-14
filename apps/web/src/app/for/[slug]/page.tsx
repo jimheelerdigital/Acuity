@@ -35,7 +35,7 @@ export default function PersonaLandingPage({ params }: { params: { slug: string 
   }, [params.slug]);
 
   return (
-    <div className="min-h-screen bg-[#0A0A0F] text-white pb-24 sm:pb-0 overflow-x-hidden">
+    <div className="min-h-screen bg-[#0F0D0B] text-white pb-24 sm:pb-0 overflow-x-hidden">
       <LandingNav />
 
       {/* Schema.org markup */}
@@ -77,7 +77,7 @@ export default function PersonaLandingPage({ params }: { params: { slug: string 
             <HeroHeadline text={page.headline} />
           </Reveal>
           <Reveal delay={1}>
-            <p className="mt-6 text-lg text-[#A0A0B8] leading-relaxed max-w-2xl mx-auto">
+            <p className="mt-6 text-lg text-[#B0A898] leading-relaxed max-w-2xl mx-auto">
               {page.subheadline}
             </p>
           </Reveal>
@@ -88,7 +88,7 @@ export default function PersonaLandingPage({ params }: { params: { slug: string 
               </PulsingCTA>
               <a
                 href="#how-it-works"
-                className="rounded-xl border border-white/10 px-7 py-3.5 text-sm font-semibold text-[#A0A0B8] transition hover:border-white/20 hover:bg-white/5 active:scale-95"
+                className="rounded-xl border border-white/10 px-7 py-3.5 text-sm font-semibold text-[#B0A898] transition hover:border-white/20 hover:bg-white/5 active:scale-95"
               >
                 See how it works
               </a>
@@ -105,13 +105,13 @@ export default function PersonaLandingPage({ params }: { params: { slug: string 
           <div className="grid gap-6 sm:grid-cols-3">
             {page.painPoints.map((point, i) => (
               <Reveal key={i} delay={Math.min(i + 1, 3) as 1 | 2 | 3}>
-                <div className="h-full rounded-xl border border-white/10 bg-[#13131F] p-8 transition-all duration-300 hover:border-white/20 hover:-translate-y-1">
+                <div className="h-full rounded-xl border border-white/10 bg-[#151210] p-8 transition-all duration-300 hover:border-white/20 hover:-translate-y-1">
                   <div className="h-10 w-10 rounded-xl bg-[#7C5CFC]/10 flex items-center justify-center mb-5">
                     <svg className="h-5 w-5 text-[#7C5CFC]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
                     </svg>
                   </div>
-                  <p className="text-sm leading-relaxed text-[#A0A0B8]">{point}</p>
+                  <p className="text-sm leading-relaxed text-[#B0A898]">{point}</p>
                 </div>
               </Reveal>
             ))}
@@ -126,7 +126,7 @@ export default function PersonaLandingPage({ params }: { params: { slug: string 
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl mb-6">
               {page.solutionHeadline}
             </h2>
-            <p className="text-lg text-[#A0A0B8] leading-relaxed">
+            <p className="text-lg text-[#B0A898] leading-relaxed">
               {page.solutionBody}
             </p>
           </Reveal>
@@ -165,7 +165,7 @@ export default function PersonaLandingPage({ params }: { params: { slug: string 
                     {item.step}
                   </div>
                   <h3 className="text-lg font-bold mb-2">{item.title}</h3>
-                  <p className="text-sm text-[#A0A0B8] leading-relaxed">{item.desc}</p>
+                  <p className="text-sm text-[#B0A898] leading-relaxed">{item.desc}</p>
                 </div>
               </Reveal>
             ))}
@@ -186,14 +186,14 @@ export default function PersonaLandingPage({ params }: { params: { slug: string 
           <div className="grid gap-6 sm:grid-cols-3">
             {page.features.map((f, i) => (
               <Reveal key={i} delay={Math.min(i + 1, 3) as 1 | 2 | 3}>
-                <div className="rounded-xl border border-white/10 bg-[#13131F] p-6 transition-all duration-300 hover:border-white/20 hover:-translate-y-1">
+                <div className="rounded-xl border border-white/10 bg-[#151210] p-6 transition-all duration-300 hover:border-white/20 hover:-translate-y-1">
                   <div className="h-10 w-10 rounded-xl bg-[#7C5CFC]/10 flex items-center justify-center mb-4">
                     <svg className="h-5 w-5 text-[#7C5CFC]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
                     </svg>
                   </div>
                   <h3 className="text-base font-semibold mb-2">{f.title}</h3>
-                  <p className="text-sm text-[#A0A0B8] leading-relaxed">{f.description}</p>
+                  <p className="text-sm text-[#B0A898] leading-relaxed">{f.description}</p>
                 </div>
               </Reveal>
             ))}
@@ -205,7 +205,7 @@ export default function PersonaLandingPage({ params }: { params: { slug: string 
       <section className="px-6 py-24 sm:py-32">
         <div className="mx-auto max-w-2xl">
           <Reveal>
-            <div className="rounded-xl border border-[#7C5CFC]/20 bg-[#13131F] p-8 sm:p-10">
+            <div className="rounded-xl border border-[#7C5CFC]/20 bg-[#151210] p-8 sm:p-10">
               <div className="flex items-center gap-1 mb-4">
                 {[...Array(5)].map((_, i) => (
                   <svg key={i} className="h-4 w-4 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
@@ -213,7 +213,7 @@ export default function PersonaLandingPage({ params }: { params: { slug: string 
                   </svg>
                 ))}
               </div>
-              <blockquote className="text-base sm:text-lg text-[#A0A0B8] leading-relaxed italic mb-6">
+              <blockquote className="text-base sm:text-lg text-[#B0A898] leading-relaxed italic mb-6">
                 "{page.testimonial.quote}"
               </blockquote>
               <div className="flex items-center gap-3">
@@ -222,7 +222,7 @@ export default function PersonaLandingPage({ params }: { params: { slug: string 
                 </div>
                 <div>
                   <div className="text-sm font-semibold text-white">{page.testimonial.name}</div>
-                  <div className="text-xs text-[#A0A0B8]">{page.testimonial.detail}</div>
+                  <div className="text-xs text-[#B0A898]">{page.testimonial.detail}</div>
                 </div>
               </div>
             </div>
@@ -237,12 +237,12 @@ export default function PersonaLandingPage({ params }: { params: { slug: string 
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl mb-4">
               Simple pricing
             </h2>
-            <p className="text-[#A0A0B8] text-lg mb-10">
+            <p className="text-[#B0A898] text-lg mb-10">
               One plan. Everything included. Cancel anytime.
             </p>
           </Reveal>
           <Reveal delay={1}>
-            <div className="rounded-xl border border-white/10 bg-[#13131F] p-8 text-left">
+            <div className="rounded-xl border border-white/10 bg-[#151210] p-8 text-left">
               <div className="flex items-center justify-between mb-4">
                 <span className="text-sm font-semibold uppercase tracking-wider text-[#7C5CFC]">Pro</span>
                 <span className="rounded-full bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 text-xs font-semibold text-emerald-400">
@@ -251,9 +251,9 @@ export default function PersonaLandingPage({ params }: { params: { slug: string 
               </div>
               <p className="flex items-baseline gap-1 mb-6">
                 <span className="text-5xl font-extrabold">$12.99</span>
-                <span className="text-[#A0A0B8]">/month</span>
+                <span className="text-[#B0A898]">/month</span>
               </p>
-              <ul className="space-y-3 text-sm text-[#A0A0B8] mb-8">
+              <ul className="space-y-3 text-sm text-[#B0A898] mb-8">
                 {["Unlimited voice entries", "AI task & goal extraction", "Mood tracking & analytics", "Weekly insight reports", "Life Matrix dashboard", "Data export anytime"].map((f) => (
                   <li key={f} className="flex items-start gap-2.5">
                     <svg className="mt-0.5 h-4 w-4 shrink-0 text-[#7C5CFC]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
@@ -279,7 +279,7 @@ export default function PersonaLandingPage({ params }: { params: { slug: string 
       {/* ───── FINAL CTA ───── */}
       <section className="px-6 py-24 sm:py-32">
         <Reveal>
-          <div className="mx-auto max-w-4xl rounded-2xl bg-[#13131F] border border-white/10 p-12 sm:p-16 text-center relative overflow-hidden">
+          <div className="mx-auto max-w-4xl rounded-2xl bg-[#151210] border border-white/10 p-12 sm:p-16 text-center relative overflow-hidden">
             <div className="absolute top-0 right-0 h-72 w-72 rounded-full bg-[#7C5CFC]/10 -translate-y-1/3 translate-x-1/4 blur-3xl" />
             <div className="absolute bottom-0 left-0 h-56 w-56 rounded-full bg-[#7C5CFC]/10 translate-y-1/3 -translate-x-1/4 blur-3xl" />
             <div className="relative">
@@ -293,7 +293,7 @@ export default function PersonaLandingPage({ params }: { params: { slug: string 
                 >
                   Start Free Trial
                 </Link>
-                <span className="text-sm text-[#A0A0B8]">
+                <span className="text-sm text-[#B0A898]">
                   Then $12.99/month &middot; No card. 90 seconds to set up.
                 </span>
               </div>

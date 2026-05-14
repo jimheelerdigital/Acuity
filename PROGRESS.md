@@ -7,6 +7,65 @@
 
 ---
 
+## [2026-05-14] — Warm site color scheme + replace growth chart with emotional moments
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+
+The website now feels warmer. The cold, clinical blue-black backgrounds have been shifted to a very subtle warm-black across every page — homepage, all persona landing pages, therapy, sleep, founders, decoded, and weekly-report pages. The icy gray text has been replaced with warm gray. A new amber/gold accent color appears in step labels, the bottom CTA banner, and the new emotional moments section. Card borders are softer. The pricing card now has a warm amber glow instead of a cold purple one.
+
+The old "Growth you can see" line chart (Health, Career, Relationships trending upward over months) has been removed and replaced with three quote cards under the heading "The moments that make it worth it." Each card shows a real-sounding Acuity insight — like "You mentioned your sister 14 times this month. You haven't called her in 6 weeks." These are personal and emotional rather than clinical and data-heavy. Below the cards: "Yours will be different. That's the point."
+
+Also fixed: "Your mind has patterns. We decode them." → "We help you see them." The stat "94% say they'd miss it" → "94% still journaling after week one." Added a caption below the Life Matrix radar: "You don't have to do anything with this. It builds itself."
+
+### Technical changes (for Jimmy)
+
+**Color warmth (12 files):**
+- Body background: `#0B0B12` → `#0F0D0B` (layout.tsx)
+- Page backgrounds: `#0A0A0F` → `#0F0D0B` (all landing pages + components)
+- Card backgrounds: `#13131F` → `#151210`, `#1E1E2E` → `#1C1917`
+- Footer background: `#08080D` → `#0D0B09`
+- Muted text: `#A0A0B8` → `#B0A898` (warm gray), hero subtext: `#C0C0D0` → `#D0C8BC`
+- Card borders softened: `border-white/10` → `border-white/[0.06]`, `border-white/5` → `border-white/[0.04]`
+- `tailwind.config.ts`: Added `warm` color palette (amber, gold, muted, bg, card, card-inner)
+- `globals.css`: Pricing glow shifted from purple to amber. Added `.warm-card-hover` and `.animate-gentle-fade-up` utilities.
+
+**Emotional moments section (landing.tsx):**
+- Removed `GrowthChart` component and `GROWTH_LINES`/`MONTHS` data (~150 lines)
+- New section: 3 staggered reveal cards with speech bubble, sparkle, and heart icons. Amber accent icons and labels. Italic quote text in warm off-white `#F5F0EB`. Closing line below.
+
+**Bottom CTA banner (landing.tsx):**
+- Background: `bg-zinc-900` → `bg-[#1C1917]` with amber border `border-[#D4A574]/10`
+- Accent orbs: one violet, one amber
+- Label text and gradient shifted to amber → violet blend
+
+**Step labels (landing.tsx):**
+- "Step 1/2/3" pills: cool gray bg → amber-tinted `bg-[#D4A574]/10 text-[#D4A574]`
+
+**Cold spot fixes:**
+- `landing.tsx`: "We decode them" → "We help you see them"
+- `landing.tsx`: FAQ "every night" → "every day" (homepage FAQ, was missed in prior commit)
+- `landing.tsx`: Added Life Matrix caption "You don't have to do anything with this. It builds itself."
+- `social-proof.ts`: "Say they'd miss it" → "Still journaling after week one"
+
+**Files changed:** landing.tsx, landing-shared.tsx, layout.tsx, globals.css, tailwind.config.ts, social-proof.ts, sleep/page.tsx, therapy/page.tsx, founders/page.tsx, decoded/page.tsx, weekly-report/page.tsx, [slug]/page.tsx
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- The warm color shift is intentionally very subtle — RGB differences of 5-15 per channel. On most monitors it reads as "less icy" rather than "warm." This is by design.
+- The amber accent `#D4A574` is used sparingly — step labels, emotional moments section, bottom CTA, pricing glow. Purple remains the primary brand color for all CTA buttons and the main accent.
+- The GrowthChart component was fully removed (not just hidden). It referenced GROWTH_LINES and MONTHS constants that were also removed.
+- Card border opacity was reduced from 10% to 6% and from 5% to 4% — makes cards blend more gently instead of having sharp neon edges.
+
+---
+
 ## [2026-05-14] — Website copy overhaul: always-available positioning + broader gender appeal
 
 **Requested by:** Keenan
