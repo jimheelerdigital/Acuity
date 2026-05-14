@@ -7,7 +7,7 @@ export const metadata = {
   robots: { index: true, follow: true },
 };
 
-const LAST_UPDATED = "May 12, 2026";
+const LAST_UPDATED = "May 14, 2026";
 
 export default function PrivacyPage() {
   return (
@@ -126,12 +126,29 @@ export default function PrivacyPage() {
               data to train AI models. We do not sell or rent your data
               to anyone.
             </p>
+            <p className="mt-4">
+              <strong className="text-white">
+                Your consent to AI processing.
+              </strong>{" "}
+              On mobile (iOS), you are asked for explicit consent to
+              AI processing during onboarding, before any voice data
+              is uploaded. On the web, your continued use of the
+              service after reading this policy constitutes your
+              consent. You can withdraw consent at any time by
+              deleting your account &mdash; this stops all future
+              processing and removes your stored data per the
+              retention rules in Section 7.
+            </p>
           </Section>
 
           <Section id="subprocessors" title="3. Who we share data with">
             <p>
               We rely on a small set of vendors (&ldquo;subprocessors&rdquo;)
-              to operate the service. Each one receives only the data it
+              to operate the service. Each subprocessor provides
+              privacy and security protections at least equivalent to
+              those described in this Policy under the terms of their
+              respective data-processing agreements with us. Each one
+              receives only the data it
               needs to do its job, and each one&rsquo;s privacy policy
               applies to the data they handle:
             </p>

@@ -258,8 +258,14 @@ export default function SignInScreen() {
                 buttonType={
                   AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN
                 }
+                // Sign-in screen forces dark background (`dark:bg-[#0B0B12]`)
+                // — Apple HIG requires the button to contrast clearly with
+                // the surrounding canvas. BLACK style on dark made the
+                // button essentially invisible; build-40 review rejected
+                // under Guideline 4 for this reason. WHITE style is
+                // Apple's recommended choice for dark backgrounds.
                 buttonStyle={
-                  AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
+                  AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
                 }
                 cornerRadius={12}
                 style={{ width: "100%", height: 48 }}

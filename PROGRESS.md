@@ -20,6 +20,57 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 ---
 
+## [2026-05-14] — Build-40 App Review rejection fixes: Apple button contrast + mic UX + AI consent + privacy policy
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+
+Apple rejected build 40 on submission 5efec5f7 for four issues. Three are code fixes (the fourth — adding the Terms of Use link to the App Store description — is metadata-side and Jim handles in App Store Connect). The Sign in with Apple button was a dark button on a dark background, basically invisible; now it's white on dark and meets Apple HIG. The microphone permission screen had a Skip button that let users bypass the OS permission prompt entirely; Skip is gone and users must now interact with the iOS permission dialog before they can advance. New consent screen during onboarding explicitly tells users their voice transcripts go to OpenAI for transcription and Anthropic's Claude for analysis — they tap "I consent" to continue, "I don't consent" gives them retry-or-delete-account options. Privacy policy now spells out the in-app consent gate and adds the "equivalent data protection" language Apple requires.
+
+### Technical changes (for Jimmy)
+
+**Issue 1 — Apple Sign In button contrast (Guideline 4):**
+- `apps/mobile/app/(auth)/sign-in.tsx:262`: `AppleAuthenticationButtonStyle.BLACK` → `WHITE`. Inline comment cites build-40 rejection + Apple HIG rationale.
+- Only one site (sign-up.tsx has email/password only — no Apple button there).
+
+**Issue 2 — Microphone permission UX (Guideline 5.1.1(iv)):**
+- `apps/mobile/components/onboarding/step-4-microphone.tsx`:
+  - Button label "Grant access" → "Continue" ("Try again" stays for denied state — retry is not skip)
+  - `setCanContinue` no longer unconditional; now `status === "granted" || status === "denied"`. User MUST encounter the OS prompt before the shell footer's Continue enables. Docblock updated with guideline rationale.
+- `apps/mobile/components/onboarding/shell.tsx`: `DEFAULT_SKIPPABLE = [3, 4, 6, 9]` → `[3, 7, 10]`. Step 4 removed (no skip on mic permission) + remaining indices shifted +1 because the new AI consent step inserted at position 5.
+
+**Issue 4 — AI processing consent (Guidelines 5.1.1(i) + 5.1.2(i)):**
+- NEW `apps/mobile/components/onboarding/step-5-ai-consent.tsx` (~150 lines): explicit consent screen. Body names OpenAI Whisper (transcription) and Anthropic's Claude (extraction + narratives) with per-service icons + descriptions. "Your transcripts are NOT used to train AI models" callout. Primary "I consent" button captures consent; secondary "I don't consent" opens Alert with [Try again | Delete account]. Decline → deleteAccount() routes to sign-in via AuthGate.
+- `apps/mobile/components/onboarding/index.tsx`: imports `Step5AiConsent`; ONBOARDING_STEPS inserts new step at position 5, renumbers downstream 5→6 (practice), 6→7 (mood), 7→8 (life areas), 8→9 (trial), 9→10 (reminders), 10→11 (ready). Total step count 10 → 11. Inline comment notes that `step-5-practice.tsx` filename keeps "-5" for git history reasons; component now runs at position 6.
+- `apps/web/src/app/privacy/page.tsx`:
+  - §2: new "Your consent to AI processing" paragraph — explicit mobile in-app consent reference, web implicit-via-continued-use consent, withdraw via account deletion.
+  - §3: opening paragraph extended with "Each subprocessor provides privacy and security protections at least equivalent to those described in this Policy" — Apple's required equivalent-data-protection wording.
+  - LAST_UPDATED → May 14, 2026.
+
+**Issue 3 — EULA link in App Store description (Guideline 3.1.2(c)):** OUT OF SCOPE. Jim adds the `https://getacuity.io/terms` link directly to the App Store Description in App Store Connect (metadata-side, no code change).
+
+Per-slice gates: vitest 370/370 pass. Mobile tsc baseline 542 errors → 542 errors (identical, zero new). New step-5-ai-consent.tsx compiles cleanly. Web tsc clean for privacy/page.tsx.
+
+### Manual steps needed
+
+- [ ] **App Store description update** (Jimmy): ASC → My Apps → Acuity → Distribution → App Information → English → Description. Add a "Terms of Use: https://getacuity.io/terms" line (or paragraph) at the bottom of the description. Apple's 3.1.2(c) reject reason — must be present in the description text itself, not just the privacy policy field.
+- [ ] **EAS build 41** (Jimmy, awaiting explicit go-ahead): rebuild iOS to ship all four code fixes. Build 40 cannot be re-submitted as-is.
+- [ ] **Re-submit to App Review** (Jimmy): after build 41 installs + on-device verification + screenshot updates if any.
+- [ ] **v1.2 backlog — Free-tier-no-AI degraded mode**: for users who decline AI consent. Requires `User.aiProcessingConsent` boolean column, server-side pipeline gating in `/api/record` + downstream extraction, mobile UI states for "AI disabled" mode. Currently declined users hit a delete-or-retry Alert and never complete onboarding (sufficient for launch compliance — Apple cares about the consent-gate's existence, not the post-decline UX).
+- [ ] **Resend SPF DNS record** (Jimmy, still outstanding): `v=spf1 include:_spf.resend.com ~all` on getacuity.io TXT — long-term deliverability fix.
+
+### Notes
+
+- Apple's reject reason for #4 was the missing consent gate, not a deficiency in the privacy policy itself (which already named Anthropic + OpenAI). The new in-app consent screen is the substantive fix; the privacy policy edit just adds the explicit "you consented via the in-app gate" reference and the equivalent-protection clause Apple cites verbatim in 5.1.1(i).
+- For declined users: they remain authenticated but never complete onboarding, so AuthGate keeps routing them to /onboarding which puts them back at step 5. The "Delete account" Alert option is the explicit exit. This is intentionally narrow for v1.1 — the v1.2 backlog item expands this to a usable degraded mode.
+- The onboarding step renumbering is a one-time cost: any user mid-onboarding when this ships with onboardingStep >= 5 AND onboardingCompleted=false will see the new consent screen instead of their expected next step. Tiny user set; acceptable for launch. No backfill migration.
+- `step-5-practice.tsx` filename intentionally kept (component now runs at position 6) to preserve git history on that file. Rename would rotate blame without semantic value.
+
+---
+
 ## [2026-05-13] — AdLab: Human-readable names for campaigns, ads, and image downloads
 
 **Requested by:** Keenan

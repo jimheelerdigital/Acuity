@@ -10,10 +10,16 @@ import { useOnboarding } from "./context";
  * expo-av (already in the mobile bundle for the existing recording
  * flow). State machine: unknown → pending → granted / denied.
  *
- * Continue is always enabled — Acuity's dashboard nudges users to
- * grant later if they skip here, and the spec specifically says mic is
- * a soft step. A denied state shows a "Open Settings" link so users
- * can self-service the recovery path.
+ * Apple Guideline 5.1.1(iv) compliance (build-40 rejection): the
+ * primary CTA must say "Continue" (not "Grant access") and there must
+ * be no Skip escape hatch. The shell's footer "Continue" is gated on
+ * status !== "unknown" — meaning the user MUST tap the in-step
+ * Continue (which triggers the OS permission prompt) before
+ * advancing. Whether they grant or deny inside the OS dialog is up
+ * to them; what matters to Apple is that the OS prompt is reached.
+ *
+ * Step 4 was also removed from the shell's DEFAULT_SKIPPABLE so no
+ * footer Skip button appears here.
  */
 
 type Status = "unknown" | "pending" | "granted" | "denied";
@@ -31,12 +37,16 @@ export function Step4Microphone() {
         else if (r.status === "denied") setStatus("denied");
       })
       .catch(() => {
-        // No-op — stays "unknown" and the user can still tap Grant.
+        // No-op — stays "unknown" and the user can still tap Continue.
       });
   }, []);
 
   useEffect(() => {
-    setCanContinue(true);
+    // Apple 5.1.1(iv): user MUST encounter the OS prompt. Block the
+    // shell footer's Continue until they've either granted or denied
+    // (both states confirm the OS dialog was shown). "Pending" is
+    // mid-flight; "unknown" means the prompt was never triggered.
+    setCanContinue(status === "granted" || status === "denied");
     setCapturedData({ microphoneGranted: status === "granted" });
   }, [status, setCanContinue, setCapturedData]);
 
@@ -124,7 +134,7 @@ export function Step4Microphone() {
               className="rounded-full bg-violet-600 px-4 py-2.5"
             >
               <Text className="text-sm font-semibold text-white">
-                {status === "denied" ? "Try again" : "Grant access"}
+                {status === "denied" ? "Try again" : "Continue"}
               </Text>
             </Pressable>
           )}

@@ -48,7 +48,19 @@ interface Props {
   children: ReactNode;
 }
 
-const DEFAULT_SKIPPABLE = [3, 4, 6, 9];
+// Step indices that allow the footer "Skip" button. Two changes
+// applied 2026-05-14 for build-40 rejection:
+//   1. Step 4 (Microphone) removed — Apple Guideline 5.1.1(iv)
+//      requires the user reach the OS permission prompt, no skip
+//      escape hatch.
+//   2. Indices shifted +1 because the new "How Acuity uses AI"
+//      consent step was inserted at position 5. Old positions of
+//      Mood-baseline (was 6, now 7) and Reminders (was 9, now 10)
+//      remain skippable.
+// Step 5 (AI consent) is NOT skippable — declining triggers the
+// in-step Alert dialog with delete-or-retry options. See
+// step-5-ai-consent.tsx for rationale.
+const DEFAULT_SKIPPABLE = [3, 7, 10];
 
 export function OnboardingShell({
   step,
