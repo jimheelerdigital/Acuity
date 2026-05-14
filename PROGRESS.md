@@ -7,6 +7,53 @@
 
 ---
 
+## [2026-05-14] — Add directional slide animations, hero entrance, mockup float, fix testimonials
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+
+The homepage now has richer animations. The How It Works steps slide in from alternating sides — Record's text comes from the left while its mockup comes from the right, Extract reverses, Reflect alternates again. After the mockups appear, they gently float up and down continuously. The hero phone mockups fade in and scale up on page load. The James and Priya cards slide in from opposite sides. The testimonials section is back to a clean 3-column grid with staggered fade-in instead of the broken horizontal scroll.
+
+### Technical changes (for Jimmy)
+
+**New animation types added to the scroll useEffect (`landing.tsx`):**
+- `data-slide-left`: initial `translateX(-40px)`, animates to `translateX(0)` on intersection
+- `data-slide-right`: initial `translateX(40px)`, animates to `translateX(0)` on intersection
+- `data-float-after`: after element becomes visible, adds `animation: gentle-float 3s ease-in-out infinite` (6px oscillation)
+- All use the same IntersectionObserver as `data-animate`
+
+**Hero phone entrance (separate useEffect):**
+- `data-hero-phone` attribute on 3 phone elements (2 desktop, 1 mobile)
+- Initial: `opacity: 0, translateY(20px) scale(0.97)`
+- After 300ms delay: transitions to `opacity: 1, translateY(0) scale(1)` over 800ms
+- Staggered 200ms between phones
+
+**Gentle float keyframe injected via JS** to avoid CSS purge:
+- `document.createElement('style')` injects `@keyframes gentle-float` into `<head>` at runtime
+
+**How It Works steps:**
+- Step 1: text `data-slide-left`, mockup `data-slide-right data-float-after`
+- Step 2: text `data-slide-right`, mockup `data-slide-left data-float-after`
+- Step 3: text `data-slide-left`, mockup `data-slide-right data-float-after`
+
+**James/Priya:** James `data-slide-left`, Priya `data-slide-right`
+
+**Testimonials:** Reverted from broken rolling ticker to static 3-column grid. Each card has `data-animate` with staggered `data-delay` (0, 100, 200ms).
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- The debug console.logs from the prior commit are still in the useEffect. Remove them once animations are confirmed working in production.
+- The `gentle-float` keyframe is injected via JS and cleaned up on unmount (`style.remove()` in the useEffect cleanup).
+
+---
+
 ## [2026-05-14] — Scrap and rebuild scroll animations from scratch
 
 **Requested by:** Keenan

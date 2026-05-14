@@ -890,36 +890,95 @@ export function LandingPage() {
     }
   }, []);
 
+  // Hero phone entrance — runs once on mount, NOT scroll-triggered
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const phones = document.querySelectorAll('[data-hero-phone]');
+    phones.forEach((el) => {
+      const h = el as HTMLElement;
+      h.style.opacity = '0';
+      h.style.transform = 'translateY(20px) scale(0.97)';
+      h.style.transition = 'opacity 0.8s ease-out, transform 0.8s ease-out';
+    });
+    const timer = setTimeout(() => {
+      phones.forEach((el, i) => {
+        const h = el as HTMLElement;
+        setTimeout(() => {
+          h.style.opacity = '1';
+          h.style.transform = 'translateY(0) scale(1)';
+        }, i * 200);
+      });
+    }, 300);
+    return () => clearTimeout(timer);
+  }, []);
+
   // Scroll-triggered animations — pure inline styles, zero CSS classes, nothing to purge
   useEffect(() => {
-    console.log('[scroll-animate] useEffect fired');
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    const els = document.querySelectorAll('[data-animate]');
-    console.log('[scroll-animate] found elements:', els.length);
 
-    // Set initial hidden state via inline styles
-    els.forEach((el) => {
-      const htmlEl = el as HTMLElement;
-      htmlEl.style.opacity = '0';
-      htmlEl.style.transform = 'translateY(24px)';
-      htmlEl.style.transition = 'opacity 0.6s ease-out, transform 0.6s ease-out';
-      const delay = htmlEl.getAttribute('data-delay');
-      if (delay) htmlEl.style.transitionDelay = delay + 'ms';
+    // Inject float keyframe via JS so it can't be purged
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes gentle-float {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-6px); }
+      }
+    `;
+    document.head.appendChild(style);
+
+    // --- Fade-up elements ---
+    const fadeEls = document.querySelectorAll('[data-animate]');
+    fadeEls.forEach((el) => {
+      const h = el as HTMLElement;
+      h.style.opacity = '0';
+      h.style.transform = 'translateY(24px)';
+      h.style.transition = 'opacity 0.6s ease-out, transform 0.6s ease-out';
+      const delay = h.getAttribute('data-delay');
+      if (delay) h.style.transitionDelay = delay + 'ms';
     });
 
+    // --- Slide-left elements ---
+    const slideLeftEls = document.querySelectorAll('[data-slide-left]');
+    slideLeftEls.forEach((el) => {
+      const h = el as HTMLElement;
+      h.style.opacity = '0';
+      h.style.transform = 'translateX(-40px)';
+      h.style.transition = 'opacity 0.7s ease-out, transform 0.7s ease-out';
+    });
+
+    // --- Slide-right elements ---
+    const slideRightEls = document.querySelectorAll('[data-slide-right]');
+    slideRightEls.forEach((el) => {
+      const h = el as HTMLElement;
+      h.style.opacity = '0';
+      h.style.transform = 'translateX(40px)';
+      h.style.transition = 'opacity 0.7s ease-out, transform 0.7s ease-out';
+    });
+
+    // Single observer for all animated elements
     const obs = new IntersectionObserver((entries) => {
       entries.forEach((e) => {
         if (e.isIntersecting) {
           const t = e.target as HTMLElement;
           t.style.opacity = '1';
-          t.style.transform = 'translateY(0)';
+          t.style.transform = 'translateX(0) translateY(0)';
+          // If this is a mockup, add float animation after it appears
+          if (t.hasAttribute('data-float-after')) {
+            setTimeout(() => {
+              t.style.transition = 'none';
+              t.style.animation = 'gentle-float 3s ease-in-out infinite';
+            }, 800);
+          }
           obs.unobserve(t);
         }
       });
     }, { threshold: 0.1 });
 
-    els.forEach((el) => obs.observe(el));
-    return () => obs.disconnect();
+    fadeEls.forEach((el) => obs.observe(el));
+    slideLeftEls.forEach((el) => obs.observe(el));
+    slideRightEls.forEach((el) => obs.observe(el));
+
+    return () => { obs.disconnect(); style.remove(); };
   }, []);
 
   return (
@@ -1052,7 +1111,7 @@ export function LandingPage() {
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] lg:w-[400px] lg:h-[400px] rounded-full bg-[#7C5CFC]/15 blur-[80px] animate-pulse-slow" />
 
                 {/* Phone 1 (back) — Weekly Report — LIGHT MODE */}
-                <div className="absolute right-0 top-6 w-[200px] sm:w-[230px] lg:w-[260px] xl:w-[280px] h-[400px] sm:h-[450px] lg:h-[500px] xl:h-[540px] rounded-[2rem] bg-white p-2 shadow-2xl shadow-black/30 rotate-3 hero-float" style={{ animationDelay: "0.5s" }}>
+                <div data-hero-phone className="absolute right-0 top-6 w-[200px] sm:w-[230px] lg:w-[260px] xl:w-[280px] h-[400px] sm:h-[450px] lg:h-[500px] xl:h-[540px] rounded-[2rem] bg-white p-2 shadow-2xl shadow-black/30 rotate-3 hero-float" style={{ animationDelay: "0.5s" }}>
                   <div className="h-full w-full rounded-[1.5rem] bg-[#FAFAF7] p-4 flex flex-col gap-2.5 overflow-hidden">
                     <div className="flex items-center justify-between mb-1">
                       <div className="text-[10px] text-[#9E9890]">9:41</div>
@@ -1098,7 +1157,7 @@ export function LandingPage() {
                 </div>
 
                 {/* Phone 2 (front) — Today's Debrief — LIGHT MODE */}
-                <div className="absolute left-0 top-0 w-[200px] sm:w-[230px] lg:w-[260px] xl:w-[280px] h-[400px] sm:h-[450px] lg:h-[500px] xl:h-[540px] rounded-[2rem] bg-white p-2 shadow-2xl shadow-black/30 -rotate-3 z-10 hero-float" style={{ animationDelay: "0s" }}>
+                <div data-hero-phone className="absolute left-0 top-0 w-[200px] sm:w-[230px] lg:w-[260px] xl:w-[280px] h-[400px] sm:h-[450px] lg:h-[500px] xl:h-[540px] rounded-[2rem] bg-white p-2 shadow-2xl shadow-black/30 -rotate-3 z-10 hero-float" style={{ animationDelay: "0s" }}>
                   <div className="h-full w-full rounded-[1.5rem] bg-[#FAFAF7] p-4 flex flex-col gap-2.5 overflow-hidden">
                     <div className="flex items-center justify-between mb-1">
                       <div className="text-[10px] text-[#9E9890]">9:41</div>
@@ -1135,7 +1194,7 @@ export function LandingPage() {
           <div className="mt-8 flex justify-center lg:hidden">
               <div className="relative">
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[200px] h-[200px] rounded-full bg-[#7C5CFC]/15 blur-[60px] animate-pulse-slow" />
-                <div className="relative w-[220px] h-[380px] rounded-[2rem] bg-white p-2 shadow-2xl shadow-black/20 hero-float">
+                <div data-hero-phone className="relative w-[220px] h-[380px] rounded-[2rem] bg-white p-2 shadow-2xl shadow-black/20 hero-float">
                   <div className="h-full w-full rounded-[1.5rem] bg-[#FAFAF7] p-4 flex flex-col gap-2 overflow-hidden">
                     <div className="flex items-center justify-between mb-1">
                       <div className="text-[10px] text-[#9E9890]">9:41</div>
@@ -1265,8 +1324,8 @@ export function LandingPage() {
 
           <div className="space-y-16 sm:space-y-20">
             {/* Step 1: Record */}
-            <div className="flex flex-col gap-8 lg:items-center lg:flex-row" data-animate="">
-              <div className="flex-1">
+            <div className="flex flex-col gap-8 lg:items-center lg:flex-row">
+              <div className="flex-1" data-slide-left>
                   <div className="text-xs font-semibold text-[#E8DDD0] uppercase tracking-wider mb-4">
                     Step 1
                   </div>
@@ -1276,7 +1335,7 @@ export function LandingPage() {
                     worries, your wins — whatever comes to mind.
                   </p>
               </div>
-              <div className="flex-1 flex justify-center">
+              <div className="flex-1 flex justify-center" data-slide-right data-float-after>
                   <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-white p-2 shadow-xl shadow-black/20">
                     <div className="h-full w-full rounded-[2rem] bg-[#FAFAF7] p-5 flex flex-col overflow-hidden">
                       <div className="text-xs text-[#8A8480] font-medium mb-auto">
@@ -1307,8 +1366,8 @@ export function LandingPage() {
             </div>
 
             {/* Step 2: Extract */}
-            <div className="flex flex-col gap-8 lg:items-center lg:flex-row-reverse" data-animate="">
-              <div className="flex-1">
+            <div className="flex flex-col gap-8 lg:items-center lg:flex-row-reverse">
+              <div className="flex-1" data-slide-right>
                   <div className="text-xs font-semibold text-[#E8DDD0] uppercase tracking-wider mb-4">
                     Step 2
                   </div>
@@ -1318,7 +1377,7 @@ export function LandingPage() {
                     and your mood is scored. You didn&rsquo;t type a word.
                   </p>
               </div>
-              <div className="flex-1 flex justify-center">
+              <div className="flex-1 flex justify-center" data-slide-left data-float-after>
                   <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-white p-2 shadow-xl shadow-black/20">
                     <div className="h-full w-full rounded-[2rem] bg-[#FAFAF7] p-5 flex flex-col overflow-hidden">
                       <div className="text-xs text-[#8A8480] font-medium mb-3">
@@ -1346,8 +1405,8 @@ export function LandingPage() {
             </div>
 
             {/* Step 3: Reflect */}
-            <div className="flex flex-col gap-8 lg:items-center lg:flex-row" data-animate="">
-              <div className="flex-1">
+            <div className="flex flex-col gap-8 lg:items-center lg:flex-row">
+              <div className="flex-1" data-slide-left>
                   <div className="text-xs font-semibold text-[#E8DDD0] uppercase tracking-wider mb-4">
                     Step 3
                   </div>
@@ -1356,7 +1415,7 @@ export function LandingPage() {
                     Every Sunday morning, a 400-word narrative of your week. What weighed on you, what moved, what you kept coming back to.
                   </p>
               </div>
-              <div className="flex-1 flex justify-center">
+              <div className="flex-1 flex justify-center" data-slide-right data-float-after>
                   <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-white p-2 shadow-xl shadow-black/20">
                     <div className="h-full w-full rounded-[2rem] bg-[#FAFAF7] p-5 flex flex-col overflow-hidden">
                       <div className="text-xs text-[#8A8480] font-medium mb-3">
@@ -1455,7 +1514,7 @@ export function LandingPage() {
             </div>
 
           <div className="grid gap-8 sm:grid-cols-2">
-              <div className="rounded-2xl border border-white/[0.06] bg-[#1E1C1A] p-8" data-animate="">
+              <div className="rounded-2xl border border-white/[0.06] bg-[#1E1C1A] p-8" data-slide-left>
                 <div className="flex items-center gap-2 mb-4">
                   <div className="h-8 w-8 rounded-full bg-amber-500/10 flex items-center justify-center">
                     <svg className="h-4 w-4 text-[#E8DDD0]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" /></svg>
@@ -1476,7 +1535,7 @@ export function LandingPage() {
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-white/[0.06] bg-[#1E1C1A] p-8" data-animate data-delay="150">
+              <div className="rounded-2xl border border-white/[0.06] bg-[#1E1C1A] p-8" data-slide-right>
                 <div className="flex items-center gap-2 mb-4">
                   <div className="h-8 w-8 rounded-full bg-indigo-500/10 flex items-center justify-center">
                     <svg className="h-4 w-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" /></svg>
@@ -1500,9 +1559,9 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* ───── TESTIMONIALS — Rolling ticker ───── */}
-      <section className="py-16 sm:py-20 lg:py-24 overflow-hidden">
-        <div className="px-6 mx-auto max-w-6xl">
+      {/* ───── TESTIMONIALS ───── */}
+      <section className="px-6 py-16 sm:py-20 lg:py-24">
+        <div className="mx-auto max-w-6xl">
           <div data-animate>
             <h2 className="text-center text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
               What people say after week one
@@ -1511,33 +1570,27 @@ export function LandingPage() {
               The first weekly report is the moment it clicks.
             </p>
           </div>
-        </div>
 
-        <div className="mt-16 relative">
-          <div className="absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-[#181614] to-transparent z-10" />
-          <div className="absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-[#181614] to-transparent z-10" />
-          <div className="overflow-hidden">
-            <div className="flex gap-6 testimonial-ticker w-max">
-              {[...testimonials, ...testimonials, ...testimonials, ...testimonials].map((t, i) => (
-                <figure key={`${t.name}-${i}`} className="shrink-0 w-[340px] rounded-2xl border border-white/[0.06] bg-[#1E1C1A] p-6 shadow-sm">
-                  <div className="flex items-center gap-1 mb-4">
-                    <span className="text-[#E8DDD0] font-bold text-xs">{SOCIAL_PROOF.rating} ★</span>
+          <div className="mt-16 grid gap-8 sm:grid-cols-3">
+            {testimonials.map((t, i) => (
+              <figure key={t.name} className="group rounded-2xl border border-white/[0.06] bg-[#1E1C1A] p-6 shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1" data-animate data-delay={i * 100}>
+                <div className="flex items-center gap-1 mb-4">
+                  <span className="text-[#E8DDD0] font-bold text-xs">{SOCIAL_PROOF.rating} ★</span>
+                </div>
+                <blockquote className="text-sm leading-relaxed text-[#A0A0B8]">
+                  &ldquo;{t.quote}&rdquo;
+                </blockquote>
+                <figcaption className="mt-5 flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#252220] text-sm font-bold text-[#A0A0B8] transition-colors group-hover:bg-[#7C5CFC]/20 group-hover:text-[#7C5CFC]">
+                    {t.name[0]}
                   </div>
-                  <blockquote className="text-sm leading-relaxed text-[#A0A0B8]">
-                    &ldquo;{t.quote}&rdquo;
-                  </blockquote>
-                  <figcaption className="mt-5 flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#252220] text-sm font-bold text-[#A0A0B8]">
-                      {t.name[0]}
-                    </div>
-                    <div>
-                      <div className="text-sm font-semibold">{t.name}</div>
-                      <div className="text-xs text-[#A0A0B8]/60">{t.role}</div>
-                    </div>
-                  </figcaption>
-                </figure>
-              ))}
-            </div>
+                  <div>
+                    <div className="text-sm font-semibold">{t.name}</div>
+                    <div className="text-xs text-[#A0A0B8]/60">{t.role}</div>
+                  </div>
+                </figcaption>
+              </figure>
+            ))}
           </div>
         </div>
       </section>
