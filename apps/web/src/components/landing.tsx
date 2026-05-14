@@ -1490,76 +1490,7 @@ export function LandingPage() {
         </Reveal>
       </section>
 
-      {/* ───── EMOTIONAL MOMENTS ───── */}
-      <section className="px-6 py-16 sm:py-20 lg:py-24">
-        <div className="mx-auto max-w-5xl">
-          <Reveal>
-            <div className="text-center mb-16">
-              <p className="text-xs font-semibold uppercase tracking-widest text-[#E8B88A] mb-4">
-                Why it matters
-              </p>
-              <h2 className="text-3xl font-bold tracking-tight text-white sm:text-5xl">
-                The moments that make it worth it.
-              </h2>
-              <p className="mt-4 text-[#B0A898] text-lg max-w-xl mx-auto">
-                Real things Acuity has surfaced for people like you.
-              </p>
-            </div>
-          </Reveal>
-
-          <div className="grid gap-6 sm:grid-cols-3">
-            {[
-              {
-                icon: (
-                  <svg className="h-5 w-5 text-[#E8B88A]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a1.526 1.526 0 011.037-.443 48.282 48.282 0 005.68-.494c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
-                  </svg>
-                ),
-                quote: "You mentioned your sister 14 times this month. You haven\u2019t called her in 6 weeks.",
-                label: "From a weekly report",
-              },
-              {
-                icon: (
-                  <svg className="h-5 w-5 text-[#E8B88A]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
-                  </svg>
-                ),
-                quote: "Every Monday you talk about feeling behind. By Wednesday you\u2019ve caught up. You might not be behind \u2014 you might just hate Mondays.",
-                label: "Pattern detected after 3 weeks",
-              },
-              {
-                icon: (
-                  <svg className="h-5 w-5 text-[#E8B88A]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
-                  </svg>
-                ),
-                quote: "You said \u2018I feel like myself again\u2019 for the first time since March.",
-                label: "Spotted in an evening debrief",
-              },
-            ].map((card, i) => (
-              <Reveal key={i} delay={Math.min(i + 1, 3) as 1 | 2 | 3}>
-                <div className="rounded-2xl border border-[#E8B88A]/25 bg-[#252220] p-7 warm-card-hover h-full flex flex-col">
-                  <div className="h-10 w-10 rounded-xl bg-[#E8B88A]/10 flex items-center justify-center mb-5">
-                    {card.icon}
-                  </div>
-                  <blockquote className="text-base text-[#F5F0EB] leading-relaxed italic flex-1">
-                    &ldquo;{card.quote}&rdquo;
-                  </blockquote>
-                  <p className="mt-5 text-xs text-[#E8B88A] font-medium uppercase tracking-wider">
-                    {card.label}
-                  </p>
-                </div>
-              </Reveal>
-            ))}
-          </div>
-
-          <Reveal delay={3}>
-            <p className="text-center mt-12 text-[#B0A898] text-sm">
-              Yours will be different. That&rsquo;s the point.
-            </p>
-          </Reveal>
-        </div>
-      </section>
+      {/* ───── EMOTIONAL MOMENTS — removed by Keenan ───── */}
 
       {/* ───── USE-CASE SCENARIOS ───── */}
       <section className="px-6 py-16 sm:py-20 lg:py-24 bg-[#1E1C1A]/50">
