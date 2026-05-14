@@ -7,6 +7,35 @@
 
 ---
 
+## [2026-05-14] — Add scroll-triggered animations + simplify step label styling
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+
+The homepage now animates as you scroll — every section fades in softly as you reach it. The How It Works mockups slide in from alternating sides (Record from left, Extract from right, Reflect from left) and gently float after appearing. The James/Priya scenario cards slide in from opposite sides. The pricing card scales up when it enters view. The "60 seconds" text in the bottom CTA has a subtle breathing purple glow. People with motion sensitivity see everything immediately (no animations).
+
+Also simplified: the Step 1/2/3 labels are now plain text instead of amber pill badges, and the container boxes around each step were removed — the mockups provide enough visual interest on their own.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/globals.css`: Added `reveal-left`, `reveal-right`, `reveal-scale` directional variants with `will-change: transform, opacity`. Added `hero-phone-enter` (fade + scale on load, 800ms). Added `float-after-reveal` (5px gentle oscillation, 3s infinite). Added `text-glow-breathe` (purple text-shadow breathing, 3s). Added full `prefers-reduced-motion` media query that disables ALL animations site-wide. Stagger delays adjusted to 150ms increments.
+- `apps/web/src/components/landing.tsx`: `Reveal` component extended with `direction` prop ("left" | "right" | "scale"). How It Works: text from left/right alternating, mockups from opposite side + `float-after-reveal` class. James card: `direction="left"`, Priya card: `direction="right"`. Pricing card: `direction="scale"`. Hero phones: `hero-phone-enter` class with staggered delays. "60 seconds" CTA: `text-glow-breathe` class. Step labels: removed pill/badge styling, now plain text. Step containers removed (no more amber-bordered boxes).
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- The `prefers-reduced-motion` media query is important for accessibility — it disables all scroll animations, float effects, blob drifts, and the CTA glow for users who have motion sensitivity enabled in their OS settings.
+- The `float-after-reveal` class uses a separate animation from the reveal entrance, so the mockup images gently bob after they've faded in. This creates the "alive" feel without being distracting.
+- The directional reveal variants use the same cubic-bezier easing as the standard reveal for consistency.
+
+---
+
 ## [2026-05-14] — Amplify site warmth + redesign OG image with app mockup
 
 **Requested by:** Keenan

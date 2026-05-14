@@ -123,7 +123,7 @@ function WhoItsForDropdown() {
                 className="block px-4 py-2.5 transition-all duration-150 border-l-2 border-transparent hover:border-violet-500 hover:bg-white/5"
               >
                 <div className="text-sm font-medium text-white">{item.title}</div>
-                <div className="text-xs text-[#B0A898] mt-0.5 leading-snug">{item.description}</div>
+                <div className="text-xs text-[#A0A0B8] mt-0.5 leading-snug">{item.description}</div>
               </Link>
             ))}
           </div>
@@ -134,7 +134,7 @@ function WhoItsForDropdown() {
               <div>
                 <span className="text-[10px] font-semibold uppercase tracking-widest text-[#7C5CFC] block mb-2">Mental Health</span>
                 {WHO_MENTAL.map((item) => (
-                  <Link key={item.href} href={item.href} onClick={close} className="block py-1.5 text-sm text-[#B0A898] transition hover:text-white">
+                  <Link key={item.href} href={item.href} onClick={close} className="block py-1.5 text-sm text-[#A0A0B8] transition hover:text-white">
                     {item.label}
                   </Link>
                 ))}
@@ -142,7 +142,7 @@ function WhoItsForDropdown() {
               <div>
                 <span className="text-[10px] font-semibold uppercase tracking-widest text-[#7C5CFC] block mb-2">Lifestyle</span>
                 {WHO_LIFESTYLE.map((item) => (
-                  <Link key={item.href} href={item.href} onClick={close} className="block py-1.5 text-sm text-[#B0A898] transition hover:text-white">
+                  <Link key={item.href} href={item.href} onClick={close} className="block py-1.5 text-sm text-[#A0A0B8] transition hover:text-white">
                     {item.label}
                   </Link>
                 ))}
@@ -150,7 +150,7 @@ function WhoItsForDropdown() {
               <div>
                 <span className="text-[10px] font-semibold uppercase tracking-widest text-[#7C5CFC] block mb-2">Professionals</span>
                 {WHO_PROS.map((item) => (
-                  <Link key={item.href} href={item.href} onClick={close} className="block py-1.5 text-sm text-[#B0A898] transition hover:text-white">
+                  <Link key={item.href} href={item.href} onClick={close} className="block py-1.5 text-sm text-[#A0A0B8] transition hover:text-white">
                     {item.label}
                   </Link>
                 ))}
@@ -191,16 +191,19 @@ function Reveal({
   children,
   className = "",
   delay = 0,
+  direction,
 }: {
   children: React.ReactNode;
   className?: string;
   delay?: number;
+  direction?: "left" | "right" | "scale";
 }) {
   const ref = useReveal();
+  const base = direction === "left" ? "reveal-left" : direction === "right" ? "reveal-right" : direction === "scale" ? "reveal-scale" : "reveal";
   return (
     <div
       ref={ref}
-      className={`reveal ${delay ? `reveal-delay-${delay}` : ""} ${className}`}
+      className={`${base} ${delay ? `reveal-delay-${delay}` : ""} ${className}`}
     >
       {children}
     </div>
@@ -499,7 +502,7 @@ function CostComparison() {
             >
               {line.fraction}
             </span>
-            <span className="text-lg text-[#B0A898]">{line.label}</span>
+            <span className="text-lg text-[#A0A0B8]">{line.label}</span>
           </div>
           {!line.highlight && (
             <div className="h-2 w-full rounded-full bg-white/10 overflow-hidden">
@@ -784,7 +787,7 @@ function LifeMatrixRadar() {
                   {activeArea.target}/100
                 </span>
               </div>
-              <p className="text-sm text-[#B0A898] leading-relaxed">
+              <p className="text-sm text-[#A0A0B8] leading-relaxed">
                 {AREA_INSIGHTS[activeArea.label]}
               </p>
             </div>
@@ -793,7 +796,7 @@ function LifeMatrixRadar() {
               {MATRIX_AREAS.map((area) => (
                 <div key={area.label} className="flex items-center gap-3">
                   <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: area.color }} />
-                  <span className="text-sm font-medium text-[#B0A898] w-28">{area.label}</span>
+                  <span className="text-sm font-medium text-[#A0A0B8] w-28">{area.label}</span>
                   <div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden">
                     <div className="h-full rounded-full transition-all duration-1000" style={{ backgroundColor: area.color, width: `${area.target}%` }} />
                   </div>
@@ -802,7 +805,7 @@ function LifeMatrixRadar() {
               ))}
             </div>
           ) : (
-            <div className="text-sm text-[#B0A898]/60 italic">
+            <div className="text-sm text-[#A0A0B8]/60 italic">
               Mapping your life areas...
             </div>
           )}
@@ -944,7 +947,7 @@ export function LandingPage() {
               <Image src="/AcuityLogoDark.png" alt="Acuity logo" width={24} height={24} className="shrink-0" />
               <span className="text-lg font-bold tracking-tight">Acuity</span>
             </Link>
-            <div className="hidden sm:flex items-center gap-6 text-sm text-[#B0A898]">
+            <div className="hidden sm:flex items-center gap-6 text-sm text-[#A0A0B8]">
               <a
                 href="#"
                 className="transition hover:text-white relative after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-0 after:bg-violet-100/500 after:transition-all hover:after:w-full"
@@ -975,7 +978,7 @@ export function LandingPage() {
           <div className="flex items-center gap-4">
             <Link
               href="/auth/signin"
-              className="text-sm font-medium text-[#B0A898] transition hover:text-white"
+              className="text-sm font-medium text-[#A0A0B8] transition hover:text-white"
             >
               Sign in
             </Link>
@@ -1013,7 +1016,7 @@ export function LandingPage() {
               </Reveal>
 
               <Reveal delay={2}>
-                <p className="mt-8 text-base text-[#D0C8BC] leading-relaxed max-w-lg mx-auto lg:mx-0">
+                <p className="mt-8 text-base text-[#C0C0D0] leading-relaxed max-w-lg mx-auto lg:mx-0">
                   Acuity is the AI voice journal that turns your daily debrief into action. Talk any time of day — it catches your tasks, tracks the goals you keep circling, and surfaces the patterns you can&rsquo;t see on your own.
                 </p>
               </Reveal>
@@ -1031,7 +1034,7 @@ export function LandingPage() {
                       Start Free Trial
                     </span>
                   </Link>
-                  <p className="text-xs text-[#B0A898]">
+                  <p className="text-xs text-[#A0A0B8]">
                     No card. 90 seconds to set up.
                   </p>
                 </div>
@@ -1052,12 +1055,12 @@ export function LandingPage() {
                   </Link>
                   <a
                     href="#how-it-works"
-                    className="rounded-xl border border-white/[0.06] px-7 py-3.5 text-sm font-semibold text-[#B0A898] transition hover:border-white/30 hover:bg-white/10 active:scale-95"
+                    className="rounded-xl border border-white/[0.06] px-7 py-3.5 text-sm font-semibold text-[#A0A0B8] transition hover:border-white/30 hover:bg-white/10 active:scale-95"
                   >
                     See how it works
                   </a>
                 </div>
-                <p className="mt-3 text-xs text-[#B0A898] hidden lg:block">
+                <p className="mt-3 text-xs text-[#A0A0B8] hidden lg:block">
                   No card. 90 seconds to set up.
                 </p>
               </Reveal>
@@ -1070,7 +1073,7 @@ export function LandingPage() {
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] lg:w-[400px] lg:h-[400px] rounded-full bg-[#7C5CFC]/15 blur-[80px] animate-pulse-slow" />
 
                 {/* Phone 1 (back) — Weekly Report — LIGHT MODE */}
-                <div className="absolute right-0 top-6 w-[200px] sm:w-[230px] lg:w-[260px] xl:w-[280px] h-[400px] sm:h-[450px] lg:h-[500px] xl:h-[540px] rounded-[2rem] bg-white p-2 shadow-2xl shadow-black/30 rotate-3 animate-float">
+                <div className="absolute right-0 top-6 w-[200px] sm:w-[230px] lg:w-[260px] xl:w-[280px] h-[400px] sm:h-[450px] lg:h-[500px] xl:h-[540px] rounded-[2rem] bg-white p-2 shadow-2xl shadow-black/30 rotate-3 hero-phone-enter animate-float" style={{ animationDelay: "0.5s" }}>
                   <div className="h-full w-full rounded-[1.5rem] bg-[#FAFAF7] p-4 flex flex-col gap-2.5 overflow-hidden">
                     <div className="flex items-center justify-between mb-1">
                       <div className="text-[10px] text-[#9E9890]">9:41</div>
@@ -1116,7 +1119,7 @@ export function LandingPage() {
                 </div>
 
                 {/* Phone 2 (front) — Today's Debrief — LIGHT MODE */}
-                <div className="absolute left-0 top-0 w-[200px] sm:w-[230px] lg:w-[260px] xl:w-[280px] h-[400px] sm:h-[450px] lg:h-[500px] xl:h-[540px] rounded-[2rem] bg-white p-2 shadow-2xl shadow-black/30 -rotate-3 z-10 animate-float">
+                <div className="absolute left-0 top-0 w-[200px] sm:w-[230px] lg:w-[260px] xl:w-[280px] h-[400px] sm:h-[450px] lg:h-[500px] xl:h-[540px] rounded-[2rem] bg-white p-2 shadow-2xl shadow-black/30 -rotate-3 z-10 hero-phone-enter animate-float" style={{ animationDelay: "0.2s" }}>
                   <div className="h-full w-full rounded-[1.5rem] bg-[#FAFAF7] p-4 flex flex-col gap-2.5 overflow-hidden">
                     <div className="flex items-center justify-between mb-1">
                       <div className="text-[10px] text-[#9E9890]">9:41</div>
@@ -1190,9 +1193,9 @@ export function LandingPage() {
             <Reveal>
               <div className="mx-auto max-w-2xl flex flex-col sm:flex-row items-center justify-center gap-4 text-center">
             <div className="flex items-center gap-1">
-              <span className="text-[#E8B88A] font-bold text-sm">{SOCIAL_PROOF.rating} ★</span>
+              <span className="text-[#E8DDD0] font-bold text-sm">{SOCIAL_PROOF.rating} ★</span>
             </div>
-            <p className="text-sm text-[#B0A898]">
+            <p className="text-sm text-[#A0A0B8]">
               Join {SOCIAL_PROOF.underHeroCount} people already using Acuity
             </p>
               </div>
@@ -1214,7 +1217,7 @@ export function LandingPage() {
                     prefix={stat.prefix}
                   />
                 </div>
-                <div className="mt-1 text-sm text-[#B0A898]">{stat.label}</div>
+                <div className="mt-1 text-sm text-[#A0A0B8]">{stat.label}</div>
               </Reveal>
             ))}
           </div>
@@ -1226,7 +1229,7 @@ export function LandingPage() {
       <section className="py-10 px-6 overflow-hidden">
         <div className="mx-auto max-w-2xl text-center">
           <Reveal>
-            <h3 className="text-lg font-semibold text-[#B0A898]">
+            <h3 className="text-lg font-semibold text-[#A0A0B8]">
               Used by people who want to understand themselves
             </h3>
           </Reveal>
@@ -1234,7 +1237,7 @@ export function LandingPage() {
             {["S", "M", "P", "A", "J", "R"].map((letter, i) => (
               <div
                 key={i}
-                className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-[#181614] bg-[#252220] text-sm font-semibold text-[#B0A898] transition-all hover:scale-110 hover:z-10 cursor-default opacity-0 animate-fade-in-up"
+                className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-[#181614] bg-[#252220] text-sm font-semibold text-[#A0A0B8] transition-all hover:scale-110 hover:z-10 cursor-default opacity-0 animate-fade-in-up"
                 style={{ animationDelay: `${i * 100}ms`, animationFillMode: 'forwards' }}
               >
                 {letter}
@@ -1265,7 +1268,7 @@ export function LandingPage() {
               {[...tickerItems, ...tickerItems, ...tickerItems].map((item, i) => (
                 <span
                   key={i}
-                  className="shrink-0 text-sm font-medium text-[#B0A898]/60 whitespace-nowrap"
+                  className="shrink-0 text-sm font-medium text-[#A0A0B8]/60 whitespace-nowrap"
                 >
                   {item}
                 </span>
@@ -1283,31 +1286,30 @@ export function LandingPage() {
               <h2 className="text-3xl font-bold tracking-tight sm:text-5xl">
                 How it works
               </h2>
-              <p className="mt-4 text-[#B0A898] text-lg">
+              <p className="mt-4 text-[#A0A0B8] text-lg">
                 Three steps. Sixty seconds. Zero effort.
               </p>
             </div>
           </Reveal>
 
-          <div className="space-y-10 sm:space-y-14">
+          <div className="space-y-16 sm:space-y-20">
             {/* Step 1: Record */}
-            <div className="rounded-2xl border border-[#E8B88A]/10 bg-[#1E1C1A] p-6 sm:p-10">
             <div className="flex flex-col gap-8 lg:items-center lg:flex-row">
               <div className="flex-1">
-                <Reveal>
-                  <div className="inline-flex items-center gap-2 rounded-full bg-[#E8B88A]/10 px-3 py-1 text-xs font-semibold text-[#E8B88A] uppercase tracking-wider mb-4">
+                <Reveal direction="left">
+                  <div className="text-xs font-semibold text-[#E8DDD0] uppercase tracking-wider mb-4">
                     Step 1
                   </div>
                   <h3 className="text-3xl font-bold sm:text-4xl">Record</h3>
-                  <p className="mt-4 text-lg text-[#B0A898] leading-relaxed max-w-md">
+                  <p className="mt-4 text-lg text-[#A0A0B8] leading-relaxed max-w-md">
                     Hit record. Speak freely for 60 seconds about your day, your
                     worries, your wins — whatever comes to mind.
                   </p>
                 </Reveal>
               </div>
               <div className="flex-1 flex justify-center">
-                <Reveal delay={1}>
-                  <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-white p-2 shadow-xl shadow-black/20">
+                <Reveal delay={1} direction="right">
+                  <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-white p-2 shadow-xl shadow-black/20 float-after-reveal">
                     <div className="h-full w-full rounded-[2rem] bg-[#FAFAF7] p-5 flex flex-col overflow-hidden">
                       <div className="text-xs text-[#8A8480] font-medium mb-auto">
                         Recording
@@ -1336,26 +1338,24 @@ export function LandingPage() {
                 </Reveal>
               </div>
             </div>
-            </div>
 
             {/* Step 2: Extract */}
-            <div className="rounded-2xl border border-[#E8B88A]/10 bg-[#1E1C1A] p-6 sm:p-10">
             <div className="flex flex-col gap-8 lg:items-center lg:flex-row-reverse">
               <div className="flex-1">
-                <Reveal>
-                  <div className="inline-flex items-center gap-2 rounded-full bg-[#E8B88A]/10 px-3 py-1 text-xs font-semibold text-[#E8B88A] uppercase tracking-wider mb-4">
+                <Reveal direction="right">
+                  <div className="text-xs font-semibold text-[#E8DDD0] uppercase tracking-wider mb-4">
                     Step 2
                   </div>
                   <h3 className="text-3xl font-bold sm:text-4xl">Extract</h3>
-                  <p className="mt-4 text-lg text-[#B0A898] leading-relaxed max-w-md">
+                  <p className="mt-4 text-lg text-[#A0A0B8] leading-relaxed max-w-md">
                     By morning, your tasks are on a list, your goals are tracked,
                     and your mood is scored. You didn&rsquo;t type a word.
                   </p>
                 </Reveal>
               </div>
               <div className="flex-1 flex justify-center">
-                <Reveal delay={1}>
-                  <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-white p-2 shadow-xl shadow-black/20">
+                <Reveal delay={1} direction="left">
+                  <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-white p-2 shadow-xl shadow-black/20 float-after-reveal">
                     <div className="h-full w-full rounded-[2rem] bg-[#FAFAF7] p-5 flex flex-col overflow-hidden">
                       <div className="text-xs text-[#8A8480] font-medium mb-3">
                         AI Extraction
@@ -1381,25 +1381,23 @@ export function LandingPage() {
                 </Reveal>
               </div>
             </div>
-            </div>
 
             {/* Step 3: Reflect */}
-            <div className="rounded-2xl border border-[#E8B88A]/10 bg-[#1E1C1A] p-6 sm:p-10">
             <div className="flex flex-col gap-8 lg:items-center lg:flex-row">
               <div className="flex-1">
-                <Reveal>
-                  <div className="inline-flex items-center gap-2 rounded-full bg-[#E8B88A]/10 px-3 py-1 text-xs font-semibold text-[#E8B88A] uppercase tracking-wider mb-4">
+                <Reveal direction="left">
+                  <div className="text-xs font-semibold text-[#E8DDD0] uppercase tracking-wider mb-4">
                     Step 3
                   </div>
                   <h3 className="text-3xl font-bold sm:text-4xl">Reflect</h3>
-                  <p className="mt-4 text-lg text-[#B0A898] leading-relaxed max-w-md">
+                  <p className="mt-4 text-lg text-[#A0A0B8] leading-relaxed max-w-md">
                     Every Sunday morning, a 400-word narrative of your week. What weighed on you, what moved, what you kept coming back to.
                   </p>
                 </Reveal>
               </div>
               <div className="flex-1 flex justify-center">
-                <Reveal delay={1}>
-                  <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-white p-2 shadow-xl shadow-black/20">
+                <Reveal delay={1} direction="right">
+                  <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-white p-2 shadow-xl shadow-black/20 float-after-reveal">
                     <div className="h-full w-full rounded-[2rem] bg-[#FAFAF7] p-5 flex flex-col overflow-hidden">
                       <div className="text-xs text-[#8A8480] font-medium mb-3">
                         Weekly Report
@@ -1429,7 +1427,6 @@ export function LandingPage() {
                 </Reveal>
               </div>
             </div>
-            </div>
           </div>
         </div>
       </section>
@@ -1440,7 +1437,7 @@ export function LandingPage() {
           {/* Header */}
           <Reveal>
             <div className="text-center mb-16">
-              <p className="text-xs font-semibold uppercase tracking-widest text-[#E8B88A] mb-4">
+              <p className="text-xs font-semibold uppercase tracking-widest text-[#E8DDD0] mb-4">
                 Life Matrix
               </p>
               <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-5xl">
@@ -1450,7 +1447,7 @@ export function LandingPage() {
                   We help you see them.
                 </span>
               </h2>
-              <p className="mt-4 text-[#B0A898] text-base max-w-xl mx-auto">
+              <p className="mt-4 text-[#A0A0B8] text-base max-w-xl mx-auto">
                 Every debrief maps your strengths, surfaces your blind spots,
                 and shows you exactly where to focus next.
               </p>
@@ -1462,7 +1459,7 @@ export function LandingPage() {
             <LifeMatrixRadar />
           </Reveal>
           <Reveal delay={2}>
-            <p className="text-center mt-8 text-sm text-[#B0A898]/70 italic">
+            <p className="text-center mt-8 text-sm text-[#A0A0B8]/70 italic">
               You don&rsquo;t have to do anything with this. It builds itself.
             </p>
           </Reveal>
@@ -1483,7 +1480,7 @@ export function LandingPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
               </svg>
             </Link>
-            <p className="mt-3 text-sm text-[#B0A898]">
+            <p className="mt-3 text-sm text-[#A0A0B8]">
               No card required · Cancel anytime
             </p>
           </div>
@@ -1499,27 +1496,27 @@ export function LandingPage() {
             <h2 className="text-center text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl mb-4">
               Fits your life. Not the other way around.
             </h2>
-            <p className="text-center text-[#B0A898] text-lg mb-16 max-w-xl mx-auto">
+            <p className="text-center text-[#A0A0B8] text-lg mb-16 max-w-xl mx-auto">
               People use Acuity at different times, in different places, for different reasons. Here are two.
             </p>
           </Reveal>
 
           <div className="grid gap-8 sm:grid-cols-2">
-            <Reveal delay={1}>
+            <Reveal delay={1} direction="left">
               <div className="rounded-2xl border border-white/[0.06] bg-[#1E1C1A] p-8">
                 <div className="flex items-center gap-2 mb-4">
                   <div className="h-8 w-8 rounded-full bg-amber-500/10 flex items-center justify-center">
-                    <svg className="h-4 w-4 text-[#E8B88A]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" /></svg>
+                    <svg className="h-4 w-4 text-[#E8DDD0]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" /></svg>
                   </div>
-                  <span className="text-xs font-semibold uppercase tracking-wider text-[#E8B88A]">Morning</span>
+                  <span className="text-xs font-semibold uppercase tracking-wider text-[#E8DDD0]">Morning</span>
                 </div>
                 <h3 className="text-lg font-bold text-white mb-3">James, 34 — over morning coffee</h3>
-                <p className="text-sm text-[#B0A898] leading-relaxed">
+                <p className="text-sm text-[#A0A0B8] leading-relaxed">
                   &ldquo;Yesterday&rsquo;s meeting with the team still bothers me. I think what&rsquo;s really going on is I feel like no one heard my idea. Also need to call the insurance company and finish that proposal...&rdquo;
                 </p>
                 <div className="mt-4 rounded-lg border border-white/[0.04] bg-[#252220] p-3">
                   <div className="text-[10px] text-violet-400 uppercase tracking-wider mb-1">Acuity extracted</div>
-                  <div className="text-xs text-[#B0A898] space-y-1">
+                  <div className="text-xs text-[#A0A0B8] space-y-1">
                     <div>&#x2022; Feeling unheard at work (recurring theme — 4th mention)</div>
                     <div>&#x2022; Call insurance company</div>
                     <div>&#x2022; Finish proposal</div>
@@ -1528,7 +1525,7 @@ export function LandingPage() {
               </div>
             </Reveal>
 
-            <Reveal delay={2}>
+            <Reveal delay={2} direction="right">
               <div className="rounded-2xl border border-white/[0.06] bg-[#1E1C1A] p-8">
                 <div className="flex items-center gap-2 mb-4">
                   <div className="h-8 w-8 rounded-full bg-indigo-500/10 flex items-center justify-center">
@@ -1537,12 +1534,12 @@ export function LandingPage() {
                   <span className="text-xs font-semibold uppercase tracking-wider text-indigo-400">Evening</span>
                 </div>
                 <h3 className="text-lg font-bold text-white mb-3">Priya, 29 — winding down after a long day</h3>
-                <p className="text-sm text-[#B0A898] leading-relaxed">
+                <p className="text-sm text-[#A0A0B8] leading-relaxed">
                   &ldquo;Good day actually. Got through the presentation and it went better than I expected. I&rsquo;m proud of myself for not overthinking it. Need to remember to book the flights for next month...&rdquo;
                 </p>
                 <div className="mt-4 rounded-lg border border-white/[0.04] bg-[#252220] p-3">
                   <div className="text-[10px] text-violet-400 uppercase tracking-wider mb-1">Acuity extracted</div>
-                  <div className="text-xs text-[#B0A898] space-y-1">
+                  <div className="text-xs text-[#A0A0B8] space-y-1">
                     <div>&#x2022; Mood: confident, relieved (up from anxious yesterday)</div>
                     <div>&#x2022; Book flights for next month</div>
                     <div>&#x2022; Pattern: confidence rises after facing fears</div>
@@ -1562,7 +1559,7 @@ export function LandingPage() {
             <h2 className="text-center text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
               What people say after week one
             </h2>
-            <p className="mx-auto mt-4 text-center text-[#B0A898] text-lg">
+            <p className="mx-auto mt-4 text-center text-[#A0A0B8] text-lg">
               The first weekly report is the moment it clicks.
             </p>
           </Reveal>
@@ -1572,18 +1569,18 @@ export function LandingPage() {
               <Reveal key={t.name} delay={Math.min(i + 1, 3) as 1 | 2 | 3}>
                 <figure className="group rounded-2xl border border-white/[0.06] bg-[#1E1C1A] p-6 shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
                   <div className="flex items-center gap-1 mb-4">
-                    <span className="text-[#E8B88A] font-bold text-xs">{SOCIAL_PROOF.rating} ★</span>
+                    <span className="text-[#E8DDD0] font-bold text-xs">{SOCIAL_PROOF.rating} ★</span>
                   </div>
-                  <blockquote className="text-sm leading-relaxed text-[#B0A898]">
+                  <blockquote className="text-sm leading-relaxed text-[#A0A0B8]">
                     "{t.quote}"
                   </blockquote>
                   <figcaption className="mt-5 flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#252220] text-sm font-bold text-[#B0A898] transition-colors group-hover:bg-[#7C5CFC]/20 group-hover:text-[#7C5CFC]">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#252220] text-sm font-bold text-[#A0A0B8] transition-colors group-hover:bg-[#7C5CFC]/20 group-hover:text-[#7C5CFC]">
                       {t.name[0]}
                     </div>
                     <div>
                       <div className="text-sm font-semibold">{t.name}</div>
-                      <div className="text-xs text-[#B0A898]/60">{t.role}</div>
+                      <div className="text-xs text-[#A0A0B8]/60">{t.role}</div>
                     </div>
                   </figcaption>
                 </figure>
@@ -1598,7 +1595,7 @@ export function LandingPage() {
         <div className="mx-auto max-w-3xl flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
           {["Audio deleted within 24hrs", "No card required", "Cancel anytime", "30-day free trial"].map((item, i) => (
             <Reveal key={i} delay={Math.min(i, 3) as 0 | 1 | 2 | 3}>
-              <div className="flex items-center gap-2 text-sm text-[#B0A898]">
+              <div className="flex items-center gap-2 text-sm text-[#A0A0B8]">
                 <svg className="h-4 w-4 text-emerald-400 shrink-0 animate-check-pulse" style={{ animationDelay: `${i * 0.5}s` }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
                 </svg>
@@ -1616,31 +1613,31 @@ export function LandingPage() {
             <h2 className="text-3xl font-bold tracking-tight sm:text-5xl">
               Simple pricing
             </h2>
-            <p className="mt-4 text-[#B0A898] text-lg">
+            <p className="mt-4 text-[#A0A0B8] text-lg">
               One plan. Everything included. Cancel anytime.
             </p>
           </Reveal>
 
-          <Reveal delay={1}>
+          <Reveal delay={1} direction="scale">
             <div className="mt-12 relative group">
               {/* Shimmer border effect */}
-              <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-r from-[#E8B88A]/60 via-[#E8B88A]/30 to-[#E8B88A]/60 opacity-0 group-hover:opacity-100 transition-opacity duration-500 animate-shimmer blur-[1px]" />
+              <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-r from-[#E8DDD0]/60 via-[#E8DDD0]/30 to-[#E8DDD0]/60 opacity-0 group-hover:opacity-100 transition-opacity duration-500 animate-shimmer blur-[1px]" />
 
-              <div className="relative rounded-2xl border border-[#E8B88A]/20 bg-[#1E1C1A] p-8 text-left shadow-sm animate-pricing-glow">
-                <p className="text-sm font-semibold uppercase tracking-wider text-[#E8B88A]">
+              <div className="relative rounded-2xl border border-[#E8DDD0]/20 bg-[#1E1C1A] p-8 text-left shadow-sm animate-pricing-glow">
+                <p className="text-sm font-semibold uppercase tracking-wider text-[#E8DDD0]">
                   Pro
                 </p>
                 <p className="mt-4 flex items-baseline gap-1">
                   <span className="text-5xl font-extrabold">
                     $12.99
                   </span>
-                  <span className="text-[#B0A898]">/month</span>
+                  <span className="text-[#A0A0B8]">/month</span>
                 </p>
-                <p className="mt-2 text-sm text-[#B0A898]">
+                <p className="mt-2 text-sm text-[#A0A0B8]">
                   No card. 90 seconds to set up.
                 </p>
 
-                <ul className="mt-8 space-y-3 text-sm text-[#B0A898]">
+                <ul className="mt-8 space-y-3 text-sm text-[#A0A0B8]">
                   {pricingFeatures.map((f) => (
                     <li key={f} className="flex items-start gap-2.5">
                       <svg
@@ -1681,7 +1678,7 @@ export function LandingPage() {
       <section className="px-6 py-16 sm:py-20">
         <div className="mx-auto max-w-3xl text-center">
           <Reveal>
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/5 px-4 py-1.5 text-sm text-[#B0A898] mb-6">
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/5 px-4 py-1.5 text-sm text-[#A0A0B8] mb-6">
               <svg className="h-4 w-4 text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
               FAQ
             </span>
@@ -1692,7 +1689,7 @@ export function LandingPage() {
             </h2>
           </Reveal>
           <Reveal delay={2}>
-            <p className="text-[#B0A898] mb-4 max-w-xl mx-auto">
+            <p className="text-[#A0A0B8] mb-4 max-w-xl mx-auto">
               Have questions about Acuity and how it turns your daily debrief into action? Our FAQs cover everything you need to get started.
             </p>
           </Reveal>
@@ -1715,12 +1712,12 @@ export function LandingPage() {
                 <details key={i} className="group">
                   <summary className="flex cursor-pointer items-center justify-between px-6 py-5 text-left">
                     <h3 className="text-base font-semibold text-white pr-4">{faq.q}</h3>
-                    <span className="shrink-0 text-[#B0A898] transition-transform duration-300 group-open:rotate-45 text-xl leading-none">+</span>
+                    <span className="shrink-0 text-[#A0A0B8] transition-transform duration-300 group-open:rotate-45 text-xl leading-none">+</span>
                   </summary>
                   <div className="faq-answer">
                     <div>
                       <div className="px-6 pb-5">
-                        <p className="text-sm text-[#B0A898] leading-relaxed">{faq.a}</p>
+                        <p className="text-sm text-[#A0A0B8] leading-relaxed">{faq.a}</p>
                       </div>
                     </div>
                   </div>
@@ -1734,23 +1731,23 @@ export function LandingPage() {
       {/* ───── CTA BANNER ───── */}
       <section className="px-6 py-16 sm:py-20">
         <Reveal>
-          <div className="mx-auto max-w-4xl rounded-3xl bg-[#252220] p-6 sm:p-12 lg:p-16 text-center text-white relative overflow-hidden border border-[#E8B88A]/10">
+          <div className="mx-auto max-w-4xl rounded-3xl bg-[#252220] p-6 sm:p-12 lg:p-16 text-center text-white relative overflow-hidden border border-[#E8DDD0]/10">
             {/* Subtle animated accents */}
-            <div className="absolute top-0 right-0 h-72 w-72 rounded-full bg-[#E8B88A]/10 -translate-y-1/3 translate-x-1/4 blur-3xl animate-blob-drift" />
+            <div className="absolute top-0 right-0 h-72 w-72 rounded-full bg-[#E8DDD0]/10 -translate-y-1/3 translate-x-1/4 blur-3xl animate-blob-drift" />
             <div className="absolute bottom-0 left-0 h-56 w-56 rounded-full bg-violet-600/15 translate-y-1/3 -translate-x-1/4 blur-3xl animate-blob-drift-2" />
 
             <div className="relative">
-              <p className="text-sm font-medium text-[#E8B88A] mb-4 uppercase tracking-wider">
+              <p className="text-sm font-medium text-[#E8DDD0] mb-4 uppercase tracking-wider">
                 No card. 90 seconds to set up.
               </p>
               <h2 className="text-3xl font-bold sm:text-5xl tracking-tight">
                 Your first debrief takes
                 <br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-indigo-400">
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-indigo-400 text-glow-breathe">
                   60 seconds.
                 </span>
               </h2>
-              <p className="mt-5 text-[#B0A898] text-lg max-w-md mx-auto">
+              <p className="mt-5 text-[#A0A0B8] text-lg max-w-md mx-auto">
                 Start today. Wake up to extracted tasks, tracked goals, and a
                 clearer picture of your life.
               </p>
@@ -1765,7 +1762,7 @@ export function LandingPage() {
                     Start Free Trial
                   </span>
                 </Link>
-                <span className="text-sm text-[#B0A898]">
+                <span className="text-sm text-[#A0A0B8]">
                   Then $12.99/month · cancel anytime
                 </span>
               </div>
@@ -1786,20 +1783,20 @@ export function LandingPage() {
                   Acuity
                 </span>
               </div>
-              <p className="mt-3 text-sm text-[#B0A898] max-w-xs leading-relaxed">
+              <p className="mt-3 text-sm text-[#A0A0B8] max-w-xs leading-relaxed">
                 Talk for 60 seconds. Wake up to a clearer picture of your life. Your daily shutdown ritual.
               </p>
               <div className="mt-6 flex items-center gap-4">
-                <a href="https://apps.apple.com" aria-label="Download on iPhone" className="inline-flex items-center gap-2 rounded-lg border border-white/[0.06] bg-white/5 px-3 py-2 text-xs text-[#B0A898] transition hover:text-white hover:border-white/20">
+                <a href="https://apps.apple.com" aria-label="Download on iPhone" className="inline-flex items-center gap-2 rounded-lg border border-white/[0.06] bg-white/5 px-3 py-2 text-xs text-[#A0A0B8] transition hover:text-white hover:border-white/20">
                   <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
                   iPhone
                 </a>
-                <a href="https://play.google.com" aria-label="Download on Android" className="inline-flex items-center gap-2 rounded-lg border border-white/[0.06] bg-white/5 px-3 py-2 text-xs text-[#B0A898] transition hover:text-white hover:border-white/20">
+                <a href="https://play.google.com" aria-label="Download on Android" className="inline-flex items-center gap-2 rounded-lg border border-white/[0.06] bg-white/5 px-3 py-2 text-xs text-[#A0A0B8] transition hover:text-white hover:border-white/20">
                   <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M3.18 23.04L13.3 12.96 3.18.96C2.55 1.2 2.13 1.8 2.13 2.52v18.96c0 .72.42 1.32 1.05 1.56zm1.38.66l11.28-6.36-2.52-2.46-8.76 8.82zm14.64-8.28c.48-.3.78-.78.78-1.38s-.3-1.08-.78-1.38L16.2 11.4l-2.76 2.76 2.76 2.76 3-.48zm-14.64-8.7l8.76 8.82 2.52-2.46L4.56 6.72z"/></svg>
                   Android
                 </a>
               </div>
-              <p className="mt-6 text-xs text-[#B0A898]">
+              <p className="mt-6 text-xs text-[#A0A0B8]">
                 Need help? <a href="mailto:hello@getacuity.io" className="text-violet-400 hover:text-violet-300 transition">hello@getacuity.io</a>
               </p>
             </div>
@@ -1807,7 +1804,7 @@ export function LandingPage() {
             {/* Link columns */}
             <div>
               <h3 className="text-xs font-semibold uppercase tracking-wider text-white/80 mb-4">Product</h3>
-              <ul className="space-y-3 text-sm text-[#B0A898]">
+              <ul className="space-y-3 text-sm text-[#A0A0B8]">
                 <li><a href="/" className="transition hover:text-white hover:underline underline-offset-4">Home</a></li>
                 <li><a href="/auth/signup" className="transition hover:text-white hover:underline underline-offset-4">Start Free Trial</a></li>
                 <li><a href="/auth/signin" className="transition hover:text-white hover:underline underline-offset-4">Sign In</a></li>
@@ -1818,7 +1815,7 @@ export function LandingPage() {
             </div>
             <div>
               <h3 className="text-xs font-semibold uppercase tracking-wider text-white/80 mb-4">Resources</h3>
-              <ul className="space-y-3 text-sm text-[#B0A898]">
+              <ul className="space-y-3 text-sm text-[#A0A0B8]">
                 <li><a href="/voice-journaling" className="transition hover:text-white hover:underline underline-offset-4">Voice Journaling Guide</a></li>
                 <li><a href="/blog" className="transition hover:text-white hover:underline underline-offset-4">Blog</a></li>
                 <li><a href="/#weekly-report" className="transition hover:text-white hover:underline underline-offset-4">Weekly Report</a></li>
@@ -1827,7 +1824,7 @@ export function LandingPage() {
             </div>
             <div>
               <h3 className="text-xs font-semibold uppercase tracking-wider text-white/80 mb-4">Company</h3>
-              <ul className="space-y-3 text-sm text-[#B0A898]">
+              <ul className="space-y-3 text-sm text-[#A0A0B8]">
                 <li><a href="/terms" className="transition hover:text-white hover:underline underline-offset-4">Terms</a></li>
                 <li><a href="/privacy" className="transition hover:text-white hover:underline underline-offset-4">Privacy</a></li>
                 <li><a href="mailto:hello@getacuity.io" className="transition hover:text-white hover:underline underline-offset-4">Contact</a></li>
@@ -1837,10 +1834,10 @@ export function LandingPage() {
           </div>
 
           <div className="mt-12 pt-8 border-t border-white/[0.06] flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p className="text-xs text-[#B0A898]">
+            <p className="text-xs text-[#A0A0B8]">
               &copy; {new Date().getFullYear()} Acuity. All rights reserved.
             </p>
-            <div className="flex items-center gap-6 text-xs text-[#B0A898]">
+            <div className="flex items-center gap-6 text-xs text-[#A0A0B8]">
               <a href="/terms" className="transition hover:text-white">Terms</a>
               <a href="/privacy" className="transition hover:text-white">Privacy</a>
               <a href="mailto:hello@getacuity.io" className="transition hover:text-white">Support</a>
@@ -1862,7 +1859,7 @@ export function LandingPage() {
               Start Free Trial
             </span>
           </Link>
-          <p className="mt-1.5 text-center text-xs text-[#B0A898]">
+          <p className="mt-1.5 text-center text-xs text-[#A0A0B8]">
             No card. 90 seconds to set up.
           </p>
         </div>
