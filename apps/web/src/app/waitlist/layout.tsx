@@ -11,14 +11,14 @@ export const metadata: Metadata = {
       "Try Acuity free for 14 days. The AI voice journal app that turns your daily debrief into tasks, goal tracking, mood tracking, and weekly reports.",
     url: "https://getacuity.io/waitlist",
     siteName: "Acuity",
-    images: [{ url: "/og-image.png", width: 1200, height: 630 }],
+    images: [{ url: "/og-image.png?v=2", width: 1200, height: 630 }],
   },
   twitter: {
     card: "summary_large_image",
     title: "Start Your Free Trial — 14-Day Free Trial",
     description:
       "Try Acuity free for 14 days. The AI voice journal that turns your daily debrief into tasks, mood tracking, and weekly reports.",
-    images: ["/og-image.png"],
+    images: ["/og-image.png?v=2"],
   },
 };
 

@@ -153,7 +153,7 @@ function BlogJsonLdStatic({
         "@type": "BlogPosting",
         headline: post.title,
         description: post.metaDescription,
-        image: "https://getacuity.io/og-image.png",
+        image: "https://getacuity.io/og-image.png?v=2",
         datePublished: post.publishedAt,
         dateModified: post.updatedAt,
         author: {
@@ -209,7 +209,7 @@ function BlogJsonLdDynamic({ post }: { post: DynamicPost }) {
         "@type": "BlogPosting",
         headline: post.title,
         description,
-        image: post.heroImageUrl ?? "https://getacuity.io/og-image.png",
+        image: post.heroImageUrl ?? "https://getacuity.io/og-image.png?v=2",
         datePublished: publishedAt,
         dateModified: publishedAt,
         author: {

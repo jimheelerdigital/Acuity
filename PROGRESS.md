@@ -7,6 +7,36 @@
 
 ---
 
+## [2026-05-14] — Update Open Graph social share image to match new branding
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+
+When someone shares an Acuity link on Facebook, Twitter, LinkedIn, or iMessage, the preview card now shows the new branding instead of the old "Brain dump daily. Get your life back." tagline. The new image has the Acuity diamond logo on the warm dark background with "One minute a day. A life of clarity." in the amber accent color and "The AI voice journal that listens." underneath. Clean and premium — matches the updated site.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/public/og-image.png`: Regenerated at 1200x630px with warm dark background (#0F0D0B), transparent logo, warm off-white "Acuity" text (#F5F0EB), amber tagline (#D4A574), muted gray subtext (#B0A898), subtle purple radial glow center, thin amber accent line.
+- `apps/web/public/og-image.jpg`: Deleted (unused duplicate of old image).
+- All og:image and twitter:image references across 11 files updated with `?v=2` cache-bust param: layout.tsx, blog/page.tsx, blog/[slug]/page.tsx, voice-journaling/page.tsx, waitlist/layout.tsx, and all /for/* layout files (sleep, therapy, founders, decoded, weekly-report, [slug]).
+
+### Manual steps needed
+
+- [ ] **Clear Facebook OG cache** (Keenan): Go to https://developers.facebook.com/tools/debug/ → paste https://getacuity.io → click "Scrape Again" to force Facebook to fetch the new image.
+- [ ] **Clear Twitter card cache** (Keenan): Go to https://cards-dev.twitter.com/validator → paste https://getacuity.io → preview the new card.
+- [ ] **Clear LinkedIn cache** (Keenan): Go to https://www.linkedin.com/post-inspector/ → paste https://getacuity.io → click "Inspect" to refresh.
+- [ ] **Verify iMessage/Slack**: Send the link in a DM to yourself to confirm the new preview renders.
+
+### Notes
+
+- Social platforms cache OG images aggressively (Facebook up to 30 days, LinkedIn up to 7 days). The `?v=2` query param forces a cache miss when the debugger tools scrape, but organic shares may still show the old image until Keenan manually clears each platform's cache using the tools above.
+- The OG image was generated programmatically with Python/Pillow using system fonts. If the font rendering looks off on high-DPI previews, a designer-exported version would be ideal but this is production-ready.
+
+---
+
 ## [2026-05-14] — Warm site color scheme + replace growth chart with emotional moments
 
 **Requested by:** Keenan

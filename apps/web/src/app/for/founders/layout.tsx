@@ -12,14 +12,14 @@ export const metadata: Metadata = {
       "The AI journal that extracts tasks, tracks goals, and writes your weekly report automatically. The daily journal app built for founders and executives.",
     url: "https://getacuity.io/for/founders",
     siteName: "Acuity",
-    images: [{ url: "/og-image.png", width: 1200, height: 630 }],
+    images: [{ url: "/og-image.png?v=2", width: 1200, height: 630 }],
   },
   twitter: {
     card: "summary_large_image",
     title: "Acuity for Founders — The 60-Second Daily Debrief for High Performers",
     description:
       "The AI journal that extracts tasks, tracks goals, and writes your weekly report automatically. Built for founders.",
-    images: ["/og-image.png"],
+    images: ["/og-image.png?v=2"],
   },
 };
 

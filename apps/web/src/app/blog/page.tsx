@@ -16,14 +16,14 @@ export const metadata: Metadata = {
       "Articles on AI journaling, voice journaling, personal productivity, mood tracking, and building a daily journal habit.",
     url: "https://getacuity.io/blog",
     siteName: "Acuity",
-    images: [{ url: "/og-image.png", width: 1200, height: 630 }],
+    images: [{ url: "/og-image.png?v=2", width: 1200, height: 630 }],
   },
   twitter: {
     card: "summary_large_image",
     title: "Blog — Acuity",
     description:
       "Articles on AI journaling, voice journaling, personal productivity, and mood tracking.",
-    images: ["/og-image.png"],
+    images: ["/og-image.png?v=2"],
   },
 };
 

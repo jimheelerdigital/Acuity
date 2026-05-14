@@ -15,7 +15,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
       description: page.metaDescription,
       url: `https://getacuity.io/for/${params.slug}`,
       siteName: "Acuity",
-      images: [{ url: "/og-image.png", width: 1200, height: 630 }],
+      images: [{ url: "/og-image.png?v=2", width: 1200, height: 630 }],
     },
     twitter: {
       card: "summary_large_image",

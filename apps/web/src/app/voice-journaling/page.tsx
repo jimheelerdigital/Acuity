@@ -13,14 +13,14 @@ export const metadata: Metadata = {
     url: "https://getacuity.io/voice-journaling",
     type: "article",
     siteName: "Acuity",
-    images: [{ url: "/og-image.png", width: 1200, height: 630 }],
+    images: [{ url: "/og-image.png?v=2", width: 1200, height: 630 }],
   },
   twitter: {
     card: "summary_large_image",
     title: "Voice Journaling: The Complete Guide",
     description:
       "Why a voice journal beats typing — and how to start your daily debrief tonight.",
-    images: ["/og-image.png"],
+    images: ["/og-image.png?v=2"],
   },
 };
 
