@@ -7,6 +7,40 @@
 
 ---
 
+## [2026-05-14] — Fix scroll animations: resolve CSS conflicts, stagger FAQ items
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+
+The scroll animations that were added earlier weren't actually working — most sections appeared immediately instead of fading in as you scroll. Three bugs were causing this: (1) the floating animation on mockup images was overriding the fade-in, so mockups were visible before the reveal triggered; (2) the hero phone entrance animation was conflicting with the float animation on the same element; (3) the FAQ items were all wrapped in one big Reveal instead of individual ones, so they all appeared at once. All three are now fixed — every section below the fold should animate in as you scroll to it.
+
+### Technical changes (for Jimmy)
+
+**CSS conflict fixes (`globals.css`):**
+- `float-after-reveal`: no longer sets animation by default. Only activates via `.reveal-right.visible .float-after-reveal` (etc.) so the float waits for the parent reveal to complete before starting.
+- `hero-phone-enter`: now uses comma-separated animation shorthand (`hero-phone-in 0.8s both, float 5s 1s infinite`) so the entrance and subsequent float don't conflict. Removed `animate-float` class from hero phone elements.
+
+**FAQ stagger (`landing.tsx`):**
+- Each FAQ `<details>` item now wrapped in its own `<Reveal>` with staggered delay (`delay={Math.min(i, 5)}`), so they appear one at a time from top to bottom as you scroll.
+- Removed the outer `<Reveal delay={2}>` that was wrapping the entire FAQ list.
+
+**Mobile preview:** Replaced `animate-float` with `hero-phone-enter` for consistent entrance animation.
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- The root cause of animations not working was CSS animation conflicts — when `animation:` is set on an element, it overrides `transform` values set by classes, making `opacity: 0; transform: translateX(40px)` ineffective because the animation immediately sets its own transform.
+- The fix pattern: animations that should run _after_ a reveal must be on child elements or gated behind `.visible` parent selectors.
+- The `prefers-reduced-motion` media query still disables all animations for accessibility.
+
+---
+
 ## [2026-05-14] — Add scroll-triggered animations + simplify step label styling
 
 **Requested by:** Keenan

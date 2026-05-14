@@ -1073,7 +1073,7 @@ export function LandingPage() {
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] lg:w-[400px] lg:h-[400px] rounded-full bg-[#7C5CFC]/15 blur-[80px] animate-pulse-slow" />
 
                 {/* Phone 1 (back) — Weekly Report — LIGHT MODE */}
-                <div className="absolute right-0 top-6 w-[200px] sm:w-[230px] lg:w-[260px] xl:w-[280px] h-[400px] sm:h-[450px] lg:h-[500px] xl:h-[540px] rounded-[2rem] bg-white p-2 shadow-2xl shadow-black/30 rotate-3 hero-phone-enter animate-float" style={{ animationDelay: "0.5s" }}>
+                <div className="absolute right-0 top-6 w-[200px] sm:w-[230px] lg:w-[260px] xl:w-[280px] h-[400px] sm:h-[450px] lg:h-[500px] xl:h-[540px] rounded-[2rem] bg-white p-2 shadow-2xl shadow-black/30 rotate-3 hero-phone-enter" style={{ animationDelay: "0.5s" }}>
                   <div className="h-full w-full rounded-[1.5rem] bg-[#FAFAF7] p-4 flex flex-col gap-2.5 overflow-hidden">
                     <div className="flex items-center justify-between mb-1">
                       <div className="text-[10px] text-[#9E9890]">9:41</div>
@@ -1119,7 +1119,7 @@ export function LandingPage() {
                 </div>
 
                 {/* Phone 2 (front) — Today's Debrief — LIGHT MODE */}
-                <div className="absolute left-0 top-0 w-[200px] sm:w-[230px] lg:w-[260px] xl:w-[280px] h-[400px] sm:h-[450px] lg:h-[500px] xl:h-[540px] rounded-[2rem] bg-white p-2 shadow-2xl shadow-black/30 -rotate-3 z-10 hero-phone-enter animate-float" style={{ animationDelay: "0.2s" }}>
+                <div className="absolute left-0 top-0 w-[200px] sm:w-[230px] lg:w-[260px] xl:w-[280px] h-[400px] sm:h-[450px] lg:h-[500px] xl:h-[540px] rounded-[2rem] bg-white p-2 shadow-2xl shadow-black/30 -rotate-3 z-10 hero-phone-enter" style={{ animationDelay: "0.2s" }}>
                   <div className="h-full w-full rounded-[1.5rem] bg-[#FAFAF7] p-4 flex flex-col gap-2.5 overflow-hidden">
                     <div className="flex items-center justify-between mb-1">
                       <div className="text-[10px] text-[#9E9890]">9:41</div>
@@ -1157,7 +1157,7 @@ export function LandingPage() {
             <Reveal delay={4}>
               <div className="relative">
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[200px] h-[200px] rounded-full bg-[#7C5CFC]/15 blur-[60px] animate-pulse-slow" />
-                <div className="relative w-[220px] h-[380px] rounded-[2rem] bg-white p-2 shadow-2xl shadow-black/20 animate-float">
+                <div className="relative w-[220px] h-[380px] rounded-[2rem] bg-white p-2 shadow-2xl shadow-black/20 hero-phone-enter">
                   <div className="h-full w-full rounded-[1.5rem] bg-[#FAFAF7] p-4 flex flex-col gap-2 overflow-hidden">
                     <div className="flex items-center justify-between mb-1">
                       <div className="text-[10px] text-[#9E9890]">9:41</div>
@@ -1695,8 +1695,7 @@ export function LandingPage() {
           </Reveal>
         </div>
         <div className="mx-auto max-w-3xl mt-8">
-          <Reveal delay={2}>
-            <div className="rounded-2xl border border-white/[0.06] bg-[#1E1C1A] divide-y divide-white/10">
+            <div className="rounded-2xl border border-white/[0.06] bg-[#1E1C1A] divide-y divide-white/[0.06]">
               {[
                 { q: "What is Acuity and how does it work?", a: "Acuity is a daily shutdown ritual. You talk for 60 seconds about whatever is on your mind — tasks, worries, ideas, things that happened. By morning, your tasks are on a list, your mood is scored, and your goals are tracked. Every Sunday, a 400-word story of your week lands on your phone. You talk. Acuity does the rest." },
                 { q: "Is this actually private?", a: "Your audio is deleted within 24 hours of transcription. Transcripts are encrypted at rest. We use OpenAI Whisper for transcription and Anthropic Claude for analysis — under their API terms, your data is processed and returned, never used to train their models. We never sell your data." },
@@ -1709,7 +1708,8 @@ export function LandingPage() {
                 { q: "Can I use Acuity on my phone?", a: "Yes. Acuity works on iPhone and Android. You can also use it on the web at getacuity.io. Your data syncs across devices." },
                 { q: "What is the weekly report?", a: "Every Sunday morning, Acuity writes you a 400-word narrative of your week. It covers what you worked on, what kept coming up, how your mood shifted, and what patterns are forming. People tell us it's the most useful part of the app." },
               ].map((faq, i) => (
-                <details key={i} className="group">
+                <Reveal key={i} delay={Math.min(i, 5) as 0 | 1 | 2 | 3 | 4 | 5}>
+                <details className="group">
                   <summary className="flex cursor-pointer items-center justify-between px-6 py-5 text-left">
                     <h3 className="text-base font-semibold text-white pr-4">{faq.q}</h3>
                     <span className="shrink-0 text-[#A0A0B8] transition-transform duration-300 group-open:rotate-45 text-xl leading-none">+</span>
@@ -1722,9 +1722,9 @@ export function LandingPage() {
                     </div>
                   </div>
                 </details>
+                </Reveal>
               ))}
             </div>
-          </Reveal>
         </div>
       </section>
 
