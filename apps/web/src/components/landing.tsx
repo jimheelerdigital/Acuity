@@ -892,6 +892,7 @@ export function LandingPage() {
 
   // Hero phone entrance — runs once on mount, NOT scroll-triggered
   useEffect(() => {
+    console.log('[hero-phone] useEffect fired');
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const phones = document.querySelectorAll('[data-hero-phone]');
     phones.forEach((el) => {
@@ -914,7 +915,10 @@ export function LandingPage() {
 
   // Scroll-triggered animations — pure inline styles, zero CSS classes, nothing to purge
   useEffect(() => {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    console.log('[scroll-animate] useEffect fired');
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    console.log('[scroll-animate] prefers-reduced-motion:', reducedMotion);
+    if (reducedMotion) return;
 
     // Inject float keyframe via JS so it can't be purged
     const style = document.createElement('style');
