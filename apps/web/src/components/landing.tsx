@@ -407,7 +407,7 @@ function CascadingTasks({
       {tasks.map((task, i) => (
         <div
           key={task.text}
-          className="flex items-center gap-2 text-xs text-[#B0A898] transition-all duration-500"
+          className="flex items-center gap-2 text-xs text-inherit transition-all duration-500"
           style={{
             opacity: i < visibleCount ? 1 : 0,
             transform: i < visibleCount ? "translateX(0)" : "translateX(20px)",
@@ -417,7 +417,7 @@ function CascadingTasks({
             className={`h-3.5 w-3.5 rounded border shrink-0 flex items-center justify-center transition-colors duration-300 ${
               task.checked
                 ? "border-emerald-500 bg-emerald-500"
-                : "border-white/20"
+                : "border-zinc-400/40"
             }`}
           >
             {task.checked && (
@@ -1069,121 +1069,79 @@ export function LandingPage() {
                 {/* Ambient glow behind phones */}
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] lg:w-[400px] lg:h-[400px] rounded-full bg-[#7C5CFC]/15 blur-[80px] animate-pulse-slow" />
 
-                {/* Phone 1 (back) — Weekly Report */}
-                <div className="absolute right-0 top-6 w-[200px] sm:w-[230px] lg:w-[260px] xl:w-[280px] h-[400px] sm:h-[450px] lg:h-[500px] xl:h-[540px] rounded-[2rem] bg-[#252220] p-2 shadow-2xl shadow-black/40 rotate-3 animate-float">
-                  <div className="h-full w-full rounded-[1.5rem] bg-[#1E1C1A] p-4 flex flex-col gap-2.5 overflow-hidden">
-                    {/* Status bar */}
+                {/* Phone 1 (back) — Weekly Report — LIGHT MODE */}
+                <div className="absolute right-0 top-6 w-[200px] sm:w-[230px] lg:w-[260px] xl:w-[280px] h-[400px] sm:h-[450px] lg:h-[500px] xl:h-[540px] rounded-[2rem] bg-white p-2 shadow-2xl shadow-black/30 rotate-3 animate-float">
+                  <div className="h-full w-full rounded-[1.5rem] bg-[#F5F5F5] p-4 flex flex-col gap-2.5 overflow-hidden">
                     <div className="flex items-center justify-between mb-1">
-                      <div className="text-[10px] text-[#B0A898]/60">9:41</div>
+                      <div className="text-[10px] text-zinc-400">9:41</div>
                       <div className="flex gap-1">
-                        <div className="h-1.5 w-3 rounded-full bg-white/20" />
-                        <div className="h-1.5 w-1.5 rounded-full bg-white/20" />
+                        <div className="h-1.5 w-3 rounded-full bg-zinc-300" />
+                        <div className="h-1.5 w-1.5 rounded-full bg-zinc-300" />
                       </div>
                     </div>
-                    <div className="text-xs text-white font-semibold">
-                      Weekly Report
-                    </div>
-                    <div className="text-[10px] text-[#B0A898]/60">
-                      Apr 14 – Apr 20
-                    </div>
-                    <div className="rounded-xl border border-white/[0.06] bg-[#252220] p-3 shadow-sm">
-                      <div className="text-[10px] text-[#B0A898] mb-2">
-                        Mood This Week
-                      </div>
+                    <div className="text-xs text-[#1a1a1a] font-semibold">Weekly Report</div>
+                    <div className="text-[10px] text-zinc-400">Apr 14 – Apr 20</div>
+                    <div className="rounded-xl border border-zinc-200 bg-white p-3 shadow-sm">
+                      <div className="text-[10px] text-zinc-500 mb-2">Mood This Week</div>
                       <div className="h-10">
-                        <MoodBars
-                          heights={[40, 55, 45, 70, 65, 80, 75]}
-                          color="bg-violet-400"
-                        />
+                        <MoodBars heights={[40, 55, 45, 70, 65, 80, 75]} color="bg-violet-400" />
                       </div>
                       <div className="flex justify-between mt-1">
-                        <span className="text-[8px] text-[#B0A898]/40">Mon</span>
-                        <span className="text-[8px] text-[#B0A898]/40">Sun</span>
+                        <span className="text-[8px] text-zinc-400">Mon</span>
+                        <span className="text-[8px] text-zinc-400">Sun</span>
                       </div>
                     </div>
-                    <div className="rounded-xl border border-[#7C5CFC]/20 bg-[#7C5CFC]/5 p-3 shadow-sm">
-                      <div className="text-[10px] text-violet-400 mb-1">
-                        Pattern Detected
-                      </div>
-                      <div className="text-[10px] text-[#B0A898] leading-relaxed">
-                        Best mood on days you exercised. Worst after meetings past 6 PM.
-                      </div>
+                    <div className="rounded-xl border border-violet-200 bg-violet-50 p-3 shadow-sm">
+                      <div className="text-[10px] text-violet-600 mb-1">Pattern Detected</div>
+                      <div className="text-[10px] text-zinc-600 leading-relaxed">Best mood on days you exercised. Worst after meetings past 6 PM.</div>
                     </div>
-                    <div className="rounded-xl border border-white/[0.06] bg-[#252220] p-3 shadow-sm">
-                      <div className="text-[10px] text-[#B0A898] mb-1.5">
-                        Goals
-                      </div>
+                    <div className="rounded-xl border border-zinc-200 bg-white p-3 shadow-sm">
+                      <div className="text-[10px] text-zinc-500 mb-1.5">Goals</div>
                       <div className="space-y-1.5">
                         <div>
-                          <div className="flex justify-between text-[10px] text-[#B0A898] mb-0.5">
-                            <span>Exercise</span>
-                            <span className="text-emerald-400">3/5</span>
+                          <div className="flex justify-between text-[10px] text-zinc-600 mb-0.5">
+                            <span>Exercise</span><span className="text-emerald-500">3/5</span>
                           </div>
-                          <div className="h-1 rounded-full bg-white/10">
-                            <div className="h-full w-3/5 rounded-full bg-emerald-500" />
-                          </div>
+                          <div className="h-1 rounded-full bg-zinc-200"><div className="h-full w-3/5 rounded-full bg-emerald-500" /></div>
                         </div>
                         <div>
-                          <div className="flex justify-between text-[10px] text-[#B0A898] mb-0.5">
-                            <span>Ship beta</span>
-                            <span className="text-violet-400">70%</span>
+                          <div className="flex justify-between text-[10px] text-zinc-600 mb-0.5">
+                            <span>Ship beta</span><span className="text-violet-500">70%</span>
                           </div>
-                          <div className="h-1 rounded-full bg-white/10">
-                            <div className="h-full w-[70%] rounded-full bg-violet-500" />
-                          </div>
+                          <div className="h-1 rounded-full bg-zinc-200"><div className="h-full w-[70%] rounded-full bg-violet-500" /></div>
                         </div>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Phone 2 (front) — Today's Debrief */}
-                <div className="absolute left-0 top-0 w-[200px] sm:w-[230px] lg:w-[260px] xl:w-[280px] h-[400px] sm:h-[450px] lg:h-[500px] xl:h-[540px] rounded-[2rem] bg-[#252220] p-2 shadow-2xl shadow-black/50 -rotate-3 z-10 animate-float">
-                  <div className="h-full w-full rounded-[1.5rem] bg-[#1E1C1A] p-4 flex flex-col gap-2.5 overflow-hidden">
-                    {/* Status bar */}
+                {/* Phone 2 (front) — Today's Debrief — LIGHT MODE */}
+                <div className="absolute left-0 top-0 w-[200px] sm:w-[230px] lg:w-[260px] xl:w-[280px] h-[400px] sm:h-[450px] lg:h-[500px] xl:h-[540px] rounded-[2rem] bg-white p-2 shadow-2xl shadow-black/30 -rotate-3 z-10 animate-float">
+                  <div className="h-full w-full rounded-[1.5rem] bg-[#F5F5F5] p-4 flex flex-col gap-2.5 overflow-hidden">
                     <div className="flex items-center justify-between mb-1">
-                      <div className="text-[10px] text-[#B0A898]/60">9:41</div>
+                      <div className="text-[10px] text-zinc-400">9:41</div>
                       <div className="flex gap-1">
-                        <div className="h-1.5 w-3 rounded-full bg-white/20" />
-                        <div className="h-1.5 w-1.5 rounded-full bg-white/20" />
+                        <div className="h-1.5 w-3 rounded-full bg-zinc-300" />
+                        <div className="h-1.5 w-1.5 rounded-full bg-zinc-300" />
                       </div>
                     </div>
                     <div className="flex items-center justify-between">
-                      <div className="text-xs text-white font-semibold">
-                        Today&rsquo;s Debrief
-                      </div>
-                      <div className="flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 text-[9px] text-emerald-500">
-                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                        7.2
+                      <div className="text-xs text-[#1a1a1a] font-semibold">Today&rsquo;s Debrief</div>
+                      <div className="flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[9px] text-emerald-600">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />7.2
                       </div>
                     </div>
-                    <div className="rounded-xl border border-white/[0.06] bg-[#252220] p-3 shadow-sm">
-                      <div className="text-[10px] text-[#B0A898] mb-2">
-                        Extracted Tasks
-                      </div>
-                      <CascadingTasks
-                        tasks={[
-                          { text: "Email Q2 report to team", checked: true },
-                          { text: "Call the accountant" },
-                          { text: "Book dentist for Thursday" },
-                        ]}
-                      />
+                    <div className="rounded-xl border border-zinc-200 bg-white p-3 shadow-sm text-zinc-600">
+                      <div className="text-[10px] text-zinc-500 mb-2">Extracted Tasks</div>
+                      <CascadingTasks tasks={[{ text: "Email Q2 report to team", checked: true }, { text: "Call the accountant" }, { text: "Book dentist for Thursday" }]} />
                     </div>
-                    <div className="rounded-xl border border-white/[0.06] bg-[#252220] p-3 shadow-sm">
-                      <div className="text-[10px] text-[#B0A898] mb-1">
-                        Theme
-                      </div>
-                      <div className="text-[10px] text-[#B0A898]">
-                        Productive but stretched thin. Mentioned &ldquo;deadline&rdquo; 3x.
-                      </div>
+                    <div className="rounded-xl border border-zinc-200 bg-white p-3 shadow-sm">
+                      <div className="text-[10px] text-zinc-500 mb-1">Theme</div>
+                      <div className="text-[10px] text-zinc-600">Productive but stretched thin. Mentioned &ldquo;deadline&rdquo; 3x.</div>
                     </div>
-                    <div className="rounded-xl border border-[#7C5CFC]/30 bg-[#7C5CFC]/10 p-3">
-                      <div className="text-[10px] text-violet-400 mb-1">
-                        Goal Tracked
-                      </div>
-                      <div className="text-[10px] text-[#B0A898]">
-                        &ldquo;Ship the beta&rdquo; — mentioned 4 of last 5 entries
-                      </div>
+                    <div className="rounded-xl border border-violet-200 bg-violet-50 p-3">
+                      <div className="text-[10px] text-violet-600 mb-1">Goal Tracked</div>
+                      <div className="text-[10px] text-zinc-600">&ldquo;Ship the beta&rdquo; — mentioned 4 of last 5 entries</div>
                     </div>
                   </div>
                 </div>
@@ -1196,36 +1154,30 @@ export function LandingPage() {
             <Reveal delay={4}>
               <div className="relative">
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[200px] h-[200px] rounded-full bg-[#7C5CFC]/15 blur-[60px] animate-pulse-slow" />
-                <div className="relative w-[220px] h-[380px] rounded-[2rem] bg-[#252220] p-2 shadow-2xl shadow-black/40 animate-float">
-                  <div className="h-full w-full rounded-[1.5rem] bg-[#1E1C1A] p-4 flex flex-col gap-2 overflow-hidden">
+                <div className="relative w-[220px] h-[380px] rounded-[2rem] bg-white p-2 shadow-2xl shadow-black/20 animate-float">
+                  <div className="h-full w-full rounded-[1.5rem] bg-[#F5F5F5] p-4 flex flex-col gap-2 overflow-hidden">
                     <div className="flex items-center justify-between mb-1">
-                      <div className="text-[10px] text-[#B0A898]/60">9:41</div>
+                      <div className="text-[10px] text-zinc-400">9:41</div>
                       <div className="flex gap-1">
-                        <div className="h-1.5 w-3 rounded-full bg-white/20" />
-                        <div className="h-1.5 w-1.5 rounded-full bg-white/20" />
+                        <div className="h-1.5 w-3 rounded-full bg-zinc-300" />
+                        <div className="h-1.5 w-1.5 rounded-full bg-zinc-300" />
                       </div>
                     </div>
-                    <div className="text-xs text-white font-semibold">Today&rsquo;s Debrief</div>
-                    <div className="rounded-xl border border-white/[0.06] bg-[#252220] p-3 shadow-sm">
-                      <div className="text-[10px] text-[#B0A898] mb-2">Mood</div>
+                    <div className="text-xs text-[#1a1a1a] font-semibold">Today&rsquo;s Debrief</div>
+                    <div className="rounded-xl border border-zinc-200 bg-white p-3 shadow-sm">
+                      <div className="text-[10px] text-zinc-500 mb-2">Mood</div>
                       <div className="flex items-center gap-1.5">
                         <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                        <span className="text-[10px] text-white font-medium">7.2</span>
+                        <span className="text-[10px] text-[#1a1a1a] font-medium">7.2</span>
                       </div>
                     </div>
-                    <div className="rounded-xl border border-white/[0.06] bg-[#252220] p-3 shadow-sm">
-                      <div className="text-[10px] text-[#B0A898] mb-2">Extracted Tasks</div>
-                      <CascadingTasks
-                        tasks={[
-                          { text: "Email Q2 report", checked: true },
-                          { text: "Call the accountant" },
-                          { text: "Book dentist" },
-                        ]}
-                      />
+                    <div className="rounded-xl border border-zinc-200 bg-white p-3 shadow-sm text-zinc-600">
+                      <div className="text-[10px] text-zinc-500 mb-2">Extracted Tasks</div>
+                      <CascadingTasks tasks={[{ text: "Email Q2 report", checked: true }, { text: "Call the accountant" }, { text: "Book dentist" }]} />
                     </div>
-                    <div className="rounded-xl border border-[#7C5CFC]/30 bg-[#7C5CFC]/10 p-2.5">
-                      <div className="text-[10px] text-violet-400 mb-0.5">Goal Tracked</div>
-                      <div className="text-[10px] text-[#B0A898]">&ldquo;Ship the beta&rdquo; — 4 of 5 entries</div>
+                    <div className="rounded-xl border border-violet-200 bg-violet-50 p-2.5">
+                      <div className="text-[10px] text-violet-600 mb-0.5">Goal Tracked</div>
+                      <div className="text-[10px] text-zinc-600">&ldquo;Ship the beta&rdquo; — 4 of 5 entries</div>
                     </div>
                   </div>
                 </div>
@@ -1354,9 +1306,9 @@ export function LandingPage() {
               </div>
               <div className="flex-1 flex justify-center">
                 <Reveal delay={1}>
-                  <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-[#252220] p-2 shadow-xl">
-                    <div className="h-full w-full rounded-[2rem] bg-[#1E1C1A] p-5 flex flex-col overflow-hidden">
-                      <div className="text-xs text-[#B0A898] font-medium mb-auto">
+                  <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-white p-2 shadow-xl shadow-black/20">
+                    <div className="h-full w-full rounded-[2rem] bg-[#F5F5F5] p-5 flex flex-col overflow-hidden">
+                      <div className="text-xs text-zinc-500 font-medium mb-auto">
                         Recording
                       </div>
                       <div className="flex flex-col items-center justify-center flex-1 gap-4">
@@ -1364,21 +1316,17 @@ export function LandingPage() {
                           <div className="absolute h-20 w-20 rounded-full bg-red-500/20 animate-pulse-ring" />
                           <div className="absolute h-24 w-24 rounded-full bg-red-500/10 animate-pulse-ring" style={{ animationDelay: "0.5s" }} />
                           <div className="relative h-16 w-16 rounded-full bg-red-500 flex items-center justify-center shadow-lg shadow-red-500/30">
-                            <svg
-                              className="h-7 w-7 text-white"
-                              fill="currentColor"
-                              viewBox="0 0 24 24"
-                            >
+                            <svg className="h-7 w-7 text-white" fill="currentColor" viewBox="0 0 24 24">
                               <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
                               <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
                             </svg>
                           </div>
                         </div>
                         <WaveformVisualizer />
-                        <div className="text-xl font-bold text-white font-mono">
+                        <div className="text-xl font-bold text-[#1a1a1a] font-mono">
                           0:47
                         </div>
-                        <div className="text-xs text-[#B0A898]">
+                        <div className="text-xs text-zinc-500">
                           Speak freely...
                         </div>
                       </div>
@@ -1404,39 +1352,25 @@ export function LandingPage() {
               </div>
               <div className="flex-1 flex justify-center">
                 <Reveal delay={1}>
-                  <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-[#252220] p-2 shadow-xl">
-                    <div className="h-full w-full rounded-[2rem] bg-[#1E1C1A] p-5 flex flex-col overflow-hidden">
-                      <div className="text-xs text-[#B0A898] font-medium mb-3">
+                  <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-white p-2 shadow-xl shadow-black/20">
+                    <div className="h-full w-full rounded-[2rem] bg-[#F5F5F5] p-5 flex flex-col overflow-hidden">
+                      <div className="text-xs text-zinc-500 font-medium mb-3">
                         AI Extraction
                       </div>
                       <div className="space-y-2.5 flex-1">
-                        <div className="rounded-xl border border-white/[0.06] bg-[#252220] p-3 shadow-sm">
-                          <div className="text-[10px] text-[#B0A898] uppercase tracking-wider mb-1.5">
+                        <div className="rounded-xl border border-zinc-200 bg-white p-3 shadow-sm text-zinc-600">
+                          <div className="text-[10px] text-zinc-500 uppercase tracking-wider mb-1.5">
                             Tasks
                           </div>
-                          <CascadingTasks
-                            tasks={[
-                              { text: "Send proposal to client" },
-                              { text: "Buy groceries" },
-                              { text: "Call mom" },
-                            ]}
-                          />
+                          <CascadingTasks tasks={[{ text: "Send proposal to client" }, { text: "Buy groceries" }, { text: "Call mom" }]} />
                         </div>
-                        <div className="rounded-xl border border-[#7C5CFC]/30 bg-[#7C5CFC]/10 p-3">
-                          <div className="text-[10px] text-violet-600 uppercase tracking-wider mb-1">
-                            Goal
-                          </div>
-                          <div className="text-xs text-[#B0A898]">
-                            "Ship the beta this week"
-                          </div>
+                        <div className="rounded-xl border border-violet-200 bg-violet-50 p-3">
+                          <div className="text-[10px] text-violet-600 uppercase tracking-wider mb-1">Goal</div>
+                          <div className="text-xs text-zinc-600">&ldquo;Ship the beta this week&rdquo;</div>
                         </div>
-                        <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3">
-                          <div className="text-[10px] text-emerald-600 uppercase tracking-wider mb-1">
-                            Mood
-                          </div>
-                          <div className="text-xs text-[#B0A898]">
-                            Energized but slightly anxious
-                          </div>
+                        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3">
+                          <div className="text-[10px] text-emerald-600 uppercase tracking-wider mb-1">Mood</div>
+                          <div className="text-xs text-zinc-600">Energized but slightly anxious</div>
                         </div>
                       </div>
                     </div>
@@ -1460,37 +1394,25 @@ export function LandingPage() {
               </div>
               <div className="flex-1 flex justify-center">
                 <Reveal delay={1}>
-                  <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-[#252220] p-2 shadow-xl">
-                    <div className="h-full w-full rounded-[2rem] bg-[#1E1C1A] p-5 flex flex-col overflow-hidden">
-                      <div className="text-xs text-[#B0A898] font-medium mb-3">
+                  <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-white p-2 shadow-xl shadow-black/20">
+                    <div className="h-full w-full rounded-[2rem] bg-[#F5F5F5] p-5 flex flex-col overflow-hidden">
+                      <div className="text-xs text-zinc-500 font-medium mb-3">
                         Weekly Report
                       </div>
                       <div className="space-y-2.5 flex-1">
-                        <div className="rounded-xl border border-white/[0.06] bg-[#252220] p-3 shadow-sm">
-                          <div className="text-[10px] text-[#B0A898] uppercase tracking-wider mb-2">
-                            Mood this week
-                          </div>
+                        <div className="rounded-xl border border-zinc-200 bg-white p-3 shadow-sm">
+                          <div className="text-[10px] text-zinc-500 uppercase tracking-wider mb-2">Mood this week</div>
                           <div className="h-10">
-                            <MoodBars
-                              heights={[50, 60, 45, 75, 70, 85, 80]}
-                              color="bg-violet-400"
-                            />
+                            <MoodBars heights={[50, 60, 45, 75, 70, 85, 80]} color="bg-violet-400" />
                           </div>
                         </div>
-                        <div className="rounded-xl border border-white/[0.06] bg-[#252220] p-3 shadow-sm">
-                          <div className="text-[10px] text-[#B0A898] uppercase tracking-wider mb-1">
-                            Pattern
-                          </div>
-                          <div className="text-xs text-[#B0A898]">
-                            Best mood on days you exercised. Worst on days with
-                            meetings after 6pm.
-                          </div>
+                        <div className="rounded-xl border border-zinc-200 bg-white p-3 shadow-sm">
+                          <div className="text-[10px] text-zinc-500 uppercase tracking-wider mb-1">Pattern</div>
+                          <div className="text-xs text-zinc-600">Best mood on days you exercised. Worst on days with meetings after 6pm.</div>
                         </div>
-                        <div className="rounded-xl border border-white/[0.06] bg-[#252220] p-3 shadow-sm">
-                          <div className="text-[10px] text-[#B0A898] uppercase tracking-wider mb-1">
-                            Top 3 Actions
-                          </div>
-                          <div className="space-y-1 text-xs text-[#B0A898]">
+                        <div className="rounded-xl border border-zinc-200 bg-white p-3 shadow-sm">
+                          <div className="text-[10px] text-zinc-500 uppercase tracking-wider mb-1">Top 3 Actions</div>
+                          <div className="space-y-1 text-xs text-zinc-600">
                             <div>1. Block mornings for deep work</div>
                             <div>2. No meetings after 5pm</div>
                             <div>3. Exercise before noon</div>
