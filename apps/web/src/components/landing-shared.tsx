@@ -10,29 +10,29 @@ import { SOCIAL_PROOF } from "@/lib/social-proof";
    Scroll-reveal hook & component
    ═══════════════════════════════════════════ */
 
-function useReveal() {
+function useReveal(delay = 0) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    // Set initial hidden state via JS
     el.style.opacity = '0';
     el.style.transform = 'translateY(24px)';
     el.style.transition = 'opacity 0.6s ease-out, transform 0.6s ease-out';
+    if (delay) el.style.transitionDelay = `${delay * 150}ms`;
     const obs = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
-          el.classList.add("aos-visible");
-        } else {
-          el.classList.remove("aos-visible");
+          el.style.opacity = '1';
+          el.style.transform = 'translateY(0)';
+          obs.unobserve(el);
         }
       },
       { threshold: 0.1 }
     );
-    setTimeout(() => obs.observe(el), 100);
+    obs.observe(el);
     return () => obs.disconnect();
-  }, []);
+  }, [delay]);
   return ref;
 }
 
@@ -45,12 +45,9 @@ export function Reveal({
   className?: string;
   delay?: number;
 }) {
-  const ref = useReveal();
+  const ref = useReveal(delay);
   return (
-    <div
-      ref={ref}
-      className={`${delay ? `aos-delay-${delay}` : ""} ${className}`}
-    >
+    <div ref={ref} className={className}>
       {children}
     </div>
   );

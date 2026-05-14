@@ -890,39 +890,34 @@ export function LandingPage() {
     }
   }, []);
 
-  // Scroll-triggered animations — sets initial state via JS to avoid CSS purge issues
-  // Re-triggers on both scroll up and scroll down
+  // Scroll-triggered animations — pure inline styles, zero CSS classes, nothing to purge
   useEffect(() => {
-    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const elements = document.querySelectorAll('.animate-on-scroll');
-    if (reducedMotion) return; // Skip all animations for accessibility
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const els = document.querySelectorAll('[data-animate]');
 
-    // Set initial hidden state via JS (reliable — no CSS purge dependency)
-    elements.forEach((el) => {
+    // Set initial hidden state via inline styles
+    els.forEach((el) => {
       const htmlEl = el as HTMLElement;
       htmlEl.style.opacity = '0';
       htmlEl.style.transform = 'translateY(24px)';
       htmlEl.style.transition = 'opacity 0.6s ease-out, transform 0.6s ease-out';
+      const delay = htmlEl.getAttribute('data-delay');
+      if (delay) htmlEl.style.transitionDelay = delay + 'ms';
     });
 
-    // Small delay to ensure layout is settled before observing
-    const timer = setTimeout(() => {
-      const observer = new IntersectionObserver(
-        (entries) => {
-          entries.forEach((entry) => {
-            if (entry.isIntersecting) {
-              entry.target.classList.add('aos-visible');
-            } else {
-              entry.target.classList.remove('aos-visible');
-            }
-          });
-        },
-        { threshold: 0.1 }
-      );
-      elements.forEach((el) => observer.observe(el));
-      return () => observer.disconnect();
-    }, 100);
-    return () => clearTimeout(timer);
+    const obs = new IntersectionObserver((entries) => {
+      entries.forEach((e) => {
+        if (e.isIntersecting) {
+          const t = e.target as HTMLElement;
+          t.style.opacity = '1';
+          t.style.transform = 'translateY(0)';
+          obs.unobserve(t);
+        }
+      });
+    }, { threshold: 0.1 });
+
+    els.forEach((el) => obs.observe(el));
+    return () => obs.disconnect();
   }, []);
 
   return (
@@ -1257,7 +1252,7 @@ export function LandingPage() {
       {/* ───── HOW IT WORKS ───── */}
       <section id="how-it-works" className="px-6 py-16 sm:py-20 lg:py-24">
         <div className="mx-auto max-w-7xl">
-            <div className="text-center mb-14 animate-on-scroll">
+            <div className="text-center mb-14" data-animate="">
               <h2 className="text-3xl font-bold tracking-tight sm:text-5xl">
                 How it works
               </h2>
@@ -1268,7 +1263,7 @@ export function LandingPage() {
 
           <div className="space-y-16 sm:space-y-20">
             {/* Step 1: Record */}
-            <div className="flex flex-col gap-8 lg:items-center lg:flex-row animate-on-scroll">
+            <div className="flex flex-col gap-8 lg:items-center lg:flex-row" data-animate="">
               <div className="flex-1">
                   <div className="text-xs font-semibold text-[#E8DDD0] uppercase tracking-wider mb-4">
                     Step 1
@@ -1310,7 +1305,7 @@ export function LandingPage() {
             </div>
 
             {/* Step 2: Extract */}
-            <div className="flex flex-col gap-8 lg:items-center lg:flex-row-reverse animate-on-scroll">
+            <div className="flex flex-col gap-8 lg:items-center lg:flex-row-reverse" data-animate="">
               <div className="flex-1">
                   <div className="text-xs font-semibold text-[#E8DDD0] uppercase tracking-wider mb-4">
                     Step 2
@@ -1349,7 +1344,7 @@ export function LandingPage() {
             </div>
 
             {/* Step 3: Reflect */}
-            <div className="flex flex-col gap-8 lg:items-center lg:flex-row animate-on-scroll">
+            <div className="flex flex-col gap-8 lg:items-center lg:flex-row" data-animate="">
               <div className="flex-1">
                   <div className="text-xs font-semibold text-[#E8DDD0] uppercase tracking-wider mb-4">
                     Step 3
@@ -1397,7 +1392,7 @@ export function LandingPage() {
       <section className="relative px-6 py-16 sm:py-20 lg:py-24 overflow-hidden">
         <div className="relative mx-auto max-w-6xl">
           {/* Header */}
-            <div className="text-center mb-16 animate-on-scroll">
+            <div className="text-center mb-16" data-animate="">
               <p className="text-xs font-semibold uppercase tracking-widest text-[#E8DDD0] mb-4">
                 Life Matrix
               </p>
@@ -1415,7 +1410,7 @@ export function LandingPage() {
             </div>
 
           {/* Radar + live insight panel */}
-          <div className="animate-on-scroll">
+          <div data-animate>
             <LifeMatrixRadar />
             <p className="text-center mt-8 text-sm text-[#A0A0B8]/70 italic">
               You don&rsquo;t have to do anything with this. It builds itself.
@@ -1448,7 +1443,7 @@ export function LandingPage() {
       {/* ───── USE-CASE SCENARIOS ───── */}
       <section className="px-6 py-16 sm:py-20 lg:py-24 bg-[#1E1C1A]/50">
         <div className="mx-auto max-w-5xl">
-            <div className="animate-on-scroll">
+            <div data-animate>
             <h2 className="text-center text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl mb-4">
               Fits your life. Not the other way around.
             </h2>
@@ -1458,7 +1453,7 @@ export function LandingPage() {
             </div>
 
           <div className="grid gap-8 sm:grid-cols-2">
-              <div className="rounded-2xl border border-white/[0.06] bg-[#1E1C1A] p-8 animate-on-scroll">
+              <div className="rounded-2xl border border-white/[0.06] bg-[#1E1C1A] p-8" data-animate="">
                 <div className="flex items-center gap-2 mb-4">
                   <div className="h-8 w-8 rounded-full bg-amber-500/10 flex items-center justify-center">
                     <svg className="h-4 w-4 text-[#E8DDD0]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" /></svg>
@@ -1479,7 +1474,7 @@ export function LandingPage() {
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-white/[0.06] bg-[#1E1C1A] p-8 animate-on-scroll delay-1">
+              <div className="rounded-2xl border border-white/[0.06] bg-[#1E1C1A] p-8" data-animate data-delay="150">
                 <div className="flex items-center gap-2 mb-4">
                   <div className="h-8 w-8 rounded-full bg-indigo-500/10 flex items-center justify-center">
                     <svg className="h-4 w-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" /></svg>
@@ -1506,7 +1501,7 @@ export function LandingPage() {
       {/* ───── TESTIMONIALS — Rolling ticker ───── */}
       <section className="py-16 sm:py-20 lg:py-24 overflow-hidden">
         <div className="px-6 mx-auto max-w-6xl">
-          <div className="animate-on-scroll">
+          <div data-animate>
             <h2 className="text-center text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
               What people say after week one
             </h2>
@@ -1562,7 +1557,7 @@ export function LandingPage() {
       {/* ───── PRICING ───── */}
       <section id="pricing" className="px-6 py-16 sm:py-20">
         <div className="mx-auto max-w-md text-center">
-            <div className="animate-on-scroll">
+            <div data-animate>
             <h2 className="text-3xl font-bold tracking-tight sm:text-5xl">
               Simple pricing
             </h2>
@@ -1571,7 +1566,7 @@ export function LandingPage() {
             </p>
             </div>
 
-            <div className="mt-12 relative group animate-on-scroll">
+            <div className="mt-12 relative group" data-animate="">
               {/* Shimmer border effect */}
               <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-r from-[#E8DDD0]/60 via-[#E8DDD0]/30 to-[#E8DDD0]/60 opacity-0 group-hover:opacity-100 transition-opacity duration-500 animate-shimmer blur-[1px]" />
 
@@ -1627,7 +1622,7 @@ export function LandingPage() {
 
       {/* ───── FAQ ───── */}
       <section className="px-6 py-16 sm:py-20">
-        <div className="mx-auto max-w-3xl text-center animate-on-scroll">
+        <div className="mx-auto max-w-3xl text-center" data-animate="">
             <span className="inline-flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/5 px-4 py-1.5 text-sm text-[#A0A0B8] mb-6">
               <svg className="h-4 w-4 text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
               FAQ
@@ -1639,7 +1634,7 @@ export function LandingPage() {
               Have questions about Acuity and how it turns your daily debrief into action? Our FAQs cover everything you need to get started.
             </p>
         </div>
-        <div className="mx-auto max-w-3xl mt-8 animate-on-scroll">
+        <div className="mx-auto max-w-3xl mt-8" data-animate="">
             <div className="rounded-2xl border border-white/[0.06] bg-[#1E1C1A] divide-y divide-white/[0.06]">
               {[
                 { q: "What is Acuity and how does it work?", a: "Acuity is a daily shutdown ritual. You talk for 60 seconds about whatever is on your mind — tasks, worries, ideas, things that happened. By morning, your tasks are on a list, your mood is scored, and your goals are tracked. Every Sunday, a 400-word story of your week lands on your phone. You talk. Acuity does the rest." },
@@ -1673,7 +1668,7 @@ export function LandingPage() {
 
       {/* ───── CTA BANNER ───── */}
       <section className="px-6 py-16 sm:py-20">
-          <div className="mx-auto max-w-4xl rounded-3xl bg-[#252220] p-6 sm:p-12 lg:p-16 text-center text-white relative overflow-hidden border border-[#E8DDD0]/10 animate-on-scroll">
+          <div className="mx-auto max-w-4xl rounded-3xl bg-[#252220] p-6 sm:p-12 lg:p-16 text-center text-white relative overflow-hidden border border-[#E8DDD0]/10" data-animate="">
             {/* Subtle animated accents */}
             <div className="absolute top-0 right-0 h-72 w-72 rounded-full bg-[#E8DDD0]/10 -translate-y-1/3 translate-x-1/4 blur-3xl animate-blob-drift" />
             <div className="absolute bottom-0 left-0 h-56 w-56 rounded-full bg-violet-600/15 translate-y-1/3 -translate-x-1/4 blur-3xl animate-blob-drift-2" />

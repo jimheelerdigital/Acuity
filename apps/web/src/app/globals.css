@@ -138,14 +138,7 @@ details .faq-answer > div {
   -webkit-text-fill-color: white;
 }
 
-/* Scroll-triggered animations — initial state set by JS, not CSS, to avoid purge issues */
-.aos-visible {
-  opacity: 1 !important;
-  transform: translateY(0) !important;
-}
-.aos-delay-1 { transition-delay: 150ms; }
-.aos-delay-2 { transition-delay: 300ms; }
-.aos-delay-3 { transition-delay: 450ms; }
+/* Scroll animations use inline styles + data-animate attribute — no CSS classes to purge */
 
 /* Hero phone float */
 @keyframes hero-float {
