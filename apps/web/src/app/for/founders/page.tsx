@@ -50,11 +50,11 @@ export default function FoundersPage() {
         <ParallaxOrbs />
         <div className="relative mx-auto max-w-4xl px-6 text-center">
           <Reveal>
-            <HeroHeadline text="Your nightly debrief. 60 seconds. AI does the rest." />
+            <HeroHeadline text="Your daily debrief. 60 seconds. AI does the rest." />
           </Reveal>
           <Reveal delay={1}>
             <p className="mt-6 text-lg text-[#A0A0B8] leading-relaxed max-w-2xl mx-auto">
-              Every night you go to bed with 40 unfinished thoughts. Acuity captures
+              Every day you carry 40 unfinished thoughts. Acuity captures
               every task, tracks every goal, and writes your weekly debrief
               automatically.
             </p>
@@ -85,7 +85,7 @@ export default function FoundersPage() {
       {/* ───── FOUNDER PAIN ───── */}
       <PainSection
         points={[
-          "Decision fatigue is real. You make 100 decisions a day. By 10pm your brain is full and you have nowhere to put it.",
+          "Decision fatigue is real. You make 100 decisions a day. By the end of the day your brain is full and you have nowhere to put it.",
           "Your best thinking happens after hours. It disappears by morning. Voice memos go nowhere. Notion stays empty.",
           "You track everything in your business. You track nothing about yourself. That's the gap killing your performance.",
         ]}
@@ -103,7 +103,7 @@ export default function FoundersPage() {
             {[
               "Fewer forgotten tasks",
               "Clearer weekly priorities",
-              "Less mental overhead at bedtime",
+              "Less mental overhead outside work",
             ].map((stat, i) => (
               <Reveal key={i} delay={Math.min(i + 1, 3) as 1 | 2 | 3}>
                 <div className="rounded-xl border border-white/10 bg-[#13131F] p-6 text-center">
@@ -198,7 +198,7 @@ export default function FoundersPage() {
             label: "Step 1",
             title: "Debrief",
             description:
-              "End your day in 60 seconds. Hit record, speak freely about wins, blockers, decisions, and what's on your mind. No app to configure.",
+              "Wrap up your day in 60 seconds. Hit record, speak freely about wins, blockers, decisions, and what's on your mind. No app to configure.",
           },
           {
             label: "Step 2",
@@ -226,7 +226,7 @@ export default function FoundersPage() {
 
       {/* ───── MID-PAGE CTA ───── */}
       <MidPageCTA
-        headline="What would your performance look like if you debriefed every night?"
+        headline="What would your performance look like if you debriefed every day?"
         subheadline="No card. 90 seconds to set up. · cancel anytime"
         utmCampaign={UTM}
       />
@@ -332,7 +332,7 @@ export default function FoundersPage() {
               { feature: "Cost", values: ["$500+/month", "$600+/month", "$12.99/month"] },
               {
                 feature: "Availability",
-                values: ["Scheduled", "Scheduled", "Every night"],
+                values: ["Scheduled", "Scheduled", "Any time of day"],
               },
               { feature: "Memory", values: ["Limited", "Limited", "Perfect"] },
               { feature: "Action items", values: ["Manual", "None", "Automatic"] },
@@ -350,7 +350,7 @@ export default function FoundersPage() {
         <div className="mx-auto max-w-3xl text-center">
           <Reveal>
             <h2 className="text-3xl font-bold tracking-tight sm:text-5xl">
-              60 seconds a night.{" "}
+              60 seconds a day.{" "}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-500 to-indigo-500">
                 7 minutes a week.
               </span>
@@ -402,7 +402,7 @@ export default function FoundersPage() {
         testimonials={[
           {
             quote:
-              "I replaced my $500/month executive coach with Acuity. Not because it's cheaper. Because it's available at 11pm when I actually need to process.",
+              "I replaced my $500/month executive coach with Acuity. Not because it's cheaper. Because it's available whenever I actually need to process.",
             name: "David L.",
             role: "CEO",
           },

@@ -116,7 +116,7 @@ export default function WeeklyReportPage() {
             label: "Step 1",
             title: "Record",
             description:
-              "Every night, open Acuity and speak for 60 seconds. Your wins, your worries, your reflections — no structure needed.",
+              "Every day, open Acuity and speak for 60 seconds. Your wins, your worries, your reflections — no structure needed.",
           },
           {
             label: "Step 2",
@@ -316,7 +316,7 @@ export default function WeeklyReportPage() {
 
       {/* ───── FINAL CTA ───── */}
       <CTABanner
-        headline="Your first report arrives Sunday. Start recording tonight."
+        headline="Your first report arrives Sunday. Start recording today."
         buttonText="Start Free Trial"
         utmCampaign={UTM}
       />

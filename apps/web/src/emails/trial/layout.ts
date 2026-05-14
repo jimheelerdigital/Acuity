@@ -59,7 +59,7 @@ export function trialLayout(opts: TrialLayoutOpts): string {
           <tr>
             <td align="center">
               <p style="margin:0;font-size:11px;color:#666;">
-                Acuity · Brain dump daily. Get your life back.
+                Acuity · Debrief daily. See your life clearly.
               </p>
             </td>
           </tr>

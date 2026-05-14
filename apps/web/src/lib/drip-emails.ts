@@ -34,7 +34,7 @@ function layout(content: string): string {
           <tr>
             <td align="center" style="padding-bottom:40px;">
               <p style="margin:0;font-size:13px;color:#A0A0B8;letter-spacing:0.5px;">
-                Brain dump daily. Get your life back.
+                Debrief daily. See your life clearly.
               </p>
             </td>
           </tr>
@@ -448,7 +448,7 @@ function email5(rawName: string): string {
           <tr>
             <td style="padding-bottom:24px;">
               <p style="margin:0;font-size:16px;color:#FFFFFF;line-height:1.7;font-weight:600;">
-                Your first brain dump takes 60 seconds. Start tonight.
+                Your first debrief takes 60 seconds. Start today.
               </p>
             </td>
           </tr>

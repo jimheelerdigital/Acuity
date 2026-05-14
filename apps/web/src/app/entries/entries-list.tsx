@@ -131,7 +131,7 @@ export function EntriesList({
                 Your journal is empty
               </p>
               <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                Record your first brain dump from the dashboard to see it here.
+                Record your first debrief from the dashboard to see it here.
               </p>
               <Link
                 href="/home"

@@ -99,7 +99,7 @@ function SignInForm() {
         <img src="/AcuityLogo.png" alt="Acuity logo" className="mx-auto mb-4" style={{ width: 32, height: 32 }} />
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">Sign in to Acuity</h1>
         <p className="mt-1.5 text-sm text-zinc-500 dark:text-zinc-400">
-          Brain dump daily. Get your life back.
+          Debrief daily. See your life clearly.
         </p>
       </div>
 

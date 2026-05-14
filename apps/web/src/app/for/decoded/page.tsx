@@ -157,7 +157,7 @@ export default function DecodedPage() {
             label: "Step 1",
             title: "Speak",
             description:
-              "Talk for 60 seconds every night. No structure. No prompts. Just whatever's on your mind.",
+              "Talk for 60 seconds every day. No structure. No prompts. Just whatever's on your mind.",
           },
           {
             label: "Step 2",
@@ -308,7 +308,7 @@ export default function DecodedPage() {
 
       {/* ───── FINAL CTA ───── */}
       <CTABanner
-        headline="Your patterns are already running. Start seeing them tonight."
+        headline="Your patterns are already running. Start seeing them today."
         buttonText="Start Free Trial"
         utmCampaign={UTM}
       />

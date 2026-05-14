@@ -8,7 +8,7 @@
 export const SOCIAL_PROOF = {
   /** Total active users (rounded) */
   users: "127+",
-  /** Total brain dumps recorded */
+  /** Total debriefs recorded */
   debriefs: "1,400+",
   /** % who say they'd miss Acuity if gone */
   wouldMiss: "94%",

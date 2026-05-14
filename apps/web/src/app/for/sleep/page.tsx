@@ -112,7 +112,7 @@ export default function SleepPage() {
               <p className="text-[#A0A0B8] leading-relaxed">
                 Your mind treats unprocessed thoughts like open browser tabs. They stay
                 active, consuming energy, until they're acknowledged and filed. The
-                nightly debrief is the oldest sleep hack in existence — getting
+                debrief is the oldest sleep trick in existence — getting
                 thoughts out of your head and onto something external so your brain
                 finally lets go. Acuity makes it take 60 seconds. And then organizes
                 everything automatically.
@@ -124,7 +124,7 @@ export default function SleepPage() {
 
       {/* ───── PRE-HOW-IT-WORKS CTA ───── */}
       <MidPageCTA
-        headline="Ready to try the 60-second ritual that empties your head before bed?"
+        headline="Ready to try the 60-second ritual that quiets your racing mind?"
         subheadline="No card. 90 seconds to set up. · cancel anytime"
         utmCampaign={UTM}
       />
@@ -158,13 +158,13 @@ export default function SleepPage() {
         ]}
         extractGoal="Get back to a consistent sleep schedule"
         extractMood="Tired but relieved after talking it out"
-        reflectPattern="Sleep quality improves on nights you debrief before 10:30pm."
-        reflectActions={["Debrief before 10:30pm", "Limit screen time after 9pm", "Morning walk on low-sleep days"]}
+        reflectPattern="Sleep quality improves on days you debrief before winding down."
+        reflectActions={["Debrief before winding down", "Limit screen time in the evening", "Morning walk on low-sleep days"]}
       />
 
       {/* ───── MID-PAGE CTA ───── */}
       <MidPageCTA
-        headline="What if tonight was the last night you stared at the ceiling?"
+        headline="What if you could finally stop staring at the ceiling?"
         subheadline="No card. 90 seconds to set up. · cancel anytime"
         utmCampaign={UTM}
       />
@@ -202,12 +202,12 @@ export default function SleepPage() {
         <div className="mx-auto max-w-3xl text-center">
           <Reveal>
             <h2 className="text-3xl font-bold tracking-tight sm:text-5xl">
-              Make it your last habit before bed.
+              Make it part of your daily wind-down.
             </h2>
             <p className="mt-6 text-lg text-[#A0A0B8] leading-relaxed">
-              Acuity works best as a nightly ritual. Same time
-              every night — right before you put your phone down. 60 seconds.
-              Everything out. Lights off.
+              Acuity works best as a daily ritual. Same time
+              each day — many people use it right before they put their phone down. 60 seconds.
+              Everything out. Mind clear.
             </p>
           </Reveal>
 
@@ -219,9 +219,9 @@ export default function SleepPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
                   </svg>
                 </div>
-                <h3 className="text-sm font-semibold mb-1">Nightly reminder</h3>
+                <h3 className="text-sm font-semibold mb-1">Daily reminder</h3>
                 <p className="text-xs text-[#A0A0B8]">
-                  Set a custom time to get your nightly debrief reminder
+                  Set a custom time to get your daily debrief reminder
                 </p>
               </div>
               <div className="rounded-2xl border border-white/10 bg-[#1E1E2E] p-6 shadow-sm">

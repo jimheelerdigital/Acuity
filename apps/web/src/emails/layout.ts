@@ -51,7 +51,7 @@ export function emailLayout(opts: {
     }
   </div>
   <p style="color:#3F3F46;font-size:12px;text-align:center;margin:20px 0 0;font-family:-apple-system,BlinkMacSystemFont,sans-serif;">
-    Acuity — Brain dump daily. Get your life back.
+    Acuity — Debrief daily. See your life clearly.
   </p>
 </body>
 </html>

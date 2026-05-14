@@ -20,12 +20,12 @@ export interface PersonaPage {
 export const PERSONA_PAGES: PersonaPage[] = [
   {
     slug: "anxiety",
-    title: "Acuity for Anxiety — Nightly Voice Journaling to Calm Your Mind",
+    title: "Acuity for Anxiety — Daily Voice Journaling to Calm Your Mind",
     metaDescription:
-      "Acuity helps you manage anxiety with 60-second nightly voice journaling. AI detects anxiety triggers, breaks rumination loops, and tracks your patterns over time.",
-    headline: "What if your anxiety had somewhere to go every night?",
+      "Acuity helps you manage anxiety with 60-second daily voice journaling. AI detects anxiety triggers, breaks rumination loops, and tracks your patterns over time.",
+    headline: "What if your anxiety had somewhere to go every day?",
     subheadline:
-      "You can't think your way out of a thought spiral. Acuity gives your anxious mind a release valve — 60 seconds of talking before bed, and AI that spots the patterns your worry hides from you.",
+      "You can't think your way out of a thought spiral. Acuity gives your anxious mind a release valve — 60 seconds of talking whenever you need it, and AI that spots the patterns your worry hides from you.",
     painPoints: [
       "You lie awake replaying conversations, rehearsing disasters, and spiraling into what-ifs that never resolve",
       "You've tried journaling but your anxious brain makes writing feel like another task to fail at",
@@ -33,7 +33,7 @@ export const PERSONA_PAGES: PersonaPage[] = [
     ],
     solutionHeadline: "Externalize the spiral. See the pattern. Break the loop.",
     solutionBody:
-      "Every night, talk for 60 seconds. Say whatever's circling in your head — the worry, the dread, the thing you can't stop replaying. Acuity's AI listens, extracts the recurring themes, and shows you your anxiety patterns over time. When you can see that every Sunday night you spiral about Monday, or that specific people trigger specific fears, you stop being trapped inside the loop.",
+      "Any time the spiral starts, talk for 60 seconds. Say whatever's circling in your head — the worry, the dread, the thing you can't stop replaying. Acuity's AI listens, extracts the recurring themes, and shows you your anxiety patterns over time. When you can see that every Sunday you spiral about Monday, or that specific people trigger specific fears, you stop being trapped inside the loop.",
     features: [
       {
         title: "Anxiety Trigger Detection",
@@ -57,7 +57,7 @@ export const PERSONA_PAGES: PersonaPage[] = [
       name: "Rachel M.",
       detail: "34, marketing coordinator",
     },
-    ctaHeadline: "Give your anxiety somewhere to land tonight.",
+    ctaHeadline: "Give your anxiety somewhere to land. Start today.",
     accentColor: "violet",
   },
   {
@@ -65,17 +65,17 @@ export const PERSONA_PAGES: PersonaPage[] = [
     title: "Acuity for ADHD — Voice-First Journaling That Works With Your Brain",
     metaDescription:
       "Acuity is built for ADHD brains. Talk for 60 seconds, AI extracts your tasks and priorities. No writing, no apps to check. Just speak and let go.",
-    headline: "ADHD brains have 100 tabs open. Acuity closes them.",
+    headline: "ADHD brains have 100 tabs open. Acuity catches what matters.",
     subheadline:
       "You don't need another productivity app you'll abandon in a week. Acuity is 60 seconds of talking — voice-first, zero friction — and AI that catches the tasks and ideas your working memory is about to drop.",
     painPoints: [
-      "You have brilliant ideas at 11pm that are completely gone by morning, and no note-taking system has ever stuck",
+      "You have brilliant ideas at random moments that are completely gone an hour later, and no note-taking system has ever stuck",
       "Your to-do list is scattered across 6 apps, 3 notebooks, and 47 mental sticky notes you've already lost",
       "You know what you should be doing but you can't hold onto priorities long enough to actually do them",
     ],
     solutionHeadline: "Talk it out. Acuity catches what your brain drops.",
     solutionBody:
-      "No opening an app, no finding a pen, no typing into a tiny box. Just talk. Acuity's AI automatically extracts every task, idea, and priority from your 60-second brain dump. Your weekly report shows you what you keep saying you'll do but haven't — the accountability your ADHD brain actually needs.",
+      "No opening an app, no finding a pen, no typing into a tiny box. Just talk. Acuity's AI automatically extracts every task, idea, and priority from your 60-second daily debrief. Your weekly report shows you what you keep saying you'll do but haven't — the accountability your ADHD brain actually needs.",
     features: [
       {
         title: "Automatic Task Extraction",
@@ -95,19 +95,19 @@ export const PERSONA_PAGES: PersonaPage[] = [
     ],
     testimonial: {
       quote:
-        "Every productivity app becomes another thing I feel guilty about not using. Acuity is the first one that stuck because it's just talking. I ramble for a minute before bed, and in the morning I have a clean task list I didn't have to write. That's never happened before.",
+        "Every productivity app becomes another thing I feel guilty about not using. Acuity is the first one that stuck because it's just talking. I ramble for a minute whenever I remember, and the next time I check I have a clean task list I didn't have to write. That's never happened before.",
       name: "Devon K.",
       detail: "28, software developer with ADHD",
     },
-    ctaHeadline: "Stop trying to remember everything. Start talking.",
+    ctaHeadline: "Your thoughts, kept safe. Start talking.",
     accentColor: "amber",
   },
   {
     slug: "remote-workers",
     title: "Acuity for Remote Workers — The Shutdown Ritual You're Missing",
     metaDescription:
-      "Remote workers need a way to leave work at work. Acuity's 60-second nightly debrief creates the boundary your home office doesn't have.",
-    headline: "The end-of-day ritual remote workers are missing.",
+      "Remote workers need a way to leave work at work. Acuity's 60-second daily debrief creates the boundary your home office doesn't have.",
+    headline: "The shutdown ritual remote workers have been looking for.",
     subheadline:
       "There's no commute to decompress. No door to close between you and your job. Acuity gives you a 60-second shutdown ritual that draws the line your apartment never will.",
     painPoints: [
@@ -115,19 +115,19 @@ export const PERSONA_PAGES: PersonaPage[] = [
       "Your bedroom is your office is your break room is your everything — there's no physical boundary to signal 'work is over'",
       "You can't remember the last time you had an evening that felt fully yours, not borrowed from tomorrow's to-do list",
     ],
-    solutionHeadline: "Clock out for real. In 60 seconds.",
+    solutionHeadline: "Draw the line. In 60 seconds.",
     solutionBody:
-      "The commute used to be your transition. Now you need something else. Acuity's nightly debrief takes 60 seconds: say what happened today, what's lingering, what can wait until tomorrow. Your brain gets the signal that the workday is done. Over time, your weekly report shows whether your work-life boundary is holding — or slowly dissolving.",
+      "The commute used to be your transition. Now you need something else. Acuity's daily debrief takes 60 seconds: say what happened today, what's lingering, what can wait until tomorrow. Your brain gets the signal that the workday is done. Over time, your weekly report shows whether your work-life boundary is holding — or slowly dissolving.",
     features: [
       {
         title: "Shutdown Ritual",
         description:
-          "A 60-second verbal close-out that signals to your brain that the workday is finished. Capture tomorrow's priorities so you can stop holding them in your head tonight.",
+          "A 60-second verbal close-out that signals to your brain that the workday is finished. Capture tomorrow's priorities so you can stop holding them in your head.",
       },
       {
         title: "Work-Life Balance Tracking",
         description:
-          "Acuity tracks how often work dominates your nightly entries. When your personal life starts disappearing from the data, you'll see it before you feel it.",
+          "Acuity tracks how often work dominates your entries. When your personal life starts disappearing from the data, you'll see it before you feel it.",
       },
       {
         title: "Tomorrow's Task Capture",
@@ -141,7 +141,7 @@ export const PERSONA_PAGES: PersonaPage[] = [
       name: "James L.",
       detail: "31, remote product manager",
     },
-    ctaHeadline: "Build the boundary your home office can't.",
+    ctaHeadline: "Your workday deserves an ending. Build it in 60 seconds.",
     accentColor: "sky",
   },
   {
@@ -202,7 +202,7 @@ export const PERSONA_PAGES: PersonaPage[] = [
     ],
     solutionHeadline: "An early warning system for your own burnout.",
     solutionBody:
-      "Every night, 60 seconds. Acuity's AI doesn't just listen — it watches the trends. When your entries start skewing more negative, when work takes over every single entry, when hobbies and friends stop appearing in your data, the weekly report flags it. You get a burnout signal weeks before you'd have noticed it yourself.",
+      "Every day, 60 seconds. Acuity's AI doesn't just listen — it watches the trends. When your entries start skewing more negative, when work takes over every single entry, when hobbies and friends stop appearing in your data, the weekly report flags it. You get a burnout signal weeks before you'd have noticed it yourself.",
     features: [
       {
         title: "Burnout Pattern Detection",
@@ -244,7 +244,7 @@ export const PERSONA_PAGES: PersonaPage[] = [
     ],
     solutionHeadline: "60 seconds to clear the noise. AI to find the signal.",
     solutionBody:
-      "Talk through your day before bed. What's due, what's stressing you, what you're avoiding. Acuity extracts your tasks, tracks your stress levels across the semester, and shows you patterns — like how you always spiral on Sundays, or how your confidence drops after certain classes. It's the self-awareness you need to get through school without losing yourself.",
+      "Talk through your day whenever you have a minute. What's due, what's stressing you, what you're avoiding. Acuity extracts your tasks, tracks your stress levels across the semester, and shows you patterns — like how you always spiral on Sundays, or how your confidence drops after certain classes. It's the self-awareness you need to get through school without losing yourself.",
     features: [
       {
         title: "Deadline & Task Capture",
@@ -268,17 +268,17 @@ export const PERSONA_PAGES: PersonaPage[] = [
       name: "Aisha R.",
       detail: "21, junior studying biochemistry",
     },
-    ctaHeadline: "Stop surviving the semester. Start understanding it.",
+    ctaHeadline: "See your semester clearly. Start talking.",
     accentColor: "indigo",
   },
   {
     slug: "entrepreneurs",
-    title: "Acuity for Entrepreneurs — Your Nightly Co-Founder for Mental Clarity",
+    title: "Acuity for Entrepreneurs — Your Personal Co-Founder for Mental Clarity",
     metaDescription:
-      "Solo entrepreneurs need someone to debrief with. Acuity's 60-second AI voice journal captures decisions, tracks mental load, and writes your weekly review.",
+      "Solo entrepreneurs need someone to debrief with. Acuity's 60-second daily AI voice journal captures decisions, tracks mental load, and writes your weekly review.",
     headline: "You run a business. Who's running your headspace?",
     subheadline:
-      "You make 200 decisions a day with no one to talk them through with. By 10pm your brain is fried and you can't tell which fire actually matters. Acuity is the debrief partner your solo venture is missing.",
+      "You make 200 decisions a day with no one to talk them through with. By the end of the day your brain is fried and you can't tell which fire actually matters. Acuity is the debrief partner your solo venture is missing.",
     painPoints: [
       "You wear every hat — CEO, marketer, accountant, support — and by evening you can't remember what you actually accomplished versus just survived",
       "You have no co-founder, no manager, no one who asks 'how are you holding up?' with the context to understand the answer",
@@ -286,7 +286,7 @@ export const PERSONA_PAGES: PersonaPage[] = [
     ],
     solutionHeadline: "Debrief with AI that actually remembers your context.",
     solutionBody:
-      "Every night, dump the day in 60 seconds. What shipped, what's stuck, what's keeping you up. Acuity's AI extracts your action items, tracks your focus areas week over week, and generates the founder's weekly review you'd never sit down to write. See where your time and energy are actually going — not where you think they're going.",
+      "Every day, dump the day in 60 seconds. What shipped, what's stuck, what's on your mind. Acuity's AI extracts your action items, tracks your focus areas week over week, and generates the founder's weekly review you'd never sit down to write. See where your time and energy are actually going — not where you think they're going.",
     features: [
       {
         title: "Founder's Weekly Review",
@@ -301,7 +301,7 @@ export const PERSONA_PAGES: PersonaPage[] = [
       {
         title: "Goal Drift Detection",
         description:
-          "Said you'd focus on sales this quarter? Acuity shows you if your nightly entries are about product, support, or anything but sales. Catch the drift before the quarter is gone.",
+          "Said you'd focus on sales this quarter? Acuity shows you if your daily entries are about product, support, or anything but sales. Catch the drift before the quarter is gone.",
       },
     ],
     testimonial: {
@@ -328,12 +328,12 @@ export const PERSONA_PAGES: PersonaPage[] = [
     ],
     solutionHeadline: "Turn fleeting sparks into a creative archive.",
     solutionBody:
-      "Talk for 60 seconds before bed. Dump the ideas, the frustrations, the breakthroughs, the fragments. Acuity doesn't just record — it extracts themes, connects recurring ideas across entries, and shows you the creative threads running through your subconscious. Your weekly report is a map of your creative mind that no journal could match.",
+      "Talk for 60 seconds whenever inspiration strikes. Dump the ideas, the frustrations, the breakthroughs, the fragments. Acuity doesn't just record — it extracts themes, connects recurring ideas across entries, and shows you the creative threads running through your subconscious. Your weekly report is a map of your creative mind that no journal could match.",
     features: [
       {
         title: "Idea Extraction & Tagging",
         description:
-          "Every creative fragment you mention gets captured and tagged. Acuity connects tonight's offhand comment to last Tuesday's breakthrough — surfacing patterns in your creative thinking.",
+          "Every creative fragment you mention gets captured and tagged. Acuity connects today's offhand comment to last Tuesday's breakthrough — surfacing patterns in your creative thinking.",
       },
       {
         title: "Emotional-Creative Correlation",
@@ -362,7 +362,7 @@ export const PERSONA_PAGES: PersonaPage[] = [
       "Acuity helps couples communicate better. Individual 60-second voice journals reveal relationship patterns, unspoken needs, and what actually matters.",
     headline: "The 60-second habit that's saving relationships.",
     subheadline:
-      "You don't fight about the dishes. You fight about what the dishes represent. Acuity's nightly debrief helps each partner see their own patterns — what they're avoiding, what keeps coming up, what they actually need — so conversations start with clarity instead of accusations.",
+      "You don't fight about the dishes. You fight about what the dishes represent. Acuity's daily debrief helps each partner see their own patterns — what they're avoiding, what keeps coming up, what they actually need — so conversations start with clarity instead of accusations.",
     painPoints: [
       "You have the same argument every few weeks and neither of you can explain what it's really about underneath the surface trigger",
       "You hold things in all day and then unload on your partner at 10pm when neither of you has the bandwidth to listen",
@@ -370,7 +370,7 @@ export const PERSONA_PAGES: PersonaPage[] = [
     ],
     solutionHeadline: "Know yourself first. Show up to the conversation second.",
     solutionBody:
-      "Each partner does their own 60-second nightly entry. Not about each other — about themselves. What stressed you, what you need, what you're grateful for. Acuity's AI reveals patterns: that you always get critical when you're anxious, or that your partner's complaints spike on days they feel unappreciated. You show up to difficult conversations already knowing what's underneath.",
+      "Each partner does their own 60-second daily entry. Not about each other — about themselves. What stressed you, what you need, what you're grateful for. Acuity's AI reveals patterns: that you always get critical when you're anxious, or that your partner's complaints spike on days they feel unappreciated. You show up to difficult conversations already knowing what's underneath.",
     features: [
       {
         title: "Individual Pattern Detection",
@@ -380,7 +380,7 @@ export const PERSONA_PAGES: PersonaPage[] = [
       {
         title: "Recurring Theme Surfacing",
         description:
-          "Acuity shows you what you keep bringing up night after night. If 'feeling unheard' appears 12 times in a month, that's not a bad day — that's a pattern that needs addressing.",
+          "Acuity shows you what you keep bringing up day after day. If 'feeling unheard' appears 12 times in a month, that's not a bad day — that's a pattern that needs addressing.",
       },
       {
         title: "Gratitude & Appreciation Tracking",
@@ -399,18 +399,18 @@ export const PERSONA_PAGES: PersonaPage[] = [
   },
   {
     slug: "grief",
-    title: "Acuity for Grief — A Safe Space to Talk Every Night",
+    title: "Acuity for Grief — A Safe Space to Talk Every Day",
     metaDescription:
       "Processing grief is a journey. Acuity gives you 60 seconds each night to talk through loss, track healing over time, and see the progress you can't feel.",
     headline: "You don't have to process grief alone.",
     subheadline:
-      "Grief doesn't follow a schedule. It hits at 2pm on a Tuesday or 11pm when you hear their song. Acuity gives you a place to put it every night — not to fix it, not to analyze it, just to say it out loud and know that something is tracking the journey even when you can't.",
+      "Grief doesn't follow a schedule. It hits at 2pm on a Tuesday or 11pm when you hear their song. Acuity gives you a place to put it every day — not to fix it, not to analyze it, just to say it out loud and know that something is tracking the path even when you can't.",
     painPoints: [
       "People stopped asking how you're doing after a few weeks, but the grief didn't stop — it just went underground where no one can see it",
       "Some days you feel okay and then feel guilty for feeling okay, and you can't tell if you're healing or just going numb",
       "You don't want therapy right now, but you also can't keep carrying this alone with nowhere to put it down",
     ],
-    solutionHeadline: "A place for your grief. Every night. No pressure.",
+    solutionHeadline: "A place for your grief. Every day. No pressure.",
     solutionBody:
       "Just talk. Say their name. Say what you miss. Say you're angry, or say nothing happened today and that felt wrong too. Acuity holds it all without judgment, and over weeks and months, your report shows you the shape of your grief — the slow, non-linear, real trajectory of healing that you can't feel from inside it.",
     features: [
@@ -420,9 +420,9 @@ export const PERSONA_PAGES: PersonaPage[] = [
           "Grief isn't linear and Acuity doesn't pretend it is. Your weekly report maps the real shape of your loss — the setbacks, the breakthroughs, the quiet plateaus — so you can see you're moving even when it doesn't feel like it.",
       },
       {
-        title: "Safe Night Ritual",
+        title: "Safe Daily Ritual",
         description:
-          "Nighttime is the hardest. Acuity gives you a structured 60 seconds to put down the weight before you try to sleep. Not therapy, not advice — just a witness.",
+          "The quiet moments are the hardest. Acuity gives you a structured 60 seconds to put down the weight whenever you need to. Not therapy, not advice — just a witness.",
       },
       {
         title: "Memory Preservation",
@@ -432,18 +432,18 @@ export const PERSONA_PAGES: PersonaPage[] = [
     ],
     testimonial: {
       quote:
-        "After my dad died, everyone moved on after a month but I was still drowning. I started talking to Acuity every night just to say his name. Three months later, my report showed me that I'd gone from talking about pain every night to talking about memories. I was healing and I didn't even know it. Seeing that saved me.",
+        "After my dad died, everyone moved on after a month but I was still drowning. I started talking to Acuity every day just to say his name. Three months later, my report showed me that I'd gone from talking about pain every day to talking about memories. I was healing and I didn't even know it. Seeing that saved me.",
       name: "Nina S.",
       detail: "41, lost her father to cancer",
     },
-    ctaHeadline: "Your grief deserves a place to rest tonight.",
+    ctaHeadline: "Your grief deserves a place to rest. Start today.",
     accentColor: "teal",
   },
   {
     slug: "career-change",
     title: "Acuity for Career Change — Let Your Voice Notes Reveal the Answer",
     metaDescription:
-      "Considering a career change? Acuity's AI analyzes your nightly voice entries to surface what drains you, what energizes you, and what you really want.",
+      "Considering a career change? Acuity's AI analyzes your daily voice entries to surface what drains you, what energizes you, and what you really want.",
     headline:
       "Thinking about a career change? Your voice notes already know the answer.",
     subheadline:
@@ -455,7 +455,7 @@ export const PERSONA_PAGES: PersonaPage[] = [
     ],
     solutionHeadline: "Stop guessing. Start listening to your own data.",
     solutionBody:
-      "Talk every night for a month. Don't try to figure anything out — just say what happened, how it felt, what drained you, what gave you energy. Acuity's AI finds the patterns: what you consistently complain about, what lights you up, what you keep fantasizing about, and what you're avoiding. After 30 entries, your weekly reports read like a career clarity roadmap written by someone who knows you better than you know yourself.",
+      "Talk every day for a month. Don't try to figure anything out — just say what happened, how it felt, what drained you, what gave you energy. Acuity's AI finds the patterns: what you consistently complain about, what lights you up, what you keep fantasizing about, and what you're avoiding. After 30 entries, your weekly reports read like a career clarity roadmap written by someone who knows you better than you know yourself.",
     features: [
       {
         title: "Energy & Drain Mapping",
@@ -531,7 +531,7 @@ export const PERSONA_PAGES: PersonaPage[] = [
       "Teachers give everything to their students. Acuity's 60-second voice journal helps educators track burnout, process emotional labor, and protect their energy.",
     headline: "You manage 30 minds a day. Who manages yours?",
     subheadline:
-      "You're a teacher, counselor, referee, motivator, and admin — all before lunch. By 3pm you're empty. Acuity's nightly debrief helps you see what's actually draining you, what still lights you up, and whether you're heading toward a wall.",
+      "You're a teacher, counselor, referee, motivator, and admin — all before lunch. By 3pm you're empty. Acuity's daily debrief helps you see what's actually draining you, what still lights you up, and whether you're heading toward a wall.",
     painPoints: [
       "You bring work home every night — not just papers to grade, but the kid who's struggling and the parent who yelled and the meeting that wasted an hour",
       "You became a teacher to make a difference but spend most of your energy on paperwork, politics, and managing behaviors instead of teaching",
@@ -581,7 +581,7 @@ export const PERSONA_PAGES: PersonaPage[] = [
     ],
     solutionHeadline: "Process your own patterns with the rigor you give your clients.",
     solutionBody:
-      "Sixty seconds every evening. Not clinical notes — your emotional residue from the day. What session stuck with you, where you felt activated, what you're carrying home. Acuity's AI detects your patterns the same way you detect your clients' patterns: recurring themes, emotional shifts, blind spots. Your weekly report is supervision between supervisions.",
+      "Sixty seconds at the end of each day. Not clinical notes — your emotional residue from the day. What session stuck with you, where you felt activated, what you're carrying home. Acuity's AI detects your patterns the same way you detect your clients' patterns: recurring themes, emotional shifts, blind spots. Your weekly report is supervision between supervisions.",
     features: [
       {
         title: "Countertransference Awareness",
@@ -628,7 +628,7 @@ export const PERSONA_PAGES: PersonaPage[] = [
       {
         title: "Loop Detection",
         description:
-          "Acuity identifies topics that appear in entry after entry without resolution. When you see that you've mentioned the same worry 12 nights in a row, the loop becomes visible — and breakable.",
+          "Acuity identifies topics that appear in entry after entry without resolution. When you see that you've mentioned the same worry 12 days in a row, the loop becomes visible — and breakable.",
       },
       {
         title: "Cognitive Offloading",
@@ -696,10 +696,10 @@ export const PERSONA_PAGES: PersonaPage[] = [
     slug: "managers",
     title: "Acuity for Managers — Debrief Your Leadership, Not Just Your Team",
     metaDescription:
-      "People managers carry invisible weight. Acuity's 60-second nightly debrief tracks leadership patterns, team dynamics, and management growth over time.",
+      "People managers carry invisible weight. Acuity's 60-second daily debrief tracks leadership patterns, team dynamics, and management growth over time.",
     headline: "You're responsible for everyone else's growth. What about yours?",
     subheadline:
-      "You spent today in 1:1s, navigating team conflict, giving feedback that took more out of you than them, and wondering if you're actually good at this. Acuity's nightly debrief captures the leadership experience no one sees — and shows you the patterns that make you better or burn you out.",
+      "You spent today in 1:1s, navigating team conflict, giving feedback that took more out of you than them, and wondering if you're actually good at this. Acuity's daily debrief captures the leadership experience no one sees — and shows you the patterns that make you better or burn you out.",
     painPoints: [
       "You absorb your team's stress, shield them from chaos above, and carry both loads home with no one to debrief with",
       "You had three difficult conversations today and you're replaying all of them, wondering if you said the right thing or made it worse",
@@ -717,7 +717,7 @@ export const PERSONA_PAGES: PersonaPage[] = [
       {
         title: "Team Dynamic Tracking",
         description:
-          "Who keeps appearing in your entries? Who's draining your energy? Who do you never mention? Your nightly data reveals where your attention goes — and where it doesn't.",
+          "Who keeps appearing in your entries? Who's draining your energy? Who do you never mention? Your data reveals where your attention goes — and where it doesn't.",
       },
       {
         title: "Management Growth Report",
@@ -738,7 +738,7 @@ export const PERSONA_PAGES: PersonaPage[] = [
     slug: "freelancers",
     title: "Acuity for Freelancers — The Accountability System You Actually Need",
     metaDescription:
-      "Freelancers lack structure and accountability. Acuity's 60-second nightly debrief tracks goals, surfaces procrastination, and writes your weekly review.",
+      "Freelancers lack structure and accountability. Acuity's 60-second daily debrief tracks goals, surfaces procrastination, and writes your weekly review.",
     headline: "No structure. No boss. No accountability. Until now.",
     subheadline:
       "Freedom was the dream. But no one told you freedom comes with no guardrails, no feedback loops, and no one to tell you that you've been 'about to start that project' for three weeks. Acuity is the structure you need without the structure you left behind.",
@@ -747,9 +747,9 @@ export const PERSONA_PAGES: PersonaPage[] = [
       "You have no one checking in on you, no performance review, no team standup — and the freedom that felt liberating now feels like floating",
       "You procrastinate on client work and then panic-work at 2am, and the cycle repeats because there's nothing holding you accountable between invoice and deadline",
     ],
-    solutionHeadline: "Build your own guardrails in 60 seconds a night.",
+    solutionHeadline: "Build your own guardrails in 60 seconds a day.",
     solutionBody:
-      "Every evening, debrief: what you did, what you avoided, what's due. Acuity automatically tracks your goals, captures your tasks, and writes the weekly review you'd never write yourself. Over time, it surfaces your procrastination patterns — which projects you avoid, when in the week you lose momentum, what you say you'll do but never actually start. It's accountability without a boss.",
+      "Every day, debrief: what you did, what you avoided, what's due. Acuity automatically tracks your goals, captures your tasks, and writes the weekly review you'd never write yourself. Over time, it surfaces your procrastination patterns — which projects you avoid, when in the week you lose momentum, what you say you'll do but never actually start. It's accountability without a boss.",
     features: [
       {
         title: "Procrastination Pattern Detection",
@@ -789,7 +789,7 @@ export const PERSONA_PAGES: PersonaPage[] = [
       "Pre-competition anxiety makes you perform below your ability, and 'just relax' is about as useful as 'just run faster'",
       "You don't have a structured way to process bad performances, so losses linger in your head and contaminate the next competition",
     ],
-    solutionHeadline: "Your mental performance log. 60 seconds a night.",
+    solutionHeadline: "Your mental performance log. 60 seconds a day.",
     solutionBody:
       "After training, after competition, after rest days — 60 seconds of voice. How do you feel about your performance? What's your confidence level? Are you dreading or excited about tomorrow? Acuity tracks your mental state alongside your physical calendar, revealing the mental patterns that predict peak performance and the ones that predict collapse.",
     features: [
@@ -815,7 +815,7 @@ export const PERSONA_PAGES: PersonaPage[] = [
       name: "Elijah R.",
       detail: "22, Division I swimmer, 200m butterfly",
     },
-    ctaHeadline: "Train your mind like you train your body. Start tonight.",
+    ctaHeadline: "Train your mind like you train your body. Start today.",
     accentColor: "cyan",
   },
   {

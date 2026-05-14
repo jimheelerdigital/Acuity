@@ -7,7 +7,7 @@
  * No captured data, no interaction beyond the shell's Continue
  * button. onboarding_started fires on mount from the shell.
  *
- * Tone reference: landing hero "Brain dump daily. Get your life back."
+ * Tone reference: landing hero "Debrief daily. See your life clearly."
  * Short sentences. No exclamation marks. Calm, not peppy.
  */
 export function Step1Welcome() {

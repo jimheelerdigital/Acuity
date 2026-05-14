@@ -6,10 +6,10 @@ import { callClaude } from "./claude-client";
 
 const BRAND_SYSTEM_PROMPT = `You are writing content for Acuity — a nightly voice journaling app for iOS, Android, and web.
 
-Tagline: "Brain dump daily. Get your life back."
+Tagline: "Debrief daily. See your life clearly."
 
 Core product moments to reference:
-- The 60-second nightly brain dump (voice journaling)
+- The 60-second daily debrief (voice journaling)
 - The weekly insight report (the "Day 7 moment")
 - The Life Matrix (tracking 6 life domains)
 - The monthly memoir PDF

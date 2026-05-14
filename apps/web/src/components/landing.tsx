@@ -11,11 +11,11 @@ import { SOCIAL_PROOF, STATS_STRIP } from "@/lib/social-proof";
    ═══════════════════════════════════════════ */
 
 const WHO_FEATURED = [
-  { href: "/for/therapy", title: "Therapy", description: "What if you had a therapist who listened every night?" },
+  { href: "/for/therapy", title: "Therapy", description: "What if you had a therapist who listened every single day?" },
   { href: "/for/decoded", title: "Life decoded", description: "Reveal the subconscious patterns running your life" },
   { href: "/for/sleep", title: "Sleep", description: "Give your racing thoughts somewhere to go" },
   { href: "/for/weekly-report", title: "Weekly report & Life Matrix", description: "Your week, written by AI. Your life, mapped." },
-  { href: "/for/founders", title: "Founders & executives", description: "The 60-second nightly debrief for high performers" },
+  { href: "/for/founders", title: "Founders & executives", description: "The 60-second debrief for high performers" },
 ];
 
 const WHO_MENTAL = [
@@ -1295,7 +1295,7 @@ export function LandingPage() {
                   <div className="h-full w-full rounded-[1.5rem] bg-[#13131F] p-4 flex flex-col gap-2.5 overflow-hidden">
                     {/* Status bar */}
                     <div className="flex items-center justify-between mb-1">
-                      <div className="text-[10px] text-[#A0A0B8]/60">10:14 PM</div>
+                      <div className="text-[10px] text-[#A0A0B8]/60">9:41</div>
                       <div className="flex gap-1">
                         <div className="h-1.5 w-3 rounded-full bg-white/20" />
                         <div className="h-1.5 w-1.5 rounded-full bg-white/20" />
@@ -1428,7 +1428,7 @@ export function LandingPage() {
         <div className="mx-auto max-w-2xl text-center">
           <Reveal>
             <h3 className="text-lg font-semibold text-[#A0A0B8]">
-              Used by productivity obsessives 👀
+              Used by people who want to understand themselves
             </h3>
           </Reveal>
           <div className="mt-6 flex justify-center -space-x-3">
@@ -1735,6 +1735,68 @@ export function LandingPage() {
         </div>
       </section>
 
+      {/* ───── USE-CASE SCENARIOS ───── */}
+      <section className="px-6 py-16 sm:py-20 lg:py-24 bg-[#13131F]/50">
+        <div className="mx-auto max-w-5xl">
+          <Reveal>
+            <h2 className="text-center text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl mb-4">
+              Fits your life. Not the other way around.
+            </h2>
+            <p className="text-center text-[#A0A0B8] text-lg mb-16 max-w-xl mx-auto">
+              People use Acuity at different times, in different places, for different reasons. Here are two.
+            </p>
+          </Reveal>
+
+          <div className="grid gap-8 sm:grid-cols-2">
+            <Reveal delay={1}>
+              <div className="rounded-2xl border border-white/10 bg-[#13131F] p-8">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="h-8 w-8 rounded-full bg-amber-500/10 flex items-center justify-center">
+                    <svg className="h-4 w-4 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" /></svg>
+                  </div>
+                  <span className="text-xs font-semibold uppercase tracking-wider text-amber-400">Morning</span>
+                </div>
+                <h3 className="text-lg font-bold text-white mb-3">James, 34 — over morning coffee</h3>
+                <p className="text-sm text-[#A0A0B8] leading-relaxed">
+                  &ldquo;Yesterday&rsquo;s meeting with the team still bothers me. I think what&rsquo;s really going on is I feel like no one heard my idea. Also need to call the insurance company and finish that proposal...&rdquo;
+                </p>
+                <div className="mt-4 rounded-lg border border-white/5 bg-[#1E1E2E] p-3">
+                  <div className="text-[10px] text-violet-400 uppercase tracking-wider mb-1">Acuity extracted</div>
+                  <div className="text-xs text-[#A0A0B8] space-y-1">
+                    <div>&#x2022; Feeling unheard at work (recurring theme — 4th mention)</div>
+                    <div>&#x2022; Call insurance company</div>
+                    <div>&#x2022; Finish proposal</div>
+                  </div>
+                </div>
+              </div>
+            </Reveal>
+
+            <Reveal delay={2}>
+              <div className="rounded-2xl border border-white/10 bg-[#13131F] p-8">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="h-8 w-8 rounded-full bg-indigo-500/10 flex items-center justify-center">
+                    <svg className="h-4 w-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" /></svg>
+                  </div>
+                  <span className="text-xs font-semibold uppercase tracking-wider text-indigo-400">Evening</span>
+                </div>
+                <h3 className="text-lg font-bold text-white mb-3">Priya, 29 — winding down after a long day</h3>
+                <p className="text-sm text-[#A0A0B8] leading-relaxed">
+                  &ldquo;Good day actually. Got through the presentation and it went better than I expected. I&rsquo;m proud of myself for not overthinking it. Need to remember to book the flights for next month...&rdquo;
+                </p>
+                <div className="mt-4 rounded-lg border border-white/5 bg-[#1E1E2E] p-3">
+                  <div className="text-[10px] text-violet-400 uppercase tracking-wider mb-1">Acuity extracted</div>
+                  <div className="text-xs text-[#A0A0B8] space-y-1">
+                    <div>&#x2022; Mood: confident, relieved (up from anxious yesterday)</div>
+                    <div>&#x2022; Book flights for next month</div>
+                    <div>&#x2022; Pattern: confidence rises after facing fears</div>
+                  </div>
+                </div>
+              </div>
+            </Reveal>
+          </div>
+        </div>
+      </section>
+
       {/* ───── TESTIMONIALS ───── */}
       {/* TODO: Replace fake testimonials with real user testimonials */}
       <section className="px-6 py-16 sm:py-20 lg:py-24">
@@ -1874,7 +1936,7 @@ export function LandingPage() {
           </Reveal>
           <Reveal delay={2}>
             <p className="text-[#A0A0B8] mb-4 max-w-xl mx-auto">
-              Have questions about Acuity and how it turns your nightly brain dump into action? Our FAQs cover everything you need to get started.
+              Have questions about Acuity and how it turns your daily debrief into action? Our FAQs cover everything you need to get started.
             </p>
           </Reveal>
         </div>
@@ -1882,7 +1944,7 @@ export function LandingPage() {
           <Reveal delay={2}>
             <div className="rounded-2xl border border-white/10 bg-[#13131F] divide-y divide-white/10">
               {[
-                { q: "What is Acuity and how does it work?", a: "Acuity is a nightly shutdown ritual. You talk for 60 seconds about whatever is on your mind — tasks, worries, ideas, things that happened. By morning, your tasks are on a list, your mood is scored, and your goals are tracked. Every Sunday, a 400-word story of your week lands on your phone. You talk. Acuity does the rest." },
+                { q: "What is Acuity and how does it work?", a: "Acuity is a daily shutdown ritual. You talk for 60 seconds about whatever is on your mind — tasks, worries, ideas, things that happened. By morning, your tasks are on a list, your mood is scored, and your goals are tracked. Every Sunday, a 400-word story of your week lands on your phone. You talk. Acuity does the rest." },
                 { q: "Is this actually private?", a: "Your audio is deleted within 24 hours of transcription. Transcripts are encrypted at rest. We use OpenAI Whisper for transcription and Anthropic Claude for analysis — under their API terms, your data is processed and returned, never used to train their models. We never sell your data." },
                 { q: "Do I have to use it every night?", a: "No. But people who record 4+ times in week one see dramatically better weekly reports. The AI needs a few data points before it can spot patterns. Most people settle into 4\u20135 recordings per week." },
                 { q: "What if I don't know what to say?", a: "That's the point. Just talk. Say whatever is on your mind. The messier, the better — Acuity pulls the signal out of the noise. There are no prompts to answer and no format to follow." },
@@ -1932,7 +1994,7 @@ export function LandingPage() {
                 </span>
               </h2>
               <p className="mt-5 text-[#A0A0B8] text-lg max-w-md mx-auto">
-                Start tonight. Wake up to extracted tasks, tracked goals, and a
+                Start today. Wake up to extracted tasks, tracked goals, and a
                 clearer picture of your life.
               </p>
               <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -1968,7 +2030,7 @@ export function LandingPage() {
                 </span>
               </div>
               <p className="mt-3 text-sm text-[#A0A0B8] max-w-xs leading-relaxed">
-                Talk for 60 seconds. Wake up to a clearer picture of your life. Your nightly shutdown ritual.
+                Talk for 60 seconds. Wake up to a clearer picture of your life. Your daily shutdown ritual.
               </p>
               <div className="mt-6 flex items-center gap-4">
                 <a href="https://apps.apple.com" aria-label="Download on iPhone" className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-[#A0A0B8] transition hover:text-white hover:border-white/20">
@@ -2065,7 +2127,7 @@ const comparisons = [
   {
     alt: "Life coach",
     cost: "$500+/month",
-    missing: "Not available at 10pm when you need to decompress",
+    missing: "Not available when you actually need to decompress",
   },
   {
     alt: "Notion/journaling",
@@ -2088,10 +2150,10 @@ const comparisons = [
 const stats = STATS_STRIP.map((s) => ({ ...s }));
 
 const tickerItems = [
-  "✦ 60-second nightly debrief",
+  "✦ 60-second daily debrief",
   "✦ Tasks pulled from your voice",
   "✦ Goals tracked across entries",
-  "✦ Mood scored every night",
+  "✦ Mood scored every entry",
   "✦ Sunday report on your phone",
   "✦ Life Matrix across 6 areas",
   "✦ Works while you sleep",
@@ -2101,13 +2163,13 @@ const tickerItems = [
 const featureData = [
   {
     iconKey: "mic" as const,
-    title: "The Nightly Debrief",
-    desc: "No typing, no prompts. Talk about your day for 60 seconds before bed. That's it.",
+    title: "The Daily Debrief",
+    desc: "No typing, no prompts. Talk about your day for 60 seconds — whenever suits you. That's it.",
   },
   {
     iconKey: "tasks" as const,
     title: "Your To-Do List, Built While You Sleep",
-    desc: "Say \"I need to call the accountant\" at 10 PM. By morning it's on your task list.",
+    desc: "Say \"I need to call the accountant\" while debriefing. By your next check-in, it's on your task list.",
   },
   {
     iconKey: "target" as const,
@@ -2116,18 +2178,18 @@ const featureData = [
   },
   {
     iconKey: "heart" as const,
-    title: "Your Mood, Scored Nightly",
-    desc: "See how you actually felt this week, not how you remember feeling. Mood scored from your own words.",
+    title: "Your Mood, Scored Daily",
+    desc: "See how you actually felt this week, not how you remember feeling. Mood scored from your own words — a mirror for the days that blur together.",
   },
   {
     iconKey: "chart" as const,
     title: "The Sunday Report",
-    desc: "Every Sunday morning, a 400-word narrative of your week lands on your phone. Patterns you missed, themes you repeated, where your energy went.",
+    desc: "Every Sunday morning, a 400-word narrative of your week lands on your phone. Patterns you missed, themes you repeated, and the moments that mattered most.",
   },
   {
     iconKey: "map" as const,
     title: "The Life Matrix",
-    desc: "Six areas of your life, scored every week. Career, health, relationships, finances, growth, purpose. See which ones are getting attention and which are starving.",
+    desc: "Six areas of your life, scored every week. Career, health, relationships, finances, growth, purpose. See the full picture — what's thriving and what needs your attention.",
   },
 ];
 
@@ -2154,7 +2216,7 @@ const testimonials = [
 ];
 
 const pricingFeatures = [
-  "Unlimited nightly debriefs",
+  "Unlimited daily debriefs",
   "Tasks & goals extracted automatically",
   "Mood scored from your own words",
   "Weekly report every Sunday",

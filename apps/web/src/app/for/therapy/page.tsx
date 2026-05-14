@@ -50,11 +50,11 @@ export default function TherapyPage() {
         <ParallaxOrbs />
         <div className="relative mx-auto max-w-4xl px-6 text-center">
           <Reveal>
-            <HeroHeadline text="What if you had a therapist who listened every single night?" />
+            <HeroHeadline text="What if you had a therapist who listened every single day?" />
           </Reveal>
           <Reveal delay={1}>
             <p className="mt-6 text-lg text-[#A0A0B8] leading-relaxed max-w-2xl mx-auto">
-              Acuity listens to your 60-second nightly debrief, tracks your emotional
+              Acuity listens to your 60-second daily debrief, tracks your emotional
               patterns, and writes your weekly mental health report — for less than
               the cost of one therapy copay.
             </p>
@@ -74,7 +74,7 @@ export default function TherapyPage() {
           </Reveal>
           <Reveal delay={3}>
             <div className="mt-6">
-              <UrgencyBadge text="What would change if you had emotional support every single night?" />
+              <UrgencyBadge text="What would change if you had emotional support every single day?" />
             </div>
           </Reveal>
         </div>
@@ -94,7 +94,7 @@ export default function TherapyPage() {
       {/* ───── SOLUTION ───── */}
       <SolutionSection
         headline="Acuity fills the 6 days between sessions."
-        body="Every night you speak freely for 60 seconds. Acuity tracks your mood, detects emotional patterns, flags recurring themes, and builds a mental health timeline that compounds over time. Show up to therapy with 7 days of actual data — not just how you feel in the moment."
+        body="Every day you speak freely for 60 seconds. Acuity tracks your mood, detects emotional patterns, flags recurring themes, and builds a mental health timeline that compounds over time. Show up to therapy with 7 days of actual data — not just how you feel in the moment."
       />
 
       <TrustStrip />
@@ -113,7 +113,7 @@ export default function TherapyPage() {
             label: "Step 1",
             title: "Record",
             description:
-              "Open Acuity at night. Hit record. Speak freely. No prompts, no structure, no judgment.",
+              "Open Acuity whenever you're ready. Hit record. Speak freely. No prompts, no structure, no judgment.",
           },
           {
             label: "Step 2",
@@ -158,14 +158,14 @@ export default function TherapyPage() {
             headers={["Therapy", "Acuity"]}
             rows={[
               { feature: "Cost", values: ["$150/session", "$12.99/month"] },
-              { feature: "Frequency", values: ["Once a week", "Every single night"] },
+              { feature: "Frequency", values: ["Once a week", "Every single day"] },
               {
                 feature: "Memory",
                 values: ["Depends on therapist", "Perfect — remembers everything"],
               },
               {
                 feature: "Availability",
-                values: ["Business hours", "10pm when you need it"],
+                values: ["Business hours", "Whenever you need it"],
               },
               {
                 feature: "Patterns",
@@ -182,9 +182,9 @@ export default function TherapyPage() {
         features={[
           {
             icon: "moon",
-            title: "Nightly mood tracking",
+            title: "Daily mood tracking",
             description:
-              "Log your emotional state every night with zero effort — just speak and Acuity captures it.",
+              "Log your emotional state every day with zero effort — just speak and Acuity captures it.",
           },
           {
             icon: "brain",
@@ -255,7 +255,7 @@ export default function TherapyPage() {
           </Reveal>
           <div className="grid gap-4 sm:grid-cols-3">
             {[
-              { title: "Mood tracking", desc: "Log your emotional state nightly with zero effort — just speak." },
+              { title: "Mood tracking", desc: "Log your emotional state daily with zero effort — just speak." },
               { title: "Pattern detection", desc: "AI identifies recurring emotional themes across days and weeks." },
               { title: "Weekly report", desc: "Every Sunday, a narrative about your emotional week — wins, spirals, blind spots." },
             ].map((f, i) => (
@@ -311,7 +311,7 @@ export default function TherapyPage() {
 
       {/* ───── FINAL CTA ───── */}
       <CTABanner
-        headline="Your thoughts deserve to be heard every night. Not just once a week."
+        headline="Your thoughts deserve to be heard every day. Not just once a week."
         utmCampaign={UTM}
       />
 

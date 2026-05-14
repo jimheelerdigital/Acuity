@@ -251,7 +251,7 @@ const DROPDOWN_FEATURED = [
   {
     href: "/for/sleep",
     title: "The Night Owl",
-    description: "Give your racing thoughts somewhere to go before bed.",
+    description: "Give your racing thoughts somewhere to go.",
   },
   {
     href: "/for/weekly-report",
@@ -261,7 +261,7 @@ const DROPDOWN_FEATURED = [
   {
     href: "/for/founders",
     title: "The Builder",
-    description: "The 60-second nightly debrief for founders and high performers.",
+    description: "The 60-second debrief for founders and high performers.",
   },
 ];
 
@@ -494,7 +494,7 @@ export function Footer() {
               <span className="text-lg font-bold tracking-tight text-white">Acuity</span>
             </div>
             <p className="mt-2 text-sm text-[#A0A0B8] max-w-xs">
-              Brain dump daily. Get your life back.
+              Debrief daily. See your life clearly.
             </p>
           </div>
           <div>
@@ -1693,7 +1693,7 @@ export function FAQSection() {
       a: "Your audio is deleted within 24 hours of transcription. We never sell your data.",
     },
     {
-      q: "Do I have to use it every night?",
+      q: "Do I have to use it every day?",
       a: "No. But users who record 4+ times in week one get dramatically better results.",
     },
     {
