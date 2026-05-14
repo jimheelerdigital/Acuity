@@ -1289,8 +1289,9 @@ export function LandingPage() {
             </div>
           </Reveal>
 
-          <div className="space-y-16 sm:space-y-20">
+          <div className="space-y-10 sm:space-y-14">
             {/* Step 1: Record */}
+            <div className="rounded-2xl border border-[#E8B88A]/10 bg-[#1E1C1A] p-6 sm:p-10">
             <div className="flex flex-col gap-8 lg:items-center lg:flex-row">
               <div className="flex-1">
                 <Reveal>
@@ -1335,8 +1336,10 @@ export function LandingPage() {
                 </Reveal>
               </div>
             </div>
+            </div>
 
             {/* Step 2: Extract */}
+            <div className="rounded-2xl border border-[#E8B88A]/10 bg-[#1E1C1A] p-6 sm:p-10">
             <div className="flex flex-col gap-8 lg:items-center lg:flex-row-reverse">
               <div className="flex-1">
                 <Reveal>
@@ -1378,8 +1381,10 @@ export function LandingPage() {
                 </Reveal>
               </div>
             </div>
+            </div>
 
             {/* Step 3: Reflect */}
+            <div className="rounded-2xl border border-[#E8B88A]/10 bg-[#1E1C1A] p-6 sm:p-10">
             <div className="flex flex-col gap-8 lg:items-center lg:flex-row">
               <div className="flex-1">
                 <Reveal>
@@ -1423,6 +1428,7 @@ export function LandingPage() {
                   </div>
                 </Reveal>
               </div>
+            </div>
             </div>
           </div>
         </div>
@@ -1809,7 +1815,7 @@ export function LandingPage() {
               <h2 className="text-3xl font-bold sm:text-5xl tracking-tight">
                 Your first debrief takes
                 <br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#E8B88A] to-violet-400">
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-indigo-400">
                   60 seconds.
                 </span>
               </h2>
