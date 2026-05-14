@@ -10,7 +10,6 @@ import {
 } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -29,43 +28,35 @@ import { OnboardingContext, type OnboardingContextValue } from "./context";
 
 /**
  * Mobile counterpart to apps/web/src/app/onboarding/onboarding-shell.tsx.
- * Owns: progress dots, "Skip for now" with confirmation, Back / Skip
- * step / Continue row. Each step component reads/writes
- * OnboardingContext to gate the Continue button and to queue data
- * for the next POST.
+ * Owns: progress dots, Back / Continue row. Each step component
+ * reads/writes OnboardingContext to gate the Continue button and to
+ * queue data for the next POST.
  *
  * Navigation is URL-driven (?step=N via expo-router) so system-back +
  * deep links resume cleanly and the AuthGate in _layout.tsx can drop
  * users directly into a specific step.
+ *
+ * Build-41 verification (2026-05-14) found that despite the previous
+ * fix making the mic step itself non-skippable in the footer, the
+ * top-right "Skip for now" (skip-entire-onboarding) was still
+ * letting users escape the mic permission step + the new AI consent
+ * step. Apple Guideline 5.1.1(iv) is unambiguous: no skip past the
+ * mic permission UI. Product call (2026-05-14): remove ALL skip
+ * affordances from onboarding — every user clicks through every
+ * step. Per-step optionality is preserved within step components
+ * (mood, life-areas, reminders can be submitted with blank inputs),
+ * but the user cannot bypass the steps themselves.
  */
 
 interface Props {
   step: number;
   totalSteps: number;
-  /** Step numbers where Skip step is allowed. Others are forced by
-   *  their own interaction or land on natural dead-ends. */
-  skippableSteps?: number[];
   children: ReactNode;
 }
-
-// Step indices that allow the footer "Skip" button. Two changes
-// applied 2026-05-14 for build-40 rejection:
-//   1. Step 4 (Microphone) removed — Apple Guideline 5.1.1(iv)
-//      requires the user reach the OS permission prompt, no skip
-//      escape hatch.
-//   2. Indices shifted +1 because the new "How Acuity uses AI"
-//      consent step was inserted at position 5. Old positions of
-//      Mood-baseline (was 6, now 7) and Reminders (was 9, now 10)
-//      remain skippable.
-// Step 5 (AI consent) is NOT skippable — declining triggers the
-// in-step Alert dialog with delete-or-retry options. See
-// step-5-ai-consent.tsx for rationale.
-const DEFAULT_SKIPPABLE = [3, 7, 10];
 
 export function OnboardingShell({
   step,
   totalSteps,
-  skippableSteps = DEFAULT_SKIPPABLE,
   children,
 }: Props) {
   const router = useRouter();
@@ -181,19 +172,8 @@ export function OnboardingShell({
     router.replace(`/onboarding?step=${step - 1}`);
   }, [router, step]);
 
-  const skipStep = useCallback(async () => {
-    // Step-level skip: clear THIS step's captured data so we don't
-    // persist a partially-filled state the user explicitly walked
-    // away from. Other steps' data is untouched so the user can
-    // navigate back later and still find their earlier answers.
-    delete capturedByStepRef.current[step];
-    if (step < totalSteps) {
-      router.replace(`/onboarding?step=${step + 1}`);
-    }
-  }, [router, step, totalSteps]);
-
   const complete = useCallback(
-    async (asSkipped: boolean) => {
+    async () => {
       setSubmitting(true);
       try {
         // Persist last step's captured data — best-effort, never blocks nav.
@@ -207,10 +187,12 @@ export function OnboardingShell({
         // stays trapped in onboarding under the old behavior. Now we
         // log + continue, and the local AuthGate-routing fallback
         // below ensures the user reaches /(tabs).
+        // skipped: false always — the skip-all and per-step skip UI
+        // were removed 2026-05-14; preserving the server contract by
+        // continuing to send the field.
         try {
           await api.post("/api/onboarding/complete", {
-            skipped: asSkipped,
-            skippedAtStep: asSkipped ? step : undefined,
+            skipped: false,
           });
         } catch (err) {
           console.warn("[onboarding-complete] API failed:", err);
@@ -238,26 +220,10 @@ export function OnboardingShell({
         setSubmitting(false);
       }
     },
-    [persist, refresh, router, setAuthenticatedUser, step, user]
+    [persist, refresh, router, setAuthenticatedUser, user]
   );
 
-  const skipAll = useCallback(() => {
-    Alert.alert(
-      "Skip setup?",
-      "You can come back to this from Profile later.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Skip",
-          style: "destructive",
-          onPress: () => complete(true),
-        },
-      ]
-    );
-  }, [complete]);
-
   const isLastStep = step >= totalSteps;
-  const canSkipStep = skippableSteps.includes(step);
 
   return (
     <OnboardingContext.Provider value={contextValue}>
@@ -269,7 +235,14 @@ export function OnboardingShell({
           behavior={Platform.OS === "ios" ? "padding" : undefined}
           className="flex-1"
         >
-          {/* Header — progress dots + Skip-all */}
+          {/* Header — progress dots only. The previous top-right
+              "Skip for now" affordance was removed 2026-05-14 per
+              build-41 verification finding: even though step 4 (mic)
+              was removed from the footer Skip list, this header
+              control still let users bypass the OS permission prompt.
+              Apple Guideline 5.1.1(iv) requires no skip path past
+              the mic permission step. Product call: remove all skip
+              UI; every user clicks through every step. */}
           <View className="flex-row items-center justify-between px-5 pt-3 pb-2">
             <View className="flex-1 flex-row items-center gap-1.5">
               {Array.from({ length: totalSteps }).map((_, i) => {
@@ -286,11 +259,6 @@ export function OnboardingShell({
                 );
               })}
             </View>
-            <Pressable onPress={skipAll} hitSlop={8} className="ml-3">
-              <Text className="text-xs text-zinc-500 dark:text-zinc-400">
-                Skip for now
-              </Text>
-            </Pressable>
           </View>
           <Text className="px-5 text-[11px] text-zinc-400 dark:text-zinc-500">
             Step {step} of {totalSteps}
@@ -308,11 +276,12 @@ export function OnboardingShell({
             {children}
           </ScrollView>
 
-          {/* Footer — Back / Skip / Continue. Hidden while the
-              keyboard is open so the user can't mis-tap "Continue"
-              thinking it's a dismiss-keyboard button. The
-              ScrollView's keyboardShouldPersistTaps="handled" lets
-              users tap outside any text input to dismiss. */}
+          {/* Footer — Back / Continue. Hidden while the keyboard is
+              open so the user can't mis-tap "Continue" thinking it's
+              a dismiss-keyboard button. The ScrollView's
+              keyboardShouldPersistTaps="handled" lets users tap
+              outside any text input to dismiss. Per-step Skip
+              removed 2026-05-14 (see header comment for rationale). */}
           {!keyboardOpen && (
           <View className="flex-row items-center justify-between gap-3 border-t border-zinc-100 dark:border-white/10 px-5 py-3">
             <Pressable
@@ -329,19 +298,8 @@ export function OnboardingShell({
               </Text>
             </Pressable>
             <View className="flex-row items-center gap-2">
-              {canSkipStep && !isLastStep && (
-                <Pressable
-                  onPress={skipStep}
-                  hitSlop={6}
-                  className="px-2 py-2"
-                >
-                  <Text className="text-sm text-zinc-500 dark:text-zinc-400">
-                    Skip
-                  </Text>
-                </Pressable>
-              )}
               <Pressable
-                onPress={() => (isLastStep ? complete(false) : goNext())}
+                onPress={() => (isLastStep ? complete() : goNext())}
                 disabled={!canContinue || submitting}
                 style={{
                   opacity: !canContinue || submitting ? 0.4 : 1,

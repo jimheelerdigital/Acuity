@@ -7,6 +7,47 @@
 
 ---
 
+## [2026-05-14] — Remove ALL skip UI from onboarding (build-41 verification gap)
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+
+Build 41 fixed the Microphone permission step's button label and removed its footer Skip button, but Jim's on-device verification caught that the top-right "Skip for now" button still let users bypass the entire onboarding — including the mic permission AND the new AI consent step. Apple's guideline forbids ANY path past the mic permission UI. Product call: remove every skip affordance from onboarding. Users must click through every step. Individual step inputs can still be left blank (mood, life areas, reminders are still optional within their step), but the steps themselves are mandatory.
+
+### Technical changes (for Jimmy)
+
+`apps/mobile/components/onboarding/shell.tsx` (net −42 lines, dead code purged):
+- Removed top-right "Skip for now" Pressable from the header
+- Removed footer per-step "Skip" Pressable
+- Removed `skipAll` + `skipStep` callbacks
+- Removed `canSkipStep` derived value
+- Removed `DEFAULT_SKIPPABLE` constant + `skippableSteps?` prop
+- Removed unused `Alert` import
+- Simplified `complete(asSkipped)` → `complete()` (always sends `{ skipped: false }` to preserve server contract without endpoint change)
+- Updated docblocks to record the rationale + Apple guideline reference
+
+Preserved: per-step Back button (back-navigation isn't skip), Continue/Finish button gated by `canContinue`, progress dots, step counter. Per-step optionality is preserved within step components (mood slider, life areas, reminders all call `setCanContinue(true)` with blank inputs).
+
+Per-slice gates: vitest 370/370 pass. Mobile tsc baseline 542 → 542 errors (zero new). Single file changed.
+
+### Manual steps needed
+
+- [ ] **EAS build 42** (Jimmy, awaiting explicit go-ahead): rebuild iOS to ship the skip-removal. Build 41 cannot be re-submitted as-is — Apple will reject again on the same 5.1.1(iv) reason.
+- [ ] **Re-submit to App Review** after build 42 installs + verification.
+- [ ] **App Store description update** (Jimmy, still outstanding from build-40 rejection slice): add `Terms of Use: https://getacuity.io/terms` to ASC description text.
+- [ ] **Resend SPF DNS record** (Jimmy, still outstanding): `v=spf1 include:_spf.resend.com ~all` on getacuity.io TXT.
+
+### Notes
+
+- The skip-removal was a product decision, not just a compliance hack. Onboarding's 11 steps are designed to set user expectations (welcome + value prop + permissions + consent + practice + cadence + life areas + trial + reminders + ready). Users who skip lose those expectations and have worse activation. Removing the skip aligns onboarding intent with funnel reality.
+- Per-step optionality is the right granularity for "respect the user's time" — they fill in what they want; they can leave fields blank. Skipping entire steps was always an over-correction.
+- Server still accepts `skipped: true` in `/api/onboarding/complete` for backward compat with any in-flight web sessions or older builds. We just never send it from the mobile shell anymore. Removing the server-side handling is a separate cleanup (v1.2 backlog).
+
+---
+
 ## [2026-05-14] — Update Open Graph social share image to match new branding
 
 **Requested by:** Keenan
