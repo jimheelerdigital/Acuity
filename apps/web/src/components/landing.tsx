@@ -892,8 +892,10 @@ export function LandingPage() {
 
   // Scroll-triggered animations — pure inline styles, zero CSS classes, nothing to purge
   useEffect(() => {
+    console.log('[scroll-animate] useEffect fired');
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const els = document.querySelectorAll('[data-animate]');
+    console.log('[scroll-animate] found elements:', els.length);
 
     // Set initial hidden state via inline styles
     els.forEach((el) => {
