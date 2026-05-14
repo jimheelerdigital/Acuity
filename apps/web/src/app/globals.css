@@ -142,11 +142,14 @@ details .faq-answer > div {
 
 /* Hero phone float */
 @keyframes hero-float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-8px); }
+  0%, 100% { transform: translateY(0px) rotate(var(--phone-rotate, 0deg)); }
+  50% { transform: translateY(-8px) rotate(var(--phone-rotate, 0deg)); }
 }
 .hero-float {
   animation: hero-float 4s ease-in-out infinite;
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
 /* Rolling testimonials ticker */

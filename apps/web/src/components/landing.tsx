@@ -191,7 +191,9 @@ function AnimatedCounter({
       ([entry]) => {
         if (entry.isIntersecting) {
           setStarted(true);
-          obs.unobserve(el);
+        } else {
+          setStarted(false);
+          setCount(0);
         }
       },
       { threshold: 0.5 }
@@ -239,7 +241,9 @@ function Typewriter({ text, delay = 0 }: { text: string; delay?: number }) {
       ([entry]) => {
         if (entry.isIntersecting) {
           setStarted(true);
-          obs.unobserve(el);
+        } else {
+          setStarted(false);
+          setDisplayed("");
         }
       },
       { threshold: 0.5 }
@@ -287,7 +291,8 @@ function MoodBars({ heights, color }: { heights: number[]; color: string }) {
       ([entry]) => {
         if (entry.isIntersecting) {
           setVisible(true);
-          obs.unobserve(el);
+        } else {
+          setVisible(false);
         }
       },
       { threshold: 0.3 }
@@ -351,7 +356,8 @@ function CascadingTasks({
           tasks.forEach((_, i) => {
             setTimeout(() => setVisibleCount((c) => c + 1), (i + 1) * 400);
           });
-          obs.unobserve(el);
+        } else {
+          setVisibleCount(0);
         }
       },
       { threshold: 0.3 }
@@ -429,7 +435,8 @@ function CostComparison() {
           costLines.forEach((_, i) => {
             setTimeout(() => setVisibleIdx(i), i * 600);
           });
-          obs.unobserve(el);
+        } else {
+          setVisibleIdx(-1);
         }
       },
       { threshold: 0.3 }
@@ -581,10 +588,15 @@ function LifeMatrixRadar() {
     if (!el) return;
     const obs = new IntersectionObserver(
       ([e]) => {
-        if (e.isIntersecting && !started.current) {
+        if (e.isIntersecting) {
           started.current = true;
           runCycle();
-          obs.unobserve(el);
+        } else {
+          started.current = false;
+          tRef.current.forEach(clearTimeout);
+          tRef.current = [];
+          setLitCount(0);
+          setActiveIdx(-1);
         }
       },
       { threshold: 0.15 }
@@ -962,8 +974,8 @@ export function LandingPage() {
     // Single observer for all animated elements
     const obs = new IntersectionObserver((entries) => {
       entries.forEach((e) => {
+        const t = e.target as HTMLElement;
         if (e.isIntersecting) {
-          const t = e.target as HTMLElement;
           t.style.opacity = '1';
           t.style.transform = 'translateX(0) translateY(0)';
           // If this is a mockup, add float animation after it appears
@@ -973,7 +985,19 @@ export function LandingPage() {
               t.style.animation = 'gentle-float 3s ease-in-out infinite';
             }, 800);
           }
-          obs.unobserve(t);
+        } else {
+          t.style.animation = 'none';
+          t.style.opacity = '0';
+          if (t.hasAttribute('data-slide-left')) {
+            t.style.transform = 'translateX(-40px)';
+          } else if (t.hasAttribute('data-slide-right')) {
+            t.style.transform = 'translateX(40px)';
+          } else {
+            t.style.transform = 'translateY(24px)';
+          }
+          t.style.transition = 'opacity 0.6s ease-out, transform 0.6s ease-out';
+          const delay = t.getAttribute('data-delay');
+          if (delay) t.style.transitionDelay = delay + 'ms';
         }
       });
     }, { threshold: 0.1 });
@@ -1115,7 +1139,7 @@ export function LandingPage() {
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] lg:w-[400px] lg:h-[400px] rounded-full bg-[#7C5CFC]/15 blur-[80px] animate-pulse-slow" />
 
                 {/* Phone 1 (back) — Weekly Report — LIGHT MODE */}
-                <div data-hero-phone className="absolute right-0 top-6 w-[200px] sm:w-[230px] lg:w-[260px] xl:w-[280px] h-[400px] sm:h-[450px] lg:h-[500px] xl:h-[540px] rounded-[2rem] bg-white p-2 shadow-2xl shadow-black/30 rotate-3 hero-float" style={{ animationDelay: "0.5s" }}>
+                <div data-hero-phone className="absolute right-0 top-6 w-[200px] sm:w-[230px] lg:w-[260px] xl:w-[280px] h-[400px] sm:h-[450px] lg:h-[500px] xl:h-[540px] rounded-[2rem] bg-white p-2 shadow-2xl shadow-black/30 hero-float" style={{ animationDelay: "0.5s", "--phone-rotate": "3deg" } as React.CSSProperties}>
                   <div className="h-full w-full rounded-[1.5rem] bg-[#FAFAF7] p-4 flex flex-col gap-2.5 overflow-hidden">
                     <div className="flex items-center justify-between mb-1">
                       <div className="text-[10px] text-[#9E9890]">9:41</div>
@@ -1161,7 +1185,7 @@ export function LandingPage() {
                 </div>
 
                 {/* Phone 2 (front) — Today's Debrief — LIGHT MODE */}
-                <div data-hero-phone className="absolute left-0 top-0 w-[200px] sm:w-[230px] lg:w-[260px] xl:w-[280px] h-[400px] sm:h-[450px] lg:h-[500px] xl:h-[540px] rounded-[2rem] bg-white p-2 shadow-2xl shadow-black/30 -rotate-3 z-10 hero-float" style={{ animationDelay: "0s" }}>
+                <div data-hero-phone className="absolute left-0 top-0 w-[200px] sm:w-[230px] lg:w-[260px] xl:w-[280px] h-[400px] sm:h-[450px] lg:h-[500px] xl:h-[540px] rounded-[2rem] bg-white p-2 shadow-2xl shadow-black/30 z-10 hero-float" style={{ animationDelay: "0s", "--phone-rotate": "-3deg" } as React.CSSProperties}>
                   <div className="h-full w-full rounded-[1.5rem] bg-[#FAFAF7] p-4 flex flex-col gap-2.5 overflow-hidden">
                     <div className="flex items-center justify-between mb-1">
                       <div className="text-[10px] text-[#9E9890]">9:41</div>

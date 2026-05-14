@@ -25,7 +25,9 @@ function useReveal(delay = 0) {
         if (entry.isIntersecting) {
           el.style.opacity = '1';
           el.style.transform = 'translateY(0)';
-          obs.unobserve(el);
+        } else {
+          el.style.opacity = '0';
+          el.style.transform = 'translateY(24px)';
         }
       },
       { threshold: 0.1 }
@@ -79,7 +81,9 @@ export function AnimatedCounter({
       ([entry]) => {
         if (entry.isIntersecting) {
           setStarted(true);
-          obs.unobserve(el);
+        } else {
+          setStarted(false);
+          setCount(0);
         }
       },
       { threshold: 0.5 }
@@ -127,7 +131,8 @@ export function HeroHeadline({ text }: { text: string }) {
           words.forEach((_, i) => {
             setTimeout(() => setVisibleCount((c) => Math.max(c, i + 1)), i * 80);
           });
-          obs.unobserve(el);
+        } else {
+          setVisibleCount(0);
         }
       },
       { threshold: 0.3 }
@@ -663,7 +668,8 @@ function CascadingTasks({ tasks }: { tasks: { text: string; checked?: boolean }[
           tasks.forEach((_, i) => {
             setTimeout(() => setVisibleCount((c) => c + 1), (i + 1) * 400);
           });
-          obs.unobserve(el);
+        } else {
+          setVisibleCount(0);
         }
       },
       { threshold: 0.3 }
@@ -713,7 +719,8 @@ function MoodBars({ heights, color }: { heights: number[]; color: string }) {
       ([entry]) => {
         if (entry.isIntersecting) {
           setVisible(true);
-          obs.unobserve(el);
+        } else {
+          setVisible(false);
         }
       },
       { threshold: 0.3 }
@@ -1388,7 +1395,8 @@ export function LifeMatrixShowcase({ areas }: { areas: MatrixArea[] }) {
       ([entry]) => {
         if (entry.isIntersecting) {
           setVisible(true);
-          obs.unobserve(el);
+        } else {
+          setVisible(false);
         }
       },
       { threshold: 0.2 }
@@ -1544,7 +1552,8 @@ export function RevealCards({ items }: { items: string[] }) {
           items.forEach((_, i) => {
             setTimeout(() => setVisibleCount((c) => Math.max(c, i + 1)), i * 200);
           });
-          obs.unobserve(el);
+        } else {
+          setVisibleCount(0);
         }
       },
       { threshold: 0.2 }
