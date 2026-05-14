@@ -12,14 +12,14 @@ export const metadata: Metadata = {
       "Can't sleep because your brain won't stop? The brain dump app that gives you 60 seconds to empty your head before bed so your mind can finally rest.",
     url: "https://getacuity.io/for/sleep",
     siteName: "Acuity",
-    images: [{ url: "/og-image.png?v=2", width: 1200, height: 630 }],
+    images: [{ url: "/og-image.png?v=3", width: 1200, height: 630 }],
   },
   twitter: {
     card: "summary_large_image",
     title: "Acuity for Sleep — The 60-Second Brain Dump App That Fixes Racing Thoughts",
     description:
       "Can't sleep because your brain won't stop? The brain dump app that gives you 60 seconds to empty your head before bed.",
-    images: ["/og-image.png?v=2"],
+    images: ["/og-image.png?v=3"],
   },
 };
 

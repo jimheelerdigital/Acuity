@@ -12,14 +12,14 @@ export const metadata: Metadata = {
       "The AI voice journal that surfaces the patterns you can't see — mood tracking, life pattern detection, and weekly reports from your daily debrief.",
     url: "https://getacuity.io/for/decoded",
     siteName: "Acuity",
-    images: [{ url: "/og-image.png?v=2", width: 1200, height: 630 }],
+    images: [{ url: "/og-image.png?v=3", width: 1200, height: 630 }],
   },
   twitter: {
     card: "summary_large_image",
     title: "Acuity Decoded — AI Pattern Detection for Your Life",
     description:
       "The AI voice journal that surfaces the patterns you can't see — mood tracking, pattern detection, and weekly reports.",
-    images: ["/og-image.png?v=2"],
+    images: ["/og-image.png?v=3"],
   },
 };
 

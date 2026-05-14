@@ -12,14 +12,14 @@ export const metadata: Metadata = {
       "From your daily voice journal: your wins, your patterns, what you said you'd do versus what happened. An AI-written weekly report, every Sunday.",
     url: "https://getacuity.io/for/weekly-report",
     siteName: "Acuity",
-    images: [{ url: "/og-image.png?v=2", width: 1200, height: 630 }],
+    images: [{ url: "/og-image.png?v=3", width: 1200, height: 630 }],
   },
   twitter: {
     card: "summary_large_image",
     title: "Acuity Weekly Report — Every Sunday, AI Writes Your Week Back to You",
     description:
       "From your daily voice journal: your wins, your patterns, what you said you'd do versus what happened. An AI-written weekly report.",
-    images: ["/og-image.png?v=2"],
+    images: ["/og-image.png?v=3"],
   },
 };
 

@@ -47,14 +47,14 @@ export const metadata: Metadata = {
     title: "Acuity — One Minute a Day. A Life of Clarity.",
     description:
       "The AI journal that listens. Record your daily debrief by voice — AI extracts tasks, tracks goals, detects life patterns, and delivers your weekly report. No typing. No prompts. Just talk.",
-    images: [{ url: "/og-image.png?v=2", width: 1200, height: 630, alt: "Acuity — AI voice journal for your daily debrief" }],
+    images: [{ url: "/og-image.png?v=3", width: 1200, height: 630, alt: "Acuity — AI voice journal for your daily debrief" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "Acuity — One Minute a Day. A Life of Clarity.",
     description:
       "The AI journal that listens. Record your daily debrief by voice — AI extracts tasks, tracks goals, detects life patterns, and delivers your weekly report.",
-    images: ["/og-image.png?v=2"],
+    images: ["/og-image.png?v=3"],
   },
   robots: {
     index: true,

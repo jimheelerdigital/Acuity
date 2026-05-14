@@ -7,6 +7,48 @@
 
 ---
 
+## [2026-05-14] — Amplify site warmth + redesign OG image with app mockup
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+
+Two things: First, the warmth changes from earlier were too subtle to notice, so they've been cranked up. The page background is now a visible warm charcoal gray instead of near-black, card backgrounds are noticeably lighter and warmer, the amber accent color is brighter and appears in more places — step labels, section headings, pricing card border, star ratings, and the emotional moments cards all use the warm gold now. You should be able to feel the difference immediately.
+
+Second, the social share image (what shows up when you paste an Acuity link in Slack, iMessage, Twitter, etc.) has been completely redesigned. Instead of just text on a dark background, it now shows a split layout: branding on the left (logo, name, tagline) and a simplified app mockup on the right showing extracted tasks, a tracked goal, mood score, pattern detection, and mood bars. It actually shows what the product does.
+
+### Technical changes (for Jimmy)
+
+**Warmth amplification (11 files):**
+- Page bg: `#181614` (warm charcoal, up from near-black `#0F0D0B`)
+- Card bg: `#1E1C1A`, inner card: `#252220`, footer: `#1A1816`
+- Amber accent: `#E8B88A` (brighter, up from `#D4A574`)
+- Section eyebrow labels changed from purple to amber: Life Matrix, Pro pricing, Why it matters
+- Pricing card: border `border-[#E8B88A]/20`, shimmer gradient warm amber, "Pro" label amber
+- Moments cards: `border-[#E8B88A]/25`, bg `#252220` (warmest cards on page)
+- Warm card hover glow + 2px lift on hover
+- Star ratings: `text-amber-400` → `text-[#E8B88A]`
+- All cascaded across landing.tsx, landing-shared.tsx, layout.tsx, globals.css, tailwind.config.ts, all /for/* pages
+
+**OG image redesign:**
+- `apps/web/public/og-image.png`: 1200x630, split layout. Left: logo + "Acuity" + amber tagline + muted subtext + accent line. Right: phone mockup with Today's Debrief screen showing extracted tasks, goal tracked, mood, pattern detected, mood bars. Warm radial glow behind phone. Dot grid texture.
+- Cache-bust bumped to `?v=3` across all 11 og:image reference files
+
+### Manual steps needed
+
+- [ ] **Clear Facebook OG cache** (Keenan): https://developers.facebook.com/tools/debug/ → paste https://getacuity.io → Scrape Again
+- [ ] **Clear Twitter card cache** (Keenan): https://cards-dev.twitter.com/validator → paste URL
+- [ ] **Clear LinkedIn cache** (Keenan): https://www.linkedin.com/post-inspector/ → paste URL
+
+### Notes
+
+- Page background `#181614` is noticeably lighter than the previous `#0F0D0B`. Combined with amber accents, the site now reads "warm living room" vs "cold server room."
+- Amber `#E8B88A` is used for: step labels, section eyebrows, pricing border/label, star ratings, moments card borders/labels, bottom CTA, emotional moments icons. Purple stays for CTA buttons and hero gradient.
+
+---
+
 ## [2026-05-14] — Remove ALL skip UI from onboarding (build-41 verification gap)
 
 **Requested by:** Jimmy
