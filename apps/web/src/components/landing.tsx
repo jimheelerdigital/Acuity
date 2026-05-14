@@ -163,52 +163,7 @@ function WhoItsForDropdown() {
   );
 }
 
-/* ═══════════════════════════════════════════
-   Scroll-reveal hook
-   ═══════════════════════════════════════════ */
-
-function useReveal() {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          el.classList.add("visible");
-          obs.unobserve(el);
-        }
-      },
-      { threshold: 0.15 }
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, []);
-  return ref;
-}
-
-function Reveal({
-  children,
-  className = "",
-  delay = 0,
-  direction,
-}: {
-  children: React.ReactNode;
-  className?: string;
-  delay?: number;
-  direction?: "left" | "right" | "scale";
-}) {
-  const ref = useReveal();
-  const base = direction === "left" ? "reveal-left" : direction === "right" ? "reveal-right" : direction === "scale" ? "reveal-scale" : "reveal";
-  return (
-    <div
-      ref={ref}
-      className={`${base} ${delay ? `reveal-delay-${delay}` : ""} ${className}`}
-    >
-      {children}
-    </div>
-  );
-}
+/* Reveal component and useReveal hook removed — replaced by .animate-on-scroll CSS class + single useEffect observer */
 
 /* ═══════════════════════════════════════════
    Animated counter
@@ -935,6 +890,24 @@ export function LandingPage() {
     }
   }, []);
 
+  // Scroll-triggered animations — single observer for all .animate-on-scroll elements
+  useEffect(() => {
+    const elements = document.querySelectorAll('.animate-on-scroll');
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.1 }
+    );
+    elements.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <div className="min-h-screen bg-[#181614] text-white pb-24 sm:pb-0 overflow-x-hidden">
       {/* ───── BANNER + NAVBAR (both fixed) ───── */}
@@ -1008,21 +981,16 @@ export function LandingPage() {
           <div className="flex flex-col lg:flex-row lg:items-center lg:gap-10">
             {/* Left content — center on mobile, left on desktop */}
             <div className="flex-1 max-w-2xl text-center lg:text-left mx-auto lg:mx-0">
-              <Reveal>
                 <h1 className="font-black tracking-tight">
                   <span className="block text-white whitespace-nowrap text-4xl sm:text-5xl lg:text-[3.25rem] xl:text-[3.75rem] leading-[1.1] mb-2 sm:mb-3">One minute a day.</span>
                   <span className="block bg-gradient-to-r from-[#B8A5FF] to-[#7C5CFC] bg-clip-text text-transparent whitespace-nowrap text-4xl sm:text-5xl lg:text-[3.25rem] xl:text-[3.75rem] leading-[1.2] pb-1">A life of clarity.</span>
                 </h1>
-              </Reveal>
 
-              <Reveal delay={2}>
                 <p className="mt-8 text-base text-[#C0C0D0] leading-relaxed max-w-lg mx-auto lg:mx-0">
                   Acuity is the AI voice journal that turns your daily debrief into action. Talk any time of day — it catches your tasks, tracks the goals you keep circling, and surfaces the patterns you can&rsquo;t see on your own.
                 </p>
-              </Reveal>
 
               {/* CTA — mobile version (inline in hero, not just sticky bar) */}
-              <Reveal delay={3}>
                 <div className="mt-8 flex flex-col items-center gap-3 lg:hidden">
                   <Link
                     href="/auth/signup?utm_campaign=home"
@@ -1038,10 +1006,8 @@ export function LandingPage() {
                     No card. 90 seconds to set up.
                   </p>
                 </div>
-              </Reveal>
 
               {/* CTA — desktop version */}
-              <Reveal delay={3}>
                 <div className="mt-10 hidden lg:flex flex-row items-start gap-3">
                   <Link
                     href="/auth/signup?utm_campaign=home"
@@ -1063,7 +1029,6 @@ export function LandingPage() {
                 <p className="mt-3 text-xs text-[#A0A0B8] hidden lg:block">
                   No card. 90 seconds to set up.
                 </p>
-              </Reveal>
             </div>
 
             {/* Right side: Enhanced animated phone mockups — desktop only */}
@@ -1073,7 +1038,7 @@ export function LandingPage() {
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] lg:w-[400px] lg:h-[400px] rounded-full bg-[#7C5CFC]/15 blur-[80px] animate-pulse-slow" />
 
                 {/* Phone 1 (back) — Weekly Report — LIGHT MODE */}
-                <div className="absolute right-0 top-6 w-[200px] sm:w-[230px] lg:w-[260px] xl:w-[280px] h-[400px] sm:h-[450px] lg:h-[500px] xl:h-[540px] rounded-[2rem] bg-white p-2 shadow-2xl shadow-black/30 rotate-3 hero-phone-enter" style={{ animationDelay: "0.5s" }}>
+                <div className="absolute right-0 top-6 w-[200px] sm:w-[230px] lg:w-[260px] xl:w-[280px] h-[400px] sm:h-[450px] lg:h-[500px] xl:h-[540px] rounded-[2rem] bg-white p-2 shadow-2xl shadow-black/30 rotate-3" style={{ animationDelay: "0.5s" }}>
                   <div className="h-full w-full rounded-[1.5rem] bg-[#FAFAF7] p-4 flex flex-col gap-2.5 overflow-hidden">
                     <div className="flex items-center justify-between mb-1">
                       <div className="text-[10px] text-[#9E9890]">9:41</div>
@@ -1119,7 +1084,7 @@ export function LandingPage() {
                 </div>
 
                 {/* Phone 2 (front) — Today's Debrief — LIGHT MODE */}
-                <div className="absolute left-0 top-0 w-[200px] sm:w-[230px] lg:w-[260px] xl:w-[280px] h-[400px] sm:h-[450px] lg:h-[500px] xl:h-[540px] rounded-[2rem] bg-white p-2 shadow-2xl shadow-black/30 -rotate-3 z-10 hero-phone-enter" style={{ animationDelay: "0.2s" }}>
+                <div className="absolute left-0 top-0 w-[200px] sm:w-[230px] lg:w-[260px] xl:w-[280px] h-[400px] sm:h-[450px] lg:h-[500px] xl:h-[540px] rounded-[2rem] bg-white p-2 shadow-2xl shadow-black/30 -rotate-3 z-10" style={{ animationDelay: "0.2s" }}>
                   <div className="h-full w-full rounded-[1.5rem] bg-[#FAFAF7] p-4 flex flex-col gap-2.5 overflow-hidden">
                     <div className="flex items-center justify-between mb-1">
                       <div className="text-[10px] text-[#9E9890]">9:41</div>
@@ -1154,10 +1119,9 @@ export function LandingPage() {
 
           {/* ───── MOBILE PHONE PREVIEW (compact, single card) ───── */}
           <div className="mt-8 flex justify-center lg:hidden">
-            <Reveal delay={4}>
               <div className="relative">
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[200px] h-[200px] rounded-full bg-[#7C5CFC]/15 blur-[60px] animate-pulse-slow" />
-                <div className="relative w-[220px] h-[380px] rounded-[2rem] bg-white p-2 shadow-2xl shadow-black/20 hero-phone-enter">
+                <div className="relative w-[220px] h-[380px] rounded-[2rem] bg-white p-2 shadow-2xl shadow-black/20">
                   <div className="h-full w-full rounded-[1.5rem] bg-[#FAFAF7] p-4 flex flex-col gap-2 overflow-hidden">
                     <div className="flex items-center justify-between mb-1">
                       <div className="text-[10px] text-[#9E9890]">9:41</div>
@@ -1185,12 +1149,10 @@ export function LandingPage() {
                   </div>
                 </div>
               </div>
-            </Reveal>
           </div>
 
           {/* ───── SOCIAL PROOF (inside hero) ───── */}
           <div className="mt-8 lg:mt-6 px-6">
-            <Reveal>
               <div className="mx-auto max-w-2xl flex flex-col sm:flex-row items-center justify-center gap-4 text-center">
             <div className="flex items-center gap-1">
               <span className="text-[#E8DDD0] font-bold text-sm">{SOCIAL_PROOF.rating} ★</span>
@@ -1199,7 +1161,6 @@ export function LandingPage() {
               Join {SOCIAL_PROOF.underHeroCount} people already using Acuity
             </p>
               </div>
-            </Reveal>
           </div>
         </div>
       </section>
@@ -1209,7 +1170,7 @@ export function LandingPage() {
         <div className="mx-auto max-w-6xl">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 text-center">
             {stats.map((stat, i) => (
-              <Reveal key={stat.label} delay={i as 0 | 1 | 2 | 3}>
+              <div key={stat.label}>
                 <div className="text-3xl sm:text-4xl font-extrabold tracking-tight">
                   <AnimatedCounter
                     target={stat.value}
@@ -1218,7 +1179,7 @@ export function LandingPage() {
                   />
                 </div>
                 <div className="mt-1 text-sm text-[#A0A0B8]">{stat.label}</div>
-              </Reveal>
+              </div>
             ))}
           </div>
         </div>
@@ -1228,11 +1189,9 @@ export function LandingPage() {
       {/* TODO: Replace placeholder avatars with real influencer/user photos */}
       <section className="py-10 px-6 overflow-hidden">
         <div className="mx-auto max-w-2xl text-center">
-          <Reveal>
             <h3 className="text-lg font-semibold text-[#A0A0B8]">
               Used by people who want to understand themselves
             </h3>
-          </Reveal>
           <div className="mt-6 flex justify-center -space-x-3">
             {["S", "M", "P", "A", "J", "R"].map((letter, i) => (
               <div
@@ -1281,8 +1240,7 @@ export function LandingPage() {
       {/* ───── HOW IT WORKS ───── */}
       <section id="how-it-works" className="px-6 py-16 sm:py-20 lg:py-24">
         <div className="mx-auto max-w-7xl">
-          <Reveal>
-            <div className="text-center mb-14">
+            <div className="text-center mb-14 animate-on-scroll">
               <h2 className="text-3xl font-bold tracking-tight sm:text-5xl">
                 How it works
               </h2>
@@ -1290,13 +1248,11 @@ export function LandingPage() {
                 Three steps. Sixty seconds. Zero effort.
               </p>
             </div>
-          </Reveal>
 
           <div className="space-y-16 sm:space-y-20">
             {/* Step 1: Record */}
-            <div className="flex flex-col gap-8 lg:items-center lg:flex-row">
+            <div className="flex flex-col gap-8 lg:items-center lg:flex-row animate-on-scroll">
               <div className="flex-1">
-                <Reveal direction="left">
                   <div className="text-xs font-semibold text-[#E8DDD0] uppercase tracking-wider mb-4">
                     Step 1
                   </div>
@@ -1305,11 +1261,9 @@ export function LandingPage() {
                     Hit record. Speak freely for 60 seconds about your day, your
                     worries, your wins — whatever comes to mind.
                   </p>
-                </Reveal>
               </div>
               <div className="flex-1 flex justify-center">
-                <Reveal delay={1} direction="right">
-                  <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-white p-2 shadow-xl shadow-black/20 float-after-reveal">
+                  <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-white p-2 shadow-xl shadow-black/20">
                     <div className="h-full w-full rounded-[2rem] bg-[#FAFAF7] p-5 flex flex-col overflow-hidden">
                       <div className="text-xs text-[#8A8480] font-medium mb-auto">
                         Recording
@@ -1335,14 +1289,12 @@ export function LandingPage() {
                       </div>
                     </div>
                   </div>
-                </Reveal>
               </div>
             </div>
 
             {/* Step 2: Extract */}
-            <div className="flex flex-col gap-8 lg:items-center lg:flex-row-reverse">
+            <div className="flex flex-col gap-8 lg:items-center lg:flex-row-reverse animate-on-scroll">
               <div className="flex-1">
-                <Reveal direction="right">
                   <div className="text-xs font-semibold text-[#E8DDD0] uppercase tracking-wider mb-4">
                     Step 2
                   </div>
@@ -1351,11 +1303,9 @@ export function LandingPage() {
                     By morning, your tasks are on a list, your goals are tracked,
                     and your mood is scored. You didn&rsquo;t type a word.
                   </p>
-                </Reveal>
               </div>
               <div className="flex-1 flex justify-center">
-                <Reveal delay={1} direction="left">
-                  <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-white p-2 shadow-xl shadow-black/20 float-after-reveal">
+                  <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-white p-2 shadow-xl shadow-black/20">
                     <div className="h-full w-full rounded-[2rem] bg-[#FAFAF7] p-5 flex flex-col overflow-hidden">
                       <div className="text-xs text-[#8A8480] font-medium mb-3">
                         AI Extraction
@@ -1378,14 +1328,12 @@ export function LandingPage() {
                       </div>
                     </div>
                   </div>
-                </Reveal>
               </div>
             </div>
 
             {/* Step 3: Reflect */}
-            <div className="flex flex-col gap-8 lg:items-center lg:flex-row">
+            <div className="flex flex-col gap-8 lg:items-center lg:flex-row animate-on-scroll">
               <div className="flex-1">
-                <Reveal direction="left">
                   <div className="text-xs font-semibold text-[#E8DDD0] uppercase tracking-wider mb-4">
                     Step 3
                   </div>
@@ -1393,11 +1341,9 @@ export function LandingPage() {
                   <p className="mt-4 text-lg text-[#A0A0B8] leading-relaxed max-w-md">
                     Every Sunday morning, a 400-word narrative of your week. What weighed on you, what moved, what you kept coming back to.
                   </p>
-                </Reveal>
               </div>
               <div className="flex-1 flex justify-center">
-                <Reveal delay={1} direction="right">
-                  <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-white p-2 shadow-xl shadow-black/20 float-after-reveal">
+                  <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-white p-2 shadow-xl shadow-black/20">
                     <div className="h-full w-full rounded-[2rem] bg-[#FAFAF7] p-5 flex flex-col overflow-hidden">
                       <div className="text-xs text-[#8A8480] font-medium mb-3">
                         Weekly Report
@@ -1424,7 +1370,6 @@ export function LandingPage() {
                       </div>
                     </div>
                   </div>
-                </Reveal>
               </div>
             </div>
           </div>
@@ -1435,8 +1380,7 @@ export function LandingPage() {
       <section className="relative px-6 py-16 sm:py-20 lg:py-24 overflow-hidden">
         <div className="relative mx-auto max-w-6xl">
           {/* Header */}
-          <Reveal>
-            <div className="text-center mb-16">
+            <div className="text-center mb-16 animate-on-scroll">
               <p className="text-xs font-semibold uppercase tracking-widest text-[#E8DDD0] mb-4">
                 Life Matrix
               </p>
@@ -1452,23 +1396,19 @@ export function LandingPage() {
                 and shows you exactly where to focus next.
               </p>
             </div>
-          </Reveal>
 
           {/* Radar + live insight panel */}
-          <Reveal delay={1}>
+          <div className="animate-on-scroll">
             <LifeMatrixRadar />
-          </Reveal>
-          <Reveal delay={2}>
             <p className="text-center mt-8 text-sm text-[#A0A0B8]/70 italic">
               You don&rsquo;t have to do anything with this. It builds itself.
             </p>
-          </Reveal>
+          </div>
         </div>
       </section>
 
       {/* ───── MID-PAGE CTA ───── */}
       <section className="px-6 py-16">
-        <Reveal>
           <div className="mx-auto max-w-xl text-center">
             <Link
               href="/auth/signup?utm_campaign=home"
@@ -1484,7 +1424,6 @@ export function LandingPage() {
               No card required · Cancel anytime
             </p>
           </div>
-        </Reveal>
       </section>
 
       {/* ───── EMOTIONAL MOMENTS — removed by Keenan ───── */}
@@ -1492,18 +1431,17 @@ export function LandingPage() {
       {/* ───── USE-CASE SCENARIOS ───── */}
       <section className="px-6 py-16 sm:py-20 lg:py-24 bg-[#1E1C1A]/50">
         <div className="mx-auto max-w-5xl">
-          <Reveal>
+            <div className="animate-on-scroll">
             <h2 className="text-center text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl mb-4">
               Fits your life. Not the other way around.
             </h2>
             <p className="text-center text-[#A0A0B8] text-lg mb-16 max-w-xl mx-auto">
               People use Acuity at different times, in different places, for different reasons. Here are two.
             </p>
-          </Reveal>
+            </div>
 
           <div className="grid gap-8 sm:grid-cols-2">
-            <Reveal delay={1} direction="left">
-              <div className="rounded-2xl border border-white/[0.06] bg-[#1E1C1A] p-8">
+              <div className="rounded-2xl border border-white/[0.06] bg-[#1E1C1A] p-8 animate-on-scroll">
                 <div className="flex items-center gap-2 mb-4">
                   <div className="h-8 w-8 rounded-full bg-amber-500/10 flex items-center justify-center">
                     <svg className="h-4 w-4 text-[#E8DDD0]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" /></svg>
@@ -1523,10 +1461,8 @@ export function LandingPage() {
                   </div>
                 </div>
               </div>
-            </Reveal>
 
-            <Reveal delay={2} direction="right">
-              <div className="rounded-2xl border border-white/[0.06] bg-[#1E1C1A] p-8">
+              <div className="rounded-2xl border border-white/[0.06] bg-[#1E1C1A] p-8 animate-on-scroll delay-1">
                 <div className="flex items-center gap-2 mb-4">
                   <div className="h-8 w-8 rounded-full bg-indigo-500/10 flex items-center justify-center">
                     <svg className="h-4 w-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" /></svg>
@@ -1546,7 +1482,6 @@ export function LandingPage() {
                   </div>
                 </div>
               </div>
-            </Reveal>
           </div>
         </div>
       </section>
@@ -1555,19 +1490,18 @@ export function LandingPage() {
       {/* TODO: Replace fake testimonials with real user testimonials */}
       <section className="px-6 py-16 sm:py-20 lg:py-24">
         <div className="mx-auto max-w-6xl">
-          <Reveal>
+            <div className="animate-on-scroll">
             <h2 className="text-center text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
               What people say after week one
             </h2>
             <p className="mx-auto mt-4 text-center text-[#A0A0B8] text-lg">
               The first weekly report is the moment it clicks.
             </p>
-          </Reveal>
+            </div>
 
           <div className="mt-16 grid gap-8 sm:grid-cols-3">
             {testimonials.map((t, i) => (
-              <Reveal key={t.name} delay={Math.min(i + 1, 3) as 1 | 2 | 3}>
-                <figure className="group rounded-2xl border border-white/[0.06] bg-[#1E1C1A] p-6 shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+                <figure key={t.name} className={`group rounded-2xl border border-white/[0.06] bg-[#1E1C1A] p-6 shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1 animate-on-scroll${i > 0 ? ` delay-${i}` : ""}`}>
                   <div className="flex items-center gap-1 mb-4">
                     <span className="text-[#E8DDD0] font-bold text-xs">{SOCIAL_PROOF.rating} ★</span>
                   </div>
@@ -1584,7 +1518,6 @@ export function LandingPage() {
                     </div>
                   </figcaption>
                 </figure>
-              </Reveal>
             ))}
           </div>
         </div>
@@ -1594,14 +1527,12 @@ export function LandingPage() {
       <section className="px-6 py-8">
         <div className="mx-auto max-w-3xl flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
           {["Audio deleted within 24hrs", "No card required", "Cancel anytime", "30-day free trial"].map((item, i) => (
-            <Reveal key={i} delay={Math.min(i, 3) as 0 | 1 | 2 | 3}>
               <div className="flex items-center gap-2 text-sm text-[#A0A0B8]">
                 <svg className="h-4 w-4 text-emerald-400 shrink-0 animate-check-pulse" style={{ animationDelay: `${i * 0.5}s` }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
                 </svg>
                 {item}
               </div>
-            </Reveal>
           ))}
         </div>
       </section>
@@ -1609,17 +1540,16 @@ export function LandingPage() {
       {/* ───── PRICING ───── */}
       <section id="pricing" className="px-6 py-16 sm:py-20">
         <div className="mx-auto max-w-md text-center">
-          <Reveal>
+            <div className="animate-on-scroll">
             <h2 className="text-3xl font-bold tracking-tight sm:text-5xl">
               Simple pricing
             </h2>
             <p className="mt-4 text-[#A0A0B8] text-lg">
               One plan. Everything included. Cancel anytime.
             </p>
-          </Reveal>
+            </div>
 
-          <Reveal delay={1} direction="scale">
-            <div className="mt-12 relative group">
+            <div className="mt-12 relative group animate-on-scroll">
               {/* Shimmer border effect */}
               <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-r from-[#E8DDD0]/60 via-[#E8DDD0]/30 to-[#E8DDD0]/60 opacity-0 group-hover:opacity-100 transition-opacity duration-500 animate-shimmer blur-[1px]" />
 
@@ -1670,31 +1600,24 @@ export function LandingPage() {
                 </Link>
               </div>
             </div>
-          </Reveal>
         </div>
       </section>
 
       {/* ───── FAQ ───── */}
       <section className="px-6 py-16 sm:py-20">
-        <div className="mx-auto max-w-3xl text-center">
-          <Reveal>
+        <div className="mx-auto max-w-3xl text-center animate-on-scroll">
             <span className="inline-flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/5 px-4 py-1.5 text-sm text-[#A0A0B8] mb-6">
               <svg className="h-4 w-4 text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
               FAQ
             </span>
-          </Reveal>
-          <Reveal>
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl mb-4 text-white">
               Frequently asked questions about Acuity
             </h2>
-          </Reveal>
-          <Reveal delay={2}>
             <p className="text-[#A0A0B8] mb-4 max-w-xl mx-auto">
               Have questions about Acuity and how it turns your daily debrief into action? Our FAQs cover everything you need to get started.
             </p>
-          </Reveal>
         </div>
-        <div className="mx-auto max-w-3xl mt-8">
+        <div className="mx-auto max-w-3xl mt-8 animate-on-scroll">
             <div className="rounded-2xl border border-white/[0.06] bg-[#1E1C1A] divide-y divide-white/[0.06]">
               {[
                 { q: "What is Acuity and how does it work?", a: "Acuity is a daily shutdown ritual. You talk for 60 seconds about whatever is on your mind — tasks, worries, ideas, things that happened. By morning, your tasks are on a list, your mood is scored, and your goals are tracked. Every Sunday, a 400-word story of your week lands on your phone. You talk. Acuity does the rest." },
@@ -1708,8 +1631,7 @@ export function LandingPage() {
                 { q: "Can I use Acuity on my phone?", a: "Yes. Acuity works on iPhone and Android. You can also use it on the web at getacuity.io. Your data syncs across devices." },
                 { q: "What is the weekly report?", a: "Every Sunday morning, Acuity writes you a 400-word narrative of your week. It covers what you worked on, what kept coming up, how your mood shifted, and what patterns are forming. People tell us it's the most useful part of the app." },
               ].map((faq, i) => (
-                <Reveal key={i} delay={Math.min(i, 5) as 0 | 1 | 2 | 3 | 4 | 5}>
-                <details className="group">
+                <details key={i} className="group">
                   <summary className="flex cursor-pointer items-center justify-between px-6 py-5 text-left">
                     <h3 className="text-base font-semibold text-white pr-4">{faq.q}</h3>
                     <span className="shrink-0 text-[#A0A0B8] transition-transform duration-300 group-open:rotate-45 text-xl leading-none">+</span>
@@ -1722,7 +1644,6 @@ export function LandingPage() {
                     </div>
                   </div>
                 </details>
-                </Reveal>
               ))}
             </div>
         </div>
@@ -1730,8 +1651,7 @@ export function LandingPage() {
 
       {/* ───── CTA BANNER ───── */}
       <section className="px-6 py-16 sm:py-20">
-        <Reveal>
-          <div className="mx-auto max-w-4xl rounded-3xl bg-[#252220] p-6 sm:p-12 lg:p-16 text-center text-white relative overflow-hidden border border-[#E8DDD0]/10">
+          <div className="mx-auto max-w-4xl rounded-3xl bg-[#252220] p-6 sm:p-12 lg:p-16 text-center text-white relative overflow-hidden border border-[#E8DDD0]/10 animate-on-scroll">
             {/* Subtle animated accents */}
             <div className="absolute top-0 right-0 h-72 w-72 rounded-full bg-[#E8DDD0]/10 -translate-y-1/3 translate-x-1/4 blur-3xl animate-blob-drift" />
             <div className="absolute bottom-0 left-0 h-56 w-56 rounded-full bg-violet-600/15 translate-y-1/3 -translate-x-1/4 blur-3xl animate-blob-drift-2" />
@@ -1743,7 +1663,7 @@ export function LandingPage() {
               <h2 className="text-3xl font-bold sm:text-5xl tracking-tight">
                 Your first debrief takes
                 <br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-indigo-400 text-glow-breathe">
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-indigo-400">
                   60 seconds.
                 </span>
               </h2>
@@ -1768,7 +1688,6 @@ export function LandingPage() {
               </div>
             </div>
           </div>
-        </Reveal>
       </section>
 
       {/* ───── FOOTER ───── */}

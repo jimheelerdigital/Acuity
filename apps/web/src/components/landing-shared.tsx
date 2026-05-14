@@ -43,7 +43,7 @@ export function Reveal({
   return (
     <div
       ref={ref}
-      className={`reveal ${delay ? `reveal-delay-${delay}` : ""} ${className}`}
+      className={`animate-on-scroll ${delay ? `delay-${delay}` : ""} ${className}`}
     >
       {children}
     </div>
@@ -370,7 +370,7 @@ function LandingWhoItsFor() {
                 className="block px-4 py-2.5 transition-all duration-150 border-l-2 border-transparent hover:border-violet-500 hover:bg-white/5"
               >
                 <div className="text-sm font-medium text-white">{item.title}</div>
-                <div className="text-xs text-[#B0A898] mt-0.5 leading-snug">{item.description}</div>
+                <div className="text-xs text-[#A0A0B8] mt-0.5 leading-snug">{item.description}</div>
               </Link>
             ))}
           </div>
@@ -386,7 +386,7 @@ function LandingWhoItsFor() {
                     key={item.href}
                     href={item.href}
                     onClick={close}
-                    className="block py-1.5 text-sm text-[#B0A898] transition hover:text-white"
+                    className="block py-1.5 text-sm text-[#A0A0B8] transition hover:text-white"
                   >
                     {item.label}
                   </Link>
@@ -401,7 +401,7 @@ function LandingWhoItsFor() {
                     key={item.href}
                     href={item.href}
                     onClick={close}
-                    className="block py-1.5 text-sm text-[#B0A898] transition hover:text-white"
+                    className="block py-1.5 text-sm text-[#A0A0B8] transition hover:text-white"
                   >
                     {item.label}
                   </Link>
@@ -416,7 +416,7 @@ function LandingWhoItsFor() {
                     key={item.href}
                     href={item.href}
                     onClick={close}
-                    className="block py-1.5 text-sm text-[#B0A898] transition hover:text-white"
+                    className="block py-1.5 text-sm text-[#A0A0B8] transition hover:text-white"
                   >
                     {item.label}
                   </Link>
@@ -445,7 +445,7 @@ export function LandingNav() {
             <Image src="/AcuityLogoDark.png" alt="Acuity logo" width={24} height={24} className="shrink-0" />
             <span className="text-lg font-bold tracking-tight text-white">Acuity</span>
           </Link>
-          <div className="hidden sm:flex items-center gap-6 text-sm text-[#B0A898]">
+          <div className="hidden sm:flex items-center gap-6 text-sm text-[#A0A0B8]">
             <LandingWhoItsFor />
             <a
               href="#how-it-works"
@@ -493,27 +493,27 @@ export function Footer() {
               <Image src="/AcuityLogoDark.png" alt="Acuity logo" width={24} height={24} className="shrink-0" />
               <span className="text-lg font-bold tracking-tight text-white">Acuity</span>
             </div>
-            <p className="mt-2 text-sm text-[#B0A898] max-w-xs">
+            <p className="mt-2 text-sm text-[#A0A0B8] max-w-xs">
               Debrief daily. See your life clearly.
             </p>
           </div>
           <div>
             <h3 className="text-xs font-semibold uppercase tracking-wider text-white/50 mb-3">Product</h3>
-            <ul className="space-y-2 text-sm text-[#B0A898]">
+            <ul className="space-y-2 text-sm text-[#A0A0B8]">
               <li><a href="/" className="transition hover:text-white">Home</a></li>
               <li><a href="/auth/signup" className="transition hover:text-white">Start Free Trial</a></li>
             </ul>
           </div>
           <div>
             <h3 className="text-xs font-semibold uppercase tracking-wider text-white/50 mb-3">Learn</h3>
-            <ul className="space-y-2 text-sm text-[#B0A898]">
+            <ul className="space-y-2 text-sm text-[#A0A0B8]">
               <li><a href="/voice-journaling" className="transition hover:text-white">Voice Journaling Guide</a></li>
               <li><a href="/blog" className="transition hover:text-white">Blog</a></li>
             </ul>
           </div>
           <div>
             <h3 className="text-xs font-semibold uppercase tracking-wider text-white/50 mb-3">Company</h3>
-            <ul className="space-y-2 text-sm text-[#B0A898]">
+            <ul className="space-y-2 text-sm text-[#A0A0B8]">
               <li><a href="/terms" className="transition hover:text-white">Terms</a></li>
               <li><a href="/privacy" className="transition hover:text-white">Privacy</a></li>
               <li><a href="mailto:hello@getacuity.io" className="transition hover:text-white">Contact</a></li>
@@ -521,7 +521,7 @@ export function Footer() {
           </div>
         </div>
         <div className="mt-8 pt-6 border-t border-white/10 text-center">
-          <p className="text-xs text-[#B0A898]">
+          <p className="text-xs text-[#A0A0B8]">
             &copy; {new Date().getFullYear()} Acuity. All rights reserved.
           </p>
         </div>
@@ -561,15 +561,15 @@ export function PricingSection({
           <h2 className="text-3xl font-bold tracking-tight sm:text-5xl">
             {headline}
           </h2>
-          <p className="mt-4 text-[#B0A898] text-lg">{subheadline}</p>
+          <p className="mt-4 text-[#A0A0B8] text-lg">{subheadline}</p>
         </Reveal>
 
         <Reveal delay={1}>
           <div className="mt-12 relative group">
             <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-r from-violet-400 via-indigo-400 to-violet-400 opacity-0 group-hover:opacity-100 transition-opacity duration-500 animate-shimmer blur-[1px]" />
-            <div className="relative rounded-2xl border border-[#E8B88A]/20 bg-[#1E1C1A] p-8 text-left shadow-sm">
+            <div className="relative rounded-2xl border border-[#E8DDD0]/20 bg-[#1E1C1A] p-8 text-left shadow-sm">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold uppercase tracking-wider text-[#E8B88A]">
+                <p className="text-sm font-semibold uppercase tracking-wider text-[#E8DDD0]">
                   Pro
                 </p>
                 <span className="rounded-full bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 text-xs font-semibold text-emerald-400">
@@ -580,13 +580,13 @@ export function PricingSection({
                 <span className="text-5xl font-extrabold text-white">
                   $12.99
                 </span>
-                <span className="text-[#B0A898]">/month</span>
+                <span className="text-[#A0A0B8]">/month</span>
               </p>
-              <p className="mt-2 text-sm text-[#B0A898]">
+              <p className="mt-2 text-sm text-[#A0A0B8]">
                 30-day free trial &middot; No card. 90 seconds to set up.
               </p>
 
-              <ul className="mt-8 space-y-3 text-sm text-[#B0A898]">
+              <ul className="mt-8 space-y-3 text-sm text-[#A0A0B8]">
                 {pricingFeatures.map((f) => (
                   <li key={f} className="flex items-start gap-2.5">
                     <svg
@@ -674,7 +674,7 @@ function CascadingTasks({ tasks }: { tasks: { text: string; checked?: boolean }[
       {tasks.map((task, i) => (
         <div
           key={task.text}
-          className="flex items-center gap-2 text-xs text-[#B0A898] transition-all duration-500"
+          className="flex items-center gap-2 text-xs text-[#A0A0B8] transition-all duration-500"
           style={{
             opacity: i < visibleCount ? 1 : 0,
             transform: i < visibleCount ? "translateX(0)" : "translateX(20px)",
@@ -740,7 +740,7 @@ function RecordPhone() {
   return (
     <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-[#252220] p-2 shadow-xl">
       <div className="h-full w-full rounded-[2rem] bg-[#1E1C1A] p-5 flex flex-col overflow-hidden">
-        <div className="text-xs text-[#B0A898] font-medium mb-auto">Recording</div>
+        <div className="text-xs text-[#A0A0B8] font-medium mb-auto">Recording</div>
         <div className="flex flex-col items-center justify-center flex-1 gap-4">
           <div className="relative flex items-center justify-center">
             <div className="absolute h-20 w-20 rounded-full bg-red-500/20 animate-pulse-ring" />
@@ -754,7 +754,7 @@ function RecordPhone() {
           </div>
           <WaveformVisualizer />
           <div className="text-xl font-bold text-white font-mono">0:47</div>
-          <div className="text-xs text-[#B0A898]">Speak freely...</div>
+          <div className="text-xs text-[#A0A0B8]">Speak freely...</div>
         </div>
       </div>
     </div>
@@ -772,19 +772,19 @@ function ExtractPhone({ tasks, goal, mood }: ExtractPhoneProps) {
   return (
     <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-[#252220] p-2 shadow-xl">
       <div className="h-full w-full rounded-[2rem] bg-[#1E1C1A] p-5 flex flex-col overflow-hidden">
-        <div className="text-xs text-[#B0A898] font-medium mb-3">AI Extraction</div>
+        <div className="text-xs text-[#A0A0B8] font-medium mb-3">AI Extraction</div>
         <div className="space-y-2.5 flex-1">
           <div className="rounded-xl border border-white/10 bg-[#252220] p-3 shadow-sm">
-            <div className="text-[10px] text-[#B0A898]/60 uppercase tracking-wider mb-1.5">Tasks</div>
+            <div className="text-[10px] text-[#A0A0B8]/60 uppercase tracking-wider mb-1.5">Tasks</div>
             <CascadingTasks tasks={tasks} />
           </div>
           <div className="rounded-xl border border-[#7C5CFC]/30 bg-[#7C5CFC]/10 p-3">
             <div className="text-[10px] text-violet-600 uppercase tracking-wider mb-1">Goal</div>
-            <div className="text-xs text-[#B0A898]">"{goal}"</div>
+            <div className="text-xs text-[#A0A0B8]">"{goal}"</div>
           </div>
           <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3">
             <div className="text-[10px] text-emerald-600 uppercase tracking-wider mb-1">Mood</div>
-            <div className="text-xs text-[#B0A898]">{mood}</div>
+            <div className="text-xs text-[#A0A0B8]">{mood}</div>
           </div>
         </div>
       </div>
@@ -802,21 +802,21 @@ function ReflectPhone({ pattern, actions }: ReflectPhoneProps) {
   return (
     <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-[#252220] p-2 shadow-xl">
       <div className="h-full w-full rounded-[2rem] bg-[#1E1C1A] p-5 flex flex-col overflow-hidden">
-        <div className="text-xs text-[#B0A898] font-medium mb-3">Weekly Report</div>
+        <div className="text-xs text-[#A0A0B8] font-medium mb-3">Weekly Report</div>
         <div className="space-y-2.5 flex-1">
           <div className="rounded-xl border border-white/10 bg-[#252220] p-3 shadow-sm">
-            <div className="text-[10px] text-[#B0A898]/60 uppercase tracking-wider mb-2">Mood this week</div>
+            <div className="text-[10px] text-[#A0A0B8]/60 uppercase tracking-wider mb-2">Mood this week</div>
             <div className="h-10">
               <MoodBars heights={[50, 60, 45, 75, 70, 85, 80]} color="bg-violet-400" />
             </div>
           </div>
           <div className="rounded-xl border border-white/10 bg-[#252220] p-3 shadow-sm">
-            <div className="text-[10px] text-[#B0A898]/60 uppercase tracking-wider mb-1">Pattern</div>
-            <div className="text-xs text-[#B0A898]">{pattern}</div>
+            <div className="text-[10px] text-[#A0A0B8]/60 uppercase tracking-wider mb-1">Pattern</div>
+            <div className="text-xs text-[#A0A0B8]">{pattern}</div>
           </div>
           <div className="rounded-xl border border-white/10 bg-[#252220] p-3 shadow-sm">
-            <div className="text-[10px] text-[#B0A898]/60 uppercase tracking-wider mb-1">Top 3 Actions</div>
-            <div className="space-y-1 text-xs text-[#B0A898]">
+            <div className="text-[10px] text-[#A0A0B8]/60 uppercase tracking-wider mb-1">Top 3 Actions</div>
+            <div className="space-y-1 text-xs text-[#A0A0B8]">
               {actions.map((a, i) => (
                 <div key={i}>{i + 1}. {a}</div>
               ))}
@@ -855,7 +855,7 @@ export function HowItWorksSection({ steps, ...phoneProps }: HowItWorksConfig) {
             <h2 className="text-3xl font-bold tracking-tight sm:text-5xl">
               How it works
             </h2>
-            <p className="mt-4 text-[#B0A898] text-lg">
+            <p className="mt-4 text-[#A0A0B8] text-lg">
               Three steps. Sixty seconds. Zero effort.
             </p>
           </div>
@@ -866,11 +866,11 @@ export function HowItWorksSection({ steps, ...phoneProps }: HowItWorksConfig) {
           <div className="flex flex-col gap-8 lg:items-center lg:flex-row">
             <div className="flex-1">
               <Reveal>
-                <div className="inline-flex items-center gap-2 rounded-full bg-[#252220] px-3 py-1 text-xs font-semibold text-[#B0A898] uppercase tracking-wider mb-4">
+                <div className="inline-flex items-center gap-2 rounded-full bg-[#252220] px-3 py-1 text-xs font-semibold text-[#A0A0B8] uppercase tracking-wider mb-4">
                   Step 1
                 </div>
                 <h3 className="text-3xl font-bold sm:text-4xl">{steps[0]?.title || "Record"}</h3>
-                <p className="mt-4 text-lg text-[#B0A898] leading-relaxed max-w-md">
+                <p className="mt-4 text-lg text-[#A0A0B8] leading-relaxed max-w-md">
                   {steps[0]?.description || "Hit record. Speak freely for 60 seconds about your day, your worries, your wins — whatever comes to mind."}
                 </p>
               </Reveal>
@@ -886,11 +886,11 @@ export function HowItWorksSection({ steps, ...phoneProps }: HowItWorksConfig) {
           <div className="flex flex-col gap-8 lg:items-center lg:flex-row-reverse">
             <div className="flex-1">
               <Reveal>
-                <div className="inline-flex items-center gap-2 rounded-full bg-[#252220] px-3 py-1 text-xs font-semibold text-[#B0A898] uppercase tracking-wider mb-4">
+                <div className="inline-flex items-center gap-2 rounded-full bg-[#252220] px-3 py-1 text-xs font-semibold text-[#A0A0B8] uppercase tracking-wider mb-4">
                   Step 2
                 </div>
                 <h3 className="text-3xl font-bold sm:text-4xl">{steps[1]?.title || "Extract"}</h3>
-                <p className="mt-4 text-lg text-[#B0A898] leading-relaxed max-w-md">
+                <p className="mt-4 text-lg text-[#A0A0B8] leading-relaxed max-w-md">
                   {steps[1]?.description || "By morning, your tasks are on a list, your goals are tracked, and your mood is scored. You didn\u2019t type a word."}
                 </p>
               </Reveal>
@@ -906,11 +906,11 @@ export function HowItWorksSection({ steps, ...phoneProps }: HowItWorksConfig) {
           <div className="flex flex-col gap-8 lg:items-center lg:flex-row">
             <div className="flex-1">
               <Reveal>
-                <div className="inline-flex items-center gap-2 rounded-full bg-[#252220] px-3 py-1 text-xs font-semibold text-[#B0A898] uppercase tracking-wider mb-4">
+                <div className="inline-flex items-center gap-2 rounded-full bg-[#252220] px-3 py-1 text-xs font-semibold text-[#A0A0B8] uppercase tracking-wider mb-4">
                   Step 3
                 </div>
                 <h3 className="text-3xl font-bold sm:text-4xl">{steps[2]?.title || "Reflect"}</h3>
-                <p className="mt-4 text-lg text-[#B0A898] leading-relaxed max-w-md">
+                <p className="mt-4 text-lg text-[#A0A0B8] leading-relaxed max-w-md">
                   {steps[2]?.description || "Get a weekly narrative report showing patterns in your life, so you can course-correct before the next week starts."}
                 </p>
               </Reveal>
@@ -957,7 +957,7 @@ export function CTABanner({
               {headline}
             </h2>
             {subheadline && (
-              <p className="mt-5 text-[#B0A898] text-lg max-w-md mx-auto">
+              <p className="mt-5 text-[#A0A0B8] text-lg max-w-md mx-auto">
                 {subheadline}
               </p>
             )}
@@ -969,7 +969,7 @@ export function CTABanner({
               >
                 {buttonText}
               </Link>
-              <span className="text-sm text-[#B0A898]">
+              <span className="text-sm text-[#A0A0B8]">
                 Then $12.99/month &middot; No card. 90 seconds to set up.
               </span>
             </div>
@@ -1013,16 +1013,16 @@ export function TestimonialsSection({
                 <div className="flex items-center gap-1 mb-4">
                   <span className="text-amber-400 font-bold text-xs">{SOCIAL_PROOF.rating} ★</span>
                 </div>
-                <blockquote className="text-sm leading-relaxed text-[#B0A898]">
+                <blockquote className="text-sm leading-relaxed text-[#A0A0B8]">
                   "{t.quote}"
                 </blockquote>
                 <figcaption className="mt-5 flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#252220] text-sm font-bold text-[#B0A898] transition-colors group-hover:bg-[#7C5CFC]/20 group-hover:text-[#7C5CFC]">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#252220] text-sm font-bold text-[#A0A0B8] transition-colors group-hover:bg-[#7C5CFC]/20 group-hover:text-[#7C5CFC]">
                     {t.name[0]}
                   </div>
                   <div>
                     <div className="text-sm font-semibold text-white">{t.name}</div>
-                    <div className="text-xs text-[#B0A898]/60">{t.role}</div>
+                    <div className="text-xs text-[#A0A0B8]/60">{t.role}</div>
                   </div>
                 </figcaption>
               </figure>
@@ -1058,7 +1058,7 @@ export function ComparisonTable({
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-white/5">
-              <th className="py-4 px-6 text-left text-[#B0A898] font-medium" />
+              <th className="py-4 px-6 text-left text-[#A0A0B8] font-medium" />
               {headers.map((h, i) => (
                 <th
                   key={h}
@@ -1076,7 +1076,7 @@ export function ComparisonTable({
           <tbody>
             {rows.map((row) => (
               <tr key={row.feature} className="border-b border-white/5">
-                <td className="py-4 px-6 font-medium text-[#B0A898]">
+                <td className="py-4 px-6 font-medium text-[#A0A0B8]">
                   {row.feature}
                 </td>
                 {row.values.map((val, i) => (
@@ -1085,7 +1085,7 @@ export function ComparisonTable({
                     className={`py-4 px-6 ${
                       i === row.values.length - 1
                         ? "text-[#7C5CFC] font-semibold bg-[#7C5CFC]/10"
-                        : "text-[#B0A898]"
+                        : "text-[#A0A0B8]"
                     }`}
                   >
                     {val}
@@ -1097,7 +1097,7 @@ export function ComparisonTable({
         </table>
       </div>
       {note && (
-        <p className="mt-4 text-center text-sm text-[#B0A898]/60 italic">{note}</p>
+        <p className="mt-4 text-center text-sm text-[#A0A0B8]/60 italic">{note}</p>
       )}
     </Reveal>
   );
@@ -1232,7 +1232,7 @@ export function FeatureGrid({ features }: { features: FeatureCard[] }) {
                     </svg>
                   </div>
                   <h3 className="text-base font-semibold text-white mb-2">{f.title}</h3>
-                  <p className="text-sm text-[#B0A898] leading-relaxed">
+                  <p className="text-sm text-[#A0A0B8] leading-relaxed">
                     {f.description}
                   </p>
                 </div>
@@ -1272,7 +1272,7 @@ export function PainSection({ points }: { points: string[] }) {
                     />
                   </svg>
                 </div>
-                <p className="text-sm leading-relaxed text-[#B0A898]">
+                <p className="text-sm leading-relaxed text-[#A0A0B8]">
                   {point}
                 </p>
               </div>
@@ -1302,7 +1302,7 @@ export function SolutionSection({
           <h2 className="text-3xl font-bold tracking-tight sm:text-5xl">
             {headline}
           </h2>
-          <p className="mt-6 text-lg text-[#B0A898] leading-relaxed">{body}</p>
+          <p className="mt-6 text-lg text-[#A0A0B8] leading-relaxed">{body}</p>
         </Reveal>
       </div>
     </section>
@@ -1355,7 +1355,7 @@ export function MidPageCTA({
             </svg>
           </Link>
           {subheadline && (
-            <p className="mt-3 text-sm text-[#B0A898]">{subheadline}</p>
+            <p className="mt-3 text-sm text-[#A0A0B8]">{subheadline}</p>
           )}
         </div>
       </Reveal>
@@ -1425,7 +1425,7 @@ export function LifeMatrixShowcase({ areas }: { areas: MatrixArea[] }) {
               }}
             />
           </div>
-          <p className="text-xs text-[#B0A898] leading-relaxed">
+          <p className="text-xs text-[#A0A0B8] leading-relaxed">
             {area.insight}
           </p>
         </div>
@@ -1451,12 +1451,12 @@ export function BeforeAfterSection({
         <div className="grid gap-8 sm:grid-cols-2">
           <Reveal>
             <div className="rounded-2xl bg-[#1E1C1A] p-8">
-              <h3 className="text-lg font-bold text-[#B0A898]/60 mb-6 uppercase tracking-wider text-sm">
+              <h3 className="text-lg font-bold text-[#A0A0B8]/60 mb-6 uppercase tracking-wider text-sm">
                 Before Acuity
               </h3>
               <ul className="space-y-4">
                 {before.map((item, i) => (
-                  <li key={i} className="flex items-start gap-3 text-sm text-[#B0A898]">
+                  <li key={i} className="flex items-start gap-3 text-sm text-[#A0A0B8]">
                     <svg className="mt-0.5 h-4 w-4 shrink-0 text-red-400/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                     </svg>
@@ -1515,7 +1515,7 @@ export function StatsSection({ stats }: { stats: Stat[] }) {
                   prefix={stat.prefix || ""}
                 />
               </div>
-              <div className="mt-1 text-sm text-[#B0A898]">{stat.label}</div>
+              <div className="mt-1 text-sm text-[#A0A0B8]">{stat.label}</div>
             </Reveal>
           ))}
         </div>
@@ -1563,7 +1563,7 @@ export function RevealCards({ items }: { items: string[] }) {
         >
           <div className="flex items-start gap-3">
             <div className="mt-1 h-2 w-2 rounded-full bg-violet-500 shrink-0" />
-            <p className="text-sm text-[#B0A898] leading-relaxed">{item}</p>
+            <p className="text-sm text-[#A0A0B8] leading-relaxed">{item}</p>
           </div>
         </div>
       ))}
@@ -1595,14 +1595,14 @@ export function ReportPreview({
         <h3 className="text-xl font-bold text-white mb-4">{title}</h3>
 
         <div className="rounded-xl bg-[#252220] p-4 mb-4">
-          <div className="text-xs font-semibold text-[#B0A898]/60 uppercase tracking-wider mb-2">
+          <div className="text-xs font-semibold text-[#A0A0B8]/60 uppercase tracking-wider mb-2">
             Mood Arc
           </div>
-          <p className="text-sm text-[#B0A898] leading-relaxed">{moodArc}</p>
+          <p className="text-sm text-[#A0A0B8] leading-relaxed">{moodArc}</p>
         </div>
 
         <div className="mb-4">
-          <p className="text-sm text-[#B0A898] italic leading-relaxed">
+          <p className="text-sm text-[#A0A0B8] italic leading-relaxed">
             "{narrative}"
           </p>
         </div>
@@ -1618,7 +1618,7 @@ export function ReportPreview({
               }}
             >
               <div className="mt-1.5 h-1.5 w-1.5 rounded-full bg-violet-500 shrink-0" />
-              <p className="text-sm text-[#B0A898]">{bullet}</p>
+              <p className="text-sm text-[#A0A0B8]">{bullet}</p>
             </div>
           ))}
           <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[#1E1C1A] to-transparent flex items-end justify-center pb-2">
@@ -1644,7 +1644,7 @@ export function SocialProofBar() {
           <div className="flex items-center gap-1">
             <span className="text-amber-400 font-bold text-sm">{SOCIAL_PROOF.rating} ★</span>
           </div>
-          <p className="text-sm text-[#B0A898]">
+          <p className="text-sm text-[#A0A0B8]">
             Join {SOCIAL_PROOF.underHeroCount} people already using Acuity
           </p>
         </div>
@@ -1669,7 +1669,7 @@ export function TrustStrip() {
       <Reveal>
         <div className="mx-auto max-w-3xl flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
           {items.map((item, i) => (
-            <div key={i} className="flex items-center gap-2 text-sm text-[#B0A898]">
+            <div key={i} className="flex items-center gap-2 text-sm text-[#A0A0B8]">
               <svg className="h-4 w-4 text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
               </svg>
@@ -1719,7 +1719,7 @@ export function FAQSection() {
             <Reveal key={i} delay={Math.min(i + 1, 3) as 1 | 2 | 3}>
               <div className="rounded-xl border border-white/10 bg-[#1E1C1A] p-6">
                 <h3 className="text-base font-semibold text-white mb-2">{faq.q}</h3>
-                <p className="text-sm text-[#B0A898] leading-relaxed">{faq.a}</p>
+                <p className="text-sm text-[#A0A0B8] leading-relaxed">{faq.a}</p>
               </div>
             </Reveal>
           ))}
@@ -1744,7 +1744,7 @@ export function StickyCTA({ utmCampaign }: { utmCampaign: string }) {
         >
           Start Free Trial
         </Link>
-        <p className="mt-1.5 text-center text-xs text-[#B0A898]">
+        <p className="mt-1.5 text-center text-xs text-[#A0A0B8]">
           Early access — limited spots at founding member pricing
         </p>
       </div>

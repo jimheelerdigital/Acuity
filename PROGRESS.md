@@ -7,6 +7,42 @@
 
 ---
 
+## [2026-05-14] — Scrap and rebuild scroll animations from scratch
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+
+The scroll animations weren't working despite multiple fix attempts. Scrapped the entire system (Reveal component, useReveal hook, all the complex CSS variants) and rebuilt from scratch with the simplest possible approach: one CSS class (`.animate-on-scroll`), one IntersectionObserver, zero wrapper components. Every section below the hero now starts invisible and fades up as you scroll to it. The hero stays fully visible on page load.
+
+### Technical changes (for Jimmy)
+
+**Removed:**
+- `useReveal` hook and `Reveal` component from landing.tsx (kept in landing-shared.tsx for persona pages, updated to use new CSS class)
+- All `<Reveal>` wrapper tags from homepage JSX (32 instances stripped)
+- CSS classes: `.reveal`, `.reveal-left`, `.reveal-right`, `.reveal-scale`, `.reveal-delay-*`, `.hero-phone-enter`, `.float-after-reveal`, `.text-glow-breathe`, and associated `prefers-reduced-motion` overrides
+
+**Added:**
+- `globals.css`: Single `.animate-on-scroll` class (opacity: 0, translateY: 24px, transition 0.6s ease-out), `.visible` state (opacity: 1, translateY: 0), delay-1/2/3 classes, prefers-reduced-motion override
+- `landing.tsx`: Single `useEffect` with one `IntersectionObserver` (threshold: 0.1) that queries all `.animate-on-scroll` elements and adds `.visible` class on intersection
+- 18 elements tagged with `animate-on-scroll`: How It Works heading + 3 steps, Life Matrix heading + radar, Fits Your Life heading + James card + Priya card (delay-1), Testimonials heading + 3 cards (staggered), Pricing heading + card, FAQ heading + list, Bottom CTA
+
+**Persona pages:** `landing-shared.tsx` Reveal component updated to use `animate-on-scroll` class instead of removed `reveal` class.
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- The previous system had 3 bugs: CSS animation conflicts (float overriding reveal transforms), dual-animation on same element (hero phones), and wrapper component abstraction adding unnecessary complexity. The new system has zero abstraction — just CSS classes and one observer.
+- AnimatedCounter (stats bar) was intentionally left untouched — it works and has its own IntersectionObserver.
+- The hero section has NO animate-on-scroll classes — it's fully visible on page load as intended.
+
+---
+
 ## [2026-05-14] — Fix scroll animations: resolve CSS conflicts, stagger FAQ items
 
 **Requested by:** Keenan
