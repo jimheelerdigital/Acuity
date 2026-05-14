@@ -7,6 +7,36 @@
 
 ---
 
+## [2026-05-14] — Scroll animations replay on every visit, hero phone stutter fixed
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 2135b59
+
+### In plain English (for Keenan)
+
+Previously, every animated section on the homepage only played its entrance animation once — the first time you scrolled to it. Now, when you scroll away and come back, the animation replays from scratch. Counters re-count, task lists cascade in again, mood bars grow again, words type out again. This makes the page feel alive on repeat scrolls. Also fixed the back phone mockup in the hero stuttering/shaking during its float animation.
+
+### Technical changes (for Jimmy)
+
+- Removed all `observer.unobserve()` calls across `landing.tsx` and `landing-shared.tsx` (13 IntersectionObserver instances total)
+- Added `else` branches in every observer callback to reset state when `entry.isIntersecting` is false — resets `setVisible(false)`, `setVisibleCount(0)`, `setStarted(false)`, `setCount(0)`, `setDisplayed("")`, `setVisibleIdx(-1)`, etc.
+- Big inline-style observer now resets opacity to 0 and transform back to initial direction (`data-slide-left` → `translateX(-40px)`, `data-slide-right` → `translateX(40px)`, `data-animate` → `translateY(24px)`), and clears `data-float-after` animation
+- `LifeMatrixRadar`: clears all timeouts on exit, resets `started.current = false` so cycle re-runs on re-entry
+- `globals.css`: added `will-change: transform` and `backface-visibility: hidden` to `.hero-float` for GPU compositing
+- Hero phone rotation (`rotate-3` / `-rotate-3`) moved from Tailwind classes to `--phone-rotate` CSS custom property, merged into the `hero-float` keyframes so rotation isn't overridden by the animation
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- The hero phone entrance (data-hero-phone) is NOT scroll-triggered — it runs once on mount via setTimeout, so it's unaffected by these changes
+- The stuttering was caused by the `hero-float` animation overriding the Tailwind `rotate-3` transform each frame, creating a visible snap. Using a CSS custom property in the keyframes preserves rotation throughout the float cycle.
+
+---
+
 ## [2026-05-14] — Add directional slide animations, hero entrance, mockup float, fix testimonials
 
 **Requested by:** Keenan
