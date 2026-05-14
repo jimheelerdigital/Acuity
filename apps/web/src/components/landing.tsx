@@ -88,7 +88,7 @@ function WhoItsForDropdown() {
     >
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-1 transition hover:text-white relative after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-0 after:bg-violet-500 after:transition-all hover:after:w-full"
+        className="flex items-center gap-1 transition hover:text-white relative after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-0 after:bg-violet-100/500 after:transition-all hover:after:w-full"
       >
         Who it's for
         <svg
@@ -308,7 +308,7 @@ function Typewriter({ text, delay = 0 }: { text: string; delay?: number }) {
     <span ref={ref}>
       {displayed}
       {displayed.length < text.length && (
-        <span className="inline-block w-[3px] h-[1em] bg-violet-500 ml-0.5 animate-pulse align-middle" />
+        <span className="inline-block w-[3px] h-[1em] bg-violet-100/500 ml-0.5 animate-pulse align-middle" />
       )}
     </span>
   );
@@ -416,7 +416,7 @@ function CascadingTasks({
           <div
             className={`h-3.5 w-3.5 rounded border shrink-0 flex items-center justify-center transition-colors duration-300 ${
               task.checked
-                ? "border-emerald-500 bg-emerald-500"
+                ? "border-emerald-500 bg-emerald-100/500"
                 : "border-zinc-400/40"
             }`}
           >
@@ -947,26 +947,26 @@ export function LandingPage() {
             <div className="hidden sm:flex items-center gap-6 text-sm text-[#B0A898]">
               <a
                 href="#"
-                className="transition hover:text-white relative after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-0 after:bg-violet-500 after:transition-all hover:after:w-full"
+                className="transition hover:text-white relative after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-0 after:bg-violet-100/500 after:transition-all hover:after:w-full"
               >
                 Home
               </a>
               <WhoItsForDropdown />
               <a
                 href="#how-it-works"
-                className="transition hover:text-white relative after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-0 after:bg-violet-500 after:transition-all hover:after:w-full"
+                className="transition hover:text-white relative after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-0 after:bg-violet-100/500 after:transition-all hover:after:w-full"
               >
                 How it Works
               </a>
               <a
                 href="#pricing"
-                className="transition hover:text-white relative after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-0 after:bg-violet-500 after:transition-all hover:after:w-full"
+                className="transition hover:text-white relative after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-0 after:bg-violet-100/500 after:transition-all hover:after:w-full"
               >
                 Pricing
               </a>
               <Link
                 href="/blog"
-                className="transition hover:text-white relative after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-0 after:bg-violet-500 after:transition-all hover:after:w-full"
+                className="transition hover:text-white relative after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-0 after:bg-violet-100/500 after:transition-all hover:after:w-full"
               >
                 Articles
               </Link>
@@ -1070,45 +1070,45 @@ export function LandingPage() {
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] lg:w-[400px] lg:h-[400px] rounded-full bg-[#7C5CFC]/15 blur-[80px] animate-pulse-slow" />
 
                 {/* Phone 1 (back) — Weekly Report — LIGHT MODE */}
-                <div className="absolute right-0 top-6 w-[200px] sm:w-[230px] lg:w-[260px] xl:w-[280px] h-[400px] sm:h-[450px] lg:h-[500px] xl:h-[540px] rounded-[2rem] bg-white p-2 shadow-2xl shadow-black/30 rotate-3 animate-float">
-                  <div className="h-full w-full rounded-[1.5rem] bg-[#F5F5F5] p-4 flex flex-col gap-2.5 overflow-hidden">
+                <div className="absolute right-0 top-6 w-[200px] sm:w-[230px] lg:w-[260px] xl:w-[280px] h-[400px] sm:h-[450px] lg:h-[500px] xl:h-[540px] rounded-[2rem] bg-[#F0EBE5] p-2 shadow-2xl shadow-black/30 rotate-3 animate-float">
+                  <div className="h-full w-full rounded-[1.5rem] bg-[#EDE8E2] p-4 flex flex-col gap-2.5 overflow-hidden">
                     <div className="flex items-center justify-between mb-1">
-                      <div className="text-[10px] text-zinc-400">9:41</div>
+                      <div className="text-[10px] text-[#9E9890]">9:41</div>
                       <div className="flex gap-1">
-                        <div className="h-1.5 w-3 rounded-full bg-zinc-300" />
-                        <div className="h-1.5 w-1.5 rounded-full bg-zinc-300" />
+                        <div className="h-1.5 w-3 rounded-full bg-[#D0CBC5]" />
+                        <div className="h-1.5 w-1.5 rounded-full bg-[#D0CBC5]" />
                       </div>
                     </div>
-                    <div className="text-xs text-[#1a1a1a] font-semibold">Weekly Report</div>
-                    <div className="text-[10px] text-zinc-400">Apr 14 – Apr 20</div>
-                    <div className="rounded-xl border border-zinc-200 bg-white p-3 shadow-sm">
-                      <div className="text-[10px] text-zinc-500 mb-2">Mood This Week</div>
+                    <div className="text-xs text-[#2a2725] font-semibold">Weekly Report</div>
+                    <div className="text-[10px] text-[#9E9890]">Apr 14 – Apr 20</div>
+                    <div className="rounded-xl border border-[#DDD8D2] bg-[#F7F4F0] p-3 shadow-sm">
+                      <div className="text-[10px] text-[#8A8480] mb-2">Mood This Week</div>
                       <div className="h-10">
                         <MoodBars heights={[40, 55, 45, 70, 65, 80, 75]} color="bg-violet-400" />
                       </div>
                       <div className="flex justify-between mt-1">
-                        <span className="text-[8px] text-zinc-400">Mon</span>
-                        <span className="text-[8px] text-zinc-400">Sun</span>
+                        <span className="text-[8px] text-[#9E9890]">Mon</span>
+                        <span className="text-[8px] text-[#9E9890]">Sun</span>
                       </div>
                     </div>
-                    <div className="rounded-xl border border-violet-200 bg-violet-50 p-3 shadow-sm">
+                    <div className="rounded-xl border border-violet-200 bg-violet-100/50 p-3 shadow-sm">
                       <div className="text-[10px] text-violet-600 mb-1">Pattern Detected</div>
-                      <div className="text-[10px] text-zinc-600 leading-relaxed">Best mood on days you exercised. Worst after meetings past 6 PM.</div>
+                      <div className="text-[10px] text-[#4A4540] leading-relaxed">Best mood on days you exercised. Worst after meetings past 6 PM.</div>
                     </div>
-                    <div className="rounded-xl border border-zinc-200 bg-white p-3 shadow-sm">
-                      <div className="text-[10px] text-zinc-500 mb-1.5">Goals</div>
+                    <div className="rounded-xl border border-[#DDD8D2] bg-[#F7F4F0] p-3 shadow-sm">
+                      <div className="text-[10px] text-[#8A8480] mb-1.5">Goals</div>
                       <div className="space-y-1.5">
                         <div>
-                          <div className="flex justify-between text-[10px] text-zinc-600 mb-0.5">
+                          <div className="flex justify-between text-[10px] text-[#4A4540] mb-0.5">
                             <span>Exercise</span><span className="text-emerald-500">3/5</span>
                           </div>
-                          <div className="h-1 rounded-full bg-zinc-200"><div className="h-full w-3/5 rounded-full bg-emerald-500" /></div>
+                          <div className="h-1 rounded-full bg-zinc-200"><div className="h-full w-3/5 rounded-full bg-emerald-100/500" /></div>
                         </div>
                         <div>
-                          <div className="flex justify-between text-[10px] text-zinc-600 mb-0.5">
+                          <div className="flex justify-between text-[10px] text-[#4A4540] mb-0.5">
                             <span>Ship beta</span><span className="text-violet-500">70%</span>
                           </div>
-                          <div className="h-1 rounded-full bg-zinc-200"><div className="h-full w-[70%] rounded-full bg-violet-500" /></div>
+                          <div className="h-1 rounded-full bg-zinc-200"><div className="h-full w-[70%] rounded-full bg-violet-100/500" /></div>
                         </div>
                       </div>
                     </div>
@@ -1116,32 +1116,32 @@ export function LandingPage() {
                 </div>
 
                 {/* Phone 2 (front) — Today's Debrief — LIGHT MODE */}
-                <div className="absolute left-0 top-0 w-[200px] sm:w-[230px] lg:w-[260px] xl:w-[280px] h-[400px] sm:h-[450px] lg:h-[500px] xl:h-[540px] rounded-[2rem] bg-white p-2 shadow-2xl shadow-black/30 -rotate-3 z-10 animate-float">
-                  <div className="h-full w-full rounded-[1.5rem] bg-[#F5F5F5] p-4 flex flex-col gap-2.5 overflow-hidden">
+                <div className="absolute left-0 top-0 w-[200px] sm:w-[230px] lg:w-[260px] xl:w-[280px] h-[400px] sm:h-[450px] lg:h-[500px] xl:h-[540px] rounded-[2rem] bg-[#F0EBE5] p-2 shadow-2xl shadow-black/30 -rotate-3 z-10 animate-float">
+                  <div className="h-full w-full rounded-[1.5rem] bg-[#EDE8E2] p-4 flex flex-col gap-2.5 overflow-hidden">
                     <div className="flex items-center justify-between mb-1">
-                      <div className="text-[10px] text-zinc-400">9:41</div>
+                      <div className="text-[10px] text-[#9E9890]">9:41</div>
                       <div className="flex gap-1">
-                        <div className="h-1.5 w-3 rounded-full bg-zinc-300" />
-                        <div className="h-1.5 w-1.5 rounded-full bg-zinc-300" />
+                        <div className="h-1.5 w-3 rounded-full bg-[#D0CBC5]" />
+                        <div className="h-1.5 w-1.5 rounded-full bg-[#D0CBC5]" />
                       </div>
                     </div>
                     <div className="flex items-center justify-between">
-                      <div className="text-xs text-[#1a1a1a] font-semibold">Today&rsquo;s Debrief</div>
-                      <div className="flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[9px] text-emerald-600">
-                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />7.2
+                      <div className="text-xs text-[#2a2725] font-semibold">Today&rsquo;s Debrief</div>
+                      <div className="flex items-center gap-1 rounded-full bg-emerald-100/50 border border-emerald-200 px-2 py-0.5 text-[9px] text-emerald-600">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-100/500 animate-pulse" />7.2
                       </div>
                     </div>
-                    <div className="rounded-xl border border-zinc-200 bg-white p-3 shadow-sm text-zinc-600">
-                      <div className="text-[10px] text-zinc-500 mb-2">Extracted Tasks</div>
+                    <div className="rounded-xl border border-[#DDD8D2] bg-[#F7F4F0] p-3 shadow-sm text-[#4A4540]">
+                      <div className="text-[10px] text-[#8A8480] mb-2">Extracted Tasks</div>
                       <CascadingTasks tasks={[{ text: "Email Q2 report to team", checked: true }, { text: "Call the accountant" }, { text: "Book dentist for Thursday" }]} />
                     </div>
-                    <div className="rounded-xl border border-zinc-200 bg-white p-3 shadow-sm">
-                      <div className="text-[10px] text-zinc-500 mb-1">Theme</div>
-                      <div className="text-[10px] text-zinc-600">Productive but stretched thin. Mentioned &ldquo;deadline&rdquo; 3x.</div>
+                    <div className="rounded-xl border border-[#DDD8D2] bg-[#F7F4F0] p-3 shadow-sm">
+                      <div className="text-[10px] text-[#8A8480] mb-1">Theme</div>
+                      <div className="text-[10px] text-[#4A4540]">Productive but stretched thin. Mentioned &ldquo;deadline&rdquo; 3x.</div>
                     </div>
-                    <div className="rounded-xl border border-violet-200 bg-violet-50 p-3">
+                    <div className="rounded-xl border border-violet-200 bg-violet-100/50 p-3">
                       <div className="text-[10px] text-violet-600 mb-1">Goal Tracked</div>
-                      <div className="text-[10px] text-zinc-600">&ldquo;Ship the beta&rdquo; — mentioned 4 of last 5 entries</div>
+                      <div className="text-[10px] text-[#4A4540]">&ldquo;Ship the beta&rdquo; — mentioned 4 of last 5 entries</div>
                     </div>
                   </div>
                 </div>
@@ -1154,30 +1154,30 @@ export function LandingPage() {
             <Reveal delay={4}>
               <div className="relative">
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[200px] h-[200px] rounded-full bg-[#7C5CFC]/15 blur-[60px] animate-pulse-slow" />
-                <div className="relative w-[220px] h-[380px] rounded-[2rem] bg-white p-2 shadow-2xl shadow-black/20 animate-float">
-                  <div className="h-full w-full rounded-[1.5rem] bg-[#F5F5F5] p-4 flex flex-col gap-2 overflow-hidden">
+                <div className="relative w-[220px] h-[380px] rounded-[2rem] bg-[#F0EBE5] p-2 shadow-2xl shadow-black/20 animate-float">
+                  <div className="h-full w-full rounded-[1.5rem] bg-[#EDE8E2] p-4 flex flex-col gap-2 overflow-hidden">
                     <div className="flex items-center justify-between mb-1">
-                      <div className="text-[10px] text-zinc-400">9:41</div>
+                      <div className="text-[10px] text-[#9E9890]">9:41</div>
                       <div className="flex gap-1">
-                        <div className="h-1.5 w-3 rounded-full bg-zinc-300" />
-                        <div className="h-1.5 w-1.5 rounded-full bg-zinc-300" />
+                        <div className="h-1.5 w-3 rounded-full bg-[#D0CBC5]" />
+                        <div className="h-1.5 w-1.5 rounded-full bg-[#D0CBC5]" />
                       </div>
                     </div>
-                    <div className="text-xs text-[#1a1a1a] font-semibold">Today&rsquo;s Debrief</div>
-                    <div className="rounded-xl border border-zinc-200 bg-white p-3 shadow-sm">
-                      <div className="text-[10px] text-zinc-500 mb-2">Mood</div>
+                    <div className="text-xs text-[#2a2725] font-semibold">Today&rsquo;s Debrief</div>
+                    <div className="rounded-xl border border-[#DDD8D2] bg-[#F7F4F0] p-3 shadow-sm">
+                      <div className="text-[10px] text-[#8A8480] mb-2">Mood</div>
                       <div className="flex items-center gap-1.5">
-                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                        <span className="text-[10px] text-[#1a1a1a] font-medium">7.2</span>
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-100/500 animate-pulse" />
+                        <span className="text-[10px] text-[#2a2725] font-medium">7.2</span>
                       </div>
                     </div>
-                    <div className="rounded-xl border border-zinc-200 bg-white p-3 shadow-sm text-zinc-600">
-                      <div className="text-[10px] text-zinc-500 mb-2">Extracted Tasks</div>
+                    <div className="rounded-xl border border-[#DDD8D2] bg-[#F7F4F0] p-3 shadow-sm text-[#4A4540]">
+                      <div className="text-[10px] text-[#8A8480] mb-2">Extracted Tasks</div>
                       <CascadingTasks tasks={[{ text: "Email Q2 report", checked: true }, { text: "Call the accountant" }, { text: "Book dentist" }]} />
                     </div>
-                    <div className="rounded-xl border border-violet-200 bg-violet-50 p-2.5">
+                    <div className="rounded-xl border border-violet-200 bg-violet-100/50 p-2.5">
                       <div className="text-[10px] text-violet-600 mb-0.5">Goal Tracked</div>
-                      <div className="text-[10px] text-zinc-600">&ldquo;Ship the beta&rdquo; — 4 of 5 entries</div>
+                      <div className="text-[10px] text-[#4A4540]">&ldquo;Ship the beta&rdquo; — 4 of 5 entries</div>
                     </div>
                   </div>
                 </div>
@@ -1306,9 +1306,9 @@ export function LandingPage() {
               </div>
               <div className="flex-1 flex justify-center">
                 <Reveal delay={1}>
-                  <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-white p-2 shadow-xl shadow-black/20">
-                    <div className="h-full w-full rounded-[2rem] bg-[#F5F5F5] p-5 flex flex-col overflow-hidden">
-                      <div className="text-xs text-zinc-500 font-medium mb-auto">
+                  <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-[#F0EBE5] p-2 shadow-xl shadow-black/20">
+                    <div className="h-full w-full rounded-[2rem] bg-[#EDE8E2] p-5 flex flex-col overflow-hidden">
+                      <div className="text-xs text-[#8A8480] font-medium mb-auto">
                         Recording
                       </div>
                       <div className="flex flex-col items-center justify-center flex-1 gap-4">
@@ -1323,10 +1323,10 @@ export function LandingPage() {
                           </div>
                         </div>
                         <WaveformVisualizer />
-                        <div className="text-xl font-bold text-[#1a1a1a] font-mono">
+                        <div className="text-xl font-bold text-[#2a2725] font-mono">
                           0:47
                         </div>
-                        <div className="text-xs text-zinc-500">
+                        <div className="text-xs text-[#8A8480]">
                           Speak freely...
                         </div>
                       </div>
@@ -1352,25 +1352,25 @@ export function LandingPage() {
               </div>
               <div className="flex-1 flex justify-center">
                 <Reveal delay={1}>
-                  <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-white p-2 shadow-xl shadow-black/20">
-                    <div className="h-full w-full rounded-[2rem] bg-[#F5F5F5] p-5 flex flex-col overflow-hidden">
-                      <div className="text-xs text-zinc-500 font-medium mb-3">
+                  <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-[#F0EBE5] p-2 shadow-xl shadow-black/20">
+                    <div className="h-full w-full rounded-[2rem] bg-[#EDE8E2] p-5 flex flex-col overflow-hidden">
+                      <div className="text-xs text-[#8A8480] font-medium mb-3">
                         AI Extraction
                       </div>
                       <div className="space-y-2.5 flex-1">
-                        <div className="rounded-xl border border-zinc-200 bg-white p-3 shadow-sm text-zinc-600">
-                          <div className="text-[10px] text-zinc-500 uppercase tracking-wider mb-1.5">
+                        <div className="rounded-xl border border-[#DDD8D2] bg-[#F7F4F0] p-3 shadow-sm text-[#4A4540]">
+                          <div className="text-[10px] text-[#8A8480] uppercase tracking-wider mb-1.5">
                             Tasks
                           </div>
                           <CascadingTasks tasks={[{ text: "Send proposal to client" }, { text: "Buy groceries" }, { text: "Call mom" }]} />
                         </div>
-                        <div className="rounded-xl border border-violet-200 bg-violet-50 p-3">
+                        <div className="rounded-xl border border-violet-200 bg-violet-100/50 p-3">
                           <div className="text-[10px] text-violet-600 uppercase tracking-wider mb-1">Goal</div>
-                          <div className="text-xs text-zinc-600">&ldquo;Ship the beta this week&rdquo;</div>
+                          <div className="text-xs text-[#4A4540]">&ldquo;Ship the beta this week&rdquo;</div>
                         </div>
-                        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3">
+                        <div className="rounded-xl border border-emerald-200 bg-emerald-100/50 p-3">
                           <div className="text-[10px] text-emerald-600 uppercase tracking-wider mb-1">Mood</div>
-                          <div className="text-xs text-zinc-600">Energized but slightly anxious</div>
+                          <div className="text-xs text-[#4A4540]">Energized but slightly anxious</div>
                         </div>
                       </div>
                     </div>
@@ -1394,25 +1394,25 @@ export function LandingPage() {
               </div>
               <div className="flex-1 flex justify-center">
                 <Reveal delay={1}>
-                  <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-white p-2 shadow-xl shadow-black/20">
-                    <div className="h-full w-full rounded-[2rem] bg-[#F5F5F5] p-5 flex flex-col overflow-hidden">
-                      <div className="text-xs text-zinc-500 font-medium mb-3">
+                  <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-[#F0EBE5] p-2 shadow-xl shadow-black/20">
+                    <div className="h-full w-full rounded-[2rem] bg-[#EDE8E2] p-5 flex flex-col overflow-hidden">
+                      <div className="text-xs text-[#8A8480] font-medium mb-3">
                         Weekly Report
                       </div>
                       <div className="space-y-2.5 flex-1">
-                        <div className="rounded-xl border border-zinc-200 bg-white p-3 shadow-sm">
-                          <div className="text-[10px] text-zinc-500 uppercase tracking-wider mb-2">Mood this week</div>
+                        <div className="rounded-xl border border-[#DDD8D2] bg-[#F7F4F0] p-3 shadow-sm">
+                          <div className="text-[10px] text-[#8A8480] uppercase tracking-wider mb-2">Mood this week</div>
                           <div className="h-10">
                             <MoodBars heights={[50, 60, 45, 75, 70, 85, 80]} color="bg-violet-400" />
                           </div>
                         </div>
-                        <div className="rounded-xl border border-zinc-200 bg-white p-3 shadow-sm">
-                          <div className="text-[10px] text-zinc-500 uppercase tracking-wider mb-1">Pattern</div>
-                          <div className="text-xs text-zinc-600">Best mood on days you exercised. Worst on days with meetings after 6pm.</div>
+                        <div className="rounded-xl border border-[#DDD8D2] bg-[#F7F4F0] p-3 shadow-sm">
+                          <div className="text-[10px] text-[#8A8480] uppercase tracking-wider mb-1">Pattern</div>
+                          <div className="text-xs text-[#4A4540]">Best mood on days you exercised. Worst on days with meetings after 6pm.</div>
                         </div>
-                        <div className="rounded-xl border border-zinc-200 bg-white p-3 shadow-sm">
-                          <div className="text-[10px] text-zinc-500 uppercase tracking-wider mb-1">Top 3 Actions</div>
-                          <div className="space-y-1 text-xs text-zinc-600">
+                        <div className="rounded-xl border border-[#DDD8D2] bg-[#F7F4F0] p-3 shadow-sm">
+                          <div className="text-[10px] text-[#8A8480] uppercase tracking-wider mb-1">Top 3 Actions</div>
+                          <div className="space-y-1 text-xs text-[#4A4540]">
                             <div>1. Block mornings for deep work</div>
                             <div>2. No meetings after 5pm</div>
                             <div>3. Exercise before noon</div>
