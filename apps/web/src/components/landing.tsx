@@ -890,22 +890,39 @@ export function LandingPage() {
     }
   }, []);
 
-  // Scroll-triggered animations — single observer for all .animate-on-scroll elements
+  // Scroll-triggered animations — sets initial state via JS to avoid CSS purge issues
+  // Re-triggers on both scroll up and scroll down
   useEffect(() => {
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const elements = document.querySelectorAll('.animate-on-scroll');
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('visible');
-            observer.unobserve(entry.target);
-          }
-        });
-      },
-      { threshold: 0.1 }
-    );
-    elements.forEach((el) => observer.observe(el));
-    return () => observer.disconnect();
+    if (reducedMotion) return; // Skip all animations for accessibility
+
+    // Set initial hidden state via JS (reliable — no CSS purge dependency)
+    elements.forEach((el) => {
+      const htmlEl = el as HTMLElement;
+      htmlEl.style.opacity = '0';
+      htmlEl.style.transform = 'translateY(24px)';
+      htmlEl.style.transition = 'opacity 0.6s ease-out, transform 0.6s ease-out';
+    });
+
+    // Small delay to ensure layout is settled before observing
+    const timer = setTimeout(() => {
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('aos-visible');
+            } else {
+              entry.target.classList.remove('aos-visible');
+            }
+          });
+        },
+        { threshold: 0.1 }
+      );
+      elements.forEach((el) => observer.observe(el));
+      return () => observer.disconnect();
+    }, 100);
+    return () => clearTimeout(timer);
   }, []);
 
   return (
@@ -1038,7 +1055,7 @@ export function LandingPage() {
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] lg:w-[400px] lg:h-[400px] rounded-full bg-[#7C5CFC]/15 blur-[80px] animate-pulse-slow" />
 
                 {/* Phone 1 (back) — Weekly Report — LIGHT MODE */}
-                <div className="absolute right-0 top-6 w-[200px] sm:w-[230px] lg:w-[260px] xl:w-[280px] h-[400px] sm:h-[450px] lg:h-[500px] xl:h-[540px] rounded-[2rem] bg-white p-2 shadow-2xl shadow-black/30 rotate-3" style={{ animationDelay: "0.5s" }}>
+                <div className="absolute right-0 top-6 w-[200px] sm:w-[230px] lg:w-[260px] xl:w-[280px] h-[400px] sm:h-[450px] lg:h-[500px] xl:h-[540px] rounded-[2rem] bg-white p-2 shadow-2xl shadow-black/30 rotate-3 hero-float" style={{ animationDelay: "0.5s" }}>
                   <div className="h-full w-full rounded-[1.5rem] bg-[#FAFAF7] p-4 flex flex-col gap-2.5 overflow-hidden">
                     <div className="flex items-center justify-between mb-1">
                       <div className="text-[10px] text-[#9E9890]">9:41</div>
@@ -1084,7 +1101,7 @@ export function LandingPage() {
                 </div>
 
                 {/* Phone 2 (front) — Today's Debrief — LIGHT MODE */}
-                <div className="absolute left-0 top-0 w-[200px] sm:w-[230px] lg:w-[260px] xl:w-[280px] h-[400px] sm:h-[450px] lg:h-[500px] xl:h-[540px] rounded-[2rem] bg-white p-2 shadow-2xl shadow-black/30 -rotate-3 z-10" style={{ animationDelay: "0.2s" }}>
+                <div className="absolute left-0 top-0 w-[200px] sm:w-[230px] lg:w-[260px] xl:w-[280px] h-[400px] sm:h-[450px] lg:h-[500px] xl:h-[540px] rounded-[2rem] bg-white p-2 shadow-2xl shadow-black/30 -rotate-3 z-10 hero-float" style={{ animationDelay: "0s" }}>
                   <div className="h-full w-full rounded-[1.5rem] bg-[#FAFAF7] p-4 flex flex-col gap-2.5 overflow-hidden">
                     <div className="flex items-center justify-between mb-1">
                       <div className="text-[10px] text-[#9E9890]">9:41</div>
@@ -1121,7 +1138,7 @@ export function LandingPage() {
           <div className="mt-8 flex justify-center lg:hidden">
               <div className="relative">
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[200px] h-[200px] rounded-full bg-[#7C5CFC]/15 blur-[60px] animate-pulse-slow" />
-                <div className="relative w-[220px] h-[380px] rounded-[2rem] bg-white p-2 shadow-2xl shadow-black/20">
+                <div className="relative w-[220px] h-[380px] rounded-[2rem] bg-white p-2 shadow-2xl shadow-black/20 hero-float">
                   <div className="h-full w-full rounded-[1.5rem] bg-[#FAFAF7] p-4 flex flex-col gap-2 overflow-hidden">
                     <div className="flex items-center justify-between mb-1">
                       <div className="text-[10px] text-[#9E9890]">9:41</div>
@@ -1486,30 +1503,34 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* ───── TESTIMONIALS ───── */}
-      {/* TODO: Replace fake testimonials with real user testimonials */}
-      <section className="px-6 py-16 sm:py-20 lg:py-24">
-        <div className="mx-auto max-w-6xl">
-            <div className="animate-on-scroll">
+      {/* ───── TESTIMONIALS — Rolling ticker ───── */}
+      <section className="py-16 sm:py-20 lg:py-24 overflow-hidden">
+        <div className="px-6 mx-auto max-w-6xl">
+          <div className="animate-on-scroll">
             <h2 className="text-center text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
               What people say after week one
             </h2>
             <p className="mx-auto mt-4 text-center text-[#A0A0B8] text-lg">
               The first weekly report is the moment it clicks.
             </p>
-            </div>
+          </div>
+        </div>
 
-          <div className="mt-16 grid gap-8 sm:grid-cols-3">
-            {testimonials.map((t, i) => (
-                <figure key={t.name} className={`group rounded-2xl border border-white/[0.06] bg-[#1E1C1A] p-6 shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1 animate-on-scroll${i > 0 ? ` delay-${i}` : ""}`}>
+        <div className="mt-16 relative">
+          <div className="absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-[#181614] to-transparent z-10" />
+          <div className="absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-[#181614] to-transparent z-10" />
+          <div className="overflow-hidden">
+            <div className="flex gap-6 testimonial-ticker w-max">
+              {[...testimonials, ...testimonials, ...testimonials, ...testimonials].map((t, i) => (
+                <figure key={`${t.name}-${i}`} className="shrink-0 w-[340px] rounded-2xl border border-white/[0.06] bg-[#1E1C1A] p-6 shadow-sm">
                   <div className="flex items-center gap-1 mb-4">
                     <span className="text-[#E8DDD0] font-bold text-xs">{SOCIAL_PROOF.rating} ★</span>
                   </div>
                   <blockquote className="text-sm leading-relaxed text-[#A0A0B8]">
-                    "{t.quote}"
+                    &ldquo;{t.quote}&rdquo;
                   </blockquote>
                   <figcaption className="mt-5 flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#252220] text-sm font-bold text-[#A0A0B8] transition-colors group-hover:bg-[#7C5CFC]/20 group-hover:text-[#7C5CFC]">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#252220] text-sm font-bold text-[#A0A0B8]">
                       {t.name[0]}
                     </div>
                     <div>
@@ -1518,7 +1539,8 @@ export function LandingPage() {
                     </div>
                   </figcaption>
                 </figure>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       </section>

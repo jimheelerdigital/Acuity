@@ -15,16 +15,22 @@ function useReveal() {
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    // Set initial hidden state via JS
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(24px)';
+    el.style.transition = 'opacity 0.6s ease-out, transform 0.6s ease-out';
     const obs = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
-          el.classList.add("visible");
-          obs.unobserve(el);
+          el.classList.add("aos-visible");
+        } else {
+          el.classList.remove("aos-visible");
         }
       },
-      { threshold: 0.15 }
+      { threshold: 0.1 }
     );
-    obs.observe(el);
+    setTimeout(() => obs.observe(el), 100);
     return () => obs.disconnect();
   }, []);
   return ref;
@@ -43,7 +49,7 @@ export function Reveal({
   return (
     <div
       ref={ref}
-      className={`animate-on-scroll ${delay ? `delay-${delay}` : ""} ${className}`}
+      className={`${delay ? `aos-delay-${delay}` : ""} ${className}`}
     >
       {children}
     </div>
