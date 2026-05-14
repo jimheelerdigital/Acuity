@@ -7,6 +7,48 @@
 
 ---
 
+## [2026-05-14] — Website copy overhaul: always-available positioning + broader gender appeal
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 4cf3c2e
+
+### In plain English (for Keenan)
+
+The website no longer tells people they have to use Acuity at night. Every reference to "nightly," "before bed," and "tonight" across the homepage, persona pages, therapy page, founders page, sleep page, decoded page, weekly-report page, emails, and sign-in page has been changed to time-neutral language like "daily," "whenever suits you," and "today." The old tagline "Brain dump daily. Get your life back." is now "Debrief daily. See your life clearly." everywhere it appeared — homepage footer, emails, sign-in page, content factory, and drip emails. The homepage now shows two use-case scenarios (a morning coffee debrief by James and an evening wind-down by Priya) instead of only showing a late-night phone mockup. Aggressive copy like "Stop trying to remember everything," "Clock out for real," and "ADHD brains have 100 tabs open. Acuity closes them" has been softened to warmer, observational language. The product now reads as something any smart, busy person would use at any time of day — not just a guy who can't sleep.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/components/landing.tsx`: Replaced all "nightly" → "daily", "tonight" → "today", "before bed" → "whenever suits you", "10 PM" references removed. Softened "productivity obsessives" → "people who want to understand themselves". Added new "Use-Case Scenarios" section with two cards (morning/evening) between Growth Chart and Testimonials. Phone mockup time changed from "10:14 PM" to "9:41". Feature titles updated: "The Nightly Debrief" → "The Daily Debrief", "Your Mood, Scored Nightly" → "Your Mood, Scored Daily".
+- `apps/web/src/components/landing-shared.tsx`: Updated footer tagline, dropdown descriptions, FAQ question from "every night" → "every day".
+- `apps/web/src/lib/persona-pages.ts`: Updated all 16 persona pages — replaced "nightly" → "daily", "tonight" → "today", "before bed" → "whenever you need it", "every night" → "every day" across titles, meta descriptions, headlines, subheadlines, solution bodies, feature descriptions, testimonials, and CTA headlines. Softened combative CTAs: "Stop trying to remember everything" → "Your thoughts, kept safe", "Stop surviving the semester" → "See your semester clearly", "Clock out for real" → "Draw the line", etc.
+- `apps/web/src/app/for/therapy/page.tsx`: "every single night" → "every single day" in hero, urgency badge, solution, how-it-works, features, comparison table, CTA banner.
+- `apps/web/src/app/for/sleep/page.tsx`: Softened time references while keeping sleep context — "nightly ritual" → "daily ritual", "sleep hack" → "sleep trick", "Nightly reminder" → "Daily reminder". Kept bedtime-adjacent language since this is a sleep-specific page.
+- `apps/web/src/app/for/founders/page.tsx`: "nightly debrief" → "daily debrief", "By 10pm" → "By the end of the day", "Every night" → "Any time of day" in comparison table, "60 seconds a night" → "60 seconds a day".
+- `apps/web/src/app/for/decoded/page.tsx`: "every night" → "every day", "tonight" → "today".
+- `apps/web/src/app/for/weekly-report/page.tsx`: "Every night" → "Every day", "tonight" → "today".
+- `apps/web/src/lib/content-factory/generate.ts`: Updated brand system prompt tagline and product moment reference.
+- `apps/web/src/lib/drip-emails.ts`: Updated email tagline and CTA.
+- `apps/web/src/lib/social-proof.ts`: Updated comment label.
+- `apps/web/src/emails/layout.ts`, `apps/web/src/emails/trial/layout.ts`: Updated footer taglines.
+- `apps/web/src/app/auth/signin/page.tsx`: Updated tagline on sign-in page.
+- `apps/web/src/app/entries/entries-list.tsx`: "brain dump" → "debrief" in empty state.
+- `apps/web/src/app/onboarding/steps/step-1-welcome.tsx`: Updated tone reference comment.
+- Blog posts and meta descriptions left untouched (SEO keyword exemption per instructions).
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- "Brain dump" remains in: (1) blog posts and the voice-journaling pillar page where it's an SEO target keyword, (2) the sleep page layout.tsx meta title/description where it's targeting "brain dump before bed" keyword. These are intentional SEO keyword plays.
+- The voice-journaling pillar page (`/voice-journaling`) was treated as SEO content like blog posts and left untouched. If Keenan wants that updated too, it needs a separate SEO keyword strategy discussion since "brain dump" is a high-volume search term driving organic traffic.
+- The mobile app still has "brain dump" references (notifications, tab bar, record screen, sign-in, paywall, milestones). Those are a separate task since they involve a new mobile build and App Review submission.
+- The new use-case scenario section uses a male name (James) for the emotional/processing scenario and a female name (Priya) for the confidence/productivity scenario — intentionally cross-typed to broaden appeal.
+
+---
+
 ## Slice protocol (v1.1 onward)
 
 When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-tier-phase2-plan.md):
