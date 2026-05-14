@@ -225,7 +225,7 @@ export function PulsingCTA({
     <Link
       href={href}
       onClick={trackInitiateCheckout}
-      className={`relative inline-flex items-center gap-2 rounded-full bg-[#7C5CFC] px-8 py-4 text-sm font-semibold text-white transition-all duration-300 hover:bg-[#6B4FE0] hover:shadow-xl hover:shadow-[#7C5CFC]/25 hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#0F0D0B] ${className}`}
+      className={`relative inline-flex items-center gap-2 rounded-full bg-[#7C5CFC] px-8 py-4 text-sm font-semibold text-white transition-all duration-300 hover:bg-[#6B4FE0] hover:shadow-xl hover:shadow-[#7C5CFC]/25 hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#181614] ${className}`}
     >
       <span className="absolute inset-0 rounded-full bg-[#7C5CFC]/30 animate-pulse-ring" />
       <span className="relative z-10 flex items-center gap-2">{children}</span>
@@ -350,7 +350,7 @@ function LandingWhoItsFor() {
       </button>
 
       <div
-        className={`absolute left-0 top-full mt-2 w-[640px] rounded-xl border border-white/10 bg-[#151210] shadow-2xl transition-all duration-200 origin-top ${
+        className={`absolute left-0 top-full mt-2 w-[640px] rounded-xl border border-white/10 bg-[#1E1C1A] shadow-2xl transition-all duration-200 origin-top ${
           open
             ? "opacity-100 scale-y-100 translate-y-0"
             : "opacity-0 scale-y-95 -translate-y-1 pointer-events-none"
@@ -438,7 +438,7 @@ export function LandingNav() {
   return (
     <div className="fixed top-0 inset-x-0 z-50">
       <FoundingMemberBanner />
-      <nav className="bg-[#0F0D0B]/80 backdrop-blur-md border-b border-white/5">
+      <nav className="bg-[#181614]/80 backdrop-blur-md border-b border-white/5">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
         <div className="flex items-center gap-8">
           <Link href="/" className="flex items-center gap-2 group">
@@ -485,7 +485,7 @@ export function LandingNav() {
 
 export function Footer() {
   return (
-    <footer className="border-t border-white/10 px-6 py-12 bg-[#0F0D0B]">
+    <footer className="border-t border-white/10 px-6 py-12 bg-[#181614]">
       <div className="mx-auto max-w-5xl">
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
           <div>
@@ -567,9 +567,9 @@ export function PricingSection({
         <Reveal delay={1}>
           <div className="mt-12 relative group">
             <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-r from-violet-400 via-indigo-400 to-violet-400 opacity-0 group-hover:opacity-100 transition-opacity duration-500 animate-shimmer blur-[1px]" />
-            <div className="relative rounded-2xl border border-white/10 bg-[#151210] p-8 text-left shadow-sm">
+            <div className="relative rounded-2xl border border-[#E8B88A]/20 bg-[#1E1C1A] p-8 text-left shadow-sm">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold uppercase tracking-wider text-[#7C5CFC]">
+                <p className="text-sm font-semibold uppercase tracking-wider text-[#E8B88A]">
                   Pro
                 </p>
                 <span className="rounded-full bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 text-xs font-semibold text-emerald-400">
@@ -738,8 +738,8 @@ function MoodBars({ heights, color }: { heights: number[]; color: string }) {
 /* Phone mockup for Step 1: Record */
 function RecordPhone() {
   return (
-    <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-[#1C1917] p-2 shadow-xl">
-      <div className="h-full w-full rounded-[2rem] bg-[#151210] p-5 flex flex-col overflow-hidden">
+    <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-[#252220] p-2 shadow-xl">
+      <div className="h-full w-full rounded-[2rem] bg-[#1E1C1A] p-5 flex flex-col overflow-hidden">
         <div className="text-xs text-[#B0A898] font-medium mb-auto">Recording</div>
         <div className="flex flex-col items-center justify-center flex-1 gap-4">
           <div className="relative flex items-center justify-center">
@@ -770,11 +770,11 @@ interface ExtractPhoneProps {
 
 function ExtractPhone({ tasks, goal, mood }: ExtractPhoneProps) {
   return (
-    <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-[#1C1917] p-2 shadow-xl">
-      <div className="h-full w-full rounded-[2rem] bg-[#151210] p-5 flex flex-col overflow-hidden">
+    <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-[#252220] p-2 shadow-xl">
+      <div className="h-full w-full rounded-[2rem] bg-[#1E1C1A] p-5 flex flex-col overflow-hidden">
         <div className="text-xs text-[#B0A898] font-medium mb-3">AI Extraction</div>
         <div className="space-y-2.5 flex-1">
-          <div className="rounded-xl border border-white/10 bg-[#1C1917] p-3 shadow-sm">
+          <div className="rounded-xl border border-white/10 bg-[#252220] p-3 shadow-sm">
             <div className="text-[10px] text-[#B0A898]/60 uppercase tracking-wider mb-1.5">Tasks</div>
             <CascadingTasks tasks={tasks} />
           </div>
@@ -800,21 +800,21 @@ interface ReflectPhoneProps {
 
 function ReflectPhone({ pattern, actions }: ReflectPhoneProps) {
   return (
-    <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-[#1C1917] p-2 shadow-xl">
-      <div className="h-full w-full rounded-[2rem] bg-[#151210] p-5 flex flex-col overflow-hidden">
+    <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-[#252220] p-2 shadow-xl">
+      <div className="h-full w-full rounded-[2rem] bg-[#1E1C1A] p-5 flex flex-col overflow-hidden">
         <div className="text-xs text-[#B0A898] font-medium mb-3">Weekly Report</div>
         <div className="space-y-2.5 flex-1">
-          <div className="rounded-xl border border-white/10 bg-[#1C1917] p-3 shadow-sm">
+          <div className="rounded-xl border border-white/10 bg-[#252220] p-3 shadow-sm">
             <div className="text-[10px] text-[#B0A898]/60 uppercase tracking-wider mb-2">Mood this week</div>
             <div className="h-10">
               <MoodBars heights={[50, 60, 45, 75, 70, 85, 80]} color="bg-violet-400" />
             </div>
           </div>
-          <div className="rounded-xl border border-white/10 bg-[#1C1917] p-3 shadow-sm">
+          <div className="rounded-xl border border-white/10 bg-[#252220] p-3 shadow-sm">
             <div className="text-[10px] text-[#B0A898]/60 uppercase tracking-wider mb-1">Pattern</div>
             <div className="text-xs text-[#B0A898]">{pattern}</div>
           </div>
-          <div className="rounded-xl border border-white/10 bg-[#1C1917] p-3 shadow-sm">
+          <div className="rounded-xl border border-white/10 bg-[#252220] p-3 shadow-sm">
             <div className="text-[10px] text-[#B0A898]/60 uppercase tracking-wider mb-1">Top 3 Actions</div>
             <div className="space-y-1 text-xs text-[#B0A898]">
               {actions.map((a, i) => (
@@ -866,7 +866,7 @@ export function HowItWorksSection({ steps, ...phoneProps }: HowItWorksConfig) {
           <div className="flex flex-col gap-8 lg:items-center lg:flex-row">
             <div className="flex-1">
               <Reveal>
-                <div className="inline-flex items-center gap-2 rounded-full bg-[#1C1917] px-3 py-1 text-xs font-semibold text-[#B0A898] uppercase tracking-wider mb-4">
+                <div className="inline-flex items-center gap-2 rounded-full bg-[#252220] px-3 py-1 text-xs font-semibold text-[#B0A898] uppercase tracking-wider mb-4">
                   Step 1
                 </div>
                 <h3 className="text-3xl font-bold sm:text-4xl">{steps[0]?.title || "Record"}</h3>
@@ -886,7 +886,7 @@ export function HowItWorksSection({ steps, ...phoneProps }: HowItWorksConfig) {
           <div className="flex flex-col gap-8 lg:items-center lg:flex-row-reverse">
             <div className="flex-1">
               <Reveal>
-                <div className="inline-flex items-center gap-2 rounded-full bg-[#1C1917] px-3 py-1 text-xs font-semibold text-[#B0A898] uppercase tracking-wider mb-4">
+                <div className="inline-flex items-center gap-2 rounded-full bg-[#252220] px-3 py-1 text-xs font-semibold text-[#B0A898] uppercase tracking-wider mb-4">
                   Step 2
                 </div>
                 <h3 className="text-3xl font-bold sm:text-4xl">{steps[1]?.title || "Extract"}</h3>
@@ -906,7 +906,7 @@ export function HowItWorksSection({ steps, ...phoneProps }: HowItWorksConfig) {
           <div className="flex flex-col gap-8 lg:items-center lg:flex-row">
             <div className="flex-1">
               <Reveal>
-                <div className="inline-flex items-center gap-2 rounded-full bg-[#1C1917] px-3 py-1 text-xs font-semibold text-[#B0A898] uppercase tracking-wider mb-4">
+                <div className="inline-flex items-center gap-2 rounded-full bg-[#252220] px-3 py-1 text-xs font-semibold text-[#B0A898] uppercase tracking-wider mb-4">
                   Step 3
                 </div>
                 <h3 className="text-3xl font-bold sm:text-4xl">{steps[2]?.title || "Reflect"}</h3>
@@ -1009,7 +1009,7 @@ export function TestimonialsSection({
         <div className="mt-16 grid gap-8 sm:grid-cols-3">
           {testimonials.map((t, i) => (
             <Reveal key={t.name} delay={Math.min(i + 1, 3) as 1 | 2 | 3}>
-              <figure className="group rounded-2xl border border-white/10 bg-[#151210] p-6 shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+              <figure className="group rounded-2xl border border-white/10 bg-[#1E1C1A] p-6 shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
                 <div className="flex items-center gap-1 mb-4">
                   <span className="text-amber-400 font-bold text-xs">{SOCIAL_PROOF.rating} ★</span>
                 </div>
@@ -1017,7 +1017,7 @@ export function TestimonialsSection({
                   "{t.quote}"
                 </blockquote>
                 <figcaption className="mt-5 flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#1C1917] text-sm font-bold text-[#B0A898] transition-colors group-hover:bg-[#7C5CFC]/20 group-hover:text-[#7C5CFC]">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#252220] text-sm font-bold text-[#B0A898] transition-colors group-hover:bg-[#7C5CFC]/20 group-hover:text-[#7C5CFC]">
                     {t.name[0]}
                   </div>
                   <div>
@@ -1054,7 +1054,7 @@ export function ComparisonTable({
 }) {
   return (
     <Reveal>
-      <div className="overflow-x-auto rounded-2xl border border-white/10 bg-[#151210] shadow-sm">
+      <div className="overflow-x-auto rounded-2xl border border-white/10 bg-[#1E1C1A] shadow-sm">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-white/5">
@@ -1213,7 +1213,7 @@ export function FeatureGrid({ features }: { features: FeatureCard[] }) {
                 key={f.title}
                 delay={Math.min((i % 3) + 1, 3) as 1 | 2 | 3}
               >
-                <div className="group rounded-2xl border border-white/10 bg-[#151210] p-6 shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+                <div className="group rounded-2xl border border-white/10 bg-[#1E1C1A] p-6 shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
                   <div
                     className={`h-10 w-10 rounded-xl ${icon.bg} flex items-center justify-center mb-4 transition-transform duration-300 group-hover:scale-110`}
                   >
@@ -1256,7 +1256,7 @@ export function PainSection({ points }: { points: string[] }) {
         <div className="grid gap-6 sm:grid-cols-3">
           {points.map((point, i) => (
             <Reveal key={i} delay={Math.min(i + 1, 3) as 1 | 2 | 3} className="h-full">
-              <div className="h-full group rounded-2xl bg-[#151210] p-8 text-white transition-all duration-300 hover:shadow-xl hover:-translate-y-1 hover:shadow-zinc-900/20">
+              <div className="h-full group rounded-2xl bg-[#1E1C1A] p-8 text-white transition-all duration-300 hover:shadow-xl hover:-translate-y-1 hover:shadow-zinc-900/20">
                 <div className="h-10 w-10 rounded-xl bg-violet-600/20 flex items-center justify-center mb-5">
                   <svg
                     className="h-5 w-5 text-violet-400"
@@ -1296,7 +1296,7 @@ export function SolutionSection({
   body: string;
 }) {
   return (
-    <section className="px-6 py-24 sm:py-32 bg-[#151210]">
+    <section className="px-6 py-24 sm:py-32 bg-[#1E1C1A]">
       <div className="mx-auto max-w-3xl text-center">
         <Reveal>
           <h2 className="text-3xl font-bold tracking-tight sm:text-5xl">
@@ -1399,7 +1399,7 @@ export function LifeMatrixShowcase({ areas }: { areas: MatrixArea[] }) {
       {areas.map((area, i) => (
         <div
           key={area.label}
-          className="group rounded-2xl border border-white/10 bg-[#151210] p-6 shadow-sm transition-all duration-500 hover:shadow-lg hover:-translate-y-1"
+          className="group rounded-2xl border border-white/10 bg-[#1E1C1A] p-6 shadow-sm transition-all duration-500 hover:shadow-lg hover:-translate-y-1"
           style={{
             opacity: visible ? 1 : 0,
             transform: visible ? "translateY(0)" : "translateY(20px)",
@@ -1450,7 +1450,7 @@ export function BeforeAfterSection({
       <div className="mx-auto max-w-4xl">
         <div className="grid gap-8 sm:grid-cols-2">
           <Reveal>
-            <div className="rounded-2xl bg-[#151210] p-8">
+            <div className="rounded-2xl bg-[#1E1C1A] p-8">
               <h3 className="text-lg font-bold text-[#B0A898]/60 mb-6 uppercase tracking-wider text-sm">
                 Before Acuity
               </h3>
@@ -1503,7 +1503,7 @@ export interface Stat {
 
 export function StatsSection({ stats }: { stats: Stat[] }) {
   return (
-    <section className="py-12 px-6 border-y border-white/5 bg-[#151210]/50 backdrop-blur">
+    <section className="py-12 px-6 border-y border-white/5 bg-[#1E1C1A]/50 backdrop-blur">
       <div className="mx-auto max-w-5xl">
         <div className={`grid grid-cols-2 sm:grid-cols-${Math.min(stats.length, 4)} gap-8 text-center`}>
           {stats.map((stat, i) => (
@@ -1555,7 +1555,7 @@ export function RevealCards({ items }: { items: string[] }) {
       {items.map((item, i) => (
         <div
           key={i}
-          className="group rounded-2xl border border-white/10 bg-[#151210] p-6 shadow-sm transition-all duration-500 hover:shadow-lg hover:-translate-y-1"
+          className="group rounded-2xl border border-white/10 bg-[#1E1C1A] p-6 shadow-sm transition-all duration-500 hover:shadow-lg hover:-translate-y-1"
           style={{
             opacity: i < visibleCount ? 1 : 0,
             transform: i < visibleCount ? "translateY(0)" : "translateY(20px)",
@@ -1588,13 +1588,13 @@ export function ReportPreview({
 }) {
   return (
     <Reveal>
-      <div className="mx-auto max-w-2xl rounded-2xl border border-white/10 bg-[#151210] p-8 shadow-lg relative overflow-hidden">
+      <div className="mx-auto max-w-2xl rounded-2xl border border-white/10 bg-[#1E1C1A] p-8 shadow-lg relative overflow-hidden">
         <div className="text-xs font-semibold uppercase tracking-widest text-violet-600 mb-2">
           Weekly Report
         </div>
         <h3 className="text-xl font-bold text-white mb-4">{title}</h3>
 
-        <div className="rounded-xl bg-[#1C1917] p-4 mb-4">
+        <div className="rounded-xl bg-[#252220] p-4 mb-4">
           <div className="text-xs font-semibold text-[#B0A898]/60 uppercase tracking-wider mb-2">
             Mood Arc
           </div>
@@ -1621,7 +1621,7 @@ export function ReportPreview({
               <p className="text-sm text-[#B0A898]">{bullet}</p>
             </div>
           ))}
-          <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[#151210] to-transparent flex items-end justify-center pb-2">
+          <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[#1E1C1A] to-transparent flex items-end justify-center pb-2">
             <span className="text-xs font-medium text-violet-600">
               Read your full report
             </span>
@@ -1717,7 +1717,7 @@ export function FAQSection() {
         <div className="space-y-4">
           {faqs.map((faq, i) => (
             <Reveal key={i} delay={Math.min(i + 1, 3) as 1 | 2 | 3}>
-              <div className="rounded-xl border border-white/10 bg-[#151210] p-6">
+              <div className="rounded-xl border border-white/10 bg-[#1E1C1A] p-6">
                 <h3 className="text-base font-semibold text-white mb-2">{faq.q}</h3>
                 <p className="text-sm text-[#B0A898] leading-relaxed">{faq.a}</p>
               </div>
@@ -1736,7 +1736,7 @@ export function FAQSection() {
 export function StickyCTA({ utmCampaign }: { utmCampaign: string }) {
   return (
     <div className="fixed bottom-0 inset-x-0 z-40 sm:hidden">
-      <div className="bg-[#0F0D0B]/95 backdrop-blur-lg border-t border-white/10 px-4 py-3">
+      <div className="bg-[#181614]/95 backdrop-blur-lg border-t border-white/10 px-4 py-3">
         <Link
           href={`/auth/signup?utm_campaign=${utmCampaign}`}
           onClick={trackInitiateCheckout}

@@ -35,7 +35,7 @@ export default function PersonaLandingPage({ params }: { params: { slug: string 
   }, [params.slug]);
 
   return (
-    <div className="min-h-screen bg-[#0F0D0B] text-white pb-24 sm:pb-0 overflow-x-hidden">
+    <div className="min-h-screen bg-[#181614] text-white pb-24 sm:pb-0 overflow-x-hidden">
       <LandingNav />
 
       {/* Schema.org markup */}
@@ -105,7 +105,7 @@ export default function PersonaLandingPage({ params }: { params: { slug: string 
           <div className="grid gap-6 sm:grid-cols-3">
             {page.painPoints.map((point, i) => (
               <Reveal key={i} delay={Math.min(i + 1, 3) as 1 | 2 | 3}>
-                <div className="h-full rounded-xl border border-white/10 bg-[#151210] p-8 transition-all duration-300 hover:border-white/20 hover:-translate-y-1">
+                <div className="h-full rounded-xl border border-white/10 bg-[#1E1C1A] p-8 transition-all duration-300 hover:border-white/20 hover:-translate-y-1">
                   <div className="h-10 w-10 rounded-xl bg-[#7C5CFC]/10 flex items-center justify-center mb-5">
                     <svg className="h-5 w-5 text-[#7C5CFC]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
@@ -186,7 +186,7 @@ export default function PersonaLandingPage({ params }: { params: { slug: string 
           <div className="grid gap-6 sm:grid-cols-3">
             {page.features.map((f, i) => (
               <Reveal key={i} delay={Math.min(i + 1, 3) as 1 | 2 | 3}>
-                <div className="rounded-xl border border-white/10 bg-[#151210] p-6 transition-all duration-300 hover:border-white/20 hover:-translate-y-1">
+                <div className="rounded-xl border border-white/10 bg-[#1E1C1A] p-6 transition-all duration-300 hover:border-white/20 hover:-translate-y-1">
                   <div className="h-10 w-10 rounded-xl bg-[#7C5CFC]/10 flex items-center justify-center mb-4">
                     <svg className="h-5 w-5 text-[#7C5CFC]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
@@ -205,7 +205,7 @@ export default function PersonaLandingPage({ params }: { params: { slug: string 
       <section className="px-6 py-24 sm:py-32">
         <div className="mx-auto max-w-2xl">
           <Reveal>
-            <div className="rounded-xl border border-[#7C5CFC]/20 bg-[#151210] p-8 sm:p-10">
+            <div className="rounded-xl border border-[#7C5CFC]/20 bg-[#1E1C1A] p-8 sm:p-10">
               <div className="flex items-center gap-1 mb-4">
                 {[...Array(5)].map((_, i) => (
                   <svg key={i} className="h-4 w-4 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
@@ -242,7 +242,7 @@ export default function PersonaLandingPage({ params }: { params: { slug: string 
             </p>
           </Reveal>
           <Reveal delay={1}>
-            <div className="rounded-xl border border-white/10 bg-[#151210] p-8 text-left">
+            <div className="rounded-xl border border-white/10 bg-[#1E1C1A] p-8 text-left">
               <div className="flex items-center justify-between mb-4">
                 <span className="text-sm font-semibold uppercase tracking-wider text-[#7C5CFC]">Pro</span>
                 <span className="rounded-full bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 text-xs font-semibold text-emerald-400">
@@ -279,7 +279,7 @@ export default function PersonaLandingPage({ params }: { params: { slug: string 
       {/* ───── FINAL CTA ───── */}
       <section className="px-6 py-24 sm:py-32">
         <Reveal>
-          <div className="mx-auto max-w-4xl rounded-2xl bg-[#151210] border border-white/10 p-12 sm:p-16 text-center relative overflow-hidden">
+          <div className="mx-auto max-w-4xl rounded-2xl bg-[#1E1C1A] border border-white/10 p-12 sm:p-16 text-center relative overflow-hidden">
             <div className="absolute top-0 right-0 h-72 w-72 rounded-full bg-[#7C5CFC]/10 -translate-y-1/3 translate-x-1/4 blur-3xl" />
             <div className="absolute bottom-0 left-0 h-56 w-56 rounded-full bg-[#7C5CFC]/10 translate-y-1/3 -translate-x-1/4 blur-3xl" />
             <div className="relative">

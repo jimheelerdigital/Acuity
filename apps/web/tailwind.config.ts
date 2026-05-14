@@ -23,12 +23,12 @@ const config: Config = {
           900: "#4C1D95",
         },
         warm: {
-          amber: "#D4A574",
-          gold: "#C9956B",
+          amber: "#E8B88A",
+          gold: "#D4A574",
           muted: "#B0A898",
-          bg: "#0F0D0B",
-          card: "#151210",
-          "card-inner": "#1C1917",
+          bg: "#181614",
+          card: "#1E1C1A",
+          "card-inner": "#252220",
         },
       },
       fontFamily: {

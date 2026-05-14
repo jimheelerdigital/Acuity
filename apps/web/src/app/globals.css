@@ -102,8 +102,8 @@ details .faq-answer > div {
 
 /* Pricing card glow */
 @keyframes pricing-glow {
-  0%, 100% { box-shadow: 0 0 20px rgba(212,165,116,0.0); }
-  50% { box-shadow: 0 0 30px rgba(212,165,116,0.12), 0 0 60px rgba(212,165,116,0.04); }
+  0%, 100% { box-shadow: 0 0 20px rgba(232,184,138,0.0); }
+  50% { box-shadow: 0 0 30px rgba(232,184,138,0.18), 0 0 60px rgba(232,184,138,0.06); }
 }
 .animate-pricing-glow {
   animation: pricing-glow 3s ease-in-out infinite;
@@ -111,10 +111,11 @@ details .faq-answer > div {
 
 /* Warm card hover glow */
 .warm-card-hover {
-  transition: box-shadow 0.3s ease, transform 0.3s ease;
+  transition: box-shadow 0.3s ease, transform 0.3s ease, border-color 0.3s ease;
 }
 .warm-card-hover:hover {
-  box-shadow: 0 8px 32px rgba(212,165,116,0.08), 0 0 0 1px rgba(212,165,116,0.1);
+  box-shadow: 0 8px 40px rgba(232,184,138,0.15), 0 0 0 1px rgba(232,184,138,0.2);
+  transform: translateY(-2px);
 }
 
 /* Gentle fade-up animation for staggered cards */

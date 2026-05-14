@@ -103,7 +103,7 @@ function WhoItsForDropdown() {
       </button>
 
       <div
-        className={`absolute left-0 top-full mt-2 w-[640px] max-w-[calc(100vw-2rem)] rounded-xl border border-white/[0.06] bg-[#151210] shadow-2xl transition-all duration-200 origin-top ${
+        className={`absolute left-0 top-full mt-2 w-[640px] max-w-[calc(100vw-2rem)] rounded-xl border border-white/[0.06] bg-[#1E1C1A] shadow-2xl transition-all duration-200 origin-top ${
           open
             ? "opacity-100 scale-y-100 translate-y-0"
             : "opacity-0 scale-y-95 -translate-y-1 pointer-events-none"
@@ -773,7 +773,7 @@ function LifeMatrixRadar() {
         <div className="flex-1 min-w-0 max-w-xs">
           {activeArea ? (
             <div
-              className="rounded-xl border-l-4 bg-[#151210] p-5 shadow-sm transition-all duration-500 animate-fade-in"
+              className="rounded-xl border-l-4 bg-[#1E1C1A] p-5 shadow-sm transition-all duration-500 animate-fade-in"
               style={{ borderColor: activeArea.color }}
               key={activeArea.label}
             >
@@ -933,11 +933,11 @@ export function LandingPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#0F0D0B] text-white pb-24 sm:pb-0 overflow-x-hidden">
+    <div className="min-h-screen bg-[#181614] text-white pb-24 sm:pb-0 overflow-x-hidden">
       {/* ───── BANNER + NAVBAR (both fixed) ───── */}
       <div className="fixed top-0 inset-x-0 z-50">
         <FoundingMemberBanner />
-        <nav className="bg-[#0F0D0B] sm:bg-[#0F0D0B]/80 sm:backdrop-blur-md border-b border-white/[0.04]">
+        <nav className="bg-[#181614] sm:bg-[#181614]/80 sm:backdrop-blur-md border-b border-white/[0.04]">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:py-5">
           <div className="flex items-center gap-8">
             <Link href="/" className="flex items-center gap-2 group">
@@ -1070,8 +1070,8 @@ export function LandingPage() {
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] lg:w-[400px] lg:h-[400px] rounded-full bg-[#7C5CFC]/15 blur-[80px] animate-pulse-slow" />
 
                 {/* Phone 1 (back) — Weekly Report */}
-                <div className="absolute right-0 top-6 w-[200px] sm:w-[230px] lg:w-[260px] xl:w-[280px] h-[400px] sm:h-[450px] lg:h-[500px] xl:h-[540px] rounded-[2rem] bg-[#1C1917] p-2 shadow-2xl shadow-black/40 rotate-3 animate-float">
-                  <div className="h-full w-full rounded-[1.5rem] bg-[#151210] p-4 flex flex-col gap-2.5 overflow-hidden">
+                <div className="absolute right-0 top-6 w-[200px] sm:w-[230px] lg:w-[260px] xl:w-[280px] h-[400px] sm:h-[450px] lg:h-[500px] xl:h-[540px] rounded-[2rem] bg-[#252220] p-2 shadow-2xl shadow-black/40 rotate-3 animate-float">
+                  <div className="h-full w-full rounded-[1.5rem] bg-[#1E1C1A] p-4 flex flex-col gap-2.5 overflow-hidden">
                     {/* Status bar */}
                     <div className="flex items-center justify-between mb-1">
                       <div className="text-[10px] text-[#B0A898]/60">9:41</div>
@@ -1086,7 +1086,7 @@ export function LandingPage() {
                     <div className="text-[10px] text-[#B0A898]/60">
                       Apr 14 – Apr 20
                     </div>
-                    <div className="rounded-xl border border-white/[0.06] bg-[#1C1917] p-3 shadow-sm">
+                    <div className="rounded-xl border border-white/[0.06] bg-[#252220] p-3 shadow-sm">
                       <div className="text-[10px] text-[#B0A898] mb-2">
                         Mood This Week
                       </div>
@@ -1109,7 +1109,7 @@ export function LandingPage() {
                         Best mood on days you exercised. Worst after meetings past 6 PM.
                       </div>
                     </div>
-                    <div className="rounded-xl border border-white/[0.06] bg-[#1C1917] p-3 shadow-sm">
+                    <div className="rounded-xl border border-white/[0.06] bg-[#252220] p-3 shadow-sm">
                       <div className="text-[10px] text-[#B0A898] mb-1.5">
                         Goals
                       </div>
@@ -1138,8 +1138,8 @@ export function LandingPage() {
                 </div>
 
                 {/* Phone 2 (front) — Today's Debrief */}
-                <div className="absolute left-0 top-0 w-[200px] sm:w-[230px] lg:w-[260px] xl:w-[280px] h-[400px] sm:h-[450px] lg:h-[500px] xl:h-[540px] rounded-[2rem] bg-[#1C1917] p-2 shadow-2xl shadow-black/50 -rotate-3 z-10 animate-float">
-                  <div className="h-full w-full rounded-[1.5rem] bg-[#151210] p-4 flex flex-col gap-2.5 overflow-hidden">
+                <div className="absolute left-0 top-0 w-[200px] sm:w-[230px] lg:w-[260px] xl:w-[280px] h-[400px] sm:h-[450px] lg:h-[500px] xl:h-[540px] rounded-[2rem] bg-[#252220] p-2 shadow-2xl shadow-black/50 -rotate-3 z-10 animate-float">
+                  <div className="h-full w-full rounded-[1.5rem] bg-[#1E1C1A] p-4 flex flex-col gap-2.5 overflow-hidden">
                     {/* Status bar */}
                     <div className="flex items-center justify-between mb-1">
                       <div className="text-[10px] text-[#B0A898]/60">9:41</div>
@@ -1157,7 +1157,7 @@ export function LandingPage() {
                         7.2
                       </div>
                     </div>
-                    <div className="rounded-xl border border-white/[0.06] bg-[#1C1917] p-3 shadow-sm">
+                    <div className="rounded-xl border border-white/[0.06] bg-[#252220] p-3 shadow-sm">
                       <div className="text-[10px] text-[#B0A898] mb-2">
                         Extracted Tasks
                       </div>
@@ -1169,7 +1169,7 @@ export function LandingPage() {
                         ]}
                       />
                     </div>
-                    <div className="rounded-xl border border-white/[0.06] bg-[#1C1917] p-3 shadow-sm">
+                    <div className="rounded-xl border border-white/[0.06] bg-[#252220] p-3 shadow-sm">
                       <div className="text-[10px] text-[#B0A898] mb-1">
                         Theme
                       </div>
@@ -1196,8 +1196,8 @@ export function LandingPage() {
             <Reveal delay={4}>
               <div className="relative">
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[200px] h-[200px] rounded-full bg-[#7C5CFC]/15 blur-[60px] animate-pulse-slow" />
-                <div className="relative w-[220px] h-[380px] rounded-[2rem] bg-[#1C1917] p-2 shadow-2xl shadow-black/40 animate-float">
-                  <div className="h-full w-full rounded-[1.5rem] bg-[#151210] p-4 flex flex-col gap-2 overflow-hidden">
+                <div className="relative w-[220px] h-[380px] rounded-[2rem] bg-[#252220] p-2 shadow-2xl shadow-black/40 animate-float">
+                  <div className="h-full w-full rounded-[1.5rem] bg-[#1E1C1A] p-4 flex flex-col gap-2 overflow-hidden">
                     <div className="flex items-center justify-between mb-1">
                       <div className="text-[10px] text-[#B0A898]/60">9:41</div>
                       <div className="flex gap-1">
@@ -1206,14 +1206,14 @@ export function LandingPage() {
                       </div>
                     </div>
                     <div className="text-xs text-white font-semibold">Today&rsquo;s Debrief</div>
-                    <div className="rounded-xl border border-white/[0.06] bg-[#1C1917] p-3 shadow-sm">
+                    <div className="rounded-xl border border-white/[0.06] bg-[#252220] p-3 shadow-sm">
                       <div className="text-[10px] text-[#B0A898] mb-2">Mood</div>
                       <div className="flex items-center gap-1.5">
                         <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
                         <span className="text-[10px] text-white font-medium">7.2</span>
                       </div>
                     </div>
-                    <div className="rounded-xl border border-white/[0.06] bg-[#1C1917] p-3 shadow-sm">
+                    <div className="rounded-xl border border-white/[0.06] bg-[#252220] p-3 shadow-sm">
                       <div className="text-[10px] text-[#B0A898] mb-2">Extracted Tasks</div>
                       <CascadingTasks
                         tasks={[
@@ -1238,7 +1238,7 @@ export function LandingPage() {
             <Reveal>
               <div className="mx-auto max-w-2xl flex flex-col sm:flex-row items-center justify-center gap-4 text-center">
             <div className="flex items-center gap-1">
-              <span className="text-amber-400 font-bold text-sm">{SOCIAL_PROOF.rating} ★</span>
+              <span className="text-[#E8B88A] font-bold text-sm">{SOCIAL_PROOF.rating} ★</span>
             </div>
             <p className="text-sm text-[#B0A898]">
               Join {SOCIAL_PROOF.underHeroCount} people already using Acuity
@@ -1250,7 +1250,7 @@ export function LandingPage() {
       </section>
 
       {/* ───── STATS TICKER ───── */}
-      <section className="py-8 lg:py-10 px-6 border-y border-white/[0.04] bg-[#151210]/50 backdrop-blur">
+      <section className="py-8 lg:py-10 px-6 border-y border-white/[0.04] bg-[#1E1C1A]/50 backdrop-blur">
         <div className="mx-auto max-w-6xl">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 text-center">
             {stats.map((stat, i) => (
@@ -1282,14 +1282,14 @@ export function LandingPage() {
             {["S", "M", "P", "A", "J", "R"].map((letter, i) => (
               <div
                 key={i}
-                className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-[#0F0D0B] bg-[#1C1917] text-sm font-semibold text-[#B0A898] transition-all hover:scale-110 hover:z-10 cursor-default opacity-0 animate-fade-in-up"
+                className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-[#181614] bg-[#252220] text-sm font-semibold text-[#B0A898] transition-all hover:scale-110 hover:z-10 cursor-default opacity-0 animate-fade-in-up"
                 style={{ animationDelay: `${i * 100}ms`, animationFillMode: 'forwards' }}
               >
                 {letter}
               </div>
             ))}
             <div
-              className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-[#0F0D0B] bg-[#7C5CFC] text-xs font-semibold text-white transition-all hover:scale-110 opacity-0 animate-fade-in-up"
+              className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-[#181614] bg-[#7C5CFC] text-xs font-semibold text-white transition-all hover:scale-110 opacity-0 animate-fade-in-up"
               style={{ animationDelay: '600ms', animationFillMode: 'forwards' }}
             >
               +99
@@ -1303,8 +1303,8 @@ export function LandingPage() {
           onMouseEnter={() => setTickerPaused(true)}
           onMouseLeave={() => setTickerPaused(false)}
         >
-          <div className="absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-[#0F0D0B] to-transparent z-10" />
-          <div className="absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-[#0F0D0B] to-transparent z-10" />
+          <div className="absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-[#181614] to-transparent z-10" />
+          <div className="absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-[#181614] to-transparent z-10" />
           <div className="overflow-hidden">
             <div
               className="flex gap-12 animate-ticker w-max"
@@ -1342,7 +1342,7 @@ export function LandingPage() {
             <div className="flex flex-col gap-8 lg:items-center lg:flex-row">
               <div className="flex-1">
                 <Reveal>
-                  <div className="inline-flex items-center gap-2 rounded-full bg-[#D4A574]/10 px-3 py-1 text-xs font-semibold text-[#D4A574] uppercase tracking-wider mb-4">
+                  <div className="inline-flex items-center gap-2 rounded-full bg-[#E8B88A]/10 px-3 py-1 text-xs font-semibold text-[#E8B88A] uppercase tracking-wider mb-4">
                     Step 1
                   </div>
                   <h3 className="text-3xl font-bold sm:text-4xl">Record</h3>
@@ -1354,8 +1354,8 @@ export function LandingPage() {
               </div>
               <div className="flex-1 flex justify-center">
                 <Reveal delay={1}>
-                  <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-[#1C1917] p-2 shadow-xl">
-                    <div className="h-full w-full rounded-[2rem] bg-[#151210] p-5 flex flex-col overflow-hidden">
+                  <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-[#252220] p-2 shadow-xl">
+                    <div className="h-full w-full rounded-[2rem] bg-[#1E1C1A] p-5 flex flex-col overflow-hidden">
                       <div className="text-xs text-[#B0A898] font-medium mb-auto">
                         Recording
                       </div>
@@ -1392,7 +1392,7 @@ export function LandingPage() {
             <div className="flex flex-col gap-8 lg:items-center lg:flex-row-reverse">
               <div className="flex-1">
                 <Reveal>
-                  <div className="inline-flex items-center gap-2 rounded-full bg-[#D4A574]/10 px-3 py-1 text-xs font-semibold text-[#D4A574] uppercase tracking-wider mb-4">
+                  <div className="inline-flex items-center gap-2 rounded-full bg-[#E8B88A]/10 px-3 py-1 text-xs font-semibold text-[#E8B88A] uppercase tracking-wider mb-4">
                     Step 2
                   </div>
                   <h3 className="text-3xl font-bold sm:text-4xl">Extract</h3>
@@ -1404,13 +1404,13 @@ export function LandingPage() {
               </div>
               <div className="flex-1 flex justify-center">
                 <Reveal delay={1}>
-                  <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-[#1C1917] p-2 shadow-xl">
-                    <div className="h-full w-full rounded-[2rem] bg-[#151210] p-5 flex flex-col overflow-hidden">
+                  <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-[#252220] p-2 shadow-xl">
+                    <div className="h-full w-full rounded-[2rem] bg-[#1E1C1A] p-5 flex flex-col overflow-hidden">
                       <div className="text-xs text-[#B0A898] font-medium mb-3">
                         AI Extraction
                       </div>
                       <div className="space-y-2.5 flex-1">
-                        <div className="rounded-xl border border-white/[0.06] bg-[#1C1917] p-3 shadow-sm">
+                        <div className="rounded-xl border border-white/[0.06] bg-[#252220] p-3 shadow-sm">
                           <div className="text-[10px] text-[#B0A898] uppercase tracking-wider mb-1.5">
                             Tasks
                           </div>
@@ -1449,7 +1449,7 @@ export function LandingPage() {
             <div className="flex flex-col gap-8 lg:items-center lg:flex-row">
               <div className="flex-1">
                 <Reveal>
-                  <div className="inline-flex items-center gap-2 rounded-full bg-[#D4A574]/10 px-3 py-1 text-xs font-semibold text-[#D4A574] uppercase tracking-wider mb-4">
+                  <div className="inline-flex items-center gap-2 rounded-full bg-[#E8B88A]/10 px-3 py-1 text-xs font-semibold text-[#E8B88A] uppercase tracking-wider mb-4">
                     Step 3
                   </div>
                   <h3 className="text-3xl font-bold sm:text-4xl">Reflect</h3>
@@ -1460,13 +1460,13 @@ export function LandingPage() {
               </div>
               <div className="flex-1 flex justify-center">
                 <Reveal delay={1}>
-                  <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-[#1C1917] p-2 shadow-xl">
-                    <div className="h-full w-full rounded-[2rem] bg-[#151210] p-5 flex flex-col overflow-hidden">
+                  <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-[#252220] p-2 shadow-xl">
+                    <div className="h-full w-full rounded-[2rem] bg-[#1E1C1A] p-5 flex flex-col overflow-hidden">
                       <div className="text-xs text-[#B0A898] font-medium mb-3">
                         Weekly Report
                       </div>
                       <div className="space-y-2.5 flex-1">
-                        <div className="rounded-xl border border-white/[0.06] bg-[#1C1917] p-3 shadow-sm">
+                        <div className="rounded-xl border border-white/[0.06] bg-[#252220] p-3 shadow-sm">
                           <div className="text-[10px] text-[#B0A898] uppercase tracking-wider mb-2">
                             Mood this week
                           </div>
@@ -1477,7 +1477,7 @@ export function LandingPage() {
                             />
                           </div>
                         </div>
-                        <div className="rounded-xl border border-white/[0.06] bg-[#1C1917] p-3 shadow-sm">
+                        <div className="rounded-xl border border-white/[0.06] bg-[#252220] p-3 shadow-sm">
                           <div className="text-[10px] text-[#B0A898] uppercase tracking-wider mb-1">
                             Pattern
                           </div>
@@ -1486,7 +1486,7 @@ export function LandingPage() {
                             meetings after 6pm.
                           </div>
                         </div>
-                        <div className="rounded-xl border border-white/[0.06] bg-[#1C1917] p-3 shadow-sm">
+                        <div className="rounded-xl border border-white/[0.06] bg-[#252220] p-3 shadow-sm">
                           <div className="text-[10px] text-[#B0A898] uppercase tracking-wider mb-1">
                             Top 3 Actions
                           </div>
@@ -1512,7 +1512,7 @@ export function LandingPage() {
           {/* Header */}
           <Reveal>
             <div className="text-center mb-16">
-              <p className="text-xs font-semibold uppercase tracking-widest text-[#7C5CFC] mb-4">
+              <p className="text-xs font-semibold uppercase tracking-widest text-[#E8B88A] mb-4">
                 Life Matrix
               </p>
               <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-5xl">
@@ -1567,7 +1567,7 @@ export function LandingPage() {
         <div className="mx-auto max-w-5xl">
           <Reveal>
             <div className="text-center mb-16">
-              <p className="text-xs font-semibold uppercase tracking-widest text-[#D4A574] mb-4">
+              <p className="text-xs font-semibold uppercase tracking-widest text-[#E8B88A] mb-4">
                 Why it matters
               </p>
               <h2 className="text-3xl font-bold tracking-tight text-white sm:text-5xl">
@@ -1583,7 +1583,7 @@ export function LandingPage() {
             {[
               {
                 icon: (
-                  <svg className="h-5 w-5 text-[#D4A574]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <svg className="h-5 w-5 text-[#E8B88A]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a1.526 1.526 0 011.037-.443 48.282 48.282 0 005.68-.494c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
                   </svg>
                 ),
@@ -1592,7 +1592,7 @@ export function LandingPage() {
               },
               {
                 icon: (
-                  <svg className="h-5 w-5 text-[#D4A574]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <svg className="h-5 w-5 text-[#E8B88A]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
                   </svg>
                 ),
@@ -1601,7 +1601,7 @@ export function LandingPage() {
               },
               {
                 icon: (
-                  <svg className="h-5 w-5 text-[#D4A574]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <svg className="h-5 w-5 text-[#E8B88A]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
                   </svg>
                 ),
@@ -1610,14 +1610,14 @@ export function LandingPage() {
               },
             ].map((card, i) => (
               <Reveal key={i} delay={Math.min(i + 1, 3) as 1 | 2 | 3}>
-                <div className="rounded-2xl border border-white/[0.06] bg-[#151210] p-7 warm-card-hover h-full flex flex-col">
-                  <div className="h-10 w-10 rounded-xl bg-[#D4A574]/10 flex items-center justify-center mb-5">
+                <div className="rounded-2xl border border-[#E8B88A]/25 bg-[#252220] p-7 warm-card-hover h-full flex flex-col">
+                  <div className="h-10 w-10 rounded-xl bg-[#E8B88A]/10 flex items-center justify-center mb-5">
                     {card.icon}
                   </div>
                   <blockquote className="text-base text-[#F5F0EB] leading-relaxed italic flex-1">
                     &ldquo;{card.quote}&rdquo;
                   </blockquote>
-                  <p className="mt-5 text-xs text-[#D4A574] font-medium uppercase tracking-wider">
+                  <p className="mt-5 text-xs text-[#E8B88A] font-medium uppercase tracking-wider">
                     {card.label}
                   </p>
                 </div>
@@ -1634,7 +1634,7 @@ export function LandingPage() {
       </section>
 
       {/* ───── USE-CASE SCENARIOS ───── */}
-      <section className="px-6 py-16 sm:py-20 lg:py-24 bg-[#151210]/50">
+      <section className="px-6 py-16 sm:py-20 lg:py-24 bg-[#1E1C1A]/50">
         <div className="mx-auto max-w-5xl">
           <Reveal>
             <h2 className="text-center text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl mb-4">
@@ -1647,18 +1647,18 @@ export function LandingPage() {
 
           <div className="grid gap-8 sm:grid-cols-2">
             <Reveal delay={1}>
-              <div className="rounded-2xl border border-white/[0.06] bg-[#151210] p-8">
+              <div className="rounded-2xl border border-white/[0.06] bg-[#1E1C1A] p-8">
                 <div className="flex items-center gap-2 mb-4">
                   <div className="h-8 w-8 rounded-full bg-amber-500/10 flex items-center justify-center">
-                    <svg className="h-4 w-4 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" /></svg>
+                    <svg className="h-4 w-4 text-[#E8B88A]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" /></svg>
                   </div>
-                  <span className="text-xs font-semibold uppercase tracking-wider text-amber-400">Morning</span>
+                  <span className="text-xs font-semibold uppercase tracking-wider text-[#E8B88A]">Morning</span>
                 </div>
                 <h3 className="text-lg font-bold text-white mb-3">James, 34 — over morning coffee</h3>
                 <p className="text-sm text-[#B0A898] leading-relaxed">
                   &ldquo;Yesterday&rsquo;s meeting with the team still bothers me. I think what&rsquo;s really going on is I feel like no one heard my idea. Also need to call the insurance company and finish that proposal...&rdquo;
                 </p>
-                <div className="mt-4 rounded-lg border border-white/[0.04] bg-[#1C1917] p-3">
+                <div className="mt-4 rounded-lg border border-white/[0.04] bg-[#252220] p-3">
                   <div className="text-[10px] text-violet-400 uppercase tracking-wider mb-1">Acuity extracted</div>
                   <div className="text-xs text-[#B0A898] space-y-1">
                     <div>&#x2022; Feeling unheard at work (recurring theme — 4th mention)</div>
@@ -1670,7 +1670,7 @@ export function LandingPage() {
             </Reveal>
 
             <Reveal delay={2}>
-              <div className="rounded-2xl border border-white/[0.06] bg-[#151210] p-8">
+              <div className="rounded-2xl border border-white/[0.06] bg-[#1E1C1A] p-8">
                 <div className="flex items-center gap-2 mb-4">
                   <div className="h-8 w-8 rounded-full bg-indigo-500/10 flex items-center justify-center">
                     <svg className="h-4 w-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" /></svg>
@@ -1681,7 +1681,7 @@ export function LandingPage() {
                 <p className="text-sm text-[#B0A898] leading-relaxed">
                   &ldquo;Good day actually. Got through the presentation and it went better than I expected. I&rsquo;m proud of myself for not overthinking it. Need to remember to book the flights for next month...&rdquo;
                 </p>
-                <div className="mt-4 rounded-lg border border-white/[0.04] bg-[#1C1917] p-3">
+                <div className="mt-4 rounded-lg border border-white/[0.04] bg-[#252220] p-3">
                   <div className="text-[10px] text-violet-400 uppercase tracking-wider mb-1">Acuity extracted</div>
                   <div className="text-xs text-[#B0A898] space-y-1">
                     <div>&#x2022; Mood: confident, relieved (up from anxious yesterday)</div>
@@ -1711,15 +1711,15 @@ export function LandingPage() {
           <div className="mt-16 grid gap-8 sm:grid-cols-3">
             {testimonials.map((t, i) => (
               <Reveal key={t.name} delay={Math.min(i + 1, 3) as 1 | 2 | 3}>
-                <figure className="group rounded-2xl border border-white/[0.06] bg-[#151210] p-6 shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+                <figure className="group rounded-2xl border border-white/[0.06] bg-[#1E1C1A] p-6 shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
                   <div className="flex items-center gap-1 mb-4">
-                    <span className="text-amber-400 font-bold text-xs">{SOCIAL_PROOF.rating} ★</span>
+                    <span className="text-[#E8B88A] font-bold text-xs">{SOCIAL_PROOF.rating} ★</span>
                   </div>
                   <blockquote className="text-sm leading-relaxed text-[#B0A898]">
                     "{t.quote}"
                   </blockquote>
                   <figcaption className="mt-5 flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#1C1917] text-sm font-bold text-[#B0A898] transition-colors group-hover:bg-[#7C5CFC]/20 group-hover:text-[#7C5CFC]">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#252220] text-sm font-bold text-[#B0A898] transition-colors group-hover:bg-[#7C5CFC]/20 group-hover:text-[#7C5CFC]">
                       {t.name[0]}
                     </div>
                     <div>
@@ -1765,10 +1765,10 @@ export function LandingPage() {
           <Reveal delay={1}>
             <div className="mt-12 relative group">
               {/* Shimmer border effect */}
-              <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-r from-violet-400 via-indigo-400 to-violet-400 opacity-0 group-hover:opacity-100 transition-opacity duration-500 animate-shimmer blur-[1px]" />
+              <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-r from-[#E8B88A]/60 via-[#E8B88A]/30 to-[#E8B88A]/60 opacity-0 group-hover:opacity-100 transition-opacity duration-500 animate-shimmer blur-[1px]" />
 
-              <div className="relative rounded-2xl border border-white/[0.06] bg-[#151210] p-8 text-left shadow-sm animate-pricing-glow">
-                <p className="text-sm font-semibold uppercase tracking-wider text-[#7C5CFC]">
+              <div className="relative rounded-2xl border border-[#E8B88A]/20 bg-[#1E1C1A] p-8 text-left shadow-sm animate-pricing-glow">
+                <p className="text-sm font-semibold uppercase tracking-wider text-[#E8B88A]">
                   Pro
                 </p>
                 <p className="mt-4 flex items-baseline gap-1">
@@ -1840,7 +1840,7 @@ export function LandingPage() {
         </div>
         <div className="mx-auto max-w-3xl mt-8">
           <Reveal delay={2}>
-            <div className="rounded-2xl border border-white/[0.06] bg-[#151210] divide-y divide-white/10">
+            <div className="rounded-2xl border border-white/[0.06] bg-[#1E1C1A] divide-y divide-white/10">
               {[
                 { q: "What is Acuity and how does it work?", a: "Acuity is a daily shutdown ritual. You talk for 60 seconds about whatever is on your mind — tasks, worries, ideas, things that happened. By morning, your tasks are on a list, your mood is scored, and your goals are tracked. Every Sunday, a 400-word story of your week lands on your phone. You talk. Acuity does the rest." },
                 { q: "Is this actually private?", a: "Your audio is deleted within 24 hours of transcription. Transcripts are encrypted at rest. We use OpenAI Whisper for transcription and Anthropic Claude for analysis — under their API terms, your data is processed and returned, never used to train their models. We never sell your data." },
@@ -1875,19 +1875,19 @@ export function LandingPage() {
       {/* ───── CTA BANNER ───── */}
       <section className="px-6 py-16 sm:py-20">
         <Reveal>
-          <div className="mx-auto max-w-4xl rounded-3xl bg-[#1C1917] p-6 sm:p-12 lg:p-16 text-center text-white relative overflow-hidden border border-[#D4A574]/10">
+          <div className="mx-auto max-w-4xl rounded-3xl bg-[#252220] p-6 sm:p-12 lg:p-16 text-center text-white relative overflow-hidden border border-[#E8B88A]/10">
             {/* Subtle animated accents */}
-            <div className="absolute top-0 right-0 h-72 w-72 rounded-full bg-[#D4A574]/10 -translate-y-1/3 translate-x-1/4 blur-3xl animate-blob-drift" />
+            <div className="absolute top-0 right-0 h-72 w-72 rounded-full bg-[#E8B88A]/10 -translate-y-1/3 translate-x-1/4 blur-3xl animate-blob-drift" />
             <div className="absolute bottom-0 left-0 h-56 w-56 rounded-full bg-violet-600/15 translate-y-1/3 -translate-x-1/4 blur-3xl animate-blob-drift-2" />
 
             <div className="relative">
-              <p className="text-sm font-medium text-[#D4A574] mb-4 uppercase tracking-wider">
+              <p className="text-sm font-medium text-[#E8B88A] mb-4 uppercase tracking-wider">
                 No card. 90 seconds to set up.
               </p>
               <h2 className="text-3xl font-bold sm:text-5xl tracking-tight">
                 Your first debrief takes
                 <br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#D4A574] to-violet-400">
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#E8B88A] to-violet-400">
                   60 seconds.
                 </span>
               </h2>
@@ -1916,7 +1916,7 @@ export function LandingPage() {
       </section>
 
       {/* ───── FOOTER ───── */}
-      <footer className="border-t border-white/[0.06] px-6 py-16 bg-[#0D0B09]">
+      <footer className="border-t border-white/[0.06] px-6 py-16 bg-[#1A1816]">
         <div className="mx-auto max-w-7xl">
           <div className="grid gap-8 lg:gap-12 lg:grid-cols-5">
             {/* Brand column */}
@@ -1992,7 +1992,7 @@ export function LandingPage() {
 
       {/* ───── STICKY MOBILE CTA ───── */}
       <div className="fixed bottom-0 inset-x-0 z-40 sm:hidden">
-        <div className="bg-[#0F0D0B]/95 backdrop-blur-lg border-t border-white/[0.06] px-4 py-3">
+        <div className="bg-[#181614]/95 backdrop-blur-lg border-t border-white/[0.06] px-4 py-3">
           <Link
             href="/auth/signup?utm_campaign=home"
             onClick={trackInitiateCheckout}

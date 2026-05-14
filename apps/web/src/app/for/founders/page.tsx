@@ -28,7 +28,7 @@ const WAITLIST = `/auth/signup?utm_campaign=${UTM}`;
 
 export default function FoundersPage() {
   return (
-    <div className="min-h-screen bg-[#0F0D0B] text-white pb-24 sm:pb-0 overflow-x-hidden">
+    <div className="min-h-screen bg-[#181614] text-white pb-24 sm:pb-0 overflow-x-hidden">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -106,7 +106,7 @@ export default function FoundersPage() {
               "Less mental overhead outside work",
             ].map((stat, i) => (
               <Reveal key={i} delay={Math.min(i + 1, 3) as 1 | 2 | 3}>
-                <div className="rounded-xl border border-white/10 bg-[#151210] p-6 text-center">
+                <div className="rounded-xl border border-white/10 bg-[#1E1C1A] p-6 text-center">
                   <div className="h-10 w-10 rounded-xl bg-[#7C5CFC]/10 flex items-center justify-center mb-4 mx-auto">
                     <svg className="h-5 w-5 text-[#7C5CFC]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -160,7 +160,7 @@ export default function FoundersPage() {
               },
             ].map((item, i) => (
               <Reveal key={i} delay={Math.min(i + 1, 5) as 1 | 2 | 3 | 4 | 5}>
-                <div className="flex items-center gap-4 rounded-xl border border-white/10 bg-[#151210] p-5 transition-all duration-300 hover:shadow-md hover:-translate-y-0.5">
+                <div className="flex items-center gap-4 rounded-xl border border-white/10 bg-[#1E1C1A] p-5 transition-all duration-300 hover:shadow-md hover:-translate-y-0.5">
                   <div className="h-10 w-10 rounded-xl bg-violet-500/10 flex items-center justify-center shrink-0">
                     <svg
                       className="h-5 w-5 text-violet-600"
@@ -244,7 +244,7 @@ export default function FoundersPage() {
           </Reveal>
 
           <Reveal delay={1}>
-            <div className="rounded-2xl border border-white/10 bg-[#151210] p-8 shadow-sm">
+            <div className="rounded-2xl border border-white/10 bg-[#1E1C1A] p-8 shadow-sm">
               <div className="grid gap-4 sm:grid-cols-2">
                 {[
                   "Task completion rate this week",
@@ -298,7 +298,7 @@ export default function FoundersPage() {
       </section>
 
       {/* ───── COMPOUNDING INTELLIGENCE ───── */}
-      <section className="px-6 py-24 sm:py-32 bg-[#151210] text-white">
+      <section className="px-6 py-24 sm:py-32 bg-[#1E1C1A] text-white">
         <div className="mx-auto max-w-3xl text-center">
           <Reveal>
             <h2 className="text-3xl font-bold tracking-tight sm:text-5xl">

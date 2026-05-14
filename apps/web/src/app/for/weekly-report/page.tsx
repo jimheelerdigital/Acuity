@@ -27,7 +27,7 @@ const WAITLIST = `/auth/signup?utm_campaign=${UTM}`;
 
 export default function WeeklyReportPage() {
   return (
-    <div className="min-h-screen bg-[#0F0D0B] text-white pb-24 sm:pb-0 overflow-x-hidden">
+    <div className="min-h-screen bg-[#181614] text-white pb-24 sm:pb-0 overflow-x-hidden">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{

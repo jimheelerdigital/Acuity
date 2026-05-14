@@ -26,7 +26,7 @@ const WAITLIST = `/auth/signup?utm_campaign=${UTM}`;
 
 export default function DecodedPage() {
   return (
-    <div className="min-h-screen bg-[#0F0D0B] text-white pb-24 sm:pb-0 overflow-x-hidden">
+    <div className="min-h-screen bg-[#181614] text-white pb-24 sm:pb-0 overflow-x-hidden">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -79,7 +79,7 @@ export default function DecodedPage() {
       <SocialProofBar />
 
       {/* ───── OPENING HOOK ───── */}
-      <section className="px-6 py-24 sm:py-32 bg-[#151210]">
+      <section className="px-6 py-24 sm:py-32 bg-[#1E1C1A]">
         <div className="mx-auto max-w-3xl text-center">
           <Reveal>
             <p className="text-2xl sm:text-4xl font-bold text-white leading-snug tracking-tight">
@@ -109,7 +109,7 @@ export default function DecodedPage() {
               { title: "What you keep avoiding", desc: "Surface the things you keep saying you'll do — and keep putting off." },
             ].map((card, i) => (
               <Reveal key={i} delay={Math.min(i + 1, 3) as 1 | 2 | 3}>
-                <div className="rounded-xl border border-white/10 bg-[#151210] p-6">
+                <div className="rounded-xl border border-white/10 bg-[#1E1C1A] p-6">
                   <div className="h-10 w-10 rounded-xl bg-purple-500/10 flex items-center justify-center mb-4">
                     <svg className="h-5 w-5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />

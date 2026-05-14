@@ -28,7 +28,7 @@ const WAITLIST = `/auth/signup?utm_campaign=${UTM}`;
 
 export default function TherapyPage() {
   return (
-    <div className="min-h-screen bg-[#0F0D0B] text-white overflow-x-hidden pb-24 sm:pb-0">
+    <div className="min-h-screen bg-[#181614] text-white overflow-x-hidden pb-24 sm:pb-0">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -223,7 +223,7 @@ export default function TherapyPage() {
       <section className="px-6 py-24 sm:py-32">
         <div className="mx-auto max-w-2xl">
           <Reveal>
-            <div className="rounded-xl border border-white/10 bg-[#151210] p-8 sm:p-10">
+            <div className="rounded-xl border border-white/10 bg-[#1E1C1A] p-8 sm:p-10">
               <div className="flex items-center gap-1 mb-4">
                 {[...Array(5)].map((_, i) => (
                   <svg key={i} className="h-4 w-4 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
@@ -260,7 +260,7 @@ export default function TherapyPage() {
               { title: "Weekly report", desc: "Every Sunday, a narrative about your emotional week — wins, spirals, blind spots." },
             ].map((f, i) => (
               <Reveal key={i} delay={Math.min(i + 1, 3) as 1 | 2 | 3}>
-                <div className="rounded-xl border border-white/10 bg-[#151210] p-6 text-center">
+                <div className="rounded-xl border border-white/10 bg-[#1E1C1A] p-6 text-center">
                   <div className="h-10 w-10 rounded-xl bg-[#7C5CFC]/10 flex items-center justify-center mb-4 mx-auto">
                     <svg className="h-5 w-5 text-[#7C5CFC]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />

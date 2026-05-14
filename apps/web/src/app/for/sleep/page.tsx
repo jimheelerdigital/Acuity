@@ -27,7 +27,7 @@ const WAITLIST = `/auth/signup?utm_campaign=${UTM}`;
 
 export default function SleepPage() {
   return (
-    <div className="min-h-screen bg-[#0F0D0B] text-white pb-24 sm:pb-0 overflow-x-hidden">
+    <div className="min-h-screen bg-[#181614] text-white pb-24 sm:pb-0 overflow-x-hidden">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -82,7 +82,7 @@ export default function SleepPage() {
       <SocialProofBar />
 
       {/* ───── THE RELATABLE OPENING ───── */}
-      <section className="px-6 py-24 sm:py-32 bg-[#151210]">
+      <section className="px-6 py-24 sm:py-32 bg-[#1E1C1A]">
         <div className="mx-auto max-w-2xl text-center">
           <Reveal>
             <div className="space-y-4 text-xl sm:text-2xl font-medium text-[#B0A898] leading-relaxed">
@@ -105,7 +105,7 @@ export default function SleepPage() {
       <section className="px-6 py-24 sm:py-32">
         <div className="mx-auto max-w-3xl">
           <Reveal>
-            <div className="rounded-2xl border border-white/10 bg-[#151210] p-8 sm:p-12 shadow-sm">
+            <div className="rounded-2xl border border-white/10 bg-[#1E1C1A] p-8 sm:p-12 shadow-sm">
               <h2 className="text-2xl font-bold tracking-tight sm:text-3xl mb-4">
                 Why your brain won't stop.
               </h2>
@@ -213,7 +213,7 @@ export default function SleepPage() {
 
           <Reveal delay={1}>
             <div className="mt-12 grid gap-6 sm:grid-cols-2 max-w-lg mx-auto">
-              <div className="rounded-2xl border border-white/10 bg-[#1C1917] p-6 shadow-sm">
+              <div className="rounded-2xl border border-white/10 bg-[#252220] p-6 shadow-sm">
                 <div className="h-10 w-10 rounded-xl bg-violet-500/10 flex items-center justify-center mb-4 mx-auto">
                   <svg className="h-5 w-5 text-violet-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
@@ -224,7 +224,7 @@ export default function SleepPage() {
                   Set a custom time to get your daily debrief reminder
                 </p>
               </div>
-              <div className="rounded-2xl border border-white/10 bg-[#1C1917] p-6 shadow-sm">
+              <div className="rounded-2xl border border-white/10 bg-[#252220] p-6 shadow-sm">
                 <div className="h-10 w-10 rounded-xl bg-emerald-500/10 flex items-center justify-center mb-4 mx-auto">
                   <svg className="h-5 w-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z" />
