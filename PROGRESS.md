@@ -7,6 +7,35 @@
 
 ---
 
+## [2026-05-15] — Delete and reset-to-draft buttons for AdLab experiments
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** e2d551b
+
+### In plain English (for Keenan)
+
+You can now delete an AdLab experiment entirely or reset it back to draft from the admin dashboard. Deleting removes everything — the Meta campaign, all angles, creatives, ads, and metrics. Resetting keeps the angles and creatives you already built but clears out the campaign so you can re-launch it fresh. Both actions have confirmation dialogs so you won't accidentally nuke anything. These buttons appear on both the experiments list page and the individual experiment detail page.
+
+### Technical changes (for Jimmy)
+
+- Added `DELETE` handler to `apps/web/src/app/api/admin/adlab/experiments/[id]/route.ts` — deletes Meta campaign via API, then cascade-deletes the experiment
+- New route `apps/web/src/app/api/admin/adlab/experiments/[id]/reset/route.ts` — POST endpoint that deletes Meta campaign, removes all `AdLabAd` records, resets experiment status/fields to draft while preserving angles and creatives
+- `apps/web/src/app/admin/adlab/experiments/page.tsx` — added delete button with `window.confirm()` dialog per row in the experiments list
+- `apps/web/src/app/admin/adlab/experiments/[id]/page.tsx` — added "Delete Experiment" and "Reset to Draft" buttons to the detail page header area, both with confirmation dialogs and loading states
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- Cascade delete relies on Prisma's `onDelete: Cascade` relations already defined in the schema (experiment → angles → creatives → ads → metrics/decisions)
+- Meta campaign deletion is wrapped in try/catch — if the campaign was already deleted on Meta's side, the operation continues without failing
+- Reset clears `metaCampaignId`, `campaignName`, `launchedAt`, `concludedAt`, and `conclusionSummary` fields
+
+---
+
 ## [2026-05-14] — Scroll animations replay on every visit, hero phone stutter fixed
 
 **Requested by:** Keenan
