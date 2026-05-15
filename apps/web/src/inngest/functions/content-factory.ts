@@ -1,24 +1,5 @@
 import { inngest } from "@/inngest/client";
 
-export const researchBriefingFn = inngest.createFunction(
-  {
-    id: "content-factory-research",
-    name: "Content Factory — Daily Research Briefing",
-    triggers: [{ cron: "0 6 * * *" }],
-    retries: 2,
-  },
-  async ({ logger }) => {
-    const { buildDailyBriefing } = await import(
-      "@/lib/content-factory/research"
-    );
-    const briefing = await buildDailyBriefing();
-    logger.info("[content-factory] Research briefing created", {
-      briefingId: briefing.id,
-    });
-    return { briefingId: briefing.id };
-  }
-);
-
 // ─── Helper: update job progress ────────────────────────────────────────────
 
 async function updateJob(
@@ -39,162 +20,225 @@ async function updateJob(
     data,
   });
   console.log(
-    `[GenerationJob ${jobId}] step ${data.currentStep ?? "?"}/${11}: ${data.stepLabel ?? data.status ?? "update"}`
+    `[GenerationJob ${jobId}] step ${data.currentStep ?? "?"}/${4}: ${data.stepLabel ?? data.status ?? "update"}`
   );
 }
 
-export const generateDailyFn = inngest.createFunction(
+/**
+ * On-demand content generation — triggered by button clicks in the admin UI.
+ *
+ * Event data:
+ *   - jobId: GenerationJob ID for progress tracking
+ *   - types: array of content types to generate, e.g. ["X_POST", "INSTAGRAM", "TIKTOK_SCRIPT"]
+ *
+ * Generates 1 piece per requested type. No cron — manual only.
+ */
+export const generateContentFn = inngest.createFunction(
   {
     id: "content-factory-generate",
-    name: "Content Factory — Daily Content Generation",
-    triggers: [
-      { cron: "0 7 * * *" },
-      { event: "content-factory/generate.requested" },
-    ],
+    name: "Content Factory — On-Demand Generation",
+    triggers: [{ event: "content-factory/generate.requested" }],
     retries: 1,
   },
   async ({ event, logger }) => {
     const jobId = (event?.data as { jobId?: string })?.jobId;
+    const requestedTypes = (event?.data as { types?: string[] })?.types ?? [
+      "X_POST",
+      "INSTAGRAM",
+      "TIKTOK_SCRIPT",
+    ];
     const { prisma } = await import("@/lib/prisma");
 
+    const totalSteps = requestedTypes.length + 1; // +1 for save step
+
     try {
-      // Step 1: Research
       await updateJob(jobId, {
         status: "RUNNING",
-        currentStep: 1,
-        stepLabel: "Researching today's trending topics…",
+        currentStep: 0,
+        stepLabel: "Starting generation…",
       });
 
-      const { buildDailyBriefing } = await import(
-        "@/lib/content-factory/research"
-      );
-
-      const today = new Date();
-      today.setUTCHours(0, 0, 0, 0);
-
-      let briefing = await prisma.contentBriefing.findUnique({
-        where: { date: today },
-      });
-
-      if (!briefing) {
-        logger.info("[content-factory] No briefing for today, creating one");
-        briefing = await buildDailyBriefing();
+      // Optionally load today's briefing for context (non-blocking)
+      let briefing = null;
+      try {
+        const today = new Date();
+        today.setUTCHours(0, 0, 0, 0);
+        briefing = await prisma.contentBriefing.findUnique({
+          where: { date: today },
+        });
+      } catch {
+        // No briefing available — that's fine
       }
-
-      // Blog generation has been moved to the auto-blog pipeline
-      // (see inngest/functions/auto-blog.ts). This function now produces
-      // 8 pieces: 3 tweets + 2 TikToks + 2 ads + 1 Reddit draft.
 
       const {
         generateTwitterPosts,
         generateTikTokScripts,
-        generateAdCopy,
-        generateRedditDraft,
+        generateInstagramPost,
       } = await import("@/lib/content-factory/generate");
 
-      // Steps 2-4: Tweets (one at a time for progress)
-      const tweets = [];
-      for (let i = 0; i < 3; i++) {
-        await updateJob(jobId, {
-          currentStep: 2 + i,
-          stepLabel: `Writing tweet ${i + 1} of 3…`,
-        });
-        const batch = await generateTwitterPosts(briefing, 1);
-        tweets.push(...batch);
+      const pieces: Array<{
+        type: string;
+        title: string;
+        body: string;
+        hook: string;
+        cta: string;
+        predictedScore: number;
+        heroImageUrl?: string;
+        sourceBriefingId?: string;
+      }> = [];
+
+      let stepNum = 0;
+
+      for (const contentType of requestedTypes) {
+        stepNum++;
+
+        if (contentType === "X_POST") {
+          await updateJob(jobId, {
+            currentStep: stepNum,
+            stepLabel: "Writing X post…",
+          });
+          const tweets = await generateTwitterPosts(briefing, 1);
+          if (tweets[0]) {
+            pieces.push({
+              type: "TWITTER",
+              title: tweets[0].hook.slice(0, 80),
+              body: tweets[0].body,
+              hook: tweets[0].hook,
+              cta: tweets[0].cta,
+              predictedScore: tweets[0].predictedScore,
+              sourceBriefingId: briefing?.id,
+            });
+          }
+        } else if (contentType === "INSTAGRAM") {
+          await updateJob(jobId, {
+            currentStep: stepNum,
+            stepLabel: "Writing Instagram post & generating image…",
+          });
+
+          const igPost = await generateInstagramPost(briefing);
+
+          // Generate image with gpt-image-2
+          let imageUrl: string | null = null;
+          if (process.env.OPENAI_API_KEY) {
+            try {
+              const OpenAI = (await import("openai")).default;
+              const openai = new OpenAI({
+                apiKey: process.env.OPENAI_API_KEY,
+                timeout: 120_000,
+              });
+
+              const imageResponse = await openai.images.generate({
+                model: "gpt-image-2",
+                prompt: igPost.imagePrompt,
+                n: 1,
+                size: "1024x1024",
+              });
+
+              const b64 = imageResponse.data?.[0]?.b64_json;
+              if (b64) {
+                const buffer = Buffer.from(b64, "base64");
+                const { supabase } = await import("@/lib/supabase.server");
+                const filename = `ig-${Date.now()}.png`;
+
+                const { error } = await supabase.storage
+                  .from("content-factory-images")
+                  .upload(filename, buffer, {
+                    contentType: "image/png",
+                    upsert: true,
+                  });
+
+                if (!error) {
+                  const { data } = supabase.storage
+                    .from("content-factory-images")
+                    .getPublicUrl(filename);
+                  imageUrl = data.publicUrl;
+                } else {
+                  console.error(
+                    "[content-factory] Supabase upload failed:",
+                    error.message
+                  );
+                }
+              }
+            } catch (imgErr) {
+              console.error(
+                "[content-factory] Image generation failed:",
+                imgErr instanceof Error ? imgErr.message : imgErr
+              );
+            }
+          }
+
+          pieces.push({
+            type: "INSTAGRAM",
+            title: igPost.hook.slice(0, 80),
+            body: igPost.caption,
+            hook: igPost.hook,
+            cta: igPost.hashtags,
+            predictedScore: igPost.predictedScore,
+            heroImageUrl: imageUrl ?? undefined,
+            sourceBriefingId: briefing?.id,
+          });
+        } else if (contentType === "TIKTOK_SCRIPT") {
+          await updateJob(jobId, {
+            currentStep: stepNum,
+            stepLabel: "Writing TikTok script…",
+          });
+          const scripts = await generateTikTokScripts(briefing, 1);
+          if (scripts[0]) {
+            pieces.push({
+              type: "TIKTOK",
+              title: scripts[0].hook.slice(0, 80),
+              body: scripts[0].body,
+              hook: scripts[0].hook,
+              cta: scripts[0].cta,
+              predictedScore: scripts[0].predictedScore,
+              sourceBriefingId: briefing?.id,
+            });
+          }
+        }
       }
 
-      // Steps 5-6: TikTok scripts
-      const tiktoks = [];
-      for (let i = 0; i < 2; i++) {
-        await updateJob(jobId, {
-          currentStep: 5 + i,
-          stepLabel: `Writing TikTok script ${i + 1} of 2…`,
-        });
-        const batch = await generateTikTokScripts(briefing, 1);
-        tiktoks.push(...batch);
-      }
-
-      // Steps 7-8: Ad copy
-      const ads = [];
-      for (let i = 0; i < 2; i++) {
-        await updateJob(jobId, {
-          currentStep: 7 + i,
-          stepLabel: `Writing ad copy variant ${i + 1} of 2…`,
-        });
-        const batch = await generateAdCopy(briefing, 1);
-        ads.push(...batch);
-      }
-
-      // Step 9: Reddit draft
+      // Save to database
+      stepNum++;
       await updateJob(jobId, {
-        currentStep: 9,
-        stepLabel: "Writing Reddit draft…",
-      });
-      const redditDrafts = await generateRedditDraft(briefing, 1);
-
-      // Step 10: Save to database
-      await updateJob(jobId, {
-        currentStep: 10,
+        currentStep: stepNum,
         stepLabel: "Saving to database…",
       });
 
-      const pieces = [
-        ...tweets.map((t) => ({
-          type: "TWITTER" as const,
-          title: t.hook.slice(0, 80),
-          body: t.body,
-          hook: t.hook,
-          cta: t.cta,
-          predictedScore: t.predictedScore,
-          sourceBriefingId: briefing.id,
-        })),
-        ...tiktoks.map((t) => ({
-          type: "TIKTOK" as const,
-          title: t.hook.slice(0, 80),
-          body: t.body,
-          hook: t.hook,
-          cta: t.cta,
-          predictedScore: t.predictedScore,
-          sourceBriefingId: briefing.id,
-        })),
-        ...ads.map((a) => ({
-          type: "AD_COPY" as const,
-          title: a.hook.slice(0, 80),
-          body: a.body,
-          hook: a.hook,
-          cta: a.cta,
-          predictedScore: a.predictedScore,
-          sourceBriefingId: briefing.id,
-        })),
-        ...redditDrafts.map((r) => ({
-          type: "REDDIT_DRAFT" as const,
-          title: r.title,
-          body: r.body,
-          hook: r.hook,
-          cta: `${r.subreddit} | ${r.angle} | ${r.dontMention}`,
-          predictedScore: r.predictedScore,
-          sourceBriefingId: briefing.id,
-        })),
-      ];
-
       const created = await prisma.$transaction(
-        pieces.map((p) => prisma.contentPiece.create({ data: p }))
+        pieces.map((p) =>
+          prisma.contentPiece.create({
+            data: {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              type: p.type as any,
+              title: p.title,
+              body: p.body,
+              hook: p.hook,
+              cta: p.cta,
+              predictedScore: p.predictedScore,
+              heroImageUrl: p.heroImageUrl,
+              sourceBriefingId: p.sourceBriefingId,
+            },
+          })
+        )
       );
 
-      // Step 11: Done
       await updateJob(jobId, {
         status: "SUCCESS",
-        currentStep: 11,
-        stepLabel: `Done! ${created.length} pieces created`,
+        currentStep: stepNum,
+        stepLabel: `Done! ${created.length} piece${created.length === 1 ? "" : "s"} created`,
         piecesCreated: created.length,
         completedAt: new Date(),
       });
 
       logger.info("[content-factory] Generated content pieces", {
         count: created.length,
+        types: requestedTypes,
       });
 
-      return { briefingId: briefing.id, piecesCreated: created.length };
+      return {
+        piecesCreated: created.length,
+        pieceIds: created.map((c) => c.id),
+      };
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Unknown error";

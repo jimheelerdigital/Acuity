@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import ContentPreview from "@/components/content-factory/previews/ContentPreview";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -12,40 +11,10 @@ interface ContentPiece {
   body: string;
   hook: string;
   cta: string;
-  targetKeyword: string | null;
   predictedScore: number;
   status: string;
-  reviewedAt: string | null;
-  reviewedBy: string | null;
-  editNotes: string | null;
-  finalBody: string | null;
-  distributedAt: string | null;
-  distributedUrl: string | null;
-  metrics: Record<string, number> | null;
+  heroImageUrl: string | null;
   createdAt: string;
-}
-
-interface ContentBriefing {
-  id: string;
-  date: string;
-  redditTop: RedditPost[];
-  twitterTop: unknown[];
-  trendsData: Record<string, unknown>;
-  ga4Winners: GA4Winner[];
-  generatedAt: string;
-}
-
-interface RedditPost {
-  title: string;
-  subreddit: string;
-  upvotes: number;
-  url: string;
-  permalink: string;
-}
-
-interface GA4Winner {
-  pagePath: string;
-  sessions: number;
 }
 
 interface JobStatus {
@@ -58,31 +27,36 @@ interface JobStatus {
 }
 
 interface Props {
-  pendingPieces: ContentPiece[];
-  readyPieces: ContentPiece[];
-  distributedPieces: ContentPiece[];
-  latestBriefing: ContentBriefing | null;
+  pieces: ContentPiece[];
   activeJobId?: string | null;
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const TABS = [
-  "Review Queue",
-  "Ready to Post",
-  "Live Performance",
-  "Today's Briefing",
+const CONTENT_TABS = [
+  { key: "TWITTER", label: "X Posts" },
+  { key: "INSTAGRAM", label: "Instagram" },
+  { key: "TIKTOK", label: "TikTok Scripts" },
 ] as const;
 
-const TYPE_ORDER = ["BLOG", "TWITTER", "TIKTOK", "AD_COPY", "EMAIL", "REDDIT_DRAFT"];
-
 const TYPE_COLORS: Record<string, string> = {
-  BLOG: "bg-blue-500/20 text-blue-400",
   TWITTER: "bg-sky-500/20 text-sky-400",
   TIKTOK: "bg-pink-500/20 text-pink-400",
-  AD_COPY: "bg-amber-500/20 text-amber-400",
-  EMAIL: "bg-green-500/20 text-green-400",
-  REDDIT_DRAFT: "bg-[#FF4500]/20 text-[#FF6633]",
+  INSTAGRAM: "bg-purple-500/20 text-purple-400",
+};
+
+const STATUS_COLORS: Record<string, string> = {
+  PENDING_REVIEW: "bg-amber-500/20 text-amber-400",
+  APPROVED: "bg-green-500/20 text-green-400",
+  EDITED: "bg-blue-500/20 text-blue-400",
+  DISTRIBUTED: "bg-emerald-500/20 text-emerald-400",
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  PENDING_REVIEW: "Draft",
+  APPROVED: "Approved",
+  EDITED: "Edited",
+  DISTRIBUTED: "Posted",
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -97,34 +71,27 @@ function relativeTime(dateStr: string): string {
   return `${days}d ago`;
 }
 
-function scoreColor(score: number): string {
-  if (score >= 0.7) return "bg-green-500";
-  if (score >= 0.4) return "bg-amber-500";
-  return "bg-red-500";
-}
-
-function groupByType(pieces: ContentPiece[]): ContentPiece[] {
-  return [...pieces].sort(
-    (a, b) => TYPE_ORDER.indexOf(a.type) - TYPE_ORDER.indexOf(b.type)
-  );
+function formatDate(dateStr: string): string {
+  return new Date(dateStr).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
 }
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export default function ContentFactoryClient({
-  pendingPieces: initialPending,
-  readyPieces: initialReady,
-  distributedPieces,
-  latestBriefing,
+  pieces: initialPieces,
   activeJobId: initialJobId,
 }: Props) {
-  const [tab, setTab] = useState(0);
-  // Blog posts are now handled by the Auto Blog pipeline — filter them out
-  const [pending, setPending] = useState(initialPending.filter((p) => p.type !== "BLOG"));
-  const [ready, setReady] = useState(initialReady.filter((p) => p.type !== "BLOG"));
+  const [pieces, setPieces] = useState(initialPieces);
+  const [contentTab, setContentTab] = useState(0);
   const [jobId, setJobId] = useState<string | null>(initialJobId ?? null);
   const [jobStatus, setJobStatus] = useState<JobStatus | null>(null);
   const [stale, setStale] = useState(false);
+  const [generating, setGenerating] = useState<string | null>(null);
   const lastUpdateRef = useRef<number>(Date.now());
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const doneTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -153,19 +120,19 @@ export default function ContentFactoryClient({
         });
 
         if (data.status === "SUCCESS") {
-          // Auto-hide after 3 seconds, then refresh
           if (doneTimerRef.current) clearTimeout(doneTimerRef.current);
           doneTimerRef.current = setTimeout(() => {
             setJobId(null);
             setJobStatus(null);
+            setGenerating(null);
             window.location.reload();
-          }, 3000);
+          }, 2000);
           if (pollRef.current) clearInterval(pollRef.current);
         } else if (data.status === "FAILED") {
+          setGenerating(null);
           if (pollRef.current) clearInterval(pollRef.current);
         } else {
-          // Check staleness
-          if (Date.now() - lastUpdateRef.current > 60000) {
+          if (Date.now() - lastUpdateRef.current > 90000) {
             setStale(true);
           }
         }
@@ -174,7 +141,6 @@ export default function ContentFactoryClient({
       }
     };
 
-    // Initial fetch immediately
     poll();
     pollRef.current = setInterval(poll, 2000);
 
@@ -184,10 +150,13 @@ export default function ContentFactoryClient({
     };
   }, [jobId]);
 
-  const handleGenerateNow = async () => {
+  const handleGenerate = async (types: string[], label: string) => {
+    setGenerating(label);
     try {
       const res = await fetch("/api/admin/content-factory/generate-now", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ types }),
       });
       const data = await res.json();
       if (data.jobId) {
@@ -195,99 +164,204 @@ export default function ContentFactoryClient({
         setJobStatus({
           status: "QUEUED",
           currentStep: 0,
-          totalSteps: 12,
+          totalSteps: types.length + 1,
           stepLabel: "Queued…",
           errorMessage: null,
           piecesCreated: 0,
         });
         setStale(false);
         lastUpdateRef.current = Date.now();
+      } else {
+        setGenerating(null);
       }
     } catch {
-      // Network error
+      setGenerating(null);
     }
   };
 
-  const handleRetry = () => {
-    setJobId(null);
-    setJobStatus(null);
-    setStale(false);
+  const handleDelete = async (pieceId: string) => {
+    if (!window.confirm("Delete this content piece?")) return;
+    const res = await fetch("/api/admin/content-factory/delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pieceId }),
+    });
+    if (res.ok) {
+      setPieces((prev) => prev.filter((p) => p.id !== pieceId));
+    }
   };
+
+  const handleMarkPosted = async (pieceId: string) => {
+    const res = await fetch("/api/admin/content-factory/mark-distributed", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pieceId, distributedUrl: "manual" }),
+    });
+    if (res.ok) {
+      setPieces((prev) =>
+        prev.map((p) =>
+          p.id === pieceId ? { ...p, status: "DISTRIBUTED" } : p
+        )
+      );
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+  };
+
+  const isGenerating = generating !== null;
+  const currentTabType = CONTENT_TABS[contentTab].key;
+  const filteredPieces = pieces.filter((p) => p.type === currentTabType);
 
   return (
     <div className="min-h-screen bg-[#0A0A0F] px-4 py-10 text-white sm:px-8">
       <div className="mx-auto max-w-6xl">
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">Content Factory</h1>
-            <p className="mt-1 text-sm text-white/50">
-              AI-generated content for review and distribution
-            </p>
-          </div>
-          {jobId && jobStatus ? (
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold">Content Factory</h1>
+          <p className="mt-1 text-sm text-white/50">
+            On-demand content generation for X, Instagram, and TikTok
+          </p>
+        </div>
+
+        {/* ─── Generation Progress Bar ─────────────────────────────────── */}
+        {jobId && jobStatus && (
+          <div className="mb-6">
             <GenerationProgress
-              jobId={jobId}
               status={jobStatus}
               stale={stale}
-              onRetry={handleRetry}
+              label={generating ?? "Generating"}
+              onRetry={() => {
+                setJobId(null);
+                setJobStatus(null);
+                setGenerating(null);
+                setStale(false);
+              }}
             />
+          </div>
+        )}
+
+        {/* ─── Generate Buttons ────────────────────────────────────────── */}
+        <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <button
+            onClick={() => handleGenerate(["X_POST"], "X Post")}
+            disabled={isGenerating}
+            className="rounded-xl bg-[#13131F] px-4 py-4 text-left transition hover:bg-[#1a1a2e] disabled:opacity-50"
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-lg">𝕏</span>
+              <span className="text-sm font-medium">Generate X Post</span>
+            </div>
+            <p className="mt-1 text-xs text-white/40">1 tweet, max 280 chars</p>
+          </button>
+
+          <button
+            onClick={() => handleGenerate(["INSTAGRAM"], "Instagram Post")}
+            disabled={isGenerating}
+            className="rounded-xl bg-[#13131F] px-4 py-4 text-left transition hover:bg-[#1a1a2e] disabled:opacity-50"
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-lg">📷</span>
+              <span className="text-sm font-medium">Generate Instagram</span>
+            </div>
+            <p className="mt-1 text-xs text-white/40">
+              Caption + AI image
+            </p>
+          </button>
+
+          <button
+            onClick={() => handleGenerate(["TIKTOK_SCRIPT"], "TikTok Script")}
+            disabled={isGenerating}
+            className="rounded-xl bg-[#13131F] px-4 py-4 text-left transition hover:bg-[#1a1a2e] disabled:opacity-50"
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-lg">🎬</span>
+              <span className="text-sm font-medium">Generate TikTok</span>
+            </div>
+            <p className="mt-1 text-xs text-white/40">15-30s video script</p>
+          </button>
+
+          <button
+            onClick={() =>
+              handleGenerate(
+                ["X_POST", "INSTAGRAM", "TIKTOK_SCRIPT"],
+                "All Content"
+              )
+            }
+            disabled={isGenerating}
+            className="rounded-xl bg-gradient-to-br from-[#7C5CFC]/20 to-[#7C5CFC]/5 border border-[#7C5CFC]/20 px-4 py-4 text-left transition hover:from-[#7C5CFC]/30 hover:to-[#7C5CFC]/10 disabled:opacity-50"
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-lg">✨</span>
+              <span className="text-sm font-medium text-[#9B7DFF]">
+                Generate All
+              </span>
+            </div>
+            <p className="mt-1 text-xs text-white/40">1 of each type</p>
+          </button>
+        </div>
+
+        {/* ─── Content Library ─────────────────────────────────────────── */}
+        <div>
+          <h2 className="mb-4 text-lg font-semibold">Content Library</h2>
+
+          {/* Tab bar */}
+          <div className="mb-4 flex gap-1 rounded-lg bg-[#13131F] p-1">
+            {CONTENT_TABS.map((tab, i) => {
+              const count = pieces.filter((p) => p.type === tab.key).length;
+              return (
+                <button
+                  key={tab.key}
+                  onClick={() => setContentTab(i)}
+                  className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition ${
+                    contentTab === i
+                      ? "bg-[#7C5CFC] text-white"
+                      : "text-white/60 hover:text-white/90"
+                  }`}
+                >
+                  {tab.label}
+                  {count > 0 && (
+                    <span className="ml-2 rounded-full bg-white/10 px-2 py-0.5 text-xs">
+                      {count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Content list */}
+          {filteredPieces.length === 0 ? (
+            <div className="rounded-xl bg-[#13131F] p-12 text-center text-white/50">
+              No {CONTENT_TABS[contentTab].label.toLowerCase()} yet. Hit a
+              generate button above to create some.
+            </div>
           ) : (
-            <button
-              onClick={handleGenerateNow}
-              className="rounded-lg bg-[#7C5CFC] px-4 py-2 text-sm font-medium transition hover:bg-[#6B4DE6]"
-            >
-              Generate Now
-            </button>
+            <div className="space-y-3">
+              {filteredPieces.map((piece) => (
+                <ContentCard
+                  key={piece.id}
+                  piece={piece}
+                  onCopy={copyToClipboard}
+                  onDelete={handleDelete}
+                  onMarkPosted={handleMarkPosted}
+                  onRegenerate={() => {
+                    const typeMap: Record<string, string> = {
+                      TWITTER: "X_POST",
+                      INSTAGRAM: "INSTAGRAM",
+                      TIKTOK: "TIKTOK_SCRIPT",
+                    };
+                    handleGenerate(
+                      [typeMap[piece.type] ?? piece.type],
+                      `${piece.type} regeneration`
+                    );
+                  }}
+                />
+              ))}
+            </div>
           )}
         </div>
-
-        {/* Tab bar */}
-        <div className="mb-6 flex gap-1 rounded-lg bg-[#13131F] p-1">
-          {TABS.map((label, i) => (
-            <button
-              key={label}
-              onClick={() => setTab(i)}
-              className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition ${
-                tab === i
-                  ? "bg-[#7C5CFC] text-white"
-                  : "text-white/60 hover:text-white/90"
-              }`}
-            >
-              {label}
-              {i === 0 && pending.length > 0 && (
-                <span className="ml-2 rounded-full bg-white/10 px-2 py-0.5 text-xs">
-                  {pending.length}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-
-        {/* Tab content */}
-        {tab === 0 && (
-          <ReviewQueue
-            pieces={pending}
-            onUpdate={(updated) => {
-              setPending((p) => p.filter((x) => x.id !== updated.id));
-              if (
-                updated.status === "APPROVED" ||
-                updated.status === "EDITED"
-              ) {
-                setReady((r) => [updated, ...r]);
-              }
-            }}
-            onBulkApprove={(ids) => {
-              setPending((p) => p.filter((x) => !ids.includes(x.id)));
-              const approved = pending
-                .filter((x) => ids.includes(x.id))
-                .map((x) => ({ ...x, status: "APPROVED" }));
-              setReady((r) => [...approved, ...r]);
-            }}
-          />
-        )}
-        {tab === 1 && <ReadyToPost pieces={ready} />}
-        {tab === 2 && <LivePerformance pieces={distributedPieces} />}
-        {tab === 3 && <TodaysBriefing briefing={latestBriefing} />}
       </div>
     </div>
   );
@@ -296,23 +370,25 @@ export default function ContentFactoryClient({
 // ─── Generation Progress ────────────────────────────────────────────────────
 
 function GenerationProgress({
-  jobId,
   status,
   stale,
+  label,
   onRetry,
 }: {
-  jobId: string;
   status: JobStatus;
   stale: boolean;
+  label: string;
   onRetry: () => void;
 }) {
   const pct = Math.round((status.currentStep / status.totalSteps) * 100);
 
   if (status.status === "FAILED") {
     return (
-      <div className="flex items-center gap-3">
-        <div className="text-right">
-          <p className="text-sm font-medium text-red-400">Generation failed</p>
+      <div className="flex items-center justify-between rounded-xl bg-red-500/10 border border-red-500/20 px-5 py-4">
+        <div>
+          <p className="text-sm font-medium text-red-400">
+            Generation failed
+          </p>
           <p className="text-xs text-red-400/70">
             {status.errorMessage ?? "Unknown error"}
           </p>
@@ -321,7 +397,7 @@ function GenerationProgress({
           onClick={onRetry}
           className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-500"
         >
-          Try again
+          Dismiss
         </button>
       </div>
     );
@@ -329,9 +405,9 @@ function GenerationProgress({
 
   if (status.status === "SUCCESS") {
     return (
-      <div className="flex items-center gap-3">
-        <div className="h-3 w-48 overflow-hidden rounded-full bg-white/10">
-          <div className="h-full w-full rounded-full bg-green-500 transition-all duration-300 ease-out" />
+      <div className="flex items-center gap-3 rounded-xl bg-green-500/10 border border-green-500/20 px-5 py-4">
+        <div className="h-3 flex-1 overflow-hidden rounded-full bg-white/10">
+          <div className="h-full w-full rounded-full bg-green-500" />
         </div>
         <span className="text-sm font-medium text-green-400">
           {status.stepLabel}
@@ -341,866 +417,225 @@ function GenerationProgress({
   }
 
   return (
-    <div className="flex items-center gap-3">
-      <div className="min-w-[200px]">
-        <div className="h-3 w-full overflow-hidden rounded-full bg-white/10">
-          <div
-            className="h-full rounded-full bg-gradient-to-r from-[#7C5CFC] to-[#9B7DFF] transition-all duration-300 ease-out"
-            style={{ width: `${pct}%` }}
-          />
-        </div>
-        <div className="mt-1 flex items-center justify-between">
-          <p className="text-xs text-white/50">
-            {stale ? (
-              <span className="text-amber-400">
-                Taking longer than expected…
-              </span>
-            ) : (
-              status.stepLabel
-            )}
-          </p>
-          <p className="text-[10px] text-white/25">{jobId.slice(0, 8)}</p>
-        </div>
+    <div className="rounded-xl bg-[#13131F] border border-[#7C5CFC]/20 px-5 py-4">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-sm font-medium text-white/80">
+          Generating {label}…
+        </span>
+        <span className="text-xs text-white/40">
+          Step {status.currentStep}/{status.totalSteps}
+        </span>
       </div>
+      <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
+        <div
+          className="h-full rounded-full bg-gradient-to-r from-[#7C5CFC] to-[#9B7DFF] transition-all duration-500 ease-out"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <p className="mt-2 text-xs text-white/50">
+        {stale ? (
+          <span className="text-amber-400">
+            Taking longer than expected…
+          </span>
+        ) : (
+          status.stepLabel
+        )}
+      </p>
     </div>
   );
 }
 
-// ─── Tab 1: Review Queue ─────────────────────────────────────────────────────
+// ─── Content Card ───────────────────────────────────────────────────────────
 
-function ReviewQueue({
-  pieces,
-  onUpdate,
-  onBulkApprove,
+function ContentCard({
+  piece,
+  onCopy,
+  onDelete,
+  onMarkPosted,
+  onRegenerate,
 }: {
-  pieces: ContentPiece[];
-  onUpdate: (piece: ContentPiece) => void;
-  onBulkApprove: (ids: string[]) => void;
+  piece: ContentPiece;
+  onCopy: (text: string) => void;
+  onDelete: (id: string) => void;
+  onMarkPosted: (id: string) => void;
+  onRegenerate: () => void;
 }) {
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editText, setEditText] = useState("");
-  const [rejectId, setRejectId] = useState<string | null>(null);
-  const [rejectReason, setRejectReason] = useState("");
-  const [viewMode, setViewMode] = useState<"preview" | "raw">("preview");
-  const sorted = groupByType(pieces);
+  const [expanded, setExpanded] = useState(false);
+  const [copied, setCopied] = useState<string | null>(null);
 
-  const toggleSelect = (id: string) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+  const handleCopy = (text: string, label: string) => {
+    onCopy(text);
+    setCopied(label);
+    setTimeout(() => setCopied(null), 1500);
   };
 
-  const selectAll = () => {
-    if (selected.size === sorted.length) {
-      setSelected(new Set());
-    } else {
-      setSelected(new Set(sorted.map((p) => p.id)));
-    }
-  };
-
-  const handleApprove = async (pieceId: string) => {
-    const res = await fetch("/api/admin/content-factory/approve", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ pieceId }),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      const piece = sorted.find((p) => p.id === pieceId);
-      if (piece) {
-        // Blog posts auto-publish: status goes to DISTRIBUTED
-        const status = data.autoPublished ? "DISTRIBUTED" : "APPROVED";
-        onUpdate({ ...piece, status });
-      }
-    }
-  };
-
-  const handleReject = async () => {
-    if (!rejectId) return;
-    const res = await fetch("/api/admin/content-factory/reject", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ pieceId: rejectId, reason: rejectReason }),
-    });
-    if (res.ok) {
-      const piece = sorted.find((p) => p.id === rejectId);
-      if (piece) onUpdate({ ...piece, status: "REJECTED" });
-    }
-    setRejectId(null);
-    setRejectReason("");
-  };
-
-  const handleEdit = async (pieceId: string) => {
-    const res = await fetch("/api/admin/content-factory/edit", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ pieceId, finalBody: editText }),
-    });
-    if (res.ok) {
-      const piece = sorted.find((p) => p.id === pieceId);
-      if (piece) onUpdate({ ...piece, status: "EDITED", finalBody: editText });
-    }
-    setEditingId(null);
-    setEditText("");
-  };
-
-  const handleBulkApprove = async () => {
-    const ids = Array.from(selected);
-    const res = await fetch("/api/admin/content-factory/bulk-approve", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ pieceIds: ids }),
-    });
-    if (res.ok) {
-      onBulkApprove(ids);
-      setSelected(new Set());
-    }
-  };
-
-  if (sorted.length === 0) {
-    return (
-      <div className="rounded-xl bg-[#13131F] p-12 text-center text-white/50">
-        No content pending review. Hit &ldquo;Generate Now&rdquo; to create
-        today&apos;s batch.
-      </div>
-    );
-  }
+  const isInstagram = piece.type === "INSTAGRAM";
+  const isTikTok = piece.type === "TIKTOK";
 
   return (
-    <div>
-      {/* Bulk toolbar */}
-      <div className="mb-4 flex items-center gap-3">
-        <button
-          onClick={selectAll}
-          className="rounded-md bg-[#13131F] px-3 py-1.5 text-sm text-white/70 hover:text-white"
-        >
-          {selected.size === sorted.length ? "Deselect all" : "Select all visible"}
-        </button>
-        {selected.size > 0 && (
-          <button
-            onClick={handleBulkApprove}
-            className="rounded-md bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-500"
+    <div className="rounded-xl bg-[#13131F] p-5">
+      {/* Header row */}
+      <div
+        className="cursor-pointer"
+        onClick={() => setExpanded(!expanded)}
+      >
+        <div className="flex items-center gap-2 mb-2">
+          <span
+            className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[piece.status] ?? "bg-white/10 text-white/60"}`}
           >
-            Approve selected ({selected.size})
-          </button>
+            {STATUS_LABELS[piece.status] ?? piece.status}
+          </span>
+          <span className="text-xs text-white/40">
+            {formatDate(piece.createdAt)}
+          </span>
+        </div>
+
+        {/* Instagram with thumbnail */}
+        {isInstagram && piece.heroImageUrl ? (
+          <div className="flex gap-4">
+            <img
+              src={piece.heroImageUrl}
+              alt=""
+              className="h-20 w-20 rounded-lg object-cover shrink-0"
+            />
+            <div className="min-w-0">
+              <p className="text-sm text-white/80 line-clamp-3">
+                {piece.body}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-white/80 line-clamp-3">{piece.body}</p>
         )}
       </div>
 
-      {/* Cards */}
-      <div className="space-y-3">
-        {sorted.map((piece) => (
-          <div key={piece.id} className="rounded-xl bg-[#13131F] p-5">
-            <div className="flex items-start gap-3">
-              <input
-                type="checkbox"
-                checked={selected.has(piece.id)}
-                onChange={() => toggleSelect(piece.id)}
-                className="mt-1 h-4 w-4 rounded accent-[#7C5CFC]"
+      {/* Expanded view */}
+      {expanded && (
+        <div className="mt-4 border-t border-white/10 pt-4">
+          {/* Full content */}
+          {isInstagram && piece.heroImageUrl && (
+            <div className="mb-4">
+              <img
+                src={piece.heroImageUrl}
+                alt=""
+                className="w-full max-w-sm rounded-lg"
               />
-              <div
-                className="flex-1 cursor-pointer"
-                onClick={() =>
-                  setExpandedId(expandedId === piece.id ? null : piece.id)
-                }
-              >
-                <div className="flex items-center gap-2">
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-xs font-medium ${TYPE_COLORS[piece.type] ?? "bg-white/10 text-white/60"}`}
-                  >
-                    {piece.type}
-                  </span>
-                  <span
-                    className={`h-2.5 w-2.5 rounded-full ${scoreColor(piece.predictedScore)}`}
-                    title={`Score: ${piece.predictedScore.toFixed(2)}`}
-                  />
-                  <span className="text-xs text-white/40">
-                    {relativeTime(piece.createdAt)}
-                  </span>
+            </div>
+          )}
+
+          <div className="mb-4">
+            {isTikTok ? (
+              <div className="space-y-3">
+                <div>
+                  <p className="text-[10px] uppercase tracking-widest text-white/30 mb-1">
+                    Hook
+                  </p>
+                  <p className="text-sm font-medium text-white/90">
+                    {piece.hook}
+                  </p>
                 </div>
-                <p className="mt-2 text-lg font-semibold">{piece.hook}</p>
-                <p className="mt-1 text-sm text-white/60 line-clamp-3">
-                  {piece.body}
-                </p>
-              </div>
-            </div>
-
-            {/* Expanded view */}
-            {expandedId === piece.id && (
-              <div className="mt-4 border-t border-white/10 pt-4">
-                {/* View toggle */}
-                {editingId !== piece.id && (
-                  <div className="mb-4 flex items-center gap-1 rounded-lg bg-[#0A0A0F] p-1 w-fit">
-                    {(["preview", "raw"] as const).map((mode) => (
-                      <button
-                        key={mode}
-                        onClick={() => setViewMode(mode)}
-                        className={`rounded-md px-3 py-1 text-xs font-medium transition ${
-                          viewMode === mode
-                            ? "bg-[#7C5CFC] text-white"
-                            : "text-white/40 hover:text-white/70"
-                        }`}
-                      >
-                        {mode === "preview" ? "Preview" : "Raw"}
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {editingId === piece.id ? (
-                  /* Split edit: preview left, editor right */
-                  <div>
-                    <div className="flex gap-4">
-                      <div className="flex-1 min-w-0 overflow-auto max-h-[600px] rounded-lg border border-white/10 bg-white/[0.02] p-4">
-                        <p className="text-[10px] uppercase tracking-widest text-white/25 mb-3">Live Preview</p>
-                        <ContentPreview
-                          piece={{ ...piece, body: editText }}
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[10px] uppercase tracking-widest text-white/25 mb-3">Edit Content</p>
-                        <textarea
-                          value={editText}
-                          onChange={(e) => setEditText(e.target.value)}
-                          className="w-full rounded-lg bg-[#0A0A0F] p-3 font-mono text-sm text-white/90 border border-white/10"
-                          rows={20}
-                        />
-                      </div>
-                    </div>
-                    <div className="mt-3 flex gap-2">
-                      <button
-                        onClick={() => handleEdit(piece.id)}
-                        className="rounded-md bg-[#7C5CFC] px-3 py-1.5 text-sm font-medium"
-                      >
-                        Save Edit
-                      </button>
-                      <button
-                        onClick={() => setEditingId(null)}
-                        className="rounded-md bg-white/10 px-3 py-1.5 text-sm text-white/70"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                ) : viewMode === "preview" ? (
-                  <ContentPreview piece={piece} />
-                ) : (
-                  <>
-                    <pre className="whitespace-pre-wrap font-mono text-sm text-white/80">
-                      {piece.body}
-                    </pre>
-                    {piece.cta && (
-                      <p className="mt-3 text-sm text-white/50">
-                        <span className="font-medium text-white/70">CTA:</span>{" "}
-                        {piece.cta}
-                      </p>
-                    )}
-                    {piece.targetKeyword && (
-                      <p className="mt-1 text-sm text-white/50">
-                        <span className="font-medium text-white/70">Keyword:</span>{" "}
-                        {piece.targetKeyword}
-                      </p>
-                    )}
-                  </>
-                )}
-
-                {/* Action buttons — always visible */}
-                {editingId !== piece.id && (
-                  <div className="mt-4 flex gap-2">
-                    <button
-                      onClick={() => handleApprove(piece.id)}
-                      className="rounded-md bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-500"
-                    >
-                      Approve
-                    </button>
-                    <button
-                      onClick={() => {
-                        setEditingId(piece.id);
-                        setEditText(piece.body);
-                      }}
-                      className="rounded-md bg-white/10 px-3 py-1.5 text-sm text-white/70 hover:bg-white/20"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => setRejectId(piece.id)}
-                      className="rounded-md bg-red-600/20 px-3 py-1.5 text-sm text-red-400 hover:bg-red-600/30"
-                    >
-                      Reject
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-
-      {/* Reject modal */}
-      {rejectId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-          <div className="w-full max-w-md rounded-xl bg-[#13131F] p-6">
-            <h3 className="text-lg font-semibold">Reject Content</h3>
-            <textarea
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-              placeholder="Why? (optional)"
-              className="mt-3 w-full rounded-lg bg-[#0A0A0F] p-3 text-sm text-white/90"
-              rows={3}
-            />
-            <div className="mt-4 flex justify-end gap-2">
-              <button
-                onClick={() => {
-                  setRejectId(null);
-                  setRejectReason("");
-                }}
-                className="rounded-md bg-white/10 px-3 py-1.5 text-sm text-white/70"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleReject}
-                className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white"
-              >
-                Reject
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Tab 2: Ready to Post ────────────────────────────────────────────────────
-
-function ReadyToPost({ pieces }: { pieces: ContentPiece[] }) {
-  const [markingId, setMarkingId] = useState<string | null>(null);
-  const [liveUrl, setLiveUrl] = useState("");
-  const [draftUsedId, setDraftUsedId] = useState<string | null>(null);
-  const [draftSubreddit, setDraftSubreddit] = useState("");
-  const [draftPostUrl, setDraftPostUrl] = useState("");
-  const [draftRewriteLevel, setDraftRewriteLevel] = useState(3);
-  const sorted = groupByType(pieces);
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-  };
-
-  const copyAllByType = (type: string) => {
-    const items = sorted
-      .filter((p) => p.type === type)
-      .map((p) => p.finalBody || p.body);
-    navigator.clipboard.writeText(items.join("\n---\n"));
-  };
-
-  const handleMarkDistributed = async () => {
-    if (!markingId || !liveUrl) return;
-    await fetch("/api/admin/content-factory/mark-distributed", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ pieceId: markingId, distributedUrl: liveUrl }),
-    });
-    setMarkingId(null);
-    setLiveUrl("");
-    window.location.reload();
-  };
-
-  const handleDraftUsed = async () => {
-    if (!draftUsedId) return;
-    await fetch("/api/admin/content-factory/mark-distributed", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        pieceId: draftUsedId,
-        distributedUrl: draftPostUrl || `reddit:${draftSubreddit}`,
-        metrics: { rewriteLevel: draftRewriteLevel },
-      }),
-    });
-    setDraftUsedId(null);
-    setDraftSubreddit("");
-    setDraftPostUrl("");
-    setDraftRewriteLevel(3);
-    window.location.reload();
-  };
-
-  if (sorted.length === 0) {
-    return (
-      <div className="rounded-xl bg-[#13131F] p-12 text-center text-white/50">
-        No approved content ready to post.
-      </div>
-    );
-  }
-
-  const types = [...new Set(sorted.map((p) => p.type))];
-  const SUBREDDIT_OPTIONS = [
-    "r/DecidingToBeBetter", "r/ADHD", "r/Journaling", "r/productivity",
-    "r/selfimprovement", "r/SideProject", "r/IMadeThis", "r/getdisciplined",
-  ];
-
-  return (
-    <div className="space-y-6">
-      {types.map((type) => {
-        const items = sorted.filter((p) => p.type === type);
-        const isReddit = type === "REDDIT_DRAFT";
-        return (
-          <div key={type}>
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-white/70">
-                {isReddit ? "Reddit Drafts for This Week" : type} ({items.length})
-              </h3>
-              {!isReddit && items.length > 1 && (
-                <button
-                  onClick={() => copyAllByType(type)}
-                  className="rounded-md bg-white/10 px-3 py-1 text-xs text-white/60 hover:text-white"
-                >
-                  Copy all {items.length} {type.toLowerCase()}s
-                </button>
-              )}
-            </div>
-            {isReddit && (
-              <div className="mb-3 rounded-lg bg-amber-500/10 border border-amber-500/20 px-4 py-2">
-                <p className="text-xs text-amber-300/70">
-                  These are starting points, not finished posts. Rewrite in your own voice before posting.
-                </p>
-              </div>
-            )}
-            <div className="space-y-3">
-              {items.map((piece) => (
-                <div
-                  key={piece.id}
-                  className={`rounded-xl p-5 ${isReddit ? "bg-amber-900/[0.06] border border-amber-500/10" : "bg-[#13131F]"}`}
-                >
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${TYPE_COLORS[piece.type] ?? "bg-white/10 text-white/60"}`}
-                    >
-                      {isReddit ? "DRAFT" : piece.type}
-                    </span>
-                    <span className="text-xs text-white/40">
-                      {piece.status === "EDITED" ? "Edited" : "Approved"}
-                    </span>
-                  </div>
-                  <p className="mt-2 font-semibold">{piece.hook}</p>
-                  <pre className="mt-2 whitespace-pre-wrap text-sm text-white/70">
-                    {piece.finalBody || piece.body}
+                <div>
+                  <p className="text-[10px] uppercase tracking-widest text-white/30 mb-1">
+                    Body
+                  </p>
+                  <pre className="whitespace-pre-wrap text-sm text-white/80">
+                    {piece.body}
                   </pre>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {isReddit ? (
-                      <>
-                        <button
-                          onClick={() =>
-                            copyToClipboard(
-                              `${piece.title}\n\nAngle: ${piece.cta.split(" | ")[1] ?? ""}`
-                            )
-                          }
-                          className="rounded-md bg-[#FF4500]/20 px-4 py-2 text-sm font-medium text-[#FF6633] transition hover:bg-[#FF4500]/30"
-                        >
-                          Copy hook
-                        </button>
-                        <button
-                          onClick={() =>
-                            copyToClipboard(
-                              `[REWRITE IN YOUR OWN VOICE]\n\n${piece.finalBody || piece.body}`
-                            )
-                          }
-                          className="rounded-md bg-white/10 px-4 py-2 text-sm text-white/70 hover:bg-white/20"
-                        >
-                          Copy structure
-                        </button>
-                        <button
-                          onClick={() => setDraftUsedId(piece.id)}
-                          className="rounded-md bg-amber-600/20 px-4 py-2 text-sm text-amber-300 hover:bg-amber-600/30"
-                        >
-                          I used this draft
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <button
-                          onClick={() =>
-                            copyToClipboard(piece.finalBody || piece.body)
-                          }
-                          className="rounded-md bg-[#7C5CFC] px-4 py-2 text-sm font-medium transition hover:bg-[#6B4DE6]"
-                        >
-                          Copy to clipboard
-                        </button>
-                        <button
-                          onClick={() => setMarkingId(piece.id)}
-                          className="rounded-md bg-white/10 px-3 py-2 text-sm text-white/70 hover:bg-white/20"
-                        >
-                          Mark as posted
-                        </button>
-                      </>
-                    )}
-                  </div>
                 </div>
-              ))}
-            </div>
-          </div>
-        );
-      })}
-
-      {/* Mark distributed modal (non-Reddit) */}
-      {markingId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-          <div className="w-full max-w-md rounded-xl bg-[#13131F] p-6">
-            <h3 className="text-lg font-semibold">Mark as Posted</h3>
-            <input
-              value={liveUrl}
-              onChange={(e) => setLiveUrl(e.target.value)}
-              placeholder="Live URL (e.g. https://twitter.com/...)"
-              className="mt-3 w-full rounded-lg bg-[#0A0A0F] p-3 text-sm text-white/90"
-            />
-            <div className="mt-4 flex justify-end gap-2">
-              <button
-                onClick={() => {
-                  setMarkingId(null);
-                  setLiveUrl("");
-                }}
-                className="rounded-md bg-white/10 px-3 py-1.5 text-sm text-white/70"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleMarkDistributed}
-                disabled={!liveUrl}
-                className="rounded-md bg-[#7C5CFC] px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* "I used this draft" modal (Reddit only) */}
-      {draftUsedId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-          <div className="w-full max-w-md rounded-xl bg-[#13131F] p-6">
-            <h3 className="text-lg font-semibold">I Used This Draft</h3>
-            <p className="mt-1 text-xs text-white/40">
-              This helps the AI learn what works and what needs improvement.
-            </p>
-            <div className="mt-4 space-y-3">
-              <div>
-                <label className="text-xs text-white/50">
-                  Which subreddit did you post to?
-                </label>
-                <select
-                  value={draftSubreddit}
-                  onChange={(e) => setDraftSubreddit(e.target.value)}
-                  className="mt-1 w-full rounded-lg bg-[#0A0A0F] p-3 text-sm text-white/90"
-                >
-                  <option value="">Select subreddit…</option>
-                  {SUBREDDIT_OPTIONS.map((s) => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="text-xs text-white/50">
-                  Paste your final post URL
-                </label>
-                <input
-                  value={draftPostUrl}
-                  onChange={(e) => setDraftPostUrl(e.target.value)}
-                  placeholder="https://reddit.com/r/..."
-                  className="mt-1 w-full rounded-lg bg-[#0A0A0F] p-3 text-sm text-white/90"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-white/50">
-                  How much did you rewrite? (1 = barely changed, 5 = completely different)
-                </label>
-                <div className="mt-2 flex gap-2">
-                  {[1, 2, 3, 4, 5].map((n) => (
-                    <button
-                      key={n}
-                      onClick={() => setDraftRewriteLevel(n)}
-                      className={`h-9 w-9 rounded-lg text-sm font-medium transition ${
-                        draftRewriteLevel === n
-                          ? "bg-amber-500 text-black"
-                          : "bg-white/10 text-white/60 hover:bg-white/20"
-                      }`}
-                    >
-                      {n}
-                    </button>
-                  ))}
+                <div>
+                  <p className="text-[10px] uppercase tracking-widest text-white/30 mb-1">
+                    CTA
+                  </p>
+                  <p className="text-sm text-white/80">{piece.cta}</p>
                 </div>
               </div>
-            </div>
-            <div className="mt-5 flex justify-end gap-2">
-              <button
-                onClick={() => {
-                  setDraftUsedId(null);
-                  setDraftSubreddit("");
-                  setDraftPostUrl("");
-                  setDraftRewriteLevel(3);
-                }}
-                className="rounded-md bg-white/10 px-3 py-1.5 text-sm text-white/70"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDraftUsed}
-                disabled={!draftSubreddit}
-                className="rounded-md bg-amber-600 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
-              >
-                Save
-              </button>
-            </div>
+            ) : (
+              <>
+                <pre className="whitespace-pre-wrap text-sm text-white/80">
+                  {piece.body}
+                </pre>
+                {isInstagram && piece.cta && (
+                  <p className="mt-3 text-sm text-blue-400/80">
+                    {piece.cta}
+                  </p>
+                )}
+              </>
+            )}
           </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
-// ─── Tab 3: Live Performance ─────────────────────────────────────────────────
-
-function LivePerformance({ pieces }: { pieces: ContentPiece[] }) {
-  const [sortBy, setSortBy] = useState<"signups" | "date">("signups");
-  const [unpublishing, setUnpublishing] = useState<string | null>(null);
-
-  const handleUnpublish = async (pieceId: string) => {
-    setUnpublishing(pieceId);
-    try {
-      await fetch("/api/admin/content-factory/unpublish", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pieceId }),
-      });
-      window.location.reload();
-    } finally {
-      setUnpublishing(null);
-    }
-  };
-
-  const sorted = [...pieces].sort((a, b) => {
-    if (sortBy === "signups") {
-      const aS = (a.metrics as Record<string, number>)?.signups ?? 0;
-      const bS = (b.metrics as Record<string, number>)?.signups ?? 0;
-      return bS - aS;
-    }
-    return (
-      new Date(b.distributedAt!).getTime() -
-      new Date(a.distributedAt!).getTime()
-    );
-  });
-
-  if (pieces.length === 0) {
-    return (
-      <div className="rounded-xl bg-[#13131F] p-12 text-center text-white/50">
-        No distributed content yet. Approve and post content to track
-        performance.
-      </div>
-    );
-  }
-
-  return (
-    <div className="rounded-xl bg-[#13131F] overflow-x-auto">
-      <table className="w-full text-left text-sm">
-        <thead>
-          <tr className="border-b border-white/10 text-white/50">
-            <th className="px-5 py-3 font-medium">Type</th>
-            <th className="px-5 py-3 font-medium">Title</th>
-            <th className="px-5 py-3 font-medium">
-              <button
-                onClick={() => setSortBy("date")}
-                className="hover:text-white"
-              >
-                Posted
-              </button>
-            </th>
-            <th className="px-5 py-3 font-medium">URL</th>
-            <th className="px-5 py-3 font-medium text-right">Views</th>
-            <th className="px-5 py-3 font-medium text-right">Clicks</th>
-            <th className="px-5 py-3 font-medium text-right">
-              <button
-                onClick={() => setSortBy("signups")}
-                className="hover:text-white"
-              >
-                Signups
-              </button>
-            </th>
-            <th className="px-5 py-3 font-medium"></th>
-          </tr>
-        </thead>
-        <tbody>
-          {sorted.map((piece) => {
-            const m = (piece.metrics as Record<string, number>) ?? {};
-            return (
-              <tr
-                key={piece.id}
-                className="border-b border-white/5 text-white/80"
-              >
-                <td className="px-5 py-3">
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-xs font-medium ${TYPE_COLORS[piece.type] ?? "bg-white/10 text-white/60"}`}
+          {/* Action buttons */}
+          <div className="flex flex-wrap gap-2">
+            {isInstagram ? (
+              <>
+                {piece.heroImageUrl && (
+                  <a
+                    href={piece.heroImageUrl}
+                    download
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-md bg-[#7C5CFC] px-3 py-1.5 text-sm font-medium transition hover:bg-[#6B4DE6]"
                   >
-                    {piece.type}
-                  </span>
-                </td>
-                <td className="px-5 py-3 max-w-[200px] truncate">
-                  {piece.title}
-                </td>
-                <td className="px-5 py-3 whitespace-nowrap text-white/50">
-                  {piece.distributedAt
-                    ? new Date(piece.distributedAt).toLocaleDateString()
-                    : "—"}
-                </td>
-                <td className="px-5 py-3">
-                  {piece.distributedUrl ? (
-                    <a
-                      href={piece.distributedUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[#7C5CFC] hover:underline"
-                    >
-                      View
-                    </a>
-                  ) : (
-                    "—"
-                  )}
-                </td>
-                <td className="px-5 py-3 text-right">{m.views ?? "—"}</td>
-                <td className="px-5 py-3 text-right">{m.clicks ?? "—"}</td>
-                <td className="px-5 py-3 text-right font-medium">
-                  {m.signups ?? "—"}
-                </td>
-                <td className="px-5 py-3">
-                  {piece.type === "BLOG" && (
-                    <button
-                      onClick={() => handleUnpublish(piece.id)}
-                      disabled={unpublishing === piece.id}
-                      className="rounded-md bg-red-600/20 px-3 py-1 text-xs text-red-400 hover:bg-red-600/30 disabled:opacity-50"
-                    >
-                      {unpublishing === piece.id ? "…" : "Unpublish"}
-                    </button>
-                  )}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-// ─── Tab 4: Today's Briefing ─────────────────────────────────────────────────
-
-function TodaysBriefing({
-  briefing,
-}: {
-  briefing: ContentBriefing | null;
-}) {
-  if (!briefing) {
-    return (
-      <div className="rounded-xl bg-[#13131F] p-12 text-center text-white/50">
-        No briefing generated yet. The daily research runs at 6 AM UTC, or hit
-        &ldquo;Generate Now&rdquo; to trigger it manually.
-      </div>
-    );
-  }
-
-  const refreshedAt = new Date(briefing.generatedAt);
-  const reddit = (briefing.redditTop ?? []) as RedditPost[];
-  const ga4 = (briefing.ga4Winners ?? []) as GA4Winner[];
-
-  return (
-    <div>
-      <p className="mb-6 text-sm text-white/50">
-        Last refreshed:{" "}
-        {refreshedAt.toLocaleTimeString("en-US", {
-          hour: "numeric",
-          minute: "2-digit",
-          timeZone: "UTC",
-        })}{" "}
-        UTC today
-      </p>
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Reddit Top */}
-        <div className="rounded-xl bg-[#13131F] p-5">
-          <h3 className="text-sm font-medium text-white/60">
-            Reddit Top Posts
-          </h3>
-          {reddit.length === 0 ? (
-            <p className="mt-3 text-sm text-white/40">No data</p>
-          ) : (
-            <ul className="mt-3 space-y-2">
-              {reddit.map((post, i) => (
-                <li key={i} className="flex items-start gap-2 text-sm">
-                  <span className="shrink-0 rounded bg-white/10 px-1.5 py-0.5 text-xs text-white/50">
-                    {post.upvotes}
-                  </span>
-                  <div>
-                    <a
-                      href={post.permalink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-white/80 hover:text-[#7C5CFC]"
-                    >
-                      {post.title}
-                    </a>
-                    <span className="ml-2 text-xs text-white/40">
-                      r/{post.subreddit}
-                    </span>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        {/* Twitter Top */}
-        <div className="rounded-xl bg-[#13131F] p-5">
-          <h3 className="text-sm font-medium text-white/60">Twitter Top</h3>
-          <p className="mt-3 text-sm text-white/40">
-            Coming in v2 — Twitter/X API integration
-          </p>
-        </div>
-
-        {/* GA4 Winners */}
-        <div className="rounded-xl bg-[#13131F] p-5">
-          <h3 className="text-sm font-medium text-white/60">
-            GA4 Top Blog Pages (Last 7 Days)
-          </h3>
-          {ga4.length === 0 ? (
-            <p className="mt-3 text-sm text-white/40">
-              No data — GA4 credentials may not be configured
-            </p>
-          ) : (
-            <ul className="mt-3 space-y-2">
-              {ga4.map((page, i) => (
-                <li
-                  key={i}
-                  className="flex items-center justify-between text-sm"
+                    Download Image
+                  </a>
+                )}
+                <button
+                  onClick={() =>
+                    handleCopy(
+                      `${piece.body}\n\n${piece.cta}`,
+                      "caption"
+                    )
+                  }
+                  className="rounded-md bg-white/10 px-3 py-1.5 text-sm text-white/70 hover:bg-white/20"
                 >
-                  <span className="text-white/80">{page.pagePath}</span>
-                  <span className="text-white/50">
-                    {page.sessions} sessions
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+                  {copied === "caption" ? "Copied!" : "Copy Caption"}
+                </button>
+                <button
+                  onClick={onRegenerate}
+                  className="rounded-md bg-white/10 px-3 py-1.5 text-sm text-white/70 hover:bg-white/20"
+                >
+                  Regenerate
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => {
+                    const text = isTikTok
+                      ? `[HOOK]\n${piece.hook}\n\n[BODY]\n${piece.body}\n\n[CTA]\n${piece.cta}`
+                      : piece.body;
+                    handleCopy(text, "text");
+                  }}
+                  className="rounded-md bg-[#7C5CFC] px-3 py-1.5 text-sm font-medium transition hover:bg-[#6B4DE6]"
+                >
+                  {copied === "text" ? "Copied!" : "Copy"}
+                </button>
+                <button
+                  onClick={onRegenerate}
+                  className="rounded-md bg-white/10 px-3 py-1.5 text-sm text-white/70 hover:bg-white/20"
+                >
+                  Regenerate
+                </button>
+              </>
+            )}
 
-        {/* Trends */}
-        <div className="rounded-xl bg-[#13131F] p-5">
-          <h3 className="text-sm font-medium text-white/60">Google Trends</h3>
-          <p className="mt-3 text-sm text-white/40">
-            Coming in v2 — Google Trends integration
-          </p>
+            {piece.status !== "DISTRIBUTED" && (
+              <button
+                onClick={() => onMarkPosted(piece.id)}
+                className="rounded-md bg-green-600/20 px-3 py-1.5 text-sm text-green-400 hover:bg-green-600/30"
+              >
+                Mark as Posted
+              </button>
+            )}
+
+            <button
+              onClick={() => onDelete(piece.id)}
+              className="rounded-md bg-red-600/20 px-3 py-1.5 text-sm text-red-400 hover:bg-red-600/30"
+            >
+              Delete
+            </button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

@@ -1016,6 +1016,7 @@ enum ContentType {
   AD_COPY
   EMAIL
   REDDIT_DRAFT
+  INSTAGRAM
 }
 
 enum ContentStatus {

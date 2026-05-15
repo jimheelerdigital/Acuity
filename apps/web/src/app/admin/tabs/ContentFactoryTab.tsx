@@ -3,11 +3,21 @@
 import { useEffect, useState } from "react";
 import ContentFactoryClient from "../content-factory/content-factory-client";
 
+interface ContentPiece {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  hook: string;
+  cta: string;
+  predictedScore: number;
+  status: string;
+  heroImageUrl: string | null;
+  createdAt: string;
+}
+
 interface TabData {
-  pendingPieces: unknown[];
-  readyPieces: unknown[];
-  distributedPieces: unknown[];
-  latestBriefing: unknown | null;
+  pieces: ContentPiece[];
   activeJobId: string | null;
 }
 
@@ -42,10 +52,7 @@ export default function ContentFactoryTab() {
 
   return (
     <ContentFactoryClient
-      pendingPieces={data.pendingPieces as never[]}
-      readyPieces={data.readyPieces as never[]}
-      distributedPieces={data.distributedPieces as never[]}
-      latestBriefing={data.latestBriefing as never}
+      pieces={data.pieces}
       activeJobId={data.activeJobId}
     />
   );

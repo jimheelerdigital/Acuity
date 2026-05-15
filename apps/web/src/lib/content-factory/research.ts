@@ -1,59 +1,5 @@
 import type { ContentBriefing } from "@prisma/client";
 
-const SUBREDDITS = [
-  "Journaling",
-  "ADHD",
-  "productivity",
-  "DecidingToBeBetter",
-  "selfimprovement",
-  "sleep",
-];
-
-interface RedditPost {
-  title: string;
-  subreddit: string;
-  upvotes: number;
-  url: string;
-  permalink: string;
-}
-
-async function fetchRedditTop(): Promise<RedditPost[]> {
-  const userAgent =
-    process.env.REDDIT_USER_AGENT ?? "AcuityResearcher/1.0";
-
-  const allPosts: RedditPost[] = [];
-
-  for (const sub of SUBREDDITS) {
-    try {
-      const res = await fetch(
-        `https://www.reddit.com/r/${sub}/top.json?t=day&limit=10`,
-        { headers: { "User-Agent": userAgent } }
-      );
-      if (!res.ok) {
-        console.warn(`[research] Reddit r/${sub} returned ${res.status}`);
-        continue;
-      }
-      const json = await res.json();
-      const children = json?.data?.children ?? [];
-      for (const child of children) {
-        const d = child.data;
-        allPosts.push({
-          title: d.title,
-          subreddit: d.subreddit,
-          upvotes: d.ups,
-          url: d.url,
-          permalink: `https://www.reddit.com${d.permalink}`,
-        });
-      }
-    } catch (err) {
-      console.warn(`[research] Reddit r/${sub} fetch failed:`, err);
-    }
-  }
-
-  allPosts.sort((a, b) => b.upvotes - a.upvotes);
-  return allPosts.slice(0, 10);
-}
-
 interface GA4Winner {
   pagePath: string;
   sessions: number;
@@ -109,10 +55,7 @@ async function fetchGA4Winners(): Promise<GA4Winner[]> {
 export async function buildDailyBriefing(): Promise<ContentBriefing> {
   const { prisma } = await import("@/lib/prisma");
 
-  const [redditTop, ga4Winners] = await Promise.all([
-    fetchRedditTop(),
-    fetchGA4Winners(),
-  ]);
+  const ga4Winners = await fetchGA4Winners();
 
   const today = new Date();
   today.setUTCHours(0, 0, 0, 0);
@@ -120,7 +63,7 @@ export async function buildDailyBriefing(): Promise<ContentBriefing> {
   const briefing = await prisma.contentBriefing.upsert({
     where: { date: today },
     update: {
-      redditTop: redditTop as unknown as object[],
+      redditTop: [],
       twitterTop: [],
       trendsData: {},
       ga4Winners: ga4Winners as unknown as object[],
@@ -128,7 +71,7 @@ export async function buildDailyBriefing(): Promise<ContentBriefing> {
     },
     create: {
       date: today,
-      redditTop: redditTop as unknown as object[],
+      redditTop: [],
       twitterTop: [],
       trendsData: {},
       ga4Winners: ga4Winners as unknown as object[],

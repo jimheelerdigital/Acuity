@@ -122,28 +122,39 @@ interface TwitterResult {
 }
 
 export async function generateTwitterPosts(
-  briefing: ContentBriefing,
-  count = 3
+  briefing: ContentBriefing | null,
+  count = 1
 ): Promise<TwitterResult[]> {
   const fewShot = await loadFewShotExamples();
 
+  const contentTypes = [
+    "insight — a specific observation about self-reflection or nightly debriefing",
+    "tip — one actionable technique or habit",
+    "question — a thought-provoking question that sparks replies",
+    "product highlight — a specific feature moment (weekly report, life matrix, memoir)",
+    "founder observation — a build-in-public observation from making Acuity",
+  ];
+  const chosenType = contentTypes[Math.floor(Math.random() * contentTypes.length)];
+
   const systemPrompt = `${BRAND_SYSTEM_PROMPT}${fewShot}
 
-You are writing Twitter/X posts for Acuity.
+You are writing a Twitter/X post for Acuity.
+
+Content type for this post: ${chosenType}
 
 Requirements:
-- 240 character limit per post (total, including hook + body + CTA)
+- 280 character limit per post (total, including hook + body + CTA)
 - First line is the hook — must stop the scroll
 - CTA is soft: "Following along?" not "Buy now"
 
 Respond as a JSON array of objects:
 [{ "hook": "...", "body": "...", "cta": "...", "predictedScore": 0.0-1.0 }]`;
 
-  const userPrompt = `Today's research briefing:
+  const briefingContext = briefing
+    ? `\nContext from today's research: ${JSON.stringify(briefing.ga4Winners)}`
+    : "";
 
-Reddit trends: ${JSON.stringify(briefing.redditTop)}
-
-Write ${count} tweets that tap into today's conversations. Each tweet should use a different angle.`;
+  const userPrompt = `Write ${count} tweet(s) for Acuity. Each should use a different angle.${briefingContext}`;
 
   const raw = await callClaude({
     purpose: "generate-twitter-posts",
@@ -164,29 +175,42 @@ interface TikTokResult {
 }
 
 export async function generateTikTokScripts(
-  briefing: ContentBriefing,
-  count = 2
+  briefing: ContentBriefing | null,
+  count = 1
 ): Promise<TikTokResult[]> {
   const fewShot = await loadFewShotExamples();
 
+  const contentTypes = [
+    "problem/solution — name a specific frustration, show Acuity's answer",
+    "founder story — a personal moment from building Acuity",
+    "product demo walkthrough — walk through a specific feature moment",
+    "reaction/hot take — a strong opinion about journaling, productivity, or self-reflection",
+    "day-in-the-life — how nightly debriefing fits into a real routine",
+  ];
+  const chosenType = contentTypes[Math.floor(Math.random() * contentTypes.length)];
+
   const systemPrompt = `${BRAND_SYSTEM_PROMPT}${fewShot}
 
-You are writing TikTok video scripts for Acuity.
+You are writing a TikTok video script for Acuity.
+
+Content type for this script: ${chosenType}
 
 Requirements:
-- 30-45 seconds total per script
-- Structure: Hook (2s) / Body (20-40s) / CTA (2s)
+- 15-30 seconds total per script
+- Structure: Hook (first 2 seconds) / Body (10-25s) / CTA (2-3s)
 - Output is the spoken script only, not shot directions
 - Write as if someone is speaking directly to camera
+- Label each section clearly: [HOOK], [BODY], [CTA]
+- Include an estimated duration in seconds
 
 Respond as a JSON array of objects:
-[{ "hook": "...", "body": "...", "cta": "...", "predictedScore": 0.0-1.0 }]`;
+[{ "hook": "...", "body": "...", "cta": "...", "predictedScore": 0.0-1.0, "estimatedDuration": 20 }]`;
 
-  const userPrompt = `Today's research briefing:
+  const briefingContext = briefing
+    ? `\nContext from today's research: ${JSON.stringify(briefing.ga4Winners)}`
+    : "";
 
-Reddit trends: ${JSON.stringify(briefing.redditTop)}
-
-Write ${count} TikTok scripts. Each should use a different angle or trend.`;
+  const userPrompt = `Write ${count} TikTok script(s) for Acuity.${briefingContext}`;
 
   const raw = await callClaude({
     purpose: "generate-tiktok-scripts",
@@ -242,67 +266,58 @@ Write ${count} ad copy variants, each using a different angle from: pain, benefi
   return JSON.parse(extractJson(raw));
 }
 
-// ─── Reddit drafts ──────────────────────────────────────────────────────────
+// ─── Instagram posts ────────────────────────────────────────────────────────
 
-interface RedditDraftResult {
-  title: string;
-  body: string;
-  subreddit: string;
-  angle: string;
+interface InstagramResult {
+  caption: string;
+  hashtags: string;
+  imagePrompt: string;
   hook: string;
-  dontMention: string;
   predictedScore: number;
 }
 
-export async function generateRedditDraft(
-  briefing: ContentBriefing,
-  count = 1
-): Promise<RedditDraftResult[]> {
-  const systemPrompt = `You are helping Keenan, founder of Acuity (a voice journaling app), write a Reddit post DRAFT.
+export async function generateInstagramPost(
+  briefing: ContentBriefing | null
+): Promise<InstagramResult> {
+  const fewShot = await loadFewShotExamples();
 
-This is a draft. Keenan will rewrite it in his own voice before posting. Your job is to give him a strong starting point with a clear angle, not a finished post.
+  const contentTypes = [
+    "insight post — share one specific observation about self-reflection",
+    "tip post — one actionable technique for nightly debriefing",
+    "social proof quote — a real pattern from Acuity users (anonymized)",
+    "question post — ask a thought-provoking question about self-awareness",
+    "product highlight — show what the weekly report reveals",
+  ];
+  const chosenType = contentTypes[Math.floor(Math.random() * contentTypes.length)];
 
-CRITICAL RULES:
-- Never include promotional language
-- Never link to getacuity.io in the post body
-- Never say "check out this app" or "I built an app"
-- Use vulnerability and specific numbers in the hook
-- Pick ONE subreddit from: r/DecidingToBeBetter, r/ADHD, r/Journaling, r/productivity, r/selfimprovement, r/SideProject, r/IMadeThis, r/getdisciplined
-- Choose the subreddit based on the briefing's trending topics. If Reddit trends show ADHD content resonating, pick r/ADHD. If self-improvement is hot, pick r/DecidingToBeBetter.
+  const systemPrompt = `${BRAND_SYSTEM_PROMPT}${fewShot}
 
-STRUCTURE (200-400 words):
-1. Hook: One sentence, specific number or visceral image. "I failed at X 17 times." or "It's 11:47 PM and my brain won't shut up."
-2. Context: What you tried and why it didn't stick (2-3 sentences, specific tools named)
-3. Turning point: What changed (2-3 sentences, the key insight)
-4. Result: What surprised you, what you learned (2-3 sentences, concrete observation)
-5. NO call to action at the end. Reddit hates CTAs.
+You are writing an Instagram post for Acuity.
 
-TONE:
-- First person, past-tense narrative
-- Casual, honest, slightly self-deprecating
-- Never use words like 'revolutionary', 'game-changer', 'journey', 'unlock'
-- Use specific nouns: 'Notion', 'Day One', 'Moleskine', 'therapist' — not generic 'apps' or 'tools'
+Content type for this post: ${chosenType}
 
-Respond as a JSON array of objects:
-[{
-  "title": "post title",
-  "subreddit": "r/SubredditName",
-  "angle": "2 sentences explaining the strategic angle",
-  "hook": "explains what the opening is designed to do",
-  "body": "the 200-400 word draft",
-  "dontMention": "Do not link Acuity in the post body. Only mention in comments if someone asks what app you use.",
+Requirements:
+- Caption: up to 2200 characters, conversational and specific. Open with a hook line that stops the scroll.
+- Hashtags: 15-20 relevant hashtags, mix of broad (#selfcare, #mindfulness) and niche (#voicejournal, #nightroutine, #shutdownritual)
+- Image prompt: a detailed description for an AI image generator (gpt-image-2). Style: clean, minimal, warm-toned, dark backgrounds with warm amber/gold accents, no text on the image, abstract or lifestyle imagery. 1080x1080 square format.
+
+Respond in JSON format:
+{
+  "caption": "the full caption text without hashtags",
+  "hashtags": "#hashtag1 #hashtag2 #hashtag3 ...",
+  "imagePrompt": "detailed image generation prompt",
+  "hook": "the opening hook line",
   "predictedScore": 0.0-1.0
-}]`;
+}`;
 
-  const userPrompt = `Today's research briefing:
+  const briefingContext = briefing
+    ? `\nTop blog pages for context: ${JSON.stringify(briefing.ga4Winners)}`
+    : "";
 
-Reddit trends: ${JSON.stringify(briefing.redditTop)}
-Top blog pages: ${JSON.stringify(briefing.ga4Winners)}
-
-Write ${count} Reddit post draft(s). Pick the subreddit that best matches today's trending topics. Each draft should use a different angle if count > 1.`;
+  const userPrompt = `Write 1 Instagram post for Acuity.${briefingContext}`;
 
   const raw = await callClaude({
-    purpose: "generate-reddit-draft",
+    purpose: "generate-instagram-post",
     systemPrompt,
     userPrompt,
   });

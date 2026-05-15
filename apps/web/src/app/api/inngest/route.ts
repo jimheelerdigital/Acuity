@@ -2,10 +2,7 @@ import { serve } from "inngest/next";
 import { NextRequest } from "next/server";
 
 import { inngest } from "@/inngest/client";
-import {
-  generateDailyFn,
-  researchBriefingFn,
-} from "@/inngest/functions/content-factory";
+import { generateContentFn } from "@/inngest/functions/content-factory";
 import { backfillExtractionsFn } from "@/inngest/functions/backfill-extractions";
 import { day14AuditCronFn } from "@/inngest/functions/day-14-audit-cron";
 import { drainPendingCalendarTasksFn } from "@/inngest/functions/drain-pending-calendar-tasks";
@@ -52,8 +49,7 @@ const handler = serve({
     refreshLifeMapFn,
     day14AuditCronFn,
     generateLifeAuditFn,
-    researchBriefingFn,
-    generateDailyFn,
+    generateContentFn,
     snapshotLifemapHistoryFn,
     computeUserInsightsFn,
     weeklyDigestFn,

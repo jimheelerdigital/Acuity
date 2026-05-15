@@ -22,40 +22,27 @@ export async function GET() {
 
   const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
 
-  const [pendingPieces, readyPieces, distributedPieces, latestBriefing, activeJob] =
-    await Promise.all([
-      prisma.contentPiece.findMany({
-        where: { status: "PENDING_REVIEW" },
-        orderBy: { createdAt: "desc" },
-      }),
-      prisma.contentPiece.findMany({
-        where: { status: { in: ["APPROVED", "EDITED"] } },
-        orderBy: { createdAt: "desc" },
-      }),
-      prisma.contentPiece.findMany({
-        where: { status: "DISTRIBUTED" },
-        orderBy: { distributedAt: "desc" },
-      }),
-      prisma.contentBriefing.findFirst({
-        orderBy: { date: "desc" },
-      }),
-      prisma.generationJob.findFirst({
-        where: {
-          status: { in: ["QUEUED", "RUNNING"] },
-          startedAt: { gte: tenMinutesAgo },
-        },
-        orderBy: { startedAt: "desc" },
-        select: { id: true },
-      }),
-    ]);
+  // Only fetch content types relevant to the social content factory
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const socialTypes: any[] = ["TWITTER", "TIKTOK", "INSTAGRAM"];
+
+  const [pieces, activeJob] = await Promise.all([
+    prisma.contentPiece.findMany({
+      where: { type: { in: socialTypes } },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.generationJob.findFirst({
+      where: {
+        status: { in: ["QUEUED", "RUNNING"] },
+        startedAt: { gte: tenMinutesAgo },
+      },
+      orderBy: { startedAt: "desc" },
+      select: { id: true },
+    }),
+  ]);
 
   return NextResponse.json({
-    pendingPieces: JSON.parse(JSON.stringify(pendingPieces)),
-    readyPieces: JSON.parse(JSON.stringify(readyPieces)),
-    distributedPieces: JSON.parse(JSON.stringify(distributedPieces)),
-    latestBriefing: latestBriefing
-      ? JSON.parse(JSON.stringify(latestBriefing))
-      : null,
+    pieces: JSON.parse(JSON.stringify(pieces)),
     activeJobId: activeJob?.id ?? null,
   });
 }
