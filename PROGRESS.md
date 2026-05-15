@@ -7,6 +7,46 @@
 
 ---
 
+## [2026-05-15] — Rebuild Content Factory as on-demand generation with Instagram support
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** f267f1c
+
+### In plain English (for Keenan)
+
+The Content Factory no longer generates content automatically on a schedule. Instead, you now have four buttons: "Generate X Post", "Generate Instagram", "Generate TikTok", and "Generate All". Each button generates exactly one piece of content on demand. Instagram posts include an AI-generated square image that you can download directly. Reddit content is completely gone — no more Reddit drafts, Reddit research, or Reddit UI. The content library below the buttons has three tabs (X Posts, Instagram, TikTok Scripts) where you can see everything you've generated, copy text, download images, mark things as posted, regenerate, or delete.
+
+### Technical changes (for Jimmy)
+
+- `prisma/schema.prisma`: Added `INSTAGRAM` to `ContentType` enum (kept `REDDIT_DRAFT` in enum to avoid migration issues with existing data)
+- `apps/web/src/inngest/functions/content-factory.ts`: Removed `researchBriefingFn` (6 AM cron) and `generateDailyFn` (7 AM cron). Replaced with single `generateContentFn` that accepts `{ types: ["X_POST", "INSTAGRAM", "TIKTOK_SCRIPT"] }` via event data
+- `apps/web/src/lib/content-factory/generate.ts`: Removed `generateRedditDraft()`. Added `generateInstagramPost()` which returns caption, hashtags, and an image generation prompt. Updated `generateTwitterPosts()` and `generateTikTokScripts()` to accept null briefing and generate 1 piece at a time with random content type rotation
+- `apps/web/src/lib/content-factory/research.ts`: Removed `fetchRedditTop()` and all Reddit-related code. GA4 fetching remains for blog pipeline
+- `apps/web/src/app/admin/content-factory/content-factory-client.tsx`: Complete UI rewrite — 4 generate buttons at top, 3-tab content library at bottom with per-item actions (copy, download image, regenerate, mark posted, delete)
+- `apps/web/src/app/api/admin/content-factory/generate-now/route.ts`: Now accepts `types` array in request body
+- `apps/web/src/app/api/admin/content-factory/delete/route.ts`: New endpoint for deleting content pieces
+- `apps/web/src/app/api/admin/content-factory-data/route.ts`: Simplified to return only social content types (TWITTER, TIKTOK, INSTAGRAM)
+- `apps/web/src/app/api/inngest/route.ts`: Updated to register `generateContentFn` instead of old `researchBriefingFn` and `generateDailyFn`
+- Instagram images generated via gpt-image-2 (1024x1024) and uploaded to Supabase `content-factory-images` bucket
+
+### Manual steps needed
+
+- [ ] Keenan: Run `npx prisma db push` from home network to add INSTAGRAM to ContentType enum in Supabase
+- [ ] Keenan: Create `content-factory-images` bucket in Supabase Storage (public) — or it will be auto-created on first upload if Supabase policies allow it
+- [ ] Keenan: After deploy, go to Inngest dashboard and verify old crons (content-factory-research, content-factory-generate) are no longer registered. May need to manually archive them in Inngest Cloud if they persist
+- [ ] Keenan: Test each generate button to confirm end-to-end flow works
+
+### Notes
+
+- The `REDDIT_DRAFT` value was kept in the Prisma enum to avoid a migration error for existing data in the database. Old Reddit pieces will still exist in the DB but won't appear in the UI (data route only fetches TWITTER, TIKTOK, INSTAGRAM)
+- Instagram image generation uses the same gpt-image-2 model as AdLab, with the same OPENAI_API_KEY env var. If that key isn't set, Instagram posts will generate without an image
+- The auto-blog pipeline is completely unaffected — it runs on its own cron in auto-blog.ts
+- Content type rotation uses `Math.random()` to pick from 5 content subtypes per platform, so consecutive generations will usually produce varied content
+- The old ContentPreview and RedditDraftPreview components still exist in the repo but are no longer imported — they can be cleaned up later
+
+---
+
 ## [2026-05-15] — Fix creative copy validation rejecting valid ad copy
 
 **Requested by:** Keenan
