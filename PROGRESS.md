@@ -41,6 +41,38 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-15] — App Store download flow, badges, and Smart App Banner
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 6e2d35a
+
+### In plain English (for Keenan)
+
+The app is live on iOS, so the website now sends people to download it from the App Store instead of signing up on the web. Every "Start Free Trial" button across the entire site — hero, navbar, pricing, bottom banners, sticky mobile bar, all the /for/* landing pages — now opens the App Store listing. There's a black "Download on the App Store" badge in the hero section and footer. iPhone users browsing in Safari will also see Apple's native banner at the top of the screen that says "Open in App Store" (the Smart App Banner). The pricing card now says "Available on iPhone" below the button.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/layout.tsx`: Added `<meta name="apple-itunes-app" content="app-id=6762633410">` to `<head>` for Safari Smart App Banner
+- `apps/web/src/components/landing-shared.tsx`: Created `APP_STORE_URL` constant and `AppStoreBadge` inline SVG component. Updated all shared CTA components: `LandingNav`, `PricingSection` (+ "Available on iPhone" line), `CTABanner`, `MidPageCTA`, `StickyCTA`, `PulsingCTA`, `Footer` (+ badge). Changed from `<Link>` to `<a>` with `target="_blank"` for external links
+- `apps/web/src/components/landing.tsx`: Updated 7 CTA buttons (nav, hero mobile, hero desktop, mid-page, pricing, bottom banner, sticky mobile). Added `AppStoreBadge` to hero (mobile + desktop) and footer. Updated footer app links section with real App Store URL
+- `apps/web/src/app/for/[slug]/page.tsx`: Updated 2 direct `<Link>` CTAs (pricing button and final CTA) to `<a>` pointing to App Store
+- All `/for/*` persona landing pages automatically updated via shared `PulsingCTA`, `LandingNav`, `Footer`, `StickyCTA` components
+- UTM-tagged ad landing page URLs (getacuity.io) remain unchanged for GA4 tracking — the CTAs on those pages now route to the App Store
+
+### Manual steps needed
+
+None — deploys automatically on push.
+
+### Notes
+
+- The `waitlistUrl` variable in `PricingSection` is now dead code (still defined but unused) — can be cleaned up later
+- `/auth/signup` still works for web signup (waitlist page, direct URL) — only the marketing CTAs changed
+- AdLab `landingPageUrl` was not changed — ad creatives still point to getacuity.io so GA4 captures the visit before users click through to the App Store
+- The App Store badge is an inline SVG using system fonts — no external asset dependency
+
+---
+
 ## [2026-05-15] — Rebuild Content Factory as on-demand generation with Instagram support
 
 **Requested by:** Keenan
