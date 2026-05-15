@@ -3,7 +3,41 @@
 **Product:** Acuity — Nightly Voice Journaling
 **Stack:** Next.js 14 (web) + Expo SDK 54 (mobile) + Supabase/Prisma + Stripe
 **Production:** https://getacuity.io
-**Goal:** App Store deployment
+**Status:** v1.0 (build 42) **LIVE on App Store** as of 2026-05-15
+
+---
+
+## Live App Operating Rules (effective 2026-05-15)
+
+Real users are running build 42 on the App Store. The mobile binary cannot be re-shipped instantly; rollback is expensive. Every slice must respect the following gate.
+
+### Safe by default — no special handling
+
+- New API endpoints (additive only — no overlap with existing routes)
+- New database columns (additive only, with backfill BEFORE any deployed code reads them)
+- Web-only changes in `apps/web/*` that don't affect mobile-facing APIs
+- New EAS builds (don't reach the App Store unless explicitly promoted)
+- JS-only OTA updates via `expo-updates` that don't change native module surface area
+
+### ⚠️ Requires Jim's explicit confirmation before push
+
+- Changing existing API response shapes consumed by the mobile binary
+- Renaming or dropping database columns
+- Auth/token flow changes (login, signup, token refresh, session management)
+- Production database migrations beyond simple additive changes
+- Promoting EAS builds to App Store (vs TestFlight only)
+- Any change to `/api/record`, `/api/onboarding/*`, `/api/auth/*`, `/api/iap/*` — regardless of how minor it looks
+
+### Per-slice checklist
+
+1. Before proposing a slice, identify whether any change touches the high-risk surface above
+2. If yes, flag the slice scope with **⚠️ HIGH RISK:** prefix
+3. Propose mitigation pattern (endpoint versioning, dual-write, feature flag, gradual rollout)
+4. Wait for Jim's explicit go/no-go before implementing
+
+### Release setting
+
+All future App Store submissions are **MANUAL release**, not automatic. Jim controls when new versions go live to users via the Release button in App Store Connect.
 
 ---
 
