@@ -1,5 +1,6 @@
 /**
- * GET /api/admin/adlab/experiments/[id] — get experiment with angles
+ * GET    /api/admin/adlab/experiments/[id] — get experiment with angles
+ * DELETE /api/admin/adlab/experiments/[id] — delete experiment and all related data
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -8,6 +9,7 @@ import { requireAdmin } from "@/lib/admin-guard";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 export async function GET(
   _req: NextRequest,
@@ -73,4 +75,41 @@ export async function GET(
   }
 
   return NextResponse.json(experiment);
+}
+
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard.response;
+
+  const experiment = await prisma.adLabExperiment.findUnique({
+    where: { id: params.id },
+  });
+
+  if (!experiment) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  // Delete Meta campaign first if one exists
+  if (experiment.metaCampaignId) {
+    try {
+      const meta = await import("@/lib/adlab/meta");
+      await meta.deleteCampaign(experiment.metaCampaignId);
+    } catch (err) {
+      const { redactAccessToken } = await import("@/lib/adlab/meta");
+      console.warn(
+        "[adlab] Campaign delete failed (may already be deleted):",
+        redactAccessToken(String(err))
+      );
+    }
+  }
+
+  // Cascade delete handles: angles → creatives → ads → metrics/decisions, plus reference images
+  await prisma.adLabExperiment.delete({
+    where: { id: params.id },
+  });
+
+  return NextResponse.json({ deleted: true });
 }

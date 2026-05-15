@@ -55,6 +55,7 @@ interface Experiment {
   topicBrief: string;
   status: string;
   createdAt: string;
+  metaCampaignId: string | null;
   conclusionSummary: string | null;
   project: { name: string; slug: string };
   referenceImages?: ReferenceImage[];
@@ -128,6 +129,8 @@ export default function ExperimentDetailPage() {
   const [launchError, setLaunchError] = useState<string | null>(null);
   const [generateAllRunning, setGenerateAllRunning] = useState(false);
   const [generateAllProgress, setGenerateAllProgress] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   const loadExperiment = useCallback(async () => {
     const res = await fetch(`/api/admin/adlab/experiments/${id}`);
@@ -448,6 +451,55 @@ export default function ExperimentDetailPage() {
 
     // Clear summary after 10 seconds
     setTimeout(() => setGenerateAllProgress(null), 10_000);
+  }
+
+  async function deleteExperiment() {
+    if (!experiment) return;
+    const msg = experiment.angles.some((a) => a.creatives.some((c) => c.ads.length > 0))
+      ? "Delete this experiment? This will remove all angles, creatives, and ads from the database. If a Meta campaign exists, it will be deleted from Meta first."
+      : "Delete this experiment? This will remove all angles, creatives, and reference images from the database.";
+    if (!confirm(msg)) return;
+
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/admin/adlab/experiments/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        router.push("/admin/adlab/experiments");
+      } else {
+        const data = await res.json();
+        alert(data.error || "Delete failed");
+        setDeleting(false);
+      }
+    } catch {
+      alert("Network error during delete");
+      setDeleting(false);
+    }
+  }
+
+  async function resetToDraft() {
+    if (!experiment) return;
+    const msg = experiment.metaCampaignId
+      ? "Reset to draft? This will delete the Meta campaign and all ad records, but keep angles and creatives. You can re-launch afterwards."
+      : "Reset to draft? This will clear ad records and reset the experiment status. Angles and creatives are preserved.";
+    if (!confirm(msg)) return;
+
+    setResetting(true);
+    try {
+      const res = await fetch(`/api/admin/adlab/experiments/${id}/reset`, {
+        method: "POST",
+      });
+      if (res.ok) {
+        setLaunchResult(null);
+        setLaunchError(null);
+        await loadExperiment();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Reset failed");
+      }
+    } catch {
+      alert("Network error during reset");
+    }
+    setResetting(false);
   }
 
   if (loading) {
@@ -811,6 +863,31 @@ export default function ExperimentDetailPage() {
             })()}
           </div>
         ))}
+      </div>
+
+      {/* Danger zone — delete & reset */}
+      <div className="mt-12 border-t border-white/5 pt-8">
+        <p className="text-xs font-medium text-[#A0A0B8] uppercase tracking-wider mb-4">Danger Zone</p>
+        <div className="flex items-center gap-3 flex-wrap">
+          {experiment.status !== "draft" && (
+            <button
+              onClick={resetToDraft}
+              disabled={resetting || deleting}
+              className="inline-flex items-center gap-2 rounded-lg border border-amber-500/20 bg-amber-500/5 px-4 py-2 text-sm text-amber-400 hover:bg-amber-500/10 transition disabled:opacity-50"
+            >
+              {resetting ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+              Reset to Draft
+            </button>
+          )}
+          <button
+            onClick={deleteExperiment}
+            disabled={deleting || resetting}
+            className="inline-flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/5 px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 transition disabled:opacity-50"
+          >
+            {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+            Delete Experiment
+          </button>
+        </div>
       </div>
 
       {/* Lightbox modal */}
