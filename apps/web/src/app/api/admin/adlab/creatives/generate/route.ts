@@ -19,9 +19,9 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 const CreativeSchema = z.object({
-  headline: z.string().max(40),
-  primaryText: z.string().max(125),
-  description: z.string().max(30),
+  headline: z.string().max(255),
+  primaryText: z.string().max(2000),
+  description: z.string().max(255),
   cta: z.string(),
 });
 
@@ -182,9 +182,9 @@ ANGLE:
 - Value surface: ${angle.valueSurface}
 
 CONSTRAINTS:
-- headline: max 40 characters (Meta limit)
-- primaryText: max 125 characters (ideal display length)
-- description: max 30 characters
+- headline: max 255 characters (Meta limit)
+- primaryText: should be 1-3 sentences, roughly 80-200 characters. It can exceed 125 characters — Meta will show a "See more" link. Max 2000 characters.
+- description: max 255 characters
 - cta: one of Meta's allowed values: LEARN_MORE, SIGN_UP, GET_OFFER, DOWNLOAD, SUBSCRIBE, CONTACT_US, APPLY_NOW, BOOK_TRAVEL, SHOP_NOW, WATCH_MORE
 
 Each variant should test a meaningfully different hook or angle framing while staying true to the hypothesis.
