@@ -263,12 +263,14 @@ export default function PersonaLandingPage({ params }: { params: { slug: string 
                   </li>
                 ))}
               </ul>
-              <Link
-                href={WAITLIST}
+              <a
+                href="https://apps.apple.com/us/app/acuity-daily/id6762633410"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="block w-full rounded-full bg-[#7C5CFC] py-3.5 text-center text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-95"
               >
                 Start Free Trial
-              </Link>
+              </a>
             </div>
           </Reveal>
         </div>
@@ -287,12 +289,14 @@ export default function PersonaLandingPage({ params }: { params: { slug: string 
                 {page.ctaHeadline}
               </h2>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                <Link
-                  href={WAITLIST}
+                <a
+                  href="https://apps.apple.com/us/app/acuity-daily/id6762633410"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="rounded-full bg-[#7C5CFC] px-8 py-4 text-sm font-bold text-white transition hover:bg-[#6B4FE0] hover:-translate-y-0.5 active:scale-95"
                 >
                   Start Free Trial
-                </Link>
+                </a>
                 <span className="text-sm text-[#B0A898]">
                   Then $12.99/month &middot; No card. 90 seconds to set up.
                 </span>

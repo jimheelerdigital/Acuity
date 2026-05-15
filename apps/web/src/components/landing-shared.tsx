@@ -7,6 +7,62 @@ import { FoundingMemberBanner } from "@/components/founding-member-banner";
 import { SOCIAL_PROOF } from "@/lib/social-proof";
 
 /* ═══════════════════════════════════════════
+   App Store constants & badge
+   ═══════════════════════════════════════════ */
+
+export const APP_STORE_URL =
+  "https://apps.apple.com/us/app/acuity-daily/id6762633410";
+
+/** Official "Download on the App Store" black badge as inline SVG. */
+export function AppStoreBadge({ className = "" }: { className?: string }) {
+  return (
+    <a
+      href={APP_STORE_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={`inline-block ${className}`}
+      aria-label="Download on the App Store"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 120 40"
+        className="h-10"
+      >
+        <rect width="120" height="40" rx="6" fill="#000" />
+        <rect
+          x="0.5"
+          y="0.5"
+          width="119"
+          height="39"
+          rx="5.5"
+          stroke="#A6A6A6"
+          strokeWidth="1"
+          fill="none"
+        />
+        {/* Apple logo */}
+        <g fill="#fff" transform="translate(8,7) scale(0.55)">
+          <path d="M18.71 19.5c-.83-1.15-1.64-2.3-2.76-2.3s-1.51.68-2.83.68c-1.35 0-1.83-.7-3.08-.7s-2.22 1.22-3.08 2.43c-1.21 1.71-.99 4.94.86 7.74.66.99 1.54 2.1 2.69 2.12h.04c1.01 0 1.32-.68 2.74-.69h.04c1.39 0 1.67.68 2.71.67h.04c1.17-.02 2.09-1.24 2.75-2.23.47-.71.65-1.07 1.01-1.87-2.66-1.01-3.09-4.78-.46-6.22-.86-1.07-2.18-1.69-3.43-1.63-1.31.06-2.4.73-3.08.73s-1.95-.69-3.13-.67zM21.88 8.66c-1.69 0-3.37 1.17-4.48 3.2 3.72.18 6.56 2.62 6.56 5.23 0 .33-.05.65-.12.96 2.1-.45 3.56-2.91 3.56-5.45 0-2.45-2.26-3.94-5.52-3.94z" />
+        </g>
+        {/* Text */}
+        <text fill="#fff" fontFamily="system-ui,-apple-system,sans-serif" fontSize="7.5" x="34" y="15">
+          Download on the
+        </text>
+        <text
+          fill="#fff"
+          fontFamily="system-ui,-apple-system,sans-serif"
+          fontSize="14"
+          fontWeight="600"
+          x="34"
+          y="31"
+        >
+          App Store
+        </text>
+      </svg>
+    </a>
+  );
+}
+
+/* ═══════════════════════════════════════════
    Scroll-reveal hook & component
    ═══════════════════════════════════════════ */
 
@@ -230,14 +286,16 @@ export function PulsingCTA({
   className?: string;
 }) {
   return (
-    <Link
-      href={href}
+    <a
+      href={APP_STORE_URL}
+      target="_blank"
+      rel="noopener noreferrer"
       onClick={trackInitiateCheckout}
       className={`relative inline-flex items-center gap-2 rounded-full bg-[#7C5CFC] px-8 py-4 text-sm font-semibold text-white transition-all duration-300 hover:bg-[#6B4FE0] hover:shadow-xl hover:shadow-[#7C5CFC]/25 hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#181614] ${className}`}
     >
       <span className="absolute inset-0 rounded-full bg-[#7C5CFC]/30 animate-pulse-ring" />
       <span className="relative z-10 flex items-center gap-2">{children}</span>
-    </Link>
+    </a>
   );
 }
 
@@ -475,12 +533,15 @@ export function LandingNav() {
             </Link>
           </div>
         </div>
-        <Link
-          href="/auth/signup?utm_campaign=nav"
+        <a
+          href={APP_STORE_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={trackInitiateCheckout}
           className="rounded-full bg-[#7C5CFC] px-5 py-2 text-sm font-medium text-white transition hover:bg-[#6B4FE0] hover:shadow-lg hover:shadow-[#7C5CFC]/20 active:scale-95"
         >
-          Start Free Trial
-        </Link>
+          Download App
+        </a>
       </div>
     </nav>
     </div>
@@ -504,12 +565,15 @@ export function Footer() {
             <p className="mt-2 text-sm text-[#A0A0B8] max-w-xs">
               Debrief daily. See your life clearly.
             </p>
+            <div className="mt-4">
+              <AppStoreBadge />
+            </div>
           </div>
           <div>
             <h3 className="text-xs font-semibold uppercase tracking-wider text-white/50 mb-3">Product</h3>
             <ul className="space-y-2 text-sm text-[#A0A0B8]">
               <li><a href="/" className="transition hover:text-white">Home</a></li>
-              <li><a href="/auth/signup" className="transition hover:text-white">Start Free Trial</a></li>
+              <li><a href={APP_STORE_URL} target="_blank" rel="noopener noreferrer" className="transition hover:text-white">Download on App Store</a></li>
             </ul>
           </div>
           <div>
@@ -615,12 +679,22 @@ export function PricingSection({
                 ))}
               </ul>
 
-              <Link
-                href={waitlistUrl}
+              <a
+                href={APP_STORE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={trackInitiateCheckout}
                 className="mt-8 block w-full rounded-full bg-[#7C5CFC] py-3.5 text-center text-sm font-semibold text-white transition hover:bg-[#6B4FE0] hover:shadow-xl hover:shadow-[#7C5CFC]/20 active:scale-95"
               >
                 Start Free Trial
-              </Link>
+              </a>
+
+              <div className="mt-4 flex items-center justify-center gap-2 text-sm text-[#A0A0B8]">
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M18.71 19.5c-.83-1.15-1.64-2.3-2.76-2.3s-1.51.68-2.83.68c-1.35 0-1.83-.7-3.08-.7s-2.22 1.22-3.08 2.43c-1.21 1.71-.99 4.94.86 7.74.66.99 1.54 2.1 2.69 2.12h.04c1.01 0 1.32-.68 2.74-.69h.04c1.39 0 1.67.68 2.71.67h.04c1.17-.02 2.09-1.24 2.75-2.23.47-.71.65-1.07 1.01-1.87-2.66-1.01-3.09-4.78-.46-6.22-.86-1.07-2.18-1.69-3.43-1.63-1.31.06-2.4.73-3.08.73s-1.95-.69-3.13-.67zM21.88 8.66c-1.69 0-3.37 1.17-4.48 3.2 3.72.18 6.56 2.62 6.56 5.23 0 .33-.05.65-.12.96 2.1-.45 3.56-2.91 3.56-5.45 0-2.45-2.26-3.94-5.52-3.94z" />
+                </svg>
+                Available on iPhone
+              </div>
             </div>
           </div>
         </Reveal>
@@ -972,13 +1046,15 @@ export function CTABanner({
               </p>
             )}
             <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link
-                href={`/auth/signup?utm_campaign=${utmCampaign}`}
+              <a
+                href={APP_STORE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
                 onClick={trackInitiateCheckout}
                 className="rounded-full bg-[#7C5CFC] px-8 py-4 text-sm font-bold text-white shadow-lg shadow-[#7C5CFC]/10 transition hover:shadow-xl hover:shadow-[#7C5CFC]/20 hover:-translate-y-0.5 active:scale-95"
               >
                 {buttonText}
-              </Link>
+              </a>
               <span className="text-sm text-[#A0A0B8]">
                 Then $12.99/month &middot; No card. 90 seconds to set up.
               </span>
@@ -1354,8 +1430,10 @@ export function MidPageCTA({
               {headline}
             </p>
           )}
-          <Link
-            href={`/auth/signup?utm_campaign=${utmCampaign}`}
+          <a
+            href={APP_STORE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
             onClick={trackInitiateCheckout}
             className="inline-flex items-center gap-2 rounded-full bg-[#7C5CFC] px-8 py-4 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] hover:shadow-xl hover:shadow-[#7C5CFC]/10 active:scale-95"
           >
@@ -1363,7 +1441,7 @@ export function MidPageCTA({
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
             </svg>
-          </Link>
+          </a>
           {subheadline && (
             <p className="mt-3 text-sm text-[#A0A0B8]">{subheadline}</p>
           )}
@@ -1749,15 +1827,17 @@ export function StickyCTA({ utmCampaign }: { utmCampaign: string }) {
   return (
     <div className="fixed bottom-0 inset-x-0 z-40 sm:hidden">
       <div className="bg-[#181614]/95 backdrop-blur-lg border-t border-white/10 px-4 py-3">
-        <Link
-          href={`/auth/signup?utm_campaign=${utmCampaign}`}
+        <a
+          href={APP_STORE_URL}
+          target="_blank"
+          rel="noopener noreferrer"
           onClick={trackInitiateCheckout}
           className="block w-full rounded-full bg-[#7C5CFC] py-3.5 text-center text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98]"
         >
-          Start Free Trial
-        </Link>
+          Download on App Store
+        </a>
         <p className="mt-1.5 text-center text-xs text-[#A0A0B8]">
-          Early access — limited spots at founding member pricing
+          Free for 30 days &middot; Available on iPhone
         </p>
       </div>
     </div>

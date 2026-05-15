@@ -108,6 +108,7 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredDataJsonLd) }}
         />
+        <meta name="apple-itunes-app" content="app-id=6762633410" />
         {GOOGLE_SITE_VERIFICATION && (
           <meta name="google-site-verification" content={GOOGLE_SITE_VERIFICATION} />
         )}

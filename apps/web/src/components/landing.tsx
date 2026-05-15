@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { FoundingMemberBanner } from "@/components/founding-member-banner";
 import { SOCIAL_PROOF, STATS_STRIP } from "@/lib/social-proof";
+import { APP_STORE_URL, AppStoreBadge } from "@/components/landing-shared";
 
 /* ═══════════════════════════════════════════
    "Who it's for" dropdown for landing nav
@@ -1056,13 +1057,15 @@ export function LandingPage() {
             >
               Sign in
             </Link>
-            <Link
-              href="/auth/signup?utm_campaign=home"
+            <a
+              href={APP_STORE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
               onClick={trackInitiateCheckout}
               className="rounded-full bg-[#7C5CFC] px-5 py-2 text-sm font-medium text-white transition hover:bg-[#6B4FE0] hover:shadow-lg hover:shadow-[#7C5CFC]/40 active:scale-95"
             >
-              Start Free Trial
-            </Link>
+              Download App
+            </a>
           </div>
         </div>
       </nav>
@@ -1093,8 +1096,10 @@ export function LandingPage() {
 
               {/* CTA — mobile version (inline in hero, not just sticky bar) */}
                 <div className="mt-8 flex flex-col items-center gap-3 lg:hidden">
-                  <Link
-                    href="/auth/signup?utm_campaign=home"
+                  <a
+                    href={APP_STORE_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     onClick={trackInitiateCheckout}
                     className="group relative rounded-full p-[2px] transition active:scale-95 overflow-hidden"
                   >
@@ -1102,7 +1107,8 @@ export function LandingPage() {
                     <span className="relative block rounded-full bg-[#7C5CFC] px-7 py-3.5 text-sm font-semibold text-white">
                       Start Free Trial
                     </span>
-                  </Link>
+                  </a>
+                  <AppStoreBadge className="mt-1" />
                   <p className="text-xs text-[#A0A0B8]">
                     No card. 90 seconds to set up.
                   </p>
@@ -1110,8 +1116,10 @@ export function LandingPage() {
 
               {/* CTA — desktop version */}
                 <div className="mt-10 hidden lg:flex flex-row items-start gap-3">
-                  <Link
-                    href="/auth/signup?utm_campaign=home"
+                  <a
+                    href={APP_STORE_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     onClick={trackInitiateCheckout}
                     className="group relative rounded-full p-[2px] transition active:scale-95 overflow-hidden"
                   >
@@ -1119,13 +1127,16 @@ export function LandingPage() {
                     <span className="relative block rounded-full bg-[#7C5CFC] px-7 py-3.5 text-sm font-semibold text-white transition group-hover:bg-[#6B4FE0]">
                       Start Free Trial
                     </span>
-                  </Link>
+                  </a>
                   <a
                     href="#how-it-works"
                     className="rounded-xl border border-white/[0.06] px-7 py-3.5 text-sm font-semibold text-[#A0A0B8] transition hover:border-white/30 hover:bg-white/10 active:scale-95"
                   >
                     See how it works
                   </a>
+                </div>
+                <div className="mt-4 hidden lg:block">
+                  <AppStoreBadge />
                 </div>
                 <p className="mt-3 text-xs text-[#A0A0B8] hidden lg:block">
                   No card. 90 seconds to set up.
@@ -1511,8 +1522,10 @@ export function LandingPage() {
       {/* ───── MID-PAGE CTA ───── */}
       <section className="px-6 py-16">
           <div className="mx-auto max-w-xl text-center">
-            <Link
-              href="/auth/signup?utm_campaign=home"
+            <a
+              href={APP_STORE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
               onClick={trackInitiateCheckout}
               className="inline-flex items-center gap-2 rounded-full bg-[#7C5CFC] px-8 py-4 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] hover:shadow-xl hover:shadow-[#7C5CFC]/10 active:scale-95"
             >
@@ -1520,7 +1533,7 @@ export function LandingPage() {
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
               </svg>
-            </Link>
+            </a>
             <p className="mt-3 text-sm text-[#A0A0B8]">
               No card required · Cancel anytime
             </p>
@@ -1688,8 +1701,10 @@ export function LandingPage() {
                   ))}
                 </ul>
 
-                <Link
-                  href="/auth/signup?utm_campaign=home"
+                <a
+                  href={APP_STORE_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   onClick={trackInitiateCheckout}
                   className="group relative mt-8 block w-full rounded-full p-[2px] transition active:scale-95 overflow-hidden"
                 >
@@ -1697,7 +1712,14 @@ export function LandingPage() {
                   <span className="relative block w-full rounded-full bg-[#7C5CFC] py-3.5 text-center text-sm font-semibold text-white transition group-hover:bg-[#6B4FE0]">
                     Start Free Trial
                   </span>
-                </Link>
+                </a>
+
+                <div className="mt-4 flex items-center justify-center gap-2 text-sm text-[#A0A0B8]">
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M18.71 19.5c-.83-1.15-1.64-2.3-2.76-2.3s-1.51.68-2.83.68c-1.35 0-1.83-.7-3.08-.7s-2.22 1.22-3.08 2.43c-1.21 1.71-.99 4.94.86 7.74.66.99 1.54 2.1 2.69 2.12h.04c1.01 0 1.32-.68 2.74-.69h.04c1.39 0 1.67.68 2.71.67h.04c1.17-.02 2.09-1.24 2.75-2.23.47-.71.65-1.07 1.01-1.87-2.66-1.01-3.09-4.78-.46-6.22-.86-1.07-2.18-1.69-3.43-1.63-1.31.06-2.4.73-3.08.73s-1.95-.69-3.13-.67zM21.88 8.66c-1.69 0-3.37 1.17-4.48 3.2 3.72.18 6.56 2.62 6.56 5.23 0 .33-.05.65-.12.96 2.1-.45 3.56-2.91 3.56-5.45 0-2.45-2.26-3.94-5.52-3.94z" />
+                  </svg>
+                  Available on iPhone
+                </div>
               </div>
             </div>
         </div>
@@ -1772,8 +1794,10 @@ export function LandingPage() {
                 clearer picture of your life.
               </p>
               <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
-                <Link
-                  href="/auth/signup?utm_campaign=home"
+                <a
+                  href={APP_STORE_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   onClick={trackInitiateCheckout}
                   className="group relative rounded-full p-[2px] transition active:scale-95 overflow-hidden"
                 >
@@ -1781,7 +1805,7 @@ export function LandingPage() {
                   <span className="relative block rounded-full bg-[#7C5CFC] px-8 py-4 text-sm font-bold text-white shadow-lg shadow-[#7C5CFC]/10 transition group-hover:bg-[#6B4FE0]">
                     Start Free Trial
                   </span>
-                </Link>
+                </a>
                 <span className="text-sm text-[#A0A0B8]">
                   Then $12.99/month · cancel anytime
                 </span>
@@ -1805,14 +1829,10 @@ export function LandingPage() {
               <p className="mt-3 text-sm text-[#A0A0B8] max-w-xs leading-relaxed">
                 Talk for 60 seconds. Wake up to a clearer picture of your life. Your daily shutdown ritual.
               </p>
-              <div className="mt-6 flex items-center gap-4">
-                <a href="https://apps.apple.com" aria-label="Download on iPhone" className="inline-flex items-center gap-2 rounded-lg border border-white/[0.06] bg-white/5 px-3 py-2 text-xs text-[#A0A0B8] transition hover:text-white hover:border-white/20">
-                  <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
-                  iPhone
-                </a>
-                <a href="https://play.google.com" aria-label="Download on Android" className="inline-flex items-center gap-2 rounded-lg border border-white/[0.06] bg-white/5 px-3 py-2 text-xs text-[#A0A0B8] transition hover:text-white hover:border-white/20">
-                  <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M3.18 23.04L13.3 12.96 3.18.96C2.55 1.2 2.13 1.8 2.13 2.52v18.96c0 .72.42 1.32 1.05 1.56zm1.38.66l11.28-6.36-2.52-2.46-8.76 8.82zm14.64-8.28c.48-.3.78-.78.78-1.38s-.3-1.08-.78-1.38L16.2 11.4l-2.76 2.76 2.76 2.76 3-.48zm-14.64-8.7l8.76 8.82 2.52-2.46L4.56 6.72z"/></svg>
-                  Android
+              <div className="mt-6 flex flex-col gap-3">
+                <AppStoreBadge />
+                <a href={APP_STORE_URL} target="_blank" rel="noopener noreferrer" className="text-sm text-[#A0A0B8] transition hover:text-white hover:underline underline-offset-4">
+                  Download on the App Store
                 </a>
               </div>
               <p className="mt-6 text-xs text-[#A0A0B8]">
@@ -1825,7 +1845,7 @@ export function LandingPage() {
               <h3 className="text-xs font-semibold uppercase tracking-wider text-white/80 mb-4">Product</h3>
               <ul className="space-y-3 text-sm text-[#A0A0B8]">
                 <li><a href="/" className="transition hover:text-white hover:underline underline-offset-4">Home</a></li>
-                <li><a href="/auth/signup" className="transition hover:text-white hover:underline underline-offset-4">Start Free Trial</a></li>
+                <li><a href={APP_STORE_URL} target="_blank" rel="noopener noreferrer" className="transition hover:text-white hover:underline underline-offset-4">Download on App Store</a></li>
                 <li><a href="/auth/signin" className="transition hover:text-white hover:underline underline-offset-4">Sign In</a></li>
                 <li><a href="/#how-it-works" className="transition hover:text-white hover:underline underline-offset-4">How It Works</a></li>
                 <li><a href="/#pricing" className="transition hover:text-white hover:underline underline-offset-4">Pricing</a></li>
@@ -1868,18 +1888,20 @@ export function LandingPage() {
       {/* ───── STICKY MOBILE CTA ───── */}
       <div className="fixed bottom-0 inset-x-0 z-40 sm:hidden">
         <div className="bg-[#181614]/95 backdrop-blur-lg border-t border-white/[0.06] px-4 py-3">
-          <Link
-            href="/auth/signup?utm_campaign=home"
+          <a
+            href={APP_STORE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
             onClick={trackInitiateCheckout}
             className="group relative block w-full rounded-full p-[2px] transition active:scale-[0.98] overflow-hidden"
           >
             <span className="absolute inset-[-100%] animate-cta-shine" style={{ background: 'conic-gradient(from 0deg, transparent 0%, transparent 60%, #ffffff 75%, #B8A5FF 85%, transparent 100%)' }} />
             <span className="relative block w-full rounded-full bg-[#7C5CFC] py-3.5 text-center text-sm font-semibold text-white transition group-hover:bg-[#6B4FE0]">
-              Start Free Trial
+              Download on App Store
             </span>
-          </Link>
+          </a>
           <p className="mt-1.5 text-center text-xs text-[#A0A0B8]">
-            No card. 90 seconds to set up.
+            Free for 30 days · Available on iPhone
           </p>
         </div>
       </div>
