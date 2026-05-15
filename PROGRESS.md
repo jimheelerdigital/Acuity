@@ -7,6 +7,33 @@
 
 ---
 
+## [2026-05-15] — Debug logging for creative generation 500 error
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 974a4ec
+
+### In plain English (for Keenan)
+
+The "Generate Creatives" button in AdLab was failing with a blank 500 error and no useful information in the logs. The problem was that only the Claude AI call had error handling — if anything went wrong during image generation, file uploads, or saving to the database, the error was swallowed silently. Now the entire endpoint is wrapped in error handling, and there are 7 numbered checkpoint logs so we can see exactly which step fails when you try it again.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/api/admin/adlab/creatives/generate/route.ts`: wrapped entire POST handler body in outer try/catch that logs full stack trace and returns the error message in the 500 response
+- Added 7 numbered `[adlab-generate] Step N:` checkpoint logs: (1) fetching angle/project, (2) Claude call starting, (3) Claude call complete + parse, (4) image generation starting, (5) image generation complete, (6) saving to DB, (7) done
+- Verified `claude-sonnet-4-6` model string is correct — matches current Anthropic SDK model ID format, no change needed
+
+### Manual steps needed
+
+- [ ] Keenan: Trigger "Generate Creatives" again and check Vercel logs — the checkpoint logs will now show exactly where it dies
+
+### Notes
+
+- The most likely culprit is the image generation or Supabase upload phase, since the Claude call already had its own try/catch and was logging the "[adlab-claude] Calling model=..." line successfully before the silent crash
+- If the error turns out to be in the Claude call itself (e.g. model not found, auth issue), the inner catch will now also log the full stack trace before the outer catch
+
+---
+
 ## [2026-05-15] — Delete and reset-to-draft buttons for AdLab experiments
 
 **Requested by:** Keenan
