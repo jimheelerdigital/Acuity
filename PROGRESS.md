@@ -7,6 +7,34 @@
 
 ---
 
+## [2026-05-15] — Fix creative copy validation rejecting valid ad copy
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 383bf13
+
+### In plain English (for Keenan)
+
+When you clicked "Generate Creatives" in AdLab, the AI was writing perfectly good ad copy that our own system was rejecting. The problem was that we told the system primary text can only be 125 characters — but that's just where Meta adds a "See more" link, not the actual limit. Meta allows up to 2,200 characters. The AI was generating natural 1-3 sentence copy that went over 125 characters and our validation was throwing it out. Now the system accepts the copy Meta accepts, and the AI is guided to write 80-200 character primary text (a natural ad length) while being free to go longer when the message needs it.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/api/admin/adlab/creatives/generate/route.ts`: Updated Zod `CreativeSchema` validation limits — `primaryText` max 125→2000, `headline` max 40→255, `description` max 30→255 (all aligned to Meta's actual API limits)
+- Updated Claude system prompt `CONSTRAINTS` section to specify ideal primaryText length of 80-200 chars while allowing up to 2000, and updated headline/description limits to 255
+- This was very likely the root cause of the 500 errors from the previous debug logging session — Zod parse failure on the Claude response would trigger the catch block
+
+### Manual steps needed
+
+- [ ] Keenan: Trigger "Generate Creatives" again in AdLab to confirm it works end-to-end now
+
+### Notes
+
+- The previous session added debug checkpoint logging which will still be useful — if generation fails again, the logs will show exactly which step broke
+- Meta's true primaryText limit is 2,200 chars but we cap at 2,000 to leave a small buffer
+- The old headline limit of 40 chars was also too restrictive — Meta allows 255. Same for description (was 30, Meta allows 255)
+
+---
+
 ## [2026-05-15] — Debug logging for creative generation 500 error
 
 **Requested by:** Keenan
