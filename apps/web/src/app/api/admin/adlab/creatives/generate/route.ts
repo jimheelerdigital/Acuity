@@ -126,10 +126,13 @@ export async function POST(req: NextRequest) {
   const guard = await requireAdmin();
   if (!guard.ok) return guard.response;
 
+  try {
   const { angleId, useReferenceImages } = await req.json();
   if (!angleId) {
     return NextResponse.json({ error: "angleId required" }, { status: 400 });
   }
+
+  console.log("[adlab-generate] Step 1: fetching angle and project", { angleId, useReferenceImages });
 
   const angle = await prisma.adLabAngle.findUnique({
     where: { id: angleId },
@@ -145,6 +148,7 @@ export async function POST(req: NextRequest) {
   }
 
   const project = angle.experiment.project;
+  console.log("[adlab-generate] Step 1 complete: angle=%s project=%s imageEnabled=%s", angle.id, project.name, project.imageEnabled);
 
   // Load reference images if requested
   let referenceImageUrl: string | undefined;
@@ -163,7 +167,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // ── Step 1: Generate 3 copy variants via Claude ───────────────────
+  // ── Step 2: Generate 3 copy variants via Claude ───────────────────
   const systemPrompt = `You are an expert Meta Ads copywriter. Generate 3 creative variants for a Facebook/Instagram ad.
 
 PROJECT:
@@ -199,6 +203,7 @@ Return ONLY a JSON array of exactly 3 objects, each with: headline, primaryText,
 
   let copyVariants: z.infer<typeof CreativesArraySchema>;
 
+  console.log("[adlab-generate] Step 2: Claude copy generation starting");
   try {
     const raw = await callAdLabClaude({
       purpose: "creative-copy",
@@ -207,8 +212,11 @@ Return ONLY a JSON array of exactly 3 objects, each with: headline, primaryText,
       maxTokens: 2000,
     });
 
+    console.log("[adlab-generate] Step 3: Claude copy generation complete, raw length=%d", raw.length);
     copyVariants = CreativesArraySchema.parse(JSON.parse(extractJson(raw)));
-  } catch (err) {
+    console.log("[adlab-generate] Step 3: parsed %d copy variants", copyVariants.length);
+  } catch (err: any) {
+    console.error("[adlab-generate] Claude copy generation failed:", err?.message, err?.stack);
     return NextResponse.json(
       { error: "Copy generation failed", detail: String(err) },
       { status: 500 }
@@ -218,8 +226,9 @@ Return ONLY a JSON array of exactly 3 objects, each with: headline, primaryText,
   const allCreated: string[] = [];
   const uploadErrors: { creativeId: string; error: string }[] = [];
 
-  // ── Step 2: Image creatives (gpt-image-2) ───────────────────────────
+  // ── Step 4: Image creatives (gpt-image-2) ───────────────────────────
   if (project.imageEnabled) {
+    console.log("[adlab-generate] Step 4: image generation starting for %d variants", copyVariants.length);
     for (let vi = 0; vi < copyVariants.length; vi++) {
       const variant = copyVariants[vi];
 
@@ -234,9 +243,12 @@ Return ONLY a JSON array of exactly 3 objects, each with: headline, primaryText,
         `The ad headline is "${variant.headline}".`,
       ].join("\n");
 
+      console.log("[adlab-generate] Step 4: generating image %d/3", vi + 1);
       const imageResult = await generateImage(imagePrompt, referenceImageUrl);
+      console.log("[adlab-generate] Step 5: image %d/3 generation complete, result=%s", vi + 1, imageResult ? "ok" : "null");
 
       // Create the creative row first to get an ID for the filename
+      console.log("[adlab-generate] Step 6: saving creative %d/3 to database", vi + 1);
       const creative = await prisma.adLabCreative.create({
         data: {
           angleId,
@@ -272,7 +284,11 @@ Return ONLY a JSON array of exactly 3 objects, each with: headline, primaryText,
 
       allCreated.push(creative.id);
     }
+  } else {
+    console.log("[adlab-generate] Step 4: image generation skipped (imageEnabled=false)");
   }
+
+  console.log("[adlab-generate] Step 7: done, created %d creatives, %d upload errors", allCreated.length, uploadErrors.length);
 
   const creatives = await prisma.adLabCreative.findMany({
     where: { id: { in: allCreated } },
@@ -282,4 +298,12 @@ Return ONLY a JSON array of exactly 3 objects, each with: headline, primaryText,
     creatives,
     ...(uploadErrors.length > 0 ? { uploadErrors } : {}),
   });
+
+  } catch (error: any) {
+    console.error("[adlab-generate] UNCAUGHT ERROR:", error?.message, error?.stack);
+    return NextResponse.json(
+      { error: error?.message || "Unknown error" },
+      { status: 500 }
+    );
+  }
 }
