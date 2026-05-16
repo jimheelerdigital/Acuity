@@ -551,6 +551,21 @@ model Entry {
   status                String         @default("QUEUED")
   // User-safe error copy surfaced by onFailure handler when status=FAILED.
   errorMessage          String?
+  // Slice C cancellation marker (2026-05-16). Set by the cancel
+  // endpoint when the user taps "Cancel" on the processing screen.
+  // The Inngest pipeline checks this at the start of each step.run()
+  // — if non-null, transitions the entry to status=FAILED with a
+  // distinctive errorMessage marker ("__canceled_by_user__") so the
+  // client can introspect the marker and render a "Canceled" UI vs
+  // the generic "Failed" UI. Live build-42 binary doesn't know about
+  // this column at all; it just sees status=FAILED with an unfamiliar
+  // errorMessage, which it already handles gracefully.
+  // We deliberately do NOT introduce a CANCELED EntryStatus enum
+  // value because build-42's useEntryPolling hook treats unknown
+  // statuses as still-polling, which would hang the spinner until
+  // timeout (90s+). Using FAILED + marker keeps the live binary's
+  // terminal-state detection working.
+  canceledAt            DateTime?
   // Narrows PARTIAL state — e.g. "extract-failed", "memory-update-failed",
   // "lifemap-update-failed". Always null unless status === "PARTIAL".
   partialReason         String?
