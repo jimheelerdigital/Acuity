@@ -41,6 +41,34 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-16] — Rework compliance checker to 3-tier pass/warning/fail system
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 7f97a9e
+
+### In plain English (for Keenan)
+
+The compliance checker was blocking almost every creative. Now it uses three tiers instead of two: "pass" means no issues, "warning" means something borderline was flagged but the creative still launches (you see a yellow badge with the reason), and "fail" means genuinely prohibited content that Meta would reject — only this blocks a creative from launching. There's also a "Skip Compliance" button for when you've manually reviewed the copy and want to launch fast — it marks everything as pass immediately.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/api/admin/adlab/creatives/compliance/route.ts`: Complete rewrite of Claude compliance prompt. New 3-tier Zod schema (pass/warning/fail). Only "fail" auto-unapproves. Added `skip: true` param that bypasses Claude and marks all creatives as "pass". Compliance check failures now default to "warning" instead of blocking.
+- `apps/web/src/app/api/admin/adlab/ads/launch/route.ts`: Launch route now filters on `complianceStatus !== "fail"` instead of `=== "passed"`. Both "pass" and "warning" creatives are included. Returns `complianceSkipped` count for failed creatives.
+- `apps/web/src/app/admin/adlab/experiments/[id]/page.tsx`: Updated `COMPLIANCE_COLORS` with pass/warning/fail (plus legacy compat for passed/flagged). Added "Skip Compliance" button. Launch-ready count includes warnings. Fail shows red "Blocked" text. Warning shows yellow notes. Updated finalize filter to only count "fail" as non-launchable.
+
+### Manual steps needed
+
+None — existing "passed" and "flagged" values still render correctly via legacy compat mappings.
+
+### Notes
+
+- Old creatives with `complianceStatus: "passed"` or `"flagged"` are handled via fallback mappings in both the UI colors and badge text — no data migration needed
+- The Claude prompt is intentionally lenient. It only FAILs on: direct personal attribute callouts ("Are you depressed?"), guaranteed health/medical claims, banned phrases, discriminatory content, and illegal content
+- "Skip Compliance" is a full bypass — no Claude call, no cost. Use for manual-reviewed batches.
+
+---
+
 ## [2026-05-16] — Add app install campaign support to AdLab
 
 **Requested by:** Keenan
