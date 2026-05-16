@@ -9,7 +9,9 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import * as Sentry from "@sentry/react-native";
 
 import { AuthProvider, useAuth } from "@/contexts/auth-context";
+import { LockProvider } from "@/contexts/lock-context";
 import { ThemeProvider, useTheme } from "@/contexts/theme-context";
+import { LockScreenOverlay } from "@/components/lock-screen-overlay";
 import { initSentry, setSentryUser } from "@/lib/sentry";
 
 // Sentry init at module scope — idempotent on re-import.
@@ -89,7 +91,9 @@ function RootLayout() {
       <SafeAreaProvider>
         <ThemeProvider>
           <AuthProvider>
-            <ThemedApp />
+            <LockProvider>
+              <ThemedApp />
+            </LockProvider>
           </AuthProvider>
         </ThemeProvider>
       </SafeAreaProvider>
@@ -183,6 +187,11 @@ function ThemedApp() {
           options={{ headerShown: false }}
         />
       </Stack>
+      {/* App-level lock overlay. Mounted AFTER <Stack/> so its
+          absolute-positioned full-screen view sits above the route
+          tree's content. Renders nothing when lock is disabled or
+          user is signed out. */}
+      <LockScreenOverlay />
     </>
   );
 }

@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as Linking from "expo-linking";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Alert,
   Platform,
@@ -15,15 +15,78 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { DeleteAccountModal } from "@/components/delete-account-modal";
 import { RestorePurchasesButton } from "@/components/restore-purchases-button";
 import { useAuth } from "@/contexts/auth-context";
+import { useLock } from "@/contexts/lock-context";
 import { useTheme, type ThemeChoice } from "@/contexts/theme-context";
+import {
+  authenticate,
+  isLocalAuthCapable,
+  isLockEnabled,
+  setLockEnabled,
+} from "@/lib/app-lock";
 import { isIapEnabled } from "@/lib/iap-config";
 import { openSubscriptionPortal } from "@/lib/subscription";
 
 export default function ProfileTab() {
   const router = useRouter();
   const { user, signOut, deleteAccount, refresh } = useAuth();
+  const { lockNow } = useLock();
   const [signingOut, setSigningOut] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [lockEnabled, setLockEnabledLocal] = useState<boolean | null>(null);
+  const [lockCapable, setLockCapable] = useState<boolean>(false);
+
+  // Read current lock state + device capability on mount.
+  useEffect(() => {
+    let cancelled = false;
+    void Promise.all([isLockEnabled(), isLocalAuthCapable()]).then(
+      ([enabled, capable]) => {
+        if (cancelled) return;
+        setLockEnabledLocal(enabled);
+        setLockCapable(capable);
+      }
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleToggleLock = async () => {
+    if (lockEnabled === null) return;
+    if (lockEnabled) {
+      // Turning OFF — confirm so users don't tap it by accident.
+      Alert.alert(
+        "Turn off app lock?",
+        "Your entries will no longer require Face ID to view.",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Turn off",
+            style: "destructive",
+            onPress: async () => {
+              await setLockEnabled(false);
+              setLockEnabledLocal(false);
+            },
+          },
+        ]
+      );
+      return;
+    }
+    // Turning ON — require the user to authenticate first so we
+    // never enable the lock for a stolen unlocked phone.
+    const res = await authenticate("Confirm to enable app lock");
+    if (!res.success) {
+      Alert.alert(
+        "Couldn't enable lock",
+        "Face ID / passcode wasn't confirmed. Try again."
+      );
+      return;
+    }
+    await setLockEnabled(true);
+    setLockEnabledLocal(true);
+    // Refresh the in-memory lock cache + engage immediately so the
+    // user sees the lock take effect.
+    void lockNow();
+  };
 
   const handleSignOut = () => {
     Alert.alert("Sign out", "Are you sure you want to sign out?", [
@@ -210,6 +273,23 @@ export default function ProfileTab() {
             sublabel="When to nudge you to journal"
             onPress={() => router.push("/reminders")}
           />
+
+          {/* App lock toggle — only renders on iOS devices with
+              biometry or passcode enrolled. Default OFF. Tapping
+              requires the user to authenticate before flipping on
+              (prevents enabling on a stolen unlocked phone). */}
+          {lockCapable && lockEnabled !== null && (
+            <MenuItem
+              icon="lock-closed-outline"
+              label={lockEnabled ? "App lock: On" : "Require Face ID to open"}
+              sublabel={
+                lockEnabled
+                  ? "Face ID required after 30s in background"
+                  : "Lock Acuity with Face ID, Touch ID, or device passcode"
+              }
+              onPress={() => void handleToggleLock()}
+            />
+          )}
 
           <MenuItem
             icon="calendar-outline"
