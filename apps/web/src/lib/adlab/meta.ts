@@ -204,13 +204,33 @@ export async function uploadImage(imageUrl: string): Promise<string> {
   await getApi();
   const account = await getAdAccount();
 
+  // Fetch image and convert to base64 (bytes method avoids Meta's outbound HTTP requirement)
+  const imgResponse = await fetch(imageUrl);
+  if (!imgResponse.ok) {
+    throw new Error(`[adlab-meta] Failed to fetch image from ${imageUrl}: ${imgResponse.status}`);
+  }
+  const buffer = Buffer.from(await imgResponse.arrayBuffer());
+  const base64String = buffer.toString("base64");
+
+  console.log(`[adlab-meta] Uploading image via bytes method, size: ${buffer.length} bytes`);
+
   const image = await account.createAdImage([], {
-    url: imageUrl,
+    bytes: base64String,
   });
+
+  // URL-based method (commented out — kept as fallback if bytes method fails):
+  // const image = await account.createAdImage([], {
+  //   url: imageUrl,
+  // });
 
   // The response shape varies — try common patterns
   const hash = image?.images?.bytes?.hash || image?.hash || Object.values(image?.images || {})?.[0]?.hash;
-  if (!hash) throw new Error("Failed to get image hash from Meta upload");
+  if (!hash) {
+    console.error("[adlab-meta] Image upload failed: no hash in response", JSON.stringify(image));
+    throw new Error("Failed to get image hash from Meta upload");
+  }
+
+  console.log(`[adlab-meta] Image upload success, hash: ${hash}`);
   return hash;
 }
 
