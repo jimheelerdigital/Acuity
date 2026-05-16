@@ -13,6 +13,26 @@ import { SOCIAL_PROOF } from "@/lib/social-proof";
 export const APP_STORE_URL =
   "https://apps.apple.com/us/app/acuity-daily/id6762633410";
 
+/** Returns true on iPhone/iPad (client-side only). SSR returns false. */
+export function useIsIOS(): boolean {
+  const [isIOS, setIsIOS] = useState(false);
+  useEffect(() => {
+    const ua = navigator.userAgent;
+    setIsIOS(/iPhone|iPad|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1));
+  }, []);
+  return isIOS;
+}
+
+/**
+ * Returns the correct CTA href based on device:
+ * - iOS → App Store
+ * - Desktop/Android → /auth/signup with utm_campaign
+ */
+export function useCtaHref(utmCampaign: string): string {
+  const isIOS = useIsIOS();
+  return isIOS ? APP_STORE_URL : `/auth/signup?utm_campaign=${utmCampaign}`;
+}
+
 /** Official "Download on the App Store" black badge as inline SVG. */
 export function AppStoreBadge({ className = "" }: { className?: string }) {
   return (
@@ -285,11 +305,12 @@ export function PulsingCTA({
   children: React.ReactNode;
   className?: string;
 }) {
+  const isIOS = useIsIOS();
+  const ctaHref = isIOS ? APP_STORE_URL : href;
   return (
     <a
-      href={APP_STORE_URL}
-      target="_blank"
-      rel="noopener noreferrer"
+      href={ctaHref}
+      {...(isIOS ? { target: "_blank", rel: "noopener noreferrer" } : {})}
       onClick={trackInitiateCheckout}
       className={`relative inline-flex items-center gap-2 rounded-full bg-[#7C5CFC] px-8 py-4 text-sm font-semibold text-white transition-all duration-300 hover:bg-[#6B4FE0] hover:shadow-xl hover:shadow-[#7C5CFC]/25 hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#181614] ${className}`}
     >
@@ -501,6 +522,8 @@ function LandingWhoItsFor() {
    ═══════════════════════════════════════════ */
 
 export function LandingNav() {
+  const ctaHref = useCtaHref("nav");
+  const isIOS = useIsIOS();
   return (
     <div className="fixed top-0 inset-x-0 z-50">
       <FoundingMemberBanner />
@@ -534,13 +557,12 @@ export function LandingNav() {
           </div>
         </div>
         <a
-          href={APP_STORE_URL}
-          target="_blank"
-          rel="noopener noreferrer"
+          href={ctaHref}
+          {...(isIOS ? { target: "_blank", rel: "noopener noreferrer" } : {})}
           onClick={trackInitiateCheckout}
           className="rounded-full bg-[#7C5CFC] px-5 py-2 text-sm font-medium text-white transition hover:bg-[#6B4FE0] hover:shadow-lg hover:shadow-[#7C5CFC]/20 active:scale-95"
         >
-          Download App
+          Start Free Trial
         </a>
       </div>
     </nav>
@@ -624,7 +646,8 @@ export function PricingSection({
   subheadline?: string;
   utmCampaign: string;
 }) {
-  const waitlistUrl = `/auth/signup?utm_campaign=${utmCampaign}`;
+  const ctaHref = useCtaHref(utmCampaign);
+  const isIOS = useIsIOS();
 
   return (
     <section id="pricing" className="px-6 py-24 sm:py-32 bg-transparent">
@@ -680,9 +703,8 @@ export function PricingSection({
               </ul>
 
               <a
-                href={APP_STORE_URL}
-                target="_blank"
-                rel="noopener noreferrer"
+                href={ctaHref}
+                {...(isIOS ? { target: "_blank", rel: "noopener noreferrer" } : {})}
                 onClick={trackInitiateCheckout}
                 className="mt-8 block w-full rounded-full bg-[#7C5CFC] py-3.5 text-center text-sm font-semibold text-white transition hover:bg-[#6B4FE0] hover:shadow-xl hover:shadow-[#7C5CFC]/20 active:scale-95"
               >
@@ -1026,6 +1048,8 @@ export function CTABanner({
   buttonText?: string;
   utmCampaign: string;
 }) {
+  const ctaHref = useCtaHref(utmCampaign);
+  const isIOS = useIsIOS();
   return (
     <section className="px-6 py-24 sm:py-32">
       <Reveal>
@@ -1047,9 +1071,8 @@ export function CTABanner({
             )}
             <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
               <a
-                href={APP_STORE_URL}
-                target="_blank"
-                rel="noopener noreferrer"
+                href={ctaHref}
+                {...(isIOS ? { target: "_blank", rel: "noopener noreferrer" } : {})}
                 onClick={trackInitiateCheckout}
                 className="rounded-full bg-[#7C5CFC] px-8 py-4 text-sm font-bold text-white shadow-lg shadow-[#7C5CFC]/10 transition hover:shadow-xl hover:shadow-[#7C5CFC]/20 hover:-translate-y-0.5 active:scale-95"
               >
@@ -1421,6 +1444,8 @@ export function MidPageCTA({
   subheadline?: string;
   utmCampaign: string;
 }) {
+  const ctaHref = useCtaHref(utmCampaign);
+  const isIOS = useIsIOS();
   return (
     <section className="px-6 py-16">
       <Reveal>
@@ -1431,9 +1456,8 @@ export function MidPageCTA({
             </p>
           )}
           <a
-            href={APP_STORE_URL}
-            target="_blank"
-            rel="noopener noreferrer"
+            href={ctaHref}
+            {...(isIOS ? { target: "_blank", rel: "noopener noreferrer" } : {})}
             onClick={trackInitiateCheckout}
             className="inline-flex items-center gap-2 rounded-full bg-[#7C5CFC] px-8 py-4 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] hover:shadow-xl hover:shadow-[#7C5CFC]/10 active:scale-95"
           >
@@ -1824,20 +1848,21 @@ export function FAQSection() {
    ═══════════════════════════════════════════ */
 
 export function StickyCTA({ utmCampaign }: { utmCampaign: string }) {
+  const ctaHref = useCtaHref(utmCampaign);
+  const isIOS = useIsIOS();
   return (
     <div className="fixed bottom-0 inset-x-0 z-40 sm:hidden">
       <div className="bg-[#181614]/95 backdrop-blur-lg border-t border-white/10 px-4 py-3">
         <a
-          href={APP_STORE_URL}
-          target="_blank"
-          rel="noopener noreferrer"
+          href={ctaHref}
+          {...(isIOS ? { target: "_blank", rel: "noopener noreferrer" } : {})}
           onClick={trackInitiateCheckout}
           className="block w-full rounded-full bg-[#7C5CFC] py-3.5 text-center text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98]"
         >
-          Download on App Store
+          {isIOS ? "Download on App Store" : "Start Free Trial"}
         </a>
         <p className="mt-1.5 text-center text-xs text-[#A0A0B8]">
-          Free for 30 days &middot; Available on iPhone
+          Free for 30 days &middot; {isIOS ? "Available on iPhone" : "No card required"}
         </p>
       </div>
     </div>

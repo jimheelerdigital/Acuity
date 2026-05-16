@@ -13,6 +13,8 @@ import {
   TrustStrip,
   FAQSection,
   StickyCTA,
+  useCtaHref,
+  useIsIOS,
 } from "@/components/landing-shared";
 import { getPersonaBySlug } from "@/lib/persona-pages";
 import { notFound } from "next/navigation";
@@ -23,6 +25,8 @@ export default function PersonaLandingPage({ params }: { params: { slug: string 
 
   const UTM = params.slug;
   const WAITLIST = `/auth/signup?utm_campaign=${UTM}`;
+  const ctaHref = useCtaHref(UTM);
+  const isIOS = useIsIOS();
 
   // Set first-touch attribution cookie on landing page visit
   useEffect(() => {
@@ -264,9 +268,8 @@ export default function PersonaLandingPage({ params }: { params: { slug: string 
                 ))}
               </ul>
               <a
-                href="https://apps.apple.com/us/app/acuity-daily/id6762633410"
-                target="_blank"
-                rel="noopener noreferrer"
+                href={ctaHref}
+                {...(isIOS ? { target: "_blank", rel: "noopener noreferrer" } : {})}
                 className="block w-full rounded-full bg-[#7C5CFC] py-3.5 text-center text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-95"
               >
                 Start Free Trial

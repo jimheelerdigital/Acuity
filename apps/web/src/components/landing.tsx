@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { FoundingMemberBanner } from "@/components/founding-member-banner";
 import { SOCIAL_PROOF, STATS_STRIP } from "@/lib/social-proof";
-import { APP_STORE_URL, AppStoreBadge } from "@/components/landing-shared";
+import { APP_STORE_URL, AppStoreBadge, useIsIOS, useCtaHref } from "@/components/landing-shared";
 
 /* ═══════════════════════════════════════════
    "Who it's for" dropdown for landing nav
@@ -892,6 +892,8 @@ function trackInitiateCheckout() {
 
 export function LandingPage() {
   const [tickerPaused, setTickerPaused] = useState(false);
+  const isIOS = useIsIOS();
+  const ctaHref = useCtaHref("home");
 
   // Set first-touch attribution cookie on landing
   useEffect(() => {
@@ -1058,13 +1060,12 @@ export function LandingPage() {
               Sign in
             </Link>
             <a
-              href={APP_STORE_URL}
-              target="_blank"
-              rel="noopener noreferrer"
+              href={ctaHref}
+              {...(isIOS ? { target: "_blank", rel: "noopener noreferrer" } : {})}
               onClick={trackInitiateCheckout}
               className="rounded-full bg-[#7C5CFC] px-5 py-2 text-sm font-medium text-white transition hover:bg-[#6B4FE0] hover:shadow-lg hover:shadow-[#7C5CFC]/40 active:scale-95"
             >
-              Download App
+              Start Free Trial
             </a>
           </div>
         </div>
@@ -1097,9 +1098,8 @@ export function LandingPage() {
               {/* CTA — mobile version (inline in hero, not just sticky bar) */}
                 <div className="mt-8 flex flex-col items-center gap-3 lg:hidden">
                   <a
-                    href={APP_STORE_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    href={ctaHref}
+                    {...(isIOS ? { target: "_blank", rel: "noopener noreferrer" } : {})}
                     onClick={trackInitiateCheckout}
                     className="group relative rounded-full p-[2px] transition active:scale-95 overflow-hidden"
                   >
@@ -1108,6 +1108,13 @@ export function LandingPage() {
                       Start Free Trial
                     </span>
                   </a>
+                  <a
+                    href="#how-it-works"
+                    className="rounded-full border px-7 py-3.5 text-sm font-semibold text-[#F5EDE4] transition hover:border-[#F5EDE4]/60 active:scale-95"
+                    style={{ borderColor: 'rgba(245, 237, 228, 0.3)' }}
+                  >
+                    See how it works
+                  </a>
                   <AppStoreBadge className="mt-1" />
                   <p className="text-xs text-[#A0A0B8]">
                     No card. 90 seconds to set up.
@@ -1115,32 +1122,36 @@ export function LandingPage() {
                 </div>
 
               {/* CTA — desktop version */}
-                <div className="mt-10 hidden lg:flex flex-row items-start gap-3">
-                  <a
-                    href={APP_STORE_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={trackInitiateCheckout}
-                    className="group relative rounded-full p-[2px] transition active:scale-95 overflow-hidden"
-                  >
-                    <span className="absolute inset-[-100%] animate-cta-shine" style={{ background: 'conic-gradient(from 0deg, transparent 0%, transparent 60%, #ffffff 75%, #B8A5FF 85%, transparent 100%)' }} />
-                    <span className="relative block rounded-full bg-[#7C5CFC] px-7 py-3.5 text-sm font-semibold text-white transition group-hover:bg-[#6B4FE0]">
-                      Start Free Trial
-                    </span>
-                  </a>
-                  <a
-                    href="#how-it-works"
-                    className="rounded-xl border border-white/[0.06] px-7 py-3.5 text-sm font-semibold text-[#A0A0B8] transition hover:border-white/30 hover:bg-white/10 active:scale-95"
-                  >
-                    See how it works
-                  </a>
+                <div className="mt-10 hidden lg:flex flex-col items-start gap-4">
+                  <div className="flex flex-row items-center gap-3">
+                    <a
+                      href={ctaHref}
+                      {...(isIOS ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                      onClick={trackInitiateCheckout}
+                      className="group relative rounded-full p-[2px] transition active:scale-95 overflow-hidden"
+                    >
+                      <span className="absolute inset-[-100%] animate-cta-shine" style={{ background: 'conic-gradient(from 0deg, transparent 0%, transparent 60%, #ffffff 75%, #B8A5FF 85%, transparent 100%)' }} />
+                      <span className="relative block rounded-full bg-[#7C5CFC] px-7 py-3.5 text-sm font-semibold text-white transition group-hover:bg-[#6B4FE0]">
+                        Start Free Trial
+                      </span>
+                    </a>
+                    <a
+                      href="#how-it-works"
+                      className="rounded-full px-7 py-3.5 text-sm font-semibold text-[#F5EDE4] transition hover:border-[#F5EDE4]/60 active:scale-95"
+                      style={{ border: '1px solid rgba(245, 237, 228, 0.3)' }}
+                      onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'rgba(245, 237, 228, 0.6)')}
+                      onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'rgba(245, 237, 228, 0.3)')}
+                    >
+                      See how it works
+                    </a>
+                  </div>
+                  <div className="flex flex-col items-center w-fit">
+                    <AppStoreBadge />
+                    <p className="mt-3 text-xs text-[#A0A0B8]">
+                      No card. 90 seconds to set up.
+                    </p>
+                  </div>
                 </div>
-                <div className="mt-4 hidden lg:block">
-                  <AppStoreBadge />
-                </div>
-                <p className="mt-3 text-xs text-[#A0A0B8] hidden lg:block">
-                  No card. 90 seconds to set up.
-                </p>
             </div>
 
             {/* Right side: Enhanced animated phone mockups — desktop only */}
@@ -1523,9 +1534,8 @@ export function LandingPage() {
       <section className="px-6 py-16">
           <div className="mx-auto max-w-xl text-center">
             <a
-              href={APP_STORE_URL}
-              target="_blank"
-              rel="noopener noreferrer"
+              href={ctaHref}
+              {...(isIOS ? { target: "_blank", rel: "noopener noreferrer" } : {})}
               onClick={trackInitiateCheckout}
               className="inline-flex items-center gap-2 rounded-full bg-[#7C5CFC] px-8 py-4 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] hover:shadow-xl hover:shadow-[#7C5CFC]/10 active:scale-95"
             >
@@ -1702,9 +1712,8 @@ export function LandingPage() {
                 </ul>
 
                 <a
-                  href={APP_STORE_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  href={ctaHref}
+                  {...(isIOS ? { target: "_blank", rel: "noopener noreferrer" } : {})}
                   onClick={trackInitiateCheckout}
                   className="group relative mt-8 block w-full rounded-full p-[2px] transition active:scale-95 overflow-hidden"
                 >
@@ -1795,9 +1804,8 @@ export function LandingPage() {
               </p>
               <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
                 <a
-                  href={APP_STORE_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  href={ctaHref}
+                  {...(isIOS ? { target: "_blank", rel: "noopener noreferrer" } : {})}
                   onClick={trackInitiateCheckout}
                   className="group relative rounded-full p-[2px] transition active:scale-95 overflow-hidden"
                 >
@@ -1889,19 +1897,18 @@ export function LandingPage() {
       <div className="fixed bottom-0 inset-x-0 z-40 sm:hidden">
         <div className="bg-[#181614]/95 backdrop-blur-lg border-t border-white/[0.06] px-4 py-3">
           <a
-            href={APP_STORE_URL}
-            target="_blank"
-            rel="noopener noreferrer"
+            href={ctaHref}
+            {...(isIOS ? { target: "_blank", rel: "noopener noreferrer" } : {})}
             onClick={trackInitiateCheckout}
             className="group relative block w-full rounded-full p-[2px] transition active:scale-[0.98] overflow-hidden"
           >
             <span className="absolute inset-[-100%] animate-cta-shine" style={{ background: 'conic-gradient(from 0deg, transparent 0%, transparent 60%, #ffffff 75%, #B8A5FF 85%, transparent 100%)' }} />
             <span className="relative block w-full rounded-full bg-[#7C5CFC] py-3.5 text-center text-sm font-semibold text-white transition group-hover:bg-[#6B4FE0]">
-              Download on App Store
+              {isIOS ? "Download on App Store" : "Start Free Trial"}
             </span>
           </a>
           <p className="mt-1.5 text-center text-xs text-[#A0A0B8]">
-            Free for 30 days · Available on iPhone
+            {isIOS ? "Free for 30 days · Available on iPhone" : "No card. 90 seconds to set up."}
           </p>
         </div>
       </div>
