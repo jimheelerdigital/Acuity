@@ -18,6 +18,14 @@ import {
   type User,
 } from "@/lib/auth";
 import { recoverPurchasesIfNeeded, resetRecoveryDebounce } from "@/lib/iap";
+import {
+  IDLE_EXPIRY_MS,
+  decideSessionGate,
+  getLastActiveMs,
+  isFirstLaunchSeen,
+  markFirstLaunchSeen,
+  recordActive,
+} from "@/lib/session-expiry";
 import { tokenBridge } from "@/lib/token-bridge";
 
 export type DeleteAccountResult =
@@ -182,8 +190,69 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // Session-gate + initial refresh. Runs ONCE on mount.
+  //
+  // Sequence:
+  //   1. Read AsyncStorage flags (clears on uninstall) + SecureStore
+  //      token presence (doesn't clear on uninstall — that's the
+  //      bug we're fixing).
+  //   2. decideSessionGate() returns an action: keep / clear-stale
+  //      (idle expiry) / clear-uninstalled (fresh install but
+  //      keychain still has stale token).
+  //   3. Apply the action (clear keychain if needed; mark launched;
+  //      record active).
+  //   4. Run normal refresh() to hydrate user state from server.
+  //
+  // Migration-safety: existing live build-42 users do NOT have the
+  // AsyncStorage flag yet. On their first launch of build 43+ the
+  // gate hits case A (migration) — token kept, flag marked. No mass
+  // logout. See lib/session-expiry.ts decideSessionGate() for the
+  // full case table.
   useEffect(() => {
-    refresh();
+    let cancelled = false;
+    (async () => {
+      try {
+        const [hasLaunchedBefore, lastActive] = await Promise.all([
+          isFirstLaunchSeen(),
+          getLastActiveMs(),
+        ]);
+        const token = await getToken();
+        if (cancelled) return;
+
+        const decision = decideSessionGate({
+          hasLaunchedBefore,
+          tokenPresent: !!token,
+          lastActiveMs: lastActive,
+          nowMs: Date.now(),
+          idleThresholdMs: IDLE_EXPIRY_MS,
+        });
+
+        if (decision.action === "clear-stale") {
+          // Idle expiry — keychain token is older than the threshold.
+          // clearSession() wipes SecureStore + memoryToken; refresh()
+          // below will then route to sign-in.
+          await clearSession();
+          tokenBridge.set(null);
+        }
+        if (decision.markLaunched) {
+          await markFirstLaunchSeen();
+        }
+        if (decision.recordActiveNow) {
+          await recordActive();
+        }
+      } catch (err) {
+        // Best-effort: if the gate read/write fails for any reason,
+        // fall through to refresh() with current state. Better to
+        // leave a user signed in than to crash the app start path.
+        console.warn("[session-gate] failed:", err);
+      }
+      if (!cancelled) {
+        void refresh();
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [refresh]);
 
   // IAP recovery on user-load. Fires once per session (debounced inside
@@ -218,11 +287,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // server's subscriptionStatus may have changed. Re-fetch on any
   // background→active transition so local state catches up without
   // requiring a sign-out / sign-in cycle.
+  //
+  // Also bumps the AsyncStorage last-active timestamp (Slice A
+  // idle-expiry tracking). Every foreground transition counts as
+  // user activity for the 30-day idle clock.
   useEffect(() => {
     const sub = AppState.addEventListener("change", (next: AppStateStatus) => {
       const prev = appState.current;
       appState.current = next;
       if (prev.match(/inactive|background/) && next === "active") {
+        void recordActive();
         refresh();
       }
     });
