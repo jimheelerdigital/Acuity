@@ -1,6 +1,7 @@
 /**
  * POST /api/admin/adlab/creatives/compliance — run compliance check.
- * Accepts { creativeId } for single or { experimentId } for batch.
+ * Accepts { creativeId } for single, { experimentId } for batch,
+ * or { experimentId, skip: true } to bypass and mark all as "pass".
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -14,9 +15,9 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 120;
 
 const ComplianceResultSchema = z.object({
-  status: z.enum(["passed", "flagged"]),
+  status: z.enum(["pass", "warning", "fail"]),
   notes: z.string(),
-  flaggedReasons: z.array(z.string()),
+  reasons: z.array(z.string()),
 });
 
 async function checkCreative(
@@ -25,24 +26,36 @@ async function checkCreative(
 ): Promise<z.infer<typeof ComplianceResultSchema>> {
   const isVideo = creative.creativeType === "video";
 
-  const systemPrompt = `You are a Meta Ads compliance reviewer. Check the ad ${isVideo ? "copy AND spoken video script" : "copy"} below against Meta's advertising policies.
+  const systemPrompt = `You are reviewing ad copy for Meta (Facebook/Instagram) ads. Your job is to classify each creative as PASS, WARNING, or FAIL.
 
-FLAG if the ad contains ANY of these violations:
-1. PERSONAL ATTRIBUTES: Uses "you" in a way that implies inferred traits (race, religion, financial status, sexual orientation, mental/physical condition). Example flagged: "Are you struggling with anxiety?" Example OK: "Many people find relief through daily reflection."
-2. HEALTH/MEDICAL CLAIMS: Claims to diagnose, treat, cure, or prevent medical conditions.
-3. BEFORE/AFTER: Implies unrealistic transformation or uses before/after framing.
-4. PROHIBITED FINANCIAL CLAIMS: Guaranteed returns, get-rich language.
-5. PROFANITY or vulgar language.
-6. SENSATIONAL LANGUAGE: Excessive exclamation marks, all caps, clickbait.
-7. PROHIBITED CONTENT: Weapons, drugs, adult content, discrimination.
-8. THIRD-PARTY INFRINGEMENT: Unauthorized use of trademarks or celebrity names.
-${isVideo ? "\n9. VIDEO-SPECIFIC: Spoken claims that would violate Meta policy when heard (health guarantees, income claims, personal attribute assumptions). The script text is the spoken content — review it as if a viewer would hear it." : ""}
+FAIL — only use this for content that Meta will definitely reject:
+- Directly calling out personal attributes: "Are you depressed?", "As someone with ADHD", "Do you have anxiety?" (Meta prohibits addressing users by personal attributes including race, ethnicity, religion, health conditions, sexual orientation, financial status, criminal record)
+- Discriminatory content targeting protected classes
+- Claims of guaranteed medical/health outcomes: "Acuity will cure your anxiety", "guaranteed to fix your sleep"
+- Deceptive or intentionally misleading claims
+- Content promoting illegal activities
+- Any phrases on the project's banned phrases list: ${bannedPhrases.map((p) => `"${p}"`).join(", ") || "(none)"}
 
-ALSO FLAG if the ad contains any of these project-specific banned phrases:
-${bannedPhrases.map((p) => `- "${p}"`).join("\n")}
+WARNING — flag but allow to proceed:
+- Implied before/after claims that could be interpreted as health promises
+- Copy that borders on calling out personal attributes but doesn't directly address the user ("Many people with ADHD find..." is borderline)
+- Aggressive urgency or scarcity tactics
+- Unverifiable statistics or social proof claims
 
-Return ONLY a JSON object: { "status": "passed" | "flagged", "notes": "brief explanation", "flaggedReasons": ["reason1", ...] }
-If passed, flaggedReasons should be an empty array.`;
+PASS — everything else, including:
+- Emotional language and hooks
+- Standard persuasive marketing copy
+- Testimonial-style language
+- Problem/solution framing
+- Bold product benefit claims
+- Social proof without specific numbers
+- Humor, irony, or provocative statements that aren't discriminatory
+
+Be lenient. Most ad copy is acceptable. Only FAIL content that would genuinely get rejected by Meta's automated ad review. When in doubt, mark as WARNING not FAIL.
+${isVideo ? "\nThis is a video creative — the script text below is the spoken content. Review it as if a viewer would hear it." : ""}
+
+Return ONLY a JSON object: { "status": "pass" | "warning" | "fail", "notes": "brief explanation", "reasons": ["reason1", ...] }
+If status is "pass", reasons should be an empty array.`;
 
   const userPrompt = `Check this ad ${isVideo ? "(video creative)" : "(image creative)"}:
 Headline: ${creative.headline}
@@ -60,7 +73,8 @@ CTA: ${creative.cta}${isVideo && creative.generationPrompt ? `\n\nSpoken Video S
 
     return ComplianceResultSchema.parse(JSON.parse(extractJson(raw)));
   } catch {
-    return { status: "flagged", notes: "Compliance check failed — manual review required", flaggedReasons: ["check_failed"] };
+    // If compliance check itself fails, pass with a warning rather than blocking
+    return { status: "warning", notes: "Compliance check failed — manual review recommended", reasons: ["check_failed"] };
   }
 }
 
@@ -68,7 +82,24 @@ export async function POST(req: NextRequest) {
   const guard = await requireAdmin();
   if (!guard.ok) return guard.response;
 
-  const { creativeId, experimentId } = await req.json();
+  const { creativeId, experimentId, skip } = await req.json();
+
+  // Skip compliance: mark all creatives as "pass" immediately
+  if (skip && experimentId) {
+    const experiment = await prisma.adLabExperiment.findUnique({
+      where: { id: experimentId },
+      include: { angles: { include: { creatives: { select: { id: true } } } } },
+    });
+    if (!experiment) {
+      return NextResponse.json({ error: "Experiment not found" }, { status: 404 });
+    }
+    const allIds = experiment.angles.flatMap((a) => a.creatives.map((c) => c.id));
+    await prisma.adLabCreative.updateMany({
+      where: { id: { in: allIds } },
+      data: { complianceStatus: "pass", complianceNotes: "Skipped — manual review" },
+    });
+    return NextResponse.json({ checked: allIds.length, skipped: true, results: allIds.map((id) => ({ id, status: "pass" })) });
+  }
 
   let creatives: { id: string; headline: string; primaryText: string; description: string; cta: string; creativeType?: string; generationPrompt?: string | null }[];
   let bannedPhrases: string[] = [];
@@ -119,9 +150,9 @@ export async function POST(req: NextRequest) {
           where: { id: creative.id },
           data: {
             complianceStatus: result.status,
-            complianceNotes: result.notes + (result.flaggedReasons.length > 0 ? `\nReasons: ${result.flaggedReasons.join(", ")}` : ""),
-            // Auto-unapprove flagged creatives — a flagged creative can never stay approved
-            ...(result.status === "flagged" ? { approved: false } : {}),
+            complianceNotes: result.notes + (result.reasons.length > 0 ? `\nReasons: ${result.reasons.join(", ")}` : ""),
+            // Only auto-unapprove on fail — warnings still proceed
+            ...(result.status === "fail" ? { approved: false } : {}),
           },
         });
         return { id: creative.id, status: result.status, notes: result.notes };
@@ -130,12 +161,14 @@ export async function POST(req: NextRequest) {
     results.push(...batchResults);
   }
 
-  const flaggedCount = results.filter((r) => r.status === "flagged").length;
+  const failCount = results.filter((r) => r.status === "fail").length;
+  const warnCount = results.filter((r) => r.status === "warning").length;
 
   return NextResponse.json({
     checked: results.length,
     results,
-    flaggedCount,
-    flaggedAutoUnapproved: flaggedCount,
+    failCount,
+    warnCount,
+    passCount: results.length - failCount - warnCount,
   });
 }

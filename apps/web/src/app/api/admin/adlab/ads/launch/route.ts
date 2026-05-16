@@ -67,16 +67,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "No approved creatives" }, { status: 400 });
   }
 
-  // Check compliance
-  const nonCompliant = approvedCreatives.filter((c) => c.complianceStatus !== "passed");
-  if (nonCompliant.length > 0) {
+  // Check compliance — only "fail" status blocks launch. "pass" and "warning" both proceed.
+  const failedCompliance = approvedCreatives.filter((c) => c.complianceStatus === "fail");
+  const launchableCreatives = approvedCreatives.filter((c) => c.complianceStatus !== "fail");
+
+  if (launchableCreatives.length === 0) {
     return NextResponse.json(
       {
-        error: "Cannot launch — some approved creatives have not passed compliance",
-        ids: nonCompliant.map((c) => c.id),
+        error: "Cannot launch — all approved creatives failed compliance. Edit the copy or generate new variants.",
+        ids: failedCompliance.map((c) => c.id),
       },
       { status: 400 }
     );
+  }
+
+  // Log if some creatives were skipped
+  if (failedCompliance.length > 0) {
+    console.log(`[adlab-launch] Skipping ${failedCompliance.length} creative(s) that failed compliance: ${failedCompliance.map((c) => c.id).join(", ")}`);
   }
 
   const isAppInstall = (experiment as Record<string, unknown>).campaignType === "app_install";
@@ -199,8 +206,8 @@ export async function POST(req: NextRequest) {
 
     const audience = project.targetAudience as Record<string, unknown>;
 
-    // 2. For each approved creative, create ad set + ad
-    for (const creative of approvedCreatives) {
+    // 2. For each launchable creative (pass or warning), create ad set + ad
+    for (const creative of launchableCreatives) {
       const creativeType = (creative as Record<string, unknown>).creativeType as string || "image";
       const creativeLabel = `${creativeType} creative ${creative.id.slice(0, 8)}`;
 
@@ -385,6 +392,7 @@ export async function POST(req: NextRequest) {
       campaignName,
       created,
       errors,
+      complianceSkipped: failedCompliance.length,
       status: errors.length > 0 ? "partial" : "ready",
     });
   } catch (err) {

@@ -103,8 +103,11 @@ const STATUS_COLORS: Record<string, string> = {
 
 const COMPLIANCE_COLORS: Record<string, string> = {
   pending: "border-zinc-500/30",
-  passed: "border-emerald-500/30",
-  flagged: "border-amber-500/50",
+  pass: "border-emerald-500/30",
+  passed: "border-emerald-500/30", // legacy compat
+  warning: "border-amber-500/50",
+  flagged: "border-amber-500/50", // legacy compat
+  fail: "border-red-500/50",
 };
 
 export default function ExperimentDetailPage() {
@@ -198,23 +201,28 @@ export default function ExperimentDetailPage() {
     await loadExperiment();
   }
 
-  async function runCompliance() {
+  async function runCompliance(skip = false) {
     if (!experiment) return;
     setComplianceRunning(true);
     setComplianceMessage(null);
     const res = await fetch("/api/admin/adlab/creatives/compliance", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ experimentId: experiment.id }),
+      body: JSON.stringify({ experimentId: experiment.id, skip }),
     });
     if (res.ok) {
       const data = await res.json();
-      if (data.flaggedCount > 0) {
-        setComplianceMessage(
-          `${data.flaggedCount} creative${data.flaggedCount === 1 ? " was" : "s were"} flagged and auto-unapproved. Edit the copy and re-check, or generate new variants.`
-        );
+      if (data.skipped) {
+        setComplianceMessage("Compliance skipped — all creatives marked as pass.");
+      } else if (data.failCount > 0) {
+        const parts = [];
+        parts.push(`${data.failCount} failed (blocked from launch)`);
+        if (data.warnCount > 0) parts.push(`${data.warnCount} warnings (will still launch)`);
+        setComplianceMessage(parts.join(". ") + ".");
+      } else if (data.warnCount > 0) {
+        setComplianceMessage(`All creatives can launch. ${data.warnCount} warning${data.warnCount === 1 ? "" : "s"} flagged for review.`);
       } else {
-        setComplianceMessage(null);
+        setComplianceMessage("All creatives passed compliance.");
       }
     }
     await loadExperiment();
@@ -225,7 +233,7 @@ export default function ExperimentDetailPage() {
     if (!experiment) return;
 
     const allCreatives = experiment.angles.flatMap((a) => a.creatives);
-    const toDeleteCount = allCreatives.filter((c) => !c.approved || c.complianceStatus === "flagged").length;
+    const toDeleteCount = allCreatives.filter((c) => !c.approved || c.complianceStatus === "fail").length;
 
     if (toDeleteCount === 0) {
       alert("Nothing to clean up — all creatives are approved and compliant.");
@@ -518,9 +526,9 @@ export default function ExperimentDetailPage() {
   const allCreatives = experiment.angles.flatMap((a) => a.creatives);
   const hasCreatives = allCreatives.length > 0;
   const allAnglesAdvanced = experiment.angles.length > 0 && experiment.angles.every((a) => a.advanced);
-  const hasUnapprovedCreatives = allCreatives.some((c) => !c.approved || c.complianceStatus === "flagged");
+  const hasUnapprovedCreatives = allCreatives.some((c) => !c.approved || c.complianceStatus === "fail");
   const approvedCount = allCreatives.filter((c) => c.approved).length;
-  const launchReadyCount = allCreatives.filter((c) => c.approved && c.complianceStatus === "passed").length;
+  const launchReadyCount = allCreatives.filter((c) => c.approved && c.complianceStatus !== "fail").length;
   const anglesWithoutCreatives = experiment.angles.filter((a) => a.advanced && a.creatives.length === 0).length;
 
   return (
@@ -699,14 +707,24 @@ export default function ExperimentDetailPage() {
 
         {/* Compliance check */}
         {hasCreatives && (
-          <button
-            onClick={runCompliance}
-            disabled={complianceRunning}
-            className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-4 py-2 text-sm text-[#A0A0B8] hover:text-white hover:border-white/20 transition disabled:opacity-50"
-          >
-            {complianceRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Shield className="h-4 w-4" />}
-            Run Compliance Check
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => runCompliance(false)}
+              disabled={complianceRunning}
+              className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-4 py-2 text-sm text-[#A0A0B8] hover:text-white hover:border-white/20 transition disabled:opacity-50"
+            >
+              {complianceRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Shield className="h-4 w-4" />}
+              Run Compliance Check
+            </button>
+            <button
+              onClick={() => runCompliance(true)}
+              disabled={complianceRunning}
+              className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-4 py-2 text-sm text-[#A0A0B8] hover:text-white hover:border-white/20 transition disabled:opacity-50"
+              title="Skip compliance and mark all creatives as pass"
+            >
+              Skip Compliance
+            </button>
+          </div>
         )}
 
         {/* Finalize creatives — only show if there are unapproved ones to clean */}
@@ -1098,13 +1116,15 @@ function CreativeCard({
               {creative.cta}
             </span>
             <span className={`rounded px-1.5 py-0.5 text-[9px] font-medium ${
-              creative.complianceStatus === "passed"
+              creative.complianceStatus === "pass" || creative.complianceStatus === "passed"
                 ? "bg-emerald-500/15 text-emerald-400"
-                : creative.complianceStatus === "flagged"
+                : creative.complianceStatus === "warning" || creative.complianceStatus === "flagged"
                   ? "bg-amber-500/15 text-amber-400"
-                  : "bg-zinc-500/15 text-zinc-400"
+                  : creative.complianceStatus === "fail"
+                    ? "bg-red-500/15 text-red-400"
+                    : "bg-zinc-500/15 text-zinc-400"
             }`}>
-              {creative.complianceStatus}
+              {creative.complianceStatus === "passed" ? "pass" : creative.complianceStatus === "flagged" ? "warning" : creative.complianceStatus}
             </span>
           </div>
 
@@ -1120,9 +1140,19 @@ function CreativeCard({
           </button>
         </div>
 
+        {creative.complianceStatus === "warning" && creative.complianceNotes && (
+          <p className="text-[10px] text-amber-400 leading-relaxed mt-1">
+            {creative.complianceNotes}
+          </p>
+        )}
         {creative.complianceStatus === "flagged" && creative.complianceNotes && (
           <p className="text-[10px] text-amber-400 leading-relaxed mt-1">
             {creative.complianceNotes}
+          </p>
+        )}
+        {creative.complianceStatus === "fail" && creative.complianceNotes && (
+          <p className="text-[10px] text-red-400 leading-relaxed mt-1">
+            Blocked: {creative.complianceNotes}
           </p>
         )}
       </div>
