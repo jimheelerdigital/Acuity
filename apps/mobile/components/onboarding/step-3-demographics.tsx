@@ -11,69 +11,74 @@ import {
 import { useOnboarding } from "./context";
 
 /**
- * Step 3 — Demographics. Five fields, all optional. Tone set by the
- * "Skip anything you'd rather not share" header so the user reads this
- * as non-extractive before they scan the chips.
+ * Step 3 — Demographics, split into TWO screens (2026-05-15 Slice G2
+ * density restructure). The single 5-section screen was the heaviest
+ * by 4x (401 LOC, 11 Text, 3 selectors) and was the most-cited
+ * "overwhelming" surface in user testing. Split:
  *
- * Country default: expo-localization's region code when it's in our
- * short list; otherwise left blank (user picks manually or leaves
- * "Prefer not to say"). No IP geolocation — avoids a server round
- * trip and the privacy ambiguity of a third-party IP-to-country
- * service for a field the user can set themselves.
+ *   - Step3AboutYou   → Age + Gender + Country (factual demographics)
+ *   - Step3Context    → Primary reasons + Life stage (intent/context)
+ *
+ * Each step persists its OWN subset of the demographics payload via
+ * setCapturedData. The shell's persist() flow posts each step's data
+ * independently to /api/onboarding/update, which cherry-picks fields
+ * into userUpdates — so server contract is unchanged. No backfill
+ * required for users mid-onboarding when this ships; their existing
+ * captured data on step 3 just maps to the AboutYou half (the new
+ * step 3) and they'll see step 4 (Context) on next mount.
+ *
+ * Shared chip/section helpers stay in this file so both halves render
+ * consistently. Country picker stays inline with AboutYou — its
+ * footprint is collapsed by default.
  */
 
 const AGE_RANGES = ["18-24", "25-34", "35-44", "45-54", "55+"] as const;
 const GENDERS = ["Male", "Female", "Non-binary", "Prefer not to say"] as const;
 const REASONS = [
-  "Career",
+  "Stress / overwhelm",
+  "Career direction",
   "Relationships",
-  "Mental health",
-  "Productivity",
-  "Curiosity",
+  "Self-awareness",
+  "Sleep / mental health",
   "Other",
 ] as const;
+
 const LIFE_STAGES = [
-  "Student",
-  "Early career",
-  "Established career",
-  "Parent",
-  "Retired",
+  "Single / no kids",
+  "Partnered / no kids",
+  "Parenting young kids",
+  "Parenting teens / adult kids",
   "In transition",
   "Prefer not to say",
 ] as const;
 
 const COUNTRIES: Array<{ code: string; name: string }> = [
   { code: "US", name: "United States" },
-  { code: "GB", name: "United Kingdom" },
   { code: "CA", name: "Canada" },
+  { code: "GB", name: "United Kingdom" },
   { code: "AU", name: "Australia" },
-  { code: "IN", name: "India" },
+  { code: "NZ", name: "New Zealand" },
+  { code: "IE", name: "Ireland" },
   { code: "DE", name: "Germany" },
   { code: "FR", name: "France" },
   { code: "NL", name: "Netherlands" },
-  { code: "IE", name: "Ireland" },
-  { code: "NZ", name: "New Zealand" },
-  { code: "SG", name: "Singapore" },
-  { code: "BR", name: "Brazil" },
-  { code: "MX", name: "Mexico" },
   { code: "ES", name: "Spain" },
   { code: "IT", name: "Italy" },
+  { code: "SE", name: "Sweden" },
+  { code: "NO", name: "Norway" },
+  { code: "DK", name: "Denmark" },
+  { code: "FI", name: "Finland" },
   { code: "JP", name: "Japan" },
-  { code: "KR", name: "South Korea" },
+  { code: "SG", name: "Singapore" },
+  { code: "IN", name: "India" },
+  { code: "BR", name: "Brazil" },
+  { code: "MX", name: "Mexico" },
   { code: "ZA", name: "South Africa" },
 ];
 
-/**
- * Best-effort region detection without pulling expo-localization in as
- * a new dep. Reads the iOS locale from NativeModules.SettingsManager
- * (format "en_US"), strips the region code, and only returns it if we
- * have a matching option in the COUNTRIES list. If anything throws or
- * the region isn't in the list, we return null and the user picks
- * manually.
- */
 function detectRegion(): string | null {
+  if (Platform.OS !== "ios") return null;
   try {
-    if (Platform.OS !== "ios") return null;
     const settings = NativeModules.SettingsManager?.settings;
     const locale: string | undefined =
       settings?.AppleLocale ?? settings?.AppleLanguages?.[0];
@@ -87,22 +92,17 @@ function detectRegion(): string | null {
   }
 }
 
-export function Step3Demographics() {
+// ─── Step 3a: About you ──────────────────────────────────────
+
+export function Step3AboutYou() {
   const { step, setCanContinue, setCapturedData, getCapturedData } =
     useOnboarding();
 
-  // Rehydrate from prior captured state on remount (back-navigation).
-  // Lazy init reads once at mount; subsequent re-renders use the
-  // already-set state values so we don't fight live edits.
   const prior = getCapturedData(step) as
     | {
         ageRange?: string | null;
         gender?: string | null;
         country?: string | null;
-        primaryReasons?: string[];
-        primaryReasonsCustom?: string | null;
-        lifeStages?: string[];
-        lifeStageCustom?: string | null;
       }
     | null;
 
@@ -112,74 +112,15 @@ export function Step3Demographics() {
   const [gender, setGender] = useState<string | null>(
     () => prior?.gender ?? null
   );
-  // Lazy init avoids re-running the native-modules read on every render.
-  // Prior captured value wins over the device-detected default.
   const [country, setCountry] = useState<string | null>(
     () => prior?.country ?? detectRegion()
   );
-  const [primaryReasons, setPrimaryReasons] = useState<string[]>(
-    () => prior?.primaryReasons ?? []
-  );
-  const [primaryReasonsCustom, setPrimaryReasonsCustom] = useState(
-    () => prior?.primaryReasonsCustom ?? ""
-  );
-  const [lifeStages, setLifeStages] = useState<string[]>(
-    () => prior?.lifeStages ?? []
-  );
-  const [lifeStageCustom, setLifeStageCustom] = useState(
-    () => prior?.lifeStageCustom ?? ""
-  );
   const [countryPickerOpen, setCountryPickerOpen] = useState(false);
-
-  const showReasonsCustom = primaryReasons.includes("Other");
-  const showLifeStageCustom = lifeStages.includes("In transition");
 
   useEffect(() => {
     setCanContinue(true);
-    setCapturedData({
-      ageRange,
-      gender,
-      country,
-      primaryReasons,
-      primaryReasonsCustom: showReasonsCustom
-        ? primaryReasonsCustom.trim() || null
-        : null,
-      lifeStages,
-      lifeStageCustom: showLifeStageCustom
-        ? lifeStageCustom.trim() || null
-        : null,
-    });
-  }, [
-    ageRange,
-    gender,
-    country,
-    primaryReasons,
-    primaryReasonsCustom,
-    lifeStages,
-    lifeStageCustom,
-    showReasonsCustom,
-    showLifeStageCustom,
-    setCanContinue,
-    setCapturedData,
-  ]);
-
-  const toggleReason = (r: string) =>
-    setPrimaryReasons((prev) =>
-      prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r]
-    );
-
-  const toggleLifeStage = (s: string) =>
-    setLifeStages((prev) => {
-      // "Prefer not to say" is mutually exclusive with the others —
-      // tapping it clears the rest, and tapping anything else clears it.
-      if (s === "Prefer not to say") {
-        return prev.includes(s) ? [] : [s];
-      }
-      const without = prev.filter((x) => x !== "Prefer not to say");
-      return without.includes(s)
-        ? without.filter((x) => x !== s)
-        : [...without, s];
-    });
+    setCapturedData({ ageRange, gender, country });
+  }, [ageRange, gender, country, setCanContinue, setCapturedData]);
 
   const selectedCountryName =
     COUNTRIES.find((c) => c.code === country)?.name ?? "Prefer not to say";
@@ -187,14 +128,13 @@ export function Step3Demographics() {
   return (
     <View className="flex-1">
       <Text className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
-        A few quick things
+        About you
       </Text>
       <Text className="mt-3 text-base leading-relaxed text-zinc-600 dark:text-zinc-300">
-        This helps us tailor insights to people like you. Skip anything
-        you&rsquo;d rather not share.
+        Three quick details so Acuity can tailor insights to people
+        like you. Skip anything you&rsquo;d rather not share.
       </Text>
 
-      {/* Age */}
       <Section label="Age range">
         {AGE_RANGES.map((a) => (
           <Chip
@@ -206,7 +146,6 @@ export function Step3Demographics() {
         ))}
       </Section>
 
-      {/* Gender */}
       <Section label="Gender">
         {GENDERS.map((g) => (
           <Chip
@@ -218,7 +157,6 @@ export function Step3Demographics() {
         ))}
       </Section>
 
-      {/* Country — inline picker */}
       <Section label="Country">
         <Pressable
           onPress={() => setCountryPickerOpen((v) => !v)}
@@ -259,9 +197,91 @@ export function Step3Demographics() {
           </View>
         )}
       </Section>
+    </View>
+  );
+}
 
-      {/* Primary reasons */}
-      <Section label="What brings you here?" sub="Pick any that fit.">
+// ─── Step 3b: What brings you here ────────────────────────────
+
+export function Step3Context() {
+  const { step, setCanContinue, setCapturedData, getCapturedData } =
+    useOnboarding();
+
+  const prior = getCapturedData(step) as
+    | {
+        primaryReasons?: string[];
+        primaryReasonsCustom?: string | null;
+        lifeStages?: string[];
+        lifeStageCustom?: string | null;
+      }
+    | null;
+
+  const [primaryReasons, setPrimaryReasons] = useState<string[]>(
+    () => prior?.primaryReasons ?? []
+  );
+  const [primaryReasonsCustom, setPrimaryReasonsCustom] = useState(
+    () => prior?.primaryReasonsCustom ?? ""
+  );
+  const [lifeStages, setLifeStages] = useState<string[]>(
+    () => prior?.lifeStages ?? []
+  );
+  const [lifeStageCustom, setLifeStageCustom] = useState(
+    () => prior?.lifeStageCustom ?? ""
+  );
+
+  const showReasonsCustom = primaryReasons.includes("Other");
+  const showLifeStageCustom = lifeStages.includes("In transition");
+
+  useEffect(() => {
+    setCanContinue(true);
+    setCapturedData({
+      primaryReasons,
+      primaryReasonsCustom: showReasonsCustom
+        ? primaryReasonsCustom.trim() || null
+        : null,
+      lifeStages,
+      lifeStageCustom: showLifeStageCustom
+        ? lifeStageCustom.trim() || null
+        : null,
+    });
+  }, [
+    primaryReasons,
+    primaryReasonsCustom,
+    lifeStages,
+    lifeStageCustom,
+    showReasonsCustom,
+    showLifeStageCustom,
+    setCanContinue,
+    setCapturedData,
+  ]);
+
+  const toggleReason = (r: string) =>
+    setPrimaryReasons((prev) =>
+      prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r]
+    );
+
+  const toggleLifeStage = (s: string) =>
+    setLifeStages((prev) => {
+      if (s === "Prefer not to say") {
+        return prev.includes(s) ? [] : [s];
+      }
+      const without = prev.filter((x) => x !== "Prefer not to say");
+      return without.includes(s)
+        ? without.filter((x) => x !== s)
+        : [...without, s];
+    });
+
+  return (
+    <View className="flex-1">
+      <Text className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+        What brings you here?
+      </Text>
+      <Text className="mt-3 text-base leading-relaxed text-zinc-600 dark:text-zinc-300">
+        Two more, just to know what kind of weeks Acuity should help
+        you make sense of.
+      </Text>
+
+      <Section label="Why Acuity?" sub="Pick any that fit.">
         {REASONS.map((r) => (
           <Chip
             key={r}
@@ -283,7 +303,6 @@ export function Step3Demographics() {
         />
       )}
 
-      {/* Life stage */}
       <Section label="Life stage" sub="Pick any that fit.">
         {LIFE_STAGES.map((s) => (
           <Chip
@@ -308,6 +327,8 @@ export function Step3Demographics() {
     </View>
   );
 }
+
+// ─── Shared helpers ───────────────────────────────────────────
 
 function Section({
   label,

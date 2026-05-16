@@ -85,39 +85,16 @@ export function Step5AiConsent() {
         How Acuity uses AI
       </Text>
       <Text className="mt-3 text-base leading-relaxed text-zinc-600 dark:text-zinc-300">
-        To turn your voice into themes, tasks, and weekly reports,
-        Acuity sends your transcripts to two AI services:
+        Acuity sends your voice transcripts to{" "}
+        <Text className="font-semibold text-zinc-800 dark:text-zinc-100">
+          OpenAI
+        </Text>{" "}
+        (for transcription) and{" "}
+        <Text className="font-semibold text-zinc-800 dark:text-zinc-100">
+          Anthropic&rsquo;s Claude
+        </Text>{" "}
+        (for themes, tasks, and your Sunday narrative).
       </Text>
-
-      <View className="mt-6 gap-4">
-        <View className="flex-row gap-3">
-          <View className="h-8 w-8 items-center justify-center rounded-full bg-violet-600/20 mt-0.5">
-            <Ionicons name="mic-outline" size={16} color="#A78BFA" />
-          </View>
-          <View className="flex-1">
-            <Text className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
-              OpenAI Whisper
-            </Text>
-            <Text className="text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
-              Transcribes your voice recordings into text.
-            </Text>
-          </View>
-        </View>
-        <View className="flex-row gap-3">
-          <View className="h-8 w-8 items-center justify-center rounded-full bg-violet-600/20 mt-0.5">
-            <Ionicons name="sparkles-outline" size={16} color="#A78BFA" />
-          </View>
-          <View className="flex-1">
-            <Text className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
-              Anthropic&rsquo;s Claude
-            </Text>
-            <Text className="text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
-              Extracts themes, tasks, and goals from your transcripts,
-              and generates your Sunday narrative.
-            </Text>
-          </View>
-        </View>
-      </View>
 
       <View className="mt-6 rounded-xl border border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-white/5 p-4">
         <Text className="text-sm leading-relaxed text-zinc-700 dark:text-zinc-200">

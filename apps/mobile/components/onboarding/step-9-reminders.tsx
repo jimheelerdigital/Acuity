@@ -15,9 +15,12 @@ import {
 import { useOnboarding } from "./context";
 
 /**
- * Step 9 — Reminders. Captures notificationTime (HH:MM), frequency
- * (daily / weekdays / custom), and notificationsEnabled (master
- * toggle).
+ * Reminders step — captures notificationTime (HH:MM) and
+ * notificationsEnabled. Frequency was DAILY/WEEKDAYS/CUSTOM until
+ * 2026-05-15 (Slice E): the selector was removed from onboarding to
+ * cut density. All new users default to DAILY at the chosen time.
+ * Users wanting different cadences can edit them in Profile →
+ * Reminders, which still supports the full week-day picker.
  *
  * Time picker is the shared 12-hour ReminderTimePicker — same
  * component as /reminders settings. Single source of truth so the
@@ -27,18 +30,9 @@ import { useOnboarding } from "./context";
 
 const DEFAULT_HOUR = 21;
 const DEFAULT_MINUTE = 0;
-
-const DAYS: Array<{ i: number; label: string }> = [
-  { i: 0, label: "S" },
-  { i: 1, label: "M" },
-  { i: 2, label: "T" },
-  { i: 3, label: "W" },
-  { i: 4, label: "T" },
-  { i: 5, label: "F" },
-  { i: 6, label: "S" },
-];
-
-type Frequency = "DAILY" | "WEEKDAYS" | "CUSTOM";
+// Daily — all seven weekdays. The Settings screen offers a fuller
+// picker; onboarding stays simple.
+const DAILY_DAYS = [0, 1, 2, 3, 4, 5, 6];
 
 export function Step9Reminders() {
   const { step, setCanContinue, setCapturedData, getCapturedData } =
@@ -58,17 +52,6 @@ export function Step9Reminders() {
     if (Number.isFinite(h) && Number.isFinite(m)) return { h, m };
     return null;
   })();
-  const priorFrequency: Frequency = (() => {
-    const days = prior?.notificationDays;
-    if (!days || days.length === 0) return "DAILY";
-    if (days.length === 7) return "DAILY";
-    if (
-      days.length === 5 &&
-      [1, 2, 3, 4, 5].every((d) => days.includes(d))
-    )
-      return "WEEKDAYS";
-    return "CUSTOM";
-  })();
 
   // Default OFF — flipping the toggle triggers the OS permission
   // prompt. Ensures the stored preference never claims "enabled"
@@ -78,10 +61,6 @@ export function Step9Reminders() {
   );
   const [hour, setHour] = useState(() => priorTime?.h ?? DEFAULT_HOUR);
   const [minute, setMinute] = useState(() => priorTime?.m ?? DEFAULT_MINUTE);
-  const [frequency, setFrequency] = useState<Frequency>(() => priorFrequency);
-  const [custom, setCustom] = useState<number[]>(
-    () => prior?.notificationDays ?? [1, 2, 3, 4, 5]
-  );
   const [permission, setPermission] =
     useState<PermissionStatus>("undetermined");
 
@@ -91,12 +70,10 @@ export function Step9Reminders() {
     getPermissionStatus().then(setPermission).catch(() => {});
   }, []);
 
-  const days =
-    frequency === "DAILY"
-      ? [0, 1, 2, 3, 4, 5, 6]
-      : frequency === "WEEKDAYS"
-        ? [1, 2, 3, 4, 5]
-        : custom;
+  // Onboarding always sets daily reminders. Users wanting a different
+  // cadence (weekdays only / custom days) edit in Profile → Reminders
+  // post-onboarding.
+  const days = DAILY_DAYS;
 
   useEffect(() => {
     setCanContinue(true);
@@ -112,7 +89,7 @@ export function Step9Reminders() {
       notificationDays: enabled ? days : [],
       notificationsEnabled: enabled,
     });
-  }, [hour, minute, frequency, custom, enabled, setCanContinue, setCapturedData, days]);
+  }, [hour, minute, enabled, setCanContinue, setCapturedData, days]);
 
   const askPermission = async () => {
     const next = await requestNotificationPermission();
@@ -165,11 +142,6 @@ export function Step9Reminders() {
   };
 
   const tzLabel = useLocalTimezoneLabel();
-
-  const toggleCustomDay = (i: number) =>
-    setCustom((prev) =>
-      prev.includes(i) ? prev.filter((x) => x !== i) : [...prev, i].sort()
-    );
 
   return (
     <View className="flex-1">
@@ -224,66 +196,6 @@ export function Step9Reminders() {
           </Text>
         </View>
 
-        {/* Frequency */}
-        <View className="mt-6">
-          <Text className="text-sm font-semibold text-zinc-800 dark:text-zinc-100 mb-2">
-            Frequency
-          </Text>
-          <View className="flex-row gap-2">
-            {(["DAILY", "WEEKDAYS", "CUSTOM"] as Frequency[]).map((f) => (
-              <Pressable
-                key={f}
-                onPress={() => setFrequency(f)}
-                accessibilityRole="button"
-                accessibilityState={{ selected: frequency === f }}
-                className={`rounded-full border px-3 py-1.5 ${
-                  frequency === f
-                    ? "border-violet-500 bg-violet-50 dark:bg-violet-950/30"
-                    : "border-zinc-200 dark:border-white/10"
-                }`}
-              >
-                <Text
-                  className={`text-sm ${
-                    frequency === f
-                      ? "text-violet-700 dark:text-violet-300 font-semibold"
-                      : "text-zinc-600 dark:text-zinc-300"
-                  }`}
-                >
-                  {f === "DAILY" ? "Daily" : f === "WEEKDAYS" ? "Weekdays" : "Custom"}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-
-          {frequency === "CUSTOM" && (
-            <View className="mt-3 flex-row gap-1.5">
-              {DAYS.map((d) => {
-                const on = custom.includes(d.i);
-                return (
-                  <Pressable
-                    key={d.i}
-                    onPress={() => toggleCustomDay(d.i)}
-                    className={`h-9 w-9 rounded-full items-center justify-center ${
-                      on
-                        ? "bg-violet-600"
-                        : "bg-zinc-100 dark:bg-white/5"
-                    }`}
-                  >
-                    <Text
-                      className={`text-xs font-semibold ${
-                        on
-                          ? "text-white"
-                          : "text-zinc-500 dark:text-zinc-400"
-                      }`}
-                    >
-                      {d.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          )}
-        </View>
       </View>
 
       {/* Permission affordance — shows when enabled=true and OS
@@ -308,8 +220,8 @@ export function Step9Reminders() {
       )}
 
       <Text className="mt-8 text-xs text-zinc-400 dark:text-zinc-500">
-        &ldquo;Not now&rdquo; is a fine answer — the Skip link covers
-        that.
+        Want a different cadence or more than one reminder? Add them
+        from Profile → Reminders after onboarding.
       </Text>
     </View>
   );
