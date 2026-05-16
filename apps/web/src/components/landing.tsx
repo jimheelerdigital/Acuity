@@ -1122,7 +1122,8 @@ export function LandingPage() {
                 </div>
 
               {/* CTA — desktop version */}
-                <div className="mt-10 hidden lg:flex flex-col items-start gap-4">
+                <div className="mt-10 hidden lg:flex flex-col items-center lg:items-center gap-4">
+                  {/* Row 1: Buttons */}
                   <div className="flex flex-row items-center gap-3">
                     <a
                       href={ctaHref}
@@ -1145,12 +1146,12 @@ export function LandingPage() {
                       See how it works
                     </a>
                   </div>
-                  <div className="flex flex-col items-center w-fit">
-                    <AppStoreBadge />
-                    <p className="mt-3 text-xs text-[#A0A0B8]">
-                      No card. 90 seconds to set up.
-                    </p>
-                  </div>
+                  {/* Row 2: App Store badge */}
+                  <AppStoreBadge />
+                  {/* Row 3: Subtext */}
+                  <p className="text-xs text-[#A0A0B8]">
+                    No card. 90 seconds to set up.
+                  </p>
                 </div>
             </div>
 
