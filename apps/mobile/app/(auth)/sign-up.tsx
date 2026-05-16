@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { Link, useRouter } from "expo-router";
 import { useState } from "react";
 import {
@@ -19,6 +20,7 @@ export default function SignUpScreen() {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
 
@@ -111,15 +113,32 @@ export default function SignUpScreen() {
           keyboardType="email-address"
           className="w-full rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-4 py-3 text-zinc-900 dark:text-zinc-50 mb-3"
         />
-        <TextInput
-          value={password}
-          onChangeText={setPassword}
-          placeholder={`Password (${PASSWORD_MIN}+ characters)`}
-          placeholderTextColor="#71717A"
-          secureTextEntry
-          autoComplete="new-password"
-          className="w-full rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-4 py-3 text-zinc-900 dark:text-zinc-50 mb-3"
-        />
+        <View className="relative w-full mb-3">
+          <TextInput
+            value={password}
+            onChangeText={setPassword}
+            placeholder={`Password (${PASSWORD_MIN}+ characters)`}
+            placeholderTextColor="#71717A"
+            secureTextEntry={!showPassword}
+            autoComplete="new-password"
+            className="w-full rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] pl-4 pr-12 py-3 text-zinc-900 dark:text-zinc-50"
+          />
+          <Pressable
+            onPress={() => setShowPassword((v) => !v)}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={
+              showPassword ? "Hide password" : "Show password"
+            }
+            className="absolute right-3 top-0 bottom-0 justify-center"
+          >
+            <Ionicons
+              name={showPassword ? "eye-off-outline" : "eye-outline"}
+              size={20}
+              color="#71717A"
+            />
+          </Pressable>
+        </View>
         <Pressable
           onPress={handleSubmit}
           disabled={loading || !email.trim() || password.length < PASSWORD_MIN}

@@ -59,6 +59,7 @@ export default function SignInScreen() {
   const { signIn: googleSignIn, ready, hasClientId } = useGoogleSignIn();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState<Loading>(null);
   const [magicSent, setMagicSent] = useState(false);
   const [appleAvailable, setAppleAvailable] = useState(false);
@@ -312,15 +313,32 @@ export default function SignInScreen() {
           keyboardType="email-address"
           className="w-full rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-4 py-3 text-zinc-900 dark:text-zinc-50 mb-3"
         />
-        <TextInput
-          value={password}
-          onChangeText={setPassword}
-          placeholder="Password"
-          placeholderTextColor="#71717A"
-          secureTextEntry
-          autoComplete="password"
-          className="w-full rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-4 py-3 text-zinc-900 dark:text-zinc-50 mb-3"
-        />
+        <View className="relative w-full mb-3">
+          <TextInput
+            value={password}
+            onChangeText={setPassword}
+            placeholder="Password"
+            placeholderTextColor="#71717A"
+            secureTextEntry={!showPassword}
+            autoComplete="password"
+            className="w-full rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] pl-4 pr-12 py-3 text-zinc-900 dark:text-zinc-50"
+          />
+          <Pressable
+            onPress={() => setShowPassword((v) => !v)}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={
+              showPassword ? "Hide password" : "Show password"
+            }
+            className="absolute right-3 top-0 bottom-0 justify-center"
+          >
+            <Ionicons
+              name={showPassword ? "eye-off-outline" : "eye-outline"}
+              size={20}
+              color="#71717A"
+            />
+          </Pressable>
+        </View>
         <Pressable
           onPress={handlePassword}
           disabled={loading !== null || !email.trim() || !password}
