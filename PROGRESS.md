@@ -41,6 +41,41 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-16] — Add app install campaign support to AdLab
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 95d042c
+
+### In plain English (for Keenan)
+
+You can now create AdLab experiments that drive App Store downloads instead of website signups. When creating a new experiment, there's a "Campaign Type" dropdown — choose "App install" and the entire Meta campaign pipeline will be configured for app installs: the ads link directly to the App Store, Meta optimizes for installs instead of website conversions, and the CTA button says "Download." Website conversion campaigns still work exactly the same as before.
+
+### Technical changes (for Jimmy)
+
+- `prisma/schema.prisma`: Added `campaignType String @default("website")` to `AdLabExperiment`, added `metaAppId String?` to `AdLabProject`
+- `apps/web/src/app/admin/adlab/experiments/new/page.tsx`: Added Campaign Type dropdown (website / app_install) with contextual help text
+- `apps/web/src/app/api/admin/adlab/experiments/route.ts`: POST accepts `campaignType` field
+- `apps/web/src/app/api/admin/adlab/ads/launch/route.ts`: When `campaignType === "app_install"`: sets `OUTCOME_APP_PROMOTION` objective, `APP_INSTALLS` optimization goal, `APP` destination, `promoted_object` with `application_id` + `object_store_url`, App Store link (no UTMs), and `DOWNLOAD` CTA
+- `apps/web/src/lib/adlab/meta.ts`: `createAdSet()` accepts optional `appInstall` param that switches `promoted_object`, `optimization_goal`, and `destination_type`
+- `apps/web/src/app/admin/adlab/experiments/[id]/page.tsx`: Shows "App Install Campaign" badge on experiment detail
+- `apps/web/src/app/api/admin/adlab/projects/seed/route.ts`: Added `metaAppId` field placeholder
+
+### Manual steps needed
+
+- [ ] Keenan: Run `npx prisma db push` from home network to add `campaignType` column to experiments table and `metaAppId` column to projects table
+- [ ] Keenan: Fill in `metaAppId` in the Acuity project settings (Meta App ID from developers.facebook.com — the "Acuity - AdLab" app)
+- [ ] Keenan: Test creating a new experiment with "App install" campaign type and verify the launch flow works end-to-end
+
+### Notes
+
+- The Meta App ID is different from the Ad Account ID — it's the numeric ID from developers.facebook.com under your app's settings
+- App install campaigns require the app to be registered in Meta's app dashboard and linked to the ad account
+- `object_store_url` is hardcoded to the Acuity App Store URL — if the URL changes, update the constant in the launch route
+- Website conversion campaigns are completely unaffected — `campaignType` defaults to "website"
+
+---
+
 ## [2026-05-16] — Fix Meta image upload: switch from URL to bytes method
 
 **Requested by:** Keenan
