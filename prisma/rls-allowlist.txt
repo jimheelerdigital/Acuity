@@ -62,6 +62,23 @@ UserInsight rls
 UserLifeDimension rls
 UserMemory rls
 UserOnboarding rls
+UserReminder rls
 VerificationToken rls
 Waitlist rls
 WeeklyReport rls
+
+# ─── AdLab tables (admin-only operational) ───────────────────
+# All AdLab models are accessed exclusively via /api/admin/adlab/*
+# routes through the Prisma service-role client. No end-user
+# Supabase anon-key exposure. Pattern matches BlogPrunerRun.
+# If we ever expose any AdLab data to non-admin users (e.g., a
+# customer dashboard showing their own ad performance), flip the
+# relevant table to "rls" and add policies.
+AdLabProject no-rls    # admin-only Meta ad project config (account ID, page ID, brand guidelines)
+AdLabExperiment no-rls # admin-only Meta ad experiment metadata (topic, hypothesis, status)
+AdLabReferenceImage no-rls # admin-only Meta ad reference image asset metadata
+AdLabAngle no-rls      # admin-only Meta ad angle (problem statement + variants)
+AdLabCreative no-rls   # admin-only Meta ad creative (image + copy variants)
+AdLabAd no-rls         # admin-only Meta ad launch records (Meta IDs, status)
+AdLabDailyMetric no-rls # admin-only Meta ad performance metrics ingestion
+AdLabDecision no-rls   # admin-only Meta ad experiment outcome decisions
