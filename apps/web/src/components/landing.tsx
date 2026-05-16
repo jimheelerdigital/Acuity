@@ -1275,10 +1275,11 @@ export function LandingPage() {
           </div>
 
           {/* ───── SOCIAL PROOF (inside hero) ───── */}
-          <div className="mt-8 lg:mt-6 px-6">
+          <div className="mt-10 lg:mt-8 mb-4 px-6">
               <div className="mx-auto max-w-2xl flex flex-col sm:flex-row items-center justify-center gap-4 text-center">
-            <div className="flex items-center gap-1">
-              <span className="text-[#E8DDD0] font-bold text-sm">{SOCIAL_PROOF.rating} ★</span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[#F5C518] font-bold text-sm">{SOCIAL_PROOF.rating}</span>
+              <span className="text-[#F5C518] text-sm">★</span>
             </div>
             <p className="text-sm text-[#A0A0B8]">
               Join {SOCIAL_PROOF.underHeroCount} people already using Acuity
