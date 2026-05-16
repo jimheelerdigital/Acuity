@@ -122,6 +122,44 @@ export const processEntryFn = inngest.createFunction(
       }
     );
 
+    // Cancellation gate before Whisper (Slice C Stage 3, 2026-05-16).
+    // Whisper is the first expensive call ($$ per minute of audio).
+    // If the user tapped Cancel on the processing screen between
+    // upload and now, transition to FAILED with the canceled marker
+    // and bail before spending the Whisper call. Status="FAILED"
+    // (not a new CANCELED enum) so the live build-42 binary's
+    // useEntryPolling hook still detects the terminal state — a new
+    // enum value would hang their spinner until polling timeout.
+    const canceledBeforeTranscribe = await step.run(
+      "cancel-check-before-transcribe",
+      async () => {
+        const entry = await prisma.entry.findUnique({
+          where: { id: entryId },
+          select: { canceledAt: true, status: true },
+        });
+        if (!entry?.canceledAt) return false;
+        if (
+          entry.status === "FAILED" ||
+          entry.status === "COMPLETE" ||
+          entry.status === "PARTIAL"
+        ) {
+          // Already terminal — don't re-write status.
+          return true;
+        }
+        await prisma.entry.update({
+          where: { id: entryId },
+          data: {
+            status: "FAILED",
+            errorMessage: "__canceled_by_user__",
+          },
+        });
+        return true;
+      }
+    );
+    if (canceledBeforeTranscribe) {
+      return { entryId, canceled: true, canceledAt: "before-transcribe" };
+    }
+
     // Step 2: transcribe via Whisper + persist transcript immediately.
     // Persisting here (vs. buffering until the final transaction) means
     // an extract/persist failure later leaves a recoverable PARTIAL
@@ -327,6 +365,40 @@ export const processEntryFn = inngest.createFunction(
       }
     );
 
+    // Cancellation gate before Claude extract (Slice C Stage 3,
+    // 2026-05-16). Claude is the most expensive call in the pipeline.
+    // If the user canceled while Whisper was running, catch it here
+    // before spending the Claude call. Same FAILED + marker pattern
+    // as the gate before transcribe.
+    const canceledBeforeExtract = await step.run(
+      "cancel-check-before-extract",
+      async () => {
+        const entry = await prisma.entry.findUnique({
+          where: { id: entryId },
+          select: { canceledAt: true, status: true },
+        });
+        if (!entry?.canceledAt) return false;
+        if (
+          entry.status === "FAILED" ||
+          entry.status === "COMPLETE" ||
+          entry.status === "PARTIAL"
+        ) {
+          return true;
+        }
+        await prisma.entry.update({
+          where: { id: entryId },
+          data: {
+            status: "FAILED",
+            errorMessage: "__canceled_by_user__",
+          },
+        });
+        return true;
+      }
+    );
+    if (canceledBeforeExtract) {
+      return { entryId, canceled: true, canceledAt: "before-extract" };
+    }
+
     // Step 4: extract structured data via Claude. Uses the exact same
     // prompt + parser as the sync pipeline (`lib/pipeline.ts`). When
     // the entry was recorded from a goal card (Entry.goalId set), we
@@ -374,6 +446,43 @@ export const processEntryFn = inngest.createFunction(
         useDispositional
       );
     });
+
+    // Cancellation gate before persist-extraction (Slice C Stage 3,
+    // 2026-05-16). At this point the Claude call has already
+    // completed — the extraction result is in memory. If the user
+    // canceled between Whisper finishing and Claude finishing, we
+    // catch it here before writing the extraction's task/goal/theme
+    // rows to the DB. The Whisper transcript is already persisted
+    // (line 155-158) so the user keeps their words; only the AI-
+    // extracted side-effects are skipped.
+    const canceledBeforePersist = await step.run(
+      "cancel-check-before-persist",
+      async () => {
+        const entry = await prisma.entry.findUnique({
+          where: { id: entryId },
+          select: { canceledAt: true, status: true },
+        });
+        if (!entry?.canceledAt) return false;
+        if (
+          entry.status === "FAILED" ||
+          entry.status === "COMPLETE" ||
+          entry.status === "PARTIAL"
+        ) {
+          return true;
+        }
+        await prisma.entry.update({
+          where: { id: entryId },
+          data: {
+            status: "FAILED",
+            errorMessage: "__canceled_by_user__",
+          },
+        });
+        return true;
+      }
+    );
+    if (canceledBeforePersist) {
+      return { entryId, canceled: true, canceledAt: "before-persist" };
+    }
 
     // Step 5: persist extraction + create Tasks/Goals in one transaction.
     await step.run("persist-extraction", async () => {
