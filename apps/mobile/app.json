@@ -19,6 +19,7 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.heelerdigital.acuity",
       "usesAppleSignIn": true,
+      "associatedDomains": ["applinks:getacuity.io"],
       "infoPlist": {
         "NSMicrophoneUsageDescription": "Acuity uses your microphone to record voice entries, which are transcribed and analyzed to surface themes, tasks, and insights from what you said.",
         "NSFaceIDUsageDescription": "Acuity uses Face ID to keep your journal entries private when you've enabled the app lock in Profile.",

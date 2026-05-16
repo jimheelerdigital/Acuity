@@ -12,6 +12,7 @@ import { AuthProvider, useAuth } from "@/contexts/auth-context";
 import { LockProvider } from "@/contexts/lock-context";
 import { ThemeProvider, useTheme } from "@/contexts/theme-context";
 import { LockScreenOverlay } from "@/components/lock-screen-overlay";
+import { UniversalLinkHandler } from "@/components/universal-link-handler";
 import { initSentry, setSentryUser } from "@/lib/sentry";
 
 // Sentry init at module scope — idempotent on re-import.
@@ -187,6 +188,10 @@ function ThemedApp() {
           options={{ headerShown: false }}
         />
       </Stack>
+      {/* Universal Links handler — listens for incoming verify-email
+          deep-links and routes them to the existing endpoint. Render
+          inside <AuthProvider> via parent — uses useAuth. */}
+      <UniversalLinkHandler />
       {/* App-level lock overlay. Mounted AFTER <Stack/> so its
           absolute-positioned full-screen view sits above the route
           tree's content. Renders nothing when lock is disabled or
