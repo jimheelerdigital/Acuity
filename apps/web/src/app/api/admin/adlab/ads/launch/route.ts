@@ -79,26 +79,42 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  if (!project.metaAdAccountId || !project.metaPixelId) {
+  const isAppInstall = (experiment as Record<string, unknown>).campaignType === "app_install";
+
+  if (!project.metaAdAccountId) {
     return NextResponse.json(
-      { error: "Project missing Meta Ad Account ID or Pixel ID" },
+      { error: "Project missing Meta Ad Account ID" },
+      { status: 400 }
+    );
+  }
+
+  if (!isAppInstall && !project.metaPixelId) {
+    return NextResponse.json(
+      { error: "Project missing Meta Pixel ID (required for website conversion campaigns)" },
       { status: 400 }
     );
   }
 
   const metaPageId = (project as Record<string, unknown>).metaPageId as string | null;
   const landingPageUrl = (project as Record<string, unknown>).landingPageUrl as string | null;
+  const metaAppId = (project as Record<string, unknown>).metaAppId as string | null;
 
   // Fail fast: validate required fields before any Meta API calls
   const missingFields: string[] = [];
   if (!metaPageId) missingFields.push("metaPageId (Facebook Page ID)");
-  if (!landingPageUrl) missingFields.push("landingPageUrl");
+  if (isAppInstall) {
+    if (!metaAppId) missingFields.push("metaAppId (Meta App ID from developers.facebook.com)");
+  } else {
+    if (!landingPageUrl) missingFields.push("landingPageUrl");
+  }
   if (missingFields.length > 0) {
     return NextResponse.json(
       { error: `Project missing required fields: ${missingFields.join(", ")}. Update in project settings before launching.` },
       { status: 400 }
     );
   }
+
+  const APP_STORE_URL = "https://apps.apple.com/us/app/acuity-daily/id6762633410";
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function logMetaError(step: string, err: any) {
@@ -154,8 +170,9 @@ export async function POST(req: NextRequest) {
     const month = new Date().toLocaleDateString("en-US", { month: "short", year: "numeric" });
     const campaignName = (experiment as Record<string, unknown>).campaignName as string
       || `${project.name} | ${topicSlug} | ${month}`;
-    const campaignObjective = (experiment as Record<string, unknown>).campaignObjective as string
-      || project.conversionObjective;
+    const campaignObjective = isAppInstall
+      ? "OUTCOME_APP_PROMOTION"
+      : ((experiment as Record<string, unknown>).campaignObjective as string || project.conversionObjective);
 
     console.log("[adlab-launch] Creating campaign:", { campaignName, campaignObjective });
 
@@ -215,6 +232,14 @@ export async function POST(req: NextRequest) {
             },
             targetInterests: projectInterests || undefined,
             placementType,
+            ...(isAppInstall && metaAppId
+              ? {
+                  appInstall: {
+                    applicationId: metaAppId,
+                    objectStoreUrl: APP_STORE_URL,
+                  },
+                }
+              : {}),
           });
           console.log(`[adlab-launch] Ad set created for ${creativeLabel}:`, adsetId);
         } catch (err) {
@@ -265,12 +290,19 @@ export async function POST(req: NextRequest) {
         });
         let metaCreativeId: string;
         try {
-          // Build landing URL with UTM params using URL/URLSearchParams
-          const linkUrl = new URL(landingPageUrl!);
-          linkUrl.searchParams.set("utm_source", "meta");
-          linkUrl.searchParams.set("utm_medium", "paid");
-          linkUrl.searchParams.set("utm_campaign", experiment.id);
-          linkUrl.searchParams.set("utm_content", creative.id);
+          // App install: link to App Store directly (no UTMs — App Store ignores them)
+          // Website: link to landing page with UTM params for GA4 tracking
+          let adLinkUrl: string;
+          if (isAppInstall) {
+            adLinkUrl = APP_STORE_URL;
+          } else {
+            const linkUrl = new URL(landingPageUrl!);
+            linkUrl.searchParams.set("utm_source", "meta");
+            linkUrl.searchParams.set("utm_medium", "paid");
+            linkUrl.searchParams.set("utm_campaign", experiment.id);
+            linkUrl.searchParams.set("utm_content", creative.id);
+            adLinkUrl = linkUrl.toString();
+          }
 
           metaCreativeId = await meta.createAdCreative({
             name: `${project.name} | ${surface}: ${angleSlug} | "${slug(creative.headline, 40)}"`,
@@ -280,8 +312,8 @@ export async function POST(req: NextRequest) {
             headline: creative.headline,
             primaryText: creative.primaryText,
             description: creative.description,
-            cta: creative.cta,
-            linkUrl: linkUrl.toString(),
+            cta: isAppInstall ? "DOWNLOAD" : creative.cta,
+            linkUrl: adLinkUrl,
           });
           console.log(`[adlab-launch] Ad creative created for ${creativeLabel}:`, metaCreativeId);
         } catch (err) {

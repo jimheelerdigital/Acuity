@@ -103,6 +103,7 @@ Show artifacts (the weekly report, the memoir PDF), not mechanisms.`,
       metaAdAccountId: "", // To be filled
       metaPixelId: "", // To be filled
       metaPageId: "", // To be filled
+      metaAppId: "", // To be filled — Meta App ID from developers.facebook.com (for app install campaigns)
       landingPageUrl: "https://getacuity.io",
       conversionEvent: "Lead",
       conversionObjective: "OUTCOME_LEADS",

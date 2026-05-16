@@ -541,8 +541,17 @@ export default function ExperimentDetailPage() {
         </div>
         <h1 className="text-2xl font-bold text-white mb-2">Experiment</h1>
         <div className="rounded-lg border border-white/10 bg-[#1E1E2E] p-4">
-          <p className="text-xs text-[#A0A0B8] mb-1">Topic Brief</p>
-          <p className="text-sm text-white">{experiment.topicBrief}</p>
+          <div className="flex items-center gap-3 mb-2">
+            <div>
+              <p className="text-xs text-[#A0A0B8] mb-1">Topic Brief</p>
+              <p className="text-sm text-white">{experiment.topicBrief}</p>
+            </div>
+          </div>
+          {(experiment as Record<string, unknown>).campaignType === "app_install" && (
+            <span className="inline-block mt-2 rounded-full bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-0.5 text-xs font-medium text-emerald-400">
+              App Install Campaign
+            </span>
+          )}
         </div>
       </div>
 

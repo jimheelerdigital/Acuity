@@ -16,6 +16,7 @@ export default function NewExperimentPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectId, setProjectId] = useState("");
   const [topicBrief, setTopicBrief] = useState(searchParams.get("brief") || "");
+  const [campaignType, setCampaignType] = useState("website");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [researching, setResearching] = useState(false);
@@ -43,7 +44,7 @@ export default function NewExperimentPage() {
       const createRes = await fetch("/api/admin/adlab/experiments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId, topicBrief }),
+        body: JSON.stringify({ projectId, topicBrief, campaignType }),
       });
 
       if (!createRes.ok) {
@@ -127,6 +128,23 @@ export default function NewExperimentPage() {
                 className="w-full rounded-lg border border-white/10 bg-[#1E1E2E] px-3 py-2 text-sm text-white placeholder-[#A0A0B8]/50 outline-none focus:border-[#7C5CFC] min-h-[120px]"
                 placeholder="e.g. Test pain-point hooks against outcome hooks for Founder/Executive persona, focused on Weekly Report value surface"
               />
+            </div>
+
+            <div>
+              <label className="block text-xs text-[#A0A0B8] mb-1.5">Campaign Type</label>
+              <select
+                value={campaignType}
+                onChange={(e) => setCampaignType(e.target.value)}
+                className="w-full rounded-lg border border-white/10 bg-[#1E1E2E] px-3 py-2 text-sm text-white outline-none focus:border-[#7C5CFC]"
+              >
+                <option value="website">Website conversion (default)</option>
+                <option value="app_install">App install</option>
+              </select>
+              <p className="mt-1 text-xs text-[#A0A0B8]/60">
+                {campaignType === "app_install"
+                  ? "Links to App Store. Uses OUTCOME_APP_PROMOTION objective."
+                  : "Links to landing page with UTM tracking. Uses website conversion objective."}
+              </p>
             </div>
           </div>
 

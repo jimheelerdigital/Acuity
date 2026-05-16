@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
   const guard = await requireAdmin();
   if (!guard.ok) return guard.response;
 
-  const { projectId, topicBrief } = await req.json();
+  const { projectId, topicBrief, campaignType } = await req.json();
 
   if (!projectId || !topicBrief?.trim()) {
     return NextResponse.json(
@@ -49,6 +49,7 @@ export async function POST(req: NextRequest) {
     data: {
       projectId,
       topicBrief: topicBrief.trim(),
+      campaignType: campaignType === "app_install" ? "app_install" : "website",
       status: "draft",
     },
   });

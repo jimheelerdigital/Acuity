@@ -112,6 +112,11 @@ interface AdSetParams {
   };
   targetInterests?: { id: string; name: string }[];
   placementType?: string | null;
+  /** App install campaign overrides */
+  appInstall?: {
+    applicationId: string;
+    objectStoreUrl: string;
+  };
 }
 
 export async function createAdSet(params: AdSetParams) {
@@ -147,19 +152,26 @@ export async function createAdSet(params: AdSetParams) {
     placementFields.publisher_platforms = ["facebook", "instagram"];
   }
 
+  // App install campaigns use different optimization, destination, and promoted_object
+  const isAppInstall = !!params.appInstall;
   const payload: Record<string, unknown> = {
     name: params.name,
     campaign_id: params.campaignId,
     daily_budget: params.dailyBudgetCents, // Meta API takes cents
-    optimization_goal: "OFFSITE_CONVERSIONS",
+    optimization_goal: isAppInstall ? "APP_INSTALLS" : "OFFSITE_CONVERSIONS",
     billing_event: "IMPRESSIONS",
     bid_strategy: "LOWEST_COST_WITHOUT_CAP",
-    destination_type: "WEBSITE",
+    destination_type: isAppInstall ? "APP" : "WEBSITE",
     start_time: new Date().toISOString(),
-    promoted_object: {
-      pixel_id: params.pixelId,
-      custom_event_type: params.conversionEvent,
-    },
+    promoted_object: isAppInstall
+      ? {
+          application_id: params.appInstall!.applicationId,
+          object_store_url: params.appInstall!.objectStoreUrl,
+        }
+      : {
+          pixel_id: params.pixelId,
+          custom_event_type: params.conversionEvent,
+        },
     targeting,
     status: "PAUSED",
     ...placementFields,

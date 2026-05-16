@@ -1834,6 +1834,7 @@ model AdLabProject {
   conversionObjective       String             @default("OUTCOME_LEADS")
   learnedPatterns           Json               @default("[]")
   landingPageUrl            String?
+  metaAppId                 String?
   targetInterests           Json?
   imageEnabled              Boolean            @default(true)
   videoEnabled              Boolean            @default(false)
@@ -1852,6 +1853,7 @@ model AdLabExperiment {
   metaCampaignId        String?
   campaignName          String?
   campaignObjective     String?
+  campaignType          String                  @default("website")
   specialAdCategories   String[]                @default([])
   campaignTags          String[]                @default([])
   adSetDailyBudgetCents Int?
