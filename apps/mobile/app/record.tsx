@@ -106,6 +106,7 @@ export default function RecordScreen() {
   const [levels, setLevels] = useState<number[]>(Array(18).fill(0.05));
   const [error, setError] = useState<string | null>(null);
   const [polledEntryId, setPolledEntryId] = useState<string | null>(null);
+  const [canceling, setCanceling] = useState(false);
 
   const recordingRef = useRef<Audio.Recording | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -449,6 +450,66 @@ export default function RecordScreen() {
     }
   };
 
+  // Cancel an in-flight entry from the processing screen. Slice C
+  // Stage 2 (2026-05-16). Posts to /api/entries/[id]/cancel which
+  // sets canceledAt on the row; the Inngest pipeline picks up the
+  // flag at the next step.run() boundary and transitions to FAILED
+  // with a marker errorMessage.
+  //
+  // Response handling:
+  //   200 ok or alreadyCanceled — stop polling, nav back to dashboard
+  //   410 AlreadyComplete       — pipeline beat us to it. Nav to the
+  //                                completed entry so user can decide
+  //                                what to do with it.
+  //   anything else             — show alert + stay on screen
+  const handleCancel = useCallback(async () => {
+    if (!polledEntryId || canceling) return;
+    setCanceling(true);
+    try {
+      // Manual fetch instead of api.post so we can introspect 410.
+      const apiBase =
+        process.env.EXPO_PUBLIC_API_URL ?? "https://getacuity.io";
+      const token = await getToken();
+      const res = await fetch(
+        `${apiBase}/api/entries/${polledEntryId}/cancel`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        }
+      );
+      if (res.status === 410) {
+        // Pipeline completed between user tap and server receipt —
+        // open the finished entry instead of canceling.
+        router.replace(`/entry/${polledEntryId}`);
+        return;
+      }
+      if (!res.ok) {
+        // Surface the failure without trapping the user; they can
+        // tap Back to dashboard if they want.
+        const body = (await res.json().catch(() => null)) as {
+          error?: string;
+        } | null;
+        setError(body?.error ?? `Cancel failed (${res.status})`);
+        setState("error");
+        return;
+      }
+      // Success — invalidate caches that might be showing the
+      // canceled entry as in-flight, then nav back to dashboard.
+      invalidate("/api/entries");
+      invalidate("/api/home");
+      router.back();
+    } catch (err) {
+      Sentry.captureException(err);
+      setError(err instanceof Error ? err.message : "Cancel failed");
+      setState("error");
+    } finally {
+      setCanceling(false);
+    }
+  }, [polledEntryId, canceling, router]);
+
   // ────────────────────────────────────────────────────────────────
   // Render
   // ────────────────────────────────────────────────────────────────
@@ -457,10 +518,23 @@ export default function RecordScreen() {
     <SafeAreaView className="flex-1 bg-white dark:bg-[#1E1E2E] dark:bg-[#0B0B12]" edges={["bottom"]}>
       <View className="flex-1 items-center justify-center px-8">
         {state === "processing" ? (
-          <ProcessingView
-            phase={poll.phase}
-            elapsedSeconds={poll.elapsedSeconds}
-          />
+          <View className="items-center gap-6">
+            <ProcessingView
+              phase={poll.phase}
+              elapsedSeconds={poll.elapsedSeconds}
+            />
+            <Pressable
+              onPress={() => void handleCancel()}
+              disabled={canceling}
+              hitSlop={12}
+              style={{ opacity: canceling ? 0.4 : 1 }}
+              className="px-4 py-2 rounded-full border border-zinc-300 dark:border-white/15"
+            >
+              <Text className="text-sm text-zinc-600 dark:text-zinc-300">
+                {canceling ? "Canceling…" : "Cancel"}
+              </Text>
+            </Pressable>
+          </View>
         ) : state === "uploading" ? (
           <ProcessingProgressBar phase="uploading" elapsedSeconds={0} />
         ) : state === "error" ? (
