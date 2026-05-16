@@ -41,6 +41,33 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-16] — Fix Meta image upload: switch from URL to bytes method
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** dda1b5a
+
+### In plain English (for Keenan)
+
+When AdLab tried to upload creative images to Meta for ad campaigns, Meta was rejecting them with a permissions error. The problem was that we were giving Meta a URL and asking it to fetch the image itself — but Meta's servers couldn't (or wouldn't) reach our Supabase storage. Now we fetch the image ourselves, convert it to raw data, and send the data directly to Meta. This bypasses the issue entirely.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/lib/adlab/meta.ts`: `uploadImage()` now fetches the image from Supabase URL via `fetch()`, converts to Buffer, then to base64, and passes `{ bytes: base64String }` to `account.createAdImage()` instead of `{ url: imageUrl }`
+- Added console logging: image size before upload, hash on success, full response on failure
+- Kept URL-based method as a commented-out fallback in the same function
+
+### Manual steps needed
+
+- [ ] Keenan: Test "Launch Ads" flow in AdLab to confirm image upload now succeeds
+
+### Notes
+
+- The Meta Marketing API accepts either `{ url: "..." }` or `{ bytes: "base64string" }` for adimages. The URL method requires Meta to make an outbound HTTP call, which was being blocked even with Standard Access. The bytes method sends the image data directly in the request body.
+- Image sizes are typically 100-500 KB (gpt-image-2 output at 1024x1024 PNG). Base64 encoding adds ~33% overhead, so max request size is ~700 KB — well within Meta API limits.
+
+---
+
 ## [2026-05-15] — App Store download flow, badges, and Smart App Banner
 
 **Requested by:** Keenan
