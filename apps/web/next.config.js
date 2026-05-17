@@ -45,11 +45,13 @@
  *       img-src      https://*.google-analytics.com
  *
  *   Meta Pixel (Facebook)
- *       script-src   https://connect.facebook.net
- *                    https://www.facebook.com
- *       connect-src  https://www.facebook.com
- *                    https://connect.facebook.net
- *       img-src      https://www.facebook.com
+ *       script-src   https://connect.facebook.net https://*.facebook.net
+ *                    https://www.facebook.com https://*.facebook.com
+ *       connect-src  https://www.facebook.com https://*.facebook.com
+ *                    https://connect.facebook.net https://*.facebook.net
+ *                    https://*.fbcdn.net
+ *       img-src      https://www.facebook.com https://*.facebook.com
+ *                    https://*.fbcdn.net
  *       frame-src    https://www.facebook.com
  *
  *   Stripe Checkout
@@ -85,8 +87,8 @@
 const CSP_DIRECTIVES = [
   "default-src 'self'",
   // Scripts
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com https://connect.facebook.net https://www.facebook.com https://t.contentsquare.net https://*.hotjar.com https://*.hotjar.io https://us.i.posthog.com https://*.posthog.com https://js.stripe.com https://checkout.stripe.com",
-  "script-src-elem 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com https://connect.facebook.net https://www.facebook.com https://t.contentsquare.net https://*.hotjar.com https://*.hotjar.io https://us.i.posthog.com https://*.posthog.com https://js.stripe.com https://checkout.stripe.com",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com https://connect.facebook.net https://*.facebook.net https://www.facebook.com https://*.facebook.com https://t.contentsquare.net https://*.hotjar.com https://*.hotjar.io https://us.i.posthog.com https://*.posthog.com https://js.stripe.com https://checkout.stripe.com",
+  "script-src-elem 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com https://connect.facebook.net https://*.facebook.net https://www.facebook.com https://*.facebook.com https://t.contentsquare.net https://*.hotjar.com https://*.hotjar.io https://us.i.posthog.com https://*.posthog.com https://js.stripe.com https://checkout.stripe.com",
   // Workers — Supabase auth SDK spawns a Web Worker from a blob URL.
   // Without this directive, worker-src falls back to script-src which
   // does not allow blob:, and sign-in silently breaks in the browser.
@@ -97,10 +99,10 @@ const CSP_DIRECTIVES = [
   // Fonts
   "font-src 'self' data: https://fonts.gstatic.com",
   // Images + media
-  "img-src 'self' data: blob: https: https://*.googleusercontent.com https://www.facebook.com https://*.google-analytics.com",
+  "img-src 'self' data: blob: https: https://*.googleusercontent.com https://www.facebook.com https://*.facebook.com https://*.fbcdn.net https://*.google-analytics.com",
   "media-src 'self' blob:",
   // Connections — APIs called from the browser
-  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.posthog.com https://*.hotjar.com https://*.hotjar.io https://www.google-analytics.com https://api.stripe.com https://checkout.stripe.com https://r.stripe.com https://*.stripe.com https://www.facebook.com https://connect.facebook.net https://t.contentsquare.net https://accounts.google.com https://oauth2.googleapis.com https://*.sentry.io https://*.ingest.sentry.io",
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.posthog.com https://*.hotjar.com https://*.hotjar.io https://www.google-analytics.com https://api.stripe.com https://checkout.stripe.com https://r.stripe.com https://*.stripe.com https://www.facebook.com https://*.facebook.com https://connect.facebook.net https://*.facebook.net https://*.fbcdn.net https://t.contentsquare.net https://accounts.google.com https://oauth2.googleapis.com https://*.sentry.io https://*.ingest.sentry.io",
   // Frames (Stripe Checkout embeds an iframe)
   "frame-src 'self' https://js.stripe.com https://checkout.stripe.com https://*.stripe.com https://www.facebook.com",
   "frame-ancestors 'none'",
