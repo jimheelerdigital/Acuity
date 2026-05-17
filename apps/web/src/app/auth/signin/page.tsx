@@ -19,7 +19,7 @@ import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 
-type Loading = "google" | "password" | "magic" | null;
+type Loading = "google" | "apple" | "password" | "magic" | null;
 
 function SignInForm() {
   const searchParams = useSearchParams();
@@ -38,6 +38,12 @@ function SignInForm() {
     setFormError(null);
     setLoading("google");
     await signIn("google", { callbackUrl });
+  };
+
+  const handleApple = async () => {
+    setFormError(null);
+    setLoading("apple");
+    await signIn("apple", { callbackUrl });
   };
 
   const handlePassword = async (e: React.FormEvent) => {
@@ -121,6 +127,16 @@ function SignInForm() {
       >
         <GoogleIcon />
         {loading === "google" ? "Redirecting..." : "Continue with Google"}
+      </button>
+
+      {/* Apple */}
+      <button
+        onClick={handleApple}
+        disabled={loading !== null}
+        className="mt-3 flex w-full items-center justify-center gap-3 rounded-xl bg-black px-4 py-3 text-sm font-medium text-white transition-all duration-200 hover:bg-zinc-800 disabled:opacity-50"
+      >
+        <AppleIcon />
+        {loading === "apple" ? "Redirecting..." : "Continue with Apple"}
       </button>
 
       {/* Divider */}
@@ -278,6 +294,14 @@ function GoogleIcon() {
         fill="#EA4335"
         d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"
       />
+    </svg>
+  );
+}
+
+function AppleIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" fill="currentColor">
+      <path d="M14.94 13.5c-.37.82-.55 1.19-.97 1.91-.59.99-1.42 2.24-2.45 2.25-.92.01-1.16-.6-2.41-.59-1.25.01-1.51.6-2.43.59-1.03-.01-1.81-1.13-2.4-2.12C2.92 13.39 2.8 10.77 3.68 9.39c.63-1 1.63-1.58 2.57-1.58.96 0 1.56.6 2.35.6.77 0 1.24-.6 2.35-.6.84 0 1.73.46 2.35 1.24-2.06 1.13-1.73 4.07.37 4.85-.29.7-.43.99-.73 1.6zM11.37 3c.47-.6.83-1.45.7-2.32-.77.05-1.67.54-2.2 1.17-.48.57-.88 1.43-.73 2.26.84.03 1.72-.47 2.23-1.11z" />
     </svg>
   );
 }

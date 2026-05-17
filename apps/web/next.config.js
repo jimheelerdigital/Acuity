@@ -111,7 +111,7 @@ const CSP_DIRECTIVES = [
   // on redirect targets (CSP Level 3) — so the Google OAuth origin has to be
   // allowlisted here, not just in connect-src. Checkout.stripe.com was already
   // here for the existing Stripe Checkout form POST.
-  "form-action 'self' https://checkout.stripe.com https://accounts.google.com",
+  "form-action 'self' https://checkout.stripe.com https://accounts.google.com https://appleid.apple.com",
   "base-uri 'self'",
   "object-src 'none'",
   "manifest-src 'self'",

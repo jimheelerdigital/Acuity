@@ -20,6 +20,7 @@
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { PrismaClient } from "@prisma/client";
 import { type NextAuthOptions } from "next-auth";
+import AppleProvider from "next-auth/providers/apple";
 import CredentialsProvider from "next-auth/providers/credentials";
 import EmailProvider from "next-auth/providers/email";
 import GoogleProvider from "next-auth/providers/google";
@@ -52,6 +53,15 @@ export function getAuthOptions(): NextAuthOptions {
           },
         },
       }),
+
+      ...(process.env.APPLE_CLIENT_ID && process.env.APPLE_CLIENT_SECRET
+        ? [
+            AppleProvider({
+              clientId: process.env.APPLE_CLIENT_ID,
+              clientSecret: process.env.APPLE_CLIENT_SECRET,
+            }),
+          ]
+        : []),
 
       // Email/password sign-in. The corresponding signup flow lives at
       // POST /api/auth/signup (NextAuth's Credentials provider doesn't
