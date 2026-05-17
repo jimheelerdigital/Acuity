@@ -104,7 +104,7 @@ export default async function HomePage() {
           <li>Life Matrix — score 6 key areas of your life over time</li>
         </ul>
         <h2>Pricing</h2>
-        <p>$12.99/month after a 14-day free trial. No credit card required. Cancel anytime.</p>
+        <p>$12.99/month after a 30-day free trial. No credit card required. Cancel anytime.</p>
         <h2>Start Your Free Trial</h2>
         <p>Download Acuity on the App Store or sign up at getacuity.io/auth/signup.</p>
       </div>

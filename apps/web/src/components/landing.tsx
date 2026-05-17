@@ -1094,11 +1094,11 @@ export function LandingPage() {
                   Acuity is the AI voice journal that turns your daily debrief into action. Talk any time of day — it catches your tasks, tracks the goals you keep circling, and surfaces the patterns you can&rsquo;t see on your own.
                 </p>
 
-              {/* CTA — mobile version (inline in hero, not just sticky bar) */}
+              {/* CTA — mobile version */}
                 <div className="mt-8 flex flex-col items-center gap-3 lg:hidden">
                   <a
                     href={ctaHref}
-                          onClick={trackInitiateCheckout}
+                    onClick={trackInitiateCheckout}
                     className="group relative rounded-full p-[2px] transition active:scale-95 overflow-hidden"
                   >
                     <span className="absolute inset-[-100%] animate-cta-shine" style={{ background: 'conic-gradient(from 0deg, transparent 0%, transparent 60%, #ffffff 75%, #B8A5FF 85%, transparent 100%)' }} />
@@ -1108,15 +1108,10 @@ export function LandingPage() {
                   </a>
                   <a
                     href="#how-it-works"
-                    className="rounded-full border px-7 py-3.5 text-sm font-semibold text-[#F5EDE4] transition hover:border-[#F5EDE4]/60 active:scale-95"
-                    style={{ borderColor: 'rgba(245, 237, 228, 0.3)' }}
+                    className="text-sm font-medium text-[#A0A0B8] transition hover:text-white"
                   >
                     See how it works
                   </a>
-                  <AppStoreBadge className="mt-1" />
-                  <p className="text-xs text-[#A0A0B8]">
-                    No card. 90 seconds to set up.
-                  </p>
                 </div>
 
               {/* CTA — desktop version */}
@@ -1143,12 +1138,13 @@ export function LandingPage() {
                       See how it works
                     </a>
                   </div>
-                  {/* Row 2: App Store badge */}
-                  <AppStoreBadge />
-                  {/* Row 3: Subtext */}
+                  {/* Row 2: Subtext + secondary App Store link */}
                   <p className="text-xs text-[#A0A0B8]">
                     No card. 90 seconds to set up.
                   </p>
+                  <div className="mt-1 opacity-60 hover:opacity-100 transition-opacity scale-90">
+                    <AppStoreBadge />
+                  </div>
                 </div>
             </div>
 
@@ -1889,24 +1885,6 @@ export function LandingPage() {
         </div>
       </footer>
 
-      {/* ───── STICKY MOBILE CTA ───── */}
-      <div className="fixed bottom-0 inset-x-0 z-40 sm:hidden">
-        <div className="bg-[#181614]/95 backdrop-blur-lg border-t border-white/[0.06] px-4 py-3">
-          <a
-            href={ctaHref}
-            onClick={trackInitiateCheckout}
-            className="group relative block w-full rounded-full p-[2px] transition active:scale-[0.98] overflow-hidden"
-          >
-            <span className="absolute inset-[-100%] animate-cta-shine" style={{ background: 'conic-gradient(from 0deg, transparent 0%, transparent 60%, #ffffff 75%, #B8A5FF 85%, transparent 100%)' }} />
-            <span className="relative block w-full rounded-full bg-[#7C5CFC] py-3.5 text-center text-sm font-semibold text-white transition group-hover:bg-[#6B4FE0]">
-              Start Free Trial
-            </span>
-          </a>
-          <p className="mt-1.5 text-center text-xs text-[#A0A0B8]">
-            No card. 90 seconds to set up.
-          </p>
-        </div>
-      </div>
     </div>
   );
 }

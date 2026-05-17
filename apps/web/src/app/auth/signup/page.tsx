@@ -210,7 +210,7 @@ function SignUpForm() {
               <img src="/AcuityLogo.png" alt="Acuity" className="mx-auto mb-4" style={{ width: 32, height: 32 }} />
               <h2 className="text-xl font-bold text-[#F5EDE4] hidden lg:block">Start your free trial</h2>
               <p className="mt-1.5 text-sm text-[#F5EDE4]/50">
-                14 days free. No credit card.
+                30 days free. No credit card.
               </p>
             </div>
 
