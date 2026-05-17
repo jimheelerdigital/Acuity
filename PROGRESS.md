@@ -41,6 +41,36 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-17] — Fix CSP blocking Meta pixel data transmission
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 3bc5d6b
+
+### In plain English (for Keenan)
+
+The Meta pixel was loading and firing events in the browser, but the data was being silently blocked from reaching Meta's servers by the site's security policy. The security headers only allowed connections to `www.facebook.com` and `connect.facebook.net`, but Meta's pixel also sends tracking data to various subdomains (like `pixel.facebook.com`, `*.fbcdn.net`). Those were being blocked. Now all Meta pixel data transmission domains are allowed.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/next.config.js`: Added wildcard Facebook domains to CSP directives:
+  - `connect-src`: added `https://*.facebook.com`, `https://*.facebook.net`, `https://*.fbcdn.net`
+  - `script-src` + `script-src-elem`: added `https://*.facebook.net`, `https://*.facebook.com`
+  - `img-src`: added `https://*.facebook.com`, `https://*.fbcdn.net`
+- Updated the CSP comment documentation block to reflect the new entries
+- CSP OAuth invariant tests still pass (7/7)
+
+### Manual steps needed
+
+- [ ] After deploy: open getacuity.io in Chrome DevTools Network tab, filter by "facebook" — verify requests to facebook.com/tr complete with 200 status (not blocked) — Keenan
+
+### Notes
+
+- The pixel was initializing fine (script loaded from connect.facebook.net which was already allowed) but the actual event data POST to facebook.com/tr and image beacons to various fbcdn.net subdomains were being silently dropped by CSP. No browser console error because CSP violations are reported but don't throw.
+- Using wildcards (`*.facebook.com`, `*.fbcdn.net`) instead of enumerating specific subdomains because Meta rotates subdomains for load balancing and A/B testing of their tracking infrastructure.
+
+---
+
 ## [2026-05-17] — Fix crawlability for Meta and Google — pixel in head, SSR content for bots
 
 **Requested by:** Keenan
