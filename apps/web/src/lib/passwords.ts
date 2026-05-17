@@ -4,12 +4,10 @@ import bcrypt from "bcryptjs";
 
 /**
  * Password policy — enforced on signup, password reset, and any future
- * self-service change flow. 12 chars is the NIST SP 800-63B minimum for
- * memorized secrets when no 2FA is in play; we don't enforce complexity
- * classes because the research is clear they don't add entropy in the
- * real world.
+ * self-service change flow. 8 chars balances security with conversion
+ * friction for a consumer app with no sensitive financial data.
  */
-export const PASSWORD_MIN_LENGTH = 12;
+export const PASSWORD_MIN_LENGTH = 8;
 export const PASSWORD_MAX_LENGTH = 128;
 
 export type PasswordValidationError =
