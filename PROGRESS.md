@@ -41,6 +41,37 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-17] — Fix crawlability for Meta and Google — pixel in head, SSR content for bots
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 0f8a7a6
+
+### In plain English (for Keenan)
+
+Meta's Event Setup Tool and Google's lightweight crawler couldn't read the site properly. Two problems: (1) the Meta pixel was loaded through a JavaScript framework feature that doesn't show up in the raw HTML — so Meta's tools couldn't detect it, and (2) the homepage and ad landing pages rendered all their text content using JavaScript, meaning bots that don't execute JS saw a blank page. Now the pixel is a standard script tag visible in the page source to any tool, and every marketing page has its key content (headings, value prop, features) embedded in the initial HTML that crawlers receive.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/layout.tsx`: Replaced `<Script id="meta-pixel" strategy="afterInteractive">` (next/script in body) with a raw `<script dangerouslySetInnerHTML>` in `<head>`. This ensures the pixel code appears in the initial HTML response — Meta's Event Setup Tool and other crawlers will see it without executing client-side JavaScript. Removed `import Script from "next/script"`.
+- `apps/web/src/app/page.tsx`: Added a `<div aria-hidden="true" className="sr-only">` block containing the homepage content (h1, value prop, how it works steps, feature bullets, pricing summary). This renders in the server HTML so crawlers see real content instead of an empty `<div>` waiting for React hydration.
+- `apps/web/src/app/for/[slug]/layout.tsx`: Added SSR content block rendering the persona page's headline, subheadline, solution, features, and testimonial from the `getPersonaBySlug()` data. This appears in the initial HTML for each persona landing page.
+
+### Manual steps needed
+
+- [ ] After deploy: visit getacuity.io, View Page Source (not Inspect), and verify the Meta pixel script tag and the sr-only content div are visible in the raw HTML — Keenan
+- [ ] Re-run Meta Event Setup Tool — it should now detect the pixel — Keenan
+- [ ] Check Google Search Console coverage report in 3-5 days to confirm pages are being indexed with content — Keenan
+
+### Notes
+
+- The `sr-only` (screen-reader-only) CSS class makes content invisible to sighted users but fully readable by crawlers and screen readers. This is a standard SEO technique for SPAs — not cloaking, because the same content renders visually via the client component.
+- The homepage is a Server Component (`page.tsx`) but imports `<LandingPage />` which is `"use client"`. In Next.js App Router, client components render on the server during SSR BUT their content is delivered as a React payload that requires JS hydration — not as raw HTML text. That's why crawlers couldn't see it.
+- The `dangerouslySetInnerHTML` script approach is the standard Meta pixel implementation recommended by Meta's own documentation. It runs synchronously during page parse, before any framework JavaScript executes.
+- Blog pages and the voice-journaling guide are already true Server Components with content in the initial HTML — no fix needed for those.
+
+---
+
 ## [2026-05-17] — Remove device-aware CTA routing, all users go to web signup
 
 **Requested by:** Keenan
