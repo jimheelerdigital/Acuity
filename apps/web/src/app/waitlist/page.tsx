@@ -52,6 +52,7 @@ export default function WaitlistPage() {
         setStatus("success");
         setCount((c) => (c !== null ? c + 1 : c));
         if (typeof fbq !== "undefined") {
+          console.log('[meta-pixel] Firing Lead — waitlist signup');
           fbq("track", "Lead", {
             content_name: "waitlist_signup",
             content_category: source,

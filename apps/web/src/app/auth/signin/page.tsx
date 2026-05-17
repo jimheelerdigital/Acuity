@@ -37,7 +37,6 @@ function SignInForm() {
   const handleGoogle = async () => {
     setFormError(null);
     setLoading("google");
-    if (typeof fbq !== "undefined") fbq("track", "CompleteRegistration");
     await signIn("google", { callbackUrl });
   };
 
@@ -71,7 +70,6 @@ function SignInForm() {
       return;
     }
     setLoading("magic");
-    if (typeof fbq !== "undefined") fbq("track", "CompleteRegistration");
     await signIn("email", { email: email.trim(), callbackUrl, redirect: false });
     setLoading(null);
     setMagicSent(true);

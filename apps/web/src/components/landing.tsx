@@ -868,7 +868,8 @@ function FeatureIcon({ iconKey }: { iconKey: string }) {
 
 function trackInitiateCheckout() {
   if (typeof window !== "undefined" && window.fbq) {
-    window.fbq("track", "InitiateCheckout");
+    console.log('[meta-pixel] Firing Lead — Start Free Trial Click');
+    window.fbq("track", "Lead", { content_name: 'Start Free Trial Click' });
   }
   // PostHog CTA click tracking for acquisition funnel
   try {

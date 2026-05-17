@@ -21,6 +21,9 @@ export function UpgradePlanPicker() {
 
   useEffect(() => {
     if (typeof fbq !== "undefined") {
+      console.log('[meta-pixel] Firing ViewContent — Pricing Page');
+      fbq("track", "ViewContent", { content_name: 'Pricing Page' });
+      console.log('[meta-pixel] Firing InitiateCheckout');
       fbq("track", "InitiateCheckout");
     }
   }, []);

@@ -70,8 +70,12 @@ function SignUpForm() {
     setError(null);
     setLoading("google");
     if (typeof fbq !== "undefined") {
-      fbq("track", "Lead");
-      fbq("track", "CompleteRegistration");
+      console.log('[meta-pixel] Firing Lead — Google signup click');
+      fbq("track", "Lead", { content_name: 'Start Free Trial Click' });
+      console.log('[meta-pixel] Firing CompleteRegistration — Google OAuth');
+      fbq("track", "CompleteRegistration", { content_name: 'Free Trial Signup', currency: 'USD', value: 0 });
+      console.log('[meta-pixel] Firing StartTrial — Google OAuth');
+      fbq("track", "StartTrial", { currency: 'USD', value: 0, predicted_ltv: 12.99 });
     }
     await signIn("google", { callbackUrl: "/home" });
   };
@@ -85,7 +89,10 @@ function SignUpForm() {
     }
     setLoading("password");
     // Meta Pixel: Lead fires on signup form submission
-    if (typeof fbq !== "undefined") fbq("track", "Lead");
+    if (typeof fbq !== "undefined") {
+      console.log('[meta-pixel] Firing Lead — email signup submit');
+      fbq("track", "Lead", { content_name: 'Start Free Trial Click' });
+    }
     try {
       // Read attribution cookie for UTM capture
       let attribution: Record<string, string> | undefined;
@@ -121,7 +128,12 @@ function SignUpForm() {
         }
         return;
       }
-      if (typeof fbq !== "undefined") fbq("track", "CompleteRegistration");
+      if (typeof fbq !== "undefined") {
+        console.log('[meta-pixel] Firing CompleteRegistration — email signup success');
+        fbq("track", "CompleteRegistration", { content_name: 'Free Trial Signup', currency: 'USD', value: 0 });
+        console.log('[meta-pixel] Firing StartTrial — email signup success');
+        fbq("track", "StartTrial", { currency: 'USD', value: 0, predicted_ltv: 12.99 });
+      }
       // Persist UTM attribution to user record
       if (attribution) {
         fetch("/api/auth/set-attribution", {
