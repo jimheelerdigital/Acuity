@@ -41,6 +41,35 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-17] — Mobile conversion fixes: remove App Store bypass, fix trial copy, simplify CTAs
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 84411c4
+
+### In plain English (for Keenan)
+
+Three fixes to stop mobile users from bypassing the web signup flow: (1) Removed the App Store badge from the hero on mobile — it was sending people directly to the App Store without creating an account first. On desktop, the badge is still there but smaller and faded so the "Start Free Trial" button is the clear primary action. (2) The signup page now says "30 days free" to match the founding member offer shown in the urgency banner. The backend already gives 30 days to the first 100 users — the copy just didn't match. (3) Removed the duplicate sticky "Start Free Trial" bar at the bottom of mobile screens since the hero already shows it clearly.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/components/landing.tsx`: Removed `<AppStoreBadge>` from mobile hero CTA section. Changed "See how it works" from a bordered button to a simple text link (reduces visual clutter, keeps it to 2 CTAs). Made desktop `<AppStoreBadge>` smaller with `scale-90 opacity-60 hover:opacity-100`. Deleted the entire sticky mobile CTA `<div className="fixed bottom-0">` section.
+- `apps/web/src/app/auth/signup/page.tsx`: Changed "14 days free. No credit card." → "30 days free. No credit card."
+- `apps/web/src/app/page.tsx`: Updated sr-only content block pricing text to "30-day free trial."
+
+### Manual steps needed
+
+- [ ] When the first 100 founding members are reached, revert copy back to "14 days free" on the signup page and in the sr-only homepage content — Keenan/Jimmy
+
+### Notes
+
+- The founding member trial logic is already correct in `bootstrap-user.ts` — first 100 users get 30 days, subsequent users get 14 days. No backend change needed.
+- The urgency banner counter is real — it calls `/api/founding-members` which queries the actual `User` table for `isFoundingMember: true` count and shows `100 - count` spots remaining. Not hardcoded.
+- App Store badge is still in the footer and on the post-signup `/auth/signup/success` page where it belongs.
+- The sticky mobile CTA bar was adding 60px of dead space at the bottom of the page and duplicating the hero CTA that's already above the fold.
+
+---
+
 ## [2026-05-17] — Add Sign in with Apple to web signup and signin pages
 
 **Requested by:** Keenan
