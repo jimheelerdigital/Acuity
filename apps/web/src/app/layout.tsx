@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Inter, Playfair_Display } from "next/font/google";
-import Script from "next/script";
 import "./globals.css";
 
 import { Providers } from "@/components/providers";
@@ -112,6 +111,22 @@ export default function RootLayout({
         {GOOGLE_SITE_VERIFICATION && (
           <meta name="google-site-verification" content={GOOGLE_SITE_VERIFICATION} />
         )}
+        {/* Meta Pixel — raw script in <head> for maximum crawler compatibility */}
+        <script
+          dangerouslySetInnerHTML={{ __html: `
+            !function(f,b,e,v,n,t,s)
+            {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+            n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+            if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+            n.queue=[];t=b.createElement(e);t.async=!0;
+            t.src=v;s=b.getElementsByTagName(e)[0];
+            s.parentNode.insertBefore(t,s)}(window, document,'script',
+            'https://connect.facebook.net/en_US/fbevents.js');
+            fbq('init', '869829585445303');
+            fbq('track', 'PageView');
+            console.log('[meta-pixel] Initialized pixel 869829585445303, fired PageView');
+          `}}
+        />
         <noscript>
           <img height="1" width="1" style={{ display: "none" }}
             src="https://www.facebook.com/tr?id=869829585445303&ev=PageView&noscript=1"
@@ -123,23 +138,6 @@ export default function RootLayout({
         <link rel="manifest" href="/site.webmanifest" />
       </head>
       <body className="bg-[#FAFAF7] text-zinc-900 antialiased dark:bg-[#181614] dark:text-zinc-50">
-        {/* Meta Pixel — must be in <body> for next/script afterInteractive to execute */}
-        <Script id="meta-pixel" strategy="afterInteractive">
-          {`
-            !function(f,b,e,v,n,t,s)
-            {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-            n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-            if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-            n.queue=[];t=b.createElement(e);t.async=!0;
-            t.src=v;s=b.getElementsByTagName(e)[0];
-            s.parentNode.insertBefore(t,s)}(window, document,'script',
-            'https://connect.facebook.net/en_US/fbevents.js');
-            fbq('init', '869829585445303');
-            console.log('[meta-pixel] Initialized pixel 869829585445303');
-            fbq('track', 'PageView');
-            console.log('[meta-pixel] Firing PageView');
-          `}
-        </Script>
         <Providers>
           <ConsentGatedTrackers />
           <GoogleAnalytics />

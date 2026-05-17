@@ -87,6 +87,27 @@ export default async function HomePage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
+      {/* SSR content for crawlers — visually hidden but in initial HTML for
+          Meta Event Setup Tool, Googlebot, and other bots that don't execute JS.
+          The client-rendered LandingPage component overlays this. */}
+      <div aria-hidden="true" className="sr-only">
+        <h1>Acuity — One Minute a Day. A Life of Clarity.</h1>
+        <p>The AI voice journal that turns your daily shutdown ritual into action. Record a 60-second debrief each night. AI extracts your tasks, tracks your goals, detects life patterns, and delivers a weekly report every Sunday.</p>
+        <h2>How Acuity Works</h2>
+        <p>Step 1: Record your day in 60 seconds. Step 2: AI extracts tasks, goals, and mood. Step 3: Get your weekly report every Sunday.</p>
+        <h2>What You Get</h2>
+        <ul>
+          <li>Tasks extracted from your voice automatically</li>
+          <li>Goals tracked across weeks without lifting a finger</li>
+          <li>Patterns surfaced that you cannot see on your own</li>
+          <li>Weekly report delivered every Sunday morning</li>
+          <li>Life Matrix — score 6 key areas of your life over time</li>
+        </ul>
+        <h2>Pricing</h2>
+        <p>$12.99/month after a 14-day free trial. No credit card required. Cancel anytime.</p>
+        <h2>Start Your Free Trial</h2>
+        <p>Download Acuity on the App Store or sign up at getacuity.io/auth/signup.</p>
+      </div>
       <AccountDeletedBanner />
       <LandingPage />
     </>
