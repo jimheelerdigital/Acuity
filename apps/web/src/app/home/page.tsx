@@ -4,7 +4,7 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 
 import { getAuthOptions } from "@/lib/auth";
-import { TrackCompleteRegistration, TrackSubscribe } from "@/components/meta-pixel-events";
+import { TrackSubscribe } from "@/components/meta-pixel-events";
 import { WelcomeBackBanner } from "@/components/welcome-back-banner";
 import { HomeFocusStack } from "@/components/home-focus-stack";
 import { ProgressionChecklist } from "@/components/progression-checklist";
@@ -180,7 +180,6 @@ export default async function DashboardPage() {
 
   return (
     <div className="min-h-screen">
-      <TrackCompleteRegistration />
       <TrackSubscribe />
       <PageContainer mobileWidth="5xl" className="animate-fade-in">
         <WelcomeBackBanner reduced={reducedTrial} daysLeft={trialDaysLeft} />

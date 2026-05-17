@@ -20,11 +20,11 @@ export function UpgradePlanPicker() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (typeof fbq !== "undefined") {
+    if (typeof window !== "undefined" && typeof window.fbq === "function") {
       console.log('[meta-pixel] Firing ViewContent — Pricing Page');
-      fbq("track", "ViewContent", { content_name: 'Pricing Page' });
+      window.fbq("track", "ViewContent", { content_name: "Pricing Page" });
       console.log('[meta-pixel] Firing InitiateCheckout');
-      fbq("track", "InitiateCheckout");
+      window.fbq("track", "InitiateCheckout", { content_name: "Upgrade Page" });
     }
   }, []);
 

@@ -867,9 +867,9 @@ function FeatureIcon({ iconKey }: { iconKey: string }) {
    ═══════════════════════════════════════════ */
 
 function trackInitiateCheckout() {
-  if (typeof window !== "undefined" && window.fbq) {
+  if (typeof window !== "undefined" && typeof window.fbq === "function") {
     console.log('[meta-pixel] Firing Lead — Start Free Trial Click');
-    window.fbq("track", "Lead", { content_name: 'Start Free Trial Click' });
+    window.fbq("track", "Lead", { content_name: "Start Free Trial Click" });
   }
   // PostHog CTA click tracking for acquisition funnel
   try {

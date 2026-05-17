@@ -3,14 +3,21 @@
 import { useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 
+/**
+ * Safe fbq wrapper — only fires if the pixel has loaded.
+ * Uses window.fbq check to avoid issues with SSR and race conditions.
+ */
+function fireFbq(event: string, params?: Record<string, unknown>) {
+  if (typeof window !== "undefined" && typeof window.fbq === "function") {
+    console.log(`[meta-pixel] Firing ${event}`, params ?? "");
+    window.fbq("track", event, params);
+  }
+}
+
 export function TrackCompleteRegistration() {
   useEffect(() => {
-    if (typeof fbq !== "undefined") {
-      console.log('[meta-pixel] Firing CompleteRegistration');
-      fbq("track", "CompleteRegistration", { content_name: 'Free Trial Signup', currency: 'USD', value: 0 });
-      console.log('[meta-pixel] Firing StartTrial');
-      fbq("track", "StartTrial", { currency: 'USD', value: 0, predicted_ltv: 12.99 });
-    }
+    fireFbq("CompleteRegistration", { content_name: "Free Trial Signup", currency: "USD", value: 0 });
+    fireFbq("StartTrial", { value: 0, currency: "USD" });
   }, []);
 
   return null;
@@ -20,11 +27,10 @@ export function TrackSubscribe() {
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    if (searchParams.get("upgraded") === "1" && typeof fbq !== "undefined") {
+    if (searchParams.get("upgraded") === "1") {
       const plan = searchParams.get("plan");
       const value = plan === "yearly" ? 99 : 12.99;
-      console.log(`[meta-pixel] Firing Subscribe — ${plan} plan, $${value}`);
-      fbq("track", "Subscribe", { currency: "USD", value });
+      fireFbq("Subscribe", { value, currency: "USD" });
     }
   }, [searchParams]);
 
@@ -33,10 +39,7 @@ export function TrackSubscribe() {
 
 export function TrackViewContent({ contentName }: { contentName: string }) {
   useEffect(() => {
-    if (typeof fbq !== "undefined") {
-      console.log(`[meta-pixel] Firing ViewContent — ${contentName}`);
-      fbq("track", "ViewContent", { content_name: contentName });
-    }
+    fireFbq("ViewContent", { content_name: contentName });
   }, [contentName]);
 
   return null;

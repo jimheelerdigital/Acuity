@@ -58,13 +58,13 @@ function SignUpForm() {
   const handleGoogle = async () => {
     setError(null);
     setLoading("google");
-    if (typeof fbq !== "undefined") {
+    if (typeof window !== "undefined" && typeof window.fbq === "function") {
       console.log('[meta-pixel] Firing Lead — Google signup click');
-      fbq("track", "Lead", { content_name: 'Start Free Trial Click' });
+      window.fbq("track", "Lead", { content_name: "Start Free Trial Click" });
       console.log('[meta-pixel] Firing CompleteRegistration — Google OAuth');
-      fbq("track", "CompleteRegistration", { content_name: 'Free Trial Signup', currency: 'USD', value: 0 });
+      window.fbq("track", "CompleteRegistration", { content_name: "Free Trial Signup", currency: "USD", value: 0 });
       console.log('[meta-pixel] Firing StartTrial — Google OAuth');
-      fbq("track", "StartTrial", { currency: 'USD', value: 0, predicted_ltv: 12.99 });
+      window.fbq("track", "StartTrial", { value: 0, currency: "USD" });
     }
     await signIn("google", { callbackUrl: "/auth/signup/success" });
   };
@@ -77,9 +77,9 @@ function SignUpForm() {
       return;
     }
     setLoading("password");
-    if (typeof fbq !== "undefined") {
+    if (typeof window !== "undefined" && typeof window.fbq === "function") {
       console.log('[meta-pixel] Firing Lead — email signup submit');
-      fbq("track", "Lead", { content_name: 'Start Free Trial Click' });
+      window.fbq("track", "Lead", { content_name: "Start Free Trial Click" });
     }
     try {
       let attribution: Record<string, string> | undefined;
@@ -115,11 +115,11 @@ function SignUpForm() {
         }
         return;
       }
-      if (typeof fbq !== "undefined") {
+      if (typeof window !== "undefined" && typeof window.fbq === "function") {
         console.log('[meta-pixel] Firing CompleteRegistration — email signup success');
-        fbq("track", "CompleteRegistration", { content_name: 'Free Trial Signup', currency: 'USD', value: 0 });
+        window.fbq("track", "CompleteRegistration", { content_name: "Free Trial Signup", currency: "USD", value: 0 });
         console.log('[meta-pixel] Firing StartTrial — email signup success');
-        fbq("track", "StartTrial", { currency: 'USD', value: 0, predicted_ltv: 12.99 });
+        window.fbq("track", "StartTrial", { value: 0, currency: "USD" });
       }
       if (attribution) {
         fetch("/api/auth/set-attribution", {
