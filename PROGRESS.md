@@ -41,6 +41,45 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-17] — Add Sign in with Apple to web signup and signin pages
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** d598e21
+
+### In plain English (for Keenan)
+
+Both the signup and sign-in pages now show a "Continue with Apple" button directly below "Continue with Google." It's styled with Apple's required black background and white text with the Apple logo. Once the Apple Developer credentials are added to Vercel, users will be able to sign up and sign in with their Apple ID — matching the mobile app experience.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/lib/auth.ts`: Added `AppleProvider` from `next-auth/providers/apple`. Conditionally loaded — only activates when `APPLE_CLIENT_ID` and `APPLE_CLIENT_SECRET` are set in env. Does not break existing auth when vars are missing.
+- `apps/web/src/app/auth/signin/page.tsx`: Added `handleApple` handler, Apple button below Google, `AppleIcon` SVG component. Updated `Loading` type to include `"apple"`.
+- `apps/web/src/app/auth/signup/page.tsx`: Same — Apple button, handler (fires Lead + CompleteRegistration + StartTrial pixel events like Google), `AppleIcon` component.
+- `apps/web/next.config.js`: Added `https://appleid.apple.com` to CSP `form-action` directive (required for OAuth redirect, same pattern as Google).
+
+### Manual steps needed
+
+- [ ] Generate Apple Sign In credentials for web in Apple Developer Console — Jimmy:
+  1. Go to Certificates, Identifiers & Profiles → Identifiers
+  2. Create a **Services ID** (not App ID) with identifier like `io.getacuity.web`
+  3. Enable "Sign In with Apple", configure web domain: `getacuity.io`, return URL: `https://getacuity.io/api/auth/callback/apple`
+  4. Create a **Key** with "Sign In with Apple" enabled, download the `.p8` file
+  5. Generate the client secret JWT using the Team ID, Key ID, and private key (NextAuth Apple docs have a script for this, or use `apple-signin-auth` npm package)
+- [ ] Add env vars to Vercel — Jimmy:
+  - `APPLE_CLIENT_ID` = the Services ID identifier (e.g., `io.getacuity.web`)
+  - `APPLE_CLIENT_SECRET` = the generated JWT client secret (expires every 6 months — set a calendar reminder)
+- [ ] After env vars are set, trigger a Vercel redeploy and test the flow end-to-end — Keenan
+
+### Notes
+
+- The Apple provider is conditionally loaded (`...(env ? [AppleProvider(...)] : [])`) so the app won't crash if env vars are missing. The button will appear in the UI but clicking it will show a NextAuth error until credentials are configured.
+- Apple's client secret is a JWT signed with your private key — it expires every 6 months maximum. You'll need to regenerate it periodically. Consider automating this with a cron or documenting the regeneration steps.
+- The callback URL for Apple must be exactly `https://getacuity.io/api/auth/callback/apple` — NextAuth generates this path automatically.
+- Apple may require email relay configuration if users choose "Hide My Email." The user's real email won't be available — NextAuth handles this by using the relay address.
+
+---
+
 ## [2026-05-17] — Fix missing Meta pixel events (StartTrial, Subscribe, ViewContent)
 
 **Requested by:** Keenan
