@@ -41,6 +41,39 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-17] — Fix missing Meta pixel events (StartTrial, Subscribe, ViewContent)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 5abe703
+
+### In plain English (for Keenan)
+
+Three events that were supposed to fire for Meta ad optimization (StartTrial, Subscribe, ViewContent) weren't showing up in Events Manager. Two bugs: (1) the code checked if the pixel existed using a method that fails silently if the pixel loads a split-second late, and (2) the CompleteRegistration + StartTrial events were firing on EVERY /home page visit — not just after signup — which was sending garbage data to Meta and likely causing the "__missing_event" error. Fixed both. Events now fire correctly: once after signup (CompleteRegistration + StartTrial), once on the pricing page (ViewContent), and once after paid conversion (Subscribe with $12.99 value).
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/components/meta-pixel-events.tsx`: Refactored to use a centralized `fireFbq()` helper that checks `typeof window !== 'undefined' && typeof window.fbq === 'function'` before every call. All event components use this.
+- `apps/web/src/app/home/page.tsx`: Removed `TrackCompleteRegistration` component — was mounted unconditionally and fired on every /home visit for all logged-in users. The signup success page (`/auth/signup/success`) already handles this correctly.
+- `apps/web/src/app/auth/signup/page.tsx`: All 3 fbq call sites updated to `window.fbq === "function"` guard.
+- `apps/web/src/app/upgrade/upgrade-plan-picker.tsx`: Added `{ content_name: "Upgrade Page" }` param to InitiateCheckout (empty params may cause `__missing_event`).
+- `apps/web/src/app/waitlist/page.tsx`: Updated to window.fbq check.
+- `apps/web/src/components/landing.tsx` + `landing-shared.tsx`: Updated to `typeof window.fbq === "function"`.
+
+### Manual steps needed
+
+- [ ] After deploy: open getacuity.io/auth/signup, complete a signup, check Events Manager for CompleteRegistration + StartTrial — Keenan
+- [ ] Visit /upgrade, check Events Manager for ViewContent — Keenan
+- [ ] Complete a test Stripe checkout, land back with ?upgraded=1, check for Subscribe — Keenan
+
+### Notes
+
+- The `__missing_event` was almost certainly caused by `TrackCompleteRegistration` firing repeatedly on /home. When a user visits /home and the pixel hasn't finished loading, the `typeof fbq !== "undefined"` check passes (fbq is defined as a queue function by the pixel stub) but the actual SDK hasn't loaded — this can produce malformed events.
+- The `typeof window.fbq === "function"` check is the Meta-recommended pattern. It's more reliable than `typeof fbq !== "undefined"` because the pixel stub defines fbq as a function immediately, while `typeof fbq` can be undefined if the script hasn't executed yet.
+- Subscribe event fires with dynamic value: $12.99 for monthly, $99 for yearly. Triggered by `?upgraded=1` query param which Stripe checkout redirect sets.
+
+---
+
 ## [2026-05-17] — Fix CSP blocking Meta pixel data transmission
 
 **Requested by:** Keenan
