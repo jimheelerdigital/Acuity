@@ -41,6 +41,44 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-17] — Fix Meta pixel event tracking (was completely broken)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** d38b908
+
+### In plain English (for Keenan)
+
+The Meta pixel was installed but not actually working — it was only firing a broken "__missing_event" because of where the script was placed in the page code. Now every page load fires a proper PageView event, every "Start Free Trial" button click fires a Lead event, every completed signup fires CompleteRegistration + StartTrial, the upgrade/pricing page fires ViewContent, and paid conversions fire Subscribe. You should see PageView events appear in Meta Events Manager within minutes of the next deploy. Open the browser console on getacuity.io and look for `[meta-pixel]` logs to confirm each event fires.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/layout.tsx`: Moved the `<Script id="meta-pixel" strategy="afterInteractive">` from inside `<head>` to inside `<body>`. In Next.js App Router, `next/script` with `afterInteractive` does not execute when placed in `<head>` — this was the root cause of the broken pixel.
+- `apps/web/src/app/auth/signup/page.tsx`: Added `StartTrial` event after successful signup (both Google OAuth and email). Added proper parameters (`content_name`, `currency`, `value`) to `CompleteRegistration`. Added console.log verification.
+- `apps/web/src/app/auth/signin/page.tsx`: Removed erroneous `CompleteRegistration` events that were firing on sign-in (Google OAuth and magic link). Sign-in is not registration.
+- `apps/web/src/components/landing.tsx` + `landing-shared.tsx`: Changed `InitiateCheckout` → `Lead` with `{ content_name: 'Start Free Trial Click' }` on all CTA buttons.
+- `apps/web/src/components/meta-pixel-events.tsx`: Renamed `TrackPurchase` → `TrackSubscribe` (fires `Subscribe` event). Added `TrackViewContent` component. Added proper params and console.log to all events.
+- `apps/web/src/app/upgrade/upgrade-plan-picker.tsx`: Added `ViewContent` event with `content_name: 'Pricing Page'` alongside existing `InitiateCheckout`.
+- `apps/web/src/app/home/page.tsx`: Updated import from `TrackPurchase` to `TrackSubscribe`.
+- `apps/web/src/app/waitlist/page.tsx`: Added console.log to existing Lead event.
+
+### Manual steps needed
+
+- [ ] Deploy to Vercel (push to main triggers auto-deploy) — Keenan
+- [ ] After deploy: open getacuity.io in Chrome, open DevTools Console, search for `[meta-pixel]` — confirm "Initialized pixel" and "Firing PageView" appear — Keenan
+- [ ] Check Meta Events Manager after 5-10 minutes — PageView events should start appearing — Keenan
+- [ ] Test signup flow: go to /auth/signup, submit form or click Google — check console shows CompleteRegistration + StartTrial �� Keenan
+
+### Notes
+
+- The root cause was `next/script` with `strategy="afterInteractive"` placed inside `<head>` in the App Router layout. This is a known Next.js App Router behavior — the script tag gets rendered but never executed. Moving it to `<body>` is the correct fix.
+- The `__missing_event` in Events Manager was the pixel library loading (via the external .js URL) but `fbq('init')` and `fbq('track', 'PageView')` never executing, so Meta received the pixel ping without a valid event name.
+- Sign-in page was previously firing CompleteRegistration on every Google/magic-link sign-in — this inflated registration counts and polluted attribution. Removed.
+- The `noscript` fallback `<img>` tag remains in `<head>` — this is correct and provides a PageView fallback for non-JS browsers.
+- No duplicate pixel installations found. Only one `fbq('init')` call in the entire codebase.
+
+---
+
 ## [2026-05-16] — Rework compliance checker to 3-tier pass/warning/fail system
 
 **Requested by:** Keenan
