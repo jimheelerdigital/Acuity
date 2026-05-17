@@ -1865,9 +1865,31 @@ model AdLabExperiment {
   createdAt             DateTime                @default(now())
   angles                AdLabAngle[]
   referenceImages       AdLabReferenceImage[]
+  landingPage           AdLabLandingPage?
 
   @@index([projectId, status])
   @@map("adlab_experiments")
+}
+
+model AdLabLandingPage {
+  id                  String          @id @default(cuid())
+  experimentId        String          @unique
+  experiment          AdLabExperiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  slug                String          @unique
+  heroHeadline        String
+  heroSubheadline     String          @db.Text
+  painPoints          String[]
+  valuePropHeadline   String
+  valueProps          String[]
+  testimonialQuote    String?         @db.Text
+  testimonialName     String?
+  ctaText             String          @default("Start Free Trial")
+  metaTitle           String
+  metaDescription     String          @db.Text
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  @@map("adlab_landing_pages")
 }
 
 model AdLabReferenceImage {

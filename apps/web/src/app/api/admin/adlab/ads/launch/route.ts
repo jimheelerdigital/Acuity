@@ -44,6 +44,7 @@ export async function POST(req: NextRequest) {
     where: { id: experimentId },
     include: {
       project: true,
+      landingPage: true,
       angles: {
         include: {
           creatives: {
@@ -303,7 +304,11 @@ export async function POST(req: NextRequest) {
           if (isAppInstall) {
             adLinkUrl = APP_STORE_URL;
           } else {
-            const linkUrl = new URL(landingPageUrl!);
+            // Prefer experiment-specific landing page, fall back to project-level URL
+            const baseUrl = (experiment as any).landingPage?.slug
+              ? `https://getacuity.io/for/${(experiment as any).landingPage.slug}`
+              : landingPageUrl!;
+            const linkUrl = new URL(baseUrl);
             linkUrl.searchParams.set("utm_source", "meta");
             linkUrl.searchParams.set("utm_medium", "paid");
             linkUrl.searchParams.set("utm_campaign", experiment.id);
