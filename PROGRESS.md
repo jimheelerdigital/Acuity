@@ -41,6 +41,41 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-17] — Auto-generated landing pages for AdLab experiments
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 3fe8226
+
+### In plain English (for Keenan)
+
+Each AdLab experiment can now have its own dedicated landing page that matches the ad's angle. When you generate creatives for an experiment, you can also generate a landing page — the AI reads the topic brief, angles, and ad copy, then creates a full page with a headline, pain points, value props, and testimonial all matching that specific emotional angle. The page lives at getacuity.io/for/[slug] and when ads launch to Meta, they link directly to this page instead of the generic homepage. This means someone who clicks an ad about "overthinking at night" lands on a page that talks about overthinking — not a generic product page.
+
+### Technical changes (for Jimmy)
+
+- `prisma/schema.prisma`: New `AdLabLandingPage` model with fields: slug (unique), heroHeadline, heroSubheadline, painPoints[], valuePropHeadline, valueProps[], testimonialQuote, testimonialName, ctaText, metaTitle, metaDescription. Linked 1:1 to AdLabExperiment.
+- `apps/web/src/app/api/admin/adlab/landing-page/route.ts`: New CRUD + AI generation endpoint. POST generates content via Claude (Sonnet) from experiment context. GET fetches existing. PATCH updates fields.
+- `apps/web/src/app/api/landing-page/[slug]/route.ts`: Public GET endpoint serving landing page data by slug (cached 5 min).
+- `apps/web/src/app/for/[slug]/page.tsx`: Complete rewrite. Now handles both static persona pages (from `persona-pages.ts`) and dynamic DB-driven landing pages. Static pages render immediately; dynamic pages fetch from the API. Includes full `DynamicLandingPageView` component with founding member banner, hero, pain points, value props, how-it-works, testimonial, and CTA.
+- `apps/web/src/app/for/[slug]/layout.tsx`: `generateMetadata()` now checks DB if static persona not found. SSR content block also queries DB for dynamic pages (crawler-friendly).
+- `apps/web/src/app/api/admin/adlab/ads/launch/route.ts`: Now includes `landingPage` in experiment query. When launching ads, prefers experiment's landing page URL (`/for/[slug]`) over the project-level `landingPageUrl`.
+
+### Manual steps needed
+
+- [ ] Run `npx prisma db push` to add the `adlab_landing_pages` table to Supabase — Jimmy (must be on home network)
+- [ ] Add admin UI "Landing Page" tab to experiment detail page — future session
+- [ ] Test: create experiment → POST to `/api/admin/adlab/landing-page` with experimentId → verify page renders at `/for/[slug]` — Keenan
+
+### Notes
+
+- The AI generation prompt enforces Acuity brand voice rules: "daily debrief" not "journaling", "shutdown ritual" not "brain dump", under-claim the AI, show artifacts not mechanisms.
+- Slugs are auto-generated from campaign name + 6-char experiment ID suffix for uniqueness. e.g., "overthinking-at-night-abc123"
+- Landing page signup buttons include full UTM tracking: `utm_source=meta&utm_medium=paid&utm_content=[slug]` — this flows through to the attribution system.
+- The `/for/[slug]` route still supports all 20 existing static persona pages (`/for/therapy`, `/for/founders`, etc.) — those render first if matched, DB is only checked as fallback.
+- Admin UI tab for editing/previewing landing pages is not yet built — flagged for next session.
+
+---
+
 ## [2026-05-17] — Mobile conversion fixes: remove App Store bypass, fix trial copy, simplify CTAs
 
 **Requested by:** Keenan
