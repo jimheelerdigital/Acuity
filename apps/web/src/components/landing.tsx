@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { FoundingMemberBanner } from "@/components/founding-member-banner";
 import { SOCIAL_PROOF, STATS_STRIP } from "@/lib/social-proof";
-import { APP_STORE_URL, AppStoreBadge, useIsIOS, useCtaHref } from "@/components/landing-shared";
+import { APP_STORE_URL, AppStoreBadge, useCtaHref } from "@/components/landing-shared";
 
 /* ═══════════════════════════════════════════
    "Who it's for" dropdown for landing nav
@@ -893,8 +893,7 @@ function trackInitiateCheckout() {
 
 export function LandingPage() {
   const [tickerPaused, setTickerPaused] = useState(false);
-  const isIOS = useIsIOS();
-  const ctaHref = useCtaHref("home");
+  const ctaHref = useCtaHref();
 
   // Set first-touch attribution cookie on landing
   useEffect(() => {
@@ -1062,7 +1061,6 @@ export function LandingPage() {
             </Link>
             <a
               href={ctaHref}
-              {...(isIOS ? { target: "_blank", rel: "noopener noreferrer" } : {})}
               onClick={trackInitiateCheckout}
               className="rounded-full bg-[#7C5CFC] px-5 py-2 text-sm font-medium text-white transition hover:bg-[#6B4FE0] hover:shadow-lg hover:shadow-[#7C5CFC]/40 active:scale-95"
             >
@@ -1100,8 +1098,7 @@ export function LandingPage() {
                 <div className="mt-8 flex flex-col items-center gap-3 lg:hidden">
                   <a
                     href={ctaHref}
-                    {...(isIOS ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-                    onClick={trackInitiateCheckout}
+                          onClick={trackInitiateCheckout}
                     className="group relative rounded-full p-[2px] transition active:scale-95 overflow-hidden"
                   >
                     <span className="absolute inset-[-100%] animate-cta-shine" style={{ background: 'conic-gradient(from 0deg, transparent 0%, transparent 60%, #ffffff 75%, #B8A5FF 85%, transparent 100%)' }} />
@@ -1128,8 +1125,7 @@ export function LandingPage() {
                   <div className="flex flex-row items-center gap-3">
                     <a
                       href={ctaHref}
-                      {...(isIOS ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-                      onClick={trackInitiateCheckout}
+                              onClick={trackInitiateCheckout}
                       className="group relative rounded-full p-[2px] transition active:scale-95 overflow-hidden"
                     >
                       <span className="absolute inset-[-100%] animate-cta-shine" style={{ background: 'conic-gradient(from 0deg, transparent 0%, transparent 60%, #ffffff 75%, #B8A5FF 85%, transparent 100%)' }} />
@@ -1538,7 +1534,6 @@ export function LandingPage() {
           <div className="mx-auto max-w-xl text-center">
             <a
               href={ctaHref}
-              {...(isIOS ? { target: "_blank", rel: "noopener noreferrer" } : {})}
               onClick={trackInitiateCheckout}
               className="inline-flex items-center gap-2 rounded-full bg-[#7C5CFC] px-8 py-4 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] hover:shadow-xl hover:shadow-[#7C5CFC]/10 active:scale-95"
             >
@@ -1716,8 +1711,7 @@ export function LandingPage() {
 
                 <a
                   href={ctaHref}
-                  {...(isIOS ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-                  onClick={trackInitiateCheckout}
+                      onClick={trackInitiateCheckout}
                   className="group relative mt-8 block w-full rounded-full p-[2px] transition active:scale-95 overflow-hidden"
                 >
                   <span className="absolute inset-[-100%] animate-cta-shine" style={{ background: 'conic-gradient(from 0deg, transparent 0%, transparent 60%, #ffffff 75%, #B8A5FF 85%, transparent 100%)' }} />
@@ -1808,8 +1802,7 @@ export function LandingPage() {
               <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
                 <a
                   href={ctaHref}
-                  {...(isIOS ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-                  onClick={trackInitiateCheckout}
+                      onClick={trackInitiateCheckout}
                   className="group relative rounded-full p-[2px] transition active:scale-95 overflow-hidden"
                 >
                   <span className="absolute inset-[-100%] animate-cta-shine" style={{ background: 'conic-gradient(from 0deg, transparent 0%, transparent 60%, #ffffff 75%, #B8A5FF 85%, transparent 100%)' }} />
@@ -1901,17 +1894,16 @@ export function LandingPage() {
         <div className="bg-[#181614]/95 backdrop-blur-lg border-t border-white/[0.06] px-4 py-3">
           <a
             href={ctaHref}
-            {...(isIOS ? { target: "_blank", rel: "noopener noreferrer" } : {})}
             onClick={trackInitiateCheckout}
             className="group relative block w-full rounded-full p-[2px] transition active:scale-[0.98] overflow-hidden"
           >
             <span className="absolute inset-[-100%] animate-cta-shine" style={{ background: 'conic-gradient(from 0deg, transparent 0%, transparent 60%, #ffffff 75%, #B8A5FF 85%, transparent 100%)' }} />
             <span className="relative block w-full rounded-full bg-[#7C5CFC] py-3.5 text-center text-sm font-semibold text-white transition group-hover:bg-[#6B4FE0]">
-              {isIOS ? "Download on App Store" : "Start Free Trial"}
+              Start Free Trial
             </span>
           </a>
           <p className="mt-1.5 text-center text-xs text-[#A0A0B8]">
-            {isIOS ? "Free for 30 days · Available on iPhone" : "No card. 90 seconds to set up."}
+            No card. 90 seconds to set up.
           </p>
         </div>
       </div>

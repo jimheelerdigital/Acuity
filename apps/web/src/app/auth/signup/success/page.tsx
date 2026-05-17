@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { AppStoreBadge } from "@/components/landing-shared";
+import { TrackCompleteRegistration } from "@/components/meta-pixel-events";
 
 export const metadata: Metadata = {
   title: "You're in — Download Acuity",
@@ -12,6 +13,7 @@ const APP_STORE_URL = "https://apps.apple.com/us/app/acuity-daily/id6762633410";
 export default function SignupSuccessPage() {
   return (
     <div className="min-h-screen bg-[#181614] flex items-center justify-center px-6">
+      <TrackCompleteRegistration />
       <div className="w-full max-w-md text-center animate-fade-in">
         <div className="mb-6">
           <img src="/AcuityLogo.png" alt="Acuity" className="mx-auto" style={{ width: 48, height: 48 }} />

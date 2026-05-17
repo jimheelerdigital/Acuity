@@ -24,13 +24,11 @@ export function useIsIOS(): boolean {
 }
 
 /**
- * Returns the correct CTA href based on device:
- * - iOS → App Store
- * - Desktop/Android → /auth/signup with utm_campaign
+ * All "Start Free Trial" CTAs link to web signup. No device-aware routing.
+ * UTM params should only come from external traffic (ads, emails), not internal links.
  */
-export function useCtaHref(utmCampaign: string): string {
-  const isIOS = useIsIOS();
-  return isIOS ? APP_STORE_URL : `/auth/signup?utm_campaign=${utmCampaign}`;
+export function useCtaHref(_utmCampaign?: string): string {
+  return "/auth/signup";
 }
 
 /** Official "Download on the App Store" black badge as inline SVG. */
@@ -306,12 +304,9 @@ export function PulsingCTA({
   children: React.ReactNode;
   className?: string;
 }) {
-  const isIOS = useIsIOS();
-  const ctaHref = isIOS ? APP_STORE_URL : href;
   return (
     <a
-      href={ctaHref}
-      {...(isIOS ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+      href={href}
       onClick={trackInitiateCheckout}
       className={`relative inline-flex items-center gap-2 rounded-full bg-[#7C5CFC] px-8 py-4 text-sm font-semibold text-white transition-all duration-300 hover:bg-[#6B4FE0] hover:shadow-xl hover:shadow-[#7C5CFC]/25 hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#181614] ${className}`}
     >
@@ -523,8 +518,7 @@ function LandingWhoItsFor() {
    ═══════════════════════════════════════════ */
 
 export function LandingNav() {
-  const ctaHref = useCtaHref("nav");
-  const isIOS = useIsIOS();
+  const ctaHref = useCtaHref();
   return (
     <div className="fixed top-0 inset-x-0 z-50">
       <FoundingMemberBanner />
@@ -559,7 +553,6 @@ export function LandingNav() {
         </div>
         <a
           href={ctaHref}
-          {...(isIOS ? { target: "_blank", rel: "noopener noreferrer" } : {})}
           onClick={trackInitiateCheckout}
           className="rounded-full bg-[#7C5CFC] px-5 py-2 text-sm font-medium text-white transition hover:bg-[#6B4FE0] hover:shadow-lg hover:shadow-[#7C5CFC]/20 active:scale-95"
         >
@@ -647,8 +640,7 @@ export function PricingSection({
   subheadline?: string;
   utmCampaign: string;
 }) {
-  const ctaHref = useCtaHref(utmCampaign);
-  const isIOS = useIsIOS();
+  const ctaHref = useCtaHref();
 
   return (
     <section id="pricing" className="px-6 py-24 sm:py-32 bg-transparent">
@@ -705,7 +697,6 @@ export function PricingSection({
 
               <a
                 href={ctaHref}
-                {...(isIOS ? { target: "_blank", rel: "noopener noreferrer" } : {})}
                 onClick={trackInitiateCheckout}
                 className="mt-8 block w-full rounded-full bg-[#7C5CFC] py-3.5 text-center text-sm font-semibold text-white transition hover:bg-[#6B4FE0] hover:shadow-xl hover:shadow-[#7C5CFC]/20 active:scale-95"
               >
@@ -1049,8 +1040,7 @@ export function CTABanner({
   buttonText?: string;
   utmCampaign: string;
 }) {
-  const ctaHref = useCtaHref(utmCampaign);
-  const isIOS = useIsIOS();
+  const ctaHref = useCtaHref();
   return (
     <section className="px-6 py-24 sm:py-32">
       <Reveal>
@@ -1073,7 +1063,6 @@ export function CTABanner({
             <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
               <a
                 href={ctaHref}
-                {...(isIOS ? { target: "_blank", rel: "noopener noreferrer" } : {})}
                 onClick={trackInitiateCheckout}
                 className="rounded-full bg-[#7C5CFC] px-8 py-4 text-sm font-bold text-white shadow-lg shadow-[#7C5CFC]/10 transition hover:shadow-xl hover:shadow-[#7C5CFC]/20 hover:-translate-y-0.5 active:scale-95"
               >
@@ -1445,8 +1434,7 @@ export function MidPageCTA({
   subheadline?: string;
   utmCampaign: string;
 }) {
-  const ctaHref = useCtaHref(utmCampaign);
-  const isIOS = useIsIOS();
+  const ctaHref = useCtaHref();
   return (
     <section className="px-6 py-16">
       <Reveal>
@@ -1458,7 +1446,6 @@ export function MidPageCTA({
           )}
           <a
             href={ctaHref}
-            {...(isIOS ? { target: "_blank", rel: "noopener noreferrer" } : {})}
             onClick={trackInitiateCheckout}
             className="inline-flex items-center gap-2 rounded-full bg-[#7C5CFC] px-8 py-4 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] hover:shadow-xl hover:shadow-[#7C5CFC]/10 active:scale-95"
           >
@@ -1849,21 +1836,19 @@ export function FAQSection() {
    ═══════════════════════════════════════════ */
 
 export function StickyCTA({ utmCampaign }: { utmCampaign: string }) {
-  const ctaHref = useCtaHref(utmCampaign);
-  const isIOS = useIsIOS();
+  const ctaHref = useCtaHref();
   return (
     <div className="fixed bottom-0 inset-x-0 z-40 sm:hidden">
       <div className="bg-[#181614]/95 backdrop-blur-lg border-t border-white/10 px-4 py-3">
         <a
           href={ctaHref}
-          {...(isIOS ? { target: "_blank", rel: "noopener noreferrer" } : {})}
           onClick={trackInitiateCheckout}
           className="block w-full rounded-full bg-[#7C5CFC] py-3.5 text-center text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98]"
         >
-          {isIOS ? "Download on App Store" : "Start Free Trial"}
+          Start Free Trial
         </a>
         <p className="mt-1.5 text-center text-xs text-[#A0A0B8]">
-          Free for 30 days &middot; {isIOS ? "Available on iPhone" : "No card required"}
+          Free for 30 days &middot; No card required
         </p>
       </div>
     </div>
