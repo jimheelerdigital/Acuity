@@ -41,6 +41,36 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-17] — Redesign signup page for higher conversion
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** abfccb0
+
+### In plain English (for Keenan)
+
+The signup page was a plain white box on a blank page — no value prop, no brand continuity, no reason to keep going. Now it matches the marketing site with a warm dark background. Desktop users see a split layout: left side reinforces value (voice-to-tasks, pattern detection, weekly report, testimonial from Marcus T.) while the right side has the form. Mobile users see a condensed value line above the form. After signup, users land on a "download the app" page with an App Store badge and QR code for desktop users. Password requirement dropped from 12 to 8 characters to reduce friction. Button now says "Start Free Trial" instead of "Create account."
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/auth/signup/page.tsx`: Complete rewrite. Split layout (55/45 desktop, stacked mobile). Dark `bg-[#181614]` background matching landing pages. Value bullets with checkmark icons. Testimonial quote. Mobile condensed value prop. Form card with `bg-[#1E1E2E]`. Google OAuth redirects to `/auth/signup/success` instead of `/home`. Password min changed from 12 to 8.
+- `apps/web/src/app/auth/signup/success/page.tsx`: New page. Shows "You're in" heading, App Store badge (via `AppStoreBadge` from landing-shared), QR code via qrserver.com API (desktop only), and "continue in browser" link to `/home`. `robots: noindex`.
+- `apps/web/src/lib/passwords.ts`: `PASSWORD_MIN_LENGTH` changed from 12 to 8. Server-side validation updated.
+
+### Manual steps needed
+
+- [ ] Verify Google OAuth callback URL still works with the new redirect to /auth/signup/success (should work — NextAuth handles the redirect via callbackUrl param) — Keenan
+- [ ] Consider adding an App Store badge SVG to `/public/` instead of relying on the inline SVG component, if you want a pixel-perfect Apple badge — Keenan/Jimmy
+
+### Notes
+
+- Apple OAuth is NOT configured in NextAuth for web — only Google, Email, and Credentials providers exist. Adding Apple web OAuth requires an Apple Services ID, domain verification, and key setup in the Apple Developer portal. Left Google as the primary OAuth option.
+- The QR code on the success page is generated via `api.qrserver.com` — a free external service. If this becomes unreliable, replace with a static QR image in `/public/`.
+- Email signup still shows "Check your inbox" inline (no redirect to success page) because email verification is required before the account is active. Only Google OAuth gets the immediate redirect to the download page.
+- Password min change from 12 → 8 applies to both new signups and password resets. Existing users with 12+ char passwords are unaffected.
+
+---
+
 ## [2026-05-17] — Fix Meta pixel event tracking (was completely broken)
 
 **Requested by:** Keenan
