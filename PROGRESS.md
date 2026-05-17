@@ -41,6 +41,35 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-17] — Remove device-aware CTA routing, all users go to web signup
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 3d8a769
+
+### In plain English (for Keenan)
+
+Previously, iOS users who tapped "Start Free Trial" were sent directly to the App Store — skipping web signup entirely. Now everyone goes to the signup page first, creates an account, and then gets routed to download the app. This means every user has an account before they install, which fixes the "cold open" problem in the app. The "Download on the App Store" badge in the footer and elsewhere still links directly to the store for people who already have accounts.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/components/landing-shared.tsx`: `useCtaHref()` now always returns `/auth/signup` regardless of device. Removed all `isIOS` conditional spread attributes and text ternaries from CTA buttons. `useIsIOS` hook kept exported (still used by AppStoreBadge logic elsewhere).
+- `apps/web/src/components/landing.tsx`: Removed `useIsIOS` import and all `isIOS` conditional rendering from the sticky CTA and other buttons.
+- `apps/web/src/app/for/[slug]/page.tsx`: Removed `useIsIOS` import, `WAITLIST` variable, `isIOS` spread. All CTAs use `ctaHref` which now resolves to `/auth/signup`.
+- `apps/web/src/app/auth/signup/success/page.tsx`: Added `TrackCompleteRegistration` component so the Meta pixel fires on the post-signup download page.
+
+### Manual steps needed
+
+None — web-only change, auto-deploys on push.
+
+### Notes
+
+- Internal links no longer append `?utm_campaign=home` or any other hardcoded UTM param. UTMs should only come from external traffic sources (ads, emails, social posts).
+- The `useIsIOS` hook is still exported from landing-shared.tsx because it may be used elsewhere or in future A/B tests. Can be removed later if fully unused.
+- `AppStoreBadge` component and `APP_STORE_URL` constant are unchanged — secondary "Download" links still go directly to the App Store.
+
+---
+
 ## [2026-05-17] — Redesign signup page for higher conversion
 
 **Requested by:** Keenan
