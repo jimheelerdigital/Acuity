@@ -41,6 +41,35 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-18] — Remove founding member banner + replace homepage testimonials with shared carousel
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** a105a94
+
+### In plain English (for Keenan)
+
+Two homepage cleanup changes. First, the purple "First 100 members get 30 days free — only X spots left" urgency banner is gone from the homepage and every /for/* landing page. The 30-day trial is still the default on the signup page — it just isn't promoted with a banner anymore. Second, the old static 3-card testimonials section ("What people say after week one") and the trust badges row below it are replaced with the same auto-scrolling testimonial carousel the landing pages already use. The carousel now sits right after the stats bar, higher up the page. Both the homepage and all landing pages now share a single testimonial component, so adding or changing testimonials in the future updates everywhere at once.
+
+### Technical changes (for Jimmy)
+
+- New file: `apps/web/src/components/testimonial-carousel.tsx` — shared component extracted from `for/[slug]/page.tsx`. Exports `TestimonialCarousel`, `TestimonialCard`, `CarouselTestimonial` type, `STATIC_CAROUSEL_TESTIMONIALS` data array, `buildTestimonialsWithLeader()`, and `pickFallbackHeadshot()`.
+- `apps/web/src/components/landing.tsx`: removed `FoundingMemberBanner` import and usage from the fixed navbar wrapper. Removed the static 3-card testimonials section and the trust strip below it (audio deleted / no card / cancel anytime / 30-day trial). Added `<TestimonialCarousel>` right after the stats ticker section. Removed the now-unused `testimonials` data array.
+- `apps/web/src/components/landing-shared.tsx`: removed `FoundingMemberBanner` import and usage from `LandingNav`.
+- `apps/web/src/app/for/[slug]/page.tsx`: removed `FoundingMemberBanner` import and usage from `DynamicLandingPageView`. Removed all local carousel/testimonial code (~200 lines) — now imports everything from the shared component. `buildStaticTestimonials` → `buildTestimonialsWithLeader`.
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- `founding-member-banner.tsx` is no longer imported anywhere but was not deleted — it can be removed in a future cleanup pass or kept in case the promo returns.
+- Risk classified SAFE: web-only changes, no mobile-facing APIs or database changes affected.
+- The Sarah K. testimonial from the old static section is preserved in the shared carousel data alongside Marcus T., Jamie L., Priya R., and David K.
+
+---
+
 ## [2026-05-18] — Slice O pivot: in-app feedback posts to Slack instead of Make.com
 
 **Requested by:** Jimmy
