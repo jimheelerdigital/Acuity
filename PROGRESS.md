@@ -41,6 +41,32 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-18] — Landing page hero: add product description, fix star rating, match homepage social proof
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 7022f6d
+
+### In plain English (for Keenan)
+
+The ad landing pages were too vague — the hero only mentioned the weekly report. Now every landing page has a full product description below the subheadline: "Acuity is an AI voice journal. Talk for 60 seconds... AI pulls out your tasks, tracks your goals, scores your mood, spots patterns..." This appears on ALL dynamic landing pages automatically. The social proof bar was showing "4 ★" because the counter was rounding 4.9 down to 4 — now it correctly shows "4.9 ★". Replaced the 3-column stats grid with the same inline social proof bar the homepage uses ("4.9 ★ Join 100+ people already using Acuity"). Subheadline text color changed to warmer cream to match homepage.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/for/[slug]/page.tsx`: Added static product description paragraph in hero (warm #B0A898 text). Subheadline color changed to #E8DDD0. Replaced 3-col AnimatedCounter grid with `<SocialProofBar />` component. Final CTA star uses amber-400 color.
+- `apps/web/src/components/landing-shared.tsx`: `AnimatedCounter` now detects non-integer targets and preserves 1 decimal place using `toFixed(1)` instead of `Math.floor`.
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- The static product description is the same on all landing pages — it lives in the template, not the DB. Only the headline and subheadline are angle-specific from the DB.
+- The `AnimatedCounter` fix also affects the homepage stats strip and any other usage — all decimal targets now display correctly.
+
+---
+
 ## [2026-05-18] — Fix ad set structure (1 campaign → 1 ad set → N ads) + retry logic
 
 **Requested by:** Keenan
