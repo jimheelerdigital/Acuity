@@ -6,6 +6,7 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { Text as RNText } from "react-native";
 import * as Sentry from "@sentry/react-native";
 
 import { AuthProvider, useAuth } from "@/contexts/auth-context";
@@ -17,6 +18,23 @@ import { initSentry, setSentryUser } from "@/lib/sentry";
 
 // Sentry init at module scope — idempotent on re-import.
 initSentry();
+
+// Slice H typography (2026-05-18): cap Dynamic Type scaling at 1.5×
+// so iOS "Larger Accessibility" sizes don't blow out our layouts.
+// allowFontScaling stays at its RN default (true) so users with
+// reduced/larger text settings see scaled text. The 1.5 cap matches
+// the iOS HIG recommendation for non-text-primary surfaces (1.3 for
+// chrome-heavy, 1.7+ for reading-focused). 1.5 is the right middle
+// for an app that mixes nav chrome, lists, and reading content.
+//
+// Text.defaultProps mutation is the React Native idiom for this —
+// no per-component prop sprinkling required. Set once at module
+// scope so it applies to every <Text/> instance the route tree
+// renders.
+(RNText as unknown as { defaultProps?: Record<string, unknown> })
+  .defaultProps ||= {};
+(RNText as unknown as { defaultProps: Record<string, unknown> })
+  .defaultProps.maxFontSizeMultiplier = 1.5;
 
 // Keep the native splash up until auth + theme have hydrated. Without
 // this, Expo auto-hides the splash as soon as React mounts, which
