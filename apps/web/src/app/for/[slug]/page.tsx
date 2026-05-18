@@ -324,7 +324,7 @@ function DynamicLandingPageView({ page, slug, ctaHref }: { page: DynamicLandingP
           <div className="grid grid-cols-3 gap-4 text-center">
             <div>
               <div className="text-lg sm:text-xl font-extrabold text-white">
-                <AnimatedCounter target={4.9} suffix=" \u2605" />
+                <AnimatedCounter target={4.9} suffix={" ★"} />
               </div>
               <div className="text-[10px] sm:text-xs text-[#B0A898]">App Store</div>
             </div>
@@ -344,7 +344,10 @@ function DynamicLandingPageView({ page, slug, ctaHref }: { page: DynamicLandingP
         </div>
       </section>
 
-      {/* 5. Pain Points — "Sound familiar?" */}
+      {/* 5. Testimonials — directly under social proof, minimal gap */}
+      <TestimonialCarousel testimonials={allTestimonials} />
+
+      {/* 6. Pain Points — "Sound familiar?" */}
       <section className="px-6 py-14 sm:py-18">
         <div className="mx-auto max-w-4xl">
           <Reveal>
@@ -417,7 +420,7 @@ function DynamicLandingPageView({ page, slug, ctaHref }: { page: DynamicLandingP
       <HowItWorksSection
         steps={[
           { label: "Step 1", title: "Record", description: "Hit record. Speak freely for 60 seconds about your day — whatever comes to mind." },
-          { label: "Step 2", title: "Extract", description: "By morning, your tasks are on a list, your goals are tracked, and your mood is scored." },
+          { label: "Step 2", title: "Extract", description: "Within minutes, your tasks are on a list, your goals are tracked, and your mood is scored." },
           { label: "Step 3", title: "Reflect", description: "Every Sunday, get a weekly narrative report showing patterns in your life." },
         ]}
         extractTasks={[{ text: "Send proposal" }, { text: "Buy groceries" }, { text: "Call mom" }]}
@@ -463,10 +466,7 @@ function DynamicLandingPageView({ page, slug, ctaHref }: { page: DynamicLandingP
         </div>
       </section>
 
-      {/* 9. Testimonials — scrolling carousel on desktop, vertical stack on mobile */}
-      <TestimonialCarousel testimonials={allTestimonials} />
-
-      {/* 10. Final CTA */}
+      {/* 9. Final CTA */}
       <section className="px-6 py-14 sm:py-20">
         <Reveal>
           <div className="mx-auto max-w-3xl rounded-2xl border border-white/10 bg-[#1E1C1A] p-10 sm:p-14 text-center relative overflow-hidden">
@@ -485,7 +485,7 @@ function DynamicLandingPageView({ page, slug, ctaHref }: { page: DynamicLandingP
                 No credit card. Cancel anytime.
               </p>
               <p className="mt-4 text-xs text-[#B0A898]/60">
-                \u2B50 4.9 on the App Store
+                ★ 4.9 on the App Store
               </p>
             </div>
           </div>
@@ -507,23 +507,21 @@ function TestimonialCarousel({ testimonials }: { testimonials: CarouselTestimoni
   const trackRef = useRef<HTMLDivElement>(null);
   const [paused, setPaused] = useState(false);
 
-  // Continuous scroll animation via requestAnimationFrame
   useEffect(() => {
     const track = trackRef.current;
     if (!track) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    // Only run carousel on sm+ screens
     if (window.innerWidth < 640) return;
 
     let offset = 0;
     let animId: number;
-    const speed = 0.4; // px per frame
+    // ~260px card + 12px gap = 272px per card. One card per 4s at 60fps = 272/(4*60) ≈ 1.13px/frame
+    const speed = 1.13;
 
     function step() {
       if (!paused) {
         offset += speed;
-        // Each card is ~340px wide + 16px gap = 356px. Reset after one full set.
-        const singleSetWidth = testimonials.length * 356;
+        const singleSetWidth = testimonials.length * 272;
         if (offset >= singleSetWidth) offset -= singleSetWidth;
         if (track) track.style.transform = `translateX(-${offset}px)`;
       }
@@ -533,18 +531,11 @@ function TestimonialCarousel({ testimonials }: { testimonials: CarouselTestimoni
     return () => cancelAnimationFrame(animId);
   }, [paused, testimonials.length]);
 
-  // Duplicate testimonials for seamless loop
   const doubled = [...testimonials, ...testimonials];
 
   return (
-    <section className="py-14 sm:py-18 overflow-hidden">
-      <Reveal>
-        <h2 className="text-center text-2xl font-bold tracking-tight sm:text-3xl text-white mb-8 px-6">
-          People are loving it
-        </h2>
-      </Reveal>
-
-      {/* Desktop: horizontal scrolling carousel */}
+    <section className="pt-6 pb-10 sm:pt-8 sm:pb-12 overflow-hidden">
+      {/* Desktop: horizontal scrolling carousel — 3 cards visible */}
       <div
         className="hidden sm:block"
         onMouseEnter={() => setPaused(true)}
@@ -553,7 +544,7 @@ function TestimonialCarousel({ testimonials }: { testimonials: CarouselTestimoni
         <div className="relative">
           <div
             ref={trackRef}
-            className="flex gap-4 will-change-transform"
+            className="flex gap-3 will-change-transform"
             style={{ width: "max-content" }}
           >
             {doubled.map((t, i) => (
@@ -563,12 +554,10 @@ function TestimonialCarousel({ testimonials }: { testimonials: CarouselTestimoni
         </div>
       </div>
 
-      {/* Mobile: vertical stack */}
-      <div className="sm:hidden px-6 space-y-4">
-        {testimonials.map((t, i) => (
-          <Reveal key={t.name} delay={Math.min(i + 1, 3) as 1 | 2 | 3}>
-            <TestimonialCard testimonial={t} />
-          </Reveal>
+      {/* Mobile: horizontal peek (1.5 cards visible) */}
+      <div className="sm:hidden flex gap-3 px-4 overflow-x-auto no-scrollbar snap-x snap-mandatory">
+        {testimonials.map((t) => (
+          <TestimonialCard key={t.name} testimonial={t} />
         ))}
       </div>
     </section>
@@ -577,24 +566,24 @@ function TestimonialCarousel({ testimonials }: { testimonials: CarouselTestimoni
 
 function TestimonialCard({ testimonial: t }: { testimonial: CarouselTestimonial }) {
   return (
-    <div className="w-full sm:w-[340px] shrink-0 rounded-xl border border-white/10 bg-[#1E1C1A] p-5 sm:p-6">
-      <div className="flex items-center gap-1 mb-3">
+    <div className="w-[230px] sm:w-[260px] shrink-0 snap-start rounded-lg border border-white/10 bg-[#1E1C1A] p-3.5 sm:p-4">
+      <div className="flex items-center gap-0.5 mb-2">
         {[...Array(5)].map((_, i) => (
-          <svg key={i} className="h-3.5 w-3.5 text-[#7C5CFC]" fill="currentColor" viewBox="0 0 20 20">
+          <svg key={i} className="h-3 w-3 text-[#7C5CFC]" fill="currentColor" viewBox="0 0 20 20">
             <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
           </svg>
         ))}
       </div>
-      <blockquote className="text-sm text-[#B0A898] leading-relaxed mb-4">
+      <blockquote className="text-xs text-[#B0A898] leading-relaxed mb-3">
         &ldquo;{t.quote}&rdquo;
       </blockquote>
-      <div className="flex items-center gap-3">
-        <div className={`flex h-10 w-10 items-center justify-center rounded-full ${t.bgColor} text-xs font-bold text-white`}>
+      <div className="flex items-center gap-2">
+        <div className={`flex h-7 w-7 items-center justify-center rounded-full ${t.bgColor} text-[9px] font-bold text-white`}>
           {t.initials}
         </div>
         <div>
-          <div className="text-sm font-semibold text-white">{t.name}</div>
-          <div className="text-xs text-[#B0A898]/60">{t.role}</div>
+          <div className="text-xs font-semibold text-white">{t.name}</div>
+          <div className="text-[10px] text-[#B0A898]/60">{t.role}</div>
         </div>
       </div>
     </div>
