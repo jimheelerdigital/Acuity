@@ -199,24 +199,39 @@ interface CarouselTestimonial {
   imageSrc?: string;
 }
 
-/** Pool of headshot images for DB testimonials whose names don't match a static person */
-const FALLBACK_HEADSHOTS = [
-  "/testimonials/alex-m.png",
+/** Gender-split fallback headshot pools */
+const FALLBACK_FEMALE = [
   "/testimonials/rachel-w.png",
-  "/testimonials/tom-h.png",
   "/testimonials/nina-s.png",
-  "/testimonials/james-c.png",
   "/testimonials/maya-p.png",
-  "/testimonials/chris-b.png",
   "/testimonials/emma-r.png",
-  "/testimonials/daniel-j.png",
   "/testimonials/lisa-t.png",
-  "/testimonials/mike-d.png",
   "/testimonials/aisha-n.png",
-  "/testimonials/ryan-f.png",
   "/testimonials/sofia-g.png",
+  "/testimonials/sarah-k.png",
+];
+const FALLBACK_MALE = [
+  "/testimonials/alex-m.png",
+  "/testimonials/tom-h.png",
+  "/testimonials/james-c.png",
+  "/testimonials/chris-b.png",
+  "/testimonials/daniel-j.png",
+  "/testimonials/mike-d.png",
+  "/testimonials/ryan-f.png",
   "/testimonials/kevin-l.png",
 ];
+/** Common female first names for gender detection */
+const FEMALE_NAMES = new Set([
+  "sarah", "jamie", "priya", "emma", "nina", "maya", "lisa", "aisha", "sofia",
+  "rachel", "jessica", "jennifer", "amanda", "ashley", "stephanie", "nicole",
+  "elizabeth", "heather", "megan", "emily", "anna", "maria", "laura", "kate",
+  "katherine", "olivia", "ava", "sophia", "isabella", "mia", "charlotte",
+  "amelia", "harper", "evelyn", "abigail", "ella", "lily", "grace", "chloe",
+  "natalie", "hannah", "zoe", "riley", "leah", "audrey", "savannah", "claire",
+  "samantha", "victoria", "madison", "diana", "andrea", "carmen", "rosa",
+  "fatima", "anika", "devi", "pooja", "neha", "riya", "ananya", "shreya",
+  "mei", "yuki", "hana", "lin", "wei", "jing", "suki", "kim", "ji", "yuna",
+]);
 
 const STATIC_CAROUSEL_TESTIMONIALS: CarouselTestimonial[] = [
   {
@@ -253,11 +268,13 @@ const STATIC_CAROUSEL_TESTIMONIALS: CarouselTestimonial[] = [
   },
 ];
 
-/** Pick a deterministic fallback headshot based on name hash */
+/** Pick a deterministic gender-appropriate fallback headshot */
 function pickFallbackHeadshot(name: string): string {
+  const firstName = name.split(" ")[0].toLowerCase();
+  const pool = FEMALE_NAMES.has(firstName) ? FALLBACK_FEMALE : FALLBACK_MALE;
   let hash = 0;
   for (let i = 0; i < name.length; i++) hash = ((hash << 5) - hash + name.charCodeAt(i)) | 0;
-  return FALLBACK_HEADSHOTS[Math.abs(hash) % FALLBACK_HEADSHOTS.length];
+  return pool[Math.abs(hash) % pool.length];
 }
 
 /** Build carousel testimonials from a static persona page's single testimonial + shared static ones */
