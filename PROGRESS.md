@@ -41,6 +41,33 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-17] — Fix: dynamic landing pages returning 404 (live ad pages down)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** ce69b66
+
+### In plain English (for Keenan)
+
+The ad landing pages (/for/you-weren-t-bad-at-journaling... and /for/the-week-didn-t-disappear...) were broken because the earlier commit added a new database column (`closingHeadline`) to the code, but the column hasn't been added to the actual production database yet. When the page tried to load data, the database query failed and the page showed "Page not found." Fixed by adding a safety net: if the normal query fails, it falls back to a simpler query that only asks for the columns that already exist. Pages should be working again once Vercel redeploys (automatic on push).
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/api/landing-page/[slug]/route.ts`: Wrapped the Prisma `findUnique` in try/catch. On failure, falls back to `$queryRawUnsafe` that explicitly selects only pre-existing columns (skipping `closingHeadline`). Returns `closingHeadline: null` in the response so the frontend doesn't break.
+- Root cause: `closingHeadline` was added to `prisma/schema.prisma` and `prisma generate` runs at build time on Vercel, so the Prisma client tries to SELECT the column — but it doesn't exist in the DB yet because `prisma db push` hasn't been run.
+
+### Manual steps needed
+
+- [ ] Run `npx prisma db push` to add `closingHeadline` column — Jimmy (home network). Once this is done, the fallback code becomes unnecessary but harmless.
+
+### Notes
+
+- The fallback raw SQL is safe to leave in place permanently — it only activates if the Prisma query throws, which only happens during schema/DB mismatch.
+- After `prisma db push` is run, all queries will use the normal Prisma path and the fallback won't execute.
+- This is a recurring pattern risk: any new column added to the schema will break queries on Vercel until `prisma db push` is run. Future schema changes should consider this timing gap.
+
+---
+
 ## [2026-05-17] — Rebuild compliance checker + multi-image upload with drag-and-drop
 
 **Requested by:** Keenan
