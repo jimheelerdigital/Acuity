@@ -14,7 +14,6 @@ import {
   FAQSection,
   HowItWorksSection,
   ExtractPhone,
-  ReflectPhone,
   useCtaHref,
 } from "@/components/landing-shared";
 import { getPersonaBySlug, type PersonaPage } from "@/lib/persona-pages";
@@ -279,14 +278,12 @@ function DynamicLandingPageView({ page, slug, ctaHref }: { page: DynamicLandingP
             {/* Text side */}
             <div className="flex-1 text-center lg:text-left">
               <Reveal>
-                <HeroHeadline text={page.heroHeadline} />
+                <SplitHeroHeadline text={page.heroHeadline} />
               </Reveal>
               <Reveal delay={1}>
-                <p className="mt-4 text-lg text-[#E8DDD0] leading-relaxed max-w-xl mx-auto lg:mx-0">
-                  {page.heroSubheadline}
-                </p>
-                <p className="mt-3 text-sm text-[#B0A898] leading-relaxed max-w-lg mx-auto lg:mx-0">
-                  Acuity is an AI voice journal. Talk for 60 seconds — about your day, your worries, whatever is on your mind. AI pulls out your tasks, tracks your goals, scores your mood, spots patterns you can't see yourself, and every Sunday delivers a report that tells the story of your week.
+                <p className="mt-5 text-base sm:text-lg text-[#F5EDE4] leading-relaxed max-w-xl mx-auto lg:mx-0">
+                  {page.heroSubheadline}{" "}
+                  Acuity is an AI voice journal — talk for 60 seconds, and AI pulls your tasks, tracks your goals, scores your mood, and every Sunday delivers a report that tells the story of your week.
                 </p>
               </Reveal>
               <Reveal delay={2}>
@@ -342,50 +339,6 @@ function DynamicLandingPageView({ page, slug, ctaHref }: { page: DynamicLandingP
                 </div>
               </SlideIn>
             ))}
-          </div>
-        </div>
-      </section>
-
-      {/* 7. What is Acuity? — product explainer with phone mockups */}
-      <section className="px-6 py-14 sm:py-18">
-        <div className="mx-auto max-w-6xl">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:gap-12">
-            <div className="flex-1 text-center lg:text-left mb-10 lg:mb-0">
-              <SlideIn direction="left">
-                <h2 className="text-3xl font-bold tracking-tight sm:text-4xl text-white">
-                  One minute of talking.<br />A week of clarity.
-                </h2>
-                <p className="mt-4 text-base text-[#B0A898] leading-relaxed max-w-lg mx-auto lg:mx-0">
-                  Acuity is an AI voice journal. Talk about your day for one minute — any time,
-                  no prompts, no typing. AI extracts your tasks, tracks your goals, detects patterns
-                  in your life, and every Sunday delivers a report that tells the story of your week.
-                </p>
-              </SlideIn>
-            </div>
-            {/* Two phone mockups side by side */}
-            <div className="flex-shrink-0 flex justify-center gap-4 sm:gap-6">
-              <SlideIn direction="right" delay={200}>
-                <div className="animate-hero-float" style={{ animationDelay: "0s" }}>
-                  <ExtractPhone
-                    tasks={[
-                      { text: "Send proposal to client", checked: true },
-                      { text: "Buy groceries" },
-                      { text: "Call mom" },
-                    ]}
-                    goal="Ship the beta this week"
-                    mood="Energized but slightly anxious"
-                  />
-                </div>
-              </SlideIn>
-              <SlideIn direction="right" delay={400}>
-                <div className="animate-hero-float" style={{ animationDelay: "1s" }}>
-                  <ReflectPhone
-                    pattern="Best mood on days you exercised. Worst on days with meetings after 6pm."
-                    actions={["Block mornings for deep work", "No meetings after 5pm", "Exercise before noon"]}
-                  />
-                </div>
-              </SlideIn>
-            </div>
           </div>
         </div>
       </section>
@@ -561,6 +514,81 @@ function TestimonialCard({ testimonial: t }: { testimonial: CarouselTestimonial 
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * SplitHeroHeadline — splits headline on sentence-ending punctuation (.?!)
+ * First sentence: white. Second sentence: Acuity purple.
+ * If no split point, last 3 words become purple.
+ * Uses word-by-word fade-in animation matching the homepage HeroHeadline.
+ */
+function SplitHeroHeadline({ text }: { text: string }) {
+  // Split on the first sentence-ending punctuation followed by a space
+  const splitMatch = text.match(/^(.+?[.?!])\s+(.+)$/);
+  let whitePart: string;
+  let purplePart: string;
+
+  if (splitMatch) {
+    whitePart = splitMatch[1];
+    purplePart = splitMatch[2];
+  } else {
+    // No natural split — make the last 3 words purple
+    const words = text.split(" ");
+    if (words.length > 3) {
+      whitePart = words.slice(0, -3).join(" ");
+      purplePart = words.slice(-3).join(" ");
+    } else {
+      whitePart = text;
+      purplePart = "";
+    }
+  }
+
+  const allWords = text.split(" ");
+  const whiteWordCount = whitePart.split(" ").length;
+  const [visibleCount, setVisibleCount] = useState(0);
+  const ref = useRef<HTMLHeadingElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          allWords.forEach((_, i) => {
+            setTimeout(() => setVisibleCount((c) => Math.max(c, i + 1)), i * 80);
+          });
+        } else {
+          setVisibleCount(0);
+        }
+      },
+      { threshold: 0.3 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [allWords.length]);
+
+  return (
+    <h1
+      ref={ref}
+      className="text-4xl font-extrabold tracking-tight sm:text-5xl lg:text-6xl leading-[1.08]"
+    >
+      {allWords.map((word, i) => (
+        <span
+          key={i}
+          className={`inline-block mr-[0.3em] transition-all duration-500 ${
+            i < whiteWordCount ? "text-white" : "text-[#7C5CFC]"
+          }`}
+          style={{
+            opacity: i < visibleCount ? 1 : 0,
+            transform: i < visibleCount ? "translateY(0)" : "translateY(20px)",
+            transitionDelay: `${i * 60}ms`,
+          }}
+        >
+          {word}
+        </span>
+      ))}
+    </h1>
   );
 }
 

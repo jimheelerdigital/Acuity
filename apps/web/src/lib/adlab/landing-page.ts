@@ -59,7 +59,7 @@ Brand voice rules:
 
 Copy quality rules:
 - Headlines: punchy, 8 words or fewer. Hit the emotional nerve from the topic brief. Not generic — a stranger should be able to guess which ad this page belongs to.
-- Subheadlines: one concrete sentence that makes the product benefit tangible. Include a number, a time, or a specific artifact.
+- Subheadlines: one short punchy sentence that bridges the emotional headline to the product. This is the angle-specific hook — NOT a product description (the product explanation is added automatically). Think of it as the emotional "so what" after the headline. Max 15 words.
 - Pain points: written in second person ("You..."). Uncomfortably specific — not generic marketing speak. Each one should make the reader think "how do they know that about me?"
 - Value props: each starts with a concrete action verb and ends with a specific outcome. No vague "improve your life" language.
 - Testimonial: sounds like a real person, not a copywriter. Include a specific detail (a number, a day of the week, a feature name like "the weekly report" or "the task list").
@@ -73,7 +73,7 @@ ${creativeContext ? `Sample ad creatives:\n${creativeContext}` : ""}
 Generate a landing page with these exact JSON fields:
 {
   "heroHeadline": "punchy headline, max 8 words, hits the emotional nerve",
-  "heroSubheadline": "one concrete sentence with a number or specific artifact",
+  "heroSubheadline": "angle-specific hook — one short emotional sentence, max 15 words, NOT a product description",
   "painPoints": ["3-4 second-person bullets that feel uncomfortably specific"],
   "valuePropHeadline": "transition headline like 'Here's what changes' or 'What if you could...'",
   "valueProps": ["3-4 benefits starting with action verbs, ending with specific outcomes"],
