@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import {
   LandingNav,
@@ -13,11 +13,10 @@ import {
   TrustStrip,
   FAQSection,
   HowItWorksSection,
-  TestimonialsSection,
-  StatsSection,
+  AnimatedCounter,
+  ExtractPhone,
+  ReflectPhone,
   useCtaHref,
-  type Testimonial,
-  type Stat,
 } from "@/components/landing-shared";
 import { getPersonaBySlug, type PersonaPage } from "@/lib/persona-pages";
 import { FoundingMemberBanner } from "@/components/founding-member-banner";
@@ -52,7 +51,6 @@ export default function PersonaLandingPage({ params }: { params: { slug: string 
     } catch {}
   }, [params.slug]);
 
-  // If no static page, fetch from DB
   useEffect(() => {
     if (staticPage) return;
     fetch(`/api/landing-page/${params.slug}`)
@@ -66,17 +64,8 @@ export default function PersonaLandingPage({ params }: { params: { slug: string 
       .catch(() => setNotFound(true));
   }, [params.slug, staticPage]);
 
-  // Static persona page
-  if (staticPage) {
-    return <StaticPersonaPage page={staticPage} slug={params.slug} />;
-  }
-
-  // Dynamic landing page from DB
-  if (dynamicPage) {
-    return <DynamicLandingPageView page={dynamicPage} slug={params.slug} ctaHref={ctaHref} />;
-  }
-
-  // Not found
+  if (staticPage) return <StaticPersonaPage page={staticPage} slug={params.slug} />;
+  if (dynamicPage) return <DynamicLandingPageView page={dynamicPage} slug={params.slug} ctaHref={ctaHref} />;
   if (notFound) {
     return (
       <div className="min-h-screen bg-[#181614] flex items-center justify-center">
@@ -87,8 +76,6 @@ export default function PersonaLandingPage({ params }: { params: { slug: string 
       </div>
     );
   }
-
-  // Loading state
   return (
     <div className="min-h-screen bg-[#181614] flex items-center justify-center">
       <div className="h-8 w-8 rounded-full border-2 border-[#7C5CFC] border-t-transparent animate-spin" />
@@ -96,14 +83,16 @@ export default function PersonaLandingPage({ params }: { params: { slug: string 
   );
 }
 
-/** The original static persona landing page (unchanged behavior) */
+/* ═══════════════════════════════════════════════════
+   Static persona page (unchanged)
+   ═══════════════════════════════════════════════════ */
+
 function StaticPersonaPage({ page, slug }: { page: PersonaPage; slug: string }) {
   const ctaHref = useCtaHref();
 
   return (
     <div className="min-h-screen bg-[#181614] text-white pb-24 sm:pb-0 overflow-x-hidden">
       <LandingNav />
-
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -116,7 +105,6 @@ function StaticPersonaPage({ page, slug }: { page: PersonaPage; slug: string }) 
         }}
       />
 
-      {/* Hero */}
       <section className="relative pt-36 pb-16 sm:pt-44 sm:pb-24 overflow-hidden">
         <ParallaxOrbs />
         <div className="relative mx-auto max-w-4xl px-6 text-center">
@@ -133,7 +121,6 @@ function StaticPersonaPage({ page, slug }: { page: PersonaPage; slug: string }) 
 
       <SocialProofBar />
 
-      {/* Pain Points */}
       <section className="px-6 py-24 sm:py-32">
         <div className="mx-auto max-w-5xl">
           <div className="grid gap-6 sm:grid-cols-3">
@@ -151,7 +138,6 @@ function StaticPersonaPage({ page, slug }: { page: PersonaPage; slug: string }) 
         </div>
       </section>
 
-      {/* Solution */}
       <section className="px-6 py-24 sm:py-32">
         <div className="mx-auto max-w-3xl text-center">
           <Reveal>
@@ -164,7 +150,6 @@ function StaticPersonaPage({ page, slug }: { page: PersonaPage; slug: string }) 
       <SimpleHowItWorks />
       <TrustStrip />
 
-      {/* Features */}
       <section className="px-6 py-24 sm:py-32">
         <div className="mx-auto max-w-4xl">
           <Reveal><h2 className="text-3xl font-bold tracking-tight sm:text-4xl text-center mb-14">Built for you</h2></Reveal>
@@ -181,7 +166,6 @@ function StaticPersonaPage({ page, slug }: { page: PersonaPage; slug: string }) 
         </div>
       </section>
 
-      {/* Testimonial */}
       <section className="px-6 py-24 sm:py-32">
         <div className="mx-auto max-w-2xl">
           <Reveal>
@@ -201,7 +185,6 @@ function StaticPersonaPage({ page, slug }: { page: PersonaPage; slug: string }) 
 
       <FAQSection />
 
-      {/* Final CTA */}
       <section className="px-6 py-24 sm:py-32">
         <Reveal>
           <div className="mx-auto max-w-4xl rounded-2xl bg-[#1E1C1A] border border-white/10 p-12 sm:p-16 text-center relative overflow-hidden">
@@ -219,42 +202,67 @@ function StaticPersonaPage({ page, slug }: { page: PersonaPage; slug: string }) 
 }
 
 /* ═══════════════════════════════════════════════════
-   Dynamic landing page from AdLab experiment — FULL REDESIGN
-   Matches homepage design system exactly.
+   DYNAMIC LANDING PAGE — FULL REDESIGN
    ═══════════════════════════════════════════════════ */
 
-/** Static testimonials that work for any angle */
-const STATIC_TESTIMONIALS: Testimonial[] = [
+/** All 5 testimonials for the carousel */
+interface CarouselTestimonial {
+  quote: string;
+  name: string;
+  role: string;
+  initials: string;
+  bgColor: string;
+}
+
+const STATIC_CAROUSEL_TESTIMONIALS: CarouselTestimonial[] = [
   {
     quote: "The weekly reports are unreal. It\u2019s like having a therapist and a project manager rolled into one AI.",
     name: "Marcus T.",
     role: "Product manager",
+    initials: "MT",
+    bgColor: "bg-sky-600",
   },
   {
-    quote: "I\u2019ve tried every journaling app. This is the first one that stuck because I just talk. No typing, no prompts, no effort.",
+    quote: "I\u2019ve tried every journaling app. This is the first one that stuck because I just talk.",
     name: "Jamie L.",
-    role: "Freelance designer",
+    role: "Designer",
+    initials: "JL",
+    bgColor: "bg-rose-500",
   },
-];
-
-/** Social proof stats */
-const SOCIAL_PROOF_STATS: Stat[] = [
-  { value: 4.9, suffix: " \u2605", label: "App Store rating" },
-  { value: 12, suffix: "+", label: "Countries" },
-  { value: 94, suffix: "%", label: "Still journaling after week one" },
+  {
+    quote: "I mentioned \u2018morning routine\u2019 12 times in two weeks but never built one. Seeing that in my report changed everything.",
+    name: "Priya R.",
+    role: "Consultant",
+    initials: "PR",
+    bgColor: "bg-emerald-600",
+  },
+  {
+    quote: "My partner noticed the difference before I did. I\u2019m actually present when I get home now.",
+    name: "David K.",
+    role: "Engineer",
+    initials: "DK",
+    bgColor: "bg-amber-600",
+  },
 ];
 
 function DynamicLandingPageView({ page, slug, ctaHref }: { page: DynamicLandingPage; slug: string; ctaHref: string }) {
-  // Build testimonials array: DB testimonial first, then 2 static ones
-  const testimonials: Testimonial[] = [];
+  // Build testimonial list: DB testimonial first, then static ones
+  const allTestimonials: CarouselTestimonial[] = [];
   if (page.testimonialQuote && page.testimonialName) {
-    testimonials.push({
+    const name = page.testimonialName;
+    const parts = name.split(" ");
+    const initials = parts.length >= 2
+      ? (parts[0][0] + parts[1][0]).toUpperCase()
+      : name.slice(0, 2).toUpperCase();
+    allTestimonials.push({
       quote: page.testimonialQuote,
-      name: page.testimonialName,
+      name,
       role: "Acuity member",
+      initials,
+      bgColor: "bg-[#7C5CFC]",
     });
   }
-  testimonials.push(...STATIC_TESTIMONIALS);
+  allTestimonials.push(...STATIC_CAROUSEL_TESTIMONIALS);
 
   return (
     <div className="min-h-screen bg-[#181614] text-[#F5EDE4] overflow-x-hidden">
@@ -264,45 +272,92 @@ function DynamicLandingPageView({ page, slug, ctaHref }: { page: DynamicLandingP
       {/* 2. Nav */}
       <LandingNav />
 
-      {/* 3. Hero Section */}
-      <section className="relative pt-36 pb-16 sm:pt-44 sm:pb-24 overflow-hidden">
+      {/* 3. Hero — text + phone mockup side by side */}
+      <section className="relative pt-32 pb-8 sm:pt-40 sm:pb-12 overflow-hidden">
         <ParallaxOrbs />
-        <div className="relative mx-auto max-w-4xl px-6 text-center">
-          <Reveal>
-            <HeroHeadline text={page.heroHeadline} />
-          </Reveal>
-          <Reveal delay={1}>
-            <p className="mt-6 text-lg text-[#B0A898] leading-relaxed max-w-2xl mx-auto">
-              {page.heroSubheadline}
-            </p>
-          </Reveal>
-          <Reveal delay={2}>
-            <div className="mt-8">
-              <PulsingCTA href={ctaHref}>
-                Start Free Trial — 30 Days Free
-              </PulsingCTA>
-              <p className="mt-3 text-xs text-[#B0A898]">
-                No credit card. 90 seconds to set up.
-              </p>
+        <div className="relative mx-auto max-w-6xl px-6">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:gap-12">
+            {/* Text side */}
+            <div className="flex-1 text-center lg:text-left">
+              <Reveal>
+                <HeroHeadline text={page.heroHeadline} />
+              </Reveal>
+              <Reveal delay={1}>
+                <p className="mt-4 text-lg text-[#B0A898] leading-relaxed max-w-xl mx-auto lg:mx-0">
+                  {page.heroSubheadline}
+                </p>
+              </Reveal>
+              <Reveal delay={2}>
+                <div className="mt-6">
+                  <PulsingCTA href={ctaHref}>
+                    Start Free Trial — 30 Days Free
+                  </PulsingCTA>
+                  <p className="mt-2.5 text-xs text-[#B0A898]">
+                    No credit card. 90 seconds to set up.
+                  </p>
+                </div>
+              </Reveal>
             </div>
-          </Reveal>
+            {/* Phone mockup — shows Today's Debrief */}
+            <div className="flex-shrink-0 flex justify-center mt-10 lg:mt-0">
+              <Reveal delay={2}>
+                <div className="animate-hero-float">
+                  <ExtractPhone
+                    tasks={[
+                      { text: "Follow up on proposal", checked: true },
+                      { text: "Book dentist appointment" },
+                      { text: "Call Mom this weekend" },
+                    ]}
+                    goal="Be more present at home"
+                    mood="Calm but tired"
+                  />
+                </div>
+              </Reveal>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* 4. Pain Points — "Sound familiar?" */}
-      <section className="px-6 py-24 sm:py-32">
-        <div className="mx-auto max-w-5xl">
+      {/* 4. Social Proof Bar — tight against hero */}
+      <section className="py-5 px-6 bg-[#1a1816] border-y border-white/5">
+        <div className="mx-auto max-w-4xl">
+          <div className="grid grid-cols-3 gap-4 text-center">
+            <div>
+              <div className="text-lg sm:text-xl font-extrabold text-white">
+                <AnimatedCounter target={4.9} suffix=" \u2605" />
+              </div>
+              <div className="text-[10px] sm:text-xs text-[#B0A898]">App Store</div>
+            </div>
+            <div>
+              <div className="text-lg sm:text-xl font-extrabold text-white">
+                <AnimatedCounter target={12} suffix="+" />
+              </div>
+              <div className="text-[10px] sm:text-xs text-[#B0A898]">Countries</div>
+            </div>
+            <div>
+              <div className="text-lg sm:text-xl font-extrabold text-white">
+                <AnimatedCounter target={94} suffix="%" />
+              </div>
+              <div className="text-[10px] sm:text-xs text-[#B0A898]">Still journaling after week 1</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 5. Pain Points — "Sound familiar?" */}
+      <section className="px-6 py-14 sm:py-18">
+        <div className="mx-auto max-w-4xl">
           <Reveal>
-            <p className="text-center text-sm font-semibold text-[#E8DDD0] uppercase tracking-widest mb-10">
+            <p className="text-center text-xs font-semibold text-[#E8DDD0] uppercase tracking-widest mb-7">
               Sound familiar?
             </p>
           </Reveal>
-          <div className="grid gap-5 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2">
             {page.painPoints.map((point, i) => (
               <Reveal key={i} delay={Math.min(i + 1, 3) as 1 | 2 | 3}>
-                <div className="flex items-start gap-4 rounded-xl border border-white/10 bg-[#1E1C1A] p-6 transition-all duration-300 hover:border-white/20 hover:-translate-y-0.5">
-                  <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#7C5CFC]/10">
-                    <svg className="h-4 w-4 text-[#7C5CFC]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-[#1E1C1A] p-4 sm:p-5 transition-all duration-300 hover:border-white/20">
+                  <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#7C5CFC]/10">
+                    <svg className="h-3.5 w-3.5 text-[#7C5CFC]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
                     </svg>
                   </div>
@@ -314,60 +369,81 @@ function DynamicLandingPageView({ page, slug, ctaHref }: { page: DynamicLandingP
         </div>
       </section>
 
-      {/* 5. What is Acuity? — static product explainer */}
-      <section className="px-6 py-24 sm:py-32">
-        <div className="mx-auto max-w-4xl">
-          <Reveal>
-            <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold tracking-tight sm:text-5xl text-white">
-                One minute of talking. A week of clarity.
-              </h2>
-              <p className="mt-6 text-lg text-[#B0A898] leading-relaxed max-w-3xl mx-auto">
-                Acuity is an AI voice journal. Talk about your day for one minute — any time, no prompts, no typing.
-                AI extracts your tasks, tracks your goals, detects patterns in your life, and every Sunday delivers
-                a 400-word report that tells the story of your week.
-              </p>
+      {/* 6. What is Acuity? — product explainer with phone mockups */}
+      <section className="px-6 py-14 sm:py-18">
+        <div className="mx-auto max-w-6xl">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:gap-12">
+            <div className="flex-1 text-center lg:text-left mb-10 lg:mb-0">
+              <Reveal>
+                <h2 className="text-3xl font-bold tracking-tight sm:text-4xl text-white">
+                  One minute of talking.<br />A week of clarity.
+                </h2>
+                <p className="mt-4 text-base text-[#B0A898] leading-relaxed max-w-lg mx-auto lg:mx-0">
+                  Acuity is an AI voice journal. Talk about your day for one minute — any time,
+                  no prompts, no typing. AI extracts your tasks, tracks your goals, detects patterns
+                  in your life, and every Sunday delivers a report that tells the story of your week.
+                </p>
+              </Reveal>
             </div>
-          </Reveal>
+            {/* Two phone mockups side by side */}
+            <div className="flex-shrink-0 flex justify-center gap-4 sm:gap-6">
+              <Reveal delay={1}>
+                <div className="animate-hero-float" style={{ animationDelay: "0s" }}>
+                  <ExtractPhone
+                    tasks={[
+                      { text: "Send proposal to client", checked: true },
+                      { text: "Buy groceries" },
+                      { text: "Call mom" },
+                    ]}
+                    goal="Ship the beta this week"
+                    mood="Energized but slightly anxious"
+                  />
+                </div>
+              </Reveal>
+              <Reveal delay={2}>
+                <div className="animate-hero-float" style={{ animationDelay: "1s" }}>
+                  <ReflectPhone
+                    pattern="Best mood on days you exercised. Worst on days with meetings after 6pm."
+                    actions={["Block mornings for deep work", "No meetings after 5pm", "Exercise before noon"]}
+                  />
+                </div>
+              </Reveal>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* 6. How It Works — reuse homepage 3-step section with phone mockups */}
+      {/* 7. How It Works — compact 3-step */}
       <HowItWorksSection
         steps={[
-          { label: "Step 1", title: "Record", description: "Open Acuity at night. Hit record. Speak freely for 60 seconds about your day, your worries, your wins — whatever comes to mind." },
-          { label: "Step 2", title: "Extract", description: "By morning, your tasks are on a list, your goals are tracked, and your mood is scored. You didn\u2019t type a word." },
-          { label: "Step 3", title: "Reflect", description: "Get a weekly narrative report showing patterns in your life, so you can course-correct before the next week starts." },
+          { label: "Step 1", title: "Record", description: "Hit record. Speak freely for 60 seconds about your day — whatever comes to mind." },
+          { label: "Step 2", title: "Extract", description: "By morning, your tasks are on a list, your goals are tracked, and your mood is scored." },
+          { label: "Step 3", title: "Reflect", description: "Every Sunday, get a weekly narrative report showing patterns in your life." },
         ]}
-        extractTasks={[
-          { text: "Send proposal to client" },
-          { text: "Buy groceries" },
-          { text: "Call mom" },
-        ]}
+        extractTasks={[{ text: "Send proposal" }, { text: "Buy groceries" }, { text: "Call mom" }]}
         extractGoal="Ship the beta this week"
-        extractMood="Energized but slightly anxious"
-        reflectPattern="Best mood on days you exercised. Worst on days with meetings after 6pm."
+        extractMood="Energized but anxious"
+        reflectPattern="Best mood on days you exercised."
         reflectActions={["Block mornings for deep work", "No meetings after 5pm", "Exercise before noon"]}
       />
 
-      {/* 7. Value Props — 2x2 grid */}
-      <section className="px-6 py-24 sm:py-32">
+      {/* 8. Value Props — 2x2 grid */}
+      <section className="px-6 py-14 sm:py-18">
         <div className="mx-auto max-w-4xl">
           <Reveal>
-            <h2 className="text-center text-3xl font-bold tracking-tight sm:text-5xl text-white mb-14">
+            <h2 className="text-center text-3xl font-bold tracking-tight sm:text-4xl text-white mb-10">
               {page.valuePropHeadline}
             </h2>
           </Reveal>
-          <div className="grid gap-6 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2">
             {page.valueProps.map((prop, i) => {
-              // Bold the first few words as a title
               const words = prop.split(" ");
               const titleEnd = Math.min(words.length, 4);
               const title = words.slice(0, titleEnd).join(" ");
               const rest = words.slice(titleEnd).join(" ");
               return (
                 <Reveal key={i} delay={Math.min(i + 1, 3) as 1 | 2 | 3}>
-                  <div className="rounded-xl border border-white/10 bg-[#1E1C1A] p-6 transition-all duration-300 hover:border-white/20 hover:-translate-y-1">
+                  <div className="rounded-xl border border-white/10 bg-[#1E1C1A] p-5 transition-all duration-300 hover:border-white/20">
                     <div className="flex items-start gap-3">
                       <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#7C5CFC]/20">
                         <svg className="h-3.5 w-3.5 text-[#7C5CFC]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -387,20 +463,16 @@ function DynamicLandingPageView({ page, slug, ctaHref }: { page: DynamicLandingP
         </div>
       </section>
 
-      {/* 8. Testimonials — 3 cards */}
-      <TestimonialsSection testimonials={testimonials} headline="People are loving it" />
+      {/* 9. Testimonials — scrolling carousel on desktop, vertical stack on mobile */}
+      <TestimonialCarousel testimonials={allTestimonials} />
 
-      {/* 9. Social Proof Bar with animated counters */}
-      <StatsSection stats={SOCIAL_PROOF_STATS} />
-
-      {/* 10. Final CTA Section */}
-      <section className="px-6 py-24 sm:py-32">
+      {/* 10. Final CTA */}
+      <section className="px-6 py-14 sm:py-20">
         <Reveal>
-          <div className="mx-auto max-w-4xl rounded-2xl border border-white/10 bg-[#1E1C1A] p-12 sm:p-16 text-center relative overflow-hidden">
-            {/* Subtle gradient background */}
+          <div className="mx-auto max-w-3xl rounded-2xl border border-white/10 bg-[#1E1C1A] p-10 sm:p-14 text-center relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-[#7C5CFC]/5 via-transparent to-[#7C5CFC]/5 pointer-events-none" />
             <div className="relative">
-              <h2 className="text-3xl font-bold sm:text-4xl tracking-tight text-white mb-6">
+              <h2 className="text-2xl font-bold sm:text-3xl tracking-tight text-white mb-5">
                 {page.closingHeadline || "Your week doesn\u2019t have to disappear."}
               </h2>
               <a
@@ -409,8 +481,11 @@ function DynamicLandingPageView({ page, slug, ctaHref }: { page: DynamicLandingP
               >
                 Start Free Trial — 30 Days Free
               </a>
-              <p className="mt-3 text-sm text-[#B0A898]">
+              <p className="mt-2.5 text-sm text-[#B0A898]">
                 No credit card. Cancel anytime.
+              </p>
+              <p className="mt-4 text-xs text-[#B0A898]/60">
+                \u2B50 4.9 on the App Store
               </p>
             </div>
           </div>
@@ -419,6 +494,109 @@ function DynamicLandingPageView({ page, slug, ctaHref }: { page: DynamicLandingP
 
       {/* 11. Footer */}
       <Footer />
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════
+   Testimonial carousel — auto-scrolls on desktop,
+   vertical stack on mobile
+   ═══════════════════════════════════════════════════ */
+
+function TestimonialCarousel({ testimonials }: { testimonials: CarouselTestimonial[] }) {
+  const trackRef = useRef<HTMLDivElement>(null);
+  const [paused, setPaused] = useState(false);
+
+  // Continuous scroll animation via requestAnimationFrame
+  useEffect(() => {
+    const track = trackRef.current;
+    if (!track) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    // Only run carousel on sm+ screens
+    if (window.innerWidth < 640) return;
+
+    let offset = 0;
+    let animId: number;
+    const speed = 0.4; // px per frame
+
+    function step() {
+      if (!paused) {
+        offset += speed;
+        // Each card is ~340px wide + 16px gap = 356px. Reset after one full set.
+        const singleSetWidth = testimonials.length * 356;
+        if (offset >= singleSetWidth) offset -= singleSetWidth;
+        if (track) track.style.transform = `translateX(-${offset}px)`;
+      }
+      animId = requestAnimationFrame(step);
+    }
+    animId = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(animId);
+  }, [paused, testimonials.length]);
+
+  // Duplicate testimonials for seamless loop
+  const doubled = [...testimonials, ...testimonials];
+
+  return (
+    <section className="py-14 sm:py-18 overflow-hidden">
+      <Reveal>
+        <h2 className="text-center text-2xl font-bold tracking-tight sm:text-3xl text-white mb-8 px-6">
+          People are loving it
+        </h2>
+      </Reveal>
+
+      {/* Desktop: horizontal scrolling carousel */}
+      <div
+        className="hidden sm:block"
+        onMouseEnter={() => setPaused(true)}
+        onMouseLeave={() => setPaused(false)}
+      >
+        <div className="relative">
+          <div
+            ref={trackRef}
+            className="flex gap-4 will-change-transform"
+            style={{ width: "max-content" }}
+          >
+            {doubled.map((t, i) => (
+              <TestimonialCard key={`${t.name}-${i}`} testimonial={t} />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile: vertical stack */}
+      <div className="sm:hidden px-6 space-y-4">
+        {testimonials.map((t, i) => (
+          <Reveal key={t.name} delay={Math.min(i + 1, 3) as 1 | 2 | 3}>
+            <TestimonialCard testimonial={t} />
+          </Reveal>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function TestimonialCard({ testimonial: t }: { testimonial: CarouselTestimonial }) {
+  return (
+    <div className="w-full sm:w-[340px] shrink-0 rounded-xl border border-white/10 bg-[#1E1C1A] p-5 sm:p-6">
+      <div className="flex items-center gap-1 mb-3">
+        {[...Array(5)].map((_, i) => (
+          <svg key={i} className="h-3.5 w-3.5 text-[#7C5CFC]" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+          </svg>
+        ))}
+      </div>
+      <blockquote className="text-sm text-[#B0A898] leading-relaxed mb-4">
+        &ldquo;{t.quote}&rdquo;
+      </blockquote>
+      <div className="flex items-center gap-3">
+        <div className={`flex h-10 w-10 items-center justify-center rounded-full ${t.bgColor} text-xs font-bold text-white`}>
+          {t.initials}
+        </div>
+        <div>
+          <div className="text-sm font-semibold text-white">{t.name}</div>
+          <div className="text-xs text-[#B0A898]/60">{t.role}</div>
+        </div>
+      </div>
     </div>
   );
 }

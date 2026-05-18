@@ -12,8 +12,8 @@ export const SOCIAL_PROOF = {
   debriefs: "1,400+",
   /** % who say they'd miss Acuity if gone */
   wouldMiss: "94%",
-  /** App star rating — 4.8 reads more credible than 5.0 */
-  rating: "4.8",
+  /** App star rating */
+  rating: "4.9",
   /** Under-hero count — rounded down from `users` for defensibility */
   underHeroCount: "100+",
   /** Seconds per entry — product mechanic, not a stat */

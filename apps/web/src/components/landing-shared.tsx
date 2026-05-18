@@ -834,7 +834,7 @@ function MoodBars({ heights, color }: { heights: number[]; color: string }) {
 }
 
 /* Phone mockup for Step 1: Record */
-function RecordPhone() {
+export function RecordPhone() {
   return (
     <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-[#252220] p-2 shadow-xl">
       <div className="h-full w-full rounded-[2rem] bg-[#1E1C1A] p-5 flex flex-col overflow-hidden">
@@ -866,7 +866,7 @@ interface ExtractPhoneProps {
   mood: string;
 }
 
-function ExtractPhone({ tasks, goal, mood }: ExtractPhoneProps) {
+export function ExtractPhone({ tasks, goal, mood }: ExtractPhoneProps) {
   return (
     <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-[#252220] p-2 shadow-xl">
       <div className="h-full w-full rounded-[2rem] bg-[#1E1C1A] p-5 flex flex-col overflow-hidden">
@@ -896,7 +896,7 @@ interface ReflectPhoneProps {
   actions: string[];
 }
 
-function ReflectPhone({ pattern, actions }: ReflectPhoneProps) {
+export function ReflectPhone({ pattern, actions }: ReflectPhoneProps) {
   return (
     <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-[#252220] p-2 shadow-xl">
       <div className="h-full w-full rounded-[2rem] bg-[#1E1C1A] p-5 flex flex-col overflow-hidden">
