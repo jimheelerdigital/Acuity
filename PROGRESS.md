@@ -41,6 +41,32 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-18] — Split-color hero headline + merged subheadline/product description
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 37ecbc2
+
+### In plain English (for Keenan)
+
+Two improvements to all ad landing pages: (1) The hero headline now uses two colors — the first sentence is white, the second is Acuity purple. So "Nothing is wrong." appears in white and "Something is off." appears in purple, matching the homepage pattern. Works automatically for any headline. (2) The two separate text blocks under the headline (angle-specific subheadline + generic product description) are now merged into one clean paragraph. First sentence is the emotional hook from the DB, immediately followed by "Acuity is an AI voice journal — talk for 60 seconds, and AI pulls your tasks, tracks your goals..." The separate "What is Acuity?" section further down the page was removed since the hero now explains the product. The AI prompt was updated so future landing pages generate shorter, punchier subheadlines (emotional hooks only, max 15 words) since the product explanation is handled automatically.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/for/[slug]/page.tsx`: New `SplitHeroHeadline` component — splits on first `.?!` followed by space, renders first part as white, second as `#7C5CFC`. Falls back to last 3 words purple if no split point. Word-by-word fade-in animation matching `HeroHeadline`. Hero paragraph merges `page.heroSubheadline` + static product description into one `<p>`. Removed "What is Acuity?" section (was between pain points and How It Works). Removed `ReflectPhone` import (no longer used).
+- `apps/web/src/lib/adlab/landing-page.ts`: Updated heroSubheadline prompt — now asks for "angle-specific hook, one short emotional sentence, max 15 words, NOT a product description".
+
+### Manual steps needed
+
+- [ ] Regenerate landing pages for existing experiments to get updated shorter subheadlines — Keenan (via AdLab UI or API PATCH)
+
+### Notes
+
+- Existing landing pages will still work — their longer subheadlines will just flow into the product description. But regenerating them will produce cleaner, shorter hooks.
+- The split-color logic handles edge cases: headlines with no punctuation split at the last 3 words. Headlines with only one word stay all white.
+
+---
+
 ## [2026-05-18] — Landing page hero: add product description, fix star rating, match homepage social proof
 
 **Requested by:** Keenan
