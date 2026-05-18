@@ -160,7 +160,7 @@ export function AnimatedCounter({
           setCount(0);
         }
       },
-      { threshold: 0.5 }
+      { threshold: 0.1 }
     );
     obs.observe(el);
     return () => obs.disconnect();
@@ -1804,7 +1804,7 @@ export function FAQSection() {
     },
     {
       q: "Is this just a journaling app?",
-      a: "No. You don't write anything. You talk for 60 seconds and by morning your tasks are extracted, your mood is scored, and every Sunday you get a written story of your week.",
+      a: "No. You don't write anything. You talk for 60 seconds and within minutes your tasks are extracted, your mood is scored, and every Sunday you get a written story of your week.",
     },
   ];
 

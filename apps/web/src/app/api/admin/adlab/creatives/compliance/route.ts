@@ -39,7 +39,7 @@ const COMPLIANCE_SYSTEM_PROMPT = `You are a Meta advertising compliance reviewer
 ## BRAND VOICE CHECKS (violations = WARNING):
 
 1. Uses "brain dump" instead of "daily debrief"
-2. Uses "journaling" prominently (prefer "shutdown ritual" or "daily debrief" in acquisition)
+2. Uses "journaling" prominently (prefer "daily debrief" in acquisition)
 3. References a specific time of day ("every night", "at 9pm", "before bed") — Acuity is any-time
 4. Gendered language that skews exclusively male or female
 5. Tone is too aggressive, combative, or salesy vs. warm/observational

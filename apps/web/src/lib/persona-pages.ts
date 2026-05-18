@@ -107,9 +107,9 @@ export const PERSONA_PAGES: PersonaPage[] = [
     title: "Acuity for Remote Workers — The Shutdown Ritual You're Missing",
     metaDescription:
       "Remote workers need a way to leave work at work. Acuity's 60-second daily debrief creates the boundary your home office doesn't have.",
-    headline: "The shutdown ritual remote workers have been looking for.",
+    headline: "The daily debrief remote workers have been looking for.",
     subheadline:
-      "There's no commute to decompress. No door to close between you and your job. Acuity gives you a 60-second shutdown ritual that draws the line your apartment never will.",
+      "There\u2019s no commute to decompress. No door to close between you and your job. Acuity gives you a 60-second daily debrief that draws the line your apartment never will.",
     painPoints: [
       "You close your laptop at 6pm but you're still mentally answering Slack messages at midnight",
       "Your bedroom is your office is your break room is your everything — there's no physical boundary to signal 'work is over'",
@@ -401,7 +401,7 @@ export const PERSONA_PAGES: PersonaPage[] = [
     slug: "grief",
     title: "Acuity for Grief — A Safe Space to Talk Every Day",
     metaDescription:
-      "Processing grief is a journey. Acuity gives you 60 seconds each night to talk through loss, track healing over time, and see the progress you can't feel.",
+      "Processing grief is a journey. Acuity gives you 60 seconds a day to talk through loss, track healing over time, and see the progress you can\u2019t feel.",
     headline: "You don't have to process grief alone.",
     subheadline:
       "Grief doesn't follow a schedule. It hits at 2pm on a Tuesday or 11pm when you hear their song. Acuity gives you a place to put it every day — not to fix it, not to analyze it, just to say it out loud and know that something is tracking the path even when you can't.",

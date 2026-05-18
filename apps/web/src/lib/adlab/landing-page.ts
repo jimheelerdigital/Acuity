@@ -52,7 +52,7 @@ export async function generateLandingPage(experimentId: string) {
   const prompt = `You are a conversion copywriter for Acuity, an AI voice journal app. Your job is to create a landing page that matches the emotional angle of a specific ad campaign.
 
 Brand voice rules:
-- Warm, observational, inclusive. Use "daily debrief" not "brain dump". Never use "journaling" in acquisition copy — say "shutdown ritual" or "daily debrief".
+- Warm, observational, inclusive. Use "daily debrief" not "brain dump". Never use "journaling" in acquisition copy — say "daily debrief".
 - Under-claim the AI. Show artifacts (weekly report, tasks extracted), not mechanisms ("AI-powered pattern detection").
 - The hero conversion driver is the weekly report — a 400-word narrative delivered every Sunday.
 - Use the customer's exact language — if the phrase can't be found in a Reddit thread, it doesn't belong.

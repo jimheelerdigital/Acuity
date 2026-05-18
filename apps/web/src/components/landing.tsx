@@ -1142,7 +1142,7 @@ export function LandingPage() {
                   <p className="text-xs text-[#A0A0B8]">
                     No card. 90 seconds to set up.
                   </p>
-                  <div className="mt-1 opacity-60 hover:opacity-100 transition-opacity scale-90">
+                  <div className="mt-3 opacity-40 hover:opacity-70 transition-opacity scale-75 origin-left">
                     <AppStoreBadge />
                   </div>
                 </div>
@@ -1744,12 +1744,12 @@ export function LandingPage() {
         <div className="mx-auto max-w-3xl mt-8" data-animate="">
             <div className="rounded-2xl border border-white/[0.06] bg-[#1E1C1A] divide-y divide-white/[0.06]">
               {[
-                { q: "What is Acuity and how does it work?", a: "Acuity is a daily shutdown ritual. You talk for 60 seconds about whatever is on your mind — tasks, worries, ideas, things that happened. By morning, your tasks are on a list, your mood is scored, and your goals are tracked. Every Sunday, a 400-word story of your week lands on your phone. You talk. Acuity does the rest." },
+                { q: "What is Acuity and how does it work?", a: "Acuity is an AI voice journal. You talk for 60 seconds about whatever\u2019s on your mind \u2014 tasks, worries, wins, random thoughts. Within minutes, your tasks are on a list, your mood is scored, and your goals are tracked. Every Sunday, a 400-word story of your week lands on your phone. You talk. Acuity does the rest." },
                 { q: "Is this actually private?", a: "Your audio is deleted within 24 hours of transcription. Transcripts are encrypted at rest. We use OpenAI Whisper for transcription and Anthropic Claude for analysis — under their API terms, your data is processed and returned, never used to train their models. We never sell your data." },
                 { q: "Do I have to use it every day?", a: "No. But people who record 4+ times in week one see dramatically better weekly reports. The AI needs a few data points before it can spot patterns. Most people settle into 4\u20135 recordings per week." },
                 { q: "What if I don't know what to say?", a: "That's the point. Just talk. Say whatever is on your mind. The messier, the better — Acuity pulls the signal out of the noise. There are no prompts to answer and no format to follow." },
-                { q: "Is this just a journaling app?", a: "No. You don't write anything. You talk for 60 seconds. Acuity extracts tasks, tracks goals over time, scores your mood, and writes you a weekly narrative. A journal records what you write down. Acuity catches what you'd otherwise forget." },
-                { q: "How is Acuity different from voice notes or other recording apps?", a: "Voice notes store audio. Acuity processes it. Within minutes your recording becomes a task list, a mood score, a goal-tracking update, and a data point that feeds into your weekly report. The recording is the input, not the output." },
+                { q: "Is this just a journaling app?", a: "No. You don\u2019t write anything. You talk for 60 seconds and within minutes your tasks are extracted, your mood is scored, and your goals are tracked. A journal records what you write down. Acuity catches what you\u2019d otherwise forget." },
+                { q: "How is Acuity different from voice notes or other recording apps?", a: "Voice notes store audio. Acuity processes it. Within minutes, your recording becomes a task list, a mood score, a goal-tracking update, and a data point that feeds into your weekly report. The recording is the input, not the output." },
                 { q: "How much does Acuity cost?", a: "$12.99/month after a 30-day free trial. No credit card required to start. Cancel anytime with one tap." },
                 { q: "What AI does Acuity use?", a: "OpenAI Whisper for speech-to-text (accurate even when you mumble). Anthropic Claude for extraction, scoring, and report writing. We name the stack because you should know what's running under the hood." },
                 { q: "Can I use Acuity on my phone?", a: "Yes. Acuity works on iPhone and Android. You can also use it on the web at getacuity.io. Your data syncs across devices." },
@@ -1827,7 +1827,7 @@ export function LandingPage() {
                 </span>
               </div>
               <p className="mt-3 text-sm text-[#A0A0B8] max-w-xs leading-relaxed">
-                Talk for 60 seconds. Wake up to a clearer picture of your life. Your daily shutdown ritual.
+                Talk for 60 seconds. Get a clearer picture of your life. Your daily debrief.
               </p>
               <div className="mt-6 flex flex-col gap-3">
                 <AppStoreBadge />
@@ -1931,7 +1931,7 @@ const tickerItems = [
   "✦ Mood scored every entry",
   "✦ Sunday report on your phone",
   "✦ Life Matrix across 6 areas",
-  "✦ Works while you sleep",
+  "✦ Works in the background",
   "✦ No typing required",
 ];
 
@@ -1943,8 +1943,8 @@ const featureData = [
   },
   {
     iconKey: "tasks" as const,
-    title: "Your To-Do List, Built While You Sleep",
-    desc: "Say \"I need to call the accountant\" while debriefing. By your next check-in, it's on your task list.",
+    title: "Your To-Do List, Built Automatically",
+    desc: "Say \"I need to call the accountant\" while debriefing. Within minutes, it's on your task list.",
   },
   {
     iconKey: "target" as const,
