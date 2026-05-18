@@ -119,6 +119,9 @@ function StaticPersonaPage({ page, slug }: { page: PersonaPage; slug: string }) 
 
       <SocialProofBar />
 
+      {/* Testimonial carousel — trust block */}
+      <TestimonialCarousel testimonials={buildStaticTestimonials(page.testimonial)} />
+
       <section className="px-6 py-24 sm:py-32">
         <div className="mx-auto max-w-5xl">
           <div className="grid gap-6 sm:grid-cols-3">
@@ -161,23 +164,6 @@ function StaticPersonaPage({ page, slug }: { page: PersonaPage; slug: string }) 
               </Reveal>
             ))}
           </div>
-        </div>
-      </section>
-
-      <section className="px-6 py-24 sm:py-32">
-        <div className="mx-auto max-w-2xl">
-          <Reveal>
-            <div className="rounded-xl border border-[#7C5CFC]/20 bg-[#1E1C1A] p-8 sm:p-10">
-              <blockquote className="text-base sm:text-lg text-[#B0A898] leading-relaxed italic mb-6">&ldquo;{page.testimonial.quote}&rdquo;</blockquote>
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#7C5CFC]/20 text-sm font-bold text-[#7C5CFC]">{page.testimonial.name[0]}</div>
-                <div>
-                  <div className="text-sm font-semibold text-white">{page.testimonial.name}</div>
-                  <div className="text-xs text-[#B0A898]">{page.testimonial.detail}</div>
-                </div>
-              </div>
-            </div>
-          </Reveal>
         </div>
       </section>
 
@@ -242,6 +228,18 @@ const STATIC_CAROUSEL_TESTIMONIALS: CarouselTestimonial[] = [
     bgColor: "bg-amber-600",
   },
 ];
+
+/** Build carousel testimonials from a static persona page's single testimonial + shared static ones */
+function buildStaticTestimonials(testimonial: { quote: string; name: string; detail: string }): CarouselTestimonial[] {
+  const parts = testimonial.name.split(" ");
+  const initials = parts.length >= 2
+    ? (parts[0][0] + (parts[1]?.[0] || "")).toUpperCase()
+    : testimonial.name.slice(0, 2).toUpperCase();
+  return [
+    { quote: testimonial.quote, name: testimonial.name, role: testimonial.detail, initials, bgColor: "bg-[#7C5CFC]" },
+    ...STATIC_CAROUSEL_TESTIMONIALS,
+  ];
+}
 
 function DynamicLandingPageView({ page, slug, ctaHref }: { page: DynamicLandingPage; slug: string; ctaHref: string }) {
   // Build testimonial list: DB testimonial first, then static ones
