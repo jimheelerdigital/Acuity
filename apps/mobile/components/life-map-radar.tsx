@@ -16,9 +16,12 @@ import { DEFAULT_LIFE_AREAS, type LifeArea } from "@acuity/shared";
  * geometry, same colors, same polygon/stroke opacity — so dark and
  * light mode both read visually consistent with the web chart.
  *
- * Data contract (matches /api/lifemap): each area in `areas` carries
- * a 0..10 `score`; the polygon vertex for that axis sits at
- * `(score / 10) * maxRadius` from center.
+ * Data contract (matches /api/lifemap): each area carries `score100`
+ * (0..100, Slice N canonical, finer granularity) and legacy `score`
+ * (1..10, build-42 backward compat). This component prefers
+ * `score100` and falls back to `score * 10` if score100 is missing.
+ * The polygon vertex for that axis sits at
+ * `(scaled / 100) * maxRadius` from center.
  *
  * Size: the SVG is viewBox-driven, so the caller controls rendered
  * pixel size via the `size` prop (defaults to 300 to match the web
@@ -27,7 +30,24 @@ import { DEFAULT_LIFE_AREAS, type LifeArea } from "@acuity/shared";
 
 export interface RadarArea {
   area: LifeArea | string;
+  /** Legacy 1-10 score (build 42 contract). Kept for backward compat. */
   score: number;
+  /** Canonical 0-100 score (Slice N). Optional during transition. */
+  score100?: number;
+}
+
+/**
+ * Resolves the area's display score to a 0-100 number.
+ *
+ * Prefers `score100` (granular). Falls back to `score * 10` so any
+ * caller still on the legacy contract keeps working. Clamped 0-100
+ * defensively.
+ */
+function resolveScore100(area: RadarArea | undefined): number | null {
+  if (!area) return null;
+  const raw =
+    typeof area.score100 === "number" ? area.score100 : area.score * 10;
+  return Math.max(0, Math.min(100, Math.round(raw)));
 }
 
 interface Props {
@@ -88,8 +108,8 @@ export function LifeMapRadar({
       const area = areas.find(
         (a) => a.area === config.enum || a.area === config.name
       );
-      const score = area ? area.score / 10 : 0;
-      const r = score * maxR;
+      const score100 = resolveScore100(area);
+      const r = (score100 ?? 0) / 100 * maxR;
       const p = getPoint(i, r);
       return `${p.x},${p.y}`;
     })
@@ -98,6 +118,10 @@ export function LifeMapRadar({
   // Trend overlay — per-axis ~4-weeks-ago score. Null = no data for
   // that axis, collapse to the current score so the polygon remains
   // closed (no weird zero-collapse toward center).
+  //
+  // Trend data still uses the legacy 1-10 `score` shape (history
+  // table predates Slice N). Convert to 0-100 via *10 for the
+  // polygon math.
   const trendPolyPoints = trendAreas
     ? areaConfigs
         .map((config, i) => {
@@ -105,13 +129,13 @@ export function LifeMapRadar({
           const current = areas.find(
             (a) => a.area === config.enum || a.area === config.name
           );
-          const score10 =
+          const score100 =
             t?.score != null
-              ? Math.max(0, Math.min(10, t.score / 10))
+              ? Math.max(0, Math.min(100, t.score * 10))
               : current
-                ? current.score / 10
+                ? (resolveScore100(current) ?? 0)
                 : 0;
-          const p = getPoint(i, score10 * maxR);
+          const p = getPoint(i, (score100 / 100) * maxR);
           return `${p.x},${p.y}`;
         })
         .join(" ")
@@ -232,7 +256,7 @@ export function LifeMapRadar({
               fontSize={9}
               fill={scoreColor}
             >
-              {area ? Math.round(area.score * 10).toString() : "—"}
+              {resolveScore100(area)?.toString() ?? "—"}
             </SvgText>
           </G>
         );

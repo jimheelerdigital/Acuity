@@ -315,15 +315,33 @@ export async function updateLifeMap(
     const newScore100 = newScore10 * 10;
     const baseline = memory[`${key}Baseline` as keyof UserMemory] as number;
 
-    // Weighted blend: 20% new, 50% recent (current score as proxy), 30% baseline
-    const blended = Math.round(
-      newScore100 * 0.2 + (area.score * 10) * 0.5 + baseline * 0.3
+    // Slice N (2026-05-18): dual-write granularity migration.
+    // Previously the blend produced a 0-100 number that was then
+    // snapped back to 1-10 (score = round(blended / 10)) and
+    // multiplied by 10 for display — making score changes feel
+    // like 10-point jumps. Now we keep the 0-100 precision in
+    // `score100` (the canonical field build 43+ reads) and ALSO
+    // write a downsampled `score` for build 42 backward compat.
+    //
+    // The `area.score100 ?? area.score * 10` fallback handles the
+    // narrow window between schema deploy and backfill — any
+    // un-backfilled rows still have score100 at the default 50,
+    // so we fall back to the legacy `score * 10` derivation.
+    const prevScore100 = area.score100 || area.score * 10;
+    const blended100 = Math.max(
+      0,
+      Math.min(
+        100,
+        Math.round(newScore100 * 0.2 + prevScore100 * 0.5 + baseline * 0.3)
+      )
     );
-    const finalScore = Math.max(1, Math.min(10, Math.round(blended / 10)));
+    // Legacy 1-10 score for build 42 — downsample from the new
+    // canonical score100. Rounded to nearest 1-10 step.
+    const legacyScore = Math.max(1, Math.min(10, Math.round(blended100 / 10)));
 
-    // Trend calculation
-    const previousScore = area.score;
-    const delta = finalScore - previousScore;
+    // Trend calculation. Use the granular score100 delta — gives
+    // build 43+ a smoother trend signal than the legacy 10-pt steps.
+    const delta = blended100 - prevScore100;
     const trend =
       delta > 0 ? "up" : delta < 0 ? "down" : "stable";
 
@@ -334,14 +352,24 @@ export async function updateLifeMap(
     await prisma.lifeMapArea.update({
       where: { id: area.id },
       data: {
-        score: finalScore,
+        // Dual-write: score for build 42, score100 for build 43+.
+        score: legacyScore,
+        score100: blended100,
         trend,
-        weeklyDelta: delta,
+        // weeklyDelta is currently a 1-10-scale Int delta on the
+        // legacy score. Preserve that semantics so any build-42
+        // consumer of weeklyDelta doesn't break. Build 43+ can
+        // derive a granular delta from the score100 history when
+        // we wire it.
+        weeklyDelta: legacyScore - area.score,
         mentionCount: { increment: 1 },
         topThemes: mergedThemes,
         lastMentioned: new Date(),
-        historicalHigh: Math.max(area.historicalHigh, finalScore * 10),
-        historicalLow: Math.min(area.historicalLow, finalScore * 10),
+        // historicalHigh/Low were always stored on 0-100 scale (as
+        // `finalScore * 10`). Now use the granular score100 directly
+        // — same scale, finer precision.
+        historicalHigh: Math.max(area.historicalHigh, blended100),
+        historicalLow: Math.min(area.historicalLow, blended100),
       },
     });
   }

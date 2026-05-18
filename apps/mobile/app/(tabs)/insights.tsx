@@ -62,7 +62,14 @@ type LifeMapAreaData = {
   area: string;
   name: string | null;
   color: string | null;
+  /** Legacy 1-10 score (build-42 contract). */
   score: number;
+  /**
+   * Slice N canonical 0-100 score. Optional during transition —
+   * absent on build-42 / un-backfilled rows; consumers must fall
+   * back to `score * 10` when missing.
+   */
+  score100?: number;
   trend: string | null;
   weeklyDelta: number | null;
   mentionCount: number;
@@ -304,7 +311,11 @@ export default function InsightsTab() {
             </View>
             <View className="items-center">
               <LifeMapRadar
-                areas={areas.map((a) => ({ area: a.area, score: a.score }))}
+                areas={areas.map((a) => ({
+                  area: a.area,
+                  score: a.score,
+                  score100: a.score100,
+                }))}
                 size={320}
                 labelColor={isDark ? "#A1A1AA" : "#71717A"}
                 scoreColor={isDark ? "#71717A" : "#A1A1AA"}
@@ -346,7 +357,19 @@ export default function InsightsTab() {
                 const config = DEFAULT_LIFE_AREAS.find(
                   (a) => a.enum === area.area
                 );
-                const score100 = area.score * 10;
+                // Prefer Slice N canonical score100; fall back to the
+                // legacy 10x derivation for un-backfilled rows.
+                const score100 = Math.max(
+                  0,
+                  Math.min(
+                    100,
+                    Math.round(
+                      typeof area.score100 === "number"
+                        ? area.score100
+                        : area.score * 10
+                    )
+                  )
+                );
 
                 return (
                   <Pressable
