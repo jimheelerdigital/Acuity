@@ -166,22 +166,26 @@ export function AnimatedCounter({
     return () => obs.disconnect();
   }, []);
 
+  // Detect if target has decimals (e.g., 4.9) to preserve precision in display
+  const decimals = Number.isInteger(target) ? 0 : 1;
+
   useEffect(() => {
     if (!started) return;
     const startTime = performance.now();
     function step(now: number) {
       const progress = Math.min((now - startTime) / duration, 1);
       const eased = 1 - Math.pow(1 - progress, 3);
-      setCount(Math.floor(eased * target));
+      const raw = eased * target;
+      setCount(decimals > 0 ? Math.round(raw * 10) / 10 : Math.floor(raw));
       if (progress < 1) requestAnimationFrame(step);
     }
     requestAnimationFrame(step);
-  }, [started, target, duration]);
+  }, [started, target, duration, decimals]);
 
   return (
     <span ref={ref}>
       {prefix}
-      {count.toLocaleString()}
+      {decimals > 0 ? count.toFixed(decimals) : count.toLocaleString()}
       {suffix}
     </span>
   );

@@ -13,7 +13,6 @@ import {
   TrustStrip,
   FAQSection,
   HowItWorksSection,
-  AnimatedCounter,
   ExtractPhone,
   ReflectPhone,
   useCtaHref,
@@ -283,8 +282,11 @@ function DynamicLandingPageView({ page, slug, ctaHref }: { page: DynamicLandingP
                 <HeroHeadline text={page.heroHeadline} />
               </Reveal>
               <Reveal delay={1}>
-                <p className="mt-4 text-lg text-[#B0A898] leading-relaxed max-w-xl mx-auto lg:mx-0">
+                <p className="mt-4 text-lg text-[#E8DDD0] leading-relaxed max-w-xl mx-auto lg:mx-0">
                   {page.heroSubheadline}
+                </p>
+                <p className="mt-3 text-sm text-[#B0A898] leading-relaxed max-w-lg mx-auto lg:mx-0">
+                  Acuity is an AI voice journal. Talk for 60 seconds — about your day, your worries, whatever is on your mind. AI pulls out your tasks, tracks your goals, scores your mood, spots patterns you can't see yourself, and every Sunday delivers a report that tells the story of your week.
                 </p>
               </Reveal>
               <Reveal delay={2}>
@@ -318,31 +320,8 @@ function DynamicLandingPageView({ page, slug, ctaHref }: { page: DynamicLandingP
         </div>
       </section>
 
-      {/* 4. Social Proof Bar — tight against hero */}
-      <section className="py-5 px-6 bg-[#1a1816] border-y border-white/5">
-        <div className="mx-auto max-w-4xl">
-          <div className="grid grid-cols-3 gap-4 text-center">
-            <div>
-              <div className="text-lg sm:text-xl font-extrabold text-white">
-                <AnimatedCounter target={4.9} suffix={" ★"} />
-              </div>
-              <div className="text-[10px] sm:text-xs text-[#B0A898]">App Store</div>
-            </div>
-            <div>
-              <div className="text-lg sm:text-xl font-extrabold text-white">
-                <AnimatedCounter target={12} suffix="+" />
-              </div>
-              <div className="text-[10px] sm:text-xs text-[#B0A898]">Countries</div>
-            </div>
-            <div>
-              <div className="text-lg sm:text-xl font-extrabold text-white">
-                <AnimatedCounter target={94} suffix="%" />
-              </div>
-              <div className="text-[10px] sm:text-xs text-[#B0A898]">Still journaling after week 1</div>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* 4. Social Proof Bar — inline, matching homepage */}
+      <SocialProofBar />
 
       {/* 5. Testimonials — directly under social proof, minimal gap */}
       <TestimonialCarousel testimonials={allTestimonials} />
@@ -480,7 +459,7 @@ function DynamicLandingPageView({ page, slug, ctaHref }: { page: DynamicLandingP
                 No credit card. Cancel anytime.
               </p>
               <p className="mt-4 text-xs text-[#B0A898]/60">
-                ★ 4.9 on the App Store
+                <span className="text-amber-400">4.9 ★</span> on the App Store
               </p>
             </div>
           </div>
