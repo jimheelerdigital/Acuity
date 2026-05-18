@@ -3,9 +3,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState, useCallback } from "react";
-import { FoundingMemberBanner } from "@/components/founding-member-banner";
 import { SOCIAL_PROOF, STATS_STRIP } from "@/lib/social-proof";
 import { APP_STORE_URL, AppStoreBadge, useCtaHref } from "@/components/landing-shared";
+import { TestimonialCarousel, STATIC_CAROUSEL_TESTIMONIALS } from "@/components/testimonial-carousel";
 
 /* ═══════════════════════════════════════════
    "Who it's for" dropdown for landing nav
@@ -1014,9 +1014,8 @@ export function LandingPage() {
 
   return (
     <div className="min-h-screen bg-[#181614] text-white pb-24 sm:pb-0 overflow-x-hidden">
-      {/* ───── BANNER + NAVBAR (both fixed) ───── */}
+      {/* ───── NAVBAR (fixed) ───── */}
       <div className="fixed top-0 inset-x-0 z-50">
-        <FoundingMemberBanner />
         <nav className="bg-[#181614] sm:bg-[#181614]/80 sm:backdrop-blur-md border-b border-white/[0.04]">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:py-5">
           <div className="flex items-center gap-8">
@@ -1302,6 +1301,9 @@ export function LandingPage() {
           </div>
         </div>
       </section>
+
+      {/* ───── TESTIMONIAL CAROUSEL ───── */}
+      <TestimonialCarousel testimonials={STATIC_CAROUSEL_TESTIMONIALS} />
 
       {/* ───── SOCIAL PROOF STRIP ───── */}
       {/* TODO: Replace placeholder avatars with real influencer/user photos */}
@@ -1604,55 +1606,6 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* ───── TESTIMONIALS ───── */}
-      <section className="px-6 py-16 sm:py-20 lg:py-24">
-        <div className="mx-auto max-w-6xl">
-          <div data-animate>
-            <h2 className="text-center text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
-              What people say after week one
-            </h2>
-            <p className="mx-auto mt-4 text-center text-[#A0A0B8] text-lg">
-              The first weekly report is the moment it clicks.
-            </p>
-          </div>
-
-          <div className="mt-16 grid gap-8 sm:grid-cols-3">
-            {testimonials.map((t, i) => (
-              <figure key={t.name} className="group rounded-2xl border border-white/[0.06] bg-[#1E1C1A] p-6 shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1" data-animate data-delay={i * 100}>
-                <div className="flex items-center gap-1 mb-4">
-                  <span className="text-[#E8DDD0] font-bold text-xs">{SOCIAL_PROOF.rating} ★</span>
-                </div>
-                <blockquote className="text-sm leading-relaxed text-[#A0A0B8]">
-                  &ldquo;{t.quote}&rdquo;
-                </blockquote>
-                <figcaption className="mt-5 flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#252220] text-sm font-bold text-[#A0A0B8] transition-colors group-hover:bg-[#7C5CFC]/20 group-hover:text-[#7C5CFC]">
-                    {t.name[0]}
-                  </div>
-                  <div>
-                    <div className="text-sm font-semibold">{t.name}</div>
-                    <div className="text-xs text-[#A0A0B8]/60">{t.role}</div>
-                  </div>
-                </figcaption>
-              </figure>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ───── TRUST STRIP ───── */}
-      <section className="px-6 py-8">
-        <div className="mx-auto max-w-3xl flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
-          {["Audio deleted within 24hrs", "No card required", "Cancel anytime", "30-day free trial"].map((item, i) => (
-              <div className="flex items-center gap-2 text-sm text-[#A0A0B8]">
-                <svg className="h-4 w-4 text-emerald-400 shrink-0 animate-check-pulse" style={{ animationDelay: `${i * 0.5}s` }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
-                </svg>
-                {item}
-              </div>
-          ))}
-        </div>
-      </section>
 
       {/* ───── PRICING ───── */}
       <section id="pricing" className="px-6 py-16 sm:py-20">
@@ -1965,31 +1918,6 @@ const featureData = [
     iconKey: "map" as const,
     title: "The Life Matrix",
     desc: "Six areas of your life, scored every week. Career, health, relationships, finances, growth, purpose. See the full picture — what's thriving and what needs your attention.",
-  },
-];
-
-// TODO: Replace these fake testimonials with real user testimonials
-const testimonials = [
-  {
-    name: "Sarah K.",
-    role: "Product Manager",
-    quote:
-      "I used to let tasks pile up in my head until 2 AM. Now I debrief into Acuity in 60 seconds and actually sleep.",
-    imageSrc: "/testimonials/sarah-k.png",
-  },
-  {
-    name: "Marcus T.",
-    role: "Startup Founder",
-    quote:
-      "The weekly reports are unreal. It's like having a therapist and a project manager rolled into one AI.",
-    imageSrc: "/testimonials/marcus-t.png",
-  },
-  {
-    name: "Priya D.",
-    role: "Graduate Student",
-    quote:
-      "I've tried every journaling app. Acuity is the only one that stuck because it asks nothing of me except my voice.",
-    imageSrc: "/testimonials/priya-r.png",
   },
 ];
 
