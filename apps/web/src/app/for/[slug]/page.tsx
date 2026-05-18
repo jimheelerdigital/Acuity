@@ -313,6 +313,9 @@ function DynamicLandingPageView({ page, slug, ctaHref }: { page: DynamicLandingP
               <Reveal delay={1}>
                 <p className="mt-5 text-base sm:text-lg text-[#F5EDE4] leading-relaxed max-w-xl mx-auto lg:mx-0">
                   {page.heroSubheadline}
+                  {page.heroSubheadline.length < 120 && (
+                    <> Acuity is a 60-second AI voice journal that extracts your tasks, tracks your goals, scores your mood, spots the patterns you can't see, and every Sunday delivers a report that tells the story of your week.</>
+                  )}
                 </p>
               </Reveal>
               <Reveal delay={2}>
