@@ -1975,18 +1975,21 @@ const testimonials = [
     role: "Product Manager",
     quote:
       "I used to let tasks pile up in my head until 2 AM. Now I debrief into Acuity in 60 seconds and actually sleep.",
+    imageSrc: "/testimonials/sarah-k.png",
   },
   {
     name: "Marcus T.",
     role: "Startup Founder",
     quote:
       "The weekly reports are unreal. It's like having a therapist and a project manager rolled into one AI.",
+    imageSrc: "/testimonials/marcus-t.png",
   },
   {
     name: "Priya D.",
     role: "Graduate Student",
     quote:
       "I've tried every journaling app. Acuity is the only one that stuck because it asks nothing of me except my voice.",
+    imageSrc: "/testimonials/priya-r.png",
   },
 ];
 

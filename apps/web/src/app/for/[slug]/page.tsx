@@ -196,7 +196,27 @@ interface CarouselTestimonial {
   role: string;
   initials: string;
   bgColor: string;
+  imageSrc?: string;
 }
+
+/** Pool of headshot images for DB testimonials whose names don't match a static person */
+const FALLBACK_HEADSHOTS = [
+  "/testimonials/alex-m.png",
+  "/testimonials/rachel-w.png",
+  "/testimonials/tom-h.png",
+  "/testimonials/nina-s.png",
+  "/testimonials/james-c.png",
+  "/testimonials/maya-p.png",
+  "/testimonials/chris-b.png",
+  "/testimonials/emma-r.png",
+  "/testimonials/daniel-j.png",
+  "/testimonials/lisa-t.png",
+  "/testimonials/mike-d.png",
+  "/testimonials/aisha-n.png",
+  "/testimonials/ryan-f.png",
+  "/testimonials/sofia-g.png",
+  "/testimonials/kevin-l.png",
+];
 
 const STATIC_CAROUSEL_TESTIMONIALS: CarouselTestimonial[] = [
   {
@@ -205,6 +225,7 @@ const STATIC_CAROUSEL_TESTIMONIALS: CarouselTestimonial[] = [
     role: "Product manager",
     initials: "MT",
     bgColor: "bg-sky-600",
+    imageSrc: "/testimonials/marcus-t.png",
   },
   {
     quote: "I\u2019ve tried every journaling app. This is the first one that stuck because I just talk.",
@@ -212,6 +233,7 @@ const STATIC_CAROUSEL_TESTIMONIALS: CarouselTestimonial[] = [
     role: "Designer",
     initials: "JL",
     bgColor: "bg-rose-500",
+    imageSrc: "/testimonials/jamie-l.png",
   },
   {
     quote: "I mentioned \u2018morning routine\u2019 12 times in two weeks but never built one. Seeing that in my report changed everything.",
@@ -219,6 +241,7 @@ const STATIC_CAROUSEL_TESTIMONIALS: CarouselTestimonial[] = [
     role: "Consultant",
     initials: "PR",
     bgColor: "bg-emerald-600",
+    imageSrc: "/testimonials/priya-r.png",
   },
   {
     quote: "My partner noticed the difference before I did. I\u2019m actually present when I get home now.",
@@ -226,8 +249,16 @@ const STATIC_CAROUSEL_TESTIMONIALS: CarouselTestimonial[] = [
     role: "Engineer",
     initials: "DK",
     bgColor: "bg-amber-600",
+    imageSrc: "/testimonials/david-k.png",
   },
 ];
+
+/** Pick a deterministic fallback headshot based on name hash */
+function pickFallbackHeadshot(name: string): string {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = ((hash << 5) - hash + name.charCodeAt(i)) | 0;
+  return FALLBACK_HEADSHOTS[Math.abs(hash) % FALLBACK_HEADSHOTS.length];
+}
 
 /** Build carousel testimonials from a static persona page's single testimonial + shared static ones */
 function buildStaticTestimonials(testimonial: { quote: string; name: string; detail: string }): CarouselTestimonial[] {
@@ -236,7 +267,7 @@ function buildStaticTestimonials(testimonial: { quote: string; name: string; det
     ? (parts[0][0] + (parts[1]?.[0] || "")).toUpperCase()
     : testimonial.name.slice(0, 2).toUpperCase();
   return [
-    { quote: testimonial.quote, name: testimonial.name, role: testimonial.detail, initials, bgColor: "bg-[#7C5CFC]" },
+    { quote: testimonial.quote, name: testimonial.name, role: testimonial.detail, initials, bgColor: "bg-[#7C5CFC]", imageSrc: pickFallbackHeadshot(testimonial.name) },
     ...STATIC_CAROUSEL_TESTIMONIALS,
   ];
 }
@@ -256,6 +287,7 @@ function DynamicLandingPageView({ page, slug, ctaHref }: { page: DynamicLandingP
       role: "Acuity member",
       initials,
       bgColor: "bg-[#7C5CFC]",
+      imageSrc: pickFallbackHeadshot(name),
     });
   }
   allTestimonials.push(...STATIC_CAROUSEL_TESTIMONIALS);
@@ -502,9 +534,13 @@ function TestimonialCard({ testimonial: t }: { testimonial: CarouselTestimonial 
         &ldquo;{t.quote}&rdquo;
       </blockquote>
       <div className="flex items-center gap-2">
-        <div className={`flex h-7 w-7 items-center justify-center rounded-full ${t.bgColor} text-[9px] font-bold text-white`}>
-          {t.initials}
-        </div>
+        {t.imageSrc ? (
+          <img src={t.imageSrc} alt={t.name} className="h-7 w-7 rounded-full object-cover" />
+        ) : (
+          <div className={`flex h-7 w-7 items-center justify-center rounded-full ${t.bgColor} text-[9px] font-bold text-white`}>
+            {t.initials}
+          </div>
+        )}
         <div>
           <div className="text-xs font-semibold text-white">{t.name}</div>
           <div className="text-[10px] text-[#B0A898]/60">{t.role}</div>
