@@ -52,12 +52,18 @@ export async function generateLandingPage(experimentId: string) {
   const prompt = `You are a conversion copywriter for Acuity, an AI voice journal app. Your job is to create a landing page that matches the emotional angle of a specific ad campaign.
 
 Brand voice rules:
-- Warm, observational, inclusive
-- Never say "brain dump" — say "daily debrief"
-- Never say "journaling" in acquisition copy — say "shutdown ritual" or "daily debrief"
-- Under-claim the AI. Show artifacts (weekly report, tasks extracted), not mechanisms.
-- The hero conversion driver is the weekly report.
-- Use the customer's exact language.
+- Warm, observational, inclusive. Use "daily debrief" not "brain dump". Never use "journaling" in acquisition copy — say "shutdown ritual" or "daily debrief".
+- Under-claim the AI. Show artifacts (weekly report, tasks extracted), not mechanisms ("AI-powered pattern detection").
+- The hero conversion driver is the weekly report — a 400-word narrative delivered every Sunday.
+- Use the customer's exact language — if the phrase can't be found in a Reddit thread, it doesn't belong.
+
+Copy quality rules:
+- Headlines: punchy, 8 words or fewer. Hit the emotional nerve from the topic brief. Not generic — a stranger should be able to guess which ad this page belongs to.
+- Subheadlines: one concrete sentence that makes the product benefit tangible. Include a number, a time, or a specific artifact.
+- Pain points: written in second person ("You..."). Uncomfortably specific — not generic marketing speak. Each one should make the reader think "how do they know that about me?"
+- Value props: each starts with a concrete action verb and ends with a specific outcome. No vague "improve your life" language.
+- Testimonial: sounds like a real person, not a copywriter. Include a specific detail (a number, a day of the week, a feature name like "the weekly report" or "the task list").
+- Closing headline: the emotional closer above the final CTA. Should feel like a warm, direct challenge — not a sales pitch.
 
 Context:
 Topic brief: ${experiment.topicBrief}
@@ -66,14 +72,15 @@ ${creativeContext ? `Sample ad creatives:\n${creativeContext}` : ""}
 
 Generate a landing page with these exact JSON fields:
 {
-  "heroHeadline": "short punchy headline (max 10 words) matching the ad's emotional angle",
-  "heroSubheadline": "1-2 sentences expanding on the promise. Specific, falsifiable, unique.",
-  "painPoints": ["3-4 short bullet points about the PROBLEM this persona faces"],
+  "heroHeadline": "punchy headline, max 8 words, hits the emotional nerve",
+  "heroSubheadline": "one concrete sentence with a number or specific artifact",
+  "painPoints": ["3-4 second-person bullets that feel uncomfortably specific"],
   "valuePropHeadline": "transition headline like 'Here's what changes' or 'What if you could...'",
-  "valueProps": ["3-4 benefits tied to this angle — what Acuity specifically does for them"],
-  "testimonialQuote": "a realistic-sounding testimonial that matches this angle (or null if none fits)",
-  "testimonialName": "First name + last initial (or null)",
-  "ctaText": "Start Free Trial",
+  "valueProps": ["3-4 benefits starting with action verbs, ending with specific outcomes"],
+  "testimonialQuote": "realistic testimonial with a specific detail (number, day, feature name)",
+  "testimonialName": "First name + last initial",
+  "ctaText": "Start Free Trial — 30 Days Free",
+  "closingHeadline": "emotional closer — warm direct challenge, not a sales pitch",
   "metaTitle": "SEO title — angle keyword + Acuity (max 60 chars)",
   "metaDescription": "SEO description (max 155 chars) — problem + solution + CTA"
 }
@@ -113,7 +120,8 @@ Return ONLY valid JSON, no markdown fences.`;
       valueProps: generated.valueProps ?? [],
       testimonialQuote: generated.testimonialQuote ?? null,
       testimonialName: generated.testimonialName ?? null,
-      ctaText: generated.ctaText ?? "Start Free Trial",
+      ctaText: generated.ctaText ?? "Start Free Trial — 30 Days Free",
+      closingHeadline: generated.closingHeadline ?? null,
       metaTitle: generated.metaTitle ?? "Acuity — Start Your Free Trial",
       metaDescription: generated.metaDescription ?? "The AI voice journal that turns your daily debrief into action.",
     },

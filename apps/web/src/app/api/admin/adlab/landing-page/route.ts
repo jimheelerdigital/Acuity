@@ -73,7 +73,7 @@ export async function PATCH(request: Request) {
   const allowedFields = [
     "heroHeadline", "heroSubheadline", "painPoints", "valuePropHeadline",
     "valueProps", "testimonialQuote", "testimonialName", "ctaText",
-    "metaTitle", "metaDescription",
+    "closingHeadline", "metaTitle", "metaDescription",
   ];
   const updateData: Record<string, any> = {};
   for (const key of allowedFields) {

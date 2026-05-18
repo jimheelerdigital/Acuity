@@ -12,7 +12,12 @@ import {
   SocialProofBar,
   TrustStrip,
   FAQSection,
+  HowItWorksSection,
+  TestimonialsSection,
+  StatsSection,
   useCtaHref,
+  type Testimonial,
+  type Stat,
 } from "@/components/landing-shared";
 import { getPersonaBySlug, type PersonaPage } from "@/lib/persona-pages";
 import { FoundingMemberBanner } from "@/components/founding-member-banner";
@@ -27,6 +32,7 @@ interface DynamicLandingPage {
   valueProps: string[];
   testimonialQuote: string | null;
   testimonialName: string | null;
+  closingHeadline: string | null;
   ctaText: string;
   metaTitle: string;
   metaDescription: string;
@@ -37,7 +43,7 @@ export default function PersonaLandingPage({ params }: { params: { slug: string 
   const [dynamicPage, setDynamicPage] = useState<DynamicLandingPage | null>(null);
   const [notFound, setNotFound] = useState(false);
 
-  const ctaHref = `/auth/signup?utm_source=meta&utm_medium=paid&utm_content=${params.slug}`;
+  const ctaHref = `/auth/signup?ref=${params.slug}&utm_source=meta&utm_medium=paid&utm_campaign=${params.slug}`;
 
   useEffect(() => {
     try {
@@ -155,7 +161,7 @@ function StaticPersonaPage({ page, slug }: { page: PersonaPage; slug: string }) 
         </div>
       </section>
 
-      <HowItWorks />
+      <SimpleHowItWorks />
       <TrustStrip />
 
       {/* Features */}
@@ -212,40 +218,94 @@ function StaticPersonaPage({ page, slug }: { page: PersonaPage; slug: string }) 
   );
 }
 
-/** Dynamic landing page from AdLab experiment */
+/* ═══════════════════════════════════════════════════
+   Dynamic landing page from AdLab experiment — FULL REDESIGN
+   Matches homepage design system exactly.
+   ═══════════════════════════════════════════════════ */
+
+/** Static testimonials that work for any angle */
+const STATIC_TESTIMONIALS: Testimonial[] = [
+  {
+    quote: "The weekly reports are unreal. It\u2019s like having a therapist and a project manager rolled into one AI.",
+    name: "Marcus T.",
+    role: "Product manager",
+  },
+  {
+    quote: "I\u2019ve tried every journaling app. This is the first one that stuck because I just talk. No typing, no prompts, no effort.",
+    name: "Jamie L.",
+    role: "Freelance designer",
+  },
+];
+
+/** Social proof stats */
+const SOCIAL_PROOF_STATS: Stat[] = [
+  { value: 4.9, suffix: " \u2605", label: "App Store rating" },
+  { value: 12, suffix: "+", label: "Countries" },
+  { value: 94, suffix: "%", label: "Still journaling after week one" },
+];
+
 function DynamicLandingPageView({ page, slug, ctaHref }: { page: DynamicLandingPage; slug: string; ctaHref: string }) {
+  // Build testimonials array: DB testimonial first, then 2 static ones
+  const testimonials: Testimonial[] = [];
+  if (page.testimonialQuote && page.testimonialName) {
+    testimonials.push({
+      quote: page.testimonialQuote,
+      name: page.testimonialName,
+      role: "Acuity member",
+    });
+  }
+  testimonials.push(...STATIC_TESTIMONIALS);
+
   return (
-    <div className="min-h-screen bg-[#181614] text-white overflow-x-hidden">
+    <div className="min-h-screen bg-[#181614] text-[#F5EDE4] overflow-x-hidden">
+      {/* 1. Founding Member Banner */}
       <FoundingMemberBanner />
+
+      {/* 2. Nav */}
       <LandingNav />
 
-      {/* Hero */}
+      {/* 3. Hero Section */}
       <section className="relative pt-36 pb-16 sm:pt-44 sm:pb-24 overflow-hidden">
         <ParallaxOrbs />
         <div className="relative mx-auto max-w-4xl px-6 text-center">
-          <Reveal><HeroHeadline text={page.heroHeadline} /></Reveal>
-          <Reveal delay={1}><p className="mt-6 text-lg text-[#B0A898] leading-relaxed max-w-2xl mx-auto">{page.heroSubheadline}</p></Reveal>
+          <Reveal>
+            <HeroHeadline text={page.heroHeadline} />
+          </Reveal>
+          <Reveal delay={1}>
+            <p className="mt-6 text-lg text-[#B0A898] leading-relaxed max-w-2xl mx-auto">
+              {page.heroSubheadline}
+            </p>
+          </Reveal>
           <Reveal delay={2}>
             <div className="mt-8">
-              <a
-                href={ctaHref}
-                className="inline-block rounded-full bg-[#7C5CFC] px-8 py-4 text-sm font-bold text-white transition hover:bg-[#6B4FE0] hover:-translate-y-0.5 active:scale-95"
-              >
-                {page.ctaText}
-              </a>
-              <p className="mt-3 text-xs text-[#A0A0B8]">30 days free. No card required.</p>
+              <PulsingCTA href={ctaHref}>
+                Start Free Trial — 30 Days Free
+              </PulsingCTA>
+              <p className="mt-3 text-xs text-[#B0A898]">
+                No credit card. 90 seconds to set up.
+              </p>
             </div>
           </Reveal>
         </div>
       </section>
 
-      {/* Pain Points */}
+      {/* 4. Pain Points — "Sound familiar?" */}
       <section className="px-6 py-24 sm:py-32">
         <div className="mx-auto max-w-5xl">
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <Reveal>
+            <p className="text-center text-sm font-semibold text-[#E8DDD0] uppercase tracking-widest mb-10">
+              Sound familiar?
+            </p>
+          </Reveal>
+          <div className="grid gap-5 sm:grid-cols-2">
             {page.painPoints.map((point, i) => (
               <Reveal key={i} delay={Math.min(i + 1, 3) as 1 | 2 | 3}>
-                <div className="h-full rounded-xl border border-white/10 bg-[#1E1C1A] p-6 transition-all duration-300 hover:border-white/20">
+                <div className="flex items-start gap-4 rounded-xl border border-white/10 bg-[#1E1C1A] p-6 transition-all duration-300 hover:border-white/20 hover:-translate-y-0.5">
+                  <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#7C5CFC]/10">
+                    <svg className="h-4 w-4 text-[#7C5CFC]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                    </svg>
+                  </div>
                   <p className="text-sm leading-relaxed text-[#B0A898]">{point}</p>
                 </div>
               </Reveal>
@@ -254,59 +314,117 @@ function DynamicLandingPageView({ page, slug, ctaHref }: { page: DynamicLandingP
         </div>
       </section>
 
-      {/* Value Props */}
+      {/* 5. What is Acuity? — static product explainer */}
       <section className="px-6 py-24 sm:py-32">
-        <div className="mx-auto max-w-3xl text-center">
-          <Reveal><h2 className="text-3xl font-bold tracking-tight sm:text-4xl mb-12">{page.valuePropHeadline}</h2></Reveal>
-          <div className="grid gap-6 sm:grid-cols-2 text-left">
-            {page.valueProps.map((prop, i) => (
-              <Reveal key={i} delay={Math.min(i + 1, 3) as 1 | 2 | 3}>
-                <div className="flex items-start gap-3">
-                  <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#7C5CFC]/20">
-                    <svg className="h-3.5 w-3.5 text-[#7C5CFC]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+        <div className="mx-auto max-w-4xl">
+          <Reveal>
+            <div className="text-center mb-12">
+              <h2 className="text-3xl font-bold tracking-tight sm:text-5xl text-white">
+                One minute of talking. A week of clarity.
+              </h2>
+              <p className="mt-6 text-lg text-[#B0A898] leading-relaxed max-w-3xl mx-auto">
+                Acuity is an AI voice journal. Talk about your day for one minute — any time, no prompts, no typing.
+                AI extracts your tasks, tracks your goals, detects patterns in your life, and every Sunday delivers
+                a 400-word report that tells the story of your week.
+              </p>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* 6. How It Works — reuse homepage 3-step section with phone mockups */}
+      <HowItWorksSection
+        steps={[
+          { label: "Step 1", title: "Record", description: "Open Acuity at night. Hit record. Speak freely for 60 seconds about your day, your worries, your wins — whatever comes to mind." },
+          { label: "Step 2", title: "Extract", description: "By morning, your tasks are on a list, your goals are tracked, and your mood is scored. You didn\u2019t type a word." },
+          { label: "Step 3", title: "Reflect", description: "Get a weekly narrative report showing patterns in your life, so you can course-correct before the next week starts." },
+        ]}
+        extractTasks={[
+          { text: "Send proposal to client" },
+          { text: "Buy groceries" },
+          { text: "Call mom" },
+        ]}
+        extractGoal="Ship the beta this week"
+        extractMood="Energized but slightly anxious"
+        reflectPattern="Best mood on days you exercised. Worst on days with meetings after 6pm."
+        reflectActions={["Block mornings for deep work", "No meetings after 5pm", "Exercise before noon"]}
+      />
+
+      {/* 7. Value Props — 2x2 grid */}
+      <section className="px-6 py-24 sm:py-32">
+        <div className="mx-auto max-w-4xl">
+          <Reveal>
+            <h2 className="text-center text-3xl font-bold tracking-tight sm:text-5xl text-white mb-14">
+              {page.valuePropHeadline}
+            </h2>
+          </Reveal>
+          <div className="grid gap-6 sm:grid-cols-2">
+            {page.valueProps.map((prop, i) => {
+              // Bold the first few words as a title
+              const words = prop.split(" ");
+              const titleEnd = Math.min(words.length, 4);
+              const title = words.slice(0, titleEnd).join(" ");
+              const rest = words.slice(titleEnd).join(" ");
+              return (
+                <Reveal key={i} delay={Math.min(i + 1, 3) as 1 | 2 | 3}>
+                  <div className="rounded-xl border border-white/10 bg-[#1E1C1A] p-6 transition-all duration-300 hover:border-white/20 hover:-translate-y-1">
+                    <div className="flex items-start gap-3">
+                      <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#7C5CFC]/20">
+                        <svg className="h-3.5 w-3.5 text-[#7C5CFC]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                      <p className="text-sm text-[#B0A898] leading-relaxed">
+                        <span className="font-semibold text-white">{title}</span>
+                        {rest ? ` ${rest}` : ""}
+                      </p>
+                    </div>
                   </div>
-                  <p className="text-sm text-[#B0A898] leading-relaxed">{prop}</p>
-                </div>
-              </Reveal>
-            ))}
+                </Reveal>
+              );
+            })}
           </div>
         </div>
       </section>
 
-      <HowItWorks />
+      {/* 8. Testimonials — 3 cards */}
+      <TestimonialsSection testimonials={testimonials} headline="People are loving it" />
 
-      {/* Testimonial */}
-      {page.testimonialQuote && (
-        <section className="px-6 py-24 sm:py-32">
-          <div className="mx-auto max-w-2xl">
-            <Reveal>
-              <div className="rounded-xl border border-[#7C5CFC]/20 bg-[#1E1C1A] p-8 sm:p-10">
-                <blockquote className="text-base sm:text-lg text-[#B0A898] leading-relaxed italic mb-4">&ldquo;{page.testimonialQuote}&rdquo;</blockquote>
-                {page.testimonialName && <cite className="text-sm text-[#F5EDE4]/60 not-italic">— {page.testimonialName}</cite>}
-              </div>
-            </Reveal>
-          </div>
-        </section>
-      )}
+      {/* 9. Social Proof Bar with animated counters */}
+      <StatsSection stats={SOCIAL_PROOF_STATS} />
 
-      {/* Final CTA */}
+      {/* 10. Final CTA Section */}
       <section className="px-6 py-24 sm:py-32">
         <Reveal>
-          <div className="mx-auto max-w-xl text-center">
-            <h2 className="text-3xl font-bold sm:text-4xl tracking-tight mb-6">Ready to start?</h2>
-            <a href={ctaHref} className="inline-block rounded-full bg-[#7C5CFC] px-8 py-4 text-sm font-bold text-white transition hover:bg-[#6B4FE0] hover:-translate-y-0.5 active:scale-95">{page.ctaText}</a>
-            <p className="mt-3 text-sm text-[#A0A0B8]">30 days free &middot; Then $12.99/month &middot; Cancel anytime</p>
+          <div className="mx-auto max-w-4xl rounded-2xl border border-white/10 bg-[#1E1C1A] p-12 sm:p-16 text-center relative overflow-hidden">
+            {/* Subtle gradient background */}
+            <div className="absolute inset-0 bg-gradient-to-br from-[#7C5CFC]/5 via-transparent to-[#7C5CFC]/5 pointer-events-none" />
+            <div className="relative">
+              <h2 className="text-3xl font-bold sm:text-4xl tracking-tight text-white mb-6">
+                {page.closingHeadline || "Your week doesn\u2019t have to disappear."}
+              </h2>
+              <a
+                href={ctaHref}
+                className="inline-block rounded-full bg-[#7C5CFC] px-8 py-4 text-sm font-bold text-white transition hover:bg-[#6B4FE0] hover:-translate-y-0.5 active:scale-95"
+              >
+                Start Free Trial — 30 Days Free
+              </a>
+              <p className="mt-3 text-sm text-[#B0A898]">
+                No credit card. Cancel anytime.
+              </p>
+            </div>
           </div>
         </Reveal>
       </section>
 
+      {/* 11. Footer */}
       <Footer />
     </div>
   );
 }
 
-/** Reusable "How it works" section */
-function HowItWorks() {
+/** Simple "How it works" section — text-only, used by static persona pages */
+function SimpleHowItWorks() {
   return (
     <section id="how-it-works" className="px-6 py-24 sm:py-32">
       <div className="mx-auto max-w-4xl">
@@ -314,7 +432,7 @@ function HowItWorks() {
         <div className="grid gap-8 sm:grid-cols-3">
           {[
             { step: "01", title: "Record", desc: "Open Acuity at night. Hit record. Talk freely for 60 seconds. No prompts, no structure, no judgment." },
-            { step: "02", title: "AI Extracts", desc: "By morning, your tasks are on a list, your goals are tracked, and your mood is scored. You didn't type a word." },
+            { step: "02", title: "AI Extracts", desc: "By morning, your tasks are on a list, your goals are tracked, and your mood is scored. You didn\u2019t type a word." },
             { step: "03", title: "You See Results", desc: "Your summary card appears instantly. Every Sunday, get a weekly narrative report about your life." },
           ].map((item, i) => (
             <Reveal key={i} delay={Math.min(i + 1, 3) as 1 | 2 | 3}>
