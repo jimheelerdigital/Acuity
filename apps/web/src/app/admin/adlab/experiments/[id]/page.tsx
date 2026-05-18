@@ -135,6 +135,8 @@ export default function ExperimentDetailPage() {
   const [cancelling, setCancelling] = useState(false);
   const [refImagesOpen, setRefImagesOpen] = useState(false);
   const [uploadingRefs, setUploadingRefs] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [launchError, setLaunchError] = useState<string | null>(null);
   const [generateAllRunning, setGenerateAllRunning] = useState(false);
@@ -332,18 +334,46 @@ export default function ExperimentDetailPage() {
     setCancelling(false);
   }
 
-  async function uploadReferenceImages(files: FileList) {
+  async function uploadReferenceImages(files: FileList | File[]) {
     if (!experiment || files.length === 0) return;
     setUploadingRefs(true);
-    const formData = new FormData();
-    formData.append("experimentId", experiment.id);
-    for (let i = 0; i < files.length; i++) {
-      formData.append("files", files[i]);
+    setUploadProgress(files.length > 1 ? `Uploading 0 of ${files.length} images...` : "Uploading...");
+
+    let succeeded = 0;
+    let failed = 0;
+    const fileArray = Array.from(files);
+
+    // Upload in parallel batches of 3 to balance speed vs. server load
+    const batchSize = 3;
+    for (let i = 0; i < fileArray.length; i += batchSize) {
+      const batch = fileArray.slice(i, i + batchSize);
+      const results = await Promise.allSettled(
+        batch.map(async (file) => {
+          const formData = new FormData();
+          formData.append("experimentId", experiment!.id);
+          formData.append("files", file);
+          const res = await fetch("/api/admin/adlab/reference-images", {
+            method: "POST",
+            body: formData,
+          });
+          if (!res.ok) throw new Error(`Upload failed: ${file.name}`);
+          return res.json();
+        })
+      );
+      for (const r of results) {
+        if (r.status === "fulfilled") succeeded++;
+        else failed++;
+      }
+      setUploadProgress(`Uploading ${succeeded + failed} of ${fileArray.length} images...`);
     }
-    await fetch("/api/admin/adlab/reference-images", {
-      method: "POST",
-      body: formData,
-    });
+
+    if (failed > 0) {
+      setUploadProgress(`Done: ${succeeded} uploaded, ${failed} failed`);
+      setTimeout(() => setUploadProgress(null), 4000);
+    } else {
+      setUploadProgress(null);
+    }
+
     await loadExperiment();
     setUploadingRefs(false);
   }
@@ -619,8 +649,17 @@ export default function ExperimentDetailPage() {
 
         {refImagesOpen && (
           <div className="px-5 pb-5 border-t border-white/5 pt-4">
-            {/* Upload area */}
-            <label className="flex flex-col items-center gap-2 rounded-lg border-2 border-dashed border-white/10 hover:border-[#7C5CFC]/30 bg-white/[0.02] px-6 py-5 cursor-pointer transition mb-4">
+            {/* Upload area with drag-and-drop */}
+            <label
+              className={`flex flex-col items-center gap-2 rounded-lg border-2 border-dashed ${dragOver ? "border-[#7C5CFC] bg-[#7C5CFC]/5" : "border-white/10 hover:border-[#7C5CFC]/30 bg-white/[0.02]"} px-6 py-5 cursor-pointer transition mb-4`}
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragOver(false);
+                if (e.dataTransfer.files.length > 0) uploadReferenceImages(e.dataTransfer.files);
+              }}
+            >
               <input
                 type="file"
                 accept="image/*"
@@ -635,7 +674,7 @@ export default function ExperimentDetailPage() {
                 <Upload className="h-5 w-5 text-[#A0A0B8]" />
               )}
               <span className="text-xs text-[#A0A0B8]">
-                {uploadingRefs ? "Uploading..." : "Click to upload competitor ads, inspiration images"}
+                {uploadProgress || (uploadingRefs ? "Uploading..." : "Click or drag to upload competitor ads, inspiration images")}
               </span>
             </label>
 
