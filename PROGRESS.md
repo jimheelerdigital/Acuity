@@ -41,6 +41,40 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-17] — Landing page overhaul v2 + homepage copy cleanup
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** bbca291, 73f4624
+
+### In plain English (for Keenan)
+
+Two big changes: (1) The ad landing pages got another major upgrade — they now show a phone mockup in the hero section so visitors immediately see what the product looks like, have a social proof bar ("4.9 App Store / 12+ countries / 94% retention") right below the hero before any other content, a "What is Acuity?" section with two phone mockups side-by-side showing the app in action, and a horizontally auto-scrolling testimonial carousel with 5 reviews that pauses on hover. All spacing was tightened by ~40%. (2) The homepage was cleaned up: "shutdown ritual" is gone everywhere (replaced with "daily debrief"), all nighttime framing removed ("each night" → "any time of day", "by morning" → "within minutes"), star rating updated to 4.9, App Store badge made smaller/less prominent so it doesn't compete with the main CTA, and the stats counter animation was fixed so it triggers more reliably.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/for/[slug]/page.tsx`: Full rewrite of DynamicLandingPageView. Hero now uses flex row with ExtractPhone mockup on right. Inline social proof bar with AnimatedCounter (no StatsSection wrapper). Pain points py reduced to py-14. Product explainer has ExtractPhone + ReflectPhone side by side. TestimonialCarousel component with requestAnimationFrame scrolling, pause on hover, mobile vertical stack. All section padding reduced 40-50%.
+- `apps/web/src/components/landing-shared.tsx`: Exported RecordPhone, ExtractPhone, ReflectPhone. Lowered AnimatedCounter IntersectionObserver threshold from 0.5 to 0.1. Fixed FAQ "by morning" → "within minutes".
+- `apps/web/src/components/landing.tsx`: FAQ "What is Acuity" rewritten. "Works while you sleep" → "Works in the background". "Built While You Sleep" → "Built Automatically". Footer "shutdown ritual" → "daily debrief". App Store badge scaled down and lower opacity.
+- `apps/web/src/lib/social-proof.ts`: rating "4.8" → "4.9"
+- `apps/web/src/lib/persona-pages.ts`: Remote workers "shutdown ritual" → "daily debrief". Grief "each night" → "a day".
+- `apps/web/src/app/page.tsx`: SR-only content updated.
+- `apps/web/src/lib/adlab/landing-page.ts`: Removed "shutdown ritual" from AI prompt.
+- `apps/web/src/app/api/admin/adlab/projects/seed/route.ts`: Brand voice rule updated.
+- `apps/web/src/app/api/admin/adlab/creatives/compliance/route.ts`: Brand voice check updated.
+
+### Manual steps needed
+
+None — all changes are web-only and deploy automatically on push.
+
+### Notes
+
+- Testimonial headshot images were requested but not generated (requires gpt-image-2 API calls + image hosting). Using colored initials circles instead — same pattern as homepage TestimonialsSection. Can add generated headshots in a future session.
+- The carousel uses requestAnimationFrame for smooth continuous scrolling at ~0.4px/frame. Pauses on hover. Falls back to vertical stack on mobile (<640px) and when prefers-reduced-motion is set.
+- "shutdown ritual" is now fully retired across the entire codebase. The brand voice doc (docs/Acuity_SalesCopy.md) may still reference it — that should be updated in a future pass.
+
+---
+
 ## [2026-05-17] — Fix: dynamic landing pages returning 404 (live ad pages down)
 
 **Requested by:** Keenan
