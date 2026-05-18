@@ -41,6 +41,38 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-18] — Slice O pivot: in-app feedback posts to Slack instead of Make.com
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** 95911c2
+
+### In plain English (for Keenan)
+
+When users tap "Send feedback" in the mobile app, their message now lands as a nicely-formatted post in our Slack #acuity-feedback channel instead of going straight to a Make.com webhook. Slack becomes the single inbox for all feedback — in-app submissions, anything you or I paste from email or text, future App Store reviews, future Sentry crash alerts. From there, one Make.com scenario watches the channel and routes everything to Monday.com. The reason for the change: Make's free tier only allows 2 active scenarios. With this design, those two scenarios are "watch Slack for feedback" and "sync commit tags" — and we never have to pay for more. No change to what users see; the "Send feedback" button still works the same way.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/api/feedback/submit/route.ts`: env var renamed `FEEDBACK_WEBHOOK_URL` → `SLACK_FEEDBACK_WEBHOOK_URL`. Replaced raw JSON payload forwarding with `buildSlackMessage()` helper that produces a Slack Block Kit message: header block ("New feedback — <Type>"), section with the user's content quote-prefixed (`> ` per line so Slack renders it as a blockquote), context block with a one-line summary (`From email (uidShort) • vN (build) OS X • <plan> • N entries • <ts> UTC`), and a code-fence section containing structured JSON metadata (userId, email, name, type, subscriptionStatus, totalRecordings, appVersion, buildNumber, osName, osVersion, submittedAt, networkIp) so Make's Slack module can regex/Claude-parse it reliably without depending on Slack's metadata feature (incoming webhooks don't expose that).
+- ISO-serialize `trialEndsAt` and `createdAt` before sending (raw Prisma `Date` objects round-trip ugly through `JSON.stringify`).
+- On Slack non-2xx, log the first 120 chars of the response body so payload-shape regressions are diagnosable.
+- Mobile-side feedback files (`lib/feedback.ts`, `components/feedback-modal.tsx`, `app/(tabs)/profile.tsx` Send-feedback row) untouched — they ship in build 43 as already planned.
+
+### Manual steps needed
+
+- [ ] Add `SLACK_FEEDBACK_WEBHOOK_URL` to Vercel env (Production + Preview) — Jimmy. Set to the Slack incoming webhook URL for #acuity-feedback.
+- [ ] Remove obsolete `FEEDBACK_WEBHOOK_URL` from Vercel env — Jimmy.
+- [ ] Configure one Make.com scenario: trigger on new message in #acuity-feedback, parse JSON block, create Monday.com item — Keenan/Jimmy.
+
+### Notes
+
+- Risk classified SAFE: server-side change only, additive endpoint, no mobile-consumed contract changed. Jim approved without HIGH RISK gate.
+- Why proxy at all (instead of mobile POSTing Slack directly): keeps webhook URL out of the JS bundle so we can rotate it without an app update, lets us append authoritative server context (verified userId, subscription state, server timestamp), and lets us rate-limit at 10/hr/user so a client-side bug can't flood the channel.
+- Previous Make-direct version was commit `9c2a391` — reference it if we ever want to revert quickly.
+- Slack's notification-fallback text is `New feedback (<TypeLabel>) from <email>` so push notifications and screen readers don't see empty content if blocks fail to render.
+
+---
+
 ## [2026-05-18] — Split-color hero headline + merged subheadline/product description
 
 **Requested by:** Keenan
