@@ -347,37 +347,32 @@ function DynamicLandingPageView({ page, slug, ctaHref }: { page: DynamicLandingP
       {/* 5. Testimonials — directly under social proof, minimal gap */}
       <TestimonialCarousel testimonials={allTestimonials} />
 
-      {/* 6. Pain Points — "Sound familiar?" */}
+      {/* 6. Pain Points — "Sound familiar?" — single column, purple left border */}
       <section className="px-6 py-14 sm:py-18">
-        <div className="mx-auto max-w-4xl">
+        <div className="mx-auto max-w-2xl">
           <Reveal>
-            <p className="text-center text-xs font-semibold text-[#E8DDD0] uppercase tracking-widest mb-7">
+            <p className="text-center text-xs font-semibold text-[#E8DDD0] uppercase tracking-widest mb-5">
               Sound familiar?
             </p>
           </Reveal>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-2.5">
             {page.painPoints.map((point, i) => (
-              <Reveal key={i} delay={Math.min(i + 1, 3) as 1 | 2 | 3}>
-                <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-[#1E1C1A] p-4 sm:p-5 transition-all duration-300 hover:border-white/20">
-                  <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#7C5CFC]/10">
-                    <svg className="h-3.5 w-3.5 text-[#7C5CFC]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-                    </svg>
-                  </div>
-                  <p className="text-sm leading-relaxed text-[#B0A898]">{point}</p>
+              <SlideIn key={i} direction="left" delay={i * 200}>
+                <div className="rounded-lg border border-white/10 bg-[#1E1C1A] border-l-[3px] border-l-[#7C5CFC] py-3.5 px-5">
+                  <p className="text-base leading-relaxed text-[#F5EDE4]">{point}</p>
                 </div>
-              </Reveal>
+              </SlideIn>
             ))}
           </div>
         </div>
       </section>
 
-      {/* 6. What is Acuity? — product explainer with phone mockups */}
+      {/* 7. What is Acuity? — product explainer with phone mockups */}
       <section className="px-6 py-14 sm:py-18">
         <div className="mx-auto max-w-6xl">
           <div className="flex flex-col lg:flex-row lg:items-center lg:gap-12">
             <div className="flex-1 text-center lg:text-left mb-10 lg:mb-0">
-              <Reveal>
+              <SlideIn direction="left">
                 <h2 className="text-3xl font-bold tracking-tight sm:text-4xl text-white">
                   One minute of talking.<br />A week of clarity.
                 </h2>
@@ -386,11 +381,11 @@ function DynamicLandingPageView({ page, slug, ctaHref }: { page: DynamicLandingP
                   no prompts, no typing. AI extracts your tasks, tracks your goals, detects patterns
                   in your life, and every Sunday delivers a report that tells the story of your week.
                 </p>
-              </Reveal>
+              </SlideIn>
             </div>
             {/* Two phone mockups side by side */}
             <div className="flex-shrink-0 flex justify-center gap-4 sm:gap-6">
-              <Reveal delay={1}>
+              <SlideIn direction="right" delay={200}>
                 <div className="animate-hero-float" style={{ animationDelay: "0s" }}>
                   <ExtractPhone
                     tasks={[
@@ -402,15 +397,15 @@ function DynamicLandingPageView({ page, slug, ctaHref }: { page: DynamicLandingP
                     mood="Energized but slightly anxious"
                   />
                 </div>
-              </Reveal>
-              <Reveal delay={2}>
+              </SlideIn>
+              <SlideIn direction="right" delay={400}>
                 <div className="animate-hero-float" style={{ animationDelay: "1s" }}>
                   <ReflectPhone
                     pattern="Best mood on days you exercised. Worst on days with meetings after 6pm."
                     actions={["Block mornings for deep work", "No meetings after 5pm", "Exercise before noon"]}
                   />
                 </div>
-              </Reveal>
+              </SlideIn>
             </div>
           </div>
         </div>
@@ -588,6 +583,54 @@ function TestimonialCard({ testimonial: t }: { testimonial: CarouselTestimonial 
       </div>
     </div>
   );
+}
+
+/**
+ * SlideIn — directional scroll-reveal using IntersectionObserver + inline styles.
+ * Re-triggers every time element scrolls into view. Respects prefers-reduced-motion.
+ */
+function SlideIn({
+  children,
+  direction = "left",
+  delay = 0,
+}: {
+  children: React.ReactNode;
+  direction?: "left" | "right" | "up";
+  delay?: number;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    const startTransform =
+      direction === "left" ? "translateX(-30px)" :
+      direction === "right" ? "translateX(30px)" :
+      "translateY(20px)";
+
+    el.style.opacity = "0";
+    el.style.transform = startTransform;
+    el.style.transition = `opacity 0.5s ease-out ${delay}ms, transform 0.5s ease-out ${delay}ms`;
+
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          el.style.opacity = "1";
+          el.style.transform = "translate(0)";
+        } else {
+          el.style.opacity = "0";
+          el.style.transform = startTransform;
+        }
+      },
+      { threshold: 0.1 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [direction, delay]);
+
+  return <div ref={ref}>{children}</div>;
 }
 
 /** Simple "How it works" section — text-only, used by static persona pages */
