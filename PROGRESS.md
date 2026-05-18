@@ -41,6 +41,31 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-17] — Redesign pain points + add directional scroll animations
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** a037004
+
+### In plain English (for Keenan)
+
+The "Sound familiar?" pain points section on ad landing pages was redesigned — instead of a 2x2 grid of small dark cards with warning triangle icons, it's now a single-column stack where each pain point has a purple left border accent and larger, more readable text. The warning icons are gone. The section feels more like a flowing list that matches the emotional tone. Also added directional slide-in animations: pain point cards slide in from the left (staggered), product explainer text slides from left while phone mockups slide from right.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/for/[slug]/page.tsx`: Pain points section rewritten — single column, `border-l-[3px] border-l-[#7C5CFC]`, text-base instead of text-sm, no SVG icons. New `SlideIn` component with `direction` prop (left/right/up) using IntersectionObserver + inline styles. Product explainer uses SlideIn instead of Reveal. All animations re-trigger on scroll, respect prefers-reduced-motion.
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- The `SlideIn` component is defined locally in the page file (not in landing-shared.tsx) because it's only needed by the dynamic landing pages. If needed elsewhere, it can be extracted later.
+- The `Reveal` component from landing-shared.tsx is still used for simpler fade-up animations (value props, final CTA). `SlideIn` adds directional capability.
+
+---
+
 ## [2026-05-17] — Fix social proof unicode + move testimonials to trust block position
 
 **Requested by:** Keenan
