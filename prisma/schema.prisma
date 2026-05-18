@@ -843,7 +843,21 @@ model LifeMapArea {
   color          String?
   icon           String?
   sortOrder      Int       @default(0)
+  // Legacy 1-10 score. Build 42 mobile binary reads this and
+  // multiplies by 10 for display (so `score=7` shows as 70). Kept
+  // for build-42 backward compatibility during the dual-write
+  // window. Removed in a v1.2 cleanup slice once build 42 ages out.
+  // Slice N (2026-05-18) writes BOTH this and score100 below.
   score          Int       @default(5)
+  // Canonical 0-100 granular score. Slice N (2026-05-18) — replaces
+  // the 10-pt-stepped feel of the old `score * 10` display with
+  // 1-point granularity. Build 43+ mobile binary reads this directly
+  // without the *10 multiplier. Existing rows backfilled by
+  // apps/web/scripts/backfill-lifemap-score100.ts so users see
+  // continuity at launch (score100 = score * 10). Default 50 mirrors
+  // baselineScore's default — neutral midpoint for newly-bootstrapped
+  // users before they've recorded.
+  score100       Int       @default(50)
   summary        String?
   activeGoals    Int       @default(0)
   lastMentioned  DateTime?
