@@ -130,7 +130,8 @@ export default function ExperimentDetailPage() {
   const [finalizing, setFinalizing] = useState(false);
   const [launching, setLaunching] = useState(false);
   const [useRefImages, setUseRefImages] = useState(false);
-  const [launchResult, setLaunchResult] = useState<{ campaignId: string; campaignName: string; created: { creativeId: string }[]; errors: { creativeId: string; error: string }[] } | null>(null);
+  const [launchResult, setLaunchResult] = useState<{ campaignId: string; campaignName: string; adsetId?: string; created: { creativeId: string }[]; errors: { creativeId: string; error: string }[]; status?: string } | null>(null);
+  const [retrying, setRetrying] = useState(false);
   const [activating, setActivating] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [refImagesOpen, setRefImagesOpen] = useState(false);
@@ -281,9 +282,16 @@ export default function ExperimentDetailPage() {
 
       const data = await res.json();
       if (!res.ok) {
+        // Even on error response, check if there's partial data
+        if (data.errors && data.created) {
+          setLaunchResult(data);
+        }
         setLaunchError(data.error || "Launch failed");
       } else {
         setLaunchResult(data);
+        if (data.status === "partial") {
+          setLaunchError(`${data.errors.length} of ${data.created.length + data.errors.length} ads failed — see details below`);
+        }
       }
     } catch {
       setLaunchError("Network error during launch");
@@ -853,22 +861,46 @@ export default function ExperimentDetailPage() {
         </div>
       )}
 
-      {/* Launch confirmation panel — shown after campaign created in PAUSED state */}
+      {/* Launch confirmation panel — shown after campaign created */}
       {launchResult && (
-        <div className="mb-6 rounded-xl border border-emerald-500/30 bg-[#13131F] p-6">
-          <h3 className="text-base font-semibold text-white mb-1">Campaign Ready (PAUSED)</h3>
+        <div className={`mb-6 rounded-xl border ${launchResult.status === "partial" ? "border-amber-500/30" : "border-emerald-500/30"} bg-[#13131F] p-6`}>
+          <h3 className="text-base font-semibold text-white mb-1">
+            {launchResult.status === "partial"
+              ? "Campaign Partially Launched (PAUSED)"
+              : "Campaign Ready (PAUSED)"}
+          </h3>
+
+          {/* Success summary */}
+          {launchResult.created.length > 0 && (
+            <div className="flex items-center gap-2 mb-2">
+              <div className="h-2 w-2 rounded-full bg-emerald-400" />
+              <p className="text-xs text-emerald-400">
+                {launchResult.created.length} of {launchResult.created.length + launchResult.errors.length} ads launched successfully
+              </p>
+            </div>
+          )}
+
+          {/* Failure summary */}
+          {launchResult.errors.length > 0 && (
+            <div className="flex items-center gap-2 mb-2">
+              <div className="h-2 w-2 rounded-full bg-red-400" />
+              <p className="text-xs text-red-400">
+                {launchResult.errors.length} ad{launchResult.errors.length === 1 ? "" : "s"} failed to launch
+              </p>
+            </div>
+          )}
+
           <p className="text-xs text-[#A0A0B8] mb-4">
-            Campaign <span className="font-mono text-white">{launchResult.campaignName}</span> created with {launchResult.created.length} ad{launchResult.created.length === 1 ? "" : "s"}.
-            {launchResult.errors.length > 0 && (
-              <span className="text-amber-400"> {launchResult.errors.length} failed — see below.</span>
-            )}
+            Campaign <span className="font-mono text-white">{launchResult.campaignName}</span>
+            {launchResult.created.length > 0 && <> — 1 ad set, {launchResult.created.length} ad{launchResult.created.length === 1 ? "" : "s"}</>}
           </p>
 
           {launchResult.errors.length > 0 && (
-            <div className="mb-4 space-y-1">
+            <div className="mb-4 rounded-lg border border-red-500/20 bg-red-500/5 p-3 space-y-1">
+              <p className="text-xs font-medium text-red-400 mb-1">Failed creatives:</p>
               {launchResult.errors.map((e, i) => (
-                <p key={i} className="text-xs text-red-400">
-                  Creative {e.creativeId.slice(0, 8)}: {e.error}
+                <p key={i} className="text-xs text-red-400/80">
+                  {e.creativeId.slice(0, 8)}: {e.error}
                 </p>
               ))}
             </div>
@@ -883,18 +915,43 @@ export default function ExperimentDetailPage() {
             copiedUrl={copiedUrl}
           />
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <button
               onClick={activateCampaign}
-              disabled={activating || cancelling}
+              disabled={activating || cancelling || retrying}
               className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-50"
             >
               {activating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Rocket className="h-4 w-4" />}
-              Launch Live
+              Launch Live{launchResult.created.length > 0 ? ` (${launchResult.created.length} ads)` : ""}
             </button>
+            {launchResult.errors.length > 0 && (
+              <button
+                onClick={async () => {
+                  setRetrying(true);
+                  try {
+                    const res = await fetch("/api/admin/adlab/ads/launch", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ experimentId: experiment.id }),
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                      setLaunchResult(data);
+                      if (data.errors?.length === 0) setLaunchError(null);
+                    }
+                  } catch {}
+                  setRetrying(false);
+                }}
+                disabled={retrying || activating || cancelling}
+                className="inline-flex items-center gap-2 rounded-lg border border-amber-500/20 bg-amber-500/5 px-5 py-2.5 text-sm text-amber-400 hover:bg-amber-500/10 transition disabled:opacity-50"
+              >
+                {retrying ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                Retry Failed ({launchResult.errors.length})
+              </button>
+            )}
             <button
               onClick={cancelCampaign}
-              disabled={activating || cancelling}
+              disabled={activating || cancelling || retrying}
               className="inline-flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/5 px-5 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition disabled:opacity-50"
             >
               {cancelling ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
