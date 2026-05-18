@@ -159,7 +159,12 @@ export default function DashboardTab() {
             tab slot (which moved out of the bar when Entries was added). */}
         <View className="mb-6 flex-row items-start justify-between">
           <View className="flex-1 pr-3">
-            <Text className="text-4xl font-bold text-zinc-900 dark:text-zinc-50">
+            <Text
+              className="text-4xl font-bold text-zinc-900 dark:text-zinc-50"
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.75}
+            >
               {greeting}, {firstName}.
             </Text>
             <Text className="text-lg text-zinc-400 dark:text-zinc-500 mt-1">

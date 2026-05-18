@@ -434,7 +434,12 @@ export default function TasksTab() {
       >
         <View className="px-5 pt-4 pb-2">
           <View className="flex-row items-baseline gap-2">
-            <Text className="text-4xl font-bold text-zinc-900 dark:text-zinc-50">
+            <Text
+              className="text-4xl font-bold text-zinc-900 dark:text-zinc-50"
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.75}
+            >
               Tasks
             </Text>
             {grouped.open.length > 0 && (

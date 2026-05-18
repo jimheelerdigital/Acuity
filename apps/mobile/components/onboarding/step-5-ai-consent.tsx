@@ -81,7 +81,12 @@ export function Step5AiConsent() {
 
   return (
     <View className="flex-1">
-      <Text className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+      <Text
+      className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50"
+      numberOfLines={1}
+      adjustsFontSizeToFit
+      minimumFontScale={0.75}
+    >
         How Acuity uses AI
       </Text>
       <Text className="mt-3 text-base leading-relaxed text-zinc-600 dark:text-zinc-300">

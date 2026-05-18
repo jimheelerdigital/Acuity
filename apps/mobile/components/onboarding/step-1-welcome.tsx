@@ -20,7 +20,12 @@ export function Step1Welcome() {
       <View className="h-20 w-20 items-center justify-center rounded-full bg-violet-600 mb-6 shadow-lg shadow-violet-500/30">
         <Ionicons name="mic" size={40} color="#FFFFFF" />
       </View>
-      <Text className="text-center text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 mb-4">
+      <Text
+      className="text-center text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 mb-4"
+      numberOfLines={1}
+      adjustsFontSizeToFit
+      minimumFontScale={0.75}
+    >
         Welcome to Acuity
       </Text>
       <Text className="text-center text-base leading-relaxed text-zinc-600 dark:text-zinc-300 max-w-xs">

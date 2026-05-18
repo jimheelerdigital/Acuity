@@ -22,7 +22,12 @@ export function Step10Ready() {
       <View className="h-20 w-20 items-center justify-center rounded-full bg-violet-600/15 mb-6">
         <Ionicons name="sparkles-outline" size={40} color="#7C3AED" />
       </View>
-      <Text className="text-center text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 mb-4">
+      <Text
+      className="text-center text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 mb-4"
+      numberOfLines={1}
+      adjustsFontSizeToFit
+      minimumFontScale={0.75}
+    >
         You&rsquo;re set up
       </Text>
       <Text className="text-center text-base leading-relaxed text-zinc-600 dark:text-zinc-300 max-w-xs">

@@ -44,7 +44,12 @@ export function Step2ValueProp() {
 
   return (
     <View className="flex-1">
-      <Text className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 mb-2">
+      <Text
+      className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 mb-2"
+      numberOfLines={1}
+      adjustsFontSizeToFit
+      minimumFontScale={0.75}
+    >
         What you&apos;ll get
       </Text>
       <Text className="text-base text-zinc-500 dark:text-zinc-400 mb-8">

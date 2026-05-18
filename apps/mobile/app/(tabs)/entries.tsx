@@ -178,7 +178,12 @@ export default function EntriesTab() {
       edges={["top"]}
     >
       <View className="px-5 pt-2 pb-3 gap-3">
-        <Text className="text-4xl font-bold text-zinc-900 dark:text-zinc-50">
+        <Text
+          className="text-4xl font-bold text-zinc-900 dark:text-zinc-50"
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.75}
+        >
           Entries
         </Text>
 
