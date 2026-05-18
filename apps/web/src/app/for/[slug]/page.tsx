@@ -436,18 +436,21 @@ function SplitHeroHeadline({ text }: { text: string }) {
       className="text-4xl font-extrabold tracking-tight sm:text-5xl lg:text-6xl leading-[1.08]"
     >
       {allWords.map((word, i) => (
-        <span
-          key={i}
-          className={`inline-block mr-[0.3em] transition-all duration-500 ${
-            i < whiteWordCount ? "text-white" : "text-[#7C5CFC]"
-          }`}
-          style={{
-            opacity: i < visibleCount ? 1 : 0,
-            transform: i < visibleCount ? "translateY(0)" : "translateY(20px)",
-            transitionDelay: `${i * 60}ms`,
-          }}
-        >
-          {word}
+        <span key={i}>
+          {/* Line break between white (sentence 1) and purple (sentence 2) */}
+          {i === whiteWordCount && purplePart && <br />}
+          <span
+            className={`inline-block mr-[0.3em] transition-all duration-500 ${
+              i < whiteWordCount ? "text-white" : "text-[#7C5CFC]"
+            }`}
+            style={{
+              opacity: i < visibleCount ? 1 : 0,
+              transform: i < visibleCount ? "translateY(0)" : "translateY(20px)",
+              transitionDelay: `${i * 60}ms`,
+            }}
+          >
+            {word}
+          </span>
         </span>
       ))}
     </h1>
