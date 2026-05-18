@@ -24,7 +24,8 @@ export async function GET(
     experiment = await prisma.adLabExperiment.findUnique({
       where: { id: params.id },
       include: {
-        project: { select: { name: true, slug: true } },
+        project: { select: { name: true, slug: true, landingPageUrl: true } },
+        landingPage: true,
         referenceImages: { orderBy: { createdAt: "asc" } },
         angles: {
           include: {
@@ -47,7 +48,8 @@ export async function GET(
     experiment = await prisma.adLabExperiment.findUnique({
       where: { id: params.id },
       include: {
-        project: { select: { name: true, slug: true } },
+        project: { select: { name: true, slug: true, landingPageUrl: true } },
+        landingPage: true,
         angles: {
           include: {
             creatives: {

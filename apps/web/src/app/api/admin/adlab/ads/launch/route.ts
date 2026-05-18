@@ -12,6 +12,7 @@ import { requireAdmin } from "@/lib/admin-guard";
 import { prisma } from "@/lib/prisma";
 import * as meta from "@/lib/adlab/meta";
 import { redactAccessToken } from "@/lib/adlab/meta";
+import { generateLandingPage } from "@/lib/adlab/landing-page";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -169,6 +170,22 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Auto-generate landing page for website campaigns if one doesn't exist yet
+  let generatedLandingPage: { slug: string } | null = null;
+  if (!isAppInstall && !experiment.landingPage) {
+    try {
+      console.log("[adlab-launch] Auto-generating landing page for experiment:", experimentId);
+      generatedLandingPage = await generateLandingPage(experimentId);
+      console.log("[adlab-launch] Landing page generated:", generatedLandingPage.slug);
+    } catch (err) {
+      // Non-fatal — ads will fall back to project-level landing page URL
+      console.warn("[adlab-launch] Landing page auto-generation failed (will use project URL):", String(err));
+    }
+  }
+
+  // Use freshly generated or existing landing page
+  const effectiveLandingPage = experiment.landingPage ?? generatedLandingPage;
+
   const errors: { creativeId: string; error: string }[] = [];
   const created: { creativeId: string; adId: string; adsetId: string }[] = [];
 
@@ -305,8 +322,8 @@ export async function POST(req: NextRequest) {
             adLinkUrl = APP_STORE_URL;
           } else {
             // Prefer experiment-specific landing page, fall back to project-level URL
-            const baseUrl = (experiment as any).landingPage?.slug
-              ? `https://getacuity.io/for/${(experiment as any).landingPage.slug}`
+            const baseUrl = effectiveLandingPage?.slug
+              ? `https://getacuity.io/for/${effectiveLandingPage.slug}`
               : landingPageUrl!;
             const linkUrl = new URL(baseUrl);
             linkUrl.searchParams.set("utm_source", "meta");

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Loader2, CheckCircle2, ChevronDown, ChevronUp, Sparkles, RefreshCw, Shield, Copy, Trash2, Rocket, XCircle, Upload, ImageIcon, X as XIcon, Info, Download } from "lucide-react";
+import { Loader2, CheckCircle2, ChevronDown, ChevronUp, Sparkles, RefreshCw, Shield, Copy, Trash2, Rocket, XCircle, Upload, ImageIcon, X as XIcon, Info, Download, ExternalLink, Link as LinkIcon } from "lucide-react";
 
 interface DailyMetric {
   spendCents: number;
@@ -50,6 +50,12 @@ interface ReferenceImage {
   createdAt: string;
 }
 
+interface LandingPage {
+  id: string;
+  slug: string;
+  heroHeadline: string;
+}
+
 interface Experiment {
   id: string;
   topicBrief: string;
@@ -57,7 +63,8 @@ interface Experiment {
   createdAt: string;
   metaCampaignId: string | null;
   conclusionSummary: string | null;
-  project: { name: string; slug: string };
+  project: { name: string; slug: string; landingPageUrl?: string };
+  landingPage?: LandingPage | null;
   referenceImages?: ReferenceImage[];
   angles: Angle[];
 }
@@ -134,6 +141,8 @@ export default function ExperimentDetailPage() {
   const [generateAllProgress, setGenerateAllProgress] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [generatingLandingPage, setGeneratingLandingPage] = useState(false);
+  const [copiedUrl, setCopiedUrl] = useState(false);
 
   const loadExperiment = useCallback(async () => {
     const res = await fetch(`/api/admin/adlab/experiments/${id}`);
@@ -510,6 +519,33 @@ export default function ExperimentDetailPage() {
     setResetting(false);
   }
 
+  async function generateLandingPageFn() {
+    if (!experiment) return;
+    setGeneratingLandingPage(true);
+    try {
+      const res = await fetch("/api/admin/adlab/landing-page", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ experimentId: experiment.id }),
+      });
+      if (res.ok) {
+        await loadExperiment();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Landing page generation failed");
+      }
+    } catch {
+      alert("Network error during landing page generation");
+    }
+    setGeneratingLandingPage(false);
+  }
+
+  function copyLandingPageUrl(url: string) {
+    navigator.clipboard.writeText(url);
+    setCopiedUrl(true);
+    setTimeout(() => setCopiedUrl(false), 2000);
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -799,6 +835,15 @@ export default function ExperimentDetailPage() {
             </div>
           )}
 
+          {/* Landing page info */}
+          <LandingPageSection
+            experiment={experiment}
+            generatingLandingPage={generatingLandingPage}
+            onGenerate={generateLandingPageFn}
+            onCopy={copyLandingPageUrl}
+            copiedUrl={copiedUrl}
+          />
+
           <div className="flex items-center gap-3">
             <button
               onClick={activateCampaign}
@@ -827,6 +872,19 @@ export default function ExperimentDetailPage() {
             <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
             <span className="text-sm font-medium text-emerald-400">Campaign is live</span>
           </div>
+        </div>
+      )}
+
+      {/* Landing page section — shown for live/concluded experiments outside the launch panel */}
+      {!launchResult && (experiment.status === "live" || experiment.status === "concluded" || experiment.status === "awaiting_approval") && (
+        <div className="mb-6 rounded-xl border border-white/10 bg-[#13131F] p-5">
+          <LandingPageSection
+            experiment={experiment}
+            generatingLandingPage={generatingLandingPage}
+            onGenerate={generateLandingPageFn}
+            onCopy={copyLandingPageUrl}
+            copiedUrl={copiedUrl}
+          />
         </div>
       )}
 
@@ -1156,6 +1214,103 @@ function CreativeCard({
           </p>
         )}
       </div>
+    </div>
+  );
+}
+
+function LandingPageSection({
+  experiment,
+  generatingLandingPage,
+  onGenerate,
+  onCopy,
+  copiedUrl,
+}: {
+  experiment: Experiment;
+  generatingLandingPage: boolean;
+  onGenerate: () => void;
+  onCopy: (url: string) => void;
+  copiedUrl: boolean;
+}) {
+  const isAppInstall = (experiment as Record<string, unknown>).campaignType === "app_install";
+  if (isAppInstall) return null;
+
+  const landingPage = experiment.landingPage;
+  const projectUrl = experiment.project.landingPageUrl;
+  const landingPageUrl = landingPage
+    ? `https://getacuity.io/for/${landingPage.slug}`
+    : null;
+
+  // The destination URL that ads actually point to (with UTMs)
+  const destinationUrl = landingPageUrl
+    ? `${landingPageUrl}?utm_source=meta&utm_medium=paid&utm_campaign=${experiment.id}`
+    : projectUrl
+      ? `${projectUrl}?utm_source=meta&utm_medium=paid&utm_campaign=${experiment.id}`
+      : null;
+
+  return (
+    <div className="mb-4">
+      <p className="text-xs font-medium text-[#A0A0B8] uppercase tracking-wider mb-2">Landing Page</p>
+
+      {landingPage ? (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <LinkIcon className="h-3.5 w-3.5 text-[#7C5CFC] shrink-0" />
+            <a
+              href={landingPageUrl!}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-[#7C5CFC] hover:text-[#9B7FFF] font-mono transition truncate"
+            >
+              {landingPageUrl}
+            </a>
+            <button
+              onClick={() => onCopy(landingPageUrl!)}
+              className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-medium text-[#A0A0B8] hover:text-white bg-white/5 hover:bg-white/10 transition"
+            >
+              <Copy className="h-3 w-3" />
+              {copiedUrl ? "Copied!" : "Copy URL"}
+            </button>
+            <a
+              href={landingPageUrl!}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-medium text-[#A0A0B8] hover:text-white bg-white/5 hover:bg-white/10 transition"
+            >
+              <ExternalLink className="h-3 w-3" />
+              Open Preview
+            </a>
+          </div>
+
+          {destinationUrl && (
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-[#A0A0B8]">Ad destination:</span>
+              <span className="text-[10px] text-[#A0A0B8] font-mono truncate max-w-md" title={destinationUrl}>
+                {destinationUrl}
+              </span>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <button
+            onClick={onGenerate}
+            disabled={generatingLandingPage}
+            className="inline-flex items-center gap-2 rounded-lg border border-[#7C5CFC]/30 bg-[#7C5CFC]/10 px-4 py-2 text-sm text-[#7C5CFC] hover:bg-[#7C5CFC]/20 transition disabled:opacity-50"
+          >
+            {generatingLandingPage ? (
+              <><Loader2 className="h-4 w-4 animate-spin" /> Generating...</>
+            ) : (
+              <><Sparkles className="h-4 w-4" /> Generate Landing Page</>
+            )}
+          </button>
+          {projectUrl && (
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-[#A0A0B8]">Fallback destination:</span>
+              <span className="text-[10px] text-[#A0A0B8] font-mono truncate max-w-md">{projectUrl}</span>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
