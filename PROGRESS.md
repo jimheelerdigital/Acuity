@@ -41,6 +41,35 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-18] — Slice N Stage 2: Life Matrix scores move in 1-point steps (build 43+)
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** e50a6f0
+
+### In plain English (for Keenan)
+
+Before today, when the AI updated a user's Life Matrix score after a recording, the number could only move in 10-point jumps (e.g. 60 → 70). It looked dramatic and made users wonder why a single recording would shift Career by 10%. Now the math keeps full 0-100 precision and the score can move by any amount — typically 1-3 points at a time, which feels honest. Users on build 42 (everyone in the App Store right now) keep seeing the old 10-point version because their app reads a different field; users on build 43 (the one we ship next) will see the granular version. The database has been migrated and back-filled (15 of 120 rows got updated values, 105 already had reasonable defaults).
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/lib/memory.ts` — `updateLifeMap` blend now produces a clamped 0-100 `blended100` and writes both `score100: blended100` (canonical, build 43+) and `score: round(blended100 / 10)` (legacy 1-10 for build 42). Trend delta now derived from `blended100 - prevScore100` (granular). `historicalHigh` / `historicalLow` track score100 directly (same scale as before, finer precision). `weeklyDelta` intentionally kept on the legacy 1-10 Int delta so any build-42 consumer of `weeklyDelta` doesn't break — we'll wire a granular history-derived delta when needed.
+- `apps/mobile/components/life-map-radar.tsx` — `RadarArea` gains optional `score100?: number`. New `resolveScore100()` helper prefers it, falls back to `score * 10`, clamped 0-100. Polygon math and inner-circle label both use the resolved value. Trend overlay (4-weeks-ago snapshot) still uses the legacy `score` shape × 10 because the history table predates Slice N.
+- `apps/mobile/app/(tabs)/insights.tsx` — `LifeMapAreaData` gains `score100?: number`. Areas passed to `<LifeMapRadar>` now forward `score100`. Detail-card grid uses `area.score100 ?? area.score * 10` with clamp+round.
+
+### Manual steps needed
+
+- [ ] Verify on build 43 (next EAS) that scores move by 1-3 points after a recording rather than 10-point jumps — Jimmy via Insights tab QA pass.
+
+### Notes
+
+- Build 42 (live) is unaffected: it ignores the new `score100` column and continues reading `score`, which we still dual-write. Zero regression risk on the live binary.
+- The `area.score100 ?? area.score * 10` fallback pattern in memory.ts protects the narrow window between schema deploy and backfill — any un-backfilled row at default score100=50 would otherwise distort the blend. Backfill ran 2026-05-18 so this is belt-and-suspenders, but cheap to keep.
+- Trend overlay on the radar still uses the 4-weeks-ago history table's 1-10 score. We can ratchet up history granularity in a future slice, but it's not blocking — the 4-week-ago snapshot is coarse-grained context, not a precision read.
+- `weeklyDelta` semantics deliberately preserved as a legacy 1-10-step delta. Changing it to a granular 0-100 delta would silently double the magnitude any build-42 consumer reads. Anything downstream that needs the granular value should compute it from the new `score100` directly.
+
+---
+
 ## [2026-05-18] — Split hero headline onto two lines in dynamic landing pages
 
 **Requested by:** Keenan
