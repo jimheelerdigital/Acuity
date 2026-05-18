@@ -41,6 +41,31 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-17] — Fix social proof unicode + move testimonials to trust block position
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 45fb623
+
+### In plain English (for Keenan)
+
+Two fixes for the ad landing pages: (1) The social proof bar was showing "4 \u2605" as literal text instead of a star symbol — now shows "4.9 ★" correctly. Same fix for the star in the final CTA. (2) Testimonials moved from near the bottom of the page to directly under the social proof bar, creating a trust block at the top: stats → real people saying it works → then the actual pitch. Cards are also ~30% smaller and more compact. On mobile, testimonials now show as a horizontal scroll where you can see 1.5 cards at once (peeking effect) instead of a vertical stack.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/for/[slug]/page.tsx`: Replaced `\u2605` and `\u2B50` unicode escapes with literal ★ characters. Moved `<TestimonialCarousel>` from section 9 (after value props) to section 5 (after social proof bar). TestimonialCard width reduced from 340px to 260px, padding from p-5/p-6 to p-3.5/p-4, text from text-sm to text-xs, avatars from h-10/w-10 to h-7/w-7. Removed "People are loving it" headline. Mobile layout changed from vertical stack to horizontal snap-scroll with 230px cards. Carousel speed adjusted to ~1 card per 4 seconds. Fixed "By morning" → "Within minutes" in How It Works step 2.
+
+### Manual steps needed
+
+- [ ] Replace colored-circle avatar initials with real headshot images generated via gpt-image-2 — future session
+
+### Notes
+
+- The trust block order is now: Social Proof Bar (stats) → Testimonials (people) → Pain Points → Product Explainer → How It Works → Value Props → Final CTA. This front-loads credibility before asking visitors to read marketing copy.
+- Mobile testimonials use CSS `snap-x snap-mandatory` for smooth card-by-card scrolling with peek effect.
+
+---
+
 ## [2026-05-17] — Landing page overhaul v2 + homepage copy cleanup
 
 **Requested by:** Keenan
