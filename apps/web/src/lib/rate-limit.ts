@@ -148,6 +148,12 @@ export const limiters = {
    * embedding spend worst-case at ~$0.60/user/day. Key: user:<userId>.
    */
   askPast: buildLimiter("ask-past", 10, "1 d"),
+  /**
+   * In-app feedback submissions. Generous (10/hr) — a user reporting
+   * multiple bugs in one session is normal, but >10 in an hour is
+   * either spam or someone abusing the channel. Key: user:<userId>.
+   */
+  feedbackSubmit: buildLimiter("feedback-submit", 10, "1 h"),
 } as const;
 
 export type LimiterName = keyof typeof limiters;

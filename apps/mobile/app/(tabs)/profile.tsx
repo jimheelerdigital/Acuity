@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { DeleteAccountModal } from "@/components/delete-account-modal";
+import { FeedbackModal } from "@/components/feedback-modal";
 import { RestorePurchasesButton } from "@/components/restore-purchases-button";
 import { useAuth } from "@/contexts/auth-context";
 import { useLock } from "@/contexts/lock-context";
@@ -32,6 +33,7 @@ export default function ProfileTab() {
   const { lockNow } = useLock();
   const [signingOut, setSigningOut] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [lockEnabled, setLockEnabledLocal] = useState<boolean | null>(null);
   const [lockCapable, setLockCapable] = useState<boolean>(false);
 
@@ -321,6 +323,17 @@ export default function ProfileTab() {
             }}
           />
 
+          {/* Slice O — feedback intake. Opens a textarea + type
+              picker modal; submits to /api/feedback/submit which
+              proxies to a Make.com webhook for distillation +
+              routing to the Monday.com roadmap board. */}
+          <MenuItem
+            icon="chatbox-ellipses-outline"
+            label="Send feedback"
+            sublabel="Bugs, feature ideas, or anything else"
+            onPress={() => setShowFeedbackModal(true)}
+          />
+
           <MenuItem
             icon="log-out-outline"
             label={signingOut ? "Signing out..." : "Sign out"}
@@ -341,6 +354,11 @@ export default function ProfileTab() {
           />
         </View>
       </ScrollView>
+
+      <FeedbackModal
+        visible={showFeedbackModal}
+        onClose={() => setShowFeedbackModal(false)}
+      />
 
       <DeleteAccountModal
         visible={showDeleteModal}
