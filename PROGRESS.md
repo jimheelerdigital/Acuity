@@ -41,6 +41,31 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-18] — Split hero headline onto two lines in dynamic landing pages
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** e736e07
+
+### In plain English (for Keenan)
+
+On all /for/* dynamic landing pages, the two-sentence hero headline now always displays on separate lines — the white sentence on top, the purple sentence below. Cleaner visual hierarchy instead of the sentences running together and wrapping mid-line.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/for/[slug]/page.tsx`: added a `<br />` between the white and purple sentence parts in `SplitHeroHeadline` render output.
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- Only affects dynamic /for/[slug] pages (the ones generated from AdLab DB or static persona configs). The homepage hero uses a different component (`HeroHeadline` in `landing.tsx`) and is unaffected.
+- Risk classified SAFE: web-only, cosmetic change.
+
+---
+
 ## [2026-05-18] — Remove founding member banner + replace homepage testimonials with shared carousel
 
 **Requested by:** Keenan
