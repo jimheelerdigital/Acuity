@@ -30,6 +30,15 @@ import * as SecureStore from "expo-secure-store";
 
 const LOCK_ENABLED_KEY = "acuity_app_lock_enabled";
 
+// Match the session-token's accessibility tier (see lib/auth.ts).
+// AFTER_FIRST_UNLOCK survives reboot and remains readable while the
+// screen is locked AFTER first unlock — so background app-lock
+// state can be read without throwing "User interaction is not
+// allowed" during iOS background-prefetch (Sentry REACT-NATIVE-5).
+const KEYCHAIN_OPTIONS: SecureStore.SecureStoreOptions = {
+  keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK,
+};
+
 /** Background→foreground gap that triggers a re-lock. */
 export const LOCK_TIMEOUT_MS = 30_000;
 
@@ -59,15 +68,25 @@ export async function isLockEnabled(): Promise<boolean> {
     const value = await SecureStore.getItemAsync(LOCK_ENABLED_KEY);
     return value === "1";
   } catch {
+    // Locked keychain → default to "not enabled" so the lock doesn't
+    // surface an overlay we can't dismiss. Safer fallback than crash.
     return false;
   }
 }
 
 export async function setLockEnabled(enabled: boolean): Promise<void> {
-  if (enabled) {
-    await SecureStore.setItemAsync(LOCK_ENABLED_KEY, "1");
-  } else {
-    await SecureStore.deleteItemAsync(LOCK_ENABLED_KEY);
+  try {
+    if (enabled) {
+      await SecureStore.setItemAsync(LOCK_ENABLED_KEY, "1", KEYCHAIN_OPTIONS);
+    } else {
+      await SecureStore.deleteItemAsync(LOCK_ENABLED_KEY);
+    }
+  } catch (err) {
+    if (__DEV__) {
+      console.warn("[app-lock] setLockEnabled failed:", err);
+    }
+    // Swallow — the in-app toggle's local state still reflects the
+    // user's intent; next interaction will retry.
   }
 }
 

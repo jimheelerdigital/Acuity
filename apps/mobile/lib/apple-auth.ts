@@ -101,6 +101,15 @@ export async function signInWithApple(): Promise<AppleSignInResult> {
   const nameKey = NAME_CACHE_PREFIX + appleUserId;
   const emailKey = EMAIL_CACHE_PREFIX + appleUserId;
 
+  // Same accessibility tier as the session token in lib/auth.ts —
+  // AFTER_FIRST_UNLOCK survives reboot and stays readable while
+  // screen is locked after first unlock. Pre-fix default of
+  // WHEN_UNLOCKED threw "User interaction is not allowed" during
+  // iOS background-prefetch launches (Sentry REACT-NATIVE-5).
+  const keychainOptions: SecureStore.SecureStoreOptions = {
+    keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK,
+  };
+
   let cachedName: { givenName?: string; familyName?: string } | null = null;
   if (credential.fullName) {
     const given = credential.fullName.givenName ?? "";
@@ -108,7 +117,11 @@ export async function signInWithApple(): Promise<AppleSignInResult> {
     if (given || family) {
       cachedName = { givenName: given, familyName: family };
       try {
-        await SecureStore.setItemAsync(nameKey, JSON.stringify(cachedName));
+        await SecureStore.setItemAsync(
+          nameKey,
+          JSON.stringify(cachedName),
+          keychainOptions
+        );
       } catch {
         // Non-fatal — server will still create the user; just no
         // display name on subsequent re-installs.
@@ -128,7 +141,7 @@ export async function signInWithApple(): Promise<AppleSignInResult> {
   if (credential.email) {
     cachedEmail = credential.email;
     try {
-      await SecureStore.setItemAsync(emailKey, credential.email);
+      await SecureStore.setItemAsync(emailKey, credential.email, keychainOptions);
     } catch {
       // Non-fatal.
     }

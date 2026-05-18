@@ -113,6 +113,71 @@ export type Reminder = {
 
 let memoryToken: string | null = null;
 
+/**
+ * Keychain accessibility tier. Default `WHEN_UNLOCKED` (expo-secure-
+ * store's default) throws `errSecInteractionNotAllowed` ("User
+ * interaction is not allowed") when the device is locked OR the
+ * screen is off OR iOS is generating an app-switcher screenshot.
+ * That throw crashed the app on cold launches triggered by iOS
+ * background-prefetch / notification-wake / post-reboot-pre-unlock
+ * scenarios — Sentry issue REACT-NATIVE-2 (128 events, 53 users in
+ * build 42).
+ *
+ * AFTER_FIRST_UNLOCK survives reboots, becomes accessible after the
+ * first unlock since boot, and STAYS accessible while screen is
+ * locked thereafter. Suitable for session tokens that need to be
+ * readable by background tasks. Does NOT sync to iCloud (per
+ * expo-secure-store's default — we don't override).
+ */
+const KEYCHAIN_OPTIONS: SecureStore.SecureStoreOptions = {
+  keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK,
+};
+
+/**
+ * Defensive wrapper around SecureStore.getItemAsync. Returns null on
+ * any error (locked keychain, missing entitlements, simulator quirks)
+ * so callers don't have to try/catch every read site. Treating the
+ * value as missing on read failure is semantically equivalent to
+ * "user is signed out" — the same path they'd take if the token had
+ * been deleted.
+ *
+ * Build 42 had these reads bare. Sentry REACT-NATIVE-5 caught the
+ * throws; REACT-NATIVE-2 caught the launch crash that followed.
+ */
+async function safeGetItem(key: string): Promise<string | null> {
+  try {
+    return await SecureStore.getItemAsync(key);
+  } catch (err) {
+    if (__DEV__) {
+      console.warn(`[secure-store] getItemAsync(${key}) failed:`, err);
+    }
+    return null;
+  }
+}
+
+async function safeSetItem(key: string, value: string): Promise<void> {
+  try {
+    await SecureStore.setItemAsync(key, value, KEYCHAIN_OPTIONS);
+  } catch (err) {
+    if (__DEV__) {
+      console.warn(`[secure-store] setItemAsync(${key}) failed:`, err);
+    }
+    // Swallow — caller already updated in-memory state and the
+    // server-side session is durable. Worst case: user has to sign
+    // back in on next cold launch.
+  }
+}
+
+async function safeDeleteItem(key: string): Promise<void> {
+  try {
+    await SecureStore.deleteItemAsync(key);
+  } catch (err) {
+    if (__DEV__) {
+      console.warn(`[secure-store] deleteItemAsync(${key}) failed:`, err);
+    }
+  }
+}
+
 export async function getToken(): Promise<string | null> {
   // Hot path — sign-in has already populated memory. Return without
   // touching the keychain, sidestepping the setItem→getItem race.
@@ -120,7 +185,7 @@ export async function getToken(): Promise<string | null> {
   // Cold path — first call after app launch. Hydrate from SecureStore;
   // if a value is present, cache it so subsequent calls skip the
   // keychain entirely.
-  const stored = await SecureStore.getItemAsync(TOKEN_KEY);
+  const stored = await safeGetItem(TOKEN_KEY);
   if (stored) memoryToken = stored;
   return stored;
 }
@@ -129,16 +194,16 @@ export async function setToken(token: string): Promise<void> {
   // Update memory FIRST so any in-flight getToken() resolves with
   // the new value even if the keychain write is still committing.
   memoryToken = token;
-  await SecureStore.setItemAsync(TOKEN_KEY, token);
+  await safeSetItem(TOKEN_KEY, token);
 }
 
 export async function clearToken(): Promise<void> {
   memoryToken = null;
-  await SecureStore.deleteItemAsync(TOKEN_KEY);
+  await safeDeleteItem(TOKEN_KEY);
 }
 
 export async function getStoredUser(): Promise<User | null> {
-  const raw = await SecureStore.getItemAsync(USER_KEY);
+  const raw = await safeGetItem(USER_KEY);
   if (!raw) return null;
   try {
     return JSON.parse(raw) as User;
@@ -148,11 +213,11 @@ export async function getStoredUser(): Promise<User | null> {
 }
 
 export async function setStoredUser(user: User): Promise<void> {
-  await SecureStore.setItemAsync(USER_KEY, JSON.stringify(user));
+  await safeSetItem(USER_KEY, JSON.stringify(user));
 }
 
 export async function clearStoredUser(): Promise<void> {
-  await SecureStore.deleteItemAsync(USER_KEY);
+  await safeDeleteItem(USER_KEY);
 }
 
 // ─── Public API base URL ──────────────────────────────────────────
