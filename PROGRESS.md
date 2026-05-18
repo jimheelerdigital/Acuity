@@ -41,6 +41,33 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-18] — Fix ad set structure (1 campaign → 1 ad set → N ads) + retry logic
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 8c5b6f4
+
+### In plain English (for Keenan)
+
+Three critical fixes to how AdLab launches ads to Meta: (1) The launch was creating one ad set per creative — so a campaign with 12 creatives had 12 separate $10/day budgets ($120/day total) and Meta couldn't optimize across them. Now it creates 1 campaign → 1 ad set → all ads inside that single ad set. Meta's algorithm automatically distributes the single $10/day budget to the best-performing ads. (2) Added 1-second pauses between every Meta API call and retry logic (3 attempts, 3-second wait between retries) to prevent the timeout errors that were causing "11 of 18 creatives launched" failures. (3) When some ads fail, the UI now clearly shows "X of Y ads launched successfully" in green and "Z ads failed" in red, instead of a generic "Network error" that made it look like nothing worked. There's a "Retry Failed" button that only re-attempts the ones that didn't make it.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/api/admin/adlab/ads/launch/route.ts`: Full restructure. Creates 1 campaign → 1 ad set → N ads (was 1 ad set per creative). New `withRetry()` helper: retries any Meta API call up to 3 times with 3s backoff. 1s `delay()` between every Meta API call. `maxDuration` increased from 120s to 300s. Ad set name format: `[Project] | [Topic] | [Date]`. Ad name format: `[Project] | [Angle tag] | Creative [N]`. Campaign/ad set cleaned up if all ads fail.
+- `apps/web/src/app/admin/adlab/experiments/[id]/page.tsx`: Launch result panel now shows green/red dot indicators with counts. Amber border for partial launches. "Retry Failed" button re-calls the launch endpoint (existing campaign/ad set detected via orphan cleanup logic). `retrying` state prevents double-clicks.
+
+### Manual steps needed
+
+None — all changes are web-only and deploy automatically on push.
+
+### Notes
+
+- The retry button re-calls the full launch endpoint. The orphan cleanup logic detects the existing campaign with successful ads and preserves it. Only the failed creatives get re-attempted.
+- Vercel function timeout is 300s max on Pro plan. A launch with 20+ creatives may still hit this limit. If it becomes an issue, consider splitting into background job via Inngest.
+- The single-ad-set structure means the daily budget is shared across all ads. Meta's delivery optimization chooses the best performers. This is the standard best practice for A/B testing creatives.
+
+---
+
 ## [2026-05-17] — Redesign pain points + add directional scroll animations
 
 **Requested by:** Keenan
