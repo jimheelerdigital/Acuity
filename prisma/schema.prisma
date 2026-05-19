@@ -1950,6 +1950,8 @@ model AdLabCreative {
   complianceStatus AdLabComplianceStatus   @default(pending)
   complianceNotes  String?                 @db.Text
   approved         Boolean                 @default(false)
+  batchNumber      Int                     @default(0)
+  createdAt        DateTime                @default(now())
   ads              AdLabAd[]
 
   @@index([angleId])

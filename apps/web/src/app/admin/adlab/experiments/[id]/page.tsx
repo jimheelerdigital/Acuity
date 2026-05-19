@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Loader2, CheckCircle2, ChevronDown, ChevronUp, Sparkles, RefreshCw, Shield, Copy, Trash2, Rocket, XCircle, Upload, ImageIcon, X as XIcon, Info, Download, ExternalLink, Link as LinkIcon } from "lucide-react";
+import { Loader2, CheckCircle2, ChevronDown, ChevronUp, Sparkles, RefreshCw, Shield, Copy, Trash2, Rocket, XCircle, Upload, ImageIcon, X as XIcon, Info, Download, ExternalLink, Link as LinkIcon, PlusCircle, TrendingUp, DollarSign } from "lucide-react";
 
 interface DailyMetric {
   spendCents: number;
@@ -29,6 +29,8 @@ interface Creative {
   complianceStatus: string;
   complianceNotes: string | null;
   approved: boolean;
+  batchNumber: number;
+  createdAt: string;
   ads: Ad[];
 }
 
@@ -146,6 +148,12 @@ export default function ExperimentDetailPage() {
   const [resetting, setResetting] = useState(false);
   const [generatingLandingPage, setGeneratingLandingPage] = useState(false);
   const [copiedUrl, setCopiedUrl] = useState(false);
+  const [generatingMore, setGeneratingMore] = useState(false);
+  const [generateMoreProgress, setGenerateMoreProgress] = useState<string | null>(null);
+  const [scalingMode, setScalingMode] = useState<string>("more_of_type");
+  const [preferredType, setPreferredType] = useState<string>("mechanism");
+  const [addingToCampaign, setAddingToCampaign] = useState(false);
+  const [addToCampaignResult, setAddToCampaignResult] = useState<{ added: number; totalAds: number; previousAds: number; errors: { creativeId: string; error: string }[] } | null>(null);
 
   const loadExperiment = useCallback(async () => {
     const res = await fetch(`/api/admin/adlab/experiments/${id}`);
@@ -578,6 +586,81 @@ export default function ExperimentDetailPage() {
     setGeneratingLandingPage(false);
   }
 
+  async function generateMoreCreatives() {
+    if (!experiment) return;
+    setGeneratingMore(true);
+    setGenerateMoreProgress("Generating new creatives...");
+    setAddToCampaignResult(null);
+
+    try {
+      const res = await fetch("/api/admin/adlab/creatives/generate-more", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          experimentId: experiment.id,
+          scalingMode,
+          preferredType: scalingMode === "more_of_type" ? preferredType : undefined,
+          useReferenceImages: useRefImages,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        setGenerateMoreProgress(
+          `Generated ${data.created} new creatives (batch ${data.batchNumber}).${data.errors?.length > 0 ? ` ${data.errors.length} angle(s) failed.` : ""} Review and approve them below, then click "Add to Campaign".`
+        );
+      } else {
+        setGenerateMoreProgress(`Error: ${data.error}`);
+      }
+    } catch {
+      setGenerateMoreProgress("Network error during generation");
+    }
+
+    await loadExperiment();
+    setGeneratingMore(false);
+    setTimeout(() => setGenerateMoreProgress(null), 15_000);
+  }
+
+  async function addToCampaign() {
+    if (!experiment) return;
+
+    // Find new creatives that are approved but don't have ads yet
+    const newApproved = experiment.angles.flatMap((a) =>
+      a.creatives.filter((c) => c.approved && c.ads.length === 0)
+    );
+
+    if (newApproved.length === 0) {
+      alert("No new approved creatives to add. Approve the new creatives first.");
+      return;
+    }
+
+    setAddingToCampaign(true);
+    setAddToCampaignResult(null);
+
+    try {
+      const res = await fetch("/api/admin/adlab/ads/add-to-campaign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          experimentId: experiment.id,
+          creativeIds: newApproved.map((c) => c.id),
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        setAddToCampaignResult(data);
+      } else {
+        alert(data.error || "Failed to add to campaign");
+      }
+    } catch {
+      alert("Network error");
+    }
+
+    await loadExperiment();
+    setAddingToCampaign(false);
+  }
+
   function copyLandingPageUrl(url: string) {
     navigator.clipboard.writeText(url);
     setCopiedUrl(true);
@@ -971,6 +1054,175 @@ export default function ExperimentDetailPage() {
         </div>
       )}
 
+      {/* Creative Count Tracking + Generate More + Add to Campaign — shown after campaign exists */}
+      {experiment.metaCampaignId && (experiment.status === "live" || experiment.status === "awaiting_approval") && (() => {
+        const allAds = experiment.angles.flatMap((a) => a.creatives.flatMap((c) => c.ads));
+        const originalCreatives = experiment.angles.flatMap((a) => a.creatives.filter((c) => c.batchNumber === 0));
+        const addedCreatives = experiment.angles.flatMap((a) => a.creatives.filter((c) => c.batchNumber > 0));
+        const newUnapproved = experiment.angles.flatMap((a) => a.creatives.filter((c) => c.ads.length === 0));
+        const newApproved = newUnapproved.filter((c) => c.approved);
+        const totalLiveAds = allAds.length;
+        const suggestedBudget = Math.round((totalLiveAds + newApproved.length) * 1.5 / 5) * 5;
+
+        // Group added creatives by batch for timestamps
+        const batches: Record<number, { count: number; earliest: string }> = {};
+        for (const c of addedCreatives) {
+          const bn = c.batchNumber;
+          if (!batches[bn]) batches[bn] = { count: 0, earliest: c.createdAt };
+          batches[bn].count++;
+          if (c.createdAt < batches[bn].earliest) batches[bn].earliest = c.createdAt;
+        }
+
+        return (
+          <div className="mb-6 space-y-4">
+            {/* Creative count tracking */}
+            <div className="rounded-xl border border-white/10 bg-[#13131F] p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <TrendingUp className="h-4 w-4 text-[#7C5CFC]" />
+                <p className="text-xs font-medium text-[#A0A0B8] uppercase tracking-wider">Creative Tracking</p>
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <p className="text-2xl font-bold text-white">{originalCreatives.length}</p>
+                  <p className="text-[10px] text-[#A0A0B8]">Original creatives</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-white">{addedCreatives.length}</p>
+                  <p className="text-[10px] text-[#A0A0B8]">Added creatives</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-white">{totalLiveAds}</p>
+                  <p className="text-[10px] text-[#A0A0B8]">Total live ads</p>
+                </div>
+              </div>
+              {Object.keys(batches).length > 0 && (
+                <div className="mt-3 border-t border-white/5 pt-3 space-y-1">
+                  {Object.entries(batches)
+                    .sort(([a], [b]) => Number(a) - Number(b))
+                    .map(([bn, info]) => (
+                      <p key={bn} className="text-[10px] text-[#A0A0B8]">
+                        Batch {bn}: {info.count} creative{info.count === 1 ? "" : "s"} added {new Date(info.earliest).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                      </p>
+                    ))}
+                </div>
+              )}
+            </div>
+
+            {/* Generate More Creatives */}
+            <div className="rounded-xl border border-[#7C5CFC]/20 bg-[#13131F] p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <Sparkles className="h-4 w-4 text-[#7C5CFC]" />
+                <p className="text-sm font-medium text-white">Generate More Creatives</p>
+              </div>
+
+              {/* Scaling mode dropdown */}
+              <div className="flex items-center gap-3 mb-3 flex-wrap">
+                <select
+                  value={scalingMode}
+                  onChange={(e) => setScalingMode(e.target.value)}
+                  className="rounded-lg border border-white/10 bg-[#1E1E2E] px-3 py-2 text-sm text-white outline-none focus:border-[#7C5CFC]"
+                >
+                  <option value="more_of_type">More of what&apos;s working</option>
+                  <option value="new_angles">Test new angles</option>
+                  <option value="new_copy_lengths">New copy lengths</option>
+                </select>
+
+                {scalingMode === "more_of_type" && (
+                  <select
+                    value={preferredType}
+                    onChange={(e) => setPreferredType(e.target.value)}
+                    className="rounded-lg border border-white/10 bg-[#1E1E2E] px-3 py-2 text-sm text-white outline-none focus:border-[#7C5CFC]"
+                  >
+                    <option value="mechanism">Mechanism</option>
+                    <option value="pain_point">Pain-Point</option>
+                    <option value="screenshot">Screenshot</option>
+                  </select>
+                )}
+
+                <button
+                  onClick={generateMoreCreatives}
+                  disabled={generatingMore}
+                  className="inline-flex items-center gap-2 rounded-lg bg-[#7C5CFC] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] disabled:opacity-50"
+                >
+                  {generatingMore ? (
+                    <><Loader2 className="h-4 w-4 animate-spin" /> Generating...</>
+                  ) : (
+                    <><PlusCircle className="h-4 w-4" /> Generate More Creatives</>
+                  )}
+                </button>
+              </div>
+
+              {/* Scaling mode descriptions */}
+              <p className="text-[10px] text-[#A0A0B8]">
+                {scalingMode === "more_of_type" && "Generates creatives similar in style/format to the selected type. Pick the creative type that's performing best."}
+                {scalingMode === "new_angles" && "Generates creatives using different angles from the same topic brief that weren't used in the original batch."}
+                {scalingMode === "new_copy_lengths" && "Generates the same visual formats but with different copy lengths (short, long, one-liner)."}
+              </p>
+
+              {generateMoreProgress && (
+                <div className={`mt-3 rounded-lg px-3 py-2 text-xs ${generateMoreProgress.startsWith("Error") ? "bg-red-500/10 text-red-400 border border-red-500/20" : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"}`}>
+                  {generateMoreProgress}
+                </div>
+              )}
+            </div>
+
+            {/* Add to Campaign + Budget Suggestion — show when there are new approved creatives without ads */}
+            {newApproved.length > 0 && (
+              <div className="rounded-xl border border-emerald-500/20 bg-[#13131F] p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <Rocket className="h-4 w-4 text-emerald-400" />
+                  <p className="text-sm font-medium text-white">
+                    {newApproved.length} new creative{newApproved.length === 1 ? "" : "s"} ready to add
+                  </p>
+                </div>
+
+                <button
+                  onClick={addToCampaign}
+                  disabled={addingToCampaign}
+                  className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-50"
+                >
+                  {addingToCampaign ? (
+                    <><Loader2 className="h-4 w-4 animate-spin" /> Adding to campaign...</>
+                  ) : (
+                    <><PlusCircle className="h-4 w-4" /> Add to Campaign ({newApproved.length})</>
+                  )}
+                </button>
+
+                {/* Budget suggestion */}
+                {totalLiveAds > 0 && suggestedBudget > 10 && (
+                  <div className="mt-3 flex items-start gap-2 rounded-lg bg-amber-500/5 border border-amber-500/20 px-3 py-2">
+                    <DollarSign className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
+                    <p className="text-[11px] text-amber-400">
+                      You{"\u2019"}ll have {totalLiveAds + newApproved.length} ads in this ad set. Consider increasing budget from $10/day to ${suggestedBudget}/day so Meta has enough budget to test new creatives.
+                    </p>
+                  </div>
+                )}
+
+                {addToCampaignResult && (
+                  <div className="mt-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-3 py-2">
+                    <p className="text-xs text-emerald-400">
+                      Added {addToCampaignResult.added} new ad{addToCampaignResult.added === 1 ? "" : "s"} to existing campaign. Total ads: {addToCampaignResult.totalAds}
+                    </p>
+                    {addToCampaignResult.errors.length > 0 && (
+                      <p className="text-xs text-red-400 mt-1">
+                        {addToCampaignResult.errors.length} failed: {addToCampaignResult.errors.map((e) => e.error).join("; ")}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Show count of unapproved new creatives if there are some */}
+            {newUnapproved.length > 0 && newApproved.length < newUnapproved.length && (
+              <p className="text-xs text-[#A0A0B8]">
+                {newUnapproved.length - newApproved.length} new creative{newUnapproved.length - newApproved.length === 1 ? "" : "s"} still need approval before they can be added to the campaign.
+              </p>
+            )}
+          </div>
+        );
+      })()}
+
       {/* Landing page section — shown for live/concluded experiments outside the launch panel */}
       {!launchResult && (experiment.status === "live" || experiment.status === "concluded" || experiment.status === "awaiting_approval") && (
         <div className="mb-6 rounded-xl border border-white/10 bg-[#13131F] p-5">
@@ -1258,7 +1510,12 @@ function CreativeCard({
         <p className="text-[10px] text-[#A0A0B8]">{creative.description}</p>
 
         <div className="flex items-center justify-between pt-1">
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {creative.batchNumber > 0 && (
+              <span className="rounded px-1.5 py-0.5 text-[9px] font-medium bg-[#7C5CFC]/10 text-[#7C5CFC] border border-[#7C5CFC]/20">
+                batch {creative.batchNumber}
+              </span>
+            )}
             <span className={`rounded px-1.5 py-0.5 text-[9px] font-medium ${
               creative.creativeType === "video"
                 ? "bg-sky-500/15 text-sky-400"
