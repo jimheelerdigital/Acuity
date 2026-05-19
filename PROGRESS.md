@@ -41,6 +41,36 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-19] — AdLab: Generate More Creatives + Add to Live Campaign
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 585261b
+
+### In plain English (for Keenan)
+
+Once you've launched an AdLab campaign, you can now generate additional ad creatives and push them into the same campaign without starting over. Hit "Generate More Creatives," pick a scaling strategy (more of what's working, test new angles, or try different copy lengths), review and approve the new creatives, then click "Add to Campaign" to push them live. The page now shows a creative tracking panel — original count, added count, total live ads, and timestamps for each batch. When you add more ads, a budget suggestion tells you to consider increasing spend so Meta can test the new creatives.
+
+### Technical changes (for Jimmy)
+
+- New Prisma fields on `AdLabCreative`: `batchNumber` (Int, default 0) and `createdAt` (DateTime) for batch tracking
+- New API route `POST /api/admin/adlab/creatives/generate-more`: generates 3 creatives per advanced angle with dedup awareness (passes existing creative descriptions to Claude). Supports 3 scaling modes: `more_of_type` (mechanism/pain-point/screenshot), `new_angles`, `new_copy_lengths`
+- New API route `POST /api/admin/adlab/ads/add-to-campaign`: takes existing campaign ID + ad set ID from experiment, uploads new images to Meta, creates ad objects in the existing ad set (no new campaign/adset)
+- Updated `apps/web/src/app/admin/adlab/experiments/[id]/page.tsx`: Generate More Creatives section with scaling dropdown, Add to Campaign button, creative count tracking panel (original/added/total with batch timestamps), budget suggestion ($Z * 1.5 rounded to nearest $5), batch badges on creative cards
+
+### Manual steps needed
+
+- [ ] Run `npx prisma db push` to add `batchNumber` and `createdAt` columns to `adlab_creatives` table — Keenan (from home network)
+
+### Notes
+
+- New creatives are created in the same PAUSED state as originals, so the existing approve → launch flow applies
+- The `add-to-campaign` endpoint creates ads that immediately inherit the campaign's active/paused state. If the campaign is live, new ads go live immediately
+- Budget suggestion formula: (total ads * $1.50) rounded to nearest $5. This is a UI suggestion only — no auto-change to the budget
+- The generate-more endpoint reuses the same gpt-image-2 + Claude pipeline as the original generation, with added dedup instructions and scaling mode context in the prompt
+
+---
+
 ## [2026-05-18] — Slice N Stage 2: Life Matrix scores move in 1-point steps (build 43+)
 
 **Requested by:** Jimmy
