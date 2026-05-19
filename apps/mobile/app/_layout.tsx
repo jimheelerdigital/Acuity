@@ -6,7 +6,7 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { Text as RNText } from "react-native";
+import { AppState, Text as RNText } from "react-native";
 import * as Sentry from "@sentry/react-native";
 
 import { AuthProvider, useAuth } from "@/contexts/auth-context";
@@ -14,6 +14,7 @@ import { LockProvider } from "@/contexts/lock-context";
 import { ThemeProvider, useTheme } from "@/contexts/theme-context";
 import { LockScreenOverlay } from "@/components/lock-screen-overlay";
 import { UniversalLinkHandler } from "@/components/universal-link-handler";
+import { reapplyRemindersIfNeeded } from "@/lib/notifications-boot";
 import { initSentry, setSentryUser } from "@/lib/sentry";
 
 // Sentry init at module scope — idempotent on re-import.
@@ -64,6 +65,25 @@ function AuthGate() {
     setSentryUser(
       user ? { id: user.id, subscriptionStatus: user.subscriptionStatus } : null
     );
+  }, [user, loading]);
+
+  // Reminder boot self-heal (Slice P2, 2026-05-19). Runs once after
+  // auth resolves and again on every foreground transition. Internally
+  // throttled (6h) and idempotent, so this is safe to call freely.
+  // Skipped when the user is signed out — the API call would 401 and
+  // the local schedule should already be empty.
+  useEffect(() => {
+    if (loading || !user) return;
+    const userId = user.id;
+    void reapplyRemindersIfNeeded(userId);
+    const sub = AppState.addEventListener("change", (next) => {
+      if (next === "active") {
+        void reapplyRemindersIfNeeded(userId);
+      }
+    });
+    return () => {
+      sub.remove();
+    };
   }, [user, loading]);
 
   useEffect(() => {
