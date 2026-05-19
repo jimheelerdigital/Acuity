@@ -41,6 +41,42 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-19] — Remove all "60 seconds" / "90 seconds" duration claims from marketing copy
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 2731c9e
+
+### In plain English (for Keenan)
+
+Every place on the website, landing pages, emails, and blog that told users they'd "talk for 60 seconds" or that setup "takes 90 seconds" has been replaced with time-neutral language like "just open the app and talk" and "Quick setup." Users can talk for 5 seconds or 5 minutes — we don't box them in. The AI prompt that generates new AdLab landing pages now includes a rule to never mention specific recording durations, so future generated pages won't reintroduce the old phrasing. The page at /for/you-had-it-then-lost-it uses the dynamic /for/[slug] template which is now fixed — but if the database-stored content for that page has "60 seconds" in it, that would need a manual DB update.
+
+### Technical changes (for Jimmy)
+
+- 38 files modified across `apps/web/src/`
+- Landing pages: `/for/[slug]/page.tsx`, `/for/sleep/page.tsx` + `layout.tsx`, `/for/therapy/page.tsx`, `/for/founders/page.tsx`, `/for/weekly-report/page.tsx`, `/for/decoded/page.tsx`
+- Components: `landing.tsx`, `landing-shared.tsx`, `nav-bar.tsx`, `testimonial-carousel.tsx`
+- Pages: `page.tsx` (homepage), `voice-journaling/page.tsx`, `waitlist/page.tsx`, `auth/signup/page.tsx`, `blog/[slug]/page.tsx`, `layout.tsx`
+- Emails: `welcome-day0.ts`, `welcome-verify.ts`, `waitlist-reactivation.ts`, `objection-60sec.ts`, `first-debrief-replay.ts`, `reactivation-final.ts`, `reactivation-friction.ts`, `reactivation-social.ts`, `user-story.ts`, `value-recap.ts`, `power-referral-tease.ts`
+- Lib: `persona-pages.ts`, `drip-emails.ts`, `blog-posts.ts`, `content-factory/generate.ts`, `adlab/landing-page.ts`
+- AI prompts: `auto-blog.ts`, `adlab/projects/seed/route.ts`
+- Admin: `adlab/projects/project-form.tsx` placeholder updated
+- Technical/infrastructure "60 seconds" references (clock skew, cache TTL, processing time) left unchanged
+
+### Manual steps needed
+
+- [ ] Check if the database record for `/for/you-had-it-then-lost-it-xeaiaj` (in `adlab_landing_pages` table) contains "60 seconds" in stored fields like `heroSubheadline` — if so, manually update via Supabase dashboard — Keenan
+- [ ] Verify deployed pages after push — spot-check /for/sleep, /for/founders, /for/weekly-report, homepage — Keenan
+
+### Notes
+
+- "One minute a day" tagline kept in headlines/CTAs as brand positioning per Keenan's instructions — only body copy duration claims were removed
+- The `objection-60sec.ts` email file name wasn't renamed (just a filename, not user-facing) but all its copy was updated
+- Blog posts in `blog-posts.ts` had "60 to 90 seconds" changed to "a few minutes" — this is informational/educational content, so slightly softer replacement than marketing copy
+- The onboarding step that said "About ninety seconds" (referring to the walkthrough duration, not recording) was changed to "Just a couple of minutes"
+
+---
+
 ## [2026-05-19] — AdLab: Generate More Creatives + Add to Live Campaign
 
 **Requested by:** Keenan
