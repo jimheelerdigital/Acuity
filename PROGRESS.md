@@ -156,6 +156,38 @@ When users tap "Send feedback" in the mobile app, their message now lands as a n
 
 ---
 
+## [2026-05-19] — Switch to Traffic objective + remove Australia from targeting
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 690a36a
+
+### In plain English (for Keenan)
+
+All 4 active campaigns had $0 spend after 24+ hours because they were using the "Sales" objective which requires 50+ weekly conversion events on the pixel — we don't have that yet. Now all new campaigns use the "Traffic" objective which optimizes for link clicks and delivers immediately. Added a dropdown when creating experiments: "Traffic (Link Clicks)" is the default and recommended for now. "Conversions" is available but warns you need 50+ weekly events first. Also removed Australia from geo targeting — now US, Canada, UK only.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/lib/adlab/meta.ts`: `createAdSet` now accepts optional `optimizationGoal` param. For traffic campaigns (`LINK_CLICKS`), skips `promoted_object` entirely (no pixel/conversion event). `pixelId` and `conversionEvent` now optional in `AdSetParams`.
+- `apps/web/src/app/api/admin/adlab/ads/launch/route.ts`: Default objective changed from `project.conversionObjective` (OUTCOME_SALES) to `OUTCOME_TRAFFIC`. Ad set uses `LINK_CLICKS` for traffic, `OFFSITE_CONVERSIONS` for conversions. Pixel validation skipped for traffic. Default geo fallback changed from `["US"]` to `["US", "CA", "GB"]`.
+- `apps/web/src/app/admin/adlab/experiments/new/page.tsx`: New "Campaign Objective" dropdown with Traffic (default) and Conversions options with explanatory text.
+- `apps/web/src/app/api/admin/adlab/experiments/route.ts`: Accepts and stores `campaignObjective`.
+- `apps/web/src/app/api/admin/adlab/projects/seed/route.ts`: Removed AU from default geo array.
+
+### Manual steps needed
+
+- [ ] Delete the 4 existing campaigns on Meta that have $0 spend (they're stuck on Sales objective) — Keenan via Meta Ads Manager
+- [ ] Re-launch those experiments from AdLab (they'll now use Traffic objective) — Keenan
+- [ ] Update the existing Acuity project's targetAudience in the DB to remove AU — Jimmy (run: `UPDATE adlab_projects SET "targetAudience" = jsonb_set("targetAudience", '{geo}', '["US", "CA", "GB"]') WHERE slug = 'acuity';`)
+
+### Notes
+
+- The existing `campaignObjective` column on AdLabExperiment already existed but was never populated. New experiments will now have it set to `OUTCOME_TRAFFIC` by default.
+- When the pixel accumulates 50+ weekly conversions, switch new experiments to "Conversions" via the dropdown. Don't switch existing running campaigns mid-flight.
+- The seed route fix only affects future project creation. The existing project's geo still has AU in the DB — needs the manual SQL update noted above.
+
+---
+
 ## [2026-05-18] — Split-color hero headline + merged subheadline/product description
 
 **Requested by:** Keenan
