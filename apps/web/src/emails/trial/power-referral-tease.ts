@@ -35,7 +35,7 @@ export const powerReferralTease: TrialEmailTemplate = {
       <tr>
         <td style="padding-bottom:20px;">
           <p style="margin:0;font-size:16px;color:#D8D8E8;line-height:1.7;">
-            If you know another founder (or anyone who thinks too much) who'd benefit from this — forward this email to them. Tell them to hit record for 60 seconds tonight.
+            If you know another founder (or anyone who thinks too much) who'd benefit from this — forward this email to them. Tell them to hit record tonight.
           </p>
         </td>
       </tr>

@@ -235,7 +235,7 @@ function DynamicLandingPageView({ page, slug, ctaHref }: { page: DynamicLandingP
                 <p className="mt-5 text-base sm:text-lg text-[#F5EDE4] leading-relaxed max-w-xl mx-auto lg:mx-0">
                   {page.heroSubheadline}
                   {page.heroSubheadline.length < 120 && (
-                    <> Acuity is a 60-second AI voice journal that extracts your tasks, tracks your goals, scores your mood, spots the patterns you can't see, and every Sunday delivers a report that tells the story of your week.</>
+                    <> Acuity is an AI voice journal — just open the app and talk. It extracts your tasks, tracks your goals, scores your mood, spots the patterns you can&#39;t see, and every Sunday delivers a report that tells the story of your week.</>
                   )}
                 </p>
               </Reveal>
@@ -245,7 +245,7 @@ function DynamicLandingPageView({ page, slug, ctaHref }: { page: DynamicLandingP
                     Start Free Trial — 30 Days Free
                   </PulsingCTA>
                   <p className="mt-2.5 text-xs text-[#B0A898]">
-                    No credit card. 90 seconds to set up.
+                    No credit card. Quick setup.
                   </p>
                 </div>
               </Reveal>
@@ -299,7 +299,7 @@ function DynamicLandingPageView({ page, slug, ctaHref }: { page: DynamicLandingP
       {/* 7. How It Works — compact 3-step */}
       <HowItWorksSection
         steps={[
-          { label: "Step 1", title: "Record", description: "Hit record. Speak freely for 60 seconds about your day — whatever comes to mind." },
+          { label: "Step 1", title: "Record", description: "Hit record. Speak freely about your day — whatever comes to mind." },
           { label: "Step 2", title: "Extract", description: "Within minutes, your tasks are on a list, your goals are tracked, and your mood is scored." },
           { label: "Step 3", title: "Reflect", description: "Every Sunday, get a weekly narrative report showing patterns in your life." },
         ]}
@@ -513,7 +513,7 @@ function SimpleHowItWorks() {
         <Reveal><h2 className="text-3xl font-bold tracking-tight sm:text-4xl text-center mb-14">How it works</h2></Reveal>
         <div className="grid gap-8 sm:grid-cols-3">
           {[
-            { step: "01", title: "Record", desc: "Open Acuity at night. Hit record. Talk freely for 60 seconds. No prompts, no structure, no judgment." },
+            { step: "01", title: "Record", desc: "Open Acuity at night. Hit record. Talk freely. No prompts, no structure, no judgment." },
             { step: "02", title: "AI Extracts", desc: "By morning, your tasks are on a list, your goals are tracked, and your mood is scored. You didn\u2019t type a word." },
             { step: "03", title: "You See Results", desc: "Your summary card appears instantly. Every Sunday, get a weekly narrative report about your life." },
           ].map((item, i) => (

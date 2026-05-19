@@ -342,7 +342,7 @@ export function ProjectForm({ initialData, projectId, mode }: ProjectFormProps) 
                 updateField("usps", next);
               }}
               className={`${inputClass} flex-1`}
-              placeholder="60-second voice entry pulls out tasks and tracks goals"
+              placeholder="voice entry pulls out tasks and tracks goals automatically"
             />
             {data.usps.length > 1 && (
               <button

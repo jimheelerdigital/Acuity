@@ -54,7 +54,7 @@ export default function SleepPage() {
           <Reveal delay={1}>
             <p className="mt-6 text-lg text-[#B0A898] leading-relaxed max-w-2xl mx-auto">
               Racing thoughts at night aren't a sleep problem — they're an
-              unprocessed thoughts problem. Acuity gives you 60 seconds to get it all
+              unprocessed thoughts problem. Acuity gives you a place to get it all
               out before bed.
             </p>
           </Reveal>
@@ -73,7 +73,7 @@ export default function SleepPage() {
           </Reveal>
           <Reveal delay={3}>
             <div className="mt-6">
-              <UrgencyBadge text="What if falling asleep only took 60 seconds of talking?" />
+              <UrgencyBadge text="What if falling asleep started with just talking?" />
             </div>
           </Reveal>
         </div>
@@ -114,7 +114,7 @@ export default function SleepPage() {
                 active, consuming energy, until they're acknowledged and filed. The
                 debrief is the oldest sleep trick in existence — getting
                 thoughts out of your head and onto something external so your brain
-                finally lets go. Acuity makes it take 60 seconds. And then organizes
+                finally lets go. Acuity makes it effortless. And then organizes
                 everything automatically.
               </p>
             </div>
@@ -124,8 +124,8 @@ export default function SleepPage() {
 
       {/* ───── PRE-HOW-IT-WORKS CTA ───── */}
       <MidPageCTA
-        headline="Ready to try the 60-second ritual that quiets your racing mind?"
-        subheadline="No card. 90 seconds to set up. · cancel anytime"
+        headline="Ready to try the nightly ritual that quiets your racing mind?"
+        subheadline="No card. Quick setup. · cancel anytime"
         utmCampaign={UTM}
       />
 
@@ -165,7 +165,7 @@ export default function SleepPage() {
       {/* ───── MID-PAGE CTA ───── */}
       <MidPageCTA
         headline="What if you could finally stop staring at the ceiling?"
-        subheadline="No card. 90 seconds to set up. · cancel anytime"
+        subheadline="No card. Quick setup. · cancel anytime"
         utmCampaign={UTM}
       />
 
@@ -177,7 +177,7 @@ export default function SleepPage() {
           "Mind still running at midnight",
         ]}
         after={[
-          "Brain emptied in 60 seconds",
+          "Brain emptied before bed",
           "Tasks captured automatically",
           "Mind finally quiet",
         ]}
@@ -206,8 +206,7 @@ export default function SleepPage() {
             </h2>
             <p className="mt-6 text-lg text-[#B0A898] leading-relaxed">
               Acuity works best as a daily ritual. Same time
-              each day — many people use it right before they put their phone down. 60 seconds.
-              Everything out. Mind clear.
+              each day — many people use it right before they put their phone down. Everything out. Mind clear.
             </p>
           </Reveal>
 
@@ -246,7 +245,7 @@ export default function SleepPage() {
         testimonials={[
           {
             quote:
-              "I used to lie awake for an hour running through my to-do list. 60 seconds with Acuity and I'm asleep in 10 minutes.",
+              "I used to lie awake for an hour running through my to-do list. One quick Acuity recording and I'm asleep in 10 minutes.",
             name: "Rachel T.",
             role: "Project Manager",
           },
@@ -277,7 +276,7 @@ export default function SleepPage() {
       {/* ───── FINAL CTA ───── */}
       <CTABanner
         headline="Your brain has been waiting for somewhere to put all of this."
-        subheadline="Tonight. 60 seconds. See what happens."
+        subheadline="Tonight. Just talk. See what happens."
         buttonText="Start Free Trial"
         utmCampaign={UTM}
       />

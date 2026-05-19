@@ -78,7 +78,7 @@ export default function RootLayout({
         url: "https://getacuity.io",
         logo: "https://getacuity.io/AcuityLogo.png",
         description:
-          "The AI voice journal that turns your daily debrief into action. Task extraction, goal tracking, pattern detection, and weekly reports — all from a 60-second voice recording.",
+          "The AI voice journal that turns your daily debrief into action. Task extraction, goal tracking, pattern detection, and weekly reports — all from a daily voice recording.",
         email: "hello@getacuity.io",
         // sameAs: Keenan to provide social profile URLs (Twitter/X, LinkedIn, Instagram)
         sameAs: [],

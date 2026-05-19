@@ -42,7 +42,7 @@ export function waitlistReactivation1Html(opts: {
       `You signed up for the Acuity waitlist a while back. The wait's over — Acuity is live, and your spot is held.`
     )}
     ${p(
-      `What it does: you talk for 60 seconds, any time of day. Acuity catches the tasks you mentioned, the goals you keep circling, and by Sunday morning, writes you a 400-word narrative of your week that reads like someone was paying attention.`
+      `What it does: you just open the app and talk, any time of day. Acuity catches the tasks you mentioned, the goals you keep circling, and by Sunday morning, writes you a 400-word narrative of your week that reads like someone was paying attention.`
     )}
     ${p(
       `Because you signed up early, you get 30 days free instead of 14. No card required. If you don't love it, delete it and I'll buy your next coffee.`

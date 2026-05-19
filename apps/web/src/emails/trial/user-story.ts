@@ -28,7 +28,7 @@ export const userStory: TrialEmailTemplate = {
         <td style="padding-bottom:24px;">
           ${trialCard(`
             <p style="margin:0 0 12px;font-size:15px;color:#D8D8E8;line-height:1.7;">
-              <strong style="color:#FFFFFF;">Day 1.</strong> Signs up skeptical. "60 seconds can't do anything." Records about a cofounder argument anyway.
+              <strong style="color:#FFFFFF;">Day 1.</strong> Signs up skeptical. "A short recording can't do anything." Records about a cofounder argument anyway.
             </p>
             <p style="margin:0 0 12px;font-size:15px;color:#D8D8E8;line-height:1.7;">
               <strong style="color:#FFFFFF;">Day 3.</strong> Acuity has flagged "cofounder" in every debrief so far. He hadn't realized.
@@ -45,7 +45,7 @@ export const userStory: TrialEmailTemplate = {
       <tr>
         <td style="padding-bottom:28px;">
           <p style="margin:0;font-size:16px;color:#D8D8E8;line-height:1.7;">
-            That's the shape of it. You don't need insight — you need someone paying attention. That's what the 60 seconds buys.
+            That's the shape of it. You don't need insight — you need someone paying attention. That's what the recording buys.
           </p>
         </td>
       </tr>

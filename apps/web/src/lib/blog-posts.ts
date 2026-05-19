@@ -39,7 +39,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: "Humans speak about 150 words per minute but type only 40. That’s nearly four times faster. In a 60-second voice entry, you can capture what would take five minutes to write. But speed is only part of the story. When you speak, you access a different part of your brain than when you write. Speaking is our oldest, most natural form of communication. It’s how we process emotions, tell stories, and make sense of our experiences. Writing, by contrast, engages the editorial brain — the part that wants to craft perfect sentences and organize thoughts before they hit the page.",
+        text: "Humans speak about 150 words per minute but type only 40. That’s nearly four times faster. In a short voice entry, you can capture what would take much longer to write. But speed is only part of the story. When you speak, you access a different part of your brain than when you write. Speaking is our oldest, most natural form of communication. It’s how we process emotions, tell stories, and make sense of our experiences. Writing, by contrast, engages the editorial brain — the part that wants to craft perfect sentences and organize thoughts before they hit the page.",
       },
       {
         tag: "p",
@@ -119,7 +119,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: "Imagine you spend 90 seconds talking about your day. You mention a frustrating meeting, a deadline you’re worried about, a compliment your manager gave you, and a reminder to call the dentist. A smart voice journaling app like Acuity will take that single entry and produce: a summary of your day, a mood assessment (mixed — frustrated but also validated), an extracted task (call the dentist), and a flag that work stress has been a recurring theme this week.",
+        text: "Imagine you spend a few minutes talking about your day. You mention a frustrating meeting, a deadline you’re worried about, a compliment your manager gave you, and a reminder to call the dentist. A smart voice journaling app like Acuity will take that single entry and produce: a summary of your day, a mood assessment (mixed — frustrated but also validated), an extracted task (call the dentist), and a flag that work stress has been a recurring theme this week.",
       },
       {
         tag: "p",
@@ -199,7 +199,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: "Second, keep it short. Your first entries should be 60 to 90 seconds. That’s it. Don’t try to be comprehensive. Just answer one question: “What’s on my mind right now?” You can expand later once the habit is established.",
+        text: "Second, keep it short. Your first entries should be a few minutes. That’s it. Don’t try to be comprehensive. Just answer one question: “What’s on my mind right now?” You can expand later once the habit is established.",
       },
       {
         tag: "p",
@@ -211,7 +211,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: "Acuity is designed around exactly this workflow. You speak for 60 seconds before bed, and by morning, your entry has been transformed into a structured summary with mood analysis, extracted tasks, and connections to your previous entries. It’s the fastest path from thought to insight available today.",
+        text: "Acuity is designed around exactly this workflow. You speak for a few minutes before bed, and by morning, your entry has been transformed into a structured summary with mood analysis, extracted tasks, and connections to your previous entries. It’s the fastest path from thought to insight available today.",
       },
       {
         tag: "p",
@@ -232,11 +232,11 @@ export const BLOG_POSTS: BlogPost[] = [
     updatedAt: "2026-04-02T08:00:00Z",
     readingTime: "9 min read",
     excerpt:
-      "I used to lie awake for hours with my mind spinning. Then I started doing a 60-second brain dump before bed. Here’s the neuroscience behind why it works and exactly how to start tonight.",
+      "I used to lie awake for hours with my mind spinning. Then I started doing a quick brain dump before bed. Here’s the neuroscience behind why it works and exactly how to start tonight.",
     content: [
       {
         tag: "p",
-        text: "I used to dread bedtime. Not because I wasn’t tired — I was exhausted. But the moment my head hit the pillow, my brain would light up like a pinball machine. Tomorrow’s meetings. That awkward thing I said at lunch. The email I forgot to send. Whether I remembered to pay the electric bill. The thoughts weren’t even useful. They were just loud. And the harder I tried to silence them, the louder they got. Then, about six months ago, I started doing a brain dump before bed. Sixty seconds of speaking everything on my mind into my phone. It sounded too simple to work. But it did. And understanding why it works changed my relationship with sleep, stress, and my own mind.",
+        text: "I used to dread bedtime. Not because I wasn’t tired — I was exhausted. But the moment my head hit the pillow, my brain would light up like a pinball machine. Tomorrow’s meetings. That awkward thing I said at lunch. The email I forgot to send. Whether I remembered to pay the electric bill. The thoughts weren’t even useful. They were just loud. And the harder I tried to silence them, the louder they got. Then, about six months ago, I started doing a brain dump before bed. A few minutes of speaking everything on my mind into my phone. It sounded too simple to work. But it did. And understanding why it works changed my relationship with sleep, stress, and my own mind.",
       },
       {
         tag: "h2",
@@ -280,7 +280,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: "I get into bed. I pick up my phone. I open a voice journaling app and hit record. Then I talk for about 60 to 90 seconds. That’s it. There’s no prompt, no structure, no requirement. I just say whatever is on my mind.",
+        text: "I get into bed. I pick up my phone. I open a voice journaling app and hit record. Then I talk for as long as feels right. That’s it. There’s no prompt, no structure, no requirement. I just say whatever is on my mind for as long as feels right.",
       },
       {
         tag: "p",
@@ -364,7 +364,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: "Step two: Set a timer for 60 seconds. This removes the decision of how long to go. When the timer ends, you’re done. No pressure to keep going, no anxiety about taking too long. Sixty seconds is enough to capture the essentials.",
+        text: "Step two: Just start talking. There’s no perfect length. When you feel like you’ve gotten it out, you’re done. No pressure to keep going, no anxiety about taking too long. A few minutes is enough to capture the essentials.",
       },
       {
         tag: "p",
@@ -388,7 +388,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: "This means your 60-second brain dump doesn’t just help you sleep — it feeds into a growing picture of your life. After a month, you have data on your emotional patterns, your productivity rhythms, your recurring stressors, and your sources of joy. All from 60 seconds a night. All from just talking.",
+        text: "This means your nightly brain dump doesn’t just help you sleep — it feeds into a growing picture of your life. After a month, you have data on your emotional patterns, your productivity rhythms, your recurring stressors, and your sources of joy. All from a few minutes a night. All from just talking.",
       },
       {
         tag: "p",
@@ -420,7 +420,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: "Fair point — blue light before bed can interfere with melatonin production. If you’re using a voice app, the screen interaction is minimal. You can also use a dedicated voice recorder, or simply use your phone with the screen facing down. The brief screen exposure for starting a 60-second recording is negligible compared to the sleep benefits of the brain dump itself.",
+        text: "Fair point — blue light before bed can interfere with melatonin production. If you’re using a voice app, the screen interaction is minimal. You can also use a dedicated voice recorder, or simply use your phone with the screen facing down. The brief screen exposure for starting a short recording is negligible compared to the sleep benefits of the brain dump itself.",
       },
       {
         tag: "h3",
@@ -432,7 +432,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: "The brain dump before bed is one of those rare habits that costs almost nothing — 60 seconds and zero effort — but pays dividends across every area of your life. Better sleep. Clearer mornings. Fewer dropped tasks. More emotional balance. It’s not glamorous. It’s not complicated. It just works. And tonight is as good a time as any to try it.",
+        text: "The brain dump before bed is one of those rare habits that costs almost nothing — a few minutes and zero effort — but pays dividends across every area of your life. Better sleep. Clearer mornings. Fewer dropped tasks. More emotional balance. It’s not glamorous. It’s not complicated. It just works. And tonight is as good a time as any to try it.",
       },
     ],
   },
@@ -556,7 +556,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: "This is the newest and fastest-growing category. Voice-first apps are designed from the ground up around spoken input. You talk, the app listens, and AI transforms your words into structured journal entries with summaries, mood analysis, extracted tasks, and pattern connections. The key advantage is speed and naturalness — you can complete a meaningful journal entry in 60 seconds while lying in bed. Acuity sits in this category, combining high-quality voice transcription with deep AI analysis to turn a quick voice note into a rich, structured journal entry.",
+        text: "This is the newest and fastest-growing category. Voice-first apps are designed from the ground up around spoken input. You talk, the app listens, and AI transforms your words into structured journal entries with summaries, mood analysis, extracted tasks, and pattern connections. The key advantage is speed and naturalness — you can complete a meaningful journal entry in just a few minutes while lying in bed. Acuity sits in this category, combining high-quality voice transcription with deep AI analysis to turn a quick voice note into a rich, structured journal entry.",
       },
       {
         tag: "h3",
@@ -673,7 +673,7 @@ export const BLOG_POSTS: BlogPost[] = [
     updatedAt: "2026-04-04T08:00:00Z",
     readingTime: "9 min read",
     excerpt:
-      "Most journaling habits fail because they ask too much. Learn how to build a nightly journaling habit that sticks by reducing friction, anchoring to existing routines, and making the first 60 seconds effortless.",
+      "Most journaling habits fail because they ask too much. Learn how to build a nightly journaling habit that sticks by reducing friction, anchoring to existing routines, and making the first few minutes effortless.",
     content: [
       {
         tag: "p",
@@ -749,7 +749,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: "Here’s the framework that has worked for thousands of people who previously failed at journaling. The key insight is brutal simplicity. You’re not going to write for 20 minutes. You’re going to speak for 60 seconds.",
+        text: "Here’s the framework that has worked for thousands of people who previously failed at journaling. The key insight is brutal simplicity. You’re not going to write for 20 minutes. You’re going to speak for a few minutes.",
       },
       {
         tag: "h3",
@@ -765,7 +765,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: "Your commitment is 60 seconds of speaking. Not writing — speaking. Open the app, hit record, and talk about whatever is on your mind. There’s no minimum length requirement. If you talk for 30 seconds and feel done, you’re done. The goal is consistency, not comprehensiveness.",
+        text: "Your commitment is a few minutes of speaking. Not writing — speaking. Open the app, hit record, and talk about whatever is on your mind. There’s no minimum length requirement. If you talk for a short while and feel done, you’re done. The goal is consistency, not comprehensiveness.",
       },
       {
         tag: "h3",
@@ -781,7 +781,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: "This sounds silly, but it’s backed by serious research. B.J. Fogg’s work shows that the emotional reward after completing a behavior is what wires it into your brain. After your 60-second entry, take a moment to feel good about it. A mental fist-pump, a satisfied nod, a quiet “done.” This positive emotion is what turns a behavior into a habit.",
+        text: "This sounds silly, but it’s backed by serious research. B.J. Fogg’s work shows that the emotional reward after completing a behavior is what wires it into your brain. After your entry, take a moment to feel good about it. A mental fist-pump, a satisfied nod, a quiet “done.” This positive emotion is what turns a behavior into a habit.",
       },
       {
         tag: "h2",
@@ -801,7 +801,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: "Voice journaling: Pick up phone, tap one button, talk. Time: 60-90 seconds. Position requirement: none. You can do it lying in bed, in the dark, with your eyes closed.",
+        text: "Voice journaling: Pick up phone, tap one button, talk. Time: a few minutes. Position requirement: none. You can do it lying in bed, in the dark, with your eyes closed.",
       },
       {
         tag: "p",
@@ -857,7 +857,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: "Building a nightly journaling habit isn’t about finding more discipline. It’s about removing the obstacles that made it hard in the first place. When you reduce the effort to 60 seconds of speaking, anchor it to something you already do, and forgive yourself for the inevitable missed days, journaling stops being a chore and starts being a release. It’s the one habit that literally asks nothing of you except honesty. And the returns — better sleep, clearer thinking, deeper self-awareness — compound quietly, night after night, into something remarkable.",
+        text: "Building a nightly journaling habit isn’t about finding more discipline. It’s about removing the obstacles that made it hard in the first place. When you reduce the effort to a few minutes of speaking, anchor it to something you already do, and forgive yourself for the inevitable missed days, journaling stops being a chore and starts being a release. It’s the one habit that literally asks nothing of you except honesty. And the returns — better sleep, clearer thinking, deeper self-awareness — compound quietly, night after night, into something remarkable.",
       },
     ],
   },
@@ -970,11 +970,11 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: "Speaking does. A voice dump — 60 to 90 seconds of speaking everything that’s on your mind — is the most comprehensive and fastest form of cognitive offloading available. You can do it lying in bed, in the dark, with your eyes closed. You don’t need to organize, prioritize, or even make sense. You just talk.",
+        text: "Speaking does. A voice dump — speaking everything that’s on your mind — is the most comprehensive and fastest form of cognitive offloading available. You can do it lying in bed, in the dark, with your eyes closed. You don’t need to organize, prioritize, or even make sense. You just talk.",
       },
       {
         tag: "p",
-        text: "The key advantage of voice over writing is speed and completeness. You speak about 150 words per minute but write or type only 30-40. In 60 seconds of speaking, you can offload the equivalent of a 10-minute writing session. And because speaking is less filtered than writing, you’re more likely to get the real stuff out — the worries you’d feel silly writing down, the emotions you’d edit out of a written entry.",
+        text: "The key advantage of voice over writing is speed and completeness. You speak about 150 words per minute but write or type only 30-40. In a few minutes of speaking, you can offload the equivalent of a much longer writing session. And because speaking is less filtered than writing, you’re more likely to get the real stuff out — the worries you’d feel silly writing down, the emotions you’d edit out of a written entry.",
       },
       {
         tag: "h2",
@@ -990,7 +990,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: "Step two: Hit record and start talking. Say whatever is on your mind. Don’t structure it. Don’t try to be comprehensive. Just let the thoughts flow out in whatever order they come. “I’m worried about the presentation on Thursday. Also I need to buy dog food. I felt weird about that conversation with Sarah. Tomorrow I have to finish the report by noon.” Keep going until you feel empty, or until about 90 seconds have passed.",
+        text: "Step two: Hit record and start talking. Say whatever is on your mind. Don’t structure it. Don’t try to be comprehensive. Just let the thoughts flow out in whatever order they come. “I’m worried about the presentation on Thursday. Also I need to buy dog food. I felt weird about that conversation with Sarah. Tomorrow I have to finish the report by noon.” Keep going until you feel done.",
       },
       {
         tag: "p",
@@ -1054,7 +1054,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: `Racing thoughts before sleep don\u2019t have to be your nightly reality. The solution isn\u2019t to force your brain to be quiet \u2014 it\u2019s to give it a reason to be quiet. When your open loops are closed, your worries are captured, and your brain trusts that nothing important will be forgotten, silence comes naturally. It takes 60 seconds. It works tonight. And it gets more powerful every night you do it. Learn more about how <a href="/for/sleep">Acuity\u2019s 60-second brain dump fixes racing thoughts before bed</a>.`,
+        text: `Racing thoughts before sleep don\u2019t have to be your nightly reality. The solution isn\u2019t to force your brain to be quiet \u2014 it\u2019s to give it a reason to be quiet. When your open loops are closed, your worries are captured, and your brain trusts that nothing important will be forgotten, silence comes naturally. It takes just a few minutes. It works tonight. And it gets more powerful every night you do it. Learn more about how <a href="/for/sleep">Acuity\u2019s nightly brain dump fixes racing thoughts before bed</a>.`,
       },
     ],
   },
@@ -1182,7 +1182,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: "Speed: A meaningful voice entry takes 60 seconds. A meaningful written entry takes 5 to 15 minutes. This difference is not trivial — it’s the difference between a habit that survives your busiest weeks and one that doesn’t.",
+        text: "Speed: A meaningful voice entry takes a few minutes. A meaningful written entry takes much longer. This difference is not trivial — it’s the difference between a habit that survives your busiest weeks and one that doesn’t.",
       },
       {
         tag: "p",
@@ -1234,7 +1234,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: "Acuity is designed around a 60-second voice entry before bed. You speak your thoughts — as messy, unstructured, and stream-of-consciousness as they come — and our AI transforms them into a structured journal entry with mood analysis, key themes, extracted tasks, and connections to your previous entries. The whole experience, from opening the app to finishing your entry, takes about 90 seconds.",
+        text: "Acuity is designed around a quick voice entry before bed. You speak your thoughts — as messy, unstructured, and stream-of-consciousness as they come — and our AI transforms them into a structured journal entry with mood analysis, key themes, extracted tasks, and connections to your previous entries. The whole experience, from opening the app to finishing your entry, takes just a couple of minutes.",
       },
       {
         tag: "p",
@@ -1395,11 +1395,11 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: "Voice journaling addresses every one of these barriers. It takes 60 seconds instead of 20 minutes. It requires no writing ability. It can be done lying in bed. And because speaking feels less permanent than writing, it reduces the self-consciousness that often accompanies emotional disclosure. You’re not writing a document — you’re just talking.",
+        text: "Voice journaling addresses every one of these barriers. It takes a few minutes instead of twenty. It requires no writing ability. It can be done lying in bed. And because speaking feels less permanent than writing, it reduces the self-consciousness that often accompanies emotional disclosure. You’re not writing a document — you’re just talking.",
       },
       {
         tag: "p",
-        text: "Acuity was designed with this insight at its core. By making the entry process as frictionless as possible — one tap, 60 seconds of speaking, done — it removes the barriers that prevent people from accessing the mental health benefits of journaling. The AI handles the organization, summarization, and pattern detection so that you get the value of a comprehensive journaling practice with the effort of a brief voice note.",
+        text: "Acuity was designed with this insight at its core. By making the entry process as frictionless as possible — one tap, a few minutes of speaking, done — it removes the barriers that prevent people from accessing the mental health benefits of journaling. The AI handles the organization, summarization, and pattern detection so that you get the value of a comprehensive journaling practice with the effort of a brief voice note.",
       },
       {
         tag: "h2",
@@ -1431,7 +1431,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: "Start small. Sixty seconds a day is enough to build the habit and begin experiencing benefits. Pennebaker’s protocol called for longer sessions, but subsequent research has shown that shorter, more frequent entries can be equally effective, especially when combined with AI analysis.",
+        text: "Start small. A few minutes a day is enough to build the habit and begin experiencing benefits. Pennebaker’s protocol called for longer sessions, but subsequent research has shown that shorter, more frequent entries can be equally effective, especially when combined with AI analysis.",
       },
       {
         tag: "p",
@@ -1500,7 +1500,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "h3",
-        text: "Part 1: What Happened Today (60 seconds)",
+        text: "Part 1: What Happened Today",
       },
       {
         tag: "p",
@@ -1508,7 +1508,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "h3",
-        text: "Part 2: What Worked and What Didn’t (60 seconds)",
+        text: "Part 2: What Worked and What Didn’t",
       },
       {
         tag: "p",
@@ -1516,7 +1516,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "h3",
-        text: "Part 3: What’s Next (60 seconds)",
+        text: "Part 3: What’s Next",
       },
       {
         tag: "p",
@@ -1832,7 +1832,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: "The quality of the automated review depends entirely on the quality of your daily inputs. If you do thoughtful, honest daily entries, the weekly summary will be rich with actionable insights. If your daily entries are superficial or sparse, the weekly summary will be too. Garbage in, garbage out. But with even 60 seconds of genuine daily reflection, the AI has enough material to produce something genuinely useful.",
+        text: "The quality of the automated review depends entirely on the quality of your daily inputs. If you do thoughtful, honest daily entries, the weekly summary will be rich with actionable insights. If your daily entries are superficial or sparse, the weekly summary will be too. Garbage in, garbage out. But with even a few minutes of genuine daily reflection, the AI has enough material to produce something genuinely useful.",
       },
       {
         tag: "h2",
@@ -1868,7 +1868,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: "If you want the AI-assisted version, start doing 60-second daily voice entries this week using Acuity or a similar app. By the weekend, you’ll have seven entries for the AI to analyze, and your first automated weekly review will be waiting for you.",
+        text: "If you want the AI-assisted version, start doing short daily voice entries this week using Acuity or a similar app. By the weekend, you’ll have seven entries for the AI to analyze, and your first automated weekly review will be waiting for you.",
       },
       {
         tag: "p",
@@ -2077,7 +2077,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: "Start embarrassingly small. Your first brain dump should be 60 seconds. Not 10 minutes, not even five. Sixty seconds is enough to start the habit and experience the benefit. You can always go longer once the habit is established, but the 60-second version ensures you do it on even your hardest days.",
+        text: "Start embarrassingly small. Your first brain dump should be short — a few minutes at most. Not 10 minutes, not even five. A quick dump is enough to start the habit and experience the benefit. You can always go longer once the habit is established, but the short version ensures you do it on even your hardest days.",
       },
       {
         tag: "p",

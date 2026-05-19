@@ -8,7 +8,7 @@ function para(text: string): string {
 
 export const welcomeDay0: TrialEmailTemplate = {
   subject: (v: TrialVars) =>
-    `You're in, ${v.firstName}. Here's the 60-second thing.`,
+    `You're in, ${v.firstName}. Here's the thing.`,
   html: (v: TrialVars) => {
     const name = escapeHtml(v.firstName);
     const appUrl = escapeHtml(v.appUrl);
@@ -24,7 +24,7 @@ export const welcomeDay0: TrialEmailTemplate = {
         </td>
       </tr>
       ${para("You just signed up for Acuity. Here's the short version of what happens next.")}
-      ${para(`Open the app (<a href="${appUrl}" style="color:#7C5CFC;text-decoration:underline;">${appUrl}</a>), hit record, and talk for 60 seconds. Whatever's in your head. Out loud. Don't try to make it smart.`)}
+      ${para(`Open the app (<a href="${appUrl}" style="color:#7C5CFC;text-decoration:underline;">${appUrl}</a>), hit record, and just talk. Whatever's in your head. Out loud. Don't try to make it smart.`)}
       ${para("What you'll get back: a clean list of tasks Acuity pulled from what you said, the goals you mentioned (even in passing), and by Sunday, a 400-word narrative of your week that reads like someone was paying attention.")}
       ${para("Quick setup, then your first debrief.")}
       <tr>
@@ -54,7 +54,7 @@ export const welcomeDay0: TrialEmailTemplate = {
     return trialLayout({
       content,
       unsubscribeUrl: v.unsubscribeUrl,
-      preheader: "Hit record. Talk for 60 seconds. That's the whole thing.",
+      preheader: "Hit record. Just talk. That's the whole thing.",
     });
   },
 };

@@ -105,7 +105,7 @@ export default function WeeklyReportPage() {
       {/* ───── PRE-HOW-IT-WORKS CTA ───── */}
       <MidPageCTA
         headline="Ready to get your first weekly report this Sunday?"
-        subheadline="No card. 90 seconds to set up. · cancel anytime"
+        subheadline="No card. Quick setup. · cancel anytime"
         utmCampaign={UTM}
       />
 
@@ -116,7 +116,7 @@ export default function WeeklyReportPage() {
             label: "Step 1",
             title: "Record",
             description:
-              "Every day, open Acuity and speak for 60 seconds. Your wins, your worries, your reflections — no structure needed.",
+              "Every day, open Acuity and speak freely. Your wins, your worries, your reflections — no structure needed.",
           },
           {
             label: "Step 2",
@@ -234,7 +234,7 @@ export default function WeeklyReportPage() {
       {/* ───── MID-PAGE CTA ───── */}
       <MidPageCTA
         headline="What story will your first weekly report tell about you?"
-        subheadline="No card. 90 seconds to set up. · cancel anytime"
+        subheadline="No card. Quick setup. · cancel anytime"
         utmCampaign={UTM}
       />
 

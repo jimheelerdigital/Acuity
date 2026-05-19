@@ -38,7 +38,7 @@ const DROPDOWN_ITEMS = [
   {
     href: "/for/founders",
     title: "The Builder",
-    description: "The 60-second nightly debrief for founders and high performers.",
+    description: "The nightly debrief for founders and high performers.",
   },
 ];
 

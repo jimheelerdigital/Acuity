@@ -50,7 +50,7 @@ export default function FoundersPage() {
         <ParallaxOrbs />
         <div className="relative mx-auto max-w-4xl px-6 text-center">
           <Reveal>
-            <HeroHeadline text="Your daily debrief. 60 seconds. AI does the rest." />
+            <HeroHeadline text="Your daily debrief. Just talk. AI does the rest." />
           </Reveal>
           <Reveal delay={1}>
             <p className="mt-6 text-lg text-[#B0A898] leading-relaxed max-w-2xl mx-auto">
@@ -128,7 +128,7 @@ export default function FoundersPage() {
               What Acuity extracts from a founder debrief
             </h2>
             <p className="text-center text-[#B0A898] mb-12">
-              From a single 60-second recording, Acuity automatically extracts:
+              From a single recording, Acuity automatically extracts:
             </p>
           </Reveal>
 
@@ -187,7 +187,7 @@ export default function FoundersPage() {
       {/* ───── PRE-HOW-IT-WORKS CTA ───── */}
       <MidPageCTA
         headline="Ready to start capturing every idea, task, and decision automatically?"
-        subheadline="No card. 90 seconds to set up. · cancel anytime"
+        subheadline="No card. Quick setup. · cancel anytime"
         utmCampaign={UTM}
       />
 
@@ -198,7 +198,7 @@ export default function FoundersPage() {
             label: "Step 1",
             title: "Debrief",
             description:
-              "Wrap up your day in 60 seconds. Hit record, speak freely about wins, blockers, decisions, and what's on your mind. No app to configure.",
+              "Wrap up your day. Hit record, speak freely about wins, blockers, decisions, and what's on your mind. No app to configure.",
           },
           {
             label: "Step 2",
@@ -227,7 +227,7 @@ export default function FoundersPage() {
       {/* ───── MID-PAGE CTA ───── */}
       <MidPageCTA
         headline="What would your performance look like if you debriefed every day?"
-        subheadline="No card. 90 seconds to set up. · cancel anytime"
+        subheadline="No card. Quick setup. · cancel anytime"
         utmCampaign={UTM}
       />
 
@@ -350,7 +350,7 @@ export default function FoundersPage() {
         <div className="mx-auto max-w-3xl text-center">
           <Reveal>
             <h2 className="text-3xl font-bold tracking-tight sm:text-5xl">
-              60 seconds a day.{" "}
+              A few minutes a day.{" "}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-500 to-indigo-500">
                 7 minutes a week.
               </span>

@@ -80,7 +80,7 @@ const jsonLd = {
           name: "What is voice journaling?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "Voice journaling is the practice of recording yourself speaking freely about your day, thoughts, and feelings instead of writing them down. You talk into a phone or app for 60 seconds to a few minutes, and the recording captures your thoughts exactly as they come out — unfiltered, unedited, and in your own voice.",
+            text: "Voice journaling is the practice of recording yourself speaking freely about your day, thoughts, and feelings instead of writing them down. You talk into a phone or app for as little or as long as you want, and the recording captures your thoughts exactly as they come out — unfiltered, unedited, and in your own voice.",
           },
         },
         {
@@ -96,7 +96,7 @@ const jsonLd = {
           name: "How long should a voice journal entry be?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "60 seconds is enough to get a meaningful brain dump. Most voice journaling apps, including Acuity, are designed around this micro-habit approach. The key is consistency over length — a 60-second entry every night beats a 20-minute session once a month.",
+            text: "Even a short entry is enough to get a meaningful brain dump. Most voice journaling apps, including Acuity, are designed around this micro-habit approach. The key is consistency over length — a brief entry every night beats a 20-minute session once a month.",
           },
         },
         {
@@ -112,7 +112,7 @@ const jsonLd = {
           name: "What is the best voice journaling app?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "Acuity is a voice journaling app that combines AI transcription with automatic task extraction, mood tracking, mental pattern detection, and weekly AI reports. It turns a 60-second nightly brain dump into structured insights about your life, goals, and emotional patterns. It costs $12.99/month with a 30-day free trial.",
+            text: "Acuity is a voice journaling app that combines AI transcription with automatic task extraction, mood tracking, mental pattern detection, and weekly AI reports. It turns a nightly voice brain dump into structured insights about your life, goals, and emotional patterns. It costs $12.99/month with a 30-day free trial.",
           },
         },
       ],
@@ -155,7 +155,7 @@ export default function VoiceJournalingPage() {
             What Is Voice Journaling?
           </h2>
           <p className="text-base text-[#A0A0B8] leading-[1.8] mb-5">
-            Voice journaling is the practice of recording yourself speaking freely — about your day, your feelings, your plans, whatever is on your mind — instead of writing it down. You open an app, hit record, and talk for anywhere from 60 seconds to a few minutes. No editing. No formatting. Just an unfiltered stream of consciousness captured in your own voice.
+            Voice journaling is the practice of recording yourself speaking freely — about your day, your feelings, your plans, whatever is on your mind — instead of writing it down. You open an app, hit record, and talk for as little or as long as you want. No editing. No formatting. Just an unfiltered stream of consciousness captured in your own voice.
           </p>
           <p className="text-base text-[#A0A0B8] leading-[1.8] mb-5">
             Think of it as a <strong className="text-white">nightly brain dump</strong>. Everything rattling around in your head — tasks you forgot, feelings you haven't processed, wins you didn't celebrate — gets emptied into a recording. Your brain can finally stop holding onto it all.
@@ -182,7 +182,7 @@ export default function VoiceJournalingPage() {
             The speed advantage
           </h3>
           <p className="text-base text-[#A0A0B8] leading-[1.8] mb-5">
-            A 60-second voice journal entry contains roughly 130-150 words of content — the equivalent of a half-page of written journaling. That's a meaningful <Link href="/blog/brain-dump-before-bed" className="text-[#7C5CFC] hover:underline">brain dump before bed</Link> captured in the time it takes to brush your teeth. For people who say they "don't have time to journal," voice journaling removes that excuse entirely.
+            A short voice journal entry contains roughly 130-150 words of content — the equivalent of a half-page of written journaling. That's a meaningful <Link href="/blog/brain-dump-before-bed" className="text-[#7C5CFC] hover:underline">brain dump before bed</Link> captured in the time it takes to brush your teeth. For people who say they "don't have time to journal," voice journaling removes that excuse entirely.
           </p>
 
           <h3 className="text-xl font-semibold mt-8 mb-3 text-white">
@@ -205,7 +205,7 @@ export default function VoiceJournalingPage() {
               Try voice journaling tonight
             </h2>
             <p className="text-[#A0A0B8] mb-6 max-w-md mx-auto">
-              Acuity turns a 60-second voice brain dump into tasks, mood tracking, pattern detection, and weekly AI reports. 30-day free trial.
+              Acuity turns a nightly voice brain dump into tasks, mood tracking, pattern detection, and weekly AI reports. 30-day free trial.
             </p>
             <Link
               href="/auth/signup?utm_campaign=voice-journaling-guide"
@@ -248,10 +248,10 @@ export default function VoiceJournalingPage() {
           </p>
 
           <h3 className="text-xl font-semibold mt-8 mb-3 text-white">
-            2. Set a timer for 60 seconds
+            2. Set a timer if it helps — even one minute is enough
           </h3>
           <p className="text-base text-[#A0A0B8] leading-[1.8] mb-5">
-            Don't try to record a 10-minute monologue. A 60-second entry is enough to capture the essential thoughts and feelings from your day. The constraint actually helps — it removes the pressure to be comprehensive and encourages you to lead with what matters most. If you have more to say, keep going. But 60 seconds is the minimum viable brain dump.
+            Don't try to record a 10-minute monologue. A short entry is enough to capture the essential thoughts and feelings from your day. The constraint actually helps — it removes the pressure to be comprehensive and encourages you to lead with what matters most. If you have more to say, keep going. But brevity is the minimum viable brain dump.
           </p>
 
           <h3 className="text-xl font-semibold mt-8 mb-3 text-white">
@@ -299,7 +299,7 @@ export default function VoiceJournalingPage() {
                 </tr>
                 <tr className="border-b border-white/5">
                   <td className="py-3 pr-6 text-white font-medium">Time to meaningful entry</td>
-                  <td className="py-3 pr-6">60 seconds</td>
+                  <td className="py-3 pr-6">A few minutes</td>
                   <td className="py-3">5-10 minutes</td>
                 </tr>
                 <tr className="border-b border-white/5">
@@ -350,7 +350,7 @@ export default function VoiceJournalingPage() {
             Making entries too long
           </h3>
           <p className="text-base text-[#A0A0B8] leading-[1.8] mb-5">
-            Longer isn't better. A focused 60-second entry every night beats a meandering 15-minute entry once a week. Consistency is what builds the habit and generates the data. Keep it short so you actually do it tomorrow.
+            Longer isn't better. A focused short entry every night beats a meandering 15-minute entry once a week. Consistency is what builds the habit and generates the data. Keep it short so you actually do it tomorrow.
           </p>
 
           <h3 className="text-xl font-semibold mt-8 mb-3 text-white">
@@ -364,7 +364,7 @@ export default function VoiceJournalingPage() {
             Re-listening to every entry
           </h3>
           <p className="text-base text-[#A0A0B8] leading-[1.8] mb-5">
-            The primary value of voice journaling is the act of speaking, not the recording. You don't need to re-listen to every entry — that turns a 60-second habit into a 10-minute chore. Let AI handle the transcription and analysis. Review the summary once a week and move on.
+            The primary value of voice journaling is the act of speaking, not the recording. You don't need to re-listen to every entry — that turns a quick habit into a 10-minute chore. Let AI handle the transcription and analysis. Review the summary once a week and move on.
           </p>
 
           {/* ──── Tools and Methods ──── */}
@@ -393,7 +393,7 @@ export default function VoiceJournalingPage() {
             Advanced: AI voice journaling apps
           </h3>
           <p className="text-base text-[#A0A0B8] leading-[1.8] mb-5">
-            This is where voice journaling gets genuinely powerful. AI-powered voice journaling apps like Acuity don't just transcribe — they <em>understand</em>. After you record a 60-second entry, AI automatically extracts tasks you mentioned, tracks goals you referenced, scores your mood, detects recurring emotional patterns, and generates a <Link href="/blog/weekly-review-template" className="text-[#7C5CFC] hover:underline">weekly narrative report</Link> that reads like a therapist's session notes. Your nightly brain dump becomes structured life intelligence — a Life Matrix that scores your wellbeing across Health, Wealth, Relationships, Spirituality, Career, and Growth.
+            This is where voice journaling gets genuinely powerful. AI-powered voice journaling apps like Acuity don't just transcribe — they <em>understand</em>. After you record an entry, AI automatically extracts tasks you mentioned, tracks goals you referenced, scores your mood, detects recurring emotional patterns, and generates a <Link href="/blog/weekly-review-template" className="text-[#7C5CFC] hover:underline">weekly narrative report</Link> that reads like a therapist's session notes. Your nightly brain dump becomes structured life intelligence — a Life Matrix that scores your wellbeing across Health, Wealth, Relationships, Spirituality, Career, and Growth.
           </p>
 
           {/* ──── Who Voice Journaling Is For ──── */}
@@ -420,7 +420,7 @@ export default function VoiceJournalingPage() {
             What is voice journaling?
           </h3>
           <p className="text-base text-[#A0A0B8] leading-[1.8] mb-5">
-            Voice journaling is the practice of recording yourself speaking freely about your day, thoughts, and feelings instead of writing them down. You talk into a phone or app for 60 seconds to a few minutes, and the recording captures your thoughts exactly as they come out — unfiltered, unedited, and in your own voice.
+            Voice journaling is the practice of recording yourself speaking freely about your day, thoughts, and feelings instead of writing them down. You talk into a phone or app for as little or as long as you want, and the recording captures your thoughts exactly as they come out — unfiltered, unedited, and in your own voice.
           </p>
 
           <h3 className="text-xl font-semibold mt-8 mb-3 text-white">
@@ -434,7 +434,7 @@ export default function VoiceJournalingPage() {
             How long should a voice journal entry be?
           </h3>
           <p className="text-base text-[#A0A0B8] leading-[1.8] mb-5">
-            60 seconds is enough to get a meaningful brain dump. Most AI voice journaling apps, including Acuity, are designed around this micro-habit approach. The key is consistency over length — a 60-second entry every night beats a 20-minute session once a month.
+            Even a short entry is enough to get a meaningful brain dump. Most AI voice journaling apps, including Acuity, are designed around this micro-habit approach. The key is consistency over length — a brief entry every night beats a 20-minute session once a month.
           </p>
 
           <h3 className="text-xl font-semibold mt-8 mb-3 text-white">
@@ -448,7 +448,7 @@ export default function VoiceJournalingPage() {
             What is the best voice journaling app?
           </h3>
           <p className="text-base text-[#A0A0B8] leading-[1.8] mb-5">
-            Acuity is a voice journaling app that combines AI transcription with automatic task extraction, mood tracking, mental pattern detection, and weekly AI reports. It turns a 60-second nightly brain dump into structured insights about your life, goals, and emotional patterns. It costs $12.99/month with a 30-day free trial.
+            Acuity is a voice journaling app that combines AI transcription with automatic task extraction, mood tracking, mental pattern detection, and weekly AI reports. It turns a nightly voice brain dump into structured insights about your life, goals, and emotional patterns. It costs $12.99/month with a 30-day free trial.
           </p>
 
           {/* ──── Bottom CTA ──── */}
@@ -457,7 +457,7 @@ export default function VoiceJournalingPage() {
               Start voice journaling tonight
             </h2>
             <p className="text-[#A0A0B8] mb-6 max-w-md mx-auto">
-              Acuity turns a 60-second nightly brain dump into tasks, mood tracking, pattern detection, and weekly AI reports. 30-day free trial.
+              Acuity turns a nightly voice brain dump into tasks, mood tracking, pattern detection, and weekly AI reports. 30-day free trial.
             </p>
             <Link
               href="/auth/signup?utm_campaign=voice-journaling-guide"

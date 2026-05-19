@@ -19,7 +19,7 @@ export const reactivationFriction: TrialEmailTemplate = {
       <tr>
         <td style="padding-bottom:20px;">
           <p style="margin:0;font-size:16px;color:#D8D8E8;line-height:1.7;">
-            You signed up for Acuity but haven't done your first 60-second debrief yet. That's 100% normal — most people hesitate the first time.
+            You signed up for Acuity but haven't done your first debrief yet. That's 100% normal — most people hesitate the first time.
           </p>
         </td>
       </tr>
@@ -45,7 +45,7 @@ export const reactivationFriction: TrialEmailTemplate = {
       </tr>
       <tr>
         <td style="padding-bottom:8px;">
-          ${trialButton(appUrl, "Try it now (60 seconds)")}
+          ${trialButton(appUrl, "Try it now")}
         </td>
       </tr>
       <tr>

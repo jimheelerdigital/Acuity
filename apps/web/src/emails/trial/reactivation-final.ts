@@ -26,7 +26,7 @@ export const reactivationFinal: TrialEmailTemplate = {
       <tr>
         <td style="padding-bottom:20px;">
           <p style="margin:0;font-size:16px;color:#D8D8E8;line-height:1.7;">
-            Your trial is halfway done. If you record once in the next 3 days, you'll still get a weekly report on Sunday. One honest 60 seconds is all it takes.
+            Your trial is halfway done. If you record once in the next 3 days, you'll still get a weekly report on Sunday. One honest recording is all it takes.
           </p>
         </td>
       </tr>
@@ -52,7 +52,7 @@ export const reactivationFinal: TrialEmailTemplate = {
     return trialLayout({
       content,
       unsubscribeUrl: v.unsubscribeUrl,
-      preheader: "One honest 60 seconds still gets you a Sunday report.",
+      preheader: "One honest recording still gets you a Sunday report.",
     });
   },
 };

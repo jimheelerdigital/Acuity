@@ -146,7 +146,7 @@ export default function DecodedPage() {
       {/* ───── PRE-HOW-IT-WORKS CTA ───── */}
       <MidPageCTA
         headline="Ready to find out what your subconscious has been trying to tell you?"
-        subheadline="No card. 90 seconds to set up. · cancel anytime"
+        subheadline="No card. Quick setup. · cancel anytime"
         utmCampaign={UTM}
       />
 
@@ -157,7 +157,7 @@ export default function DecodedPage() {
             label: "Step 1",
             title: "Speak",
             description:
-              "Talk for 60 seconds every day. No structure. No prompts. Just whatever's on your mind.",
+              "Talk every day. No structure. No prompts. Just whatever's on your mind.",
           },
           {
             label: "Step 2",
@@ -249,7 +249,7 @@ export default function DecodedPage() {
       {/* ───── MID-PAGE CTA ───── */}
       <MidPageCTA
         headline="What would you do differently if you could finally see your blind spots?"
-        subheadline="No card. 90 seconds to set up. · cancel anytime"
+        subheadline="No card. Quick setup. · cancel anytime"
         utmCampaign={UTM}
       />
 

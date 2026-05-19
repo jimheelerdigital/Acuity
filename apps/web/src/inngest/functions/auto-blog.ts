@@ -1222,7 +1222,7 @@ function buildSystemPrompt(
 CURRENT YEAR: ${currentYear}. Never reference ${currentYear - 1} or ${currentYear - 2} as the current year. All "best of" or "top X in [year]" content must use ${currentYear}. Do not use outdated years in titles, headings, or body copy.
 
 PRODUCT CONTEXT:
-- Users do a 60-second voice entry (called a "brain dump" in public copy, "debrief" internally)
+- Users do a short voice entry (called a "brain dump" in public copy, "debrief" internally)
 - Brain dumps can happen any time of day — never frame as nightly/evening-only
 - AI extracts tasks, tracks goals, detects mood patterns
 - Weekly report every Sunday: 400-word narrative of the user's week
@@ -1252,7 +1252,7 @@ CTA POLICY:
 ${
     topic.searchIntent === "informational" ||
     topic.searchIntent === "problem-solving"
-      ? `INCLUDE a CTA around 2/3 of the way down. Phrase as natural next step. Example: "If you've read this far, Acuity is basically what this article describes — a 60-second voice entry that pulls out your tasks and tracks the goals you keep circling. First 100 members get 30 days free. ${spotsLeft} spots left." Never CTA in first 40% of post.`
+      ? `INCLUDE a CTA around 2/3 of the way down. Phrase as natural next step. Example: "If you've read this far, Acuity is basically what this article describes — a voice entry that pulls out your tasks and tracks the goals you keep circling. First 100 members get 30 days free. ${spotsLeft} spots left." Never CTA in first 40% of post.`
       : `NO CTA — this topic is a loose tangent. End with 2-3 internal links to related posts.`
   }
 

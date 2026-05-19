@@ -16,7 +16,7 @@ const WHO_FEATURED = [
   { href: "/for/decoded", title: "Life decoded", description: "Reveal the subconscious patterns running your life" },
   { href: "/for/sleep", title: "Sleep", description: "Give your racing thoughts somewhere to go" },
   { href: "/for/weekly-report", title: "Weekly report & Life Matrix", description: "Your week, written by AI. Your life, mapped." },
-  { href: "/for/founders", title: "Founders & executives", description: "The 60-second debrief for high performers" },
+  { href: "/for/founders", title: "Founders & executives", description: "The daily debrief for high performers" },
 ];
 
 const WHO_MENTAL = [
@@ -1139,7 +1139,7 @@ export function LandingPage() {
                   </div>
                   {/* Row 2: Subtext + secondary App Store link */}
                   <p className="text-xs text-[#A0A0B8]">
-                    No card. 90 seconds to set up.
+                    No card. Quick setup.
                   </p>
                   <div className="mt-3 opacity-40 hover:opacity-70 transition-opacity scale-75 origin-left">
                     <AppStoreBadge />
@@ -1378,7 +1378,7 @@ export function LandingPage() {
                   </div>
                   <h3 className="text-3xl font-bold sm:text-4xl">Record</h3>
                   <p className="mt-4 text-lg text-[#A0A0B8] leading-relaxed max-w-md">
-                    Hit record. Speak freely for 60 seconds about your day, your
+                    Hit record. Speak freely about your day, your
                     worries, your wins — whatever comes to mind.
                   </p>
               </div>
@@ -1634,7 +1634,7 @@ export function LandingPage() {
                   <span className="text-[#A0A0B8]">/month</span>
                 </p>
                 <p className="mt-2 text-sm text-[#A0A0B8]">
-                  No card. 90 seconds to set up.
+                  No card. Quick setup.
                 </p>
 
                 <ul className="mt-8 space-y-3 text-sm text-[#A0A0B8]">
@@ -1697,11 +1697,11 @@ export function LandingPage() {
         <div className="mx-auto max-w-3xl mt-8" data-animate="">
             <div className="rounded-2xl border border-white/[0.06] bg-[#1E1C1A] divide-y divide-white/[0.06]">
               {[
-                { q: "What is Acuity and how does it work?", a: "Acuity is an AI voice journal. You talk for 60 seconds about whatever\u2019s on your mind \u2014 tasks, worries, wins, random thoughts. Within minutes, your tasks are on a list, your mood is scored, and your goals are tracked. Every Sunday, a 400-word story of your week lands on your phone. You talk. Acuity does the rest." },
+                { q: "What is Acuity and how does it work?", a: "Acuity is an AI voice journal. You just open the app and talk about whatever\u2019s on your mind \u2014 tasks, worries, wins, random thoughts. Within minutes, your tasks are on a list, your mood is scored, and your goals are tracked. Every Sunday, a 400-word story of your week lands on your phone. You talk. Acuity does the rest." },
                 { q: "Is this actually private?", a: "Your audio is deleted within 24 hours of transcription. Transcripts are encrypted at rest. We use OpenAI Whisper for transcription and Anthropic Claude for analysis — under their API terms, your data is processed and returned, never used to train their models. We never sell your data." },
                 { q: "Do I have to use it every day?", a: "No. But people who record 4+ times in week one see dramatically better weekly reports. The AI needs a few data points before it can spot patterns. Most people settle into 4\u20135 recordings per week." },
                 { q: "What if I don't know what to say?", a: "That's the point. Just talk. Say whatever is on your mind. The messier, the better — Acuity pulls the signal out of the noise. There are no prompts to answer and no format to follow." },
-                { q: "Is this just a journaling app?", a: "No. You don\u2019t write anything. You talk for 60 seconds and within minutes your tasks are extracted, your mood is scored, and your goals are tracked. A journal records what you write down. Acuity catches what you\u2019d otherwise forget." },
+                { q: "Is this just a journaling app?", a: "No. You don\u2019t write anything. You just open the app and talk, and within minutes your tasks are extracted, your mood is scored, and your goals are tracked. A journal records what you write down. Acuity catches what you\u2019d otherwise forget." },
                 { q: "How is Acuity different from voice notes or other recording apps?", a: "Voice notes store audio. Acuity processes it. Within minutes, your recording becomes a task list, a mood score, a goal-tracking update, and a data point that feeds into your weekly report. The recording is the input, not the output." },
                 { q: "How much does Acuity cost?", a: "$12.99/month after a 30-day free trial. No credit card required to start. Cancel anytime with one tap." },
                 { q: "What AI does Acuity use?", a: "OpenAI Whisper for speech-to-text (accurate even when you mumble). Anthropic Claude for extraction, scoring, and report writing. We name the stack because you should know what's running under the hood." },
@@ -1735,13 +1735,13 @@ export function LandingPage() {
 
             <div className="relative">
               <p className="text-sm font-medium text-[#E8DDD0] mb-4 uppercase tracking-wider">
-                No card. 90 seconds to set up.
+                No card. Quick setup.
               </p>
               <h2 className="text-3xl font-bold sm:text-5xl tracking-tight">
                 Your first debrief takes
                 <br />
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-indigo-400">
-                  60 seconds.
+                  Just talk.
                 </span>
               </h2>
               <p className="mt-5 text-[#A0A0B8] text-lg max-w-md mx-auto">
@@ -1780,7 +1780,7 @@ export function LandingPage() {
                 </span>
               </div>
               <p className="mt-3 text-sm text-[#A0A0B8] max-w-xs leading-relaxed">
-                Talk for 60 seconds. Get a clearer picture of your life. Your daily debrief.
+                Just talk. Get a clearer picture of your life. Your daily debrief.
               </p>
               <div className="mt-6 flex flex-col gap-3">
                 <AppStoreBadge />
@@ -1878,7 +1878,7 @@ const comparisons = [
 const stats = STATS_STRIP.map((s) => ({ ...s }));
 
 const tickerItems = [
-  "✦ 60-second daily debrief",
+  "✦ Daily voice debrief",
   "✦ Tasks pulled from your voice",
   "✦ Goals tracked across entries",
   "✦ Mood scored every entry",
@@ -1892,7 +1892,7 @@ const featureData = [
   {
     iconKey: "mic" as const,
     title: "The Daily Debrief",
-    desc: "No typing, no prompts. Talk about your day for 60 seconds — whenever suits you. That's it.",
+    desc: "No typing, no prompts. Talk about your day — whenever suits you. That's it.",
   },
   {
     iconKey: "tasks" as const,

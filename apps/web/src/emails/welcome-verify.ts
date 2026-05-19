@@ -60,7 +60,7 @@ export function welcomeVerifyEmail(
         </td>
       </tr>
       ${para("Once you're verified, here's what happens next:")}
-      ${para("Open the app, hit record, and talk for 60 seconds. Whatever's in your head. Out loud. Don't try to make it smart.")}
+      ${para("Open the app, hit record, and just talk. Whatever's in your head. Out loud. Don't try to make it smart.")}
       ${para("What you'll get back: a clean list of tasks Acuity pulled from what you said, the goals you mentioned (even in passing), and by Sunday, a 400-word narrative of your week that reads like someone was paying attention.")}
       ${para("Quick setup, then your first debrief.")}
       <tr>

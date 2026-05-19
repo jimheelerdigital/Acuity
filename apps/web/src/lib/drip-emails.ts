@@ -102,7 +102,7 @@ function email2(rawName: string): string {
           <tr>
             <td style="padding-bottom:24px;">
               <p style="margin:0;font-size:16px;color:#A0A0B8;line-height:1.7;">
-                Every night, you open Acuity and talk for 60 seconds. No prompts, no structure — just whatever's on your mind. Then AI does the rest.
+                Every night, you just open the app and talk. No prompts, no structure — just whatever's on your mind. Then AI does the rest.
               </p>
             </td>
           </tr>
@@ -114,10 +114,10 @@ function email2(rawName: string): string {
                 <tr>
                   <td style="background-color:#13131F;border-radius:12px;padding:32px;">
                     <p style="margin:0 0 20px 0;font-size:16px;color:#FFFFFF;font-weight:700;">
-                      The 60-second core loop:
+                      The core loop:
                     </p>
                     <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;">
-                      ${bullet("You talk for 60 seconds — about your day, your worries, your wins")}
+                      ${bullet("You talk — about your day, your worries, your wins")}
                       ${bullet("AI extracts your tasks, goals, mood, and themes automatically")}
                       ${bullet("Everything is organized into a clean dashboard while you sleep")}
                       ${bullet("Every Sunday, you get a weekly narrative report — written by AI, about your week")}
@@ -132,7 +132,7 @@ function email2(rawName: string): string {
           <tr>
             <td style="padding-bottom:24px;">
               <p style="margin:0 0 16px 0;font-size:16px;color:#FFFFFF;font-weight:700;">
-                What you'll see after a single 60-second debrief:
+                What you'll see after a single debrief:
               </p>
             </td>
           </tr>
@@ -181,7 +181,7 @@ function email2(rawName: string): string {
           <tr>
             <td style="padding-bottom:8px;">
               <p style="margin:0;font-size:16px;color:#A0A0B8;line-height:1.7;">
-                All from 60 seconds of talking. No typing. No effort. Just your voice.
+                All from just talking. No typing. No effort. Just your voice.
               </p>
             </td>
           </tr>
@@ -410,7 +410,7 @@ function email5(rawName: string): string {
                       What you're about to get access to:
                     </p>
                     <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;">
-                      ${bullet("A 60-second nightly debrief that captures everything on your mind")}
+                      ${bullet("A nightly debrief that captures everything on your mind")}
                       ${bullet("AI that extracts your tasks, tracks your goals, and logs your mood")}
                       ${bullet("A weekly narrative report that reads like a story about your life")}
                       ${bullet("A Life Matrix that scores 6 areas of your life and tracks them over time")}
@@ -448,7 +448,7 @@ function email5(rawName: string): string {
           <tr>
             <td style="padding-bottom:24px;">
               <p style="margin:0;font-size:16px;color:#FFFFFF;line-height:1.7;font-weight:600;">
-                Your first debrief takes 60 seconds. Start today.
+                Your first debrief takes no time at all. Start today.
               </p>
             </td>
           </tr>

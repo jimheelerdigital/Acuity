@@ -183,7 +183,7 @@ function buildWelcomeEmail(name: string | null): string {
                       <tr>
                         <td style="padding:10px 0;font-size:15px;color:#A0A0B8;line-height:1.6;">
                           <span style="color:#7C5CFC;font-weight:bold;margin-right:10px;font-size:18px;">&#8226;</span>
-                          60-second nightly voice brain dump
+                          nightly voice brain dump
                         </td>
                       </tr>
                       <tr>

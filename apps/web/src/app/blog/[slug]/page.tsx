@@ -434,7 +434,7 @@ function BlogCta() {
           Brain dump daily. Get your life back.
         </h2>
         <p className="text-[#A0A0B8] mb-6 max-w-md mx-auto">
-          Try Acuity free for 14 days. 60 seconds a night. No typing. Just
+          Try Acuity free for 14 days. Just talk.. No typing. Just
           talk.
         </p>
         <Link

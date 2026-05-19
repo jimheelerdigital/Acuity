@@ -347,7 +347,7 @@ const DROPDOWN_FEATURED = [
   {
     href: "/for/founders",
     title: "The Builder",
-    description: "The 60-second debrief for founders and high performers.",
+    description: "The daily debrief for founders and high performers.",
   },
 ];
 
@@ -673,7 +673,7 @@ export function PricingSection({
                 <span className="text-[#A0A0B8]">/month</span>
               </p>
               <p className="mt-2 text-sm text-[#A0A0B8]">
-                30-day free trial &middot; No card. 90 seconds to set up.
+                30-day free trial &middot; No card. Quick setup.
               </p>
 
               <ul className="mt-8 space-y-3 text-sm text-[#A0A0B8]">
@@ -956,7 +956,7 @@ export function HowItWorksSection({ steps, ...phoneProps }: HowItWorksConfig) {
               How it works
             </h2>
             <p className="mt-4 text-[#A0A0B8] text-lg">
-              Three steps. Sixty seconds. Zero effort.
+              Three steps. Zero effort.
             </p>
           </div>
         </Reveal>
@@ -971,7 +971,7 @@ export function HowItWorksSection({ steps, ...phoneProps }: HowItWorksConfig) {
                 </div>
                 <h3 className="text-3xl font-bold sm:text-4xl">{steps[0]?.title || "Record"}</h3>
                 <p className="mt-4 text-lg text-[#A0A0B8] leading-relaxed max-w-md">
-                  {steps[0]?.description || "Hit record. Speak freely for 60 seconds about your day, your worries, your wins — whatever comes to mind."}
+                  {steps[0]?.description || "Hit record. Speak freely about your day, your worries, your wins — whatever comes to mind."}
                 </p>
               </Reveal>
             </div>
@@ -1071,7 +1071,7 @@ export function CTABanner({
                 {buttonText}
               </a>
               <span className="text-sm text-[#A0A0B8]">
-                Then $12.99/month &middot; No card. 90 seconds to set up.
+                Then $12.99/month &middot; No card. Quick setup.
               </span>
             </div>
           </div>
@@ -1769,7 +1769,7 @@ export function SocialProofBar() {
 export function TrustStrip() {
   const items = [
     "Audio deleted within 24hrs",
-    "No card. 90 seconds to set up.",
+    "No card. Quick setup.",
     "Cancel anytime",
     "30-day free trial",
   ];
@@ -1811,7 +1811,7 @@ export function FAQSection() {
     },
     {
       q: "Is this just a journaling app?",
-      a: "No. You don't write anything. You talk for 60 seconds and within minutes your tasks are extracted, your mood is scored, and every Sunday you get a written story of your week.",
+      a: "No. You don't write anything. You just open the app and talk, and within minutes your tasks are extracted, your mood is scored, and every Sunday you get a written story of your week.",
     },
   ];
 

@@ -54,7 +54,7 @@ export default function TherapyPage() {
           </Reveal>
           <Reveal delay={1}>
             <p className="mt-6 text-lg text-[#B0A898] leading-relaxed max-w-2xl mx-auto">
-              Acuity listens to your 60-second daily debrief, tracks your emotional
+              Acuity listens to your daily debrief, tracks your emotional
               patterns, and writes your weekly mental health report — for less than
               the cost of one therapy copay.
             </p>
@@ -94,7 +94,7 @@ export default function TherapyPage() {
       {/* ───── SOLUTION ───── */}
       <SolutionSection
         headline="Acuity fills the 6 days between sessions."
-        body="Every day you speak freely for 60 seconds. Acuity tracks your mood, detects emotional patterns, flags recurring themes, and builds a mental health timeline that compounds over time. Show up to therapy with 7 days of actual data — not just how you feel in the moment."
+        body="Every day you speak freely. Acuity tracks your mood, detects emotional patterns, flags recurring themes, and builds a mental health timeline that compounds over time. Show up to therapy with 7 days of actual data — not just how you feel in the moment."
       />
 
       <TrustStrip />
@@ -102,7 +102,7 @@ export default function TherapyPage() {
       {/* ───── PRE-HOW-IT-WORKS CTA ───── */}
       <MidPageCTA
         headline="Ready to show up to your next session with real data?"
-        subheadline="No card. 90 seconds to set up. · cancel anytime"
+        subheadline="No card. Quick setup. · cancel anytime"
         utmCampaign={UTM}
       />
 
@@ -142,7 +142,7 @@ export default function TherapyPage() {
       {/* ───── MID-PAGE CTA ───── */}
       <MidPageCTA
         headline="What if your therapist could see your emotional data from the last 7 days?"
-        subheadline="No card. 90 seconds to set up. · cancel anytime"
+        subheadline="No card. Quick setup. · cancel anytime"
         utmCampaign={UTM}
       />
 

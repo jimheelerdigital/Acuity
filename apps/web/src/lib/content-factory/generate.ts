@@ -9,7 +9,7 @@ const BRAND_SYSTEM_PROMPT = `You are writing content for Acuity — a nightly vo
 Tagline: "Debrief daily. See your life clearly."
 
 Core product moments to reference:
-- The 60-second daily debrief (voice journaling)
+- The daily voice debrief (voice journaling)
 - The weekly insight report (the "Day 7 moment")
 - The Life Matrix (tracking 6 life domains)
 - The monthly memoir PDF

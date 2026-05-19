@@ -57,6 +57,12 @@ Brand voice rules:
 - The hero conversion driver is the weekly report — a 400-word narrative delivered every Sunday.
 - Use the customer's exact language — if the phrase can't be found in a Reddit thread, it doesn't belong.
 
+Duration rules:
+- NEVER mention a specific recording duration like "60 seconds" or "90 seconds" or "one minute" in body copy.
+- Instead use phrases like: "just open the app and talk", "talk for as long or as little as you want", "just talk — there's no time limit".
+- The tagline "one minute a day" is acceptable in headlines and CTAs only, but body copy should never lock users into a specific time.
+- For setup time, say "set up in under two minutes" or "quick setup" instead of "90 seconds to set up".
+
 Copy quality rules:
 - Headlines: punchy, 8 words or fewer. Hit the emotional nerve from the topic brief. Not generic — a stranger should be able to guess which ad this page belongs to.
 - Subheadlines: 2-3 sentences that connect this specific pain point to how Acuity solves it. First sentence: acknowledge the pain or expand on the headline. Second sentence: explain what Acuity does about THIS problem specifically (mention specific features — voice recording, task extraction, mood tracking, pattern detection, weekly report — but only the ones relevant to this angle). Third sentence (optional): the concrete outcome. This is the ONLY text below the headline, so it must do heavy lifting — it should feel specific to this landing page's angle, not like generic copy that could appear on any page.

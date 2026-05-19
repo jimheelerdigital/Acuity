@@ -2,7 +2,7 @@
  * Step 1 — Welcome.
  *
  * Intent: warm handshake before the product pitch (that's step 2).
- * Signals that the flow is short (≈ 90 seconds) and that the
+ * Signals that the flow is short (a couple of minutes) and that the
  * questions have a purpose (shape what Acuity pays attention to).
  * No captured data, no interaction beyond the shell's Continue
  * button. onboarding_started fires on mount from the shell.
@@ -23,8 +23,7 @@ export function Step1Welcome() {
       </h1>
 
       <p className="mt-5 text-base leading-relaxed text-zinc-600 dark:text-zinc-300 sm:text-lg">
-        Before your first recording, a short walk-through. About ninety
-        seconds. Seven questions, most of them quick.
+        Before your first recording, a short walk-through. Just a couple of minutes. Seven questions, most of them quick.
       </p>
 
       <p className="mt-4 text-base leading-relaxed text-zinc-600 dark:text-zinc-300 sm:text-lg">

@@ -32,7 +32,7 @@ export const valueRecap: TrialEmailTemplate = {
       <tr>
         <td style="padding-bottom:20px;">
           <p style="margin:0;font-size:16px;color:#D8D8E8;line-height:1.7;">
-            Twelve days of 60-second debriefs. This is what's in your account right now.
+            Twelve days of nightly debriefs. This is what's in your account right now.
           </p>
         </td>
       </tr>

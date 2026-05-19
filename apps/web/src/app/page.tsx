@@ -14,7 +14,7 @@ const jsonLd = {
       "@type": "SoftwareApplication",
       name: "Acuity",
       description:
-        "The AI voice journal that turns your daily debrief into action. Task extraction, goal tracking, mood tracking, pattern detection, and weekly reports — all from a 60-second voice recording.",
+        "The AI voice journal that turns your daily debrief into action. Task extraction, goal tracking, mood tracking, pattern detection, and weekly reports — all from a daily voice recording.",
       url: "https://getacuity.io",
       applicationCategory: "HealthApplication",
       operatingSystem: "Web, iOS, Android",
@@ -37,7 +37,7 @@ const jsonLd = {
           name: "What is Acuity?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "Acuity is an AI voice journal where you speak freely for 60 seconds each day. AI automatically extracts your tasks, tracks your goals, detects life patterns, and writes a weekly report about your week.",
+            text: "Acuity is an AI voice journal where you speak freely each day. AI automatically extracts your tasks, tracks your goals, detects life patterns, and writes a weekly report about your week.",
           },
         },
         {
@@ -45,7 +45,7 @@ const jsonLd = {
           name: "How does Acuity work?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "Open Acuity any time of day, hit record, and talk for 60 seconds. The AI voice journal transcribes your daily debrief, extracts tasks, tracks goals, scores your mood, detects patterns, and every Sunday delivers your weekly report.",
+            text: "Open Acuity any time of day, hit record, and just open the app and talk. The AI voice journal transcribes your daily debrief, extracts tasks, tracks goals, scores your mood, detects patterns, and every Sunday delivers your weekly report.",
           },
         },
         {
@@ -53,7 +53,7 @@ const jsonLd = {
           name: "How much does Acuity cost?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "Acuity costs $12.99/month with a 14-day free trial. No card required. 90 seconds to set up.",
+            text: "Acuity costs $12.99/month with a 14-day free trial. No card required. Quick setup.",
           },
         },
         {
@@ -92,9 +92,9 @@ export default async function HomePage() {
           The client-rendered LandingPage component overlays this. */}
       <div aria-hidden="true" className="sr-only">
         <h1>Acuity — One Minute a Day. A Life of Clarity.</h1>
-        <p>The AI voice journal that turns your daily debrief into action. Record a 60-second debrief any time of day. AI extracts your tasks, tracks your goals, detects life patterns, and delivers a weekly report every Sunday.</p>
+        <p>The AI voice journal that turns your daily debrief into action. Record a debrief any time of day. AI extracts your tasks, tracks your goals, detects life patterns, and delivers a weekly report every Sunday.</p>
         <h2>How Acuity Works</h2>
-        <p>Step 1: Record your day in 60 seconds. Step 2: AI extracts tasks, goals, and mood. Step 3: Get your weekly report every Sunday.</p>
+        <p>Step 1: Record your day. Step 2: AI extracts tasks, goals, and mood. Step 3: Get your weekly report every Sunday.</p>
         <h2>What You Get</h2>
         <ul>
           <li>Tasks extracted from your voice automatically</li>

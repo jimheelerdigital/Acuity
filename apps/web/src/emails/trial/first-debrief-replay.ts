@@ -28,7 +28,7 @@ export const firstDebriefReplay: TrialEmailTemplate = {
       <tr>
         <td style="padding-bottom:20px;">
           <p style="margin:0;font-size:16px;color:#D8D8E8;line-height:1.7;">
-            You got it out of your head. That 60 seconds is the whole product.
+            You got it out of your head. That recording is the whole product.
           </p>
         </td>
       </tr>
@@ -66,7 +66,7 @@ export const firstDebriefReplay: TrialEmailTemplate = {
     return trialLayout({
       content,
       unsubscribeUrl: v.unsubscribeUrl,
-      preheader: "Here's what Acuity caught from your first 60 seconds.",
+      preheader: "Here's what Acuity caught from your first recording.",
     });
   },
 };

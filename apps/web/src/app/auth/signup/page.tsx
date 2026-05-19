@@ -201,7 +201,7 @@ function SignUpForm() {
           <div className="lg:hidden mb-8 text-center">
             <h1 className="text-2xl font-bold text-[#F5EDE4]">Start your free trial</h1>
             <p className="mt-2 text-sm text-[#F5EDE4]/60 leading-relaxed">
-              Talk for one minute. AI handles the rest — tasks, goals, patterns, and your weekly report.
+              Just open the app and talk. AI handles the rest — tasks, goals, patterns, and your weekly report.
             </p>
           </div>
 
