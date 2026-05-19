@@ -101,11 +101,16 @@ export async function POST(req: NextRequest) {
 
   const isAppInstall = (experiment as Record<string, unknown>).campaignType === "app_install";
 
+  // Determine campaign objective early for validation
+  const expCampaignObjective = (experiment as Record<string, unknown>).campaignObjective as string | null;
+  const isTrafficObjective = !isAppInstall && (!expCampaignObjective || expCampaignObjective === "OUTCOME_TRAFFIC");
+
   if (!project.metaAdAccountId) {
     return NextResponse.json({ error: "Project missing Meta Ad Account ID" }, { status: 400 });
   }
-  if (!isAppInstall && !project.metaPixelId) {
-    return NextResponse.json({ error: "Project missing Meta Pixel ID" }, { status: 400 });
+  // Pixel ID only required for conversion campaigns, not traffic
+  if (!isAppInstall && !isTrafficObjective && !project.metaPixelId) {
+    return NextResponse.json({ error: "Project missing Meta Pixel ID (required for conversion campaigns)" }, { status: 400 });
   }
 
   const metaPageId = (project as Record<string, unknown>).metaPageId as string | null;
@@ -175,9 +180,11 @@ export async function POST(req: NextRequest) {
     const month = new Date().toLocaleDateString("en-US", { month: "short", year: "numeric" });
     const campaignName = (experiment as Record<string, unknown>).campaignName as string
       || `${project.name} | ${topicSlug} | ${month}`;
+    // Default to OUTCOME_TRAFFIC for website campaigns — delivers immediately.
+    // OUTCOME_SALES requires 50+ weekly conversion events on the pixel.
     const campaignObjective = isAppInstall
       ? "OUTCOME_APP_PROMOTION"
-      : ((experiment as Record<string, unknown>).campaignObjective as string || project.conversionObjective);
+      : ((experiment as Record<string, unknown>).campaignObjective as string || "OUTCOME_TRAFFIC");
 
     console.log("[adlab-launch] Creating campaign:", { campaignName, campaignObjective });
 
@@ -209,11 +216,13 @@ export async function POST(req: NextRequest) {
     const audience = project.targetAudience as Record<string, unknown>;
     const expRecord = experiment as Record<string, unknown>;
     const adsetBudget = (expRecord.adSetDailyBudgetCents as number) || project.dailyBudgetCentsPerVariant;
-    const convEvent = (expRecord.optimizationEvent as string) || project.conversionEvent || "Lead";
+    const isTraffic = campaignObjective === "OUTCOME_TRAFFIC";
+    const convEvent = isTraffic ? undefined : ((expRecord.optimizationEvent as string) || project.conversionEvent || "Lead");
+    const optimizationGoal = isTraffic ? "LINK_CLICKS" : "OFFSITE_CONVERSIONS";
     const dateStr = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
     const adsetName = `${project.name} | ${topicSlug} | ${dateStr}`;
 
-    console.log("[adlab-launch] Creating single ad set:", { adsetName, adsetBudget, convEvent });
+    console.log("[adlab-launch] Creating single ad set:", { adsetName, adsetBudget, optimizationGoal, convEvent });
 
     let adsetId: string;
     try {
@@ -224,12 +233,13 @@ export async function POST(req: NextRequest) {
           campaignId,
           name: adsetName,
           dailyBudgetCents: adsetBudget,
-          pixelId: project.metaPixelId!,
+          optimizationGoal,
+          pixelId: isTraffic ? undefined : project.metaPixelId!,
           conversionEvent: convEvent,
           targetAudience: {
             ageMin: (audience.ageMin as number) || 25,
             ageMax: (audience.ageMax as number) || 55,
-            geo: (audience.geo as string[]) || ["US"],
+            geo: (audience.geo as string[]) || ["US", "CA", "GB"],
           },
           targetInterests: projectInterests || undefined,
           placementType,

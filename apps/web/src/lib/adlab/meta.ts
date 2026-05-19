@@ -103,8 +103,12 @@ interface AdSetParams {
   campaignId: string;
   name: string;
   dailyBudgetCents: number;
-  pixelId: string;
-  conversionEvent: string;
+  /** Pixel ID — required for conversion campaigns, optional for traffic */
+  pixelId?: string;
+  /** Conversion event — required for conversion campaigns, optional for traffic */
+  conversionEvent?: string;
+  /** Optimization goal — defaults to OFFSITE_CONVERSIONS for back-compat */
+  optimizationGoal?: string;
   targetAudience: {
     ageMin?: number;
     ageMax?: number;
@@ -152,26 +156,38 @@ export async function createAdSet(params: AdSetParams) {
     placementFields.publisher_platforms = ["facebook", "instagram"];
   }
 
-  // App install campaigns use different optimization, destination, and promoted_object
+  // Determine optimization goal and promoted object based on campaign type
   const isAppInstall = !!params.appInstall;
+  const optimizationGoal = isAppInstall
+    ? "APP_INSTALLS"
+    : (params.optimizationGoal || "OFFSITE_CONVERSIONS");
+
+  // Build promoted_object only when needed
+  let promotedObject: Record<string, unknown> | undefined;
+  if (isAppInstall) {
+    promotedObject = {
+      application_id: params.appInstall!.applicationId,
+      object_store_url: params.appInstall!.objectStoreUrl,
+    };
+  } else if (optimizationGoal === "OFFSITE_CONVERSIONS" && params.pixelId && params.conversionEvent) {
+    // Only include pixel/conversion for conversion-optimized campaigns
+    promotedObject = {
+      pixel_id: params.pixelId,
+      custom_event_type: params.conversionEvent,
+    };
+  }
+  // Traffic (LINK_CLICKS) campaigns: no promoted_object needed
+
   const payload: Record<string, unknown> = {
     name: params.name,
     campaign_id: params.campaignId,
     daily_budget: params.dailyBudgetCents, // Meta API takes cents
-    optimization_goal: isAppInstall ? "APP_INSTALLS" : "OFFSITE_CONVERSIONS",
+    optimization_goal: optimizationGoal,
     billing_event: "IMPRESSIONS",
     bid_strategy: "LOWEST_COST_WITHOUT_CAP",
     destination_type: isAppInstall ? "APP" : "WEBSITE",
     start_time: new Date().toISOString(),
-    promoted_object: isAppInstall
-      ? {
-          application_id: params.appInstall!.applicationId,
-          object_store_url: params.appInstall!.objectStoreUrl,
-        }
-      : {
-          pixel_id: params.pixelId,
-          custom_event_type: params.conversionEvent,
-        },
+    ...(promotedObject ? { promoted_object: promotedObject } : {}),
     targeting,
     status: "PAUSED",
     ...placementFields,

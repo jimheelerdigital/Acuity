@@ -17,6 +17,7 @@ export default function NewExperimentPage() {
   const [projectId, setProjectId] = useState("");
   const [topicBrief, setTopicBrief] = useState(searchParams.get("brief") || "");
   const [campaignType, setCampaignType] = useState("website");
+  const [campaignObjective, setCampaignObjective] = useState("OUTCOME_TRAFFIC");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [researching, setResearching] = useState(false);
@@ -44,7 +45,7 @@ export default function NewExperimentPage() {
       const createRes = await fetch("/api/admin/adlab/experiments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId, topicBrief, campaignType }),
+        body: JSON.stringify({ projectId, topicBrief, campaignType, campaignObjective: campaignType === "website" ? campaignObjective : undefined }),
       });
 
       if (!createRes.ok) {
@@ -143,9 +144,28 @@ export default function NewExperimentPage() {
               <p className="mt-1 text-xs text-[#A0A0B8]/60">
                 {campaignType === "app_install"
                   ? "Links to App Store. Uses OUTCOME_APP_PROMOTION objective."
-                  : "Links to landing page with UTM tracking. Uses website conversion objective."}
+                  : "Links to landing page with UTM tracking."}
               </p>
             </div>
+
+            {campaignType === "website" && (
+              <div>
+                <label className="block text-xs text-[#A0A0B8] mb-1.5">Campaign Objective</label>
+                <select
+                  value={campaignObjective}
+                  onChange={(e) => setCampaignObjective(e.target.value)}
+                  className="w-full rounded-lg border border-white/10 bg-[#1E1E2E] px-3 py-2 text-sm text-white outline-none focus:border-[#7C5CFC]"
+                >
+                  <option value="OUTCOME_TRAFFIC">Traffic (Link Clicks) — recommended</option>
+                  <option value="OUTCOME_SALES">Conversions (Complete Registration)</option>
+                </select>
+                <p className="mt-1 text-xs text-[#A0A0B8]/60">
+                  {campaignObjective === "OUTCOME_TRAFFIC"
+                    ? "Optimizes for link clicks. Best for new accounts and creative testing. Delivers immediately."
+                    : "Optimizes for conversions. Only use when your pixel has 50+ weekly conversion events — otherwise Meta won't deliver."}
+                </p>
+              </div>
+            )}
           </div>
 
           <button
