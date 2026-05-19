@@ -1859,6 +1859,7 @@ model AdLabProject {
   targetInterests           Json?
   imageEnabled              Boolean            @default(true)
   videoEnabled              Boolean            @default(false)
+  videoAvatars              Json               @default("[]")
   createdAt                 DateTime           @default(now())
   experiments               AdLabExperiment[]
 
@@ -1927,16 +1928,22 @@ model AdLabReferenceImage {
 }
 
 model AdLabAngle {
-  id             String            @id @default(cuid())
-  experimentId   String
-  experiment     AdLabExperiment   @relation(fields: [experimentId], references: [id], onDelete: Cascade)
-  hypothesis     String            @db.Text
-  targetPersona  String
-  valueSurface   AdLabValueSurface
-  researchNotes  String            @db.Text
-  score          Int               @default(0)
-  advanced       Boolean           @default(false)
-  creatives      AdLabCreative[]
+  id               String            @id @default(cuid())
+  experimentId     String
+  experiment       AdLabExperiment   @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  hypothesis       String            @db.Text
+  targetPersona    String
+  valueSurface     AdLabValueSurface
+  researchNotes    String            @db.Text
+  score            Int               @default(0)
+  advanced         Boolean           @default(false)
+  creatives        AdLabCreative[]
+  videoScriptText  String?           @db.Text
+  videoHookLine    String?
+  videoUrl         String?
+  videoAvatarId    String?
+  videoStatus      String?
+  heygenVideoId    String?
 
   @@index([experimentId])
   @@map("adlab_angles")

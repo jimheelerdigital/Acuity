@@ -385,7 +385,122 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    console.log(`[adlab-launch] Done. Created: ${created.length}/${launchableCreatives.length}, Errors: ${errors.length}`);
+    // ═══════════════════════════════════════════
+    // STEP 4: Create video ads — one per angle with a completed video
+    // ═══════════════════════════════════════════
+    const anglesWithVideo = experiment.angles.filter(
+      (a) => (a as Record<string, unknown>).videoStatus === "complete" && (a as Record<string, unknown>).videoUrl
+    );
+
+    if (anglesWithVideo.length > 0) {
+      console.log(`[adlab-launch] Creating ${anglesWithVideo.length} video ad(s)`);
+    }
+
+    for (let vi = 0; vi < anglesWithVideo.length; vi++) {
+      const angle = anglesWithVideo[vi];
+      const angleRecord = angle as Record<string, unknown>;
+      const videoUrl = angleRecord.videoUrl as string;
+      const hookLine = (angleRecord.videoHookLine as string) || slug(angle.hypothesis, 40);
+      const scriptText = (angleRecord.videoScriptText as string) || "";
+      const videoLabel = `video ${vi + 1}/${anglesWithVideo.length}`;
+
+      try {
+        await delay(1000);
+
+        // Upload video to Meta
+        console.log(`[adlab-launch] Uploading video for ${videoLabel}`);
+        let videoId: string;
+        try {
+          videoId = await withRetry(
+            () => meta.uploadVideo(videoUrl),
+            { label: `Video upload ${videoLabel}`, retryDelayMs: 10_000 }
+          );
+        } catch {
+          errors.push({ creativeId: `video-${angle.id}`, error: "Video upload to Meta failed" });
+          continue;
+        }
+
+        await delay(1000);
+
+        // Build destination URL
+        let adLinkUrl: string;
+        if (isAppInstall) {
+          adLinkUrl = APP_STORE_URL;
+        } else {
+          const baseUrl = effectiveLandingPage?.slug
+            ? `https://getacuity.io/for/${effectiveLandingPage.slug}`
+            : landingPageUrl!;
+          const linkUrl = new URL(baseUrl);
+          linkUrl.searchParams.set("utm_source", "meta");
+          linkUrl.searchParams.set("utm_medium", "paid");
+          linkUrl.searchParams.set("utm_campaign", experiment.id);
+          linkUrl.searchParams.set("utm_content", `video-${angle.id}`);
+          adLinkUrl = linkUrl.toString();
+        }
+
+        // Create ad creative on Meta (video)
+        const surface = angle.valueSurface;
+        let metaCreativeId: string;
+        try {
+          metaCreativeId = await withRetry(
+            () => meta.createAdCreative({
+              name: `[VIDEO] ${project.name} | ${surface}: ${slug(angle.hypothesis, 40)}`,
+              pageId: metaPageId!,
+              videoId,
+              headline: hookLine,
+              primaryText: scriptText.slice(0, 2000),
+              description: hookLine,
+              cta: isAppInstall ? "DOWNLOAD" : "LEARN_MORE",
+              linkUrl: adLinkUrl,
+            }),
+            { label: `Video ad creative ${videoLabel}` }
+          );
+        } catch (err) {
+          logMetaError(`Video ad creative ${videoLabel}`, err);
+          errors.push({ creativeId: `video-${angle.id}`, error: `Video ad creative failed: ${extractErrorDetail(err)}` });
+          continue;
+        }
+
+        await delay(1000);
+
+        // Create the ad in the same ad set
+        const adName = `[VIDEO] ${project.name} | ${slug(surface, 20)} | ${slug(angle.hypothesis, 30)}`;
+        let metaAdId: string;
+        try {
+          metaAdId = await withRetry(
+            () => meta.createAd({ name: adName, adsetId, creativeId: metaCreativeId }),
+            { label: `Video ad ${videoLabel}` }
+          );
+        } catch (err) {
+          logMetaError(`Video ad ${videoLabel}`, err);
+          errors.push({ creativeId: `video-${angle.id}`, error: `Video ad creation failed: ${extractErrorDetail(err)}` });
+          continue;
+        }
+
+        // Save to database — use the first creative from this angle as the reference
+        const refCreative = angle.creatives[0];
+        if (refCreative) {
+          await prisma.adLabAd.create({
+            data: {
+              creativeId: refCreative.id,
+              metaCampaignId: campaignId,
+              metaAdsetId: adsetId,
+              metaAdId,
+              status: "paused",
+              dailyBudgetCents: adsetBudget,
+            },
+          });
+        }
+
+        created.push({ creativeId: `video-${angle.id}`, adId: metaAdId, adsetId });
+        console.log(`[adlab-launch] Video ad ${vi + 1}/${anglesWithVideo.length} created: ${metaAdId}`);
+      } catch (err) {
+        logMetaError(`Unexpected error for ${videoLabel}`, err);
+        errors.push({ creativeId: `video-${angle.id}`, error: extractErrorDetail(err) });
+      }
+    }
+
+    console.log(`[adlab-launch] Done. Created: ${created.length}/${launchableCreatives.length + anglesWithVideo.length}, Errors: ${errors.length}`);
 
     // If ALL ads failed, clean up the orphaned campaign + ad set
     if (created.length === 0 && errors.length > 0) {

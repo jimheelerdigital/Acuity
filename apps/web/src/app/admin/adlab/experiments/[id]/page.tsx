@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Loader2, CheckCircle2, ChevronDown, ChevronUp, Sparkles, RefreshCw, Shield, Copy, Trash2, Rocket, XCircle, Upload, ImageIcon, X as XIcon, Info, Download, ExternalLink, Link as LinkIcon, PlusCircle, TrendingUp, DollarSign, AlertTriangle, ClipboardCheck } from "lucide-react";
+import { Loader2, CheckCircle2, ChevronDown, ChevronUp, Sparkles, RefreshCw, Shield, Copy, Trash2, Rocket, XCircle, Upload, ImageIcon, X as XIcon, Info, Download, ExternalLink, Link as LinkIcon, PlusCircle, TrendingUp, DollarSign, AlertTriangle, ClipboardCheck, Video, Play } from "lucide-react";
 
 interface DailyMetric {
   spendCents: number;
@@ -43,6 +43,11 @@ interface Angle {
   score: number;
   advanced: boolean;
   creatives: Creative[];
+  videoScriptText: string | null;
+  videoHookLine: string | null;
+  videoUrl: string | null;
+  videoAvatarId: string | null;
+  videoStatus: string | null;
 }
 
 interface ReferenceImage {
@@ -1445,6 +1450,7 @@ export default function ExperimentDetailPage() {
               selectable={experiment.status === "awaiting_approval" && !allAnglesAdvanced}
               onGenerate={() => generateCreatives(angle.id)}
               generating={generatingFor.has(angle.id)}
+              onReload={loadExperiment}
             />
 
             {/* Creatives under this angle — grouped by type */}
@@ -1552,6 +1558,7 @@ function AngleCard({
   selectable,
   onGenerate,
   generating,
+  onReload,
 }: {
   angle: Angle;
   isSelected: boolean;
@@ -1559,8 +1566,97 @@ function AngleCard({
   selectable: boolean;
   onGenerate: () => void;
   generating: boolean;
+  onReload: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [videoGenerating, setVideoGenerating] = useState(false);
+  const [videoProgress, setVideoProgress] = useState<string | null>(null);
+  const [scriptDraft, setScriptDraft] = useState<{ scriptText: string; hookLine: string; avatarId: string; voiceId: string; avatarName: string } | null>(null);
+  const [editedScript, setEditedScript] = useState("");
+  const [editedHook, setEditedHook] = useState("");
+  const [videoConfirming, setVideoConfirming] = useState(false);
+  const [videoError, setVideoError] = useState<string | null>(null);
+
+  async function generateVideoScript() {
+    setVideoGenerating(true);
+    setVideoError(null);
+    setVideoProgress("Generating script...");
+    setScriptDraft(null);
+
+    try {
+      const res = await fetch("/api/admin/adlab/video/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ angleId: angle.id }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setScriptDraft(data);
+        setEditedScript(data.scriptText);
+        setEditedHook(data.hookLine);
+        setVideoProgress(null);
+      } else {
+        setVideoError(data.error || "Script generation failed");
+        setVideoProgress(null);
+      }
+    } catch {
+      setVideoError("Network error");
+      setVideoProgress(null);
+    }
+    setVideoGenerating(false);
+  }
+
+  async function confirmAndGenerate() {
+    if (!scriptDraft) return;
+    setVideoConfirming(true);
+    setVideoError(null);
+    setVideoProgress("Sending to HeyGen...");
+
+    try {
+      const res = await fetch("/api/admin/adlab/video/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          angleId: angle.id,
+          scriptText: editedScript,
+          hookLine: editedHook,
+          avatarId: scriptDraft.avatarId,
+          voiceId: scriptDraft.voiceId,
+        }),
+      });
+
+      // Update progress while waiting
+      setVideoProgress("Processing video (this may take 1-3 minutes)...");
+      const data = await res.json();
+
+      if (res.ok) {
+        setVideoProgress("Complete!");
+        setScriptDraft(null);
+        onReload();
+        setTimeout(() => setVideoProgress(null), 3000);
+      } else {
+        setVideoError(data.error || "Video generation failed");
+        setVideoProgress(null);
+      }
+    } catch {
+      setVideoError("Network error");
+      setVideoProgress(null);
+    }
+    setVideoConfirming(false);
+  }
+
+  async function downloadVideo(url: string) {
+    const res = await fetch(url);
+    const blob = await res.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = `${angle.valueSurface}_video.mp4`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(blobUrl);
+  }
 
   return (
     <div
@@ -1595,6 +1691,11 @@ function AngleCard({
             {angle.advanced && (
               <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
                 advanced
+              </span>
+            )}
+            {angle.videoStatus === "complete" && (
+              <span className="rounded-full bg-sky-500/15 px-2 py-0.5 text-[10px] font-medium text-sky-400">
+                video ready
               </span>
             )}
           </div>
@@ -1641,6 +1742,119 @@ function AngleCard({
             <p className="mt-2 text-xs text-[#A0A0B8] whitespace-pre-line leading-relaxed">
               {angle.researchNotes}
             </p>
+          )}
+
+          {/* ─── Video Section ─── */}
+          {angle.advanced && angle.creatives.length > 0 && (
+            <div className="mt-4 border-t border-white/5 pt-4">
+              {/* Completed video preview */}
+              {angle.videoStatus === "complete" && angle.videoUrl && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Video className="h-3.5 w-3.5 text-sky-400" />
+                    <span className="text-[10px] font-medium text-sky-400 uppercase tracking-wider">AI Video</span>
+                  </div>
+                  <div className="relative rounded-lg overflow-hidden bg-black/30" style={{ maxWidth: "200px" }}>
+                    <video
+                      src={angle.videoUrl}
+                      controls
+                      className="w-full rounded-lg"
+                      style={{ aspectRatio: "9/16", maxHeight: "360px" }}
+                    />
+                  </div>
+                  {angle.videoScriptText && (
+                    <p className="text-[10px] text-[#A0A0B8] italic leading-relaxed">
+                      &ldquo;{angle.videoScriptText}&rdquo;
+                    </p>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => downloadVideo(angle.videoUrl!)}
+                      className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-medium text-[#A0A0B8] hover:text-white bg-white/5 hover:bg-white/10 transition"
+                    >
+                      <Download className="h-3 w-3" /> Download
+                    </button>
+                    <button
+                      onClick={generateVideoScript}
+                      disabled={videoGenerating || videoConfirming}
+                      className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-medium text-[#A0A0B8] hover:text-white bg-white/5 hover:bg-white/10 transition"
+                    >
+                      <RefreshCw className="h-3 w-3" /> Regenerate
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Script review/edit (draft stage) */}
+              {scriptDraft && !videoConfirming && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Video className="h-3.5 w-3.5 text-[#7C5CFC]" />
+                    <span className="text-[10px] font-medium text-[#7C5CFC] uppercase tracking-wider">Video Script — Review & Edit</span>
+                    <span className="text-[10px] text-[#A0A0B8]">Avatar: {scriptDraft.avatarName}</span>
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-[#A0A0B8] mb-1 block">Hook line (becomes Meta ad headline)</label>
+                    <input
+                      type="text"
+                      value={editedHook}
+                      onChange={(e) => setEditedHook(e.target.value)}
+                      className="w-full rounded-lg border border-white/10 bg-[#1E1E2E] px-3 py-2 text-xs text-white outline-none focus:border-[#7C5CFC]"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-[#A0A0B8] mb-1 block">Full script ({editedScript.split(/\s+/).length} words)</label>
+                    <textarea
+                      value={editedScript}
+                      onChange={(e) => setEditedScript(e.target.value)}
+                      rows={4}
+                      className="w-full rounded-lg border border-white/10 bg-[#1E1E2E] px-3 py-2 text-xs text-white outline-none focus:border-[#7C5CFC] resize-y"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={confirmAndGenerate}
+                      className="inline-flex items-center gap-2 rounded-lg bg-sky-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-sky-500"
+                    >
+                      <Play className="h-3.5 w-3.5" /> Confirm & Generate Video
+                    </button>
+                    <button
+                      onClick={() => setScriptDraft(null)}
+                      className="text-xs text-[#A0A0B8] hover:text-white transition"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Progress / confirming state */}
+              {(videoProgress || videoConfirming) && (
+                <div className="flex items-center gap-2 mt-2">
+                  <Loader2 className="h-3.5 w-3.5 text-sky-400 animate-spin" />
+                  <span className="text-xs text-sky-400">{videoProgress || "Processing..."}</span>
+                </div>
+              )}
+
+              {/* Error */}
+              {videoError && (
+                <div className="mt-2 rounded-lg bg-red-500/10 border border-red-500/20 px-3 py-2 text-xs text-red-400">
+                  {videoError}
+                </div>
+              )}
+
+              {/* Generate Video button — show when no video and no draft */}
+              {angle.videoStatus !== "complete" && !scriptDraft && !videoGenerating && !videoConfirming && (
+                <button
+                  onClick={generateVideoScript}
+                  disabled={videoGenerating}
+                  className="inline-flex items-center gap-2 rounded-lg border border-sky-500/20 bg-sky-500/5 px-3 py-2 text-xs text-sky-400 hover:bg-sky-500/10 transition disabled:opacity-50"
+                >
+                  <Video className="h-3.5 w-3.5" />
+                  {angle.videoStatus === "failed" ? "Retry Video" : "Generate Video"}
+                </button>
+              )}
+            </div>
           )}
         </div>
 
