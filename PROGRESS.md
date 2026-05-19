@@ -41,6 +41,37 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-19] — AdLab pre-launch validation system
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 0a78aac
+
+### In plain English (for Keenan)
+
+When you click "Launch Campaign" in AdLab, instead of immediately creating things on Meta, you now see a pre-flight checklist. Ten checks run simultaneously — campaign structure, objective, optimization, budget, landing page (including a live HTTP check), creative count, geo targeting, destination type, and ad account billing status. If anything fails, the launch is blocked and you see exactly what needs to be fixed. If everything passes, you get a green "All checks passed" confirmation and a "Confirm Launch" button. There's a "Skip validation" escape hatch for emergencies. After activating a campaign, a reminder card appears with the key rules: don't touch the ad set for 7 days, first check at 48 hours, kill at $15/creative with zero clicks.
+
+### Technical changes (for Jimmy)
+
+- `ADLAB_PRINCIPLES.md` added to repo root — canonical ad principles document (structure, objectives, creative, copy, landing pages, measurement, budget, testing, kill criteria, audience, billing, mobile, patience)
+- New API route `POST /api/admin/adlab/ads/validate`: runs 10 parallel checks against experiment data and Meta API. Returns array of `{ id, label, status: pass|fail|warn, message }` objects
+- `apps/web/src/lib/adlab/meta.ts`: added `getAdAccountStatus()` — calls Meta API to check `account_status` and `disable_reason` fields. Status 1 = ACTIVE, everything else blocks launch
+- `apps/web/src/app/admin/adlab/experiments/[id]/page.tsx`: Launch button now triggers validation first. Pre-flight panel shows sorted checklist (fails first, then warns, then passes). Confirm Launch / Skip Validation / Dismiss controls. Post-launch reminder card with 7-day learning window, 48hr check, kill criteria
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- The landing page check does a `HEAD` request to the actual URL — this catches cases where a landing page slug exists in the DB but the page itself 404s (e.g., a slug typo or a deleted experiment)
+- The billing check calls `account.get(["account_status", "disable_reason", "name"])` on the Meta API — this is a lightweight read that doesn't create anything. If the API call fails (e.g., token expired), it returns a "warn" status rather than blocking the launch
+- The validation skipped state is logged to console but not persisted — if we want to track skip frequency we'd need a DB log
+- The destination_type check always passes because the launch route hardcodes `destination_type: "WEBSITE"` — but having it in the checklist serves as documentation that this is explicitly handled (it was a past bug)
+- Creative cap of 15 is a soft warning per Meta's recommendation — doesn't block launch
+
+---
+
 ## [2026-05-19] — Remove all "60 seconds" / "90 seconds" duration claims from marketing copy
 
 **Requested by:** Keenan
