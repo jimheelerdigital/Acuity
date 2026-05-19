@@ -5,6 +5,7 @@ import { api } from "@/lib/api";
 import {
   applyMultiReminderSchedule,
   getPermissionStatus,
+  topUpRandomNudges,
 } from "@/lib/notifications";
 
 /**
@@ -170,6 +171,32 @@ export async function reapplyRemindersIfNeeded(
     }
 
     await AsyncStorage.setItem(LAST_BOOT_REAPPLY_KEY, String(now));
+
+    // ─── Random nudge top-up (Slice P3A) ─────────────────────────
+    // Pre-schedule one-shot DATE triggers for the rolling 7-day
+    // window of random nudges. Top-up only — never re-rolls existing
+    // future triggers (so users don't see their random times shift
+    // every time they foreground the app). Master + permission
+    // already gated above; only runs when both are healthy.
+    if (masterEnabled) {
+      const activeWeekdays = Array.from(
+        new Set(activeReminders.flatMap((r) => r.daysActive))
+      ).sort();
+      const mainTimes = activeReminders.map((r) => r.time);
+      const randomOutcome = await topUpRandomNudges({
+        activeWeekdays,
+        mainTimes,
+      });
+      if (randomOutcome.kind === "scheduled") {
+        console.log(
+          `[reminders-boot] random nudges topped up, ${randomOutcome.count} new triggers`
+        );
+      } else {
+        console.log(
+          `[reminders-boot] random nudges skipped, outcome=${randomOutcome.kind}`
+        );
+      }
+    }
   } catch (err) {
     // Swallow — app boot must not crash because of this. Console log
     // so the cause is visible in `npx react-native log-ios` during QA.

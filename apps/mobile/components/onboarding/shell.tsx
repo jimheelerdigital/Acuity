@@ -22,7 +22,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useAuth } from "@/contexts/auth-context";
 import { api } from "@/lib/api";
-import { applyReminderSchedule } from "@/lib/notifications";
+import { applyReminderSchedule, syncRandomNudges } from "@/lib/notifications";
 
 import { OnboardingContext, type OnboardingContextValue } from "./context";
 
@@ -147,14 +147,21 @@ export function OnboardingShell({
       typeof data.notificationTime === "string" &&
       Array.isArray(data.notificationDays)
     ) {
-      applyReminderSchedule({
-        enabled: data.notificationsEnabled,
-        time: data.notificationTime,
-        days: data.notificationDays as number[],
-      }).catch(() => {
+      const enabled = data.notificationsEnabled;
+      const time = data.notificationTime;
+      const days = data.notificationDays as number[];
+      applyReminderSchedule({ enabled, time, days }).catch(() => {
         // Permission-denied + network errors are visible enough
         // via the step UI itself; failure here shouldn't block nav.
       });
+      // Slice P3A — also seed the random nudge window. Same days as
+      // the main reminder; main time is buffered so the random fire
+      // doesn't land within 2h. Bailing on reminders=disabled
+      // cancels any leftover random triggers too.
+      syncRandomNudges({
+        activeWeekdays: enabled ? days : [],
+        mainTimes: enabled ? [time] : [],
+      }).catch(() => {});
     }
   }, [step]);
 

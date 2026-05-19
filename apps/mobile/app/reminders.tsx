@@ -23,6 +23,7 @@ import {
   applyMultiReminderSchedule,
   getPermissionStatus,
   requestNotificationPermission,
+  syncRandomNudges,
   type PermissionStatus,
 } from "@/lib/notifications";
 
@@ -242,6 +243,28 @@ export default function RemindersScreen() {
           enabled: r.enabled,
         })),
       });
+
+      // Slice P3A — sync the random nudge window. activeWeekdays is
+      // the union of daysActive across enabled reminders; mainTimes
+      // is every enabled reminder's HH:MM so the random pick avoids
+      // landing within 2h of any of them. Pruning + top-up; existing
+      // valid random triggers are preserved (no re-roll surprises).
+      if (masterEnabled) {
+        const activeWeekdays = Array.from(
+          new Set(
+            fromServer.flatMap((r) => (r.enabled ? r.daysActive : []))
+          )
+        ).sort();
+        const mainTimes = fromServer
+          .filter((r) => r.enabled)
+          .map((r) => r.time);
+        await syncRandomNudges({ activeWeekdays, mainTimes }).catch(() => {});
+      } else {
+        await syncRandomNudges({
+          activeWeekdays: [],
+          mainTimes: [],
+        }).catch(() => {});
+      }
 
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);

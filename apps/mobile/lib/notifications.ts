@@ -314,3 +314,260 @@ export async function listReminderIds(): Promise<string[]> {
     .filter((s) => s.identifier.startsWith(ID_PREFIX))
     .map((s) => s.identifier);
 }
+
+// ─── Random nudge (Slice P3A, 2026-05-19) ──────────────────────────
+//
+// One unpredictable check-in per day, in addition to the user's
+// preferred-time reminder. Local-only via expo-notifications DATE
+// triggers — no APNs, no server, no push token. Pre-schedules a
+// rolling 7-day window of one-shot triggers. Each fire is consumed
+// by iOS; the boot self-heal (notifications-boot.ts) tops up the
+// window on every foreground.
+//
+// Identifier scheme: `acuity:random:YYYY-MM-DD` — one per calendar
+// day. Distinct prefix from main reminders so cancel-by-prefix
+// surfaces don't bleed between the two systems.
+//
+// Constraints:
+//   - Only fires on weekdays the user has active in any main reminder.
+//   - Fires within RANDOM_WINDOW_START_HOUR..RANDOM_WINDOW_END_HOUR
+//     local (10am–6pm by default — daytime window most users aren't
+//     already covered by morning/evening main reminders).
+//   - Doesn't fire within RANDOM_BUFFER_MINUTES of any main reminder
+//     time (re-rolled up to 10 times; skipped for that day if no
+//     conflict-free slot fits).
+
+const RANDOM_ID_PREFIX = "acuity:random:";
+
+// 10am inclusive .. 6pm exclusive. Daytime so morning/evening main
+// reminders rarely conflict.
+const RANDOM_WINDOW_START_HOUR = 10;
+const RANDOM_WINDOW_END_HOUR = 18;
+
+// Minutes of separation required between the random fire and any
+// main reminder time. 2h gives breathing room — back-to-back
+// notifications feel spammy.
+const RANDOM_BUFFER_MINUTES = 120;
+
+// Copy distinct from main reminders. Tone is lighter — "check in"
+// rather than "do your nightly journal".
+const RANDOM_BODY_VARIATIONS = [
+  "Quick check-in. What's on your mind right now?",
+  "Pause for 30 seconds. What just happened?",
+  "How are you actually doing?",
+  "Got something to get off your chest?",
+  "Two sentences. What's loud in your head?",
+  "Mini brain dump — go.",
+];
+
+export interface RandomNudgeScheduleInput {
+  /** Union of `daysActive` across all enabled reminders (0..6, Sun=0). */
+  activeWeekdays: number[];
+  /** HH:MM times of every enabled main reminder. Used for buffer check. */
+  mainTimes: string[];
+}
+
+export type RandomNudgeOutcome =
+  | { kind: "scheduled"; count: number }
+  | { kind: "disabled" }
+  | { kind: "permission-denied" };
+
+function ymd(d: Date): string {
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+/**
+ * Pick a random fire-time inside the daytime window that isn't within
+ * RANDOM_BUFFER_MINUTES of any main reminder. Returns null after 10
+ * failed re-rolls (too dense to fit) — caller skips that day.
+ */
+function pickRandomFireTime(
+  baseDate: Date,
+  mainHHMMs: string[]
+): Date | null {
+  const mainAsMinutes = mainHHMMs
+    .map((hhmm) => {
+      const [h, m] = hhmm.split(":").map(Number);
+      if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
+      return h * 60 + m;
+    })
+    .filter((v): v is number => v !== null);
+
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    const hour =
+      RANDOM_WINDOW_START_HOUR +
+      Math.floor(
+        Math.random() *
+          (RANDOM_WINDOW_END_HOUR - RANDOM_WINDOW_START_HOUR)
+      );
+    const minute = Math.floor(Math.random() * 60);
+    const candidate = hour * 60 + minute;
+    const conflicts = mainAsMinutes.some(
+      (main) => Math.abs(candidate - main) < RANDOM_BUFFER_MINUTES
+    );
+    if (conflicts) continue;
+    const out = new Date(baseDate);
+    out.setHours(hour, minute, 0, 0);
+    return out;
+  }
+  return null;
+}
+
+export async function cancelAllRandomNudges(): Promise<void> {
+  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+  await Promise.all(
+    scheduled
+      .filter((s) => s.identifier.startsWith(RANDOM_ID_PREFIX))
+      .map((s) =>
+        Notifications.cancelScheduledNotificationAsync(s.identifier)
+      )
+  );
+}
+
+/**
+ * Top-up only. Used by the boot self-heal — adds DATE triggers for any
+ * day in the next 7 that doesn't already have one. Never re-rolls
+ * existing future triggers (so the user doesn't watch their random
+ * times shift around every time they foreground the app).
+ *
+ * If `activeWeekdays` is empty, returns `disabled` without touching
+ * existing triggers. The boot path should never reach this state
+ * because it pre-checks master + reminder count, but defensive here.
+ */
+export async function topUpRandomNudges(
+  input: RandomNudgeScheduleInput
+): Promise<RandomNudgeOutcome> {
+  if (input.activeWeekdays.length === 0) {
+    return { kind: "disabled" };
+  }
+  const status = await getPermissionStatus();
+  if (status !== "granted") {
+    return { kind: "permission-denied" };
+  }
+
+  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+  const existing = new Set<string>(
+    scheduled
+      .filter((s) => s.identifier.startsWith(RANDOM_ID_PREFIX))
+      .map((s) => s.identifier.slice(RANDOM_ID_PREFIX.length))
+  );
+
+  const added = await fillMissingRandoms(
+    existing,
+    input.activeWeekdays,
+    input.mainTimes
+  );
+  return { kind: "scheduled", count: added };
+}
+
+/**
+ * Reconcile mode. Used by save paths (onboarding step 9, settings
+ * reminders.tsx). Prunes existing random triggers that no longer
+ * satisfy the user's current weekday set, then tops up missing days.
+ * Existing valid triggers are preserved — no unnecessary re-roll.
+ *
+ * Pass `activeWeekdays: []` (or use cancelAllRandomNudges directly)
+ * when the user disables reminders entirely.
+ */
+export async function syncRandomNudges(
+  input: RandomNudgeScheduleInput
+): Promise<RandomNudgeOutcome> {
+  if (input.activeWeekdays.length === 0) {
+    await cancelAllRandomNudges();
+    return { kind: "disabled" };
+  }
+  const status = await getPermissionStatus();
+  if (status !== "granted") {
+    return { kind: "permission-denied" };
+  }
+
+  // Prune triggers whose weekday is no longer active OR whose calendar
+  // date is more than 1 day in the past. (Past-date DATE triggers
+  // don't fire and don't hurt much; iOS cleans them up, but we
+  // explicitly remove old ones for tidiness on every save.)
+  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  yesterday.setHours(0, 0, 0, 0);
+  const validDates = new Set<string>();
+  for (const s of scheduled) {
+    if (!s.identifier.startsWith(RANDOM_ID_PREFIX)) continue;
+    const dateKey = s.identifier.slice(RANDOM_ID_PREFIX.length);
+    const parsed = new Date(`${dateKey}T00:00:00`);
+    if (Number.isNaN(parsed.getTime())) {
+      await Notifications.cancelScheduledNotificationAsync(s.identifier);
+      continue;
+    }
+    if (parsed.getTime() < yesterday.getTime()) {
+      await Notifications.cancelScheduledNotificationAsync(s.identifier);
+      continue;
+    }
+    if (!input.activeWeekdays.includes(parsed.getDay())) {
+      await Notifications.cancelScheduledNotificationAsync(s.identifier);
+      continue;
+    }
+    validDates.add(dateKey);
+  }
+
+  const added = await fillMissingRandoms(
+    validDates,
+    input.activeWeekdays,
+    input.mainTimes
+  );
+  return { kind: "scheduled", count: validDates.size + added };
+}
+
+/**
+ * Shared filler used by both `syncRandomNudges` and `topUpRandomNudges`.
+ * Walks the next 7 calendar days, scheduling a DATE trigger for each
+ * active weekday that isn't already in `existing`. Returns the count
+ * actually added.
+ */
+async function fillMissingRandoms(
+  existing: Set<string>,
+  activeWeekdays: number[],
+  mainTimes: string[]
+): Promise<number> {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  let added = 0;
+  for (let offset = 0; offset < 7; offset += 1) {
+    const target = new Date(today);
+    target.setDate(today.getDate() + offset);
+    const weekday = target.getDay();
+    if (!activeWeekdays.includes(weekday)) continue;
+    const dateKey = ymd(target);
+    if (existing.has(dateKey)) continue;
+
+    const fireAt = pickRandomFireTime(target, mainTimes);
+    if (!fireAt) continue;
+    // Don't schedule for a moment that's already in the past — e.g.
+    // user opens the app at 5pm and today's window is 10am–6pm; the
+    // re-roll might pick 11am, which is moot.
+    if (fireAt.getTime() <= now.getTime()) continue;
+
+    const body =
+      RANDOM_BODY_VARIATIONS[
+        Math.abs(weekday * 7 + offset) % RANDOM_BODY_VARIATIONS.length
+      ];
+    await Notifications.scheduleNotificationAsync({
+      identifier: `${RANDOM_ID_PREFIX}${dateKey}`,
+      content: {
+        title: "Acuity",
+        body,
+        sound: "default",
+        data: { deepLink: "acuity://", random: true },
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: fireAt,
+      },
+    });
+    added += 1;
+  }
+  return added;
+}
