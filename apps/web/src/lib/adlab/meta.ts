@@ -399,3 +399,26 @@ export async function getAdInsights(adId: string, since: string, until: string) 
 
   return insights;
 }
+
+/**
+ * Check ad account status and billing health.
+ * Returns { accountStatus, disableReason, isActive } or throws.
+ */
+export async function getAdAccountStatus(): Promise<{
+  accountStatus: number;
+  disableReason: number;
+  isActive: boolean;
+  name: string;
+}> {
+  await getApi();
+  const account = await getAdAccount();
+  const fields = ["account_status", "disable_reason", "name"];
+  const result = await account.get(fields);
+
+  // account_status: 1 = ACTIVE, 2 = DISABLED, 3 = UNSETTLED, 7 = PENDING_RISK_REVIEW, 8 = PENDING_SETTLEMENT, 9 = IN_GRACE_PERIOD, 100 = PENDING_CLOSURE, 101 = CLOSED, 201 = ANY_ACTIVE, 202 = ANY_CLOSED
+  const accountStatus = result.account_status ?? 0;
+  const disableReason = result.disable_reason ?? 0;
+  const isActive = accountStatus === 1;
+
+  return { accountStatus, disableReason, isActive, name: result.name || "" };
+}

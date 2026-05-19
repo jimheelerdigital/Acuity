@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Loader2, CheckCircle2, ChevronDown, ChevronUp, Sparkles, RefreshCw, Shield, Copy, Trash2, Rocket, XCircle, Upload, ImageIcon, X as XIcon, Info, Download, ExternalLink, Link as LinkIcon, PlusCircle, TrendingUp, DollarSign } from "lucide-react";
+import { Loader2, CheckCircle2, ChevronDown, ChevronUp, Sparkles, RefreshCw, Shield, Copy, Trash2, Rocket, XCircle, Upload, ImageIcon, X as XIcon, Info, Download, ExternalLink, Link as LinkIcon, PlusCircle, TrendingUp, DollarSign, AlertTriangle, ClipboardCheck } from "lucide-react";
 
 interface DailyMetric {
   spendCents: number;
@@ -69,6 +69,13 @@ interface Experiment {
   landingPage?: LandingPage | null;
   referenceImages?: ReferenceImage[];
   angles: Angle[];
+}
+
+interface ValidationCheck {
+  id: string;
+  label: string;
+  status: "pass" | "fail" | "warn";
+  message: string;
 }
 
 async function downloadImage(url: string, filename: string) {
@@ -154,6 +161,11 @@ export default function ExperimentDetailPage() {
   const [preferredType, setPreferredType] = useState<string>("mechanism");
   const [addingToCampaign, setAddingToCampaign] = useState(false);
   const [addToCampaignResult, setAddToCampaignResult] = useState<{ added: number; totalAds: number; previousAds: number; errors: { creativeId: string; error: string }[] } | null>(null);
+  const [validating, setValidating] = useState(false);
+  const [validationChecks, setValidationChecks] = useState<ValidationCheck[] | null>(null);
+  const [validationPassed, setValidationPassed] = useState(false);
+  const [validationSkipped, setValidationSkipped] = useState(false);
+  const [showPostLaunchReminder, setShowPostLaunchReminder] = useState(false);
 
   const loadExperiment = useCallback(async () => {
     const res = await fetch(`/api/admin/adlab/experiments/${id}`);
@@ -318,6 +330,8 @@ export default function ExperimentDetailPage() {
       });
       if (res.ok) {
         setLaunchResult(null);
+        setValidationChecks(null);
+        setShowPostLaunchReminder(true);
         await loadExperiment();
       } else {
         const data = await res.json();
@@ -584,6 +598,44 @@ export default function ExperimentDetailPage() {
       alert("Network error during landing page generation");
     }
     setGeneratingLandingPage(false);
+  }
+
+  async function runPreLaunchValidation() {
+    if (!experiment) return;
+    setValidating(true);
+    setValidationChecks(null);
+    setValidationPassed(false);
+    setValidationSkipped(false);
+
+    try {
+      const res = await fetch("/api/admin/adlab/ads/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ experimentId: experiment.id }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setValidationChecks(data.checks);
+        setValidationPassed(data.allPassed);
+      } else {
+        setLaunchError(data.error || "Validation failed");
+      }
+    } catch {
+      setLaunchError("Network error during validation");
+    }
+    setValidating(false);
+  }
+
+  function skipValidation() {
+    setValidationSkipped(true);
+    setValidationPassed(true);
+    console.warn("[adlab] Pre-launch validation SKIPPED by user");
+  }
+
+  function dismissValidation() {
+    setValidationChecks(null);
+    setValidationPassed(false);
+    setValidationSkipped(false);
   }
 
   async function generateMoreCreatives() {
@@ -913,15 +965,15 @@ export default function ExperimentDetailPage() {
           </span>
         )}
 
-        {/* Launch Campaign button */}
+        {/* Launch Campaign button — now triggers validation first */}
         {launchReadyCount > 0 && experiment.status === "awaiting_approval" && !launchResult && (
           <button
-            onClick={launchCampaign}
-            disabled={launching}
+            onClick={runPreLaunchValidation}
+            disabled={validating || launching}
             className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-50"
           >
-            {launching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Rocket className="h-4 w-4" />}
-            Launch Campaign ({launchReadyCount} creative{launchReadyCount === 1 ? "" : "s"})
+            {validating ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardCheck className="h-4 w-4" />}
+            {validating ? "Running checks..." : `Launch Campaign (${launchReadyCount} creative${launchReadyCount === 1 ? "" : "s"})`}
           </button>
         )}
 
@@ -936,6 +988,152 @@ export default function ExperimentDetailPage() {
           </button>
         )}
       </div>
+
+      {/* Pre-flight validation panel */}
+      {validationChecks && !launchResult && (
+        <div className="mb-6 rounded-xl border border-white/10 bg-[#13131F] p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <ClipboardCheck className="h-5 w-5 text-[#7C5CFC]" />
+              <h3 className="text-base font-semibold text-white">Pre-Launch Checklist</h3>
+              {validationSkipped && (
+                <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-400">
+                  validation skipped
+                </span>
+              )}
+            </div>
+            <button
+              onClick={dismissValidation}
+              className="text-xs text-[#A0A0B8] hover:text-white transition"
+            >
+              Dismiss
+            </button>
+          </div>
+
+          <div className="space-y-2 mb-4">
+            {/* Show fails first, then warns, then passes */}
+            {[...validationChecks]
+              .sort((a, b) => {
+                const order = { fail: 0, warn: 1, pass: 2 };
+                return order[a.status] - order[b.status];
+              })
+              .map((check) => (
+                <div
+                  key={check.id}
+                  className={`flex items-start gap-3 rounded-lg px-4 py-2.5 ${
+                    check.status === "fail"
+                      ? "bg-red-500/5 border border-red-500/20"
+                      : check.status === "warn"
+                        ? "bg-amber-500/5 border border-amber-500/20"
+                        : "bg-emerald-500/5 border border-emerald-500/10"
+                  }`}
+                >
+                  <span className="mt-0.5 shrink-0">
+                    {check.status === "fail" && <XCircle className="h-4 w-4 text-red-400" />}
+                    {check.status === "warn" && <AlertTriangle className="h-4 w-4 text-amber-400" />}
+                    {check.status === "pass" && <CheckCircle2 className="h-4 w-4 text-emerald-400" />}
+                  </span>
+                  <div className="min-w-0">
+                    <p className={`text-xs font-medium ${
+                      check.status === "fail" ? "text-red-400" : check.status === "warn" ? "text-amber-400" : "text-emerald-400"
+                    }`}>
+                      {check.label}
+                    </p>
+                    <p className="text-[11px] text-[#A0A0B8] mt-0.5">{check.message}</p>
+                  </div>
+                </div>
+              ))}
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex items-center gap-3 flex-wrap">
+            {(validationPassed || validationSkipped) ? (
+              <button
+                onClick={launchCampaign}
+                disabled={launching}
+                className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-50"
+              >
+                {launching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Rocket className="h-4 w-4" />}
+                {validationSkipped ? "Launch Anyway" : "Confirm Launch"}
+              </button>
+            ) : (
+              <button
+                disabled
+                className="inline-flex items-center gap-2 rounded-lg bg-emerald-600/30 px-5 py-2.5 text-sm font-semibold text-white/40 cursor-not-allowed"
+              >
+                <Rocket className="h-4 w-4" />
+                Confirm Launch
+              </button>
+            )}
+
+            {!validationPassed && !validationSkipped && (
+              <span className="text-xs text-red-400">
+                Fix the issues above before launching
+              </span>
+            )}
+          </div>
+
+          {/* Skip validation link */}
+          {!validationPassed && !validationSkipped && (
+            <button
+              onClick={skipValidation}
+              className="mt-3 text-[10px] text-[#A0A0B8]/60 hover:text-[#A0A0B8] transition underline"
+            >
+              Skip validation (emergency only)
+            </button>
+          )}
+
+          {/* Summary bar */}
+          {!validationSkipped && (() => {
+            const fails = validationChecks.filter((c) => c.status === "fail").length;
+            const warns = validationChecks.filter((c) => c.status === "warn").length;
+            const passes = validationChecks.filter((c) => c.status === "pass").length;
+            if (fails === 0 && warns === 0) {
+              return (
+                <div className="mt-4 flex items-center gap-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-4 py-2.5">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                  <p className="text-xs text-emerald-400 font-medium">All {passes} checks passed — ready to launch</p>
+                </div>
+              );
+            }
+            return null;
+          })()}
+        </div>
+      )}
+
+      {/* Post-launch reminder */}
+      {showPostLaunchReminder && experiment.status === "live" && (
+        <div className="mb-6 rounded-xl border border-[#7C5CFC]/30 bg-[#7C5CFC]/5 p-5">
+          <div className="flex items-start justify-between">
+            <div className="flex items-start gap-3">
+              <Info className="h-5 w-5 text-[#7C5CFC] shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-white mb-2">Campaign launched in PAUSED state. After activating:</p>
+                <ul className="space-y-1.5 text-xs text-[#A0A0B8]">
+                  <li className="flex items-start gap-2">
+                    <span className="text-[#7C5CFC] mt-0.5">&#8226;</span>
+                    <span>Don&#39;t edit the ad set for 7 days (resets learning phase)</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-[#7C5CFC] mt-0.5">&#8226;</span>
+                    <span>First performance check at 48 hours</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-[#7C5CFC] mt-0.5">&#8226;</span>
+                    <span>Kill criteria: $15/creative with zero clicks, $30/creative with zero signups</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowPostLaunchReminder(false)}
+              className="shrink-0 rounded-full p-1 text-[#A0A0B8] hover:text-white hover:bg-white/10 transition"
+            >
+              <XIcon className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Launch error */}
       {launchError && (
