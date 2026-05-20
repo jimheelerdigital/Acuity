@@ -41,6 +41,31 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-20] — Fix Vercel build failure (Inngest createFunction signature)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** TBD
+
+### In plain English (for Keenan)
+
+The Vercel build was failing because the new signup notification function used the wrong format for defining its trigger. Fixed in one line — build passes now.
+
+### Technical changes (for Jimmy)
+
+- Modified `apps/web/src/inngest/functions/send-signup-notification.ts` — moved the event trigger from a separate second argument into the `triggers` array inside the first argument object. The Inngest SDK version in use requires `createFunction({ id, triggers: [...] }, handler)` not `createFunction({ id }, { event }, handler)`.
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- The error message was: `"createFunction" expected a handler function as the second argument. Triggers belong in the first argument.`
+- All other Inngest functions in the codebase (hello-world, process-entry, etc.) use the correct `triggers: [{ event: "..." }]` pattern. The new function was written with the v2 API signature style which this SDK version doesn't support.
+
+---
+
 ## [2026-05-20] — Delay admin signup notification 30s for attribution capture
 
 **Requested by:** Keenan

@@ -17,8 +17,8 @@ export const sendSignupNotificationFn = inngest.createFunction(
   {
     id: "send-signup-notification",
     name: "Send admin signup notification (delayed for attribution)",
+    triggers: [{ event: "user/signup.notify" }],
   },
-  { event: "user/signup.notify" },
   async ({ event, step }) => {
     const { userId } = event.data as { userId: string };
 
