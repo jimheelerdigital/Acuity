@@ -41,6 +41,31 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-20] — Restore inline admin signup notification (remove Inngest delay)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 62a94ae
+
+### In plain English (for Keenan)
+
+The admin signup notification email wasn't firing because it was routed through an Inngest delayed job that wasn't registering properly. Reverted to the simple approach: the notification sends immediately when a user signs up, at the same time as the welcome email. Attribution data is included if available; if not (OAuth signups), it shows "direct" and the admin dashboard has the full attribution once it syncs.
+
+### Technical changes (for Jimmy)
+
+- Modified `apps/web/src/lib/bootstrap-user.ts` — replaced the `inngest.send({ name: "user/signup.notify" })` dispatch with a direct inline call to `notifyFoundersOfSignup()`. Same pattern that worked for Samantha and Kris. No Inngest dependency for this path.
+
+### Manual steps needed
+
+None — deploys automatically on push.
+
+### Notes
+
+- The Inngest-based delayed notification (`send-signup-notification.ts`) still exists in the codebase but is no longer triggered. It can be removed in a future cleanup or repurposed if attribution-enriched notifications become a priority again.
+- The welcome email to the user and the admin notification now both fire inline from `bootstrapNewUser`. Both are fail-soft (try/catch, errors logged but don't block signup).
+
+---
+
 ## [2026-05-20] — Fix Vercel build failure (Inngest createFunction signature)
 
 **Requested by:** Keenan
