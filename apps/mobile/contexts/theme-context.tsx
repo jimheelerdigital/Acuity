@@ -137,15 +137,24 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         // ─── Palette: new key only (no legacy to migrate from) ──
         const storedPalette = await AsyncStorage.getItem(PALETTE_KEY);
         if (cancelled) return;
+        let resolvedPalette: AcuityAccent | null = null;
         if (isAccent(storedPalette)) {
+          resolvedPalette = storedPalette;
           setPaletteState(storedPalette);
         }
 
-        // ─── Cross-device mode sync from server ──────────────────
+        // ─── Cross-device sync from server ───────────────────────
+        // Mode + palette both sync; haptics stays device-local per
+        // Slice Q2 directive (contextual preference, makes sense to
+        // differ per device).
         const token = await getToken();
         if (!token) return;
         const cached = await getStoredUser();
-        const dbTheme = (cached as { theme?: string | null } | null)?.theme;
+        const cachedAsTheme = cached as
+          | { theme?: string | null; themePalette?: string | null }
+          | null;
+        const dbTheme = cachedAsTheme?.theme;
+        const dbPalette = cachedAsTheme?.themePalette;
         if (
           typeof dbTheme === "string" &&
           (dbTheme === "light" || dbTheme === "dark") &&
@@ -155,6 +164,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
           setColorScheme(dbTheme);
           AsyncStorage.setItem(MODE_KEY, dbTheme).catch(() => {});
           AsyncStorage.setItem(LEGACY_MODE_KEY, dbTheme).catch(() => {});
+        }
+        if (isAccent(dbPalette) && resolvedPalette == null) {
+          setPaletteState(dbPalette);
+          AsyncStorage.setItem(PALETTE_KEY, dbPalette).catch(() => {});
         }
       } catch {
         // AsyncStorage failure is non-fatal — defaults already applied.
@@ -190,7 +203,18 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const setPalette = useCallback((next: AcuityAccent) => {
     setPaletteState(next);
     AsyncStorage.setItem(PALETTE_KEY, next).catch(() => {});
-    // Cross-device palette sync waits for Q2 (User.themePalette column).
+    // Cross-device sync via the extended /api/user/theme endpoint
+    // (Slice Q2). Fire-and-forget — failures don't block the UI;
+    // local state is already applied so the user sees the change.
+    (async () => {
+      const token = await getToken();
+      if (!token) return;
+      try {
+        await api.post<{ ok: boolean }>("/api/user/theme", { palette: next });
+      } catch {
+        // Non-fatal — local state stands.
+      }
+    })();
   }, []);
 
   const resolved: "light" | "dark" =

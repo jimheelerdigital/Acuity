@@ -12,12 +12,14 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { AppearanceCard } from "@/components/appearance/appearance-card";
+import { HapticsRow } from "@/components/appearance/haptics-row";
 import { DeleteAccountModal } from "@/components/delete-account-modal";
 import { FeedbackModal } from "@/components/feedback-modal";
 import { RestorePurchasesButton } from "@/components/restore-purchases-button";
 import { useAuth } from "@/contexts/auth-context";
 import { useLock } from "@/contexts/lock-context";
-import { useTheme, type ThemeChoice } from "@/contexts/theme-context";
+import { useTheme } from "@/contexts/theme-context";
 import {
   authenticate,
   isLocalAuthCapable,
@@ -204,7 +206,10 @@ export default function ProfileTab() {
           </View>
         </View>
 
-        {/* Menu */}
+        {/* Subscription block — stays at top, not grouped under a
+            settings label. The visual refresh's full Subscription
+            card ships in a later slice; for Q2 we keep the existing
+            row-based rendering with the same conditional rules. */}
         <View className="gap-2">
           {/* Phase 3a — FREE users see "Subscribe" (in-app, iOS only,
               flag-on) AND "Manage plan on web" (3.1.3(b) requires the
@@ -266,16 +271,18 @@ export default function ProfileTab() {
               on every screen that presents subscription state. The
               button self-hides on Android + flag-off builds. */}
           <RestorePurchasesButton onRestored={refresh} />
+        </View>
 
-          <ThemeMenuItem />
-
+        {/* PREFERENCES group */}
+        <SettingsGroup label="Preferences">
+          <AppearanceCard />
+          <HapticsRow />
           <MenuItem
             icon="time-outline"
             label="Reminders"
             sublabel="When to nudge you to journal"
             onPress={() => router.push("/reminders")}
           />
-
           {/* App lock toggle — only renders on iOS devices with
               biometry or passcode enrolled. Default OFF. Tapping
               requires the user to authenticate before flipping on
@@ -292,14 +299,12 @@ export default function ProfileTab() {
               onPress={() => void handleToggleLock()}
             />
           )}
-
           <MenuItem
             icon="calendar-outline"
             label="Calendar"
             sublabel="Send tasks to your iOS calendar"
             onPress={() => router.push("/integrations")}
           />
-
           <MenuItem
             icon="heart-outline"
             label="Connect Apple Health"
@@ -322,25 +327,33 @@ export default function ProfileTab() {
               }
             }}
           />
+        </SettingsGroup>
 
+        {/* SUPPORT group */}
+        <SettingsGroup label="Support">
           {/* Slice O — feedback intake. Opens a textarea + type
               picker modal; submits to /api/feedback/submit which
-              proxies to a Make.com webhook for distillation +
-              routing to the Monday.com roadmap board. */}
+              forwards a Block-Kit message to the #acuity-feedback
+              Slack channel; Make.com → Monday from there. */}
           <MenuItem
             icon="chatbox-ellipses-outline"
             label="Send feedback"
             sublabel="Bugs, feature ideas, or anything else"
             onPress={() => setShowFeedbackModal(true)}
           />
+        </SettingsGroup>
 
+        {/* ACCOUNT group — sign-out + danger-tinted delete. The
+            design's "Manage account" lives here in the Data group;
+            Acuity has a dedicated delete flow + sign-out which we
+            keep distinct rather than rolling into one row. */}
+        <SettingsGroup label="Account">
           <MenuItem
             icon="log-out-outline"
             label={signingOut ? "Signing out..." : "Sign out"}
             destructive
             onPress={handleSignOut}
           />
-
           {/* In-app account deletion — required by App Store
               Guideline 5.1.1(v). Opens a type-to-confirm modal that
               calls POST /api/user/delete and signs the user out on
@@ -352,7 +365,7 @@ export default function ProfileTab() {
             destructive
             onPress={() => setShowDeleteModal(true)}
           />
-        </View>
+        </SettingsGroup>
       </ScrollView>
 
       <FeedbackModal
@@ -383,6 +396,39 @@ export default function ProfileTab() {
   );
 }
 
+/**
+ * Settings group — uppercase eyebrow label + vertical stack of rows.
+ * Light visual-grammar polish (Slice Q2): groups inherit token colors
+ * so they look at home next to the Appearance card in either mode.
+ */
+function SettingsGroup({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  const { tokens } = useTheme();
+  return (
+    <View style={{ marginTop: 28, gap: 8 }}>
+      <Text
+        style={{
+          fontFamily: tokens.fontMono,
+          fontSize: 10,
+          fontWeight: "700",
+          letterSpacing: 1.4,
+          color: tokens.textTer,
+          paddingHorizontal: 4,
+          textTransform: "uppercase",
+        }}
+      >
+        {label}
+      </Text>
+      <View style={{ gap: 8 }}>{children}</View>
+    </View>
+  );
+}
+
 function MenuItem({
   icon,
   label,
@@ -396,83 +442,51 @@ function MenuItem({
   destructive?: boolean;
   onPress?: () => void;
 }) {
+  const { tokens } = useTheme();
+  const labelColor = destructive ? tokens.bad : tokens.text;
+  const sublabelColor = destructive ? tokens.bad : tokens.textTer;
+  const iconColor = destructive ? tokens.bad : tokens.textSec;
   return (
     <Pressable
       onPress={onPress}
-      className="flex-row items-center gap-3 rounded-2xl border border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-[#13131F] dark:bg-[#1E1E2E] px-4 py-3.5"
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 14,
+        borderRadius: tokens.radius.lg,
+        backgroundColor: tokens.cardBg,
+        borderWidth: 1,
+        borderColor: tokens.cardBorder,
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+      }}
     >
-      <Ionicons
-        name={icon}
-        size={20}
-        color={destructive ? "#EF4444" : "#71717A"}
-      />
-      <View className="flex-1">
+      <Ionicons name={icon} size={20} color={iconColor} />
+      <View style={{ flex: 1, gap: 2 }}>
         <Text
-          className={`text-sm ${
-            destructive ? "text-red-400" : "text-zinc-700 dark:text-zinc-200"
-          }`}
+          style={{
+            fontFamily: tokens.fontSans,
+            fontSize: 15,
+            fontWeight: "500",
+            color: labelColor,
+          }}
         >
           {label}
         </Text>
         {sublabel && (
-          <Text className="text-xs text-zinc-600 dark:text-zinc-300 mt-0.5">{sublabel}</Text>
+          <Text
+            style={{
+              fontFamily: tokens.fontSans,
+              fontSize: 13,
+              fontWeight: "400",
+              color: sublabelColor,
+            }}
+          >
+            {sublabel}
+          </Text>
         )}
       </View>
-      <Ionicons name="chevron-forward" size={16} color="#52525B" />
+      <Ionicons name="chevron-forward" size={16} color={tokens.textTer} />
     </Pressable>
-  );
-}
-
-/**
- * Three-state theme segmented control embedded into the profile menu.
- * Mirrors the web /account Appearance section. Persistence is handled
- * by ThemeProvider — picking an option fires a fire-and-forget POST to
- * /api/user/theme so the choice follows the user across devices.
- */
-function ThemeMenuItem() {
-  const { preference, setPreference } = useTheme();
-  const options: { value: ThemeChoice; label: string }[] = [
-    { value: "light", label: "Light" },
-    { value: "dark", label: "Dark" },
-    { value: "system", label: "System" },
-  ];
-  return (
-    <View className="rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3.5 dark:border-white/10 dark:bg-[#1E1E2E]">
-      <View className="flex-row items-center gap-3 mb-3">
-        <Ionicons name="contrast-outline" size={20} color="#71717A" />
-        <View className="flex-1">
-          <Text className="text-sm text-zinc-200 dark:text-zinc-200">
-            Appearance
-          </Text>
-          <Text className="text-xs text-zinc-600 dark:text-zinc-300 mt-0.5 dark:text-zinc-500">
-            Light, dark, or follow your system
-          </Text>
-        </View>
-      </View>
-      <View className="flex-row rounded-full bg-zinc-800 p-0.5 dark:bg-white/10">
-        {options.map((opt) => {
-          const selected = preference === opt.value;
-          return (
-            <Pressable
-              key={opt.value}
-              onPress={() => setPreference(opt.value)}
-              className={`flex-1 items-center justify-center rounded-full px-3 py-2 ${
-                selected ? "bg-zinc-700 dark:bg-white/20" : ""
-              }`}
-            >
-              <Text
-                className={`text-xs font-medium ${
-                  selected
-                    ? "text-zinc-800 dark:text-zinc-100"
-                    : "text-zinc-400 dark:text-zinc-500"
-                }`}
-              >
-                {opt.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
-    </View>
   );
 }

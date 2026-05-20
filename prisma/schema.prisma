@@ -129,6 +129,13 @@ model User {
   // user explicitly picks via the toggle; we persist to the DB so the
   // preference survives across devices without relying on localStorage.
   theme                         String?
+  // Accent palette pick (Slice Q2, 2026-05-19, visual refresh v2).
+  // Values: "coral" | "sunset" | "citrus" | "cobalt". Default coral
+  // matches the build-42 implicit default (no palette concept) so a
+  // brand-new build-45 mobile boot reads "coral" without DB writes.
+  // Local on iOS via AsyncStorage `acuity.palette`; this column is
+  // the cross-device source of truth.
+  themePalette                  String               @default("coral")
   // Streak tracking — incremented by the Inngest process-entry pipeline
   // after a successful recording persists. Day boundaries evaluated in
   // the user's `timezone` via date-fns-tz (same-day = no change,
