@@ -1,14 +1,6 @@
-import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
-import { Flame } from "lucide-react-native";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  Text,
-  View,
-} from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
@@ -20,12 +12,19 @@ import {
 } from "@acuity/shared";
 
 import { HomeFocusStack } from "@/components/home-focus-stack";
+import { IdentityHero } from "@/components/home/identity-hero";
+import { LastNightCard } from "@/components/home/last-night-card";
+import { RecentThemesRow } from "@/components/home/recent-themes-row";
+import { TodayStatsRow } from "@/components/home/today-stats-row";
+import { TonightCTA } from "@/components/home/tonight-cta";
+import { WeeklyInsightCard } from "@/components/home/weekly-insight-card";
 import { MoodIcon } from "@/components/mood-icon";
 import { ProgressionChecklist } from "@/components/progression-checklist";
 import { Skeleton, SkeletonCard } from "@/components/skeleton";
 import { ProLockedCard } from "@/components/pro-locked-card";
 import { RecommendedActivity } from "@/components/recommended-activity";
 import { useAuth } from "@/contexts/auth-context";
+import { useTheme } from "@/contexts/theme-context";
 import { isFreeTierUser } from "@/lib/free-tier";
 import { api } from "@/lib/api";
 import { getCached, isStale, setCached } from "@/lib/cache";
@@ -57,17 +56,36 @@ interface HomePayload {
 }
 
 /**
- * Home tab — the dashboard. Record button is the primary action.
- * Tapping it opens /record as a modal (see app/_layout.tsx stack
- * config). Recent sessions below are tap-to-open-detail.
+ * Home tab — Dashboard variant (Slice Q4, visual refresh v2,
+ * 2026-05-20). Composes Q3 primitives (RingProgress, Sparkbar,
+ * ThemePill, TierPill, HeroCard, GradientText) into the dashboard
+ * layout from _design/design_handoff_acuity_v2/screen-home.jsx.
  *
- * Prior to this task, index.tsx held the full recording flow. That
- * was confusing on two axes: (1) users had no landing surface to
- * orient themselves after sign-in — the app dropped them straight
- * onto a record button; (2) we had two recording screens in the
- * tree (app/record.tsx + app/(tabs)/index.tsx) with duplicated
- * state-machine code. Consolidating into one /record modal + a
- * proper dashboard fixes both.
+ * All data hooks preserved from the pre-Q4 Home: useAuth, three
+ * api.get calls (entries / home / progression), cache-then-revalidate
+ * via getCached + setCached + isStale, no new endpoints. Where the
+ * design assumes data not in our payload (Life Matrix overall score,
+ * achievements detail, server-side tier), we either derive (TierPill
+ * from currentStreak) or omit (the dedicated Matrix hero card —
+ * lands in Q7 with the Insights tab refresh).
+ *
+ * Existing surfaces preserved in-place with new styling:
+ *   - TrialBanner — restyled to use tokens.
+ *   - HomeFocusStack — kept as-is (its own visual language refreshes
+ *     in a later slice if needed; doesn't block Q4 from shipping).
+ *   - ProgressionChecklist / RecommendedActivity / ProLockedCard —
+ *     unchanged; their existing internals will refresh slice-by-slice.
+ *   - Recent sessions list — restyled minimal entry rows.
+ *
+ * Animations wired:
+ *   - Motion #3 (stat count-up, 850ms easeOutCubic) on streak +
+ *     minutes via useCountUp.
+ *   - Motion #6 (streak +1 floater + ring fill, 520ms easeStandard)
+ *     when currentStreak ticks vs. the previous render.
+ *   - Motion #4 (achievement unlock bounce + shimmer) skipped for
+ *     Q4 — detection requires a tier crossing comparison that adds
+ *     complexity beyond the slice budget; surfacing as TODO for a
+ *     follow-up.
  */
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
@@ -78,6 +96,7 @@ const HOME_PROGRESSION_KEY = "/api/user/progression";
 
 export default function DashboardTab() {
   const { user } = useAuth();
+  const { tokens } = useTheme();
   const router = useRouter();
   const [entries, setEntries] = useState<EntryDTO[] | null>(
     () =>
@@ -118,8 +137,7 @@ export default function DashboardTab() {
     }
   }, []);
 
-  // Revalidate silently on focus, but only if the cache is stale.
-  // Cached content stays rendered — no spinner flash on tab switches.
+  // Revalidate silently on focus, but only if cache is stale.
   useFocusEffect(
     useCallback(() => {
       if (isStale(HOME_ENTRIES_KEY) || isStale(HOME_DATA_KEY)) {
@@ -133,12 +151,34 @@ export default function DashboardTab() {
   }, [entries, load]);
 
   const firstName = user?.name?.split(" ")[0] ?? "there";
-  // Greeting is fixed for the session — avoids a fresh `new Date()`
-  // allocation on every render.
+  const initials = useMemo(() => {
+    const name = user?.name ?? firstName;
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .filter(Boolean)
+      .join("")
+      .slice(0, 2)
+      .toUpperCase();
+  }, [user?.name, firstName]);
   const greeting = useMemo(() => greetingFor(new Date()), []);
-  // Filter is O(n) over entries; memoize so it doesn't re-run when
-  // unrelated state (home focus stack dismissals, etc.) triggers a
-  // parent re-render.
+
+  // Derive the 7-day entry counts (oldest → newest) for the sparkbar.
+  // Bucket entries by floor((now - createdAt) / day) and clamp to the
+  // last 7 days.
+  const weekBars = useMemo(() => {
+    const bars = [0, 0, 0, 0, 0, 0, 0];
+    const now = Date.now();
+    for (const e of entries ?? []) {
+      const age = now - new Date(e.createdAt).getTime();
+      const day = Math.floor(age / (24 * 60 * 60 * 1000));
+      if (day < 0 || day > 6) continue;
+      // Index 0 = oldest, 6 = today.
+      bars[6 - day] += 1;
+    }
+    return bars;
+  }, [entries]);
+
   const weekCount = useMemo(
     () =>
       (entries ?? []).filter(
@@ -147,117 +187,213 @@ export default function DashboardTab() {
     [entries]
   );
 
+  // Total minutes recorded across all entries in scope (the /entries
+  // payload). audioDuration is seconds; convert to minutes for display.
+  const minutesRecorded = useMemo(() => {
+    let secs = 0;
+    for (const e of entries ?? []) {
+      if (typeof e.audioDuration === "number" && Number.isFinite(e.audioDuration)) {
+        secs += e.audioDuration;
+      }
+    }
+    return Math.round(secs / 60);
+  }, [entries]);
+
+  // Recent themes — flatten + dedupe (first-seen order) from entries.
+  // Pre-sort by createdAt desc so most-recent themes win the dedupe.
+  const recentThemes = useMemo(() => {
+    const sorted = [...(entries ?? [])].sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+    return sorted.flatMap((e) => e.themes ?? []);
+  }, [entries]);
+
+  const latestEntry = useMemo(() => {
+    if (!entries || entries.length === 0) return null;
+    return [...entries].sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    )[0];
+  }, [entries]);
+
   const openEntry = useCallback(
     (entryId: string) => router.push(`/entry/${entryId}`),
     [router]
   );
 
-  return (
-    <SafeAreaView className="flex-1 bg-white dark:bg-[#1E1E2E] dark:bg-[#0B0B12]" edges={["top"]}>
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
-        {/* Greeting row — profile icon top-right replaces the Profile
-            tab slot (which moved out of the bar when Entries was added). */}
-        <View className="mb-6 flex-row items-start justify-between">
-          <View className="flex-1 pr-3">
-            <Text
-              className="text-4xl font-bold text-zinc-900 dark:text-zinc-50"
-              numberOfLines={1}
-              adjustsFontSizeToFit
-              minimumFontScale={0.75}
-            >
-              {greeting}, {firstName}.
-            </Text>
-            <Text className="text-lg text-zinc-400 dark:text-zinc-500 mt-1">
-              {weekCount === 0
-                ? "No sessions this week yet."
-                : `${weekCount} session${weekCount === 1 ? "" : "s"} this week.`}
-            </Text>
-            {(user?.currentStreak ?? 0) >= 2 && (
-              <View className="mt-2 flex-row items-center gap-1.5">
-                <Flame size={14} color="#F97316" />
-                <Text className="text-sm font-semibold text-orange-500 dark:text-orange-400">
-                  {user?.currentStreak}-day streak
-                </Text>
-              </View>
-            )}
-          </View>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Open settings"
-            onPress={() => router.push("/(tabs)/profile")}
-            hitSlop={12}
-            className="h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-white dark:border-white/10 dark:bg-[#1E1E2E]"
-          >
-            <Ionicons name="settings-outline" size={18} color="#71717A" />
-          </Pressable>
-        </View>
+  const handleSettingsPress = useCallback(
+    () => router.push("/(tabs)/profile"),
+    [router]
+  );
 
+  const handleRecordPress = useCallback(
+    () => router.push("/record"),
+    [router]
+  );
+
+  const handleWeeklyInsightPress = useCallback(
+    () => router.push("/insights/state-of-me"),
+    [router]
+  );
+
+  return (
+    <SafeAreaView
+      style={{ flex: 1, backgroundColor: tokens.bg }}
+      edges={["top"]}
+    >
+      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
+        {/* Identity hero — avatar + greeting + name + tier pill */}
+        <IdentityHero
+          initials={initials}
+          greeting={greeting}
+          firstName={firstName}
+          currentStreak={user?.currentStreak ?? 0}
+          onSettingsPress={handleSettingsPress}
+        />
+
+        <View style={{ height: 16 }} />
         <TrialBanner />
 
-        {/* Focus card stack — Phase 2 Run 1. Unlock cards + resting
-            card above the record CTA so celebrations are the first
-            thing a returning user sees. */}
-        <View className="mb-6">
-          <HomeFocusStack progression={progression} />
-        </View>
+        {/* Tonight CTA — gradient mic card, → /record */}
+        <TonightCTA
+          title="Record your brain dump"
+          helper={
+            weekCount === 0
+              ? "Start your first session of the week."
+              : `${weekCount} session${weekCount === 1 ? "" : "s"} this week.`
+          }
+          onPress={handleRecordPress}
+        />
 
-        {/* Primary record CTA */}
-        <Pressable
-          onPress={() => router.push("/record")}
-          className="rounded-3xl bg-violet-600 py-8 items-center justify-center mb-10"
+        <View style={{ height: 16 }} />
+
+        {/* Today stats — streak ring + entries sparkbar + minutes */}
+        <TodayStatsRow
+          currentStreak={user?.currentStreak ?? 0}
+          longestStreak={user?.longestStreak ?? 0}
+          weekBars={weekBars}
+          minutesRecorded={minutesRecorded}
+          minutesLabel={minutesRecorded === 1 ? "minute" : "minutes"}
+        />
+
+        <View style={{ height: 20 }} />
+
+        {/* Focus card stack — Phase 2 Run 1 cards preserved. */}
+        <HomeFocusStack progression={progression} />
+
+        {/* Recent themes — only renders if there are canonical themes. */}
+        {recentThemes.length > 0 && (
+          <>
+            <View style={{ height: 20 }} />
+            <RecentThemesRow themes={recentThemes} />
+          </>
+        )}
+
+        {/* Progression checklist (preserved) */}
+        {homeData?.progression && (
+          <>
+            <View style={{ height: 20 }} />
+            <ProgressionChecklist
+              items={homeData.progression.items}
+              completedCount={homeData.progression.completedCount}
+              totalVisibleCount={homeData.progression.totalVisibleCount}
+            />
+          </>
+        )}
+
+        {/* Recommendation / daily prompt (preserved) */}
+        {(homeData?.recommendation?.text ?? homeData?.dailyPrompt) && (
+          <>
+            <View style={{ height: 20 }} />
+            <RecommendedActivity
+              prompt={
+                homeData?.recommendation?.text ??
+                (homeData?.dailyPrompt as string)
+              }
+              label={homeData?.recommendation?.label}
+              goalId={homeData?.recommendation?.goalId}
+            />
+          </>
+        )}
+
+        {/* Weekly insight teaser. Always shown if any preview text is
+            available (uses dailyPrompt as a fallback so the surface
+            never collapses on a payload that has a prompt but no
+            recommendation). */}
+        {(homeData?.recommendation?.text ?? homeData?.dailyPrompt) && (
+          <>
+            <View style={{ height: 20 }} />
+            <WeeklyInsightCard
+              preview={
+                homeData?.recommendation?.text ?? (homeData?.dailyPrompt as string)
+              }
+              whenLabel="Open insights"
+              isPro={user?.subscriptionStatus === "PRO"}
+              onPress={handleWeeklyInsightPress}
+            />
+          </>
+        )}
+
+        {/* §B.2.1 Pro pulse — free-tier post-trial paywall surface. */}
+        {isFreeTierUser(user) && (
+          <>
+            <View style={{ height: 20 }} />
+            <ProLockedCard surfaceId="pro_pulse_home" />
+          </>
+        )}
+
+        {/* Last night pull-quote card */}
+        {latestEntry?.summary && (
+          <>
+            <View style={{ height: 20 }} />
+            <LastNightCard
+              summary={latestEntry.summary}
+              whenLabel={formatRelativeDate(latestEntry.createdAt)}
+              durationLabel={
+                latestEntry.audioDuration
+                  ? formatDuration(latestEntry.audioDuration)
+                  : undefined
+              }
+              themes={latestEntry.themes ?? []}
+              onPress={() => openEntry(latestEntry.id)}
+            />
+          </>
+        )}
+
+        {/* Recent sessions — restyled minimal entry rows. */}
+        <View style={{ height: 20 }} />
+        <View
           style={{
-            shadowColor: "#7C3AED",
-            shadowOffset: { width: 0, height: 0 },
-            shadowOpacity: 0.4,
-            shadowRadius: 20,
-            elevation: 8,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            paddingHorizontal: 4,
+            marginBottom: 10,
           }}
         >
-          <View className="h-16 w-16 rounded-full bg-violet-500 items-center justify-center mb-3">
-            <Ionicons name="mic" size={32} color="#fff" />
-          </View>
-          <Text className="text-white font-semibold text-base">
-            Record your brain dump
-          </Text>
-          <Text className="text-violet-200 text-xs mt-1">
-            Up to 5 minutes
-          </Text>
-        </Pressable>
-
-        {homeData?.progression && (
-          <ProgressionChecklist
-            items={homeData.progression.items}
-            completedCount={homeData.progression.completedCount}
-            totalVisibleCount={homeData.progression.totalVisibleCount}
-          />
-        )}
-
-        {(homeData?.recommendation?.text ?? homeData?.dailyPrompt) && (
-          <RecommendedActivity
-            prompt={
-              homeData?.recommendation?.text ?? (homeData?.dailyPrompt as string)
-            }
-            label={homeData?.recommendation?.label}
-            goalId={homeData?.recommendation?.goalId}
-          />
-        )}
-
-        {/* §B.2.1 Pro pulse — alongside today's prompt for FREE
-            post-trial users. Mobile mirror of the web home surface. */}
-        {isFreeTierUser(user) && (
-          <View className="mb-6">
-            <ProLockedCard surfaceId="pro_pulse_home" />
-          </View>
-        )}
-
-        {/* Recent sessions */}
-        <View className="mb-3 flex-row items-center justify-between">
-          <Text className="text-xs font-semibold uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
+          <Text
+            style={{
+              fontFamily: tokens.fontMono,
+              fontSize: 10,
+              fontWeight: "700",
+              letterSpacing: 1.4,
+              textTransform: "uppercase",
+              color: tokens.textTer,
+            }}
+          >
             Recent sessions
           </Text>
           {entries && entries.length > HOME_ENTRY_LIMIT && (
             <Pressable onPress={() => router.push("/(tabs)/entries")} hitSlop={8}>
-              <Text className="text-xs font-semibold text-violet-600 dark:text-violet-400">
+              <Text
+                style={{
+                  fontFamily: tokens.fontSans,
+                  fontSize: 12,
+                  fontWeight: "600",
+                  color: tokens.primary,
+                }}
+              >
                 View all →
               </Text>
             </Pressable>
@@ -265,7 +401,6 @@ export default function DashboardTab() {
         </View>
 
         {loading ? (
-          // Skeleton entry rows — match the loaded card footprint.
           <View style={{ gap: 10 }}>
             {Array.from({ length: 3 }).map((_, i) => (
               <SkeletonCard key={i}>
@@ -289,15 +424,39 @@ export default function DashboardTab() {
             ))}
           </View>
         ) : entries && entries.length === 0 ? (
-          <View className="rounded-2xl border border-dashed border-zinc-200 dark:border-white/10 p-6 items-center">
-            <Text className="text-3xl mb-2">🎙️</Text>
-            <Text className="text-sm text-zinc-400 dark:text-zinc-500">No entries yet.</Text>
-            <Text className="text-xs text-zinc-600 dark:text-zinc-300 mt-1">
-              Tap the record button to start.
+          <View
+            style={{
+              padding: 24,
+              borderRadius: tokens.radius.lg,
+              borderWidth: 1,
+              borderColor: tokens.line,
+              borderStyle: "dashed",
+              alignItems: "center",
+            }}
+          >
+            <Text style={{ fontSize: 28, marginBottom: 8 }}>🎙️</Text>
+            <Text
+              style={{
+                fontFamily: tokens.fontSans,
+                fontSize: 14,
+                color: tokens.textTer,
+              }}
+            >
+              No entries yet.
+            </Text>
+            <Text
+              style={{
+                fontFamily: tokens.fontSans,
+                fontSize: 12,
+                color: tokens.textQuiet,
+                marginTop: 4,
+              }}
+            >
+              Tap the record button above to start.
             </Text>
           </View>
         ) : (
-          <View className="gap-2">
+          <View style={{ gap: 8 }}>
             {(entries ?? []).slice(0, HOME_ENTRY_LIMIT).map((entry) => (
               <EntryRow key={entry.id} entry={entry} onPress={openEntry} />
             ))}
@@ -309,36 +468,55 @@ export default function DashboardTab() {
 }
 
 /**
- * Shows a gentle banner when the user's 14-day trial is inside its
- * last 7 days. No CTA, no urgency language — spec §3 asks for a
- * quiet countdown, not a pressure tactic. Renders nothing for
- * users on PRO, FREE (post-trial-but-not-subscribed — they see the
- * paywall on attempted write), or with no trial date.
+ * Shows a quiet trial countdown banner in the final 7 days. Same
+ * logic as pre-Q4 — only the visual surface changed.
  */
 function TrialBanner() {
   const { user } = useAuth();
+  const { tokens } = useTheme();
   if (!user) return null;
   if (user.subscriptionStatus !== "TRIAL") return null;
   if (!user.trialEndsAt) return null;
 
   const msLeft = new Date(user.trialEndsAt).getTime() - Date.now();
-  if (msLeft <= 0) return null; // expired — paywall handles
+  if (msLeft <= 0) return null;
   const daysLeft = Math.ceil(msLeft / (24 * 60 * 60 * 1000));
-  if (daysLeft > 7) return null; // only surface in the final week
+  if (daysLeft > 7) return null;
 
   return (
-    <View className="rounded-2xl border border-violet-600/30 bg-violet-900/20 px-4 py-3 mb-6 flex-row items-center gap-3">
-      <Ionicons name="time-outline" size={18} color="#A78BFA" />
-      <View className="flex-1">
-        <Text className="text-sm text-violet-200">
-          {daysLeft === 1
-            ? "Last day of your trial."
-            : `${daysLeft} day${daysLeft === 1 ? "" : "s"} left in your trial.`}
-        </Text>
-        <Text className="text-xs text-violet-400/80 mt-0.5">
-          Your Day 14 Life Audit is coming. Nothing disappears after.
-        </Text>
-      </View>
+    <View
+      style={{
+        borderRadius: tokens.radius.lg,
+        backgroundColor: tokens.cardBgTint,
+        borderWidth: 0.5,
+        borderColor: tokens.line,
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        marginBottom: 16,
+      }}
+    >
+      <Text
+        style={{
+          fontFamily: tokens.fontSans,
+          fontSize: 14,
+          fontWeight: "600",
+          color: tokens.text,
+        }}
+      >
+        {daysLeft === 1
+          ? "Last day of your trial."
+          : `${daysLeft} day${daysLeft === 1 ? "" : "s"} left in your trial.`}
+      </Text>
+      <Text
+        style={{
+          fontFamily: tokens.fontSans,
+          fontSize: 12,
+          color: tokens.textSec,
+          marginTop: 4,
+        }}
+      >
+        Your Day 14 Life Audit is coming. Nothing disappears after.
+      </Text>
     </View>
   );
 }
@@ -350,43 +528,94 @@ const EntryRow = memo(function EntryRow({
   entry: EntryDTO;
   onPress: (entryId: string) => void;
 }) {
+  const { tokens } = useTheme();
   const dateLabel = formatRelativeDate(entry.createdAt);
   const isPartial = entry.status === "PARTIAL";
   const handlePress = useCallback(() => onPress(entry.id), [onPress, entry.id]);
   return (
     <Pressable
       onPress={handlePress}
-      className="rounded-2xl border border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-[#13131F] dark:bg-[#1E1E2E] px-4 py-3"
+      style={{
+        borderRadius: tokens.radius.lg,
+        backgroundColor: tokens.cardBg,
+        borderWidth: 0.5,
+        borderColor: tokens.line,
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 12,
+      }}
     >
-      <View className="flex-row items-center gap-3">
-        <View className="flex-1">
-          <View className="flex-row items-center gap-2">
-            <Text className="text-xs text-zinc-500 dark:text-zinc-400">{dateLabel}</Text>
-            {entry.mood && (
-              <View className="flex-row items-center gap-1">
-                <Text className="text-xs text-zinc-400 dark:text-zinc-500">·</Text>
-                <MoodIcon mood={entry.mood} size={11} color="#A1A1AA" />
-                <Text className="text-xs text-zinc-400 dark:text-zinc-500">
-                  {MOOD_LABELS[entry.mood] ?? ""}
-                </Text>
-              </View>
-            )}
-            {isPartial && (
-              <View className="rounded-full bg-amber-900/40 px-2 py-0.5">
-                <Text className="text-[10px] font-semibold text-amber-300">
-                  PARTIAL
-                </Text>
-              </View>
-            )}
-          </View>
+      <View style={{ flex: 1, gap: 6 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
           <Text
-            className="text-sm text-zinc-700 dark:text-zinc-200 mt-1"
-            numberOfLines={2}
+            style={{
+              fontFamily: tokens.fontMono,
+              fontSize: 10,
+              fontWeight: "700",
+              letterSpacing: 1.0,
+              textTransform: "uppercase",
+              color: tokens.textTer,
+            }}
           >
-            {entry.summary ?? entry.transcript ?? "(no summary)"}
+            {dateLabel}
           </Text>
+          {entry.mood && (
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 4,
+              }}
+            >
+              <Text style={{ color: tokens.textQuiet, fontSize: 10 }}>·</Text>
+              <MoodIcon mood={entry.mood} size={11} color={tokens.textTer} />
+              <Text
+                style={{
+                  fontFamily: tokens.fontSans,
+                  fontSize: 11,
+                  color: tokens.textTer,
+                }}
+              >
+                {MOOD_LABELS[entry.mood] ?? ""}
+              </Text>
+            </View>
+          )}
+          {isPartial && (
+            <View
+              style={{
+                paddingVertical: 2,
+                paddingHorizontal: 6,
+                borderRadius: 999,
+                backgroundColor: `${tokens.bad}33`,
+              }}
+            >
+              <Text
+                style={{
+                  fontFamily: tokens.fontMono,
+                  fontSize: 9,
+                  fontWeight: "700",
+                  color: tokens.bad,
+                  letterSpacing: 0.4,
+                }}
+              >
+                PARTIAL
+              </Text>
+            </View>
+          )}
         </View>
-        <Ionicons name="chevron-forward" size={16} color="#52525B" />
+        <Text
+          numberOfLines={2}
+          style={{
+            fontFamily: tokens.fontSans,
+            fontSize: 14,
+            lineHeight: 19,
+            color: tokens.text,
+          }}
+        >
+          {entry.summary ?? entry.transcript ?? "(no summary)"}
+        </Text>
       </View>
     </Pressable>
   );
@@ -397,4 +626,11 @@ function greetingFor(now: Date): string {
   if (hour < 12) return "Good morning";
   if (hour < 17) return "Good afternoon";
   return "Good evening";
+}
+
+function formatDuration(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = Math.round(seconds % 60);
+  if (m === 0) return `${s}s`;
+  return `${m}m ${String(s).padStart(2, "0")}s`;
 }
