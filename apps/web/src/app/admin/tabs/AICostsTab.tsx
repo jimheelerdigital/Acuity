@@ -17,6 +17,13 @@ import { SkeletonMetric, SkeletonChart, SkeletonTable } from "../components/Skel
 import { TabError } from "../components/TabError";
 import { useTabData } from "./useTabData";
 
+interface PerUserCost {
+  userId: string;
+  email: string;
+  totalCostCents: number;
+  callCount: number;
+}
+
 interface AICostsData {
   mtdSpendCents: number;
   budgetCents: number;
@@ -34,6 +41,7 @@ interface AICostsData {
     errorMessage: string | null;
     createdAt: string;
   }[];
+  perUserCosts?: PerUserCost[];
 }
 
 export default function AICostsTab({
@@ -265,6 +273,61 @@ export default function AICostsTab({
           </table>
         </div>
       </div>
+
+      {/* Per-user cost breakdown */}
+      {data.perUserCosts && data.perUserCosts.length > 0 && (
+        <div className="rounded-xl bg-[#13131F] p-5">
+          <h3 className="mb-1 text-sm font-semibold uppercase tracking-wider text-white/40">
+            Per-User Costs (Month-to-Date)
+          </h3>
+          <p className="mb-4 text-[11px] text-white/30">
+            Based on Claude calls with user attribution. Sorted by highest cost.
+          </p>
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 mb-4">
+            <div className="rounded-lg bg-white/[0.03] px-4 py-3">
+              <div className="text-[11px] uppercase tracking-wider text-white/30 mb-1">Avg User Cost</div>
+              <div className="text-lg font-semibold text-white">
+                ${(data.perUserCosts.reduce((s, u) => s + u.totalCostCents, 0) / data.perUserCosts.length / 100).toFixed(2)}
+              </div>
+            </div>
+            <div className="rounded-lg bg-white/[0.03] px-4 py-3">
+              <div className="text-[11px] uppercase tracking-wider text-white/30 mb-1">Heaviest User</div>
+              <div className="text-lg font-semibold text-white">
+                ${(data.perUserCosts[0].totalCostCents / 100).toFixed(2)}
+              </div>
+              <div className="text-[10px] text-white/20">{data.perUserCosts[0].email}</div>
+            </div>
+            <div className="rounded-lg bg-white/[0.03] px-4 py-3">
+              <div className="text-[11px] uppercase tracking-wider text-white/30 mb-1">Gross Margin / User</div>
+              <div className={`text-lg font-semibold ${1299 - (data.perUserCosts.reduce((s, u) => s + u.totalCostCents, 0) / data.perUserCosts.length) > 0 ? "text-emerald-400" : "text-red-400"}`}>
+                ${((1299 - data.perUserCosts.reduce((s, u) => s + u.totalCostCents, 0) / data.perUserCosts.length) / 100).toFixed(2)}
+              </div>
+            </div>
+          </div>
+          <div className="overflow-x-auto max-h-[300px] overflow-y-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="sticky top-0 bg-[#13131F]">
+                <tr className="border-b border-white/10 text-white/40">
+                  <th className="pb-2 pr-3 font-medium">Email</th>
+                  <th className="pb-2 pr-3 font-medium text-right">Total Cost</th>
+                  <th className="pb-2 pr-3 font-medium text-right">Calls</th>
+                  <th className="pb-2 font-medium text-right">Avg / Call</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.perUserCosts.map((u) => (
+                  <tr key={u.userId} className={`border-b border-white/5 ${u.totalCostCents > 500 ? "text-red-300" : "text-white/60"}`}>
+                    <td className="py-1.5 pr-3">{u.email}</td>
+                    <td className="py-1.5 pr-3 text-right">${(u.totalCostCents / 100).toFixed(2)}</td>
+                    <td className="py-1.5 pr-3 text-right">{u.callCount}</td>
+                    <td className="py-1.5 text-right">${(u.totalCostCents / Math.max(u.callCount, 1) / 100).toFixed(3)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {showBreakdown && (
         <DrilldownModal

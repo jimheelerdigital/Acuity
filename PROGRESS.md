@@ -41,6 +41,65 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-20] — Master admin dashboard overhaul: 16 tabs → 9 tabs
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** cefec8e
+
+### In plain English (for Keenan)
+
+The admin dashboard went from 16 overwhelming tabs to 9 focused ones. The Overview tab is now a "morning check" — one glance shows signups, MRR, churn, the user funnel, gross margin, unit economics, and red flag alerts all on one page. The Users tab has engagement summary cards (DAU, WAU, entries per user) above the searchable user list. Ads now includes source breakdown, per-campaign CAC, and landing page performance alongside the spend logging form. Content combines Social and Blog with a toggle. Settings consolidates Feature Flags, the Guide, and all external service links (Supabase, Vercel, etc.). Two entirely new tabs — Growth Metrics (retention cohorts, trend charts, projections) and Business Metrics (P&L view with revenue, costs, margins, break-even) — give you the long-term picture. AI Costs now has per-user cost tracking ready to go once userId starts flowing through ClaudeCallLog.
+
+### Technical changes (for Jimmy)
+
+**Schema changes (2 models):**
+- Modified `prisma/schema.prisma` — added nullable `userId` field to `ClaudeCallLog` with `@@index([userId])` and `@@index([createdAt])`, User relation with `onDelete: SetNull`. Added `claudeCallLogs ClaudeCallLog[]` relation to User model.
+- New model `InfrastructureCost` (id, category, label, amountCents, effectiveAt, expiresAt, createdAt, updatedAt) for persisting manual infrastructure cost entries.
+- Modified `prisma/rls-allowlist.txt` — added `InfrastructureCost no-rls`.
+
+**Dashboard shell:**
+- Rewrote `apps/web/src/app/admin/admin-dashboard.tsx` — 9-tab structure with `LEGACY_REDIRECT` map routing old tab URLs (revenue→overview, engagement→users, etc.) to new parents. Removed QUICK_LINKS from header (moved to Settings). AdLab remains as external link card.
+
+**New tab files (4):**
+- `apps/web/src/app/admin/tabs/ContentTab.tsx` — Social/Blog toggle wrapping existing ContentFactoryTab + AutoBlogTab
+- `apps/web/src/app/admin/tabs/SettingsTab.tsx` — Feature Flags / Guide / External Links sub-sections
+- `apps/web/src/app/admin/tabs/GrowthMetricsTab.tsx` — User growth charts, retention cohort table, engagement/conversion/revenue trends, projections
+- `apps/web/src/app/admin/tabs/BusinessMetricsTab.tsx` — Revenue section, costs section, unit economics grid, P&L with net profit/loss, break-even calc
+
+**Modified tab files (3):**
+- `apps/web/src/app/admin/tabs/OverviewTab.tsx` — full rewrite merging Overview + Revenue + Funnel + Red Flags. Red flag banners at top with resolve/dismiss, metric cards, funnel visualization, charts, revenue summary with gross margin and unit economics.
+- `apps/web/src/app/admin/tabs/AdsTab.tsx` — merged with Acquisition data. Now fetches both `/api/admin/metrics?tab=ads` and `/api/admin/acquisition-data` in parallel.
+- `apps/web/src/app/admin/tabs/AICostsTab.tsx` — added per-user cost breakdown section (table + summary cards). Activates once ClaudeCallLog has userId data.
+- `apps/web/src/app/admin/tabs/UsersTab.tsx` — added engagement summary cards (DAU, WAU, avg entries/user/week) above the user list table.
+
+**Deleted tab files (8):**
+- GrowthTab.tsx, EngagementTab.tsx, RevenueTab.tsx, FunnelTab.tsx, RedFlagsTab.tsx, AcquisitionTab.tsx, TrialEmailsTab.tsx, FreeCapTab.tsx
+
+**API changes:**
+- Modified `apps/web/src/app/api/admin/metrics/route.ts`:
+  - Overview handler now composes `getOverview() + getRevenue() + getFunnel() + getRedFlags()` in parallel via Promise.all
+  - New `getGrowthMetrics()` function — weekly signups, cumulative users, signup source breakdown, retention cohort query, engagement/conversion/revenue trends, growth projections
+  - New `getBusinessMetrics()` function — MRR, costs (AI + ads + infra from new InfrastructureCost model), unit economics, P&L calculations
+  - Added TTLs for `growth-metrics` (15min) and `business-metrics` (10min)
+  - Legacy tab keys (growth, engagement, revenue, funnel, red-flags) still served for backwards compat
+
+### Manual steps needed
+
+- [ ] Run `npx prisma db push` to create InfrastructureCost table and add userId + indexes to ClaudeCallLog (Keenan — from home network)
+- [ ] After schema push, seed initial infrastructure costs via Prisma Studio or a seed script: Vercel $20/mo, Supabase $25/mo, Resend $20/mo, Apple Developer ~$8.25/mo (annualized $99), Domain/Cloudflare $1/mo
+- [ ] Update ClaudeCallLog write sites in Inngest functions (extraction, weekly reports) to pass userId once the schema is pushed — this enables per-user cost tracking
+
+### Notes
+
+- The retention cohort query in Growth Metrics uses a cross-join approach (cohort × activity weeks). This is fine for the current user count (~20 users) but may need a snapshot approach if the user base grows past ~5,000.
+- The Business Metrics tab uses real InfrastructureCost model data instead of the hardcoded estimates ($20/$20/$25) that were in the old Revenue tab. The hardcoded values in the `getRevenue()` function still exist for backwards compat but the Business Metrics tab reads from the DB.
+- Per-user AI cost tracking is wired up on the frontend but won't show data until (1) schema push adds userId to ClaudeCallLog and (2) the Inngest pipeline functions are updated to pass userId when creating log entries. The 4 existing write sites (content factory claude-client.ts, adlab claude.ts) are system-level calls with no user context — those will remain null.
+- All old tab URLs redirect correctly via LEGACY_REDIRECT map: bookmarks to `/admin?tab=revenue` now load the Overview tab, `/admin?tab=engagement` loads Users tab, etc.
+- The raw SQL queries in getGrowthMetrics() use PostgreSQL-specific syntax (DATE_TRUNC, generate_series, FILTER). This matches the existing pattern throughout the metrics route.
+
+---
+
 ## [2026-05-20] — Full admin dashboard data reset (all tabs except AI Costs and Auto Blog)
 
 **Requested by:** Keenan

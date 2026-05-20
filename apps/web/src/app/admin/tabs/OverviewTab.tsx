@@ -1,40 +1,40 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   BarChart,
   Bar,
   XAxis,
   YAxis,
   Tooltip,
-  Legend,
   ResponsiveContainer,
   PieChart,
   Pie,
   Cell,
+  Legend,
 } from "recharts";
 import MetricCard from "../components/MetricCard";
 import ChartCard from "../components/ChartCard";
 import RefreshButton from "../components/RefreshButton";
-import RecentAdminActions from "../components/RecentAdminActions";
-import { SkeletonMetric, SkeletonChart } from "../components/SkeletonCard";
+import { SkeletonMetric, SkeletonChart, SkeletonTable } from "../components/SkeletonCard";
 import { DrilldownModal } from "../components/DrilldownModal";
 import { TabError } from "../components/TabError";
 import { useTabData } from "./useTabData";
 import {
   MONTHLY_PRICE_CENTS,
   formatDollarsRounded,
+  formatDollars,
 } from "@/lib/pricing";
 
-type Drilldown =
-  | {
-      metric: string;
-      fallbackTitle: string;
-      params?: Record<string, string>;
-    }
-  | null;
+type Drilldown = {
+  metric: string;
+  fallbackTitle: string;
+  params?: Record<string, string>;
+} | null;
 
 interface OverviewData {
+  // From getOverview
   signups: number;
   prevSignups: number;
   payingSubs: number;
@@ -42,240 +42,204 @@ interface OverviewData {
   conversionRate: number;
   prevConversionRate: number;
   aiSpendCents: number;
+  blendedCac?: number | null;
   signupsOverTime: { date: string; count: number }[];
   aiByPurpose: { purpose: string; total: number }[];
-  redFlags: { id: string; severity: string; title: string; category: string }[];
+  // From getRevenue
+  revenue: {
+    mrrCents: number;
+    payingSubs: number;
+    trialUsers: number;
+    churnRate: number;
+    conversionRate: number;
+    churnedInPeriod: number;
+    pastDueUsers: { id: string; email: string; stripeCurrentPeriodEnd: string | null }[];
+    recentPaying: { email: string; createdAt: string; stripeCurrentPeriodEnd: string | null }[];
+    costs: { claudeApiCents: number; stripeFeeCents: number; resendCents: number; vercelCents: number; supabaseCents: number; totalCents: number };
+    margin: { grossMarginCents: number; grossMarginPct: number };
+    unitEconomics: { arpuCents: number; avgCostPerCustomerCents: number; contributionMarginCents: number; ltvCents: number; cacCents: number | null; ltvCacRatio: number | null };
+  };
+  // From getFunnel
+  funnel: {
+    steps: { label: string; count: number }[];
+  };
+  // From getRedFlags
+  redFlags: {
+    flags: { id: string; severity: string; category: string; title: string; description: string; affectedUserIds: string[]; createdAt: string }[];
+  };
 }
 
-const SEVERITY_COLORS: Record<string, string> = {
-  CRITICAL: "border-red-500/40 bg-red-900/20 text-red-300",
-  WARNING: "border-amber-500/40 bg-amber-900/20 text-amber-300",
-  INFO: "border-blue-500/40 bg-blue-900/20 text-blue-300",
+const SEVERITY_STYLES: Record<string, { border: string; bg: string; text: string; badge: string }> = {
+  CRITICAL: { border: "border-red-500/30", bg: "bg-red-900/10", text: "text-red-300", badge: "bg-red-500/20 text-red-400" },
+  WARNING: { border: "border-amber-500/30", bg: "bg-amber-900/10", text: "text-amber-300", badge: "bg-amber-500/20 text-amber-400" },
+  INFO: { border: "border-blue-500/30", bg: "bg-blue-900/10", text: "text-blue-300", badge: "bg-blue-500/20 text-blue-400" },
 };
 
 const PIE_COLORS = ["#7C5CFC", "#9B7DFF", "#D4A843", "#4EBAAA", "#E06C75", "#56B6C2", "#98C379"];
 
-export default function OverviewTab({
-  start,
-  end,
-}: {
-  start: string;
-  end: string;
-}) {
+const STEP_KEY: Record<string, string> = {
+  "Waitlist Signups": "waitlist",
+  "Account Created": "account",
+  "First Recording": "first_recording",
+  "Active Day 1": "active_d1",
+  "Active Day 7": "active_d7",
+  "Converted to Paid": "converted",
+};
+
+function fmt(cents: number): string {
+  return `$${(cents / 100).toFixed(2)}`;
+}
+
+function marginColor(pct: number): string {
+  if (pct >= 70) return "text-emerald-400";
+  if (pct >= 40) return "text-amber-400";
+  return "text-red-400";
+}
+
+function marginBg(pct: number): string {
+  if (pct >= 70) return "border-emerald-500/20 bg-emerald-900/10";
+  if (pct >= 40) return "border-amber-500/20 bg-amber-900/10";
+  return "border-red-500/20 bg-red-900/10";
+}
+
+export default function OverviewTab({ start, end }: { start: string; end: string }) {
   const { data, loading, error, meta, refresh } = useTabData<OverviewData>("overview", start, end);
   const [drilldown, setDrilldown] = useState<Drilldown>(null);
+  const [resolving, setResolving] = useState<string | null>(null);
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+  const router = useRouter();
 
-  if (error && !data) {
-    return <TabError message={error} onRetry={refresh} />;
-  }
+  if (error && !data) return <TabError message={error} onRetry={refresh} />;
 
   if (loading || !data) {
     return (
       <div className="space-y-6">
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <SkeletonMetric key={i} />
-          ))}
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 2xl:grid-cols-6">
+          {Array.from({ length: 6 }).map((_, i) => <SkeletonMetric key={i} />)}
         </div>
-        <div className="grid gap-4 lg:grid-cols-2">
-          <SkeletonChart />
-          <SkeletonChart />
-        </div>
+        <SkeletonChart />
+        <SkeletonTable />
       </div>
     );
   }
 
-  const aiDollars = (data.aiSpendCents / 100).toFixed(2);
+  const handleResolve = async (flagId: string, action: string) => {
+    setResolving(flagId);
+    try {
+      await fetch("/api/admin/red-flags", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ flagId, action }),
+      });
+      setDismissed((prev) => new Set(prev).add(flagId));
+    } finally {
+      setResolving(null);
+    }
+  };
+
+  const visibleFlags = data.redFlags.flags.filter((f) => !dismissed.has(f.id));
   const signupSparkline = data.signupsOverTime.map((d) => ({ v: d.count }));
+  const rev = data.revenue;
+  const maxFunnelCount = Math.max(...data.funnel.steps.map((s) => s.count), 1);
 
   return (
     <div className="space-y-6">
+      {/* ── Red Flag Alert Banners ────────────────────────────────── */}
+      {visibleFlags.length > 0 && (
+        <div className="space-y-2">
+          {visibleFlags.map((f) => {
+            const style = SEVERITY_STYLES[f.severity] ?? SEVERITY_STYLES.INFO;
+            return (
+              <div key={f.id} className={`rounded-lg border ${style.border} ${style.bg} px-5 py-3 flex items-center justify-between gap-4`}>
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium shrink-0 ${style.badge}`}>{f.severity}</span>
+                  <span className={`text-sm font-medium ${style.text} truncate`}>{f.title}</span>
+                  <span className="text-xs text-white/30 shrink-0">{f.category}</span>
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <button onClick={() => handleResolve(f.id, "resolve")} disabled={resolving === f.id} className="rounded-md bg-white/10 px-3 py-1 text-xs text-white/70 hover:bg-white/20 disabled:opacity-50">Resolve</button>
+                  <button onClick={() => handleResolve(f.id, "dismiss")} disabled={resolving === f.id} className="rounded-md bg-white/5 px-3 py-1 text-xs text-white/40 hover:bg-white/10 disabled:opacity-50">Dismiss</button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       {/* Refresh */}
       <div className="flex justify-end">
         <RefreshButton computedAt={meta?.computedAt ?? null} onRefresh={refresh} loading={loading} />
       </div>
 
-      {/* Hero metrics. xl-grid was 6-cols starting at 1280 — too cramped
-          for the bumped 36px values. 2xl (1536) gives ~240px per tile
-          inside the 1600 container, which fits the larger typography. */}
+      {/* ── Hero Metric Cards ────────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 2xl:grid-cols-6">
-        <MetricCard
-          label="New Signups"
-          value={data.signups}
-          currentValue={data.signups}
-          previousValue={data.prevSignups}
-          sparklineData={signupSparkline}
-          onClick={() =>
-            setDrilldown({ metric: "signups", fallbackTitle: "New Signups" })
-          }
-        />
-        <MetricCard
-          label="Trial-to-Paid Conversion Rate"
-          value={`${data.conversionRate}%`}
-          currentValue={data.conversionRate}
-          previousValue={data.prevConversionRate}
-          onClick={() =>
-            setDrilldown({
-              metric: "trial_to_paid",
-              fallbackTitle: "Trial-to-Paid Conversions",
-            })
-          }
-        />
-        <MetricCard
-          label="Active Paying Subscribers"
-          value={data.payingSubs}
-          currentValue={data.payingSubs}
-          previousValue={data.prevPayingSubs}
-          onClick={() =>
-            setDrilldown({
-              metric: "paying_subs",
-              fallbackTitle: "Active Paying Subscribers",
-            })
-          }
-        />
-        <MetricCard
-          label="Monthly Recurring Revenue (MRR)"
-          value={formatDollarsRounded(data.payingSubs * MONTHLY_PRICE_CENTS)}
-          onClick={() =>
-            setDrilldown({
-              metric: "mrr_breakdown",
-              fallbackTitle: "MRR Breakdown",
-            })
-          }
-        />
-        <MetricCard
-          label="Blended CAC"
-          value={
-            data.blendedCac != null
-              ? `$${(data.blendedCac / 100).toFixed(2)}`
-              : "—"
-          }
-          title={
-            data.blendedCac != null
-              ? "Total ad spend ÷ total signups this period"
-              : "No ad spend data for this period. Enter spend in the Ads tab."
-          }
-        />
-        <MetricCard
-          label="Claude Spend (Month-to-Date)"
-          value={`$${aiDollars}`}
-          budgetBar={{ current: data.aiSpendCents, max: 10000 }}
-          onClick={() =>
-            setDrilldown({
-              metric: "ai_spend_breakdown",
-              fallbackTitle: "Claude Spend by Feature",
-            })
-          }
-        />
+        <MetricCard label="New Signups" value={data.signups} currentValue={data.signups} previousValue={data.prevSignups} sparklineData={signupSparkline} onClick={() => setDrilldown({ metric: "signups", fallbackTitle: "New Signups" })} />
+        <MetricCard label="Active Users (Week)" value={data.signups} onClick={() => setDrilldown({ metric: "engagement_users", fallbackTitle: "Active Users", params: { window: "wau" } })} />
+        <MetricCard label="Trial → Paid" value={`${data.conversionRate}%`} currentValue={data.conversionRate} previousValue={data.prevConversionRate} onClick={() => setDrilldown({ metric: "trial_to_paid", fallbackTitle: "Trial-to-Paid" })} />
+        <MetricCard label="MRR" value={formatDollarsRounded(rev.mrrCents)} onClick={() => setDrilldown({ metric: "mrr_breakdown", fallbackTitle: "MRR Breakdown" })} />
+        <MetricCard label="Churn Rate" value={`${rev.churnRate}%`} />
+        <MetricCard label="Claude Spend (MTD)" value={`$${(data.aiSpendCents / 100).toFixed(2)}`} budgetBar={{ current: data.aiSpendCents, max: 10000 }} onClick={() => setDrilldown({ metric: "ai_spend_breakdown", fallbackTitle: "Claude Spend" })} />
       </div>
 
-      {/* Charts row */}
+      {/* ── Funnel Visualization ──────────────────────────────────── */}
+      <div className="rounded-xl bg-[#13131F] p-6">
+        <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-white/40">User Funnel</h3>
+        <div className="space-y-3 max-w-3xl mx-auto">
+          {data.funnel.steps.map((step, i) => {
+            const pct = (step.count / maxFunnelCount) * 100;
+            const prevCount = i > 0 ? data.funnel.steps[i - 1].count : null;
+            const dropOff = prevCount != null && prevCount > 0 ? Math.round(((prevCount - step.count) / prevCount) * 100) : null;
+            const stepKey = STEP_KEY[step.label];
+            const drillable = stepKey && step.count > 0;
+            return (
+              <button key={step.label} type="button" disabled={!drillable} onClick={() => drillable && setDrilldown({ metric: "funnel_step", fallbackTitle: step.label, params: { step: stepKey } })} className={`block w-full text-left ${drillable ? "cursor-pointer hover:opacity-90" : "cursor-default"}`}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-sm text-white/70">{step.label}</span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-bold text-white">{step.count.toLocaleString()}</span>
+                    {dropOff != null && dropOff > 0 && <span className="text-xs text-red-400/60">-{dropOff}% drop</span>}
+                  </div>
+                </div>
+                <div className="h-7 w-full overflow-hidden rounded bg-white/5">
+                  <div className="h-full rounded bg-gradient-to-r from-[#7C5CFC] to-[#9B7DFF] transition-all" style={{ width: `${Math.max(pct, 2)}%` }} />
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── Charts Row ────────────────────────────────────────────── */}
       <div className="grid gap-4 lg:grid-cols-2">
         <ChartCard title="Signups Over Time">
           {data.signupsOverTime.length === 0 ? (
-            <p className="text-sm text-white/40 py-12 text-center">
-              Not enough data — comes online after first signups
-            </p>
+            <p className="text-sm text-white/40 py-12 text-center">Not enough data yet</p>
           ) : (
             <div className="h-56">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={data.signupsOverTime}>
-                  <XAxis
-                    dataKey="date"
-                    tick={{ fill: "rgba(255,255,255,0.55)", fontSize: 12 }}
-                    tickFormatter={(v) => v.slice(5)}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    tick={{ fill: "rgba(255,255,255,0.55)", fontSize: 12 }}
-                    axisLine={false}
-                    tickLine={false}
-                    allowDecimals={false}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      background: "#13131F",
-                      border: "1px solid rgba(255,255,255,0.1)",
-                      borderRadius: 8,
-                      fontSize: 12,
-                    }}
-                    labelStyle={{ color: "rgba(255,255,255,0.5)" }}
-                  />
-                  <Bar
-                    dataKey="count"
-                    fill="#7C5CFC"
-                    radius={[4, 4, 0, 0]}
-                    cursor="pointer"
-                    onClick={(payload: { date?: string } | undefined) => {
-                      if (payload?.date) {
-                        setDrilldown({
-                          metric: "signups_on_day",
-                          fallbackTitle: `Signups on ${payload.date}`,
-                          params: { day: payload.date },
-                        });
-                      }
-                    }}
-                  />
+                  <XAxis dataKey="date" tick={{ fill: "rgba(255,255,255,0.55)", fontSize: 12 }} tickFormatter={(v) => v.slice(5)} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fill: "rgba(255,255,255,0.55)", fontSize: 12 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                  <Tooltip contentStyle={{ background: "#13131F", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }} />
+                  <Bar dataKey="count" fill="#7C5CFC" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           )}
         </ChartCard>
 
-        <ChartCard title="AI Cost by Feature (Month-to-Date)">
+        <ChartCard title="AI Cost by Feature (MTD)">
           {data.aiByPurpose.length === 0 ? (
-            <p className="text-sm text-white/40 py-12 text-center">
-              Not enough data — comes online after AI calls are logged
-            </p>
+            <p className="text-sm text-white/40 py-12 text-center">Not enough data yet</p>
           ) : (
             <div className="h-56 flex items-center justify-center">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie
-                    data={data.aiByPurpose.map((d) => ({
-                      name: d.purpose,
-                      value: d.total,
-                    }))}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={50}
-                    outerRadius={80}
-                    dataKey="value"
-                    label={false}
-                    labelLine={false}
-                    cursor="pointer"
-                    onClick={(payload: { name?: string } | undefined) => {
-                      if (payload?.name) {
-                        setDrilldown({
-                          metric: "ai_spend_for_purpose",
-                          fallbackTitle: `Claude calls — ${payload.name}`,
-                          params: { purpose: payload.name },
-                        });
-                      }
-                    }}
-                  >
-                    {data.aiByPurpose.map((_, i) => (
-                      <Cell
-                        key={i}
-                        fill={PIE_COLORS[i % PIE_COLORS.length]}
-                      />
-                    ))}
+                  <Pie data={data.aiByPurpose.map((d) => ({ name: d.purpose, value: d.total }))} cx="50%" cy="50%" innerRadius={50} outerRadius={80} dataKey="value" label={false}>
+                    {data.aiByPurpose.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                   </Pie>
-                  <Legend
-                    wrapperStyle={{ fontSize: 12, color: "rgba(255,255,255,0.7)" }}
-                  />
-                  <Tooltip
-                    formatter={(value) =>
-                      `$${(Number(value) / 100).toFixed(2)}`
-                    }
-                    contentStyle={{
-                      background: "#13131F",
-                      border: "1px solid rgba(255,255,255,0.1)",
-                      borderRadius: 8,
-                      fontSize: 12,
-                    }}
-                  />
+                  <Legend wrapperStyle={{ fontSize: 12, color: "rgba(255,255,255,0.7)" }} />
+                  <Tooltip formatter={(value) => `$${(Number(value) / 100).toFixed(2)}`} contentStyle={{ background: "#13131F", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -283,39 +247,66 @@ export default function OverviewTab({
         </ChartCard>
       </div>
 
-      {/* Recent admin actions (AdminAuditLog) */}
-      <RecentAdminActions />
+      {/* ── Revenue Summary ──────────────────────────────────────── */}
+      <div className={`rounded-xl border p-5 ${marginBg(rev.margin.grossMarginPct)}`}>
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-medium text-white/60 mb-1">Gross Margin</h3>
+            <div className="flex items-baseline gap-3">
+              <span className={`text-3xl font-bold ${marginColor(rev.margin.grossMarginPct)}`}>{rev.margin.grossMarginPct}%</span>
+              <span className="text-sm text-white/40">{fmt(rev.margin.grossMarginCents)} / mo</span>
+            </div>
+          </div>
+          <div className="text-right text-xs text-white/30">{rev.margin.grossMarginPct >= 70 ? "Healthy" : rev.margin.grossMarginPct >= 40 ? "Watch closely" : "Below target"}</div>
+        </div>
+      </div>
 
-      {drilldown && (
-        <DrilldownModal
-          metric={drilldown.metric}
-          start={start}
-          end={end}
-          fallbackTitle={drilldown.fallbackTitle}
-          params={drilldown.params}
-          onClose={() => setDrilldown(null)}
-        />
-      )}
+      {/* Unit Economics Grid */}
+      <div className="rounded-xl bg-[#13131F] p-5">
+        <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-white/40">Unit Economics</h3>
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+          <MiniMetric label="ARPU" value={fmt(rev.unitEconomics.arpuCents)} />
+          <MiniMetric label="Avg Cost / Customer" value={fmt(rev.unitEconomics.avgCostPerCustomerCents)} />
+          <MiniMetric label="Contribution Margin" value={fmt(rev.unitEconomics.contributionMarginCents)} color={rev.unitEconomics.contributionMarginCents > 0 ? "text-emerald-400" : "text-red-400"} />
+          <MiniMetric label="Estimated LTV" value={fmt(rev.unitEconomics.ltvCents)} sub="Capped at 36 months" />
+          <MiniMetric label="LTV : CAC" value={rev.unitEconomics.ltvCacRatio !== null ? `${rev.unitEconomics.ltvCacRatio}x` : "N/A"} color={rev.unitEconomics.ltvCacRatio === null ? "text-white/30" : rev.unitEconomics.ltvCacRatio >= 3 ? "text-emerald-400" : "text-amber-400"} />
+          <MiniMetric label="CAC" value={rev.unitEconomics.cacCents !== null ? fmt(rev.unitEconomics.cacCents) : "No ad spend"} />
+        </div>
+      </div>
 
-      {/* Red flags summary */}
-      {data.redFlags.length > 0 && (
-        <div className="rounded-xl bg-[#13131F] p-5">
-          <h3 className="mb-3 text-sm font-medium text-white/60">
-            Active Red Flags
-          </h3>
-          <div className="space-y-2">
-            {data.redFlags.map((f) => (
-              <div
-                key={f.id}
-                className={`rounded-lg border px-4 py-2 text-sm ${SEVERITY_COLORS[f.severity] ?? SEVERITY_COLORS.INFO}`}
-              >
-                <span className="font-medium">{f.title}</span>
-                <span className="ml-2 text-xs opacity-60">{f.category}</span>
-              </div>
-            ))}
+      {/* ── Past Due Alerts ──────────────────────────────────────── */}
+      {rev.pastDueUsers.length > 0 && (
+        <div className="rounded-xl border border-red-500/20 bg-red-900/10 p-5">
+          <h3 className="mb-3 text-sm font-medium text-red-400">Failed Payments ({rev.pastDueUsers.length})</h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead><tr className="border-b border-red-500/10 text-red-300/60"><th className="pb-2 pr-4 font-medium">Email</th><th className="pb-2 font-medium">Period End</th></tr></thead>
+              <tbody>
+                {rev.pastDueUsers.map((u) => (
+                  <tr key={u.id} className="cursor-pointer border-b border-red-500/5 text-red-200/70 hover:bg-red-500/5" onClick={() => router.push(`/admin?tab=users&select=${u.id}`)}>
+                    <td className="py-2 pr-4">{u.email}</td>
+                    <td className="py-2">{u.stripeCurrentPeriodEnd ? new Date(u.stripeCurrentPeriodEnd).toLocaleDateString() : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
+
+      {drilldown && (
+        <DrilldownModal metric={drilldown.metric} start={start} end={end} fallbackTitle={drilldown.fallbackTitle} params={drilldown.params} onClose={() => setDrilldown(null)} />
+      )}
+    </div>
+  );
+}
+
+function MiniMetric({ label, value, sub, color }: { label: string; value: string; sub?: string; color?: string }) {
+  return (
+    <div className="rounded-lg bg-white/[0.03] px-4 py-3">
+      <div className="text-[11px] uppercase tracking-wider text-white/30 mb-1">{label}</div>
+      <div className={`text-lg font-semibold tabular-nums ${color ?? "text-white"}`}>{value}</div>
+      {sub && <div className="text-[10px] text-white/20 mt-0.5">{sub}</div>}
     </div>
   );
 }

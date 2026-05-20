@@ -31,6 +31,8 @@ const TAB_TTLS: Record<string, number> = {
   "red-flags": 5 * 60_000,
   users: 2 * 60_000,
   "feature-flags": 1 * 60_000,
+  "growth-metrics": 15 * 60_000,
+  "business-metrics": 10 * 60_000,
   guide: Infinity, // static content
 };
 
@@ -95,8 +97,17 @@ export async function GET(req: NextRequest) {
   try {
     const computeFn = async () => {
       switch (tab) {
-        case "overview":
-          return getOverview(prisma, start, end, prevStart, prevEnd, monthStart);
+        case "overview": {
+          // Merged tab: Overview + Revenue + Funnel + Red Flags
+          const [overview, revenue, funnel, redFlags] = await Promise.all([
+            getOverview(prisma, start, end, prevStart, prevEnd, monthStart),
+            getRevenue(prisma, start, end, prevStart, prevEnd, monthStart),
+            getFunnel(prisma, start, end),
+            getRedFlags(prisma),
+          ]);
+          return { ...overview, revenue, funnel, redFlags };
+        }
+        // Legacy tab keys still served for backwards compat
         case "growth":
           return getGrowth(prisma, start, end, prevStart, prevEnd);
         case "engagement":
@@ -111,6 +122,10 @@ export async function GET(req: NextRequest) {
           return getAICosts(prisma, start, end, monthStart);
         case "red-flags":
           return getRedFlags(prisma);
+        case "growth-metrics":
+          return getGrowthMetrics(prisma, start, end);
+        case "business-metrics":
+          return getBusinessMetrics(prisma, monthStart);
         case "guide":
           return getGuide();
         default:
@@ -879,4 +894,331 @@ async function getRedFlags(prisma: P) {
 function getGuide() {
   // Static content — cached with infinite TTL
   return { guide: true };
+}
+
+// ─── Growth Metrics (new tab) ──────────────────────────────────────
+
+async function getGrowthMetrics(prisma: P, start: Date, end: Date) {
+  const epochFilter = DASHBOARD_EPOCH ? `AND u."createdAt" >= '${DASHBOARD_EPOCH.toISOString()}'` : "";
+  const epochFilterEntry = DASHBOARD_EPOCH ? `AND e."createdAt" >= '${DASHBOARD_EPOCH.toISOString()}'` : "";
+
+  const [
+    weeklySignups,
+    cumulativeUsers,
+    signupsBySource,
+    weeklyRecordings,
+    avgRecordingsPerUser,
+    avgDuration,
+    trialToPaidRate,
+    mrrOverTime,
+    payingUsersOverTime,
+    cohorts,
+  ] = await Promise.all([
+    // Weekly signups
+    prisma.$queryRaw<{ week: string; count: bigint }[]>`
+      SELECT DATE_TRUNC('week', "createdAt")::date::text as week, COUNT(*)::bigint as count
+      FROM "User"
+      WHERE "createdAt" >= ${start} AND "createdAt" <= ${end}
+      ${DASHBOARD_EPOCH ? prisma.$queryRawUnsafe(`AND "createdAt" >= '${DASHBOARD_EPOCH.toISOString()}'`) : prisma.$queryRawUnsafe("")}
+      GROUP BY DATE_TRUNC('week', "createdAt")
+      ORDER BY week ASC
+    `.catch(() => []),
+
+    // Cumulative users over time
+    prisma.$queryRaw<{ week: string; total: bigint }[]>`
+      SELECT w.week::text, COUNT(u.id)::bigint as total
+      FROM generate_series(
+        DATE_TRUNC('week', ${start}::timestamp),
+        ${end}::timestamp,
+        '1 week'::interval
+      ) as w(week)
+      LEFT JOIN "User" u ON u."createdAt" <= w.week + interval '6 days'
+      ${DASHBOARD_EPOCH ? prisma.$queryRawUnsafe(`AND u."createdAt" >= '${DASHBOARD_EPOCH.toISOString()}'`) : prisma.$queryRawUnsafe("")}
+      GROUP BY w.week ORDER BY w.week ASC
+    `.catch(() => []),
+
+    // Signups by source (UTM-based)
+    prisma.$queryRaw<{ week: string; direct: bigint; meta: bigint; organic: bigint; referral: bigint }[]>`
+      SELECT DATE_TRUNC('week', "createdAt")::date::text as week,
+        COUNT(*) FILTER (WHERE "signupUtmSource" IS NULL AND "referredById" IS NULL)::bigint as direct,
+        COUNT(*) FILTER (WHERE "signupUtmSource" ILIKE '%meta%' OR "signupUtmSource" ILIKE '%facebook%')::bigint as meta,
+        COUNT(*) FILTER (WHERE "signupUtmSource" IS NOT NULL AND "signupUtmSource" NOT ILIKE '%meta%' AND "signupUtmSource" NOT ILIKE '%facebook%' AND "referredById" IS NULL)::bigint as organic,
+        COUNT(*) FILTER (WHERE "referredById" IS NOT NULL)::bigint as referral
+      FROM "User"
+      WHERE "createdAt" >= ${start} AND "createdAt" <= ${end}
+      GROUP BY DATE_TRUNC('week', "createdAt")
+      ORDER BY week ASC
+    `.catch(() => []),
+
+    // Weekly recordings
+    prisma.$queryRaw<{ week: string; count: bigint }[]>`
+      SELECT DATE_TRUNC('week', "createdAt")::date::text as week, COUNT(*)::bigint as count
+      FROM "Entry"
+      WHERE "createdAt" >= ${start} AND "createdAt" <= ${end}
+      GROUP BY DATE_TRUNC('week', "createdAt")
+      ORDER BY week ASC
+    `.catch(() => []),
+
+    // Avg recordings per active user per week
+    prisma.$queryRaw<{ week: string; avg: number }[]>`
+      SELECT week, CASE WHEN users > 0 THEN ROUND(entries::numeric / users, 1) ELSE 0 END as avg
+      FROM (
+        SELECT DATE_TRUNC('week', "createdAt")::date::text as week,
+               COUNT(*)::int as entries,
+               COUNT(DISTINCT "userId")::int as users
+        FROM "Entry"
+        WHERE "createdAt" >= ${start} AND "createdAt" <= ${end}
+        GROUP BY DATE_TRUNC('week', "createdAt")
+      ) sub
+      ORDER BY week ASC
+    `.catch(() => []),
+
+    // Avg duration per week
+    prisma.$queryRaw<{ week: string; seconds: number }[]>`
+      SELECT DATE_TRUNC('week', "createdAt")::date::text as week,
+             COALESCE(AVG(duration), 0)::int as seconds
+      FROM "Entry"
+      WHERE "createdAt" >= ${start} AND "createdAt" <= ${end}
+        AND duration IS NOT NULL AND duration > 0
+      GROUP BY DATE_TRUNC('week', "createdAt")
+      ORDER BY week ASC
+    `.catch(() => []),
+
+    // Trial-to-paid rate by signup week
+    prisma.$queryRaw<{ week: string; rate: number }[]>`
+      SELECT week,
+        CASE WHEN total > 0 THEN ROUND(paid::numeric / total * 100, 1) ELSE 0 END as rate
+      FROM (
+        SELECT DATE_TRUNC('week', "createdAt")::date::text as week,
+               COUNT(*)::int as total,
+               COUNT(*) FILTER (WHERE "subscriptionStatus" = 'PRO')::int as paid
+        FROM "User"
+        WHERE "createdAt" >= ${start} AND "createdAt" <= ${end}
+        GROUP BY DATE_TRUNC('week', "createdAt")
+      ) sub
+      ORDER BY week ASC
+    `.catch(() => []),
+
+    // MRR over time (monthly paying user count × price)
+    prisma.$queryRaw<{ month: string; mrr: bigint }[]>`
+      SELECT DATE_TRUNC('month', "createdAt")::date::text as month,
+             (COUNT(*) FILTER (WHERE "subscriptionStatus" = 'PRO' AND "stripeSubscriptionId" IS NOT NULL) * ${MONTHLY_PRICE_CENTS})::bigint as mrr
+      FROM "User"
+      WHERE "createdAt" <= ${end}
+      GROUP BY DATE_TRUNC('month', "createdAt")
+      ORDER BY month ASC
+    `.catch(() => []),
+
+    // Paying users over time
+    prisma.$queryRaw<{ month: string; count: bigint }[]>`
+      SELECT DATE_TRUNC('month', "createdAt")::date::text as month,
+             COUNT(*) FILTER (WHERE "subscriptionStatus" = 'PRO')::bigint as count
+      FROM "User"
+      WHERE "createdAt" <= ${end}
+      GROUP BY DATE_TRUNC('month', "createdAt")
+      ORDER BY month ASC
+    `.catch(() => []),
+
+    // Retention cohorts (last 12 weeks)
+    prisma.$queryRaw<{
+      cohort_week: string;
+      signups: bigint;
+      week1: number; week2: number; week3: number; week4: number;
+      week8: number; week12: number;
+    }[]>`
+      WITH cohort AS (
+        SELECT id, DATE_TRUNC('week', "createdAt")::date as cohort_week
+        FROM "User"
+        WHERE "createdAt" >= ${start} AND "createdAt" <= ${end}
+      ),
+      activity AS (
+        SELECT DISTINCT "userId", DATE_TRUNC('week', "createdAt")::date as activity_week
+        FROM "Entry"
+        WHERE "createdAt" >= ${start}
+      )
+      SELECT
+        c.cohort_week::text,
+        COUNT(DISTINCT c.id)::bigint as signups,
+        ROUND(COUNT(DISTINCT a1.id)::numeric / NULLIF(COUNT(DISTINCT c.id), 0) * 100, 1) as week1,
+        ROUND(COUNT(DISTINCT a2.id)::numeric / NULLIF(COUNT(DISTINCT c.id), 0) * 100, 1) as week2,
+        ROUND(COUNT(DISTINCT a3.id)::numeric / NULLIF(COUNT(DISTINCT c.id), 0) * 100, 1) as week3,
+        ROUND(COUNT(DISTINCT a4.id)::numeric / NULLIF(COUNT(DISTINCT c.id), 0) * 100, 1) as week4,
+        ROUND(COUNT(DISTINCT a8.id)::numeric / NULLIF(COUNT(DISTINCT c.id), 0) * 100, 1) as week8,
+        ROUND(COUNT(DISTINCT a12.id)::numeric / NULLIF(COUNT(DISTINCT c.id), 0) * 100, 1) as week12
+      FROM cohort c
+      LEFT JOIN (SELECT DISTINCT a."userId" as id, c2.cohort_week FROM activity a JOIN cohort c2 ON a."userId" = c2.id WHERE a.activity_week = c2.cohort_week + 7) a1 ON a1.id = c.id AND a1.cohort_week = c.cohort_week
+      LEFT JOIN (SELECT DISTINCT a."userId" as id, c2.cohort_week FROM activity a JOIN cohort c2 ON a."userId" = c2.id WHERE a.activity_week = c2.cohort_week + 14) a2 ON a2.id = c.id AND a2.cohort_week = c.cohort_week
+      LEFT JOIN (SELECT DISTINCT a."userId" as id, c2.cohort_week FROM activity a JOIN cohort c2 ON a."userId" = c2.id WHERE a.activity_week = c2.cohort_week + 21) a3 ON a3.id = c.id AND a3.cohort_week = c.cohort_week
+      LEFT JOIN (SELECT DISTINCT a."userId" as id, c2.cohort_week FROM activity a JOIN cohort c2 ON a."userId" = c2.id WHERE a.activity_week = c2.cohort_week + 28) a4 ON a4.id = c.id AND a4.cohort_week = c.cohort_week
+      LEFT JOIN (SELECT DISTINCT a."userId" as id, c2.cohort_week FROM activity a JOIN cohort c2 ON a."userId" = c2.id WHERE a.activity_week = c2.cohort_week + 56) a8 ON a8.id = c.id AND a8.cohort_week = c.cohort_week
+      LEFT JOIN (SELECT DISTINCT a."userId" as id, c2.cohort_week FROM activity a JOIN cohort c2 ON a."userId" = c2.id WHERE a.activity_week = c2.cohort_week + 84) a12 ON a12.id = c.id AND a12.cohort_week = c.cohort_week
+      GROUP BY c.cohort_week
+      ORDER BY c.cohort_week ASC
+    `.catch(() => []),
+  ]);
+
+  // Projections based on recent growth rate
+  let projections = null;
+  const totalUsers = await prisma.user.count().catch(() => 0);
+  if (weeklySignups.length >= 2) {
+    const recentWeeks = weeklySignups.slice(-4);
+    const avgPerWeek = recentWeeks.reduce((s, w) => s + Number(w.count), 0) / recentWeeks.length;
+    if (avgPerWeek > 0) {
+      const weeksTo = (target: number) => Math.ceil(Math.max(0, target - totalUsers) / avgPerWeek);
+      const addWeeks = (n: number) => {
+        const d = new Date(); d.setDate(d.getDate() + n * 7); return d.toISOString().slice(0, 10);
+      };
+      projections = {
+        current: totalUsers,
+        growth100: totalUsers >= 100 ? "reached" : addWeeks(weeksTo(100)),
+        growth500: totalUsers >= 500 ? "reached" : addWeeks(weeksTo(500)),
+        growth1000: totalUsers >= 1000 ? "reached" : addWeeks(weeksTo(1000)),
+      };
+    }
+  }
+
+  return {
+    weeklySignups: weeklySignups.map((r) => ({ week: r.week, count: Number(r.count) })),
+    cumulativeUsers: cumulativeUsers.map((r) => ({ week: r.week, total: Number(r.total) })),
+    signupsBySource: signupsBySource.map((r) => ({
+      week: r.week, direct: Number(r.direct), meta: Number(r.meta),
+      organic: Number(r.organic), referral: Number(r.referral),
+    })),
+    weeklyRecordings: weeklyRecordings.map((r) => ({ week: r.week, count: Number(r.count) })),
+    avgRecordingsPerUser: avgRecordingsPerUser.map((r) => ({ week: r.week, avg: Number(r.avg) })),
+    avgDuration: avgDuration.map((r) => ({ week: r.week, seconds: Number(r.seconds) })),
+    trialToPaidRate: trialToPaidRate.map((r) => ({ week: r.week, rate: Number(r.rate) })),
+    mrrOverTime: mrrOverTime.map((r) => ({ month: r.month, mrr: Number(r.mrr) })),
+    payingUsersOverTime: payingUsersOverTime.map((r) => ({ month: r.month, count: Number(r.count) })),
+    cohorts: cohorts.map((r) => ({
+      cohortWeek: r.cohort_week,
+      signups: Number(r.signups),
+      retention: {
+        week1: Number(r.week1) || 0, week2: Number(r.week2) || 0,
+        week3: Number(r.week3) || 0, week4: Number(r.week4) || 0,
+        week8: Number(r.week8) || 0, week12: Number(r.week12) || 0,
+      },
+    })),
+    projections,
+  };
+}
+
+// ─── Business Metrics (new tab) ────────────────────────────────────
+
+async function getBusinessMetrics(prisma: P, monthStart: Date) {
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000);
+
+  const [
+    payingUsers,
+    totalUsers,
+    aiCostsMtd,
+    adSpendMtd,
+    infraCosts,
+    mrrTrend,
+    churnedThisMonth,
+  ] = await Promise.all([
+    prisma.user.count({
+      where: { subscriptionStatus: SUBSCRIPTION_STATUS.PRO, stripeSubscriptionId: { not: null } },
+    }),
+    prisma.user.count(),
+    prisma.$queryRaw<{ total: bigint }[]>`
+      SELECT COALESCE(SUM("costCents"), 0)::bigint as total
+      FROM "ClaudeCallLog" WHERE "createdAt" >= ${monthStart}
+    `.catch(() => [{ total: BigInt(0) }]),
+    prisma.metaSpend.aggregate({
+      _sum: { spendCents: true },
+      where: { weekStart: { gte: monthStart } },
+    }).catch(() => ({ _sum: { spendCents: null } })),
+    prisma.infrastructureCost.findMany({
+      where: {
+        effectiveAt: { lte: new Date() },
+        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+      },
+      orderBy: { category: "asc" },
+    }).catch(() => []),
+    // MRR trend (last 6 months, snapshot current paying users per month)
+    prisma.$queryRaw<{ month: string; subs: bigint }[]>`
+      SELECT DATE_TRUNC('month', NOW() - (n || ' months')::interval)::date::text as month,
+             0::bigint as subs
+      FROM generate_series(0, 5) as n
+      ORDER BY month ASC
+    `.catch(() => []),
+    prisma.user.count({
+      where: {
+        subscriptionStatus: SUBSCRIPTION_STATUS.FREE,
+        stripeCustomerId: { not: null },
+        updatedAt: { gte: monthStart },
+      },
+    }).catch(() => 0),
+  ]);
+
+  const mrrCents = payingUsers * MONTHLY_PRICE_CENTS;
+  const aiCostsCents = Number(aiCostsMtd[0]?.total ?? 0);
+  const adSpendCents = adSpendMtd._sum?.spendCents ?? 0;
+  const infraTotalCents = infraCosts.reduce((s: number, c: { amountCents: number }) => s + c.amountCents, 0);
+
+  // Stripe fees estimate
+  const stripeFeeCents = Math.round(payingUsers * (MONTHLY_PRICE_CENTS * 0.029 + 30));
+  const totalCostsCents = aiCostsCents + adSpendCents + infraTotalCents + stripeFeeCents;
+
+  // Unit economics
+  const arpuCents = payingUsers > 0 ? Math.round(mrrCents / payingUsers) : 0;
+  const costPerUserCents = payingUsers > 0 ? Math.round(totalCostsCents / payingUsers) : 0;
+  const grossMarginPerUserCents = arpuCents - costPerUserCents;
+  const grossMarginPct = mrrCents > 0 ? Math.round((mrrCents - totalCostsCents) / mrrCents * 1000) / 10 : 0;
+
+  const monthlyChurnRate = (payingUsers + churnedThisMonth) > 0
+    ? churnedThisMonth / (payingUsers + churnedThisMonth)
+    : 0;
+  const ltvCents = monthlyChurnRate > 0
+    ? Math.round(Math.min(arpuCents / monthlyChurnRate, arpuCents * 36))
+    : arpuCents * 36;
+
+  // New paying customers this month for CAC
+  const newPaidThisMonth = await prisma.user.count({
+    where: {
+      subscriptionStatus: SUBSCRIPTION_STATUS.PRO,
+      createdAt: { gte: monthStart },
+    },
+  }).catch(() => 0);
+  const cacCents = adSpendCents > 0 && newPaidThisMonth > 0
+    ? Math.round(adSpendCents / newPaidThisMonth)
+    : null;
+  const ltvCacRatio = cacCents && cacCents > 0 ? Math.round(ltvCents / cacCents * 10) / 10 : null;
+  const paybackMonths = cacCents && grossMarginPerUserCents > 0
+    ? Math.round(cacCents / grossMarginPerUserCents * 10) / 10
+    : null;
+
+  // P&L
+  const netProfitCents = mrrCents - totalCostsCents;
+  const breakEvenUsers = totalCostsCents > 0
+    ? Math.ceil(totalCostsCents / MONTHLY_PRICE_CENTS)
+    : 0;
+  const runwayMonths = netProfitCents < 0 ? null : null; // No cash tracking yet
+
+  return {
+    mrrCents,
+    totalRevenueCents: mrrCents, // placeholder — will be more accurate with Stripe data
+    revenueThisMonthCents: mrrCents,
+    arpuCents,
+    payingUsers,
+    mrrTrend: [{ month: new Date().toISOString().slice(0, 7), mrr: mrrCents }],
+    aiCostsThisMonthCents: aiCostsCents,
+    adSpendThisMonthCents: adSpendCents,
+    infraCosts: infraCosts.map((c: { category: string; label: string; amountCents: number }) => ({
+      category: c.category, label: c.label, amountCents: c.amountCents,
+    })),
+    totalCostsThisMonthCents: totalCostsCents,
+    costPerUserCents,
+    cacCents,
+    grossMarginPerUserCents,
+    grossMarginPct,
+    ltvCents,
+    ltvCacRatio,
+    paybackMonths,
+    netProfitCents,
+    profitTrend: [{ month: new Date().toISOString().slice(0, 7), revenue: mrrCents, costs: totalCostsCents, net: netProfitCents }],
+    breakEvenUsers,
+    runwayMonths,
+  };
 }

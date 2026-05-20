@@ -84,3 +84,4 @@ AdLabDailyMetric no-rls # admin-only Meta ad performance metrics ingestion
 AdLabDecision no-rls   # admin-only Meta ad experiment outcome decisions
 AdLabLandingPage no-rls # admin-only Meta ad landing page config (slug, copy, CTA)
 AdminSentEmail no-rls  # admin-only log of emails sent from admin dashboard
+InfrastructureCost no-rls # admin-only infrastructure cost entries for P&L dashboard

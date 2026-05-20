@@ -10,58 +10,58 @@ import TimeRangeSelector, {
 
 // Lazy-load tab components so only the active tab's code ships
 const OverviewTab = dynamic(() => import("./tabs/OverviewTab"));
-const GrowthTab = dynamic(() => import("./tabs/GrowthTab"));
-const EngagementTab = dynamic(() => import("./tabs/EngagementTab"));
-const RevenueTab = dynamic(() => import("./tabs/RevenueTab"));
-const FunnelTab = dynamic(() => import("./tabs/FunnelTab"));
-const AdsTab = dynamic(() => import("./tabs/AdsTab"));
-const AICostsTab = dynamic(() => import("./tabs/AICostsTab"));
-const ContentFactoryTab = dynamic(() => import("./tabs/ContentFactoryTab"));
-const RedFlagsTab = dynamic(() => import("./tabs/RedFlagsTab"));
-const FeatureFlagsTab = dynamic(() => import("./tabs/FeatureFlagsTab"));
-const FreeCapTab = dynamic(() => import("./tabs/FreeCapTab"));
 const UsersTab = dynamic(() => import("./tabs/UsersTab"));
-const TrialEmailsTab = dynamic(() => import("./tabs/TrialEmailsTab"));
-const GuideTab = dynamic(() => import("./tabs/GuideTab"));
-const AutoBlogTab = dynamic(() => import("./tabs/AutoBlogTab"));
-const AcquisitionTab = dynamic(() => import("./tabs/AcquisitionTab"));
+const AdsTab = dynamic(() => import("./tabs/AdsTab"));
+const ContentTab = dynamic(() => import("./tabs/ContentTab"));
+const AICostsTab = dynamic(() => import("./tabs/AICostsTab"));
+const GrowthMetricsTab = dynamic(() => import("./tabs/GrowthMetricsTab"));
+const BusinessMetricsTab = dynamic(() => import("./tabs/BusinessMetricsTab"));
+const SettingsTab = dynamic(() => import("./tabs/SettingsTab"));
 
 const TABS = [
   { key: "overview", label: "Overview" },
-  { key: "growth", label: "Growth" },
-  { key: "engagement", label: "Engagement" },
-  { key: "revenue", label: "Revenue" },
-  { key: "funnel", label: "Funnel" },
-  { key: "ads", label: "Ads" },
-  { key: "acquisition", label: "Acquisition" },
-  { key: "ai-costs", label: "AI Costs" },
-  { key: "content-factory", label: "Content Factory" },
-  { key: "auto-blog", label: "Auto Blog" },
-  { key: "red-flags", label: "Red Flags" },
-  { key: "feature-flags", label: "Feature Flags" },
-  { key: "free-cap", label: "Free Cap" },
   { key: "users", label: "Users" },
-  { key: "trial-emails", label: "Trial Emails" },
-  { key: "guide", label: "Guide" },
+  { key: "ads", label: "Ads" },
+  { key: "content", label: "Content" },
+  { key: "ai-costs", label: "AI Costs" },
+  { key: "growth-metrics", label: "Growth" },
+  { key: "business-metrics", label: "Business" },
+  { key: "settings", label: "Settings" },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
 
-const QUICK_LINKS = [
-  { label: "Supabase", href: "https://supabase.com/dashboard" },
-  { label: "Vercel", href: "https://vercel.com" },
-  { label: "GA4", href: "https://analytics.google.com" },
-  { label: "Stripe", href: "https://dashboard.stripe.com" },
-  { label: "Resend", href: "https://resend.com/emails" },
-  { label: "Meta Ads", href: "https://adsmanager.facebook.com" },
-  { label: "Inngest", href: "https://app.inngest.com" },
-];
+// Legacy tab keys redirect to their new merged parents so bookmarks
+// and saved URLs from the old 16-tab layout still work.
+const LEGACY_REDIRECT: Record<string, TabKey> = {
+  growth: "overview",
+  engagement: "users",
+  revenue: "overview",
+  funnel: "overview",
+  "red-flags": "overview",
+  acquisition: "ads",
+  "content-factory": "content",
+  "auto-blog": "content",
+  "feature-flags": "settings",
+  "free-cap": "users",
+  "trial-emails": "users",
+  guide: "settings",
+};
+
+// Tabs that don't use the global time range selector
+const NO_TIME_RANGE: Set<string> = new Set([
+  "users",
+  "content",
+  "settings",
+]);
 
 export default function AdminDashboard() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const tabParam = (searchParams.get("tab") ?? "overview") as TabKey;
+  const rawTab = searchParams.get("tab") ?? "overview";
+  const redirected = LEGACY_REDIRECT[rawTab];
+  const tabParam = (redirected ?? rawTab) as TabKey;
   const activeTab = TABS.find((t) => t.key === tabParam)
     ? tabParam
     : "overview";
@@ -115,15 +115,7 @@ export default function AdminDashboard() {
   const startStr = start.toISOString();
   const endStr = end.toISOString();
 
-  const showTimeRange =
-    activeTab !== "content-factory" &&
-    activeTab !== "auto-blog" &&
-    activeTab !== "acquisition" &&
-    activeTab !== "feature-flags" &&
-    activeTab !== "free-cap" &&
-    activeTab !== "users" &&
-    activeTab !== "trial-emails" &&
-    activeTab !== "guide";
+  const showTimeRange = !NO_TIME_RANGE.has(activeTab);
 
   return (
     <div className="min-h-screen bg-[#0A0A0F] px-4 py-8 text-white sm:px-8">
@@ -137,20 +129,6 @@ export default function AdminDashboard() {
             >
               Acuity Admin
             </h1>
-            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1.5">
-              {QUICK_LINKS.map((link) => (
-                <a
-                  key={link.label}
-                  href={link.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-white/55 hover:text-[#A78BFA] transition"
-                  style={{ fontSize: 13 }}
-                >
-                  {link.label}
-                </a>
-              ))}
-            </div>
           </div>
           {showTimeRange && (
             <TimeRangeSelector
@@ -209,35 +187,21 @@ export default function AdminDashboard() {
           {activeTab === "overview" && (
             <OverviewTab start={startStr} end={endStr} />
           )}
-          {activeTab === "growth" && (
-            <GrowthTab start={startStr} end={endStr} />
-          )}
-          {activeTab === "engagement" && (
-            <EngagementTab start={startStr} end={endStr} />
-          )}
-          {activeTab === "revenue" && (
-            <RevenueTab start={startStr} end={endStr} />
-          )}
-          {activeTab === "funnel" && (
-            <FunnelTab start={startStr} end={endStr} />
-          )}
+          {activeTab === "users" && <UsersTab />}
           {activeTab === "ads" && (
             <AdsTab start={startStr} end={endStr} />
           )}
+          {activeTab === "content" && <ContentTab />}
           {activeTab === "ai-costs" && (
             <AICostsTab start={startStr} end={endStr} />
           )}
-          {activeTab === "content-factory" && <ContentFactoryTab />}
-          {activeTab === "auto-blog" && <AutoBlogTab />}
-          {activeTab === "acquisition" && <AcquisitionTab />}
-          {activeTab === "red-flags" && (
-            <RedFlagsTab start={startStr} end={endStr} />
+          {activeTab === "growth-metrics" && (
+            <GrowthMetricsTab start={startStr} end={endStr} />
           )}
-          {activeTab === "feature-flags" && <FeatureFlagsTab />}
-          {activeTab === "free-cap" && <FreeCapTab />}
-          {activeTab === "users" && <UsersTab />}
-          {activeTab === "trial-emails" && <TrialEmailsTab />}
-          {activeTab === "guide" && <GuideTab />}
+          {activeTab === "business-metrics" && (
+            <BusinessMetricsTab start={startStr} end={endStr} />
+          )}
+          {activeTab === "settings" && <SettingsTab />}
         </div>
       </div>
     </div>

@@ -258,6 +258,7 @@ model User {
   stateOfMeReports              StateOfMeReport[]
   lifeDimensions                UserLifeDimension[]
   calendarConnections           CalendarConnection[]
+  claudeCallLogs                ClaudeCallLog[]
   // Preset template the user picked for their Life Matrix labels.
   // "DEFAULT" | "STUDENT" | "PARENT" | "CUSTOM" | null. Null means
   // the user has never customized — render the canonical labels.
@@ -1051,7 +1052,32 @@ model ClaudeCallLog {
   durationMs   Int
   success      Boolean
   errorMessage String?
+  // Per-user cost attribution (2026-05-20). Nullable because system-level
+  // calls (content factory, adlab, red flag scanner) have no user context.
+  // SetNull on user delete so the aggregate cost data survives.
+  userId       String?
+  user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   createdAt    DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// Persisted infrastructure cost entries for the Business Metrics P&L view.
+// Replaces the hardcoded cost estimates in the revenue metrics handler.
+// Each row represents a recurring monthly cost line; effectiveAt/expiresAt
+// control the active window. Admin UI allows inline editing.
+model InfrastructureCost {
+  id          String    @id @default(cuid())
+  category    String    // "vercel" | "supabase" | "resend" | "domain" | "apple_dev" | "heygen" | "other"
+  label       String    // Human-readable, e.g. "Vercel Pro Plan"
+  amountCents Int       // Monthly cost in cents
+  effectiveAt DateTime  // When this cost starts applying
+  expiresAt   DateTime? // Null = still active
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([effectiveAt])
 }
 
 enum ContentType {
