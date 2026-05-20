@@ -41,6 +41,39 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-20] — Fix blog GSC data sync (impressions/clicks always 0)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** c2c5501
+
+### In plain English (for Keenan)
+
+Blog posts in the Content tab were showing 0 impressions and 0 clicks even though Google Search Console had real data. The problem was that the GSC sync only ran during the blog pruner (which only looks at posts 56+ days old), so newer posts never got updated. Now there's a green "Sync GSC Data" button in the Blog section that pulls fresh data from Search Console for ALL posts instantly. The table also shows two new columns — CTR (click-through rate) and Average Position — so you can see which posts are ranking well. Each post shows when it was last synced ("2h ago", "Never", etc.).
+
+### Technical changes (for Jimmy)
+
+- Modified `prisma/schema.prisma` — added `ctr` (Float, default 0) and `avgPosition` (Float, default 0) to ContentPiece model.
+- New file: `apps/web/src/app/api/admin/auto-blog/sync-gsc/route.ts` — POST endpoint that calls `getPropertyPerformance(30)` from the existing GSC lib, matches results to ContentPiece rows by `distributedUrl`, updates impressions/clicks/ctr/avgPosition/lastGscSyncAt for ALL published blog posts. Returns synced/matched counts.
+- Modified `apps/web/src/app/admin/tabs/AutoBlogTab.tsx` — added "Sync GSC Data" button with loading state and result message. Added CTR, Avg Position, and GSC Sync (last synced timestamp) columns to the posts table. Added `formatTimeAgo` helper for human-readable timestamps.
+- Modified `apps/web/src/app/api/admin/auto-blog-data/route.ts` — added `ctr` and `avgPosition` to the select query.
+- Modified `apps/web/src/inngest/functions/auto-blog.ts` — pruner's GSC sync step now also writes `ctr` and `avgPosition` alongside impressions/clicks.
+
+### Manual steps needed
+
+- [ ] Run `npx prisma db push` to add `ctr` and `avgPosition` columns to ContentPiece (Keenan — from home network)
+- [ ] After schema push, click the "Sync GSC Data" button in Content → Blog to pull initial data
+- [ ] Verify the GSC service account (`acuity-analytics-reader`) has Search Console access for `sc-domain:getacuity.io`. If the sync returns a 502 error, the service account may need to be added as an owner/user in [Search Console settings](https://search.google.com/search-console/users).
+
+### Notes
+
+- Root cause: GSC data was only synced inside the blog pruner (`autoBlogPruneFn`), which only processes posts 56+ days old. Posts younger than 56 days never had their impressions/clicks updated. The new standalone sync endpoint fixes this by syncing ALL published posts.
+- The GSC property is configured as `sc-domain:getacuity.io` (domain property). The API filters by `page contains "/blog/"`. URLs must match exactly between GSC and the `distributedUrl` field (currently `https://getacuity.io/blog/<slug>`).
+- The sync endpoint has a 30-second timeout (`maxDuration: 30`) which is sufficient for ~500 blog posts.
+- The pruner still does its own GSC sync during evaluation — both paths now write all 4 fields (impressions, clicks, ctr, avgPosition).
+
+---
+
 ## [2026-05-20] — Master admin dashboard overhaul: 16 tabs → 9 tabs
 
 **Requested by:** Keenan

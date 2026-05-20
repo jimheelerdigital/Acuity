@@ -52,6 +52,8 @@ export async function GET() {
       distributedUrl: true,
       impressions: true,
       clicks: true,
+      ctr: true,
+      avgPosition: true,
       lastGscSyncAt: true,
       targetKeyword: true,
       createdAt: true,

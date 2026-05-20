@@ -906,12 +906,16 @@ export const autoBlogPruneFn = inngest.createFunction(
 
         const impressions = perf?.impressions ?? 0;
         const clicks = perf?.clicks ?? 0;
+        const ctr = perf?.ctr ?? 0;
+        const avgPosition = perf?.position ?? 0;
 
         await prisma.contentPiece.update({
           where: { id: post.id },
           data: {
             impressions,
             clicks,
+            ctr,
+            avgPosition,
             lastGscSyncAt: now,
           },
         });

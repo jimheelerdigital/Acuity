@@ -1031,6 +1031,8 @@ model ContentPiece {
   foundingMemberSnapshot Int?
   impressions            Int              @default(0)
   clicks                 Int              @default(0)
+  ctr                    Float            @default(0) // click-through rate from GSC (0-1)
+  avgPosition            Float            @default(0) // average search position from GSC
   lastGscSyncAt          DateTime?
   publishedAt            DateTime?
   redirectTo             String?

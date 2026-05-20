@@ -18,6 +18,8 @@ interface RecentPost {
   distributedUrl: string | null;
   impressions: number;
   clicks: number;
+  ctr: number;
+  avgPosition: number;
   lastGscSyncAt: string | null;
   targetKeyword: string | null;
   createdAt: string;
@@ -65,6 +67,8 @@ export default function AutoBlogTab() {
   const [backfillResult, setBackfillResult] = useState<string | null>(null);
   const [fixingYears, setFixingYears] = useState(false);
   const [fixYearsResult, setFixYearsResult] = useState<string | null>(null);
+  const [syncingGsc, setSyncingGsc] = useState(false);
+  const [gscSyncResult, setGscSyncResult] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -182,6 +186,27 @@ export default function AutoBlogTab() {
     }
   };
 
+  const handleSyncGsc = async () => {
+    setSyncingGsc(true);
+    setGscSyncResult(null);
+    try {
+      const res = await fetch("/api/admin/auto-blog/sync-gsc", { method: "POST" });
+      const d = await res.json();
+      if (!res.ok) {
+        setGscSyncResult(`Error: ${d.error ?? "Unknown"}`);
+      } else {
+        setGscSyncResult(
+          `Synced ${d.synced} posts (${d.matched} matched in GSC)`
+        );
+      }
+      fetchData();
+    } catch {
+      setGscSyncResult("Sync failed — check console");
+    } finally {
+      setSyncingGsc(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -211,6 +236,13 @@ export default function AutoBlogTab() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={handleSyncGsc}
+            disabled={syncingGsc}
+            className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-sm text-emerald-400 transition hover:bg-emerald-500/20 disabled:opacity-50"
+          >
+            {syncingGsc ? "Syncing..." : "Sync GSC Data"}
+          </button>
           <button
             onClick={handleFixYears}
             disabled={fixingYears}
@@ -244,6 +276,11 @@ export default function AutoBlogTab() {
       {backfillResult && (
         <div className="rounded-lg border border-[#7C5CFC]/30 bg-[#7C5CFC]/10 px-4 py-2 text-sm text-[#7C5CFC]">
           {backfillResult}
+        </div>
+      )}
+      {gscSyncResult && (
+        <div className={`rounded-lg border px-4 py-2 text-sm ${gscSyncResult.startsWith("Error") ? "border-red-500/30 bg-red-500/10 text-red-400" : "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"}`}>
+          {gscSyncResult}
         </div>
       )}
 
@@ -327,7 +364,10 @@ export default function AutoBlogTab() {
                   <th className="pb-2 pr-4">Published</th>
                   <th className="pb-2 pr-4 text-right">Imp</th>
                   <th className="pb-2 pr-4 text-right">Clicks</th>
+                  <th className="pb-2 pr-4 text-right">CTR</th>
+                  <th className="pb-2 pr-4 text-right">Avg Pos</th>
                   <th className="pb-2 pr-4">Status</th>
+                  <th className="pb-2 pr-4">GSC Sync</th>
                   <th className="pb-2" />
                 </tr>
               </thead>
@@ -369,12 +409,23 @@ export default function AutoBlogTab() {
                     <td className="py-2 pr-4 text-right text-zinc-300">
                       {post.clicks}
                     </td>
+                    <td className="py-2 pr-4 text-right text-zinc-300">
+                      {post.ctr > 0 ? `${(post.ctr * 100).toFixed(1)}%` : "—"}
+                    </td>
+                    <td className="py-2 pr-4 text-right text-zinc-300">
+                      {post.avgPosition > 0 ? post.avgPosition.toFixed(1) : "—"}
+                    </td>
                     <td className="py-2 pr-4">
                       <span
                         className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[post.status] ?? "bg-zinc-500/20 text-zinc-400"}`}
                       >
                         {post.status.replace(/_/g, " ")}
                       </span>
+                    </td>
+                    <td className="py-2 pr-4 text-xs text-zinc-500">
+                      {post.lastGscSyncAt
+                        ? formatTimeAgo(post.lastGscSyncAt)
+                        : "Never"}
                     </td>
                     <td className="py-2">
                       <div className="flex gap-1">
@@ -448,4 +499,18 @@ export default function AutoBlogTab() {
       )}
     </div>
   );
+}
+
+function formatTimeAgo(dateStr: string): string {
+  const now = Date.now();
+  const then = new Date(dateStr).getTime();
+  const diffMs = now - then;
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  return new Date(dateStr).toLocaleDateString();
 }
