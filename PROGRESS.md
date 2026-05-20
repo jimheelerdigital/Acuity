@@ -41,6 +41,38 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-20] — AdLab performance data reset script
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** TBD
+
+### In plain English (for Keenan)
+
+Created a script to wipe all the polluted ad performance data from AdLab (the garbage numbers from the CompleteRegistration bug and billing freezes). When you run it, it deletes all the impressions, clicks, spend, conversions, and decision logs — everything that shows up in the performance dashboard. It does NOT delete your experiment ideas, ad copy, creative images, landing pages, or any project settings. It also does NOT touch any user data — Samantha, Kris, and everyone else are completely safe. After running, all experiments go back to "draft" so you can relaunch them fresh with clean tracking.
+
+### Technical changes (for Jimmy)
+
+- New file: `scripts/reset-adlab-metrics.ts` — one-time script that deletes all `AdLabAd` rows (cascades to `AdLabDailyMetric` + `AdLabDecision`), then resets all `AdLabExperiment` rows to draft (nulls metaCampaignId, campaignName, launchedAt, concludedAt, conclusionSummary). Dry-run by default, pass `--yes` to execute.
+- Does NOT delete: `AdLabProject`, `AdLabExperiment` (rows preserved, fields reset), `AdLabAngle`, `AdLabCreative`, `AdLabReferenceImage`, `AdLabLandingPage`
+- Does NOT touch: `User` table or any non-AdLab models
+
+### Manual steps needed
+
+- [ ] Run the script against production (Keenan — from home network):
+  ```
+  set -a && source apps/web/.env.local && set +a && npx tsx scripts/reset-adlab-metrics.ts
+  ```
+  (dry run first to see counts, then add `--yes` to execute)
+
+### Notes
+
+- The script uses Prisma cascade deletes — deleting `AdLabAd` automatically removes all `AdLabDailyMetric` and `AdLabDecision` rows linked to those ads. No orphaned rows possible.
+- After running, the AdLab performance dashboard will show zero data. Experiments will all be in "draft" status ready to relaunch.
+- Any experiments currently live in Meta will NOT be paused/deleted on the Meta side by this script — only the local tracking data is wiped. If campaigns are still running in Meta Ads Manager, they should be paused manually there first.
+
+---
+
 ## [2026-05-20] — Mobile activity tracking on admin Users tab
 
 **Requested by:** Keenan
