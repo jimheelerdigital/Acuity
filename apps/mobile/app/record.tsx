@@ -119,10 +119,22 @@ export default function RecordScreen() {
   const recordingRef = useRef<Audio.Recording | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const appState = useRef(AppState.currentState);
-  // AbortController per upload attempt — set inside the retry loop,
-  // read by handleCancel to abort the in-flight fetch when the user
-  // taps Cancel during the "uploading" state (Slice Q5 polish 7).
-  const uploadAbortRef = useRef<AbortController | null>(null);
+  // Per-upload cancellation flag (Slice Q5 polish 10, 2026-05-20).
+  // The prior cut (polish 7) used an AbortController to cancel the
+  // in-flight fetch, but the server commits the Entry row before
+  // returning — so aborting the client read doesn't undo the
+  // database write, and the user still sees the entry. Instead we
+  // mark the current upload as "cancelled," let the fetch complete,
+  // then DELETE the row using the entryId from the response.
+  //
+  // Pattern: the ref holds a pointer to the CURRENT upload's local
+  // flag object. Each upload run creates its own `{requested:false}`
+  // and assigns it to the ref. handleCancel mutates the ref's
+  // target → mutates only the current upload's flag. Older upload
+  // closures still hold their own object reference, so a new
+  // recording starting while a prior DELETE is pending never
+  // overwrites the older upload's intent.
+  const currentUploadCancelRef = useRef<{ requested: boolean } | null>(null);
 
   const poll = useEntryPolling(polledEntryId);
 
@@ -336,6 +348,14 @@ export default function RecordScreen() {
     async (uri: string, duration: number) => {
       setState("uploading");
 
+      // Per-upload local cancel flag. Captured in closure by every
+      // post-response branch below. handleCancel mutates this via
+      // currentUploadCancelRef. A subsequent upload swaps the ref
+      // to a new object — but this closure still holds THIS object,
+      // so the wrong upload is never marked cancelled.
+      const localCancel = { requested: false };
+      currentUploadCancelRef.current = localCancel;
+
       const form = new FormData();
       // `audio/mp4` is the IANA-canonical MIME for AAC-in-MP4-container
       // files (which is what Expo's Audio.Recording produces on iOS
@@ -361,33 +381,27 @@ export default function RecordScreen() {
       const token = await getToken();
 
       while (attempt < UPLOAD_RETRY_SCHEDULE_MS.length + 1) {
-        // Fresh AbortController per attempt — handleCancel reads
-        // uploadAbortRef.current.abort() to cancel the in-flight
-        // request during the "uploading" state.
-        const controller = new AbortController();
-        uploadAbortRef.current = controller;
         try {
-          const res = await fetch(
-            `${api.baseUrl()}/api/record`,
-            {
-              method: "POST",
-              headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-              body: form,
-              signal: controller.signal,
-            }
-          );
+          const res = await fetch(`${api.baseUrl()}/api/record`, {
+            method: "POST",
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+            body: form,
+            // Intentionally no AbortController signal: the prior cut
+            // aborted the read, but the server still committed the
+            // entry row. We let the fetch complete and DELETE
+            // post-response if the user has cancelled. See Slice Q5
+            // polish 10 commit body for the full rationale.
+          });
 
           if (res.status === 402) {
-            // Route to the full native paywall screen. It handles
-            // the SFSafari handoff + "remind me later" dismissal.
-            // Using replace so a swipe-down on the paywall modal
-            // returns to the dashboard, not back here to the record
-            // screen in a stuck state.
+            // 402 returns BEFORE the server creates an entry (cap
+            // check happens first), so no DELETE cleanup needed.
             router.replace("/paywall");
             return;
           }
 
           if (res.status === 429) {
+            // Rate limit — no entry created server-side either.
             const body = (await res.json().catch(() => ({}))) as {
               retryAfter?: number;
             };
@@ -408,15 +422,16 @@ export default function RecordScreen() {
           }
 
           const body = (await res.json()) as UploadResponse;
+          // Capture entryId as a const so the cancel-cleanup closure
+          // below binds the right id even if a subsequent upload
+          // overwrites currentUploadCancelRef. Bound by value, not
+          // by reference.
+          const responseEntryId = body.entryId;
 
-          // v1.1 slice 6 — grace recording (30/30, "this one is on
-          // us"). The server already accepted the recording and
-          // bumped the counter; the modal is informational. Show
-          // it before transitioning so the user sees the messaging
-          // exactly once on the recording that triggers the cap.
-          // Pure visual layer — both async and sync paths call into
-          // the same flow afterward via the resolved promise.
-          if (body.freeCapState === "grace") {
+          // Grace flow — only show if the user hasn't cancelled.
+          // If they tapped Cancel we'd be flashing a modal as they
+          // navigate away, which reads as a glitch.
+          if (!localCancel.requested && body.freeCapState === "grace") {
             await new Promise<void>((resolve) => {
               Alert.alert(
                 "30 of 30 — this one is on us",
@@ -427,29 +442,37 @@ export default function RecordScreen() {
             });
           }
 
+          // Cancel-cleanup branch. The fetch succeeded; the server
+          // created an entry. The user has tapped Cancel during
+          // "uploading", so we DELETE that entry before it can
+          // appear in the list. Fire-and-forget — handleCancel has
+          // already navigated the user away. No state updates here
+          // (component is likely unmounted).
+          if (localCancel.requested && responseEntryId) {
+            deleteEntryFireAndForget(responseEntryId);
+            return;
+          }
+
           // Async path — poll for completion.
-          if (res.status === 202 && body.entryId) {
+          if (res.status === 202 && responseEntryId) {
             setState("processing");
-            setPolledEntryId(body.entryId);
+            setPolledEntryId(responseEntryId);
             return;
           }
 
           // Sync path — the server returned an inline RecordResponse
           // with the extraction already done. Nav straight to detail.
-          if (body.entryId) {
-            router.replace(`/entry/${body.entryId}`);
+          if (responseEntryId) {
+            router.replace(`/entry/${responseEntryId}`);
             return;
           }
 
           throw new Error("Unexpected response shape");
         } catch (err) {
-          // User-initiated abort during the "uploading" state (Slice
-          // Q5 polish 7): exit cleanly, no retry, no error UI. The
-          // caller (handleCancel) handles state reset + nav.
-          if (
-            err instanceof Error &&
-            (err.name === "AbortError" || controller.signal.aborted)
-          ) {
+          // If the user has cancelled, swallow the error and exit
+          // quietly. They've navigated away; surfacing an error UI
+          // on an unmounted screen is pointless.
+          if (localCancel.requested) {
             return;
           }
           attempt++;
@@ -467,6 +490,44 @@ export default function RecordScreen() {
     },
     [router, goalId, dimensionKey]
   );
+
+  /**
+   * Fire-and-forget DELETE of an entry the user cancelled out of
+   * (Slice Q5 polish 10). Called from two paths:
+   *   1. After a "successful" upload whose user has tapped Cancel
+   *      during the upload phase — the server committed the entry
+   *      before the response, and we clean up post-hoc.
+   *   2. From handleCancel when state===processing AND phase is
+   *      early (QUEUED — pre-Inngest-work). Replaces the prior
+   *      POST /cancel for those phases because the user expects
+   *      "no entry appears", not "entry appears as FAILED".
+   *
+   * Closure semantics: `entryId` is passed as a value (not a ref).
+   * If the user starts a new recording before this DELETE settles,
+   * the new recording's flow is independent — this DELETE still
+   * targets the original entry.
+   *
+   * Errors are swallowed silently. A failed DELETE leaves the row
+   * in the list; user can manually swipe-delete. Surfacing an
+   * error UI mid-new-recording would be worse than the stale row.
+   */
+  const deleteEntryFireAndForget = useCallback((entryId: string) => {
+    void (async () => {
+      try {
+        const apiBase =
+          process.env.EXPO_PUBLIC_API_URL ?? "https://getacuity.io";
+        const token = await getToken();
+        await fetch(`${apiBase}/api/entries/${entryId}`, {
+          method: "DELETE",
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
+        invalidate("/api/entries");
+        invalidate("/api/home");
+      } catch {
+        // Best-effort cleanup; row may persist on failure.
+      }
+    })();
+  }, []);
 
   const handlePress = () => {
     if (state === "idle") startRecording();
@@ -540,34 +601,78 @@ export default function RecordScreen() {
   //   anything else             — show alert + stay on screen
   const handleCancel = useCallback(async () => {
     if (canceling) return;
-    // Q5 polish 7 — Cancel during "uploading" state aborts the
-    // in-flight fetch via the per-attempt AbortController, then
-    // discards the audio and navigates back. No server round-trip
-    // needed (no entry was created yet).
+    // Q5 polish 10 — Cancel during "uploading": flag the in-flight
+    // upload for post-response DELETE cleanup, navigate the user
+    // away immediately. The upload function's continuation fires
+    // a fire-and-forget DELETE when the server response arrives
+    // with an entryId. See `upload` + `deleteEntryFireAndForget`
+    // above for the per-upload closure-capture rationale.
     if (state === "uploading") {
-      setCanceling(true);
-      try {
-        uploadAbortRef.current?.abort();
-        // The upload promise's catch sees AbortError and returns
-        // cleanly; we proactively reset state + nav so the user
-        // isn't briefly stuck on the spinner.
-        setElapsed(0);
-        setState("idle");
-        router.back();
-      } finally {
-        setCanceling(false);
+      if (currentUploadCancelRef.current) {
+        currentUploadCancelRef.current.requested = true;
       }
+      setElapsed(0);
+      setState("idle");
+      router.back();
       return;
     }
     if (!polledEntryId) return;
+    // Capture entryId in a const so the network-bound branches all
+    // operate on the same id even if state shifts mid-flight.
+    const entryIdAtCancel = polledEntryId;
+    // Phase routing (Q5 polish 10):
+    //   - QUEUED (UI label "Saving") or unknown → DELETE. From the
+    //     user's POV the entry was never created; cleaner than the
+    //     existing "FAILED with __canceled_by_user__" marker which
+    //     leaves an audit row in the Entries list.
+    //   - TRANSCRIBING / EXTRACTING / anything else → POST /cancel.
+    //     Inngest is mid-pipeline; deleting the row underneath it
+    //     breaks in-flight step.run() calls. The canceledAt-marker
+    //     path is designed for that.
+    const phase = poll.phase;
+    const useDeletePath = phase === "QUEUED" || phase == null;
     setCanceling(true);
     try {
+      if (useDeletePath) {
+        const apiBase =
+          process.env.EXPO_PUBLIC_API_URL ?? "https://getacuity.io";
+        const token = await getToken();
+        const res = await fetch(
+          `${apiBase}/api/entries/${entryIdAtCancel}`,
+          {
+            method: "DELETE",
+            headers: token
+              ? { Authorization: `Bearer ${token}` }
+              : undefined,
+          }
+        );
+        if (res.status === 410) {
+          // Pipeline beat us — open the completed entry instead of
+          // failing the cancel.
+          router.replace(`/entry/${entryIdAtCancel}`);
+          return;
+        }
+        // 200/204 = deleted; 404 = already gone (idempotent). Both ok.
+        if (!res.ok && res.status !== 404) {
+          const body = (await res.json().catch(() => null)) as {
+            error?: string;
+          } | null;
+          setError(body?.error ?? `Cancel failed (${res.status})`);
+          setState("error");
+          return;
+        }
+        invalidate("/api/entries");
+        invalidate("/api/home");
+        router.back();
+        return;
+      }
+      // Later-phase fall-through: existing POST /cancel flow.
       // Manual fetch instead of api.post so we can introspect 410.
       const apiBase =
         process.env.EXPO_PUBLIC_API_URL ?? "https://getacuity.io";
       const token = await getToken();
       const res = await fetch(
-        `${apiBase}/api/entries/${polledEntryId}/cancel`,
+        `${apiBase}/api/entries/${entryIdAtCancel}/cancel`,
         {
           method: "POST",
           headers: {
@@ -579,7 +684,7 @@ export default function RecordScreen() {
       if (res.status === 410) {
         // Pipeline completed between user tap and server receipt —
         // open the finished entry instead of canceling.
-        router.replace(`/entry/${polledEntryId}`);
+        router.replace(`/entry/${entryIdAtCancel}`);
         return;
       }
       if (!res.ok) {
@@ -604,7 +709,7 @@ export default function RecordScreen() {
     } finally {
       setCanceling(false);
     }
-  }, [state, polledEntryId, canceling, router]);
+  }, [state, polledEntryId, canceling, router, poll.phase]);
 
   // Wire the back button into the native navigation header's
   // headerLeft slot (Slice Q5 polish 5, 2026-05-20). The prior cut
