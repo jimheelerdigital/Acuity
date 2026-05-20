@@ -41,6 +41,36 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-20] — Delay admin signup notification 30s for attribution capture
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 90ca529
+
+### In plain English (for Keenan)
+
+The admin signup notification email now waits 30 seconds before sending, giving the app time to sync UTM attribution data (source, campaign, landing page). Previously the notification fired instantly at signup — before the client had a chance to send the attribution cookie — so OAuth signups always showed "direct" even when they came from a Meta ad. Now you'll see the real source, campaign, medium, and signup method (Google/Apple/email) in every notification. The welcome email to the user is still instant.
+
+### Technical changes (for Jimmy)
+
+- New file: `apps/web/src/inngest/functions/send-signup-notification.ts` — Inngest function triggered by `user/signup.notify` event. Sleeps 30s, re-reads User row (attribution should be persisted by then), detects signup method (Google/Apple/email/magic link), calls `notifyFoundersOfSignup()` with full data. Never skips — sends with "direct" if attribution is still empty.
+- Modified `apps/web/src/lib/bootstrap-user.ts` — replaced inline `notifyFoundersOfSignup()` call with `inngest.send({ name: "user/signup.notify", data: { userId } })`. Welcome email remains inline and immediate.
+- Modified `apps/web/src/lib/founder-notifications.ts` — added optional `signupMethod` parameter to `notifyFoundersOfSignup()`, passed through to email template vars.
+- Modified `apps/web/src/emails/founder-signup-notification.ts` — added `signupMethod` to `FounderNotificationVars` interface and added "Signup method" row to the attribution section of the email.
+- Modified `apps/web/src/app/api/inngest/route.ts` — registered `sendSignupNotificationFn` in the Inngest serve handler.
+
+### Manual steps needed
+
+- [ ] After deploy, Inngest will auto-register the new function on next GET to /api/inngest. Verify it appears in the Inngest dashboard at https://app.inngest.com under "send-signup-notification".
+
+### Notes
+
+- The 30-second delay is a balance: long enough for the client's SyncAttribution component to POST the cookie to /api/auth/set-attribution (typically fires within 2-5 seconds of page load), short enough that the notification still feels real-time.
+- The Inngest function detects signup method by checking: Account.provider for Google, appleSubject for Apple, passwordHash for email/password, else magic link. This is read from the DB at notification time, not passed from bootstrap.
+- The set-attribution endpoint no longer sends its own notification (removed in the previous commit). Attribution data flows: client → set-attribution → User row → Inngest reads 30s later → notification email.
+
+---
+
 ## [2026-05-20] — Fix broken signup notification + welcome emails
 
 **Requested by:** Keenan

@@ -33,11 +33,12 @@ export async function notifyFoundersOfSignup(params: {
     referrer?: string;
     landingPath?: string;
   };
+  signupMethod?: string;
 }): Promise<void> {
   // Env toggle — default enabled
   if (process.env.FOUNDER_NOTIFICATIONS_ENABLED === "false") return;
 
-  const { userId, email, isFoundingMember, foundingMemberNumber, trialDays, attribution } = params;
+  const { userId, email, isFoundingMember, foundingMemberNumber, trialDays, attribution, signupMethod } = params;
 
   if (!email) {
     console.warn("[founder-notification] Skipping — user has no email");
@@ -98,6 +99,7 @@ export async function notifyFoundersOfSignup(params: {
     createdAt: new Date(),
     signupsTodayCount,
     foundingMembersClaimedCount,
+    signupMethod: signupMethod ?? null,
   };
 
   let success = false;

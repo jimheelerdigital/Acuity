@@ -193,27 +193,20 @@ export async function bootstrapNewUser(params: {
     }
   }
 
-  // Notify founders (Keenan + Jimmy) of the new signup in real time.
-  // Always send — attribution is included when available but the
-  // notification must fire regardless (OAuth signups have no attribution
-  // at bootstrap time). The set-attribution endpoint may send an updated
-  // notification later with UTM data, but the initial one ensures we
-  // never miss a signup.
+  // Dispatch delayed admin signup notification via Inngest. The 30-second
+  // delay gives the client time to POST attribution data via
+  // set-attribution before the notification fires. The Inngest function
+  // re-reads the User row fresh, so UTM data is included when available.
+  // If attribution hasn't arrived by then, it sends anyway with "direct".
   try {
-    const { notifyFoundersOfSignup } = await import(
-      "@/lib/founder-notifications"
-    );
-    await notifyFoundersOfSignup({
-      userId,
-      email,
-      isFoundingMember,
-      foundingMemberNumber,
-      trialDays,
-      attribution,
+    const { inngest } = await import("@/inngest/client");
+    await inngest.send({
+      name: "user/signup.notify",
+      data: { userId },
     });
   } catch (err) {
     // eslint-disable-next-line no-console
-    console.error("[bootstrap-user] founder notification failed:", err);
+    console.error("[bootstrap-user] failed to dispatch signup notification:", err);
   }
 
   // Personal welcome email from Keenan. Plain text, feels like a real

@@ -34,6 +34,7 @@ export interface FounderNotificationVars {
   signupUtmCampaign: string | null;
   signupLandingPath: string | null;
   signupReferrer: string | null;
+  signupMethod: string | null;
   createdAt: Date;
   signupsTodayCount: number;
   foundingMembersClaimedCount: number;
@@ -96,6 +97,7 @@ export function founderNotificationHtml(v: FounderNotificationVars): string {
           ${row("Campaign", campaign)}
           ${row("Landing page", landing)}
           ${row("Referrer", referrer)}
+          ${row("Signup method", esc(v.signupMethod) || "unknown")}
           ${row("Signed up at", signedUpAt)}
         </table>
       </td>
