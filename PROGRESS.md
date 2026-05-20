@@ -41,6 +41,32 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-20] — Fix "Never opened app" — mobile now reports device platform on launch
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** eb472c7
+
+### In plain English (for Keenan)
+The admin dashboard was showing "Never opened app" for every single user, including your own test accounts, because the mobile app never told the server what device it was running on. Now when someone opens the app, it sends their platform (iOS or Android) and app version to the server. The admin Users table shows the correct platform badge and a "last seen" timestamp underneath. First-time app opens are also recorded so the signup journey timeline works.
+
+### Technical changes (for Jimmy)
+- New API route: `apps/web/src/app/api/user/app-open/route.ts` — POST endpoint accepting `{ devicePlatform, appVersion }`, updates user record with write-once `appFirstOpenedAt` and always-update `devicePlatform`/`appVersion`/`lastSeenAt`
+- `apps/mobile/contexts/auth-context.tsx` — after successful `refresh()` (user/me 200), fires `POST /api/user/app-open` once per cold launch via `appOpenSent` ref guard
+- `apps/mobile/lib/api.ts` — exported `devicePlatform` and `appVersion` constants (were module-private)
+- `apps/web/src/app/admin/tabs/UsersTab.tsx` — `PlatformPill` now accepts `appFirstOpenedAt` and `lastSeenAt` props; shows relative "last seen" timestamp below the platform badge; falls back to "Never opened app" only when `appFirstOpenedAt` is NULL
+
+### Manual steps needed
+- [ ] After push, existing users will populate on their next app launch — no backfill needed (Keenan)
+- [ ] OTA update via `expo-updates` will ship the mobile change to existing installs (Jimmy)
+
+### Notes
+- The existing `/api/user/me` endpoint already had fire-and-forget device tracking via `X-Platform` / `X-App-Version` headers, but it was apparently not populating the fields reliably. The new dedicated `/api/user/app-open` endpoint is explicit and awaited (not fire-and-forget), so failures will surface.
+- The mobile call is fire-and-forget from the client side (`.catch(() => {})`) so a failure won't break the app launch flow.
+- This is a JS-only change on mobile — safe for OTA, no native module surface changes.
+
+---
+
 ## [2026-05-20] — Restore inline admin signup notification (remove Inngest delay)
 
 **Requested by:** Keenan
