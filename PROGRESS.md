@@ -41,6 +41,35 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-19] — Keenan's email signature on welcome email
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 25092e8
+
+### In plain English (for Keenan)
+
+The welcome email new users receive now includes Keenan's branded email signature at the bottom — headshot, name, title, and links to the website and App Store. The message body still reads like a casual personal email; only the signature has visual branding. Any future emails sent from keenan@getacuity.io can reuse the same signature component.
+
+### Technical changes (for Jimmy)
+
+- New file: `apps/web/src/emails/keenan-signature.ts` — shared HTML signature builder. Returns an HTML table with headshot image (served from `https://getacuity.io/email/keenan-headshot.png`), name, title, email, location, and links.
+- Modified `apps/web/src/emails/founder-welcome.ts` — converted from plain text to HTML. Body text uses `<br>` line breaks with no styling. Imports and appends `keenanSignatureHtml()` after a `<br><br>` spacer. Return type changed from `{ subject, text }` to `{ subject, html }`.
+- Modified `apps/web/src/lib/bootstrap-user.ts` — switched Resend send call from `text` to `html` field.
+- Created directory `apps/web/public/email/` for email assets.
+
+### Manual steps needed
+
+- [ ] Add headshot image to `apps/web/public/email/keenan-headshot.png` before deploy (Keenan)
+- [ ] Verify keenan@getacuity.io is a verified sender identity in Resend dashboard (Keenan)
+
+### Notes
+
+- Only the founder welcome email currently sends from keenan@getacuity.io. All other emails (trial drip, verification, magic link, etc.) send from hello@getacuity.io and don't get the personal signature. The shared `keenan-signature.ts` is ready for any future emails that need it.
+- The headshot image is referenced at `https://getacuity.io/email/keenan-headshot.png` — this URL will 404 until the image file is placed in `apps/web/public/email/`. Email clients will show a broken image placeholder until then.
+
+---
+
 ## [2026-05-19] — Personal welcome email from Keenan to new signups
 
 **Requested by:** Keenan
