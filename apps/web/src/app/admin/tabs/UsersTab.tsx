@@ -11,6 +11,10 @@ type ListUser = {
   subscriptionStatus: string;
   trialEndsAt: string | null;
   entryCount: number;
+  devicePlatform: string | null;
+  appVersion: string | null;
+  appFirstOpenedAt: string | null;
+  onboardingStatus: "Complete" | "Incomplete" | "Not started";
 };
 
 type DetailUser = ListUser & {
@@ -19,6 +23,10 @@ type DetailUser = ListUser & {
   stripeCurrentPeriodEnd: string | null;
   isAdmin: boolean;
   latestEntryAt: string | null;
+  onboardingCompletedAt: string | null;
+  onboardingStep: number | null;
+  firstRecordingAt: string | null;
+  firstWeeklyReportAt: string | null;
 };
 
 type Override = {
@@ -108,7 +116,9 @@ export default function UsersTab() {
                 <th className="px-4 py-3">Email</th>
                 <th className="px-4 py-3">Signup</th>
                 <th className="px-4 py-3">Plan</th>
+                <th className="px-4 py-3">Platform</th>
                 <th className="px-4 py-3">Last active</th>
+                <th className="px-4 py-3">Onboarding</th>
                 <th className="px-4 py-3 text-right">Entries</th>
                 <th className="px-4 py-3" />
               </tr>
@@ -126,10 +136,14 @@ export default function UsersTab() {
                   <td className="px-4 py-3">
                     <StatusPill status={u.subscriptionStatus} />
                   </td>
+                  <td className="px-4 py-3">
+                    <PlatformPill platform={u.devicePlatform} />
+                  </td>
                   <td className="px-4 py-3 text-xs text-white/60">
-                    {u.lastSeenAt
-                      ? new Date(u.lastSeenAt).toLocaleDateString()
-                      : "—"}
+                    {u.lastSeenAt ? formatTimeAgo(u.lastSeenAt) : "—"}
+                  </td>
+                  <td className="px-4 py-3">
+                    <OnboardingPill status={u.onboardingStatus} />
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums">
                     {u.entryCount}
@@ -186,6 +200,58 @@ function StatusPill({ status }: { status: string }) {
       {status}
     </span>
   );
+}
+
+function PlatformPill({ platform }: { platform: string | null }) {
+  if (!platform) {
+    return (
+      <span className="rounded-full bg-white/5 px-2 py-0.5 text-xs text-white/40">
+        Never opened app
+      </span>
+    );
+  }
+  const label = platform === "ios" ? "iOS" : "Android";
+  const bg =
+    platform === "ios"
+      ? "bg-sky-500/20 text-sky-300"
+      : "bg-emerald-500/20 text-emerald-300";
+  return (
+    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${bg}`}>
+      {label}
+    </span>
+  );
+}
+
+function OnboardingPill({
+  status,
+}: {
+  status: "Complete" | "Incomplete" | "Not started";
+}) {
+  const bg =
+    status === "Complete"
+      ? "bg-green-500/20 text-green-300"
+      : status === "Incomplete"
+      ? "bg-amber-500/20 text-amber-300"
+      : "bg-white/5 text-white/40";
+  return (
+    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${bg}`}>
+      {status}
+    </span>
+  );
+}
+
+function formatTimeAgo(dateStr: string): string {
+  const now = Date.now();
+  const then = new Date(dateStr).getTime();
+  const diffMs = now - then;
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  return new Date(dateStr).toLocaleDateString();
 }
 
 // ─── User Detail Modal ───────────────────────────────────────────
@@ -346,9 +412,22 @@ function UserDetailModal({
                 <span>
                   last active{" "}
                   {data.user.lastSeenAt
-                    ? new Date(data.user.lastSeenAt).toLocaleDateString()
+                    ? formatTimeAgo(data.user.lastSeenAt)
                     : "—"}
                 </span>
+              </div>
+              <div className="mt-1 text-xs text-white/50">
+                {data.user.devicePlatform ? (
+                  <>
+                    Last seen:{" "}
+                    {data.user.devicePlatform === "ios" ? "iOS" : "Android"}
+                    {data.user.appVersion && `, v${data.user.appVersion}`}
+                    {data.user.lastSeenAt &&
+                      `, ${formatTimeAgo(data.user.lastSeenAt)}`}
+                  </>
+                ) : (
+                  "Never opened app"
+                )}
               </div>
             </div>
 
@@ -416,6 +495,8 @@ function UserDetailModal({
                 </dd>
               </div>
             </dl>
+
+            <JourneyTimeline user={data.user} />
 
             <div className="rounded-md bg-[#13131F] p-3">
               <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-white/40">
@@ -523,6 +604,109 @@ function UserDetailModal({
             </p>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Journey Timeline ────────────────────────────────────────────
+
+function JourneyTimeline({ user }: { user: DetailUser }) {
+  type Milestone = {
+    label: string;
+    date: string | null;
+    detail?: string;
+  };
+
+  const milestones: Milestone[] = [
+    { label: "Account created", date: user.createdAt },
+    {
+      label: "App downloaded",
+      date: user.appFirstOpenedAt,
+      detail: user.devicePlatform
+        ? `${user.devicePlatform === "ios" ? "iOS" : "Android"}`
+        : undefined,
+    },
+    {
+      label: "Onboarding completed",
+      date: user.onboardingCompletedAt,
+      detail: !user.onboardingCompletedAt && user.onboardingStep
+        ? `Stopped at step ${user.onboardingStep}`
+        : undefined,
+    },
+    { label: "First recording", date: user.firstRecordingAt },
+    { label: "First weekly report", date: user.firstWeeklyReportAt },
+  ];
+
+  // Find the index of the last completed milestone to determine drop-off
+  const lastCompleted = milestones.reduce(
+    (acc, m, i) => (m.date ? i : acc),
+    -1
+  );
+
+  return (
+    <div className="rounded-md bg-[#13131F] p-3">
+      <div className="mb-3 text-xs font-semibold uppercase tracking-wider text-white/40">
+        Signup journey
+      </div>
+      <div className="relative space-y-0">
+        {milestones.map((m, i) => {
+          const done = Boolean(m.date);
+          const isDropOff = !done && i === lastCompleted + 1;
+          return (
+            <div key={m.label} className="flex items-start gap-3">
+              {/* Vertical line + dot */}
+              <div className="flex flex-col items-center">
+                <div
+                  className={`h-3 w-3 rounded-full border-2 ${
+                    done
+                      ? "border-green-400 bg-green-400"
+                      : isDropOff
+                      ? "border-amber-400 bg-transparent"
+                      : "border-white/20 bg-transparent"
+                  }`}
+                />
+                {i < milestones.length - 1 && (
+                  <div
+                    className={`w-px flex-1 min-h-[20px] ${
+                      done && milestones[i + 1]?.date
+                        ? "bg-green-400/40"
+                        : "bg-white/10"
+                    }`}
+                  />
+                )}
+              </div>
+              {/* Label + date */}
+              <div className="pb-3 -mt-0.5">
+                <div
+                  className={`text-xs font-medium ${
+                    done
+                      ? "text-white/80"
+                      : isDropOff
+                      ? "text-amber-300"
+                      : "text-white/30"
+                  }`}
+                >
+                  {m.label}
+                  {isDropOff && (
+                    <span className="ml-2 rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] text-amber-300">
+                      dropped off
+                    </span>
+                  )}
+                </div>
+                {done && m.date && (
+                  <div className="text-[11px] text-white/40">
+                    {new Date(m.date).toLocaleString()}
+                    {m.detail && ` · ${m.detail}`}
+                  </div>
+                )}
+                {!done && m.detail && (
+                  <div className="text-[11px] text-white/40">{m.detail}</div>
+                )}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

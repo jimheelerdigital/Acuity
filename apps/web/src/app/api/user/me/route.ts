@@ -77,6 +77,7 @@ export async function GET(req: NextRequest) {
       monthlyEmailEnabled: true,
       referralCode: true,
       createdAt: true,
+      appFirstOpenedAt: true,
       onboarding: { select: { completedAt: true, currentStep: true } },
     },
   });
@@ -85,13 +86,27 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ user: null }, { status: 404 });
   }
 
-  // Opportunistic lastSeenAt bump. Used by the onboarding smart-skip
-  // (W6) to decide if a user has genuinely abandoned. Fire-and-forget;
-  // a failed write shouldn't block the response.
+  // Opportunistic lastSeenAt bump + mobile device tracking. Fire-and-
+  // forget; a failed write shouldn't block the response. X-Platform /
+  // X-App-Version are sent by the mobile client (apps/mobile/lib/api.ts).
+  const xPlatform = req.headers.get("x-platform"); // "ios" | "android"
+  const xAppVersion = req.headers.get("x-app-version");
+  const isMobile = xPlatform === "ios" || xPlatform === "android";
+
+  const updateData: Record<string, unknown> = { lastSeenAt: new Date() };
+  if (isMobile) {
+    updateData.devicePlatform = xPlatform;
+    updateData.appVersion = xAppVersion ?? undefined;
+    // Write-once: only set appFirstOpenedAt if it's currently null.
+    if (!user.appFirstOpenedAt) {
+      updateData.appFirstOpenedAt = new Date();
+    }
+  }
+
   void prisma.user
     .update({
       where: { id: userId },
-      data: { lastSeenAt: new Date() },
+      data: updateData,
     })
     .catch(() => {});
 
@@ -132,10 +147,12 @@ export async function GET(req: NextRequest) {
     onboarding,
     createdAt: _created,
     stripeCustomerId,
+    appFirstOpenedAt: _appFirst,
     ...rest
   } = user;
   void _created; // only used for smart-skip math above
   void onboarding;
+  void _appFirst; // only used for write-once check above
   const flat = {
     ...rest,
     onboardingCompleted: Boolean(effectiveCompletedAt),

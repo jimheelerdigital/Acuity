@@ -41,6 +41,41 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-20] — Mobile activity tracking on admin Users tab
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** f2fb027
+
+### In plain English (for Keenan)
+
+The admin Users tab now shows you exactly where each user is in their journey. The list view has three new columns: Platform (iOS/Android/Never opened app), Last active (with human-readable "2h ago" timestamps), and Onboarding status (Complete/Incomplete/Not started). When you click "view" on a user, there's a new "Signup journey" timeline showing five milestones: account created, app downloaded, onboarding completed, first recording, and first weekly report. Each milestone shows a green dot when completed or an amber "dropped off" marker at the exact point where the user stopped. There's also a device info line showing their platform, app version, and when they were last active. This tells you exactly where in the funnel each user dropped off so you know what to fix.
+
+### Technical changes (for Jimmy)
+
+- Modified `prisma/schema.prisma` — added three nullable fields to User model: `devicePlatform` (String), `appVersion` (String), `appFirstOpenedAt` (DateTime). Pure additive, no breaking changes.
+- Modified `apps/mobile/lib/api.ts` — all API requests now send `X-Platform` ("ios"/"android") and `X-App-Version` (from app.json version) headers. Added to both `buildHeaders()` (JSON requests) and `upload()` (FormData). Uses React Native's `Platform.OS`.
+- Modified `apps/web/src/app/api/user/me/route.ts` — the existing fire-and-forget `lastSeenAt` update now also captures `devicePlatform`, `appVersion` from request headers when present. `appFirstOpenedAt` is write-once (set only when null). Added `appFirstOpenedAt` to select query, excluded from response payload.
+- Modified `apps/web/src/app/api/admin/users/route.ts` — list endpoint now selects `devicePlatform`, `appVersion`, `appFirstOpenedAt`, and `onboarding` relation. Response includes computed `onboardingStatus` ("Complete"/"Incomplete"/"Not started").
+- Modified `apps/web/src/app/api/admin/users/[id]/route.ts` — detail endpoint now selects device fields, `firstRecordingAt`, and onboarding relation. Added query for first completed WeeklyReport. Response includes `devicePlatform`, `appVersion`, `appFirstOpenedAt`, `onboardingCompletedAt`, `onboardingStep`, `firstRecordingAt`, `firstWeeklyReportAt`.
+- Modified `apps/web/src/app/admin/tabs/UsersTab.tsx` — added `PlatformPill`, `OnboardingPill`, `formatTimeAgo` helpers. List table has 3 new columns (Platform, Last active with relative time, Onboarding). Detail modal has device info summary line ("Last seen: iOS, v1.2.3, 2h ago" or "Never opened app") and a `JourneyTimeline` component showing 5 milestones with vertical timeline UI, green/amber/gray dots, and "dropped off" indicator.
+
+### Manual steps needed
+
+- [ ] Run `npx prisma db push` to add 3 new User columns to Supabase (Keenan — from home network)
+- [ ] After schema push, run `npx prisma generate` so TypeScript types update (already works at runtime via Prisma's dynamic client, but IDE will show false errors until then)
+- [ ] Next mobile app build (OTA or binary) needed for device headers to start flowing — existing users won't have device data until they open the updated app
+
+### Notes
+
+- The new columns are pure additive nullable fields — zero risk to existing mobile binary (build 42). No API response shapes changed for mobile-facing routes.
+- Device data is captured opportunistically on `/api/user/me` which fires on every app open. Until users open the updated app, their `devicePlatform`/`appVersion`/`appFirstOpenedAt` will be null and the admin UI shows "Never opened app" — accurate for existing data.
+- TypeScript will show ~21 false-positive errors referencing the new Prisma fields until `prisma generate` runs against the updated schema. All other files (UsersTab.tsx, mobile api.ts) are clean.
+- `firstRecordingAt` was already tracked on the User model by the trial-email-orchestrator pipeline — we're just surfacing it in admin.
+- The journey timeline uses `WeeklyReport` with `status: "COMPLETE"` to find the first report, so failed/queued reports don't count.
+
+---
+
 ## [2026-05-20] — Admin dashboard email send feature
 
 **Requested by:** Keenan

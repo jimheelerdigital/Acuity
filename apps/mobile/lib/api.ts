@@ -1,4 +1,5 @@
 import Constants from "expo-constants";
+import { Platform } from "react-native";
 
 import { getToken } from "@/lib/auth";
 import { tokenBridge } from "@/lib/token-bridge";
@@ -36,6 +37,10 @@ function apiBaseUrl(): string {
   );
 }
 
+/** Device telemetry headers attached to every request. */
+const devicePlatform = Platform.OS === "ios" ? "ios" : "android";
+const appVersion = Constants.expoConfig?.version ?? "unknown";
+
 async function buildHeaders(
   extra?: HeadersInit,
   hasBody = true
@@ -44,6 +49,8 @@ async function buildHeaders(
   if (hasBody && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
+  headers.set("X-Platform", devicePlatform);
+  headers.set("X-App-Version", appVersion);
   const token = tokenBridge.get() ?? (await getToken());
   if (token && !headers.has("Authorization")) {
     headers.set("Authorization", `Bearer ${token}`);
@@ -109,7 +116,10 @@ export const api = {
    */
   upload: async <T>(path: string, formData: FormData): Promise<T> => {
     const token = tokenBridge.get() ?? (await getToken());
-    const headers: HeadersInit = {};
+    const headers: HeadersInit = {
+      "X-Platform": devicePlatform,
+      "X-App-Version": appVersion,
+    };
     if (token) headers["Authorization"] = `Bearer ${token}`;
     const res = await fetch(`${apiBaseUrl()}${path}`, {
       method: "POST",

@@ -43,6 +43,11 @@ export async function GET(
       stripeSubscriptionId: true,
       stripeCurrentPeriodEnd: true,
       isAdmin: true,
+      devicePlatform: true,
+      appVersion: true,
+      appFirstOpenedAt: true,
+      firstRecordingAt: true,
+      onboarding: { select: { completedAt: true, currentStep: true } },
       _count: { select: { entries: true } },
     },
   });
@@ -55,6 +60,13 @@ export async function GET(
   const latestEntry = await prisma.entry.findFirst({
     where: { userId: params.id },
     orderBy: { createdAt: "desc" },
+    select: { createdAt: true },
+  });
+
+  // First weekly report timestamp for the milestone timeline.
+  const firstWeeklyReport = await prisma.weeklyReport.findFirst({
+    where: { userId: params.id, status: "COMPLETE" },
+    orderBy: { createdAt: "asc" },
     select: { createdAt: true },
   });
 
@@ -77,6 +89,15 @@ export async function GET(
       isAdmin: user.isAdmin,
       entryCount: user._count.entries,
       latestEntryAt: latestEntry?.createdAt ?? null,
+      // Device info
+      devicePlatform: user.devicePlatform,
+      appVersion: user.appVersion,
+      appFirstOpenedAt: user.appFirstOpenedAt,
+      // Journey milestones
+      onboardingCompletedAt: user.onboarding?.completedAt ?? null,
+      onboardingStep: user.onboarding?.currentStep ?? null,
+      firstRecordingAt: user.firstRecordingAt,
+      firstWeeklyReportAt: firstWeeklyReport?.createdAt ?? null,
     },
     overrides,
   });

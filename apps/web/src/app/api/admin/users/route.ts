@@ -41,6 +41,10 @@ export async function GET(req: NextRequest) {
       lastSeenAt: true,
       subscriptionStatus: true,
       trialEndsAt: true,
+      devicePlatform: true,
+      appVersion: true,
+      appFirstOpenedAt: true,
+      onboarding: { select: { completedAt: true, currentStep: true } },
       _count: { select: { entries: true } },
     },
   });
@@ -57,6 +61,14 @@ export async function GET(req: NextRequest) {
       subscriptionStatus: u.subscriptionStatus,
       trialEndsAt: u.trialEndsAt,
       entryCount: u._count.entries,
+      devicePlatform: u.devicePlatform,
+      appVersion: u.appVersion,
+      appFirstOpenedAt: u.appFirstOpenedAt,
+      onboardingStatus: u.onboarding?.completedAt
+        ? "Complete"
+        : u.onboarding
+        ? "Incomplete"
+        : "Not started",
     })),
     nextCursor: hasMore ? page[page.length - 1].id : null,
   });

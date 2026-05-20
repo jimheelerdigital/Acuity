@@ -196,6 +196,15 @@ model User {
   // Drives the onboarding smart-skip ("abandoned 30+ days ago →
   // silently mark complete") and future engagement signals.
   lastSeenAt                    DateTime?
+  // ─── Mobile device tracking (2026-05-20) ────────────────────
+  // Captured from X-Platform / X-App-Version headers sent by the
+  // mobile client. Updated on every /api/user/me hit from a mobile
+  // bearer session. appFirstOpenedAt is write-once (first mobile
+  // request), devicePlatform + appVersion reflect the LATEST request.
+  devicePlatform                String?   // "ios" | "android"
+  appVersion                    String?   // e.g. "1.0.0"
+  appFirstOpenedAt              DateTime? // set once on first mobile request
+
   // Unique short code (8 char, no ambiguous chars) the user shares
   // via their /?ref= link. Generated lazily on first /account view
   // or at signup — see lib/referrals.ts::generateReferralCode.
