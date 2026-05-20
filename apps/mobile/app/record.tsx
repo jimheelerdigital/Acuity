@@ -14,7 +14,13 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ProcessingProgressBar } from "@/components/processing-progress-bar";
+import {
+  RecordOrb,
+  RecordWaveform,
+  SpeedometerGauge,
+} from "@/components/recording";
 import { useEntryPolling } from "@/hooks/use-entry-polling";
+import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
 import { getToken } from "@/lib/auth";
 import { invalidate } from "@/lib/cache";
@@ -82,6 +88,7 @@ type UploadResponse = {
 
 export default function RecordScreen() {
   const router = useRouter();
+  const { tokens } = useTheme();
   // Context params — forwarded to /api/record so the extraction
   // pipeline knows what this entry is about.
   //   goalId        — set when opened from a goal detail / card
@@ -573,105 +580,107 @@ export default function RecordScreen() {
             </Pressable>
           </View>
         ) : (
-          <View className="items-center gap-10">
-            {/* Timer — shows elapsed / max when recording so the cap is
-                visible at a glance. Color shifts to amber in the last
-                30s so the user has time to wrap up rather than
-                hitting an unannounced wall. */}
-            <View className="items-center gap-1">
-              <Text className="text-zinc-800 dark:text-zinc-100 text-lg font-medium">
-                {state === "recording" ? "Recording" : "Ready"}
-              </Text>
-              <Text
-                className={`text-5xl font-mono tabular-nums ${
-                  state === "recording" && MAX_SECONDS - elapsed <= 30
-                    ? "text-amber-500"
-                    : "text-zinc-600 dark:text-zinc-300"
-                }`}
-              >
-                {state === "recording"
-                  ? `${formatTime(elapsed)} / ${formatTime(MAX_SECONDS)}`
-                  : formatTime(0)}
-              </Text>
-              {state === "idle" && (
-                <Text className="text-zinc-500 dark:text-zinc-400 text-xs mt-1">
-                  Up to 5 minutes. Talk as long as you need.
-                </Text>
-              )}
-            </View>
-
-            {/* Level meter */}
-            <LevelMeter
-              levels={levels}
-              active={state === "recording"}
-            />
-
-            {/* Record / stop button */}
-            <Pressable
-              onPress={handlePress}
-            >
-              <View
-                className={`h-28 w-28 rounded-full items-center justify-center ${
-                  state === "recording" ? "bg-red-600" : "bg-violet-600"
-                }`}
-                style={
-                  state === "idle"
-                    ? {
-                        shadowColor: "#7C3AED",
-                        shadowOffset: { width: 0, height: 0 },
-                        shadowOpacity: 0.5,
-                        shadowRadius: 24,
-                        elevation: 12,
-                      }
-                    : undefined
-                }
-              >
-                {state === "recording" ? (
-                  <View className="h-10 w-10 rounded-md bg-white dark:bg-[#1E1E2E]" />
-                ) : (
-                  <Ionicons name="mic" size={44} color="#fff" />
-                )}
-              </View>
-            </Pressable>
-
-            <Text className="text-zinc-500 dark:text-zinc-400 text-sm text-center">
-              {state === "recording"
-                ? "Tap to stop"
-                : "Tap to start your brain dump"}
-            </Text>
-
-            {/* Progress bar when recording. Light-mode track uses
-                zinc-200 so the empty portion remains visible against
-                the light-mode bg; dark-mode keeps the original
-                zinc-800 track. */}
-            {state === "recording" && (
-              <View className="w-48 h-1 rounded-full bg-zinc-200 dark:bg-zinc-800">
-                <View
-                  className="h-1 rounded-full bg-red-500"
-                  style={{ width: `${(elapsed / MAX_SECONDS) * 100}%` }}
-                />
-              </View>
-            )}
-          </View>
+          <RecordSurface
+            state={state}
+            elapsed={elapsed}
+            levels={levels}
+            onPress={handlePress}
+            tokens={tokens}
+          />
         )}
       </View>
     </SafeAreaView>
   );
 }
 
-function LevelMeter({ levels, active }: { levels: number[]; active: boolean }) {
+/**
+ * RecordSurface — the idle + recording render for the recording
+ * screen. Slice Q5 (2026-05-20) — visual layer of the recording
+ * screen. Consumes existing state machine signals (state / elapsed /
+ * levels) without modifying them.
+ *
+ * Composition:
+ *   - SpeedometerGauge (top half-arc, fills with elapsed/MAX_SECONDS)
+ *   - RecordOrb (Pressable, voice-reactive, replaces the prior mic
+ *     button — preserves tap-to-toggle semantics)
+ *   - Timer text (display font, "0:23" — sits inside the arc cup)
+ *   - RecordWaveform (fed by the same levels[] expo-av populates)
+ *
+ * Ghost transcript SKIPPED: the current upload-then-poll model has
+ * no streaming transcript signal during recording. The design's
+ * ghost transcript area would need a new streaming infrastructure
+ * (Whisper streaming or similar) which is explicitly out of Q5
+ * scope. Add to backlog when streaming infra ships.
+ *
+ * TODO(post-Q5): wire ghost transcript when partial-transcript
+ * streaming exists. The visual hook is the empty space between the
+ * timer and the waveform — drop a fade-masked Text in there.
+ */
+function RecordSurface({
+  state,
+  elapsed,
+  levels,
+  onPress,
+  tokens,
+}: {
+  state: State;
+  elapsed: number;
+  levels: number[];
+  onPress: () => void;
+  tokens: ReturnType<typeof useTheme>["tokens"];
+}) {
+  const isRecording = state === "recording";
+  // Latest amplitude tail — drives the orb's reactive scale/halo.
+  // Falls to 0 outside recording so the orb settles to idle breath.
+  const latestAmplitude = isRecording
+    ? (levels[levels.length - 1] ?? 0)
+    : 0;
+  const remainingWarning =
+    isRecording && MAX_SECONDS - elapsed <= 30;
   return (
-    <View className="flex-row items-end gap-1 h-16">
-      {levels.map((lvl, i) => (
-        <View
-          key={i}
-          className={`w-1.5 rounded-full ${active ? "bg-violet-500" : "bg-zinc-800"}`}
-          style={{
-            height: `${Math.max(6, lvl * 100)}%`,
-            opacity: active ? 1 : 0.3,
-          }}
-        />
-      ))}
+    <View style={{ alignItems: "center", gap: 24, width: "100%" }}>
+      <SpeedometerGauge elapsed={elapsed} maxSeconds={MAX_SECONDS}>
+        <View style={{ alignItems: "center", gap: 14 }}>
+          <RecordOrb
+            amplitude={latestAmplitude}
+            active={isRecording}
+            onPress={onPress}
+          />
+          <Text
+            style={{
+              fontFamily: tokens.fontDisplay,
+              fontSize: 44,
+              fontWeight: "700",
+              letterSpacing: -1.4,
+              color: remainingWarning ? tokens.bad : tokens.text,
+              lineHeight: 48,
+              fontVariant: ["tabular-nums"],
+            }}
+          >
+            {formatTime(isRecording ? elapsed : 0)}
+          </Text>
+        </View>
+      </SpeedometerGauge>
+
+      <RecordWaveform levels={levels} active={isRecording} height={64} />
+
+      {/* Single helper line — preserves the existing tap-to-X
+          affordance copy. The orb itself is the action target; this
+          text is the only chrome below it. */}
+      <Text
+        style={{
+          fontFamily: tokens.fontSans,
+          fontSize: 14,
+          color: tokens.textTer,
+          textAlign: "center",
+        }}
+      >
+        {isRecording
+          ? remainingWarning
+            ? `${MAX_SECONDS - elapsed}s left`
+            : "Tap the orb to stop"
+          : "Tap the orb to start your brain dump"}
+      </Text>
     </View>
   );
 }
