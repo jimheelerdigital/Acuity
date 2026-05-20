@@ -41,6 +41,39 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-20] — Full admin dashboard data reset (all tabs except AI Costs and Auto Blog)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 010df14
+
+### In plain English (for Keenan)
+
+The entire admin dashboard now starts fresh from today. All the garbage data from testing, the CompleteRegistration bug, and billing freezes is gone. Every chart, counter, and metric across Overview, Growth, Engagement, Revenue, Funnel, Ads, Content Factory, and Red Flags will show zero for historical data and only accumulate real numbers going forward. AI Costs and Auto Blog are completely untouched. No users were deleted — Samantha, Kris, and all test accounts are still there, but the dashboard metrics ignore everything that happened before today.
+
+### Technical changes (for Jimmy)
+
+- New file: `scripts/reset-dashboard-data.ts` — comprehensive one-time script (dry-run default, `--yes` to execute) that deletes: MetaSpend (all), RedFlag (all), Waitlist (all), social ContentPiece (TWITTER/TIKTOK/INSTAGRAM/AD_COPY/EMAIL/REDDIT_DRAFT — NOT blog posts), orphaned ContentBriefing, GenerationJob (all), DashboardSnapshot (all), AdLabAd (all, cascading to AdLabDailyMetric + AdLabDecision), and resets all AdLabExperiment to draft. Preserves: User, Entry, ClaudeCallLog, BlogTopicQueue, blog ContentPiece, PruneLog, IndexingLog, all AdLab config/angles/creatives/landing pages.
+- Modified `apps/web/src/app/api/admin/metrics/route.ts` — added `DASHBOARD_EPOCH` constant (set to 2026-05-20T00:00:00Z). All date-range queries (`start`, `prevStart`, `monthStart`, `thirtyDaysAgo`, `weekAgo`, `monthAgo`) are clamped to never go before the epoch. This zeroes out historical time-series data in all live-computed metrics (signup charts, engagement DAU/WAU/MAU, revenue, funnel cohorts, ad spend) without deleting any underlying User/Entry records. Set the constant to `null` to disable and show all history again.
+
+### Manual steps needed
+
+- [ ] Run the reset script against production (Keenan — from home network):
+  ```
+  set -a && source apps/web/.env.local && set +a && npx tsx scripts/reset-dashboard-data.ts
+  ```
+  (dry run first to verify counts, then `npx tsx scripts/reset-dashboard-data.ts --yes` to execute)
+
+### Notes
+
+- Two-pronged approach because the dashboard architecture computes most metrics LIVE from User/Entry tables. Deleting the script-targeted tables (MetaSpend, RedFlag, Waitlist, social content, AdLab metrics) zeroes out the Ads, Red Flags, Funnel step 1, Content Factory, and AdLab tabs directly. The dashboard epoch handles the rest (Overview, Growth, Engagement, Revenue, Funnel retention) by clamping all date windows.
+- Current-state metrics are NOT clamped by the epoch — "active paying subs" and "trial users" still show the real current count. Only time-series and date-range queries are affected.
+- The epoch constant lives at the top of the metrics route file. To re-enable historical data viewing, set `DASHBOARD_EPOCH = null`. To move the epoch forward, change the date string.
+- The earlier `scripts/reset-adlab-metrics.ts` (AdLab-only) still exists but is superseded by the comprehensive script.
+- Any Meta campaigns still running on the Meta side are NOT affected — only local tracking data is wiped. Pause them manually in Meta Ads Manager if needed.
+
+---
+
 ## [2026-05-20] — AdLab performance data reset script
 
 **Requested by:** Keenan

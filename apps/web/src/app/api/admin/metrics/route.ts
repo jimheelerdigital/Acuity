@@ -7,6 +7,17 @@ import { MONTHLY_PRICE_CENTS, SUBSCRIPTION_STATUS } from "@/lib/pricing";
 
 export const dynamic = "force-dynamic";
 
+// ─── Dashboard Epoch ───────────────────────────────────────────────
+// All historical data before this date is polluted from testing, the
+// CompleteRegistration bug, and billing freezes. Time-series queries
+// and signup/entry counts clamp their windows to start no earlier than
+// this date so the dashboard charts start clean. Current-state metrics
+// (e.g. "active paying subs right now") are NOT clamped — they always
+// reflect the real DB state.
+//
+// Set to null to disable the epoch and show all historical data.
+const DASHBOARD_EPOCH: Date | null = new Date("2026-05-20T00:00:00Z");
+
 // TTLs per tab (in milliseconds)
 const TAB_TTLS: Record<string, number> = {
   overview: 5 * 60_000,
@@ -44,18 +55,33 @@ export async function GET(req: NextRequest) {
   const refresh = req.nextUrl.searchParams.get("refresh") === "true";
 
   const end = endStr ? new Date(endStr) : new Date();
-  const start = startStr
+  let start = startStr
     ? new Date(startStr)
     : new Date(end.getTime() - 7 * 86400000);
 
-  // Previous period (same duration, immediately before start)
-  const duration = end.getTime() - start.getTime();
-  const prevStart = new Date(start.getTime() - duration);
-  const prevEnd = new Date(start.getTime() - 1);
+  // Clamp start to the dashboard epoch so charts don't show polluted
+  // pre-epoch data. The epoch is set to the date the dashboard was
+  // reset and all test data wiped.
+  if (DASHBOARD_EPOCH && start < DASHBOARD_EPOCH) {
+    start = DASHBOARD_EPOCH;
+  }
 
-  const monthStart = new Date();
+  // Previous period (same duration, immediately before start).
+  // Also clamped — if prev period falls entirely before the epoch,
+  // prevStart === prevEnd and all prev-period metrics will be 0.
+  const duration = end.getTime() - start.getTime();
+  let prevStart = new Date(start.getTime() - duration);
+  const prevEnd = new Date(start.getTime() - 1);
+  if (DASHBOARD_EPOCH && prevStart < DASHBOARD_EPOCH) {
+    prevStart = DASHBOARD_EPOCH;
+  }
+
+  let monthStart = new Date();
   monthStart.setUTCDate(1);
   monthStart.setUTCHours(0, 0, 0, 0);
+  if (DASHBOARD_EPOCH && monthStart < DASHBOARD_EPOCH) {
+    monthStart = DASHBOARD_EPOCH;
+  }
 
   // Invalidate cache if refresh requested
   if (refresh) {
@@ -330,8 +356,12 @@ async function getEngagement(
 ) {
   const today = new Date();
   today.setUTCHours(0, 0, 0, 0);
-  const weekAgo = new Date(today.getTime() - 7 * 86400000);
-  const monthAgo = new Date(today.getTime() - 30 * 86400000);
+  let weekAgo = new Date(today.getTime() - 7 * 86400000);
+  let monthAgo = new Date(today.getTime() - 30 * 86400000);
+  if (DASHBOARD_EPOCH) {
+    if (weekAgo < DASHBOARD_EPOCH) weekAgo = DASHBOARD_EPOCH;
+    if (monthAgo < DASHBOARD_EPOCH) monthAgo = DASHBOARD_EPOCH;
+  }
 
   const [dau, wau, mau, totalEntries, avgDuration, silentTrialUsers] =
     await Promise.all([
@@ -418,7 +448,10 @@ async function getRevenue(
   monthStart: Date
 ) {
   // ── 30-day window for cost calculations ───────────────────────────
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000);
+  let thirtyDaysAgo = new Date(Date.now() - 30 * 86400000);
+  if (DASHBOARD_EPOCH && thirtyDaysAgo < DASHBOARD_EPOCH) {
+    thirtyDaysAgo = DASHBOARD_EPOCH;
+  }
 
   const [
     payingSubs,
