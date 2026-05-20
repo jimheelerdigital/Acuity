@@ -119,6 +119,10 @@ export default function RecordScreen() {
   const recordingRef = useRef<Audio.Recording | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const appState = useRef(AppState.currentState);
+  // AbortController per upload attempt — set inside the retry loop,
+  // read by handleCancel to abort the in-flight fetch when the user
+  // taps Cancel during the "uploading" state (Slice Q5 polish 7).
+  const uploadAbortRef = useRef<AbortController | null>(null);
 
   const poll = useEntryPolling(polledEntryId);
 
@@ -357,6 +361,11 @@ export default function RecordScreen() {
       const token = await getToken();
 
       while (attempt < UPLOAD_RETRY_SCHEDULE_MS.length + 1) {
+        // Fresh AbortController per attempt — handleCancel reads
+        // uploadAbortRef.current.abort() to cancel the in-flight
+        // request during the "uploading" state.
+        const controller = new AbortController();
+        uploadAbortRef.current = controller;
         try {
           const res = await fetch(
             `${api.baseUrl()}/api/record`,
@@ -364,6 +373,7 @@ export default function RecordScreen() {
               method: "POST",
               headers: token ? { Authorization: `Bearer ${token}` } : undefined,
               body: form,
+              signal: controller.signal,
             }
           );
 
@@ -433,6 +443,15 @@ export default function RecordScreen() {
 
           throw new Error("Unexpected response shape");
         } catch (err) {
+          // User-initiated abort during the "uploading" state (Slice
+          // Q5 polish 7): exit cleanly, no retry, no error UI. The
+          // caller (handleCancel) handles state reset + nav.
+          if (
+            err instanceof Error &&
+            (err.name === "AbortError" || controller.signal.aborted)
+          ) {
+            return;
+          }
           attempt++;
           if (attempt > UPLOAD_RETRY_SCHEDULE_MS.length) {
             setError(err instanceof Error ? err.message : "Upload failed.");
@@ -520,7 +539,27 @@ export default function RecordScreen() {
   //                                what to do with it.
   //   anything else             — show alert + stay on screen
   const handleCancel = useCallback(async () => {
-    if (!polledEntryId || canceling) return;
+    if (canceling) return;
+    // Q5 polish 7 — Cancel during "uploading" state aborts the
+    // in-flight fetch via the per-attempt AbortController, then
+    // discards the audio and navigates back. No server round-trip
+    // needed (no entry was created yet).
+    if (state === "uploading") {
+      setCanceling(true);
+      try {
+        uploadAbortRef.current?.abort();
+        // The upload promise's catch sees AbortError and returns
+        // cleanly; we proactively reset state + nav so the user
+        // isn't briefly stuck on the spinner.
+        setElapsed(0);
+        setState("idle");
+        router.back();
+      } finally {
+        setCanceling(false);
+      }
+      return;
+    }
+    if (!polledEntryId) return;
     setCanceling(true);
     try {
       // Manual fetch instead of api.post so we can introspect 410.
@@ -565,7 +604,7 @@ export default function RecordScreen() {
     } finally {
       setCanceling(false);
     }
-  }, [polledEntryId, canceling, router]);
+  }, [state, polledEntryId, canceling, router]);
 
   // Wire the back button into the native navigation header's
   // headerLeft slot (Slice Q5 polish 5, 2026-05-20). The prior cut
@@ -615,15 +654,23 @@ export default function RecordScreen() {
   return (
     <SafeAreaView className="flex-1 bg-white dark:bg-[#1E1E2E] dark:bg-[#0B0B12]" edges={["bottom"]}>
       <View className="flex-1 items-center justify-center px-8">
-        {state === "processing" ? (
-          // Q5 polish — bumped gap from 6 (24pt) to 14 (56pt) so the
-          // Cancel button has clear breathing room beneath the
-          // "Saving insights" checklist row.
+        {state === "processing" || state === "uploading" ? (
+          // Q5 polish 7 — Cancel button now shows from the moment
+          // "uploading" starts (not just on the later processing
+          // sub-steps). Tap during "uploading" aborts the in-flight
+          // fetch via the per-attempt AbortController in handleCancel;
+          // tap during "processing" hits /api/entries/[id]/cancel as
+          // before. Same button, same gap-14 spacing for breathing
+          // room beneath the checklist.
           <View className="items-center gap-14">
-            <ProcessingView
-              phase={poll.phase}
-              elapsedSeconds={poll.elapsedSeconds}
-            />
+            {state === "uploading" ? (
+              <ProcessingProgressBar phase="uploading" elapsedSeconds={0} />
+            ) : (
+              <ProcessingView
+                phase={poll.phase}
+                elapsedSeconds={poll.elapsedSeconds}
+              />
+            )}
             <Pressable
               onPress={() => void handleCancel()}
               disabled={canceling}
@@ -636,8 +683,6 @@ export default function RecordScreen() {
               </Text>
             </Pressable>
           </View>
-        ) : state === "uploading" ? (
-          <ProcessingProgressBar phase="uploading" elapsedSeconds={0} />
         ) : state === "error" ? (
           <View className="items-center gap-4 px-4">
             <Ionicons name="alert-circle-outline" size={48} color="#EF4444" />
