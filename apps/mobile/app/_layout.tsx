@@ -8,6 +8,20 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AppState, Text as RNText } from "react-native";
 import * as Sentry from "@sentry/react-native";
+import {
+  useFonts,
+  Manrope_300Light,
+  Manrope_400Regular,
+  Manrope_500Medium,
+  Manrope_600SemiBold,
+  Manrope_700Bold,
+  Manrope_800ExtraBold,
+} from "@expo-google-fonts/manrope";
+import {
+  GeistMono_400Regular,
+  GeistMono_500Medium,
+  GeistMono_600SemiBold,
+} from "@expo-google-fonts/geist-mono";
 
 import { AuthProvider, useAuth } from "@/contexts/auth-context";
 import { LockProvider } from "@/contexts/lock-context";
@@ -120,6 +134,26 @@ function AuthGate() {
 }
 
 function RootLayout() {
+  // Slice Q1 (2026-05-19): bundle Manrope (display family) + Geist
+  // Mono (numerals). Splash screen stays up until both load — without
+  // this, the first paint shows system-default fonts then flips to
+  // Manrope, which is visually jarring on hero screens.
+  const [fontsLoaded] = useFonts({
+    Manrope_300Light,
+    Manrope_400Regular,
+    Manrope_500Medium,
+    Manrope_600SemiBold,
+    Manrope_700Bold,
+    Manrope_800ExtraBold,
+    GeistMono_400Regular,
+    GeistMono_500Medium,
+    GeistMono_600SemiBold,
+  });
+  if (!fontsLoaded) {
+    // Splash is already held open by preventAutoHideAsync above.
+    // Returning null keeps the splash visible until fonts arrive.
+    return null;
+  }
   return (
     // GestureHandlerRootView is required for react-native-gesture-
     // handler to work — added 2026-04-23 for the FocusCardStack
