@@ -9,7 +9,7 @@ import {
 } from "react";
 import { AppState, type AppStateStatus } from "react-native";
 
-import { api } from "@/lib/api";
+import { api, devicePlatform, appVersion } from "@/lib/api";
 import {
   getStoredUser,
   getToken,
@@ -92,6 +92,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // transiently" (warm refresh fired by AppState change). See the
   // gated !token branch in refresh() for the rationale.
   const initialRefreshDone = useRef(false);
+  // Tracks whether the app-open telemetry call has been sent this
+  // session. Prevents redundant POSTs on foreground-refresh cycles.
+  const appOpenSent = useRef(false);
 
   /**
    * Refresh the current user state. Three cases:
@@ -147,6 +150,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (data.user?.id) {
           setUser(data.user);
           await setStoredUser(data.user);
+          // Report device telemetry once per cold launch
+          if (!appOpenSent.current) {
+            appOpenSent.current = true;
+            void api
+              .post("/api/user/app-open", { devicePlatform, appVersion })
+              .catch(() => {});
+          }
           return;
         }
         // 200 with no user — treat as signed-out. Server has

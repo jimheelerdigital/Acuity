@@ -186,7 +186,11 @@ export default function UsersTab() {
                     <StatusPill status={u.subscriptionStatus} />
                   </td>
                   <td className="px-4 py-3">
-                    <PlatformPill platform={u.devicePlatform} />
+                    <PlatformPill
+                      platform={u.devicePlatform}
+                      appFirstOpenedAt={u.appFirstOpenedAt}
+                      lastSeenAt={u.lastSeenAt}
+                    />
                   </td>
                   <td className="px-4 py-3 text-xs text-white/60">
                     {u.lastSeenAt ? formatTimeAgo(u.lastSeenAt) : "—"}
@@ -251,23 +255,38 @@ function StatusPill({ status }: { status: string }) {
   );
 }
 
-function PlatformPill({ platform }: { platform: string | null }) {
-  if (!platform) {
+function PlatformPill({
+  platform,
+  appFirstOpenedAt,
+  lastSeenAt,
+}: {
+  platform: string | null;
+  appFirstOpenedAt: string | null;
+  lastSeenAt: string | null;
+}) {
+  if (!platform && !appFirstOpenedAt) {
     return (
       <span className="rounded-full bg-white/5 px-2 py-0.5 text-xs text-white/40">
         Never opened app
       </span>
     );
   }
-  const label = platform === "ios" ? "iOS" : "Android";
+  const label = platform === "ios" ? "iOS" : platform === "android" ? "Android" : platform ?? "App";
   const bg =
     platform === "ios"
       ? "bg-sky-500/20 text-sky-300"
       : "bg-emerald-500/20 text-emerald-300";
   return (
-    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${bg}`}>
-      {label}
-    </span>
+    <div className="flex flex-col gap-0.5">
+      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${bg} w-fit`}>
+        {label}
+      </span>
+      {lastSeenAt && (
+        <span className="px-2 text-[10px] text-white/30">
+          {formatTimeAgo(lastSeenAt)}
+        </span>
+      )}
+    </div>
   );
 }
 

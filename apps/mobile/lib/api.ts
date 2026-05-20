@@ -38,8 +38,8 @@ function apiBaseUrl(): string {
 }
 
 /** Device telemetry headers attached to every request. */
-const devicePlatform = Platform.OS === "ios" ? "ios" : "android";
-const appVersion = Constants.expoConfig?.version ?? "unknown";
+export const devicePlatform = Platform.OS === "ios" ? "ios" : "android";
+export const appVersion = Constants.expoConfig?.version ?? "unknown";
 
 async function buildHeaders(
   extra?: HeadersInit,
