@@ -30,7 +30,41 @@ const ID_PREFIX = "acuity:reminder:";
 // notification fires even when the device has no network at trigger
 // time. The rotation seeds from (weekday + week-of-year) so the user
 // sees variety without back-to-back repeats.
-const BODY_VARIATIONS = [
+//
+// 2026-05-20 fix: time-aware pools. The legacy single string pool
+// was nightly-only ("Your nightly brain dump is waiting..."), which
+// was fine when the only reminder slot was an evening one. Slice C
+// (2026-05-09) added multi-reminder support — users can configure
+// reminders at any hour. The nightly copy fired at 11am for Keenan
+// was the result of that mismatch. Now we split into three pools
+// keyed off the fire-hour:
+//
+//   < 10:00       → MORNING_BODIES
+//   10:00–17:59   → MIDDAY_BODIES  (matches the P3A daytime window)
+//   18:00 onward  → EVENING_BODIES (original strings; preserves the
+//                                   nightly identity for the 95% of
+//                                   users who do journal at night)
+//
+// Boundary at 10:00 / 18:00 picked to mirror the P3A random-nudge
+// window so the user's mental model stays consistent: "workday
+// hours" = midday, "after work" = evening.
+const MORNING_BODIES = [
+  "Quick check-in before the day starts.",
+  "60 seconds — what's on your mind this morning?",
+  "Take stock. The day's still wide open.",
+  "What does today need from you?",
+  "How are you walking in today?",
+];
+
+const MIDDAY_BODIES = [
+  "Quick check-in. What's surfacing?",
+  "Pause for a minute. How's it going?",
+  "What's loud right now? Talk it out.",
+  "Halfway through. What's the day actually been?",
+  "60 seconds. Get it off your chest.",
+];
+
+const EVENING_BODIES = [
   "Your nightly brain dump is waiting.",
   "Take 60 seconds. What's on your mind?",
   "How was today, really?",
@@ -38,9 +72,19 @@ const BODY_VARIATIONS = [
   "One minute. Your future self will thank you.",
 ];
 
-function pickBody(weekday: number, weekOfYear: number): string {
-  const idx = Math.abs(weekday * 7 + weekOfYear) % BODY_VARIATIONS.length;
-  return BODY_VARIATIONS[idx];
+function pickBody(
+  weekday: number,
+  weekOfYear: number,
+  hour: number
+): string {
+  const pool =
+    hour < 10
+      ? MORNING_BODIES
+      : hour < 18
+        ? MIDDAY_BODIES
+        : EVENING_BODIES;
+  const idx = Math.abs(weekday * 7 + weekOfYear) % pool.length;
+  return pool[idx];
 }
 
 function weekOfYearNow(): number {
@@ -182,7 +226,9 @@ export async function applyReminderSchedule({
         identifier: `${ID_PREFIX}${weekday}`,
         content: {
           title: "Acuity",
-          body: pickBody(weekday, weekOfYear),
+          // `hour` already parsed above from `time`. Pass through so
+          // pickBody can pick the right (morning/midday/evening) pool.
+          body: pickBody(weekday, weekOfYear, hour),
           sound: "default",
           data: { deepLink: "acuity://" },
         },
@@ -277,7 +323,10 @@ export async function applyMultiReminderSchedule({
           identifier: `${ID_PREFIX}${reminder.id}:${weekday}`,
           content: {
             title: "Acuity",
-            body: pickBody(weekday, weekOfYear),
+            // Per-reminder `hour` parsed above. Each reminder in a
+            // multi-reminder set picks copy independently — a 7am
+            // reminder gets MORNING_BODIES, an 8pm gets EVENING_BODIES.
+            body: pickBody(weekday, weekOfYear, hour),
             sound: "default",
             data: { deepLink: "acuity://", reminderId: reminder.id },
           },
