@@ -212,8 +212,8 @@ export async function bootstrapNewUser(params: {
     console.error("[bootstrap-user] founder notification failed:", err);
   }
 
-  // Personal welcome email from Keenan. Plain text, feels like a real
-  // email. Sent from keenan@getacuity.io so replies go straight to him.
+  // Personal welcome email from Keenan. Casual body with his branded
+  // signature. Sent from keenan@getacuity.io so replies go straight to him.
   // Fail-soft — same pattern as every other email in bootstrap.
   if (email) {
     try {
@@ -229,7 +229,7 @@ export async function bootstrapNewUser(params: {
       const firstName =
         (userRow?.name ?? "").trim().split(/\s+/)[0] || null;
 
-      const { subject, text } = founderWelcomeEmail({
+      const { subject, html } = founderWelcomeEmail({
         firstName,
         foundingMemberNumber,
       });
@@ -239,7 +239,7 @@ export async function bootstrapNewUser(params: {
         replyTo: "keenan@getacuity.io",
         to: email,
         subject,
-        text,
+        html,
       });
     } catch (err) {
       // eslint-disable-next-line no-console
