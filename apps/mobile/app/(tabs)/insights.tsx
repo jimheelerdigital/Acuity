@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -10,6 +10,12 @@ import {
   Text,
   View,
 } from "react-native";
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
@@ -18,7 +24,9 @@ import {
   type UserProgression,
 } from "@acuity/shared";
 
+import { SegmentedTabs } from "@/components/acuity";
 import { ComparisonsCard } from "@/components/comparisons-card";
+import { BiggestMoves } from "@/components/insights/biggest-moves";
 import { LifeMapRadar } from "@/components/life-map-radar";
 import { LockedFeatureCard } from "@/components/locked-feature-card";
 import { MoodIcon } from "@/components/mood-icon";
@@ -98,7 +106,7 @@ export default function InsightsTab() {
   const router = useRouter();
   const { user } = useAuth();
   const isProLocked = isFreeTierUser(user);
-  const { resolved: resolvedTheme } = useTheme();
+  const { resolved: resolvedTheme, tokens } = useTheme();
   const isDark = resolvedTheme === "dark";
   const [entries, setEntries] = useState<EntryDTO[]>(
     () =>
@@ -129,6 +137,20 @@ export default function InsightsTab() {
   const [progression, setProgression] = useState<UserProgression | null>(
     () => getCached<UserProgression>(INSIGHTS_PROGRESSION_KEY) ?? null
   );
+
+  // Q7 — orbital entrance for the Life Matrix radar. Plays once per
+  // session on the first focus event where areas data is available.
+  // The played-once ref gates against tab-switch + data-refresh
+  // re-plays. Shared values start at "off-screen" so the entrance
+  // is the FIRST thing the user sees the very first time they
+  // open Insights this session.
+  const entrancePlayedRef = useRef(false);
+  const radarScale = useSharedValue(0.92);
+  const radarOpacity = useSharedValue(0);
+  const radarStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: radarScale.value }],
+    opacity: radarOpacity.value,
+  }));
 
   const fetchData = useCallback(async () => {
     try {
@@ -173,6 +195,28 @@ export default function InsightsTab() {
         fetchData();
       }
     }, [fetchData])
+  );
+
+  // Q7 — fire the radar entrance once per session, gated on data.
+  // When the tab focuses with data available AND we haven't played
+  // yet, run the scale+opacity entrance. Data-refetch focus events
+  // are no-ops via the ref. eslint deps complain about the shared
+  // values but they're stable references so it's safe to omit.
+  useFocusEffect(
+    useCallback(() => {
+      if (entrancePlayedRef.current) return;
+      if (areas.length === 0) return;
+      entrancePlayedRef.current = true;
+      radarScale.value = withTiming(1, {
+        duration: 700,
+        easing: Easing.bezier(0.16, 0.9, 0.3, 1),
+      });
+      radarOpacity.value = withTiming(1, {
+        duration: 700,
+        easing: Easing.bezier(0.16, 0.9, 0.3, 1),
+      });
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [areas.length])
   );
 
   const onRefresh = useCallback(async () => {
@@ -270,46 +314,26 @@ export default function InsightsTab() {
               <Text className="text-xs font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
                 Life Matrix
               </Text>
-              <View className="flex-row rounded-full bg-zinc-100 dark:bg-white/5 p-0.5">
-                {(["current", "trend"] as const).map((v) => {
-                  const disabled = v === "trend" && !trend?.hasEnoughHistory;
-                  return (
-                    <Pressable
-                      key={v}
-                      disabled={disabled}
-                      onPress={() => setView(v)}
-                      onLongPress={
-                        disabled
-                          ? () =>
-                              Alert.alert(
-                                "Not enough history yet",
-                                "Check back in a few weeks — we need 4+ weeks of data to show a trend."
-                              )
-                          : undefined
-                      }
-                      className={`rounded-full px-2.5 py-1 ${
-                        view === v
-                          ? "bg-white dark:bg-[#1E1E2E]"
-                          : "bg-transparent"
-                      }`}
-                    >
-                      <Text
-                        className={`text-xs font-semibold ${
-                          view === v
-                            ? "text-zinc-900 dark:text-zinc-50"
-                            : disabled
-                              ? "text-zinc-300 dark:text-zinc-600"
-                              : "text-zinc-500 dark:text-zinc-400"
-                        }`}
-                      >
-                        {v === "current" ? "Current" : "Trend"}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
+              {/* Q7 — SegmentedTabs swap. "Trend" only appears when
+                  hasEnoughHistory is true; previously it was disabled-
+                  with-long-press-alert. Cleaner UX, lighter primitive
+                  surface (no need to add disabled support upstream). */}
+              <SegmentedTabs<"current" | "trend">
+                tabs={
+                  trend?.hasEnoughHistory
+                    ? [
+                        { id: "current", label: "Current" },
+                        { id: "trend", label: "Trend" },
+                      ]
+                    : [{ id: "current", label: "Current" }]
+                }
+                activeId={view}
+                onChange={setView}
+              />
             </View>
-            <View className="items-center">
+            <Animated.View
+              style={[{ alignItems: "center" }, radarStyle]}
+            >
               <LifeMapRadar
                 areas={areas.map((a) => ({
                   area: a.area,
@@ -317,22 +341,31 @@ export default function InsightsTab() {
                   score100: a.score100,
                 }))}
                 size={320}
-                labelColor={isDark ? "#A1A1AA" : "#71717A"}
-                scoreColor={isDark ? "#71717A" : "#A1A1AA"}
-                gridColor={isDark ? "rgba(255,255,255,0.08)" : "#E4E4E7"}
-                centerLabelColor={isDark ? "#FAFAFA" : "#18181B"}
+                labelColor={tokens.textTer}
+                scoreColor={tokens.textQuiet}
+                gridColor={isDark ? "#ffffff14" : "#0000000f"}
+                centerLabelColor={tokens.text}
                 selectedAreaKey={expandedArea}
                 onAreaPress={(key) =>
                   setExpandedArea((prev) => (prev === key ? null : key))
                 }
                 trendAreas={view === "trend" ? trend?.fourWeeksAgo : undefined}
+                // Q7 polish — palette-gradient polygon, mono labels.
+                gradientColors={[tokens.primary, tokens.secondary]}
+                labelFontFamily={tokens.fontMono}
+                scoreFontFamily={tokens.fontMono}
+                nodeStrokeColor={tokens.bg}
               />
-            </View>
+            </Animated.View>
             {view === "trend" && trend?.hasEnoughHistory && (
               <Text className="mt-2 text-xs text-zinc-400 dark:text-zinc-500 text-center">
                 Dashed line = ~4 weeks ago
               </Text>
             )}
+            {/* Q7 — Biggest moves: top areas sorted by |weeklyDelta|,
+                palette-tinted for direction. Sits below the radar so
+                it reads as a continuation of the Life Matrix narrative. */}
+            <BiggestMoves areas={areas} />
           </View>
         ) : (
           <View className="mb-6 rounded-2xl border border-dashed border-zinc-300 dark:border-white/10 p-6 items-center">

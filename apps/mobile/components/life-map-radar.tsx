@@ -1,8 +1,11 @@
 import {
   Circle,
+  Defs,
   G,
   Line,
+  LinearGradient as SvgLinearGradient,
   Polygon,
+  Stop,
   Svg,
   Text as SvgText,
 } from "react-native-svg";
@@ -50,7 +53,23 @@ function resolveScore100(area: RadarArea | undefined): number | null {
   return Math.max(0, Math.min(100, Math.round(raw)));
 }
 
-interface Props {
+interface PolishProps {
+  /**
+   * Q7 polish: when set, the data polygon's fill + stroke use a
+   * palette gradient (primary → secondary) instead of the legacy
+   * hardcoded violet. Pass the two endpoint hex colors; an SVG
+   * LinearGradient is built inline.
+   */
+  gradientColors?: [string, string];
+  /** Font family for axis name labels. Defaults to system. */
+  labelFontFamily?: string;
+  /** Font family for the per-axis score numbers. Defaults to system. */
+  scoreFontFamily?: string;
+  /** Outer ring color on vertex dots. Defaults to "white". */
+  nodeStrokeColor?: string;
+}
+
+interface Props extends PolishProps {
   areas: RadarArea[];
   size?: number;
   /** Axis labels + score text tint. Pass dark/light per theme. */
@@ -82,6 +101,10 @@ export function LifeMapRadar({
   onAreaPress,
   selectedAreaKey,
   trendAreas,
+  gradientColors,
+  labelFontFamily,
+  scoreFontFamily,
+  nodeStrokeColor = "white",
 }: Props) {
   const cx = size / 2;
   const cy = size / 2;
@@ -141,8 +164,48 @@ export function LifeMapRadar({
         .join(" ")
     : null;
 
+  // Q7 polish — palette gradient on the data polygon when caller
+  // supplies endpoint colors. Stable id (one radar per Insights tab
+  // in practice; if multiple render, callers can wrap to scope).
+  const polyFill = gradientColors ? "url(#lifemap-poly-fill)" : "#7C3AED";
+  const polyStroke = gradientColors ? "url(#lifemap-poly-stroke)" : "#7C3AED";
+
   return (
     <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      {gradientColors && (
+        <Defs>
+          <SvgLinearGradient
+            id="lifemap-poly-fill"
+            x1="0"
+            y1="0"
+            x2={size}
+            y2={size}
+            gradientUnits="userSpaceOnUse"
+          >
+            <Stop
+              offset="0"
+              stopColor={gradientColors[0]}
+              stopOpacity="0.22"
+            />
+            <Stop
+              offset="1"
+              stopColor={gradientColors[1]}
+              stopOpacity="0.22"
+            />
+          </SvgLinearGradient>
+          <SvgLinearGradient
+            id="lifemap-poly-stroke"
+            x1="0"
+            y1="0"
+            x2={size}
+            y2={size}
+            gradientUnits="userSpaceOnUse"
+          >
+            <Stop offset="0" stopColor={gradientColors[0]} stopOpacity="1" />
+            <Stop offset="1" stopColor={gradientColors[1]} stopOpacity="1" />
+          </SvgLinearGradient>
+        </Defs>
+      )}
       {/* Grid rings — five concentric hexagons at 20/40/60/80/100% */}
       {Array.from({ length: levels }).map((_, i) => {
         const r = ((i + 1) / levels) * maxR;
@@ -192,12 +255,14 @@ export function LifeMapRadar({
         />
       )}
 
-      {/* Data polygon — violet fill at 12% opacity, solid violet stroke */}
+      {/* Data polygon — palette gradient when caller passes
+          gradientColors (Q7 polish); falls back to the legacy
+          violet for any consumer still on the old props. */}
       <Polygon
         points={polyPoints}
-        fill="#7C3AED"
-        fillOpacity={0.12}
-        stroke="#7C3AED"
+        fill={polyFill}
+        fillOpacity={gradientColors ? 1 : 0.12}
+        stroke={polyStroke}
         strokeWidth={1.5}
       />
 
@@ -236,7 +301,7 @@ export function LifeMapRadar({
               cy={nodeP.y}
               r={isSelected ? 6 : 4.5}
               fill={config.color}
-              stroke="white"
+              stroke={nodeStrokeColor}
               strokeWidth={2}
             />
             <SvgText
@@ -246,6 +311,7 @@ export function LifeMapRadar({
               fontSize={10}
               fontWeight={isSelected ? "700" : "500"}
               fill={isSelected ? config.color : labelColor}
+              fontFamily={labelFontFamily}
             >
               {config.name}
             </SvgText>
@@ -255,6 +321,7 @@ export function LifeMapRadar({
               textAnchor="middle"
               fontSize={9}
               fill={scoreColor}
+              fontFamily={scoreFontFamily}
             >
               {resolveScore100(area)?.toString() ?? "—"}
             </SvgText>
