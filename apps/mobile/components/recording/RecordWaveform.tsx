@@ -1,71 +1,77 @@
-import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect } from "react";
+import type { ComponentType } from "react";
 import { useWindowDimensions, View } from "react-native";
 import Animated, {
-  Easing,
-  cancelAnimation,
-  useAnimatedStyle,
+  useAnimatedProps,
+  useFrameCallback,
   useSharedValue,
-  withTiming,
 } from "react-native-reanimated";
+import Svg, {
+  Defs,
+  LinearGradient as SvgLinearGradient,
+  Path,
+  Stop,
+  type PathProps,
+} from "react-native-svg";
 
 import { useTheme } from "@/contexts/theme-context";
 
 /**
  * RecordWaveform — Apple Voice Memos style scrolling bar histogram.
  *
- * Q5 polish 6 (2026-05-20): bumped the bar push rate from 1 Hz
- * (matching the mic sample rate) to 8 Hz. At 1 Hz a 73-slot strip
- * took ~73 seconds to fill — Jim's screenshot at 0:15 showed only
- * ~15 bars of real data. Filling at 8 Hz covers the strip in ~9
- * seconds and matches Voice Memos' visual density.
+ * Q5 polish 9 (2026-05-20): the polish-6 cut shifted a React-state
+ * amps array at 8 Hz alongside a Reanimated translateX reset; the
+ * setState/transform race produced a visible 1-2 frame jolt on every
+ * push. Rewrote so everything runs on the UI thread:
  *
- * Architecture:
- *   - Slot-keyed bars: state is `amps: number[]` of length numBars.
- *     Each slot index is stable across pushes, so the bar at slot k
- *     is permanently mounted; only its height changes when amps
- *     shifts. Better React reconciliation than the prior id-keyed
- *     approach (no mounts/unmounts per push).
- *   - Color is anchored to slot position: bar at slot 0 = primary,
- *     bar at slot N-1 = secondary, linear interpolation between.
- *     As a spike scrolls left, it visually warms from secondary
- *     toward primary — matches user expectation (color = screen
- *     position, not audio-history-id).
- *   - Bar pusher: a 125ms setInterval. Each tick reads the latest
- *     mic amplitude from a ref (latestMicRef, updated by the levels
- *     prop), applies light smoothing toward target + small jitter
- *     for organic variation, then shifts amps + resets translateX
- *     atomically. The shift and the translateX reset together make
- *     the scroll seamless.
- *   - translateX: single Reanimated shared value driving the
- *     container transform. Each push animates 0 → -SLOT_WIDTH over
- *     BAR_PUSH_INTERVAL_MS (linear). Same "infinite scroll" trick
- *     as polish 4, just at 8x the rate.
+ *   - One `useFrameCallback` worklet advances `elapsed` each frame,
+ *     pushes a new amp into `ampsShared` when elapsed crosses the
+ *     BAR_PUSH_INTERVAL, and accumulates the residual sub-interval
+ *     time for the next frame's scroll.
+ *   - One `useAnimatedProps` worklet builds the SVG path string each
+ *     frame from `ampsShared` + `elapsed`. Each "bar" is a vertical
+ *     line segment rendered with `strokeLinecap="round"` and
+ *     `strokeWidth={BAR_WIDTH}` — gives the rounded-rectangle bar
+ *     look without rendering N separate <Rect>s.
  *
- * Mic sample arrival (1 Hz from expo-av) updates `latestMicRef` only.
- * The 8 Hz pusher reads from the ref. Between mic samples, 7 bars
- * use the same mic value (with jitter) — gives a "stair-step with
- * texture" pattern that matches Voice Memos showing similar heights
- * during sustained tones.
+ * No React state changes on push. No setState/animation race. No
+ * <View>-per-bar reconciliation. A single AnimatedPath updates on
+ * each UI frame; the path string is ~80 visible bars × 25 chars =
+ * ~2KB of string concat per frame, well within worklet budget on
+ * iPhone 16e.
  *
- * Audio capture, /api/record path, state machine all untouched.
+ * Scroll model: bar i in the array sits at screen-x = stripWidth -
+ * i*SLOT_WIDTH - scrollPx, where scrollPx = (elapsed /
+ * BAR_PUSH_INTERVAL_MS) * SLOT_WIDTH. So bars move from right to
+ * left at exactly SLOT_WIDTH per push interval. At the moment of a
+ * push, scrollPx resets to 0 and a new amp gets inserted at index 0
+ * — visually seamless because the old amp at index 0 is now at
+ * index 1 (i.e. one slot to the left), matching the position it
+ * just animated to.
+ *
+ * Color: a single LinearGradient stroke in user-space coords. Fades
+ * from alpha 0 at the left edge to full primary at 15% → secondary
+ * at the right — bars dissolve as they scroll off-screen.
+ *
+ * Audio capture, /api/record path, levels[] producer all untouched.
  */
 
 const BAR_WIDTH = 2.5;
 const BAR_GAP = 2;
 const SLOT_WIDTH = BAR_WIDTH + BAR_GAP;
-// 125ms = 8 Hz push rate. Tuned so a 73-slot strip on iPhone 16e
-// fills in ~9 seconds — matches Voice Memos' visual cadence
-// without taxing React reconciliation too hard (8 setState/sec).
 const BAR_PUSH_INTERVAL_MS = 125;
 const NOISE_FLOOR = 0.12;
-const FADE_FRACTION = 0.18;
-// Interpolation toward the target mic value per tick. With 0.55,
-// reaching a new amplitude takes ~3 ticks (~375ms) for a clean
-// step. Higher = faster response, lower = more lag.
 const AMP_LERP = 0.55;
-// ±4% random per-bar variation so sustained tones don't look like
-// a flat block.
 const JITTER_AMP = 0.04;
+// Ring-buffer cap. visibleSlots is ~73 on iPhone 16e; cap at 200
+// gives plenty of headroom while keeping memory trivial (~1.5KB).
+const MAX_BARS = 200;
+
+// Reanimated v4's animatedProps surface on PathProps doesn't include
+// `d` as animatable — same workaround we use elsewhere.
+const AnimatedPath = Animated.createAnimatedComponent(
+  Path as ComponentType<PathProps & { d?: string }>
+);
 
 export interface RecordWaveformProps {
   /** Rolling-window amplitude values 0..1. From expo-av's metering callback. */
@@ -76,28 +82,6 @@ export interface RecordWaveformProps {
   height?: number;
 }
 
-/**
- * Linear hex-color interpolation. Accepts `#rrggbb`; ignores alpha.
- * Used once per slot at render time — much cheaper than rendering
- * N LinearGradient components.
- */
-function lerpHex(a: string, b: string, t: number): string {
-  const parse = (h: string) => {
-    const hex = h.replace("#", "");
-    return [
-      parseInt(hex.slice(0, 2), 16),
-      parseInt(hex.slice(2, 4), 16),
-      parseInt(hex.slice(4, 6), 16),
-    ];
-  };
-  const [ar, ag, ab] = parse(a);
-  const [br, bg, bb] = parse(b);
-  const mix = (x: number, y: number) => Math.round(x + (y - x) * t);
-  const toHex = (v: number) =>
-    Math.max(0, Math.min(255, v)).toString(16).padStart(2, "0");
-  return `#${toHex(mix(ar, br))}${toHex(mix(ag, bg))}${toHex(mix(ab, bb))}`;
-}
-
 export function RecordWaveform({
   levels,
   active,
@@ -105,90 +89,95 @@ export function RecordWaveform({
 }: RecordWaveformProps) {
   const { tokens } = useTheme();
   const { width: screenWidth } = useWindowDimensions();
-  // Parent wraps the recording surface in px-8 = 32 each side.
   const stripWidth = Math.max(0, screenWidth - 64);
+  const cy = height / 2;
+  const maxBarH = height * 0.86;
+  // +2 so two extra slots wait off the right edge to scroll in
+  // cleanly without a one-frame "gap" at the right boundary.
+  const visibleSlots = Math.max(8, Math.ceil(stripWidth / SLOT_WIDTH) + 2);
 
-  // Number of bars to render. +1 so the off-screen-right slot has a
-  // bar waiting to scroll in as translateX advances.
-  const numBars = useMemo(
-    () => Math.max(8, Math.ceil(stripWidth / SLOT_WIDTH) + 1),
-    [stripWidth]
+  // All state lives on the UI thread.
+  const activeShared = useSharedValue(active);
+  const latestMicShared = useSharedValue(NOISE_FLOOR);
+  const ampsShared = useSharedValue<number[]>(
+    new Array(visibleSlots).fill(NOISE_FLOOR)
   );
+  const elapsed = useSharedValue(0);
 
-  // Slot config — color + opacity per slot. Slot index is stable
-  // across pushes, so this computes once per (numBars, tokens) change.
-  // Re-runs when the user switches palettes or the strip resizes.
-  const fadeEndIdx = numBars * FADE_FRACTION;
-  const slotConfig = useMemo(
-    () =>
-      Array.from({ length: numBars }, (_, idx) => {
-        const colorT = numBars <= 1 ? 1 : idx / (numBars - 1);
-        return {
-          idx,
-          color: lerpHex(tokens.primary, tokens.secondary, colorT),
-          opacity: idx >= fadeEndIdx ? 1 : idx / fadeEndIdx,
-        };
-      }),
-    [numBars, fadeEndIdx, tokens.primary, tokens.secondary]
-  );
-
-  // Amplitudes per slot. Newest is at the last index.
-  const [amps, setAmps] = useState<number[]>(() =>
-    new Array(numBars).fill(NOISE_FLOOR)
-  );
-
-  // Reanimated shared value for the container translateX.
-  const translateX = useSharedValue(0);
-
-  // Latest mic amplitude — updated by the levels prop (1 Hz cadence
-  // from expo-av), read by the 8 Hz pusher. Ref so the pusher
-  // doesn't capture stale closure values.
-  const latestMicRef = useRef(NOISE_FLOOR);
+  // Sync React props → shared values. These are the only JS-thread
+  // touches per push interval; setting a shared value is cheap and
+  // doesn't trigger a React re-render.
   useEffect(() => {
-    latestMicRef.current = levels[levels.length - 1] ?? NOISE_FLOOR;
-  }, [levels]);
-
-  // 8 Hz bar pusher. Runs only while active=true. Each tick shifts
-  // amps and re-animates translateX over the push interval.
-  useEffect(() => {
-    if (!active) return;
-    const intervalId = setInterval(() => {
-      setAmps((prev) => {
-        const target = latestMicRef.current;
-        const lastAmp = prev[prev.length - 1] ?? NOISE_FLOOR;
-        const jitter = (Math.random() - 0.5) * 2 * JITTER_AMP;
-        const newAmp = Math.max(
-          NOISE_FLOOR,
-          Math.min(1, lastAmp * (1 - AMP_LERP) + target * AMP_LERP + jitter)
-        );
-        const next = prev.slice(1);
-        next.push(newAmp);
-        return next;
-      });
-      cancelAnimation(translateX);
-      translateX.value = 0;
-      translateX.value = withTiming(-SLOT_WIDTH, {
-        duration: BAR_PUSH_INTERVAL_MS,
-        easing: Easing.linear,
-      });
-    }, BAR_PUSH_INTERVAL_MS);
-    return () => clearInterval(intervalId);
-  }, [active, translateX]);
-
-  // Reset on active toggle. Fresh recording starts with a clean
-  // noise-floor strip; inactive freezes the last state at half opacity.
-  useEffect(() => {
+    activeShared.value = active;
     if (active) {
-      setAmps(new Array(numBars).fill(NOISE_FLOOR));
-      translateX.value = 0;
-    } else {
-      cancelAnimation(translateX);
+      elapsed.value = 0;
+      ampsShared.value = new Array(visibleSlots).fill(NOISE_FLOOR);
     }
-  }, [active, numBars, translateX]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, visibleSlots]);
 
-  const containerStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: translateX.value }],
-  }));
+  useEffect(() => {
+    latestMicShared.value = levels[levels.length - 1] ?? NOISE_FLOOR;
+  }, [levels, latestMicShared]);
+
+  // UI-thread frame driver. Advances elapsed; pushes new amps onto
+  // the ring buffer when elapsed crosses BAR_PUSH_INTERVAL. The
+  // while-loop handles dropped frames cleanly (multiple pushes per
+  // frame if the device skipped).
+  useFrameCallback((info) => {
+    if (!activeShared.value) return;
+    const dt = info.timeSincePreviousFrame ?? 16;
+    elapsed.value += dt;
+
+    while (elapsed.value >= BAR_PUSH_INTERVAL_MS) {
+      elapsed.value -= BAR_PUSH_INTERVAL_MS;
+      const prev = ampsShared.value;
+      const lastAmp = prev[0] ?? NOISE_FLOOR;
+      const target = latestMicShared.value;
+      const jitter = (Math.random() - 0.5) * 2 * JITTER_AMP;
+      const newAmp = Math.max(
+        NOISE_FLOOR,
+        Math.min(1, lastAmp * (1 - AMP_LERP) + target * AMP_LERP + jitter)
+      );
+      // Newest at index 0; older bars shift right (higher indices).
+      // Trim to MAX_BARS so memory stays bounded over a 5-minute take.
+      const next = [newAmp, ...prev];
+      ampsShared.value =
+        next.length > MAX_BARS ? next.slice(0, MAX_BARS) : next;
+    }
+  });
+
+  // Path string builder. Runs every UI frame because elapsed updates
+  // every frame via useFrameCallback. Walks the amps array from
+  // newest (index 0, right edge) to oldest (off the left edge); each
+  // bar is one "M x y_top L x y_bot" pair in the SVG path data.
+  const animatedProps = useAnimatedProps(() => {
+    const amps = ampsShared.value;
+    const e = elapsed.value;
+    const scrollPx = (e / BAR_PUSH_INTERVAL_MS) * SLOT_WIDTH;
+
+    let d = "";
+    for (let i = 0; i < amps.length; i += 1) {
+      const x = stripWidth - i * SLOT_WIDTH - scrollPx;
+      if (x < -SLOT_WIDTH) break;
+      if (x > stripWidth + SLOT_WIDTH) continue;
+      const amp = amps[i];
+      const barH = Math.max(4, amp * maxBarH);
+      const yTop = cy - barH / 2;
+      const yBot = cy + barH / 2;
+      d +=
+        "M " +
+        x.toFixed(1) +
+        " " +
+        yTop.toFixed(1) +
+        " L " +
+        x.toFixed(1) +
+        " " +
+        yBot.toFixed(1) +
+        " ";
+    }
+    return { d };
+  });
 
   if (stripWidth <= 0) return <View style={{ height }} />;
 
@@ -202,70 +191,42 @@ export function RecordWaveform({
         opacity: active ? 1 : 0.5,
       }}
     >
-      <Animated.View
-        style={[
-          {
-            position: "absolute",
-            top: 0,
-            // Anchor so slot[numBars-1] (newest, rightmost) sits at
-            // the right edge when translateX === 0. Translating to
-            // -SLOT_WIDTH then pulls everything left by exactly one
-            // slot per push.
-            left: stripWidth - (numBars - 1) * SLOT_WIDTH - BAR_WIDTH,
-            flexDirection: "row",
-            alignItems: "center",
-            height,
-          },
-          containerStyle,
-        ]}
-      >
-        {slotConfig.map((slot) => (
-          <BarView
-            key={slot.idx}
-            color={slot.color}
-            opacity={slot.opacity}
-            barHeight={Math.max(
-              4,
-              Math.min(1, amps[slot.idx] ?? NOISE_FLOOR) * height * 0.86
-            )}
-          />
-        ))}
-      </Animated.View>
+      <Svg width={stripWidth} height={height}>
+        <Defs>
+          {/* User-space gradient so the left fade stays at the left
+              edge of the strip regardless of where bars happen to
+              be at any frame. */}
+          <SvgLinearGradient
+            id="wf-grad"
+            x1="0"
+            y1="0"
+            x2={stripWidth}
+            y2="0"
+            gradientUnits="userSpaceOnUse"
+          >
+            <Stop offset="0" stopColor={tokens.primary} stopOpacity="0" />
+            <Stop
+              offset="0.15"
+              stopColor={tokens.primary}
+              stopOpacity="1"
+            />
+            <Stop
+              offset="0.55"
+              stopColor={tokens.primary}
+              stopOpacity="1"
+            />
+            <Stop offset="1" stopColor={tokens.secondary} stopOpacity="1" />
+          </SvgLinearGradient>
+        </Defs>
+        <AnimatedPath
+          animatedProps={animatedProps}
+          stroke="url(#wf-grad)"
+          strokeWidth={BAR_WIDTH}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          fill="none"
+        />
+      </Svg>
     </View>
   );
 }
-
-interface BarViewProps {
-  color: string;
-  opacity: number;
-  barHeight: number;
-}
-
-const BarView = memo(function BarView({
-  color,
-  opacity,
-  barHeight,
-}: BarViewProps) {
-  // Outer column reserves SLOT_WIDTH horizontal space; inner pill
-  // is the visible bar. Centered vertically via parent alignItems.
-  return (
-    <View
-      style={{
-        width: BAR_WIDTH,
-        marginRight: BAR_GAP,
-        alignItems: "center",
-        justifyContent: "center",
-        opacity,
-      }}
-    >
-      <View
-        style={{
-          width: BAR_WIDTH,
-          height: barHeight,
-          borderRadius: BAR_WIDTH / 2,
-          backgroundColor: color,
-        }}
-      />
-    </View>
-  );
-});
