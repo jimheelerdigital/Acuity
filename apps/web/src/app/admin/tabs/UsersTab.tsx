@@ -351,6 +351,22 @@ function UserDetailModal({
     loadEmails();
   }, [load, loadEmails]);
 
+  async function resendWelcome() {
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/admin/users/${userId}/resend-welcome`, {
+        method: "POST",
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error ?? "Failed");
+      alert(`Welcome email sent to ${d.email}`);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function sendMagicLink() {
     setBusy(true);
     try {
@@ -624,6 +640,13 @@ function UserDetailModal({
             </div>
 
             <div className="flex flex-wrap gap-2 border-t border-white/10 pt-4">
+              <button
+                onClick={resendWelcome}
+                disabled={busy}
+                className="rounded-md bg-emerald-500/20 px-3 py-2 text-xs font-medium text-emerald-300 hover:bg-emerald-500/30"
+              >
+                Resend welcome email
+              </button>
               <button
                 onClick={sendMagicLink}
                 disabled={busy}

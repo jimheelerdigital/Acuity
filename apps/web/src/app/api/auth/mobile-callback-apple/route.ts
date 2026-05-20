@@ -240,12 +240,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Default 30-day trial set at create time as a safety net.
+    // bootstrapNewUser overwrites with the real value (founding member
+    // days, referral bonus, etc.) — but if bootstrap fails, the user
+    // at least has a working trial instead of NULL trialEndsAt.
+    const defaultTrialEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
     user = await prisma.user.create({
       data: {
         email,
         name: cachedFullName,
         emailVerified: new Date(), // Apple verifies before issuing the token
         appleSubject: claims.sub,
+        subscriptionStatus: "TRIAL",
+        trialEndsAt: defaultTrialEnd,
       },
       select: {
         id: true,

@@ -51,46 +51,9 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  // Send founder notification now that attribution is persisted. OAuth
-  // signups skip the notification in bootstrapNewUser (no attribution at
-  // that point) and defer it here so the email shows real UTM data.
-  try {
-    const fullUser = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: {
-        email: true,
-        isFoundingMember: true,
-        foundingMemberNumber: true,
-        trialEndsAt: true,
-        createdAt: true,
-      },
-    });
-    if (fullUser) {
-      const trialDays = fullUser.trialEndsAt
-        ? Math.round((fullUser.trialEndsAt.getTime() - fullUser.createdAt.getTime()) / (24 * 60 * 60 * 1000))
-        : 14;
-      const { notifyFoundersOfSignup } = await import("@/lib/founder-notifications");
-      await notifyFoundersOfSignup({
-        userId: session.user.id,
-        email: fullUser.email,
-        isFoundingMember: fullUser.isFoundingMember ?? false,
-        foundingMemberNumber: fullUser.foundingMemberNumber ?? null,
-        trialDays,
-        attribution: {
-          utmSource: utm_source ? String(utm_source) : undefined,
-          utmMedium: utm_medium ? String(utm_medium) : undefined,
-          utmCampaign: utm_campaign ? String(utm_campaign) : undefined,
-          utmContent: utm_content ? String(utm_content) : undefined,
-          utmTerm: utm_term ? String(utm_term) : undefined,
-          referrer: referrer ? String(referrer) : undefined,
-          landingPath: landingPath ? String(landingPath) : undefined,
-        },
-      });
-    }
-  } catch (err) {
-    // Fail-soft — attribution is already saved, notification is best-effort
-    console.error("[set-attribution] founder notification failed:", err);
-  }
+  // Founder notification is now sent unconditionally from bootstrapNewUser.
+  // No need to send again here — the attribution data is already persisted
+  // on the User row and will show in the admin dashboard.
 
   return NextResponse.json({ ok: true });
 }

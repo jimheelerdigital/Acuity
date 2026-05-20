@@ -41,6 +41,43 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-20] — Fix broken signup notification + welcome emails
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** c7ebd62
+
+### In plain English (for Keenan)
+
+Lauren (mergler95@gmail.com) and Kevin (sgb6c6wbdd@privaterelay.appleid.com) signed up but you never got a notification email and they never got the welcome email. The root cause: a recent commit gated the admin signup notification behind an attribution check, meaning Google/Apple signups (which have no attribution data at signup time) silently skipped the notification entirely. The welcome email from Keenan was also being swallowed by a silent error handler. Both are now fixed — every signup triggers the founder notification regardless of whether attribution data exists. There's also a new "Resend welcome email" button on each user's detail page so you can manually send it to Lauren and Kevin right after deploying.
+
+### Technical changes (for Jimmy)
+
+- Modified `apps/web/src/lib/bootstrap-user.ts` — removed the `if (attribution)` gate around `notifyFoundersOfSignup()`. The notification now fires unconditionally for every signup. Attribution is included when available but not required.
+- Modified `apps/web/src/app/api/auth/set-attribution/route.ts` — removed the duplicate founder notification send. Since bootstrapNewUser now always sends the notification, the attribution endpoint no longer needs to send one too (was causing double-emails for email/password signups that had attribution).
+- New file: `apps/web/src/app/api/admin/users/[id]/resend-welcome/route.ts` — POST endpoint that re-sends the founder welcome email (plain text from Keenan) to any user. Used for cases where the original send failed.
+- Modified `apps/web/src/app/admin/tabs/UsersTab.tsx` — added "Resend welcome email" button to the user detail modal action bar.
+- Modified `apps/web/src/app/api/auth/mobile-callback/route.ts` — user.create now sets `subscriptionStatus: "TRIAL"` and `trialEndsAt: 30 days` as a safety net. bootstrapNewUser still overwrites with the correct value.
+- Modified `apps/web/src/app/api/auth/mobile-callback-apple/route.ts` — same safety net.
+- Modified `apps/web/src/app/api/auth/mobile-signup/route.ts` — same safety net.
+- Modified `apps/web/src/app/api/auth/mobile-magic-link/route.ts` — same safety net.
+- Modified `apps/web/src/app/api/auth/signup/route.ts` — same safety net.
+
+### Manual steps needed
+
+- [ ] After deploying: go to the Users tab, click "view" on Lauren (mergler95@gmail.com), click "Resend welcome email"
+- [ ] Same for Kevin (sgb6c6wbdd@privaterelay.appleid.com)
+- [ ] Fix Lauren and Kevin's trial: click "Extend trial..." on each, enter 30 days, reason: "NULL trialEndsAt from signup bug"
+- [ ] Verify in Resend dashboard that both emails were delivered (Kevin's Apple Private Relay address should forward correctly)
+
+### Notes
+
+- Root cause was commit 5b6397f (May 19) which introduced the `if (attribution)` guard. The intent was to defer the notification for OAuth signups until attribution was synced via set-attribution, but if the client never called set-attribution (no attribution cookie exists), the notification was permanently lost.
+- The welcome email (Keenan's personal email) should have been sending — it's outside the attribution guard. If it also failed for Lauren/Kevin, the most likely cause is a Resend API error (check Vercel function logs for `[bootstrap-user] founder welcome email failed`). The new resend-welcome endpoint surfaces errors instead of swallowing them.
+- Apple Private Relay addresses (privaterelay.appleid.com) are real forwardable email addresses. Resend should deliver to them without issues.
+
+---
+
 ## [2026-05-20] — Fix blog GSC data sync (impressions/clicks always 0)
 
 **Requested by:** Keenan

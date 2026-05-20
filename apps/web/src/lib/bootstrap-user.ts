@@ -194,28 +194,26 @@ export async function bootstrapNewUser(params: {
   }
 
   // Notify founders (Keenan + Jimmy) of the new signup in real time.
-  // Only send inline when attribution is available (email/password path).
-  // OAuth signups pass no attribution here — the client-side
-  // SyncAttribution component on /auth/signup/success POSTs the cookie
-  // to /api/auth/set-attribution, which sends the notification AFTER
-  // attribution is persisted so the email shows real UTM data.
-  if (attribution) {
-    try {
-      const { notifyFoundersOfSignup } = await import(
-        "@/lib/founder-notifications"
-      );
-      await notifyFoundersOfSignup({
-        userId,
-        email,
-        isFoundingMember,
-        foundingMemberNumber,
-        trialDays,
-        attribution,
-      });
-    } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error("[bootstrap-user] founder notification failed:", err);
-    }
+  // Always send — attribution is included when available but the
+  // notification must fire regardless (OAuth signups have no attribution
+  // at bootstrap time). The set-attribution endpoint may send an updated
+  // notification later with UTM data, but the initial one ensures we
+  // never miss a signup.
+  try {
+    const { notifyFoundersOfSignup } = await import(
+      "@/lib/founder-notifications"
+    );
+    await notifyFoundersOfSignup({
+      userId,
+      email,
+      isFoundingMember,
+      foundingMemberNumber,
+      trialDays,
+      attribution,
+    });
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error("[bootstrap-user] founder notification failed:", err);
   }
 
   // Personal welcome email from Keenan. Plain text, feels like a real

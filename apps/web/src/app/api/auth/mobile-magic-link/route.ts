@@ -67,8 +67,9 @@ export async function POST(req: NextRequest) {
     select: { id: true },
   });
   if (!user) {
+    const defaultTrialEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
     user = await prisma.user.create({
-      data: { email },
+      data: { email, subscriptionStatus: "TRIAL", trialEndsAt: defaultTrialEnd },
       select: { id: true },
     });
     // Bootstrap at create time — matches /api/auth/signup's flow so
