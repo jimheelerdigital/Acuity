@@ -41,6 +41,39 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-19] — Fix broken UTM attribution across all signup paths
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** b3f9fc7
+
+### In plain English (for Keenan)
+
+Attribution was broken — every new signup showed "direct" with no campaign, source, or referrer data. Three bugs were causing this: (1) users landing on the homepage never got an attribution cookie at all, (2) Google/Apple signups never synced the cookie to the database, and (3) the signup page itself never captured UTM params from the URL. All three are now fixed. You should see real attribution data (source, campaign, referrer, landing page) on new signups going forward. Console logs have been added at every step so we can verify in Vercel logs.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/lib/attribution.ts`: Removed the guard that skipped setting the attribution cookie when landingPath was "/" and no UTMs were present. Now always sets the cookie so we capture referrer + timestamp at minimum.
+- `apps/web/src/app/auth/signup/page.tsx`: Added `setAttributionCookie()` call on mount so UTM params in the signup URL (from CTA links that hardcode `?utm_source=meta&utm_medium=paid`) get captured even without a prior landing page visit.
+- `apps/web/src/app/auth/signup/success/sync-attribution.tsx`: New client component that reads the `acuity_attribution` cookie and POSTs to `/api/auth/set-attribution`. This is the OAuth fix — the NextAuth `events.createUser` callback runs server-side with no cookie access, so this client-side sync on the success page backfills the User row.
+- `apps/web/src/app/auth/signup/success/page.tsx`: Added `<SyncAttribution />` component.
+- `apps/web/src/app/api/auth/signup/route.ts`: Added `console.log` for attribution data received from client.
+- `apps/web/src/app/api/auth/set-attribution/route.ts`: Added `console.log` for attribution sync requests.
+- `apps/web/.env.local`: Updated `NEXT_PUBLIC_META_PIXEL_ID` from old pixel `5752790988087389` to correct pixel `869829585445303` (not tracked by git — local fix only).
+
+### Manual steps needed
+
+- [ ] Verify Vercel env var `NEXT_PUBLIC_META_PIXEL_ID` is set to `869829585445303` (not the old `5752790988087389`). If it's wrong, update it and redeploy. (Keenan)
+- [ ] After deploy, test a signup from a `/for/[slug]?utm_source=test&utm_medium=test` URL and check Vercel function logs for `[attribution]` entries to confirm the full chain works. (Keenan)
+
+### Notes
+
+- **Meta Pixel audit result**: The correct pixel ID `869829585445303` is hardcoded in `layout.tsx` and is the only pixel firing on all pages. The `.env.local` had the old ID but it was unused (source code doesn't reference the env var). Updated `.env.local` for consistency but it's gitignored — the Vercel env var is the one that matters for production.
+- **Attribution chain overview after fix**: Landing page → `setAttributionCookie` captures UTMs + referrer + landingPath into 30-day cookie → user navigates to `/auth/signup` (cookie persists) → signup page also calls `setAttributionCookie` (first-touch guard prevents overwrite, but catches direct-to-signup UTM links) → email/password signup reads cookie and sends to API → OAuth signup redirects to success page where `SyncAttribution` reads cookie and POSTs to `/api/auth/set-attribution` → User row populated.
+- **Why OAuth was broken**: NextAuth's `events.createUser` fires server-side during the OAuth callback. It has no access to browser cookies. The `bootstrapNewUser` call from `auth.ts` line 231 passes no attribution. The fix is client-side: after OAuth redirect completes and the user lands on `/auth/signup/success`, the `SyncAttribution` component reads the cookie and syncs it. The `set-attribution` endpoint is write-once so this is safe to call for email/password users too (no-op if already set).
+
+---
+
 ## [2026-05-19] — Welcome email reverted to plain text
 
 **Requested by:** Keenan
