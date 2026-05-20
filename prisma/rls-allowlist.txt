@@ -82,3 +82,4 @@ AdLabCreative no-rls   # admin-only Meta ad creative (image + copy variants)
 AdLabAd no-rls         # admin-only Meta ad launch records (Meta IDs, status)
 AdLabDailyMetric no-rls # admin-only Meta ad performance metrics ingestion
 AdLabDecision no-rls   # admin-only Meta ad experiment outcome decisions
+AdLabLandingPage no-rls # admin-only Meta ad landing page config (slug, copy, CTA)
