@@ -1,6 +1,6 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useEffect } from "react";
-import { Platform, Pressable, View } from "react-native";
+import { Platform, Pressable } from "react-native";
 import Animated, {
   Easing,
   cancelAnimation,
@@ -16,13 +16,16 @@ import { useTheme } from "@/contexts/theme-context";
 /**
  * RecordOrb — voice-reactive orb (motion #1 from the gallery).
  *
- * Composition: layered radial-gradient sphere (approximated with two
- * concentric LinearGradient discs — RN doesn't ship a true radial
- * gradient, and react-native-radial-gradient adds a dep we agreed
- * to skip back in Q3 planning), wrapped in a halo View that scales
- * + fades with amplitude.
+ * Composition: a gradient-filled disc with subtle organic edge motion.
+ * The "marble" specular highlight from the first cut was removed in
+ * the Q5 polish pass — it read as a glossy ball rather than the
+ * breathing organic form the design intends. Edge variation comes
+ * from independently-animated per-corner borderRadius oscillations
+ * (4 slow sine waves at different periods, ±6% deviation around the
+ * circle radius) — the orb stays roughly circular at any given frame
+ * but the shape gently flexes over 3-5 second cycles.
  *
- * Animation mapping (from the design's motion spec):
+ * Amplitude mapping (motion #1, unchanged from Q5 first cut):
  *   - Scale       1.0 → 1.18 mapped to amplitude 0..1
  *   - Halo opacity 0.3 → 0.85
  *   - Halo scale  1.0 → 1.3
@@ -49,6 +52,12 @@ const EASE_BREATH = Easing.inOut(Easing.sin);
 const AMPLITUDE_TIMING_MS = 100;
 const IDLE_BREATH_MS = 2600;
 const IDLE_THRESHOLD = 0.06;
+// Organic edge motion: ±6% deviation from the perfect-circle radius
+// (SIZE / 2 = 44px → variation up to ~5.3px per corner). Four
+// independent oscillation periods so the corners drift out of phase;
+// stays inside the "still roughly circular" envelope.
+const BLOB_DEVIATION = SIZE * 0.06;
+const BLOB_PERIODS_MS = [3400, 4100, 3800, 4500] as const;
 
 export interface RecordOrbProps {
   /** Latest mic amplitude in [0, 1]. Pass the most recent levels[] tail. */
@@ -69,6 +78,13 @@ export function RecordOrb({
   const { tokens } = useTheme();
   const reactive = useSharedValue(0);
   const idleBreath = useSharedValue(0);
+  // Four independent corner oscillators. Each runs its own slow
+  // withRepeat(withTiming, true) cycle so the orb's outline drifts
+  // organically without ever looking synchronized.
+  const blobTL = useSharedValue(0.5);
+  const blobTR = useSharedValue(0.5);
+  const blobBR = useSharedValue(0.5);
+  const blobBL = useSharedValue(0.5);
 
   // Reactive amplitude track — driven by prop changes when active.
   useEffect(() => {
@@ -106,12 +122,45 @@ export function RecordOrb({
     }
   }, [active, amplitude, idleBreath]);
 
+  // Organic edge motion — always running, independent of active state.
+  // Each corner oscillates between 0 and 1 over its own period. The
+  // animated-style worklet maps 0..1 → SIZE/2 ± BLOB_DEVIATION.
+  useEffect(() => {
+    const start = (sv: typeof blobTL, period: number) => {
+      cancelAnimation(sv);
+      sv.value = withRepeat(
+        withTiming(1 - sv.value, { duration: period, easing: EASE_BREATH }),
+        -1,
+        true
+      );
+    };
+    start(blobTL, BLOB_PERIODS_MS[0]);
+    start(blobTR, BLOB_PERIODS_MS[1]);
+    start(blobBR, BLOB_PERIODS_MS[2]);
+    start(blobBL, BLOB_PERIODS_MS[3]);
+    return () => {
+      cancelAnimation(blobTL);
+      cancelAnimation(blobTR);
+      cancelAnimation(blobBR);
+      cancelAnimation(blobBL);
+    };
+  }, [blobTL, blobTR, blobBR, blobBL]);
+
   const orbStyle = useAnimatedStyle(() => {
     // Active drives reactive 0..1 → scale 1.0..1.18.
     // Idle drives breath 0..1 → scale 1.0..1.05 (subtler than reactive).
     const reactiveScale = 1 + reactive.value * 0.18;
     const idleScale = 1 + idleBreath.value * 0.05;
-    return { transform: [{ scale: reactiveScale * idleScale }] };
+    // Map each corner's 0..1 → (SIZE/2 - dev)..(SIZE/2 + dev).
+    const base = SIZE / 2;
+    const radius = (v: number) => base + (v - 0.5) * 2 * BLOB_DEVIATION;
+    return {
+      transform: [{ scale: reactiveScale * idleScale }],
+      borderTopLeftRadius: radius(blobTL.value),
+      borderTopRightRadius: radius(blobTR.value),
+      borderBottomRightRadius: radius(blobBR.value),
+      borderBottomLeftRadius: radius(blobBL.value),
+    };
   });
 
   const haloStyle = useAnimatedStyle(() => {
@@ -155,13 +204,15 @@ export function RecordOrb({
         ]}
       />
 
-      {/* Orb body — gradient disc with inset highlight ring. */}
+      {/* Orb body — gradient disc with animated organic edge motion.
+          borderRadius corners are driven by the orbStyle worklet; the
+          specular highlight from the first cut was removed in the
+          Q5 polish pass. */}
       <Animated.View
         style={[
           {
             width: SIZE,
             height: SIZE,
-            borderRadius: SIZE / 2,
             overflow: "hidden",
             // Glow per design § "Glow rule" — orb is sanctioned.
             shadowColor: tokens.primary,
@@ -179,22 +230,6 @@ export function RecordOrb({
           start={{ x: 0.35, y: 0.3 }}
           end={{ x: 0.7, y: 1 }}
           style={{ flex: 1 }}
-        />
-        {/* Top-left highlight — approximates the design's inset
-            `1 0 0 / 0.4` rim. */}
-        <View
-          pointerEvents="none"
-          style={{
-            position: "absolute",
-            top: SIZE * 0.12,
-            left: SIZE * 0.18,
-            width: SIZE * 0.36,
-            height: SIZE * 0.22,
-            borderRadius: SIZE * 0.18,
-            backgroundColor: "#ffffff40",
-            opacity: 0.6,
-            transform: [{ rotate: "-22deg" }],
-          }}
         />
       </Animated.View>
     </Pressable>

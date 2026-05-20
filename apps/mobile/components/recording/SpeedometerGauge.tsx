@@ -65,13 +65,14 @@ export function SpeedometerGauge({
   const clamped = Math.max(0, Math.min(maxSeconds, elapsed));
   const pct = maxSeconds === 0 ? 0 : clamped / maxSeconds;
 
-  // SVG canvas — arc fits in the top portion; bottom 1/3 reserved for
-  // the children slot (orb + timer) which renders in the parent View.
-  const height = Math.round(size * 0.7);
+  // SVG arc geometry. cy is the bottom of the arc; the top of the
+  // canvas needs to be ABOVE cy by arcRadius (the apex). Endpoint
+  // labels sit at cy + 22 — add 12 more for the label-row height
+  // so the SVG never clips the descenders.
   const cx = size / 2;
-  // cy near the bottom so the top arc's curve fills the canvas.
   const cy = Math.round(size * 0.42);
   const arcRadius = Math.round(size * 0.345);
+  const svgHeight = cy + 34;
 
   // Parameterized point along the top arc.
   const ptOnArc = (theta: number) => [
@@ -85,15 +86,16 @@ export function SpeedometerGauge({
   const trackColor = isDark ? "#ffffff14" : "#00000012";
   const tickInactive = isDark ? "#ffffff29" : "#00000029";
 
+  // Q5 polish — children render in natural flow under the SVG. The
+  // negative top margin pulls the orb up into the arc cup so the
+  // visual relationship stays (orb cradled by the gauge), while the
+  // outer View height still grows to include the children — meaning
+  // the next sibling (waveform) gets pushed down correctly.
+  const cupOverlap = Math.round(arcRadius * 0.38);
+
   return (
-    <View
-      style={{
-        width: size,
-        height,
-        position: "relative",
-      }}
-    >
-      <Svg width={size} height={height + 20}>
+    <View style={{ width: size, alignSelf: "center" }}>
+      <Svg width={size} height={svgHeight}>
         <Defs>
           <SvgLinearGradient id="gauge-grad" x1="0" y1="0" x2="1" y2="0">
             <Stop offset="0%" stopColor={tokens.primary} />
@@ -186,15 +188,14 @@ export function SpeedometerGauge({
         </SvgText>
       </Svg>
 
-      {/* Child slot — orb + timer cluster inside the arc cup. */}
+      {/* Children flow naturally below the SVG. Negative margin pulls
+          the cluster up into the arc cup; container height still
+          grows to include them so siblings (waveform) get pushed
+          down correctly — fixes the Q5-first-cut overlap bug. */}
       <View
-        pointerEvents="box-none"
         style={{
-          position: "absolute",
-          left: 0,
-          right: 0,
-          top: cy + 4,
           alignItems: "center",
+          marginTop: -cupOverlap,
         }}
       >
         {children}

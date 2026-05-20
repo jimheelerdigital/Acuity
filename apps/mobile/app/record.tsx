@@ -525,7 +525,10 @@ export default function RecordScreen() {
     <SafeAreaView className="flex-1 bg-white dark:bg-[#1E1E2E] dark:bg-[#0B0B12]" edges={["bottom"]}>
       <View className="flex-1 items-center justify-center px-8">
         {state === "processing" ? (
-          <View className="items-center gap-6">
+          // Q5 polish — bumped gap from 6 (24pt) to 14 (56pt) so the
+          // Cancel button has clear breathing room beneath the
+          // "Saving insights" checklist row.
+          <View className="items-center gap-14">
             <ProcessingView
               phase={poll.phase}
               elapsedSeconds={poll.elapsedSeconds}
@@ -638,7 +641,7 @@ function RecordSurface({
   const remainingWarning =
     isRecording && MAX_SECONDS - elapsed <= 30;
   return (
-    <View style={{ alignItems: "center", gap: 24, width: "100%" }}>
+    <View style={{ alignItems: "center", gap: 32, width: "100%" }}>
       <SpeedometerGauge elapsed={elapsed} maxSeconds={MAX_SECONDS}>
         <View style={{ alignItems: "center", gap: 14 }}>
           <RecordOrb
