@@ -2017,3 +2017,19 @@ model AdLabDecision {
   @@index([executedAt])
   @@map("adlab_decisions")
 }
+
+// Admin-sent emails — log of every email sent from the admin dashboard
+// via the "Send Email" feature. Tracks who sent what to whom, for audit
+// and so Keenan can see what he already sent a user.
+model AdminSentEmail {
+  id           String   @id @default(cuid())
+  adminUserId  String
+  targetUserId String?
+  toEmail      String
+  subject      String
+  body         String   @db.Text
+  sentAt       DateTime @default(now())
+
+  @@index([targetUserId, sentAt])
+  @@index([adminUserId, sentAt])
+}

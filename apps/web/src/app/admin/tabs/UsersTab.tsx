@@ -29,11 +29,19 @@ type Override = {
   createdAt: string;
 };
 
+type SentEmail = {
+  id: string;
+  subject: string;
+  body: string;
+  sentAt: string;
+};
+
 export default function UsersTab() {
   const [users, setUsers] = useState<ListUser[] | null>(null);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
+  const [showBulkEmail, setShowBulkEmail] = useState(false);
   const searchParams = useSearchParams();
 
   // Deep-link from drilldown modals: /admin?tab=users&select=<userId>
@@ -81,6 +89,12 @@ export default function UsersTab() {
           onChange={(e) => setQ(e.target.value)}
           className="flex-1 rounded-md bg-[#13131F] px-3 py-2 text-sm text-white"
         />
+        <button
+          onClick={() => setShowBulkEmail(true)}
+          className="rounded-md bg-[#7C5CFC] px-3 py-2 text-xs font-medium text-white hover:bg-[#6B4FE0]"
+        >
+          Send Email to All Users
+        </button>
       </div>
       {users === null ? (
         <p className="text-sm text-white/40">Loading…</p>
@@ -150,6 +164,10 @@ export default function UsersTab() {
           onMutation={() => load({ reset: true })}
         />
       )}
+
+      {showBulkEmail && (
+        <BulkEmailModal onClose={() => setShowBulkEmail(false)} />
+      )}
     </div>
   );
 }
@@ -170,6 +188,8 @@ function StatusPill({ status }: { status: string }) {
   );
 }
 
+// ─── User Detail Modal ───────────────────────────────────────────
+
 function UserDetailModal({
   userId,
   onClose,
@@ -185,6 +205,8 @@ function UserDetailModal({
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [showCompose, setShowCompose] = useState(false);
+  const [sentEmails, setSentEmails] = useState<SentEmail[] | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
@@ -199,9 +221,20 @@ function UserDetailModal({
     setData(d);
   }, [userId]);
 
+  const loadEmails = useCallback(async () => {
+    const res = await fetch(`/api/admin/users/${userId}/emails`, {
+      cache: "no-store",
+    });
+    if (res.ok) {
+      const d = await res.json();
+      setSentEmails(d.emails);
+    }
+  }, [userId]);
+
   useEffect(() => {
     load();
-  }, [load]);
+    loadEmails();
+  }, [load, loadEmails]);
 
   async function sendMagicLink() {
     setBusy(true);
@@ -275,7 +308,7 @@ function UserDetailModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-      <div className="w-full max-w-2xl rounded-lg bg-[#0A0A0F] p-6 text-white">
+      <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-lg bg-[#0A0A0F] p-6 text-white">
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-lg font-semibold">User detail</h3>
           <button
@@ -414,6 +447,52 @@ function UserDetailModal({
               )}
             </div>
 
+            {/* Email compose / history */}
+            <div className="rounded-md bg-[#13131F] p-3">
+              <div className="mb-2 flex items-center justify-between">
+                <div className="text-xs font-semibold uppercase tracking-wider text-white/40">
+                  Emails sent ({sentEmails?.length ?? 0})
+                </div>
+                <button
+                  onClick={() => setShowCompose(!showCompose)}
+                  className="text-xs text-[#A78BFA] hover:underline"
+                >
+                  {showCompose ? "Cancel" : "Send Email"}
+                </button>
+              </div>
+
+              {showCompose && (
+                <ComposeEmail
+                  toEmail={data.user.email}
+                  targetUserId={data.user.id}
+                  onSent={() => {
+                    setShowCompose(false);
+                    loadEmails();
+                  }}
+                  onError={setError}
+                />
+              )}
+
+              {sentEmails && sentEmails.length > 0 && (
+                <ul className="mt-2 space-y-2">
+                  {sentEmails.map((e) => (
+                    <li key={e.id} className="rounded bg-white/5 p-2 text-xs">
+                      <div className="flex justify-between text-white/40">
+                        <span className="font-medium text-white/70">{e.subject}</span>
+                        <span>{new Date(e.sentAt).toLocaleDateString()}</span>
+                      </div>
+                      <div className="mt-1 whitespace-pre-wrap text-white/50 line-clamp-2">
+                        {e.body}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {sentEmails && sentEmails.length === 0 && !showCompose && (
+                <p className="text-xs text-white/40">No emails sent to this user yet.</p>
+              )}
+            </div>
+
             <div className="flex flex-wrap gap-2 border-t border-white/10 pt-4">
               <button
                 onClick={sendMagicLink}
@@ -442,6 +521,228 @@ function UserDetailModal({
               Metadata only. No entries, transcripts, goals, or AI output are
               visible here by design.
             </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Compose Email (single user) ─────────────────────────────────
+
+function ComposeEmail({
+  toEmail,
+  targetUserId,
+  onSent,
+  onError,
+}: {
+  toEmail: string;
+  targetUserId: string;
+  onSent: () => void;
+  onError: (msg: string) => void;
+}) {
+  const [subject, setSubject] = useState("");
+  const [body, setBody] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  async function handleSend() {
+    if (!subject.trim() || !body.trim()) return;
+    setSending(true);
+    try {
+      const res = await fetch("/api/admin/send-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: toEmail,
+          targetUserId,
+          subject: subject.trim(),
+          body: body.trim(),
+        }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error ?? "Failed");
+      setSent(true);
+      setTimeout(onSent, 1500);
+    } catch (e) {
+      onError((e as Error).message);
+    } finally {
+      setSending(false);
+    }
+  }
+
+  if (sent) {
+    return (
+      <div className="my-2 rounded-md bg-green-500/10 px-3 py-2 text-sm text-green-300">
+        Sent!
+      </div>
+    );
+  }
+
+  return (
+    <div className="my-2 space-y-2">
+      <div className="text-xs text-white/40">
+        From: Keenan &lt;keenan@getacuity.io&gt;
+      </div>
+      <div className="text-xs text-white/40">
+        To: {toEmail}
+      </div>
+      <input
+        type="text"
+        placeholder="Subject"
+        value={subject}
+        onChange={(e) => setSubject(e.target.value)}
+        className="w-full rounded-md bg-[#0A0A0F] border border-white/10 px-3 py-2 text-sm text-white placeholder-white/30"
+      />
+      <textarea
+        placeholder="Email body (plain text)"
+        value={body}
+        onChange={(e) => setBody(e.target.value)}
+        rows={5}
+        className="w-full rounded-md bg-[#0A0A0F] border border-white/10 px-3 py-2 text-sm text-white placeholder-white/30 resize-y"
+      />
+      <button
+        onClick={handleSend}
+        disabled={sending || !subject.trim() || !body.trim()}
+        className="rounded-md bg-[#7C5CFC] px-4 py-2 text-xs font-medium text-white disabled:opacity-50"
+      >
+        {sending ? "Sending…" : "Send"}
+      </button>
+    </div>
+  );
+}
+
+// ─── Bulk Email Modal ────────────────────────────────────────────
+
+function BulkEmailModal({ onClose }: { onClose: () => void }) {
+  const [subject, setSubject] = useState("");
+  const [body, setBody] = useState("");
+  const [sending, setSending] = useState(false);
+  const [result, setResult] = useState<{ sent: number; failed: number } | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  const [userCount, setUserCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    // Fetch total user count for the confirmation dialog
+    fetch("/api/admin/users?limit=1", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => {
+        // The list endpoint doesn't return total count, so we'll show
+        // "all users" in the confirmation. The API excludes founders.
+      })
+      .catch(() => {});
+  }, []);
+
+  async function handleSend() {
+    if (!subject.trim() || !body.trim()) return;
+
+    if (!confirming) {
+      setConfirming(true);
+      return;
+    }
+
+    setSending(true);
+    try {
+      const res = await fetch("/api/admin/send-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bulk: true,
+          subject: subject.trim(),
+          body: body.trim(),
+        }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error ?? "Failed");
+      setResult({ sent: d.sent, failed: d.failed });
+    } catch (e) {
+      alert((e as Error).message);
+    } finally {
+      setSending(false);
+      setConfirming(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+      <div className="w-full max-w-lg rounded-lg bg-[#0A0A0F] p-6 text-white">
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="text-lg font-semibold">Send Email to All Users</h3>
+          <button
+            onClick={onClose}
+            className="text-sm text-white/40 hover:text-white"
+          >
+            close
+          </button>
+        </div>
+
+        {result ? (
+          <div className="space-y-3">
+            <div className="rounded-md bg-green-500/10 px-3 py-2 text-sm text-green-300">
+              Sent to {result.sent} user{result.sent !== 1 ? "s" : ""}.
+              {result.failed > 0 && (
+                <span className="text-red-300"> {result.failed} failed.</span>
+              )}
+            </div>
+            <button
+              onClick={onClose}
+              className="rounded-md bg-white/10 px-4 py-2 text-xs font-medium hover:bg-white/20"
+            >
+              Done
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="text-xs text-white/40">
+              From: Keenan &lt;keenan@getacuity.io&gt;
+            </div>
+            <p className="text-xs text-white/50">
+              Sends to all users except keenan@heelerdigital.com and jim@heelerdigital.com.
+            </p>
+            <input
+              type="text"
+              placeholder="Subject"
+              value={subject}
+              onChange={(e) => { setSubject(e.target.value); setConfirming(false); }}
+              className="w-full rounded-md bg-[#13131F] border border-white/10 px-3 py-2 text-sm text-white placeholder-white/30"
+            />
+            <textarea
+              placeholder="Email body (plain text)"
+              value={body}
+              onChange={(e) => { setBody(e.target.value); setConfirming(false); }}
+              rows={6}
+              className="w-full rounded-md bg-[#13131F] border border-white/10 px-3 py-2 text-sm text-white placeholder-white/30 resize-y"
+            />
+
+            {confirming && (
+              <div className="rounded-md bg-amber-500/10 px-3 py-2 text-sm text-amber-300">
+                Are you sure? This will send to every user in the database (excluding you and Jimmy).
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <button
+                onClick={handleSend}
+                disabled={sending || !subject.trim() || !body.trim()}
+                className={`rounded-md px-4 py-2 text-xs font-medium text-white disabled:opacity-50 ${
+                  confirming
+                    ? "bg-amber-600 hover:bg-amber-700"
+                    : "bg-[#7C5CFC] hover:bg-[#6B4FE0]"
+                }`}
+              >
+                {sending
+                  ? "Sending…"
+                  : confirming
+                  ? "Yes, send to all users"
+                  : "Send to all users"}
+              </button>
+              <button
+                onClick={onClose}
+                className="rounded-md bg-white/10 px-4 py-2 text-xs font-medium hover:bg-white/20"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         )}
       </div>
