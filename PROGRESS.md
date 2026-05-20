@@ -41,6 +41,35 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-19] — Personal welcome email from Keenan to new signups
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** a2043f8
+
+### In plain English (for Keenan)
+
+Every new user now gets a personal-feeling plain-text email from keenan@getacuity.io right after they sign up. It says welcome, tells them their founding member number, and asks how they heard about Acuity. If they reply, it goes straight to Keenan's inbox. This works for all signup paths — web email/password, mobile, and Google/Apple OAuth.
+
+### Technical changes (for Jimmy)
+
+- New file: `apps/web/src/emails/founder-welcome.ts` — plain-text email builder (no HTML, no layout wrapper). Takes firstName and foundingMemberNumber, returns subject + text body.
+- Modified `apps/web/src/lib/bootstrap-user.ts` — added founder welcome email send at the end of bootstrapNewUser, after the existing founder notification. Uses the same fail-soft try/catch pattern. Guarded by `if (email)` so Apple Sign In users without an email don't trigger a send.
+- Sends via existing Resend integration from `"Keenan" <keenan@getacuity.io>` with `replyTo: keenan@getacuity.io`.
+- Uses `text` field (not `html`) on the Resend send call so it arrives as plain text.
+
+### Manual steps needed
+
+- [ ] Verify keenan@getacuity.io is added as a verified sender identity in Resend (Keenan). The existing hello@getacuity.io works because the domain is verified, but if Resend requires per-address verification for the "from" field, this needs to be added.
+
+### Notes
+
+- Placed in bootstrapNewUser (the single chokepoint for all signup paths) rather than in individual signup routes. This means OAuth, email/password, magic link, and mobile signups all get the email.
+- Only new signups from this point forward — bootstrapNewUser is only called for new user creation, not for existing users linking passwords.
+- The email is intentionally separate from the existing welcome+verify email and welcome_day0 trial email. Users who sign up via email/password will get two emails (verify + this one); OAuth users will also get two (welcome_day0 trial + this one). The personal tone and different sender address make them feel distinct.
+
+---
+
 ## [2026-05-19] — AdLab pre-launch validation system
 
 **Requested by:** Keenan
