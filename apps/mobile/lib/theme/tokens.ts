@@ -27,7 +27,23 @@
  * change re-renders.
  */
 
-import { oklch as toOklch, rgb as toRgb, formatHex, formatHex8 } from "culori/fn";
+import {
+  converter,
+  formatHex,
+  formatHex8,
+  modeOklch,
+  modeRgb,
+  useMode,
+} from "culori/fn";
+
+// culori/fn is the tree-shakable entry — modes must be registered
+// before `converter(...)` can resolve them. Without this, the
+// converter returns `undefined` for every input (the Q1 runtime
+// regression: every token rendered as #000000). Module-scope so
+// registration happens once per app boot.
+useMode(modeRgb);
+useMode(modeOklch);
+const toRgb = converter("rgb");
 
 // ─── Palette presets ──────────────────────────────────────────────
 
