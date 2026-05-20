@@ -19,16 +19,6 @@ function SignUpForm() {
   const [loading, setLoading] = useState<"google" | "apple" | "password" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Ensure the attribution cookie is set if the user lands directly on
-  // /auth/signup with UTM params (e.g., from a CTA that hardcodes them).
-  // First-touch guard in setAttributionCookie prevents overwriting.
-  useEffect(() => {
-    try {
-      const { setAttributionCookie } = require("@/lib/attribution");
-      setAttributionCookie();
-    } catch {}
-  }, []);
-
   useEffect(() => {
     try {
       const { getClientAttribution } = require("@/lib/attribution");
@@ -111,7 +101,6 @@ function SignUpForm() {
         const { getClientAttribution } = require("@/lib/attribution");
         const attr = getClientAttribution();
         if (attr) attribution = attr;
-        console.log("[attribution] email/password signup — cookie data:", attr);
       } catch {}
 
       const res = await fetch("/api/auth/signup", {

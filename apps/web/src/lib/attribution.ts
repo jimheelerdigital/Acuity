@@ -60,10 +60,16 @@ export function setAttributionCookie(overrides: Partial<Attribution> = {}) {
     ...overrides,
   };
 
-  // Always set the cookie — even with no UTMs. A root "/" landing with
-  // no params still records the referrer and timestamp, which is the
-  // difference between "unknown" and "direct". Without this, OAuth
-  // signups that land on "/" never get attribution at all.
+  // Only set if there's meaningful data
+  if (
+    !attr.utm_source &&
+    !attr.utm_medium &&
+    !attr.utm_campaign &&
+    !attr.referrer
+  ) {
+    // Still set with landingPath so we know they visited
+    if (!attr.landingPath || attr.landingPath === "/") return;
+  }
 
   const value = encodeURIComponent(JSON.stringify(attr));
   document.cookie = `${COOKIE_NAME}=${value}; path=/; max-age=${COOKIE_MAX_AGE}; SameSite=Lax`;

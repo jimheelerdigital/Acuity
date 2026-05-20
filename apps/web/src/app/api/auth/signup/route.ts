@@ -130,7 +130,6 @@ export async function POST(req: NextRequest) {
     // Matrix + UserMemory + trial_started event.
     const { bootstrapNewUser } = await import("@/lib/bootstrap-user");
     const attr = body?.attribution;
-    console.log("[attribution] POST /api/auth/signup — received from client:", JSON.stringify(attr ?? null));
     // skipWelcomeEmail=true: combined welcome+verify email goes out
     // below — see mobile-signup for full rationale.
     await bootstrapNewUser({

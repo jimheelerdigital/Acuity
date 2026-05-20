@@ -15,7 +15,6 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  console.log("[attribution] POST /api/auth/set-attribution — user:", session.user.id, "data:", JSON.stringify(body));
   const {
     utm_source,
     utm_medium,
