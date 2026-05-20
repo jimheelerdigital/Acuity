@@ -211,6 +211,41 @@ export async function bootstrapNewUser(params: {
     // eslint-disable-next-line no-console
     console.error("[bootstrap-user] founder notification failed:", err);
   }
+
+  // Personal welcome email from Keenan. Plain text, feels like a real
+  // email. Sent from keenan@getacuity.io so replies go straight to him.
+  // Fail-soft — same pattern as every other email in bootstrap.
+  if (email) {
+    try {
+      const { founderWelcomeEmail } = await import(
+        "@/emails/founder-welcome"
+      );
+      const { getResendClient } = await import("@/lib/resend");
+
+      const userRow = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { name: true },
+      });
+      const firstName =
+        (userRow?.name ?? "").trim().split(/\s+/)[0] || null;
+
+      const { subject, text } = founderWelcomeEmail({
+        firstName,
+        foundingMemberNumber,
+      });
+
+      await getResendClient().emails.send({
+        from: '"Keenan" <keenan@getacuity.io>',
+        replyTo: "keenan@getacuity.io",
+        to: email,
+        subject,
+        text,
+      });
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error("[bootstrap-user] founder welcome email failed:", err);
+    }
+  }
 }
 
 /**
