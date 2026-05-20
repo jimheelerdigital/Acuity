@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -14,23 +15,86 @@ import {
 
 import { MOOD_LABELS, type EntryDTO, type TaskDTO } from "@acuity/shared";
 
+import {
+  GlassPill,
+  GradientText,
+  HeroCard,
+  ThemePill,
+  type ThemeKey,
+} from "@/components/acuity";
 import { ExtractionReview } from "@/components/extraction-review";
 import { MoodIcon } from "@/components/mood-icon";
 import { ProLockedFooter } from "@/components/pro-locked-card";
+import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
 import { getCached, invalidate, isStale, setCached } from "@/lib/cache";
 
 type EntryDetail = EntryDTO & { tasks: TaskDTO[] };
-
 type EntryDetailResponse = { entry: EntryDetail };
+
+const CANONICAL_THEMES = new Set<string>([
+  "career",
+  "family",
+  "health",
+  "avoidance",
+  "money",
+  "relationships",
+  "sleep",
+  "growth",
+  "solitude",
+]);
 
 function entryDetailKey(id: string): string {
   return `/api/entries/${id}`;
 }
 
+/**
+ * Best-effort pull-quote derivation. EntryDTO has no dedicated
+ * "headline" field, so we fall through a hierarchy of existing
+ * AI-extracted candidates, ending at the first 1-2 transcript
+ * sentences. Re-evaluate when/if the extraction pipeline starts
+ * persisting an explicit pullQuote field.
+ */
+function selectPullQuote(entry: EntryDetail): string {
+  if (entry.insights && entry.insights.length > 0) return entry.insights[0];
+  if (entry.wins && entry.wins.length > 0) return entry.wins[0];
+  if (entry.summary) {
+    const firstSentence = entry.summary.match(/[^.!?]+[.!?]+/);
+    if (firstSentence) return firstSentence[0].trim();
+    return entry.summary;
+  }
+  if (entry.transcript) {
+    const sentences = entry.transcript.match(/[^.!?]+[.!?]+/g);
+    if (sentences && sentences.length > 0) {
+      return sentences.slice(0, 2).join(" ").trim();
+    }
+    return entry.transcript.slice(0, 200);
+  }
+  return "";
+}
+
+function formatDuration(seconds: number | null): string | null {
+  if (typeof seconds !== "number" || !Number.isFinite(seconds)) return null;
+  const m = Math.floor(seconds / 60);
+  const s = Math.round(seconds % 60);
+  if (m === 0) return `${s}s`;
+  return `${m}m ${String(s).padStart(2, "0")}s`;
+}
+
+function wordCount(text: string | null | undefined): number {
+  if (!text) return 0;
+  return text.split(/\s+/).filter(Boolean).length;
+}
+
+function asCanonicalTheme(label: string): ThemeKey | null {
+  const lower = label.toLowerCase();
+  return CANONICAL_THEMES.has(lower) ? (lower as ThemeKey) : null;
+}
+
 export default function EntryDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { tokens } = useTheme();
   const cacheKey = id ? entryDetailKey(id) : null;
   const initialCached = cacheKey
     ? getCached<EntryDetailResponse>(cacheKey)
@@ -54,8 +118,6 @@ export default function EntryDetailScreen() {
           onPress: async () => {
             try {
               await api.del(`/api/entries/${id}`);
-              // Drop both this detail's cache and the list cache so
-              // the entries tab refetches fresh data on focus.
               invalidate(entryDetailKey(id));
               invalidate("/api/entries");
               router.back();
@@ -109,7 +171,6 @@ export default function EntryDetailScreen() {
         setEntry(d.entry ?? null);
       })
       .catch(() => {
-        // Keep cached state on failure; only null out on cold miss.
         setEntry((prev) => prev ?? null);
       })
       .finally(() => setLoading(false));
@@ -121,8 +182,7 @@ export default function EntryDetailScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cacheKey]);
 
-  // Hooks must run on every render in the same order. Keep useMemo
-  // above the early returns and guard against a null entry inside.
+  // Hooks above the early returns so order stays stable.
   const date = useMemo(
     () =>
       entry?.createdAt
@@ -135,10 +195,19 @@ export default function EntryDetailScreen() {
     [entry?.createdAt]
   );
 
-  // Per-screen header override: adds an ellipsis button in the top
-  // right that opens the iOS action sheet (or Android Alert) with a
-  // destructive Delete option. Same flow as the swipe / long-press
-  // paths on the entries list.
+  const pullQuote = useMemo(
+    () => (entry ? selectPullQuote(entry) : ""),
+    [entry]
+  );
+
+  const stats = useMemo(() => {
+    if (!entry) return { words: 0, duration: null as string | null };
+    return {
+      words: wordCount(entry.transcript),
+      duration: formatDuration(entry.audioDuration),
+    };
+  }, [entry]);
+
   const headerRight = useCallback(
     () => (
       <Pressable
@@ -150,19 +219,26 @@ export default function EntryDetailScreen() {
         <Ionicons
           name="ellipsis-horizontal"
           size={22}
-          color={Platform.select({ ios: "#7C3AED", android: "#7C3AED" })}
+          color={tokens.primary}
         />
       </Pressable>
     ),
-    [openMenu]
+    [openMenu, tokens.primary]
   );
 
   if (loading) {
     return (
       <>
         <Stack.Screen options={{ headerRight }} />
-        <View className="flex-1 bg-white dark:bg-[#1E1E2E] dark:bg-[#0B0B12] items-center justify-center">
-          <ActivityIndicator color="#7C3AED" />
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: tokens.bg,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <ActivityIndicator color={tokens.primary} />
         </View>
       </>
     );
@@ -170,105 +246,314 @@ export default function EntryDetailScreen() {
 
   if (!entry) {
     return (
-      <View className="flex-1 bg-white dark:bg-[#1E1E2E] dark:bg-[#0B0B12] items-center justify-center">
-        <Text className="text-zinc-400 dark:text-zinc-500">Entry not found.</Text>
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: tokens.bg,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Text style={{ color: tokens.textTer, fontFamily: tokens.fontSans }}>
+          Entry not found.
+        </Text>
       </View>
     );
   }
 
+  const primaryTheme = entry.themes[0];
+  const primaryThemeKey = primaryTheme
+    ? asCanonicalTheme(primaryTheme)
+    : null;
+
   return (
     <ScrollView
-      className="flex-1 bg-white dark:bg-[#1E1E2E] dark:bg-[#0B0B12]"
+      style={{ flex: 1, backgroundColor: tokens.bg }}
       contentContainerStyle={{ padding: 20, paddingBottom: 48, gap: 20 }}
     >
       <Stack.Screen options={{ headerRight }} />
-      {/* Header */}
-      <View>
-        <Text className="text-xs text-zinc-500 dark:text-zinc-400 mb-1">{date}</Text>
-        <View className="flex-row items-center gap-3">
-          {entry.mood && (
-            <View className="flex-row items-center gap-2">
-              <MoodIcon mood={entry.mood} size={22} color="#A1A1AA" />
-              <Text className="text-lg text-zinc-800 dark:text-zinc-100">
-                {MOOD_LABELS[entry.mood]}
+
+      {/* Pull-quote hero — display font with a vertical gradient
+          accent bar on the left, mono eyebrow row below with date,
+          mood, energy. */}
+      {pullQuote && (
+        <View style={{ flexDirection: "row", gap: 14 }}>
+          <View
+            style={{
+              width: 4,
+              borderRadius: 2,
+              overflow: "hidden",
+              alignSelf: "stretch",
+            }}
+          >
+            <LinearGradient
+              colors={tokens.gradMix.colors}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0, y: 1 }}
+              style={{ flex: 1 }}
+            />
+          </View>
+          <View style={{ flex: 1, gap: 12 }}>
+            <Text
+              style={{
+                fontFamily: tokens.fontDisplay,
+                fontSize: 24,
+                fontWeight: "500",
+                letterSpacing: -0.5,
+                lineHeight: 31,
+                color: tokens.text,
+              }}
+            >
+              {`“${pullQuote}”`}
+            </Text>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                flexWrap: "wrap",
+                gap: 10,
+              }}
+            >
+              <Text
+                style={{
+                  fontFamily: tokens.fontMono,
+                  fontSize: 11,
+                  fontWeight: "600",
+                  letterSpacing: 0.4,
+                  color: tokens.textTer,
+                  textTransform: "uppercase",
+                }}
+              >
+                {date}
               </Text>
+              {entry.mood && (
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
+                  <MoodIcon mood={entry.mood} size={13} color={tokens.textSec} />
+                  <Text
+                    style={{
+                      fontFamily: tokens.fontSans,
+                      fontSize: 12,
+                      color: tokens.textSec,
+                    }}
+                  >
+                    {MOOD_LABELS[entry.mood]}
+                  </Text>
+                </View>
+              )}
+              {entry.energy !== null && (
+                <Text
+                  style={{
+                    fontFamily: tokens.fontMono,
+                    fontSize: 11,
+                    fontWeight: "600",
+                    letterSpacing: 0.4,
+                    color: tokens.textTer,
+                  }}
+                >
+                  ENERGY {entry.energy}/10
+                </Text>
+              )}
             </View>
-          )}
-          {entry.energy !== null && (
-            <Text className="text-sm text-zinc-400 dark:text-zinc-500">Energy {entry.energy}/10</Text>
-          )}
+          </View>
         </View>
-      </View>
+      )}
 
       <ExtractionReview entryId={entry.id} onCommitted={reload} />
 
-
-      {/* Summary */}
-      {entry.summary && (
-        <Section title="Summary">
-          <Text className="text-sm text-zinc-700 dark:text-zinc-200 leading-relaxed">
-            {entry.summary}
-          </Text>
-        </Section>
+      {/* Gradient quick-stats row — small pills with word count,
+          duration, and primary theme (ThemePill if canonical). */}
+      {(stats.words > 0 || stats.duration || primaryTheme) && (
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+          {stats.words > 0 && (
+            <GlassPill padding={[6, 12]} radius={tokens.radius.pill}>
+              <Text
+                style={{
+                  fontFamily: tokens.fontMono,
+                  fontSize: 11,
+                  fontWeight: "700",
+                  letterSpacing: 0.4,
+                  color: tokens.textSec,
+                  textTransform: "uppercase",
+                }}
+              >
+                {stats.words} {stats.words === 1 ? "WORD" : "WORDS"}
+              </Text>
+            </GlassPill>
+          )}
+          {stats.duration && (
+            <GlassPill padding={[6, 12]} radius={tokens.radius.pill}>
+              <Text
+                style={{
+                  fontFamily: tokens.fontMono,
+                  fontSize: 11,
+                  fontWeight: "700",
+                  letterSpacing: 0.4,
+                  color: tokens.textSec,
+                  textTransform: "uppercase",
+                }}
+              >
+                {stats.duration}
+              </Text>
+            </GlassPill>
+          )}
+          {primaryThemeKey ? (
+            <ThemePill theme={primaryThemeKey} label={primaryTheme} size="s" />
+          ) : primaryTheme ? (
+            <GlassPill padding={[6, 12]} radius={tokens.radius.pill}>
+              <Text
+                style={{
+                  fontFamily: tokens.fontSans,
+                  fontSize: 12,
+                  fontWeight: "600",
+                  color: tokens.text,
+                }}
+              >
+                {primaryTheme}
+              </Text>
+            </GlassPill>
+          ) : null}
+        </View>
       )}
 
-      {/* §B.2.6 Free-tier locked footer. Heuristic: entry has a
-          summary but no extraction artifacts → FREE/Haiku branch
-          produced this entry. Mirror of the web entry-detail
-          footer in slice 4-foundation. */}
+      {/* AI summary in HeroCard with GradientText title */}
+      {entry.summary && (
+        <HeroCard variant="primary" padding={18}>
+          <View style={{ gap: 10 }}>
+            <GradientText
+              colors={[tokens.primary, tokens.secondary]}
+              style={{
+                fontFamily: tokens.fontMono,
+                fontSize: 10,
+                fontWeight: "700",
+                letterSpacing: 1.4,
+              }}
+            >
+              AI SUMMARY
+            </GradientText>
+            <Text
+              style={{
+                fontFamily: tokens.fontSans,
+                fontSize: 15,
+                lineHeight: 22,
+                color: tokens.text,
+              }}
+            >
+              {entry.summary}
+            </Text>
+          </View>
+        </HeroCard>
+      )}
+
+      {/* §B.2.6 Free-tier locked footer. Heuristic unchanged from
+          pre-Q6: entry has a summary but no extraction artifacts. */}
       {entry.summary &&
         entry.themes.length === 0 &&
         entry.wins.length === 0 &&
         entry.blockers.length === 0 &&
         entry.tasks.length === 0 && (
-          <View className="mb-6 -mt-3">
+          <View style={{ marginTop: -4 }}>
             <ProLockedFooter />
           </View>
         )}
 
-      {/* Themes */}
+      {/* Themes — ThemePill for canonical names, GlassPill chip
+          for the long tail. Both render at "s" size for density. */}
       {entry.themes.length > 0 && (
-        <Section title="Themes">
-          <View className="flex-row flex-wrap gap-2">
-            {entry.themes.map((t) => (
-              <View key={t} className="rounded-full bg-zinc-800 px-3 py-1">
-                <Text className="text-xs text-zinc-600 dark:text-zinc-300">{t}</Text>
-              </View>
-            ))}
+        <Section title="Themes" tokens={tokens}>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+            {entry.themes.map((t) => {
+              const key = asCanonicalTheme(t);
+              if (key) return <ThemePill key={t} theme={key} label={t} size="s" />;
+              return (
+                <View
+                  key={t}
+                  style={{
+                    paddingVertical: 5,
+                    paddingHorizontal: 10,
+                    borderRadius: tokens.radius.pill,
+                    backgroundColor: tokens.bgSub,
+                    borderWidth: 0.5,
+                    borderColor: tokens.line,
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontFamily: tokens.fontSans,
+                      fontSize: 12,
+                      fontWeight: "600",
+                      color: tokens.text,
+                    }}
+                  >
+                    {t}
+                  </Text>
+                </View>
+              );
+            })}
           </View>
         </Section>
       )}
 
-      {/* Wins */}
+      {/* Wins — preserved structure, restyled with tokens. */}
       {entry.wins.length > 0 && (
-        <Section title="Wins">
+        <Section title="Wins" tokens={tokens}>
           {entry.wins.map((w, i) => (
-            <View key={i} className="flex-row gap-2 mb-1.5">
-              <Text className="text-green-500">✓</Text>
-              <Text className="text-sm text-zinc-700 dark:text-zinc-200 flex-1">{w}</Text>
+            <View
+              key={i}
+              style={{ flexDirection: "row", gap: 8, marginBottom: 6 }}
+            >
+              <Text style={{ color: tokens.good }}>✓</Text>
+              <Text
+                style={{
+                  flex: 1,
+                  fontFamily: tokens.fontSans,
+                  fontSize: 14,
+                  lineHeight: 20,
+                  color: tokens.text,
+                }}
+              >
+                {w}
+              </Text>
             </View>
           ))}
         </Section>
       )}
 
-      {/* Blockers */}
+      {/* Blockers — preserved structure, restyled with tokens. */}
       {entry.blockers.length > 0 && (
-        <Section title="Blockers">
+        <Section title="Blockers" tokens={tokens}>
           {entry.blockers.map((b, i) => (
-            <View key={i} className="flex-row gap-2 mb-1.5">
-              <Text className="text-red-400">↳</Text>
-              <Text className="text-sm text-zinc-700 dark:text-zinc-200 flex-1">{b}</Text>
+            <View
+              key={i}
+              style={{ flexDirection: "row", gap: 8, marginBottom: 6 }}
+            >
+              <Text style={{ color: tokens.bad }}>↳</Text>
+              <Text
+                style={{
+                  flex: 1,
+                  fontFamily: tokens.fontSans,
+                  fontSize: 14,
+                  lineHeight: 20,
+                  color: tokens.text,
+                }}
+              >
+                {b}
+              </Text>
             </View>
           ))}
         </Section>
       )}
 
-      {/* Tasks */}
+      {/* Tasks — list preserved per Q6 scope; the row cards get
+          their full refresh in Q8 (Tasks tab + checkbox slice). */}
       {entry.tasks.length > 0 && (
-        <Section title={`Tasks (${entry.tasks.length})`}>
+        <Section title={`Tasks (${entry.tasks.length})`} tokens={tokens}>
           {entry.tasks.map((t) => {
-            // Legacy rows may only have `text` (pre-title-field); newer
-            // rows have `title`. Read title first, fall back gracefully.
             const label =
               t.title ??
               (t as { text?: string | null }).text ??
@@ -276,17 +561,50 @@ export default function EntryDetailScreen() {
             return (
               <View
                 key={t.id}
-                className="rounded-xl border border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-[#13131F] dark:bg-[#1E1E2E] px-4 py-3 mb-2"
+                style={{
+                  borderRadius: tokens.radius.md,
+                  borderWidth: 0.5,
+                  borderColor: tokens.line,
+                  backgroundColor: tokens.cardBg,
+                  paddingHorizontal: 14,
+                  paddingVertical: 12,
+                  marginBottom: 8,
+                }}
               >
-                <Text className="text-sm text-zinc-800 dark:text-zinc-100">
+                <Text
+                  style={{
+                    fontFamily: tokens.fontSans,
+                    fontSize: 14,
+                    fontWeight: "500",
+                    color: tokens.text,
+                  }}
+                >
                   {label}
                 </Text>
                 {t.description && (
-                  <Text className="text-xs text-zinc-400 dark:text-zinc-500 mt-1 leading-relaxed">
+                  <Text
+                    style={{
+                      fontFamily: tokens.fontSans,
+                      fontSize: 12,
+                      lineHeight: 17,
+                      color: tokens.textTer,
+                      marginTop: 4,
+                    }}
+                  >
                     {t.description}
                   </Text>
                 )}
-                <Text className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                <Text
+                  style={{
+                    fontFamily: tokens.fontMono,
+                    fontSize: 10,
+                    fontWeight: "700",
+                    letterSpacing: 0.4,
+                    color: tokens.textQuiet,
+                    marginTop: 6,
+                    textTransform: "uppercase",
+                  }}
+                >
                   {t.priority} · {t.status.replace("_", " ")}
                 </Text>
               </View>
@@ -295,9 +613,23 @@ export default function EntryDetailScreen() {
         </Section>
       )}
 
-      {/* Transcript */}
-      <Section title="Transcript">
-        <Text className="text-sm text-zinc-400 dark:text-zinc-500 leading-relaxed">
+      {/* Transcript — full text plain. EntryDTO has no "highlights"
+          field today, so we render uniform weight and leave a
+          backlog note for when the extraction pipeline starts
+          persisting per-sentence highlight flags. */}
+      <Section title="Transcript" tokens={tokens}>
+        {/* TODO(post-Q6): when EntryDTO gains a `highlights` field
+            (array of {start, end} indices or sentence IDs), branch
+            here to render flagged sentences with a soft palette-
+            tinted background. */}
+        <Text
+          style={{
+            fontFamily: tokens.fontSans,
+            fontSize: 14,
+            lineHeight: 22,
+            color: tokens.textSec,
+          }}
+        >
           {entry.transcript || "Transcript still processing…"}
         </Text>
       </Section>
@@ -308,13 +640,25 @@ export default function EntryDetailScreen() {
 function Section({
   title,
   children,
+  tokens,
 }: {
   title: string;
   children: React.ReactNode;
+  tokens: ReturnType<typeof useTheme>["tokens"];
 }) {
   return (
     <View>
-      <Text className="text-xs font-semibold uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mb-2">
+      <Text
+        style={{
+          fontFamily: tokens.fontMono,
+          fontSize: 10,
+          fontWeight: "700",
+          letterSpacing: 1.4,
+          color: tokens.textTer,
+          textTransform: "uppercase",
+          marginBottom: 10,
+        }}
+      >
         {title}
       </Text>
       {children}
