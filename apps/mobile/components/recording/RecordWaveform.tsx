@@ -1,72 +1,60 @@
-import type { ComponentType } from "react";
-import { useEffect } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { useWindowDimensions, View } from "react-native";
 import Animated, {
   Easing,
   cancelAnimation,
-  useAnimatedProps,
+  useAnimatedStyle,
   useSharedValue,
-  withRepeat,
   withTiming,
 } from "react-native-reanimated";
-import Svg, {
-  Defs,
-  LinearGradient as SvgLinearGradient,
-  Path,
-  Stop,
-  type PathProps,
-} from "react-native-svg";
 
 import { useTheme } from "@/contexts/theme-context";
 
 /**
- * RecordWaveform — Apple-Voice-Memos-flavored live waveform.
+ * RecordWaveform — Apple Voice Memos style scrolling bar histogram.
  *
- * Q5 polish 2 (2026-05-20): the prior cut redrew a static mirrored
- * ribbon on each `levels` change, which locked the visual cadence to
- * the 1 Hz expo-av sample rate and read as dead. This rewrite uses a
- * Reanimated worklet that recomputes the SVG `d` attribute every UI
- * frame from three shared values:
+ * Q5 polish 4 (2026-05-20): the prior smooth-line cut still glitched
+ * on iPhone 16e because the path was recomputed per-frame via a heavy
+ * worklet (string concat × 96 sample points). Replaced with the
+ * canonical "infinite scroll" architecture used by Voice Memos:
  *
- *   - `phase` (linear withRepeat) — drives a continuous leftward
- *     sine scroll. Wave is always wiggling even at silence.
- *   - `scrollFrac` (0→1 over 1s after each sample) — smooth sub-
- *     bucket interpolation so the history scrolls between mic
- *     samples instead of ticking.
- *   - `historyShared` (mirror of the levels prop) — provides the
- *     scrolling amplitude envelope; spikes from past speech move
- *     leftward across the strip.
+ *   - The bar layout is a horizontal row of static <View>s. Each bar's
+ *     height encodes the amplitude at its sample-time; that height
+ *     never changes — the bar is a historical record.
+ *   - A single container <Animated.View> has translateX driven by a
+ *     Reanimated shared value. The container scrolls leftward at a
+ *     steady rate (SLOT_WIDTH px per SAMPLE_INTERVAL_MS).
+ *   - On each new mic sample (the parent re-renders us with a new
+ *     `levels` array), we (a) shift the JS bars array — drop oldest
+ *     left, push newest right — and (b) reset translateX to 0, then
+ *     re-animate it to -SLOT_WIDTH over SAMPLE_INTERVAL_MS. The two
+ *     happen atomically, so the visual is seamless: the bar that was
+ *     at slot k-1 (translated -SLOT_WIDTH) is now at slot k-1
+ *     (translated 0). No jump.
  *
- * Composition:
- *   - Single SVG <Path>, gradient stroke (primary→secondary), ~2pt
- *     line, rounded caps.
- *   - Symmetric around centerline: y(x) = center + envelope * sin(...)
- *     — single oscillating line, not a mirrored ribbon.
- *   - Edge fade on the left via gradient stop alpha (oldest samples
- *     dissolve into the strip start).
+ * Only one transform animates per frame. JS-side work happens at the
+ * 1 Hz sample rate. No worklet-string-building, no path attr churn.
  *
- * The audio capture, /api/record path, and levels[] producer are all
- * unchanged. This component is purely a consumer of the existing
- * 1 Hz amplitude signal; no new audio listeners.
+ * Visual details:
+ *   - Bars rise symmetrically from a horizontal centerline. Rounded
+ *     caps. Width ~2.5pt, gap ~2pt. Matches Voice Memos density.
+ *   - Bar color interpolates linearly between tokens.primary (oldest
+ *     bar, leftmost) and tokens.secondary (newest, rightmost). Single
+ *     lerp pass at render time — zero LinearGradient instances.
+ *   - Opacity fades on the left ~18% of the bars so they appear to
+ *     scroll off rather than abruptly disappear. Same JS-time pass.
+ *   - Noise floor (12%) ensures bars are never zero-height; the strip
+ *     reads as a constant ripple at silence.
+ *   - Pauses cleanly when active=false; bars freeze at last state and
+ *     dim to 0.5 opacity.
  */
 
-const NOISE_FLOOR = 0.07;
-const STROKE_WIDTH = 2.2;
-const SAMPLE_POINTS = 96;
-const SCROLL_PERIOD_MS = 4200;
+const BAR_WIDTH = 2.5;
+const BAR_GAP = 2;
+const SLOT_WIDTH = BAR_WIDTH + BAR_GAP;
 const SAMPLE_INTERVAL_MS = 1000;
-// Two wave numbers — composing two slightly-detuned sines breaks the
-// "perfectly periodic" look that a single sine would have. The 1.84
-// ratio is irrational-adjacent so the two components never repeat
-// the same composite shape twice.
-const K1 = 0.085;
-const K2 = K1 * 1.84;
-
-// Reanimated v4's animatedProps surface on Path's PathProps doesn't
-// include `d` as animatable — same workaround pattern as RingProgress.
-const AnimatedPath = Animated.createAnimatedComponent(
-  Path as ComponentType<PathProps & { d?: string }>
-);
+const NOISE_FLOOR = 0.12;
+const FADE_FRACTION = 0.18;
 
 export interface RecordWaveformProps {
   /** Rolling-window amplitude values 0..1. From expo-av's metering callback. */
@@ -77,6 +65,33 @@ export interface RecordWaveformProps {
   height?: number;
 }
 
+interface Bar {
+  id: string;
+  amp: number;
+}
+
+/**
+ * Linear hex-color interpolation. Accepts `#rrggbb`; ignores alpha.
+ * Used at render time to color each bar — much cheaper than rendering
+ * N LinearGradient components.
+ */
+function lerpHex(a: string, b: string, t: number): string {
+  const parse = (h: string) => {
+    const hex = h.replace("#", "");
+    return [
+      parseInt(hex.slice(0, 2), 16),
+      parseInt(hex.slice(2, 4), 16),
+      parseInt(hex.slice(4, 6), 16),
+    ];
+  };
+  const [ar, ag, ab] = parse(a);
+  const [br, bg, bb] = parse(b);
+  const mix = (x: number, y: number) => Math.round(x + (y - x) * t);
+  const toHex = (v: number) =>
+    Math.max(0, Math.min(255, v)).toString(16).padStart(2, "0");
+  return `#${toHex(mix(ar, br))}${toHex(mix(ag, bg))}${toHex(mix(ab, bb))}`;
+}
+
 export function RecordWaveform({
   levels,
   active,
@@ -84,151 +99,173 @@ export function RecordWaveform({
 }: RecordWaveformProps) {
   const { tokens } = useTheme();
   const { width: screenWidth } = useWindowDimensions();
-  // Parent wraps recording surface in px-8 = 32 each side.
+  // Parent wraps the recording surface in px-8 = 32 each side.
   const stripWidth = Math.max(0, screenWidth - 64);
 
-  const phase = useSharedValue(0);
-  const scrollFrac = useSharedValue(0);
-  const historyShared = useSharedValue<number[]>(
-    levels.length > 0 ? [...levels] : new Array(8).fill(NOISE_FLOOR)
+  // Number of bars to render. +1 so the off-screen-right slot has a
+  // bar waiting to scroll in as translateX advances.
+  const numBars = useMemo(
+    () => Math.max(8, Math.ceil(stripWidth / SLOT_WIDTH) + 1),
+    [stripWidth]
   );
 
-  // Replace the history mirror whenever the parent updates levels.
-  // Reset the sub-bucket scroll so the freshly-pushed sample animates
-  // leftward over the next sample interval (linear).
+  // JS state: the bars array. Newest bar is the last element. The
+  // shift+push happens once per sample arrival (1 Hz).
+  const initialBars = useMemo<Bar[]>(
+    () =>
+      Array.from({ length: numBars }, (_, i) => ({
+        id: `init-${i}`,
+        amp: NOISE_FLOOR,
+      })),
+    [numBars]
+  );
+  const [bars, setBars] = useState<Bar[]>(initialBars);
+
+  // Reanimated shared value for the container translateX.
+  const translateX = useSharedValue(0);
+
+  // Track the previous `levels` reference so the very first effect
+  // call (on mount) doesn't push a bogus bar.
+  const prevLevelsRef = useRef<number[] | null>(null);
+
+  // On each new mic sample (levels reference changes), shift the bars
+  // array and reset the scroll animation. The reset is what makes the
+  // transition seamless — bar that was visually at slot k now sits at
+  // slot k from translateX=0's perspective.
   useEffect(() => {
-    if (levels.length === 0) return;
-    historyShared.value = [...levels];
-    scrollFrac.value = 0;
-    scrollFrac.value = withTiming(1, {
+    if (!active) return;
+    if (prevLevelsRef.current === levels) return; // first mount or no-op
+    prevLevelsRef.current = levels;
+    const latestAmp = levels[levels.length - 1] ?? NOISE_FLOOR;
+    setBars((prev) => {
+      const next = prev.slice(1);
+      next.push({
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        amp: latestAmp,
+      });
+      return next;
+    });
+    cancelAnimation(translateX);
+    translateX.value = 0;
+    translateX.value = withTiming(-SLOT_WIDTH, {
       duration: SAMPLE_INTERVAL_MS,
       easing: Easing.linear,
     });
-  }, [levels, historyShared, scrollFrac]);
+  }, [levels, active, translateX]);
 
-  // Phase animation — keyed on `active` so the wave only animates
-  // while recording. withRepeat(linear, infinite) drives the worklet
-  // to re-evaluate every UI frame. The 0→2π target is replayed each
-  // iteration; sin(0) === sin(2π) so the snap is seamless.
+  // Pause + dim cleanly when leaving the recording state. Re-arm on
+  // the next start (fresh bars + zeroed translate).
   useEffect(() => {
     if (active) {
-      phase.value = 0;
-      phase.value = withRepeat(
-        withTiming(2 * Math.PI, {
-          duration: SCROLL_PERIOD_MS,
-          easing: Easing.linear,
-        }),
-        -1,
-        false
-      );
+      // Fresh recording: reset to a clean strip so we don't keep
+      // showing bars from the prior session.
+      setBars(initialBars);
+      translateX.value = 0;
+      prevLevelsRef.current = null;
     } else {
-      cancelAnimation(phase);
+      cancelAnimation(translateX);
     }
-    return () => {
-      cancelAnimation(phase);
-    };
-  }, [active, phase]);
+  }, [active, initialBars, translateX]);
 
-  const centerY = height / 2;
-  const maxAmp = height * 0.42;
+  const containerStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: translateX.value }],
+  }));
 
-  const animatedProps = useAnimatedProps(() => {
-    const hist = historyShared.value;
-    const histLen = hist.length;
-    if (histLen === 0 || stripWidth <= 0) {
-      return { d: "" };
-    }
-    const phaseV = phase.value;
-    const scrollV = scrollFrac.value;
-
-    // Worklet-local string accumulator. Concat with `+=` to avoid
-    // building intermediate arrays — worklet perf matters here
-    // because this fires every UI frame.
-    let d = "";
-    for (let i = 0; i < SAMPLE_POINTS; i += 1) {
-      const normX = i / (SAMPLE_POINTS - 1);
-      const x = stripWidth * normX;
-
-      // Map x to a history bucket. Right edge at scrollV=0 reads
-      // history[histLen-1] (newest). As scrollV → 1, every visible
-      // x slides leftward by one bucket-width; the right edge then
-      // clamps to histLen-1 (holds the latest sample until a new
-      // sample arrives and the parent shifts the array, restoring
-      // continuity). See top-of-file comment for the geometry.
-      const bucketF = (histLen - 1) * normX + scrollV;
-      const bucketLo = Math.floor(bucketF);
-      const bucketHi = bucketLo + 1;
-      const frac = bucketF - bucketLo;
-      const safeLo = Math.max(0, Math.min(histLen - 1, bucketLo));
-      const safeHi = Math.max(0, Math.min(histLen - 1, bucketHi));
-      const ampLo = hist[safeLo];
-      const ampHi = hist[safeHi];
-      const sampledAmp = ampLo * (1 - frac) + ampHi * frac;
-
-      // Edge fade — first 12% of the strip ramps in from 0; the
-      // last 4% on the right is full strength so newly-arrived
-      // samples land cleanly. The fade out at the left is what
-      // makes scrolled-off-screen spikes disappear gracefully.
-      const leftFade = normX < 0.12 ? normX / 0.12 : 1;
-      const rightTrim = 1; // no right fade — keep right edge crisp
-
-      // Envelope: amplitude envelope with noise floor + left fade.
-      const env = Math.max(NOISE_FLOOR, sampledAmp) * leftFade * rightTrim;
-
-      // Composite two sines at detuned frequencies for organic motion.
-      const wave =
-        Math.sin(K1 * x - phaseV) * 0.65 +
-        Math.sin(K2 * x - phaseV * 1.4 + 0.7) * 0.35;
-
-      const y = centerY + env * maxAmp * wave;
-
-      if (i === 0) {
-        d = "M " + x.toFixed(1) + " " + y.toFixed(1);
-      } else {
-        d = d + " L " + x.toFixed(1) + " " + y.toFixed(1);
-      }
-    }
-    return { d };
-  });
+  // Pre-compute per-bar color + opacity once per bars change. The
+  // fade ramps 0 → 1 across the first FADE_FRACTION of the array.
+  const fadeEndIdx = numBars * FADE_FRACTION;
+  const barViews = useMemo(
+    () =>
+      bars.map((bar, idx) => {
+        const colorT = numBars <= 1 ? 1 : idx / (numBars - 1);
+        const color = lerpHex(tokens.primary, tokens.secondary, colorT);
+        const opacity = idx >= fadeEndIdx ? 1 : idx / fadeEndIdx;
+        const amp = Math.max(NOISE_FLOOR, Math.min(1, bar.amp));
+        return {
+          id: bar.id,
+          color,
+          opacity,
+          // Bar's actual drawn height. The Bar component centers it
+          // on the strip's vertical midline.
+          barHeight: Math.max(4, amp * height * 0.86),
+        };
+      }),
+    [bars, fadeEndIdx, height, numBars, tokens.primary, tokens.secondary]
+  );
 
   if (stripWidth <= 0) return <View style={{ height }} />;
 
   return (
     <View
       style={{
-        height,
         width: stripWidth,
-        opacity: active ? 1 : 0.55,
+        height,
         alignSelf: "center",
+        overflow: "hidden",
+        opacity: active ? 1 : 0.5,
       }}
     >
-      <Svg width={stripWidth} height={height}>
-        <Defs>
-          <SvgLinearGradient
-            id="waveform-grad"
-            x1="0"
-            y1="0"
-            x2="1"
-            y2="0"
-          >
-            {/* Left-edge alpha fade — older samples dissolve into
-                the strip start. Right edge stays opaque so newly-
-                arrived samples land with full presence. */}
-            <Stop offset="0%" stopColor={tokens.primary} stopOpacity={0} />
-            <Stop offset="12%" stopColor={tokens.primary} stopOpacity={0.9} />
-            <Stop offset="55%" stopColor={tokens.primary} stopOpacity={1} />
-            <Stop offset="100%" stopColor={tokens.secondary} stopOpacity={1} />
-          </SvgLinearGradient>
-        </Defs>
-        <AnimatedPath
-          animatedProps={animatedProps}
-          stroke="url(#waveform-grad)"
-          strokeWidth={STROKE_WIDTH}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          fill="none"
-        />
-      </Svg>
+      <Animated.View
+        style={[
+          {
+            position: "absolute",
+            top: 0,
+            // Anchor the container so bar[numBars-1] (newest) sits
+            // exactly at the right edge when translateX === 0. The
+            // -SLOT_WIDTH translation then pulls everything left by
+            // exactly one slot over the sample interval.
+            left: stripWidth - (numBars - 1) * SLOT_WIDTH - BAR_WIDTH,
+            flexDirection: "row",
+            alignItems: "center",
+            height,
+          },
+          containerStyle,
+        ]}
+      >
+        {barViews.map((b) => (
+          <BarView
+            key={b.id}
+            color={b.color}
+            opacity={b.opacity}
+            barHeight={b.barHeight}
+          />
+        ))}
+      </Animated.View>
     </View>
   );
 }
+
+interface BarViewProps {
+  color: string;
+  opacity: number;
+  barHeight: number;
+}
+
+const BarView = memo(function BarView({
+  color,
+  opacity,
+  barHeight,
+}: BarViewProps) {
+  // Outer column reserves SLOT_WIDTH horizontal space; inner pill
+  // is the visible bar. Centered vertically via parent alignItems.
+  return (
+    <View
+      style={{
+        width: BAR_WIDTH,
+        marginRight: BAR_GAP,
+        alignItems: "center",
+        justifyContent: "center",
+        opacity,
+      }}
+    >
+      <View
+        style={{
+          width: BAR_WIDTH,
+          height: barHeight,
+          borderRadius: BAR_WIDTH / 2,
+          backgroundColor: color,
+        }}
+      />
+    </View>
+  );
+});
