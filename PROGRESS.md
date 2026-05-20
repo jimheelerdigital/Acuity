@@ -41,6 +41,32 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-19] — Welcome email reverted to plain text
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 42425a3
+
+### In plain English (for Keenan)
+
+The welcome email new users get is now pure plain text — no images, no HTML formatting, no branded signature. It reads like a real email from a real person and signs off with "Kindly, Keenan - Co-Founder, Acuity".
+
+### Technical changes (for Jimmy)
+
+- Modified `apps/web/src/emails/founder-welcome.ts` — removed HTML signature import, reverted return type from `{ subject, html }` to `{ subject, text }`, replaced HTML body with plain text and simple sign-off.
+- Modified `apps/web/src/lib/bootstrap-user.ts` — switched Resend send from `html` to `text` field.
+- `keenan-signature.ts` still exists for future use but is no longer imported by the welcome email.
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- The HTML signature component (`keenan-signature.ts`) and headshot (`public/email/keenan-headshot.png`) are still in the repo for potential future use in other emails.
+
+---
+
 ## [2026-05-19] — Keenan's email signature on welcome email
 
 **Requested by:** Keenan
