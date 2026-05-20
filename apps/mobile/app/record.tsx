@@ -11,7 +11,7 @@ import {
   Text,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ProcessingProgressBar } from "@/components/processing-progress-bar";
 import {
@@ -89,6 +89,7 @@ type UploadResponse = {
 export default function RecordScreen() {
   const router = useRouter();
   const { tokens } = useTheme();
+  const insets = useSafeAreaInsets();
   // Context params — forwarded to /api/record so the extraction
   // pipeline knows what this entry is about.
   //   goalId        — set when opened from a goal detail / card
@@ -457,6 +458,55 @@ export default function RecordScreen() {
     }
   };
 
+  /**
+   * Discard the in-progress recording — stop mic, drop the captured
+   * audio without uploading, return to idle. Used by the top-left
+   * back button's "Discard" branch (Slice Q5 polish 3, 2026-05-20).
+   * The standard stopRecording() always uploads at the end; this is
+   * the no-upload variant.
+   */
+  const discardRecording = useCallback(async () => {
+    cleanupTimer();
+    const recording = recordingRef.current;
+    recordingRef.current = null;
+    if (recording) {
+      try {
+        await recording.stopAndUnloadAsync();
+      } catch {
+        // stop can throw if already unloaded — ignore
+      }
+    }
+    setElapsed(0);
+    setState("idle");
+  }, []);
+
+  /**
+   * Back button handler (Slice Q5 polish 3). State-aware:
+   *   - idle      → router.back()
+   *   - recording → confirm dialog; on Discard, drop audio + back
+   *   - other     → button is hidden in render, so unreachable here
+   */
+  const handleBackPress = useCallback(() => {
+    if (state === "recording") {
+      Alert.alert(
+        "Discard this recording?",
+        "You'll lose what you've recorded so far.",
+        [
+          { text: "Keep recording", style: "cancel" },
+          {
+            text: "Discard",
+            style: "destructive",
+            onPress: () => {
+              void discardRecording().then(() => router.back());
+            },
+          },
+        ]
+      );
+      return;
+    }
+    router.back();
+  }, [state, discardRecording, router]);
+
   // Cancel an in-flight entry from the processing screen. Slice C
   // Stage 2 (2026-05-16). Posts to /api/entries/[id]/cancel which
   // sets canceledAt on the row; the Inngest pipeline picks up the
@@ -521,8 +571,39 @@ export default function RecordScreen() {
   // Render
   // ────────────────────────────────────────────────────────────────
 
+  // Back button visibility — idle + recording only. Upload/processing/
+  // error/timeout already have their own affordances or shouldn't be
+  // backed out of mid-flight (per Slice Q5 polish 3 directive).
+  const showBackButton = state === "idle" || state === "recording";
+
   return (
     <SafeAreaView className="flex-1 bg-white dark:bg-[#1E1E2E] dark:bg-[#0B0B12]" edges={["bottom"]}>
+      {showBackButton && (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={
+            state === "recording" ? "Discard recording" : "Back"
+          }
+          onPress={handleBackPress}
+          hitSlop={12}
+          style={{
+            position: "absolute",
+            top: insets.top + 12,
+            left: 16,
+            zIndex: 10,
+            width: 44,
+            height: 44,
+            alignItems: "center",
+            justifyContent: "center",
+            borderRadius: 22,
+            borderWidth: 0.5,
+            borderColor: tokens.line,
+            backgroundColor: tokens.cardBg,
+          }}
+        >
+          <Ionicons name="chevron-back" size={20} color={tokens.textSec} />
+        </Pressable>
+      )}
       <View className="flex-1 items-center justify-center px-8">
         {state === "processing" ? (
           // Q5 polish — bumped gap from 6 (24pt) to 14 (56pt) so the
