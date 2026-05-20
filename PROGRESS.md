@@ -41,6 +41,37 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-20] — Admin dashboard email send feature
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 830fba3
+
+### In plain English (for Keenan)
+
+You can now send emails to any user directly from the admin dashboard Users tab. Click "view" on a user, then "Send Email" to compose a plain-text email that sends from keenan@getacuity.io. You'll see a log of every email you've sent to that user so you know what's already been said. There's also a "Send Email to All Users" button at the top of the Users tab for broadcasting to everyone (excluding you and Jimmy), with a confirmation step so you don't accidentally blast.
+
+### Technical changes (for Jimmy)
+
+- Modified `apps/web/src/app/admin/tabs/UsersTab.tsx` — added `ComposeEmail` inline form in user detail modal, `BulkEmailModal` for send-all, per-user sent email history fetched from new endpoint. Modal is now scrollable for longer content.
+- New file: `apps/web/src/app/api/admin/send-email/route.ts` — POST endpoint for single and bulk email sends. Uses existing Resend client. Bulk mode iterates all users excluding `keenan@heelerdigital.com` and `jim@heelerdigital.com`. Logs every send to `AdminSentEmail` table and `AdminAuditLog`.
+- New file: `apps/web/src/app/api/admin/users/[id]/emails/route.ts` — GET endpoint returning sent email history for a user.
+- Modified `apps/web/src/lib/admin-audit.ts` — added `USER_SEND_EMAIL` and `USER_SEND_BULK_EMAIL` action slugs.
+- Modified `prisma/schema.prisma` — new `AdminSentEmail` model (id, adminUserId, targetUserId, toEmail, subject, body, sentAt).
+- Modified `prisma/rls-allowlist.txt` — added `AdminSentEmail no-rls`.
+
+### Manual steps needed
+
+- [ ] Run `npx prisma db push` to create the AdminSentEmail table in Supabase (Keenan — from home network)
+
+### Notes
+
+- Emails send as plain text from "Keenan" <keenan@getacuity.io> with reply-to keenan@getacuity.io, same as the automated welcome email.
+- Bulk send is sequential (not batched) to stay within Resend rate limits. For the current user count (~17) this is fine. If user count grows past ~100, consider using Resend's batch API.
+- The email log table (`AdminSentEmail`) will fail gracefully if the schema hasn't been pushed yet — the email still sends, just the log row is skipped.
+
+---
+
 ## [2026-05-19] — Welcome email reverted to plain text
 
 **Requested by:** Keenan
