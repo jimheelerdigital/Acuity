@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as Sentry from "@sentry/react-native";
 import { Audio, InterruptionModeIOS } from "expo-av";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
@@ -11,7 +11,7 @@ import {
   Text,
   View,
 } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ProcessingProgressBar } from "@/components/processing-progress-bar";
 import {
@@ -88,8 +88,8 @@ type UploadResponse = {
 
 export default function RecordScreen() {
   const router = useRouter();
+  const navigation = useNavigation();
   const { tokens } = useTheme();
-  const insets = useSafeAreaInsets();
   // Context params — forwarded to /api/record so the extraction
   // pipeline knows what this entry is about.
   //   goalId        — set when opened from a goal detail / card
@@ -567,43 +567,53 @@ export default function RecordScreen() {
     }
   }, [polledEntryId, canceling, router]);
 
+  // Wire the back button into the native navigation header's
+  // headerLeft slot (Slice Q5 polish 5, 2026-05-20). The prior cut
+  // had a custom in-content Pressable positioned via insets.top —
+  // which lands below the modal header, visually detached from the
+  // "Brain dump" title. headerLeft sits inside the header bar,
+  // auto-aligned with the title baseline.
+  //
+  // Visibility: idle + recording only. Upload/processing/error/timeout
+  // hide the affordance (those have their own controls or shouldn't
+  // be backed out of mid-flight). Returning `null` from headerLeft
+  // removes the slot entirely.
+  useEffect(() => {
+    const showBack = state === "idle" || state === "recording";
+    navigation.setOptions({
+      headerLeft: () =>
+        showBack ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={
+              state === "recording" ? "Discard recording" : "Back"
+            }
+            onPress={handleBackPress}
+            hitSlop={12}
+            style={{
+              width: 36,
+              height: 36,
+              alignItems: "center",
+              justifyContent: "center",
+              marginLeft: 4,
+            }}
+          >
+            <Ionicons
+              name="chevron-back"
+              size={24}
+              color={tokens.textSec}
+            />
+          </Pressable>
+        ) : null,
+    });
+  }, [state, handleBackPress, navigation, tokens.textSec]);
+
   // ────────────────────────────────────────────────────────────────
   // Render
   // ────────────────────────────────────────────────────────────────
 
-  // Back button visibility — idle + recording only. Upload/processing/
-  // error/timeout already have their own affordances or shouldn't be
-  // backed out of mid-flight (per Slice Q5 polish 3 directive).
-  const showBackButton = state === "idle" || state === "recording";
-
   return (
     <SafeAreaView className="flex-1 bg-white dark:bg-[#1E1E2E] dark:bg-[#0B0B12]" edges={["bottom"]}>
-      {showBackButton && (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={
-            state === "recording" ? "Discard recording" : "Back"
-          }
-          onPress={handleBackPress}
-          hitSlop={12}
-          style={{
-            position: "absolute",
-            top: insets.top + 12,
-            left: 16,
-            zIndex: 10,
-            width: 44,
-            height: 44,
-            alignItems: "center",
-            justifyContent: "center",
-            borderRadius: 22,
-            borderWidth: 0.5,
-            borderColor: tokens.line,
-            backgroundColor: tokens.cardBg,
-          }}
-        >
-          <Ionicons name="chevron-back" size={20} color={tokens.textSec} />
-        </Pressable>
-      )}
       <View className="flex-1 items-center justify-center px-8">
         {state === "processing" ? (
           // Q5 polish — bumped gap from 6 (24pt) to 14 (56pt) so the
