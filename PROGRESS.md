@@ -41,6 +41,38 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-20] — Fix recording pipeline failures on longer entries (Inngest step output size)
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** 46c5906
+
+### In plain English (for Keenan)
+
+A user friend of Jimmy's hit "Upload failed" after recording. Any nightly entry longer than about 3 minutes was silently failing in the background because the recording pipeline was trying to ship the entire audio file through one of its internal handoffs — and that handoff has a 4 MB size limit. Longer recordings = bigger audio = over the limit = failure. Fixed by restructuring the pipeline so the audio file never has to cross that handoff. Long recordings (4-8 minutes — the typical real shutdown ritual) will now process normally. This bug had been latent since the original background-pipeline work in mid-April; it only became visible once people started doing real, long entries.
+
+### Technical changes (for Jimmy)
+
+- apps/web/src/inngest/functions/process-entry.ts: merged the `download-audio` and `transcribe-and-persist-transcript` step.run calls into a single `download-transcribe-and-persist` step. The audio buffer now stays step-local — never base64'd, never returned across a step boundary. Step count in this region drops 3 → 2.
+- The outer `cancel-check-before-transcribe` step.run moved above the merged step. An inline DB read inside the merged step's closure (NOT a new step.run) re-checks `canceledAt` after download and before the OpenAI Whisper call, so Whisper $$ is still protected against cancels that arrive during the Supabase download window. The inline check returns `{ transcriptLength: -1 }` to signal cancellation up to the caller.
+- Merged step returns `{ transcriptLength }` marker for Inngest UI observability.
+- No schema change. No API contract change. No mobile change.
+
+### Manual steps needed
+
+- [ ] Watch Vercel logs for "step output size" errors for next 30 min — should be zero (Jimmy)
+- [ ] Watch /api/inngest 206 status codes → should drop to zero (Jimmy)
+- [ ] Record a 4-5 min test entry once deploy is live (Jimmy)
+
+### Notes
+
+- Root cause: `step.run("download-audio", ...)` returned `{ audioBase64, mimeType }`. base64 encoding inflates payload ~1.37×, and HIGH_QUALITY AAC at 128 kbps stereo runs ~960 KB/min raw. Math: a 4-min recording → ~5.2 MB base64 → over Inngest's 4 MB step-output cap → server-side validation error `step output size is greater than the limit`.
+- Latent since commit de3ee8c (initial Inngest refactor, ~2026-04-19). Not a regression from recent Slice C cancellation work (9ccfd6a) — the cancellation gates only return booleans, well under the limit.
+- Inline cancel-check pattern (DB read inside closure, not a new step.run) is deliberate. Adding a new step.run between download and Whisper would re-create the step boundary we just eliminated, putting the buffer back at risk. The DB read is idempotent and Inngest replays it correctly on retry.
+- Trade-off accepted: if Whisper fails transiently, the retry re-downloads the audio from Supabase. Supabase egress at our scale is free; not a meaningful cost.
+
+---
+
 ## [2026-05-20] — Fix "Never opened app" — mobile now reports device platform on launch
 
 **Requested by:** Keenan
