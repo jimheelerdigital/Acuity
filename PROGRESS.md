@@ -41,6 +41,35 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-21] — Homepage hero CTA layout refresh
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** TBD
+
+### In plain English (for Keenan)
+
+The homepage hero section now shows "Start Free Trial" and the App Store download badge side by side as the two primary actions, same height, equal visual weight. "See how it works" is now a small understated text link centered below them instead of a big outlined button competing for attention. The "No card. Quick setup." text is removed — trial length is already communicated elsewhere on the page. Same links, same click tracking — just a cleaner hierarchy that puts the two conversion paths front and center.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/components/landing.tsx`: Rewrote both mobile and desktop CTA sections in the hero. Row 1 is now `items-stretch flex-row` with "Start Free Trial" (purple pill + shine animation) and `AppStoreBadge` at matching 46px height. Row 2 is a centered `text-xs` underlined link for "See how it works". Removed "No card. Quick setup." subtext and the old faded/scaled App Store badge. Old outlined "See how it works" button replaced with understated link.
+- `apps/web/src/components/landing-shared.tsx`: Added optional `svgClassName` prop to `AppStoreBadge` (defaults to `h-10` to preserve all existing usages). Hero passes `svgClassName="h-[46px] w-auto"` to match CTA button height.
+
+### Manual steps needed
+
+- [ ] Visual check on desktop: both buttons same height, "See how it works" is subtle underneath (Keenan)
+- [ ] Visual check on mobile: same layout stacks gracefully on small screens (Keenan)
+- [ ] Verify "Start Free Trial" click tracking still fires (check PostHog or Meta pixel) (Keenan)
+- [ ] Verify App Store badge links to correct App Store listing (Keenan)
+
+### Notes
+
+- The `AppStoreBadge` SVG had a hardcoded `h-10` (40px). Rather than changing it globally and risking other usages (signup success page, footer, etc.), added `svgClassName` prop so callers can override the height. All existing usages are unaffected.
+- The CTA button total height is ~46px (2px border wrapper + 14px padding top + 14px text + 14px padding bottom + 2px). The badge SVG is set to `h-[46px]` to match.
+
+---
+
 ## [2026-05-21] — Fix GSC integration: URL matching + auth diagnostics for blog dashboard
 
 **Requested by:** Keenan

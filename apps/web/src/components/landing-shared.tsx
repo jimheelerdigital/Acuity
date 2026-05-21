@@ -31,7 +31,7 @@ export function useCtaHref(_utmCampaign?: string): string {
 }
 
 /** Official "Download on the App Store" black badge as inline SVG. */
-export function AppStoreBadge({ className = "" }: { className?: string }) {
+export function AppStoreBadge({ className = "", svgClassName = "h-10" }: { className?: string; svgClassName?: string }) {
   return (
     <a
       href={APP_STORE_URL}
@@ -43,7 +43,7 @@ export function AppStoreBadge({ className = "" }: { className?: string }) {
       <svg
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 120 40"
-        className="h-10"
+        className={svgClassName}
       >
         <rect width="120" height="40" rx="6" fill="#000" />
         <rect
