@@ -30,7 +30,13 @@ import { DEFAULT_LIFE_AREAS, type LifeArea } from "@acuity/shared";
  * pixel size via the `size` prop (defaults to 300; Insights tab passes
  * 320 to match the screen content area on iPhone 16e).
  *
- * ─── Phase D (2026-05-21): 10-axis layout safety ─────────────────────
+ * ─── Phase D polish (2026-05-21): label readability + degenerate-zero ─
+ *
+ * Labels bumped from fontSize 10 (whispered) to 12 (readable) with
+ * mixed-size handling: 7-char labels (Romance/Friends/Purpose) drop
+ * to fontSize 11 to keep clear of the SVG edge. Score numerals stay
+ * at fontSize 9. Default text color is tokens.textSec (caller-passed)
+ * for substantial-not-decoration contrast against bg.
  *
  * Geometry math at size=320 on iPhone 16e 375pt screen:
  *   - cx = cy = 160, maxR = 320 × 0.37 = 118.4pt
@@ -39,24 +45,27 @@ import { DEFAULT_LIFE_AREAS, type LifeArea } from "@acuity/shared";
  *   - 10 axes at 36° spacing starting at -π/2 (12 o'clock)
  *
  * Worst-case horizontal label position is at indices 2 & 7 (±18° off
- * horizontal axis), where labelP.x ≈ 290.85 (right) / 29.15 (left).
- * Worst-case label is "Romance"/"Purpose"/"Friends" (7 chars) which
- * at fontSize=10 monospace measures ~43pt wide (21.5pt half-width).
+ * horizontal axis): labelP.x = 290.9 (right) / 29.1 (left).
  *
- *   right edge: 290.85 + 21.5 = 312.35  (SVG width 320 → 7.65pt margin)
- *   left edge:  29.15 - 21.5 = 7.65     (SVG x=0 → 7.65pt margin)
+ *   6-char @ fontSize 12 (mono, ~7.2pt/char): 43.2pt wide → 21.6 half
+ *     right edge: 290.9 + 21.6 = 312.5  (320 SVG → 7.5pt margin) ✓
  *
- * So `textAnchor="middle"` for all labels is provably safe — labels
- * stay inside SVG bounds with ~7pt margin even at worst case. Swapping
- * to side-anchors (start on right / end on left) would push labels
- * either past the SVG edge or over the polygon vertices; we keep the
- * middle anchor and cap shortName length at 7 chars via
- * DEFAULT_LIFE_AREAS in @acuity/shared.
+ *   7-char @ fontSize 11 (mono, ~6.6pt/char): 46.2pt wide → 23.1 half
+ *     right edge: 290.9 + 23.1 = 314.0  (320 SVG → 6.0pt margin) ✓
  *
- * Vertical clearance: top label baseline at y≈22 with fontSize=10
- * glyphs ascending ~10pt → top edge at y≈12. SVG y=0 → 12pt margin.
- * Score numeral below the label (y baseline +12) sits within polygon
- * row at y≈34 → no collision with grid rings.
+ *   7-char @ fontSize 12 would be 50.4pt → 25.2 half → 4.7pt margin
+ *     (rejected — too tight under font-rendering variance)
+ *
+ * SVG size bump 320→340 would have given consistent fontSize 12, but
+ * 340pt overflows the iPhone 16e content area (375 − 40pt padding =
+ * 335pt). Per-label fontSize keeps the radar inside its container.
+ *
+ * Polygon vertex minimum: score=0 vertices used to coincide at the
+ * centroid, producing a pinwheel of spikes from each non-zero vertex
+ * back through center. MIN_VISUAL_SCORE (5 / 100) floors the polygon
+ * vertex radius + node dot to ~5.9pt inner ring so the shape stays
+ * continuous even when many axes are at zero. Displayed numerals
+ * stay at the actual underlying score.
  */
 
 export interface RadarArea {
@@ -79,6 +88,20 @@ function resolveScore100(area: RadarArea | undefined): number | null {
   const raw =
     typeof area.score100 === "number" ? area.score100 : area.score * 10;
   return Math.max(0, Math.min(100, Math.round(raw)));
+}
+
+/**
+ * Minimum polygon vertex radius (as a fraction of maxR). At maxR≈118pt
+ * this yields ~5.9pt inner radius — small enough to stay inside the
+ * innermost grid ring (~23.7pt at 20%) but large enough that the
+ * polygon's continuous shape is visible even when many axes are at 0.
+ * Used by both the polygon and node-dot radii so they coincide.
+ */
+const MIN_VISUAL_SCORE = 5;
+
+function polygonVertexRadius(score100: number | null, maxR: number): number {
+  const floored = Math.max(score100 ?? 0, MIN_VISUAL_SCORE);
+  return (floored / 100) * maxR;
 }
 
 interface PolishProps {
@@ -154,14 +177,15 @@ export function LifeMapRadar({
 
   // Data polygon. Score lookup keys on .area so the API response
   // (uppercase enum value like "CAREER") matches DEFAULT_LIFE_AREAS.enum.
+  // Vertex radius is floored at MIN_VISUAL_SCORE so a zero-axis user
+  // sees a continuous inner-ring shape, not center-collapsed spikes.
   const polyPoints = areaConfigs
     .map((config, i) => {
       const area = areas.find(
         (a) => a.area === config.enum || a.area === config.name
       );
       const score100 = resolveScore100(area);
-      const r = (score100 ?? 0) / 100 * maxR;
-      const p = getPoint(i, r);
+      const p = getPoint(i, polygonVertexRadius(score100, maxR));
       return `${p.x},${p.y}`;
     })
     .join(" ");
@@ -172,7 +196,7 @@ export function LifeMapRadar({
   //
   // Trend data still uses the legacy 1-10 `score` shape (history
   // table predates Slice N). Convert to 0-100 via *10 for the
-  // polygon math.
+  // polygon math. Same minimum-visual floor as the current polygon.
   const trendPolyPoints = trendAreas
     ? areaConfigs
         .map((config, i) => {
@@ -186,7 +210,7 @@ export function LifeMapRadar({
               : current
                 ? (resolveScore100(current) ?? 0)
                 : 0;
-          const p = getPoint(i, (score100 / 100) * maxR);
+          const p = getPoint(i, polygonVertexRadius(score100, maxR));
           return `${p.x},${p.y}`;
         })
         .join(" ")
@@ -297,16 +321,15 @@ export function LifeMapRadar({
       {/* Area nodes + axis labels. Each axis is tappable via its own
           G wrapper so the touch target covers the node + label + score
           text in one hit — fingers don't hit a 4px SVG circle.
-          Node position uses resolveScore100 to match the polygon math
-          (was area.score/10 → drifted from polygon when score100 was
-          set but legacy `score` wasn't backfilled). */}
+          Node radius shares the polygon's MIN_VISUAL_SCORE floor so
+          the dot sits at the same place as the polygon vertex even
+          when the underlying score is 0. */}
       {areaConfigs.map((config, i) => {
         const area = areas.find(
           (a) => a.area === config.enum || a.area === config.name
         );
-        const score100 = resolveScore100(area) ?? 0;
-        const nodeR = (score100 / 100) * maxR;
-        const nodeP = getPoint(i, nodeR);
+        const score100 = resolveScore100(area);
+        const nodeP = getPoint(i, polygonVertexRadius(score100, maxR));
         const labelP = getPoint(i, maxR + size * 0.06);
         const isSelected =
           selectedAreaKey !== null &&
@@ -319,6 +342,9 @@ export function LifeMapRadar({
         // remains the full display label for cards and detail screens.
         const labelText =
           (config as { shortName?: string }).shortName ?? config.name;
+        // Per-label fontSize: 7-char labels drop to 11 to keep clear
+        // of the SVG edge at size=320 (see docblock geometry math).
+        const labelFontSize = labelText.length >= 7 ? 11 : 12;
 
         return (
           <G key={`node-${config.enum}`} onPress={handlePress}>
@@ -343,8 +369,8 @@ export function LifeMapRadar({
               x={labelP.x}
               y={labelP.y}
               textAnchor="middle"
-              fontSize={10}
-              fontWeight={isSelected ? "700" : "500"}
+              fontSize={labelFontSize}
+              fontWeight={isSelected ? "700" : "600"}
               fill={isSelected ? config.color : labelColor}
               fontFamily={labelFontFamily}
             >
@@ -352,7 +378,7 @@ export function LifeMapRadar({
             </SvgText>
             <SvgText
               x={labelP.x}
-              y={labelP.y + 12}
+              y={labelP.y + labelFontSize + 2}
               textAnchor="middle"
               fontSize={9}
               fill={scoreColor}

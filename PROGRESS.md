@@ -41,6 +41,42 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-21] — Phase D polish — Radar label readability + zero-axis polygon fix
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** (pending)
+
+### In plain English (for Keenan)
+
+Two cosmetic but important fixes on the 10-axis Life Matrix radar that shipped earlier today: (1) axis labels (Career, Money, Romance, etc.) now read at proper size and contrast instead of looking like whispered metadata — bumped from fontSize 10 with a low-contrast tint to fontSize 12 with secondary text color. (2) Existing users who have data on 5 axes but none on the 5 brand-new ones (Romance, Friends, Mental Health, Fun, Purpose) no longer see the polygon collapse into a pinwheel of lines — each "zero" axis now sits at a small inner radius so the shape stays continuous and recognizable.
+
+### Technical changes (for Jimmy)
+
+- `apps/mobile/components/life-map-radar.tsx`:
+  - Label fontSize 10 → 12 (≤6 chars) or 11 (7-char labels Romance/Friends/Purpose) — keeps margin to SVG edge at ≥6pt on iPhone 16e size=320.
+  - Label fontWeight 500 → 600 for slightly more presence.
+  - Score numeral fontSize stays 9 but spacing recomputed (label baseline + fontSize + 2) so the 11/12 mixed sizing doesn't crowd.
+  - Introduced `MIN_VISUAL_SCORE = 5` + `polygonVertexRadius()` helper. Both polygon vertices AND node dots floor at this value, producing a ~5.9pt inner-ring radius when underlying score is 0. Displayed numeral remains the actual score.
+  - Same floor applied to the trend overlay polygon.
+  - Docblock rewritten with the fontSize 11/12 per-label math (see lines 35-65).
+- `apps/mobile/app/(tabs)/insights.tsx`:
+  - Radar `labelColor` `textTer` → `textSec`. `scoreColor` `textQuiet` → `textSec`. Both now use the same readable mid-contrast token.
+
+### Manual steps needed
+
+- [ ] None — pure radar polish. Visual verification on simulator before TestFlight upload.
+
+### Notes
+
+- Investigated polygon-collapse issue before changing — confirmed react-native-svg `<Polygon>` auto-closes (single continuous shape) so it wasn't a path-building bug. The visual "pinwheel" came from 5 vertices coinciding at the centroid when 5 axes had score=0. MIN_VISUAL_SCORE solves this by ensuring no vertex sits exactly at (cx, cy).
+- Considered bumping SVG size 320→340 for consistent fontSize 12 across all labels, rejected: 340pt overflows iPhone 16e content area (375 − 40pt padding = 335pt). Per-label fontSize keeps the radar inside its container.
+- Light/dark/4-palette propagation unchanged — only the caller-passed token references changed; the radar internals continue to read whatever tokens.* values the parent supplies.
+
+monday: 12058980099
+
+---
+
 ## [2026-05-21] — Phase D — Life Matrix expansion from 6 axes to 10 (full cutover)
 
 **Requested by:** Jimmy

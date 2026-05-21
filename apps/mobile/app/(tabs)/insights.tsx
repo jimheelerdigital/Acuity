@@ -355,8 +355,8 @@ export default function InsightsTab() {
                   score100: a.score100,
                 }))}
                 size={320}
-                labelColor={tokens.textTer}
-                scoreColor={tokens.textQuiet}
+                labelColor={tokens.textSec}
+                scoreColor={tokens.textSec}
                 gridColor={tokens.line}
                 centerLabelColor={tokens.text}
                 selectedAreaKey={expandedArea}
