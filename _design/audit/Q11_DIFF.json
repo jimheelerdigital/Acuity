@@ -1,0 +1,420 @@
+{
+  "$schema": "Q11_DIFF v1",
+  "generatedAt": "2026-05-21",
+  "scope": "Acuity v2 visual refresh slices Q1-Q10 — design spec vs implementation",
+  "designSourceDir": "_design/design_handoff_acuity_v2/",
+  "report": "_design/audit/Q11_AUDIT.md",
+  "screens": [
+    {
+      "designFile": "_design/design_handoff_acuity_v2/screen-home.jsx",
+      "designName": "Home",
+      "implFile": "apps/mobile/app/(tabs)/index.tsx",
+      "implLineCount": 636,
+      "shippingSlice": "Q4",
+      "status": "MATCH",
+      "severity": "LOW",
+      "hardcodedColorCount": { "hex": 0, "tailwind": 0, "rgba": 0 },
+      "gaps": [
+        "Motion #3 (count-up) and #6 (streak +1 floater) ship; achievement strip + locked-state progress bar visual confirmation needed via simulator"
+      ],
+      "primitivesUsed": ["HeroCard", "RingProgress", "Sparkbar", "ThemePill", "GradientText", "TierPill"]
+    },
+    {
+      "designFile": "_design/design_handoff_acuity_v2/screen-recording.jsx",
+      "designName": "Recording",
+      "implFile": "apps/mobile/app/record.tsx",
+      "implLineCount": 952,
+      "shippingSlice": "Q5",
+      "status": "PARTIAL_RESTYLE",
+      "severity": "MEDIUM",
+      "hardcodedColorCount": { "hex": 3, "tailwind": 0, "rgba": 0 },
+      "gaps": [
+        "Subcomponents RecordOrb, RecordWaveform, SpeedometerGauge not fully token-ified",
+        "ProcessingProgressBar uses hardcoded colors"
+      ],
+      "primitivesUsed": []
+    },
+    {
+      "designFile": "_design/design_handoff_acuity_v2/screen-entry.jsx",
+      "designName": "EntryDetail",
+      "implFile": "apps/mobile/app/entry/[id].tsx",
+      "implLineCount": 667,
+      "shippingSlice": "Q6+Q10",
+      "status": "MATCH",
+      "severity": "LOW",
+      "hardcodedColorCount": { "hex": 0, "tailwind": 0, "rgba": 0 },
+      "gaps": [],
+      "primitivesUsed": ["GlassPill", "GradientText", "HeroCard", "ThemePill"]
+    },
+    {
+      "designFile": "_design/design_handoff_acuity_v2/screen-entries.jsx",
+      "designName": "Entries",
+      "implFile": "apps/mobile/app/(tabs)/entries.tsx",
+      "implLineCount": 455,
+      "shippingSlice": "Q8",
+      "status": "DRIFT",
+      "severity": "HIGH",
+      "hardcodedColorCount": { "hex": 11, "tailwind": 0, "rgba": 0 },
+      "gaps": [
+        "Search/filter UI uses hardcoded colors instead of tokens",
+        "Heatmap-28 component does not import Acuity primitives",
+        "Swipe-to-delete, mood icon rendering, entry row styling not token-based",
+        "Spec calls out 'Latest' pill with gradient-wash card variant — verification needed"
+      ],
+      "primitivesUsed": []
+    },
+    {
+      "designFile": "_design/design_handoff_acuity_v2/screen-tasks.jsx",
+      "designName": "Tasks",
+      "implFile": "apps/mobile/app/(tabs)/tasks.tsx",
+      "implLineCount": 860,
+      "shippingSlice": "Q8",
+      "status": "PARTIAL_RESTYLE",
+      "severity": "HIGH",
+      "hardcodedColorCount": { "hex": 10, "tailwind": 0, "rgba": 3 },
+      "gaps": [
+        "PRIORITY_COLOR constant from @acuity/shared hardcoded, not token-mapped",
+        "Task status tabs (Today/Upcoming/Done) use hardcoded colors for separators/backgrounds",
+        "Confetti subcomponent (components/tasks/confetti.tsx) not token-styled"
+      ],
+      "primitivesUsed": ["GradientCheckbox"]
+    },
+    {
+      "designFile": "_design/design_handoff_acuity_v2/screen-goals.jsx",
+      "designName": "Goals",
+      "implFile": "apps/mobile/app/(tabs)/goals.tsx",
+      "implLineCount": 1380,
+      "shippingSlice": "Q8",
+      "status": "DRIFT",
+      "severity": "HIGH",
+      "hardcodedColorCount": { "hex": 36, "tailwind": 0, "rgba": 2 },
+      "gaps": [
+        "LIFE_AREAS constant lines 252-259 hardcodes 6 area colors (CAREER=#3B82F6, HEALTH=#14B8A6, RELATIONSHIPS=#F43F5E, FINANCES=#F59E0B, PERSONAL=#A855F7, OTHER=#71717A)",
+        "STATUS_STYLES constant lines 261-267 hardcodes 5 status colors (NOT_STARTED=#71717A, IN_PROGRESS=#34D399, ON_HOLD=#FBBF24, COMPLETE=#A78BFA, ARCHIVED=#52525B)",
+        "area.color references at lines 863-865 use the hardcoded LIFE_AREAS palette",
+        "Largest hardcoded surface in the codebase"
+      ],
+      "primitivesUsed": ["GradientCheckbox"]
+    },
+    {
+      "designFile": "_design/design_handoff_acuity_v2/screen-thememap.jsx",
+      "designName": "ThemeMap",
+      "implFile": "apps/mobile/app/insights/theme-map.tsx",
+      "implLineCount": 239,
+      "shippingSlice": "(none - never refreshed)",
+      "status": "DRIFT_AND_STRUCTURALLY_MISSING",
+      "severity": "BLOCKER",
+      "hardcodedColorCount": { "hex": 13, "tailwind": 0, "rgba": 3 },
+      "gaps": [
+        "Implementation is a list/dashboard layout; spec calls for orbital cosmic view with 9 planets",
+        "No useTheme() hook import; no token usage at all",
+        "Hardcoded #0B0B12 backgrounds, #7C3AED spinner, #FCA85A eyebrow, #FAFAFA text",
+        "Missing: 4 concentric ring guides (62/108/152/188px radii), 70 stars overlay, YOU pip with gradient halo, dashed connector lines, 6.0s solar-system entrance animation, glass-blur insight callout"
+      ],
+      "primitivesUsed": []
+    },
+    {
+      "designFile": "_design/design_handoff_acuity_v2/screen-lifematrix.jsx",
+      "designName": "LifeMatrix",
+      "implFile": "apps/mobile/components/life-map-radar.tsx",
+      "implLineCount": 382,
+      "shippingSlice": "Q7",
+      "status": "RESTYLED_ONLY",
+      "severity": "BLOCKER",
+      "hardcodedColorCount": { "hex": 7, "tailwind": 0, "rgba": 0 },
+      "axisCountActual": 6,
+      "axisCountSpec": 12,
+      "axesActual": ["CAREER", "HEALTH", "RELATIONSHIPS", "FINANCES", "PERSONAL", "OTHER"],
+      "axesSpec": ["Career", "Health", "Family", "Friends", "Romance", "Money", "Growth", "Creativity", "Body", "Mind", "Joy", "Purpose"],
+      "gaps": [
+        "Renders 6 axes from packages/shared/src/constants.ts:123 DEFAULT_LIFE_AREAS",
+        "Spec calls for 12 axes — structural difference, not visual",
+        "Missing previous-week dashed overlay polygon",
+        "Missing hue-colored score dots that flip mint/red on delta",
+        "Missing 'Biggest moves' sparkline list section",
+        "Component supports gradientColors prop but Insights tab caller doesn't pass it, defaulting to hardcoded violet"
+      ],
+      "dataShape": {
+        "current": "RadarArea[] with area, score (1-10 legacy), score100 (0-100 canonical)",
+        "specRequires": "12 axes; same scoring shape but extended axis enum"
+      },
+      "primitivesUsed": []
+    },
+    {
+      "designFile": "_design/design_handoff_acuity_v2/screen-extract.jsx",
+      "designName": "ExtractReview",
+      "implFile": "apps/mobile/components/extraction-review.tsx",
+      "implLineCount": 573,
+      "shippingSlice": "Q10",
+      "status": "RESTYLED_WITH_BEHAVIOR_GAP",
+      "severity": "BLOCKER",
+      "hardcodedColorCount": { "hex": 2, "tailwind": 0, "rgba": 0 },
+      "gaps": [
+        "Default checkbox state is opposite of spec: implementation defaults tasks selected:true and goals selected:!alreadyExists; spec is emphatic that ALL checkboxes default OFF with copy 'Check what to keep, everything is off by default'",
+        "Behavior divergence, not visual — visual refresh shipped correctly",
+        "Substantive product UX shift: current pattern is 'tap to deselect'; spec pattern is 'tap to select'"
+      ],
+      "primitivesUsed": ["HeroCard", "GlassPill", "GradientText", "GradientCheckbox"]
+    },
+    {
+      "designFile": "_design/design_handoff_acuity_v2/screen-onboarding.jsx",
+      "designName": "OnboardingMatrixBaseline",
+      "implFile": "apps/mobile/components/onboarding/step-7-life-areas.tsx",
+      "implLineCount": 251,
+      "shippingSlice": "Q9",
+      "status": "RESTYLED_ONLY_WRONG_SCREEN",
+      "severity": "BLOCKER",
+      "hardcodedColorCount": { "hex": 0, "tailwind": 0, "rgba": 0 },
+      "gaps": [
+        "Implementation: top-3 life-area ranking picker over 6 areas (Q9 visually refreshed)",
+        "Spec: 12-axis Life Matrix baseline step, one axis at a time, 88pt gradient-text big number, hue slider, mini-12-axis radar preview, 'Next axis →' CTA cycling through all 12 axes",
+        "Q9 itself flagged this as 'separate future product slice' — confirmation pending whether new step replaces step-7 or coexists"
+      ],
+      "openProductQuestion": "Does the 12-axis baseline step REPLACE step-7 or coexist alongside it? Design spec frames it as 'step 3 of 8' suggesting replacement.",
+      "primitivesUsed": []
+    },
+    {
+      "designFile": "_design/design_handoff_acuity_v2/screen-profile.jsx",
+      "designName": "Profile",
+      "implFile": "apps/mobile/app/(tabs)/profile.tsx",
+      "implLineCount": 492,
+      "shippingSlice": "(none — Q2 only touched the Appearance card)",
+      "status": "DRIFT",
+      "severity": "HIGH",
+      "hardcodedColorCount": { "hex": 2, "tailwind": 47, "rgba": 0 },
+      "gaps": [
+        "Uses NativeWind Tailwind className strings throughout (bg-violet-600/20, border-violet-600/40, text-zinc-50 etc.) instead of v2 tokens",
+        "Avatar inlined at lines 166-183 instead of extracted to Acuity primitive",
+        "Tier badge inlined at lines 190-195 with conditional className instead of using existing TierPill primitive",
+        "Hero identity card not gradient-styled per spec",
+        "Subscription card not v2-styled",
+        "Settings list groups not v2-styled (icon containers, hairline separators, eyebrow labels)"
+      ],
+      "primitivesUsed": []
+    }
+  ],
+  "crossCuttingFindings": {
+    "topHardcodedHexFiles": [
+      { "file": "apps/mobile/components/acuity/ThemePill.tsx", "hex": 36, "note": "intentional theme-identity palette per design" },
+      { "file": "apps/mobile/app/(tabs)/goals.tsx", "hex": 36, "note": "in scope — LIFE_AREAS + STATUS_STYLES constants" },
+      { "file": "apps/mobile/app/(tabs)/insights.tsx", "hex": 27, "note": "in scope — MOOD_COLORS constant" },
+      { "file": "apps/mobile/components/theme-map/ThemeRings.tsx", "hex": 22, "note": "in scope" },
+      { "file": "apps/mobile/components/theme-map/theme-tokens.ts", "hex": 17, "note": "in scope — local palette module" },
+      { "file": "apps/mobile/app/task/[id].tsx", "hex": 17, "note": "in scope" },
+      { "file": "apps/mobile/app/goal/[id].tsx", "hex": 17, "note": "in scope" },
+      { "file": "apps/mobile/components/theme-map/LockedState.tsx", "hex": 16, "note": "in scope" },
+      { "file": "apps/mobile/components/delete-account-modal.tsx", "hex": 15, "note": "in scope" },
+      { "file": "apps/mobile/app/paywall.tsx", "hex": 14, "note": "in scope" },
+      { "file": "apps/mobile/app/(auth)/sign-in.tsx", "hex": 14, "note": "in scope" },
+      { "file": "apps/mobile/app/(tabs)/entries.tsx", "hex": 11, "note": "in scope" },
+      { "file": "apps/mobile/app/(tabs)/_layout.tsx", "hex": 11, "note": "in scope — FAB mic button constants" },
+      { "file": "apps/mobile/app/subscribe.tsx", "hex": 10, "note": "in scope" },
+      { "file": "apps/mobile/app/dimension/[key].tsx", "hex": 10, "note": "in scope" },
+      { "file": "apps/mobile/app/(tabs)/tasks.tsx", "hex": 10, "note": "in scope" },
+      { "file": "apps/mobile/app/insights/state-of-me.tsx", "hex": 9, "note": "in scope" },
+      { "file": "apps/mobile/app/insights/ask.tsx", "hex": 9, "note": "in scope" },
+      { "file": "apps/mobile/app/(auth)/sign-up.tsx", "hex": 9, "note": "in scope" },
+      { "file": "apps/mobile/components/user-insights-card.tsx", "hex": 8, "note": "in scope" }
+    ],
+    "tailwindUtilityHotspots": [
+      { "pattern": "bg-violet-600", "count": 45 },
+      { "pattern": "text-violet-400", "count": 23 },
+      { "pattern": "bg-zinc-50", "count": 19 },
+      { "pattern": "bg-violet-950", "count": 13 },
+      { "pattern": "text-violet-600", "count": 11 },
+      { "pattern": "border-violet-500", "count": 11 },
+      { "pattern": "bg-zinc-100", "count": 11 },
+      { "pattern": "bg-violet-600/20", "count": "various" },
+      { "pattern": "text-violet-700", "count": 7 }
+    ],
+    "tailwindTotalHits": 519,
+    "rgbaTotalHits": 128,
+    "duplicatedComponents": [
+      {
+        "name": "RecordFAB / mic button",
+        "currentLocation": "apps/mobile/app/(tabs)/_layout.tsx:38-302",
+        "shouldBe": "apps/mobile/components/acuity/AcuityTabBar.tsx (primitive exists, zero callers)",
+        "hardcodedConstants": [
+          { "name": "BRAND_PURPLE", "value": "#7C3AED", "line": 38 },
+          { "name": "BRAND_PURPLE_DARK", "value": "#A78BFA", "line": 39 },
+          { "name": "RECORD_FILL_ACTIVE", "value": "#7C3AED", "line": 40 },
+          { "name": "RECORD_FILL_INACTIVE", "value": "#5D449B", "line": 41 },
+          { "name": "shadowColor", "value": "#7C3AED", "line": 278 }
+        ]
+      },
+      {
+        "name": "Avatar / initials",
+        "currentLocation": "apps/mobile/app/(tabs)/profile.tsx:166-183 (inlined Tailwind)",
+        "shouldBe": "new primitive apps/mobile/components/acuity/Avatar.tsx with token-based styling",
+        "usageCount": 1,
+        "note": "design spec uses 64px variant in Profile + 44px variant in Home greeting"
+      },
+      {
+        "name": "Tier badge in Profile",
+        "currentLocation": "apps/mobile/app/(tabs)/profile.tsx:190-195 (inlined conditional className)",
+        "shouldBe": "use existing TierPill primitive from apps/mobile/components/acuity/TierPill.tsx",
+        "note": "TierPill is already adopted by 6 other surfaces"
+      }
+    ],
+    "typographyDrift": [
+      {
+        "file": "apps/mobile/components/appearance/appearance-card.tsx",
+        "issue": "fontFamily: 'System' literal instead of tokens.fontSans",
+        "severity": "LOW"
+      }
+    ],
+    "borderRadiusHardcoded": {
+      "totalInstances": 84,
+      "topFiles": [
+        { "file": "apps/mobile/components/delete-account-modal.tsx", "count": 7 },
+        { "file": "apps/mobile/components/theme-detail/InsightCard.tsx", "count": 6 },
+        { "file": "apps/mobile/components/theme-map/ThemeDetailSheet.tsx", "count": 6 },
+        { "file": "apps/mobile/components/theme-map/ThemeMapDashboard.tsx", "count": 5 },
+        { "file": "apps/mobile/components/theme-map/ThemeRings.tsx", "count": 4 },
+        { "file": "apps/mobile/components/theme-map/LockedState.tsx", "count": 4 },
+        { "file": "apps/mobile/components/extraction-review.tsx", "count": 3 },
+        { "file": "apps/mobile/components/onboarding/shell.tsx", "count": 3 }
+      ]
+    },
+    "spacingTokensExist": false,
+    "spacingDriftNote": "No tokens.spacing.* exists; introducing would unlock a sweep. Padding/margin/gap values hardcoded everywhere.",
+    "primitiveAdoption": [
+      { "primitive": "GradientText", "importCount": 16, "adoption": "mature" },
+      { "primitive": "HeroCard", "importCount": 15, "adoption": "mature" },
+      { "primitive": "GlassPill", "importCount": 13, "adoption": "mature" },
+      { "primitive": "ThemePill", "importCount": 12, "adoption": "mature" },
+      { "primitive": "GradientCheckbox", "importCount": 9, "adoption": "good" },
+      { "primitive": "TierPill", "importCount": 6, "adoption": "low — should expand to Profile" },
+      { "primitive": "RingProgress", "importCount": 6, "adoption": "low — only Home; should reach Goals + dimension detail" },
+      { "primitive": "SegmentedTabs", "importCount": 3, "adoption": "low — only Insights; should reach Tasks, Goals, Profile sub" },
+      { "primitive": "Sparkbar", "importCount": 3, "adoption": "minimal" },
+      { "primitive": "MiniRadar", "importCount": 0, "adoption": "NOT ADOPTED" },
+      { "primitive": "AcuityTabBar", "importCount": 0, "adoption": "NOT ADOPTED (tab bar reinvented in (tabs)/_layout.tsx)" }
+    ],
+    "userReportedUnverified": [
+      "Segmented tabs overflow the screen — affected screens not identified in this audit, flag for simulator inspection"
+    ],
+    "intentionalNonChanges": [
+      { "case": "Confetti hardcoded warm accents #f59e0b #ef4444", "file": "apps/mobile/components/tasks/confetti.tsx", "reason": "intentional per Q8 spec — fixed warm accents that pop against any palette" },
+      { "case": "Pure white/black on gradient surfaces", "reason": "intentional per spec exception clause" },
+      { "case": "StatusBar style='light' or 'dark'", "reason": "named system styles, not hex" },
+      { "case": "ActivityIndicator color='#FFFFFF' on gradients", "reason": "intentional white-on-gradient" },
+      { "case": "DEFAULT_LIFE_AREAS data hex codes in packages/shared/src/constants.ts", "reason": "theme-identity data colors used by web consumers; keep as data, don't use for mobile surfaces" }
+    ]
+  },
+  "remediationPlan": [
+    {
+      "id": "PhaseA",
+      "title": "Visual sweep — token-ify colors + radius + extract FAB/Avatar primitives",
+      "type": "comprehensive-sweep",
+      "complexity": "MEDIUM",
+      "risk": "MEDIUM",
+      "estimatedFiles": "~50-60",
+      "estimatedLineChanges": "~700-1000",
+      "estimatedCommits": "4-6",
+      "subSteps": [
+        "1. FAB mic button + AcuityTabBar integration ((tabs)/_layout.tsx)",
+        "2. Goals tab LIFE_AREAS + STATUS_STYLES constants ((tabs)/goals.tsx)",
+        "3. Insights MOOD_COLORS + LifeMapRadar gradientColors pass-through (insights.tsx + life-map-radar.tsx)",
+        "4. Profile screen + Avatar primitive extraction (profile.tsx + new Avatar.tsx)",
+        "5. Auth screens (sign-in, sign-up, forgot-password)",
+        "6. Theme Map sub-components — visual only, not orbital rebuild (theme-map/*)",
+        "7. Modal + detail screen sweep (delete-account-modal, task/[id], goal/[id], dimension/[key], paywall, subscribe)"
+      ],
+      "sequencingNotes": "Foundation for all subsequent phases — reduces drift risk in D/E"
+    },
+    {
+      "id": "PhaseB",
+      "title": "Extract review default-OFF behavior fix",
+      "type": "behavior-fix",
+      "complexity": "LOW",
+      "risk": "MEDIUM",
+      "estimatedFiles": 1,
+      "estimatedLineChanges": "~2",
+      "files": ["apps/mobile/components/extraction-review.tsx"],
+      "specReference": "_design/design_handoff_acuity_v2/screen-extract.jsx",
+      "specCopy": "Check what feels right. Everything is off by default — keep only what you want to follow.",
+      "currentBehavior": "setTasks((res.tasks ?? []).map((t) => ({ ...t, selected: true })))",
+      "specBehavior": "selected: false for all",
+      "uxImplication": "Inverts current user expectation — communicate to support/onboarding/sales"
+    },
+    {
+      "id": "PhaseC",
+      "title": "Onboarding Life Matrix 12-axis baseline step",
+      "type": "per-screen-rebuild",
+      "complexity": "MEDIUM-HIGH",
+      "risk": "MEDIUM",
+      "estimatedFiles": "2-3 new + 1 modified",
+      "estimatedLineChanges": "250-400",
+      "openProductQuestions": [
+        "Replace step-7 (top-3 picker) entirely or coexist?",
+        "Payload shape: extend lifeAreaPriorities to carry score-per-axis or add new field?"
+      ],
+      "sequencingNotes": "Must follow Phase D (12-axis data settled) and Phase A (clean visual chrome)"
+    },
+    {
+      "id": "PhaseD",
+      "title": "Life Matrix 12-axis expansion — shared constant + extraction pipeline + radar",
+      "type": "cross-stack-rebuild",
+      "complexity": "HIGH",
+      "risk": "HIGH",
+      "estimatedFiles": "~10 across shared/web/mobile",
+      "fileTouchPoints": [
+        "packages/shared/src/constants.ts (DEFAULT_LIFE_AREAS expansion)",
+        "apps/web/src/lib/pipeline.ts (extraction prompts)",
+        "apps/web/src/lib/memory.ts (life area updates)",
+        "apps/web/src/inngest/functions/process-entry.ts (possibly)",
+        "apps/mobile/components/life-map-radar.tsx (12-axis render verification)",
+        "apps/mobile/app/(tabs)/insights.tsx (caller)",
+        "DB backfill for existing LifeMapArea rows (new areas per user)"
+      ],
+      "criticalRisk": "Live build-42 binary may read 6-axis data; if extraction starts producing 12-axis output, build-42 mis-renders or drops axes. Need wire-compatible expansion (keep original 6 as enum subset).",
+      "sequencingNotes": "Hardest item; unblocks Phase E (planet hues) and Phase C (axes settled)"
+    },
+    {
+      "id": "PhaseE",
+      "title": "Theme Map orbital cosmos rebuild",
+      "type": "per-screen-rebuild",
+      "complexity": "HIGH",
+      "risk": "LOW-MEDIUM",
+      "estimatedFiles": "1 main rewrite + ~4 new sub-components",
+      "estimatedLineChanges": "400-600",
+      "files": [
+        "apps/mobile/app/insights/theme-map.tsx (rewrite)",
+        "+ planet, orbital-ring, insight-callout, cosmos-bg sub-components"
+      ],
+      "specReference": "_design/design_handoff_acuity_v2/screen-thememap.jsx",
+      "specElements": [
+        "9 planets across 4 concentric ring guides (62/108/152/188px radii)",
+        "cosmos background gradient (cosmosGrad token)",
+        "70 stars overlay",
+        "YOU pip with gradient halo + dashed connector lines",
+        "6.0s solar-system entrance animation (easeOutCubic, stagger 300ms per ring, first focus per session only)",
+        "glass-blur insight callout"
+      ],
+      "sequencingNotes": "Last phase; isolated to one new screen file. Run after Phase D for canonical hue palette."
+    }
+  ],
+  "phaseSummary": {
+    "totalPhases": 5,
+    "suggestedOrder": ["PhaseA", "PhaseB", "PhaseD", "PhaseC", "PhaseE"],
+    "rationale": "A (foundation, lowest risk first), B (small, isolated), D (unblocks C+E), C (depends on D), E (last, leverages clean tokens + canonical hues)"
+  },
+  "openProductQuestions": [
+    {
+      "id": "Q1",
+      "phase": "PhaseB",
+      "question": "Confirm extract-review checkbox default OFF is the intended UX direction? Current users have built muscle memory around default ON (tap to deselect)."
+    },
+    {
+      "id": "Q2",
+      "phase": "PhaseC",
+      "question": "Does the new 12-axis baseline step REPLACE step-7 (top-3 ranking picker) or coexist? Spec frames it as 'step 3 of 8' suggesting replacement."
+    },
+    {
+      "id": "Q3",
+      "phase": "PhaseD",
+      "question": "Does the live build-42 binary need backward-compatible 6-axis subset? If so, the 12 axes must include the original 6 as a stable enum subset."
+    }
+  ]
+}
