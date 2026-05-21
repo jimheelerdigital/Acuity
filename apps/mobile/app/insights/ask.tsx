@@ -8,12 +8,11 @@ import { useTheme } from "@/contexts/theme-context";
 
 export default function AskPastSelfScreen() {
   const router = useRouter();
-  const { resolved } = useTheme();
-  const isDark = resolved === "dark";
+  const { tokens } = useTheme();
   return (
     <SafeAreaView
       edges={["top"]}
-      style={{ flex: 1, backgroundColor: isDark ? "#0B0B12" : "#FFFFFF" }}
+      style={{ flex: 1, backgroundColor: tokens.bg }}
     >
       <StickyBackButton onPress={() => router.back()} />
       <View
@@ -24,13 +23,17 @@ export default function AskPastSelfScreen() {
           paddingHorizontal: 32,
         }}
       >
+        {/* "Ask" surface is secondary-tinted to differentiate it from
+            the primary-tinted Theme Map and Life Matrix cards on the
+            parent Insights tab. Same convention as Q11c-2's
+            Ask-your-past-self CTA card. */}
         <Text
           style={{
             fontSize: 12,
             fontWeight: "600",
             textTransform: "uppercase",
             letterSpacing: 2,
-            color: "#818CF8",
+            color: tokens.secondary,
             marginBottom: 12,
           }}
         >
@@ -42,7 +45,7 @@ export default function AskPastSelfScreen() {
             fontWeight: "700",
             textAlign: "center",
             marginBottom: 12,
-            color: isDark ? "#FAFAFA" : "#18181B",
+            color: tokens.text,
           }}
         >
           Ask Your Past Self
@@ -52,7 +55,7 @@ export default function AskPastSelfScreen() {
             fontSize: 16,
             lineHeight: 24,
             textAlign: "center",
-            color: isDark ? "#A1A1AA" : "#71717A",
+            color: tokens.textSec,
             marginBottom: 24,
           }}
         >
@@ -68,7 +71,7 @@ export default function AskPastSelfScreen() {
             paddingHorizontal: 24,
             paddingVertical: 12,
             borderRadius: 999,
-            backgroundColor: "#7C3AED",
+            backgroundColor: tokens.primary,
           }}
         >
           <Text

@@ -8,12 +8,11 @@ import { useTheme } from "@/contexts/theme-context";
 
 export default function StateOfMeScreen() {
   const router = useRouter();
-  const { resolved } = useTheme();
-  const isDark = resolved === "dark";
+  const { tokens } = useTheme();
   return (
     <SafeAreaView
       edges={["top"]}
-      style={{ flex: 1, backgroundColor: isDark ? "#0B0B12" : "#FFFFFF" }}
+      style={{ flex: 1, backgroundColor: tokens.bg }}
     >
       <StickyBackButton onPress={() => router.back()} />
       <View
@@ -24,6 +23,10 @@ export default function StateOfMeScreen() {
           paddingHorizontal: 32,
         }}
       >
+        {/* "Quarterly" eyebrow stays warning-amber — deliberate
+            non-palette accent (same exception convention as ON_HOLD
+            goals, Q11c-2 State of Me Insights card, Q11c-3 task due
+            dates, Q11c-4 PARTIAL entry badge, Q8 confetti). */}
         <Text
           style={{
             fontSize: 12,
@@ -42,7 +45,7 @@ export default function StateOfMeScreen() {
             fontWeight: "700",
             textAlign: "center",
             marginBottom: 12,
-            color: isDark ? "#FAFAFA" : "#18181B",
+            color: tokens.text,
           }}
         >
           State of Me
@@ -52,7 +55,7 @@ export default function StateOfMeScreen() {
             fontSize: 16,
             lineHeight: 24,
             textAlign: "center",
-            color: isDark ? "#A1A1AA" : "#71717A",
+            color: tokens.textSec,
             marginBottom: 24,
           }}
         >
@@ -71,7 +74,7 @@ export default function StateOfMeScreen() {
             paddingHorizontal: 24,
             paddingVertical: 12,
             borderRadius: 999,
-            backgroundColor: "#7C3AED",
+            backgroundColor: tokens.primary,
           }}
         >
           <Text

@@ -10,7 +10,9 @@ import { AreaChart } from "@/components/theme-detail/AreaChart";
 import { InsightCard } from "@/components/theme-detail/InsightCard";
 import { MentionCard } from "@/components/theme-detail/MentionCard";
 import { RelatedChips } from "@/components/theme-detail/RelatedChips";
+import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
+import { sentimentBandColor } from "@/lib/tone-colors";
 
 type SentimentBand = "positive" | "neutral" | "challenging";
 
@@ -40,11 +42,9 @@ type ThemeDetail = {
   aiInsight: string | null;
 };
 
-const SENTIMENT_COLOR: Record<SentimentBand, string> = {
-  positive: "#34D399",
-  challenging: "#F87171",
-  neutral: "#A78BFA",
-};
+// Q11d-4: SENTIMENT_COLOR table replaced by sentimentBandColor from
+// lib/tone-colors.ts. Hardcoded mint/red/violet hex collapsed to
+// palette tokens.good / tokens.bad / tokens.primary at render time.
 
 const SENTIMENT_LABEL: Record<SentimentBand, string> = {
   positive: "Positive",
@@ -55,6 +55,7 @@ const SENTIMENT_LABEL: Record<SentimentBand, string> = {
 export default function ThemeDetailScreen() {
   const { themeId } = useLocalSearchParams<{ themeId: string }>();
   const router = useRouter();
+  const { tokens } = useTheme();
   const [data, setData] = useState<ThemeDetail | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -78,12 +79,12 @@ export default function ThemeDetailScreen() {
         edges={["top"]}
         style={{
           flex: 1,
-          backgroundColor: "#0B0B12",
+          backgroundColor: tokens.bg,
           alignItems: "center",
           justifyContent: "center",
         }}
       >
-        <ActivityIndicator color="#7C3AED" />
+        <ActivityIndicator color={tokens.primary} />
       </SafeAreaView>
     );
   }
@@ -94,24 +95,24 @@ export default function ThemeDetailScreen() {
         edges={["top"]}
         style={{
           flex: 1,
-          backgroundColor: "#0B0B12",
+          backgroundColor: tokens.bg,
           alignItems: "center",
           justifyContent: "center",
           padding: 24,
         }}
       >
-        <Text style={{ color: "rgba(161,161,170,0.8)" }}>Theme not found.</Text>
+        <Text style={{ color: tokens.textSec }}>Theme not found.</Text>
       </SafeAreaView>
     );
   }
 
   const { theme, trend, mentions, relatedThemes, aiInsight } = data;
-  const color = SENTIMENT_COLOR[theme.sentimentBand];
+  const color = sentimentBandColor(theme.sentimentBand, tokens);
 
   return (
     <SafeAreaView
       edges={["top"]}
-      style={{ flex: 1, backgroundColor: "#0B0B12" }}
+      style={{ flex: 1, backgroundColor: tokens.bg }}
     >
       <StickyBackButton onPress={() => router.back()} />
       <ScrollView contentContainerStyle={{ paddingBottom: 48, paddingTop: 56 }}>
@@ -144,7 +145,7 @@ export default function ThemeDetailScreen() {
                 fontWeight: "700",
                 letterSpacing: 1.4,
                 textTransform: "uppercase",
-                color: "rgba(161,161,170,0.75)",
+                color: tokens.textSec,
               }}
             >
               {SENTIMENT_LABEL[theme.sentimentBand]} · {theme.mentionCount}{" "}
@@ -157,7 +158,7 @@ export default function ThemeDetailScreen() {
               fontWeight: "700",
               letterSpacing: -0.8,
               lineHeight: 38,
-              color: "#FAFAFA",
+              color: tokens.text,
             }}
           >
             {sentenceCase(theme.name)}
@@ -166,7 +167,7 @@ export default function ThemeDetailScreen() {
             style={{
               marginTop: 8,
               fontSize: 12,
-              color: "rgba(161,161,170,0.7)",
+              color: tokens.textTer,
             }}
           >
             First seen {formatRelativeDate(theme.firstMentionedAt)} · last{" "}
@@ -182,7 +183,7 @@ export default function ThemeDetailScreen() {
                 fontWeight: "700",
                 letterSpacing: 1.4,
                 textTransform: "uppercase",
-                color: "rgba(161,161,170,0.6)",
+                color: tokens.textTer,
                 marginBottom: 12,
               }}
             >
@@ -210,7 +211,7 @@ export default function ThemeDetailScreen() {
               fontWeight: "700",
               letterSpacing: 1.4,
               textTransform: "uppercase",
-              color: "rgba(161,161,170,0.6)",
+              color: tokens.textTer,
               marginBottom: 12,
             }}
           >
@@ -220,7 +221,7 @@ export default function ThemeDetailScreen() {
 
         {mentions.length === 0 ? (
           <View style={{ paddingHorizontal: 20 }}>
-            <Text style={{ fontSize: 13, color: "rgba(161,161,170,0.75)" }}>
+            <Text style={{ fontSize: 13, color: tokens.textSec }}>
               No mentions yet.
             </Text>
           </View>
@@ -247,7 +248,7 @@ export default function ThemeDetailScreen() {
                   fontWeight: "700",
                   letterSpacing: 1.4,
                   textTransform: "uppercase",
-                  color: "rgba(161,161,170,0.6)",
+                  color: tokens.textTer,
                 }}
               >
                 Often appears alongside

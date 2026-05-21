@@ -41,6 +41,42 @@ export function toneColor(tone: StatusTone, tokens: AcuityTokens): string {
 }
 
 /**
+ * Resolves a theme sentiment band to a palette-aware color.
+ *
+ * Mapping (sentimentBand → color):
+ *   positive    → tokens.good (mint)
+ *   challenging → tokens.bad (red ember)
+ *   neutral     → tokens.primary (palette accent — preserves the
+ *                 original "active but not emotionally charged"
+ *                 intent that the violet hardcode used to carry)
+ *
+ * Lifted from apps/mobile/app/insights/theme/[themeId].tsx
+ * (Q11 Phase D.4, 2026-05-21). The previous hardcoded SENTIMENT_COLOR
+ * table had positive=#34D399 mint, challenging=#F87171 red,
+ * neutral=#A78BFA violet — palette-tokenization preserves the
+ * semantic intent (positive/negative/neither) while letting the
+ * actual hex flip on palette change.
+ *
+ * Other theme-map components (components/theme-map/*) use the same
+ * SentimentTone enum and can adopt this helper in a future cleanup
+ * pass; doing so is out of Q11d scope.
+ */
+export function sentimentBandColor(
+  band: "positive" | "challenging" | "neutral" | string | null | undefined,
+  tokens: AcuityTokens
+): string {
+  switch (band) {
+    case "positive":
+      return tokens.good;
+    case "challenging":
+      return tokens.bad;
+    case "neutral":
+    default:
+      return tokens.primary;
+  }
+}
+
+/**
  * Resolves a goal status enum to a palette-aware color.
  *
  * Mapping (status → tone):

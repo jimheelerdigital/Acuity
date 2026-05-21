@@ -16,6 +16,7 @@ import { StickyBackButton } from "@/components/back-button";
 import { ProLockedCard } from "@/components/pro-locked-card";
 import { LockedState } from "@/components/theme-map/LockedState";
 import { useAuth } from "@/contexts/auth-context";
+import { useTheme } from "@/contexts/theme-context";
 import {
   ThemeMapDashboard,
   type DashboardTheme,
@@ -76,6 +77,7 @@ const UNLOCK_THRESHOLD = 10;
 export default function ThemeMapScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const { tokens } = useTheme();
   const isProLocked = isFreeTierUser(user);
   const [window_, setWindow] = useState<TimeWindow>("month");
   const [data, setData] = useState<ApiResponse | null>(null);
@@ -137,23 +139,31 @@ export default function ThemeMapScreen() {
       <SafeAreaView
         style={{
           flex: 1,
-          backgroundColor: "#0B0B12",
+          backgroundColor: tokens.bg,
           alignItems: "center",
           justifyContent: "center",
         }}
         edges={["top"]}
       >
-        <ActivityIndicator color="#7C3AED" />
+        <ActivityIndicator color={tokens.primary} />
       </SafeAreaView>
     );
   }
 
+  // Q11d-4: token sweep on the existing list/dashboard Theme Map.
+  // Structural orbital cosmos rebuild (9 planets, 4 ring guides, 70
+  // stars, 6.0s entrance) is Q11 Phase E — separate slice. This
+  // commit only changes color tokens on the current dashboard.
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0B0B12" }} edges={["top"]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: tokens.bg }} edges={["top"]}>
       <StickyBackButton onPress={() => router.back()} accessibilityLabel="Back to Insights" />
       <ScrollView
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#7C3AED" />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={tokens.primary}
+          />
         }
         contentContainerStyle={{ paddingBottom: 40, paddingTop: 56 }}
       >
@@ -163,7 +173,7 @@ export default function ThemeMapScreen() {
               fontSize: 12,
               letterSpacing: 2.8,
               fontWeight: "700",
-              color: "#FCA85A",
+              color: tokens.primary,
               textTransform: "uppercase",
               marginBottom: 10,
             }}
@@ -176,7 +186,7 @@ export default function ThemeMapScreen() {
               fontWeight: "500",
               letterSpacing: -0.4,
               lineHeight: 36,
-              color: "#FAFAFA",
+              color: tokens.text,
               marginBottom: 8,
             }}
           >
@@ -185,7 +195,7 @@ export default function ThemeMapScreen() {
           <Text
             style={{
               fontSize: 18,
-              color: "rgba(168,168,180,0.75)",
+              color: tokens.textSec,
             }}
           >
             Your recurring patterns, surfaced.
@@ -194,7 +204,7 @@ export default function ThemeMapScreen() {
 
         {error && (
           <View style={{ padding: 40, alignItems: "center" }}>
-            <Text style={{ color: "rgba(168,168,180,0.8)" }}>{error}</Text>
+            <Text style={{ color: tokens.textSec }}>{error}</Text>
           </View>
         )}
 
@@ -226,7 +236,13 @@ export default function ThemeMapScreen() {
               />
             ) : (
               <View style={{ marginHorizontal: 20, marginVertical: 40, alignItems: "center" }}>
-                <Text style={{ fontSize: 13, textAlign: "center", color: "rgba(168,168,180,0.75)" }}>
+                <Text
+                  style={{
+                    fontSize: 13,
+                    textAlign: "center",
+                    color: tokens.textSec,
+                  }}
+                >
                   Not enough theme variety yet — record a few more sessions to see your patterns surface.
                 </Text>
               </View>
