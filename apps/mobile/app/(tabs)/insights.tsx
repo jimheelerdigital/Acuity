@@ -37,6 +37,7 @@ import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
 import { getCached, isStale, setCached } from "@/lib/cache";
 import { isFreeTierUser } from "@/lib/free-tier";
+import { moodToneColor } from "@/lib/mood-tones";
 import { fetchUserProgression } from "@/lib/userProgression";
 
 const INSIGHTS_ENTRIES_KEY = "/api/entries";
@@ -94,13 +95,11 @@ type MemoryData = {
   recurringGoals: any[];
 };
 
-const MOOD_COLORS: Record<string, string> = {
-  GREAT: "#22C55E",
-  GOOD: "#86EFAC",
-  NEUTRAL: "#71717A",
-  LOW: "#FBBF24",
-  ROUGH: "#EF4444",
-};
+// Q11 Phase C.2 (2026-05-21): hardcoded MOOD_COLORS hex table moved
+// to @/lib/mood-tones.ts as moodToneColor(mood, tokens). The new
+// helper resolves to tokens.good / tokens.bad / amber / tokens.textTer
+// at render time so mood accents re-skin with the active palette.
+// See lib/mood-tones.ts for the mood→tone mapping rationale.
 
 export default function InsightsTab() {
   const router = useRouter();
@@ -256,18 +255,20 @@ export default function InsightsTab() {
   if (loading) {
     return (
       <SafeAreaView
-        className="flex-1 bg-[#FAFAF7] dark:bg-[#0B0B12] items-center justify-center"
+        className="flex-1 items-center justify-center"
         edges={["top"]}
+        style={{ backgroundColor: tokens.bg }}
       >
-        <ActivityIndicator color="#7C3AED" />
+        <ActivityIndicator color={tokens.primary} />
       </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView
-      className="flex-1 bg-[#FAFAF7] dark:bg-[#0B0B12]"
+      className="flex-1"
       edges={["top"]}
+      style={{ backgroundColor: tokens.bg }}
     >
       <ScrollView
         contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
@@ -275,21 +276,25 @@ export default function InsightsTab() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#7C3AED"
+            tintColor={tokens.primary}
           />
         }
       >
         {/* Header */}
         <View className="mb-6">
           <Text
-            className="text-4xl font-bold text-zinc-900 dark:text-zinc-50"
+            className="text-4xl font-bold"
+            style={{ color: tokens.text }}
             numberOfLines={1}
             adjustsFontSizeToFit
             minimumFontScale={0.75}
           >
             Insights
           </Text>
-          <Text className="text-base text-zinc-500 dark:text-zinc-400 mt-1">
+          <Text
+            className="text-base mt-1"
+            style={{ color: tokens.textSec }}
+          >
             Your life, decoded.
           </Text>
         </View>
@@ -309,9 +314,18 @@ export default function InsightsTab() {
             />
           </View>
         ) : areas.length > 0 ? (
-          <View className="mb-6 rounded-2xl border border-zinc-200 bg-white p-4 dark:border-white/10 dark:bg-[#1E1E2E]">
+          <View
+            className="mb-6 rounded-2xl border p-4"
+            style={{
+              borderColor: tokens.line,
+              backgroundColor: tokens.cardBg,
+            }}
+          >
             <View className="flex-row items-center justify-between mb-3">
-              <Text className="text-xs font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
+              <Text
+                className="text-xs font-semibold uppercase tracking-wider"
+                style={{ color: tokens.textTer }}
+              >
                 Life Matrix
               </Text>
               {/* Q7 — SegmentedTabs swap. "Trend" only appears when
@@ -343,7 +357,7 @@ export default function InsightsTab() {
                 size={320}
                 labelColor={tokens.textTer}
                 scoreColor={tokens.textQuiet}
-                gridColor={isDark ? "#ffffff14" : "#0000000f"}
+                gridColor={tokens.line}
                 centerLabelColor={tokens.text}
                 selectedAreaKey={expandedArea}
                 onAreaPress={(key) =>
@@ -358,7 +372,10 @@ export default function InsightsTab() {
               />
             </Animated.View>
             {view === "trend" && trend?.hasEnoughHistory && (
-              <Text className="mt-2 text-xs text-zinc-400 dark:text-zinc-500 text-center">
+              <Text
+                className="mt-2 text-xs text-center"
+                style={{ color: tokens.textTer }}
+              >
                 Dashed line = ~4 weeks ago
               </Text>
             )}
@@ -368,12 +385,18 @@ export default function InsightsTab() {
             <BiggestMoves areas={areas} />
           </View>
         ) : (
-          <View className="mb-6 rounded-2xl border border-dashed border-zinc-300 dark:border-white/10 p-6 items-center">
+          <View
+            className="mb-6 rounded-2xl border border-dashed p-6 items-center"
+            style={{ borderColor: tokens.line }}
+          >
             <Text className="text-2xl mb-2">🧭</Text>
-            <Text className="text-sm text-zinc-500 dark:text-zinc-400">
+            <Text className="text-sm" style={{ color: tokens.textSec }}>
               No Life Matrix scores yet.
             </Text>
-            <Text className="text-xs text-zinc-400 dark:text-zinc-500 mt-1 text-center">
+            <Text
+              className="text-xs mt-1 text-center"
+              style={{ color: tokens.textTer }}
+            >
               Record a few sessions and your six life areas will populate here.
             </Text>
           </View>
@@ -382,7 +405,10 @@ export default function InsightsTab() {
         {/* Life Matrix area cards — 2 col grid, right below the radar */}
         {areas.length > 0 && (
           <View className="mb-8">
-            <Text className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3 dark:text-zinc-500">
+            <Text
+              className="text-xs font-semibold uppercase tracking-wider mb-3"
+              style={{ color: tokens.textTer }}
+            >
               Area detail
             </Text>
             <View className="flex-row flex-wrap gap-3">
@@ -415,41 +441,64 @@ export default function InsightsTab() {
                         router.push(`/dimension/${config.key}`);
                       }
                     }}
-                    className="rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-4"
-                    style={{ width: "48%" }}
+                    className="rounded-2xl border p-4"
+                    style={{
+                      width: "48%",
+                      borderColor: tokens.line,
+                      backgroundColor: tokens.cardBg,
+                    }}
                   >
+                    {/* Q11c.2: config.color (DEFAULT_LIFE_AREAS data
+                        color) no longer drives the per-area tint —
+                        uses tokens.primary uniformly. Same convention
+                        as Q11a-1's goals area pill + Q11c-1's group
+                        header tint. */}
                     <View
                       className="h-1 w-10 rounded-full mb-3"
-                      style={{ backgroundColor: config?.color ?? "#71717A" }}
+                      style={{ backgroundColor: tokens.primary }}
                     />
-                    <Text className="text-sm font-semibold text-zinc-900 dark:text-zinc-50 mb-1">
+                    <Text
+                      className="text-sm font-semibold mb-1"
+                      style={{ color: tokens.text }}
+                    >
                       {area.name ?? area.area}
                     </Text>
-                    <View className="h-1.5 w-full rounded-full bg-zinc-100 dark:bg-white/10 mb-2">
+                    <View
+                      className="h-1.5 w-full rounded-full mb-2"
+                      style={{ backgroundColor: tokens.bgInset }}
+                    >
                       <View
                         className="h-full rounded-full"
                         style={{
                           width: `${score100}%`,
-                          backgroundColor: config?.color ?? "#71717A",
+                          backgroundColor: tokens.primary,
                         }}
                       />
                     </View>
                     <View className="flex-row items-baseline gap-1">
-                      <Text className="text-lg font-bold text-zinc-900 dark:text-zinc-50">
+                      <Text
+                        className="text-lg font-bold"
+                        style={{ color: tokens.text }}
+                      >
                         {score100}
                       </Text>
-                      <Text className="text-xs text-zinc-400 dark:text-zinc-500">
+                      <Text
+                        className="text-xs"
+                        style={{ color: tokens.textTer }}
+                      >
                         /100
                       </Text>
                       {area.trend && (
                         <Text
-                          className={`text-xs font-medium ml-1 ${
-                            area.trend === "up"
-                              ? "text-emerald-600"
-                              : area.trend === "down"
-                                ? "text-red-500"
-                                : "text-zinc-400 dark:text-zinc-500"
-                          }`}
+                          className="text-xs font-medium ml-1"
+                          style={{
+                            color:
+                              area.trend === "up"
+                                ? tokens.good
+                                : area.trend === "down"
+                                  ? tokens.bad
+                                  : tokens.textTer,
+                          }}
                         >
                           {area.trend === "up"
                             ? "↑"
@@ -470,11 +519,17 @@ export default function InsightsTab() {
         {timelineEntries.length >= 3 ? (
           <View className="mb-8">
             <View className="flex-row items-center justify-between mb-3">
-              <Text className="text-xs font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
+              <Text
+                className="text-xs font-semibold uppercase tracking-wider"
+                style={{ color: tokens.textTer }}
+              >
                 Recent activity
               </Text>
               <Pressable onPress={() => router.push("/(tabs)/entries")}>
-                <Text className="text-xs text-violet-600 dark:text-violet-400">
+                <Text
+                  className="text-xs"
+                  style={{ color: tokens.primary }}
+                >
                   View all →
                 </Text>
               </Pressable>
@@ -504,26 +559,37 @@ export default function InsightsTab() {
                   <Pressable
                     key={entry.id}
                     onPress={() => router.push(`/entry/${entry.id}`)}
-                    className="w-56 rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-3"
+                    className="w-56 rounded-2xl border p-3"
+                    style={{
+                      borderColor: tokens.line,
+                      backgroundColor: tokens.cardBg,
+                    }}
                   >
                     <View className="flex-row items-center gap-2 mb-2">
                       <MoodIcon
                         mood={entry.mood ?? "NEUTRAL"}
                         size={16}
-                        color="#A1A1AA"
+                        color={tokens.textTer}
                       />
                       <View className="flex-1">
-                        <Text className="text-xs font-semibold text-zinc-600 dark:text-zinc-300">
+                        <Text
+                          className="text-xs font-semibold"
+                          style={{ color: tokens.textSec }}
+                        >
                           {day}
                         </Text>
-                        <Text className="text-[10px] text-zinc-400 dark:text-zinc-500">
+                        <Text
+                          className="text-[10px]"
+                          style={{ color: tokens.textTer }}
+                        >
                           {time}
                         </Text>
                       </View>
                     </View>
                     <Text
-                      className="text-xs text-zinc-600 dark:text-zinc-300 leading-snug"
+                      className="text-xs leading-snug"
                       numberOfLines={4}
+                      style={{ color: tokens.textSec }}
                     >
                       {summary || "No summary available."}
                     </Text>
@@ -550,21 +616,34 @@ export default function InsightsTab() {
         ) : (
           <Pressable
             onPress={() => router.push("/insights/theme-map")}
-            className="mb-4 rounded-2xl border border-violet-900/30 bg-violet-950/10 p-4"
+            className="mb-4 rounded-2xl border p-4"
+            style={{
+              borderColor: `${tokens.primary}55`,
+              backgroundColor: `${tokens.primary}14`,
+            }}
           >
             <View className="flex-row items-center justify-between">
               <View className="flex-1 pr-3">
-                <Text className="text-[11px] font-semibold uppercase tracking-widest text-violet-400">
+                <Text
+                  className="text-[11px] font-semibold uppercase tracking-widest"
+                  style={{ color: tokens.primary }}
+                >
                   Explore
                 </Text>
-                <Text className="mt-1 text-base font-semibold text-zinc-900 dark:text-zinc-50">
+                <Text
+                  className="mt-1 text-base font-semibold"
+                  style={{ color: tokens.text }}
+                >
                   Theme Map
                 </Text>
-                <Text className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                <Text
+                  className="mt-0.5 text-xs"
+                  style={{ color: tokens.textSec }}
+                >
                   The patterns your debriefs keep circling.
                 </Text>
               </View>
-              <Ionicons name="chevron-forward" size={18} color="#A78BFA" />
+              <Ionicons name="chevron-forward" size={18} color={tokens.primary} />
             </View>
           </Pressable>
         )}
@@ -572,25 +651,43 @@ export default function InsightsTab() {
         {/* ─── 4. ASK YOUR PAST SELF (web-linked from mobile) ────── */}
         <Pressable
           onPress={() => router.push("/insights/ask" as never)}
-          className="mb-4 rounded-2xl border border-indigo-900/30 bg-indigo-950/10 p-4"
+          className="mb-4 rounded-2xl border p-4"
+          style={{
+            borderColor: `${tokens.secondary}55`,
+            backgroundColor: `${tokens.secondary}14`,
+          }}
         >
           <View className="flex-row items-center justify-between">
             <View className="flex-1 pr-3">
-              <Text className="text-[11px] font-semibold uppercase tracking-widest text-indigo-400">
+              <Text
+                className="text-[11px] font-semibold uppercase tracking-widest"
+                style={{ color: tokens.secondary }}
+              >
                 Ask
               </Text>
-              <Text className="mt-1 text-base font-semibold text-zinc-900 dark:text-zinc-50">
+              <Text
+                className="mt-1 text-base font-semibold"
+                style={{ color: tokens.text }}
+              >
                 Ask your past self
               </Text>
-              <Text className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+              <Text
+                className="mt-0.5 text-xs"
+                style={{ color: tokens.textSec }}
+              >
                 Natural-language questions across your own journal history.
               </Text>
             </View>
-            <Ionicons name="chevron-forward" size={18} color="#818CF8" />
+            <Ionicons name="chevron-forward" size={18} color={tokens.secondary} />
           </View>
         </Pressable>
 
         {/* ─── 5. STATE OF ME ──────────────────────────────────────── */}
+        {/* Q11c.2: amber border/bg/eyebrow/chevron kept hardcoded —
+            "Quarterly" eyebrow uses warning-amber as a deliberate
+            non-palette accent (same convention as ON_HOLD goals,
+            confetti, auth dev warning). Surrounds it as a distinct
+            visual cue from the primary-tinted Theme Map card above. */}
         <Pressable
           onPress={() => router.push("/insights/state-of-me" as never)}
           className="mb-6 rounded-2xl border border-amber-900/30 bg-amber-950/10 p-4"
@@ -600,10 +697,16 @@ export default function InsightsTab() {
               <Text className="text-[11px] font-semibold uppercase tracking-widest text-amber-400">
                 Quarterly
               </Text>
-              <Text className="mt-1 text-base font-semibold text-zinc-900 dark:text-zinc-50">
+              <Text
+                className="mt-1 text-base font-semibold"
+                style={{ color: tokens.text }}
+              >
                 State of Me
               </Text>
-              <Text className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+              <Text
+                className="mt-0.5 text-xs"
+                style={{ color: tokens.textSec }}
+              >
                 Every 90 days — a long-form read across the quarter.
               </Text>
             </View>
@@ -613,7 +716,10 @@ export default function InsightsTab() {
 
         {/* ─── 6. WEEKLY REPORT ────────────────────────────────────── */}
         <View className="mb-6">
-          <Text className="text-xs font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-3">
+          <Text
+            className="text-xs font-semibold uppercase tracking-wider mb-3"
+            style={{ color: tokens.textTer }}
+          >
             Weekly report
           </Text>
           {progression && !progression.unlocked.weeklyReport ? (
@@ -626,28 +732,47 @@ export default function InsightsTab() {
           <Pressable
             onPress={generateReport}
             disabled={generating}
-            className="rounded-2xl bg-zinc-900 dark:bg-violet-600 py-3 items-center mb-3"
+            className="rounded-2xl py-3 items-center mb-3"
             style={{
+              backgroundColor: tokens.primary,
               opacity: generating ? 0.7 : 1,
             }}
           >
             {generating ? (
               <View className="flex-row items-center gap-2">
-                <ActivityIndicator size="small" color="#fff" />
-                <Text className="text-sm font-semibold text-white">
+                <ActivityIndicator size="small" color="#FFFFFF" />
+                <Text
+                  className="text-sm font-semibold"
+                  style={{ color: "#FFFFFF" }}
+                >
                   Generating…
                 </Text>
               </View>
             ) : (
-              <Text className="text-sm font-semibold text-white">
+              <Text
+                className="text-sm font-semibold"
+                style={{ color: "#FFFFFF" }}
+              >
                 Generate weekly report
               </Text>
             )}
           </Pressable>
           {latestReport ? (
-            <View className="rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] overflow-hidden">
-              <View className="px-4 py-3 border-b border-zinc-100 dark:border-white/5">
-                <Text className="text-xs text-zinc-400 dark:text-zinc-500">
+            <View
+              className="rounded-2xl border overflow-hidden"
+              style={{
+                borderColor: tokens.line,
+                backgroundColor: tokens.cardBg,
+              }}
+            >
+              <View
+                className="px-4 py-3 border-b"
+                style={{ borderColor: tokens.line }}
+              >
+                <Text
+                  className="text-xs"
+                  style={{ color: tokens.textTer }}
+                >
                   {new Date(latestReport.weekStart).toLocaleDateString(
                     "en-US",
                     { month: "short", day: "numeric" }
@@ -658,28 +783,48 @@ export default function InsightsTab() {
                     day: "numeric",
                   })}
                 </Text>
-                <Text className="text-xs text-zinc-400 dark:text-zinc-500 mt-0.5">
+                <Text
+                  className="text-xs mt-0.5"
+                  style={{ color: tokens.textTer }}
+                >
                   {latestReport.entryCount} entries ·{" "}
                   {latestReport.tasksOpened} tasks · {latestReport.tasksClosed}{" "}
                   closed
                 </Text>
               </View>
               {latestReport.narrative && (
-                <View className="px-4 py-3 border-b border-zinc-100 dark:border-white/5">
-                  <Text className="text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed">
+                <View
+                  className="px-4 py-3 border-b"
+                  style={{ borderColor: tokens.line }}
+                >
+                  <Text
+                    className="text-sm leading-relaxed"
+                    style={{ color: tokens.textSec }}
+                  >
                     {latestReport.narrative}
                   </Text>
                 </View>
               )}
               {latestReport.insightBullets.length > 0 && (
                 <View className="px-4 py-3">
-                  <Text className="text-xs font-semibold text-violet-600 mb-2">
+                  <Text
+                    className="text-xs font-semibold mb-2"
+                    style={{ color: tokens.primary }}
+                  >
                     Insights
                   </Text>
                   {latestReport.insightBullets.map((bullet, i) => (
                     <View key={i} className="flex-row gap-2 mb-1.5">
-                      <Text className="text-violet-500 text-sm">-</Text>
-                      <Text className="text-sm text-zinc-600 dark:text-zinc-300 flex-1">
+                      <Text
+                        className="text-sm"
+                        style={{ color: tokens.primary }}
+                      >
+                        -
+                      </Text>
+                      <Text
+                        className="text-sm flex-1"
+                        style={{ color: tokens.textSec }}
+                      >
                         {bullet}
                       </Text>
                     </View>
@@ -688,12 +833,21 @@ export default function InsightsTab() {
               )}
             </View>
           ) : (
-            <View className="rounded-2xl border border-dashed border-zinc-300 dark:border-white/10 p-6 items-center">
-              <Ionicons name="bulb-outline" size={32} color="#A1A1AA" />
-              <Text className="text-sm font-medium text-zinc-500 dark:text-zinc-400 mt-2">
+            <View
+              className="rounded-2xl border border-dashed p-6 items-center"
+              style={{ borderColor: tokens.line }}
+            >
+              <Ionicons name="bulb-outline" size={32} color={tokens.textTer} />
+              <Text
+                className="text-sm font-medium mt-2"
+                style={{ color: tokens.textSec }}
+              >
                 No weekly report yet
               </Text>
-              <Text className="text-xs text-zinc-400 dark:text-zinc-500 mt-1 text-center px-4">
+              <Text
+                className="text-xs mt-1 text-center px-4"
+                style={{ color: tokens.textTer }}
+              >
                 Record 3+ sessions, then generate.
               </Text>
             </View>
@@ -705,16 +859,23 @@ export default function InsightsTab() {
         {/* ─── 7. METRICS — collapsible at the bottom ─────────────── */}
         <Pressable
           onPress={() => setMetricsOpen((open) => !open)}
-          className="mb-3 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-4 py-3"
+          className="mb-3 rounded-xl border px-4 py-3"
+          style={{
+            borderColor: tokens.line,
+            backgroundColor: tokens.cardBg,
+          }}
         >
           <View className="flex-row items-center justify-between">
-            <Text className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            <Text
+              className="text-xs font-semibold uppercase tracking-wider"
+              style={{ color: tokens.textSec }}
+            >
               Metrics & observations
             </Text>
             <Ionicons
               name={metricsOpen ? "chevron-up" : "chevron-down"}
               size={16}
-              color="#A1A1AA"
+              color={tokens.textTer}
             />
           </View>
         </Pressable>
@@ -734,17 +895,24 @@ export default function InsightsTab() {
 
             {/* Mood chart — legacy 7-bar view, kept in the metrics drawer */}
             {moodEntries.length > 0 && (
-              <View className="rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-4 mb-6">
-                <Text className="text-xs font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-4">
+              <View
+                className="rounded-2xl border p-4 mb-6"
+                style={{
+                  borderColor: tokens.line,
+                  backgroundColor: tokens.cardBg,
+                }}
+              >
+                <Text
+                  className="text-xs font-semibold uppercase tracking-wider mb-4"
+                  style={{ color: tokens.textTer }}
+                >
                   Mood trend
                 </Text>
                 <View className="flex-row items-end gap-2" style={{ height: 120 }}>
                   {moodEntries.map((entry) => {
                     const score = entry.moodScore ?? 5;
                     const heightPct = (score / 10) * 100;
-                    const color =
-                      MOOD_COLORS[entry.mood ?? "NEUTRAL"] ??
-                      MOOD_COLORS.NEUTRAL;
+                    const color = moodToneColor(entry.mood, tokens);
                     const day = new Date(entry.createdAt).toLocaleDateString(
                       "en-US",
                       { weekday: "narrow" }
@@ -754,7 +922,10 @@ export default function InsightsTab() {
                         key={entry.id}
                         className="flex-1 items-center gap-1"
                       >
-                        <Text className="text-xs text-zinc-400 dark:text-zinc-500">
+                        <Text
+                          className="text-xs"
+                          style={{ color: tokens.textTer }}
+                        >
                           {score}
                         </Text>
                         <View
@@ -772,7 +943,10 @@ export default function InsightsTab() {
                             }}
                           />
                         </View>
-                        <Text className="text-xs text-zinc-400 dark:text-zinc-500">
+                        <Text
+                          className="text-xs"
+                          style={{ color: tokens.textTer }}
+                        >
                           {day}
                         </Text>
                       </View>
@@ -784,7 +958,10 @@ export default function InsightsTab() {
 
             {memory && memory.totalEntries > 0 && (
               <View className="mb-6">
-                <Text className="text-xs text-zinc-400 dark:text-zinc-500">
+                <Text
+                  className="text-xs"
+                  style={{ color: tokens.textTer }}
+                >
                   {memory.totalEntries} debrief
                   {memory.totalEntries === 1 ? "" : "s"}
                   {memory.firstEntryDate &&
