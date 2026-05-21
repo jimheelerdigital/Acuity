@@ -1,9 +1,25 @@
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useEffect, useState } from "react";
-import { Alert, Pressable, Text, TextInput, View } from "react-native";
+import {
+  ActivityIndicator,
+  Alert,
+  Platform,
+  Pressable,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 
 import { PRIORITY_LABELS } from "@acuity/shared";
 
+import {
+  GlassPill,
+  GradientCheckbox,
+  GradientText,
+  HeroCard,
+} from "@/components/acuity";
+import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
 
 type ReviewTask = {
@@ -28,6 +44,14 @@ type ReviewGoal = {
  * Same data source (/api/entries/[id]/extraction), same Commit / Skip
  * actions. Renders on the entry detail screen until the user commits
  * or skips, then disappears.
+ *
+ * Q10 (2026-05-21) — visual refresh to v2 visual language:
+ * HeroCard wrapper, GlassPill stat row, GradientText section headers,
+ * GradientCheckbox per row, palette-tinted TASK/GOAL type pills,
+ * gradient CTA + mono secondary footer. Empty state renders a
+ * friendly v2 card with a Skip affordance instead of returning null.
+ * Logic untouched — the fetch, commit, and skip handlers below are
+ * byte-identical to pre-Q10.
  */
 export function ExtractionReview({
   entryId,
@@ -36,6 +60,7 @@ export function ExtractionReview({
   entryId: string;
   onCommitted?: () => void;
 }) {
+  const { tokens } = useTheme();
   const [loading, setLoading] = useState(true);
   const [tasks, setTasks] = useState<(ReviewTask & { selected: boolean })[]>([]);
   const [goals, setGoals] = useState<(ReviewGoal & { selected: boolean })[]>([]);
@@ -72,7 +97,6 @@ export function ExtractionReview({
   }, [entryId]);
 
   if (loading || hidden) return null;
-  if (tasks.length === 0 && goals.length === 0) return null;
 
   const commit = async () => {
     setSubmitting(true);
@@ -123,29 +147,138 @@ export function ExtractionReview({
 
   const selectedTasks = tasks.filter((t) => t.selected).length;
   const selectedGoals = goals.filter((g) => g.selected).length;
+  const isEmpty = tasks.length === 0 && goals.length === 0;
 
+  // ─── Empty state ─────────────────────────────────────────────────
+  // Q10 replaces the prior `return null` with a friendly card so the
+  // user gets confirmation that processing finished + a way to clear
+  // the surface. Skip persists the same `action: "skip"` payload as
+  // the populated-case Skip button below.
+  if (isEmpty) {
+    return (
+      <HeroCard variant="primary" style={{ marginBottom: 24 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <Ionicons name="sparkles-outline" size={14} color={tokens.primary} />
+          <Text
+            style={{
+              fontFamily: tokens.fontMono,
+              fontSize: 10,
+              fontWeight: "700",
+              letterSpacing: 1.4,
+              textTransform: "uppercase",
+              color: tokens.primary,
+            }}
+          >
+            Acuity reviewed your entry
+          </Text>
+        </View>
+        <Text
+          style={{
+            marginTop: 10,
+            fontFamily: tokens.fontSans,
+            fontSize: 14,
+            lineHeight: 20,
+            color: tokens.textSec,
+          }}
+        >
+          No action items in this one — pure reflection. Nothing to
+          commit.
+        </Text>
+        <View style={{ marginTop: 14, flexDirection: "row" }}>
+          <Pressable
+            disabled={submitting}
+            onPress={skip}
+            hitSlop={6}
+            style={{ paddingHorizontal: 4, paddingVertical: 6 }}
+          >
+            <Text
+              style={{
+                fontFamily: tokens.fontMono,
+                fontSize: 11,
+                fontWeight: "600",
+                letterSpacing: 1.2,
+                textTransform: "uppercase",
+                color: tokens.textSec,
+              }}
+            >
+              Dismiss
+            </Text>
+          </Pressable>
+        </View>
+      </HeroCard>
+    );
+  }
+
+  // ─── Populated review ────────────────────────────────────────────
   return (
-    <View className="mb-6 rounded-2xl border border-violet-200 dark:border-violet-900/30 bg-violet-50/60 dark:bg-violet-950/20 p-4">
-      <View className="flex-row items-center gap-2 mb-3">
-        <Ionicons name="sparkles-outline" size={14} color="#7C3AED" />
-        <Text className="text-xs font-semibold uppercase tracking-widest text-violet-700 dark:text-violet-300">
+    <HeroCard variant="primary" style={{ marginBottom: 24 }}>
+      {/* Eyebrow */}
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+        <Ionicons name="sparkles-outline" size={14} color={tokens.primary} />
+        <Text
+          style={{
+            fontFamily: tokens.fontMono,
+            fontSize: 10,
+            fontWeight: "700",
+            letterSpacing: 1.4,
+            textTransform: "uppercase",
+            color: tokens.primary,
+          }}
+        >
           Review what Acuity extracted
         </Text>
       </View>
-      <Text className="mb-4 text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed">
+
+      {/* Stat pill — item count */}
+      <View style={{ marginTop: 10, flexDirection: "row" }}>
+        <GlassPill padding={[6, 12]}>
+          <Text
+            style={{
+              fontFamily: tokens.fontMono,
+              fontSize: 11,
+              fontWeight: "600",
+              letterSpacing: 1.1,
+              color: tokens.textSec,
+            }}
+          >
+            {tasks.length} {tasks.length === 1 ? "task" : "tasks"} ·{" "}
+            {goals.length} {goals.length === 1 ? "goal" : "goals"}
+          </Text>
+        </GlassPill>
+      </View>
+
+      <Text
+        style={{
+          marginTop: 12,
+          fontFamily: tokens.fontSans,
+          fontSize: 13,
+          lineHeight: 19,
+          color: tokens.textSec,
+        }}
+      >
         Tick what to keep, then commit. Items you don&apos;t select are
         discarded.
       </Text>
 
       {tasks.length > 0 && (
-        <View className="mb-4">
-          <Text className="mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+        <View style={{ marginTop: 18 }}>
+          <GradientText
+            colors={[tokens.primaryHi, tokens.primary]}
+            style={{
+              fontFamily: tokens.fontMono,
+              fontSize: 11,
+              fontWeight: "700",
+              letterSpacing: 1.3,
+              textTransform: "uppercase",
+            }}
+          >
             Tasks Acuity extracted ({tasks.length})
-          </Text>
-          <View className="gap-2">
+          </GradientText>
+          <View style={{ marginTop: 10, gap: 8 }}>
             {tasks.map((t) => (
               <ReviewRow
                 key={t.tempId}
+                kind="task"
                 selected={t.selected}
                 onToggle={() =>
                   setTasks((prev) =>
@@ -176,14 +309,24 @@ export function ExtractionReview({
       )}
 
       {goals.length > 0 && (
-        <View className="mb-4">
-          <Text className="mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+        <View style={{ marginTop: 18 }}>
+          <GradientText
+            colors={[tokens.secondaryHi, tokens.secondary]}
+            style={{
+              fontFamily: tokens.fontMono,
+              fontSize: 11,
+              fontWeight: "700",
+              letterSpacing: 1.3,
+              textTransform: "uppercase",
+            }}
+          >
             Goals Acuity suggested ({goals.length})
-          </Text>
-          <View className="gap-2">
+          </GradientText>
+          <View style={{ marginTop: 10, gap: 8 }}>
             {goals.map((g) => (
               <ReviewRow
                 key={g.tempId}
+                kind="goal"
                 selected={g.selected}
                 onToggle={() =>
                   setGoals((prev) =>
@@ -211,30 +354,91 @@ export function ExtractionReview({
         </View>
       )}
 
-      <View className="flex-row items-center gap-3 flex-wrap">
+      {/* Footer — gradient Commit CTA + mono Skip text. */}
+      <View
+        style={{
+          marginTop: 20,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 14,
+          flexWrap: "wrap",
+        }}
+      >
         <Pressable
           disabled={submitting}
           onPress={commit}
-          className="rounded-lg bg-zinc-900 dark:bg-white px-4 py-2"
+          accessibilityRole="button"
+          style={{
+            borderRadius: 999,
+            overflow: "hidden",
+            opacity: submitting ? 0.4 : 1,
+            shadowColor: tokens.glowPrimary.color,
+            shadowOffset: { width: 0, height: 4 },
+            shadowRadius: tokens.glowPrimary.radius,
+            shadowOpacity:
+              Platform.OS === "ios" && !submitting
+                ? tokens.glowPrimary.opacity
+                : 0,
+            elevation: 4,
+          }}
         >
-          <Text className="text-sm font-semibold text-white dark:text-zinc-900">
-            Commit
-            {selectedTasks + selectedGoals > 0
-              ? ` (${selectedTasks} task${selectedTasks === 1 ? "" : "s"}, ${selectedGoals} goal${selectedGoals === 1 ? "" : "s"})`
-              : ""}
-          </Text>
+          <LinearGradient
+            colors={tokens.gradPrimary.colors}
+            locations={tokens.gradPrimary.locations}
+            start={tokens.gradPrimary.start}
+            end={tokens.gradPrimary.end}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 8,
+              paddingHorizontal: 22,
+              paddingVertical: 11,
+            }}
+          >
+            {submitting && <ActivityIndicator size="small" color="#FFFFFF" />}
+            <Text
+              style={{
+                fontFamily: tokens.fontMono,
+                fontSize: 12,
+                fontWeight: "700",
+                letterSpacing: 1.4,
+                textTransform: "uppercase",
+                color: "#ffffff",
+              }}
+            >
+              {selectedTasks + selectedGoals > 0
+                ? `Commit (${selectedTasks + selectedGoals})`
+                : "Commit"}
+            </Text>
+          </LinearGradient>
         </Pressable>
-        <Pressable disabled={submitting} onPress={skip} className="px-3 py-2">
-          <Text className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
+
+        <Pressable
+          disabled={submitting}
+          onPress={skip}
+          hitSlop={6}
+          style={{ paddingHorizontal: 4, paddingVertical: 6 }}
+        >
+          <Text
+            style={{
+              fontFamily: tokens.fontMono,
+              fontSize: 11,
+              fontWeight: "600",
+              letterSpacing: 1.2,
+              textTransform: "uppercase",
+              color: tokens.textSec,
+            }}
+          >
             Skip all
           </Text>
         </Pressable>
       </View>
-    </View>
+    </HeroCard>
   );
 }
 
 function ReviewRow({
+  kind,
   selected,
   onToggle,
   title,
@@ -243,6 +447,7 @@ function ReviewRow({
   subline,
   dimmed,
 }: {
+  kind: "task" | "goal";
   selected: boolean;
   onToggle: () => void;
   title: string;
@@ -251,49 +456,117 @@ function ReviewRow({
   subline?: string;
   dimmed?: boolean;
 }) {
+  const { tokens } = useTheme();
+  // Type-tag color: tasks tint primary, goals tint secondary.
+  const tagColor = kind === "task" ? tokens.primary : tokens.secondary;
+  const tagLabel = kind === "task" ? "Task" : "Goal";
   return (
     <View
-      className={`flex-row items-start gap-3 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-3 py-2.5 ${dimmed ? "opacity-60" : ""}`}
+      style={{
+        flexDirection: "row",
+        alignItems: "flex-start",
+        gap: 12,
+        borderRadius: tokens.radius.md,
+        borderWidth: 0.5,
+        borderColor: tokens.line,
+        backgroundColor: tokens.cardBg,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        opacity: dimmed ? 0.6 : 1,
+      }}
     >
-      <Pressable
-        onPress={onToggle}
-        hitSlop={8}
-        className={`mt-1 h-5 w-5 items-center justify-center rounded border-2 ${
-          selected
-            ? "border-violet-600 bg-violet-600"
-            : "border-zinc-300 dark:border-white/20"
-        }`}
-      >
-        {selected && <Ionicons name="checkmark" size={14} color="#fff" />}
-      </Pressable>
-      <View className="flex-1">
+      <View style={{ marginTop: 2 }}>
+        <GradientCheckbox
+          checked={selected}
+          onPress={onToggle}
+          size={20}
+          accessibilityLabel={`${selected ? "Deselect" : "Select"} ${title}`}
+        />
+      </View>
+      <View style={{ flex: 1 }}>
         <TextInput
           value={title}
           onChangeText={onTitleChange}
-          className="text-sm text-zinc-900 dark:text-zinc-50 p-0"
+          style={{
+            fontFamily: tokens.fontSans,
+            fontSize: 14,
+            color: tokens.text,
+            padding: 0,
+          }}
         />
         {subline && (
           <Text
-            className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400"
             numberOfLines={2}
+            style={{
+              marginTop: 2,
+              fontFamily: tokens.fontSans,
+              fontSize: 12,
+              color: tokens.textTer,
+            }}
           >
             {subline}
           </Text>
         )}
         {chips.length > 0 && (
-          <View className="mt-1.5 flex-row flex-wrap gap-1.5">
+          <View
+            style={{
+              marginTop: 6,
+              flexDirection: "row",
+              flexWrap: "wrap",
+              gap: 6,
+            }}
+          >
             {chips.map((c) => (
               <View
                 key={c}
-                className="rounded-full bg-zinc-100 dark:bg-white/10 px-2 py-0.5"
+                style={{
+                  borderRadius: 999,
+                  backgroundColor: tokens.bgInset,
+                  paddingHorizontal: 8,
+                  paddingVertical: 2,
+                }}
               >
-                <Text className="text-[10px] font-medium text-zinc-600 dark:text-zinc-300">
+                <Text
+                  style={{
+                    fontFamily: tokens.fontMono,
+                    fontSize: 10,
+                    fontWeight: "600",
+                    letterSpacing: 0.4,
+                    color: tokens.textSec,
+                  }}
+                >
                   {c}
                 </Text>
               </View>
             ))}
           </View>
         )}
+      </View>
+      {/* Type-tag pill — palette-tinted, palette-tinted text. */}
+      <View
+        style={{
+          borderRadius: 999,
+          borderWidth: 0.5,
+          borderColor: `${tagColor}55`,
+          backgroundColor: `${tagColor}1f`,
+          paddingHorizontal: 8,
+          paddingVertical: 3,
+          alignSelf: "flex-start",
+          marginTop: 2,
+        }}
+      >
+        <Text
+          style={{
+            fontFamily: tokens.fontMono,
+            fontSize: 9,
+            fontWeight: "700",
+            letterSpacing: 1.2,
+            textTransform: "uppercase",
+            color: tagColor,
+          }}
+        >
+          {tagLabel}
+        </Text>
       </View>
     </View>
   );
