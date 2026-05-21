@@ -41,6 +41,39 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-20] — Slice Q9 — Onboarding life-areas step visual refresh
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** 0e5d753
+
+### In plain English (for Keenan)
+
+The onboarding step where new users pick their top three life areas (Career, Health, Relationships, Finances, Personal Growth, Other) now matches the visual style of the rest of the v2 app — the same gradient-and-mono treatment Home, Recording, Insights, and the Entries/Tasks/Goals tabs already have. The numbered chips on the selected items now show the palette gradient (so Coral users see warm orange-pink, Cobalt users see blue, etc.) instead of a fixed per-area color. The progress dots at the top of the onboarding screens get the same gradient treatment, and the Continue button matches the gradient CTA pattern used on the Home dashboard. Zero functional change — same six options, still pick three, same data saved to the database. Just looks like it belongs with the rest of the app now.
+
+### Technical changes (for Jimmy)
+
+- `apps/mobile/components/onboarding/shell.tsx`: theme-aware background via `tokens.bg` (was hardcoded `#0B0B12`); progress dots use `LinearGradient(tokens.gradMix)` on filled segments and `tokens.line` on unfilled (was `bg-violet-600` / `bg-zinc-200`); "Step N of N" eyebrow uses `tokens.fontMono` uppercase; Continue button uses the TonightCTA pattern — `LinearGradient(tokens.gradPrimary)` background + `tokens.glowPrimary` shadow + mono uppercase label; Back button mono uppercase secondary.
+- `apps/mobile/components/onboarding/step-7-life-areas.tsx`: rank chips (1/2/3) replace `area.color` solid background with `LinearGradient(tokens.gradPrimary)` filling an `overflow: hidden` circle; area names use `tokens.fontMono` uppercase weight-600 (was sans semibold); selected row borders use `tokens.primary` with `tokens.cardBgTint` (was `border-violet-500 bg-violet-50/60 dark:bg-violet-950/20`); unselected row uses `tokens.line` / `tokens.cardBg`; OTHER freeform TextInput uses theme tokens for borders/bg/text.
+- Logic block (lines 48-66, the `useEffect` that builds `{ lifeAreaPriorities, lifeAreaOtherText }` from `picks`) is byte-identical to pre-Q9. The submit shape to `/api/onboarding/update` is unchanged.
+
+### Manual steps needed
+
+- [ ] Verify on iPhone 16e simulator: fresh-state onboarding completes end-to-end (Jimmy)
+- [ ] Verify all four palettes (coral, sunset, citrus, cobalt) render the rank-chip gradient correctly (Jimmy)
+- [ ] Verify light mode contrast on selected/unselected rows (Jimmy)
+- [ ] Spot-check: pick three areas, observe `/api/onboarding/update` payload in Charles/network inspector — confirm `lifeAreaPriorities` is `{ CAREER: 1, HEALTH: 2, ... }` shape with no extra fields (Jimmy)
+
+### Notes
+
+- This slice deliberately did not touch the `/api/onboarding/*` API surface, onboarding state persistence, step ordering, validation rules, or what gets saved on submit. The `git diff` on the state/effect/toggle block in step-7 shows zero functional changes (only the addition of `const { tokens } = useTheme();` — a read-only hook call).
+- The shell-level changes (progress dots, Continue/Back buttons) apply to **all** onboarding steps, not just step-7. Steps 1-6 and 8-10 will visually inherit the gradient progress + CTA treatment automatically. This is consistent with the v2 visual rollout pattern in earlier slices — shared shells get updated once.
+- Live build-42 binary on the App Store has its own pinned copy of the onboarding flow. Today's change affects only future builds. The /api/onboarding/* contract is unchanged, so even if a build-42 user somehow round-tripped through this code path (they can't — they have their own JS bundle), the payload shape would still match the server's parser.
+- Pre-existing TS noise: 196 errors in `tsc -p apps/mobile`, mostly the `LinearGradient` overload mismatch from expo-linear-gradient's type declarations not aligning with the React 19 types. My new LinearGradient usages add a few instances to the existing pile — all follow the same pattern as TonightCTA / HeroCard / weekly-insight-card. Runtime is unaffected.
+- Q9 was originally specified as a "12-axis matrix input" refresh — the design handoff (`_design/design_handoff_acuity_v2/screen-onboarding.jsx`) describes that pattern. The shipped onboarding has a top-3 ranking picker over 6 areas, not a 12-axis matrix. Read A confirmed (visual refresh of the existing picker). Building the 12-axis matrix from the design handoff is logged as a separate future slice — it's a new product feature, not a visual refresh.
+
+---
+
 ## [2026-05-20] — Fix dashboard spinner — Postgres statement_timeout on /api/user/progression
 
 **Requested by:** Jimmy
