@@ -58,8 +58,7 @@ type DimensionDetail = {
 export default function DimensionDetailScreen() {
   const router = useRouter();
   const { key } = useLocalSearchParams<{ key: string }>();
-  const { resolved } = useTheme();
-  const isDark = resolved === "dark";
+  const { tokens } = useTheme();
 
   const cacheKey = key ? dimensionKey(key) : null;
   const initialCached = cacheKey
@@ -103,13 +102,23 @@ export default function DimensionDetailScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, cacheKey]);
 
+  // Q11d-3: dimension.color (server data color from DEFAULT_LIFE_AREAS
+  // via /api/lifemap/dimension/[key]) no longer drives mobile chrome.
+  // Uses tokens.primary for the active palette accent (header dot,
+  // sparkline, "What's driving this" tint, goal progress fill,
+  // reflection prompt button). Same convention as Q11a-1, Q11c-1,
+  // Q11c-2, Q11c-3.
   return (
     <SafeAreaView
-      className="flex-1 bg-[#FAFAF7] dark:bg-[#0B0B12]"
+      className="flex-1"
       edges={["top"]}
+      style={{ backgroundColor: tokens.bg }}
     >
       {/* Header with close button */}
-      <View className="flex-row items-center justify-between px-5 pt-2 pb-3 border-b border-zinc-100 dark:border-white/5">
+      <View
+        className="flex-row items-center justify-between px-5 pt-2 pb-3 border-b"
+        style={{ borderColor: tokens.line }}
+      >
         <View className="flex-row items-center gap-2">
           {data && (
             <>
@@ -118,16 +127,22 @@ export default function DimensionDetailScreen() {
                   width: 10,
                   height: 10,
                   borderRadius: 5,
-                  backgroundColor: data.dimension.color,
+                  backgroundColor: tokens.primary,
                 }}
               />
-              <Text className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
+              <Text
+                className="text-base font-semibold"
+                style={{ color: tokens.text }}
+              >
                 {data.dimension.name}
               </Text>
             </>
           )}
           {!data && loading && (
-            <Text className="text-base font-semibold text-zinc-400 dark:text-zinc-500">
+            <Text
+              className="text-base font-semibold"
+              style={{ color: tokens.textTer }}
+            >
               Loading…
             </Text>
           )}
@@ -139,18 +154,25 @@ export default function DimensionDetailScreen() {
           accessibilityLabel="Close"
           className="rounded-full p-1.5"
         >
-          <Ionicons name="close" size={22} color={isDark ? "#A1A1AA" : "#71717A"} />
+          <Ionicons name="close" size={22} color={tokens.textTer} />
         </Pressable>
       </View>
 
       {loading ? (
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color="#7C3AED" />
+          <ActivityIndicator color={tokens.primary} />
         </View>
       ) : error ? (
         <View className="flex-1 items-center justify-center px-8">
-          <Ionicons name="alert-circle-outline" size={48} color="#A1A1AA" />
-          <Text className="text-sm text-zinc-500 dark:text-zinc-400 mt-3 text-center">
+          <Ionicons
+            name="alert-circle-outline"
+            size={48}
+            color={tokens.textTer}
+          />
+          <Text
+            className="text-sm mt-3 text-center"
+            style={{ color: tokens.textSec }}
+          >
             {error}
           </Text>
         </View>
@@ -159,20 +181,28 @@ export default function DimensionDetailScreen() {
           {/* Score hero */}
           <View className="mb-5">
             <View className="flex-row items-baseline gap-2">
-              <Text className="text-5xl font-bold text-zinc-900 dark:text-zinc-50">
+              <Text
+                className="text-5xl font-bold"
+                style={{ color: tokens.text }}
+              >
                 {data.score}
               </Text>
-              <Text className="text-base text-zinc-400 dark:text-zinc-500">
+              <Text
+                className="text-base"
+                style={{ color: tokens.textTer }}
+              >
                 /100
               </Text>
               <Text
-                className={`text-sm font-medium ml-2 ${
-                  data.change > 0
-                    ? "text-emerald-600"
-                    : data.change < 0
-                      ? "text-red-500"
-                      : "text-zinc-400 dark:text-zinc-500"
-                }`}
+                className="text-sm font-medium ml-2"
+                style={{
+                  color:
+                    data.change > 0
+                      ? tokens.good
+                      : data.change < 0
+                        ? tokens.bad
+                        : tokens.textTer,
+                }}
               >
                 {data.change > 0 ? "+" : ""}
                 {data.change} vs baseline
@@ -182,13 +212,22 @@ export default function DimensionDetailScreen() {
 
           {/* Trajectory sparkline */}
           {data.trajectory.length > 1 && (
-            <View className="mb-6 rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-4">
-              <Text className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-3">
+            <View
+              className="mb-6 rounded-2xl border p-4"
+              style={{
+                borderColor: tokens.line,
+                backgroundColor: tokens.cardBg,
+              }}
+            >
+              <Text
+                className="text-xs font-semibold uppercase tracking-wider mb-3"
+                style={{ color: tokens.textTer }}
+              >
                 Last 30 days
               </Text>
               <Sparkline
                 points={data.trajectory.map((p) => p.score)}
-                color={data.dimension.color}
+                color={tokens.primary}
               />
             </View>
           )}
@@ -196,15 +235,18 @@ export default function DimensionDetailScreen() {
           {/* What's driving this */}
           <View
             className="mb-5 rounded-2xl p-4"
-            style={{ backgroundColor: data.dimension.color + "15" }}
+            style={{ backgroundColor: `${tokens.primary}15` }}
           >
             <Text
               className="text-xs font-semibold uppercase tracking-wider mb-2"
-              style={{ color: data.dimension.color }}
+              style={{ color: tokens.primary }}
             >
               What's driving this
             </Text>
-            <Text className="text-sm leading-relaxed text-zinc-800 dark:text-zinc-100">
+            <Text
+              className="text-sm leading-relaxed"
+              style={{ color: tokens.text }}
+            >
               {data.whatsDriving}
             </Text>
           </View>
@@ -212,7 +254,10 @@ export default function DimensionDetailScreen() {
           {/* Top themes */}
           {data.topThemes.length > 0 && (
             <View className="mb-6">
-              <Text className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-2">
+              <Text
+                className="text-xs font-semibold uppercase tracking-wider mb-2"
+                style={{ color: tokens.textTer }}
+              >
                 Top themes
               </Text>
               <View className="flex-row flex-wrap gap-1.5">
@@ -223,17 +268,23 @@ export default function DimensionDetailScreen() {
                     style={{
                       backgroundColor:
                         t.sentiment === "POSITIVE"
-                          ? "rgba(34,197,94,0.14)"
+                          ? `${tokens.good}24`
                           : t.sentiment === "NEGATIVE"
-                            ? "rgba(239,68,68,0.14)"
-                            : "rgba(161,161,170,0.14)",
+                            ? `${tokens.bad}24`
+                            : `${tokens.textTer}24`,
                     }}
                   >
-                    <Text className="text-xs text-zinc-700 dark:text-zinc-200">
+                    <Text
+                      className="text-xs"
+                      style={{ color: tokens.textSec }}
+                    >
                       {t.theme}
                     </Text>
                     {t.count > 0 && (
-                      <Text className="text-[10px] text-zinc-400 dark:text-zinc-500">
+                      <Text
+                        className="text-[10px]"
+                        style={{ color: tokens.textTer }}
+                      >
                         {t.count}
                       </Text>
                     )}
@@ -246,7 +297,10 @@ export default function DimensionDetailScreen() {
           {/* Recent entries */}
           {data.recentEntries.length > 0 && (
             <View className="mb-6">
-              <Text className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-2">
+              <Text
+                className="text-xs font-semibold uppercase tracking-wider mb-2"
+                style={{ color: tokens.textTer }}
+              >
                 Recent entries
               </Text>
               <View className="gap-2">
@@ -263,21 +317,29 @@ export default function DimensionDetailScreen() {
                         router.back();
                         router.push(`/entry/${e.id}`);
                       }}
-                      className="rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-3"
+                      className="rounded-2xl border p-3"
+                      style={{
+                        borderColor: tokens.line,
+                        backgroundColor: tokens.cardBg,
+                      }}
                     >
                       <View className="flex-row items-center gap-2 mb-1">
                         <MoodIcon
                           mood={e.mood ?? "NEUTRAL"}
                           size={14}
-                          color="#A1A1AA"
+                          color={tokens.textTer}
                         />
-                        <Text className="text-xs text-zinc-400 dark:text-zinc-500">
+                        <Text
+                          className="text-xs"
+                          style={{ color: tokens.textTer }}
+                        >
                           {day}
                         </Text>
                       </View>
                       <Text
-                        className="text-sm text-zinc-700 dark:text-zinc-200"
+                        className="text-sm"
                         numberOfLines={2}
+                        style={{ color: tokens.textSec }}
                       >
                         {e.excerpt || "(no summary yet)"}
                       </Text>
@@ -291,7 +353,10 @@ export default function DimensionDetailScreen() {
           {/* Related goals */}
           {data.relatedGoals.length > 0 && (
             <View className="mb-6">
-              <Text className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-2">
+              <Text
+                className="text-xs font-semibold uppercase tracking-wider mb-2"
+                style={{ color: tokens.textTer }}
+              >
                 Goals in this area
               </Text>
               <View className="gap-2">
@@ -302,22 +367,35 @@ export default function DimensionDetailScreen() {
                       router.back();
                       router.push(`/goal/${g.id}`);
                     }}
-                    className="rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-3"
+                    className="rounded-2xl border p-3"
+                    style={{
+                      borderColor: tokens.line,
+                      backgroundColor: tokens.cardBg,
+                    }}
                   >
-                    <Text className="text-sm font-medium text-zinc-800 dark:text-zinc-100">
+                    <Text
+                      className="text-sm font-medium"
+                      style={{ color: tokens.text }}
+                    >
                       {g.title}
                     </Text>
                     <View className="flex-row items-center gap-2 mt-2">
-                      <View className="flex-1 h-1.5 rounded-full bg-zinc-100 dark:bg-white/10">
+                      <View
+                        className="flex-1 h-1.5 rounded-full"
+                        style={{ backgroundColor: tokens.bgInset }}
+                      >
                         <View
                           className="h-full rounded-full"
                           style={{
                             width: `${g.progress}%`,
-                            backgroundColor: data.dimension.color,
+                            backgroundColor: tokens.primary,
                           }}
                         />
                       </View>
-                      <Text className="text-[10px] text-zinc-400 dark:text-zinc-500 tabular-nums">
+                      <Text
+                        className="text-[10px] tabular-nums"
+                        style={{ color: tokens.textTer }}
+                      >
                         {g.progress}%
                       </Text>
                     </View>
@@ -328,11 +406,23 @@ export default function DimensionDetailScreen() {
           )}
 
           {/* Reflection prompt */}
-          <View className="rounded-2xl border border-violet-500/30 bg-violet-50 dark:bg-violet-950/20 p-4">
-            <Text className="text-xs font-semibold uppercase tracking-wider text-violet-600 dark:text-violet-400 mb-2">
+          <View
+            className="rounded-2xl border p-4"
+            style={{
+              borderColor: `${tokens.primary}55`,
+              backgroundColor: `${tokens.primary}14`,
+            }}
+          >
+            <Text
+              className="text-xs font-semibold uppercase tracking-wider mb-2"
+              style={{ color: tokens.primary }}
+            >
               Worth reflecting on
             </Text>
-            <Text className="text-base leading-relaxed text-zinc-900 dark:text-zinc-50 mb-3">
+            <Text
+              className="text-base leading-relaxed mb-3"
+              style={{ color: tokens.text }}
+            >
               {data.reflectionPrompt}
             </Text>
             <Pressable
@@ -345,9 +435,13 @@ export default function DimensionDetailScreen() {
                   `/record?dimensionKey=${encodeURIComponent(data.dimension.key)}`
                 );
               }}
-              className="rounded-xl bg-violet-600 py-2.5 items-center"
+              className="rounded-xl py-2.5 items-center"
+              style={{ backgroundColor: tokens.primary }}
             >
-              <Text className="text-sm font-semibold text-white">
+              <Text
+                className="text-sm font-semibold"
+                style={{ color: "#FFFFFF" }}
+              >
                 Record about this
               </Text>
             </Pressable>
