@@ -41,6 +41,37 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-21] — Post-signup success page overhaul
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** TBD
+
+### In plain English (for Keenan)
+
+The page users see after signing up was a dead end — just a logo, a headline, and a small App Store link. Now it feels like a moment. The App Store download button is the hero with the same pulsing purple animation from the homepage. Below that is a "what happens next" section with three steps (Record, Extract, Reflect) so users know exactly what to expect. The testimonial carousel from the homepage is pulled in as social proof. The QR code only shows on desktop (useless on mobile). "Continue in your browser" is now a visible button instead of buried small text. And there's a subtle urgency line: "Your 30-day free trial has started — don't let it tick away in silence."
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/auth/signup/success/page.tsx`: Simplified to a server component that renders three client components: TrackCompleteRegistration, SyncAttribution, and SuccessPageClient.
+- `apps/web/src/app/auth/signup/success/success-client.tsx`: New client component with full page redesign. Imports `TestimonialCarousel` and `STATIC_CAROUSEL_TESTIMONIALS` from the homepage carousel component (no code duplication). QR code wrapped in `hidden sm:block`. App Store button uses the same pulsing-ring animation pattern as `PulsingCTA`. Three-step "what happens next" section with mic/sparkles/chart icons. "Continue in browser" is now a visible bordered pill button.
+- Removed old inline layout (QR code, bare badge, plain text) from page.tsx.
+
+### Manual steps needed
+
+- [ ] Visual check on mobile: App Store button is prominent with pulsing animation, QR code hidden, steps visible (Keenan)
+- [ ] Visual check on desktop: QR code visible, layout centered (Keenan)
+- [ ] Verify testimonial carousel renders correctly with swipe on mobile (Keenan)
+- [ ] Verify App Store link goes to correct listing (Keenan)
+
+### Notes
+
+- The `animate-pulse-ring` CSS class is already defined in the global styles (used by PulsingCTA on landing pages). The success page button uses the same class directly rather than importing PulsingCTA, because PulsingCTA fires a `trackInitiateCheckout` event on click which doesn't apply here.
+- Testimonial carousel is the exact same component/data used on all landing pages — `STATIC_CAROUSEL_TESTIMONIALS` + `TestimonialCarousel`. Zero code duplication.
+- "Continue in your browser" links to `/home` (same as before) but is now a visible pill button instead of small gray text.
+
+---
+
 ## [2026-05-21] — Landing page SSR + remove email verification wall + un-gate GA4
 
 **Requested by:** Keenan
