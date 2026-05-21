@@ -319,6 +319,42 @@ The Google Search Console connection was failing with "credentials missing" even
 
 ---
 
+## [2026-05-21] — Slice Q11f — Token sweep: onboarding + paywall + integrations + reminders
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** 1428481
+
+### In plain English (for Keenan)
+
+Final batch of the mobile color cleanup. Every onboarding screen, the paywall, the in-app subscribe screen, the integrations screen, and the reminders settings screen now pull all of their colors from the central design palette instead of hardcoding "violet 600" or "zinc 900" in each file. End-user experience is identical, but switching the entire app to a different accent palette is now a one-line change.
+
+### Technical changes (for Jimmy)
+
+- `apps/mobile/components/onboarding/step-5-ai-consent.tsx`: full token migration (text/textSec/bgInset/line/good/primary).
+- `apps/mobile/components/onboarding/step-5-practice.tsx`: status colors (idle/recording/recorded) → tokens.primary/bad/good. Timer + status text use textTer.
+- `apps/mobile/components/onboarding/step-6-mood-slider.tsx`: all chrome tokenized. Preserved mood-spectrum semantic exceptions: gradient track `#FDA4AF→#FCD34D→#6EE7B7` (rough→okay→strong) and thumb white-on-dark-border at lines 137–139.
+- `apps/mobile/components/onboarding/step-8-trial.tsx`: extracted TrialPoint into tokens prop pattern; active-cadence card uses ${tokens.primary}1A + tokens.primary border + glowPrimary for daily-default emphasis.
+- `apps/mobile/components/onboarding/step-9-reminders.tsx`: master toggle → tokens.primary/bgInset; permission-affordance callout uses ${tokens.primary}55 border + ${tokens.primary}14 bg.
+- `apps/mobile/app/integrations.tsx`: full sweep. WARN_AMBER preserved for "Coming in next update" eyebrow (already extracted Q11e-1c). Error states tokenized to tokens.bad.
+- `apps/mobile/app/paywall.tsx`: all chrome → tokens. Sparkles surface, value-row icons, both primary/secondary CTAs, disclosure copy, terms/privacy links.
+- `apps/mobile/app/subscribe.tsx`: full sweep including UnavailableScreen fallback. Product card uses ${tokens.primary}55 border + ${tokens.primary}0D bg. Apple disclosure copy tokenized.
+- `apps/mobile/app/reminders.tsx`: ReminderRow accepts tokens prop. Day toggles, master toggle, save button, permission-affordance callout, "Saved ✓" indicator all tokenized.
+- Pattern: import `type AcuityTokens from "@/lib/theme/tokens"` (NOT from theme-context — context only re-exports the hook). Several files needed this on first compile attempt.
+- Preserved exceptions (white-on-tinted-button text and tinted-toggle thumbs): step-1-welcome.tsx:33 (mic icon on gradient), step-5-ai-consent.tsx:153 (consent button white when violet), step-5-practice.tsx:154 (mic icon on tinted button), step-9-reminders.tsx:183/243 (toggle thumb + allow-notif button), integrations.tsx:159/406 (retry button + Switch thumbColor), reminders.tsx:350/421/464/534/579 (toggle thumbs + save button + day-toggle text), paywall.tsx:164/207 (subscribe CTAs), subscribe.tsx:372/535 (subscribe + continue-on-web CTAs). Mood-spectrum exception: step-6-mood-slider.tsx:117/137/139 (gradient track + thumb fill + thumb border).
+
+### Manual steps needed
+
+- [ ] None — pure refactor. Visual parity intended; verify by side-by-side with main on a TestFlight build before promoting to App Store.
+
+### Notes
+
+End of Phase A (Q11 token sweep) for mobile. Q11a–Q11f bundle is complete; the only remaining hardcoded colors in the mobile app are: (1) intentional white-on-tinted-button text contrast, (2) the streak-flame orange/amber semantic in milestone-card, (3) the mood-spectrum red→amber→green slider in step-6, (4) the theme-map data palette (deferred to Phase E orbital rebuild), and (5) the ThemePill canonical-theme color contract (data-color exception). Next up: Phase D (12-axis Life Matrix) — HIGH RISK, returns to per-file diff review.
+
+Entry restored in a follow-up chore commit after it got displaced during PROGRESS.md merge between this slice's push and subsequent Keenan branch updates. Original commit hash 1428481 unchanged; this is purely log restoration.
+
+---
+
 ## [2026-05-21] — Surface real GSC API errors in sync endpoint
 
 **Requested by:** Keenan
