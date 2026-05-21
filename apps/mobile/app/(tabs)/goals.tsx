@@ -43,6 +43,7 @@ import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
 import { getCached, isStale, setCached } from "@/lib/cache";
 import { isFreeTierUser } from "@/lib/free-tier";
+import { toneColor, type StatusTone } from "@/lib/tone-colors";
 import { fetchUserProgression } from "@/lib/userProgression";
 
 const GOALS_TREE_KEY = "/api/goals/tree";
@@ -264,12 +265,17 @@ const LIFE_AREAS: Record<string, { label: string }> = {
 
 // Q11 Phase C: replaced hardcoded per-status hex colors with a `tone`
 // key that resolves to a theme token at render time via
-// statusToneColor(). The constant stays module-level (no useTheme
-// needed); the color flips on palette change. ON_HOLD's amber is kept
-// as a hardcoded warning accent — palette has primary/secondary/good/
-// bad but no warning amber (same convention as Q11a-2's auth dev
-// warning + Q8 confetti accents).
-type StatusTone = "muted" | "good" | "warning" | "accent" | "quiet";
+// toneColor() from lib/tone-colors.ts. The constant stays
+// module-level (no useTheme needed); the color flips on palette
+// change. ON_HOLD's amber is kept as a hardcoded warning accent —
+// palette has primary/secondary/good/bad but no warning amber (same
+// convention as Q11a-2's auth dev warning + Q8 confetti accents).
+//
+// Q11 Phase D.1 (2026-05-21): toneColor + StatusTone lifted to
+// lib/tone-colors.ts so the goal detail screen and any future
+// consumer can resolve through the same shape. statusToneColor was
+// the local name; renamed to toneColor at the shared location
+// since the helper takes a tone (not a status string).
 const STATUS_STYLES: Record<string, { label: string; tone: StatusTone }> = {
   NOT_STARTED: { label: "Not started", tone: "muted" },
   IN_PROGRESS: { label: "In progress", tone: "good" },
@@ -277,25 +283,6 @@ const STATUS_STYLES: Record<string, { label: string; tone: StatusTone }> = {
   COMPLETE: { label: "Complete", tone: "accent" },
   ARCHIVED: { label: "Archived", tone: "quiet" },
 };
-
-function statusToneColor(
-  tone: StatusTone,
-  tokens: ReturnType<typeof useTheme>["tokens"]
-): string {
-  switch (tone) {
-    case "good":
-      return tokens.good;
-    case "accent":
-      return tokens.primary;
-    case "warning":
-      return "#FBBF24"; // amber — intentional non-palette warning accent
-    case "quiet":
-      return tokens.textQuiet;
-    case "muted":
-    default:
-      return tokens.textTer;
-  }
-}
 
 const ACTION_TO_STATUS: Record<string, string> = {
   complete: "COMPLETE",
@@ -879,7 +866,7 @@ const TreeNode = memo(function TreeNode({
   const area = LIFE_AREAS[goal.lifeArea] ?? {
     label: goal.lifeArea,
   };
-  const statusColor = statusToneColor(status.tone, tokens);
+  const statusColor = toneColor(status.tone, tokens);
   const isExpanded = expanded.has(goal.id);
   const hasChildren = goal.children.length > 0;
   const hasTasks = goal.tasks.length > 0;

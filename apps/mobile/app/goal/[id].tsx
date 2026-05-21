@@ -18,8 +18,11 @@ import { formatRelativeDate } from "@acuity/shared";
 
 import { StickyBackButton } from "@/components/back-button";
 import { ProgressSuggestionBanner } from "@/components/progress-suggestion-banner";
+import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
 import { getCached, isStale, setCached } from "@/lib/cache";
+import { statusToneColor } from "@/lib/tone-colors";
+import type { StatusTone } from "@/lib/tone-colors";
 
 type GoalDetailResponse = { goal: Goal; linkedEntries: LinkedEntry[] };
 
@@ -55,12 +58,16 @@ type LinkedEntry = {
   createdAt: string;
 };
 
-const STATUS_OPTIONS: Array<{ value: string; label: string; color: string }> = [
-  { value: "NOT_STARTED", label: "Not started", color: "#71717A" },
-  { value: "IN_PROGRESS", label: "In progress", color: "#34D399" },
-  { value: "ON_HOLD", label: "On hold", color: "#FBBF24" },
-  { value: "ARCHIVED", label: "Archived", color: "#52525B" },
-  { value: "COMPLETE", label: "Complete", color: "#A78BFA" },
+// Q11 Phase D.1: dropped hardcoded `color` field. Each option now
+// carries a semantic `tone` that resolves to a palette token via
+// statusToneColor(option.value, tokens) at render time. Same
+// tone vocabulary as the goals tab STATUS_STYLES constant.
+const STATUS_OPTIONS: Array<{ value: string; label: string; tone: StatusTone }> = [
+  { value: "NOT_STARTED", label: "Not started", tone: "muted" },
+  { value: "IN_PROGRESS", label: "In progress", tone: "good" },
+  { value: "ON_HOLD", label: "On hold", tone: "warning" },
+  { value: "ARCHIVED", label: "Archived", tone: "quiet" },
+  { value: "COMPLETE", label: "Complete", tone: "accent" },
 ];
 
 const LIFE_AREA_LABELS: Record<string, string> = {
@@ -75,6 +82,7 @@ const LIFE_AREA_LABELS: Record<string, string> = {
 export default function GoalDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { tokens } = useTheme();
 
   const cacheKey = id ? goalDetailKey(id) : null;
   const initialCached = cacheKey
@@ -162,21 +170,30 @@ export default function GoalDetailScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 bg-white dark:bg-[#0B0B12] items-center justify-center">
-        <ActivityIndicator color="#7C3AED" />
+      <SafeAreaView
+        className="flex-1 items-center justify-center"
+        style={{ backgroundColor: tokens.bg }}
+      >
+        <ActivityIndicator color={tokens.primary} />
       </SafeAreaView>
     );
   }
 
   if (!goal) {
     return (
-      <SafeAreaView className="flex-1 bg-white dark:bg-[#0B0B12] items-center justify-center p-6">
-        <Text className="text-zinc-600 dark:text-zinc-300">Goal not found.</Text>
+      <SafeAreaView
+        className="flex-1 items-center justify-center p-6"
+        style={{ backgroundColor: tokens.bg }}
+      >
+        <Text style={{ color: tokens.textSec }}>Goal not found.</Text>
         <Pressable
           onPress={() => router.back()}
-          className="mt-4 rounded-full bg-violet-600 px-4 py-2"
+          className="mt-4 rounded-full px-4 py-2"
+          style={{ backgroundColor: tokens.primary }}
         >
-          <Text className="text-white text-sm font-semibold">Go back</Text>
+          <Text className="text-sm font-semibold" style={{ color: "#FFFFFF" }}>
+            Go back
+          </Text>
         </Pressable>
       </SafeAreaView>
     );
@@ -187,7 +204,8 @@ export default function GoalDetailScreen() {
   return (
     <SafeAreaView
       edges={["top"]}
-      className="flex-1 bg-white dark:bg-[#0B0B12]"
+      className="flex-1"
+      style={{ backgroundColor: tokens.bg }}
     >
       <StickyBackButton accessibilityLabel="Back to Goals" />
       <KeyboardAvoidingView
@@ -202,7 +220,10 @@ export default function GoalDetailScreen() {
           }}
         >
           {/* Area label */}
-          <Text className="text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 mb-2">
+          <Text
+            className="text-xs font-semibold uppercase tracking-widest mb-2"
+            style={{ color: tokens.textTer }}
+          >
             {LIFE_AREA_LABELS[delta.lifeArea] ?? delta.lifeArea}
           </Text>
 
@@ -213,7 +234,12 @@ export default function GoalDetailScreen() {
                 value={titleDraft}
                 onChangeText={setTitleDraft}
                 autoFocus
-                className="flex-1 rounded-lg border border-zinc-300 dark:border-white/15 bg-white dark:bg-[#1E1E2E] px-3 py-2 text-lg font-semibold text-zinc-900 dark:text-zinc-50"
+                className="flex-1 rounded-lg border px-3 py-2 text-lg font-semibold"
+                style={{
+                  borderColor: tokens.line,
+                  backgroundColor: tokens.cardBg,
+                  color: tokens.text,
+                }}
               />
               <Pressable
                 disabled={saving}
@@ -222,24 +248,36 @@ export default function GoalDetailScreen() {
                   if (next && next !== delta.title) await patch({ title: next });
                   setEditingTitle(false);
                 }}
-                className="rounded-lg bg-violet-600 px-3 py-2"
+                className="rounded-lg px-3 py-2"
+                style={{ backgroundColor: tokens.primary }}
               >
-                <Text className="text-white text-sm font-semibold">Save</Text>
+                <Text className="text-sm font-semibold" style={{ color: "#FFFFFF" }}>
+                  Save
+                </Text>
               </Pressable>
             </View>
           ) : (
             <Pressable onPress={() => setEditingTitle(true)}>
-              <Text className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+              <Text
+                className="text-2xl font-semibold"
+                style={{ color: tokens.text }}
+              >
                 {delta.title}
               </Text>
-              <Text className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">
+              <Text
+                className="mt-1 text-xs"
+                style={{ color: tokens.textTer }}
+              >
                 Tap to edit
               </Text>
             </Pressable>
           )}
 
           {/* First / last mentioned */}
-          <Text className="mt-3 text-xs text-zinc-400 dark:text-zinc-500">
+          <Text
+            className="mt-3 text-xs"
+            style={{ color: tokens.textTer }}
+          >
             First mentioned {formatRelativeDate(delta.createdAt)}
             {delta.lastMentionedAt && delta.lastMentionedAt !== delta.createdAt && (
               <> · last mentioned {formatRelativeDate(delta.lastMentionedAt)}</>
@@ -257,25 +295,29 @@ export default function GoalDetailScreen() {
 
           {/* Status pills */}
           <View className="mt-6">
-            <Text className="text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 mb-2">
+            <Text
+              className="text-xs font-semibold uppercase tracking-widest mb-2"
+              style={{ color: tokens.textTer }}
+            >
               Status
             </Text>
             <View className="flex-row flex-wrap gap-2">
               {STATUS_OPTIONS.map((opt) => {
                 const active = goal.status === opt.value;
+                const optColor = statusToneColor(opt.value, tokens);
                 return (
                   <Pressable
                     key={opt.value}
                     onPress={() => patch({ status: opt.value })}
                     style={{
-                      backgroundColor: active ? opt.color : "transparent",
-                      borderColor: active ? opt.color : "#3f3f46",
+                      backgroundColor: active ? optColor : "transparent",
+                      borderColor: active ? optColor : tokens.line,
                     }}
                     className="rounded-full border px-3 py-1.5"
                   >
                     <Text
                       style={{
-                        color: active ? "#fff" : opt.color,
+                        color: active ? "#FFFFFF" : optColor,
                         fontSize: 12,
                         fontWeight: "600",
                       }}
@@ -294,17 +336,29 @@ export default function GoalDetailScreen() {
               the detail screen's -/+ nudges the value by 5. */}
           <View className="mt-6">
             <View className="flex-row justify-between items-center mb-2">
-              <Text className="text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
+              <Text
+                className="text-xs font-semibold uppercase tracking-widest"
+                style={{ color: tokens.textTer }}
+              >
                 Progress
               </Text>
-              <Text className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
+              <Text
+                className="text-sm font-medium"
+                style={{ color: tokens.textSec }}
+              >
                 {progressDraft}%
               </Text>
             </View>
-            <View className="h-2 rounded-full bg-zinc-200 dark:bg-white/10 mb-3 overflow-hidden">
+            <View
+              className="h-2 rounded-full mb-3 overflow-hidden"
+              style={{ backgroundColor: tokens.bgInset }}
+            >
               <View
-                className="h-full rounded-full bg-violet-500"
-                style={{ width: `${progressDraft}%` }}
+                className="h-full rounded-full"
+                style={{
+                  width: `${progressDraft}%`,
+                  backgroundColor: tokens.primary,
+                }}
               />
             </View>
             <View className="flex-row items-center justify-between">
@@ -315,9 +369,10 @@ export default function GoalDetailScreen() {
                     setProgressDraft(next);
                     patch({ progress: next });
                   }}
-                  className="h-9 w-9 rounded-full border border-zinc-300 dark:border-white/15 items-center justify-center"
+                  className="h-9 w-9 rounded-full border items-center justify-center"
+                  style={{ borderColor: tokens.line }}
                 >
-                  <Ionicons name="remove" size={18} color="#A1A1AA" />
+                  <Ionicons name="remove" size={18} color={tokens.textTer} />
                 </Pressable>
                 <Pressable
                   onPress={() => {
@@ -325,9 +380,10 @@ export default function GoalDetailScreen() {
                     setProgressDraft(next);
                     patch({ progress: next });
                   }}
-                  className="h-9 w-9 rounded-full border border-zinc-300 dark:border-white/15 items-center justify-center"
+                  className="h-9 w-9 rounded-full border items-center justify-center"
+                  style={{ borderColor: tokens.line }}
                 >
-                  <Ionicons name="add" size={18} color="#A1A1AA" />
+                  <Ionicons name="add" size={18} color={tokens.textTer} />
                 </Pressable>
               </View>
               <View className="flex-row gap-1.5">
@@ -338,18 +394,20 @@ export default function GoalDetailScreen() {
                       setProgressDraft(v);
                       patch({ progress: v });
                     }}
-                    className={`rounded-full px-2.5 py-1 border ${
-                      progressDraft === v
-                        ? "border-violet-500 bg-violet-500"
-                        : "border-zinc-300 dark:border-white/15"
-                    }`}
+                    className="rounded-full px-2.5 py-1 border"
+                    style={{
+                      borderColor:
+                        progressDraft === v ? tokens.primary : tokens.line,
+                      backgroundColor:
+                        progressDraft === v ? tokens.primary : "transparent",
+                    }}
                   >
                     <Text
-                      className={`text-xs font-semibold ${
-                        progressDraft === v
-                          ? "text-white"
-                          : "text-zinc-500 dark:text-zinc-400"
-                      }`}
+                      className="text-xs font-semibold"
+                      style={{
+                        color:
+                          progressDraft === v ? "#FFFFFF" : tokens.textSec,
+                      }}
                     >
                       {v}
                     </Text>
@@ -362,7 +420,10 @@ export default function GoalDetailScreen() {
           {/* Notes */}
           <View className="mt-6">
             <View className="flex-row justify-between items-center mb-2">
-              <Text className="text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
+              <Text
+                className="text-xs font-semibold uppercase tracking-widest"
+                style={{ color: tokens.textTer }}
+              >
                 Notes
               </Text>
               {!editingNotes && (
@@ -372,7 +433,10 @@ export default function GoalDetailScreen() {
                     setEditingNotes(true);
                   }}
                 >
-                  <Text className="text-xs font-semibold text-violet-600 dark:text-violet-400">
+                  <Text
+                    className="text-xs font-semibold"
+                    style={{ color: tokens.primary }}
+                  >
                     {delta.notes ? "Edit" : "Add notes"}
                   </Text>
                 </Pressable>
@@ -386,13 +450,24 @@ export default function GoalDetailScreen() {
                   autoFocus
                   multiline
                   placeholder="Reflections, blockers, next steps…"
-                  placeholderTextColor="#71717A"
-                  className="rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-4 py-3 text-sm text-zinc-800 dark:text-zinc-100"
-                  style={{ minHeight: 100, textAlignVertical: "top" }}
+                  placeholderTextColor={tokens.textTer}
+                  className="rounded-xl border px-4 py-3 text-sm"
+                  style={{
+                    borderColor: tokens.line,
+                    backgroundColor: tokens.cardBg,
+                    color: tokens.text,
+                    minHeight: 100,
+                    textAlignVertical: "top",
+                  }}
                 />
                 <View className="flex-row justify-end gap-2 mt-2">
                   <Pressable onPress={() => setEditingNotes(false)} className="px-3 py-1.5">
-                    <Text className="text-xs text-zinc-500 dark:text-zinc-400">Cancel</Text>
+                    <Text
+                      className="text-xs"
+                      style={{ color: tokens.textSec }}
+                    >
+                      Cancel
+                    </Text>
                   </Pressable>
                   <Pressable
                     disabled={saving}
@@ -400,18 +475,34 @@ export default function GoalDetailScreen() {
                       await patch({ notes: notesDraft || null });
                       setEditingNotes(false);
                     }}
-                    className="rounded-lg bg-violet-600 px-3 py-1.5"
+                    className="rounded-lg px-3 py-1.5"
+                    style={{ backgroundColor: tokens.primary }}
                   >
-                    <Text className="text-white text-xs font-semibold">Save</Text>
+                    <Text
+                      className="text-xs font-semibold"
+                      style={{ color: "#FFFFFF" }}
+                    >
+                      Save
+                    </Text>
                   </Pressable>
                 </View>
               </View>
             ) : delta.notes ? (
-              <Text className="rounded-xl border border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-[#13131F] px-4 py-3 text-sm text-zinc-700 dark:text-zinc-200">
+              <Text
+                className="rounded-xl border px-4 py-3 text-sm"
+                style={{
+                  borderColor: tokens.line,
+                  backgroundColor: tokens.bgInset,
+                  color: tokens.textSec,
+                }}
+              >
                 {delta.notes}
               </Text>
             ) : (
-              <Text className="text-sm italic text-zinc-400 dark:text-zinc-500">
+              <Text
+                className="text-sm italic"
+                style={{ color: tokens.textTer }}
+              >
                 No notes yet.
               </Text>
             )}
@@ -420,12 +511,22 @@ export default function GoalDetailScreen() {
           {/* Add reflection CTA */}
           <Pressable
             onPress={() => router.push(`/record?goalId=${encodeURIComponent(delta.id)}`)}
-            className="mt-6 rounded-2xl border border-violet-900/30 bg-violet-950/20 px-4 py-4"
+            className="mt-6 rounded-2xl border px-4 py-4"
+            style={{
+              borderColor: `${tokens.primary}55`,
+              backgroundColor: `${tokens.primary}14`,
+            }}
           >
-            <Text className="text-xs font-semibold uppercase tracking-widest text-violet-400">
+            <Text
+              className="text-xs font-semibold uppercase tracking-widest"
+              style={{ color: tokens.primary }}
+            >
               Add a reflection
             </Text>
-            <Text className="mt-1 text-sm font-medium text-zinc-900 dark:text-zinc-50">
+            <Text
+              className="mt-1 text-sm font-medium"
+              style={{ color: tokens.text }}
+            >
               Record a short update on this goal →
             </Text>
           </Pressable>
@@ -433,7 +534,10 @@ export default function GoalDetailScreen() {
           {/* Linked entries */}
           {linked.length > 0 && (
             <View className="mt-6">
-              <Text className="text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 mb-2">
+              <Text
+                className="text-xs font-semibold uppercase tracking-widest mb-2"
+                style={{ color: tokens.textTer }}
+              >
                 Linked entries
               </Text>
               <View className="gap-2">
@@ -441,15 +545,23 @@ export default function GoalDetailScreen() {
                   <Pressable
                     key={e.id}
                     onPress={() => router.push(`/entry/${e.id}`)}
-                    className="rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-4 py-3"
+                    className="rounded-xl border px-4 py-3"
+                    style={{
+                      borderColor: tokens.line,
+                      backgroundColor: tokens.cardBg,
+                    }}
                   >
-                    <Text className="text-xs text-zinc-400 dark:text-zinc-500 mb-1">
+                    <Text
+                      className="text-xs mb-1"
+                      style={{ color: tokens.textTer }}
+                    >
                       {formatRelativeDate(e.createdAt)}
                       {e.mood && <> · {e.mood.toLowerCase()}</>}
                     </Text>
                     <Text
-                      className="text-sm text-zinc-700 dark:text-zinc-200"
+                      className="text-sm"
                       numberOfLines={2}
+                      style={{ color: tokens.textSec }}
                     >
                       {e.summary ?? "(no summary)"}
                     </Text>
@@ -460,7 +572,10 @@ export default function GoalDetailScreen() {
           )}
 
           {/* Delete */}
-          <View className="mt-8 pt-6 border-t border-zinc-200 dark:border-white/10">
+          <View
+            className="mt-8 pt-6 border-t"
+            style={{ borderColor: tokens.line }}
+          >
             <Pressable
               onPress={() => {
                 Alert.alert("Delete goal?", "This can't be undone.", [
@@ -480,7 +595,12 @@ export default function GoalDetailScreen() {
                 ]);
               }}
             >
-              <Text className="text-xs font-medium text-red-500">Delete goal</Text>
+              <Text
+                className="text-xs font-medium"
+                style={{ color: tokens.bad }}
+              >
+                Delete goal
+              </Text>
             </Pressable>
           </View>
         </ScrollView>

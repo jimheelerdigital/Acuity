@@ -3,6 +3,80 @@ import type { Mood, Priority } from "@acuity/shared";
 import type { AcuityTokens } from "@/lib/theme/tokens";
 
 /**
+ * Semantic tone names used across the per-key tone resolvers.
+ * Each tone maps to a palette token (or the canonical amber
+ * warning hex). Keeps the key-to-color mapping logic centralized.
+ */
+export type StatusTone = "muted" | "good" | "warning" | "accent" | "quiet";
+
+/**
+ * Resolves a semantic tone to a palette-aware color.
+ *
+ * Used internally by per-key resolvers (statusToneColor, etc.) but
+ * also exposed for ad-hoc surface tinting where a tone is the right
+ * abstraction (e.g. a custom card that needs to flip between
+ * positive/warning/negative based on app state).
+ *
+ *   muted   → tokens.textTer (quiet grey)
+ *   good    → tokens.good (mint)
+ *   warning → "#FBBF24" amber (non-palette warning, see file
+ *             header for the exception convention)
+ *   accent  → tokens.primary (palette accent)
+ *   quiet   → tokens.textQuiet (very subdued grey)
+ */
+export function toneColor(tone: StatusTone, tokens: AcuityTokens): string {
+  switch (tone) {
+    case "good":
+      return tokens.good;
+    case "accent":
+      return tokens.primary;
+    case "warning":
+      return "#FBBF24";
+    case "quiet":
+      return tokens.textQuiet;
+    case "muted":
+    default:
+      return tokens.textTer;
+  }
+}
+
+/**
+ * Resolves a goal status enum to a palette-aware color.
+ *
+ * Mapping (status → tone):
+ *   NOT_STARTED → muted   (quiet grey)
+ *   IN_PROGRESS → good    (mint)
+ *   ON_HOLD     → warning (amber)
+ *   COMPLETE    → accent  (palette primary)
+ *   ARCHIVED    → quiet   (subdued grey)
+ *
+ * Lifted from apps/mobile/app/(tabs)/goals.tsx (Q11 Phase D.1,
+ * 2026-05-21) so the goal detail screen (app/goal/[id].tsx) and
+ * any other surface that surfaces goal-status accents can resolve
+ * through the same shape. The local STATUS_STYLES constant in
+ * goals.tsx still owns the label strings; this helper just gives
+ * the color half.
+ */
+export function statusToneColor(
+  status: string | null | undefined,
+  tokens: AcuityTokens
+): string {
+  switch (status) {
+    case "IN_PROGRESS":
+      return toneColor("good", tokens);
+    case "ON_HOLD":
+      return toneColor("warning", tokens);
+    case "COMPLETE":
+      return toneColor("accent", tokens);
+    case "ARCHIVED":
+      return toneColor("quiet", tokens);
+    case "NOT_STARTED":
+    default:
+      return toneColor("muted", tokens);
+  }
+}
+
+/**
  * tone-colors — palette-aware resolution of per-key data colors
  * (moods, priorities, etc.) to theme tokens.
  *
