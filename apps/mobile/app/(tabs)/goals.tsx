@@ -250,22 +250,52 @@ type TreeTask = {
   priority: string;
 };
 
-const LIFE_AREAS: Record<string, { label: string; color: string }> = {
-  CAREER: { label: "Career", color: "#3B82F6" },
-  HEALTH: { label: "Health", color: "#14B8A6" },
-  RELATIONSHIPS: { label: "Relationships", color: "#F43F5E" },
-  FINANCES: { label: "Finances", color: "#F59E0B" },
-  PERSONAL: { label: "Personal Growth", color: "#A855F7" },
-  OTHER: { label: "Other", color: "#71717A" },
+// Q11 Phase C: dropped the `color` field. The only consumer was the
+// area pill, which Q11a-1 already switched to tokens.primary. Per-area
+// color identity now derives from the active palette uniformly.
+const LIFE_AREAS: Record<string, { label: string }> = {
+  CAREER: { label: "Career" },
+  HEALTH: { label: "Health" },
+  RELATIONSHIPS: { label: "Relationships" },
+  FINANCES: { label: "Finances" },
+  PERSONAL: { label: "Personal Growth" },
+  OTHER: { label: "Other" },
 };
 
-const STATUS_STYLES: Record<string, { label: string; color: string }> = {
-  NOT_STARTED: { label: "Not started", color: "#71717A" },
-  IN_PROGRESS: { label: "In progress", color: "#34D399" },
-  ON_HOLD: { label: "On hold", color: "#FBBF24" },
-  COMPLETE: { label: "Complete", color: "#A78BFA" },
-  ARCHIVED: { label: "Archived", color: "#52525B" },
+// Q11 Phase C: replaced hardcoded per-status hex colors with a `tone`
+// key that resolves to a theme token at render time via
+// statusToneColor(). The constant stays module-level (no useTheme
+// needed); the color flips on palette change. ON_HOLD's amber is kept
+// as a hardcoded warning accent — palette has primary/secondary/good/
+// bad but no warning amber (same convention as Q11a-2's auth dev
+// warning + Q8 confetti accents).
+type StatusTone = "muted" | "good" | "warning" | "accent" | "quiet";
+const STATUS_STYLES: Record<string, { label: string; tone: StatusTone }> = {
+  NOT_STARTED: { label: "Not started", tone: "muted" },
+  IN_PROGRESS: { label: "In progress", tone: "good" },
+  ON_HOLD: { label: "On hold", tone: "warning" },
+  COMPLETE: { label: "Complete", tone: "accent" },
+  ARCHIVED: { label: "Archived", tone: "quiet" },
 };
+
+function statusToneColor(
+  tone: StatusTone,
+  tokens: ReturnType<typeof useTheme>["tokens"]
+): string {
+  switch (tone) {
+    case "good":
+      return tokens.good;
+    case "accent":
+      return tokens.primary;
+    case "warning":
+      return "#FBBF24"; // amber — intentional non-palette warning accent
+    case "quiet":
+      return tokens.textQuiet;
+    case "muted":
+    default:
+      return tokens.textTer;
+  }
+}
 
 const ACTION_TO_STATUS: Record<string, string> = {
   complete: "COMPLETE",
@@ -277,6 +307,7 @@ const ACTION_TO_STATUS: Record<string, string> = {
 export default function GoalsTab() {
   const router = useRouter();
   const { user } = useAuth();
+  const { tokens } = useTheme();
   const isProLocked = isFreeTierUser(user);
   const [includeArchived, setIncludeArchived] = useState(false);
 
@@ -512,7 +543,11 @@ export default function GoalsTab() {
     // Skeleton list — same footprint as the loaded tree's top level
     // so the swap reads as data resolving in place.
     return (
-      <SafeAreaView edges={["top"]} className="flex-1 bg-white dark:bg-[#0B0B12]">
+      <SafeAreaView
+        edges={["top"]}
+        className="flex-1"
+        style={{ backgroundColor: tokens.bg }}
+      >
         <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
           <Skeleton width={100} height={28} style={{ marginBottom: 6 }} />
           <Skeleton width={200} height={14} style={{ marginBottom: 20 }} />
@@ -543,20 +578,25 @@ export default function GoalsTab() {
   }
 
   return (
-    <SafeAreaView edges={["top"]} className="flex-1 bg-white dark:bg-[#0B0B12]">
+    <SafeAreaView
+      edges={["top"]}
+      className="flex-1"
+      style={{ backgroundColor: tokens.bg }}
+    >
       <ScrollView
         contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#7C3AED"
+            tintColor={tokens.primary}
           />
         }
       >
         <View className="flex-row items-baseline gap-2 mb-1">
           <Text
-            className="text-4xl font-bold text-zinc-900 dark:text-zinc-50"
+            className="text-4xl font-bold"
+            style={{ color: tokens.text }}
             numberOfLines={1}
             adjustsFontSizeToFit
             minimumFontScale={0.75}
@@ -564,12 +604,15 @@ export default function GoalsTab() {
             Goals
           </Text>
           {inProgressCount > 0 && (
-            <Text className="text-sm text-zinc-500 dark:text-zinc-400">
+            <Text className="text-sm" style={{ color: tokens.textSec }}>
               {inProgressCount} in progress
             </Text>
           )}
         </View>
-        <Text className="text-sm text-zinc-400 dark:text-zinc-500 mb-4">
+        <Text
+          className="text-sm mb-4"
+          style={{ color: tokens.textTer }}
+        >
           What you&apos;re working toward. Tap to open, + to add a sub-step.
         </Text>
 
@@ -594,12 +637,22 @@ export default function GoalsTab() {
         {progression?.unlocked.goalSuggestions && pendingSuggestions > 0 && (
           <Pressable
             onPress={() => setSuggestionsOpen(true)}
-            className="mb-5 rounded-2xl border border-violet-900/30 bg-violet-950/10 p-4"
+            className="mb-5 rounded-2xl border p-4"
+            style={{
+              borderColor: `${tokens.primary}55`,
+              backgroundColor: `${tokens.primary}14`,
+            }}
           >
-            <Text className="text-[11px] font-semibold uppercase tracking-widest text-violet-400">
+            <Text
+              className="text-[11px] font-semibold uppercase tracking-widest"
+              style={{ color: tokens.primary }}
+            >
               From your recordings
             </Text>
-            <Text className="mt-1 text-sm text-zinc-900 dark:text-zinc-50">
+            <Text
+              className="mt-1 text-sm"
+              style={{ color: tokens.text }}
+            >
               {pendingSuggestions} reflection
               {pendingSuggestions === 1 ? "" : "s"} could become sub-goal
               {pendingSuggestions === 1 ? "" : "s"}. Review →
@@ -612,28 +665,37 @@ export default function GoalsTab() {
           className="mb-4 flex-row items-center gap-2 self-start"
         >
           <View
-            className={`h-4 w-4 rounded border-2 ${
-              includeArchived
-                ? "bg-violet-600 border-violet-600"
-                : "border-zinc-300 dark:border-white/20"
-            } items-center justify-center`}
+            className="h-4 w-4 rounded border-2 items-center justify-center"
+            style={{
+              backgroundColor: includeArchived ? tokens.primary : "transparent",
+              borderColor: includeArchived ? tokens.primary : tokens.line,
+            }}
           >
             {includeArchived && (
               <Ionicons name="checkmark" size={10} color="#FFFFFF" />
             )}
           </View>
-          <Text className="text-xs text-zinc-500 dark:text-zinc-400">
+          <Text className="text-xs" style={{ color: tokens.textSec }}>
             Show archived (on hold)
           </Text>
         </Pressable>
 
         {roots.length === 0 ? (
-          <View className="rounded-2xl border border-dashed border-zinc-300 dark:border-white/10 px-6 py-16 items-center">
-            <Ionicons name="flag-outline" size={36} color="#71717A" />
-            <Text className="mt-3 text-base font-semibold text-zinc-700 dark:text-zinc-200">
+          <View
+            className="rounded-2xl border border-dashed px-6 py-16 items-center"
+            style={{ borderColor: tokens.line }}
+          >
+            <Ionicons name="flag-outline" size={36} color={tokens.textTer} />
+            <Text
+              className="mt-3 text-base font-semibold"
+              style={{ color: tokens.textSec }}
+            >
               No goals yet
             </Text>
-            <Text className="mt-2 text-sm text-zinc-500 dark:text-zinc-400 text-center max-w-xs leading-relaxed">
+            <Text
+              className="mt-2 text-sm text-center max-w-xs leading-relaxed"
+              style={{ color: tokens.textTer }}
+            >
               Mention something you&rsquo;re working toward in a debrief
               and we&rsquo;ll track it for you.
             </Text>
@@ -644,9 +706,10 @@ export default function GoalsTab() {
                 ).catch(() => {});
                 router.push("/(tabs)");
               }}
-              className="mt-5 rounded-full bg-violet-600 px-5 py-2.5 active:opacity-90"
+              className="mt-5 rounded-full px-5 py-2.5 active:opacity-90"
+              style={{ backgroundColor: tokens.primary }}
             >
-              <Text className="text-sm font-semibold text-white">
+              <Text className="text-sm font-semibold" style={{ color: "#FFFFFF" }}>
                 Record a debrief →
               </Text>
             </Pressable>
@@ -663,6 +726,11 @@ export default function GoalsTab() {
                       reads as its own block. Eyebrow bumped 11px →
                       13px / tracking 1.6 to match the dashboard's
                       shared eyebrow rhythm. */}
+                  {/* Q11 Phase C: group.color comes from
+                      @acuity/shared GOAL_GROUPS — data color used by
+                      web ThemeMap. Mobile surfaces now ignore it and
+                      tint with tokens.primary for palette consistency
+                      (same convention as Q11a-1's area pill). */}
                   <Pressable
                     onPress={() => toggleGroupCollapse(group.id)}
                     style={{
@@ -672,9 +740,9 @@ export default function GoalsTab() {
                       paddingVertical: 10,
                       marginBottom: 12,
                       borderTopWidth: 0.5,
-                      borderTopColor: "rgba(161,161,170,0.18)",
+                      borderTopColor: tokens.line,
                       borderBottomWidth: 1,
-                      borderBottomColor: `${group.color}33`,
+                      borderBottomColor: `${tokens.primary}33`,
                     }}
                   >
                     <View
@@ -682,12 +750,12 @@ export default function GoalsTab() {
                         height: 32,
                         width: 32,
                         borderRadius: 16,
-                        backgroundColor: group.color + "22",
+                        backgroundColor: `${tokens.primary}22`,
                         alignItems: "center",
                         justifyContent: "center",
                       }}
                     >
-                      <GoalGroupIcon name={group.icon} color={group.color} />
+                      <GoalGroupIcon name={group.icon} color={tokens.primary} />
                     </View>
                     <Text
                       style={{
@@ -695,7 +763,7 @@ export default function GoalsTab() {
                         fontWeight: "700",
                         letterSpacing: 1.6,
                         textTransform: "uppercase",
-                        color: "#E4E4E7",
+                        color: tokens.text,
                       }}
                     >
                       {group.label}
@@ -704,7 +772,7 @@ export default function GoalsTab() {
                       style={{
                         fontSize: 13,
                         fontWeight: "500",
-                        color: "rgba(168,168,180,0.6)",
+                        color: tokens.textTer,
                       }}
                     >
                       {goals.length}
@@ -712,7 +780,7 @@ export default function GoalsTab() {
                     <View style={{ flex: 1 }} />
                     <ChevronDown
                       size={16}
-                      color="#A1A1AA"
+                      color={tokens.textTer}
                       style={{
                         transform: [{ rotate: collapsed ? "-90deg" : "0deg" }],
                       }}
@@ -810,8 +878,8 @@ const TreeNode = memo(function TreeNode({
   const status = STATUS_STYLES[goal.status] ?? STATUS_STYLES.NOT_STARTED;
   const area = LIFE_AREAS[goal.lifeArea] ?? {
     label: goal.lifeArea,
-    color: "#71717A",
   };
+  const statusColor = statusToneColor(status.tone, tokens);
   const isExpanded = expanded.has(goal.id);
   const hasChildren = goal.children.length > 0;
   const hasTasks = goal.tasks.length > 0;
@@ -823,7 +891,10 @@ const TreeNode = memo(function TreeNode({
 
   return (
     <View style={{ marginLeft: depth * 16 }}>
-      <View className="rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-3">
+      <View
+        className="rounded-2xl border p-3"
+        style={{ borderColor: tokens.line, backgroundColor: tokens.cardBg }}
+      >
         <View className="flex-row items-start gap-2">
           {hasAny ? (
             <Pressable
@@ -834,7 +905,7 @@ const TreeNode = memo(function TreeNode({
               <Ionicons
                 name={isExpanded ? "chevron-down" : "chevron-forward"}
                 size={14}
-                color="#A1A1AA"
+                color={tokens.textTer}
               />
             </Pressable>
           ) : (
@@ -848,11 +919,11 @@ const TreeNode = memo(function TreeNode({
             <View className="flex-row items-center flex-wrap gap-1.5 mb-1">
               <View
                 className="rounded-full px-2 py-0.5"
-                style={{ backgroundColor: status.color + "25" }}
+                style={{ backgroundColor: `${statusColor}25` }}
               >
                 <Text
                   style={{
-                    color: status.color,
+                    color: statusColor,
                     fontSize: 10,
                     fontWeight: "600",
                   }}
@@ -876,7 +947,10 @@ const TreeNode = memo(function TreeNode({
                 </Text>
               </View>
               {hasChildren && (
-                <Text className="text-[10px] text-zinc-400 dark:text-zinc-500">
+                <Text
+                  className="text-[10px]"
+                  style={{ color: tokens.textTer }}
+                >
                   {goal.children.length} sub-goal
                   {goal.children.length === 1 ? "" : "s"}
                 </Text>
@@ -884,26 +958,37 @@ const TreeNode = memo(function TreeNode({
             </View>
             <Text
               className={`text-base font-semibold leading-snug ${
-                struck
-                  ? "text-zinc-400 dark:text-zinc-500 line-through"
-                  : "text-zinc-900 dark:text-zinc-50"
+                struck ? "line-through" : ""
               }`}
+              style={{ color: struck ? tokens.textTer : tokens.text }}
             >
               {goal.title}
             </Text>
 
             <View className="mt-2 flex-row items-center gap-2">
-              <View className="h-1.5 flex-1 rounded-full bg-zinc-100 dark:bg-white/10">
+              <View
+                className="h-1.5 flex-1 rounded-full"
+                style={{ backgroundColor: tokens.bgInset }}
+              >
                 <View
-                  className="h-full rounded-full bg-violet-500"
-                  style={{ width: `${goal.calculatedProgress}%` }}
+                  className="h-full rounded-full"
+                  style={{
+                    width: `${goal.calculatedProgress}%`,
+                    backgroundColor: tokens.primary,
+                  }}
                 />
               </View>
-              <Text className="text-[10px] tabular-nums text-zinc-400 dark:text-zinc-500 w-8 text-right">
+              <Text
+                className="text-[10px] tabular-nums w-8 text-right"
+                style={{ color: tokens.textTer }}
+              >
                 {goal.calculatedProgress}%
               </Text>
               {manualDifferent && (
-                <Text className="text-[9px] text-zinc-400 dark:text-zinc-500">
+                <Text
+                  className="text-[9px]"
+                  style={{ color: tokens.textTer }}
+                >
                   you: {goal.manualProgress}%
                 </Text>
               )}
@@ -917,7 +1002,7 @@ const TreeNode = memo(function TreeNode({
                 hitSlop={8}
                 className="p-1.5"
               >
-                <Ionicons name="add" size={18} color="#A78BFA" />
+                <Ionicons name="add" size={18} color={tokens.primary} />
               </Pressable>
             )}
             <Pressable
@@ -925,14 +1010,17 @@ const TreeNode = memo(function TreeNode({
               hitSlop={8}
               className="p-1.5"
             >
-              <Ionicons name="ellipsis-horizontal" size={16} color="#71717A" />
+              <Ionicons name="ellipsis-horizontal" size={16} color={tokens.textTer} />
             </Pressable>
           </View>
         </View>
       </View>
 
       {isExpanded && hasAny && (
-        <View className="mt-1.5 gap-1.5 ml-1.5 border-l border-zinc-200 dark:border-white/10 pl-1.5">
+        <View
+          className="mt-1.5 gap-1.5 ml-1.5 border-l pl-1.5"
+          style={{ borderColor: tokens.line }}
+        >
           {goal.tasks.map((t) => (
             <TaskLeaf
               key={t.id}
@@ -969,6 +1057,7 @@ const TaskLeaf = memo(function TaskLeaf({
   indent: number;
   onToggle: (id: string, status: string) => void;
 }) {
+  const { tokens } = useTheme();
   const done = task.status === "DONE";
   const label = task.title ?? task.text ?? "Untitled task";
   const handleToggle = useCallback(
@@ -977,18 +1066,18 @@ const TaskLeaf = memo(function TaskLeaf({
   );
   return (
     <View
-      className="flex-row items-center gap-2 rounded-lg bg-zinc-50 dark:bg-[#13131F] px-3 py-2"
-      style={{ marginLeft: indent - 8 }}
+      className="flex-row items-center gap-2 rounded-lg px-3 py-2"
+      style={{
+        marginLeft: indent - 8,
+        backgroundColor: tokens.bgInset,
+      }}
     >
       {/* Q8 — gradient checkbox visual swap. Same onPress handler,
           same checked state. */}
       <GradientCheckbox checked={done} onPress={handleToggle} size={18} />
       <Text
-        className={`text-xs flex-1 ${
-          done
-            ? "text-zinc-400 dark:text-zinc-500 line-through"
-            : "text-zinc-700 dark:text-zinc-200"
-        }`}
+        className={`text-xs flex-1 ${done ? "line-through" : ""}`}
+        style={{ color: done ? tokens.textTer : tokens.textSec }}
       >
         {label}
       </Text>
@@ -1007,6 +1096,7 @@ function AddSubgoalSheet({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { tokens } = useTheme();
   const [text, setText] = useState("");
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -1032,11 +1122,20 @@ function AddSubgoalSheet({
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
           <Pressable onPress={() => {}}>
-            <View className="rounded-t-2xl bg-white dark:bg-[#1E1E2E] p-5 pb-10">
-              <Text className="text-[11px] text-zinc-500 dark:text-zinc-400 mb-1">
+            <View
+              className="rounded-t-2xl p-5 pb-10"
+              style={{ backgroundColor: tokens.cardBg }}
+            >
+              <Text
+                className="text-[11px] mb-1"
+                style={{ color: tokens.textTer }}
+              >
                 Under
               </Text>
-              <Text className="text-base font-semibold text-zinc-900 dark:text-zinc-50 mb-4">
+              <Text
+                className="text-base font-semibold mb-4"
+                style={{ color: tokens.text }}
+              >
                 {parent.title}
               </Text>
 
@@ -1045,27 +1144,44 @@ function AddSubgoalSheet({
                 value={text}
                 onChangeText={setText}
                 placeholder="What's the next step?"
-                placeholderTextColor="#71717A"
-                className="rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#13131F] px-3 py-2.5 text-sm text-zinc-900 dark:text-zinc-100"
+                placeholderTextColor={tokens.textTer}
+                className="rounded-lg border px-3 py-2.5 text-sm"
+                style={{
+                  borderColor: tokens.line,
+                  backgroundColor: tokens.bgInset,
+                  color: tokens.text,
+                }}
               />
               {err && (
-                <Text className="mt-2 text-xs text-red-500">{err}</Text>
+                <Text
+                  className="mt-2 text-xs"
+                  style={{ color: tokens.bad }}
+                >
+                  {err}
+                </Text>
               )}
               <View className="mt-4 flex-row justify-end gap-2">
                 <Pressable onPress={onClose} className="px-4 py-2">
-                  <Text className="text-sm text-zinc-500 dark:text-zinc-400">
+                  <Text
+                    className="text-sm"
+                    style={{ color: tokens.textSec }}
+                  >
                     Cancel
                   </Text>
                 </Pressable>
                 <Pressable
                   disabled={saving || !text.trim()}
                   onPress={save}
-                  className="rounded-full bg-violet-600 px-4 py-2"
+                  className="rounded-full px-4 py-2"
                   style={{
+                    backgroundColor: tokens.primary,
                     opacity: saving || !text.trim() ? 0.4 : 1,
                   }}
                 >
-                  <Text className="text-sm font-semibold text-white">
+                  <Text
+                    className="text-sm font-semibold"
+                    style={{ color: "#FFFFFF" }}
+                  >
                     {saving ? "Adding…" : "Add"}
                   </Text>
                 </Pressable>
@@ -1087,12 +1203,19 @@ function ActionSheet({
   onClose: () => void;
   onAction: (action: "start" | "complete" | "archive" | "delete" | "restore") => void;
 }) {
+  const { tokens } = useTheme();
   return (
     <Modal transparent animationType="fade" onRequestClose={onClose}>
       <Pressable onPress={onClose} className="flex-1 bg-black/50 justify-end">
         <Pressable onPress={() => {}}>
-          <View className="rounded-t-2xl bg-white dark:bg-[#1E1E2E] p-4 pb-10">
-            <Text className="text-xs text-zinc-500 dark:text-zinc-400 px-2 mb-2">
+          <View
+            className="rounded-t-2xl p-4 pb-10"
+            style={{ backgroundColor: tokens.cardBg }}
+          >
+            <Text
+              className="text-xs px-2 mb-2"
+              style={{ color: tokens.textTer }}
+            >
               {goal.title}
             </Text>
             {goal.status !== "IN_PROGRESS" && goal.status !== "COMPLETE" && (
@@ -1144,6 +1267,7 @@ function SheetRow({
   onPress: () => void;
   danger?: boolean;
 }) {
+  const { tokens } = useTheme();
   return (
     <Pressable
       onPress={onPress}
@@ -1152,13 +1276,14 @@ function SheetRow({
         backgroundColor: "transparent",
       }}
     >
-      <Ionicons name={icon} size={18} color={danger ? "#EF4444" : "#A78BFA"} />
+      <Ionicons
+        name={icon}
+        size={18}
+        color={danger ? tokens.bad : tokens.primary}
+      />
       <Text
-        className={`text-sm ${
-          danger
-            ? "text-red-500"
-            : "text-zinc-800 dark:text-zinc-100"
-        }`}
+        className="text-sm"
+        style={{ color: danger ? tokens.bad : tokens.text }}
       >
         {label}
       </Text>
@@ -1186,6 +1311,7 @@ function SuggestionsSheet({
   onClose: () => void;
   onChanged: () => void;
 }) {
+  const { tokens } = useTheme();
   const [items, setItems] = useState<Suggestion[] | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
@@ -1231,13 +1357,19 @@ function SuggestionsSheet({
   return (
     <Modal transparent animationType="slide" onRequestClose={onClose}>
       <View className="flex-1 bg-black/50 justify-end">
-        <View className="rounded-t-2xl bg-white dark:bg-[#1E1E2E] max-h-[85%]">
+        <View
+          className="rounded-t-2xl max-h-[85%]"
+          style={{ backgroundColor: tokens.cardBg }}
+        >
           <View className="flex-row items-center justify-between px-5 pt-4 pb-2">
-            <Text className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+            <Text
+              className="text-lg font-semibold"
+              style={{ color: tokens.text }}
+            >
               Review suggestions
             </Text>
             <Pressable onPress={onClose} hitSlop={8} className="p-1">
-              <Ionicons name="close" size={20} color="#71717A" />
+              <Ionicons name="close" size={20} color={tokens.textTer} />
             </Pressable>
           </View>
           <ScrollView
@@ -1245,12 +1377,15 @@ function SuggestionsSheet({
           >
             {items === null ? (
               <View className="py-12 items-center">
-                <ActivityIndicator color="#7C3AED" />
+                <ActivityIndicator color={tokens.primary} />
               </View>
             ) : items.length === 0 ? (
               <View className="py-12 items-center">
                 <Text className="text-3xl mb-2">✨</Text>
-                <Text className="text-sm text-zinc-500 dark:text-zinc-400">
+                <Text
+                  className="text-sm"
+                  style={{ color: tokens.textSec }}
+                >
                   All caught up.
                 </Text>
               </View>
@@ -1262,9 +1397,16 @@ function SuggestionsSheet({
                   return (
                     <View
                       key={s.id}
-                      className="rounded-xl border border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-[#13131F] p-3"
+                      className="rounded-xl border p-3"
+                      style={{
+                        borderColor: tokens.line,
+                        backgroundColor: tokens.bgInset,
+                      }}
                     >
-                      <Text className="text-xs text-zinc-500 dark:text-zinc-400 mb-1">
+                      <Text
+                        className="text-xs mb-1"
+                        style={{ color: tokens.textTer }}
+                      >
                         {s.parentGoalTitle
                           ? `Under "${s.parentGoalTitle}"`
                           : "Top-level"}
@@ -1275,16 +1417,27 @@ function SuggestionsSheet({
                           value={editText}
                           onChangeText={setEditText}
                           multiline
-                          placeholderTextColor="#71717A"
-                          className="rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100"
+                          placeholderTextColor={tokens.textTer}
+                          className="rounded-lg border px-3 py-2 text-sm"
+                          style={{
+                            borderColor: tokens.line,
+                            backgroundColor: tokens.cardBg,
+                            color: tokens.text,
+                          }}
                         />
                       ) : (
-                        <Text className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
+                        <Text
+                          className="text-sm font-medium"
+                          style={{ color: tokens.text }}
+                        >
                           {s.suggestedText}
                         </Text>
                       )}
                       {s.source && (
-                        <Text className="mt-2 text-[10px] text-zinc-400 dark:text-zinc-500 italic">
+                        <Text
+                          className="mt-2 text-[10px] italic"
+                          style={{ color: tokens.textTer }}
+                        >
                           from your {formatRelativeDate(s.source.createdAt)} entry
                           {s.source.excerpt ? ` — “${s.source.excerpt}”` : ""}
                         </Text>
@@ -1296,7 +1449,10 @@ function SuggestionsSheet({
                               onPress={() => setEditingId(null)}
                               className="px-3 py-1.5"
                             >
-                              <Text className="text-xs text-zinc-500 dark:text-zinc-400">
+                              <Text
+                                className="text-xs"
+                                style={{ color: tokens.textSec }}
+                              >
                                 Cancel
                               </Text>
                             </Pressable>
@@ -1305,13 +1461,17 @@ function SuggestionsSheet({
                               onPress={() =>
                                 act(s.id, "edit-accept", editText.trim())
                               }
-                              className="rounded-full bg-violet-600 px-3 py-1.5"
+                              className="rounded-full px-3 py-1.5"
                               style={{
+                                backgroundColor: tokens.primary,
                                 opacity:
                                   busy || !editText.trim() ? 0.4 : 1,
                               }}
                             >
-                              <Text className="text-xs font-semibold text-white">
+                              <Text
+                                className="text-xs font-semibold"
+                                style={{ color: "#FFFFFF" }}
+                              >
                                 Save + accept
                               </Text>
                             </Pressable>
@@ -1323,7 +1483,10 @@ function SuggestionsSheet({
                               onPress={() => act(s.id, "dismiss")}
                               className="px-3 py-1.5"
                             >
-                              <Text className="text-xs text-zinc-500 dark:text-zinc-400">
+                              <Text
+                                className="text-xs"
+                                style={{ color: tokens.textSec }}
+                              >
                                 Dismiss
                               </Text>
                             </Pressable>
@@ -1335,19 +1498,26 @@ function SuggestionsSheet({
                               }}
                               className="px-3 py-1.5"
                             >
-                              <Text className="text-xs text-zinc-700 dark:text-zinc-200">
+                              <Text
+                                className="text-xs"
+                                style={{ color: tokens.text }}
+                              >
                                 Edit
                               </Text>
                             </Pressable>
                             <Pressable
                               disabled={busy}
                               onPress={() => act(s.id, "accept")}
-                              className="rounded-full bg-violet-600 px-3 py-1.5"
+                              className="rounded-full px-3 py-1.5"
                               style={{
+                                backgroundColor: tokens.primary,
                                 opacity: busy ? 0.4 : 1,
                               }}
                             >
-                              <Text className="text-xs font-semibold text-white">
+                              <Text
+                                className="text-xs font-semibold"
+                                style={{ color: "#FFFFFF" }}
+                              >
                                 Accept
                               </Text>
                             </Pressable>
