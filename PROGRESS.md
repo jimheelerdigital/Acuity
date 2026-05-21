@@ -45,7 +45,7 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** TBD
+**Commit hash:** ed6c745
 
 ### In plain English (for Keenan)
 
