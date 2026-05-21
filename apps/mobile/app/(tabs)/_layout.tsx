@@ -7,11 +7,12 @@ import { Animated, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useTheme } from "@/contexts/theme-context";
+import type { AcuityTokens } from "@/lib/theme/tokens";
 
 /**
  * Custom tab bar — 5 slots all rendered by ONE code path so the labels
- * are guaranteed to share a baseline. The raised purple mic button is
- * an absolute overlay positioned above the center slot, and has zero
+ * are guaranteed to share a baseline. The raised mic button is an
+ * absolute overlay positioned above the center slot, and has zero
  * contribution to the tab row's layout.
  *
  * Why a full custom tab bar:
@@ -35,19 +36,16 @@ import { useTheme } from "@/contexts/theme-context";
  * tab bar's top edge. Tapping it routes to Home.
  */
 
-const BRAND_PURPLE = "#7C3AED";
-const BRAND_PURPLE_DARK = "#A78BFA";
-const RECORD_FILL_ACTIVE = "#7C3AED";
-const RECORD_FILL_INACTIVE = "#5D449B";
-
 export default function TabsLayout() {
-  const { resolved } = useTheme();
+  const { tokens, resolved } = useTheme();
   const isDark = resolved === "dark";
 
   return (
     <Tabs
       screenOptions={{ headerShown: false }}
-      tabBar={(props) => <CustomTabBar {...props} isDark={isDark} />}
+      tabBar={(props) => (
+        <CustomTabBar {...props} isDark={isDark} tokens={tokens} />
+      )}
     >
       <Tabs.Screen name="goals" options={{ title: "Goals" }} />
       <Tabs.Screen name="tasks" options={{ title: "Tasks" }} />
@@ -96,16 +94,15 @@ function CustomTabBar({
   state,
   navigation,
   isDark,
-}: BottomTabBarProps & { isDark: boolean }) {
+  tokens,
+}: BottomTabBarProps & { isDark: boolean; tokens: AcuityTokens }) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  const tabBarBg = isDark ? "#0B0B12" : "#FFFFFF";
-  const tabBarBorder = isDark ? "rgba(255,255,255,0.08)" : "#E4E4E7";
-  const activeTint = isDark ? BRAND_PURPLE_DARK : BRAND_PURPLE;
-  const inactiveTint = isDark
-    ? "rgba(255,255,255,0.62)"
-    : "rgba(39,39,42,0.62)";
+  const tabBarBg = tokens.bg;
+  const tabBarBorder = tokens.line;
+  const activeTint = tokens.primary;
+  const inactiveTint = tokens.textSec;
 
   // Figure out which slot is currently focused for tint purposes.
   // state.routes contains EVERY screen registered in the Tabs group,
@@ -215,7 +212,7 @@ function CustomTabBar({
           `marginLeft: -32` horizontally centers a 64pt-wide circle.
           `top: -26` raises it 26pt above the tab bar's top edge. */}
       <RecordOverlayButton
-        isDark={isDark}
+        tokens={tokens}
         active={isOnHome}
         onPress={() => router.navigate("/(tabs)")}
       />
@@ -224,11 +221,11 @@ function CustomTabBar({
 }
 
 function RecordOverlayButton({
-  isDark,
+  tokens,
   active,
   onPress,
 }: {
-  isDark: boolean;
+  tokens: AcuityTokens;
   active: boolean;
   onPress: () => void;
 }) {
@@ -244,9 +241,13 @@ function RecordOverlayButton({
     }).start();
   }, [targetColorValue, colorAnim]);
 
+  // Q11a (2026-05-21): replaced four hardcoded BRAND_PURPLE constants
+  // with palette tokens. Animation pattern preserved — interpolate
+  // between primaryLo (idle/inactive) and primary (active/pressed)
+  // so the button "lights up" on focus.
   const backgroundColor = colorAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [RECORD_FILL_INACTIVE, RECORD_FILL_ACTIVE],
+    outputRange: [tokens.primaryLo, tokens.primary],
   });
 
   // `top: -36` raises the button so its bottom edge sits at y=28 in
@@ -274,11 +275,11 @@ function RecordOverlayButton({
           borderRadius: 32,
           backgroundColor,
           borderWidth: 4,
-          borderColor: isDark ? "#0B0B12" : "#FFFFFF",
-          shadowColor: "#7C3AED",
+          borderColor: tokens.bg,
+          shadowColor: tokens.glowPrimary.color,
           shadowOffset: { width: 0, height: 6 },
-          shadowRadius: 14,
-          shadowOpacity: isDark ? 0.6 : 0.45,
+          shadowRadius: tokens.glowPrimary.radius,
+          shadowOpacity: tokens.glowPrimary.opacity,
           alignItems: "center",
           justifyContent: "center",
           transform: [{ scale: pressed ? 0.94 : 1 }],

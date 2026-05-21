@@ -39,6 +39,7 @@ import { LockedFeatureCard } from "@/components/locked-feature-card";
 import { ProLockedCard } from "@/components/pro-locked-card";
 import { Skeleton, SkeletonCard } from "@/components/skeleton";
 import { useAuth } from "@/contexts/auth-context";
+import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
 import { getCached, isStale, setCached } from "@/lib/cache";
 import { isFreeTierUser } from "@/lib/free-tier";
@@ -805,6 +806,7 @@ const TreeNode = memo(function TreeNode({
   onActions: (goal: TreeGoal) => void;
   onToggleTask: (id: string, status: string) => void;
 }) {
+  const { tokens } = useTheme();
   const status = STATUS_STYLES[goal.status] ?? STATUS_STYLES.NOT_STARTED;
   const area = LIFE_AREAS[goal.lifeArea] ?? {
     label: goal.lifeArea,
@@ -858,11 +860,18 @@ const TreeNode = memo(function TreeNode({
                   {status.label}
                 </Text>
               </View>
+              {/* Q11a (2026-05-21): area pill now tints with the
+                  active palette token (tokens.primary) instead of
+                  reading area.color from the local hardcoded
+                  LIFE_AREAS constant. Per-area color cue lost; gained
+                  palette consistency across all 4 palettes. The full
+                  Goals tab LIFE_AREAS + STATUS_STYLES refactor lands
+                  in a later Q11 phase. */}
               <View
                 className="rounded-full px-2 py-0.5"
-                style={{ backgroundColor: area.color + "20" }}
+                style={{ backgroundColor: `${tokens.primary}20` }}
               >
-                <Text style={{ color: area.color, fontSize: 10, fontWeight: "600" }}>
+                <Text style={{ color: tokens.primary, fontSize: 10, fontWeight: "600" }}>
                   {area.label}
                 </Text>
               </View>
