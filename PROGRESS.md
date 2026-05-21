@@ -41,6 +41,44 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-21] — Emergency: disable AdLab auto-kill, fix pixel double-fire, harden signup email error handling
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 830ec9f
+
+### In plain English (for Keenan)
+
+Three urgent fixes shipped together. First, AdLab was automatically killing ads based on conversion data that was inflated by a pixel bug — the auto-kill and auto-scale rules are now disabled so no more ads get paused overnight until we recalibrate thresholds with clean data. The daily cron still runs and collects metrics, it just won't take any automated actions. Second, the Meta pixel was firing "CompleteRegistration" when someone clicked the Google or Apple signup button — before they even finished signing in. If they cancelled, Meta still counted it as a conversion. That's fixed: the pixel now only fires on the success page after confirming the user account actually exists and was created in the last 5 minutes. Third, if the welcome email fails to send during signup, the signup used to silently succeed but the user would never get their verification link — now those failures are caught, logged, and reported to Sentry so we can see them.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/api/admin/adlab/cron/route.ts`: Commented out all three kill rules (1.5× CPL zero-conversion, CTR < 0.5%, CPL > 2× target) and their execution block (Meta API PAUSE call + DB status update + decision audit record). Also commented out scale rules (budget +20% logic). Cron still runs daily at 09:00 UTC — syncs metrics from Meta, logs maintain decisions, checks experiment conclusions, sends daily summary email. Comment marker: "KILL + SCALE RULES DISABLED — re-enable after pixel fix and threshold recalibration — Keenan 2026-05-21"
+- `apps/web/src/app/auth/signup/page.tsx`: Removed `CompleteRegistration` and `StartTrial` pixel fires from `handleGoogle` (line 74-77) and `handleApple` (line 88-91) click handlers. `Lead` pixel still fires on click. Email/password flow unchanged (pixel fires after 200 response, which is correct).
+- `apps/web/src/components/meta-pixel-events.tsx`: `TrackCompleteRegistration` now checks session via `useSession`, fetches `/api/user/me` to read `createdAt`, and only fires pixel if user was created within the last 5 minutes. Also deduplicates via `sessionStorage` key to prevent re-fires on page refresh.
+- `apps/web/src/app/api/user/me/route.ts`: Added `createdAt` back to the response payload (was previously destructured out). Needed by the pixel component to verify new-user status.
+- `apps/web/src/app/api/auth/signup/route.ts`: Wrapped Resend welcome/verify email send in try/catch + Sentry capture. Signup still returns 200 on email failure.
+- `apps/web/src/app/api/auth/mobile-signup/route.ts`: Same try/catch + Sentry wrapper on email send.
+- `apps/web/src/app/api/auth/mobile-magic-link/route.ts`: Same try/catch + Sentry wrapper on magic link email send.
+
+### Manual steps needed
+
+- [ ] Verify Vercel deploy completes successfully after push (Keenan)
+- [ ] Check Sentry for any new signup-email-send errors in the next 24h (Keenan / Jimmy)
+- [ ] Watch AdLab daily summary email tomorrow — should show 0 kills, 0 scales (Keenan)
+- [ ] Test a fresh signup (Google OAuth) → confirm CompleteRegistration fires exactly once in Meta Events Manager (Keenan)
+- [ ] After pixel data is clean for 3-5 days, recalibrate kill/scale thresholds and re-enable in cron route (Keenan / Jimmy)
+
+### Notes
+
+- The AdLab kill rules were working as coded — the problem was upstream: inflated conversion data from double-firing pixels meant the rules were making decisions on bad data. Disabling is the right call until we have clean signal.
+- OAuth pixel double-fire was the root cause of the 3 CompleteRegistration events in Meta vs. fewer real users. Google/Apple OAuth buttons fired the pixel on click (before redirect), and the success page fired it again after redirect. One real signup could generate 2 Meta conversion events.
+- The `/api/user/me` endpoint previously stripped `createdAt` from the response. Adding it back is a non-breaking additive change — mobile clients that don't read it are unaffected.
+- The email try/catch pattern matches what `bootstrap-user.ts` already does for founder notifications. Signup should never fail because an email provider is down.
+- Pre-existing TS errors in `me/route.ts` (7 errors from schema drift on `appFirstOpenedAt` and `onboarding`) are unchanged — these predate this commit.
+
+---
+
 ## [2026-05-21] — Slice Q10 — Extract review banner visual refresh
 
 **Requested by:** Jimmy
