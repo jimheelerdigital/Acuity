@@ -41,6 +41,35 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-21] — Fix account linking + backfill emailVerified for existing users
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** TBD
+
+### In plain English (for Keenan)
+
+Users who signed up with email/password were getting blocked when they tried to sign in with Google (same email) — "This email already has an account with a different sign-in method." Now it automatically links the accounts. Works in all directions: email→Google, email→Apple, Google→Apple, any combination. Also created a one-time backfill endpoint to set emailVerified for all existing users who signed up before today's verification wall removal.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/lib/auth.ts`: Added `allowDangerousEmailAccountLinking: true` to both GoogleProvider and AppleProvider. This tells NextAuth to link OAuth accounts to existing users with matching email instead of throwing OAuthAccountNotLinked. Also confirmed the EmailNotVerified check was already removed in the earlier commit.
+- `apps/web/src/app/api/admin/backfill-email-verified/route.ts`: New admin-only POST endpoint that runs `UPDATE "User" SET "emailVerified" = "createdAt" WHERE "emailVerified" IS NULL`. Idempotent — safe to run multiple times.
+
+### Manual steps needed
+
+- [ ] After deploy, run the backfill: `POST /api/admin/backfill-email-verified` from the admin dashboard or curl (Keenan)
+- [ ] Test: sign up with email/password using a test email, sign out, sign back in with Google using same email — should work (Keenan)
+- [ ] Test reverse: sign up with Google, sign out, sign in with email/password (set password first via forgot-password flow) (Keenan)
+
+### Notes
+
+- `allowDangerousEmailAccountLinking` sounds scary but is the standard NextAuth v4 pattern for consumer apps where you trust the OAuth provider's email verification (Google and Apple both verify emails). The "dangerous" label is because it assumes the OAuth provider has verified the email — which Google and Apple always do.
+- The backfill sets `emailVerified = createdAt` (not `now()`) to preserve the original signup timestamp in the verification field. This is more accurate for analytics.
+- The backfill endpoint is admin-only and behind `requireAdmin()`. It can be deleted after running once.
+
+---
+
 ## [2026-05-21] — Post-signup success page overhaul
 
 **Requested by:** Keenan

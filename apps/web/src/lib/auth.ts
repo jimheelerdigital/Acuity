@@ -45,6 +45,9 @@ export function getAuthOptions(): NextAuthOptions {
       GoogleProvider({
         clientId: process.env.GOOGLE_CLIENT_ID!,
         clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+        // Allow users who signed up with email/password to later sign in
+        // with Google (same email) — links the accounts automatically.
+        allowDangerousEmailAccountLinking: true,
         authorization: {
           params: {
             prompt: "consent",
@@ -59,6 +62,7 @@ export function getAuthOptions(): NextAuthOptions {
             AppleProvider({
               clientId: process.env.APPLE_CLIENT_ID,
               clientSecret: process.env.APPLE_CLIENT_SECRET,
+              allowDangerousEmailAccountLinking: true,
             }),
           ]
         : []),
