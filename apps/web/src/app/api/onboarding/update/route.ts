@@ -79,7 +79,11 @@ export async function POST(req: NextRequest) {
   }
 
   const step = Math.round(body.step);
-  if (step < 1 || step > 10) {
+  // Mobile flow is 11 steps (post-v1.1 Life Matrix baseline removal,
+  // 2026-05-21). Web flow is ≤10 steps. Accept the union — anything
+  // that's a valid step on either platform passes here. Out-of-range
+  // values are explicit client bugs and get a 400.
+  if (step < 1 || step > 11) {
     return NextResponse.json({ error: "step out of range" }, { status: 400 });
   }
 

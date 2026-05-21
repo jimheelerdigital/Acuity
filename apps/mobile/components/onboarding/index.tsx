@@ -11,9 +11,11 @@ import { Step4Microphone } from "./step-4-microphone";
 import { Step5AiConsent } from "./step-5-ai-consent";
 import { Step5Practice } from "./step-5-practice";
 import { Step6MoodSlider } from "./step-6-mood-slider";
-import { Step9LifeMatrixBaselines } from "./step-9-life-matrix-baselines";
 import { Step8Trial } from "./step-8-trial";
 import { Step9Reminders } from "./step-9-reminders";
+// Step9LifeMatrixBaselines is NOT imported here in v1.1 — see history
+// note below. The component file stays in-tree for future reuse as an
+// in-app "Tune your Life Matrix" feature.
 
 export { OnboardingShell } from "./shell";
 export { useOnboarding } from "./context";
@@ -51,6 +53,18 @@ export interface OnboardingStep {
  *     {lifeAreaPriorities:{...}} to {lifeAreaBaselines:{...}} —
  *     server `/api/onboarding/update` accepts both during the
  *     build-42 transition window.
+ *   - 2026-05-21 (v1.1 ship): Life Matrix baseline carousel removed
+ *     from the onboarding sequence — 10 sequential slider decisions
+ *     before the user records a single entry creates too much
+ *     friction. Total: 12 → 11 steps. New ordering: welcome →
+ *     value prop → about you → what brings you here → mic →
+ *     AI consent → practice → mood slider → trial → reminders →
+ *     ready. Server defaults all 10 LifeMapArea rows to score100=50
+ *     (neutral, schema default) for any user who hasn't set
+ *     baselines; AI extraction populates them from transcripts.
+ *     The Step9LifeMatrixBaselines component file is kept in-tree
+ *     (dormant) — planned reuse as an in-app "Tune your Life
+ *     Matrix" feature accessible from the Insights tab.
  */
 export const ONBOARDING_STEPS: OnboardingStep[] = [
   { step: 1, title: "Welcome", Component: Step1Welcome },
@@ -61,8 +75,7 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
   { step: 6, title: "How Acuity uses AI", Component: Step5AiConsent },
   { step: 7, title: "Practice round", Component: Step5Practice },
   { step: 8, title: "Mood baseline", Component: Step6MoodSlider },
-  { step: 9, title: "Life Matrix baseline", Component: Step9LifeMatrixBaselines },
-  { step: 10, title: "How the trial works", Component: Step8Trial },
-  { step: 11, title: "Reminders", Component: Step9Reminders },
-  { step: 12, title: "Ready when you are", Component: Step10Ready },
+  { step: 9, title: "How the trial works", Component: Step8Trial },
+  { step: 10, title: "Reminders", Component: Step9Reminders },
+  { step: 11, title: "Ready when you are", Component: Step10Ready },
 ];

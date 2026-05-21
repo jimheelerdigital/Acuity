@@ -1,3 +1,15 @@
+// ─── REPURPOSED — DORMANT in v1.1 ────────────────────────────────────
+// Was onboarding step 9 (Phase C, 2026-05-21). Removed from the
+// onboarding sequence on 2026-05-21 because 10 sequential slider
+// decisions before the user records a single entry created too much
+// friction (drop-off risk). The component is kept in-tree for future
+// reuse as an in-app "Tune your Life Matrix" feature accessible from
+// the Insights tab — same UX, just opt-in rather than gating the
+// post-signup flow. Until that landing surface ships, this file
+// compiles but is not referenced anywhere; tree-shaking eliminates
+// it from the bundle.
+// ─────────────────────────────────────────────────────────────────────
+
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
