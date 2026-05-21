@@ -4,6 +4,7 @@ import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useAuth } from "@/contexts/auth-context";
+import { useTheme } from "@/contexts/theme-context";
 import { completeMobileMagicLink } from "@/lib/auth";
 import { recoverPurchasesIfNeeded } from "@/lib/iap";
 
@@ -31,6 +32,7 @@ import { recoverPurchasesIfNeeded } from "@/lib/iap";
 export default function AuthCallbackScreen() {
   const router = useRouter();
   const { refresh } = useAuth();
+  const { tokens } = useTheme();
   const params = useLocalSearchParams<{ token?: string }>();
   const [status, setStatus] = useState<"working" | "error">("working");
   const [errorMessage, setErrorMessage] = useState<string>("");
@@ -78,28 +80,44 @@ export default function AuthCallbackScreen() {
   }, [params.token, refresh, router]);
 
   return (
-    <SafeAreaView className="flex-1 bg-white dark:bg-[#0B0B12] items-center justify-center px-6">
+    <SafeAreaView
+      className="flex-1 items-center justify-center px-6"
+      style={{ backgroundColor: tokens.bg }}
+    >
       {status === "working" ? (
         <View className="items-center">
-          <ActivityIndicator size="large" color="#A1A1AA" />
-          <Text className="mt-4 text-sm text-zinc-500 dark:text-zinc-400">
+          <ActivityIndicator size="large" color={tokens.textTer} />
+          <Text
+            className="mt-4 text-sm"
+            style={{ color: tokens.textSec }}
+          >
             Signing you in…
           </Text>
         </View>
       ) : (
         <View className="items-center">
           <Text className="text-4xl mb-4">⚠️</Text>
-          <Text className="text-xl font-bold text-zinc-900 dark:text-zinc-50 mb-2 text-center">
+          <Text
+            className="text-xl font-bold mb-2 text-center"
+            style={{ color: tokens.text }}
+          >
             Sign-in failed
           </Text>
-          <Text className="text-sm text-zinc-500 dark:text-zinc-400 text-center leading-relaxed mb-6">
+          <Text
+            className="text-sm text-center leading-relaxed mb-6"
+            style={{ color: tokens.textSec }}
+          >
             {errorMessage}
           </Text>
           <Pressable
             onPress={() => router.replace("/(auth)/sign-in")}
-            className="px-4 py-3 rounded-xl bg-zinc-900 dark:bg-zinc-50"
+            className="px-4 py-3 rounded-xl"
+            style={{ backgroundColor: tokens.text }}
           >
-            <Text className="text-sm font-semibold text-white dark:text-zinc-900">
+            <Text
+              className="text-sm font-semibold"
+              style={{ color: tokens.bg }}
+            >
               Back to sign in →
             </Text>
           </Pressable>

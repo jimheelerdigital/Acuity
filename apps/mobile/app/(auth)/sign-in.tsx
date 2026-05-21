@@ -35,6 +35,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useAuth } from "@/contexts/auth-context";
+import { useTheme } from "@/contexts/theme-context";
 import {
   requestMagicLink,
   signInWithPassword,
@@ -56,6 +57,7 @@ type Loading = "google" | "apple" | "password" | "magic" | null;
  */
 export default function SignInScreen() {
   const { setAuthenticatedUser } = useAuth();
+  const { tokens } = useTheme();
   const { signIn: googleSignIn, ready, hasClientId } = useGoogleSignIn();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -189,12 +191,21 @@ export default function SignInScreen() {
 
   if (magicSent) {
     return (
-      <SafeAreaView className="flex-1 bg-white dark:bg-[#0B0B12] items-center justify-center px-6">
+      <SafeAreaView
+        className="flex-1 items-center justify-center px-6"
+        style={{ backgroundColor: tokens.bg }}
+      >
         <Text className="text-4xl mb-4">📬</Text>
-        <Text className="text-xl font-bold text-zinc-900 dark:text-zinc-50 mb-2">
+        <Text
+          className="text-xl font-bold mb-2"
+          style={{ color: tokens.text }}
+        >
           Check your inbox
         </Text>
-        <Text className="text-sm text-zinc-500 dark:text-zinc-400 text-center leading-relaxed mb-6">
+        <Text
+          className="text-sm text-center leading-relaxed mb-6"
+          style={{ color: tokens.textSec }}
+        >
           We sent a sign-in link to {email}. Open it on this device — it&apos;ll hand off to Acuity automatically.
         </Text>
         <Pressable
@@ -204,7 +215,9 @@ export default function SignInScreen() {
           }}
           className="px-4 py-2"
         >
-          <Text className="text-violet-500 text-sm">Use a different email</Text>
+          <Text className="text-sm" style={{ color: tokens.primary }}>
+            Use a different email
+          </Text>
         </Pressable>
       </SafeAreaView>
     );
@@ -223,18 +236,30 @@ export default function SignInScreen() {
     // already centered on viewport). Onboarding / sign-up / forgot-
     // password / delete-modal keep the wrapper since they have more
     // inputs and benefit from it.
-    <SafeAreaView className="flex-1 bg-white dark:bg-[#0B0B12] px-6">
+    <SafeAreaView
+      className="flex-1 px-6"
+      style={{ backgroundColor: tokens.bg }}
+    >
       <View className="flex-1 justify-center">
-        <View className="h-16 w-16 rounded-2xl bg-violet-600 items-center justify-center mb-8 self-center">
-          <Text className="text-3xl" style={{ color: "white" }}>
+        <View
+          className="h-16 w-16 rounded-2xl items-center justify-center mb-8 self-center"
+          style={{ backgroundColor: tokens.primary }}
+        >
+          <Text className="text-3xl" style={{ color: "#FFFFFF" }}>
             A
           </Text>
         </View>
 
-        <Text className="text-2xl font-bold text-zinc-900 dark:text-zinc-50 mb-1 text-center">
+        <Text
+          className="text-2xl font-bold mb-1 text-center"
+          style={{ color: tokens.text }}
+        >
           Sign in to Acuity
         </Text>
-        <Text className="text-sm text-zinc-400 dark:text-zinc-500 mb-8 text-center">
+        <Text
+          className="text-sm mb-8 text-center"
+          style={{ color: tokens.textTer }}
+        >
           Your nightly brain dump, pattern recognition across your own words.
         </Text>
 
@@ -282,24 +307,42 @@ export default function SignInScreen() {
         <Pressable
           onPress={handleGoogle}
           disabled={loading !== null}
-          className="w-full flex-row items-center justify-center gap-3 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-4 py-3.5 mb-4"
-          style={{ opacity: loading ? 0.7 : 1 }}
+          className="w-full flex-row items-center justify-center gap-3 rounded-xl border px-4 py-3.5 mb-4"
+          style={{
+            borderColor: tokens.line,
+            backgroundColor: tokens.cardBg,
+            opacity: loading ? 0.7 : 1,
+          }}
         >
           {loading === "google" ? (
-            <ActivityIndicator size="small" color="#A1A1AA" />
+            <ActivityIndicator size="small" color={tokens.textTer} />
           ) : (
-            <Ionicons name="logo-google" size={18} color="#A1A1AA" />
+            <Ionicons name="logo-google" size={18} color={tokens.textTer} />
           )}
-          <Text className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+          <Text
+            className="text-sm font-semibold"
+            style={{ color: tokens.text }}
+          >
             {loading === "google" ? "Signing in…" : "Continue with Google"}
           </Text>
         </Pressable>
 
         {/* Divider */}
         <View className="flex-row items-center gap-3 my-3">
-          <View className="h-px flex-1 bg-zinc-200 dark:bg-white/10" />
-          <Text className="text-xs text-zinc-400 dark:text-zinc-500">or</Text>
-          <View className="h-px flex-1 bg-zinc-200 dark:bg-white/10" />
+          <View
+            className="h-px flex-1"
+            style={{ backgroundColor: tokens.line }}
+          />
+          <Text
+            className="text-xs"
+            style={{ color: tokens.textTer }}
+          >
+            or
+          </Text>
+          <View
+            className="h-px flex-1"
+            style={{ backgroundColor: tokens.line }}
+          />
         </View>
 
         {/* Email + password */}
@@ -307,21 +350,31 @@ export default function SignInScreen() {
           value={email}
           onChangeText={setEmail}
           placeholder="you@example.com"
-          placeholderTextColor="#71717A"
+          placeholderTextColor={tokens.textTer}
           autoCapitalize="none"
           autoComplete="email"
           keyboardType="email-address"
-          className="w-full rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-4 py-3 text-zinc-900 dark:text-zinc-50 mb-3"
+          className="w-full rounded-xl border px-4 py-3 mb-3"
+          style={{
+            borderColor: tokens.line,
+            backgroundColor: tokens.cardBg,
+            color: tokens.text,
+          }}
         />
         <View className="relative w-full mb-3">
           <TextInput
             value={password}
             onChangeText={setPassword}
             placeholder="Password"
-            placeholderTextColor="#71717A"
+            placeholderTextColor={tokens.textTer}
             secureTextEntry={!showPassword}
             autoComplete="password"
-            className="w-full rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] pl-4 pr-12 py-3 text-zinc-900 dark:text-zinc-50"
+            className="w-full rounded-xl border pl-4 pr-12 py-3"
+            style={{
+              borderColor: tokens.line,
+              backgroundColor: tokens.cardBg,
+              color: tokens.text,
+            }}
           />
           <Pressable
             onPress={() => setShowPassword((v) => !v)}
@@ -335,22 +388,26 @@ export default function SignInScreen() {
             <Ionicons
               name={showPassword ? "eye-off-outline" : "eye-outline"}
               size={20}
-              color="#71717A"
+              color={tokens.textTer}
             />
           </Pressable>
         </View>
         <Pressable
           onPress={handlePassword}
           disabled={loading !== null || !email.trim() || !password}
-          className="w-full rounded-xl bg-zinc-900 dark:bg-zinc-50 px-4 py-3.5 items-center"
+          className="w-full rounded-xl px-4 py-3.5 items-center"
           style={{
+            backgroundColor: tokens.text,
             opacity:
               loading !== null || !email.trim() || !password
                 ? 0.5
                 : 1,
           }}
         >
-          <Text className="text-sm font-semibold text-white dark:text-zinc-900">
+          <Text
+            className="text-sm font-semibold"
+            style={{ color: tokens.bg }}
+          >
             {loading === "password" ? "Signing in…" : "Sign in"}
           </Text>
         </Pressable>
@@ -359,12 +416,16 @@ export default function SignInScreen() {
         <Pressable
           onPress={handleMagic}
           disabled={loading !== null}
-          className="w-full rounded-xl border border-zinc-200 dark:border-white/10 px-4 py-3 mt-3 items-center"
+          className="w-full rounded-xl border px-4 py-3 mt-3 items-center"
           style={{
+            borderColor: tokens.line,
             opacity: loading !== null ? 0.5 : 1,
           }}
         >
-          <Text className="text-sm font-medium text-zinc-600 dark:text-zinc-300">
+          <Text
+            className="text-sm font-medium"
+            style={{ color: tokens.textSec }}
+          >
             {loading === "magic" ? "Sending link…" : "Email me a sign-in link"}
           </Text>
         </Pressable>
@@ -372,14 +433,20 @@ export default function SignInScreen() {
         <View className="flex-row justify-between items-center mt-5">
           <Link href="/(auth)/forgot-password" asChild>
             <Pressable>
-              <Text className="text-xs text-zinc-500 dark:text-zinc-400">
+              <Text
+                className="text-xs"
+                style={{ color: tokens.textSec }}
+              >
                 Forgot password?
               </Text>
             </Pressable>
           </Link>
           <Link href="/(auth)/sign-up" asChild>
             <Pressable>
-              <Text className="text-xs font-semibold text-violet-500">
+              <Text
+                className="text-xs font-semibold"
+                style={{ color: tokens.primary }}
+              >
                 Create account →
               </Text>
             </Pressable>
@@ -387,6 +454,10 @@ export default function SignInScreen() {
         </View>
 
         {!hasClientId && (
+          // Amber warning kept hardcoded — warning isn't a palette
+          // token category (palette has primary/secondary/good/bad,
+          // no warning amber). Same convention as the confetti
+          // accents in Q8.
           <Text className="text-xs text-amber-400 mt-6 text-center leading-relaxed">
             Google client ID not set. Development build only.
           </Text>
