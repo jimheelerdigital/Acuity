@@ -86,13 +86,26 @@ export async function getUserProgression(userId: string): Promise<UserProgressio
     timezone: user.timezone,
   });
 
-  // Write back the snapshot + milestone-celebrated bump in a single
-  // update. If a milestone fired this call, persist the threshold
-  // to User.lastStreakMilestone so subsequent streak-break + rebuild
-  // can't re-celebrate the same threshold.
-  try {
-    const fired = progression.recentlyHitMilestone;
-    await prisma.user.update({
+  // Write back the snapshot + milestone-celebrated bump.
+  //
+  // Fire-and-forget (2026-05-20): previously this was awaited inside a
+  // try/catch, but in prod the mobile launch sequence fires /me +
+  // /progression + (formerly) /app-open concurrently, all writing the
+  // same User row. Lock-wait on the row exceeded Supabase's
+  // statement_timeout (Postgres 57014) on the trailing update,
+  // surfacing as "Invalid `prisma.user.update()` invocation" warnings
+  // in Vercel logs. Detaching the write from the request critical
+  // path removes /progression as a writer in the contention pile-up.
+  //
+  // Cost of detachment: the snapshot may persist one call later than
+  // before. `recentlyUnlocked` is computed from previousProgression
+  // — if a user opens the app, sees an unlock, and the snapshot write
+  // is still in flight when the NEXT call arrives (rare; the write
+  // is ~500ms), they'd see the same unlock card again. Acceptable
+  // tradeoff vs. the prod failure.
+  const fired = progression.recentlyHitMilestone;
+  void prisma.user
+    .update({
       where: { id: userId },
       data: {
         progressionSnapshot: serializeSnapshot(progression) as never,
@@ -100,13 +113,10 @@ export async function getUserProgression(userId: string): Promise<UserProgressio
           ? { lastStreakMilestone: fired }
           : {}),
       },
+    })
+    .catch((err) => {
+      console.warn("[userProgression] snapshot write failed:", err);
     });
-  } catch (err) {
-    // Don't fail the whole request if the snapshot write fails —
-    // next call will just show no recentlyUnlocked until the write
-    // succeeds. Log for observability.
-    console.warn("[userProgression] snapshot write failed:", err);
-  }
 
   return progression;
 }
