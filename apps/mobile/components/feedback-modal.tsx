@@ -12,6 +12,7 @@ import {
   View,
 } from "react-native";
 
+import { useTheme } from "@/contexts/theme-context";
 import { submitFeedback, type FeedbackType } from "@/lib/feedback";
 
 /**
@@ -43,6 +44,7 @@ const TYPES: Array<{
 const MAX_CHARS = 4000;
 
 export function FeedbackModal({ visible, onClose }: Props) {
+  const { tokens } = useTheme();
   const [type, setType] = useState<FeedbackType | null>(null);
   const [content, setContent] = useState("");
   const [sending, setSending] = useState(false);
@@ -88,23 +90,30 @@ export function FeedbackModal({ visible, onClose }: Props) {
       presentationStyle="pageSheet"
       onRequestClose={handleClose}
     >
-      <View className="flex-1 bg-white dark:bg-[#0B0B12]">
+      <View className="flex-1" style={{ backgroundColor: tokens.bg }}>
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : undefined}
           className="flex-1"
         >
           {/* Header */}
-          <View className="flex-row items-center justify-between px-5 py-4 border-b border-zinc-200 dark:border-white/10">
-            <Text className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+          <View
+            className="flex-row items-center justify-between px-5 py-4 border-b"
+            style={{ borderColor: tokens.line }}
+          >
+            <Text
+              className="text-lg font-semibold"
+              style={{ color: tokens.text }}
+            >
               Send feedback
             </Text>
             <Pressable
               onPress={handleClose}
               hitSlop={12}
-              className="h-8 w-8 items-center justify-center rounded-full bg-zinc-100 dark:bg-white/10"
+              className="h-8 w-8 items-center justify-center rounded-full"
+              style={{ backgroundColor: tokens.bgInset }}
               accessibilityLabel="Close feedback"
             >
-              <Ionicons name="close" size={18} color="#71717A" />
+              <Ionicons name="close" size={18} color={tokens.textTer} />
             </Pressable>
           </View>
 
@@ -112,14 +121,20 @@ export function FeedbackModal({ visible, onClose }: Props) {
             contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
             keyboardShouldPersistTaps="handled"
           >
-            <Text className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-300 mb-5">
+            <Text
+              className="text-sm leading-relaxed mb-5"
+              style={{ color: tokens.textSec }}
+            >
               Found a bug, have an idea, or want to tell us what
               isn&rsquo;t working? Pick a type and tell us what&rsquo;s
               up.
             </Text>
 
             {/* Type picker */}
-            <Text className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-2">
+            <Text
+              className="text-xs font-semibold uppercase tracking-wider mb-2"
+              style={{ color: tokens.textTer }}
+            >
               What kind of feedback?
             </Text>
             <View className="flex-row flex-wrap gap-2 mb-6">
@@ -131,23 +146,25 @@ export function FeedbackModal({ visible, onClose }: Props) {
                     onPress={() => setType(t.value)}
                     accessibilityRole="button"
                     accessibilityState={{ selected: active }}
-                    className={`flex-row items-center gap-2 rounded-full border px-4 py-2.5 ${
-                      active
-                        ? "border-violet-500 bg-violet-50 dark:bg-violet-950/30"
-                        : "border-zinc-200 dark:border-white/10 bg-transparent"
-                    }`}
+                    className="flex-row items-center gap-2 rounded-full border px-4 py-2.5"
+                    style={{
+                      borderColor: active ? tokens.primary : tokens.line,
+                      backgroundColor: active
+                        ? `${tokens.primary}14`
+                        : "transparent",
+                    }}
                   >
                     <Ionicons
                       name={t.icon}
                       size={16}
-                      color={active ? "#A78BFA" : "#71717A"}
+                      color={active ? tokens.primary : tokens.textTer}
                     />
                     <Text
-                      className={`text-sm ${
-                        active
-                          ? "text-violet-700 dark:text-violet-300 font-semibold"
-                          : "text-zinc-700 dark:text-zinc-200"
-                      }`}
+                      className="text-sm"
+                      style={{
+                        color: active ? tokens.primary : tokens.textSec,
+                        fontWeight: active ? "600" : "400",
+                      }}
                     >
                       {t.label}
                     </Text>
@@ -157,41 +174,64 @@ export function FeedbackModal({ visible, onClose }: Props) {
             </View>
 
             {/* Content textarea */}
-            <Text className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-2">
+            <Text
+              className="text-xs font-semibold uppercase tracking-wider mb-2"
+              style={{ color: tokens.textTer }}
+            >
               Tell us more
             </Text>
             <TextInput
               value={content}
               onChangeText={setContent}
               placeholder="Describe what happened, what you expected, what you'd like to see…"
-              placeholderTextColor="#71717A"
+              placeholderTextColor={tokens.textTer}
               multiline
               maxLength={MAX_CHARS}
               textAlignVertical="top"
-              className="w-full min-h-40 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-4 py-3 text-base text-zinc-900 dark:text-zinc-50"
-              style={{ minHeight: 160 }}
+              className="w-full min-h-40 rounded-xl border px-4 py-3 text-base"
+              style={{
+                borderColor: tokens.line,
+                backgroundColor: tokens.cardBg,
+                color: tokens.text,
+                minHeight: 160,
+              }}
               accessibilityLabel="Feedback content"
             />
-            <Text className="text-xs text-zinc-400 dark:text-zinc-500 mt-1.5 text-right">
+            <Text
+              className="text-xs mt-1.5 text-right"
+              style={{ color: tokens.textTer }}
+            >
               {charsLeft.toLocaleString()} characters left
             </Text>
 
             {/* Privacy note */}
-            <Text className="text-xs text-zinc-400 dark:text-zinc-500 mt-6 leading-relaxed">
+            <Text
+              className="text-xs mt-6 leading-relaxed"
+              style={{ color: tokens.textTer }}
+            >
               We&rsquo;ll see your email, app version, and OS along
               with your message so we can follow up if needed.
             </Text>
           </ScrollView>
 
           {/* Send button */}
-          <View className="px-5 py-4 border-t border-zinc-200 dark:border-white/10">
+          <View
+            className="px-5 py-4 border-t"
+            style={{ borderColor: tokens.line }}
+          >
             <Pressable
               onPress={() => void handleSend()}
               disabled={!canSend}
-              className="rounded-full bg-violet-600 py-3.5 items-center"
-              style={{ opacity: canSend ? 1 : 0.4 }}
+              className="rounded-full py-3.5 items-center"
+              style={{
+                backgroundColor: tokens.primary,
+                opacity: canSend ? 1 : 0.4,
+              }}
             >
-              <Text className="text-base font-semibold text-white">
+              <Text
+                className="text-base font-semibold"
+                style={{ color: "#FFFFFF" }}
+              >
                 {sending ? "Sending…" : "Send feedback"}
               </Text>
             </Pressable>
