@@ -13,6 +13,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { useTheme } from "@/contexts/theme-context";
+
 /**
  * Type-to-confirm account deletion modal. The destructive button only
  * enables when the user types DELETE in capital letters — universal
@@ -62,9 +64,16 @@ export function DeleteAccountModal({
   onDeleted,
   onCancelSubscription,
 }: Props) {
+  const { tokens } = useTheme();
   const [confirmText, setConfirmText] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Q11e-1: warning amber for the PRO subscription forfeiture
+  // section. Same exception convention as ON_HOLD goals,
+  // Q11c-2 State of Me eyebrow, Q11c-3 due dates, Q11c-4 PARTIAL
+  // badge, Q8 confetti — palette has primary/secondary/good/bad
+  // but no warning-amber token.
+  const WARN_AMBER = "#FBBF24";
 
   // Reset every time the modal is opened so a re-open after a cancel
   // doesn't show stale state.
@@ -101,7 +110,7 @@ export function DeleteAccountModal({
       }}
     >
       <SafeAreaView
-        style={{ flex: 1, backgroundColor: "#0B0B12" }}
+        style={{ flex: 1, backgroundColor: tokens.bg }}
         edges={["top", "bottom"]}
       >
         {/* Header */}
@@ -114,7 +123,7 @@ export function DeleteAccountModal({
             paddingTop: 12,
             paddingBottom: 16,
             borderBottomWidth: 0.5,
-            borderBottomColor: "rgba(255,255,255,0.06)",
+            borderBottomColor: tokens.line,
           }}
         >
           <Pressable
@@ -125,7 +134,7 @@ export function DeleteAccountModal({
             <Text
               style={{
                 fontSize: 16,
-                color: submitting ? "rgba(168,168,180,0.4)" : "#A1A1AA",
+                color: submitting ? tokens.textQuiet : tokens.textSec,
               }}
             >
               Cancel
@@ -135,7 +144,7 @@ export function DeleteAccountModal({
             style={{
               fontSize: 16,
               fontWeight: "600",
-              color: "#FAFAFA",
+              color: tokens.text,
             }}
           >
             Delete account
@@ -161,25 +170,21 @@ export function DeleteAccountModal({
                 width: 64,
                 height: 64,
                 borderRadius: 32,
-                backgroundColor: "rgba(239,68,68,0.12)",
+                backgroundColor: `${tokens.bad}1f`,
                 borderWidth: 1,
-                borderColor: "rgba(239,68,68,0.4)",
+                borderColor: `${tokens.bad}66`,
                 alignItems: "center",
                 justifyContent: "center",
                 marginBottom: 16,
               }}
             >
-              <Ionicons
-                name="trash-outline"
-                size={28}
-                color="#EF4444"
-              />
+              <Ionicons name="trash-outline" size={28} color={tokens.bad} />
             </View>
             <Text
               style={{
                 fontSize: 22,
                 fontWeight: "600",
-                color: "#FAFAFA",
+                color: tokens.text,
                 textAlign: "center",
                 letterSpacing: -0.3,
               }}
@@ -189,7 +194,7 @@ export function DeleteAccountModal({
             <Text
               style={{
                 fontSize: 14,
-                color: "rgba(168,168,180,0.8)",
+                color: tokens.textSec,
                 textAlign: "center",
                 marginTop: 10,
                 lineHeight: 20,
@@ -203,9 +208,9 @@ export function DeleteAccountModal({
           {/* What gets deleted */}
           <View
             style={{
-              backgroundColor: "rgba(255,255,255,0.03)",
+              backgroundColor: tokens.cardBg,
               borderWidth: 0.5,
-              borderColor: "rgba(255,255,255,0.08)",
+              borderColor: tokens.line,
               borderRadius: 14,
               padding: 16,
               marginBottom: 16,
@@ -216,7 +221,7 @@ export function DeleteAccountModal({
                 fontSize: 11,
                 fontWeight: "700",
                 letterSpacing: 1.6,
-                color: "rgba(168,168,180,0.6)",
+                color: tokens.textTer,
                 textTransform: "uppercase",
                 marginBottom: 12,
               }}
@@ -230,13 +235,16 @@ export function DeleteAccountModal({
             <DeletedItem text="Notification preferences and reminders" />
           </View>
 
-          {/* PRO subscription warning — explicit forfeiture + alt CTA */}
+          {/* PRO subscription warning — explicit forfeiture + alt CTA.
+              The warning-amber tone (WARN_AMBER) signals "stop and
+              consider this" without triggering destructive-red, which
+              is reserved for the actual Delete confirm action below. */}
           {isPro && (
             <View
               style={{
-                backgroundColor: "rgba(252,168,90,0.08)",
+                backgroundColor: `${WARN_AMBER}14`,
                 borderWidth: 0.5,
-                borderColor: "rgba(252,168,90,0.4)",
+                borderColor: `${WARN_AMBER}66`,
                 borderRadius: 14,
                 padding: 16,
                 marginBottom: 16,
@@ -246,7 +254,7 @@ export function DeleteAccountModal({
                 <Ionicons
                   name="alert-circle-outline"
                   size={20}
-                  color="#FCA85A"
+                  color={WARN_AMBER}
                   style={{ marginTop: 1 }}
                 />
                 <View style={{ flex: 1 }}>
@@ -254,13 +262,16 @@ export function DeleteAccountModal({
                     style={{
                       fontSize: 14,
                       fontWeight: "600",
-                      color: "#FCA85A",
+                      color: WARN_AMBER,
                       marginBottom: 8,
                     }}
                   >
                     You&rsquo;re on PRO. Deleting your account will:
                   </Text>
-                  <ProBullet text="Cancel your subscription immediately (no refund for unused time)" />
+                  <ProBullet
+                    text="Cancel your subscription immediately (no refund for unused time)"
+                    bulletColor={WARN_AMBER}
+                  />
                   <ProBullet
                     text={
                       daysRemaining !== null
@@ -269,12 +280,16 @@ export function DeleteAccountModal({
                           } remaining)`
                         : "Forfeit the rest of your current paid period"
                     }
+                    bulletColor={WARN_AMBER}
                   />
-                  <ProBullet text="Permanently delete all your data" />
+                  <ProBullet
+                    text="Permanently delete all your data"
+                    bulletColor={WARN_AMBER}
+                  />
                   <Text
                     style={{
                       fontSize: 13,
-                      color: "rgba(228,228,231,0.85)",
+                      color: tokens.textSec,
                       lineHeight: 18,
                       marginTop: 10,
                     }}
@@ -296,9 +311,9 @@ export function DeleteAccountModal({
                   marginTop: 12,
                   paddingVertical: 12,
                   borderRadius: 10,
-                  backgroundColor: "rgba(124,58,237,0.18)",
+                  backgroundColor: `${tokens.primary}30`,
                   borderWidth: 1,
-                  borderColor: "rgba(124,58,237,0.5)",
+                  borderColor: `${tokens.primary}80`,
                   alignItems: "center",
                   justifyContent: "center",
                 }}
@@ -307,7 +322,7 @@ export function DeleteAccountModal({
                   style={{
                     fontSize: 14,
                     fontWeight: "600",
-                    color: "#C4B5FD",
+                    color: tokens.primary,
                   }}
                 >
                   Cancel subscription instead
@@ -321,12 +336,12 @@ export function DeleteAccountModal({
             <Text
               style={{
                 fontSize: 13,
-                color: "rgba(228,228,231,0.85)",
+                color: tokens.textSec,
                 marginBottom: 10,
               }}
             >
               To confirm, type{" "}
-              <Text style={{ color: "#FAFAFA", fontWeight: "700" }}>
+              <Text style={{ color: tokens.text, fontWeight: "700" }}>
                 DELETE
               </Text>{" "}
               below.
@@ -335,7 +350,7 @@ export function DeleteAccountModal({
               value={confirmText}
               onChangeText={setConfirmText}
               placeholder=""
-              placeholderTextColor="rgba(168,168,180,0.4)"
+              placeholderTextColor={tokens.textTer}
               autoCapitalize="characters"
               autoCorrect={false}
               autoComplete="off"
@@ -346,12 +361,10 @@ export function DeleteAccountModal({
                 paddingHorizontal: 14,
                 paddingVertical: 12,
                 borderRadius: 10,
-                backgroundColor: "rgba(255,255,255,0.04)",
+                backgroundColor: tokens.bgInset,
                 borderWidth: 1,
-                borderColor: matches
-                  ? "rgba(34,197,94,0.5)"
-                  : "rgba(255,255,255,0.08)",
-                color: "#FAFAFA",
+                borderColor: matches ? `${tokens.good}80` : tokens.line,
+                color: tokens.text,
                 fontSize: 16,
                 letterSpacing: 1.2,
               }}
@@ -362,9 +375,9 @@ export function DeleteAccountModal({
           {error && (
             <View
               style={{
-                backgroundColor: "rgba(239,68,68,0.1)",
+                backgroundColor: `${tokens.bad}1a`,
                 borderWidth: 0.5,
-                borderColor: "rgba(239,68,68,0.4)",
+                borderColor: `${tokens.bad}66`,
                 borderRadius: 10,
                 padding: 12,
                 marginBottom: 16,
@@ -373,7 +386,7 @@ export function DeleteAccountModal({
               <Text
                 style={{
                   fontSize: 13,
-                  color: "#FCA5A5",
+                  color: tokens.bad,
                   lineHeight: 18,
                 }}
               >
@@ -382,7 +395,10 @@ export function DeleteAccountModal({
             </View>
           )}
 
-          {/* Confirm button */}
+          {/* Confirm button — destructive red. tokens.bad re-skins
+              to the palette's red ember; the disabled state uses
+              the same color at lower alpha so the "I'm about to
+              delete" signal stays even when the button is gated. */}
           <Pressable
             onPress={handleConfirm}
             disabled={!matches || submitting}
@@ -390,7 +406,7 @@ export function DeleteAccountModal({
               paddingVertical: 14,
               borderRadius: 12,
               backgroundColor:
-                !matches || submitting ? "rgba(239,68,68,0.3)" : "#DC2626",
+                !matches || submitting ? `${tokens.bad}4d` : tokens.bad,
               alignItems: "center",
               justifyContent: "center",
               flexDirection: "row",
@@ -418,7 +434,14 @@ export function DeleteAccountModal({
   );
 }
 
-function ProBullet({ text }: { text: string }) {
+function ProBullet({
+  text,
+  bulletColor,
+}: {
+  text: string;
+  bulletColor: string;
+}) {
+  const { tokens } = useTheme();
   return (
     <View
       style={{
@@ -428,14 +451,14 @@ function ProBullet({ text }: { text: string }) {
         marginBottom: 4,
       }}
     >
-      <Text style={{ color: "#FCA85A", fontSize: 13, lineHeight: 18 }}>
+      <Text style={{ color: bulletColor, fontSize: 13, lineHeight: 18 }}>
         •
       </Text>
       <Text
         style={{
           flex: 1,
           fontSize: 13,
-          color: "rgba(228,228,231,0.9)",
+          color: tokens.textSec,
           lineHeight: 18,
         }}
       >
@@ -446,6 +469,7 @@ function ProBullet({ text }: { text: string }) {
 }
 
 function DeletedItem({ text }: { text: string }) {
+  const { tokens } = useTheme();
   return (
     <View
       style={{
@@ -458,14 +482,14 @@ function DeletedItem({ text }: { text: string }) {
       <Ionicons
         name="close-circle"
         size={16}
-        color="rgba(239,68,68,0.7)"
+        color={`${tokens.bad}b3`}
         style={{ marginTop: 1 }}
       />
       <Text
         style={{
           flex: 1,
           fontSize: 13,
-          color: "rgba(228,228,231,0.85)",
+          color: tokens.textSec,
           lineHeight: 18,
         }}
       >
