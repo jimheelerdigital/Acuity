@@ -804,6 +804,14 @@ const matrixFeatures = [
    Feature icon SVGs (replace emojis)
    ═══════════════════════════════════════════ */
 
+function AppleLogoSmall() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 18 18" fill="currentColor" aria-hidden="true">
+      <path d="M14.94 13.5c-.37.82-.55 1.19-.97 1.91-.59.99-1.42 2.24-2.45 2.25-.92.01-1.16-.6-2.41-.59-1.25.01-1.51.6-2.43.59-1.03-.01-1.81-1.13-2.4-2.12C2.92 13.39 2.8 10.77 3.68 9.39c.63-1 1.63-1.58 2.57-1.58.96 0 1.56.6 2.35.6.77 0 1.24-.6 2.35-.6.84 0 1.73.46 2.35 1.24-2.06 1.13-1.73 4.07.37 4.85-.29.7-.43.99-.73 1.6zM11.37 3c.47-.6.83-1.45.7-2.32-.77.05-1.67.54-2.2 1.17-.48.57-.88 1.43-.73 2.26.84.03 1.72-.47 2.23-1.11z" />
+    </svg>
+  );
+}
+
 function FeatureIcon({ iconKey }: { iconKey: string }) {
   const shared = "h-10 w-10 rounded-xl flex items-center justify-center transition-transform duration-300 group-hover:scale-110";
 
@@ -1095,22 +1103,33 @@ export function LandingPage() {
 
               {/* CTA — mobile version */}
                 <div className="mt-8 flex flex-col items-center gap-3 lg:hidden">
-                  <div className="flex flex-row items-stretch gap-3">
+                  <div className="flex flex-row items-center gap-3">
                     <a
                       href={ctaHref}
                       onClick={trackInitiateCheckout}
                       className="group relative rounded-full p-[2px] transition active:scale-95 overflow-hidden"
                     >
                       <span className="absolute inset-[-100%] animate-cta-shine" style={{ background: 'conic-gradient(from 0deg, transparent 0%, transparent 60%, #ffffff 75%, #B8A5FF 85%, transparent 100%)' }} />
-                      <span className="relative flex items-center rounded-full bg-[#7C5CFC] px-7 py-3.5 text-sm font-semibold text-white h-full">
+                      <span className="relative flex items-center justify-center rounded-full bg-[#7C5CFC] px-7 py-3.5 text-sm font-semibold text-white">
                         Start Free Trial
                       </span>
                     </a>
-                    <AppStoreBadge svgClassName="h-[46px] w-auto" />
+                    <a
+                      href={APP_STORE_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group relative rounded-full p-[2px] transition active:scale-95 overflow-hidden"
+                    >
+                      <span className="absolute inset-[-100%] animate-cta-shine" style={{ background: 'conic-gradient(from 0deg, transparent 0%, transparent 60%, #ffffff 75%, #B8A5FF 85%, transparent 100%)' }} />
+                      <span className="relative flex items-center justify-center gap-2 rounded-full bg-black px-7 py-3.5 text-sm font-semibold text-white">
+                        <AppleLogoSmall />
+                        Download App
+                      </span>
+                    </a>
                   </div>
                   <a
                     href="#how-it-works"
-                    className="text-xs text-[#A0A0B8] underline underline-offset-2 decoration-[#A0A0B8]/40 transition hover:text-white hover:decoration-white/60"
+                    className="mt-1 text-sm font-medium text-[#A0A0B8] underline underline-offset-4 decoration-[#A0A0B8]/40 transition hover:text-white hover:decoration-white/60"
                   >
                     See how it works
                   </a>
@@ -1118,24 +1137,35 @@ export function LandingPage() {
 
               {/* CTA — desktop version */}
                 <div className="mt-10 hidden lg:flex flex-col items-center lg:items-center gap-3">
-                  {/* Row 1: Start Free Trial + App Store badge, same height */}
-                  <div className="flex flex-row items-stretch gap-3">
+                  {/* Row 1: Two matching purple pill buttons */}
+                  <div className="flex flex-row items-center gap-3">
                     <a
                       href={ctaHref}
                       onClick={trackInitiateCheckout}
                       className="group relative rounded-full p-[2px] transition active:scale-95 overflow-hidden"
                     >
                       <span className="absolute inset-[-100%] animate-cta-shine" style={{ background: 'conic-gradient(from 0deg, transparent 0%, transparent 60%, #ffffff 75%, #B8A5FF 85%, transparent 100%)' }} />
-                      <span className="relative flex items-center rounded-full bg-[#7C5CFC] px-7 py-3.5 text-sm font-semibold text-white transition group-hover:bg-[#6B4FE0] h-full">
+                      <span className="relative flex items-center justify-center rounded-full bg-[#7C5CFC] px-7 py-3.5 text-sm font-semibold text-white transition group-hover:bg-[#6B4FE0]">
                         Start Free Trial
                       </span>
                     </a>
-                    <AppStoreBadge svgClassName="h-[46px] w-auto" />
+                    <a
+                      href={APP_STORE_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group relative rounded-full p-[2px] transition active:scale-95 overflow-hidden"
+                    >
+                      <span className="absolute inset-[-100%] animate-cta-shine" style={{ background: 'conic-gradient(from 0deg, transparent 0%, transparent 60%, #ffffff 75%, #B8A5FF 85%, transparent 100%)' }} />
+                      <span className="relative flex items-center justify-center gap-2 rounded-full bg-black px-7 py-3.5 text-sm font-semibold text-white transition group-hover:bg-zinc-900">
+                        <AppleLogoSmall />
+                        Download App
+                      </span>
+                    </a>
                   </div>
                   {/* Row 2: Understated "See how it works" link */}
                   <a
                     href="#how-it-works"
-                    className="text-xs text-[#A0A0B8] underline underline-offset-2 decoration-[#A0A0B8]/40 transition hover:text-white hover:decoration-white/60"
+                    className="mt-1 text-sm font-medium text-[#A0A0B8] underline underline-offset-4 decoration-[#A0A0B8]/40 transition hover:text-white hover:decoration-white/60"
                   >
                     See how it works
                   </a>
