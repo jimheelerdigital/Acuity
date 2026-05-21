@@ -41,167 +41,31 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
-## [2026-05-21] — Phase D polish 3 — SegmentedTabs overflow on Life Matrix card
+## [2026-05-21] — Surface signup attribution in admin Users table + detail view
 
-**Requested by:** Jimmy
+**Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 3149d1e
+**Commit hash:** TBD
 
 ### In plain English (for Keenan)
 
-The Current/Trend pills above the Life Matrix radar were getting clipped on the right edge of the iPhone 16e screen. Wrapped them in a small fixed-width container so they always sit fully visible inside the card. The eyebrow label "LIFE MATRIX" stays anchored left, the pills anchor right, and they no longer overflow.
+The admin Users tab now shows where each user came from. A new "Source" column in the users table shows the landing page as a clickable link (e.g., "/for/founders") with the UTM source/medium below it in small text (e.g., "meta / paid"). Direct visitors show "direct." When you click "view" on a user, there's now a full Attribution block showing landing page, source, medium, campaign, content, and referrer — all pulled from the User database record, not from the notification email.
 
 ### Technical changes (for Jimmy)
 
-- `apps/mobile/app/(tabs)/insights.tsx`: wrapped the SegmentedTabs in a `<View style={{ width: 180 | 110 }}>`. Width is 180pt when the Trend tab is present (Current + Trend), 110pt when only Current is shown. The wrapper gives RN's flex layout a definite container to measure against, resolving the ambiguous flex:1 / no-width-parent measurement that produced the overflow.
+- `apps/web/src/app/api/admin/users/route.ts`: Added `signupUtmSource`, `signupUtmMedium`, `signupLandingPath` to the Prisma select and response mapping.
+- `apps/web/src/app/api/admin/users/[id]/route.ts`: Added all 7 attribution fields (`signupUtmSource/Medium/Campaign/Content/Term`, `signupReferrer`, `signupLandingPath`) to the Prisma select and response.
+- `apps/web/src/app/admin/tabs/UsersTab.tsx`: Added attribution fields to `ListUser` and `DetailUser` types. Added "Source" column to the table with clickable landing page link + utm source/medium subtitle. Added Attribution section to the user detail modal with full breakdown (landing page, source, medium, campaign, content, referrer).
 
 ### Manual steps needed
 
-- [ ] None — pure call-site layout fix. Verify on simulator that both pills render fully visible.
+- [ ] Check admin dashboard Users tab — verify Source column shows landing page links for recent signups (Keenan)
+- [ ] Click "view" on a user — verify Attribution section appears above the Journey Timeline (Keenan)
 
 ### Notes
 
-- Root cause was an ambiguous flex layout: SegmentedTabs' outer container has `flexDirection: "row"` with no own width, and its Pressable children have `flex: 1` with no flex-basis. Inside a flex-row parent that also has no width constraint, RN's measurement of "natural width" for SegmentedTabs could resolve to either intrinsic-content-width (~155pt) or fill-remaining-space (~218pt). On iPhone 16e it was apparently overshooting against the eyebrow's natural width.
-- The fix is at the call site, not the primitive. Searched for other SegmentedTabs consumers across `apps/mobile/**/*.tsx` — only Insights uses it today. Adding a wrapping width here is the lowest-risk path; future consumers can do the same when embedding the primitive in flex-row layouts.
-- 180pt fits 2 tabs comfortably: 3pt left pad + ~87pt Current pill + ~87pt Trend pill + 3pt right pad = 180pt. Each pill has paddingHorizontal:16, leaving ~55pt for text — plenty for "Current" (~50pt at fontSize 13 sans semibold).
-
-monday: 12058980099
-
----
-
-## [2026-05-21] — Phase D polish 2 — Radar empty-axis honesty
-
-**Requested by:** Jimmy
-**Committed by:** Claude Code
-**Commit hash:** 232c8cb
-
-### In plain English (for Keenan)
-
-The earlier "min visual radius" trick that kept the polygon shape continuous for axes with no data turned out to be misleading — it drew shape where we had no signal, and produced a cluttered ring of dots near the center. Replaced with an honest treatment: axes with no measurement now skip the polygon entirely, render as a hollow ring at the outermost grid radius, with their label muted and the value shown as "—". The polygon only closes across axes that actually have data, so it's smaller and irregular for new users — but it tells the truth. Brand-new users (zero entries) see all axes muted with a small line of helper copy beneath the radar inviting them to record their first entry.
-
-### Technical changes (for Jimmy)
-
-- `apps/mobile/components/life-map-radar.tsx`:
-  - Dropped `MIN_VISUAL_SCORE` constant + `polygonVertexRadius` helper.
-  - New `isPopulated(score100)` helper — true when score > 0 (null and 0 both excluded).
-  - Computed a single `perAxis` array (config + score + populated flag) reused across polygon, trend overlay, and per-axis render.
-  - Polygon path filters to populated axes only; rendered only when ≥2 populated. Skipped entirely otherwise.
-  - Trend overlay polygon applies the same filter.
-  - Per-axis render: populated axes get filled palette dot + colored label + numeric value (as before). Empty axes get a hollow ring at the outer 100% radius (r=4.5, strokeWidth=1.25, strokeOpacity=0.5) + muted label at 0.5 opacity + "—" instead of "0".
-  - New `mutedLabelColor` prop — default falls back to `labelColor`; Insights tab passes `tokens.textTer`.
-  - New `emptyHint` + `emptyHintFontFamily` props. When all axes are empty AND `emptyHint` is set, the component wraps in a `<View>` and renders the hint as a `<Text>` below the SVG. Otherwise returns bare `<Svg>` (no layout shift for the common populated case).
-  - Docblock rewritten to reflect the new honesty contract.
-- `apps/mobile/app/(tabs)/insights.tsx`:
-  - Passes `mutedLabelColor={tokens.textTer}` and `emptyHint="Record an entry to start mapping your life axes."` with `emptyHintFontFamily={tokens.fontSans}`.
-
-### Manual steps needed
-
-- [ ] None — radar visual polish only. Verify on simulator across populated/partial/fresh user states + light/dark + all 4 palettes.
-
-### Notes
-
-- Why this matters: Phase D ships 5 brand-new axes (ROMANCE, FRIENDS, MENTAL_HEALTH, FUN, PURPOSE) that have no data for existing users until AI extraction populates them. The prior min-radius treatment said "here's a small ring of dots near center, all your axes are at very-low scores" — false. The new treatment says "here are 5 axes with data, here are 5 axes we don't know about yet" — true.
-- Hollow rings sit at the outer 100% radius (perimeter, not inner) by design. Reads as "this axis exists, we just haven't measured it yet" rather than "this axis is at a low value." A populated low-score axis appears as a filled dot CLOSE to center; an empty axis appears as a hollow ring at the perimeter. Visual hierarchy distinguishes the two states.
-- Polygon path requires ≥2 populated axes. With 1 populated, the filled dot at that vertex is the only visible signal — no degenerate single-point polygon.
-- The `<View>` wrapper is only emitted when `emptyHint` + all-empty conditions are met. Default return type stays `<Svg>` for the common populated case so existing layouts don't reflow on every render.
-
-monday: 12058980099
-
----
-
-## [2026-05-21] — Phase D polish — Radar label readability + zero-axis polygon fix
-
-**Requested by:** Jimmy
-**Committed by:** Claude Code
-**Commit hash:** 6ddf69a
-
-### In plain English (for Keenan)
-
-Two cosmetic but important fixes on the 10-axis Life Matrix radar that shipped earlier today: (1) axis labels (Career, Money, Romance, etc.) now read at proper size and contrast instead of looking like whispered metadata — bumped from fontSize 10 with a low-contrast tint to fontSize 12 with secondary text color. (2) Existing users who have data on 5 axes but none on the 5 brand-new ones (Romance, Friends, Mental Health, Fun, Purpose) no longer see the polygon collapse into a pinwheel of lines — each "zero" axis now sits at a small inner radius so the shape stays continuous and recognizable.
-
-### Technical changes (for Jimmy)
-
-- `apps/mobile/components/life-map-radar.tsx`:
-  - Label fontSize 10 → 12 (≤6 chars) or 11 (7-char labels Romance/Friends/Purpose) — keeps margin to SVG edge at ≥6pt on iPhone 16e size=320.
-  - Label fontWeight 500 → 600 for slightly more presence.
-  - Score numeral fontSize stays 9 but spacing recomputed (label baseline + fontSize + 2) so the 11/12 mixed sizing doesn't crowd.
-  - Introduced `MIN_VISUAL_SCORE = 5` + `polygonVertexRadius()` helper. Both polygon vertices AND node dots floor at this value, producing a ~5.9pt inner-ring radius when underlying score is 0. Displayed numeral remains the actual score.
-  - Same floor applied to the trend overlay polygon.
-  - Docblock rewritten with the fontSize 11/12 per-label math (see lines 35-65).
-- `apps/mobile/app/(tabs)/insights.tsx`:
-  - Radar `labelColor` `textTer` → `textSec`. `scoreColor` `textQuiet` → `textSec`. Both now use the same readable mid-contrast token.
-
-### Manual steps needed
-
-- [ ] None — pure radar polish. Visual verification on simulator before TestFlight upload.
-
-### Notes
-
-- Investigated polygon-collapse issue before changing — confirmed react-native-svg `<Polygon>` auto-closes (single continuous shape) so it wasn't a path-building bug. The visual "pinwheel" came from 5 vertices coinciding at the centroid when 5 axes had score=0. MIN_VISUAL_SCORE solves this by ensuring no vertex sits exactly at (cx, cy).
-- Considered bumping SVG size 320→340 for consistent fontSize 12 across all labels, rejected: 340pt overflows iPhone 16e content area (375 − 40pt padding = 335pt). Per-label fontSize keeps the radar inside its container.
-- Light/dark/4-palette propagation unchanged — only the caller-passed token references changed; the radar internals continue to read whatever tokens.* values the parent supplies.
-
-monday: 12058980099
-
----
-
-## [2026-05-21] — Phase D — Life Matrix expansion from 6 axes to 10 (full cutover)
-
-**Requested by:** Jimmy
-**Committed by:** Claude Code
-**Commit hash:** b4a7b74
-
-### In plain English (for Keenan)
-
-The Life Matrix radar that shows up on the Insights tab now tracks **ten** life dimensions instead of six. The new shape: Career, Money, Romance, Family, Friends, Physical Health, Mental Health, Growth, Fun, Purpose. The old six (Career, Health, Relationships, Finances, Personal, Other) get mapped into the new ten — Health becomes Physical Health, Relationships becomes Family, Finances becomes Money, Personal becomes Growth. Romance, Friends, Mental Health, Fun, and Purpose are brand-new axes that the AI will start populating as users record. Every existing user's data was migrated cleanly — radar scores, goal labels, weekly history, and onboarding picks all flowed forward without anyone losing data.
-
-The AI extraction prompt that reads each transcript was rewritten with the new ten-axis vocabulary plus disambiguation rules (e.g., "career vs money: career = the work itself, money = the financial outcome"). Mobile radar got a cleaned-up label layout so ten axes don't collide visually on iPhone screens. The same shortened labels show on the web radar too for consistency.
-
-### Technical changes (for Jimmy)
-
-- `packages/shared/src/constants.ts`: 10-axis canonical LIFE_AREAS array + LIFE_AREAS_V1 legacy preserved. LIFE_AREA_LEGACY_MAP (V1→V2 with MAPPING_DECISION_2026-05-21 comment). LIFE_AREA_LEGACY_FALLBACK_KEY (V2→V1 for historical rawAnalysis reads). lifeAreaDisplayLabel() helper tolerates both vocabs. New shortName field on DEFAULT_LIFE_AREAS entries (≤7 chars for radar safety on iPhone 16e 375pt).
-- `packages/shared/src/types.ts`: LifeAreaMentions flipped to 10-axis canonical shape; LifeAreaMentionsLegacy preserved for historical reads.
-- `prisma/schema.prisma`: UserMemory adds 30 new V2 columns (10 axes × 3 fields). V1 columns kept dormant for one release cycle.
-- `apps/web/src/lib/prompts/lifemap.ts`: LIFE_AREA_EXTRACTION_SCHEMA fully rewritten with per-axis keyword lists tuned to journal vocabulary (e.g., romance includes "swiping, ghosted, situationship, hinge, bumble"; fun includes "binged, scrolled, had drinks with") + 5-rule disambiguation block. buildCompressionPrompt + buildInsightPrompt updated to emit 10-axis JSON shape.
-- `apps/web/src/lib/pipeline.ts`: validateLifeAreaMentions keys array → 10-axis. DIMENSION_NAME_BY_KEY → 10 + V1 fallback labels. Extraction prompt JSON template updated.
-- `apps/web/src/lib/memory.ts`: un-pinned from V1; columnPrefixForKey() helper for camelCase column resolution (`physical_health` → `physicalHealth`). All AREA_KEYS / column writes / Claude prompt input use 10-axis.
-- `apps/web/src/lib/life-dimension-presets.ts`: DEFAULT/STUDENT/PARENT presets fully rewritten for 10 axes.
-- `apps/web/src/app/api/onboarding/update/route.ts`: VALID_AREAS expanded to accept both V1 + V2; per-key mapper writes canonical V2 via LIFE_AREA_LEGACY_MAP.
-- `apps/web/src/app/api/account/life-dimensions/route.ts`: CANONICAL_AREAS + z.transform maps V1 input to V2. Max dimensions raised 6→10.
-- `apps/web/src/app/api/lifemap/{dimension/[key],history,trend}/route.ts`: historical rawAnalysis reads fall back via LIFE_AREA_LEGACY_FALLBACK_KEY so trajectory + history graphs stay continuous across the migration boundary.
-- `apps/web/src/app/api/goals/{route,suggestions/route}.ts`: default lifeArea "PERSONAL" → "GROWTH".
-- `apps/web/src/inngest/functions/{compute-user-insights,monthly-digest}.ts`: AREA_LABELS expanded to 10 + V1 fallback labels.
-- `apps/web/src/app/insights/life-map.tsx`: radar label uses shortName ?? name for parity with mobile.
-- `apps/web/src/app/onboarding/steps/step-6-life-area-priorities.tsx`: un-pinned to 10-axis DEFAULT_LIFE_AREAS; AREA_SUBTITLE rewritten for 10 axes.
-- `apps/mobile/components/life-map-radar.tsx`: shortName label + node-position fix (uses resolveScore100 to match polygon; previous code used legacy `area.score/10` which drifted). 33-line docblock with textAnchor=middle geometry proof at iPhone 16e 320pt.
-- `apps/mobile/app/(tabs)/goals.tsx`: removed hardcoded LIFE_AREAS map; GoalGroupIcon expanded to 11 icon branches (Briefcase/Wallet/Heart/Users/UsersRound/Activity/Brain/Sprout/Sparkles/Compass/HeartPulse fallback).
-- `apps/mobile/app/(tabs)/insights.tsx`: empty-state copy "your six life areas" → "your life areas".
-- `apps/mobile/app/goal/[id].tsx`: uses lifeAreaDisplayLabel.
-- `apps/mobile/components/onboarding/step-7-life-areas.tsx`: un-pinned to 10-axis. OTHER freeform input removed (no OTHER in 10-axis).
-- Seeds: V1 vocab preserved in scripts/seed-app-store-reviewer.ts + apps/web/scripts/seed-{iap,v11}-reviewer.ts with inline comments noting they're compat-test fixtures for the LIFE_AREA_LEGACY_MAP path.
-- Migration ran cleanly against prod DIRECT_URL (24 users):
-  - LifeMapArea: 96 rows renamed (4 V1 axes × 24 users), 120 new rows seeded (5 new V2 axes × 24 users), no row deletions.
-  - UserOnboarding.lifeAreaPriorities: 12 rows rewrote V1 keys → V2 (used jsonb_strip_nulls to preserve only ranked axes).
-  - Goal.lifeArea: 27 rows renamed (1 HEALTH + 26 PERSONAL → PHYSICAL_HEALTH + GROWTH).
-  - LifeMapAreaHistory: 164 rows renamed across 4 V1 axes.
-  - UserMemory: 27 rows touched; COALESCE/CASE-guarded copy of V1 columns into V2 columns (only 2 users had actual V1 data; rest stayed at defaults).
-  - All 5 verification queries (D1-D5) returned 0 rows post-migration.
-
-### Manual steps needed
-
-- [ ] None — schema + data migration ran via `prisma db push` + `psql $DIRECT_URL -f .tmp/phase-d-migration.sql`. Server code already deployed assumes V2; rollback would require both data migration reversal + git revert (additive schema is safely reversible; data renames are not).
-- [ ] Watch Vercel deploy logs for first batch of entries after deploy — verify Claude extraction emits new 10-axis JSON keys correctly (look at any new Entry.rawAnalysis blob to confirm).
-- [ ] After 30 days, drop dormant V1 UserMemory columns in a follow-up cleanup slice (`healthSummary`, `relationshipsSummary`, `financesSummary`, `personalSummary`, `otherSummary` + matching Mentions/Baseline triplets).
-
-### Notes
-
-- The 6→10 mapping decision (HEALTH→PHYSICAL_HEALTH, RELATIONSHIPS→FAMILY, FINANCES→MONEY, PERSONAL→GROWTH, OTHER→null) is single-target, not split. Reasoning: a split would have inflated the onboarding "top 3" concept into 5+ tied-1 axes. AI extraction populates the un-mapped axes (MENTAL_HEALTH, ROMANCE, FRIENDS, FUN, PURPOSE) over subsequent recordings from transcripts.
-- Build-42 mobile binaries still send V1 onboarding priorities — server's /api/onboarding/update accepts both V1 + V2 and maps V1 inputs to V2 on persist. No version-gating needed.
-- The radar's textAnchor=middle was kept (not quadrant-swap). Math: at SVG size=320, label center radius=137.6pt, worst-case label "Romance"/"Friends"/"Purpose" at 7 chars ≈ 43pt wide. Middle anchor keeps labels within SVG bounds with ~7.65pt margin on each side. Side-anchor swap was tried in design but would have pushed labels past the SVG edge OR over the polygon vertices — neither works for this radius. Cap on shortName length (≤7 chars enforced in DEFAULT_LIFE_AREAS data) is what makes middle anchor provably safe.
-- Bugs caught during migration dry-run: (1) LifeMapArea has no createdAt column; INSERT had to be rewritten with the actual column list. (2) lifeAreaPriorities lives on UserOnboarding, not User. (3) Original B3 used `- 'key'` chain to strip nulls but that operator strips ALL keys unconditionally; switched to jsonb_strip_nulls(). Each caught by running the SQL once and reading the errors before destructive writes committed.
-
-monday: 12058980099
-⚠️ HIGH RISK — cross-stack life matrix rebuild (full Phase D)
+- Landing page links open in new tab (`target="_blank"`).
+- Attribution data comes from the User model fields (`signupUtm*`, `signupLandingPath`, `signupReferrer`), which are populated by the `set-attribution` endpoint after OAuth signups or directly during email/password signups. For users who signed up before attribution tracking was added, all fields will show "—" or "direct."
 
 ---
 
@@ -420,42 +284,6 @@ The Google Search Console connection was failing with "credentials missing" even
 
 - The root cause was Vercel's env var handling. When you paste a JSON service account key, the `private_key` field contains `\n` escape sequences. Vercel can: (a) preserve them as literal backslash-n (correct), (b) convert them to actual newlines (breaks JSON parsing), or (c) strip them entirely (breaks PEM format). The normalization handles all three cases.
 - The old `google.auth.JWT` 4-arg constructor was a pre-existing TS error (TS2554) that compiled at runtime but was technically wrong. The options-object form is the correct API for the installed version of `google-auth-library`.
-
----
-
-## [2026-05-21] — Slice Q11f — Token sweep: onboarding + paywall + integrations + reminders
-
-**Requested by:** Jimmy
-**Committed by:** Claude Code
-**Commit hash:** 1428481
-
-### In plain English (for Keenan)
-
-Final batch of the mobile color cleanup. Every onboarding screen, the paywall, the in-app subscribe screen, the integrations screen, and the reminders settings screen now pull all of their colors from the central design palette instead of hardcoding "violet 600" or "zinc 900" in each file. End-user experience is identical, but switching the entire app to a different accent palette is now a one-line change.
-
-### Technical changes (for Jimmy)
-
-- `apps/mobile/components/onboarding/step-5-ai-consent.tsx`: full token migration (text/textSec/bgInset/line/good/primary).
-- `apps/mobile/components/onboarding/step-5-practice.tsx`: status colors (idle/recording/recorded) → tokens.primary/bad/good. Timer + status text use textTer.
-- `apps/mobile/components/onboarding/step-6-mood-slider.tsx`: all chrome tokenized. Preserved mood-spectrum semantic exceptions: gradient track `#FDA4AF→#FCD34D→#6EE7B7` (rough→okay→strong) and thumb white-on-dark-border at lines 137–139.
-- `apps/mobile/components/onboarding/step-8-trial.tsx`: extracted TrialPoint into tokens prop pattern; active-cadence card uses ${tokens.primary}1A + tokens.primary border + glowPrimary for daily-default emphasis.
-- `apps/mobile/components/onboarding/step-9-reminders.tsx`: master toggle → tokens.primary/bgInset; permission-affordance callout uses ${tokens.primary}55 border + ${tokens.primary}14 bg.
-- `apps/mobile/app/integrations.tsx`: full sweep. WARN_AMBER preserved for "Coming in next update" eyebrow (already extracted Q11e-1c). Error states tokenized to tokens.bad.
-- `apps/mobile/app/paywall.tsx`: all chrome → tokens. Sparkles surface, value-row icons, both primary/secondary CTAs, disclosure copy, terms/privacy links.
-- `apps/mobile/app/subscribe.tsx`: full sweep including UnavailableScreen fallback. Product card uses ${tokens.primary}55 border + ${tokens.primary}0D bg. Apple disclosure copy tokenized.
-- `apps/mobile/app/reminders.tsx`: ReminderRow accepts tokens prop. Day toggles, master toggle, save button, permission-affordance callout, "Saved ✓" indicator all tokenized.
-- Pattern: import `type AcuityTokens from "@/lib/theme/tokens"` (NOT from theme-context — context only re-exports the hook). Several files needed this on first compile attempt.
-- Preserved exceptions (white-on-tinted-button text and tinted-toggle thumbs): step-1-welcome.tsx:33 (mic icon on gradient), step-5-ai-consent.tsx:153 (consent button white when violet), step-5-practice.tsx:154 (mic icon on tinted button), step-9-reminders.tsx:183/243 (toggle thumb + allow-notif button), integrations.tsx:159/406 (retry button + Switch thumbColor), reminders.tsx:350/421/464/534/579 (toggle thumbs + save button + day-toggle text), paywall.tsx:164/207 (subscribe CTAs), subscribe.tsx:372/535 (subscribe + continue-on-web CTAs). Mood-spectrum exception: step-6-mood-slider.tsx:117/137/139 (gradient track + thumb fill + thumb border).
-
-### Manual steps needed
-
-- [ ] None — pure refactor. Visual parity intended; verify by side-by-side with main on a TestFlight build before promoting to App Store.
-
-### Notes
-
-End of Phase A (Q11 token sweep) for mobile. Q11a–Q11f bundle is complete; the only remaining hardcoded colors in the mobile app are: (1) intentional white-on-tinted-button text contrast, (2) the streak-flame orange/amber semantic in milestone-card, (3) the mood-spectrum red→amber→green slider in step-6, (4) the theme-map data palette (deferred to Phase E orbital rebuild), and (5) the ThemePill canonical-theme color contract (data-color exception). Next up: Phase D (12-axis Life Matrix) — HIGH RISK, returns to per-file diff review.
-
-Entry restored in a follow-up chore commit after it got displaced during PROGRESS.md merge between this slice's push and subsequent Keenan branch updates. Original commit hash 1428481 unchanged; this is purely log restoration.
 
 ---
 

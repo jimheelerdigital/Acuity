@@ -44,6 +44,9 @@ export async function GET(req: NextRequest) {
       devicePlatform: true,
       appVersion: true,
       appFirstOpenedAt: true,
+      signupUtmSource: true,
+      signupUtmMedium: true,
+      signupLandingPath: true,
       onboarding: { select: { completedAt: true, currentStep: true } },
       _count: { select: { entries: true } },
     },
@@ -64,6 +67,9 @@ export async function GET(req: NextRequest) {
       devicePlatform: u.devicePlatform,
       appVersion: u.appVersion,
       appFirstOpenedAt: u.appFirstOpenedAt,
+      signupUtmSource: u.signupUtmSource,
+      signupUtmMedium: u.signupUtmMedium,
+      signupLandingPath: u.signupLandingPath,
       onboardingStatus: u.onboarding?.completedAt
         ? "Complete"
         : u.onboarding

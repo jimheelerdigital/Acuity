@@ -14,6 +14,9 @@ type ListUser = {
   devicePlatform: string | null;
   appVersion: string | null;
   appFirstOpenedAt: string | null;
+  signupUtmSource: string | null;
+  signupUtmMedium: string | null;
+  signupLandingPath: string | null;
   onboardingStatus: "Complete" | "Incomplete" | "Not started";
 };
 
@@ -27,6 +30,10 @@ type DetailUser = ListUser & {
   onboardingStep: number | null;
   firstRecordingAt: string | null;
   firstWeeklyReportAt: string | null;
+  signupUtmCampaign: string | null;
+  signupUtmContent: string | null;
+  signupUtmTerm: string | null;
+  signupReferrer: string | null;
 };
 
 type Override = {
@@ -163,6 +170,7 @@ export default function UsersTab() {
             <thead>
               <tr className="text-left text-xs uppercase tracking-wider text-white/40">
                 <th className="px-4 py-3">Email</th>
+                <th className="px-4 py-3">Source</th>
                 <th className="px-4 py-3">Signup</th>
                 <th className="px-4 py-3">Plan</th>
                 <th className="px-4 py-3">Platform</th>
@@ -179,6 +187,27 @@ export default function UsersTab() {
                   className="border-t border-white/5 hover:bg-white/5"
                 >
                   <td className="px-4 py-3">{u.email}</td>
+                  <td className="px-4 py-3">
+                    {u.signupLandingPath && u.signupLandingPath !== "/" ? (
+                      <div>
+                        <a
+                          href={`https://getacuity.io${u.signupLandingPath}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-[#A78BFA] hover:underline"
+                        >
+                          {u.signupLandingPath}
+                        </a>
+                        {(u.signupUtmSource || u.signupUtmMedium) && (
+                          <div className="text-[10px] text-white/30 mt-0.5">
+                            {[u.signupUtmSource, u.signupUtmMedium].filter(Boolean).join(" / ")}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-white/30">direct</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-xs text-white/60">
                     {new Date(u.createdAt).toLocaleDateString()}
                   </td>
@@ -579,6 +608,52 @@ function UserDetailModal({
                 </dd>
               </div>
             </dl>
+
+            {/* Attribution */}
+            <div className="rounded-md bg-[#13131F] p-3">
+              <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-white/40">
+                Attribution
+              </div>
+              <dl className="grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <dt className="text-white/40">Landing page</dt>
+                  <dd>
+                    {data.user.signupLandingPath && data.user.signupLandingPath !== "/" ? (
+                      <a
+                        href={`https://getacuity.io${data.user.signupLandingPath}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[#A78BFA] hover:underline"
+                      >
+                        {data.user.signupLandingPath}
+                      </a>
+                    ) : (
+                      "direct"
+                    )}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-white/40">Source</dt>
+                  <dd>{data.user.signupUtmSource || "—"}</dd>
+                </div>
+                <div>
+                  <dt className="text-white/40">Medium</dt>
+                  <dd>{data.user.signupUtmMedium || "—"}</dd>
+                </div>
+                <div>
+                  <dt className="text-white/40">Campaign</dt>
+                  <dd className="truncate max-w-[150px]">{data.user.signupUtmCampaign || "—"}</dd>
+                </div>
+                <div>
+                  <dt className="text-white/40">Content</dt>
+                  <dd className="truncate max-w-[150px]">{data.user.signupUtmContent || "—"}</dd>
+                </div>
+                <div>
+                  <dt className="text-white/40">Referrer</dt>
+                  <dd className="truncate max-w-[150px]">{data.user.signupReferrer || "—"}</dd>
+                </div>
+              </dl>
+            </div>
 
             <JourneyTimeline user={data.user} />
 
