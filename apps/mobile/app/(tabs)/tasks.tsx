@@ -13,14 +13,29 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { PRIORITY_COLOR } from "@acuity/shared";
+import { GradientCheckbox } from "@/components/acuity";
 import { ProLockedCard } from "@/components/pro-locked-card";
 import { Skeleton, SkeletonCard } from "@/components/skeleton";
+import { Confetti } from "@/components/tasks/confetti";
 import { useAuth } from "@/contexts/auth-context";
 import { api } from "@/lib/api";
 import { getCached, setCached } from "@/lib/cache";
 import { isFreeTierUser } from "@/lib/free-tier";
+
+// Q8 — finish-day confetti throttle. AsyncStorage stores YYYY-MM-DD;
+// burst only fires when the stored value !== today.
+const CONFETTI_LAST_FIRE_KEY = "acuity.last_finish_confetti";
+
+function todayYmd(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
 
 type Task = {
   id: string;
@@ -374,11 +389,50 @@ export default function TasksTab() {
     });
   }, []);
 
+  // Q8 — finish-day confetti latch. Set true to spawn the burst;
+  // <Confetti onComplete> flips it back to false when the 1400ms
+  // timing finishes. Visible-only state — no impact on task data.
+  const [confettiVisible, setConfettiVisible] = useState(false);
+
+  /**
+   * Fire the finish-day confetti once per day. Throttled via
+   * AsyncStorage so multiple complete→reopen→complete cycles in the
+   * same day only celebrate once. Per Slice Q8 directive.
+   */
+  const maybeFireFinishDayConfetti = useCallback(() => {
+    void AsyncStorage.getItem(CONFETTI_LAST_FIRE_KEY)
+      .then((stored) => {
+        const today = todayYmd();
+        if (stored === today) return;
+        AsyncStorage.setItem(CONFETTI_LAST_FIRE_KEY, today).catch(() => {});
+        setConfettiVisible(true);
+      })
+      .catch(() => {
+        // AsyncStorage rarely throws. If it does, skip the burst
+        // rather than risk firing on every subsequent check.
+      });
+  }, []);
+
   const handleToggleComplete = useCallback(
     (task: Task) => {
+      const willComplete = task.status !== "DONE";
       act(task.id, task.status === "DONE" ? "reopen" : "complete");
+      if (!willComplete) return;
+      // Count how many tasks WOULD remain open after this toggle
+      // commits. Reads from the current `tasks` closure — same
+      // snapshot `act()` reads for its optimistic update, so the
+      // counts can't desync.
+      const remainingOpen = tasks.filter(
+        (t) =>
+          t.id !== task.id &&
+          t.status !== "DONE" &&
+          t.status !== "DISMISSED"
+      ).length;
+      if (remainingOpen === 0) {
+        maybeFireFinishDayConfetti();
+      }
     },
-    [act]
+    [act, tasks, maybeFireFinishDayConfetti]
   );
 
   const tabs: { key: Tab; label: string; count: number }[] = [
@@ -520,6 +574,14 @@ export default function TasksTab() {
           </View>
         )}
       </ScrollView>
+      {/* Q8 finish-day confetti overlay. Lives outside the
+          ScrollView so it can render on top regardless of scroll
+          position. pointerEvents="none" inside the component so
+          taps still reach the task list underneath. */}
+      <Confetti
+        visible={confettiVisible}
+        onComplete={() => setConfettiVisible(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -689,7 +751,7 @@ const TaskRow = memo(
           opacity: isDone ? 0.55 : 1,
         }}
       >
-        <Checkbox
+        <GradientCheckbox
           checked={isDone}
           muted={tab === "snoozed"}
           onPress={handleToggle}
@@ -749,42 +811,9 @@ const TaskRow = memo(
     prev.onOpenEditor === next.onOpenEditor
 );
 
-function Checkbox({
-  checked,
-  muted,
-  onPress,
-}: {
-  checked: boolean;
-  muted?: boolean;
-  onPress: () => void;
-}) {
-  const size = 22;
-  return (
-    <Pressable
-      onPress={onPress}
-      hitSlop={10}
-      accessibilityRole="checkbox"
-      accessibilityState={{ checked }}
-      accessibilityLabel={
-        checked ? "Mark task incomplete" : "Mark task complete"
-      }
-      style={{
-        width: size,
-        height: size,
-        borderRadius: 4,
-        borderWidth: 2,
-        borderStyle: muted ? "dashed" : "solid",
-        borderColor: checked ? "#7C3AED" : "#A1A1AA",
-        backgroundColor: checked ? "#7C3AED" : "transparent",
-        alignItems: "center",
-        justifyContent: "center",
-        marginTop: 1,
-      }}
-    >
-      {checked ? <Ionicons name="checkmark" size={14} color="#FFFFFF" /> : null}
-    </Pressable>
-  );
-}
+// Local <Checkbox> removed in Slice Q8 — see <GradientCheckbox> in
+// apps/mobile/components/acuity/GradientCheckbox.tsx. Visual swap
+// only; toggle behavior unchanged.
 
 function EmptyState({ tab, isLocked }: { tab: Tab; isLocked: boolean }) {
   // §B.2.4 — FREE post-trial users on the open tab see the

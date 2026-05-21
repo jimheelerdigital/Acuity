@@ -23,6 +23,7 @@ import {
   type Mood,
 } from "@acuity/shared";
 
+import { Heatmap28 } from "@/components/entries/heatmap-28";
 import { MoodIcon } from "@/components/mood-icon";
 import { Skeleton, SkeletonCard } from "@/components/skeleton";
 import { api } from "@/lib/api";
@@ -291,6 +292,18 @@ export default function EntriesTab() {
             paddingBottom: 40,
             gap: 8,
           }}
+          ListHeaderComponent={
+            entries.length > 0 ? (
+              <View style={{ marginBottom: 12 }}>
+                <Heatmap28
+                  entries={entries}
+                  onEntryPress={(entryId) =>
+                    router.push(`/entry/${entryId}`)
+                  }
+                />
+              </View>
+            ) : null
+          }
           ListEmptyComponent={() => (
             <View className="rounded-2xl border border-dashed border-zinc-200 dark:border-white/10 p-8 items-center mt-8">
               <Text className="text-3xl mb-3">

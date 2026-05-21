@@ -34,6 +34,7 @@ import {
   Wallet,
 } from "lucide-react-native";
 
+import { GradientCheckbox } from "@/components/acuity";
 import { LockedFeatureCard } from "@/components/locked-feature-card";
 import { ProLockedCard } from "@/components/pro-locked-card";
 import { Skeleton, SkeletonCard } from "@/components/skeleton";
@@ -970,17 +971,9 @@ const TaskLeaf = memo(function TaskLeaf({
       className="flex-row items-center gap-2 rounded-lg bg-zinc-50 dark:bg-[#13131F] px-3 py-2"
       style={{ marginLeft: indent - 8 }}
     >
-      <Pressable onPress={handleToggle} hitSlop={8}>
-        <View
-          className={`h-5 w-5 rounded-full border-2 items-center justify-center ${
-            done
-              ? "bg-violet-500 border-violet-500"
-              : "border-zinc-300 dark:border-white/20"
-          }`}
-        >
-          {done && <Ionicons name="checkmark" size={10} color="#FFFFFF" />}
-        </View>
-      </Pressable>
+      {/* Q8 — gradient checkbox visual swap. Same onPress handler,
+          same checked state. */}
+      <GradientCheckbox checked={done} onPress={handleToggle} size={18} />
       <Text
         className={`text-xs flex-1 ${
           done

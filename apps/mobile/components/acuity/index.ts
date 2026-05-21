@@ -14,6 +14,10 @@
  *     "@/components/acuity";
  */
 
+export {
+  GradientCheckbox,
+  type GradientCheckboxProps,
+} from "./GradientCheckbox";
 export { GradientText, type GradientTextProps } from "./GradientText";
 export { GlassPill, type GlassPillProps } from "./GlassPill";
 export { RingProgress, type RingProgressProps } from "./RingProgress";
