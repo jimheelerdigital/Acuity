@@ -41,6 +41,48 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-21] — Phase E — Theme Map orbital cosmos rebuild
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** f81cb59
+
+### In plain English (for Keenan)
+
+The Theme Map (one of the Insights tab cards) used to be a vertical list/dashboard of theme cards — counts, sparklines, mood lines. We rebuilt it as a planetary cosmos: 9 planets arranged across 4 concentric ring guides, with the user at the center as a glowing "sun." Most-mentioned themes get the biggest planets on the inner rings; less-mentioned themes orbit further out as smaller planets. 70 deterministic stars fill the background. On first open in a session, the planets animate in over 6 seconds — sun fades up, then ring guides, then planets sequence outward from center one by one, then the dashed connector lines settle in. Tap any planet → glass-blur callout slides in with that theme's mention count, sentiment, top co-occurrences, and recent excerpt. Tap outside dismisses. The full theme detail screen we already built is still reachable via a "See full detail" button inside the callout.
+
+It's a visual departure from the old dashboard — much more "this is your inner world" than "here's a chart." The design called this out as the central Insights moment: an artifact you want to return to, not a dashboard you skim.
+
+### Technical changes (for Jimmy)
+
+- `apps/mobile/app/insights/theme-map.tsx` (rewrite, +319/-59): full screen scaffold — header + TimeChips + OrbitalCosmos + insight strip + PlanetCallout overlay. Sorts API themes by `mentionCount` DESC, takes top 9, maps to `OrbitalTheme` for the cosmos. Module-scoped `hasShownEntranceThisSession` flag controls the 6.0s entrance — first mount animates, subsequent mounts in the same session snap to final state. Flag auto-clears on app cold-start when the JS VM tears down.
+- `apps/mobile/app/insights/_theme-map/OrbitalCosmos.tsx` (new, 495 LOC): SVG cosmos with Reanimated 3 worklets. ViewBox `0 0 402 360` matches design spec; renders at 0.933× on iPhone 16e 375pt screen width. 9 planet slots with hardcoded ring/angle/size (matches design fixture); slot index maps to mentionCount rank. Animated cx/cy interpolation from `(CX, CY)` to each slot's `(x, y)` as per-planet shared values progress 0→1. 9 useAnimatedProps hooks plus 9 label-opacity hooks plus sun + ring + line group props. Per-planet RadialGradient with hsl(hue) stops at 0%/40%/95%. 33-line docblock with the geometry math + animation choreography proof.
+- `apps/mobile/app/insights/_theme-map/StarField.tsx` (new, 52 LOC): 70 deterministic stars via seed-prime arithmetic `(i * 137) % width, (i * 89) % height`. Sized + tinted by caller; no randomization (predictable across renders).
+- `apps/mobile/app/insights/_theme-map/PlanetCallout.tsx` (new, 293 LOC): glass-blur (BlurView intensity 40, theme-aware tint) overlay on planet tap. Shows theme name, mention count, sentiment band, top 3 co-occurrences as pills, italicized excerpt, "See full detail" CTA navigating to `/insights/theme/[id]`. Backdrop tap dismisses; inner card swallows taps.
+- `apps/mobile/app/insights/_theme-map/types.ts` (new, 50 LOC): `OrbitalTheme` interface + `hueForTheme()` helper. Two-tier hue lookup: canonical 9-theme table (matches ThemePill colors — career: 295, family: 25, etc.), falls through to FNV-1a hash for unknown theme names.
+- `apps/mobile/components/theme-map/{ThemeMapDashboard,ThemeRings,ThemeMoodWaveRow,ThemeCardsStrip,ThemeDetailSheet}.tsx` — DELETED (-1,714 LOC total). Legacy list/cards dashboard surface; nothing outside the rebuilt theme-map.tsx referenced them.
+- `apps/mobile/components/theme-map/{LockedState,TimeChips,theme-tokens}.tsx` — KEPT, still used by the new screen.
+- Net: +1,140 / -1,773 = -633 LOC.
+
+### Manual steps needed
+
+- [ ] None — pure visual rebuild, no schema or server changes. New mobile build (build-44+) will pick up the change; older builds keep the legacy dashboard until they update.
+- [ ] On simulator, open Insights tab → tap "Explore your themes" → verify the 6.0s cosmos entrance plays smoothly the first time, then snaps on a second open in the same session.
+- [ ] Test the four palette variants (coral / sunset / citrus / cobalt) — the center sun's gradient, the planet radial gradients (hue-driven, palette-independent), connector lines, and callout BlurView should all read correctly.
+- [ ] Light mode flip — star color switches from white to muted indigo `rgba(70, 60, 130, 0.85)`; verify ring guides + sun + planets stay readable.
+
+### Notes
+
+- Planet vs palette colors: the planet bodies use HSL-derived radial gradients per theme hue (data colors — same convention as the radar's data layer). The sun + UI chrome (ring guides + dashed frames + connector tints + callout glass + insight strip background) use palette tokens. Clean separation between "this is your data" and "this is your app skin."
+- The 9-theme cap is intentional. Themes 10+ get dropped from the orbital but remain reachable via the existing detail screen list. Median user has 5-8 themes post-unlock; power users hit the cap but the visual would degenerate above 9 anyway (more rings would push planets off-screen at the 375pt iPhone 16e width).
+- For users with fewer than 9 themes: unused slots simply don't render. The ring guides still draw faintly so the cosmos doesn't look incomplete.
+- Animation skip pattern: module-ref `let hasShownEntranceThisSession = false` was chosen over AsyncStorage. Module state lives for the JS bundle's lifetime — auto-clears on cold start, preserves across foreground/background cycles. No round-trip on mount, no app-launch hook needed. Same pattern is reusable for any future "play once per session" treatments.
+- The persistent insight strip below the orbital reuses `topThemeName` + the first theme's `trendDescription` from the existing `/api/insights/theme-map` response. No backend changes. Future polish slice could replace this with a server-computed rotating-observations list if signal is strong enough.
+
+monday: 12058980099
+
+---
+
 ## [2026-05-21] — v1.1 ship — remove Life Matrix baseline carousel from onboarding
 
 **Requested by:** Jimmy
