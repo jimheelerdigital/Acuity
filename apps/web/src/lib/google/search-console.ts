@@ -16,10 +16,14 @@ const SCOPE = "https://www.googleapis.com/auth/webmasters.readonly";
 
 /**
  * Normalize a URL for matching GSC data against stored distributedUrl values.
- * GSC often returns trailing slashes; our DB stores URLs without them.
+ * GSC returns mixed formats: trailing slashes, www vs non-www.
+ * Our DB stores URLs as https://getacuity.io/blog/slug (no www, no trailing slash).
  */
 export function normalizeGscUrl(url: string): string {
-  return url.replace(/\/+$/, "").toLowerCase();
+  return url
+    .replace(/\/+$/, "")
+    .toLowerCase()
+    .replace("://www.", "://");
 }
 
 export interface UrlPerformance {
