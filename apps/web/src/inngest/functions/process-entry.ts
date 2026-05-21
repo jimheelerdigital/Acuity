@@ -83,45 +83,6 @@ export const processEntryFn = inngest.createFunction(
       });
     });
 
-    // Step 1: download audio from Supabase Storage.
-    const { audioBase64, mimeType } = await step.run(
-      "download-audio",
-      async () => {
-        const entry = await prisma.entry.findUniqueOrThrow({
-          where: { id: entryId },
-          select: { audioPath: true, userId: true },
-        });
-        if (entry.userId !== userId) {
-          throw new NonRetriableError(
-            `Entry ${entryId} does not belong to user ${userId}`
-          );
-        }
-        if (!entry.audioPath) {
-          throw new NonRetriableError(`Entry ${entryId} has no audioPath`);
-        }
-
-        await prisma.entry.update({
-          where: { id: entryId },
-          data: { status: "TRANSCRIBING" },
-        });
-
-        const { data, error } = await supabase.storage
-          .from("voice-entries")
-          .download(entry.audioPath);
-        if (error || !data) {
-          throw new Error(
-            `Audio download failed: ${error?.message ?? "no data"}`
-          );
-        }
-
-        const buffer = Buffer.from(await data.arrayBuffer());
-        return {
-          audioBase64: buffer.toString("base64"),
-          mimeType: mimeTypeFromAudioPath(entry.audioPath),
-        };
-      }
-    );
-
     // Cancellation gate before Whisper (Slice C Stage 3, 2026-05-16).
     // Whisper is the first expensive call ($$ per minute of audio).
     // If the user tapped Cancel on the processing screen between
@@ -130,6 +91,16 @@ export const processEntryFn = inngest.createFunction(
     // (not a new CANCELED enum) so the live build-42 binary's
     // useEntryPolling hook still detects the terminal state — a new
     // enum value would hang their spinner until polling timeout.
+    //
+    // Order note (2026-05-20): gate now runs BEFORE the merged
+    // download-transcribe step. Original order ran download → gate →
+    // transcribe, but the merged step keeps the audio buffer
+    // step-local (see below), so the gate has to live outside it.
+    // A second inline check inside the merged step (after download,
+    // before the OpenAI call) catches cancels that arrive during the
+    // Supabase download window — that's a DB read, not a new
+    // step.run, so it doesn't reintroduce the step-boundary that
+    // caused the output-size bug.
     const canceledBeforeTranscribe = await step.run(
       "cancel-check-before-transcribe",
       async () => {
@@ -160,41 +131,116 @@ export const processEntryFn = inngest.createFunction(
       return { entryId, canceled: true, canceledAt: "before-transcribe" };
     }
 
-    // Step 2: transcribe via Whisper + persist transcript immediately.
-    // Persisting here (vs. buffering until the final transaction) means
-    // an extract/persist failure later leaves a recoverable PARTIAL
-    // entry with the user's words intact.
-    await step.run("transcribe-and-persist-transcript", async () => {
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-      const buffer = Buffer.from(audioBase64, "base64");
-      // Derive filename from the canonical MIME rather than the
-      // storage path. Pre-2026-04-20-afternoon entries were stored as
-      // `userId/entryId.mp4`; Whisper's MP4 demuxer trips on those
-      // (looks for a video track). extensionForMimeType maps
-      // audio/mp4 → "m4a" so we always hand Whisper a filename
-      // matching the actual container format.
-      const filename = `recording.${extensionForMimeType(mimeType)}`;
-      const file = await toFile(buffer, filename, { type: mimeType });
+    // Step 1+2 merged: download audio, transcribe via Whisper, persist
+    // transcript. Merged 2026-05-20 to keep the audio buffer
+    // step-local — returning audioBase64 from a separate download
+    // step tripped Inngest's 4 MB step-output limit for recordings
+    // >~3min (HIGH_QUALITY AAC 128 kbps × 1.37 base64 inflation).
+    // Buffer never crosses a step boundary now; the step returns
+    // only a small `{ transcriptLength }` marker for Inngest UI
+    // observability. Cost of a Whisper retry: a re-download from
+    // Supabase (free egress at our scale).
+    //
+    // Persisting the transcript here (vs. buffering until the final
+    // transaction) means an extract/persist failure later leaves a
+    // recoverable PARTIAL entry with the user's words intact.
+    const { transcriptLength } = await step.run(
+      "download-transcribe-and-persist",
+      async () => {
+        const entry = await prisma.entry.findUniqueOrThrow({
+          where: { id: entryId },
+          select: { audioPath: true, userId: true },
+        });
+        if (entry.userId !== userId) {
+          throw new NonRetriableError(
+            `Entry ${entryId} does not belong to user ${userId}`
+          );
+        }
+        if (!entry.audioPath) {
+          throw new NonRetriableError(`Entry ${entryId} has no audioPath`);
+        }
 
-      const res = await openai.audio.transcriptions.create({
-        file,
-        model: WHISPER_MODEL,
-        language: WHISPER_LANGUAGE,
-        response_format: "text",
-      });
-      const transcript = (res as unknown as string).trim();
+        await prisma.entry.update({
+          where: { id: entryId },
+          data: { status: "TRANSCRIBING" },
+        });
 
-      if (transcript.length < 10) {
-        throw new NonRetriableError(
-          "Transcript too short — no speech detected"
-        );
+        const { data, error } = await supabase.storage
+          .from("voice-entries")
+          .download(entry.audioPath);
+        if (error || !data) {
+          throw new Error(
+            `Audio download failed: ${error?.message ?? "no data"}`
+          );
+        }
+
+        const buffer = Buffer.from(await data.arrayBuffer());
+        const mimeType = mimeTypeFromAudioPath(entry.audioPath);
+
+        // Inline cancel-check before the expensive Whisper call.
+        // This is a DB read inside the closure — NOT a new step.run —
+        // so it adds no step-boundary cost (which would re-introduce
+        // the 4 MB output-size bug if the buffer crossed it). Covers
+        // the cancel-during-download window that the outer gate
+        // (above the step) can't see.
+        const pre = await prisma.entry.findUnique({
+          where: { id: entryId },
+          select: { canceledAt: true, status: true },
+        });
+        if (pre?.canceledAt) {
+          if (
+            pre.status !== "FAILED" &&
+            pre.status !== "COMPLETE" &&
+            pre.status !== "PARTIAL"
+          ) {
+            await prisma.entry.update({
+              where: { id: entryId },
+              data: {
+                status: "FAILED",
+                errorMessage: "__canceled_by_user__",
+              },
+            });
+          }
+          // Signal cancellation upward via the marker. Caller checks
+          // transcriptLength < 0 to detect this without throwing.
+          return { transcriptLength: -1 };
+        }
+
+        const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+        // Derive filename from the canonical MIME rather than the
+        // storage path. Pre-2026-04-20-afternoon entries were stored as
+        // `userId/entryId.mp4`; Whisper's MP4 demuxer trips on those
+        // (looks for a video track). extensionForMimeType maps
+        // audio/mp4 → "m4a" so we always hand Whisper a filename
+        // matching the actual container format.
+        const filename = `recording.${extensionForMimeType(mimeType)}`;
+        const file = await toFile(buffer, filename, { type: mimeType });
+
+        const res = await openai.audio.transcriptions.create({
+          file,
+          model: WHISPER_MODEL,
+          language: WHISPER_LANGUAGE,
+          response_format: "text",
+        });
+        const transcript = (res as unknown as string).trim();
+
+        if (transcript.length < 10) {
+          throw new NonRetriableError(
+            "Transcript too short — no speech detected"
+          );
+        }
+
+        await prisma.entry.update({
+          where: { id: entryId },
+          data: { transcript, status: "EXTRACTING" },
+        });
+
+        return { transcriptLength: transcript.length };
       }
-
-      await prisma.entry.update({
-        where: { id: entryId },
-        data: { transcript, status: "EXTRACTING" },
-      });
-    });
+    );
+    if (transcriptLength < 0) {
+      return { entryId, canceled: true, canceledAt: "during-download" };
+    }
 
     // ── FREE / PRO branch ────────────────────────────────────────────
     // v1.1 free-tier redesign: after the transcript is persisted, fork
