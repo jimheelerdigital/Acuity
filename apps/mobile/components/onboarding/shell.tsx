@@ -1,4 +1,5 @@
 import { useRouter } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
 import { useColorScheme } from "nativewind";
 import {
   useCallback,
@@ -21,6 +22,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useAuth } from "@/contexts/auth-context";
+import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
 import { applyReminderSchedule, syncRandomNudges } from "@/lib/notifications";
 
@@ -61,6 +63,7 @@ export function OnboardingShell({
 }: Props) {
   const router = useRouter();
   const { user, refresh, setAuthenticatedUser } = useAuth();
+  const { tokens } = useTheme();
   const [canContinue, setCanContinue] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   // Per-step captured form state. Survives step remounts inside this
@@ -236,7 +239,7 @@ export function OnboardingShell({
     <OnboardingContext.Provider value={contextValue}>
       <SafeAreaView
         edges={["top", "bottom"]}
-        className="flex-1 bg-[#0B0B12]"
+        style={{ flex: 1, backgroundColor: tokens.bg }}
       >
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -250,24 +253,56 @@ export function OnboardingShell({
               Apple Guideline 5.1.1(iv) requires no skip path past
               the mic permission step. Product call: remove all skip
               UI; every user clicks through every step. */}
-          <View className="flex-row items-center justify-between px-5 pt-3 pb-2">
-            <View className="flex-1 flex-row items-center gap-1.5">
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              paddingHorizontal: 20,
+              paddingTop: 12,
+              paddingBottom: 8,
+            }}
+          >
+            <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 6 }}>
               {Array.from({ length: totalSteps }).map((_, i) => {
                 const filled = i < step;
+                if (filled) {
+                  return (
+                    <LinearGradient
+                      key={i}
+                      colors={tokens.gradMix.colors}
+                      locations={tokens.gradMix.locations}
+                      start={tokens.gradMix.start}
+                      end={tokens.gradMix.end}
+                      style={{ height: 4, flex: 1, borderRadius: 999 }}
+                    />
+                  );
+                }
                 return (
                   <View
                     key={i}
-                    className={`h-1 flex-1 rounded-full ${
-                      filled
-                        ? "bg-violet-600"
-                        : "bg-zinc-200 dark:bg-white/10"
-                    }`}
+                    style={{
+                      height: 4,
+                      flex: 1,
+                      borderRadius: 999,
+                      backgroundColor: tokens.line,
+                    }}
                   />
                 );
               })}
             </View>
           </View>
-          <Text className="px-5 text-[11px] text-zinc-400 dark:text-zinc-500">
+          <Text
+            style={{
+              paddingHorizontal: 20,
+              fontFamily: tokens.fontMono,
+              fontSize: 10,
+              fontWeight: "700",
+              letterSpacing: 1.4,
+              textTransform: "uppercase",
+              color: tokens.textTer,
+            }}
+          >
             Step {step} of {totalSteps}
           </Text>
 
@@ -290,37 +325,89 @@ export function OnboardingShell({
               outside any text input to dismiss. Per-step Skip
               removed 2026-05-14 (see header comment for rationale). */}
           {!keyboardOpen && (
-          <View className="flex-row items-center justify-between gap-3 border-t border-zinc-100 dark:border-white/10 px-5 py-3">
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
+              borderTopWidth: 0.5,
+              borderTopColor: tokens.line,
+              paddingHorizontal: 20,
+              paddingVertical: 12,
+            }}
+          >
             <Pressable
               onPress={goBack}
               disabled={step <= 1}
               hitSlop={6}
-              className="px-2 py-2"
               style={{
+                paddingHorizontal: 8,
+                paddingVertical: 8,
                 opacity: step <= 1 ? 0 : 1,
               }}
             >
-              <Text className="text-sm text-zinc-500 dark:text-zinc-400">
+              <Text
+                style={{
+                  fontFamily: tokens.fontMono,
+                  fontSize: 11,
+                  fontWeight: "600",
+                  letterSpacing: 1.2,
+                  textTransform: "uppercase",
+                  color: tokens.textSec,
+                }}
+              >
                 ← Back
               </Text>
             </Pressable>
-            <View className="flex-row items-center gap-2">
-              <Pressable
-                onPress={() => (isLastStep ? complete() : goNext())}
-                disabled={!canContinue || submitting}
+            <Pressable
+              onPress={() => (isLastStep ? complete() : goNext())}
+              disabled={!canContinue || submitting}
+              accessibilityRole="button"
+              style={{
+                borderRadius: 999,
+                overflow: "hidden",
+                opacity: !canContinue || submitting ? 0.4 : 1,
+                shadowColor: tokens.glowPrimary.color,
+                shadowOffset: { width: 0, height: 4 },
+                shadowRadius: tokens.glowPrimary.radius,
+                shadowOpacity:
+                  Platform.OS === "ios" && canContinue && !submitting
+                    ? tokens.glowPrimary.opacity
+                    : 0,
+                elevation: 4,
+              }}
+            >
+              <LinearGradient
+                colors={tokens.gradPrimary.colors}
+                locations={tokens.gradPrimary.locations}
+                start={tokens.gradPrimary.start}
+                end={tokens.gradPrimary.end}
                 style={{
-                  opacity: !canContinue || submitting ? 0.4 : 1,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 8,
+                  paddingHorizontal: 22,
+                  paddingVertical: 11,
                 }}
-                className="flex-row items-center gap-1.5 rounded-full bg-violet-600 px-5 py-2.5"
               >
                 {submitting && (
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 )}
-                <Text className="text-sm font-semibold text-white">
+                <Text
+                  style={{
+                    fontFamily: tokens.fontMono,
+                    fontSize: 12,
+                    fontWeight: "700",
+                    letterSpacing: 1.4,
+                    textTransform: "uppercase",
+                    color: "#ffffff",
+                  }}
+                >
                   {isLastStep ? "Finish" : "Continue"}
                 </Text>
-              </Pressable>
-            </View>
+              </LinearGradient>
+            </Pressable>
           </View>
           )}
         </KeyboardAvoidingView>
