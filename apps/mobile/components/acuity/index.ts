@@ -32,3 +32,9 @@ export {
 export { HeroCard, type HeroCardProps } from "./HeroCard";
 export { MiniRadar, type MiniRadarProps } from "./MiniRadar";
 export { TierPill, type TierPillProps } from "./TierPill";
+export { Avatar, type AvatarProps } from "./Avatar";
+export {
+  SubscriptionPill,
+  type SubscriptionPillProps,
+  type SubscriptionStatus,
+} from "./SubscriptionPill";

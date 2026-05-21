@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { Avatar, SubscriptionPill } from "@/components/acuity";
 import { AppearanceCard } from "@/components/appearance/appearance-card";
 import { HapticsRow } from "@/components/appearance/haptics-row";
 import { DeleteAccountModal } from "@/components/delete-account-modal";
@@ -33,6 +34,7 @@ export default function ProfileTab() {
   const router = useRouter();
   const { user, signOut, deleteAccount, refresh } = useAuth();
   const { lockNow } = useLock();
+  const { tokens } = useTheme();
   const [signingOut, setSigningOut] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
@@ -154,55 +156,48 @@ export default function ProfileTab() {
     .toUpperCase();
 
   return (
-    <SafeAreaView className="flex-1 bg-white dark:bg-[#1E1E2E] dark:bg-[#0B0B12]" edges={["top"]}>
+    <SafeAreaView
+      className="flex-1"
+      edges={["top"]}
+      style={{ backgroundColor: tokens.bg }}
+    >
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
         <View className="mb-2">
-          <Text className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">Profile</Text>
-          <Text className="text-sm text-zinc-400 dark:text-zinc-500 mt-1">
+          <Text
+            className="text-2xl font-bold"
+            style={{ color: tokens.text }}
+          >
+            Profile
+          </Text>
+          <Text
+            className="text-sm mt-1"
+            style={{ color: tokens.textTer }}
+          >
             Account &amp; settings
           </Text>
         </View>
 
-        {/* Avatar */}
+        {/* Avatar + name + email + subscription pill. Q11 Phase B:
+            uses the shared Avatar primitive (same source as Home's
+            44px identity hero, here at 64px per spec) and the new
+            SubscriptionPill primitive (PRO renders gradMix +
+            sparkle; FREE renders quiet bgSub). */}
         <View className="items-center mt-6 mb-8">
-          {user?.image ? (
-            <View className="h-20 w-20 rounded-full overflow-hidden border border-violet-600/40">
-              {/* RN Image would go here; using initials as fallback */}
-              <View className="h-20 w-20 bg-violet-600/20 items-center justify-center">
-                <Text className="text-2xl font-bold text-violet-400">
-                  {initials}
-                </Text>
-              </View>
-            </View>
-          ) : (
-            <View className="h-20 w-20 rounded-full bg-violet-600/20 items-center justify-center border border-violet-600/40">
-              <Text className="text-2xl font-bold text-violet-400">
-                {initials}
-              </Text>
-            </View>
-          )}
-          <Text className="text-zinc-800 dark:text-zinc-100 font-semibold text-lg mt-3">
+          <Avatar initials={initials} size={64} />
+          <Text
+            className="font-semibold text-lg mt-3"
+            style={{ color: tokens.text }}
+          >
             {name}
           </Text>
-          <Text className="text-zinc-500 dark:text-zinc-400 text-sm">{email}</Text>
-
-          {/* Subscription badge */}
-          <View
-            className={`mt-3 rounded-full px-3 py-1 ${
-              subStatus === "PRO"
-                ? "bg-violet-600/20"
-                : "bg-zinc-800"
-            }`}
+          <Text
+            className="text-sm"
+            style={{ color: tokens.textSec }}
           >
-            <Text
-              className={`text-xs font-semibold ${
-                subStatus === "PRO"
-                  ? "text-violet-400"
-                  : "text-zinc-500 dark:text-zinc-400"
-              }`}
-            >
-              {subStatus === "PRO" ? "Pro" : "Free Plan"}
-            </Text>
+            {email}
+          </Text>
+          <View style={{ marginTop: 12 }}>
+            <SubscriptionPill status={subStatus as never} />
           </View>
         </View>
 

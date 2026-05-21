@@ -1,8 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import { Pressable, Text, View } from "react-native";
 
-import { TierPill } from "@/components/acuity";
+import { Avatar, TierPill } from "@/components/acuity";
 import { useTheme } from "@/contexts/theme-context";
 
 /**
@@ -56,42 +55,11 @@ export function IdentityHero({
 
   return (
     <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-      {/* Avatar — 44px gradient circle with initial. The 1.5px white-
-          tint border is the design's separation cue against hero
-          backgrounds. */}
-      <View
-        style={{
-          width: 44,
-          height: 44,
-          borderRadius: 22,
-          overflow: "hidden",
-          borderWidth: 1.5,
-          borderColor: "#ffffff26",
-        }}
-      >
-        <LinearGradient
-          colors={tokens.gradMix.colors}
-          start={tokens.gradMix.start}
-          end={tokens.gradMix.end}
-          style={{
-            flex: 1,
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <Text
-            style={{
-              fontFamily: tokens.fontDisplay,
-              fontSize: 17,
-              fontWeight: "700",
-              letterSpacing: -0.3,
-              color: "#ffffff",
-            }}
-          >
-            {initials}
-          </Text>
-        </LinearGradient>
-      </View>
+      {/* Avatar — 44px gradient circle with initial. Q11 Phase B
+          extracted the inline LinearGradient into the shared Avatar
+          primitive so Home and Profile render the same surface at
+          different sizes. */}
+      <Avatar initials={initials} size={44} />
 
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text
