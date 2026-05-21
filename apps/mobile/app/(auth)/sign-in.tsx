@@ -42,6 +42,7 @@ import {
   useGoogleSignIn,
 } from "@/lib/auth";
 import { isAppleSignInAvailable, signInWithApple } from "@/lib/apple-auth";
+import { WARN_AMBER } from "@/lib/tone-colors";
 
 type Loading = "google" | "apple" | "password" | "magic" | null;
 
@@ -454,11 +455,12 @@ export default function SignInScreen() {
         </View>
 
         {!hasClientId && (
-          // Amber warning kept hardcoded — warning isn't a palette
-          // token category (palette has primary/secondary/good/bad,
-          // no warning amber). Same convention as the confetti
-          // accents in Q8.
-          <Text className="text-xs text-amber-400 mt-6 text-center leading-relaxed">
+          // WARN_AMBER from lib/tone-colors — single source of truth
+          // for the warning-amber accent (palette has no warning token).
+          <Text
+            className="text-xs mt-6 text-center leading-relaxed"
+            style={{ color: WARN_AMBER }}
+          >
             Google client ID not set. Development build only.
           </Text>
         )}

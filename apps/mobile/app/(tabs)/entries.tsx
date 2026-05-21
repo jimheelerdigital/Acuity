@@ -29,6 +29,7 @@ import { Skeleton, SkeletonCard } from "@/components/skeleton";
 import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
 import { getCached, isStale, setCached } from "@/lib/cache";
+import { WARN_AMBER } from "@/lib/tone-colors";
 
 const ENTRIES_CACHE_KEY = "/api/entries";
 
@@ -434,13 +435,17 @@ function EntryRow({
             </Text>
           </View>
         )}
-        {/* PARTIAL status badge uses warning-amber. Same exception
-            convention as Q11c-1 ON_HOLD goals, Q11c-3 task due
-            dates, Q11c-2 State of Me eyebrow — palette has no
-            warning-amber token. */}
+        {/* PARTIAL status badge uses WARN_AMBER from lib/tone-colors
+            — single source of truth for the warning-amber accent. */}
         {entry.status === "PARTIAL" && (
-          <View className="rounded-full bg-amber-900/40 px-2 py-0.5">
-            <Text className="text-[10px] font-semibold text-amber-300">
+          <View
+            className="rounded-full px-2 py-0.5"
+            style={{ backgroundColor: `${WARN_AMBER}33` }}
+          >
+            <Text
+              className="text-[10px] font-semibold"
+              style={{ color: WARN_AMBER }}
+            >
               PARTIAL
             </Text>
           </View>

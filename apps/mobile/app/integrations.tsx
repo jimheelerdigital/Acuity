@@ -17,6 +17,7 @@ import { ProLockedCard } from "@/components/pro-locked-card";
 import { useAuth } from "@/contexts/auth-context";
 import { api } from "@/lib/api";
 import { isFreeTierUser } from "@/lib/free-tier";
+import { WARN_AMBER } from "@/lib/tone-colors";
 
 /**
  * Calendar integrations screen — slice C5c (settings UI on the
@@ -172,8 +173,14 @@ function ConnectPlaceholderCard() {
         </View>
       </View>
 
-      <View className="mt-4 rounded-lg bg-amber-500/10 px-3 py-2">
-        <Text className="text-xs font-semibold uppercase tracking-widest text-amber-600 dark:text-amber-400">
+      <View
+        className="mt-4 rounded-lg px-3 py-2"
+        style={{ backgroundColor: `${WARN_AMBER}1a` }}
+      >
+        <Text
+          className="text-xs font-semibold uppercase tracking-widest"
+          style={{ color: WARN_AMBER }}
+        >
           Coming in next update
         </Text>
         <Text className="mt-1 text-xs text-zinc-600 dark:text-zinc-300 leading-relaxed">

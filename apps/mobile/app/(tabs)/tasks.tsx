@@ -24,7 +24,7 @@ import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
 import { getCached, setCached } from "@/lib/cache";
 import { isFreeTierUser } from "@/lib/free-tier";
-import { priorityToneColor } from "@/lib/tone-colors";
+import { priorityToneColor, WARN_AMBER } from "@/lib/tone-colors";
 
 // Q8 — finish-day confetti throttle. AsyncStorage stores YYYY-MM-DD;
 // burst only fires when the stored value !== today.
@@ -818,13 +818,13 @@ const TaskRow = memo(
                   </Text>
                 </View>
               )}
-              {/* Due-date label uses the warning-amber non-palette
-                  accent (same convention as ON_HOLD goals + HIGH
-                  priority + LOW mood + Q8 confetti). The amber
-                  reads as "attention needed" without competing
-                  with palette tokens. */}
+              {/* Due-date label uses WARN_AMBER from lib/tone-colors —
+                  same warning-amber accent convention as ON_HOLD goals,
+                  HIGH priority, LOW mood, PARTIAL badge, Q8 confetti. */}
               {dueDate && (
-                <Text className="text-xs text-amber-500">Due {dueDate}</Text>
+                <Text className="text-xs" style={{ color: WARN_AMBER }}>
+                  Due {dueDate}
+                </Text>
               )}
             </View>
           )}

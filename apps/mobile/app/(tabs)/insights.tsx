@@ -683,18 +683,24 @@ export default function InsightsTab() {
         </Pressable>
 
         {/* ─── 5. STATE OF ME ──────────────────────────────────────── */}
-        {/* Q11c.2: amber border/bg/eyebrow/chevron kept hardcoded —
-            "Quarterly" eyebrow uses warning-amber as a deliberate
-            non-palette accent (same convention as ON_HOLD goals,
-            confetti, auth dev warning). Surrounds it as a distinct
-            visual cue from the primary-tinted Theme Map card above. */}
+        {/* "Quarterly" surface uses WARN_AMBER from lib/tone-colors
+            — single source of truth for the warning-amber accent.
+            Surrounds it as a distinct visual cue from the primary-
+            tinted Theme Map card above. */}
         <Pressable
           onPress={() => router.push("/insights/state-of-me" as never)}
-          className="mb-6 rounded-2xl border border-amber-900/30 bg-amber-950/10 p-4"
+          className="mb-6 rounded-2xl border p-4"
+          style={{
+            borderColor: `${WARN_AMBER}4d`,
+            backgroundColor: `${WARN_AMBER}14`,
+          }}
         >
           <View className="flex-row items-center justify-between">
             <View className="flex-1 pr-3">
-              <Text className="text-[11px] font-semibold uppercase tracking-widest text-amber-400">
+              <Text
+                className="text-[11px] font-semibold uppercase tracking-widest"
+                style={{ color: WARN_AMBER }}
+              >
                 Quarterly
               </Text>
               <Text
