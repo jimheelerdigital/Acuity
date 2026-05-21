@@ -5,6 +5,7 @@ import { Pressable, Text, View } from "react-native";
 
 import type { ProgressionItemKey } from "@acuity/shared";
 
+import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
 
 /**
@@ -32,6 +33,7 @@ export function ProgressionChecklist({
   totalVisibleCount: number;
 }) {
   const router = useRouter();
+  const { tokens } = useTheme();
   const [items, setItems] = useState<Item[]>(initial);
   const [collapsed, setCollapsed] = useState(false);
   const [hidden, setHidden] = useState(false);
@@ -58,13 +60,22 @@ export function ProgressionChecklist({
   };
 
   return (
-    <View className="mb-6 rounded-2xl border border-zinc-200 bg-white p-4 dark:border-white/10 dark:bg-[#1E1E2E]">
+    <View
+      className="mb-6 rounded-2xl border p-4"
+      style={{ borderColor: tokens.line, backgroundColor: tokens.cardBg }}
+    >
       <View className="flex-row items-start justify-between gap-3 mb-3">
         <View className="flex-1">
-          <Text className="text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
+          <Text
+            className="text-xs font-semibold uppercase tracking-widest"
+            style={{ color: tokens.textTer }}
+          >
             Getting to know Acuity
           </Text>
-          <Text className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+          <Text
+            className="mt-1 text-xs"
+            style={{ color: tokens.textSec }}
+          >
             {done} of {items.length} complete · unlocks over two weeks
           </Text>
         </View>
@@ -74,22 +85,25 @@ export function ProgressionChecklist({
             hitSlop={8}
             className="rounded px-2 py-1"
           >
-            <Text className="text-xs text-zinc-500 dark:text-zinc-400">
+            <Text className="text-xs" style={{ color: tokens.textSec }}>
               {collapsed ? "Expand" : "Collapse"}
             </Text>
           </Pressable>
           <Pressable onPress={dismiss} hitSlop={8} className="rounded px-2 py-1">
-            <Text className="text-xs text-zinc-400 dark:text-zinc-500">
+            <Text className="text-xs" style={{ color: tokens.textTer }}>
               Hide
             </Text>
           </Pressable>
         </View>
       </View>
 
-      <View className="h-1.5 overflow-hidden rounded-full bg-zinc-100 dark:bg-white/10">
+      <View
+        className="h-1.5 overflow-hidden rounded-full"
+        style={{ backgroundColor: tokens.bgInset }}
+      >
         <View
-          className="h-full rounded-full bg-violet-500"
-          style={{ width: `${progress}%` }}
+          className="h-full rounded-full"
+          style={{ width: `${progress}%`, backgroundColor: tokens.primary }}
         />
       </View>
 
@@ -98,7 +112,8 @@ export function ProgressionChecklist({
           {items.map((item) => (
             <View
               key={item.key}
-              className="flex-row items-center gap-3 rounded-lg border border-zinc-100 px-3 py-2 dark:border-white/5"
+              className="flex-row items-center gap-3 rounded-lg border px-3 py-2"
+              style={{ borderColor: tokens.line }}
             >
               <Pressable
                 onPress={() => !item.completed && markComplete(item.key)}
@@ -106,11 +121,13 @@ export function ProgressionChecklist({
                 accessibilityLabel={
                   item.completed ? "Completed" : "Mark complete"
                 }
-                className={`h-6 w-6 items-center justify-center rounded-full border-2 ${
-                  item.completed
-                    ? "border-violet-500 bg-violet-500"
-                    : "border-zinc-300 dark:border-white/20"
-                }`}
+                className="h-6 w-6 items-center justify-center rounded-full border-2"
+                style={{
+                  borderColor: item.completed ? tokens.primary : tokens.line,
+                  backgroundColor: item.completed
+                    ? tokens.primary
+                    : "transparent",
+                }}
                 disabled={item.completed}
               >
                 {item.completed && (
@@ -122,15 +139,17 @@ export function ProgressionChecklist({
                 className="flex-1"
               >
                 <Text
-                  className={`text-sm font-medium ${
-                    item.completed
-                      ? "text-zinc-400 dark:text-zinc-500 line-through"
-                      : "text-zinc-900 dark:text-zinc-50"
-                  }`}
+                  className={`text-sm font-medium ${item.completed ? "line-through" : ""}`}
+                  style={{
+                    color: item.completed ? tokens.textTer : tokens.text,
+                  }}
                 >
                   {item.title}
                 </Text>
-                <Text className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                <Text
+                  className="mt-0.5 text-xs"
+                  style={{ color: tokens.textSec }}
+                >
                   {item.description}
                 </Text>
               </Pressable>
@@ -139,7 +158,10 @@ export function ProgressionChecklist({
                   onPress={() => router.push(mapWebHrefToMobile(item.href))}
                   hitSlop={6}
                 >
-                  <Text className="text-xs font-semibold text-violet-600 dark:text-violet-400">
+                  <Text
+                    className="text-xs font-semibold"
+                    style={{ color: tokens.primary }}
+                  >
                     Open →
                   </Text>
                 </Pressable>

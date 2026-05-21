@@ -2,6 +2,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useRef, useState } from "react";
 import { Animated, Easing, Text, View } from "react-native";
 
+import { useTheme } from "@/contexts/theme-context";
+
 /**
  * Determinate progress bar + per-stage checklist for the recording-
  * processing screen on mobile. Mirror of the web component — driven by
@@ -52,6 +54,7 @@ export function ProcessingProgressBar({
   phase: string | null;
   elapsedSeconds: number;
 }) {
+  const { tokens } = useTheme();
   const idx = stageIndex(phase);
   const headerLabel = (phase && PHASE_LABELS[phase]) ?? "Starting…";
   const fillPct =
@@ -117,21 +120,30 @@ export function ProcessingProgressBar({
 
   return (
     <View className="w-full max-w-sm items-stretch">
-      {/* Track + fill. Light-mode track is zinc-200 (was bg-white/10
-          which is invisible on white). Fill stays violet-500 in both
-          modes. 2026-05-09 contrast fix from Keenan's TestFlight test. */}
-      <View className="h-1.5 w-full overflow-hidden rounded-full bg-zinc-200 dark:bg-white/10">
+      <View
+        className="h-1.5 w-full overflow-hidden rounded-full"
+        style={{ backgroundColor: tokens.bgInset }}
+      >
         <Animated.View
-          className="h-full rounded-full bg-violet-500"
-          style={{ width: widthInterpolation }}
+          className="h-full rounded-full"
+          style={{
+            width: widthInterpolation,
+            backgroundColor: tokens.primary,
+          }}
         />
       </View>
 
       <View className="mt-4 items-center">
-        <Text className="text-center text-base font-semibold text-zinc-900 dark:text-zinc-100">
+        <Text
+          className="text-center text-base font-semibold"
+          style={{ color: tokens.text }}
+        >
           {headerLabel}
         </Text>
-        <Text className="mt-1 text-center text-xs text-zinc-500 dark:text-zinc-400">
+        <Text
+          className="mt-1 text-center text-xs"
+          style={{ color: tokens.textSec }}
+        >
           {showStillWorking
             ? "Still working on this — longer recordings take a bit more."
             : `${elapsedSeconds}s elapsed`}
@@ -154,6 +166,13 @@ export function ProcessingProgressBar({
 
           const Circle = active ? Animated.View : View;
           const circleStyle = active ? { opacity: pulseAnim } : undefined;
+          const circleBg = done
+            ? tokens.primary
+            : active
+              ? `${tokens.primary}33`
+              : "transparent";
+          const circleBorder =
+            done || active ? tokens.primary : tokens.line;
 
           return (
             <View
@@ -161,32 +180,34 @@ export function ProcessingProgressBar({
               className="flex-row items-center gap-3"
             >
               <Circle
-                className={`h-5 w-5 items-center justify-center rounded-full border ${
-                  done
-                    ? "border-violet-500 bg-violet-500"
-                    : active
-                      ? "border-violet-500 bg-violet-500/20"
-                      : "border-zinc-300 bg-transparent dark:border-white/10"
-                }`}
-                style={circleStyle}
+                className="h-5 w-5 items-center justify-center rounded-full border"
+                style={[
+                  circleStyle,
+                  { backgroundColor: circleBg, borderColor: circleBorder },
+                ]}
               >
                 {done ? (
-                  <Ionicons name="checkmark" size={12} color="white" />
+                  <Ionicons name="checkmark" size={12} color="#FFFFFF" />
                 ) : null}
               </Circle>
               <Text
-                className={`flex-1 text-sm ${
-                  done
-                    ? "text-zinc-500 dark:text-zinc-400"
+                className="flex-1 text-sm"
+                style={{
+                  color: done
+                    ? tokens.textSec
                     : active
-                      ? "text-zinc-900 dark:text-zinc-50 font-medium"
-                      : "text-zinc-400 dark:text-zinc-600"
-                }`}
+                      ? tokens.text
+                      : tokens.textTer,
+                  fontWeight: active ? "500" : "400",
+                }}
               >
                 {stage.label}
               </Text>
               {durationMs != null && (
-                <Text className="text-xs text-zinc-500">
+                <Text
+                  className="text-xs"
+                  style={{ color: tokens.textSec }}
+                >
                   {(durationMs / 1000).toFixed(1)}s
                 </Text>
               )}

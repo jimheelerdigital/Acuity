@@ -2,6 +2,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useMemo } from "react";
 import { Pressable, Text, View } from "react-native";
 
+import { useTheme } from "@/contexts/theme-context";
+
 /**
  * Shared 12-hour time picker used by onboarding step 9 and the
  * standalone /reminders settings screen. Single source of truth for
@@ -73,6 +75,7 @@ export function ReminderTimePicker({
   onChangeMinute: (m: number) => void;
   size?: Size;
 }) {
+  const { tokens } = useTheme();
   const { hour12, period } = from24h(hour24);
 
   const bumpHour = (delta: number) => {
@@ -104,8 +107,12 @@ export function ReminderTimePicker({
         btnW={stepperBtnW}
       />
       <Text
-        className="text-zinc-400 dark:text-zinc-500"
-        style={{ fontSize: colonSize, fontWeight: "700", lineHeight: numeralLineHeight }}
+        style={{
+          color: tokens.textTer,
+          fontSize: colonSize,
+          fontWeight: "700",
+          lineHeight: numeralLineHeight,
+        }}
       >
         :
       </Text>
@@ -121,8 +128,13 @@ export function ReminderTimePicker({
       />
 
       <View
-        className="rounded-full bg-zinc-100 dark:bg-white/10 flex-col"
-        style={{ padding: 4, gap: 4, marginLeft: size === "lg" ? 8 : 4 }}
+        className="rounded-full flex-col"
+        style={{
+          backgroundColor: tokens.bgInset,
+          padding: 4,
+          gap: 4,
+          marginLeft: size === "lg" ? 8 : 4,
+        }}
       >
         <PeriodPill
           label="AM"
@@ -160,19 +172,25 @@ function Stepper({
   btnH: number;
   btnW: number;
 }) {
+  const { tokens } = useTheme();
   return (
     <View className="items-center" style={{ gap: 6 }}>
       <Pressable
         onPress={onIncrement}
         hitSlop={8}
-        className="rounded-full border border-zinc-300 dark:border-white/15 items-center justify-center"
-        style={{ height: btnH, width: btnW }}
+        className="rounded-full border items-center justify-center"
+        style={{
+          height: btnH,
+          width: btnW,
+          borderColor: tokens.line,
+        }}
       >
-        <Ionicons name="chevron-up" size={20} color="#A1A1AA" />
+        <Ionicons name="chevron-up" size={20} color={tokens.textTer} />
       </Pressable>
       <Text
-        className="font-mono tabular-nums text-zinc-900 dark:text-zinc-50"
+        className="font-mono tabular-nums"
         style={{
+          color: tokens.text,
           fontSize: numeralSize,
           fontWeight: "700",
           lineHeight: numeralLineHeight,
@@ -185,10 +203,14 @@ function Stepper({
       <Pressable
         onPress={onDecrement}
         hitSlop={8}
-        className="rounded-full border border-zinc-300 dark:border-white/15 items-center justify-center"
-        style={{ height: btnH, width: btnW }}
+        className="rounded-full border items-center justify-center"
+        style={{
+          height: btnH,
+          width: btnW,
+          borderColor: tokens.line,
+        }}
       >
-        <Ionicons name="chevron-down" size={20} color="#A1A1AA" />
+        <Ionicons name="chevron-down" size={20} color={tokens.textTer} />
       </Pressable>
     </View>
   );
@@ -205,21 +227,25 @@ function PeriodPill({
   onPress: () => void;
   size: Size;
 }) {
+  const { tokens } = useTheme();
   return (
     <Pressable
       onPress={onPress}
-      className={`rounded-full items-center justify-center ${
-        active ? "bg-violet-600" : "bg-transparent"
-      }`}
+      className="rounded-full items-center justify-center"
       style={{
+        backgroundColor: active ? tokens.primary : "transparent",
         paddingHorizontal: size === "lg" ? 14 : 10,
         paddingVertical: size === "lg" ? 6 : 4,
         minWidth: size === "lg" ? 44 : 36,
       }}
     >
       <Text
-        className={active ? "text-white" : "text-zinc-500 dark:text-zinc-400"}
-        style={{ fontSize: 13, fontWeight: "700", letterSpacing: 0.5 }}
+        style={{
+          color: active ? "#FFFFFF" : tokens.textSec,
+          fontSize: 13,
+          fontWeight: "700",
+          letterSpacing: 0.5,
+        }}
       >
         {label}
       </Text>

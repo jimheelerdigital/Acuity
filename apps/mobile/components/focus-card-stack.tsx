@@ -13,6 +13,8 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
+import { useTheme } from "@/contexts/theme-context";
+
 /**
  * Mobile counterpart to apps/web/src/components/focus-card-stack.tsx.
  * Same API (FocusCard + dismissible resting card). Swipe the top
@@ -207,8 +209,12 @@ function StaticCard({
   card: FocusCard;
   onClose?: () => void;
 }) {
+  const { tokens } = useTheme();
   return (
-    <View className="rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-5">
+    <View
+      className="rounded-2xl border p-5"
+      style={{ borderColor: tokens.line, backgroundColor: tokens.cardBg }}
+    >
       {onClose && (
         <Pressable
           onPress={onClose}
@@ -225,7 +231,7 @@ function StaticCard({
             zIndex: 1,
           }}
         >
-          <Ionicons name="close" size={16} color="#A1A1AA" />
+          <Ionicons name="close" size={16} color={tokens.textTer} />
         </Pressable>
       )}
       <View>{card.render()}</View>

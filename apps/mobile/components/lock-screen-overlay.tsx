@@ -4,6 +4,7 @@ import { Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useLock } from "@/contexts/lock-context";
+import { useTheme } from "@/contexts/theme-context";
 
 /**
  * Full-screen overlay rendered above the route tree when the app
@@ -20,6 +21,7 @@ import { useLock } from "@/contexts/lock-context";
  */
 export function LockScreenOverlay() {
   const { status, unlock } = useLock();
+  const { tokens } = useTheme();
 
   // Auto-prompt biometric on first enter into "locked" — saves the
   // user a tap. If they cancel the OS dialog, they can re-trigger
@@ -40,27 +42,43 @@ export function LockScreenOverlay() {
         bottom: 0,
         left: 0,
         right: 0,
-        backgroundColor: "#15131D",
+        backgroundColor: tokens.bg,
         zIndex: 9999,
       }}
     >
       <SafeAreaView style={{ flex: 1 }}>
         <View className="flex-1 items-center justify-center px-6">
-          <View className="h-16 w-16 rounded-2xl bg-violet-600/20 items-center justify-center border border-violet-600/30 mb-6">
-            <Ionicons name="lock-closed" size={28} color="#A78BFA" />
+          <View
+            className="h-16 w-16 rounded-2xl items-center justify-center border mb-6"
+            style={{
+              backgroundColor: `${tokens.primary}33`,
+              borderColor: `${tokens.primary}4d`,
+            }}
+          >
+            <Ionicons name="lock-closed" size={28} color={tokens.primary} />
           </View>
-          <Text className="text-2xl font-semibold text-zinc-50 text-center">
+          <Text
+            className="text-2xl font-semibold text-center"
+            style={{ color: tokens.text }}
+          >
             Acuity is locked
           </Text>
-          <Text className="mt-3 text-base text-zinc-400 text-center leading-relaxed">
+          <Text
+            className="mt-3 text-base text-center leading-relaxed"
+            style={{ color: tokens.textSec }}
+          >
             Your entries are private. Authenticate to continue.
           </Text>
           {status === "locked" && (
             <Pressable
               onPress={() => void unlock()}
-              className="mt-10 rounded-full bg-violet-600 px-8 py-3.5"
+              className="mt-10 rounded-full px-8 py-3.5"
+              style={{ backgroundColor: tokens.primary }}
             >
-              <Text className="text-sm font-semibold text-white">
+              <Text
+                className="text-sm font-semibold"
+                style={{ color: "#FFFFFF" }}
+              >
                 Unlock
               </Text>
             </Pressable>

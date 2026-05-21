@@ -4,6 +4,8 @@ import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 
+import { useTheme } from "@/contexts/theme-context";
+
 /**
  * Mobile counterpart to apps/web/src/components/recommended-activity.tsx.
  * Same 24h-dismiss behavior, AsyncStorage instead of localStorage.
@@ -21,6 +23,7 @@ export function RecommendedActivity({
   goalId?: string;
 }) {
   const router = useRouter();
+  const { tokens } = useTheme();
   const [hidden, setHidden] = useState(true);
 
   useEffect(() => {
@@ -50,13 +53,25 @@ export function RecommendedActivity({
   };
 
   return (
-    <View className="mb-6 rounded-2xl border border-violet-200 bg-violet-50 p-4 dark:border-violet-900/30 dark:bg-violet-950/20">
+    <View
+      className="mb-6 rounded-2xl border p-4"
+      style={{
+        borderColor: `${tokens.primary}55`,
+        backgroundColor: `${tokens.primary}14`,
+      }}
+    >
       <View className="flex-row items-start justify-between gap-3">
         <View className="flex-1">
-          <Text className="text-xs font-semibold uppercase tracking-widest text-violet-600 dark:text-violet-400">
+          <Text
+            className="text-xs font-semibold uppercase tracking-widest"
+            style={{ color: tokens.primary }}
+          >
             {label ?? "Try this today"}
           </Text>
-          <Text className="mt-2 text-base font-medium leading-snug text-zinc-900 dark:text-zinc-50">
+          <Text
+            className="mt-2 text-base font-medium leading-snug"
+            style={{ color: tokens.text }}
+          >
             {prompt}
           </Text>
         </View>
@@ -65,7 +80,7 @@ export function RecommendedActivity({
           hitSlop={8}
           className="rounded px-2 py-1"
         >
-          <Text className="text-xs text-zinc-500 dark:text-zinc-400">
+          <Text className="text-xs" style={{ color: tokens.textSec }}>
             Not today
           </Text>
         </Pressable>
@@ -74,10 +89,14 @@ export function RecommendedActivity({
         onPress={() =>
           goalId ? router.push(`/goal/${goalId}`) : router.push("/record")
         }
-        className="mt-4 flex-row items-center justify-center gap-1.5 self-start rounded-full bg-violet-600 px-4 py-2"
+        className="mt-4 flex-row items-center justify-center gap-1.5 self-start rounded-full px-4 py-2"
+        style={{ backgroundColor: tokens.primary }}
       >
         <Ionicons name="mic" size={14} color="#FFFFFF" />
-        <Text className="text-xs font-semibold text-white">
+        <Text
+          className="text-xs font-semibold"
+          style={{ color: "#FFFFFF" }}
+        >
           {goalId ? "Open this goal" : "Record about this"}
         </Text>
       </Pressable>

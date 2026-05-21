@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Text, View } from "react-native";
 
+import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
 
 /**
@@ -26,6 +27,7 @@ type Data = {
 };
 
 export function ComparisonsCard() {
+  const { tokens } = useTheme();
   const [data, setData] = useState<Data | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -50,8 +52,14 @@ export function ComparisonsCard() {
   if (sinceStarting.totalSessions === 0) return null;
 
   return (
-    <View className="mb-6 rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-4">
-      <Text className="mb-3 text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
+    <View
+      className="mb-6 rounded-2xl border p-4"
+      style={{ borderColor: tokens.line, backgroundColor: tokens.cardBg }}
+    >
+      <Text
+        className="mb-3 text-xs font-semibold uppercase tracking-widest"
+        style={{ color: tokens.textTer }}
+      >
         Compared to before
       </Text>
 
@@ -70,10 +78,16 @@ export function ComparisonsCard() {
       />
       <Separator />
       <View>
-        <Text className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+        <Text
+          className="text-sm font-semibold"
+          style={{ color: tokens.text }}
+        >
           Since joining
         </Text>
-        <Text className="text-[11px] text-zinc-400 dark:text-zinc-500 mb-2">
+        <Text
+          className="text-[11px] mb-2"
+          style={{ color: tokens.textTer }}
+        >
           All-time
         </Text>
         <Row label="Total sessions" value={String(sinceStarting.totalSessions)} />
@@ -95,13 +109,14 @@ function Group({
   current: WindowStats;
   previous: WindowStats;
 }) {
+  const { tokens } = useTheme();
   const sessionDelta = current.sessions - previous.sessions;
   return (
     <View className="mb-3">
-      <Text className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+      <Text className="text-sm font-semibold" style={{ color: tokens.text }}>
         {label}
       </Text>
-      <Text className="text-[11px] text-zinc-400 dark:text-zinc-500 mb-2">
+      <Text className="text-[11px] mb-2" style={{ color: tokens.textTer }}>
         {subLabel}
       </Text>
       <Row
@@ -124,20 +139,22 @@ function Row({
   value: string;
   deltaNumber?: number;
 }) {
+  const { tokens } = useTheme();
   return (
     <View className="flex-row items-baseline justify-between py-1">
-      <Text className="text-xs text-zinc-500 dark:text-zinc-400">{label}</Text>
+      <Text className="text-xs" style={{ color: tokens.textSec }}>
+        {label}
+      </Text>
       <View className="flex-row items-baseline gap-1.5">
-        <Text className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+        <Text className="text-sm font-medium" style={{ color: tokens.text }}>
           {value}
         </Text>
         {deltaNumber !== undefined && (
           <Text
-            className={`text-[11px] font-medium ${
-              deltaNumber > 0
-                ? "text-emerald-600 dark:text-emerald-400"
-                : "text-zinc-400 dark:text-zinc-500"
-            }`}
+            className="text-[11px] font-medium"
+            style={{
+              color: deltaNumber > 0 ? tokens.good : tokens.textTer,
+            }}
           >
             {deltaNumber > 0 ? "↑" : "↓"} {Math.abs(deltaNumber)}
           </Text>
@@ -148,5 +165,11 @@ function Row({
 }
 
 function Separator() {
-  return <View className="my-2 h-px bg-zinc-100 dark:bg-white/5" />;
+  const { tokens } = useTheme();
+  return (
+    <View
+      className="my-2 h-px"
+      style={{ backgroundColor: tokens.line }}
+    />
+  );
 }

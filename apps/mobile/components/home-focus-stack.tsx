@@ -9,6 +9,9 @@ import {
   type UserProgression,
 } from "@acuity/shared";
 
+import { useTheme } from "@/contexts/theme-context";
+import { WARN_AMBER } from "@/lib/tone-colors";
+
 import { FocusCardStack, type FocusCard } from "./focus-card-stack";
 import { MilestoneCard } from "./milestone-card";
 
@@ -109,22 +112,35 @@ const UNLOCK_HREFS: Record<UnlockKey, string> = {
 
 function UnlockCard({ unlockKey }: { unlockKey: UnlockKey }) {
   const router = useRouter();
+  const { tokens } = useTheme();
   return (
     <View className="pr-6">
-      <Text className="text-xs font-semibold uppercase tracking-widest text-violet-600 dark:text-violet-400">
+      <Text
+        className="text-xs font-semibold uppercase tracking-widest"
+        style={{ color: tokens.primary }}
+      >
         Unlocked
       </Text>
-      <Text className="mt-1.5 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+      <Text
+        className="mt-1.5 text-lg font-semibold"
+        style={{ color: tokens.text }}
+      >
         {UNLOCK_TITLES[unlockKey]}
       </Text>
-      <Text className="mt-2 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
+      <Text
+        className="mt-2 text-sm leading-relaxed"
+        style={{ color: tokens.textSec }}
+      >
         {UNLOCK_BODIES[unlockKey]}
       </Text>
       <Pressable
         onPress={() => router.push(UNLOCK_HREFS[unlockKey] as never)}
         className="mt-4 self-start"
       >
-        <Text className="text-sm font-semibold text-violet-600 dark:text-violet-400">
+        <Text
+          className="text-sm font-semibold"
+          style={{ color: tokens.primary }}
+        >
           Take a look →
         </Text>
       </Pressable>
@@ -140,6 +156,7 @@ function RestingCard({ progression }: { progression: UserProgression }) {
 }
 
 function ScriptedResting({ progression }: { progression: UserProgression }) {
+  const { tokens } = useTheme();
   const ageDays = progression.dayOfTrial - 1;
   const latest =
     [...PROGRESSION_ITEMS]
@@ -147,13 +164,19 @@ function ScriptedResting({ progression }: { progression: UserProgression }) {
       .find((it) => ageDays >= it.unlockAfterDays) ?? PROGRESSION_ITEMS[0];
   return (
     <View>
-      <Text className="text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
+      <Text
+        className="text-xs font-semibold uppercase tracking-widest"
+        style={{ color: tokens.textTer }}
+      >
         Day {progression.dayOfTrial} of your trial
       </Text>
-      <Text className="mt-1.5 text-base font-semibold text-zinc-900 dark:text-zinc-50">
+      <Text
+        className="mt-1.5 text-base font-semibold"
+        style={{ color: tokens.text }}
+      >
         {latest.title}
       </Text>
-      <Text className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
+      <Text className="mt-1 text-sm" style={{ color: tokens.textSec }}>
         {latest.description}
       </Text>
     </View>
@@ -161,20 +184,27 @@ function ScriptedResting({ progression }: { progression: UserProgression }) {
 }
 
 function StreakResting({ progression }: { progression: UserProgression }) {
+  const { tokens } = useTheme();
   const { currentStreak, nextMilestone, streakAtRisk, longestStreak } = progression;
 
   if (currentStreak === 0) {
     return (
       <View>
-        <Text className="text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
+        <Text
+          className="text-xs font-semibold uppercase tracking-widest"
+          style={{ color: tokens.textTer }}
+        >
           Day {progression.dayOfTrial}
         </Text>
-        <Text className="mt-1.5 text-base font-semibold text-zinc-900 dark:text-zinc-50">
+        <Text
+          className="mt-1.5 text-base font-semibold"
+          style={{ color: tokens.text }}
+        >
           {longestStreak > 0
             ? `Your longest streak was ${longestStreak} day${longestStreak === 1 ? "" : "s"}.`
             : "No streak yet."}
         </Text>
-        <Text className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
+        <Text className="mt-1 text-sm" style={{ color: tokens.textSec }}>
           {longestStreak > 0
             ? "One recording today starts a new one."
             : "One recording today starts it."}
@@ -189,31 +219,43 @@ function StreakResting({ progression }: { progression: UserProgression }) {
   return (
     <View>
       <View className="flex-row items-center gap-2">
+        {/* Flame icon stays #F97316 — semantic streak-flame indicator,
+            not a palette accent. Same convention as the warning-amber
+            non-palette exceptions. */}
         <Flame size={18} color="#F97316" />
-        <Text className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
+        <Text
+          className="text-base font-semibold"
+          style={{ color: tokens.text }}
+        >
           {currentStreak}-day streak
         </Text>
         {streakAtRisk && (
-          <View className="rounded-full bg-amber-100 dark:bg-amber-900/40 px-2 py-0.5">
-            <Text className="text-[10px] font-semibold text-amber-700 dark:text-amber-300 uppercase tracking-wider">
+          <View
+            className="rounded-full px-2 py-0.5"
+            style={{ backgroundColor: `${WARN_AMBER}33` }}
+          >
+            <Text
+              className="text-[10px] font-semibold uppercase tracking-wider"
+              style={{ color: WARN_AMBER }}
+            >
               At risk
             </Text>
           </View>
         )}
       </View>
       {delta != null && delta > 0 ? (
-        <Text className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
+        <Text className="mt-2 text-sm" style={{ color: tokens.textSec }}>
           {delta === 1
             ? `1 day to your next milestone (${nextMilestone}).`
             : `${delta} days to your next milestone (${nextMilestone}).`}
         </Text>
       ) : (
-        <Text className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
+        <Text className="mt-2 text-sm" style={{ color: tokens.textSec }}>
           You&rsquo;ve cleared every milestone Acuity tracks. Keep going.
         </Text>
       )}
       {streakAtRisk && (
-        <Text className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+        <Text className="mt-1 text-xs" style={{ color: tokens.textSec }}>
           Record today to keep it alive.
         </Text>
       )}

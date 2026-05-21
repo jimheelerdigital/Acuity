@@ -12,6 +12,8 @@ import Animated, {
 
 import { milestoneTier, type MilestoneTier } from "@acuity/shared";
 
+import { useTheme } from "@/contexts/theme-context";
+
 /**
  * Mobile counterpart to apps/web/src/components/milestone-card.tsx.
  * Same tier system + same copy (imported from the shared module so
@@ -31,6 +33,12 @@ export function MilestoneCard({ milestone }: { milestone: number }) {
   return <HeroMilestone milestone={milestone} tier={tier} copy={copy} />;
 }
 
+// Q11e-rest: orange/amber values in this file are deliberately
+// non-palette semantic streak-celebration accents (the flame color
+// gradient: small=orange-light, medium=orange, big=amber, biggest=
+// amber-deep). Same exception convention as confetti accents
+// (Q8) and theme-map category colors. Zinc grays still convert to
+// palette tokens.
 function StandardMilestone({
   milestone,
   tier,
@@ -40,6 +48,7 @@ function StandardMilestone({
   tier: MilestoneTier;
   copy: { title: string; body: string };
 }) {
+  const { tokens } = useTheme();
   return (
     <View className="pr-6">
       <Text className="text-xs font-semibold uppercase tracking-widest text-orange-600 dark:text-orange-400">
@@ -51,22 +60,30 @@ function StandardMilestone({
           color={tier === "medium" ? "#F97316" : "#FB923C"}
         />
         <Text
-          className={`text-3xl font-bold ${
-            tier === "medium"
-              ? "text-orange-600 dark:text-orange-400"
-              : "text-zinc-700 dark:text-zinc-200"
-          }`}
+          className="text-3xl font-bold"
+          style={{
+            color: tier === "medium" ? "#F97316" : tokens.textSec,
+          }}
         >
           {milestone}
         </Text>
-        <Text className="text-sm font-medium text-zinc-500 dark:text-zinc-400 self-end mb-1">
+        <Text
+          className="text-sm font-medium self-end mb-1"
+          style={{ color: tokens.textSec }}
+        >
           {milestone === 1 ? "day" : "days"}
         </Text>
       </View>
-      <Text className="mt-2 text-base font-semibold text-zinc-900 dark:text-zinc-50">
+      <Text
+        className="mt-2 text-base font-semibold"
+        style={{ color: tokens.text }}
+      >
         {copy.title}
       </Text>
-      <Text className="mt-1.5 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
+      <Text
+        className="mt-1.5 text-sm leading-relaxed"
+        style={{ color: tokens.textSec }}
+      >
         {copy.body}
       </Text>
     </View>
@@ -82,6 +99,7 @@ function HeroMilestone({
   tier: MilestoneTier;
   copy: { title: string; body: string };
 }) {
+  const { tokens } = useTheme();
   const isBiggest = tier === "biggest";
   return (
     <View
@@ -113,14 +131,23 @@ function HeroMilestone({
         >
           {milestone}
         </Text>
-        <Text className="text-base font-semibold text-zinc-500 dark:text-zinc-400 self-end mb-2">
+        <Text
+          className="text-base font-semibold self-end mb-2"
+          style={{ color: tokens.textSec }}
+        >
           days
         </Text>
       </View>
-      <Text className="mt-3 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+      <Text
+        className="mt-3 text-lg font-semibold"
+        style={{ color: tokens.text }}
+      >
         {copy.title}
       </Text>
-      <Text className="mt-2 text-sm leading-relaxed text-zinc-700 dark:text-zinc-200">
+      <Text
+        className="mt-2 text-sm leading-relaxed"
+        style={{ color: tokens.textSec }}
+      >
         {copy.body}
       </Text>
     </View>

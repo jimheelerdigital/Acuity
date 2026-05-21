@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
 import { ActivityIndicator, Alert, Platform, Pressable, Text } from "react-native";
 
+import { useTheme } from "@/contexts/theme-context";
 import { restorePurchases } from "@/lib/iap";
 import { isIapEnabled } from "@/lib/iap-config";
 
@@ -27,6 +28,7 @@ export function RestorePurchasesButton({
 }: {
   onRestored?: () => Promise<void> | void;
 }) {
+  const { tokens } = useTheme();
   const [busy, setBusy] = useState(false);
 
   if (Platform.OS !== "ios" || !isIapEnabled()) return null;
@@ -73,11 +75,11 @@ export function RestorePurchasesButton({
       className="flex-row items-center justify-center gap-2 py-3"
     >
       {busy ? (
-        <ActivityIndicator size="small" color="#A1A1AA" />
+        <ActivityIndicator size="small" color={tokens.textTer} />
       ) : (
-        <Ionicons name="refresh-outline" size={14} color="#A1A1AA" />
+        <Ionicons name="refresh-outline" size={14} color={tokens.textTer} />
       )}
-      <Text className="text-zinc-500 dark:text-zinc-400 text-xs">
+      <Text className="text-xs" style={{ color: tokens.textSec }}>
         {busy ? "Restoring…" : "Restore purchases"}
       </Text>
     </Pressable>

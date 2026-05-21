@@ -2,7 +2,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { useCallback, useEffect, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 
+import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
+import { WARN_AMBER } from "@/lib/tone-colors";
 
 /**
  * Mobile counterpart to apps/web/src/components/user-insights-card.tsx.
@@ -19,13 +21,25 @@ type Observation = {
   severity: Severity;
 };
 
-const SEVERITY_ACCENT: Record<Severity, { bar: string; icon: string; color: string }> = {
-  POSITIVE: { bar: "#10B981", icon: "arrow-up", color: "#10B981" },
-  NEUTRAL: { bar: "#A1A1AA", icon: "information-circle", color: "#A1A1AA" },
-  CONCERNING: { bar: "#F59E0B", icon: "arrow-down", color: "#F59E0B" },
-};
+// Q11e-rest: SEVERITY_ACCENT collapsed to a tone-aware function so the
+// per-severity color resolves from palette tokens at render time
+// (POSITIVE → tokens.good, NEUTRAL → tokens.textTer, CONCERNING →
+// WARN_AMBER). Was hardcoded #10B981 / #A1A1AA / #F59E0B.
 
 export function UserInsightsCard() {
+  const { tokens } = useTheme();
+  const severityAccent = (sev: Severity): { icon: keyof typeof Ionicons.glyphMap; color: string } => {
+    switch (sev) {
+      case "POSITIVE":
+        return { icon: "arrow-up", color: tokens.good };
+      case "CONCERNING":
+        return { icon: "arrow-down", color: WARN_AMBER };
+      case "NEUTRAL":
+      default:
+        return { icon: "information-circle", color: tokens.textTer };
+    }
+  };
+
   const [items, setItems] = useState<Observation[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -55,31 +69,40 @@ export function UserInsightsCard() {
 
   return (
     <View className="mb-6">
-      <Text className="mb-2 text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
+      <Text
+        className="mb-2 text-xs font-semibold uppercase tracking-widest"
+        style={{ color: tokens.textTer }}
+      >
         What we noticed
       </Text>
       <View className="gap-2">
         {items.map((o) => {
-          const s = SEVERITY_ACCENT[o.severity];
+          const s = severityAccent(o.severity);
           return (
             <View
               key={o.id}
-              className="flex-row items-start gap-2 rounded-xl bg-white dark:bg-[#1E1E2E] px-3 py-3 border border-zinc-200 dark:border-white/10"
-              style={{ borderLeftColor: s.bar, borderLeftWidth: 3 }}
+              className="flex-row items-start gap-2 rounded-xl px-3 py-3 border"
+              style={{
+                borderColor: tokens.line,
+                backgroundColor: tokens.cardBg,
+                borderLeftColor: s.color,
+                borderLeftWidth: 3,
+              }}
             >
               <Ionicons
-                name={s.icon as keyof typeof Ionicons.glyphMap}
+                name={s.icon}
                 size={14}
                 color={s.color}
                 style={{ marginTop: 2 }}
               />
               <Text
-                className="flex-1 text-sm text-zinc-700 dark:text-zinc-200 leading-5"
+                className="flex-1 text-sm leading-5"
+                style={{ color: tokens.textSec }}
               >
                 {o.observationText}
               </Text>
               <Pressable onPress={() => dismiss(o.id)} hitSlop={8}>
-                <Ionicons name="close" size={16} color="#71717A" />
+                <Ionicons name="close" size={16} color={tokens.textTer} />
               </Pressable>
             </View>
           );

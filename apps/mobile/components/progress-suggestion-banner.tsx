@@ -4,7 +4,9 @@ import { Alert, Pressable, Text, TextInput, View } from "react-native";
 
 import { formatRelativeDate } from "@acuity/shared";
 
+import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
+import { WARN_AMBER } from "@/lib/tone-colors";
 
 type Suggestion = {
   id: string;
@@ -33,6 +35,7 @@ export function ProgressSuggestionBanner({
   goalId: string;
   onProgressUpdated: (newProgressPct: number) => void;
 }) {
+  const { tokens } = useTheme();
   const [loading, setLoading] = useState(true);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -102,10 +105,19 @@ export function ProgressSuggestionBanner({
   if (loading || suggestions.length === 0) return null;
 
   return (
-    <View className="mt-6 rounded-2xl border border-violet-200 dark:border-violet-900/30 bg-violet-50/60 dark:bg-violet-950/20 p-4">
+    <View
+      className="mt-6 rounded-2xl border p-4"
+      style={{
+        borderColor: `${tokens.primary}55`,
+        backgroundColor: `${tokens.primary}14`,
+      }}
+    >
       <View className="flex-row items-center gap-2 mb-3">
-        <Ionicons name="sparkles-outline" size={14} color="#7C3AED" />
-        <Text className="text-xs font-semibold uppercase tracking-widest text-violet-700 dark:text-violet-300">
+        <Ionicons name="sparkles-outline" size={14} color={tokens.primary} />
+        <Text
+          className="text-xs font-semibold uppercase tracking-widest"
+          style={{ color: tokens.primary }}
+        >
           Acuity noticed progress
         </Text>
       </View>
@@ -117,21 +129,34 @@ export function ProgressSuggestionBanner({
           return (
             <View
               key={s.id}
-              className="rounded-xl border border-violet-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-3"
+              className="rounded-xl border p-3"
+              style={{
+                borderColor: tokens.line,
+                backgroundColor: tokens.cardBg,
+              }}
             >
-              <Text className="text-sm leading-relaxed text-zinc-700 dark:text-zinc-200">
+              <Text
+                className="text-sm leading-relaxed"
+                style={{ color: tokens.textSec }}
+              >
                 {s.rationale}
               </Text>
               {s.sourceEntryAt && (
-                <Text className="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+                <Text
+                  className="mt-1.5 text-xs"
+                  style={{ color: tokens.textTer }}
+                >
                   From your {formatRelativeDate(s.sourceEntryAt)} entry
                 </Text>
               )}
               <View className="mt-2 flex-row items-baseline gap-2">
-                <Text className="text-sm text-zinc-500 dark:text-zinc-400">
+                <Text
+                  className="text-sm"
+                  style={{ color: tokens.textSec }}
+                >
                   {s.currentProgressPct}%
                 </Text>
-                <Text className="text-zinc-400">→</Text>
+                <Text style={{ color: tokens.textTer }}>→</Text>
                 {isEditing ? (
                   <TextInput
                     value={editDraft}
@@ -139,16 +164,25 @@ export function ProgressSuggestionBanner({
                     keyboardType="number-pad"
                     maxLength={3}
                     autoFocus
-                    className="w-14 rounded-md border border-zinc-300 dark:border-white/15 bg-white dark:bg-[#13131F] px-2 py-0.5 text-base font-semibold text-zinc-900 dark:text-zinc-50"
+                    className="w-14 rounded-md border px-2 py-0.5 text-base font-semibold"
+                    style={{
+                      borderColor: tokens.line,
+                      backgroundColor: tokens.bgInset,
+                      color: tokens.text,
+                    }}
                   />
                 ) : (
-                  <Text className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+                  <Text
+                    className="text-lg font-semibold"
+                    style={{ color: tokens.text }}
+                  >
                     {s.suggestedProgressPct}%
                   </Text>
                 )}
                 {!isEditing && delta !== 0 && (
                   <Text
-                    className={`text-xs font-medium ${delta > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}`}
+                    className="text-xs font-medium"
+                    style={{ color: delta > 0 ? tokens.good : WARN_AMBER }}
                   >
                     {delta > 0 ? `+${delta}` : delta}
                   </Text>
@@ -165,9 +199,13 @@ export function ProgressSuggestionBanner({
                           accept(s, Math.round(n));
                         }
                       }}
-                      className="rounded-lg bg-violet-600 px-3 py-1.5"
+                      className="rounded-lg px-3 py-1.5"
+                      style={{ backgroundColor: tokens.primary }}
                     >
-                      <Text className="text-xs font-semibold text-white">
+                      <Text
+                        className="text-xs font-semibold"
+                        style={{ color: "#FFFFFF" }}
+                      >
                         Save {editDraft || 0}%
                       </Text>
                     </Pressable>
@@ -176,7 +214,10 @@ export function ProgressSuggestionBanner({
                       onPress={() => setEditingId(null)}
                       className="rounded-lg px-3 py-1.5"
                     >
-                      <Text className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                      <Text
+                        className="text-xs font-medium"
+                        style={{ color: tokens.textSec }}
+                      >
                         Cancel
                       </Text>
                     </Pressable>
@@ -186,9 +227,13 @@ export function ProgressSuggestionBanner({
                     <Pressable
                       disabled={busy}
                       onPress={() => accept(s)}
-                      className="rounded-lg bg-zinc-900 dark:bg-white px-3 py-1.5"
+                      className="rounded-lg px-3 py-1.5"
+                      style={{ backgroundColor: tokens.text }}
                     >
-                      <Text className="text-xs font-semibold text-white dark:text-zinc-900">
+                      <Text
+                        className="text-xs font-semibold"
+                        style={{ color: tokens.bg }}
+                      >
                         Accept {s.suggestedProgressPct}%
                       </Text>
                     </Pressable>
@@ -198,9 +243,13 @@ export function ProgressSuggestionBanner({
                         setEditDraft(String(s.suggestedProgressPct));
                         setEditingId(s.id);
                       }}
-                      className="rounded-lg border border-zinc-200 dark:border-white/10 px-3 py-1.5"
+                      className="rounded-lg border px-3 py-1.5"
+                      style={{ borderColor: tokens.line }}
                     >
-                      <Text className="text-xs font-medium text-zinc-700 dark:text-zinc-200">
+                      <Text
+                        className="text-xs font-medium"
+                        style={{ color: tokens.textSec }}
+                      >
                         Edit
                       </Text>
                     </Pressable>
@@ -209,7 +258,10 @@ export function ProgressSuggestionBanner({
                       onPress={() => dismiss(s)}
                       className="rounded-lg px-3 py-1.5"
                     >
-                      <Text className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                      <Text
+                        className="text-xs font-medium"
+                        style={{ color: tokens.textSec }}
+                      >
                         Dismiss
                       </Text>
                     </Pressable>

@@ -9,6 +9,7 @@ import {
   type FreeTierLockedSurfaceId,
 } from "@acuity/shared";
 
+import { useTheme } from "@/contexts/theme-context";
 import { isIapEnabled } from "@/lib/iap-config";
 
 /**
@@ -51,6 +52,7 @@ export function ProLockedCard({
   style?: object;
 }) {
   const router = useRouter();
+  const { tokens } = useTheme();
   const copy = FREE_TIER_LOCKED_COPY[surfaceId];
   const href = freeTierUpgradeUrl(API_BASE_URL, surfaceId);
   const showInAppSubscribe = Platform.OS === "ios" && isIapEnabled();
@@ -60,8 +62,8 @@ export function ProLockedCard({
       await WebBrowser.openBrowserAsync(href, {
         // Match the system's interface style so Safari chrome
         // doesn't jarringly flip from dark → light.
-        toolbarColor: "#09090B",
-        controlsColor: "#A78BFA",
+        toolbarColor: tokens.bg,
+        controlsColor: tokens.primary,
         dismissButtonStyle: "close",
       });
     } catch {
@@ -75,61 +77,75 @@ export function ProLockedCard({
 
   return (
     <View
-      className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-white/10 dark:bg-[#1E1E2E]"
-      style={style}
+      className="rounded-2xl border p-5"
+      style={[
+        { borderColor: tokens.line, backgroundColor: tokens.cardBg },
+        style,
+      ]}
     >
       {copy.eyebrow && (
-        <Text className="text-xs font-semibold uppercase tracking-widest text-violet-600 dark:text-violet-400">
+        <Text
+          className="text-xs font-semibold uppercase tracking-widest"
+          style={{ color: tokens.primary }}
+        >
           {copy.eyebrow}
         </Text>
       )}
       {copy.title && (
-        <Text className="mt-2 text-base font-semibold text-zinc-900 dark:text-zinc-50">
+        <Text
+          className="mt-2 text-base font-semibold"
+          style={{ color: tokens.text }}
+        >
           {copy.title}
         </Text>
       )}
-      <Text className="mt-2 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
+      <Text
+        className="mt-2 text-sm leading-relaxed"
+        style={{ color: tokens.textSec }}
+      >
         {copy.body}
       </Text>
 
       {showInAppSubscribe ? (
-        // Dual-CTA layout (Phase 3b). "Subscribe in app" is the
-        // primary; "Continue on web" stays as a visible secondary.
-        // Both flows are entry points; users get the choice.
         <View className="mt-5 flex-row flex-wrap gap-2">
           <Pressable
             onPress={onSubscribeInApp}
-            className="flex-row items-center gap-1.5 rounded-full bg-violet-600 px-4 py-2"
+            className="flex-row items-center gap-1.5 rounded-full px-4 py-2"
+            style={{ backgroundColor: tokens.primary }}
           >
-            <Text className="text-sm font-semibold text-white">
+            <Text
+              className="text-sm font-semibold"
+              style={{ color: "#FFFFFF" }}
+            >
               Subscribe in app
             </Text>
           </Pressable>
           <Pressable
             onPress={onContinueOnWeb}
-            className="flex-row items-center gap-1.5 rounded-full border border-zinc-300 px-4 py-2 dark:border-white/20"
+            className="flex-row items-center gap-1.5 rounded-full border px-4 py-2"
+            style={{ borderColor: tokens.line }}
           >
-            <Text className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+            <Text
+              className="text-sm font-semibold"
+              style={{ color: tokens.text }}
+            >
               {copy.ctaLabel}
             </Text>
           </Pressable>
         </View>
       ) : (
-        // Flag-off / Android — original single-CTA layout. No
-        // visible regression for users who don't have IAP available.
         <Pressable
           onPress={onContinueOnWeb}
-          className="mt-5 self-start flex-row items-center gap-1.5 rounded-full bg-zinc-900 px-4 py-2 dark:bg-white"
+          className="mt-5 self-start flex-row items-center gap-1.5 rounded-full px-4 py-2"
+          style={{ backgroundColor: tokens.text }}
         >
-          <Text className="text-sm font-semibold text-white dark:text-zinc-900">
+          <Text
+            className="text-sm font-semibold"
+            style={{ color: tokens.bg }}
+          >
             {copy.ctaLabel}
           </Text>
-          <Ionicons
-            name="chevron-forward"
-            size={14}
-            color="currentColor"
-            style={{ color: "#fff" }}
-          />
+          <Ionicons name="chevron-forward" size={14} color={tokens.bg} />
         </Pressable>
       )}
     </View>
@@ -149,6 +165,7 @@ export function ProLockedCard({
  */
 export function ProLockedFooter({ style }: { style?: object }) {
   const router = useRouter();
+  const { tokens } = useTheme();
   const copy = FREE_TIER_LOCKED_COPY.entry_detail_footer;
   const href = freeTierUpgradeUrl(API_BASE_URL, "entry_detail_footer");
   const showInAppSubscribe = Platform.OS === "ios" && isIapEnabled();
@@ -156,8 +173,8 @@ export function ProLockedFooter({ style }: { style?: object }) {
   const onContinueOnWeb = async () => {
     try {
       await WebBrowser.openBrowserAsync(href, {
-        toolbarColor: "#09090B",
-        controlsColor: "#A78BFA",
+        toolbarColor: tokens.bg,
+        controlsColor: tokens.primary,
         dismissButtonStyle: "close",
       });
     } catch {
@@ -166,29 +183,27 @@ export function ProLockedFooter({ style }: { style?: object }) {
   };
 
   if (!showInAppSubscribe) {
-    // Flag-off / Android — original single-tap-target layout.
     return (
       <Pressable onPress={onContinueOnWeb} style={style}>
-        <Text className="text-xs text-zinc-500 dark:text-zinc-400">
+        <Text className="text-xs" style={{ color: tokens.textSec }}>
           {copy.body}
         </Text>
       </Pressable>
     );
   }
 
-  // Phase 3b — dual links, both visible. Stack vertically because
-  // the footer sits at the bottom of a long scroll and horizontal
-  // gap reads as "two unrelated affordances" rather than "two ways
-  // to do the same thing."
   return (
     <View style={style}>
       <Pressable onPress={() => router.push("/subscribe")}>
-        <Text className="text-xs font-medium text-violet-600 dark:text-violet-400">
+        <Text
+          className="text-xs font-medium"
+          style={{ color: tokens.primary }}
+        >
           Subscribe in app
         </Text>
       </Pressable>
       <Pressable onPress={onContinueOnWeb} className="mt-1">
-        <Text className="text-xs text-zinc-500 dark:text-zinc-400">
+        <Text className="text-xs" style={{ color: tokens.textSec }}>
           {copy.body}
         </Text>
       </Pressable>

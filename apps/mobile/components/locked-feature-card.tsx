@@ -8,6 +8,8 @@ import {
   type UserProgression,
 } from "@acuity/shared";
 
+import { useTheme } from "@/contexts/theme-context";
+
 /**
  * Mobile counterpart to apps/web/src/components/locked-feature-card.tsx.
  * Shared copy via lockedFeatureCopy() from @acuity/shared so the
@@ -31,6 +33,7 @@ export function LockedFeatureCard({
   recordHref?: string;
 }) {
   const router = useRouter();
+  const { tokens } = useTheme();
   const copy = lockedFeatureCopy(unlockKey, progression);
   const pct = copy.progress
     ? Math.min(
@@ -40,16 +43,28 @@ export function LockedFeatureCard({
     : null;
 
   return (
-    <View className="rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-5">
+    <View
+      className="rounded-2xl border p-5"
+      style={{ borderColor: tokens.line, backgroundColor: tokens.cardBg }}
+    >
       <View className="flex-row items-start gap-3">
-        <View className="h-9 w-9 shrink-0 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-900/30">
-          <Ionicons name="lock-closed-outline" size={18} color="#7C3AED" />
+        <View
+          className="h-9 w-9 shrink-0 items-center justify-center rounded-full"
+          style={{ backgroundColor: `${tokens.primary}1f` }}
+        >
+          <Ionicons name="lock-closed-outline" size={18} color={tokens.primary} />
         </View>
         <View className="flex-1">
-          <Text className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
+          <Text
+            className="text-base font-semibold"
+            style={{ color: tokens.text }}
+          >
             {copy.headline}
           </Text>
-          <Text className="mt-1.5 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
+          <Text
+            className="mt-1.5 text-sm leading-relaxed"
+            style={{ color: tokens.textSec }}
+          >
             {copy.body}
           </Text>
         </View>
@@ -58,17 +73,23 @@ export function LockedFeatureCard({
       {copy.progress && pct !== null && (
         <View className="mt-4">
           <View className="flex-row items-center justify-between">
-            <Text className="text-xs text-zinc-500 dark:text-zinc-400">
+            <Text className="text-xs" style={{ color: tokens.textSec }}>
               {copy.progress.current} of {copy.progress.target}
             </Text>
-            <Text className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
+            <Text
+              className="text-xs font-medium"
+              style={{ color: tokens.textSec }}
+            >
               {pct}%
             </Text>
           </View>
-          <View className="mt-1.5 h-1.5 rounded-full bg-zinc-100 dark:bg-white/10 overflow-hidden">
+          <View
+            className="mt-1.5 h-1.5 rounded-full overflow-hidden"
+            style={{ backgroundColor: tokens.bgInset }}
+          >
             <View
-              className="h-full rounded-full bg-violet-500"
-              style={{ width: `${pct}%` }}
+              className="h-full rounded-full"
+              style={{ width: `${pct}%`, backgroundColor: tokens.primary }}
             />
           </View>
         </View>
@@ -76,16 +97,19 @@ export function LockedFeatureCard({
 
       <Pressable
         onPress={() => router.push(recordHref as never)}
-        className="mt-5 flex-row items-center gap-1.5 self-start rounded-full bg-zinc-900 dark:bg-white px-4 py-2"
+        className="mt-5 flex-row items-center gap-1.5 self-start rounded-full px-4 py-2"
+        style={{ backgroundColor: tokens.text }}
       >
-        <Text className="text-sm font-semibold text-white dark:text-zinc-900">
+        <Text
+          className="text-sm font-semibold"
+          style={{ color: tokens.bg }}
+        >
           Record now
         </Text>
         <Ionicons
           name="chevron-forward"
           size={14}
-          color="currentColor"
-          style={{ color: "#fff" }}
+          color={tokens.bg}
         />
       </Pressable>
     </View>
