@@ -77,12 +77,26 @@ export async function POST() {
   }
 
   // Fetch GSC performance for all /blog/* pages (last 30 days)
-  const gscData = await getPropertyPerformance(30);
+  let gscData;
+  try {
+    gscData = await getPropertyPerformance(30);
+  } catch (err: unknown) {
+    const detail = (err as { gscDetail?: unknown }).gscDetail ?? (err instanceof Error ? err.message : String(err));
+    return NextResponse.json(
+      {
+        error: "GSC API call failed",
+        detail,
+        serviceAccountEmail,
+        fix: `Check the error detail above. Common causes: (1) Search Console API not enabled in the Google Cloud project — go to APIs & Services → Library → search "Google Search Console API" → Enable. (2) Service account ${serviceAccountEmail} not added as Owner in Search Console for sc-domain:getacuity.io. (3) Domain property mismatch.`,
+      },
+      { status: 502 }
+    );
+  }
 
   if (!gscData) {
     return NextResponse.json(
       {
-        error: "GSC API call failed — the service account may not have access to Search Console",
+        error: "GSC returned no data (auth may have failed silently)",
         serviceAccountEmail,
         fix: `Ensure ${serviceAccountEmail} is added as a user (Owner or Full permission) in Google Search Console for the property sc-domain:getacuity.io. Go to Search Console → Settings → Users and permissions → Add user.`,
       },

@@ -854,7 +854,12 @@ export const autoBlogPruneFn = inngest.createFunction(
       const { getPropertyPerformance } = await import(
         "@/lib/google/search-console"
       );
-      return await getPropertyPerformance(30);
+      try {
+        return await getPropertyPerformance(30);
+      } catch (err) {
+        console.error("[auto-blog-prune] GSC fetch failed:", err);
+        return null;
+      }
     });
 
     if (!gscData) {

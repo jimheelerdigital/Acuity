@@ -41,6 +41,36 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-21] — Surface real GSC API errors in sync endpoint
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** TBD
+
+### In plain English (for Keenan)
+
+When clicking "Sync GSC" on the admin dashboard, the error message was too vague — it just said "GSC API call failed" without explaining why. Now the actual error from Google's API is shown in the response, so you can see exactly what's wrong (e.g., "API not enabled", "permission denied", "quota exceeded"). This makes it possible to diagnose and fix the issue without checking Vercel logs.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/lib/google/search-console.ts`: Changed `getPropertyPerformance()` to throw with the actual Google API error detail instead of returning `null`. The error includes the full `response.data` from the Google API client so we can see HTTP status, error code, and message.
+- `apps/web/src/app/api/admin/auto-blog/sync-gsc/route.ts`: Added try/catch around `getPropertyPerformance()` that returns the real error detail in the JSON response along with fix suggestions for the three most common causes (API not enabled, permission not granted, property mismatch).
+- `apps/web/src/inngest/functions/auto-blog.ts`: Wrapped the pruner's `getPropertyPerformance()` call in try/catch so the throw doesn't cause Inngest step retries — still returns `null` and logs the GSC failure gracefully.
+
+### Manual steps needed
+
+- [ ] Push to deploy, then click "Sync GSC" on admin dashboard — read the `detail` field in the error response (Keenan)
+- [ ] If the error says "Google Search Console API has not been used" or "is disabled" → go to Google Cloud Console → APIs & Services → Library → search "Google Search Console API" → click Enable (Keenan)
+- [ ] If the error says "User does not have sufficient permission" → re-check that the service account email is added as Owner in Search Console (Keenan)
+- [ ] Report back what the `detail` field says so we can fix the specific issue
+
+### Notes
+
+- The most likely cause at this point is that the **Search Console API is not enabled** in the Google Cloud project where the service account was created. Having a service account key and adding it to Search Console is necessary but not sufficient — the API itself must be enabled in the Cloud project.
+- The change from `return null` to `throw` in `getPropertyPerformance` is intentional — callers that want the old behavior (like the pruner) catch and handle it, while the sync endpoint can now surface the real error to the admin.
+
+---
+
 ## [2026-05-21] — Homepage hero CTA layout refresh
 
 **Requested by:** Keenan

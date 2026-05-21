@@ -178,8 +178,16 @@ export async function getPropertyPerformance(
     );
 
     return { topPages, topQueries };
-  } catch (err) {
+  } catch (err: unknown) {
     console.error("[gsc] getPropertyPerformance failed:", err);
-    return null;
+    // Attach error detail so callers can surface it
+    const detail =
+      err instanceof Error
+        ? (err as { response?: { data?: unknown } }).response?.data ??
+          err.message
+        : String(err);
+    const wrapped = new Error(`GSC API error: ${JSON.stringify(detail)}`);
+    (wrapped as { gscDetail?: unknown }).gscDetail = detail;
+    throw wrapped;
   }
 }
