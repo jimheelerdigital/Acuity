@@ -41,6 +41,39 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-21] — v1.1 ship — remove Life Matrix baseline carousel from onboarding
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** 5137709
+
+### In plain English (for Keenan)
+
+We cut the new Life Matrix slider step out of onboarding. Asking new users to drag 10 sliders before they've recorded a single entry was too much work too soon — risk of drop-off at the top of the funnel. Onboarding is now 11 screens instead of 12, going from "mood baseline" straight to "how the trial works." Every new user still gets a complete 10-axis Life Matrix on the server side — it just starts at neutral (50 out of 100) and the AI fills in the real numbers as they record. The slider component we built isn't deleted — it'll come back later as an in-app "Tune your Life Matrix" feature accessible from the Insights tab once the dust settles on launch.
+
+### Technical changes (for Jimmy)
+
+- `apps/mobile/components/onboarding/index.tsx`: removed step 9 entry (`Step9LifeMatrixBaselines`); renumbered steps 10/11/12 → 9/10/11. New sequence: Welcome → Value prop → About you → What brings you here → Mic → AI consent → Practice → Mood slider → Trial → Reminders → Ready (11 steps). History entry added to docblock.
+- `apps/web/src/app/api/onboarding/update/route.ts`: bumped `step` validation ceiling from `> 10` to `> 11`. The previous ceiling was silently 400-ing on the final step + the Ready screen (pre-existing latent bug noted during Phase D regression investigation), now resolved as a side effect.
+- `apps/mobile/components/onboarding/step-9-life-matrix-baselines.tsx`: top-of-file DORMANT comment block added; component body untouched. Tree-shakes out of the bundle since nothing imports it. Planned future reuse: in-app "Tune your Life Matrix" feature on Insights tab.
+
+### Manual steps needed
+
+- [ ] Walk through onboarding on a fresh simulator account (or via the reusable test users from earlier — `jim+phasedfail-*@heelerdigital.com`) and confirm the new 11-step flow lands cleanly. Expect to go straight from "Mood baseline" (step 8) to "How the trial works" (step 9).
+- [ ] After completion, verify the new user has 10 LifeMapArea rows in Supabase all at `score100 = 50`. SQL: `SELECT area, score100 FROM "LifeMapArea" WHERE "userId" = '<new uid>' ORDER BY area;`
+- [ ] None required to backfill existing users — they already have 10 LifeMapArea rows from Phase D's data migration. Behavior unchanged for any user who's already past onboarding.
+
+### Notes
+
+- Removal was a product/UX call, not a bug fix. The carousel works as designed (verified by Jim in simulator). The friction concern is about WHERE in the funnel the friction lives, not whether the surface is good.
+- Bootstrap behavior preserved: `bootstrap-user.ts:151` calls `prisma.lifeMapArea.createMany({...})` without specifying `score100`. Prisma falls through to the schema default `Int @default(50)` for each row. Verified by inspecting both the bootstrap code and the schema; no code change needed.
+- Server `/api/onboarding/update` still accepts the `lifeAreaBaselines` payload (Phase C addition). Nothing in mobile sends it post-removal, but the handler is dormant and ready for the future "Tune" feature when that ships.
+- Step validation `step > 11` instead of `step > 10` correctly handles the new max step count. Pre-existing 400-on-step-11 bug (flagged during the Phase D regression investigation) is incidentally fixed.
+
+monday: 12058980099
+
+---
+
 ## [2026-05-21] — Phase C — Onboarding 10-axis Life Matrix baseline carousel
 
 **Requested by:** Jimmy
