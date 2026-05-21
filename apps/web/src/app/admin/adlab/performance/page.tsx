@@ -30,6 +30,7 @@ interface SummaryMetrics {
   impressions: number;
   clicks: number;
   avgCplCents: number | null;
+  avgCpcCents: number | null;
   avgCtr: number;
 }
 
@@ -49,8 +50,10 @@ interface ExperimentRow {
   concludedAt: string | null;
   totalAds: number;
   spendCents: number;
+  clicks: number;
   conversions: number;
   avgCplCents: number | null;
+  avgCpcCents: number | null;
   avgCtr: number;
   bestAngle: string | null;
 }
@@ -325,8 +328,10 @@ export default function PerformancePage() {
       </div>
 
       {/* ── Section 4: Summary Cards ── */}
-      <div className="grid gap-3 grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 mb-8">
+      <div className="grid gap-3 grid-cols-2 sm:grid-cols-5 lg:grid-cols-10 mb-8">
         <SummaryCard label="Total Spend" allTime={$(s.allTime.spendCents)} range={$(s.range.spendCents)} />
+        <SummaryCard label="Clicks" allTime={s.allTime.clicks.toLocaleString()} range={s.range.clicks.toLocaleString()} />
+        <SummaryCard label="Avg CPC" allTime={s.allTime.avgCpcCents ? $(s.allTime.avgCpcCents) : "—"} range={s.range.avgCpcCents ? $(s.range.avgCpcCents) : "—"} />
         <SummaryCard label="Conversions" allTime={String(s.allTime.conversions)} range={String(s.range.conversions)} />
         <SummaryCard label="Avg CPL" allTime={s.allTime.avgCplCents ? $(s.allTime.avgCplCents) : "—"} range={s.range.avgCplCents ? $(s.range.avgCplCents) : "—"} />
         <SummaryCard label="Avg CTR" allTime={pct(s.allTime.avgCtr)} range={pct(s.range.avgCtr)} />
@@ -356,6 +361,8 @@ export default function PerformancePage() {
                   <SortTh label="Status" k="status" sort={expSort} onSort={toggleExpSort} />
                   <SortTh label="Ads" k="totalAds" sort={expSort} onSort={toggleExpSort} />
                   <SortTh label="Spend" k="spendCents" sort={expSort} onSort={toggleExpSort} />
+                  <SortTh label="Clicks" k="clicks" sort={expSort} onSort={toggleExpSort} />
+                  <SortTh label="CPC" k="avgCpcCents" sort={expSort} onSort={toggleExpSort} />
                   <SortTh label="Conv." k="conversions" sort={expSort} onSort={toggleExpSort} />
                   <SortTh label="CPL" k="avgCplCents" sort={expSort} onSort={toggleExpSort} />
                   <SortTh label="CTR" k="avgCtr" sort={expSort} onSort={toggleExpSort} />
@@ -376,6 +383,8 @@ export default function PerformancePage() {
                     </td>
                     <td className="px-3 py-2.5 text-[#A0A0B8] text-right">{exp.totalAds}</td>
                     <td className="px-3 py-2.5 text-white text-right">{$(exp.spendCents)}</td>
+                    <td className="px-3 py-2.5 text-white text-right">{exp.clicks?.toLocaleString() ?? 0}</td>
+                    <td className="px-3 py-2.5 text-[#A0A0B8] text-right">{exp.avgCpcCents ? $(exp.avgCpcCents) : "—"}</td>
                     <td className="px-3 py-2.5 text-white text-right">{exp.conversions}</td>
                     <td className="px-3 py-2.5 text-[#A0A0B8] text-right">{exp.avgCplCents ? $(exp.avgCplCents) : "—"}</td>
                     <td className="px-3 py-2.5 text-[#A0A0B8] text-right">{pct(exp.avgCtr)}</td>

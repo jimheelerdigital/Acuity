@@ -41,6 +41,38 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-21] — Fix AdLab conversion tracking + add clicks/CPC to dashboard
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** TBD
+
+### In plain English (for Keenan)
+
+AdLab was showing 0 conversions for all experiments because it was looking for "Lead" events in Meta's data, but our campaigns are Traffic campaigns that fire "CompleteRegistration" pixel events instead. The system now looks for the right event type. The performance dashboard also now shows Clicks and Cost-Per-Click alongside Conversions and Cost-Per-Lead — since we're running Traffic campaigns, clicks are the primary optimization metric and conversions (signups) are the secondary validation metric. Both are now visible in the summary cards and the experiments table.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/api/admin/adlab/cron/route.ts`: Changed conversion extraction to check multiple action types: the project's custom event, `offsite_conversion.fb_pixel_complete_registration`, and `complete_registration` (Meta returns different formats depending on campaign type). Added link_click extraction from the actions array as a fallback when the top-level clicks field is 0. Added diagnostic logging that prints all action types returned by Meta for each ad — visible in Vercel logs to help identify what Meta actually returns.
+- `apps/web/src/app/api/admin/adlab/performance/route.ts`: Added `clicks` and `avgCpcCents` to the experiments response. Added `avgCpcCents` to both allTime and range summary metrics.
+- `apps/web/src/app/admin/adlab/performance/page.tsx`: Added `clicks` and `avgCpcCents` to the ExperimentRow and SummaryMetrics interfaces. Added "Clicks" and "Avg CPC" summary cards (now 10 cards total). Added "Clicks" and "CPC" sortable columns to the experiments table. Grid bumped from 8 to 10 columns.
+
+### Manual steps needed
+
+- [ ] Wait for the 09:00 UTC cron to run (or trigger it manually via /api/admin/adlab/settings/run-cron) to re-sync metrics with the new conversion extraction (Keenan)
+- [ ] After re-sync, check AdLab performance dashboard — conversions should reflect actual CompleteRegistration events from Meta (Keenan)
+- [ ] Check Vercel logs after cron runs — the new diagnostic logging will show exactly what action types Meta returns for each ad, which helps verify the right events are being captured (Jimmy)
+- [ ] If conversions are still 0, check the Vercel logs for the action types — Meta may use a different action_type string for your specific pixel setup (Keenan / Jimmy)
+
+### Notes
+
+- For Traffic campaigns (OUTCOME_TRAFFIC), Meta optimizes for link clicks, not conversions. The `actions` array may not include conversion events at all if the pixel isn't firing on the landing page. CompleteRegistration events only appear if users complete signup after clicking the ad.
+- The fallback chain for conversion events is: project.conversionEvent → offsite_conversion.fb_pixel_complete_registration → complete_registration. This covers both standard and legacy Meta action type formats.
+- The existing `clicks` field from Meta's top-level Insights response already captures inline link clicks. The new `link_click` extraction from the actions array is a fallback — it's used only when the top-level field is 0 (which shouldn't happen for Traffic campaigns, but does for some edge cases).
+- Kill/scale rules remain disabled per the earlier emergency fix. This change only affects data collection and display.
+
+---
+
 ## [2026-05-21] — Fix GSC auth: private key newline handling + JWT constructor
 
 **Requested by:** Keenan

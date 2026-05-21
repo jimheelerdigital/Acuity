@@ -68,11 +68,36 @@ export async function GET(req: NextRequest) {
       const frequency = parseFloat(data.frequency || "0");
       const cpcCents = data.cpc ? Math.round(parseFloat(data.cpc) * 100) : null;
 
-      // Extract conversions from actions array
-      const conversionEvent = ad.creative.angle.experiment.project.conversionEvent || "Lead";
-      const conversions = (data.actions || [])
-        .filter((a: { action_type: string }) => a.action_type === conversionEvent)
+      // Extract conversions from actions array.
+      // For Traffic campaigns (OUTCOME_TRAFFIC), the project.conversionEvent may be
+      // null — default to CompleteRegistration which is our signup pixel event.
+      // Meta returns pixel conversions as "offsite_conversion.fb_pixel_<event_name>".
+      const projectEvent = ad.creative.angle.experiment.project.conversionEvent;
+      const conversionTypes = [
+        projectEvent,
+        "offsite_conversion.fb_pixel_complete_registration",
+        "complete_registration",
+      ].filter(Boolean) as string[];
+
+      const actions = data.actions || [];
+      const conversions = actions
+        .filter((a: { action_type: string }) => conversionTypes.includes(a.action_type))
         .reduce((sum: number, a: { value: string }) => sum + parseInt(a.value || "0"), 0);
+
+      // Also extract link_click from actions for diagnostic (top-level clicks field
+      // already captures this, but actions breakdown confirms the source)
+      const linkClicks = actions
+        .filter((a: { action_type: string }) => a.action_type === "link_click")
+        .reduce((sum: number, a: { value: string }) => sum + parseInt(a.value || "0"), 0);
+
+      // Log action types for debugging — helps identify what Meta actually returns
+      if (actions.length > 0) {
+        const actionTypes = actions.map((a: { action_type: string; value: string }) => `${a.action_type}:${a.value}`);
+        console.log(`[adlab-cron] Ad ${ad.id} actions: ${actionTypes.join(", ")}`);
+      }
+
+      // Use link_click from actions if top-level clicks is 0 (fallback)
+      const finalClicks = clicks > 0 ? clicks : linkClicks;
 
       const cplCents = conversions > 0 ? Math.round(spendCents / conversions) : null;
 
@@ -82,7 +107,7 @@ export async function GET(req: NextRequest) {
           adId: ad.id,
           date: new Date(dateStr),
           impressions,
-          clicks,
+          clicks: finalClicks,
           ctr,
           spendCents,
           conversions,
@@ -90,7 +115,7 @@ export async function GET(req: NextRequest) {
           frequency,
           cpcCents,
         },
-        update: { impressions, clicks, ctr, spendCents, conversions, cplCents, frequency, cpcCents },
+        update: { impressions, clicks: finalClicks, ctr, spendCents, conversions, cplCents, frequency, cpcCents },
       });
 
       syncResults.push({ adId: ad.id, success: true });

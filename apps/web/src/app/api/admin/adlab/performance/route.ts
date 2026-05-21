@@ -252,8 +252,10 @@ export async function GET(req: NextRequest) {
       concludedAt: e.concludedAt,
       totalAds: e.totalAds.size,
       spendCents: e.spendCents,
+      clicks: e.clicks,
       conversions: e.conversions,
       avgCplCents: e.conversions > 0 ? Math.round(e.spendCents / e.conversions) : null,
+      avgCpcCents: e.clicks > 0 ? Math.round(e.spendCents / e.clicks) : null,
       avgCtr: e.impressions > 0 ? +((e.clicks / e.impressions) * 100).toFixed(2) : 0,
       bestAngle,
     };
@@ -362,6 +364,7 @@ export async function GET(req: NextRequest) {
         impressions: at.impressions ?? 0,
         clicks: at.clicks ?? 0,
         avgCplCents: (at.conversions ?? 0) > 0 ? Math.round((at.spendCents ?? 0) / at.conversions!) : null,
+        avgCpcCents: (at.clicks ?? 0) > 0 ? Math.round((at.spendCents ?? 0) / at.clicks!) : null,
         avgCtr: (at.impressions ?? 0) > 0 ? +(((at.clicks ?? 0) / at.impressions!) * 100).toFixed(2) : 0,
       },
       range: {
@@ -370,6 +373,7 @@ export async function GET(req: NextRequest) {
         impressions: rangeImpressions,
         clicks: rangeClicks,
         avgCplCents: rangeConversions > 0 ? Math.round(rangeSpendCents / rangeConversions) : null,
+        avgCpcCents: rangeClicks > 0 ? Math.round(rangeSpendCents / rangeClicks) : null,
         avgCtr: rangeImpressions > 0 ? +((rangeClicks / rangeImpressions) * 100).toFixed(2) : 0,
       },
       activeExperiments: liveExperiments,
