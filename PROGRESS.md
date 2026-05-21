@@ -41,6 +41,37 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-21] — Rebuild AdLab decision engine with validation-phase thresholds
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** TBD
+
+### In plain English (for Keenan)
+
+The AdLab auto-kill and auto-scale rules have been completely rebuilt for the validation phase. The old rules were too aggressive ($15 kill threshold, 0.5% CTR floor) and based on broken conversion data. New rules: kill at $15 with zero clicks (R1), kill at CTR below 0.8% after 1,000 impressions (R2), kill at $30 spend with zero conversions (R3), kill at $45 spend with CPL above $30 (R4). Scale winners at 3+ conversions with CPL under $10 (R5). Dead experiments auto-conclude at $50 zero conversions (R6) or $100 with CPL over $30 (R7). Winning experiments with 10+ conversions at CPL under $10 get flagged for your review — never auto-concluded (R8). Safety rails: minimum $10 spend before any decision, max 3 kills per day, never kill the last active ad in an experiment.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/api/admin/adlab/cron/route.ts`: Complete rewrite of Step 2 (creative decisions) and Step 3 (experiment conclusions). All old commented-out code removed. All thresholds are named constants at top of file (R1-R8). Daily email now includes: kills with rule IDs, scales, flags for manual review, experiment conclusions, and "approaching threshold" warnings for ads within 20% of a kill trigger. Decision records include the rule ID in the rationale string.
+- `VALIDATION_PHASE` flag at top of file — when flipped to false, thresholds can be tightened for scale phase.
+
+### Manual steps needed
+
+- [ ] Watch tomorrow's AdLab Daily email (09:00 UTC) — verify kills are accurate and thresholds feel right (Keenan)
+- [ ] Check the AdLab performance dashboard after cron runs — killed ads should show red status (Keenan)
+- [ ] If any rules feel too tight or too loose after 3-5 days of data, adjust the constants at the top of cron/route.ts (Keenan / Jimmy)
+
+### Notes
+
+- All thresholds are in cents (multiply by 100). `R1_SPEND_FLOOR = 1500` means $15.
+- The `MAX_KILLS_PER_RUN = 3` cap prevents wiping out an entire experiment in one morning. Excess kill candidates are flagged in the email for the next run.
+- "Last active ad" protection: if an experiment has only 1 live ad left, it gets flagged for manual review instead of killed. An experiment with zero active ads is invisible on Meta.
+- Rule 8 (winning experiment) flags for manual review only — never auto-concludes. You decide what to do with winners.
+- The 48-hour scale cooldown (R5) prevents rapid budget ramp that causes audience fatigue.
+
+---
+
 ## [2026-05-21] — Fix account linking + backfill emailVerified for existing users
 
 **Requested by:** Keenan

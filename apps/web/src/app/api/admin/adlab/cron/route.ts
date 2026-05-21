@@ -3,9 +3,12 @@
  * Protected by CRON_SECRET. Runs at 09:00 UTC daily.
  *
  * 1. Sync yesterday's metrics from Meta Insights API
- * 2. Run kill/scale/maintain decisions per ad
- * 3. Check for experiment conclusions
+ * 2. Run creative-level kill/scale/maintain decisions
+ * 3. Run experiment-level conclusions
  * 4. Send daily summary email via Resend
+ *
+ * VALIDATION PHASE thresholds — tuned for low-volume Traffic campaigns.
+ * Flip VALIDATION_PHASE to false when switching to Conversions objective.
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -16,8 +19,53 @@ import * as meta from "@/lib/adlab/meta";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
+// ── Validation-phase thresholds (all in cents where applicable) ─────
+const VALIDATION_PHASE = true;
+
+// Safety rails
+const MIN_SPEND_FOR_DECISION = 1000;     // $10 — no decisions below this spend
+const MIN_IMPRESSIONS_FOR_DECISION = 500; // AND this many impressions
+const MAX_KILLS_PER_RUN = 3;             // daily cap to prevent wipeouts
+
+// Rule 1 — Dead creative (no clicks)
+const R1_SPEND_FLOOR = 1500;             // $15
+const R1_CLICKS_CEIL = 0;
+
+// Rule 2 — Low CTR
+const R2_IMPRESSIONS_FLOOR = 1000;
+const R2_CTR_CEIL = 0.8;                 // 0.8%
+
+// Rule 3 — Spending with no conversions
+const R3_SPEND_FLOOR = 3000;             // $30
+const R3_CONVERSIONS_CEIL = 0;
+
+// Rule 4 — Expensive conversions
+const R4_SPEND_FLOOR = 4500;             // $45
+const R4_CPL_CEIL = 3000;               // $30
+
+// Rule 5 — Scale winner
+const R5_CONVERSIONS_FLOOR = 3;
+const R5_CPL_CEIL = 1000;               // $10
+const R5_FREQUENCY_CEIL = 2.5;
+const R5_BUDGET_MULTIPLIER = 1.2;       // +20%
+const R5_MAX_BUDGET_MULTIPLE = 3;       // 3x initial (validation phase)
+const R5_COOLDOWN_HOURS = 48;
+
+// Rule 6 — Dead experiment
+const R6_SPEND_FLOOR = 5000;            // $50
+const R6_CONVERSIONS_CEIL = 0;
+
+// Rule 7 — Expensive experiment
+const R7_SPEND_FLOOR = 10000;           // $100
+const R7_AVG_CPL_CEIL = 3000;           // $30
+
+// Rule 8 — Winning experiment
+const R8_CONVERSIONS_FLOOR = 10;
+const R8_AVG_CPL_CEIL = 1000;           // $10
+
+const $ = (cents: number) => `$${(cents / 100).toFixed(2)}`;
+
 export async function GET(req: NextRequest) {
-  // Verify cron secret
   const authHeader = req.headers.get("authorization");
   const cronSecret = process.env.CRON_SECRET;
   if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
@@ -51,7 +99,10 @@ export async function GET(req: NextRequest) {
   }
 
   const syncResults: { adId: string; success: boolean }[] = [];
-  const decisions: { adId: string; type: string; rationale: string; creativeType: string }[] = [];
+  const decisions: { adId: string; type: string; rule: string; rationale: string; creativeType: string }[] = [];
+  const flags: { adId: string; rule: string; rationale: string }[] = [];
+  const experimentFlags: { expId: string; type: string; rule: string; rationale: string }[] = [];
+  const warnings: string[] = [];
 
   // ── Step 1: Sync metrics ──────────────────────────────────────────
   for (const ad of ads) {
@@ -68,10 +119,6 @@ export async function GET(req: NextRequest) {
       const frequency = parseFloat(data.frequency || "0");
       const cpcCents = data.cpc ? Math.round(parseFloat(data.cpc) * 100) : null;
 
-      // Extract conversions from actions array.
-      // For Traffic campaigns (OUTCOME_TRAFFIC), the project.conversionEvent may be
-      // null — default to CompleteRegistration which is our signup pixel event.
-      // Meta returns pixel conversions as "offsite_conversion.fb_pixel_<event_name>".
       const projectEvent = ad.creative.angle.experiment.project.conversionEvent;
       const conversionTypes = [
         projectEvent,
@@ -84,36 +131,23 @@ export async function GET(req: NextRequest) {
         .filter((a: { action_type: string }) => conversionTypes.includes(a.action_type))
         .reduce((sum: number, a: { value: string }) => sum + parseInt(a.value || "0"), 0);
 
-      // Also extract link_click from actions for diagnostic (top-level clicks field
-      // already captures this, but actions breakdown confirms the source)
       const linkClicks = actions
         .filter((a: { action_type: string }) => a.action_type === "link_click")
         .reduce((sum: number, a: { value: string }) => sum + parseInt(a.value || "0"), 0);
 
-      // Log action types for debugging — helps identify what Meta actually returns
       if (actions.length > 0) {
         const actionTypes = actions.map((a: { action_type: string; value: string }) => `${a.action_type}:${a.value}`);
         console.log(`[adlab-cron] Ad ${ad.id} actions: ${actionTypes.join(", ")}`);
       }
 
-      // Use link_click from actions if top-level clicks is 0 (fallback)
       const finalClicks = clicks > 0 ? clicks : linkClicks;
-
       const cplCents = conversions > 0 ? Math.round(spendCents / conversions) : null;
 
       await prisma.adLabDailyMetric.upsert({
         where: { adId_date: { adId: ad.id, date: new Date(dateStr) } },
         create: {
-          adId: ad.id,
-          date: new Date(dateStr),
-          impressions,
-          clicks: finalClicks,
-          ctr,
-          spendCents,
-          conversions,
-          cplCents,
-          frequency,
-          cpcCents,
+          adId: ad.id, date: new Date(dateStr),
+          impressions, clicks: finalClicks, ctr, spendCents, conversions, cplCents, frequency, cpcCents,
         },
         update: { impressions, clicks: finalClicks, ctr, spendCents, conversions, cplCents, frequency, cpcCents },
       });
@@ -125,142 +159,184 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // ── Step 2: Run decisions ─────────────────────────────────────────
+  // ── Step 2: Creative-level decisions ──────────────────────────────
+  // Count live ads per experiment for "last active ad" safety rail
+  const liveAdsByExp = new Map<string, string[]>();
+  for (const ad of ads) {
+    const expId = ad.creative.angle.experiment.id;
+    const list = liveAdsByExp.get(expId) ?? [];
+    list.push(ad.id);
+    liveAdsByExp.set(expId, list);
+  }
+
+  let killCount = 0;
+
   for (const ad of ads) {
     const project = ad.creative.angle.experiment.project;
+    const expId = ad.creative.angle.experiment.id;
 
-    // Get cumulative metrics
     const metrics = await prisma.adLabDailyMetric.aggregate({
       where: { adId: ad.id },
-      _sum: {
-        spendCents: true,
-        conversions: true,
-        impressions: true,
-        clicks: true,
-      },
-      _avg: {
-        ctr: true,
-        frequency: true,
-      },
+      _sum: { spendCents: true, conversions: true, impressions: true, clicks: true },
+      _avg: { ctr: true, frequency: true },
     });
 
     const totalSpend = metrics._sum.spendCents || 0;
     const totalConversions = metrics._sum.conversions || 0;
     const totalImpressions = metrics._sum.impressions || 0;
+    const totalClicks = metrics._sum.clicks || 0;
     const avgCtr = metrics._avg.ctr || 0;
     const avgFrequency = metrics._avg.frequency || 0;
     const cumulativeCpl = totalConversions > 0 ? Math.round(totalSpend / totalConversions) : null;
 
-    // KILL + SCALE RULES DISABLED — re-enable after pixel fix and threshold recalibration — Keenan 2026-05-21
-    const decisionType: "kill" | "scale" | "maintain" = "maintain";
-    const rationale = "";
+    let decisionType: "kill" | "scale" | "maintain" | "flag" = "maintain";
+    let rationale = "";
+    let ruleId = "";
 
-    // // KILL rules
-    // if (totalSpend >= 1.5 * project.targetCplCents && totalConversions === 0) {
-    //   decisionType = "kill";
-    //   rationale = `Spent ${(totalSpend / 100).toFixed(2)} (1.5x target CPL) with zero conversions`;
-    // } else if (avgCtr < 0.5 && totalImpressions >= 2000) {
-    //   decisionType = "kill";
-    //   rationale = `CTR ${avgCtr.toFixed(2)}% below 0.5% threshold with ${totalImpressions} impressions`;
-    // } else if (
-    //   cumulativeCpl &&
-    //   cumulativeCpl > 2 * project.targetCplCents &&
-    //   totalSpend >= 3 * project.targetCplCents
-    // ) {
-    //   decisionType = "kill";
-    //   rationale = `CPL $${(cumulativeCpl / 100).toFixed(2)} is 2x+ target with sufficient spend`;
-    // }
+    // ── Safety rail: minimum data ──
+    const hasMinData = totalSpend >= MIN_SPEND_FOR_DECISION && totalImpressions >= MIN_IMPRESSIONS_FOR_DECISION;
 
-    // // SCALE rules (only if not killed)
-    // if (decisionType === "maintain") {
-    //   const maxBudget = 5 * project.dailyBudgetCentsPerVariant;
-    //   const currentBudget = ad.dailyBudgetCents || project.dailyBudgetCentsPerVariant;
-    //
-    //   // Check if scaled in last 24h
-    //   const recentScale = await prisma.adLabDecision.findFirst({
-    //     where: {
-    //       adId: ad.id,
-    //       decisionType: "scale",
-    //       executedAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
-    //     },
-    //   });
-    //
-    //   if (
-    //     !recentScale &&
-    //     totalSpend >= project.targetCplCents &&
-    //     cumulativeCpl &&
-    //     cumulativeCpl <= 0.8 * project.targetCplCents &&
-    //     totalConversions >= 5 &&
-    //     avgFrequency < 2.5 &&
-    //     currentBudget < maxBudget
-    //   ) {
-    //     decisionType = "scale";
-    //     const newBudget = Math.min(Math.round(currentBudget * 1.2), maxBudget);
-    //     rationale = `CPL $${(cumulativeCpl / 100).toFixed(2)} is ≤80% of target, ${totalConversions} conversions, frequency ${avgFrequency.toFixed(1)}. Budget ${(currentBudget / 100).toFixed(2)} → ${(newBudget / 100).toFixed(2)}`;
-    //   }
-    // }
+    if (hasMinData) {
+      // ── KILL RULES (checked in order, first match wins) ──
 
-    // // Execute decision — KILL
-    // if (decisionType === "kill") {
-    //   if (ad.metaAdId) {
-    //     try {
-    //       await meta.setStatus(ad.metaAdId, "ad", "PAUSED");
-    //     } catch (err) {
-    //       console.error(`[adlab-cron] Failed to pause ad ${ad.metaAdId}:`, err);
-    //     }
-    //   }
-    //   await prisma.adLabAd.update({
-    //     where: { id: ad.id },
-    //     data: { status: "killed", decisionReason: rationale },
-    //   });
-    //   await prisma.adLabDecision.create({
-    //     data: { adId: ad.id, decisionType: "kill", rationale },
-    //   });
-    //   decisions.push({ adId: ad.id, type: "kill", rationale, creativeType: (ad.creative as Record<string, unknown>).creativeType as string || "image" });
-    // } else if (decisionType === "scale") {
-    //   const currentBudget = ad.dailyBudgetCents || project.dailyBudgetCentsPerVariant;
-    //   const newBudget = Math.min(
-    //     Math.round(currentBudget * 1.2),
-    //     5 * project.dailyBudgetCentsPerVariant
-    //   );
-    //
-    //   if (ad.metaAdsetId) {
-    //     try {
-    //       await meta.updateAdSetBudget(ad.metaAdsetId, newBudget);
-    //     } catch (err) {
-    //       console.error(`[adlab-cron] Failed to update budget for adset ${ad.metaAdsetId}:`, err);
-    //     }
-    //   }
-    //   await prisma.adLabAd.update({
-    //     where: { id: ad.id },
-    //     data: { status: "scaled", dailyBudgetCents: newBudget, decisionReason: rationale },
-    //   });
-    //   await prisma.adLabDecision.create({
-    //     data: {
-    //       adId: ad.id,
-    //       decisionType: "scale",
-    //       rationale,
-    //       priorBudgetCents: currentBudget,
-    //       newBudgetCents: newBudget,
-    //     },
-    //   });
-    //   decisions.push({ adId: ad.id, type: "scale", rationale, creativeType: (ad.creative as Record<string, unknown>).creativeType as string || "image" });
-    // With kill+scale disabled, always log maintain
-    // Only log maintain if no decision in last 24h
-    const recentDecision = await prisma.adLabDecision.findFirst({
-      where: {
-        adId: ad.id,
-        executedAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
-      },
-    });
-    if (!recentDecision) {
-      await prisma.adLabDecision.create({
-        data: { adId: ad.id, decisionType: "maintain", rationale: "Within parameters (kill+scale disabled)" },
+      // Rule 1 — Dead creative (no clicks)
+      if (totalSpend >= R1_SPEND_FLOOR && totalClicks <= R1_CLICKS_CEIL) {
+        decisionType = "kill";
+        ruleId = "R1";
+        rationale = `R1: Dead creative — spent ${$(totalSpend)} with 0 clicks. ${totalImpressions} impressions, no engagement.`;
+      }
+      // Rule 2 — Low CTR
+      else if (totalImpressions >= R2_IMPRESSIONS_FLOOR && avgCtr < R2_CTR_CEIL) {
+        decisionType = "kill";
+        ruleId = "R2";
+        rationale = `R2: Low CTR — ${avgCtr.toFixed(2)}% CTR (threshold: ${R2_CTR_CEIL}%) over ${totalImpressions.toLocaleString()} impressions. Spent ${$(totalSpend)}.`;
+      }
+      // Rule 3 — Spending with no conversions
+      else if (totalSpend >= R3_SPEND_FLOOR && totalConversions <= R3_CONVERSIONS_CEIL) {
+        decisionType = "kill";
+        ruleId = "R3";
+        rationale = `R3: No conversions — spent ${$(totalSpend)} (threshold: ${$(R3_SPEND_FLOOR)}) with ${totalClicks} clicks but 0 conversions.`;
+      }
+      // Rule 4 — Expensive conversions
+      else if (totalSpend >= R4_SPEND_FLOOR && cumulativeCpl && cumulativeCpl > R4_CPL_CEIL) {
+        decisionType = "kill";
+        ruleId = "R4";
+        rationale = `R4: Expensive conversions — CPL ${$(cumulativeCpl)} exceeds ${$(R4_CPL_CEIL)} ceiling. ${totalConversions} conversions on ${$(totalSpend)} spend.`;
+      }
+
+      // ── SCALE RULE (only if not killed) ──
+      if (decisionType === "maintain") {
+        // Rule 5 — Winner
+        if (
+          totalConversions >= R5_CONVERSIONS_FLOOR &&
+          cumulativeCpl && cumulativeCpl < R5_CPL_CEIL &&
+          avgFrequency < R5_FREQUENCY_CEIL
+        ) {
+          // Check cooldown (48h)
+          const recentScale = await prisma.adLabDecision.findFirst({
+            where: {
+              adId: ad.id,
+              decisionType: "scale",
+              executedAt: { gte: new Date(Date.now() - R5_COOLDOWN_HOURS * 60 * 60 * 1000) },
+            },
+          });
+
+          const currentBudget = ad.dailyBudgetCents || project.dailyBudgetCentsPerVariant;
+          const maxBudget = R5_MAX_BUDGET_MULTIPLE * project.dailyBudgetCentsPerVariant;
+
+          if (!recentScale && currentBudget < maxBudget) {
+            decisionType = "scale";
+            ruleId = "R5";
+            const newBudget = Math.min(Math.round(currentBudget * R5_BUDGET_MULTIPLIER), maxBudget);
+            rationale = `R5: Winner — CPL ${$(cumulativeCpl)}, ${totalConversions} conversions, frequency ${avgFrequency.toFixed(1)}. Budget ${$(currentBudget)} → ${$(newBudget)}.`;
+          }
+        }
+      }
+    }
+
+    // ── Safety rails before execution ──
+
+    // Never kill the last active ad in an experiment
+    if (decisionType === "kill") {
+      const expAds = liveAdsByExp.get(expId) ?? [];
+      if (expAds.length <= 1) {
+        decisionType = "flag";
+        ruleId = `${ruleId}-LAST`;
+        rationale = `${rationale} FLAGGED: last active ad in experiment — needs manual review.`;
+      }
+    }
+
+    // Daily kill cap
+    if (decisionType === "kill" && killCount >= MAX_KILLS_PER_RUN) {
+      decisionType = "flag";
+      ruleId = `${ruleId}-CAP`;
+      rationale = `${rationale} FLAGGED: daily kill cap (${MAX_KILLS_PER_RUN}) reached — queued for next run.`;
+    }
+
+    // ── Execute decision ──
+    if (decisionType === "kill") {
+      if (ad.metaAdId) {
+        try {
+          await meta.setStatus(ad.metaAdId, "ad", "PAUSED");
+        } catch (err) {
+          console.error(`[adlab-cron] Failed to pause ad ${ad.metaAdId}:`, err);
+        }
+      }
+      await prisma.adLabAd.update({
+        where: { id: ad.id },
+        data: { status: "killed", decisionReason: rationale },
       });
+      await prisma.adLabDecision.create({
+        data: { adId: ad.id, decisionType: "kill", rationale },
+      });
+      decisions.push({ adId: ad.id, type: "kill", rule: ruleId, rationale, creativeType: (ad.creative as Record<string, unknown>).creativeType as string || "image" });
+      killCount++;
+
+      // Remove from live list so "last active ad" check updates mid-run
+      const expAds = liveAdsByExp.get(expId);
+      if (expAds) liveAdsByExp.set(expId, expAds.filter((id) => id !== ad.id));
+
+    } else if (decisionType === "scale") {
+      const currentBudget = ad.dailyBudgetCents || project.dailyBudgetCentsPerVariant;
+      const maxBudget = R5_MAX_BUDGET_MULTIPLE * project.dailyBudgetCentsPerVariant;
+      const newBudget = Math.min(Math.round(currentBudget * R5_BUDGET_MULTIPLIER), maxBudget);
+
+      if (ad.metaAdsetId) {
+        try {
+          await meta.updateAdSetBudget(ad.metaAdsetId, newBudget);
+        } catch (err) {
+          console.error(`[adlab-cron] Failed to update budget for adset ${ad.metaAdsetId}:`, err);
+        }
+      }
+      await prisma.adLabAd.update({
+        where: { id: ad.id },
+        data: { status: "scaled", dailyBudgetCents: newBudget, decisionReason: rationale },
+      });
+      await prisma.adLabDecision.create({
+        data: { adId: ad.id, decisionType: "scale", rationale, priorBudgetCents: currentBudget, newBudgetCents: newBudget },
+      });
+      decisions.push({ adId: ad.id, type: "scale", rule: ruleId, rationale, creativeType: (ad.creative as Record<string, unknown>).creativeType as string || "image" });
+
+    } else if (decisionType === "flag") {
+      await prisma.adLabDecision.create({
+        data: { adId: ad.id, decisionType: "maintain", rationale },
+      });
+      flags.push({ adId: ad.id, rule: ruleId, rationale });
+
+    } else {
+      // Maintain — log if no recent decision
+      const recentDecision = await prisma.adLabDecision.findFirst({
+        where: { adId: ad.id, executedAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } },
+      });
+      if (!recentDecision) {
+        await prisma.adLabDecision.create({
+          data: { adId: ad.id, decisionType: "maintain", rationale: "Within parameters" },
+        });
+      }
     }
   }
 
-  // ── Step 3: Check experiment conclusions ──────────────────────────
+  // ── Step 3: Experiment-level rules ────────────────────────────────
   const liveExperiments = await prisma.adLabExperiment.findMany({
     where: { status: "live" },
     include: {
@@ -268,7 +344,7 @@ export async function GET(req: NextRequest) {
       angles: {
         include: {
           creatives: {
-            include: { ads: true },
+            include: { ads: { include: { metrics: true } } },
           },
         },
       },
@@ -279,19 +355,74 @@ export async function GET(req: NextRequest) {
 
   for (const exp of liveExperiments) {
     const allAds = exp.angles.flatMap((a) => a.creatives.flatMap((c) => c.ads));
-    const scaledCount = allAds.filter((a) => a.status === "scaled").length;
+    const allMetrics = allAds.flatMap((a) => a.metrics);
+
+    const expSpend = allMetrics.reduce((s, m) => s + m.spendCents, 0);
+    const expConversions = allMetrics.reduce((s, m) => s + m.conversions, 0);
+    const expCpl = expConversions > 0 ? Math.round(expSpend / expConversions) : null;
+
+    // Rule 6 — Dead experiment
+    if (expSpend >= R6_SPEND_FLOOR && expConversions <= R6_CONVERSIONS_CEIL) {
+      await prisma.adLabExperiment.update({
+        where: { id: exp.id },
+        data: { status: "concluded", concludedAt: new Date() },
+      });
+      concluded.push(exp.id);
+      experimentFlags.push({
+        expId: exp.id,
+        type: "concluded_failed",
+        rule: "R6",
+        rationale: `R6: Dead experiment — ${$(expSpend)} total spend, 0 conversions. All ads paused.`,
+      });
+
+      // Pause remaining live ads
+      for (const ad of allAds.filter((a) => a.status === "live" || a.status === "scaled")) {
+        if (ad.metaAdId) {
+          try { await meta.setStatus(ad.metaAdId, "ad", "PAUSED"); } catch {}
+        }
+        await prisma.adLabAd.update({ where: { id: ad.id }, data: { status: "killed", decisionReason: "R6: Experiment concluded as failed" } });
+      }
+      continue;
+    }
+
+    // Rule 7 — Expensive experiment
+    if (expSpend >= R7_SPEND_FLOOR && expCpl && expCpl > R7_AVG_CPL_CEIL) {
+      await prisma.adLabExperiment.update({
+        where: { id: exp.id },
+        data: { status: "concluded", concludedAt: new Date() },
+      });
+      concluded.push(exp.id);
+      experimentFlags.push({
+        expId: exp.id,
+        type: "concluded_failed",
+        rule: "R7",
+        rationale: `R7: Expensive experiment — avg CPL ${$(expCpl)} exceeds ${$(R7_AVG_CPL_CEIL)}. ${expConversions} conversions on ${$(expSpend)}.`,
+      });
+      continue;
+    }
+
+    // Rule 8 — Winning experiment (flag only, don't auto-conclude)
+    if (expConversions >= R8_CONVERSIONS_FLOOR && expCpl && expCpl < R8_AVG_CPL_CEIL) {
+      experimentFlags.push({
+        expId: exp.id,
+        type: "winning",
+        rule: "R8",
+        rationale: `R8: WINNING — ${expConversions} conversions at ${$(expCpl)} avg CPL. Manual review recommended.`,
+      });
+      continue;
+    }
+
+    // Legacy: auto-conclude by duration (keep for safety)
     const daysSinceLaunch = exp.launchedAt
       ? Math.floor((Date.now() - exp.launchedAt.getTime()) / (1000 * 60 * 60 * 24))
       : 0;
-
-    if (daysSinceLaunch >= exp.project.testDurationDays || scaledCount >= 2) {
+    if (daysSinceLaunch >= exp.project.testDurationDays) {
       await prisma.adLabExperiment.update({
         where: { id: exp.id },
         data: { status: "concluded", concludedAt: new Date() },
       });
       concluded.push(exp.id);
 
-      // Trigger learning loop
       try {
         const baseUrl = process.env.NEXTAUTH_URL || "https://getacuity.io";
         await fetch(`${baseUrl}/api/admin/adlab/experiments/${exp.id}/learn`, {
@@ -304,30 +435,79 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // ── Step 4: Send daily email ──────────────────────────────────────
+  // ── Step 4: Build + send daily email ──────────────────────────────
   try {
     const { Resend } = await import("resend");
     const resend = new Resend(process.env.RESEND_API_KEY);
 
-    const body = [
+    const sections: string[] = [
       `# AdLab Daily Report — ${dateStr}`,
-      `\nMetrics synced: ${syncResults.filter((r) => r.success).length}/${syncResults.length}`,
-      `Decisions made: ${decisions.length}`,
-      decisions.length > 0
-        ? `\n## Decisions\n${decisions.map((d) => `- **${d.type.toUpperCase()}** [${d.creativeType}] ad ${d.adId.slice(0, 8)}: ${d.rationale}`).join("\n")}`
-        : "",
-      concluded.length > 0
-        ? `\n## Experiments Concluded\n${concluded.map((id) => `- Experiment ${id.slice(0, 8)}`).join("\n")}`
-        : "",
-    ]
-      .filter(Boolean)
-      .join("\n");
+      `Metrics synced: ${syncResults.filter((r) => r.success).length}/${syncResults.length} ads`,
+      `Phase: ${VALIDATION_PHASE ? "VALIDATION" : "SCALE"}`,
+    ];
+
+    // Kills
+    const kills = decisions.filter((d) => d.type === "kill");
+    if (kills.length > 0) {
+      sections.push(`\n## ❌ Kills (${kills.length})`);
+      kills.forEach((d) => sections.push(`- [${d.rule}] ad ${d.adId.slice(0, 8)}: ${d.rationale}`));
+    }
+
+    // Scales
+    const scales = decisions.filter((d) => d.type === "scale");
+    if (scales.length > 0) {
+      sections.push(`\n## ⬆️ Scales (${scales.length})`);
+      scales.forEach((d) => sections.push(`- [${d.rule}] ad ${d.adId.slice(0, 8)}: ${d.rationale}`));
+    }
+
+    // Flags for manual review
+    if (flags.length > 0) {
+      sections.push(`\n## ⚠️ Flagged for Manual Review (${flags.length})`);
+      flags.forEach((f) => sections.push(`- [${f.rule}] ad ${f.adId.slice(0, 8)}: ${f.rationale}`));
+    }
+
+    // Experiment-level
+    if (experimentFlags.length > 0) {
+      sections.push(`\n## 🧪 Experiment Decisions`);
+      experimentFlags.forEach((ef) => sections.push(`- [${ef.rule}] exp ${ef.expId.slice(0, 8)}: ${ef.rationale}`));
+    }
+
+    if (concluded.length > 0) {
+      sections.push(`\n## Experiments Concluded: ${concluded.length}`);
+    }
+
+    // Approaching thresholds (within 20%)
+    const approaching: string[] = [];
+    for (const ad of ads) {
+      const m = await prisma.adLabDailyMetric.aggregate({
+        where: { adId: ad.id },
+        _sum: { spendCents: true, conversions: true, impressions: true, clicks: true },
+        _avg: { ctr: true },
+      });
+      const sp = m._sum.spendCents || 0;
+      const conv = m._sum.conversions || 0;
+      const clk = m._sum.clicks || 0;
+      const ctr = m._avg.ctr || 0;
+
+      if (sp >= R1_SPEND_FLOOR * 0.8 && sp < R1_SPEND_FLOOR && clk === 0)
+        approaching.push(`ad ${ad.id.slice(0, 8)}: ${$(sp)} spent, 0 clicks — approaching R1 kill at ${$(R1_SPEND_FLOOR)}`);
+      if (sp >= R3_SPEND_FLOOR * 0.8 && sp < R3_SPEND_FLOOR && conv === 0)
+        approaching.push(`ad ${ad.id.slice(0, 8)}: ${$(sp)} spent, 0 conv — approaching R3 kill at ${$(R3_SPEND_FLOOR)}`);
+    }
+
+    if (approaching.length > 0) {
+      sections.push(`\n## 🔜 Approaching Kill Thresholds`);
+      approaching.forEach((a) => sections.push(`- ${a}`));
+    }
+
+    // Summary line
+    sections.push(`\n---\nTotal: ${kills.length} kills, ${scales.length} scales, ${flags.length} flagged, ${concluded.length} experiments concluded`);
 
     await resend.emails.send({
       from: process.env.EMAIL_FROM || "AdLab <noreply@getacuity.io>",
       to: "keenan@heelerdigital.com",
-      subject: `AdLab Daily: ${decisions.filter((d) => d.type === "kill").length} kills, ${decisions.filter((d) => d.type === "scale").length} scales`,
-      text: body,
+      subject: `AdLab Daily: ${kills.length} kills, ${scales.length} scales${flags.length > 0 ? `, ${flags.length} flagged` : ""}${experimentFlags.some((e) => e.type === "winning") ? " 🏆 WINNER" : ""}`,
+      text: sections.join("\n"),
     });
   } catch (err) {
     console.error("[adlab-cron] Email send failed:", err);
@@ -336,6 +516,8 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     synced: syncResults.length,
     decisions: decisions.length,
+    flags: flags.length,
     concluded: concluded.length,
+    experimentFlags: experimentFlags.length,
   });
 }
