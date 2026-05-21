@@ -883,8 +883,9 @@ export const autoBlogPruneFn = inngest.createFunction(
     // ── Step 3: Sync GSC data to posts ────────────────────────────
     const syncResult = await step.run("sync-gsc-data", async () => {
       const { prisma } = await import("@/lib/prisma");
+      const { normalizeGscUrl } = await import("@/lib/google/search-console");
       const gscByUrl = new Map(
-        gscData.topPages.map((p) => [p.page, p])
+        gscData.topPages.map((p) => [normalizeGscUrl(p.page), p])
       );
 
       const now = new Date();
@@ -900,8 +901,11 @@ export const autoBlogPruneFn = inngest.createFunction(
       }> = [];
 
       for (const post of posts) {
-        const perf = post.distributedUrl
-          ? gscByUrl.get(post.distributedUrl)
+        const normalizedUrl = post.distributedUrl
+          ? normalizeGscUrl(post.distributedUrl)
+          : null;
+        const perf = normalizedUrl
+          ? gscByUrl.get(normalizedUrl)
           : null;
 
         const impressions = perf?.impressions ?? 0;

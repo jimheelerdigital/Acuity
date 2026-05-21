@@ -41,6 +41,63 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-21] — Fix GSC integration: URL matching + auth diagnostics for blog dashboard
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** TBD
+
+### In plain English (for Keenan)
+
+The admin blog dashboard was showing 0 impressions and 0 clicks for every blog post, even though Google Search Console has real data (315 impressions, 6 clicks). Two problems were found: (1) the Google service account key (`GA4_SERVICE_ACCOUNT_KEY`) is most likely not set in Vercel, so the system can't authenticate with Google at all, and (2) even when it can authenticate, the URL matching between what Google returns and what we store was broken — Google often adds a trailing slash to URLs, and our code was doing an exact match that would miss them. Both are now fixed. The sync endpoint also now shows clear, actionable error messages when auth fails instead of a generic "502" error.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/lib/google/search-console.ts`: Added `normalizeGscUrl()` helper that strips trailing slashes and lowercases URLs before comparison. Exported for use by both the sync endpoint and the pruner.
+- `apps/web/src/app/api/admin/auto-blog/sync-gsc/route.ts`: (a) Added auth pre-check that returns specific error messages (key not set, key malformed, key missing required fields) with step-by-step fix instructions in the JSON response. (b) Switched URL map to use `normalizeGscUrl()` for both GSC URLs and `distributedUrl`. (c) Added diagnostic logging: logs sample URLs from both GSC and DB so mismatches are visible in Vercel logs. (d) Warns when GSC returns data but 0 URLs match DB rows.
+- `apps/web/src/inngest/functions/auto-blog.ts`: Updated pruner's GSC sync step (step 3) to use `normalizeGscUrl()` for the URL map key and the lookup. Same normalization as the manual sync endpoint.
+
+### Manual steps needed
+
+- [ ] **Set up GA4_SERVICE_ACCOUNT_KEY in Vercel** — see step-by-step instructions below (Keenan)
+- [ ] After setting the env var, redeploy on Vercel (or push a commit to trigger one)
+- [ ] Go to the admin blog dashboard and click "Sync GSC" — should now show real impressions/clicks
+- [ ] If it returns a 502 with `serviceAccountEmail`, add that email as a user in Google Search Console (Keenan)
+
+**Step-by-step: Create and configure the Google service account key**
+
+1. Go to Google Cloud Console → https://console.cloud.google.com
+2. Select or create a project (e.g., "Acuity Production")
+3. Enable these APIs: "Google Search Console API", "Web Search Indexing API"
+   - Go to APIs & Services → Library → search for each → click Enable
+4. Go to IAM & Admin → Service Accounts → Create Service Account
+   - Name: `acuity-gsc` (or any name)
+   - Click Create and Continue → skip optional permissions → Done
+5. Click the new service account → Keys tab → Add Key → Create New Key → JSON → Download
+6. Open the downloaded JSON file → copy the ENTIRE contents
+7. Go to Vercel → Project Settings → Environment Variables
+   - Name: `GA4_SERVICE_ACCOUNT_KEY`
+   - Value: paste the entire JSON contents (raw, not base64 encoded)
+   - Environments: Production (and optionally Preview)
+   - Click Save
+8. From the JSON, copy the `client_email` value (looks like `acuity-gsc@project-id.iam.gserviceaccount.com`)
+9. Go to Google Search Console → https://search.google.com/search-console
+   - Select property `sc-domain:getacuity.io`
+   - Settings → Users and permissions → Add user
+   - Email: paste the `client_email` from step 8
+   - Permission: Owner
+   - Click Add
+10. Trigger a Vercel redeploy (push a commit or redeploy from dashboard)
+11. Go to admin dashboard → Blog tab → click "Sync GSC" — should now return real data
+
+### Notes
+
+- The URL normalization is conservative: strip trailing slashes + lowercase. This handles the most common GSC/Next.js mismatch. If GSC returns completely different URL formats in the future, the diagnostic logging will make it immediately visible in Vercel logs.
+- The pruner at 3:00 AM UTC has been logging `auth_failure` to the `BlogPrunerRun` table every night since GSC was never configured. Once the key is set, those failures will stop and the pruner will start evaluating posts normally (still in dry-run mode by default).
+- Pre-existing TS errors in `sync-gsc/route.ts` and `auto-blog.ts` related to `ctr` field schema drift are unchanged.
+
+---
+
 ## [2026-05-21] — Emergency: disable AdLab auto-kill, fix pixel double-fire, harden signup email error handling
 
 **Requested by:** Keenan

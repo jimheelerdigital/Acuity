@@ -14,6 +14,14 @@ import { getGoogleAuthClient } from "./auth";
 const PROPERTY = "sc-domain:getacuity.io";
 const SCOPE = "https://www.googleapis.com/auth/webmasters.readonly";
 
+/**
+ * Normalize a URL for matching GSC data against stored distributedUrl values.
+ * GSC often returns trailing slashes; our DB stores URLs without them.
+ */
+export function normalizeGscUrl(url: string): string {
+  return url.replace(/\/+$/, "").toLowerCase();
+}
+
 export interface UrlPerformance {
   impressions: number;
   clicks: number;
