@@ -11,7 +11,7 @@ import { Step4Microphone } from "./step-4-microphone";
 import { Step5AiConsent } from "./step-5-ai-consent";
 import { Step5Practice } from "./step-5-practice";
 import { Step6MoodSlider } from "./step-6-mood-slider";
-import { Step7LifeAreas } from "./step-7-life-areas";
+import { Step9LifeMatrixBaselines } from "./step-9-life-matrix-baselines";
 import { Step8Trial } from "./step-8-trial";
 import { Step9Reminders } from "./step-9-reminders";
 
@@ -42,6 +42,15 @@ export interface OnboardingStep {
  *     consent 6, etc. Total: 11 → 12 steps. File `step-5-practice.tsx`
  *     and `step-9-reminders.tsx` keep their git-history filenames
  *     even though their positions shifted.
+ *   - 2026-05-21 (Phase C): step 9 "What matters most" (top-3 ranking
+ *     picker, `Step7LifeAreas`) replaced by step 9 "Life Matrix
+ *     baseline" (per-axis 0-100 carousel, `Step9LifeMatrixBaselines`).
+ *     New step takes over the shell chrome via
+ *     setHideShellChrome(true) and ships its own Continue/Back inside
+ *     a 10-axis carousel. Payload shape changes from
+ *     {lifeAreaPriorities:{...}} to {lifeAreaBaselines:{...}} —
+ *     server `/api/onboarding/update` accepts both during the
+ *     build-42 transition window.
  */
 export const ONBOARDING_STEPS: OnboardingStep[] = [
   { step: 1, title: "Welcome", Component: Step1Welcome },
@@ -52,7 +61,7 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
   { step: 6, title: "How Acuity uses AI", Component: Step5AiConsent },
   { step: 7, title: "Practice round", Component: Step5Practice },
   { step: 8, title: "Mood baseline", Component: Step6MoodSlider },
-  { step: 9, title: "What matters most", Component: Step7LifeAreas },
+  { step: 9, title: "Life Matrix baseline", Component: Step9LifeMatrixBaselines },
   { step: 10, title: "How the trial works", Component: Step8Trial },
   { step: 11, title: "Reminders", Component: Step9Reminders },
   { step: 12, title: "Ready when you are", Component: Step10Ready },

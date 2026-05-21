@@ -18,6 +18,17 @@ export interface OnboardingContextValue {
    *  step). Used by step components to rehydrate their local form
    *  state on remount, so back-nav doesn't wipe prior answers. */
   getCapturedData: (step: number) => Record<string, unknown> | null;
+  /** Hide the shell's Continue/Back footer for the current step.
+   *  Steps that ship their own internal Continue button (e.g. the
+   *  Phase C life-matrix baseline carousel which advances through
+   *  10 sub-axes) call setHideShellChrome(true) on mount and false
+   *  on unmount. */
+  setHideShellChrome: (hide: boolean) => void;
+  /** Programmatically trigger the shell's next-step routing. Steps
+   *  with their own internal Continue use this to advance the outer
+   *  flow after their own logic has captured the payload via
+   *  setCapturedData. */
+  goNext: () => void;
 }
 
 export const OnboardingContext = createContext<OnboardingContextValue | null>(

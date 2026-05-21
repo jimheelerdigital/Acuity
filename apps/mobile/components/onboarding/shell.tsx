@@ -66,6 +66,11 @@ export function OnboardingShell({
   const { tokens } = useTheme();
   const [canContinue, setCanContinue] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  // Phase C (2026-05-21): a step can opt out of the shell's
+  // Continue/Back footer when it ships its own internal navigation
+  // (e.g. the life-matrix baseline carousel that advances through
+  // 10 sub-axes inside a single onboarding step).
+  const [hideShellChrome, setHideShellChrome] = useState(false);
   // Per-step captured form state. Survives step remounts inside this
   // single shell instance so back-navigation (re-mounts the prior
   // step) can rehydrate fields from the user's earlier answers.
@@ -124,8 +129,18 @@ export function OnboardingShell({
     []
   );
 
+  // goNext defined below uses `persist` which depends on `step`; forward
+  // declare via a ref to keep the contextValue stable across renders.
+  const goNextRef = useRef<() => void>(() => {});
   const contextValue = useMemo<OnboardingContextValue>(
-    () => ({ step, setCanContinue, setCapturedData, getCapturedData }),
+    () => ({
+      step,
+      setCanContinue,
+      setCapturedData,
+      getCapturedData,
+      setHideShellChrome,
+      goNext: () => goNextRef.current(),
+    }),
     [step, setCapturedData, getCapturedData]
   );
 
@@ -176,6 +191,10 @@ export function OnboardingShell({
       router.replace(`/onboarding?step=${step + 1}`);
     }
   }, [persist, router, step, totalSteps]);
+
+  // Keep the ref pointed at the latest goNext so the contextValue's
+  // forwarder always invokes the current closure.
+  goNextRef.current = goNext;
 
   const goBack = useCallback(() => {
     if (step <= 1) return;
@@ -323,8 +342,11 @@ export function OnboardingShell({
               a dismiss-keyboard button. The ScrollView's
               keyboardShouldPersistTaps="handled" lets users tap
               outside any text input to dismiss. Per-step Skip
-              removed 2026-05-14 (see header comment for rationale). */}
-          {!keyboardOpen && (
+              removed 2026-05-14 (see header comment for rationale).
+              Phase C (2026-05-21): also hidden when the current step
+              opts out via setHideShellChrome(true) — steps with
+              internal sub-navigation own their own pill + back arrow. */}
+          {!keyboardOpen && !hideShellChrome && (
           <View
             style={{
               flexDirection: "row",

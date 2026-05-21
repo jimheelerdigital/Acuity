@@ -124,6 +124,94 @@ export async function POST(req: NextRequest) {
     onboardingUpdates.lifeAreaPriorities = cleaned;
   }
 
+  // Phase C (2026-05-21): lifeAreaBaselines is the new step-9 payload —
+  // per-axis 0-100 scores from the baseline-carousel UI. Server writes
+  // these directly to LifeMapArea rows. Build-42 binaries don't ship
+  // this UI, so they continue to send lifeAreaPriorities; both shapes
+  // coexist in the handler during the transition. Axes omitted from
+  // the payload (user skipped) get score100 = 50 (neutral midpoint)
+  // so the LifeMapArea row still exists and the radar isn't blank
+  // for that axis.
+  if (
+    raw.lifeAreaBaselines &&
+    typeof raw.lifeAreaBaselines === "object" &&
+    !Array.isArray(raw.lifeAreaBaselines)
+  ) {
+    const submitted: Record<string, number> = {};
+    for (const [k, v] of Object.entries(raw.lifeAreaBaselines)) {
+      if (!VALID_AREAS.includes(k)) continue;
+      const score = typeof v === "number" ? Math.round(v) : NaN;
+      if (!Number.isFinite(score) || score < 0 || score > 100) continue;
+      // Map V1 keys to canonical V2 (defensive — new mobile won't
+      // send V1, but the dual-shape acceptance pattern from
+      // lifeAreaPriorities is worth preserving).
+      const isV2 = (LIFE_AREAS as readonly string[]).includes(k);
+      const targetKey: string | null = isV2
+        ? k
+        : ((LIFE_AREA_LEGACY_MAP as Record<string, string | null>)[k] ?? null);
+      if (!targetKey) continue;
+      // If V1 and V2 keys both map to the same V2 target, prefer the
+      // user-supplied V2 value when present; otherwise take the V1.
+      // For Phase C carousel writes this is moot (mobile only emits
+      // V2) but keeps the handler safe under odd client behavior.
+      if (submitted[targetKey] === undefined || isV2) {
+        submitted[targetKey] = score;
+      }
+    }
+
+    // Build the per-axis upsert payload, including 50-default rows
+    // for canonical axes the user didn't submit. The full 10-axis
+    // set always gets written so the user's LifeMapArea is complete
+    // even if they skipped half the carousel.
+    const allAxisWrites = (LIFE_AREAS as readonly string[]).map((area) => ({
+      area,
+      score100: submitted[area] ?? 50,
+    }));
+
+    const { prisma: prismaForBaselines } = await import("@/lib/prisma");
+    // LifeMapArea has no @@unique([userId, area]) index (verified
+    // via pg_indexes in Phase D), so the canonical idempotent
+    // upsert isn't available — fall back to findFirst + create/
+    // update. Ten axes × one query = 10-20 sequential queries; fine
+    // for an onboarding-complete write.
+    for (const w of allAxisWrites) {
+      const existingRow = await prismaForBaselines.lifeMapArea.findFirst({
+        where: { userId, area: w.area },
+        select: { id: true },
+      });
+      const writeData = {
+        score: Math.max(1, Math.min(10, Math.round(w.score100 / 10))),
+        score100: w.score100,
+      };
+      if (existingRow) {
+        await prismaForBaselines.lifeMapArea.update({
+          where: { id: existingRow.id },
+          data: writeData,
+        });
+      } else {
+        await prismaForBaselines.lifeMapArea.create({
+          data: {
+            userId,
+            area: w.area,
+            ...writeData,
+          },
+        });
+      }
+    }
+
+    // Also mirror the user's submitted set into
+    // UserOnboarding.lifeAreaPriorities as a {AREA: 0-100} map —
+    // distinct from the legacy rank-1-6 map but stored in the same
+    // column for backward-readability. The column is Json so the
+    // shape is opaque to the schema; downstream readers don't
+    // currently use it for the new UI, but having it preserved as
+    // an audit trail of "what the user actually said at onboarding"
+    // beats a write-and-forget. Skipped axes are NOT in this map.
+    if (Object.keys(submitted).length > 0) {
+      onboardingUpdates.lifeAreaPriorities = submitted;
+    }
+  }
+
   if (typeof raw.microphoneGranted === "boolean") {
     onboardingUpdates.microphoneGranted = raw.microphoneGranted;
   }
