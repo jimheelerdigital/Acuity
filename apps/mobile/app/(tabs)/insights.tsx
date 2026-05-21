@@ -37,7 +37,7 @@ import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
 import { getCached, isStale, setCached } from "@/lib/cache";
 import { isFreeTierUser } from "@/lib/free-tier";
-import { moodToneColor } from "@/lib/mood-tones";
+import { moodToneColor } from "@/lib/tone-colors";
 import { fetchUserProgression } from "@/lib/userProgression";
 
 const INSIGHTS_ENTRIES_KEY = "/api/entries";

@@ -15,15 +15,16 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-import { PRIORITY_COLOR } from "@acuity/shared";
 import { GradientCheckbox } from "@/components/acuity";
 import { ProLockedCard } from "@/components/pro-locked-card";
 import { Skeleton, SkeletonCard } from "@/components/skeleton";
 import { Confetti } from "@/components/tasks/confetti";
 import { useAuth } from "@/contexts/auth-context";
+import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
 import { getCached, setCached } from "@/lib/cache";
 import { isFreeTierUser } from "@/lib/free-tier";
+import { priorityToneColor } from "@/lib/tone-colors";
 
 // Q8 — finish-day confetti throttle. AsyncStorage stores YYYY-MM-DD;
 // burst only fires when the stored value !== today.
@@ -104,6 +105,7 @@ function makeVisitSnapshot(list: Task[]): VisitSnapshot {
 export default function TasksTab() {
   const router = useRouter();
   const { user } = useAuth();
+  const { tokens } = useTheme();
   const isLocked = isFreeTierUser(user);
   const [tasks, setTasks] = useState<Task[]>(
     () => getCached<{ tasks: Task[] }>(TASKS_CACHE_KEY)?.tasks ?? []
@@ -447,8 +449,9 @@ export default function TasksTab() {
     // Six placeholder rows match the typical loaded layout footprint.
     return (
       <SafeAreaView
-        className="flex-1 bg-white dark:bg-[#0B0B12]"
+        className="flex-1"
         edges={["top"]}
+        style={{ backgroundColor: tokens.bg }}
       >
         <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
           <Skeleton width={120} height={28} radius={6} style={{ marginBottom: 6 }} />
@@ -473,8 +476,9 @@ export default function TasksTab() {
 
   return (
     <SafeAreaView
-      className="flex-1 bg-white dark:bg-[#0B0B12]"
+      className="flex-1"
       edges={["top"]}
+      style={{ backgroundColor: tokens.bg }}
     >
       <ScrollView
         contentContainerStyle={{ paddingTop: 4, paddingBottom: 32 }}
@@ -482,14 +486,15 @@ export default function TasksTab() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#7C3AED"
+            tintColor={tokens.primary}
           />
         }
       >
         <View className="px-5 pt-4 pb-2">
           <View className="flex-row items-baseline gap-2">
             <Text
-              className="text-4xl font-bold text-zinc-900 dark:text-zinc-50"
+              className="text-4xl font-bold"
+              style={{ color: tokens.text }}
               numberOfLines={1}
               adjustsFontSizeToFit
               minimumFontScale={0.75}
@@ -497,31 +502,39 @@ export default function TasksTab() {
               Tasks
             </Text>
             {grouped.open.length > 0 && (
-              <Text className="text-sm text-zinc-500 dark:text-zinc-400">
+              <Text className="text-sm" style={{ color: tokens.textSec }}>
                 {grouped.open.length} open
               </Text>
             )}
           </View>
-          <Text className="text-sm text-zinc-400 dark:text-zinc-500 mt-1">
+          <Text
+            className="text-sm mt-1"
+            style={{ color: tokens.textTer }}
+          >
             Tap the circle to complete, tap text to edit, long-press for more
           </Text>
         </View>
 
-        <View className="flex-row mx-5 mt-2 mb-3 rounded-xl bg-zinc-100 dark:bg-[#13131F] p-1">
+        <View
+          className="flex-row mx-5 mt-2 mb-3 rounded-xl p-1"
+          style={{ backgroundColor: tokens.bgInset }}
+        >
           {tabs.map((tab) => (
             <Pressable
               key={tab.key}
               onPress={() => setActiveTab(tab.key)}
-              className={`flex-1 rounded-lg py-2 items-center ${
-                activeTab === tab.key ? "bg-white dark:bg-[#1E1E2E]" : ""
-              }`}
+              className="flex-1 rounded-lg py-2 items-center"
+              style={{
+                backgroundColor:
+                  activeTab === tab.key ? tokens.cardBg : "transparent",
+              }}
             >
               <Text
-                className={`text-sm font-medium ${
-                  activeTab === tab.key
-                    ? "text-zinc-900 dark:text-zinc-50"
-                    : "text-zinc-500 dark:text-zinc-400"
-                }`}
+                className="text-sm font-medium"
+                style={{
+                  color:
+                    activeTab === tab.key ? tokens.text : tokens.textSec,
+                }}
               >
                 {tab.label}
                 {tab.count > 0 ? ` ${tab.count}` : ""}
@@ -618,23 +631,26 @@ const GroupSection = memo(function GroupSection({
   onLongPress: (task: Task) => void;
   onOpenEditor: (task: Task) => void;
 }) {
+  const { tokens } = useTheme();
   return (
     <View>
+      {/* Q11c.3: group.color (server-side task-group data color) no
+          longer drives the group header tint. Switched to tokens.primary
+          for palette consistency (same convention as Q11a-1 area pill,
+          Q11c-1 goals group headers, Q11c-2 insights area-detail
+          stripe). The group.color field stays in the API response;
+          we just stop reading it for mobile chrome. */}
       <Pressable
         onPress={() => onToggle(group.id)}
-        // Stronger group separator (2026-04-28): bumped vertical pad
-        // 8 → 14, added a top hairline and a bottom accent in the
-        // group's color so each section reads as its own block. Was
-        // a flat strip that blended into the rows below.
         style={{
           marginTop: 16,
           marginBottom: 6,
           paddingHorizontal: 16,
           paddingVertical: 10,
           borderTopWidth: 0.5,
-          borderTopColor: "rgba(161,161,170,0.18)",
+          borderTopColor: tokens.line,
           borderBottomWidth: 1,
-          borderBottomColor: `${group.color}33`,
+          borderBottomColor: `${tokens.primary}33`,
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-between",
@@ -646,8 +662,8 @@ const GroupSection = memo(function GroupSection({
               width: 9,
               height: 9,
               borderRadius: 999,
-              backgroundColor: group.color,
-              shadowColor: group.color,
+              backgroundColor: tokens.primary,
+              shadowColor: tokens.primary,
               shadowOpacity: 0.6,
               shadowRadius: 6,
               shadowOffset: { width: 0, height: 0 },
@@ -656,7 +672,7 @@ const GroupSection = memo(function GroupSection({
           <Ionicons
             name={group.icon as never}
             size={14}
-            color={group.color}
+            color={tokens.primary}
           />
           <Text
             style={{
@@ -664,19 +680,25 @@ const GroupSection = memo(function GroupSection({
               fontWeight: "700",
               letterSpacing: 1.6,
               textTransform: "uppercase",
-              color: "#E4E4E7",
+              color: tokens.text,
             }}
           >
             {group.name}
           </Text>
-          <Text style={{ fontSize: 13, color: "rgba(168,168,180,0.6)", fontWeight: "500" }}>
+          <Text
+            style={{
+              fontSize: 13,
+              color: tokens.textTer,
+              fontWeight: "500",
+            }}
+          >
             {tasks.length}
           </Text>
         </View>
         <Ionicons
           name={collapsed ? "chevron-forward" : "chevron-down"}
           size={16}
-          color="#A1A1AA"
+          color={tokens.textTer}
         />
       </Pressable>
       {!collapsed &&
@@ -688,7 +710,7 @@ const GroupSection = memo(function GroupSection({
                 ? undefined
                 : {
                     borderTopWidth: 1,
-                    borderTopColor: "rgba(161,161,170,0.12)",
+                    borderTopColor: tokens.line,
                   }
             }
           >
@@ -719,9 +741,15 @@ const TaskRow = memo(
     onLongPress: (task: Task) => void;
     onOpenEditor: (task: Task) => void;
   }) {
+    const { tokens } = useTheme();
     const label = task.title ?? task.text ?? "Untitled task";
     const isDone = task.status === "DONE";
-    const priorityColor = PRIORITY_COLOR[task.priority] ?? "#71717A";
+    // Q11c.3: PRIORITY_COLOR (per-priority hex from @acuity/shared)
+    // resolved via priorityToneColor() so the chip tints with palette
+    // tokens. The shared constant stays in @acuity/shared as data
+    // (web consumers may still want the original hues); mobile no
+    // longer reads from it directly.
+    const priorityColor = priorityToneColor(task.priority, tokens);
     const showPriorityChip =
       task.priority === "URGENT" || task.priority === "HIGH";
     const dueDate = task.dueDate
@@ -767,12 +795,8 @@ const TaskRow = memo(
               fontSize: 16,
               lineHeight: 22,
               textDecorationLine: isDone ? "line-through" : "none",
+              color: isDone ? tokens.textTer : tokens.text,
             }}
-            className={
-              isDone
-                ? "text-zinc-400 dark:text-zinc-500"
-                : "text-zinc-800 dark:text-zinc-100"
-            }
           >
             {label}
           </Text>
@@ -781,7 +805,7 @@ const TaskRow = memo(
               {showPriorityChip && (
                 <View
                   className="rounded-full px-2 py-0.5"
-                  style={{ backgroundColor: priorityColor + "20" }}
+                  style={{ backgroundColor: `${priorityColor}20` }}
                 >
                   <Text
                     style={{
@@ -794,6 +818,11 @@ const TaskRow = memo(
                   </Text>
                 </View>
               )}
+              {/* Due-date label uses the warning-amber non-palette
+                  accent (same convention as ON_HOLD goals + HIGH
+                  priority + LOW mood + Q8 confetti). The amber
+                  reads as "attention needed" without competing
+                  with palette tokens. */}
               {dueDate && (
                 <Text className="text-xs text-amber-500">Due {dueDate}</Text>
               )}
@@ -816,6 +845,7 @@ const TaskRow = memo(
 // only; toggle behavior unchanged.
 
 function EmptyState({ tab, isLocked }: { tab: Tab; isLocked: boolean }) {
+  const { tokens } = useTheme();
   // §B.2.4 — FREE post-trial users on the open tab see the
   // ProLockedCard variant. Other tabs (snoozed/completed) keep the
   // generic empty state since they're not the primary conversion
@@ -848,11 +878,17 @@ function EmptyState({ tab, isLocked }: { tab: Tab; isLocked: boolean }) {
 
   return (
     <View className="mt-20 items-center">
-      <Ionicons name={config.icon} size={48} color="#52525B" />
-      <Text className="text-base font-semibold text-zinc-600 dark:text-zinc-300 mt-3">
+      <Ionicons name={config.icon} size={48} color={tokens.textQuiet} />
+      <Text
+        className="text-base font-semibold mt-3"
+        style={{ color: tokens.textSec }}
+      >
         {config.title}
       </Text>
-      <Text className="text-sm text-zinc-500 dark:text-zinc-400 mt-1 text-center px-8">
+      <Text
+        className="text-sm mt-1 text-center px-8"
+        style={{ color: tokens.textTer }}
+      >
         {config.desc}
       </Text>
     </View>
