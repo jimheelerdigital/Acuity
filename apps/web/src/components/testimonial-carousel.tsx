@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 
 /* ═══════════════════════════════════════════════════
@@ -195,7 +196,7 @@ function TestimonialCard({ testimonial: t }: { testimonial: CarouselTestimonial 
       </blockquote>
       <div className="flex items-center gap-2">
         {t.imageSrc ? (
-          <img src={t.imageSrc} alt={t.name} className="h-7 w-7 rounded-full object-cover" />
+          <Image src={t.imageSrc} alt={t.name} width={28} height={28} className="h-7 w-7 rounded-full object-cover" loading="lazy" />
         ) : (
           <div className={`flex h-7 w-7 items-center justify-center rounded-full ${t.bgColor} text-[9px] font-bold text-white`}>
             {t.initials}

@@ -41,6 +41,33 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-21] — Site-wide image optimization + performance verification
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** TBD
+
+### In plain English (for Keenan)
+
+Replaced raw image tags with Next.js optimized images across landing pages and testimonial carousels — enables automatic WebP conversion, lazy loading, and responsive sizing. Verified all performance fixes from today are working: Meta Pixel deferred, cookie banner delayed 5s, GA4 unconditional, dynamic landing pages SSR'd.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/components/testimonial-carousel.tsx`: Replaced `<img>` with `<Image>` from next/image for testimonial avatars. Added `loading="lazy"`, explicit width/height (28x28).
+- `apps/web/src/components/landing-shared.tsx`: Same fix for testimonial images in the TestimonialsSection component (40x40).
+
+### Manual steps needed
+
+- [ ] Verify testimonial images still render correctly on homepage and landing pages (Keenan)
+
+### Notes
+
+- Build output shows shared JS at 87.9KB, which is normal for a Next.js 14 app with NextAuth + Prisma. The landing page first-load JS (118-122KB) is dominated by the shared chunk — the page-specific code is only 3-7KB.
+- Static `/for/` pages (founders, therapy, etc.) are still `"use client"` but are pre-rendered at build time (○ Static in build output). Converting them to server components would require rewriting 5 unique 400+ line pages — left for a future optimization pass.
+- The biggest performance wins from today were: SSR for dynamic landing pages (eliminated blank screen), deferred Meta Pixel (unblocked first paint), removed email verification wall (eliminated signup friction), and deferred cookie banner (content visible first).
+
+---
+
 ## [2026-05-21] — Rebuild AdLab decision engine with validation-phase thresholds
 
 **Requested by:** Keenan

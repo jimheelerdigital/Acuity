@@ -1120,7 +1120,7 @@ export function TestimonialsSection({
                 </blockquote>
                 <figcaption className="mt-5 flex items-center gap-3">
                   {t.imageSrc ? (
-                    <img src={t.imageSrc} alt={t.name} className="h-10 w-10 rounded-full object-cover" />
+                    <Image src={t.imageSrc} alt={t.name} width={40} height={40} className="h-10 w-10 rounded-full object-cover" loading="lazy" />
                   ) : (
                     <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#252220] text-sm font-bold text-[#A0A0B8] transition-colors group-hover:bg-[#7C5CFC]/20 group-hover:text-[#7C5CFC]">
                       {t.name[0]}
