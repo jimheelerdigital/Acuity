@@ -3,6 +3,25 @@ import type { Mood, Priority } from "@acuity/shared";
 import type { AcuityTokens } from "@/lib/theme/tokens";
 
 /**
+ * WARN_AMBER — single source of truth for the warning-amber accent
+ * that surfaces across the app for ON_HOLD goals, HIGH priority,
+ * LOW mood, the State of Me "Quarterly" eyebrow, task due-date
+ * labels, the entries PARTIAL badge, the delete-account PRO
+ * warning, and the auth dev-warning text.
+ *
+ * The palette ships primary/secondary/good/bad but no warning-amber
+ * token. Rather than re-declare "#FBBF24" at every call site,
+ * helpers + screens import this constant. If product ever adds a
+ * tokens.warning or tokens.amber, swap the value here and every
+ * surface updates atomically.
+ *
+ * Q11 Phase E.1b (2026-05-21): lifted from
+ * delete-account-modal.tsx after the same value had accumulated
+ * across 6+ unrelated files.
+ */
+export const WARN_AMBER = "#FBBF24";
+
+/**
  * Semantic tone names used across the per-key tone resolvers.
  * Each tone maps to a palette token (or the canonical amber
  * warning hex). Keeps the key-to-color mapping logic centralized.
@@ -31,7 +50,7 @@ export function toneColor(tone: StatusTone, tokens: AcuityTokens): string {
     case "accent":
       return tokens.primary;
     case "warning":
-      return "#FBBF24";
+      return WARN_AMBER;
     case "quiet":
       return tokens.textQuiet;
     case "muted":
@@ -169,7 +188,7 @@ export function moodToneColor(
     case "GOOD":
       return tokens.good;
     case "LOW":
-      return "#FBBF24";
+      return WARN_AMBER;
     case "ROUGH":
       return tokens.bad;
     case "NEUTRAL":
@@ -208,7 +227,7 @@ export function priorityToneColor(
     case "URGENT":
       return tokens.bad;
     case "HIGH":
-      return "#FBBF24";
+      return WARN_AMBER;
     case "MEDIUM":
       return tokens.textSec;
     case "LOW":

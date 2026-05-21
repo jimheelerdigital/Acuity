@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useTheme } from "@/contexts/theme-context";
+import { WARN_AMBER } from "@/lib/tone-colors";
 
 /**
  * Type-to-confirm account deletion modal. The destructive button only
@@ -68,12 +69,6 @@ export function DeleteAccountModal({
   const [confirmText, setConfirmText] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Q11e-1: warning amber for the PRO subscription forfeiture
-  // section. Same exception convention as ON_HOLD goals,
-  // Q11c-2 State of Me eyebrow, Q11c-3 due dates, Q11c-4 PARTIAL
-  // badge, Q8 confetti — palette has primary/secondary/good/bad
-  // but no warning-amber token.
-  const WARN_AMBER = "#FBBF24";
 
   // Reset every time the modal is opened so a re-open after a cancel
   // doesn't show stale state.

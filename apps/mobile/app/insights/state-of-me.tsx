@@ -5,6 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { StickyBackButton } from "@/components/back-button";
 import { useTheme } from "@/contexts/theme-context";
+import { WARN_AMBER } from "@/lib/tone-colors";
 
 export default function StateOfMeScreen() {
   const router = useRouter();
@@ -33,7 +34,7 @@ export default function StateOfMeScreen() {
             fontWeight: "600",
             textTransform: "uppercase",
             letterSpacing: 2,
-            color: "#FBBF24",
+            color: WARN_AMBER,
             marginBottom: 12,
           }}
         >

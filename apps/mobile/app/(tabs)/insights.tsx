@@ -37,7 +37,7 @@ import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
 import { getCached, isStale, setCached } from "@/lib/cache";
 import { isFreeTierUser } from "@/lib/free-tier";
-import { moodToneColor } from "@/lib/tone-colors";
+import { moodToneColor, WARN_AMBER } from "@/lib/tone-colors";
 import { fetchUserProgression } from "@/lib/userProgression";
 
 const INSIGHTS_ENTRIES_KEY = "/api/entries";
@@ -710,7 +710,7 @@ export default function InsightsTab() {
                 Every 90 days — a long-form read across the quarter.
               </Text>
             </View>
-            <Ionicons name="chevron-forward" size={18} color="#FBBF24" />
+            <Ionicons name="chevron-forward" size={18} color={WARN_AMBER} />
           </View>
         </Pressable>
 
