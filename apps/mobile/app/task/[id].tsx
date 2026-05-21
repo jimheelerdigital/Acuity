@@ -49,8 +49,7 @@ const PRIORITIES = ["URGENT", "HIGH", "MEDIUM", "LOW"] as const;
 export default function TaskEditScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { resolved } = useTheme();
-  const isDark = resolved === "dark";
+  const { tokens } = useTheme();
 
   // Cache-first hydrate: when the user is opening the editor from the
   // Tasks tab, the tasks + groups lists have already been fetched and
@@ -194,23 +193,31 @@ export default function TaskEditScreen() {
 
   return (
     <SafeAreaView
-      className="flex-1 bg-white dark:bg-[#0B0B12]"
+      className="flex-1"
       edges={["top"]}
+      style={{ backgroundColor: tokens.bg }}
     >
-      <View className="flex-row items-center justify-between px-5 pt-2 pb-3 border-b border-zinc-100 dark:border-white/5">
+      <View
+        className="flex-row items-center justify-between px-5 pt-2 pb-3 border-b"
+        style={{ borderColor: tokens.line }}
+      >
         <Pressable onPress={() => router.back()} hitSlop={10}>
-          <Text className="text-sm text-zinc-500 dark:text-zinc-400">Cancel</Text>
+          <Text className="text-sm" style={{ color: tokens.textSec }}>
+            Cancel
+          </Text>
         </Pressable>
-        <Text className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
+        <Text
+          className="text-base font-semibold"
+          style={{ color: tokens.text }}
+        >
           Task details
         </Text>
         <Pressable onPress={save} disabled={saving || loading} hitSlop={10}>
           <Text
-            className={`text-sm font-semibold ${
-              saving || loading
-                ? "text-zinc-400 dark:text-zinc-600"
-                : "text-violet-600 dark:text-violet-400"
-            }`}
+            className="text-sm font-semibold"
+            style={{
+              color: saving || loading ? tokens.textTer : tokens.primary,
+            }}
           >
             {saving ? "Saving…" : "Save"}
           </Text>
@@ -219,7 +226,7 @@ export default function TaskEditScreen() {
 
       {loading ? (
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color="#7C3AED" />
+          <ActivityIndicator color={tokens.primary} />
         </View>
       ) : (
         <KeyboardAvoidingView
@@ -228,19 +235,30 @@ export default function TaskEditScreen() {
         >
           <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }}>
             {/* Title */}
-            <Text className="text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+            <Text
+              className="text-xs font-medium mb-1"
+              style={{ color: tokens.textSec }}
+            >
               Title
             </Text>
             <TextInput
               value={title}
               onChangeText={setTitle}
-              selectionColor="#7C3AED"
-              className="rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#13131F] px-3 py-2.5 text-sm text-zinc-900 dark:text-zinc-50 mb-4"
-              style={{ minHeight: 42 }}
+              selectionColor={tokens.primary}
+              className="rounded-lg border px-3 py-2.5 text-sm mb-4"
+              style={{
+                borderColor: tokens.line,
+                backgroundColor: tokens.bgInset,
+                color: tokens.text,
+                minHeight: 42,
+              }}
             />
 
             {/* Description */}
-            <Text className="text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+            <Text
+              className="text-xs font-medium mb-1"
+              style={{ color: tokens.textSec }}
+            >
               Description
             </Text>
             <TextInput
@@ -248,13 +266,22 @@ export default function TaskEditScreen() {
               onChangeText={setDescription}
               multiline
               numberOfLines={3}
-              selectionColor="#7C3AED"
-              className="rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#13131F] px-3 py-2.5 text-sm text-zinc-900 dark:text-zinc-50 mb-4"
-              style={{ minHeight: 80, textAlignVertical: "top" }}
+              selectionColor={tokens.primary}
+              className="rounded-lg border px-3 py-2.5 text-sm mb-4"
+              style={{
+                borderColor: tokens.line,
+                backgroundColor: tokens.bgInset,
+                color: tokens.text,
+                minHeight: 80,
+                textAlignVertical: "top",
+              }}
             />
 
             {/* Priority chips */}
-            <Text className="text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1.5">
+            <Text
+              className="text-xs font-medium mb-1.5"
+              style={{ color: tokens.textSec }}
+            >
               Priority
             </Text>
             <View className="flex-row gap-2 mb-4">
@@ -266,25 +293,16 @@ export default function TaskEditScreen() {
                     onPress={() => setPriority(p)}
                     className="flex-1 rounded-lg py-2 items-center"
                     style={{
-                      backgroundColor: active
-                        ? "#7C3AED"
-                        : isDark
-                          ? "#13131F"
-                          : "#F4F4F5",
+                      backgroundColor: active ? tokens.primary : tokens.bgInset,
                       borderWidth: 1,
-                      borderColor: active
-                        ? "#7C3AED"
-                        : isDark
-                          ? "rgba(255,255,255,0.08)"
-                          : "#E4E4E7",
+                      borderColor: active ? tokens.primary : tokens.line,
                     }}
                   >
                     <Text
-                      className={`text-xs font-semibold ${
-                        active
-                          ? "text-white"
-                          : "text-zinc-700 dark:text-zinc-200"
-                      }`}
+                      className="text-xs font-semibold"
+                      style={{
+                        color: active ? "#FFFFFF" : tokens.textSec,
+                      }}
                     >
                       {p}
                     </Text>
@@ -296,22 +314,36 @@ export default function TaskEditScreen() {
             {/* Due date — simple YYYY-MM-DD text input. A native date
                 picker is nicer but needs @react-native-community/datetimepicker
                 which isn't in the bundle; this ships with what's here. */}
-            <Text className="text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+            <Text
+              className="text-xs font-medium mb-1"
+              style={{ color: tokens.textSec }}
+            >
               Due date (optional, YYYY-MM-DD)
             </Text>
             <TextInput
               value={due}
               onChangeText={setDue}
               placeholder="YYYY-MM-DD"
-              placeholderTextColor="#A1A1AA"
+              placeholderTextColor={tokens.textTer}
               autoCapitalize="none"
               autoCorrect={false}
-              className="rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#13131F] px-3 py-2.5 text-sm text-zinc-900 dark:text-zinc-50 mb-4"
-              style={{ minHeight: 42 }}
+              className="rounded-lg border px-3 py-2.5 text-sm mb-4"
+              style={{
+                borderColor: tokens.line,
+                backgroundColor: tokens.bgInset,
+                color: tokens.text,
+                minHeight: 42,
+              }}
             />
 
-            {/* Group picker */}
-            <Text className="text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1.5">
+            {/* Group picker. Q11d-2: group.color (server task-group
+                data color) no longer drives mobile chrome; uses
+                tokens.primary uniformly for the active state. Same
+                convention as Q11c-3 GroupSection. */}
+            <Text
+              className="text-xs font-medium mb-1.5"
+              style={{ color: tokens.textSec }}
+            >
               Group
             </Text>
             <View className="flex-row flex-wrap gap-2">
@@ -320,14 +352,9 @@ export default function TaskEditScreen() {
                 className="rounded-lg px-3 py-2 flex-row items-center gap-2"
                 style={{
                   backgroundColor:
-                    groupId === null ? "rgba(161,161,170,0.22)" : "transparent",
+                    groupId === null ? `${tokens.textTer}33` : "transparent",
                   borderWidth: 1,
-                  borderColor:
-                    groupId === null
-                      ? "#A1A1AA"
-                      : isDark
-                        ? "rgba(255,255,255,0.08)"
-                        : "#E4E4E7",
+                  borderColor: groupId === null ? tokens.textTer : tokens.line,
                 }}
               >
                 <View
@@ -335,10 +362,13 @@ export default function TaskEditScreen() {
                     width: 8,
                     height: 8,
                     borderRadius: 4,
-                    backgroundColor: "#A1A1AA",
+                    backgroundColor: tokens.textTer,
                   }}
                 />
-                <Text className="text-xs text-zinc-700 dark:text-zinc-200">
+                <Text
+                  className="text-xs"
+                  style={{ color: tokens.textSec }}
+                >
                   Ungrouped
                 </Text>
               </Pressable>
@@ -351,14 +381,10 @@ export default function TaskEditScreen() {
                     className="rounded-lg px-3 py-2 flex-row items-center gap-2"
                     style={{
                       backgroundColor: active
-                        ? g.color + "22"
+                        ? `${tokens.primary}22`
                         : "transparent",
                       borderWidth: 1,
-                      borderColor: active
-                        ? g.color
-                        : isDark
-                          ? "rgba(255,255,255,0.08)"
-                          : "#E4E4E7",
+                      borderColor: active ? tokens.primary : tokens.line,
                     }}
                   >
                     <View
@@ -366,10 +392,13 @@ export default function TaskEditScreen() {
                         width: 8,
                         height: 8,
                         borderRadius: 4,
-                        backgroundColor: g.color,
+                        backgroundColor: tokens.primary,
                       }}
                     />
-                    <Text className="text-xs text-zinc-700 dark:text-zinc-200">
+                    <Text
+                      className="text-xs"
+                      style={{ color: tokens.textSec }}
+                    >
                       {g.name}
                     </Text>
                   </Pressable>
@@ -404,9 +433,13 @@ export default function TaskEditScreen() {
                   ]
                 );
               }}
-              className="mt-8 rounded-lg py-3 items-center border border-red-500/40"
+              className="mt-8 rounded-lg py-3 items-center border"
+              style={{ borderColor: `${tokens.bad}66` }}
             >
-              <Text className="text-sm font-medium text-red-500">
+              <Text
+                className="text-sm font-medium"
+                style={{ color: tokens.bad }}
+              >
                 Delete task
               </Text>
             </Pressable>
