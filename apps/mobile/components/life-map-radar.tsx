@@ -1,3 +1,4 @@
+import { Text, View } from "react-native";
 import {
   Circle,
   Defs,
@@ -60,12 +61,22 @@ import { DEFAULT_LIFE_AREAS, type LifeArea } from "@acuity/shared";
  * 340pt overflows the iPhone 16e content area (375 − 40pt padding =
  * 335pt). Per-label fontSize keeps the radar inside its container.
  *
- * Polygon vertex minimum: score=0 vertices used to coincide at the
- * centroid, producing a pinwheel of spikes from each non-zero vertex
- * back through center. MIN_VISUAL_SCORE (5 / 100) floors the polygon
- * vertex radius + node dot to ~5.9pt inner ring so the shape stays
- * continuous even when many axes are at zero. Displayed numerals
- * stay at the actual underlying score.
+ * Empty-axis honesty (Phase D polish 2, 2026-05-21): axes with score=0
+ * or no measurement are NOT drawn as polygon vertices and NOT given
+ * colored dots. The previous MIN_VISUAL_SCORE inner-ring floor was
+ * abandoned — it fabricated shape information we don't have, and
+ * produced a cluttered "clot" of dots near center. The new treatment:
+ *
+ *   - Populated axes (score > 0): rendered into the polygon path,
+ *     filled palette dot at vertex, label in labelColor, numeric value.
+ *   - Empty axes (score = 0 or missing): NOT in polygon path, hollow
+ *     ring at the outer-100% radius, muted label (mutedLabelColor at
+ *     ~0.5 opacity), "—" instead of "0" as the value.
+ *   - All-empty state: polygon doesn't render at all; a helper hint
+ *     ("Record an entry…") renders below the SVG if emptyHint prop set.
+ *
+ * The polygon now closes only across populated axes. Smaller and more
+ * irregular for new users, but it tells the truth.
  */
 
 export interface RadarArea {
@@ -91,17 +102,13 @@ function resolveScore100(area: RadarArea | undefined): number | null {
 }
 
 /**
- * Minimum polygon vertex radius (as a fraction of maxR). At maxR≈118pt
- * this yields ~5.9pt inner radius — small enough to stay inside the
- * innermost grid ring (~23.7pt at 20%) but large enough that the
- * polygon's continuous shape is visible even when many axes are at 0.
- * Used by both the polygon and node-dot radii so they coincide.
+ * An axis is "populated" when its score has a positive measurement.
+ * Score 0 or null both mean "no signal" — extraction either hasn't
+ * fired yet or detected no mention. Either way, we don't draw shape
+ * for it. See empty-axis treatment in the component docblock.
  */
-const MIN_VISUAL_SCORE = 5;
-
-function polygonVertexRadius(score100: number | null, maxR: number): number {
-  const floored = Math.max(score100 ?? 0, MIN_VISUAL_SCORE);
-  return (floored / 100) * maxR;
+function isPopulated(score100: number | null): boolean {
+  return score100 !== null && score100 > 0;
 }
 
 interface PolishProps {
@@ -123,9 +130,13 @@ interface PolishProps {
 interface Props extends PolishProps {
   areas: RadarArea[];
   size?: number;
-  /** Axis labels + score text tint. Pass dark/light per theme. */
+  /** Populated-axis label + score text tint. Pass dark/light per theme. */
   labelColor?: string;
   scoreColor?: string;
+  /** Empty-axis label tint (rendered at 0.5 opacity). Defaults to
+   *  labelColor — caller should pass a more tertiary token (e.g.
+   *  tokens.textTer) for the muted state. */
+  mutedLabelColor?: string;
   /** Grid ring + spoke stroke. */
   gridColor?: string;
   /** Center "You" dot + label. */
@@ -140,6 +151,12 @@ interface Props extends PolishProps {
    *  grey overlay polygon behind the current polygon. Null per-area
    *  values fall back to the current score (zero-delta for that axis). */
   trendAreas?: Array<{ area: string; score: number | null }>;
+  /** When ALL axes are empty (no measurement anywhere), this string
+   *  renders as a small line below the SVG. Hidden on any populated
+   *  state; omitted entirely when prop unset. */
+  emptyHint?: string;
+  /** Font family for emptyHint. Defaults to system. */
+  emptyHintFontFamily?: string;
 }
 
 export function LifeMapRadar({
@@ -147,6 +164,7 @@ export function LifeMapRadar({
   size = 300,
   labelColor = "#71717A",
   scoreColor = "#A1A1AA",
+  mutedLabelColor,
   gridColor = "#E4E4E7",
   centerLabelColor = "#18181B",
   onAreaPress,
@@ -156,7 +174,13 @@ export function LifeMapRadar({
   labelFontFamily,
   scoreFontFamily,
   nodeStrokeColor = "white",
+  emptyHint,
+  emptyHintFontFamily,
 }: Props) {
+  // Default muted color falls back to populated labelColor when caller
+  // doesn't supply a distinct one. Empty-axis opacity (0.5) is applied
+  // at the SVG element so the same hex still works for either token.
+  const resolvedMutedLabelColor = mutedLabelColor ?? labelColor;
   const cx = size / 2;
   const cy = size / 2;
   // Leave enough margin for axis labels + score text below each node.
@@ -175,46 +199,57 @@ export function LifeMapRadar({
     };
   };
 
-  // Data polygon. Score lookup keys on .area so the API response
+  // Per-axis score resolution + populated flag — computed once and
+  // reused across polygon construction, trend overlay, and per-axis
+  // render block. Score lookup keys on .area so the API response
   // (uppercase enum value like "CAREER") matches DEFAULT_LIFE_AREAS.enum.
-  // Vertex radius is floored at MIN_VISUAL_SCORE so a zero-axis user
-  // sees a continuous inner-ring shape, not center-collapsed spikes.
-  const polyPoints = areaConfigs
-    .map((config, i) => {
-      const area = areas.find(
-        (a) => a.area === config.enum || a.area === config.name
-      );
-      const score100 = resolveScore100(area);
-      const p = getPoint(i, polygonVertexRadius(score100, maxR));
-      return `${p.x},${p.y}`;
-    })
-    .join(" ");
+  const perAxis = areaConfigs.map((config, i) => {
+    const area = areas.find(
+      (a) => a.area === config.enum || a.area === config.name
+    );
+    const score100 = resolveScore100(area);
+    const populated = isPopulated(score100);
+    return { config, i, area, score100, populated };
+  });
 
-  // Trend overlay — per-axis ~4-weeks-ago score. Null = no data for
-  // that axis, collapse to the current score so the polygon remains
-  // closed (no weird zero-collapse toward center).
-  //
-  // Trend data still uses the legacy 1-10 `score` shape (history
-  // table predates Slice N). Convert to 0-100 via *10 for the
-  // polygon math. Same minimum-visual floor as the current polygon.
-  const trendPolyPoints = trendAreas
-    ? areaConfigs
-        .map((config, i) => {
-          const t = trendAreas.find((ta) => ta.area === config.enum);
-          const current = areas.find(
-            (a) => a.area === config.enum || a.area === config.name
-          );
-          const score100 =
-            t?.score != null
-              ? Math.max(0, Math.min(100, t.score * 10))
-              : current
-                ? (resolveScore100(current) ?? 0)
-                : 0;
-          const p = getPoint(i, polygonVertexRadius(score100, maxR));
-          return `${p.x},${p.y}`;
-        })
-        .join(" ")
-    : null;
+  // Data polygon — only includes populated axes. Closes the path
+  // across whatever's measured. If fewer than 2 axes are populated,
+  // a polygon shape isn't meaningful, so we skip rendering it.
+  const populatedAxes = perAxis.filter((a) => a.populated);
+  const polyPoints =
+    populatedAxes.length >= 2
+      ? populatedAxes
+          .map((a) => {
+            const r = ((a.score100 ?? 0) / 100) * maxR;
+            const p = getPoint(a.i, r);
+            return `${p.x},${p.y}`;
+          })
+          .join(" ")
+      : null;
+
+  // Trend overlay — per-axis ~4-weeks-ago score. Same populated-only
+  // filter so the dashed shape doesn't fabricate trend data for axes
+  // that had no measurement then. Trend data still uses the legacy
+  // 1-10 `score` shape (history table predates Slice N); converted
+  // to 0-100 via *10. Falls back to current score when trend null
+  // (zero-delta for that axis).
+  const trendPolyPoints = (() => {
+    if (!trendAreas) return null;
+    const points: string[] = [];
+    for (const { config, i, score100: currentScore } of perAxis) {
+      const t = trendAreas.find((ta) => ta.area === config.enum);
+      const trendScore =
+        t?.score != null
+          ? Math.max(0, Math.min(100, t.score * 10))
+          : (currentScore ?? 0);
+      if (trendScore <= 0) continue;
+      const p = getPoint(i, (trendScore / 100) * maxR);
+      points.push(`${p.x},${p.y}`);
+    }
+    return points.length >= 2 ? points.join(" ") : null;
+  })();
+
+  const allEmpty = populatedAxes.length === 0;
 
   // Q7 polish — palette gradient on the data polygon when caller
   // supplies endpoint colors. Stable id (one radar per Insights tab
@@ -222,7 +257,7 @@ export function LifeMapRadar({
   const polyFill = gradientColors ? "url(#lifemap-poly-fill)" : "#7C3AED";
   const polyStroke = gradientColors ? "url(#lifemap-poly-stroke)" : "#7C3AED";
 
-  return (
+  const svg = (
     <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
       {gradientColors && (
         <Defs>
@@ -307,29 +342,28 @@ export function LifeMapRadar({
         />
       )}
 
-      {/* Data polygon — palette gradient when caller passes
-          gradientColors (Q7 polish); falls back to the legacy
-          violet for any consumer still on the old props. */}
-      <Polygon
-        points={polyPoints}
-        fill={polyFill}
-        fillOpacity={gradientColors ? 1 : 0.12}
-        stroke={polyStroke}
-        strokeWidth={1.5}
-      />
+      {/* Data polygon — only rendered when 2+ axes are populated.
+          Palette gradient when caller passes gradientColors (Q7 polish);
+          falls back to legacy violet for old consumers. The polygon
+          only spans populated vertices, so its shape is irregular for
+          mid-history users and absent for brand-new ones. */}
+      {polyPoints && (
+        <Polygon
+          points={polyPoints}
+          fill={polyFill}
+          fillOpacity={gradientColors ? 1 : 0.12}
+          stroke={polyStroke}
+          strokeWidth={1.5}
+        />
+      )}
 
       {/* Area nodes + axis labels. Each axis is tappable via its own
           G wrapper so the touch target covers the node + label + score
           text in one hit — fingers don't hit a 4px SVG circle.
-          Node radius shares the polygon's MIN_VISUAL_SCORE floor so
-          the dot sits at the same place as the polygon vertex even
-          when the underlying score is 0. */}
-      {areaConfigs.map((config, i) => {
-        const area = areas.find(
-          (a) => a.area === config.enum || a.area === config.name
-        );
-        const score100 = resolveScore100(area);
-        const nodeP = getPoint(i, polygonVertexRadius(score100, maxR));
+          Populated axes get a filled palette dot at their vertex
+          radius; empty axes get a hollow ring at the outer 100% radius
+          + muted label + "—" value. */}
+      {perAxis.map(({ config, i, score100, populated }) => {
         const labelP = getPoint(i, maxR + size * 0.06);
         const isSelected =
           selectedAreaKey !== null &&
@@ -346,6 +380,51 @@ export function LifeMapRadar({
         // of the SVG edge at size=320 (see docblock geometry math).
         const labelFontSize = labelText.length >= 7 ? 11 : 12;
 
+        if (!populated) {
+          // Empty axis — hollow ring at outer 100% radius, muted label
+          // at 0.5 opacity, "—" instead of a numeric value.
+          const ringP = getPoint(i, maxR);
+          return (
+            <G key={`node-${config.enum}`} onPress={handlePress}>
+              <Circle
+                cx={ringP.x}
+                cy={ringP.y}
+                r={4.5}
+                fill="none"
+                stroke={resolvedMutedLabelColor}
+                strokeWidth={1.25}
+                strokeOpacity={0.5}
+              />
+              <SvgText
+                x={labelP.x}
+                y={labelP.y}
+                textAnchor="middle"
+                fontSize={labelFontSize}
+                fontWeight={isSelected ? "700" : "500"}
+                fill={isSelected ? config.color : resolvedMutedLabelColor}
+                fillOpacity={isSelected ? 1 : 0.5}
+                fontFamily={labelFontFamily}
+              >
+                {labelText}
+              </SvgText>
+              <SvgText
+                x={labelP.x}
+                y={labelP.y + labelFontSize + 2}
+                textAnchor="middle"
+                fontSize={9}
+                fill={resolvedMutedLabelColor}
+                fillOpacity={0.5}
+                fontFamily={scoreFontFamily}
+              >
+                —
+              </SvgText>
+            </G>
+          );
+        }
+
+        // Populated axis — filled dot at the polygon vertex radius.
+        const nodeR = ((score100 ?? 0) / 100) * maxR;
+        const nodeP = getPoint(i, nodeR);
         return (
           <G key={`node-${config.enum}`} onPress={handlePress}>
             {isSelected && (
@@ -384,7 +463,7 @@ export function LifeMapRadar({
               fill={scoreColor}
               fontFamily={scoreFontFamily}
             >
-              {resolveScore100(area)?.toString() ?? "—"}
+              {score100?.toString() ?? "—"}
             </SvgText>
           </G>
         );
@@ -403,4 +482,30 @@ export function LifeMapRadar({
       </SvgText>
     </Svg>
   );
+
+  // Wrap in a View when emptyHint is provided so we can render the
+  // hint string below the SVG. When emptyHint is unset OR there's
+  // any populated axis, the radar still returns the bare SVG so
+  // existing callers' layout doesn't shift.
+  if (emptyHint && allEmpty) {
+    return (
+      <View style={{ alignItems: "center" }}>
+        {svg}
+        <Text
+          style={{
+            color: resolvedMutedLabelColor,
+            opacity: 0.7,
+            fontSize: 12,
+            fontFamily: emptyHintFontFamily,
+            marginTop: 8,
+            textAlign: "center",
+            paddingHorizontal: 24,
+          }}
+        >
+          {emptyHint}
+        </Text>
+      </View>
+    );
+  }
+  return svg;
 }

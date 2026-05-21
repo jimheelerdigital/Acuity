@@ -357,6 +357,7 @@ export default function InsightsTab() {
                 size={320}
                 labelColor={tokens.textSec}
                 scoreColor={tokens.textSec}
+                mutedLabelColor={tokens.textTer}
                 gridColor={tokens.line}
                 centerLabelColor={tokens.text}
                 selectedAreaKey={expandedArea}
@@ -369,6 +370,10 @@ export default function InsightsTab() {
                 labelFontFamily={tokens.fontMono}
                 scoreFontFamily={tokens.fontMono}
                 nodeStrokeColor={tokens.bg}
+                // Phase D polish 2 — honest empty-state hint when every
+                // axis is at zero (brand-new user, no entries yet).
+                emptyHint="Record an entry to start mapping your life axes."
+                emptyHintFontFamily={tokens.fontSans}
               />
             </Animated.View>
             {view === "trend" && trend?.hasEnoughHistory && (

@@ -41,6 +41,46 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-21] — Phase D polish 2 — Radar empty-axis honesty
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** (pending)
+
+### In plain English (for Keenan)
+
+The earlier "min visual radius" trick that kept the polygon shape continuous for axes with no data turned out to be misleading — it drew shape where we had no signal, and produced a cluttered ring of dots near the center. Replaced with an honest treatment: axes with no measurement now skip the polygon entirely, render as a hollow ring at the outermost grid radius, with their label muted and the value shown as "—". The polygon only closes across axes that actually have data, so it's smaller and irregular for new users — but it tells the truth. Brand-new users (zero entries) see all axes muted with a small line of helper copy beneath the radar inviting them to record their first entry.
+
+### Technical changes (for Jimmy)
+
+- `apps/mobile/components/life-map-radar.tsx`:
+  - Dropped `MIN_VISUAL_SCORE` constant + `polygonVertexRadius` helper.
+  - New `isPopulated(score100)` helper — true when score > 0 (null and 0 both excluded).
+  - Computed a single `perAxis` array (config + score + populated flag) reused across polygon, trend overlay, and per-axis render.
+  - Polygon path filters to populated axes only; rendered only when ≥2 populated. Skipped entirely otherwise.
+  - Trend overlay polygon applies the same filter.
+  - Per-axis render: populated axes get filled palette dot + colored label + numeric value (as before). Empty axes get a hollow ring at the outer 100% radius (r=4.5, strokeWidth=1.25, strokeOpacity=0.5) + muted label at 0.5 opacity + "—" instead of "0".
+  - New `mutedLabelColor` prop — default falls back to `labelColor`; Insights tab passes `tokens.textTer`.
+  - New `emptyHint` + `emptyHintFontFamily` props. When all axes are empty AND `emptyHint` is set, the component wraps in a `<View>` and renders the hint as a `<Text>` below the SVG. Otherwise returns bare `<Svg>` (no layout shift for the common populated case).
+  - Docblock rewritten to reflect the new honesty contract.
+- `apps/mobile/app/(tabs)/insights.tsx`:
+  - Passes `mutedLabelColor={tokens.textTer}` and `emptyHint="Record an entry to start mapping your life axes."` with `emptyHintFontFamily={tokens.fontSans}`.
+
+### Manual steps needed
+
+- [ ] None — radar visual polish only. Verify on simulator across populated/partial/fresh user states + light/dark + all 4 palettes.
+
+### Notes
+
+- Why this matters: Phase D ships 5 brand-new axes (ROMANCE, FRIENDS, MENTAL_HEALTH, FUN, PURPOSE) that have no data for existing users until AI extraction populates them. The prior min-radius treatment said "here's a small ring of dots near center, all your axes are at very-low scores" — false. The new treatment says "here are 5 axes with data, here are 5 axes we don't know about yet" — true.
+- Hollow rings sit at the outer 100% radius (perimeter, not inner) by design. Reads as "this axis exists, we just haven't measured it yet" rather than "this axis is at a low value." A populated low-score axis appears as a filled dot CLOSE to center; an empty axis appears as a hollow ring at the perimeter. Visual hierarchy distinguishes the two states.
+- Polygon path requires ≥2 populated axes. With 1 populated, the filled dot at that vertex is the only visible signal — no degenerate single-point polygon.
+- The `<View>` wrapper is only emitted when `emptyHint` + all-empty conditions are met. Default return type stays `<Svg>` for the common populated case so existing layouts don't reflow on every render.
+
+monday: 12058980099
+
+---
+
 ## [2026-05-21] — Phase D polish — Radar label readability + zero-axis polygon fix
 
 **Requested by:** Jimmy
