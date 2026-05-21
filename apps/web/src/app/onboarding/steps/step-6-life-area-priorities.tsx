@@ -146,9 +146,13 @@ export function Step6LifeAreaPriorities() {
  */
 const AREA_SUBTITLE: Record<LifeArea, string> = {
   CAREER: "work, craft, ambition",
-  HEALTH: "body, sleep, energy",
-  RELATIONSHIPS: "partner, family, friends",
-  FINANCES: "money in, money out",
-  PERSONAL: "self, meaning, growth",
-  OTHER: "whatever doesn\u2019t fit above",
+  MONEY: "money in, money out",
+  ROMANCE: "partner, dating, intimacy",
+  FAMILY: "parents, siblings, kids",
+  FRIENDS: "friendships, community",
+  PHYSICAL_HEALTH: "body, sleep, energy",
+  MENTAL_HEALTH: "stress, mood, overwhelm",
+  GROWTH: "skills, learning, identity",
+  FUN: "hobbies, play, weekends",
+  PURPOSE: "meaning, values, what it's for",
 };

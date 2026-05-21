@@ -397,7 +397,7 @@ export default function InsightsTab() {
               className="text-xs mt-1 text-center"
               style={{ color: tokens.textTer }}
             >
-              Record a few sessions and your six life areas will populate here.
+              Record a few sessions and your life areas will populate here.
             </Text>
           </View>
         )}

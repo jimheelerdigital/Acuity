@@ -895,37 +895,72 @@ model UserMemory {
   userId String @unique
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // Compressed lifetime summary per area (AI-generated, updated incrementally).
-  // Renamed 2026-04-19 to align with the canonical 6-area vocabulary
-  // in `@acuity/shared::LIFE_AREAS`. wealth → finances, spirituality →
-  // personal, relationship → relationships, growth → other.
-  careerSummary        String?
+  // ─── Phase D (2026-05-21): 10-axis canonical columns ─────────────
+  // CAREER kept from V1 (rename-free). MONEY = old FINANCES,
+  // PHYSICAL_HEALTH = old HEALTH, FAMILY = old RELATIONSHIPS,
+  // GROWTH = old PERSONAL. ROMANCE/FRIENDS/MENTAL_HEALTH/FUN/PURPOSE
+  // are brand-new — start nullable, populated by AI extraction over
+  // subsequent recordings. V1 column block (below) kept dormant for
+  // one release cycle then dropped.
+
+  careerSummary         String?
+  moneySummary          String?
+  romanceSummary        String?
+  familySummary         String?
+  friendsSummary        String?
+  physicalHealthSummary String?
+  mentalHealthSummary   String?
+  growthSummary         String?
+  funSummary            String?
+  purposeSummary        String?
+
+  careerMentions         Int @default(0)
+  moneyMentions          Int @default(0)
+  romanceMentions        Int @default(0)
+  familyMentions         Int @default(0)
+  friendsMentions        Int @default(0)
+  physicalHealthMentions Int @default(0)
+  mentalHealthMentions   Int @default(0)
+  growthMentions         Int @default(0)
+  funMentions            Int @default(0)
+  purposeMentions        Int @default(0)
+
+  careerBaseline         Int @default(50)
+  moneyBaseline          Int @default(50)
+  romanceBaseline        Int @default(50)
+  familyBaseline         Int @default(50)
+  friendsBaseline        Int @default(50)
+  physicalHealthBaseline Int @default(50)
+  mentalHealthBaseline   Int @default(50)
+  growthBaseline         Int @default(50)
+  funBaseline            Int @default(50)
+  purposeBaseline        Int @default(50)
+
+  // ─── Legacy V1 columns (dormant, dropped in next cleanup migration) ─
+  // Kept readable so the migration window can compare values during
+  // verification; UserMemory writes go to canonical 10-axis columns
+  // above. Data-migration SQL copies HEALTH→physicalHealth,
+  // RELATIONSHIPS→family, FINANCES→money, PERSONAL→growth.
   healthSummary        String?
   relationshipsSummary String?
   financesSummary      String?
   personalSummary      String?
   otherSummary         String?
-
-  // Lifetime mention counts per area
-  careerMentions        Int @default(0)
   healthMentions        Int @default(0)
   relationshipsMentions Int @default(0)
   financesMentions      Int @default(0)
   personalMentions      Int @default(0)
   otherMentions         Int @default(0)
-
-  // Recurring patterns detected across all time
-  recurringThemes Json[] // { area, theme, firstSeen, count, lastSeen }
-  recurringPeople Json[] // { name, area, sentiment, mentionCount }
-  recurringGoals  Json[] // { goal, area, firstMentioned, status, mentionCount }
-
-  // Baseline scores (lifetime average, updated slowly)
-  careerBaseline        Int @default(50)
   healthBaseline        Int @default(50)
   relationshipsBaseline Int @default(50)
   financesBaseline      Int @default(50)
   personalBaseline      Int @default(50)
   otherBaseline         Int @default(50)
+
+  // Recurring patterns detected across all time
+  recurringThemes Json[] // { area, theme, firstSeen, count, lastSeen }
+  recurringPeople Json[] // { name, area, sentiment, mentionCount }
+  recurringGoals  Json[] // { goal, area, firstMentioned, status, mentionCount }
 
   // Total entries processed
   totalEntries   Int       @default(0)

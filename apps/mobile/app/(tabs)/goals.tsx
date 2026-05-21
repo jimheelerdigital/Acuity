@@ -21,16 +21,23 @@ import {
   formatRelativeDate,
   GOAL_GROUPS,
   goalGroupForArea,
+  lifeAreaDisplayLabel,
   type GoalGroupMeta,
   type UserProgression,
 } from "@acuity/shared";
 import {
+  Activity,
+  Brain,
   Briefcase,
   ChevronDown,
+  Compass,
+  Heart,
   HeartPulse,
   Palette,
+  Sparkles,
   Sprout,
   Users,
+  UsersRound,
   Wallet,
 } from "lucide-react-native";
 
@@ -251,17 +258,10 @@ type TreeTask = {
   priority: string;
 };
 
-// Q11 Phase C: dropped the `color` field. The only consumer was the
-// area pill, which Q11a-1 already switched to tokens.primary. Per-area
-// color identity now derives from the active palette uniformly.
-const LIFE_AREAS: Record<string, { label: string }> = {
-  CAREER: { label: "Career" },
-  HEALTH: { label: "Health" },
-  RELATIONSHIPS: { label: "Relationships" },
-  FINANCES: { label: "Finances" },
-  PERSONAL: { label: "Personal Growth" },
-  OTHER: { label: "Other" },
-};
+// Phase D (2026-05-21): area-label lookup moved to the shared
+// `lifeAreaDisplayLabel` helper, which tolerates both the new 10-axis
+// vocab and the 6-axis legacy vocab (used by goals from build-42 users
+// pre-migration). One source of truth.
 
 // Q11 Phase C: replaced hardcoded per-status hex colors with a `tone`
 // key that resolves to a theme token at render time via
@@ -863,9 +863,7 @@ const TreeNode = memo(function TreeNode({
 }) {
   const { tokens } = useTheme();
   const status = STATUS_STYLES[goal.status] ?? STATUS_STYLES.NOT_STARTED;
-  const area = LIFE_AREAS[goal.lifeArea] ?? {
-    label: goal.lifeArea,
-  };
+  const area = { label: lifeAreaDisplayLabel(goal.lifeArea) };
   const statusColor = toneColor(status.tone, tokens);
   const isExpanded = expanded.has(goal.id);
   const hasChildren = goal.children.length > 0;
@@ -1533,14 +1531,26 @@ function GoalGroupIcon({
   const Icon =
     name === "Briefcase"
       ? Briefcase
-      : name === "HeartPulse"
-        ? HeartPulse
-        : name === "Wallet"
-          ? Wallet
+      : name === "Wallet"
+        ? Wallet
+        : name === "Heart"
+          ? Heart
           : name === "Users"
             ? Users
-            : name === "Sprout"
-              ? Sprout
-              : Palette;
+            : name === "UsersRound"
+              ? UsersRound
+              : name === "Activity"
+                ? Activity
+                : name === "Brain"
+                  ? Brain
+                  : name === "Sprout"
+                    ? Sprout
+                    : name === "Sparkles"
+                      ? Sparkles
+                      : name === "Compass"
+                        ? Compass
+                        : name === "HeartPulse"
+                          ? HeartPulse
+                          : Palette;
   return <Icon size={16} color={color} strokeWidth={2} />;
 }

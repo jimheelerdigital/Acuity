@@ -561,7 +561,9 @@ function RadarChart({
                 stroke="white"
                 strokeWidth="2"
               />
-              {/* Label */}
+              {/* Label — uses shortName (≤7 chars) for clean 10-axis
+                  layout, parity with mobile radar. Full `name` stays
+                  visible in the DetailPanel header on selection. */}
               <text
                 x={labelP.x}
                 y={labelP.y}
@@ -572,7 +574,7 @@ function RadarChart({
                 fill={isSelected ? "#18181B" : "#71717A"}
                 className="transition-all duration-300"
               >
-                {config.name}
+                {(config as { shortName?: string }).shortName ?? config.name}
               </text>
               {/* Score */}
               <text

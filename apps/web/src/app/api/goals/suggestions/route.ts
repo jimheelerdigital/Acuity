@@ -156,7 +156,7 @@ export async function POST(req: NextRequest) {
       userId,
       title: text,
       parentGoalId: parent?.id ?? null,
-      lifeArea: parent?.lifeArea ?? "PERSONAL",
+      lifeArea: parent?.lifeArea ?? "GROWTH",
       editedByUser: true,
     },
   });

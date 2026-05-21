@@ -46,9 +46,32 @@ export interface LifeAreaMention {
   sentiment: "positive" | "negative" | "neutral";
 }
 
-/** All 6 life areas keyed by area-prompt-key (lowercase form). See
- *  `constants.ts::LIFE_AREA_PROMPT_KEYS` for the canonical mapping. */
+/** Life-area mention bag from extraction — canonical 10-axis shape
+ *  (Phase D, 2026-05-21). Keys match `LIFE_AREA_PROMPT_KEYS`. The
+ *  extraction prompt in `apps/web/src/lib/prompts/lifemap.ts` emits
+ *  this shape.
+ *
+ *  Legacy 6-axis blobs in old Entry.rawAnalysis rows continue to
+ *  deserialize via `LifeAreaMentionsLegacy` below — readers that may
+ *  encounter pre-migration data should accept either shape and map
+ *  via `LIFE_AREA_LEGACY_MAP` from constants.ts. */
 export interface LifeAreaMentions {
+  career: LifeAreaMention;
+  money: LifeAreaMention;
+  romance: LifeAreaMention;
+  family: LifeAreaMention;
+  friends: LifeAreaMention;
+  physical_health: LifeAreaMention;
+  mental_health: LifeAreaMention;
+  growth: LifeAreaMention;
+  fun: LifeAreaMention;
+  purpose: LifeAreaMention;
+}
+
+/** Legacy 6-axis shape — only present in old Entry.rawAnalysis blobs
+ *  predating the Phase D rollout. Use to type a defensive deserializer;
+ *  no new code path should emit this. */
+export interface LifeAreaMentionsLegacy {
   career: LifeAreaMention;
   health: LifeAreaMention;
   relationships: LifeAreaMention;

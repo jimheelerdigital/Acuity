@@ -41,6 +41,66 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-21] — Phase D — Life Matrix expansion from 6 axes to 10 (full cutover)
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** (pending)
+
+### In plain English (for Keenan)
+
+The Life Matrix radar that shows up on the Insights tab now tracks **ten** life dimensions instead of six. The new shape: Career, Money, Romance, Family, Friends, Physical Health, Mental Health, Growth, Fun, Purpose. The old six (Career, Health, Relationships, Finances, Personal, Other) get mapped into the new ten — Health becomes Physical Health, Relationships becomes Family, Finances becomes Money, Personal becomes Growth. Romance, Friends, Mental Health, Fun, and Purpose are brand-new axes that the AI will start populating as users record. Every existing user's data was migrated cleanly — radar scores, goal labels, weekly history, and onboarding picks all flowed forward without anyone losing data.
+
+The AI extraction prompt that reads each transcript was rewritten with the new ten-axis vocabulary plus disambiguation rules (e.g., "career vs money: career = the work itself, money = the financial outcome"). Mobile radar got a cleaned-up label layout so ten axes don't collide visually on iPhone screens. The same shortened labels show on the web radar too for consistency.
+
+### Technical changes (for Jimmy)
+
+- `packages/shared/src/constants.ts`: 10-axis canonical LIFE_AREAS array + LIFE_AREAS_V1 legacy preserved. LIFE_AREA_LEGACY_MAP (V1→V2 with MAPPING_DECISION_2026-05-21 comment). LIFE_AREA_LEGACY_FALLBACK_KEY (V2→V1 for historical rawAnalysis reads). lifeAreaDisplayLabel() helper tolerates both vocabs. New shortName field on DEFAULT_LIFE_AREAS entries (≤7 chars for radar safety on iPhone 16e 375pt).
+- `packages/shared/src/types.ts`: LifeAreaMentions flipped to 10-axis canonical shape; LifeAreaMentionsLegacy preserved for historical reads.
+- `prisma/schema.prisma`: UserMemory adds 30 new V2 columns (10 axes × 3 fields). V1 columns kept dormant for one release cycle.
+- `apps/web/src/lib/prompts/lifemap.ts`: LIFE_AREA_EXTRACTION_SCHEMA fully rewritten with per-axis keyword lists tuned to journal vocabulary (e.g., romance includes "swiping, ghosted, situationship, hinge, bumble"; fun includes "binged, scrolled, had drinks with") + 5-rule disambiguation block. buildCompressionPrompt + buildInsightPrompt updated to emit 10-axis JSON shape.
+- `apps/web/src/lib/pipeline.ts`: validateLifeAreaMentions keys array → 10-axis. DIMENSION_NAME_BY_KEY → 10 + V1 fallback labels. Extraction prompt JSON template updated.
+- `apps/web/src/lib/memory.ts`: un-pinned from V1; columnPrefixForKey() helper for camelCase column resolution (`physical_health` → `physicalHealth`). All AREA_KEYS / column writes / Claude prompt input use 10-axis.
+- `apps/web/src/lib/life-dimension-presets.ts`: DEFAULT/STUDENT/PARENT presets fully rewritten for 10 axes.
+- `apps/web/src/app/api/onboarding/update/route.ts`: VALID_AREAS expanded to accept both V1 + V2; per-key mapper writes canonical V2 via LIFE_AREA_LEGACY_MAP.
+- `apps/web/src/app/api/account/life-dimensions/route.ts`: CANONICAL_AREAS + z.transform maps V1 input to V2. Max dimensions raised 6→10.
+- `apps/web/src/app/api/lifemap/{dimension/[key],history,trend}/route.ts`: historical rawAnalysis reads fall back via LIFE_AREA_LEGACY_FALLBACK_KEY so trajectory + history graphs stay continuous across the migration boundary.
+- `apps/web/src/app/api/goals/{route,suggestions/route}.ts`: default lifeArea "PERSONAL" → "GROWTH".
+- `apps/web/src/inngest/functions/{compute-user-insights,monthly-digest}.ts`: AREA_LABELS expanded to 10 + V1 fallback labels.
+- `apps/web/src/app/insights/life-map.tsx`: radar label uses shortName ?? name for parity with mobile.
+- `apps/web/src/app/onboarding/steps/step-6-life-area-priorities.tsx`: un-pinned to 10-axis DEFAULT_LIFE_AREAS; AREA_SUBTITLE rewritten for 10 axes.
+- `apps/mobile/components/life-map-radar.tsx`: shortName label + node-position fix (uses resolveScore100 to match polygon; previous code used legacy `area.score/10` which drifted). 33-line docblock with textAnchor=middle geometry proof at iPhone 16e 320pt.
+- `apps/mobile/app/(tabs)/goals.tsx`: removed hardcoded LIFE_AREAS map; GoalGroupIcon expanded to 11 icon branches (Briefcase/Wallet/Heart/Users/UsersRound/Activity/Brain/Sprout/Sparkles/Compass/HeartPulse fallback).
+- `apps/mobile/app/(tabs)/insights.tsx`: empty-state copy "your six life areas" → "your life areas".
+- `apps/mobile/app/goal/[id].tsx`: uses lifeAreaDisplayLabel.
+- `apps/mobile/components/onboarding/step-7-life-areas.tsx`: un-pinned to 10-axis. OTHER freeform input removed (no OTHER in 10-axis).
+- Seeds: V1 vocab preserved in scripts/seed-app-store-reviewer.ts + apps/web/scripts/seed-{iap,v11}-reviewer.ts with inline comments noting they're compat-test fixtures for the LIFE_AREA_LEGACY_MAP path.
+- Migration ran cleanly against prod DIRECT_URL (24 users):
+  - LifeMapArea: 96 rows renamed (4 V1 axes × 24 users), 120 new rows seeded (5 new V2 axes × 24 users), no row deletions.
+  - UserOnboarding.lifeAreaPriorities: 12 rows rewrote V1 keys → V2 (used jsonb_strip_nulls to preserve only ranked axes).
+  - Goal.lifeArea: 27 rows renamed (1 HEALTH + 26 PERSONAL → PHYSICAL_HEALTH + GROWTH).
+  - LifeMapAreaHistory: 164 rows renamed across 4 V1 axes.
+  - UserMemory: 27 rows touched; COALESCE/CASE-guarded copy of V1 columns into V2 columns (only 2 users had actual V1 data; rest stayed at defaults).
+  - All 5 verification queries (D1-D5) returned 0 rows post-migration.
+
+### Manual steps needed
+
+- [ ] None — schema + data migration ran via `prisma db push` + `psql $DIRECT_URL -f .tmp/phase-d-migration.sql`. Server code already deployed assumes V2; rollback would require both data migration reversal + git revert (additive schema is safely reversible; data renames are not).
+- [ ] Watch Vercel deploy logs for first batch of entries after deploy — verify Claude extraction emits new 10-axis JSON keys correctly (look at any new Entry.rawAnalysis blob to confirm).
+- [ ] After 30 days, drop dormant V1 UserMemory columns in a follow-up cleanup slice (`healthSummary`, `relationshipsSummary`, `financesSummary`, `personalSummary`, `otherSummary` + matching Mentions/Baseline triplets).
+
+### Notes
+
+- The 6→10 mapping decision (HEALTH→PHYSICAL_HEALTH, RELATIONSHIPS→FAMILY, FINANCES→MONEY, PERSONAL→GROWTH, OTHER→null) is single-target, not split. Reasoning: a split would have inflated the onboarding "top 3" concept into 5+ tied-1 axes. AI extraction populates the un-mapped axes (MENTAL_HEALTH, ROMANCE, FRIENDS, FUN, PURPOSE) over subsequent recordings from transcripts.
+- Build-42 mobile binaries still send V1 onboarding priorities — server's /api/onboarding/update accepts both V1 + V2 and maps V1 inputs to V2 on persist. No version-gating needed.
+- The radar's textAnchor=middle was kept (not quadrant-swap). Math: at SVG size=320, label center radius=137.6pt, worst-case label "Romance"/"Friends"/"Purpose" at 7 chars ≈ 43pt wide. Middle anchor keeps labels within SVG bounds with ~7.65pt margin on each side. Side-anchor swap was tried in design but would have pushed labels past the SVG edge OR over the polygon vertices — neither works for this radius. Cap on shortName length (≤7 chars enforced in DEFAULT_LIFE_AREAS data) is what makes middle anchor provably safe.
+- Bugs caught during migration dry-run: (1) LifeMapArea has no createdAt column; INSERT had to be rewritten with the actual column list. (2) lifeAreaPriorities lives on UserOnboarding, not User. (3) Original B3 used `- 'key'` chain to strip nulls but that operator strips ALL keys unconditionally; switched to jsonb_strip_nulls(). Each caught by running the SQL once and reading the errors before destructive writes committed.
+
+monday: 12058980099
+⚠️ HIGH RISK — cross-stack life matrix rebuild (full Phase D)
+
+---
+
 ## [2026-05-21] — Site-wide image optimization + performance verification
 
 **Requested by:** Keenan

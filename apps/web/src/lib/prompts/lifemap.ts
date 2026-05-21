@@ -1,8 +1,17 @@
 /**
  * Claude prompts for Life Matrix memory compression, insight generation,
- * and life area extraction. All prompts use the canonical 6-area
+ * and life area extraction. All prompts use the canonical 10-area
  * vocabulary defined in `@acuity/shared` (`LIFE_AREAS`,
  * `LIFE_AREA_PROMPT_KEYS`, `LIFE_AREA_DISPLAY`).
+ *
+ * Phase D, 2026-05-21: expanded from 6 axes to 10. Per-axis keyword
+ * lists below tuned against the Reddit-language reference corpus
+ * (docs/Acuity_SalesCopy.md §3) — every axis description leads with
+ * words people actually use in nightly journals, not abstract category
+ * names. Split-target axes (PHYSICAL_HEALTH / MENTAL_HEALTH from old
+ * HEALTH; ROMANCE / FAMILY / FRIENDS from old RELATIONSHIPS; GROWTH /
+ * FUN / PURPOSE from old PERSONAL) have disjoint keyword sets so
+ * Claude doesn't over-attribute one mention to multiple axes.
  */
 
 // ─── Memory Compression ─────────────────────────────────────────────────────
@@ -37,11 +46,15 @@ Your job: update each area summary to incorporate new information while preservi
 Return ONLY valid JSON — no markdown, no prose:
 {
   "career": "updated summary",
-  "health": "updated summary",
-  "relationships": "updated summary",
-  "finances": "updated summary",
-  "personal": "updated summary",
-  "other": "updated summary"
+  "money": "updated summary",
+  "romance": "updated summary",
+  "family": "updated summary",
+  "friends": "updated summary",
+  "physical_health": "updated summary",
+  "mental_health": "updated summary",
+  "growth": "updated summary",
+  "fun": "updated summary",
+  "purpose": "updated summary"
 }`,
     user: `Existing area summaries:\n${existing}\n\nRecent entries:\n${entries}`,
   };
@@ -75,11 +88,15 @@ Good: "Work appears in 91% of your dumps — the only area that spikes on weeken
 Return ONLY valid JSON:
 {
   "career": "insight",
-  "health": "insight",
-  "relationships": "insight",
-  "finances": "insight",
-  "personal": "insight",
-  "other": "insight"
+  "money": "insight",
+  "romance": "insight",
+  "family": "insight",
+  "friends": "insight",
+  "physical_health": "insight",
+  "mental_health": "insight",
+  "growth": "insight",
+  "fun": "insight",
+  "purpose": "insight"
 }`,
     user: `Full user context:\n${memoryContext}\n\nCurrent area scores:\n${areaData}`,
   };
@@ -88,13 +105,25 @@ Return ONLY valid JSON:
 // ─── Life Area Extraction Addition (injected into main extraction prompt) ────
 
 export const LIFE_AREA_EXTRACTION_SCHEMA = `
-Also extract "lifeAreaMentions" — for each of these 6 areas assess whether it was mentioned:
-- career: work, job, projects, ambition, professional stress, wins, deadlines, boss, colleagues
-- health: body, energy, sleep, exercise, pain, illness, food, physical wellbeing
-- relationships: partner, family, friends, social, conflict, connection
-- finances: money, income, savings, financial stress, business, spending, investments
-- personal: purpose, meaning, values, gratitude, faith, presence, peace, learning, habits, reading, skills, personal growth
-- other: anything important that doesn't fit the above five
+Also extract "lifeAreaMentions" — for each of these 10 areas assess whether it was mentioned:
+
+- career: work, job, projects, ambition, deadlines, performance, boss, colleagues, promotion, layoff, side hustle, freelance, calling, vocation, workload, meetings, output
+- money: salary, income, savings, debt, rent, bills, budget, financial stress, raise, investments, expenses, paycheck, taxes, paying off, broke, comfortable, can't afford
+- romance: partner, wife, husband, boyfriend, girlfriend, spouse, dating, marriage, breakup, sex, intimacy, attraction, fights with my [partner], anniversary, falling out of love, falling in love, matched, swiping, ghosted, situationship, talking stage, hinge, bumble
+- family: mom, dad, parents, sister, brother, kids, son, daughter, in-laws, holiday, family dinner, ungrateful, helicopter, estranged, family obligations, parenting, raising
+- friends: friend, friends, social, hangout, group chat, drifted apart, didn't text back, plans cancelled, community, neighborhood, club, social circle, lonely (in a social-belonging sense), made a new friend
+- physical_health: body, sleep, exercise, gym, run, lift, sick, pain, injury, headache, tired, energy, weight, diet, eating, drinking, hangover, soreness, recovery, doctor's appointment, blood work
+- mental_health: anxiety, depression, panic, overwhelmed, burnout, therapy, meds, mood, emotional regulation, racing thoughts, can't focus, dissociation, processing trauma, mental fatigue
+- growth: learning, reading, course, skill, book I'm reading, podcast, studying, identity, who I want to be, becoming, growth area, leveling up, self-improvement, new habit, mastering
+- fun: hobby, gaming, music, painting, hiking, weekend trip, vacation, party, concert, novel reading (for pleasure), garden, just relaxing, did nothing on purpose, watched a movie, binged, played, scrolled, had drinks with, went out, weekend plans
+- purpose: meaning, why am I doing this, values, faith, spirituality, prayer, meditation, legacy, what matters, mission, calling (in a deeper sense than career), bigger picture, contribution, what's it all for
+
+Disambiguation rules:
+- "career" vs "money": career = the work itself, money = the financial outcome. A bad day at the office → career. Worry about making rent → money.
+- "romance" vs "family": exclusively about the partner / dating / spousal dynamic → romance. Anything about parents / siblings / kids / extended family → family.
+- "physical_health" vs "mental_health": body / fitness / sleep / energy / illness → physical_health. Anxiety / mood / overwhelm / therapy / processing → mental_health. Sleep that's tied to stress (can't sleep because anxious) → mental_health primary, physical_health secondary.
+- "growth" vs "purpose": growth = skill / knowledge / identity development ("I'm learning Spanish", "I want to be more patient"). purpose = meaning / values / why ("what am I doing this for", "does any of this matter"). Growth is HOW you change; purpose is WHY.
+- "fun" vs "growth": A hobby done for pleasure → fun. A hobby done to develop a skill or push yourself → growth. Reading a thriller → fun. Reading a textbook → growth.
 
 For each area, return:
 {
@@ -106,5 +135,5 @@ For each area, return:
   "sentiment": "positive" | "negative" | "neutral"
 }
 
-Add this as "lifeAreaMentions" with keys: career, health, relationships, finances, personal, other.
-If an area is not mentioned at all, set mentioned=false, score=5, and empty arrays.`;
+Add this as "lifeAreaMentions" with keys: career, money, romance, family, friends, physical_health, mental_health, growth, fun, purpose.
+If an area is not mentioned at all, set mentioned=false, score=5, and empty arrays. Do not pad — most entries will only mention 2-4 areas explicitly.`;

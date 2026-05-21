@@ -286,6 +286,10 @@ async function main(): Promise<void> {
         completedAt: now,
         moodBaseline: "GOOD",
         moodBaselineNumeric: 6,
+        // V1 vocab by design — exercises the LIFE_AREA_LEGACY_MAP
+        // path in /api/onboarding/update; verifies build-42 priority
+        // shape compatibility. HEALTH → PHYSICAL_HEALTH,
+        // RELATIONSHIPS → FAMILY per the legacy map.
         lifeAreaPriorities: {
           CAREER: 1,
           HEALTH: 2,

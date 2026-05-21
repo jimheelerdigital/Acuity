@@ -19,11 +19,25 @@ export const SUPPORTED_AUDIO_TYPES = [
   "audio/ogg",
 ] as const;
 
-// ─── Life Areas (canonical 6 — reconciled 2026-04-19) ───────────────────────
+// ─── Life Areas (canonical 10 — Phase D, 2026-05-21) ────────────────────────
 //
-// Source of truth: product spec. Three forms in the codebase, all derived
-// from the same enum:
+// Acuity moved from 6 axes to 10 axes in Phase D. The 6-axis vocabulary
+// is preserved as `LIFE_AREAS_V1` for two reasons:
 //
+//   1. Mobile build-42 (live since 2026-05-15) sends 6-axis priorities on
+//      onboarding. Server's /api/onboarding/update validates against V1
+//      until PR2 expands validation to accept both vocabs.
+//   2. Onboarding step-7 (mobile) / step-6 (web) keeps the V1 picker for
+//      one release cycle. Phase C replaces those steps with a 12-axis
+//      baseline adapted to 10 axes — out of scope for Phase D.
+//
+// 6→10 mapping decision (see `LIFE_AREA_LEGACY_MAP` below + progress.md
+// 2026-05-21 entry): single-target with defaults, NOT split-weight, so
+// the "top 3" concept in onboarding doesn't get inflated. AI extraction
+// populates split-target axes (MENTAL_HEALTH, ROMANCE, FRIENDS, FUN,
+// PURPOSE) from subsequent transcripts.
+//
+// Three derived forms of every area:
 //   `LifeArea`               UPPER_SNAKE_CASE enum stored on
 //                            `LifeMapArea.area` and `Goal.lifeArea`.
 //   `LIFE_AREA_PROMPT_KEYS`  lowercase form sent to/received from Claude
@@ -32,14 +46,42 @@ export const SUPPORTED_AUDIO_TYPES = [
 //                            UserMemory column names (`${key}Summary`,
 //                            `${key}Mentions`, `${key}Baseline`).
 //   `LIFE_AREA_DISPLAY`      user-facing display string.
-//
-// Reconciliation notes:
-//   - `Wealth` → `FINANCES` (matches product spec / common UX vocabulary).
-//   - `Spirituality` removed; covered by `PERSONAL` (broader: purpose,
-//     values, personal growth, meaning).
-//   - `Growth` removed; the catch-all bucket is now `OTHER`.
 
 export const LIFE_AREAS = [
+  "CAREER",
+  "MONEY",
+  "ROMANCE",
+  "FAMILY",
+  "FRIENDS",
+  "PHYSICAL_HEALTH",
+  "MENTAL_HEALTH",
+  "GROWTH",
+  "FUN",
+  "PURPOSE",
+] as const;
+
+export type LifeArea = (typeof LIFE_AREAS)[number];
+
+export const LIFE_AREA_DISPLAY: Record<LifeArea, string> = {
+  CAREER: "Career",
+  MONEY: "Money",
+  ROMANCE: "Romance",
+  FAMILY: "Family",
+  FRIENDS: "Friends & Community",
+  PHYSICAL_HEALTH: "Physical Health",
+  MENTAL_HEALTH: "Mental Health",
+  GROWTH: "Growth & Learning",
+  FUN: "Fun",
+  PURPOSE: "Purpose & Meaning",
+};
+
+// ─── Legacy 6-axis vocabulary (transition compatibility, Phase D) ────────────
+//
+// Kept until: (a) mobile build-42 attrition drops below ~10% MAU, (b) the
+// onboarding-step-7 replacement ships in Phase C. After both, this and
+// related V1 exports get removed in a follow-up cleanup PR.
+
+export const LIFE_AREAS_V1 = [
   "CAREER",
   "HEALTH",
   "RELATIONSHIPS",
@@ -48,9 +90,9 @@ export const LIFE_AREAS = [
   "OTHER",
 ] as const;
 
-export type LifeArea = (typeof LIFE_AREAS)[number];
+export type LifeAreaV1 = (typeof LIFE_AREAS_V1)[number];
 
-export const LIFE_AREA_DISPLAY: Record<LifeArea, string> = {
+export const LIFE_AREA_V1_DISPLAY: Record<LifeAreaV1, string> = {
   CAREER: "Career",
   HEALTH: "Health",
   RELATIONSHIPS: "Relationships",
@@ -60,45 +102,93 @@ export const LIFE_AREA_DISPLAY: Record<LifeArea, string> = {
 };
 
 /**
- * Goal group metadata — drives the grouped sections on the Goals
- * screen (mirror of the Tasks group pattern). The 6 values + order
- * match the product spec: Career / Health / Finances / Relationships
- * / Personal Growth / Hobbies. Internally the groups map back to the
- * existing LifeArea enum (OTHER = Hobbies) so no schema change is
- * required and existing goals populate groups automatically.
+ * 6→10 axis mapping decision — MAPPING_DECISION_2026-05-21.
  *
- * Icon names are Lucide identifiers; each platform imports the same
- * icon from its respective lucide-react / lucide-react-native
- * package, so copy stays platform-agnostic here.
+ * Single-target, not split. Reasoning: a split (e.g., RELATIONSHIPS rank-1
+ * → ROMANCE+FAMILY+FRIENDS all rank-1) would inflate the onboarding "top 3"
+ * concept into 5+ tied-1 axes. Cleaner to single-target the most common
+ * interpretation; AI extraction populates the un-mapped axes over time
+ * from transcripts.
+ *
+ * Defaults chosen:
+ *   HEALTH → PHYSICAL_HEALTH (colloquial "health" defaults to physical
+ *                             /fitness; mental users would pick it
+ *                             deliberately if it were on the picker)
+ *   RELATIONSHIPS → FAMILY    (most-frequent intent per recurring-people
+ *                             data; ROMANCE/FRIENDS are more specific
+ *                             terms users would have chosen deliberately)
+ *   PERSONAL → GROWTH         ("personal growth" is the canonical
+ *                             interpretation; FUN and PURPOSE come from
+ *                             transcript signals)
+ *   OTHER → null              (no semantic equivalent; ignored on
+ *                             migration. Goals with lifeArea="OTHER"
+ *                             stay as OTHER sentinel until user
+ *                             reassigns.)
+ */
+export const LIFE_AREA_LEGACY_MAP: Record<LifeAreaV1, LifeArea | null> = {
+  CAREER: "CAREER",
+  HEALTH: "PHYSICAL_HEALTH",
+  RELATIONSHIPS: "FAMILY",
+  FINANCES: "MONEY",
+  PERSONAL: "GROWTH",
+  OTHER: null,
+};
+
+/**
+ * Resolve a display label for a life-area value, tolerating both 10-axis
+ * canonical vocab and 6-axis legacy vocab (returned by server for
+ * pre-migration data). Falls through to the raw string so unknown
+ * inputs don't render as "undefined".
+ */
+export function lifeAreaDisplayLabel(
+  area: string | null | undefined
+): string {
+  if (!area) return "Other";
+  const canon = (LIFE_AREA_DISPLAY as Record<string, string>)[area];
+  if (canon) return canon;
+  const legacy = (LIFE_AREA_V1_DISPLAY as Record<string, string>)[area];
+  if (legacy) return legacy;
+  return area;
+}
+
+/**
+ * Goal group metadata — drives the grouped sections on the Goals
+ * screen. The 10 values + order match the Life Matrix canonical order.
+ *
+ * Icon field is loosened to `string` (was a literal union) because
+ * Phase D expanded the icon set from 6 to 10 and any future axis
+ * additions or icon swaps would otherwise cascade type updates across
+ * web + mobile GoalGroupIcon switches. Both renderers fall through to
+ * a Palette default for unknown icon names, so loosening the type
+ * doesn't degrade safety in practice — the literal union was checking
+ * spelling, not correctness.
  */
 export type GoalGroupId = LifeArea;
 
 export interface GoalGroupMeta {
   id: GoalGroupId;
   label: string;
-  icon:
-    | "Briefcase"
-    | "HeartPulse"
-    | "Wallet"
-    | "Users"
-    | "Sprout"
-    | "Palette";
+  icon: string;
   color: string;
   order: number;
 }
 
 export const GOAL_GROUPS: GoalGroupMeta[] = [
   { id: "CAREER", label: "Career", icon: "Briefcase", color: "#3B82F6", order: 0 },
-  { id: "HEALTH", label: "Health", icon: "HeartPulse", color: "#14B8A6", order: 1 },
-  { id: "FINANCES", label: "Finances", icon: "Wallet", color: "#F59E0B", order: 2 },
-  { id: "RELATIONSHIPS", label: "Relationships", icon: "Users", color: "#F43F5E", order: 3 },
-  { id: "PERSONAL", label: "Personal Growth", icon: "Sprout", color: "#A855F7", order: 4 },
-  { id: "OTHER", label: "Hobbies", icon: "Palette", color: "#71717A", order: 5 },
+  { id: "MONEY", label: "Money", icon: "Wallet", color: "#F59E0B", order: 1 },
+  { id: "ROMANCE", label: "Romance", icon: "Heart", color: "#EC4899", order: 2 },
+  { id: "FAMILY", label: "Family", icon: "Users", color: "#F43F5E", order: 3 },
+  { id: "FRIENDS", label: "Friends", icon: "UsersRound", color: "#14B8A6", order: 4 },
+  { id: "PHYSICAL_HEALTH", label: "Physical Health", icon: "Activity", color: "#84CC16", order: 5 },
+  { id: "MENTAL_HEALTH", label: "Mental Health", icon: "Brain", color: "#8B5CF6", order: 6 },
+  { id: "GROWTH", label: "Growth", icon: "Sprout", color: "#A855F7", order: 7 },
+  { id: "FUN", label: "Fun", icon: "Sparkles", color: "#F97316", order: 8 },
+  { id: "PURPOSE", label: "Purpose", icon: "Compass", color: "#6366F1", order: 9 },
 ];
 
-/** Find group metadata for a life-area value. Falls back to OTHER
- *  (Hobbies) for anything unrecognized — e.g. a legacy goal whose
- *  lifeArea somehow doesn't match the canonical 6. */
+/** Find group metadata for a life-area value. Falls back to the last
+ *  group (PURPOSE) for anything unrecognized — preserves the prior
+ *  behavior of "always return something" so render code stays simple. */
 export function goalGroupForArea(area: string | null | undefined): GoalGroupMeta {
   const match = GOAL_GROUPS.find((g) => g.id === area);
   return match ?? GOAL_GROUPS[GOAL_GROUPS.length - 1];
@@ -106,11 +196,15 @@ export function goalGroupForArea(area: string | null | undefined): GoalGroupMeta
 
 export const LIFE_AREA_PROMPT_KEYS: Record<LifeArea, string> = {
   CAREER: "career",
-  HEALTH: "health",
-  RELATIONSHIPS: "relationships",
-  FINANCES: "finances",
-  PERSONAL: "personal",
-  OTHER: "other",
+  MONEY: "money",
+  ROMANCE: "romance",
+  FAMILY: "family",
+  FRIENDS: "friends",
+  PHYSICAL_HEALTH: "physical_health",
+  MENTAL_HEALTH: "mental_health",
+  GROWTH: "growth",
+  FUN: "fun",
+  PURPOSE: "purpose",
 };
 
 export const LIFE_AREA_BY_PROMPT_KEY: Record<string, LifeArea> = Object.fromEntries(
@@ -120,16 +214,68 @@ export const LIFE_AREA_BY_PROMPT_KEY: Record<string, LifeArea> = Object.fromEntr
   ])
 );
 
+/**
+ * Per-axis radar/chart metadata. `shortName` (Phase D) is the radar-
+ * label form — kept ≤7 chars so 10-axis labels fit at fontSize 10 on
+ * iPhone 16e (375pt screen, radar at size=320pt). Card surfaces +
+ * detail screens use `name`. See life-map-radar.tsx docblock for the
+ * geometry math that justifies the shortName cap.
+ */
 export const DEFAULT_LIFE_AREAS = [
-  { enum: "CAREER" as LifeArea, key: "career", name: "Career", color: "#3B82F6", icon: "briefcase" },
-  { enum: "HEALTH" as LifeArea, key: "health", name: "Health", color: "#14B8A6", icon: "heart-pulse" },
-  { enum: "RELATIONSHIPS" as LifeArea, key: "relationships", name: "Relationships", color: "#F43F5E", icon: "users" },
-  { enum: "FINANCES" as LifeArea, key: "finances", name: "Finances", color: "#F59E0B", icon: "trending-up" },
-  { enum: "PERSONAL" as LifeArea, key: "personal", name: "Personal Growth", color: "#A855F7", icon: "sparkles" },
-  { enum: "OTHER" as LifeArea, key: "other", name: "Other", color: "#71717A", icon: "more-horizontal" },
+  { enum: "CAREER" as LifeArea, key: "career", name: "Career", shortName: "Career", color: "#3B82F6", icon: "briefcase" },
+  { enum: "MONEY" as LifeArea, key: "money", name: "Money", shortName: "Money", color: "#F59E0B", icon: "wallet" },
+  { enum: "ROMANCE" as LifeArea, key: "romance", name: "Romance", shortName: "Romance", color: "#EC4899", icon: "heart" },
+  { enum: "FAMILY" as LifeArea, key: "family", name: "Family", shortName: "Family", color: "#F43F5E", icon: "people" },
+  { enum: "FRIENDS" as LifeArea, key: "friends", name: "Friends & Community", shortName: "Friends", color: "#14B8A6", icon: "people-circle" },
+  { enum: "PHYSICAL_HEALTH" as LifeArea, key: "physical_health", name: "Physical Health", shortName: "Health", color: "#84CC16", icon: "fitness" },
+  { enum: "MENTAL_HEALTH" as LifeArea, key: "mental_health", name: "Mental Health", shortName: "Mental", color: "#8B5CF6", icon: "happy" },
+  { enum: "GROWTH" as LifeArea, key: "growth", name: "Growth & Learning", shortName: "Growth", color: "#A855F7", icon: "leaf" },
+  { enum: "FUN" as LifeArea, key: "fun", name: "Fun", shortName: "Fun", color: "#F97316", icon: "color-palette" },
+  { enum: "PURPOSE" as LifeArea, key: "purpose", name: "Purpose & Meaning", shortName: "Purpose", color: "#6366F1", icon: "compass" },
 ] as const;
 
 export type LifeAreaKey = (typeof DEFAULT_LIFE_AREAS)[number]["key"];
+
+/**
+ * Legacy 6-axis radar/chart metadata — used by onboarding step-7
+ * (mobile) and step-6 (web) until Phase C ships the 12-axis baseline
+ * replacement. Also used by server-side `apps/web/src/lib/memory.ts`
+ * which still writes the legacy `${key}Summary` UserMemory columns
+ * until PR2 adds the 10-axis column set. Decoupled from
+ * DEFAULT_LIFE_AREAS so the new 10-axis vocab doesn't leak.
+ */
+export const DEFAULT_LIFE_AREAS_V1 = [
+  { enum: "CAREER" as LifeAreaV1, key: "career", name: "Career", color: "#3B82F6", icon: "briefcase" },
+  { enum: "HEALTH" as LifeAreaV1, key: "health", name: "Health", color: "#14B8A6", icon: "heart-pulse" },
+  { enum: "RELATIONSHIPS" as LifeAreaV1, key: "relationships", name: "Relationships", color: "#F43F5E", icon: "users" },
+  { enum: "FINANCES" as LifeAreaV1, key: "finances", name: "Finances", color: "#F59E0B", icon: "trending-up" },
+  { enum: "PERSONAL" as LifeAreaV1, key: "personal", name: "Personal Growth", color: "#A855F7", icon: "sparkles" },
+  { enum: "OTHER" as LifeAreaV1, key: "other", name: "Other", color: "#71717A", icon: "more-horizontal" },
+] as const;
+
+export type LifeAreaKeyV1 = (typeof DEFAULT_LIFE_AREAS_V1)[number]["key"];
+
+/**
+ * When reading per-axis data out of a historical Entry.rawAnalysis blob
+ * that predates the Phase D cutover, fall back to the V1 prompt key
+ * that the legacy extraction emitted. Split axes (ROMANCE, FAMILY,
+ * FRIENDS all read from legacy "relationships"; PHYSICAL_HEALTH +
+ * MENTAL_HEALTH read from "health"; GROWTH + FUN + PURPOSE read from
+ * "personal") share a single source — semantically defensible since
+ * V1 was a coarser categorization.
+ */
+export const LIFE_AREA_LEGACY_FALLBACK_KEY: Record<LifeAreaKey, LifeAreaKeyV1 | null> = {
+  career: "career",
+  money: "finances",
+  romance: "relationships",
+  family: "relationships",
+  friends: "relationships",
+  physical_health: "health",
+  mental_health: "health",
+  growth: "personal",
+  fun: "personal",
+  purpose: "personal",
+};
 
 // ─── Mood labels ──────────────────────────────────────────────────────────────
 

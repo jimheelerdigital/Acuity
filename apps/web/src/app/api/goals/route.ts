@@ -106,7 +106,10 @@ export async function POST(req: NextRequest) {
       title,
       description,
       targetDate: body.targetDate ? new Date(body.targetDate) : null,
-      lifeArea: body.lifeArea ?? "PERSONAL",
+      // Phase D default: GROWTH (Personal → Growth per
+      // LIFE_AREA_LEGACY_MAP). Build-42 clients sending "PERSONAL" still
+      // hit the column directly; server-side reads tolerate either.
+      lifeArea: body.lifeArea ?? "GROWTH",
       // Manually-created goals are user-authored from the first keystroke,
       // so they're immune to extraction overwrites from day one.
       editedByUser: true,

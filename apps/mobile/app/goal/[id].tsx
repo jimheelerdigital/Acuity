@@ -14,7 +14,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { formatRelativeDate } from "@acuity/shared";
+import { formatRelativeDate, lifeAreaDisplayLabel } from "@acuity/shared";
 
 import { StickyBackButton } from "@/components/back-button";
 import { ProgressSuggestionBanner } from "@/components/progress-suggestion-banner";
@@ -70,14 +70,9 @@ const STATUS_OPTIONS: Array<{ value: string; label: string; tone: StatusTone }> 
   { value: "COMPLETE", label: "Complete", tone: "accent" },
 ];
 
-const LIFE_AREA_LABELS: Record<string, string> = {
-  CAREER: "Career",
-  HEALTH: "Health",
-  RELATIONSHIPS: "Relationships",
-  FINANCES: "Finances",
-  PERSONAL: "Personal Growth",
-  OTHER: "Other",
-};
+// Phase D (2026-05-21): label resolution lifted to shared
+// `lifeAreaDisplayLabel`. Tolerates both 10-axis canonical and
+// 6-axis legacy vocab; falls through to raw enum for unknown values.
 
 export default function GoalDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -224,7 +219,7 @@ export default function GoalDetailScreen() {
             className="text-xs font-semibold uppercase tracking-widest mb-2"
             style={{ color: tokens.textTer }}
           >
-            {LIFE_AREA_LABELS[delta.lifeArea] ?? delta.lifeArea}
+            {lifeAreaDisplayLabel(delta.lifeArea)}
           </Text>
 
           {/* Title */}

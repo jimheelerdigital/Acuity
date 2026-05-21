@@ -30,17 +30,23 @@ import {
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const CANONICAL_AREAS = [
-  "CAREER",
-  "HEALTH",
-  "RELATIONSHIPS",
-  "FINANCES",
-  "PERSONAL",
-  "OTHER",
-] as const;
+// Phase D (2026-05-21): accept canonical 10-axis vocab; legacy V1 area
+// values get mapped via the input transformer below before persisting.
+import { LIFE_AREAS, LIFE_AREAS_V1, LIFE_AREA_LEGACY_MAP } from "@acuity/shared";
+const CANONICAL_AREAS = [...LIFE_AREAS, ...LIFE_AREAS_V1] as readonly [
+  string,
+  ...string[],
+];
 
 const DimensionInput = z.object({
-  area: z.enum(CANONICAL_AREAS),
+  area: z
+    .enum(CANONICAL_AREAS as unknown as readonly [string, ...string[]])
+    .transform((v) => {
+      // Map V1 inputs to V2 canonical. OTHER → null → reject.
+      if ((LIFE_AREAS as readonly string[]).includes(v)) return v;
+      const mapped = (LIFE_AREA_LEGACY_MAP as Record<string, string | null>)[v];
+      return mapped ?? v; // OTHER stays as OTHER; reader treats it as sentinel
+    }),
   label: z.string().min(1).max(40),
   description: z.string().max(200).nullable().optional(),
   color: z.string().max(16).nullable().optional(),
@@ -51,7 +57,9 @@ const DimensionInput = z.object({
 
 const PutBody = z.object({
   preset: z.enum(LIFE_DIMENSION_PRESET_NAMES),
-  dimensions: z.array(DimensionInput).max(6).optional(),
+  // Up to 10 dimensions now (was 6). Configurable custom set still
+  // tops out at canonical axis count.
+  dimensions: z.array(DimensionInput).max(10).optional(),
 });
 
 export async function GET(req: NextRequest) {
@@ -102,7 +110,7 @@ export async function PUT(req: NextRequest) {
 
   const rows: LifeDimensionRow[] | undefined =
     preset === "CUSTOM"
-      ? dimensions
+      ? (dimensions as LifeDimensionRow[] | undefined)
       : LIFE_DIMENSION_PRESETS[preset];
 
   if (!rows || rows.length === 0) {

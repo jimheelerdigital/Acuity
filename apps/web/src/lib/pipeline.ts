@@ -204,11 +204,15 @@ Return ONLY valid JSON matching this exact schema — no markdown, no prose:
   ],
   "lifeAreaMentions": {
     "career": { "mentioned": bool, "score": 1-10, "themes": [], "people": [], "goals": [], "sentiment": "positive"|"negative"|"neutral" },
-    "health": { ... },
-    "relationships": { ... },
-    "finances": { ... },
-    "personal": { ... },
-    "other": { ... }
+    "money": { ... },
+    "romance": { ... },
+    "family": { ... },
+    "friends": { ... },
+    "physical_health": { ... },
+    "mental_health": { ... },
+    "growth": { ... },
+    "fun": { ... },
+    "purpose": { ... }
   }
 }
 
@@ -248,10 +252,21 @@ export async function extractFromTranscript(
   // lands in the prompt; the key stays in Entry.dimensionContext.
   const DIMENSION_NAME_BY_KEY: Record<string, string> = {
     career: "Career",
-    health: "Health",
-    relationships: "Relationships",
-    finances: "Finances",
-    personal: "Personal Growth",
+    money: "Money",
+    romance: "Romance",
+    family: "Family",
+    friends: "Friends & Community",
+    physical_health: "Physical Health",
+    mental_health: "Mental Health",
+    growth: "Growth & Learning",
+    fun: "Fun",
+    purpose: "Purpose & Meaning",
+    // Legacy 6-axis keys preserved so build-42 recorder taps from old
+    // dimension links continue to label correctly during transition.
+    health: "Physical Health",
+    relationships: "Family",
+    finances: "Money",
+    personal: "Growth & Learning",
     other: "Other",
   };
   const dimensionBlock =
@@ -878,11 +893,15 @@ function validateLifeAreaMentions(
 
   const keys: (keyof LifeAreaMentions)[] = [
     "career",
-    "health",
-    "relationships",
-    "finances",
-    "personal",
-    "other",
+    "money",
+    "romance",
+    "family",
+    "friends",
+    "physical_health",
+    "mental_health",
+    "growth",
+    "fun",
+    "purpose",
   ];
 
   const result: Record<string, LifeAreaMention> = {};

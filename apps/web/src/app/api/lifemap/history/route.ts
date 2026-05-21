@@ -2,7 +2,10 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 
 import { getAuthOptions } from "@/lib/auth";
-import { DEFAULT_LIFE_AREAS } from "@acuity/shared";
+import {
+  DEFAULT_LIFE_AREAS,
+  LIFE_AREA_LEGACY_FALLBACK_KEY,
+} from "@acuity/shared";
 
 export const dynamic = "force-dynamic";
 
@@ -52,7 +55,10 @@ export async function GET() {
     if (!mentions) continue;
 
     for (const area of DEFAULT_LIFE_AREAS) {
-      const m = mentions[area.key];
+      // Phase D fallback: pre-cutover entries stored data under V1
+      // prompt keys; read the canonical V2 key first then fall back.
+      const legacyKey = LIFE_AREA_LEGACY_FALLBACK_KEY[area.key];
+      const m = mentions[area.key] ?? (legacyKey ? mentions[legacyKey] : undefined);
       if (m?.mentioned) {
         if (!weekData[area.key]) {
           weekData[area.key] = { total: 0, count: 0 };

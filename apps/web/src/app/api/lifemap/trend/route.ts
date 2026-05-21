@@ -14,7 +14,10 @@
 
 import { NextRequest, NextResponse } from "next/server";
 
-import { DEFAULT_LIFE_AREAS } from "@acuity/shared";
+import {
+  DEFAULT_LIFE_AREAS,
+  LIFE_AREA_LEGACY_FALLBACK_KEY,
+} from "@acuity/shared";
 
 import { getAnySessionUserId } from "@/lib/mobile-auth";
 
@@ -81,10 +84,13 @@ export async function GET(req: NextRequest) {
       if (!mentions) continue;
 
       for (const area of DEFAULT_LIFE_AREAS) {
-        // lifeAreaMentions uses lowercase `key` (career, health, …)
+        // lifeAreaMentions uses lowercase `key` (career, money, …)
         // but the snapshot + radar use uppercase `enum` (CAREER, …).
         // Store under `enum` so both sources key consistently.
-        const m = mentions[area.key];
+        // Phase D fallback: pre-cutover entries store under V1 keys;
+        // read canonical first then fall back to legacy.
+        const legacyKey = LIFE_AREA_LEGACY_FALLBACK_KEY[area.key];
+        const m = mentions[area.key] ?? (legacyKey ? mentions[legacyKey] : undefined);
         if (m?.mentioned) {
           if (!totals[area.enum]) totals[area.enum] = { total: 0, count: 0 };
           totals[area.enum].total += (m.score ?? 5) * 10;

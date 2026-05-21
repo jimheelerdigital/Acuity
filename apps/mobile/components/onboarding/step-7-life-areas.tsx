@@ -10,14 +10,24 @@ import { useTheme } from "@/contexts/theme-context";
 import { useOnboarding } from "./context";
 
 /**
- * Step 7 — Top-3 life-area ranking. Same data shape as the web step 7
- * ({ CAREER: 1, HEALTH: 2, RELATIONSHIPS: 3 }) so the Life Matrix
- * seeding logic downstream works without a mobile-specific branch.
+ * Step 7 — Top-3 life-area ranking. Same data shape as the web step 6
+ * ({ CAREER: 1, MONEY: 2, PHYSICAL_HEALTH: 3 }, etc.) so the Life
+ * Matrix seeding logic downstream works without a mobile-specific
+ * branch.
+ *
+ * Phase D (2026-05-21): top-3 picker over the canonical 10 axes.
+ * Server-side /api/onboarding/update now accepts both 10-axis (build-
+ * 43+) and 6-axis (build-42) priorities. Phase C will replace this
+ * entire step with a 12-axis baseline slider adapted to 10 axes;
+ * until then this top-3-of-10 picker is the transitional step.
  *
  * Interaction: tap an area to add it. The first tap marks it "1",
  * second "2", third "3". Re-tap a ranked area to unselect, which
  * collapses the higher-ranked picks up one slot. Continue is gated
  * on exactly 3 picks.
+ *
+ * The "OTHER" freeform input handler from V1 is removed — the 10-axis
+ * schema has no OTHER catch-all; PURPOSE absorbs the long-arc bucket.
  */
 
 export function Step7LifeAreas() {
@@ -108,7 +118,10 @@ export function Step7LifeAreas() {
         {DEFAULT_LIFE_AREAS.map((area) => {
           const rank = picks.indexOf(area.enum);
           const selected = rank >= 0;
-          const isOther = area.enum === "OTHER";
+          // Phase D dropped the OTHER catch-all; left as `false` so
+          // the V1 freeform input never renders. Will be removed
+          // entirely when Phase C replaces this step.
+          const isOther = false;
           return (
             <View key={area.enum}>
               <Pressable

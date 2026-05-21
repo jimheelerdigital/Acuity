@@ -22,7 +22,12 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
 
-import { CLAUDE_MAX_TOKENS, CLAUDE_MODEL, DEFAULT_LIFE_AREAS } from "@acuity/shared";
+import {
+  CLAUDE_MAX_TOKENS,
+  CLAUDE_MODEL,
+  DEFAULT_LIFE_AREAS,
+  LIFE_AREA_LEGACY_FALLBACK_KEY,
+} from "@acuity/shared";
 
 import { getCached } from "@/lib/admin-cache";
 import { getAnySessionUserId } from "@/lib/mobile-auth";
@@ -119,17 +124,26 @@ async function computeDimensionDetail(
     },
   });
 
+  // Phase D (2026-05-21): historical Entry.rawAnalysis blobs predate
+  // the 10-axis cutover and store data under V1 keys. Fall back to the
+  // V1 key when the V2 key is absent so trajectory + theme history
+  // remain continuous across the migration boundary.
+  const legacyKey = LIFE_AREA_LEGACY_FALLBACK_KEY[areaConfig.key];
+  const mentionFor = (raw: RawAnalysis | null) => {
+    const v2 = raw?.lifeAreaMentions?.[areaConfig.key];
+    if (v2) return v2;
+    return legacyKey ? raw?.lifeAreaMentions?.[legacyKey] : undefined;
+  };
+
   const dimensionEntries = allEntries.filter((e) => {
-    const raw = e.rawAnalysis as RawAnalysis | null;
-    return raw?.lifeAreaMentions?.[areaConfig.key]?.mentioned === true;
+    return mentionFor(e.rawAnalysis as RawAnalysis | null)?.mentioned === true;
   });
 
   // Trajectory — one { date, score } point per day the dimension was
   // mentioned, averaged if multiple entries land on the same day.
   const byDay = new Map<string, { sum: number; count: number }>();
   for (const e of dimensionEntries) {
-    const raw = e.rawAnalysis as RawAnalysis | null;
-    const s = raw?.lifeAreaMentions?.[areaConfig.key]?.score;
+    const s = mentionFor(e.rawAnalysis as RawAnalysis | null)?.score;
     if (typeof s !== "number") continue;
     const day = e.entryDate.toISOString().split("T")[0];
     const bucket = byDay.get(day) ?? { sum: 0, count: 0 };

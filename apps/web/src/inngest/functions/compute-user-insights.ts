@@ -42,8 +42,21 @@ const MOOD_ORDER: Record<string, number> = {
   GREAT: 5,
 };
 
+// Phase D (2026-05-21): 10-axis canonical labels. Legacy V1 keys
+// included for backward-compat reads of historical LifeMapArea rows
+// that haven't yet been migrated by the SQL backfill.
 const AREA_LABELS: Record<string, string> = {
   CAREER: "Career",
+  MONEY: "Money",
+  ROMANCE: "Romance",
+  FAMILY: "Family",
+  FRIENDS: "Friends & Community",
+  PHYSICAL_HEALTH: "Physical Health",
+  MENTAL_HEALTH: "Mental Health",
+  GROWTH: "Growth & Learning",
+  FUN: "Fun",
+  PURPOSE: "Purpose & Meaning",
+  // Legacy V1 fallback labels
   HEALTH: "Health",
   RELATIONSHIPS: "Relationships",
   FINANCES: "Finances",

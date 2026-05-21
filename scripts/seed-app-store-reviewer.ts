@@ -595,6 +595,10 @@ async function main(): Promise<void> {
         completedAt: now,
         moodBaseline: "GOOD",
         moodBaselineNumeric: 7,
+        // V1 vocab by design — exercises the LIFE_AREA_LEGACY_MAP
+        // path in /api/onboarding/update. Verifies that build-42
+        // priority shapes still get accepted post-Phase-D cutover.
+        // HEALTH → PHYSICAL_HEALTH, RELATIONSHIPS → FAMILY.
         lifeAreaPriorities: {
           CAREER: 1,
           HEALTH: 2,

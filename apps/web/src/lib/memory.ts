@@ -49,12 +49,27 @@ type RecurringGoal = {
 
 const AREA_KEYS: LifeAreaKey[] = [
   "career",
-  "health",
-  "relationships",
-  "finances",
-  "personal",
-  "other",
+  "money",
+  "romance",
+  "family",
+  "friends",
+  "physical_health",
+  "mental_health",
+  "growth",
+  "fun",
+  "purpose",
 ];
+
+// Phase D column-name resolver. UserMemory columns use camelCase
+// derived from the prompt key. PHYSICAL_HEALTH → physicalHealth,
+// MENTAL_HEALTH → mentalHealth; single-word keys map straight through.
+// Centralized so we have one place to update if column conventions
+// shift.
+function columnPrefixForKey(key: LifeAreaKey): string {
+  if (key === "physical_health") return "physicalHealth";
+  if (key === "mental_health") return "mentalHealth";
+  return key;
+}
 
 // ─── Get or Create ───────────────────────────────────────────────────────────
 
@@ -90,16 +105,19 @@ export async function updateUserMemory(
   if (mentions) {
     for (const key of AREA_KEYS) {
       const m = mentions[key];
-      if (m.mentioned) {
-        mentionIncrements[`${key}Mentions`] = 1;
+      if (m?.mentioned) {
+        const colPrefix = columnPrefixForKey(key);
+        mentionIncrements[`${colPrefix}Mentions`] = 1;
         // Slowly drift baseline toward current score (scaled to 0-100)
         const currentBaseline =
-          memory[`${key}Baseline` as keyof UserMemory] as number;
+          (memory[`${colPrefix}Baseline` as keyof UserMemory] as
+            | number
+            | null) ?? 50;
         const newScore = m.score * 10; // 1-10 → 10-100
         const driftedBaseline = Math.round(
           currentBaseline * 0.95 + newScore * 0.05
         );
-        baselineUpdates[`${key}Baseline`] = driftedBaseline;
+        baselineUpdates[`${colPrefix}Baseline`] = driftedBaseline;
       }
     }
   }
@@ -183,11 +201,15 @@ export async function compressMemory(userId: string): Promise<void> {
 
   const existingSummaries: Record<string, string | null> = {
     career: memory.careerSummary,
-    health: memory.healthSummary,
-    relationships: memory.relationshipsSummary,
-    finances: memory.financesSummary,
-    personal: memory.personalSummary,
-    other: memory.otherSummary,
+    money: memory.moneySummary,
+    romance: memory.romanceSummary,
+    family: memory.familySummary,
+    friends: memory.friendsSummary,
+    physical_health: memory.physicalHealthSummary,
+    mental_health: memory.mentalHealthSummary,
+    growth: memory.growthSummary,
+    fun: memory.funSummary,
+    purpose: memory.purposeSummary,
   };
 
   const { system, user } = buildCompressionPrompt(
@@ -221,11 +243,17 @@ export async function compressMemory(userId: string): Promise<void> {
     where: { userId },
     data: {
       careerSummary: parsed.career || memory.careerSummary,
-      healthSummary: parsed.health || memory.healthSummary,
-      relationshipsSummary: parsed.relationships || memory.relationshipsSummary,
-      financesSummary: parsed.finances || memory.financesSummary,
-      personalSummary: parsed.personal || memory.personalSummary,
-      otherSummary: parsed.other || memory.otherSummary,
+      moneySummary: parsed.money || memory.moneySummary,
+      romanceSummary: parsed.romance || memory.romanceSummary,
+      familySummary: parsed.family || memory.familySummary,
+      friendsSummary: parsed.friends || memory.friendsSummary,
+      physicalHealthSummary:
+        parsed.physical_health || memory.physicalHealthSummary,
+      mentalHealthSummary:
+        parsed.mental_health || memory.mentalHealthSummary,
+      growthSummary: parsed.growth || memory.growthSummary,
+      funSummary: parsed.fun || memory.funSummary,
+      purposeSummary: parsed.purpose || memory.purposeSummary,
       lastCompressed: new Date(),
     },
   });
@@ -239,12 +267,13 @@ export async function buildMemoryContext(userId: string): Promise<string> {
   if (memory.totalEntries === 0) return "";
 
   const summaries = AREA_KEYS.map((key) => {
+    const colPrefix = columnPrefixForKey(key);
     const summary =
-      memory[`${key}Summary` as keyof UserMemory] as string | null;
+      memory[`${colPrefix}Summary` as keyof UserMemory] as string | null;
     const mentions =
-      memory[`${key}Mentions` as keyof UserMemory] as number;
+      (memory[`${colPrefix}Mentions` as keyof UserMemory] as number) ?? 0;
     const baseline =
-      memory[`${key}Baseline` as keyof UserMemory] as number;
+      (memory[`${colPrefix}Baseline` as keyof UserMemory] as number) ?? 50;
     return `${key}: ${summary ?? "No data yet"} (${mentions} mentions, baseline ${baseline}/100)`;
   }).join("\n");
 
@@ -304,7 +333,7 @@ export async function updateLifeMap(
   for (const areaConfig of DEFAULT_LIFE_AREAS) {
     const key = areaConfig.key as LifeAreaKey;
     const mention = mentions[key];
-    if (!mention.mentioned) continue;
+    if (!mention?.mentioned) continue;
 
     const area = await prisma.lifeMapArea.findFirst({
       where: { userId, area: areaConfig.enum },
@@ -313,7 +342,11 @@ export async function updateLifeMap(
 
     const newScore10 = mention.score; // 1-10
     const newScore100 = newScore10 * 10;
-    const baseline = memory[`${key}Baseline` as keyof UserMemory] as number;
+    const colPrefix = columnPrefixForKey(key);
+    const baseline =
+      (memory[`${colPrefix}Baseline` as keyof UserMemory] as
+        | number
+        | null) ?? 50;
 
     // Slice N (2026-05-18): dual-write granularity migration.
     // Previously the blend produced a 0-100 number that was then
@@ -493,7 +526,7 @@ function updateRecurringPeople(
 
   for (const key of AREA_KEYS) {
     const m = mentions[key];
-    if (!m.mentioned) continue;
+    if (!m?.mentioned) continue;
     for (const name of m.people) {
       const lower = name.toLowerCase();
       if (map.has(lower)) {
@@ -555,11 +588,10 @@ function findAreaForTheme(
   mentions: LifeAreaMentions
 ): string {
   for (const key of AREA_KEYS) {
+    const m = mentions[key];
     if (
-      mentions[key].mentioned &&
-      mentions[key].themes.some(
-        (t) => t.toLowerCase() === theme.toLowerCase()
-      )
+      m?.mentioned &&
+      m.themes.some((t) => t.toLowerCase() === theme.toLowerCase())
     ) {
       return key;
     }
@@ -572,9 +604,10 @@ function findAreaForGoal(
   mentions: LifeAreaMentions
 ): string {
   for (const key of AREA_KEYS) {
+    const m = mentions[key];
     if (
-      mentions[key].mentioned &&
-      mentions[key].goals.some(
+      m?.mentioned &&
+      m.goals.some(
         (g) => g.toLowerCase().includes(goal.toLowerCase().slice(0, 20))
       )
     ) {

@@ -28,15 +28,14 @@ import { enforceUserRateLimit } from "@/lib/rate-limit";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+import { LIFE_AREA_LEGACY_MAP, LIFE_AREAS, LIFE_AREAS_V1 } from "@acuity/shared";
+
 const VALID_MOODS = ["GREAT", "GOOD", "NEUTRAL", "LOW", "ROUGH"] as const;
-const VALID_AREAS = [
-  "CAREER",
-  "HEALTH",
-  "RELATIONSHIPS",
-  "FINANCES",
-  "PERSONAL",
-  "OTHER",
-] as const;
+// Phase D (2026-05-21): accept BOTH the canonical 10-axis vocab and
+// the legacy 6-axis vocab. Build-42 binaries still send V1 priorities;
+// build-43+ sends V2. V1 values get mapped to V2 via LIFE_AREA_LEGACY_MAP
+// before persisting so the stored shape is always canonical.
+const VALID_AREAS = [...LIFE_AREAS, ...LIFE_AREAS_V1] as readonly string[];
 const VALID_AGE_RANGES = ["18-24", "25-34", "35-44", "45-54", "55+"];
 const VALID_GENDERS = ["Male", "Female", "Non-binary", "Prefer not to say"];
 const VALID_REASONS = [
@@ -105,11 +104,22 @@ export async function POST(req: NextRequest) {
   if (raw.lifeAreaPriorities && typeof raw.lifeAreaPriorities === "object") {
     const cleaned: Record<string, number> = {};
     for (const [k, v] of Object.entries(raw.lifeAreaPriorities)) {
-      if (!(VALID_AREAS as readonly string[]).includes(k)) continue;
+      if (!VALID_AREAS.includes(k)) continue;
       const rank = typeof v === "number" ? Math.round(v) : NaN;
-      if (Number.isFinite(rank) && rank >= 1 && rank <= 6) {
-        cleaned[k] = rank;
-      }
+      if (!Number.isFinite(rank) || rank < 1 || rank > 6) continue;
+      // Map V1 keys to canonical V2 via LIFE_AREA_LEGACY_MAP. CAREER →
+      // CAREER, HEALTH → PHYSICAL_HEALTH, etc. OTHER has no V2 target
+      // (mapping returns null) → silently dropped. V2 keys pass through.
+      const isV2 = (LIFE_AREAS as readonly string[]).includes(k);
+      const targetKey: string | null = isV2
+        ? k
+        : ((LIFE_AREA_LEGACY_MAP as Record<string, string | null>)[k] ?? null);
+      if (!targetKey) continue;
+      // If both V1 and V2 keys collide (e.g. build-43 sends CAREER and
+      // build-42 fixture also sends CAREER), keep the lower rank — that
+      // matches the user's clearer signal of importance.
+      const existing = cleaned[targetKey];
+      cleaned[targetKey] = existing != null ? Math.min(existing, rank) : rank;
     }
     onboardingUpdates.lifeAreaPriorities = cleaned;
   }

@@ -27,8 +27,36 @@ import { DEFAULT_LIFE_AREAS, type LifeArea } from "@acuity/shared";
  * `(scaled / 100) * maxRadius` from center.
  *
  * Size: the SVG is viewBox-driven, so the caller controls rendered
- * pixel size via the `size` prop (defaults to 300 to match the web
- * max-width).
+ * pixel size via the `size` prop (defaults to 300; Insights tab passes
+ * 320 to match the screen content area on iPhone 16e).
+ *
+ * ─── Phase D (2026-05-21): 10-axis layout safety ─────────────────────
+ *
+ * Geometry math at size=320 on iPhone 16e 375pt screen:
+ *   - cx = cy = 160, maxR = 320 × 0.37 = 118.4pt
+ *   - Label radial offset = size × 0.06 = 19.2pt beyond polygon
+ *   - Label center radius from origin = 137.6pt
+ *   - 10 axes at 36° spacing starting at -π/2 (12 o'clock)
+ *
+ * Worst-case horizontal label position is at indices 2 & 7 (±18° off
+ * horizontal axis), where labelP.x ≈ 290.85 (right) / 29.15 (left).
+ * Worst-case label is "Romance"/"Purpose"/"Friends" (7 chars) which
+ * at fontSize=10 monospace measures ~43pt wide (21.5pt half-width).
+ *
+ *   right edge: 290.85 + 21.5 = 312.35  (SVG width 320 → 7.65pt margin)
+ *   left edge:  29.15 - 21.5 = 7.65     (SVG x=0 → 7.65pt margin)
+ *
+ * So `textAnchor="middle"` for all labels is provably safe — labels
+ * stay inside SVG bounds with ~7pt margin even at worst case. Swapping
+ * to side-anchors (start on right / end on left) would push labels
+ * either past the SVG edge or over the polygon vertices; we keep the
+ * middle anchor and cap shortName length at 7 chars via
+ * DEFAULT_LIFE_AREAS in @acuity/shared.
+ *
+ * Vertical clearance: top label baseline at y≈22 with fontSize=10
+ * glyphs ascending ~10pt → top edge at y≈12. SVG y=0 → 12pt margin.
+ * Score numeral below the label (y baseline +12) sits within polygon
+ * row at y≈34 → no collision with grid rings.
  */
 
 export interface RadarArea {
@@ -268,13 +296,16 @@ export function LifeMapRadar({
 
       {/* Area nodes + axis labels. Each axis is tappable via its own
           G wrapper so the touch target covers the node + label + score
-          text in one hit — fingers don't hit a 4px SVG circle. */}
+          text in one hit — fingers don't hit a 4px SVG circle.
+          Node position uses resolveScore100 to match the polygon math
+          (was area.score/10 → drifted from polygon when score100 was
+          set but legacy `score` wasn't backfilled). */}
       {areaConfigs.map((config, i) => {
         const area = areas.find(
           (a) => a.area === config.enum || a.area === config.name
         );
-        const score = area ? area.score / 10 : 0;
-        const nodeR = score * maxR;
+        const score100 = resolveScore100(area) ?? 0;
+        const nodeR = (score100 / 100) * maxR;
         const nodeP = getPoint(i, nodeR);
         const labelP = getPoint(i, maxR + size * 0.06);
         const isSelected =
@@ -284,6 +315,10 @@ export function LifeMapRadar({
         const handlePress = onAreaPress
           ? () => onAreaPress(config.enum)
           : undefined;
+        // shortName is the radar-label form (≤7 chars, Phase D); name
+        // remains the full display label for cards and detail screens.
+        const labelText =
+          (config as { shortName?: string }).shortName ?? config.name;
 
         return (
           <G key={`node-${config.enum}`} onPress={handlePress}>
@@ -313,7 +348,7 @@ export function LifeMapRadar({
               fill={isSelected ? config.color : labelColor}
               fontFamily={labelFontFamily}
             >
-              {config.name}
+              {labelText}
             </SvgText>
             <SvgText
               x={labelP.x}

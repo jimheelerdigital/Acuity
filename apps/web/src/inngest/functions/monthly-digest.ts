@@ -15,8 +15,20 @@ const TWENTY_FIVE_DAYS_MS = 25 * 24 * 60 * 60 * 1000;
 const SEND_HOUR_LOCAL = 9;
 const MIN_ENTRIES_FOR_DIGEST = 5;
 
+// Phase D (2026-05-21): 10-axis canonical labels + V1 fallback for
+// historical LifeMapArea rows pre-migration.
 const AREA_LABELS: Record<string, string> = {
   CAREER: "Career",
+  MONEY: "Money",
+  ROMANCE: "Romance",
+  FAMILY: "Family",
+  FRIENDS: "Friends & Community",
+  PHYSICAL_HEALTH: "Physical Health",
+  MENTAL_HEALTH: "Mental Health",
+  GROWTH: "Growth & Learning",
+  FUN: "Fun",
+  PURPOSE: "Purpose & Meaning",
+  // Legacy V1 fallback
   HEALTH: "Health",
   RELATIONSHIPS: "Relationships",
   FINANCES: "Finances",
