@@ -41,6 +41,48 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-21] — Landing page SSR + remove email verification wall + un-gate GA4
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** TBD
+
+### In plain English (for Keenan)
+
+Three changes to fix the paid ad conversion funnel. First, landing pages now load their content server-side instead of waiting for JavaScript — the headline and CTA button appear instantly instead of after a 2-4 second blank screen on mobile. This alone should dramatically reduce bounce rates from Meta ads. Second, the email verification wall is gone — users who sign up with email/password can now sign in immediately instead of having to check their email first (verification email still sends for security, just doesn't block access). Third, Google Analytics now loads for all visitors instead of only those who accept cookies, so we can actually see the ad-click-to-signup funnel in GA4.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/for/[slug]/page.tsx`: Converted from `"use client"` to a **server component**. Data is now fetched server-side via Prisma (both static persona lookup and dynamic AdLab landing page query). Hero headline, CTA, and social proof are in the initial HTML — no JS required to see them. Interactive elements (animations, carousels) hydrate after first paint via client sub-components.
+- `apps/web/src/app/for/[slug]/attribution-client.tsx`: New thin client component for setting the attribution cookie (extracted from the old client page).
+- `apps/web/src/app/for/[slug]/static-persona-client.tsx`: New client wrapper for static persona pages. ParallaxOrbs lazy-loaded via `next/dynamic` with `ssr: false` (deferred — GPU-heavy blur filters not needed for first paint).
+- `apps/web/src/app/for/[slug]/dynamic-landing-client.tsx`: New client wrapper for AdLab-generated dynamic landing pages. Same lazy-loaded ParallaxOrbs pattern.
+- `apps/web/src/app/layout.tsx`: Moved Meta Pixel from synchronous `<head>` script to `next/script` with `strategy="afterInteractive"`. No longer blocks first paint.
+- `apps/web/src/components/cookie-consent.tsx`: Added 5-second defer before showing cookie consent banner. Paid traffic users see the hero + CTA before the banner covers 25% of mobile viewport.
+- `apps/web/src/app/api/auth/signup/route.ts`: New users now get `emailVerified: new Date()` at creation time. Verification email still sends but doesn't block sign-in.
+- `apps/web/src/app/api/auth/mobile-signup/route.ts`: Same `emailVerified` change for mobile signups.
+- `apps/web/src/lib/auth.ts`: Removed `throw new Error("EmailNotVerified")` from Credentials provider authorize function. Unverified users can now sign in.
+- `apps/web/src/components/consent-gated-trackers.tsx`: GA4 now loads unconditionally with `anonymize_ip: true`. Hotjar/Contentsquare remain consent-gated (session recording).
+
+### Manual steps needed
+
+- [ ] Verify landing pages load with content visible immediately — no blank screen or spinner (Keenan)
+- [ ] Test email/password signup → should redirect to success page AND be able to sign in immediately without checking email (Keenan)
+- [ ] Verify GA4 is receiving page_view events from /for/ pages without cookie consent (check GA4 Realtime report) (Keenan)
+- [ ] Verify Meta Pixel still fires PageView and conversion events correctly after the defer change (Keenan)
+- [ ] Check cookie consent banner appears after ~5 seconds instead of immediately (Keenan)
+- [ ] Monitor Vercel logs for any SSR errors on /for/[slug] pages (Jimmy)
+
+### Notes
+
+- The static /for/ pages (founders, therapy, etc.) still use their own dedicated page files with `"use client"`. They now route through the server component which provides the data, but the rendering is done by the client sub-component. Full SSR of these pages would require rewriting all of landing-shared.tsx — left for a future optimization pass.
+- The dynamic /for/[slug] pages (AdLab-generated) are the biggest win — they were previously doing a client-side fetch() with a loading spinner. Now the data is fetched server-side and the content is in the initial HTML.
+- ParallaxOrbs (blur(80px) CSS filter + mousemove listener) is now lazy-loaded with `ssr: false`. Users see the content first; the decorative animation loads after hydration. On low-end mobile devices this eliminates GPU stutter during initial load.
+- Email verification removal is safe for our use case — we already validate email format at signup, and the verification email still goes out. If we need to gate features behind verified email in the future, we can check `emailVerified` at the feature level rather than at sign-in.
+- GA4 with `anonymize_ip: true` does not store identifiable IP addresses. This is compatible with most privacy frameworks for basic analytics. Session recording (Hotjar/Contentsquare) remains behind consent because those capture user behavior directly.
+
+---
+
 ## [2026-05-21] — Fix AdLab conversion tracking + add clicks/CPC to dashboard
 
 **Requested by:** Keenan

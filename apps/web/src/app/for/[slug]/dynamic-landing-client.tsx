@@ -1,0 +1,317 @@
+"use client";
+
+import { useRef, useEffect, useState } from "react";
+import dynamic from "next/dynamic";
+import {
+  LandingNav,
+  Footer,
+  Reveal,
+  PulsingCTA,
+  SocialProofBar,
+  HowItWorksSection,
+  ExtractPhone,
+} from "@/components/landing-shared";
+import {
+  TestimonialCarousel,
+  STATIC_CAROUSEL_TESTIMONIALS,
+  pickFallbackHeadshot,
+  type CarouselTestimonial,
+} from "@/components/testimonial-carousel";
+import type { DynamicLandingPage } from "./page";
+
+// Lazy-load ParallaxOrbs — GPU-heavy blur filters, not needed for first paint
+const ParallaxOrbs = dynamic(
+  () => import("@/components/landing-shared").then((m) => {
+    const Comp = m.ParallaxOrbs;
+    return { default: Comp };
+  }),
+  { ssr: false }
+);
+
+export function DynamicLandingPageView({ page, slug, ctaHref }: { page: DynamicLandingPage; slug: string; ctaHref: string }) {
+  const allTestimonials: CarouselTestimonial[] = [];
+  if (page.testimonialQuote && page.testimonialName) {
+    const name = page.testimonialName;
+    const parts = name.split(" ");
+    const initials = parts.length >= 2
+      ? (parts[0][0] + parts[1][0]).toUpperCase()
+      : name.slice(0, 2).toUpperCase();
+    allTestimonials.push({
+      quote: page.testimonialQuote,
+      name,
+      role: "Acuity member",
+      initials,
+      bgColor: "bg-[#7C5CFC]",
+      imageSrc: pickFallbackHeadshot(name),
+    });
+  }
+  allTestimonials.push(...STATIC_CAROUSEL_TESTIMONIALS);
+
+  return (
+    <div className="min-h-screen bg-[#181614] text-[#F5EDE4] overflow-x-hidden">
+      <LandingNav />
+
+      {/* Hero — text + phone mockup side by side */}
+      <section className="relative pt-32 pb-8 sm:pt-40 sm:pb-12 overflow-hidden">
+        <ParallaxOrbs />
+        <div className="relative mx-auto max-w-6xl px-6">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:gap-12">
+            <div className="flex-1 text-center lg:text-left">
+              <Reveal>
+                <SplitHeroHeadline text={page.heroHeadline} />
+              </Reveal>
+              <Reveal delay={1}>
+                <p className="mt-5 text-base sm:text-lg text-[#F5EDE4] leading-relaxed max-w-xl mx-auto lg:mx-0">
+                  {page.heroSubheadline}
+                  {page.heroSubheadline.length < 120 && (
+                    <> Acuity is an AI voice journal — just open the app and talk. It extracts your tasks, tracks your goals, scores your mood, spots the patterns you can&#39;t see, and every Sunday delivers a report that tells the story of your week.</>
+                  )}
+                </p>
+              </Reveal>
+              <Reveal delay={2}>
+                <div className="mt-6">
+                  <PulsingCTA href={ctaHref}>
+                    Start Free Trial — 30 Days Free
+                  </PulsingCTA>
+                  <p className="mt-2.5 text-xs text-[#B0A898]">
+                    No credit card. Quick setup.
+                  </p>
+                </div>
+              </Reveal>
+            </div>
+            <div className="flex-shrink-0 flex justify-center mt-10 lg:mt-0">
+              <Reveal delay={2}>
+                <div className="animate-hero-float">
+                  <ExtractPhone
+                    tasks={[
+                      { text: "Follow up on proposal", checked: true },
+                      { text: "Book dentist appointment" },
+                      { text: "Call Mom this weekend" },
+                    ]}
+                    goal="Be more present at home"
+                    mood="Calm but tired"
+                  />
+                </div>
+              </Reveal>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <SocialProofBar />
+      <TestimonialCarousel testimonials={allTestimonials} />
+
+      {/* Pain Points */}
+      <section className="px-6 py-14 sm:py-18">
+        <div className="mx-auto max-w-2xl">
+          <Reveal>
+            <p className="text-center text-xs font-semibold text-[#E8DDD0] uppercase tracking-widest mb-5">
+              Sound familiar?
+            </p>
+          </Reveal>
+          <div className="space-y-2.5">
+            {page.painPoints.map((point, i) => (
+              <SlideIn key={i} direction="left" delay={i * 200}>
+                <div className="rounded-lg border border-white/10 bg-[#1E1C1A] border-l-[3px] border-l-[#7C5CFC] py-3.5 px-5">
+                  <p className="text-base leading-relaxed text-[#F5EDE4]">{point}</p>
+                </div>
+              </SlideIn>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* How It Works */}
+      <HowItWorksSection
+        steps={[
+          { label: "Step 1", title: "Record", description: "Hit record. Speak freely about your day — whatever comes to mind." },
+          { label: "Step 2", title: "Extract", description: "Within minutes, your tasks are on a list, your goals are tracked, and your mood is scored." },
+          { label: "Step 3", title: "Reflect", description: "Every Sunday, get a weekly narrative report showing patterns in your life." },
+        ]}
+        extractTasks={[{ text: "Send proposal" }, { text: "Buy groceries" }, { text: "Call mom" }]}
+        extractGoal="Ship the beta this week"
+        extractMood="Energized but anxious"
+        reflectPattern="Best mood on days you exercised."
+        reflectActions={["Block mornings for deep work", "No meetings after 5pm", "Exercise before noon"]}
+      />
+
+      {/* Value Props */}
+      <section className="px-6 py-14 sm:py-18">
+        <div className="mx-auto max-w-4xl">
+          <Reveal>
+            <h2 className="text-center text-3xl font-bold tracking-tight sm:text-4xl text-white mb-10">
+              {page.valuePropHeadline}
+            </h2>
+          </Reveal>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {page.valueProps.map((prop, i) => {
+              const words = prop.split(" ");
+              const titleEnd = Math.min(words.length, 4);
+              const title = words.slice(0, titleEnd).join(" ");
+              const rest = words.slice(titleEnd).join(" ");
+              return (
+                <Reveal key={i} delay={Math.min(i + 1, 3) as 1 | 2 | 3}>
+                  <div className="rounded-xl border border-white/10 bg-[#1E1C1A] p-5 transition-all duration-300 hover:border-white/20">
+                    <div className="flex items-start gap-3">
+                      <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#7C5CFC]/20">
+                        <svg className="h-3.5 w-3.5 text-[#7C5CFC]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                      <p className="text-sm text-[#B0A898] leading-relaxed">
+                        <span className="font-semibold text-white">{title}</span>
+                        {rest ? ` ${rest}` : ""}
+                      </p>
+                    </div>
+                  </div>
+                </Reveal>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* Final CTA */}
+      <section className="px-6 py-14 sm:py-20">
+        <Reveal>
+          <div className="mx-auto max-w-3xl rounded-2xl border border-white/10 bg-[#1E1C1A] p-10 sm:p-14 text-center relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-[#7C5CFC]/5 via-transparent to-[#7C5CFC]/5 pointer-events-none" />
+            <div className="relative">
+              <h2 className="text-2xl font-bold sm:text-3xl tracking-tight text-white mb-5">
+                {page.closingHeadline || "Your week doesn\u2019t have to disappear."}
+              </h2>
+              <a
+                href={ctaHref}
+                className="inline-block rounded-full bg-[#7C5CFC] px-8 py-4 text-sm font-bold text-white transition hover:bg-[#6B4FE0] hover:-translate-y-0.5 active:scale-95"
+              >
+                Start Free Trial — 30 Days Free
+              </a>
+              <p className="mt-2.5 text-sm text-[#B0A898]">
+                No credit card. Cancel anytime.
+              </p>
+              <p className="mt-4 text-xs text-[#B0A898]/60">
+                <span className="text-amber-400">4.9 ★</span> on the App Store
+              </p>
+            </div>
+          </div>
+        </Reveal>
+      </section>
+
+      <Footer />
+    </div>
+  );
+}
+
+
+function SplitHeroHeadline({ text }: { text: string }) {
+  const splitMatch = text.match(/^(.+?[.?!])\s+(.+)$/);
+  let whitePart: string;
+  let purplePart: string;
+
+  if (splitMatch) {
+    whitePart = splitMatch[1];
+    purplePart = splitMatch[2];
+  } else {
+    const words = text.split(" ");
+    if (words.length > 3) {
+      whitePart = words.slice(0, -3).join(" ");
+      purplePart = words.slice(-3).join(" ");
+    } else {
+      whitePart = text;
+      purplePart = "";
+    }
+  }
+
+  const allWords = text.split(" ");
+  const whiteWordCount = whitePart.split(" ").length;
+  const [visibleCount, setVisibleCount] = useState(0);
+  const ref = useRef<HTMLHeadingElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          allWords.forEach((_, i) => {
+            setTimeout(() => setVisibleCount((c) => Math.max(c, i + 1)), i * 80);
+          });
+        } else {
+          setVisibleCount(0);
+        }
+      },
+      { threshold: 0.3 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [allWords.length]);
+
+  return (
+    <h1
+      ref={ref}
+      className="text-4xl font-extrabold tracking-tight sm:text-5xl lg:text-6xl leading-[1.08]"
+    >
+      {allWords.map((word, i) => (
+        <span key={i}>
+          {i === whiteWordCount && purplePart && <br />}
+          <span
+            className={`inline-block mr-[0.3em] transition-all duration-500 ${
+              i < whiteWordCount ? "text-white" : "text-[#7C5CFC]"
+            }`}
+            style={{
+              opacity: i < visibleCount ? 1 : 0,
+              transform: i < visibleCount ? "translateY(0)" : "translateY(20px)",
+              transitionDelay: `${i * 60}ms`,
+            }}
+          >
+            {word}
+          </span>
+        </span>
+      ))}
+    </h1>
+  );
+}
+
+function SlideIn({
+  children,
+  direction = "left",
+  delay = 0,
+}: {
+  children: React.ReactNode;
+  direction?: "left" | "right" | "up";
+  delay?: number;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    const startTransform =
+      direction === "left" ? "translateX(-30px)" :
+      direction === "right" ? "translateX(30px)" :
+      "translateY(20px)";
+
+    el.style.opacity = "0";
+    el.style.transform = startTransform;
+    el.style.transition = `opacity 0.5s ease-out ${delay}ms, transform 0.5s ease-out ${delay}ms`;
+
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          el.style.opacity = "1";
+          el.style.transform = "translate(0)";
+        } else {
+          el.style.opacity = "0";
+          el.style.transform = startTransform;
+        }
+      },
+      { threshold: 0.1 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [direction, delay]);
+
+  return <div ref={ref}>{children}</div>;
+}

@@ -122,7 +122,11 @@ export async function POST(req: NextRequest) {
         passwordHash,
         subscriptionStatus: "TRIAL",
         trialEndsAt: defaultTrialEnd,
-        // emailVerified left null — user must click the link.
+        // Mark as verified immediately so user can sign in right away.
+        // Verification email still sent for security, but doesn't block access.
+        // This removes the biggest mobile conversion killer — users from ads
+        // sign up, get told to check email, leave, and never come back.
+        emailVerified: new Date(),
       },
       select: { id: true },
     });

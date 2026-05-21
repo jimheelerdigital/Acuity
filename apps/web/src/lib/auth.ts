@@ -111,9 +111,12 @@ export function getAuthOptions(): NextAuthOptions {
           const match = await verifyPassword(password, user.passwordHash);
           if (!match) return null;
 
-          if (!user.emailVerified) {
-            throw new Error("EmailNotVerified");
-          }
+          // Previously threw EmailNotVerified here, blocking sign-in until
+          // the user clicked a verification link. Removed — new signups now
+          // set emailVerified immediately. Existing unverified users can
+          // still sign in; verification email is sent for security but
+          // doesn't gate access. This eliminates the biggest conversion
+          // killer for mobile paid traffic.
 
           return {
             id: user.id,

@@ -129,7 +129,16 @@ export function CookieConsentBanner() {
     };
   }, []);
 
-  if (!mounted || state === "hidden") return null;
+  // Defer the banner 5s so landing page content is visible first.
+  // Users from paid ads need to see the hero + CTA before the banner.
+  const [deferred, setDeferred] = useState(false);
+  useEffect(() => {
+    if (state === "hidden") return;
+    const t = setTimeout(() => setDeferred(true), 5000);
+    return () => clearTimeout(t);
+  }, [state]);
+
+  if (!mounted || state === "hidden" || !deferred) return null;
 
   const accept = (analyticsOn: boolean, marketingOn: boolean) => {
     writeConsent({
