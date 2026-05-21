@@ -81,9 +81,15 @@ export function ExtractionReview({
           setHidden(true);
           return;
         }
-        setTasks((res.tasks ?? []).map((t) => ({ ...t, selected: true })));
+        // Q11 Phase B (2026-05-21): default ALL checkboxes OFF per the
+        // design spec ("Check what to keep, everything is off by
+        // default"). Was: tasks selected:true, goals selected based on
+        // !alreadyExists. The g.alreadyExists flag is still used as a
+        // visual cue (dimmed row + "Already tracked" chip) but no
+        // longer drives the default selection state.
+        setTasks((res.tasks ?? []).map((t) => ({ ...t, selected: false })));
         setGoals(
-          (res.goals ?? []).map((g) => ({ ...g, selected: !g.alreadyExists }))
+          (res.goals ?? []).map((g) => ({ ...g, selected: false }))
         );
       } catch {
         // silent
