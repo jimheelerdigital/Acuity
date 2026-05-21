@@ -126,112 +126,112 @@ export async function GET(req: NextRequest) {
     const avgFrequency = metrics._avg.frequency || 0;
     const cumulativeCpl = totalConversions > 0 ? Math.round(totalSpend / totalConversions) : null;
 
-    let decisionType: "kill" | "scale" | "maintain" = "maintain";
-    let rationale = "";
+    // KILL + SCALE RULES DISABLED — re-enable after pixel fix and threshold recalibration — Keenan 2026-05-21
+    const decisionType: "kill" | "scale" | "maintain" = "maintain";
+    const rationale = "";
 
-    // KILL rules
-    if (totalSpend >= 1.5 * project.targetCplCents && totalConversions === 0) {
-      decisionType = "kill";
-      rationale = `Spent ${(totalSpend / 100).toFixed(2)} (1.5x target CPL) with zero conversions`;
-    } else if (avgCtr < 0.5 && totalImpressions >= 2000) {
-      decisionType = "kill";
-      rationale = `CTR ${avgCtr.toFixed(2)}% below 0.5% threshold with ${totalImpressions} impressions`;
-    } else if (
-      cumulativeCpl &&
-      cumulativeCpl > 2 * project.targetCplCents &&
-      totalSpend >= 3 * project.targetCplCents
-    ) {
-      decisionType = "kill";
-      rationale = `CPL $${(cumulativeCpl / 100).toFixed(2)} is 2x+ target with sufficient spend`;
-    }
+    // // KILL rules
+    // if (totalSpend >= 1.5 * project.targetCplCents && totalConversions === 0) {
+    //   decisionType = "kill";
+    //   rationale = `Spent ${(totalSpend / 100).toFixed(2)} (1.5x target CPL) with zero conversions`;
+    // } else if (avgCtr < 0.5 && totalImpressions >= 2000) {
+    //   decisionType = "kill";
+    //   rationale = `CTR ${avgCtr.toFixed(2)}% below 0.5% threshold with ${totalImpressions} impressions`;
+    // } else if (
+    //   cumulativeCpl &&
+    //   cumulativeCpl > 2 * project.targetCplCents &&
+    //   totalSpend >= 3 * project.targetCplCents
+    // ) {
+    //   decisionType = "kill";
+    //   rationale = `CPL $${(cumulativeCpl / 100).toFixed(2)} is 2x+ target with sufficient spend`;
+    // }
 
-    // SCALE rules (only if not killed)
-    if (decisionType === "maintain") {
-      const maxBudget = 5 * project.dailyBudgetCentsPerVariant;
-      const currentBudget = ad.dailyBudgetCents || project.dailyBudgetCentsPerVariant;
+    // // SCALE rules (only if not killed)
+    // if (decisionType === "maintain") {
+    //   const maxBudget = 5 * project.dailyBudgetCentsPerVariant;
+    //   const currentBudget = ad.dailyBudgetCents || project.dailyBudgetCentsPerVariant;
+    //
+    //   // Check if scaled in last 24h
+    //   const recentScale = await prisma.adLabDecision.findFirst({
+    //     where: {
+    //       adId: ad.id,
+    //       decisionType: "scale",
+    //       executedAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+    //     },
+    //   });
+    //
+    //   if (
+    //     !recentScale &&
+    //     totalSpend >= project.targetCplCents &&
+    //     cumulativeCpl &&
+    //     cumulativeCpl <= 0.8 * project.targetCplCents &&
+    //     totalConversions >= 5 &&
+    //     avgFrequency < 2.5 &&
+    //     currentBudget < maxBudget
+    //   ) {
+    //     decisionType = "scale";
+    //     const newBudget = Math.min(Math.round(currentBudget * 1.2), maxBudget);
+    //     rationale = `CPL $${(cumulativeCpl / 100).toFixed(2)} is ≤80% of target, ${totalConversions} conversions, frequency ${avgFrequency.toFixed(1)}. Budget ${(currentBudget / 100).toFixed(2)} → ${(newBudget / 100).toFixed(2)}`;
+    //   }
+    // }
 
-      // Check if scaled in last 24h
-      const recentScale = await prisma.adLabDecision.findFirst({
-        where: {
-          adId: ad.id,
-          decisionType: "scale",
-          executedAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
-        },
-      });
-
-      if (
-        !recentScale &&
-        totalSpend >= project.targetCplCents &&
-        cumulativeCpl &&
-        cumulativeCpl <= 0.8 * project.targetCplCents &&
-        totalConversions >= 5 &&
-        avgFrequency < 2.5 &&
-        currentBudget < maxBudget
-      ) {
-        decisionType = "scale";
-        const newBudget = Math.min(Math.round(currentBudget * 1.2), maxBudget);
-        rationale = `CPL $${(cumulativeCpl / 100).toFixed(2)} is ≤80% of target, ${totalConversions} conversions, frequency ${avgFrequency.toFixed(1)}. Budget ${(currentBudget / 100).toFixed(2)} → ${(newBudget / 100).toFixed(2)}`;
-      }
-    }
-
-    // Execute decision
-    if (decisionType === "kill") {
-      if (ad.metaAdId) {
-        try {
-          await meta.setStatus(ad.metaAdId, "ad", "PAUSED");
-        } catch (err) {
-          console.error(`[adlab-cron] Failed to pause ad ${ad.metaAdId}:`, err);
-        }
-      }
-      await prisma.adLabAd.update({
-        where: { id: ad.id },
-        data: { status: "killed", decisionReason: rationale },
-      });
+    // // Execute decision — KILL
+    // if (decisionType === "kill") {
+    //   if (ad.metaAdId) {
+    //     try {
+    //       await meta.setStatus(ad.metaAdId, "ad", "PAUSED");
+    //     } catch (err) {
+    //       console.error(`[adlab-cron] Failed to pause ad ${ad.metaAdId}:`, err);
+    //     }
+    //   }
+    //   await prisma.adLabAd.update({
+    //     where: { id: ad.id },
+    //     data: { status: "killed", decisionReason: rationale },
+    //   });
+    //   await prisma.adLabDecision.create({
+    //     data: { adId: ad.id, decisionType: "kill", rationale },
+    //   });
+    //   decisions.push({ adId: ad.id, type: "kill", rationale, creativeType: (ad.creative as Record<string, unknown>).creativeType as string || "image" });
+    // } else if (decisionType === "scale") {
+    //   const currentBudget = ad.dailyBudgetCents || project.dailyBudgetCentsPerVariant;
+    //   const newBudget = Math.min(
+    //     Math.round(currentBudget * 1.2),
+    //     5 * project.dailyBudgetCentsPerVariant
+    //   );
+    //
+    //   if (ad.metaAdsetId) {
+    //     try {
+    //       await meta.updateAdSetBudget(ad.metaAdsetId, newBudget);
+    //     } catch (err) {
+    //       console.error(`[adlab-cron] Failed to update budget for adset ${ad.metaAdsetId}:`, err);
+    //     }
+    //   }
+    //   await prisma.adLabAd.update({
+    //     where: { id: ad.id },
+    //     data: { status: "scaled", dailyBudgetCents: newBudget, decisionReason: rationale },
+    //   });
+    //   await prisma.adLabDecision.create({
+    //     data: {
+    //       adId: ad.id,
+    //       decisionType: "scale",
+    //       rationale,
+    //       priorBudgetCents: currentBudget,
+    //       newBudgetCents: newBudget,
+    //     },
+    //   });
+    //   decisions.push({ adId: ad.id, type: "scale", rationale, creativeType: (ad.creative as Record<string, unknown>).creativeType as string || "image" });
+    // With kill+scale disabled, always log maintain
+    // Only log maintain if no decision in last 24h
+    const recentDecision = await prisma.adLabDecision.findFirst({
+      where: {
+        adId: ad.id,
+        executedAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+      },
+    });
+    if (!recentDecision) {
       await prisma.adLabDecision.create({
-        data: { adId: ad.id, decisionType: "kill", rationale },
+        data: { adId: ad.id, decisionType: "maintain", rationale: "Within parameters (kill+scale disabled)" },
       });
-      decisions.push({ adId: ad.id, type: "kill", rationale, creativeType: (ad.creative as Record<string, unknown>).creativeType as string || "image" });
-    } else if (decisionType === "scale") {
-      const currentBudget = ad.dailyBudgetCents || project.dailyBudgetCentsPerVariant;
-      const newBudget = Math.min(
-        Math.round(currentBudget * 1.2),
-        5 * project.dailyBudgetCentsPerVariant
-      );
-
-      if (ad.metaAdsetId) {
-        try {
-          await meta.updateAdSetBudget(ad.metaAdsetId, newBudget);
-        } catch (err) {
-          console.error(`[adlab-cron] Failed to update budget for adset ${ad.metaAdsetId}:`, err);
-        }
-      }
-      await prisma.adLabAd.update({
-        where: { id: ad.id },
-        data: { status: "scaled", dailyBudgetCents: newBudget, decisionReason: rationale },
-      });
-      await prisma.adLabDecision.create({
-        data: {
-          adId: ad.id,
-          decisionType: "scale",
-          rationale,
-          priorBudgetCents: currentBudget,
-          newBudgetCents: newBudget,
-        },
-      });
-      decisions.push({ adId: ad.id, type: "scale", rationale, creativeType: (ad.creative as Record<string, unknown>).creativeType as string || "image" });
-    } else {
-      // Only log maintain if no decision in last 24h
-      const recentDecision = await prisma.adLabDecision.findFirst({
-        where: {
-          adId: ad.id,
-          executedAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
-        },
-      });
-      if (!recentDecision) {
-        await prisma.adLabDecision.create({
-          data: { adId: ad.id, decisionType: "maintain", rationale: "Within parameters" },
-        });
-      }
     }
   }
 

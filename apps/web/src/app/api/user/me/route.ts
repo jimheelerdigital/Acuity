@@ -145,16 +145,16 @@ export async function GET(req: NextRequest) {
   // with a boolean `hasStripeCustomer` before send.
   const {
     onboarding,
-    createdAt: _created,
+    createdAt,
     stripeCustomerId,
     appFirstOpenedAt: _appFirst,
     ...rest
   } = user;
-  void _created; // only used for smart-skip math above
   void onboarding;
   void _appFirst; // only used for write-once check above
   const flat = {
     ...rest,
+    createdAt: createdAt.toISOString(),
     onboardingCompleted: Boolean(effectiveCompletedAt),
     onboardingStep: user.onboarding?.currentStep ?? 1,
     hasStripeCustomer: Boolean(stripeCustomerId),

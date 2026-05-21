@@ -71,10 +71,9 @@ function SignUpForm() {
     if (typeof window !== "undefined" && typeof window.fbq === "function") {
       console.log('[meta-pixel] Firing Lead — Google signup click');
       window.fbq("track", "Lead", { content_name: "Start Free Trial Click" });
-      console.log('[meta-pixel] Firing CompleteRegistration — Google OAuth');
-      window.fbq("track", "CompleteRegistration", { content_name: "Free Trial Signup", currency: "USD", value: 0 });
-      console.log('[meta-pixel] Firing StartTrial — Google OAuth');
-      window.fbq("track", "StartTrial", { value: 0, currency: "USD" });
+      // CompleteRegistration + StartTrial now fire ONLY on the success page
+      // after confirming the user was actually created. Removed from here to
+      // prevent double-fire and false conversions when OAuth is cancelled.
     }
     await signIn("google", { callbackUrl: "/auth/signup/success" });
   };
@@ -85,10 +84,9 @@ function SignUpForm() {
     if (typeof window !== "undefined" && typeof window.fbq === "function") {
       console.log('[meta-pixel] Firing Lead — Apple signup click');
       window.fbq("track", "Lead", { content_name: "Start Free Trial Click" });
-      console.log('[meta-pixel] Firing CompleteRegistration — Apple OAuth');
-      window.fbq("track", "CompleteRegistration", { content_name: "Free Trial Signup", currency: "USD", value: 0 });
-      console.log('[meta-pixel] Firing StartTrial — Apple OAuth');
-      window.fbq("track", "StartTrial", { value: 0, currency: "USD" });
+      // CompleteRegistration + StartTrial now fire ONLY on the success page
+      // after confirming the user was actually created. Removed from here to
+      // prevent double-fire and false conversions when OAuth is cancelled.
     }
     await signIn("apple", { callbackUrl: "/auth/signup/success" });
   };

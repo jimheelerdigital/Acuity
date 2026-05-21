@@ -94,13 +94,25 @@ export async function POST(req: NextRequest) {
   const origin = publicOrigin(req);
   const completeUrl = `${origin}/auth/mobile-complete?token=${encodeURIComponent(token)}`;
   const { subject, html } = magicLinkEmail(completeUrl);
-  const { getResendClient } = await import("@/lib/resend");
-  await getResendClient().emails.send({
-    from: process.env.EMAIL_FROM ?? "Acuity <hello@getacuity.io>",
-    to: email,
-    subject,
-    html,
-  });
+  try {
+    const { getResendClient } = await import("@/lib/resend");
+    await getResendClient().emails.send({
+      from: process.env.EMAIL_FROM ?? "Acuity <hello@getacuity.io>",
+      to: email,
+      subject,
+      html,
+    });
+  } catch (emailErr) {
+    console.error("[mobile-magic-link] Magic link email send failed:", emailErr);
+    try {
+      const Sentry = await import("@sentry/nextjs");
+      Sentry.captureException(emailErr, {
+        tags: { stage: "mobile-magic-link-email-send" },
+        extra: { email },
+      });
+    } catch {}
+    // Don't block the response — user/token were already created
+  }
 
   return NextResponse.json({ ok: true });
 }

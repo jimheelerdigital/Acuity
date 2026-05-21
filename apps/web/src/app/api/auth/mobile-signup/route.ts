@@ -143,13 +143,25 @@ export async function POST(req: NextRequest) {
       unsubscribeUrl,
       foundingMemberNumber: userRow?.foundingMemberNumber ?? null,
     });
-    const { getResendClient } = await import("@/lib/resend");
-    await getResendClient().emails.send({
-      from: process.env.EMAIL_FROM ?? "Acuity <hello@getacuity.io>",
-      to: email,
-      subject,
-      html,
-    });
+    try {
+      const { getResendClient } = await import("@/lib/resend");
+      await getResendClient().emails.send({
+        from: process.env.EMAIL_FROM ?? "Acuity <hello@getacuity.io>",
+        to: email,
+        subject,
+        html,
+      });
+    } catch (emailErr) {
+      console.error("[mobile-signup] Welcome/verify email send failed:", emailErr);
+      try {
+        const Sentry = await import("@sentry/nextjs");
+        Sentry.captureException(emailErr, {
+          tags: { stage: "mobile-signup-email-send" },
+          extra: { userId, email },
+        });
+      } catch {}
+      // Don't block signup — user was already created successfully
+    }
   }
 
   return NextResponse.json({
