@@ -41,6 +41,45 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-21] — Phase C — Onboarding 10-axis Life Matrix baseline carousel
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** 817fb07
+
+### In plain English (for Keenan)
+
+The "What matters most?" step in mobile onboarding (currently asking the user to pick their top 3 life areas) is replaced with a more thoughtful flow: the app now walks the user through each of the 10 life areas one at a time, asking them to drag a slider to indicate where they currently are (0-100) on that axis. They see a huge gradient number animate as they drag, plus a small live-updating radar at the bottom showing the picture forming as they progress. They can skip any axis they don't have a read on; skipped axes start at a neutral 50 on the server. The end result: every new user finishes onboarding with a fully populated 10-axis Life Matrix that reflects how they actually see their life, ready for the AI to refine over time.
+
+### Technical changes (for Jimmy)
+
+- `apps/mobile/components/onboarding/step-9-life-matrix-baselines.tsx` (NEW, 711 LOC): axis carousel with PanResponder slider (pattern from step-6-mood-slider). 88pt gradient hero number via two-pass overlay (one `Text` in `tokens.primary` full opacity + second in `tokens.secondary` at 0.35 opacity layered on top — RN doesn't natively support gradient-masked text; this is the simplest approximation without vendoring MaskedView). Local `MiniMatrix` SVG sub-component at 130×120pt — outer ring + spokes + populated-only filled polygon + per-axis dots. Current-axis dot rendered in `tokens.secondary` so the user can see the live edit as they drag the slider. Per-axis hint copy block (10 phrases under the title).
+- `apps/mobile/components/onboarding/step-7-life-areas.tsx`: DELETED.
+- `apps/mobile/components/onboarding/index.tsx`: step 9's `Component: Step7LifeAreas` → `Step9LifeMatrixBaselines`. Title rename `"What matters most"` → `"Life Matrix baseline"`. Docblock history entry for Phase C.
+- `apps/mobile/components/onboarding/context.tsx`: adds `setHideShellChrome: (hide: boolean) => void` and `goNext: () => void` to `OnboardingContextValue`. Steps with internal sub-navigation can now take over the shell's chrome.
+- `apps/mobile/components/onboarding/shell.tsx`: new `hideShellChrome` useState; `goNextRef` pattern so the context-exposed `goNext` stays stable across renders while pointing at the latest closure. Footer render guarded with `!hideShellChrome`. On unmount of the carousel step, chrome is restored automatically via the new component's useEffect cleanup.
+- `apps/web/src/app/api/onboarding/update/route.ts`: new `lifeAreaBaselines` payload block. Validates 0-100 integers per V2 (with defensive V1→V2 mapping via `LIFE_AREA_LEGACY_MAP`). Writes every canonical `LifeMapArea` row via `findFirst` + update/create (no `@@unique([userId, area])` index exists yet — Phase D PR2 cleanup territory). Skipped axes default to `score100=50`. Submitted-only set mirrored into `UserOnboarding.lifeAreaPriorities` JSON as an audit trail. Existing legacy `lifeAreaPriorities` (rank 1-6) handler untouched — both shapes coexist during the build-42 transition.
+
+### Manual steps needed
+
+- [ ] None — schema additive: no DB migrations. Mobile rebuild required to see the new step (TestFlight upload for build-43+ ).
+- [ ] Watch first batch of build-43 onboarding completions in Vercel logs — verify `LifeMapArea` rows get populated with non-default `score100` values from real baseline submissions.
+- [ ] Future cleanup item: silent 400 on `/api/onboarding/update` when mobile sends step=11 or step=12 (server validation `step > 10 → 400`). Mobile shell swallows the error so onboarding completes anyway, but the persist is dropped. Pre-existing bug, out of Phase C scope but worth a follow-up Monday item.
+
+### Notes
+
+- The two-context-additions (`setHideShellChrome` + `goNext`) are designed to be reusable for any future step that needs to take over the shell's chrome (e.g. a more elaborate practice-recording flow). Both default to no-ops when not invoked; existing steps untouched.
+- The mini-matrix component is deliberately a duplicate of the radar primitive (not a reuse) — at 130pt scale, label scaffolding from `LifeMapRadar` would crowd the bottom card. ~120 lines of dedicated SVG is cheaper than overloading the primitive with `labelScale` / `omitLabels` props.
+- 88pt hero number: two-pass overlay was chosen over MaskedView because MaskedView adds a native module that breaks Expo Go and complicates the dev loop. The visual approximation is acceptable on iOS where display fonts render with enough character to carry the perceived gradient.
+- Payload shape decision: skipped axes are OMITTED from the wire payload (server defaults to 50) rather than sent as `null`. Cleaner wire shape; server-side `LifeMapArea` upserts iterate the canonical 10-axis array and fill defaults for any key not in `submitted`.
+- Server route also lacks a `lifeAreaBaselines` column on `UserOnboarding` — we mirror the submitted set into the existing `lifeAreaPriorities` Json column. Downstream readers can disambiguate by value range (1-6 = rank, 0-100 = baseline) since both shapes share the same column. Slightly hacky; cleaner would be a dedicated column, but that's schema migration scope outside Phase C.
+- All four palettes (coral/sunset/citrus/cobalt) propagate through `tokens.primary`/`secondary`/`gradPrimary` references. Light/dark unchanged from shell's dark-locked policy (onboarding always renders dark per existing behavior).
+
+monday: 12058980099
+⚠️ MEDIUM RISK — onboarding 10-axis baseline rebuild (Phase C)
+
+---
+
 ## [2026-05-21] — Fix admin notification attribution: delay 30s via Inngest + set signupMethod
 
 **Requested by:** Keenan
