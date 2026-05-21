@@ -41,37 +41,29 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
-## [2026-05-21] — Slice Q11f — Token sweep: onboarding + paywall + integrations + reminders
+## [2026-05-21] — Fix GSC auth: private key newline handling + JWT constructor
 
-**Requested by:** Jimmy
+**Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** (pending)
+**Commit hash:** TBD
 
 ### In plain English (for Keenan)
 
-Final batch of the mobile color cleanup. Every onboarding screen, the paywall, the in-app subscribe screen, the integrations screen, and the reminders settings screen now pull all of their colors from the central design palette instead of hardcoding "violet 600" or "zinc 900" in each file. End-user experience is identical, but switching the entire app to a different accent palette is now a one-line change.
+The Google Search Console connection was failing with "credentials missing" even though the API key was set correctly in Vercel and the API was enabled. The problem was that Vercel strips or mangles the newline characters inside the private key when you paste the JSON, which makes the key unreadable. The code now automatically repairs the key format. Also fixed the way the code creates the Google auth token (was using an outdated calling style). Also now supports base64-encoded keys as an alternative to raw JSON — if the raw paste keeps failing, you can base64-encode the JSON first.
 
 ### Technical changes (for Jimmy)
 
-- `apps/mobile/components/onboarding/step-5-ai-consent.tsx`: full token migration (text/textSec/bgInset/line/good/primary).
-- `apps/mobile/components/onboarding/step-5-practice.tsx`: status colors (idle/recording/recorded) → tokens.primary/bad/good. Timer + status text use textTer.
-- `apps/mobile/components/onboarding/step-6-mood-slider.tsx`: all chrome tokenized. Preserved mood-spectrum semantic exceptions: gradient track `#FDA4AF→#FCD34D→#6EE7B7` (rough→okay→strong) and thumb white-on-dark-border at lines 137–139.
-- `apps/mobile/components/onboarding/step-8-trial.tsx`: extracted TrialPoint into tokens prop pattern; active-cadence card uses ${tokens.primary}1A + tokens.primary border + glowPrimary for daily-default emphasis.
-- `apps/mobile/components/onboarding/step-9-reminders.tsx`: master toggle → tokens.primary/bgInset; permission-affordance callout uses ${tokens.primary}55 border + ${tokens.primary}14 bg.
-- `apps/mobile/app/integrations.tsx`: full sweep. WARN_AMBER preserved for "Coming in next update" eyebrow (already extracted Q11e-1c). Error states tokenized to tokens.bad.
-- `apps/mobile/app/paywall.tsx`: all chrome → tokens. Sparkles surface, value-row icons, both primary/secondary CTAs, disclosure copy, terms/privacy links.
-- `apps/mobile/app/subscribe.tsx`: full sweep including UnavailableScreen fallback. Product card uses ${tokens.primary}55 border + ${tokens.primary}0D bg. Apple disclosure copy tokenized.
-- `apps/mobile/app/reminders.tsx`: ReminderRow accepts tokens prop. Day toggles, master toggle, save button, permission-affordance callout, "Saved ✓" indicator all tokenized.
-- Pattern: import `type AcuityTokens from "@/lib/theme/tokens"` (NOT from theme-context — context only re-exports the hook). Several files needed this on first compile attempt.
-- Preserved exceptions (white-on-tinted-button text and tinted-toggle thumbs): step-1-welcome.tsx:33 (mic icon on gradient), step-5-ai-consent.tsx:153 (consent button white when violet), step-5-practice.tsx:154 (mic icon on tinted button), step-9-reminders.tsx:183/243 (toggle thumb + allow-notif button), integrations.tsx:159/406 (retry button + Switch thumbColor), reminders.tsx:350/421/464/534/579 (toggle thumbs + save button + day-toggle text), paywall.tsx:164/207 (subscribe CTAs), subscribe.tsx:372/535 (subscribe + continue-on-web CTAs). Mood-spectrum exception: step-6-mood-slider.tsx:117/137/139 (gradient track + thumb fill + thumb border).
+- `apps/web/src/lib/google/auth.ts`: (a) Added private key newline normalization — if the PEM has no newlines, re-inserts them around header/footer and every 64 chars. (b) Added base64 detection — if the env var doesn't start with `{`, tries to decode from base64 first. (c) Fixed pre-existing TS error: switched from deprecated 4-arg `new google.auth.JWT(email, undefined, key, scopes)` to options object `new google.auth.JWT({ email, key, scopes })`. (d) Added diagnostic log showing which service account is being used and key prefix.
 
 ### Manual steps needed
 
-- [ ] None — pure refactor. Visual parity intended; verify by side-by-side with main on a TestFlight build before promoting to App Store.
+- [ ] After deploy, click "Sync GSC" on admin dashboard — should now work (Keenan)
+- [ ] If it still fails: try base64-encoding the key. Run `base64 -i your-key-file.json | tr -d '\n'` and paste the output as the Vercel env var value instead of raw JSON (Keenan)
 
 ### Notes
 
-End of Phase A (Q11 token sweep) for mobile. Q11a–Q11f bundle is complete; the only remaining hardcoded colors in the mobile app are: (1) intentional white-on-tinted-button text contrast, (2) the streak-flame orange/amber semantic in milestone-card, (3) the mood-spectrum red→amber→green slider in step-6, (4) the theme-map data palette (deferred to Phase E orbital rebuild), and (5) the ThemePill canonical-theme color contract (data-color exception). Next up: Phase D (12-axis Life Matrix) — HIGH RISK, returns to per-file diff review.
+- The root cause was Vercel's env var handling. When you paste a JSON service account key, the `private_key` field contains `\n` escape sequences. Vercel can: (a) preserve them as literal backslash-n (correct), (b) convert them to actual newlines (breaks JSON parsing), or (c) strip them entirely (breaks PEM format). The normalization handles all three cases.
+- The old `google.auth.JWT` 4-arg constructor was a pre-existing TS error (TS2554) that compiled at runtime but was technically wrong. The options-object form is the correct API for the installed version of `google-auth-library`.
 
 ---
 
