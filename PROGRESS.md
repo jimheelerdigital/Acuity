@@ -41,6 +41,40 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-20] — Fix dashboard spinner — Postgres statement_timeout on /api/user/progression
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** d314375
+
+### In plain English (for Keenan)
+
+The mobile Home tab was hanging on a loading spinner. Diagnosis: every time the app opened, the mobile client fired three different web endpoints in parallel (`/me`, `/progression`, `/app-open`), and all three tried to update the same row in the database at the same moment. Postgres serialized them, and the slowest one ran past the 8-second timeout and got killed mid-write — which made one of the dashboard endpoints sometimes hang and sometimes log a Prisma error. Root cause was not schema drift; it was three writers piling up on the same row. Fix removed one redundant endpoint and made another write happen in the background so it can't block the response. Net: three concurrent writers → one. Spinner should clear.
+
+### Technical changes (for Jimmy)
+
+- Deleted `apps/web/src/app/api/user/app-open/route.ts`. The endpoint duplicated `/api/user/me`'s opportunistic write — both updated `devicePlatform`, `appVersion`, `appFirstOpenedAt`, `lastSeenAt`. `/me` already captures the same data from the `X-Platform` and `X-App-Version` headers every mobile request carries, so the dedicated endpoint was pure overhead.
+- `apps/web/src/lib/userProgression.ts`: snapshot write changed from `await prisma.user.update(...)` inside `try/catch` to `void prisma.user.update(...).catch(...)`. Write detaches from the request critical path; the response no longer waits for it. Same `console.warn` log on failure for observability.
+- `apps/mobile/contexts/auth-context.tsx`: removed `appOpenSent` useRef, the `POST /api/user/app-open` call, and the named imports `devicePlatform, appVersion` (those exports remain in `apps/mobile/lib/api.ts` because they're still used as headers on every request).
+- Diagnostic confirmed the actual error from prod Vercel logs: `PostgresError code: "57014", message: "canceling statement due to statement timeout"`. NOT schema drift. NOT JSON shape rejection. NOT missing field on the deployed Prisma client.
+
+### Manual steps needed
+
+- [ ] Watch Vercel logs for 15 min after deploy → expect zero "Invalid `prisma...` 57014" warnings on /progression, zero 500s on /app-open (because it's gone) (Jimmy)
+- [ ] Confirm Home tab spinner clears on next app open (Jimmy)
+- [ ] File Monday follow-up: build `/api/user/dashboard` — one trip per launch, merging /me + /progression. Cleaner mobile loading state. Not urgent. (Jimmy)
+
+### Notes
+
+- Live build-42 binary on the App Store still POSTs to `/api/user/app-open` on cold launch. That request now 404s, but the mobile code at `auth-context.tsx:154-159` had a `.catch(() => {})` that silently absorbed any failure — live users are unaffected. Future builds skip the call entirely.
+- The root cause is structural, not a regression. Three writers to one row would have eventually crossed the timeout threshold as concurrency grew. Today's app-open endpoint (commit eb472c7) was the trigger that tipped it over.
+- Postgres 57014 = "QueryCanceled" — usually caused by `statement_timeout` exceeded. Supabase's default for Pro tier is 8s. A simple single-row UPDATE shouldn't approach that ceiling unless it's queued behind row-locks from other transactions. Diag against prod (sequential, no contention) ran in ~500ms per write — confirming the contention hypothesis.
+- Two endpoints were affected by the SAME error class but visible differently: /progression had a try/catch warn (200 + log noise), /app-open had no guard (500). Same root cause; different surface.
+- Diag scripts written for the investigation (find-jim.ts, diag-progression.ts, diag-progression-full.ts) were deleted post-fix — they served their purpose, no need to keep in the repo.
+- ⚠️ Side incident during investigation: shell `env | grep` output exposed credentials for a stale Supabase project (`cbgmfiqywypvrugsrwcz`) that were lingering in Jim's .zshrc. Jim removed the shell var; recommended rotating those creds since the values were echoed to a session transcript.
+
+---
+
 ## [2026-05-20] — Fix recording pipeline failures on longer entries (Inngest step output size)
 
 **Requested by:** Jimmy
