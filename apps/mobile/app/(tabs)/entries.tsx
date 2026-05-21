@@ -26,6 +26,7 @@ import {
 import { Heatmap28 } from "@/components/entries/heatmap-28";
 import { MoodIcon } from "@/components/mood-icon";
 import { Skeleton, SkeletonCard } from "@/components/skeleton";
+import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
 import { getCached, isStale, setCached } from "@/lib/cache";
 
@@ -39,6 +40,7 @@ const ENTRIES_CACHE_KEY = "/api/entries";
  */
 export default function EntriesTab() {
   const router = useRouter();
+  const { tokens } = useTheme();
   const [entries, setEntries] = useState<EntryDTO[]>(
     () => getCached<{ entries: EntryDTO[] }>(ENTRIES_CACHE_KEY)?.entries ?? []
   );
@@ -175,12 +177,14 @@ export default function EntriesTab() {
 
   return (
     <SafeAreaView
-      className="flex-1 bg-white dark:bg-[#0B0B12]"
+      className="flex-1"
       edges={["top"]}
+      style={{ backgroundColor: tokens.bg }}
     >
       <View className="px-5 pt-2 pb-3 gap-3">
         <Text
-          className="text-4xl font-bold text-zinc-900 dark:text-zinc-50"
+          className="text-4xl font-bold"
+          style={{ color: tokens.text }}
           numberOfLines={1}
           adjustsFontSizeToFit
           minimumFontScale={0.75}
@@ -188,20 +192,26 @@ export default function EntriesTab() {
           Entries
         </Text>
 
-        <View className="flex-row items-center gap-2 rounded-2xl border border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-[#1E1E2E] px-3 py-2">
-          <Ionicons name="search" size={16} color="#71717A" />
+        <View
+          className="flex-row items-center gap-2 rounded-2xl border px-3 py-2"
+          style={{
+            borderColor: tokens.line,
+            backgroundColor: tokens.bgInset,
+          }}
+        >
+          <Ionicons name="search" size={16} color={tokens.textTer} />
           <TextInput
             value={query}
             onChangeText={setQuery}
             placeholder="Search summaries, themes, transcripts"
-            placeholderTextColor="#71717A"
-            className="flex-1 text-sm text-zinc-900 dark:text-zinc-50"
-            style={{ paddingVertical: 4 }}
+            placeholderTextColor={tokens.textTer}
+            className="flex-1 text-sm"
+            style={{ paddingVertical: 4, color: tokens.text }}
             returnKeyType="search"
           />
           {query.length > 0 && (
             <Pressable onPress={() => setQuery("")} hitSlop={8}>
-              <Ionicons name="close-circle" size={16} color="#71717A" />
+              <Ionicons name="close-circle" size={16} color={tokens.textTer} />
             </Pressable>
           )}
         </View>
@@ -218,29 +228,26 @@ export default function EntriesTab() {
                   setMoodFilter(m === "ALL" ? null : (m as Mood));
                 }}
                 hitSlop={10}
-                className={`flex-row items-center gap-1.5 rounded-full px-3 py-2 border ${
-                  selected
-                    ? "border-violet-500 bg-violet-500/10 dark:border-violet-400 dark:bg-violet-500/20"
-                    : "border-zinc-200 bg-transparent dark:border-white/10"
-                }`}
+                className="flex-row items-center gap-1.5 rounded-full px-3 py-2 border"
+                style={{
+                  borderColor: selected ? tokens.primary : tokens.line,
+                  backgroundColor: selected
+                    ? `${tokens.primary}1f`
+                    : "transparent",
+                }}
               >
                 {m !== "ALL" && (
                   <MoodIcon
                     mood={m}
                     size={13}
-                    color={
-                      selected
-                        ? "#7C3AED"
-                        : "#A1A1AA"
-                    }
+                    color={selected ? tokens.primary : tokens.textTer}
                   />
                 )}
                 <Text
-                  className={`text-xs font-medium ${
-                    selected
-                      ? "text-violet-700 dark:text-violet-300"
-                      : "text-zinc-500 dark:text-zinc-400"
-                  }`}
+                  className="text-xs font-medium"
+                  style={{
+                    color: selected ? tokens.primary : tokens.textSec,
+                  }}
                 >
                   {m === "ALL" ? "All" : MOOD_LABELS[m as Mood]}
                 </Text>
@@ -284,7 +291,7 @@ export default function EntriesTab() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              tintColor="#7C3AED"
+              tintColor={tokens.primary}
             />
           }
           contentContainerStyle={{
@@ -305,16 +312,25 @@ export default function EntriesTab() {
             ) : null
           }
           ListEmptyComponent={() => (
-            <View className="rounded-2xl border border-dashed border-zinc-200 dark:border-white/10 p-8 items-center mt-8">
+            <View
+              className="rounded-2xl border border-dashed p-8 items-center mt-8"
+              style={{ borderColor: tokens.line }}
+            >
               <Text className="text-3xl mb-3">
                 {entries.length === 0 ? "🎙️" : "🔍"}
               </Text>
-              <Text className="text-sm font-medium text-zinc-700 dark:text-zinc-200 mb-1">
+              <Text
+                className="text-sm font-medium mb-1"
+                style={{ color: tokens.textSec }}
+              >
                 {entries.length === 0
                   ? "Your journal is empty"
                   : "Nothing matches that filter"}
               </Text>
-              <Text className="text-xs text-zinc-500 dark:text-zinc-400 text-center">
+              <Text
+                className="text-xs text-center"
+                style={{ color: tokens.textTer }}
+              >
                 {entries.length === 0
                   ? "Tap the mic at the center of the tab bar to record your first brain dump."
                   : "Try a different search or clear the mood filter."}
@@ -346,6 +362,7 @@ function EntryRow({
   onLongPress?: () => void;
   onSwipeDelete?: () => void;
 }) {
+  const { tokens } = useTheme();
   const date = new Date(entry.createdAt);
   const dateLabel = formatRelativeDate(date);
   const swipeRef = useRef<Swipeable | null>(null);
@@ -360,7 +377,7 @@ function EntryRow({
         onSwipeDelete?.();
       }}
       style={{
-        backgroundColor: "#EF4444",
+        backgroundColor: tokens.bad,
         justifyContent: "center",
         alignItems: "center",
         width: 88,
@@ -368,8 +385,8 @@ function EntryRow({
         borderBottomRightRadius: 16,
       }}
     >
-      <Ionicons name="trash-outline" size={20} color="white" />
-      <Text style={{ color: "white", fontSize: 12, fontWeight: "600", marginTop: 4 }}>
+      <Ionicons name="trash-outline" size={20} color="#FFFFFF" />
+      <Text style={{ color: "#FFFFFF", fontSize: 12, fontWeight: "600", marginTop: 4 }}>
         Delete
       </Text>
     </Pressable>
@@ -387,21 +404,40 @@ function EntryRow({
       onPress={onPress}
       onLongPress={onLongPress}
       delayLongPress={350}
-      className="rounded-2xl border border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-[#1E1E2E] px-4 py-3"
+      className="rounded-2xl border px-4 py-3"
+      style={{
+        borderColor: tokens.line,
+        backgroundColor: tokens.cardBg,
+      }}
     >
       <View className="flex-row items-center gap-2 flex-wrap mb-1">
-        <Text className="text-xs text-zinc-500 dark:text-zinc-400">
+        <Text
+          className="text-xs"
+          style={{ color: tokens.textSec }}
+        >
           {dateLabel}
         </Text>
         {entry.mood && (
           <View className="flex-row items-center gap-1">
-            <Text className="text-xs text-zinc-500 dark:text-zinc-400">·</Text>
-            <MoodIcon mood={entry.mood} size={12} color="#A1A1AA" />
-            <Text className="text-xs text-zinc-500 dark:text-zinc-400">
+            <Text
+              className="text-xs"
+              style={{ color: tokens.textTer }}
+            >
+              ·
+            </Text>
+            <MoodIcon mood={entry.mood} size={12} color={tokens.textTer} />
+            <Text
+              className="text-xs"
+              style={{ color: tokens.textSec }}
+            >
               {MOOD_LABELS[entry.mood as Mood] ?? ""}
             </Text>
           </View>
         )}
+        {/* PARTIAL status badge uses warning-amber. Same exception
+            convention as Q11c-1 ON_HOLD goals, Q11c-3 task due
+            dates, Q11c-2 State of Me eyebrow — palette has no
+            warning-amber token. */}
         {entry.status === "PARTIAL" && (
           <View className="rounded-full bg-amber-900/40 px-2 py-0.5">
             <Text className="text-[10px] font-semibold text-amber-300">
@@ -411,8 +447,9 @@ function EntryRow({
         )}
       </View>
       <Text
-        className="text-sm text-zinc-700 dark:text-zinc-200"
+        className="text-sm"
         numberOfLines={3}
+        style={{ color: tokens.textSec }}
       >
         {entry.summary ?? entry.transcript ?? "(no summary)"}
       </Text>
@@ -421,9 +458,13 @@ function EntryRow({
           {entry.themes.slice(0, 3).map((t) => (
             <View
               key={t}
-              className="rounded-full bg-zinc-200/60 dark:bg-white/10 px-2 py-0.5"
+              className="rounded-full px-2 py-0.5"
+              style={{ backgroundColor: tokens.bgInset }}
             >
-              <Text className="text-[10px] text-zinc-600 dark:text-zinc-300">
+              <Text
+                className="text-[10px]"
+                style={{ color: tokens.textSec }}
+              >
                 {t}
               </Text>
             </View>
