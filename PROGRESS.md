@@ -41,6 +41,40 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-21] — Slice Q10 — Extract review banner visual refresh
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** 4d90c72
+
+### In plain English (for Keenan)
+
+After each nightly recording finishes processing, the entry detail screen shows a small banner where Acuity surfaces any tasks or goals it pulled from the transcript — users can check what they want to keep and tap Commit, or tap Skip to discard everything. This refresh dresses that banner in the v2 visual language so it matches Home, Recording, Insights, and the rest of the redesigned app. Same checkboxes-and-Commit flow; new look. Also: if Acuity didn't find any tasks or goals in a particular entry (e.g. a pure reflection), the banner now says so explicitly with a friendly card instead of just disappearing — which was confusing because the user couldn't tell if processing had even finished. Zero functional change in what gets saved when the user finishes review.
+
+### Technical changes (for Jimmy)
+
+- `apps/mobile/components/extraction-review.tsx`: rewritten render block. Banner wraps in `HeroCard variant="primary"` with the gradient corner blob. Top-of-card shows an eyebrow + `GlassPill` stat row with item counts. Section headers use `GradientText` (tasks → `[primaryHi, primary]`, goals → `[secondaryHi, secondary]`). Each row's checkbox swaps from the local 5×5 `border-violet-600` Pressable to the Q8 `GradientCheckbox` primitive at size 20. New right-side type-tag pill on every row: "TASK" with `tokens.primary` tint at 0x1f alpha bg + 0x55 border, "GOAL" same shape with `tokens.secondary` tint. Commit button replaces the `bg-zinc-900 dark:bg-white` rectangle with the TonightCTA gradient CTA pattern (`LinearGradient(tokens.gradPrimary)` + `tokens.glowPrimary` shadow + mono uppercase label). "Skip all" becomes mono uppercase secondary text. Empty state (`tasks.length === 0 && goals.length === 0`) replaces the prior `return null` with a `HeroCard` rendering "No action items in this one — pure reflection" plus a Dismiss button wired to the same `skip()` handler.
+- Logic untouched: `useEffect` fetch (lines 64-97 in the new file = lines 39-72 in the old), `commit` handler (101-131 ↔ 77-107), `skip` handler (133-146 ↔ 109-122). All three blocks verified byte-identical via `diff` post-edit. Payload to `POST /api/entries/[id]/extraction` unchanged.
+- Themes stay out of scope. The extraction pipeline writes `Theme` + `ThemeMention` rows server-side (`process-entry.ts` step `persist-extraction`) without surfacing them to mobile for review. If we ever want a theme-review surface, that's a separate slice with API + data shape implications.
+
+### Manual steps needed
+
+- [ ] Record a full nightly entry end-to-end on iPhone 16e sim and verify the v2 banner renders correctly with TASK/GOAL pills, gradient checkboxes, gradient Commit button (Jimmy)
+- [ ] Verify all four palettes (coral, sunset, citrus, cobalt) render TASK/GOAL tint colors and section header gradients correctly (Jimmy)
+- [ ] Verify light-mode contrast on the row borders + pill backgrounds (Jimmy)
+- [ ] Confirm Commit persists selected tasks/goals to Supabase as before — same fields, same `commit-extraction` API call (Jimmy)
+- [ ] Trigger the empty state by recording a pure thought-dump entry that produces no tasks/goals → confirm friendly card renders + Dismiss clears it (Jimmy)
+
+### Notes
+
+- The original "review screen" in the slice spec is actually an embedded banner inside `apps/mobile/app/entry/[id].tsx:367` — not a standalone route. Confirmed with Jim before applying; scope adjusted to "restyle the existing banner" rather than "build a new screen."
+- The recording summary HeroCard + duration GlassPill mentioned in the original spec live on the *parent* entry detail screen (Q6 already shipped a pull-quote hero up there). The Q10 work added a smaller GlassPill *inside* the review card showing item counts, which matches the spirit of the spec without duplicating the parent's existing chrome.
+- `GradientText.colors` requires a non-empty tuple type `readonly [string, string, ...string[]]`. The `tokens.gradPrimary.colors` value is typed as `string[]`, so a direct cast tripped TS strict mode. Switched to the TierPill pattern (`[tokens.primaryHi, tokens.primary]` literal tuple) — TS infers the tuple type at the call site and the gradient still renders correctly because GradientText only needs two stops minimum.
+- LinearGradient overload errors in `expo-linear-gradient`'s types (the same 195+ pre-existing TS errors the codebase has been carrying for weeks) continue to apply to the new Commit CTA gradient. Pattern is identical to TonightCTA / HeroCard / TonightCTA's existing usages. Runtime unaffected.
+- The empty state is a small behavior change in surface (was `return null`, now renders a friendly card). It's not a payload change — the Dismiss button calls the same `skip()` handler that the populated case uses, posting `{action: "skip"}` to the same endpoint. If extraction returns 0 items and the user never dismisses, the banner stays on every visit to the entry — same as it would have under the old "always hidden" rule, just visible now.
+
+---
+
 ## [2026-05-20] — Slice Q9 — Onboarding life-areas step visual refresh
 
 **Requested by:** Jimmy
