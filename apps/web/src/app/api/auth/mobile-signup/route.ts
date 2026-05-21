@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
   } else {
     const defaultTrialEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
     const created = await prisma.user.create({
-      data: { email, name, passwordHash, subscriptionStatus: "TRIAL", trialEndsAt: defaultTrialEnd, emailVerified: new Date() },
+      data: { email, name, passwordHash, subscriptionStatus: "TRIAL", trialEndsAt: defaultTrialEnd, emailVerified: new Date(), signupMethod: "mobile-email" },
       select: { id: true },
     });
     userId = created.id;

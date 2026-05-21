@@ -248,6 +248,7 @@ export async function POST(req: NextRequest) {
         emailVerified: new Date(),
         subscriptionStatus: "TRIAL",
         trialEndsAt: defaultTrialEnd,
+        signupMethod: "mobile-google",
       },
       select: {
         id: true,

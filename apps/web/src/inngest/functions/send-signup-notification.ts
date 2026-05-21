@@ -45,13 +45,7 @@ export const sendSignupNotificationFn = inngest.createFunction(
           signupUtmTerm: true,
           signupReferrer: true,
           signupLandingPath: true,
-          // Detect signup method from Account/auth fields
-          accounts: {
-            select: { provider: true },
-            take: 1,
-          },
-          passwordHash: true,
-          appleSubject: true,
+          signupMethod: true,
         },
       });
     });
@@ -60,12 +54,8 @@ export const sendSignupNotificationFn = inngest.createFunction(
       return { skipped: true, reason: "user not found (may have been deleted)" };
     }
 
-    // Determine signup method
-    let signupMethod = "email";
-    if (user.accounts?.[0]?.provider === "google") signupMethod = "Google";
-    else if (user.appleSubject) signupMethod = "Apple";
-    else if (user.passwordHash) signupMethod = "email";
-    else signupMethod = "magic link";
+    // signupMethod is written to the User row by each signup route handler
+    const signupMethod = user.signupMethod || "unknown";
 
     const trialDays = user.trialEndsAt
       ? Math.round(

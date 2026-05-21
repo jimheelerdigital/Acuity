@@ -127,6 +127,7 @@ export async function POST(req: NextRequest) {
         // This removes the biggest mobile conversion killer — users from ads
         // sign up, get told to check email, leave, and never come back.
         emailVerified: new Date(),
+        signupMethod: "email",
       },
       select: { id: true },
     });

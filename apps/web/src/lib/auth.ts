@@ -234,6 +234,19 @@ export function getAuthOptions(): NextAuthOptions {
         // incident when schema.prisma gained isFoundingMember but
         // `prisma db push` hadn't run against production).
         try {
+          // Detect which OAuth provider created this user
+          const { prisma: p } = require("@/lib/prisma") as { prisma: PrismaClient };
+          const account = await p.account.findFirst({
+            where: { userId: user.id },
+            select: { provider: true },
+            orderBy: { id: "desc" },
+          });
+          const method = account?.provider === "apple" ? "apple" : account?.provider === "google" ? "google" : "email";
+          await p.user.update({
+            where: { id: user.id },
+            data: { signupMethod: method },
+          });
+
           const { bootstrapNewUser } = await import("@/lib/bootstrap-user");
           await bootstrapNewUser({
             userId: user.id,

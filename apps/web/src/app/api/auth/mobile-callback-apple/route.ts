@@ -253,6 +253,7 @@ export async function POST(req: NextRequest) {
         appleSubject: claims.sub,
         subscriptionStatus: "TRIAL",
         trialEndsAt: defaultTrialEnd,
+        signupMethod: "mobile-apple",
       },
       select: {
         id: true,

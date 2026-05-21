@@ -41,6 +41,44 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-21] — Fix admin notification attribution: delay 30s via Inngest + set signupMethod
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** TBD
+
+### In plain English (for Keenan)
+
+The admin signup notification email was always showing Source: "direct" and Method: "unknown" for OAuth signups because it fired instantly before the attribution data was saved. Now the notification is delayed 30 seconds — long enough for the success page to backfill UTM data from the cookie. The notification email will now show the real source (e.g., "meta"), campaign, landing page, and signup method (e.g., "google", "mobile-apple"). Every signup path now records how the user signed up (email, Google, Apple, magic link, and mobile variants).
+
+### Technical changes (for Jimmy)
+
+- `prisma/schema.prisma`: Added `signupMethod String?` field to User model. Values: "email", "google", "apple", "mobile-email", "mobile-google", "mobile-apple", "magic-link".
+- `apps/web/src/lib/bootstrap-user.ts`: Replaced inline `notifyFoundersOfSignup()` call with `inngest.send({ name: "user/signup.notify", data: { userId } })`. All admin notifications now go through the 30-second delayed Inngest function.
+- `apps/web/src/inngest/functions/send-signup-notification.ts`: Updated to read `signupMethod` directly from the User row instead of guessing from Account/passwordHash fields. Removed account/passwordHash/appleSubject selects.
+- `apps/web/src/app/api/auth/signup/route.ts`: Sets `signupMethod: "email"` at user creation.
+- `apps/web/src/app/api/auth/mobile-signup/route.ts`: Sets `signupMethod: "mobile-email"`.
+- `apps/web/src/app/api/auth/mobile-callback/route.ts`: Sets `signupMethod: "mobile-google"`.
+- `apps/web/src/app/api/auth/mobile-callback-apple/route.ts`: Sets `signupMethod: "mobile-apple"`.
+- `apps/web/src/app/api/auth/mobile-magic-link/route.ts`: Sets `signupMethod: "magic-link"`.
+- `apps/web/src/lib/auth.ts` (events.createUser): Detects OAuth provider from Account table and writes `signupMethod: "google"` or `"apple"` before calling bootstrapNewUser.
+
+### Manual steps needed
+
+- [ ] **Run `npx prisma db push`** from home network to add the `signupMethod` column (Keenan — work Mac blocks Supabase ports)
+- [ ] After schema push + deploy, test: sign up with Google OAuth → admin email should arrive ~30 seconds later with real source/campaign/method (Keenan)
+- [ ] Verify Inngest function `send-signup-notification` is registered at https://app.inngest.com (may need to trigger a GET to /api/inngest to resync) (Jimmy)
+
+### Notes
+
+- The Inngest function was already written and registered (commit from earlier session) — only the event trigger was missing. Re-enabling it was a one-line change in bootstrap-user.ts.
+- The 30-second delay is a deliberate design choice: SyncAttribution on the success page fires ~1-3 seconds after OAuth redirect completes. 30 seconds gives ample time for the attribution to land in the DB.
+- If Inngest is unavailable (cold start, misconfigured), the notification silently fails with a console.error. The user's signup is never blocked.
+- `signupMethod` is write-once at user creation time. It captures the FIRST signup method. If a user later links Google to their email account, signupMethod still reflects the original signup path.
+- TS errors from `signupMethod` field will resolve after `prisma db push` regenerates the Prisma client types.
+
+---
+
 ## [2026-05-21] — Surface signup attribution in admin Users table + detail view
 
 **Requested by:** Keenan

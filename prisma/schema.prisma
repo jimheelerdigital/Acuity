@@ -296,6 +296,7 @@ model User {
   signupUtmTerm     String?
   signupReferrer    String?
   signupLandingPath String?
+  signupMethod      String?   // "email" | "google" | "apple" | "mobile-email" | "mobile-google" | "mobile-apple" | "magic-link"
 
   // ── Calendar integration (v1.1 slice C3) ─────────────────────────
   // See docs/v1-1/calendar-integration-scoping.md §8 + the locked
