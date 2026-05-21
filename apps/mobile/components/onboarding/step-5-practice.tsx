@@ -3,6 +3,8 @@ import { Audio } from "expo-av";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Pressable, Text, View } from "react-native";
 
+import { useTheme } from "@/contexts/theme-context";
+
 import { useOnboarding } from "./context";
 
 /**
@@ -22,6 +24,7 @@ type Phase = "idle" | "recording" | "recorded";
 const MAX_SECONDS = 10;
 
 export function Step5Practice() {
+  const { tokens } = useTheme();
   const { setCanContinue, setCapturedData } = useOnboarding();
   const [phase, setPhase] = useState<Phase>("idle");
   const [elapsed, setElapsed] = useState(0);
@@ -106,14 +109,18 @@ export function Step5Practice() {
   return (
     <View className="flex-1">
       <Text
-      className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50"
-      numberOfLines={1}
-      adjustsFontSizeToFit
-      minimumFontScale={0.75}
-    >
+        className="text-3xl font-semibold tracking-tight"
+        style={{ color: tokens.text }}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.75}
+      >
         Practice round
       </Text>
-      <Text className="mt-3 text-base leading-relaxed text-zinc-600 dark:text-zinc-300">
+      <Text
+        className="mt-3 text-base leading-relaxed"
+        style={{ color: tokens.textSec }}
+      >
         Tap the mic and tell us about your day — what&rsquo;s on your
         mind, what went well, what didn&rsquo;t. Ten seconds. Nothing
         you say here is saved — it&rsquo;s just to get comfortable
@@ -126,14 +133,14 @@ export function Step5Practice() {
           disabled={phase === "recorded"}
           style={{
             opacity: phase === "recorded" ? 0.7 : 1,
+            backgroundColor:
+              phase === "recording"
+                ? tokens.bad
+                : phase === "recorded"
+                  ? tokens.good
+                  : tokens.primary,
           }}
-          className={`h-24 w-24 rounded-full items-center justify-center ${
-            phase === "recording"
-              ? "bg-red-500"
-              : phase === "recorded"
-                ? "bg-emerald-500"
-                : "bg-violet-600"
-          }`}
+          className="h-24 w-24 rounded-full items-center justify-center"
         >
           <Ionicons
             name={
@@ -148,11 +155,17 @@ export function Step5Practice() {
           />
         </Pressable>
 
-        <Text className="mt-5 text-3xl font-mono tabular-nums text-zinc-900 dark:text-zinc-50">
+        <Text
+          className="mt-5 text-3xl font-mono tabular-nums"
+          style={{ color: tokens.text, fontFamily: tokens.fontMono }}
+        >
           {String(Math.floor(elapsed / 60)).padStart(2, "0")}:
           {String(elapsed % 60).padStart(2, "0")}
         </Text>
-        <Text className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
+        <Text
+          className="mt-2 text-sm"
+          style={{ color: tokens.textTer }}
+        >
           {phase === "idle" && "Tap and start talking"}
           {phase === "recording" &&
             `Listening… ${MAX_SECONDS - elapsed}s left · tap to stop`}

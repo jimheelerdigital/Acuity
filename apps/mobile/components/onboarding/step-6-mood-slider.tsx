@@ -10,6 +10,8 @@ import {
 
 import { moodBucketFromScore, moodLabelForScore } from "@acuity/shared";
 
+import { useTheme } from "@/contexts/theme-context";
+
 import { useOnboarding } from "./context";
 
 /**
@@ -30,6 +32,7 @@ const MAX = 10;
 const DEFAULT_VALUE = 5;
 
 export function Step6MoodSlider() {
+  const { tokens } = useTheme();
   const { step, setCanContinue, setCapturedData, getCapturedData } =
     useOnboarding();
   const prior = getCapturedData(step) as
@@ -69,26 +72,39 @@ export function Step6MoodSlider() {
   return (
     <View className="flex-1">
       <Text
-      className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50"
-      numberOfLines={1}
-      adjustsFontSizeToFit
-      minimumFontScale={0.75}
-    >
+        className="text-3xl font-semibold tracking-tight"
+        style={{ color: tokens.text }}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.75}
+      >
         How&apos;s your baseline lately?
       </Text>
-      <Text className="mt-3 text-base leading-relaxed text-zinc-600 dark:text-zinc-300">
+      <Text
+        className="mt-3 text-base leading-relaxed"
+        style={{ color: tokens.textSec }}
+      >
         The average of the last couple of weeks — not today
         specifically. Drag to where it feels right.
       </Text>
 
       <View className="mt-16 items-center">
-        <Text className="text-4xl font-semibold text-zinc-900 dark:text-zinc-50">
+        <Text
+          className="text-4xl font-semibold"
+          style={{ color: tokens.text }}
+        >
           {value}
-          <Text className="text-2xl font-medium text-zinc-400 dark:text-zinc-500">
+          <Text
+            className="text-2xl font-medium"
+            style={{ color: tokens.textQuiet }}
+          >
             /10
           </Text>
         </Text>
-        <Text className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
+        <Text
+          className="mt-2 text-sm"
+          style={{ color: tokens.textTer }}
+        >
           {moodLabelForScore(value)}
         </Text>
       </View>
@@ -133,19 +149,31 @@ export function Step6MoodSlider() {
 
         {/* End labels */}
         <View className="mt-3 flex-row justify-between">
-          <Text className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+          <Text
+            className="text-[10px] font-semibold uppercase tracking-wider"
+            style={{ color: tokens.textQuiet }}
+          >
             Rough
           </Text>
-          <Text className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+          <Text
+            className="text-[10px] font-semibold uppercase tracking-wider"
+            style={{ color: tokens.textQuiet }}
+          >
             Okay
           </Text>
-          <Text className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+          <Text
+            className="text-[10px] font-semibold uppercase tracking-wider"
+            style={{ color: tokens.textQuiet }}
+          >
             Strong
           </Text>
         </View>
       </View>
 
-      <Text className="mt-10 text-xs text-zinc-400 dark:text-zinc-500">
+      <Text
+        className="mt-10 text-xs"
+        style={{ color: tokens.textQuiet }}
+      >
         No right answer. Acuity uses this to frame your first
         week&rsquo;s entries against your own baseline.
       </Text>

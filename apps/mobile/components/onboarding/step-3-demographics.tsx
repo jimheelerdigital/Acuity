@@ -8,6 +8,8 @@ import {
   View,
 } from "react-native";
 
+import { useTheme } from "@/contexts/theme-context";
+
 import { useOnboarding } from "./context";
 
 /**
@@ -122,20 +124,25 @@ export function Step3AboutYou() {
     setCapturedData({ ageRange, gender, country });
   }, [ageRange, gender, country, setCanContinue, setCapturedData]);
 
+  const { tokens } = useTheme();
   const selectedCountryName =
     COUNTRIES.find((c) => c.code === country)?.name ?? "Prefer not to say";
 
   return (
     <View className="flex-1">
       <Text
-      className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50"
-      numberOfLines={1}
-      adjustsFontSizeToFit
-      minimumFontScale={0.75}
-    >
+        className="text-3xl font-semibold tracking-tight"
+        style={{ color: tokens.text }}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.75}
+      >
         About you
       </Text>
-      <Text className="mt-3 text-base leading-relaxed text-zinc-600 dark:text-zinc-300">
+      <Text
+        className="mt-3 text-base leading-relaxed"
+        style={{ color: tokens.textSec }}
+      >
         Three quick details so Acuity can tailor insights to people
         like you. Skip anything you&rsquo;d rather not share.
       </Text>
@@ -165,17 +172,21 @@ export function Step3AboutYou() {
       <Section label="Country">
         <Pressable
           onPress={() => setCountryPickerOpen((v) => !v)}
-          className="w-full rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-4 py-3 flex-row items-center justify-between"
+          className="w-full rounded-xl border px-4 py-3 flex-row items-center justify-between"
+          style={{ borderColor: tokens.line, backgroundColor: tokens.cardBg }}
         >
-          <Text className="text-sm text-zinc-900 dark:text-zinc-100">
+          <Text className="text-sm" style={{ color: tokens.text }}>
             {selectedCountryName}
           </Text>
-          <Text className="text-xs text-zinc-400 dark:text-zinc-500">
+          <Text className="text-xs" style={{ color: tokens.textTer }}>
             {countryPickerOpen ? "Close" : "Change"}
           </Text>
         </Pressable>
         {countryPickerOpen && (
-          <View className="mt-2 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] max-h-60">
+          <View
+            className="mt-2 rounded-xl border max-h-60"
+            style={{ borderColor: tokens.line, backgroundColor: tokens.cardBg }}
+          >
             <View className="p-1">
               <CountryRow
                 code={null}
@@ -276,17 +287,22 @@ export function Step3Context() {
         : [...without, s];
     });
 
+  const { tokens } = useTheme();
   return (
     <View className="flex-1">
       <Text
-      className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50"
-      numberOfLines={1}
-      adjustsFontSizeToFit
-      minimumFontScale={0.75}
-    >
+        className="text-3xl font-semibold tracking-tight"
+        style={{ color: tokens.text }}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.75}
+      >
         What brings you here?
       </Text>
-      <Text className="mt-3 text-base leading-relaxed text-zinc-600 dark:text-zinc-300">
+      <Text
+        className="mt-3 text-base leading-relaxed"
+        style={{ color: tokens.textSec }}
+      >
         Two more, just to know what kind of weeks Acuity should help
         you make sense of.
       </Text>
@@ -307,8 +323,13 @@ export function Step3Context() {
           onChangeText={setPrimaryReasonsCustom}
           maxLength={200}
           placeholder="Tell Acuity more — what brings you here?"
-          placeholderTextColor="#71717A"
-          className="mt-3 w-full rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-4 py-3 text-sm text-zinc-900 dark:text-zinc-100"
+          placeholderTextColor={tokens.textTer}
+          className="mt-3 w-full rounded-xl border px-4 py-3 text-sm"
+          style={{
+            borderColor: tokens.line,
+            backgroundColor: tokens.cardBg,
+            color: tokens.text,
+          }}
           accessibilityLabel="What brings you here (freeform)"
         />
       )}
@@ -329,8 +350,13 @@ export function Step3Context() {
           onChangeText={setLifeStageCustom}
           maxLength={200}
           placeholder="What's shifting? (layoff, caregiving, sabbatical…)"
-          placeholderTextColor="#71717A"
-          className="mt-3 w-full rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-4 py-3 text-sm text-zinc-900 dark:text-zinc-100"
+          placeholderTextColor={tokens.textTer}
+          className="mt-3 w-full rounded-xl border px-4 py-3 text-sm"
+          style={{
+            borderColor: tokens.line,
+            backgroundColor: tokens.cardBg,
+            color: tokens.text,
+          }}
           accessibilityLabel="Life stage (freeform)"
         />
       )}
@@ -349,13 +375,20 @@ function Section({
   sub?: string;
   children: React.ReactNode;
 }) {
+  const { tokens } = useTheme();
   return (
     <View className="mt-6">
-      <Text className="text-sm font-semibold text-zinc-800 dark:text-zinc-100 mb-1">
+      <Text
+        className="text-sm font-semibold mb-1"
+        style={{ color: tokens.text }}
+      >
         {label}
       </Text>
       {sub && (
-        <Text className="text-xs text-zinc-400 dark:text-zinc-500 mb-2">
+        <Text
+          className="text-xs mb-2"
+          style={{ color: tokens.textTer }}
+        >
           {sub}
         </Text>
       )}
@@ -373,23 +406,24 @@ function Chip({
   active: boolean;
   onPress: () => void;
 }) {
+  const { tokens } = useTheme();
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
-      className={`rounded-full border px-3 py-1.5 ${
-        active
-          ? "border-violet-500 bg-violet-50 dark:bg-violet-950/30"
-          : "border-zinc-200 dark:border-white/10 bg-transparent"
-      }`}
+      className="rounded-full border px-3 py-1.5"
+      style={{
+        borderColor: active ? tokens.primary : tokens.line,
+        backgroundColor: active ? `${tokens.primary}14` : "transparent",
+      }}
     >
       <Text
-        className={`text-sm ${
-          active
-            ? "text-violet-700 dark:text-violet-300 font-semibold"
-            : "text-zinc-600 dark:text-zinc-300"
-        }`}
+        className="text-sm"
+        style={{
+          color: active ? tokens.primary : tokens.textSec,
+          fontWeight: active ? "600" : "400",
+        }}
       >
         {label}
       </Text>
@@ -408,23 +442,27 @@ function CountryRow({
   active: boolean;
   onPress: () => void;
 }) {
+  const { tokens } = useTheme();
   return (
     <Pressable
       onPress={onPress}
-      className={`rounded-lg px-3 py-2.5 ${
-        active ? "bg-violet-50 dark:bg-violet-950/30" : ""
-      }`}
+      className="rounded-lg px-3 py-2.5"
+      style={{
+        backgroundColor: active ? `${tokens.primary}14` : "transparent",
+      }}
     >
       <Text
-        className={`text-sm ${
-          active
-            ? "text-violet-700 dark:text-violet-300 font-semibold"
-            : "text-zinc-700 dark:text-zinc-200"
-        }`}
+        className="text-sm"
+        style={{
+          color: active ? tokens.primary : tokens.textSec,
+          fontWeight: active ? "600" : "400",
+        }}
       >
         {name}
         {code && (
-          <Text className="text-xs text-zinc-400 dark:text-zinc-500"> · {code}</Text>
+          <Text className="text-xs" style={{ color: tokens.textTer }}>
+            {" · "}{code}
+          </Text>
         )}
       </Text>
     </Pressable>

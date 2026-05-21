@@ -18,6 +18,7 @@ import {
   ReminderTimePicker,
   useLocalTimezoneLabel,
 } from "@/components/reminders/time-picker";
+import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
 import {
   applyMultiReminderSchedule,
@@ -26,6 +27,7 @@ import {
   syncRandomNudges,
   type PermissionStatus,
 } from "@/lib/notifications";
+import type { AcuityTokens } from "@/lib/theme/tokens";
 
 /**
  * Mobile reminder preferences. Multi-reminder list (Slice C,
@@ -111,6 +113,7 @@ function defaultReminder(sortOrder: number): LocalReminder {
 
 export default function RemindersScreen() {
   void useRouter(); // back-nav handled via StickyBackButton
+  const { tokens } = useTheme();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -286,14 +289,21 @@ export default function RemindersScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 bg-white dark:bg-[#0B0B12] items-center justify-center">
-        <ActivityIndicator color="#7C3AED" />
+      <SafeAreaView
+        className="flex-1 items-center justify-center"
+        style={{ backgroundColor: tokens.bg }}
+      >
+        <ActivityIndicator color={tokens.primary} />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView edges={["top"]} className="flex-1 bg-white dark:bg-[#0B0B12]">
+    <SafeAreaView
+      edges={["top"]}
+      className="flex-1"
+      style={{ backgroundColor: tokens.bg }}
+    >
       <StickyBackButton accessibilityLabel="Back to Profile" />
       <ScrollView
         contentContainerStyle={{
@@ -303,14 +313,22 @@ export default function RemindersScreen() {
         }}
       >
         <Text
-          className="text-zinc-900 dark:text-zinc-50"
-          style={{ fontSize: 34, fontWeight: "700", letterSpacing: -0.6 }}
+          style={{
+            color: tokens.text,
+            fontSize: 34,
+            fontWeight: "700",
+            letterSpacing: -0.6,
+          }}
         >
           Reminders
         </Text>
         <Text
-          className="text-zinc-500 dark:text-zinc-400"
-          style={{ fontSize: 17, marginTop: 6, lineHeight: 24 }}
+          style={{
+            color: tokens.textTer,
+            fontSize: 17,
+            marginTop: 6,
+            lineHeight: 24,
+          }}
         >
           When we nudge you to journal. Add up to {MAX_REMINDERS}.
         </Text>
@@ -319,31 +337,30 @@ export default function RemindersScreen() {
         <View className="mt-8 flex-row items-center" style={{ gap: 14 }}>
           <Pressable
             onPress={() => setMasterEnabled((v) => !v)}
-            className={`rounded-full justify-center ${
-              masterEnabled ? "bg-violet-600" : "bg-zinc-300 dark:bg-white/10"
-            }`}
-            style={{ height: 32, width: 56 }}
+            className="rounded-full justify-center"
+            style={{
+              height: 32,
+              width: 56,
+              backgroundColor: masterEnabled ? tokens.primary : tokens.bgInset,
+            }}
           >
             <View
-              className="rounded-full bg-white"
+              className="rounded-full"
               style={{
+                backgroundColor: "#FFFFFF",
                 height: 28,
                 width: 28,
                 transform: [{ translateX: masterEnabled ? 26 : 2 }],
               }}
             />
           </Pressable>
-          <Text
-            className="text-zinc-700 dark:text-zinc-200"
-            style={{ fontSize: 17 }}
-          >
+          <Text style={{ color: tokens.text, fontSize: 17 }}>
             {masterEnabled ? "Reminders on" : "Reminders off"}
           </Text>
         </View>
 
         <Text
-          className="text-zinc-400 dark:text-zinc-500"
-          style={{ fontSize: 13, marginTop: 14 }}
+          style={{ color: tokens.textQuiet, fontSize: 13, marginTop: 14 }}
         >
           {tzLabel}
         </Text>
@@ -358,6 +375,7 @@ export default function RemindersScreen() {
               reminder={reminder}
               index={idx}
               canDelete={reminders.length > 1}
+              tokens={tokens}
               onChangeTime={(time) => updateReminder(reminder.id, { time })}
               onToggleDay={(dayIndex) => toggleDay(reminder.id, dayIndex)}
               onToggleEnabled={() =>
@@ -370,13 +388,17 @@ export default function RemindersScreen() {
           {reminders.length < MAX_REMINDERS && (
             <Pressable
               onPress={addReminder}
-              className="rounded-2xl border border-dashed border-zinc-300 dark:border-white/10 items-center justify-center flex-row"
-              style={{ marginTop: 16, paddingVertical: 16, gap: 8 }}
+              className="rounded-2xl border border-dashed items-center justify-center flex-row"
+              style={{
+                borderColor: tokens.line,
+                marginTop: 16,
+                paddingVertical: 16,
+                gap: 8,
+              }}
             >
-              <Ionicons name="add-circle-outline" size={20} color="#A78BFA" />
+              <Ionicons name="add-circle-outline" size={20} color={tokens.primary} />
               <Text
-                className="text-violet-500 dark:text-violet-300"
-                style={{ fontSize: 15, fontWeight: "600" }}
+                style={{ color: tokens.primary, fontSize: 15, fontWeight: "600" }}
               >
                 Add reminder
               </Text>
@@ -387,24 +409,24 @@ export default function RemindersScreen() {
         <Pressable
           disabled={saving}
           onPress={save}
-          className="rounded-2xl bg-violet-600 items-center justify-center"
+          className="rounded-2xl items-center justify-center"
           style={{
+            backgroundColor: tokens.primary,
             marginTop: 36,
             height: 56,
             opacity: saving ? 0.7 : 1,
           }}
         >
           <Text
-            className="text-white"
-            style={{ fontSize: 18, fontWeight: "600" }}
+            style={{ color: "#FFFFFF", fontSize: 18, fontWeight: "600" }}
           >
             {saving ? "Saving…" : "Save"}
           </Text>
         </Pressable>
         {saved && (
           <Text
-            className="text-emerald-500 dark:text-emerald-400 text-center"
-            style={{ fontSize: 13, marginTop: 10 }}
+            className="text-center"
+            style={{ color: tokens.good, fontSize: 13, marginTop: 10 }}
           >
             Saved ✓
           </Text>
@@ -412,12 +434,16 @@ export default function RemindersScreen() {
 
         {masterEnabled && permission !== "granted" && (
           <View
-            className="rounded-2xl border border-violet-900/30 bg-violet-950/20"
-            style={{ padding: 16, marginTop: 24 }}
+            className="rounded-2xl border"
+            style={{
+              borderColor: `${tokens.primary}55`,
+              backgroundColor: `${tokens.primary}14`,
+              padding: 16,
+              marginTop: 24,
+            }}
           >
             <Text
-              className="text-violet-300"
-              style={{ fontSize: 14, lineHeight: 20 }}
+              style={{ color: tokens.primary, fontSize: 14, lineHeight: 20 }}
             >
               <Ionicons name="information-circle-outline" size={14} />{" "}
               {permission === "denied"
@@ -426,12 +452,16 @@ export default function RemindersScreen() {
             </Text>
             <Pressable
               onPress={permission === "denied" ? openSettings : askPermission}
-              className="self-start rounded-full bg-violet-600"
-              style={{ marginTop: 10, paddingHorizontal: 14, paddingVertical: 8 }}
+              className="self-start rounded-full"
+              style={{
+                backgroundColor: tokens.primary,
+                marginTop: 10,
+                paddingHorizontal: 14,
+                paddingVertical: 8,
+              }}
             >
               <Text
-                className="text-white"
-                style={{ fontSize: 14, fontWeight: "600" }}
+                style={{ color: "#FFFFFF", fontSize: 14, fontWeight: "600" }}
               >
                 {permission === "denied" ? "Open Settings" : "Allow notifications"}
               </Text>
@@ -447,6 +477,7 @@ function ReminderRow({
   reminder,
   index,
   canDelete,
+  tokens,
   onChangeTime,
   onToggleDay,
   onToggleEnabled,
@@ -455,6 +486,7 @@ function ReminderRow({
   reminder: LocalReminder;
   index: number;
   canDelete: boolean;
+  tokens: AcuityTokens;
   onChangeTime: (time: string) => void;
   onToggleDay: (dayIndex: number) => void;
   onToggleEnabled: () => void;
@@ -475,12 +507,9 @@ function ReminderRow({
 
   return (
     <View
-      className={`rounded-2xl ${
-        reminder.enabled
-          ? "bg-zinc-50 dark:bg-white/5"
-          : "bg-zinc-50/50 dark:bg-white/[0.02]"
-      }`}
+      className="rounded-2xl"
       style={{
+        backgroundColor: tokens.bgInset,
         padding: 16,
         marginTop: index === 0 ? 0 : 16,
         opacity: reminder.enabled ? 1 : 0.55,
@@ -492,16 +521,17 @@ function ReminderRow({
       >
         <Pressable
           onPress={onToggleEnabled}
-          className={`rounded-full justify-center ${
-            reminder.enabled
-              ? "bg-violet-600"
-              : "bg-zinc-300 dark:bg-white/10"
-          }`}
-          style={{ height: 28, width: 48 }}
+          className="rounded-full justify-center"
+          style={{
+            height: 28,
+            width: 48,
+            backgroundColor: reminder.enabled ? tokens.primary : tokens.bgSub,
+          }}
         >
           <View
-            className="rounded-full bg-white"
+            className="rounded-full"
             style={{
+              backgroundColor: "#FFFFFF",
               height: 24,
               width: 24,
               transform: [{ translateX: reminder.enabled ? 22 : 2 }],
@@ -510,7 +540,7 @@ function ReminderRow({
         </Pressable>
         {canDelete && (
           <Pressable onPress={onDelete} hitSlop={12}>
-            <Ionicons name="trash-outline" size={20} color="#A1A1AA" />
+            <Ionicons name="trash-outline" size={20} color={tokens.textTer} />
           </Pressable>
         )}
       </View>
@@ -537,16 +567,19 @@ function ReminderRow({
               <Pressable
                 key={d.i}
                 onPress={() => onToggleDay(d.i)}
-                className={`rounded-full items-center justify-center ${
-                  on ? "bg-violet-600" : "bg-zinc-100 dark:bg-white/5"
-                }`}
-                style={{ height: 40, width: 40 }}
+                className="rounded-full items-center justify-center"
+                style={{
+                  height: 40,
+                  width: 40,
+                  backgroundColor: on ? tokens.primary : tokens.bgSub,
+                }}
               >
                 <Text
-                  className={
-                    on ? "text-white" : "text-zinc-500 dark:text-zinc-400"
-                  }
-                  style={{ fontSize: 14, fontWeight: "600" }}
+                  style={{
+                    color: on ? "#FFFFFF" : tokens.textTer,
+                    fontSize: 14,
+                    fontWeight: "600",
+                  }}
                 >
                   {d.label}
                 </Text>

@@ -2,6 +2,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useEffect } from "react";
 import { Text, View } from "react-native";
 
+import { useTheme } from "@/contexts/theme-context";
+
 import { useOnboarding } from "./context";
 
 /**
@@ -11,6 +13,7 @@ import { useOnboarding } from "./context";
  * the primary surface.
  */
 export function Step10Ready() {
+  const { tokens } = useTheme();
   const { setCanContinue, setCapturedData } = useOnboarding();
   useEffect(() => {
     setCanContinue(true);
@@ -19,24 +22,37 @@ export function Step10Ready() {
 
   return (
     <View className="flex-1 items-center justify-center">
-      <View className="h-20 w-20 items-center justify-center rounded-full bg-violet-600/15 mb-6">
-        <Ionicons name="sparkles-outline" size={40} color="#7C3AED" />
+      <View
+        className="h-20 w-20 items-center justify-center rounded-full mb-6"
+        style={{ backgroundColor: `${tokens.primary}26` }}
+      >
+        <Ionicons name="sparkles-outline" size={40} color={tokens.primary} />
       </View>
       <Text
-      className="text-center text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 mb-4"
-      numberOfLines={1}
-      adjustsFontSizeToFit
-      minimumFontScale={0.75}
-    >
+        className="text-center text-3xl font-semibold tracking-tight mb-4"
+        style={{ color: tokens.text }}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.75}
+      >
         You&rsquo;re set up
       </Text>
-      <Text className="text-center text-base leading-relaxed text-zinc-600 dark:text-zinc-300 max-w-xs">
+      <Text
+        className="text-center text-base leading-relaxed max-w-xs"
+        style={{ color: tokens.textSec }}
+      >
         Tap Finish and we&rsquo;ll drop you on the home screen. The
         Record button is the only thing you need — one minute, every
         day, and the rest happens in the background.
       </Text>
-      <View className="mt-6 rounded-2xl border border-violet-900/30 bg-violet-950/10 px-4 py-3">
-        <Text className="text-xs text-violet-400">
+      <View
+        className="mt-6 rounded-2xl border px-4 py-3"
+        style={{
+          borderColor: `${tokens.primary}55`,
+          backgroundColor: `${tokens.primary}14`,
+        }}
+      >
+        <Text className="text-xs" style={{ color: tokens.primary }}>
           Your Day 14 Life Audit is already scheduled.
         </Text>
       </View>

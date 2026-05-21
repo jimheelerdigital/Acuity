@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Alert, Pressable, Text, View } from "react-native";
 
 import { useAuth } from "@/contexts/auth-context";
+import { useTheme } from "@/contexts/theme-context";
 
 import { useOnboarding } from "./context";
 
@@ -31,6 +32,7 @@ import { useOnboarding } from "./context";
  * permission → AI processing consent → first recording attempt".
  */
 export function Step5AiConsent() {
+  const { tokens } = useTheme();
   const { setCanContinue, setCapturedData } = useOnboarding();
   const { deleteAccount, signOut } = useAuth();
   const [accepted, setAccepted] = useState(false);
@@ -82,41 +84,57 @@ export function Step5AiConsent() {
   return (
     <View className="flex-1">
       <Text
-      className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50"
-      numberOfLines={1}
-      adjustsFontSizeToFit
-      minimumFontScale={0.75}
-    >
+        className="text-3xl font-semibold tracking-tight"
+        style={{ color: tokens.text }}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.75}
+      >
         How Acuity uses AI
       </Text>
-      <Text className="mt-3 text-base leading-relaxed text-zinc-600 dark:text-zinc-300">
+      <Text
+        className="mt-3 text-base leading-relaxed"
+        style={{ color: tokens.textSec }}
+      >
         Acuity sends your voice transcripts to{" "}
-        <Text className="font-semibold text-zinc-800 dark:text-zinc-100">
+        <Text className="font-semibold" style={{ color: tokens.text }}>
           OpenAI
         </Text>{" "}
         (for transcription) and{" "}
-        <Text className="font-semibold text-zinc-800 dark:text-zinc-100">
+        <Text className="font-semibold" style={{ color: tokens.text }}>
           Anthropic&rsquo;s Claude
         </Text>{" "}
         (for themes, tasks, and your Sunday narrative).
       </Text>
 
-      <View className="mt-6 rounded-xl border border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-white/5 p-4">
-        <Text className="text-sm leading-relaxed text-zinc-700 dark:text-zinc-200">
+      <View
+        className="mt-6 rounded-xl border p-4"
+        style={{ borderColor: tokens.line, backgroundColor: tokens.bgInset }}
+      >
+        <Text
+          className="text-sm leading-relaxed"
+          style={{ color: tokens.textSec }}
+        >
           Your transcripts are{" "}
-          <Text className="font-semibold">
+          <Text className="font-semibold" style={{ color: tokens.text }}>
             not used to train AI models
           </Text>
           . Both providers offer privacy protections at least
           equivalent to ours. Full details in our{" "}
-          <Text className="font-semibold underline">Privacy Policy</Text>.
+          <Text
+            className="font-semibold underline"
+            style={{ color: tokens.text }}
+          >
+            Privacy Policy
+          </Text>
+          .
         </Text>
       </View>
 
       {accepted && (
         <View className="mt-6 flex-row gap-2 items-center">
-          <Ionicons name="checkmark-circle" size={20} color="#10B981" />
-          <Text className="text-sm text-emerald-500">
+          <Ionicons name="checkmark-circle" size={20} color={tokens.good} />
+          <Text className="text-sm" style={{ color: tokens.good }}>
             Consent recorded. Tap Continue to proceed.
           </Text>
         </View>
@@ -125,27 +143,27 @@ export function Step5AiConsent() {
       <View className="mt-auto pt-6 gap-3">
         <Pressable
           onPress={() => setAccepted(true)}
-          className={`rounded-full px-4 py-3.5 items-center ${
-            accepted
-              ? "bg-zinc-200 dark:bg-white/10"
-              : "bg-violet-600"
-          }`}
+          className="rounded-full px-4 py-3.5 items-center"
+          style={{
+            backgroundColor: accepted ? tokens.bgInset : tokens.primary,
+          }}
         >
           <Text
-            className={`text-sm font-semibold ${
-              accepted
-                ? "text-zinc-700 dark:text-zinc-200"
-                : "text-white"
-            }`}
+            className="text-sm font-semibold"
+            style={{ color: accepted ? tokens.textSec : "#FFFFFF" }}
           >
             {accepted ? "Consent given ✓" : "I consent"}
           </Text>
         </Pressable>
         <Pressable
           onPress={handleDecline}
-          className="rounded-full px-4 py-3.5 items-center border border-zinc-200 dark:border-white/10"
+          className="rounded-full px-4 py-3.5 items-center border"
+          style={{ borderColor: tokens.line }}
         >
-          <Text className="text-sm font-medium text-zinc-600 dark:text-zinc-300">
+          <Text
+            className="text-sm font-medium"
+            style={{ color: tokens.textSec }}
+          >
             I don&rsquo;t consent
           </Text>
         </Pressable>

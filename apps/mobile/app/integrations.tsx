@@ -15,8 +15,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { StickyBackButton } from "@/components/back-button";
 import { ProLockedCard } from "@/components/pro-locked-card";
 import { useAuth } from "@/contexts/auth-context";
+import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
 import { isFreeTierUser } from "@/lib/free-tier";
+import type { AcuityTokens } from "@/lib/theme/tokens";
 import { WARN_AMBER } from "@/lib/tone-colors";
 
 /**
@@ -59,12 +61,14 @@ const PROVIDER_LABEL: Record<string, string> = {
 };
 
 export default function IntegrationsScreen() {
+  const { tokens } = useTheme();
   const { user } = useAuth();
   const isProLocked = isFreeTierUser(user);
 
   return (
     <SafeAreaView
-      className="flex-1 bg-white dark:bg-[#0B0B12]"
+      className="flex-1"
+      style={{ backgroundColor: tokens.bg }}
       edges={["top"]}
     >
       <Stack.Screen options={{ headerShown: false }} />
@@ -72,10 +76,16 @@ export default function IntegrationsScreen() {
         <StickyBackButton accessibilityLabel="Back to Profile" />
 
         <View className="mb-6 mt-6">
-          <Text className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+          <Text
+            className="text-2xl font-bold"
+            style={{ color: tokens.text }}
+          >
             Integrations
           </Text>
-          <Text className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+          <Text
+            className="mt-1 text-sm"
+            style={{ color: tokens.textTer }}
+          >
             Connect a calendar to send Acuity tasks where you already
             plan your day.
           </Text>
@@ -84,14 +94,14 @@ export default function IntegrationsScreen() {
         {isProLocked ? (
           <ProLockedCard surfaceId="calendar_connect_locked" />
         ) : (
-          <ConnectedOrPlaceholder />
+          <ConnectedOrPlaceholder tokens={tokens} />
         )}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-function ConnectedOrPlaceholder() {
+function ConnectedOrPlaceholder({ tokens }: { tokens: AcuityTokens }) {
   const [state, setState] = useState<FetchResult>({ kind: "loading" });
 
   const fetchState = useCallback(async () => {
@@ -118,7 +128,10 @@ function ConnectedOrPlaceholder() {
 
   if (state.kind === "loading") {
     return (
-      <View className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-white/10 dark:bg-[#1E1E2E]">
+      <View
+        className="rounded-2xl border p-5"
+        style={{ borderColor: tokens.line, backgroundColor: tokens.cardBg }}
+      >
         <ActivityIndicator />
       </View>
     );
@@ -126,45 +139,70 @@ function ConnectedOrPlaceholder() {
 
   if (state.kind === "error") {
     return (
-      <View className="rounded-2xl border border-rose-200 bg-rose-50 p-5 dark:border-rose-900/40 dark:bg-rose-900/20">
-        <Text className="text-sm text-rose-700 dark:text-rose-300">
+      <View
+        className="rounded-2xl border p-5"
+        style={{
+          borderColor: `${tokens.bad}55`,
+          backgroundColor: `${tokens.bad}14`,
+        }}
+      >
+        <Text className="text-sm" style={{ color: tokens.bad }}>
           Couldn&apos;t load calendar settings: {state.message}
         </Text>
         <Pressable
           onPress={fetchState}
-          className="mt-3 self-start rounded-md bg-rose-600 px-3 py-1.5"
+          className="mt-3 self-start rounded-md px-3 py-1.5"
+          style={{ backgroundColor: tokens.bad }}
         >
-          <Text className="text-xs font-semibold text-white">Retry</Text>
+          <Text
+            className="text-xs font-semibold"
+            style={{ color: "#FFFFFF" }}
+          >
+            Retry
+          </Text>
         </Pressable>
       </View>
     );
   }
 
   if (state.kind === "not-connected") {
-    return <ConnectPlaceholderCard />;
+    return <ConnectPlaceholderCard tokens={tokens} />;
   }
 
   return (
     <ConnectedCard
       calendar={state.calendar}
+      tokens={tokens}
       onUpdate={(next) => setState({ kind: "connected", calendar: next })}
       onDisconnect={() => setState({ kind: "not-connected" })}
     />
   );
 }
 
-function ConnectPlaceholderCard() {
+function ConnectPlaceholderCard({ tokens }: { tokens: AcuityTokens }) {
   return (
-    <View className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-white/10 dark:bg-[#1E1E2E]">
+    <View
+      className="rounded-2xl border p-5"
+      style={{ borderColor: tokens.line, backgroundColor: tokens.cardBg }}
+    >
       <View className="flex-row items-start gap-3">
-        <View className="h-9 w-9 shrink-0 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-900/30">
-          <Ionicons name="calendar-outline" size={18} color="#7C3AED" />
+        <View
+          className="h-9 w-9 shrink-0 items-center justify-center rounded-full"
+          style={{ backgroundColor: `${tokens.primary}1A` }}
+        >
+          <Ionicons name="calendar-outline" size={18} color={tokens.primary} />
         </View>
         <View className="flex-1">
-          <Text className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
+          <Text
+            className="text-base font-semibold"
+            style={{ color: tokens.text }}
+          >
             Apple Calendar
           </Text>
-          <Text className="mt-1.5 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
+          <Text
+            className="mt-1.5 text-sm leading-relaxed"
+            style={{ color: tokens.textSec }}
+          >
             Reads your iOS calendar (which already aggregates your
             Google and Outlook calendars) so Acuity can send tasks to
             your real calendar and reference your meeting load in
@@ -183,14 +221,20 @@ function ConnectPlaceholderCard() {
         >
           Coming in next update
         </Text>
-        <Text className="mt-1 text-xs text-zinc-600 dark:text-zinc-300 leading-relaxed">
+        <Text
+          className="mt-1 text-xs leading-relaxed"
+          style={{ color: tokens.textSec }}
+        >
           Calendar connect ships in the next mobile release. Acuity
           will request iOS calendar access only when you tap Connect
           here — never at app launch.
         </Text>
       </View>
 
-      <Text className="mt-4 text-[11px] leading-relaxed text-zinc-400 dark:text-zinc-500">
+      <Text
+        className="mt-4 text-[11px] leading-relaxed"
+        style={{ color: tokens.textQuiet }}
+      >
         Acuity reads only event titles, times, and attendee counts.
         Never location, notes, or attendee email addresses. Tasks
         you send to your calendar use the &ldquo;Acuity:&rdquo; title
@@ -202,10 +246,12 @@ function ConnectPlaceholderCard() {
 
 function ConnectedCard({
   calendar,
+  tokens,
   onUpdate,
   onDisconnect,
 }: {
   calendar: CalendarState;
+  tokens: AcuityTokens;
   onUpdate: (next: CalendarState) => void;
   onDisconnect: () => void;
 }) {
@@ -225,7 +271,6 @@ function ConnectedCard({
   async function handleAutoSendToggle(next: boolean) {
     if (busy) return;
     setBusy("autoSend");
-    // Optimistic update — flip immediately, revert on failure.
     onUpdate({ ...calendar, autoSendTasks: next });
     try {
       const res = await patchSetting({ autoSendTasks: next });
@@ -292,15 +337,24 @@ function ConnectedCard({
   }
 
   return (
-    <View className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-white/10 dark:bg-[#1E1E2E]">
+    <View
+      className="rounded-2xl border p-5"
+      style={{ borderColor: tokens.line, backgroundColor: tokens.cardBg }}
+    >
       {/* Header */}
       <View className="flex-row items-center justify-between gap-3">
         <View className="flex-1">
-          <Text className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
+          <Text
+            className="text-base font-semibold"
+            style={{ color: tokens.text }}
+          >
             {providerLabel}
           </Text>
           {calendar.connectedAt && (
-            <Text className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+            <Text
+              className="mt-0.5 text-xs"
+              style={{ color: tokens.textTer }}
+            >
               Connected{" "}
               {new Date(calendar.connectedAt).toLocaleDateString("en-US", {
                 month: "short",
@@ -310,20 +364,35 @@ function ConnectedCard({
             </Text>
           )}
         </View>
-        <View className="rounded-full bg-emerald-500/10 px-2.5 py-0.5">
-          <Text className="text-[10px] font-semibold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
+        <View
+          className="rounded-full px-2.5 py-0.5"
+          style={{ backgroundColor: `${tokens.good}1A` }}
+        >
+          <Text
+            className="text-[10px] font-semibold uppercase tracking-widest"
+            style={{ color: tokens.good }}
+          >
             Connected
           </Text>
         </View>
       </View>
 
       {/* autoSendTasks toggle */}
-      <View className="mt-5 flex-row items-start justify-between gap-4 border-t border-zinc-200 pt-4 dark:border-white/10">
+      <View
+        className="mt-5 flex-row items-start justify-between gap-4 border-t pt-4"
+        style={{ borderColor: tokens.line }}
+      >
         <View className="flex-1">
-          <Text className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
+          <Text
+            className="text-sm font-medium"
+            style={{ color: tokens.text }}
+          >
             Auto-send tasks
           </Text>
-          <Text className="mt-1 text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
+          <Text
+            className="mt-1 text-xs leading-relaxed"
+            style={{ color: tokens.textTer }}
+          >
             New tasks with due dates show up on your calendar
             automatically. When off, you tap &ldquo;Send to calendar&rdquo;
             on each task instead.
@@ -333,17 +402,26 @@ function ConnectedCard({
           value={calendar.autoSendTasks}
           onValueChange={handleAutoSendToggle}
           disabled={busy !== null}
-          trackColor={{ false: "#D4D4D8", true: "#8B5CF6" }}
+          trackColor={{ false: tokens.bgInset, true: tokens.primary }}
           thumbColor="#FFFFFF"
         />
       </View>
 
       {/* defaultEventDuration radio */}
-      <View className="mt-5 border-t border-zinc-200 pt-4 dark:border-white/10">
-        <Text className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
+      <View
+        className="mt-5 border-t pt-4"
+        style={{ borderColor: tokens.line }}
+      >
+        <Text
+          className="text-sm font-medium"
+          style={{ color: tokens.text }}
+        >
           Default event duration
         </Text>
-        <Text className="mt-1 text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
+        <Text
+          className="mt-1 text-xs leading-relaxed"
+          style={{ color: tokens.textTer }}
+        >
           How tasks land on your calendar when you don&apos;t specify
           a time. Override per-task as needed.
         </Text>
@@ -355,6 +433,7 @@ function ConnectedCard({
             description="Blocks an hour"
             onSelect={handleDurationChange}
             disabled={busy !== null}
+            tokens={tokens}
           />
           <DurationOption
             value="ALL_DAY"
@@ -363,47 +442,68 @@ function ConnectedCard({
             description="Whole-day banner"
             onSelect={handleDurationChange}
             disabled={busy !== null}
+            tokens={tokens}
           />
         </View>
       </View>
 
       {/* targetCalendarId — read-only stub until C6 lands the EventKit list call */}
-      <View className="mt-5 border-t border-zinc-200 pt-4 dark:border-white/10">
-        <Text className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
+      <View
+        className="mt-5 border-t pt-4"
+        style={{ borderColor: tokens.line }}
+      >
+        <Text
+          className="text-sm font-medium"
+          style={{ color: tokens.text }}
+        >
           Target calendar
         </Text>
-        <View className="mt-2 rounded-md bg-zinc-50 px-3 py-2 dark:bg-white/5">
-          <Text className="text-[10px] text-zinc-500 dark:text-zinc-400">
+        <View
+          className="mt-2 rounded-md px-3 py-2"
+          style={{ backgroundColor: tokens.bgInset }}
+        >
+          <Text className="text-[10px]" style={{ color: tokens.textTer }}>
             Currently syncing to:
           </Text>
-          <Text className="mt-0.5 font-mono text-xs text-zinc-700 dark:text-zinc-200">
+          <Text
+            className="mt-0.5 font-mono text-xs"
+            style={{ color: tokens.text, fontFamily: tokens.fontMono }}
+          >
             {calendar.targetCalendarId ?? "—"}
           </Text>
         </View>
-        <Text className="mt-2 text-[11px] leading-relaxed text-zinc-400 dark:text-zinc-500">
+        <Text
+          className="mt-2 text-[11px] leading-relaxed"
+          style={{ color: tokens.textQuiet }}
+        >
           Choose a different calendar in the next update, after Acuity
           reads your calendar list directly.
         </Text>
       </View>
 
       {/* Disconnect */}
-      <View className="mt-5 border-t border-zinc-200 pt-4 dark:border-white/10">
+      <View
+        className="mt-5 border-t pt-4"
+        style={{ borderColor: tokens.line }}
+      >
         <Pressable
           onPress={handleDisconnect}
           disabled={busy !== null}
           className="self-start"
         >
           <Text
-            className={`text-xs font-semibold ${
-              busy === "disconnect"
-                ? "text-zinc-400"
-                : "text-rose-600 dark:text-rose-400"
-            }`}
+            className="text-xs font-semibold"
+            style={{
+              color: busy === "disconnect" ? tokens.textQuiet : tokens.bad,
+            }}
           >
             {busy === "disconnect" ? "Disconnecting…" : "Disconnect calendar"}
           </Text>
         </Pressable>
-        <Text className="mt-1 text-[11px] leading-relaxed text-zinc-400 dark:text-zinc-500">
+        <Text
+          className="mt-1 text-[11px] leading-relaxed"
+          style={{ color: tokens.textQuiet }}
+        >
           Stops new sync. Existing events stay. Preferences remembered
           if you reconnect.
         </Text>
@@ -419,6 +519,7 @@ function DurationOption({
   description,
   onSelect,
   disabled,
+  tokens,
 }: {
   value: Duration;
   current: Duration;
@@ -426,6 +527,7 @@ function DurationOption({
   description: string;
   onSelect: (v: Duration) => void;
   disabled: boolean;
+  tokens: AcuityTokens;
 }) {
   const checked = value === current;
   return (
@@ -434,22 +536,23 @@ function DurationOption({
       disabled={disabled}
       accessibilityRole="radio"
       accessibilityState={{ checked, disabled }}
-      className={`flex-1 rounded-lg border px-3 py-2.5 ${
-        checked
-          ? "border-violet-500 bg-violet-50 dark:bg-violet-900/20"
-          : "border-zinc-200 dark:border-white/10"
-      } ${disabled ? "opacity-60" : ""}`}
+      className="flex-1 rounded-lg border px-3 py-2.5"
+      style={{
+        borderColor: checked ? tokens.primary : tokens.line,
+        backgroundColor: checked ? `${tokens.primary}1A` : "transparent",
+        opacity: disabled ? 0.6 : 1,
+      }}
     >
       <Text
-        className={`text-sm font-medium ${
-          checked
-            ? "text-violet-700 dark:text-violet-300"
-            : "text-zinc-900 dark:text-zinc-50"
-        }`}
+        className="text-sm font-medium"
+        style={{ color: checked ? tokens.primary : tokens.text }}
       >
         {label}
       </Text>
-      <Text className="mt-0.5 text-[11px] leading-relaxed text-zinc-500 dark:text-zinc-400">
+      <Text
+        className="mt-0.5 text-[11px] leading-relaxed"
+        style={{ color: tokens.textTer }}
+      >
         {description}
       </Text>
     </Pressable>

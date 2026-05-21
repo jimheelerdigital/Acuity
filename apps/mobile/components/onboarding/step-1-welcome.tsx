@@ -2,6 +2,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useEffect } from "react";
 import { Text, View } from "react-native";
 
+import { useTheme } from "@/contexts/theme-context";
+
 import { useOnboarding } from "./context";
 
 /**
@@ -9,6 +11,7 @@ import { useOnboarding } from "./context";
  * Continue is always enabled; this is a read-only landing screen.
  */
 export function Step1Welcome() {
+  const { tokens } = useTheme();
   const { setCanContinue, setCapturedData } = useOnboarding();
   useEffect(() => {
     setCanContinue(true);
@@ -17,18 +20,31 @@ export function Step1Welcome() {
 
   return (
     <View className="flex-1 items-center justify-center">
-      <View className="h-20 w-20 items-center justify-center rounded-full bg-violet-600 mb-6 shadow-lg shadow-violet-500/30">
+      <View
+        className="h-20 w-20 items-center justify-center rounded-full mb-6"
+        style={{
+          backgroundColor: tokens.primary,
+          shadowColor: tokens.glowPrimary.color,
+          shadowOpacity: tokens.glowPrimary.opacity,
+          shadowRadius: tokens.glowPrimary.radius,
+          shadowOffset: { width: 0, height: 4 },
+        }}
+      >
         <Ionicons name="mic" size={40} color="#FFFFFF" />
       </View>
       <Text
-      className="text-center text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 mb-4"
-      numberOfLines={1}
-      adjustsFontSizeToFit
-      minimumFontScale={0.75}
-    >
+        className="text-center text-3xl font-semibold tracking-tight mb-4"
+        style={{ color: tokens.text }}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.75}
+      >
         Welcome to Acuity
       </Text>
-      <Text className="text-center text-base leading-relaxed text-zinc-600 dark:text-zinc-300 max-w-xs">
+      <Text
+        className="text-center text-base leading-relaxed max-w-xs"
+        style={{ color: tokens.textSec }}
+      >
         A one-minute voice journal that turns your daily thoughts into
         patterns, tasks, and long-term insight.
       </Text>

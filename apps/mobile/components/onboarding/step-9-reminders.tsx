@@ -5,6 +5,7 @@ import {
   ReminderTimePicker,
   useLocalTimezoneLabel,
 } from "@/components/reminders/time-picker";
+import { useTheme } from "@/contexts/theme-context";
 import {
   applyReminderSchedule,
   getPermissionStatus,
@@ -35,6 +36,7 @@ const DEFAULT_MINUTE = 0;
 const DAILY_DAYS = [0, 1, 2, 3, 4, 5, 6];
 
 export function Step9Reminders() {
+  const { tokens } = useTheme();
   const { step, setCanContinue, setCapturedData, getCapturedData } =
     useOnboarding();
 
@@ -146,14 +148,18 @@ export function Step9Reminders() {
   return (
     <View className="flex-1">
       <Text
-      className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50"
-      numberOfLines={1}
-      adjustsFontSizeToFit
-      minimumFontScale={0.75}
-    >
+        className="text-3xl font-semibold tracking-tight"
+        style={{ color: tokens.text }}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.75}
+      >
         When do you want to journal?
       </Text>
-      <Text className="mt-3 text-base leading-relaxed text-zinc-600 dark:text-zinc-300">
+      <Text
+        className="mt-3 text-base leading-relaxed"
+        style={{ color: tokens.textSec }}
+      >
         A gentle nudge at the time that fits your day. You can turn
         this off anytime in Profile → Reminders.
       </Text>
@@ -166,16 +172,20 @@ export function Step9Reminders() {
           }}
           accessibilityRole="switch"
           accessibilityState={{ checked: enabled }}
-          className={`h-7 w-12 rounded-full justify-center ${
-            enabled ? "bg-violet-600" : "bg-zinc-300 dark:bg-white/10"
-          }`}
+          className="h-7 w-12 rounded-full justify-center"
+          style={{
+            backgroundColor: enabled ? tokens.primary : tokens.bgInset,
+          }}
         >
           <View
-            className="h-6 w-6 rounded-full bg-white"
-            style={{ transform: [{ translateX: enabled ? 22 : 2 }] }}
+            className="h-6 w-6 rounded-full"
+            style={{
+              backgroundColor: "#FFFFFF",
+              transform: [{ translateX: enabled ? 22 : 2 }],
+            }}
           />
         </Pressable>
-        <Text className="text-sm text-zinc-700 dark:text-zinc-200">
+        <Text className="text-sm" style={{ color: tokens.text }}>
           {enabled ? "Reminders on" : "Reminders off"}
         </Text>
       </View>
@@ -186,7 +196,10 @@ export function Step9Reminders() {
       >
         {/* Time — shared 12-hour picker (matches /reminders settings) */}
         <View className="mt-6">
-          <Text className="text-sm font-semibold text-zinc-800 dark:text-zinc-100 mb-3">
+          <Text
+            className="text-sm font-semibold mb-3"
+            style={{ color: tokens.text }}
+          >
             Time
           </Text>
           <ReminderTimePicker
@@ -196,7 +209,10 @@ export function Step9Reminders() {
             onChangeMinute={setMinute}
             size="md"
           />
-          <Text className="mt-3 text-center text-xs text-zinc-400 dark:text-zinc-500">
+          <Text
+            className="mt-3 text-center text-xs"
+            style={{ color: tokens.textQuiet }}
+          >
             {tzLabel}
           </Text>
         </View>
@@ -207,24 +223,34 @@ export function Step9Reminders() {
           permission isn't granted yet. Hidden when the user has
           explicitly turned reminders off. */}
       {enabled && permission !== "granted" && (
-        <View className="mt-6 rounded-xl border border-violet-900/30 bg-violet-950/20 px-4 py-3">
-          <Text className="text-sm text-violet-300">
+        <View
+          className="mt-6 rounded-xl border px-4 py-3"
+          style={{
+            borderColor: `${tokens.primary}55`,
+            backgroundColor: `${tokens.primary}14`,
+          }}
+        >
+          <Text className="text-sm" style={{ color: tokens.primary }}>
             {permission === "denied"
               ? "Notifications are off in iOS Settings. Turn them on to get reminders."
               : "Let Acuity send you a reminder at the time above."}
           </Text>
           <Pressable
             onPress={permission === "denied" ? openSettings : askPermission}
-            className="mt-2 self-start rounded-full bg-violet-600 px-4 py-2"
+            className="mt-2 self-start rounded-full px-4 py-2"
+            style={{ backgroundColor: tokens.primary }}
           >
-            <Text className="text-xs font-semibold text-white">
+            <Text className="text-xs font-semibold" style={{ color: "#FFFFFF" }}>
               {permission === "denied" ? "Open Settings" : "Allow notifications"}
             </Text>
           </Pressable>
         </View>
       )}
 
-      <Text className="mt-8 text-xs text-zinc-400 dark:text-zinc-500">
+      <Text
+        className="mt-8 text-xs"
+        style={{ color: tokens.textQuiet }}
+      >
         Want a different cadence or more than one reminder? Add them
         from Profile → Reminders after onboarding.
       </Text>

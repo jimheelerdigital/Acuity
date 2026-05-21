@@ -13,8 +13,10 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { RestorePurchasesButton } from "@/components/restore-purchases-button";
+import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
 import { isIapEnabled } from "@/lib/iap-config";
+import type { AcuityTokens } from "@/lib/theme/tokens";
 
 /**
  * Native paywall screen for post-trial users. Per
@@ -35,6 +37,7 @@ import { isIapEnabled } from "@/lib/iap-config";
  */
 export default function PaywallScreen() {
   const router = useRouter();
+  const { tokens } = useTheme();
   const [opening, setOpening] = useState(false);
 
   // Phase 3a — surface in-app subscribe as the primary CTA on iOS
@@ -52,74 +55,94 @@ export default function PaywallScreen() {
       await WebBrowser.openBrowserAsync(
         `${api.baseUrl()}/upgrade?src=mobile`,
         {
-          // Match the system's current interface style so the
-          // Safari chrome doesn't jarringly flip from dark → light.
-          toolbarColor: "#09090B",
-          controlsColor: "#A78BFA",
+          toolbarColor: tokens.bg,
+          controlsColor: tokens.primary,
           dismissButtonStyle: "close",
         }
       );
     } finally {
       setOpening(false);
-      // Close the modal after the browser dismisses. The auth-context
-      // AppState listener has already fired a /api/user/me refresh by
-      // this point, so the dashboard reflects the new state.
       router.back();
     }
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white dark:bg-[#1E1E2E] dark:bg-[#0B0B12]" edges={["top", "bottom"]}>
+    <SafeAreaView
+      className="flex-1"
+      style={{ backgroundColor: tokens.bg }}
+      edges={["top", "bottom"]}
+    >
       <ScrollView
         contentContainerStyle={{ flexGrow: 1, padding: 24, paddingBottom: 40 }}
       >
-        {/* Close button top-right — a standard modal-dismiss
-            affordance in addition to the "Remind me later" button
-            below. Belt + suspenders. Top safe-area edge required on
-            the wrapping SafeAreaView — bottom-only edges left the X
-            tucked under iOS status bar icons (build-38 regression). */}
+        {/* Close button top-right */}
         <View className="flex-row justify-end mb-4">
           <Pressable
             onPress={() => router.back()}
             hitSlop={16}
-            className="h-8 w-8 items-center justify-center rounded-full bg-zinc-50 dark:bg-[#13131F] dark:bg-[#1E1E2E]"
+            className="h-8 w-8 items-center justify-center rounded-full"
+            style={{ backgroundColor: tokens.bgInset }}
           >
-            <Ionicons name="close" size={18} color="#A1A1AA" />
+            <Ionicons name="close" size={18} color={tokens.textTer} />
           </Pressable>
         </View>
 
         {/* Symbolic mark — not a lock icon (too gate-y), a small
             continuation arrow pair */}
-        <View className="h-14 w-14 rounded-2xl bg-violet-600/20 items-center justify-center mb-6 border border-violet-600/30">
-          <Ionicons name="arrow-forward" size={26} color="#A78BFA" />
+        <View
+          className="h-14 w-14 rounded-2xl items-center justify-center mb-6 border"
+          style={{
+            backgroundColor: `${tokens.primary}33`,
+            borderColor: `${tokens.primary}55`,
+          }}
+        >
+          <Ionicons name="arrow-forward" size={26} color={tokens.primary} />
         </View>
 
-        <Text className="text-3xl font-bold text-zinc-900 dark:text-zinc-50 leading-tight">
+        <Text
+          className="text-3xl font-bold leading-tight"
+          style={{ color: tokens.text }}
+        >
           Month two is where the pattern deepens.
         </Text>
 
-        <Text className="mt-5 text-base leading-relaxed text-zinc-400 dark:text-zinc-500">
+        <Text
+          className="mt-5 text-base leading-relaxed"
+          style={{ color: tokens.textTer }}
+        >
           Your trial reached its end. Your entries, your Life Matrix, and
           your Day 14 Audit are still right where you left them — they
           don&rsquo;t go anywhere.
         </Text>
 
-        <Text className="mt-4 text-base leading-relaxed text-zinc-400 dark:text-zinc-500">
+        <Text
+          className="mt-4 text-base leading-relaxed"
+          style={{ color: tokens.textTer }}
+        >
           A subscription keeps new recordings, new weekly reports, and
           new insights flowing. Without one, the dashboard freezes
           where it is — no data loss, no cliff.
         </Text>
 
         {/* Value recap — short, no feature-matrix vibe */}
-        <View className="mt-8 rounded-2xl border border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-[#13131F] dark:bg-[#1E1E2E] p-4 gap-3">
-          <ValueRow icon="mic-outline" text="Record new entries every night" />
+        <View
+          className="mt-8 rounded-2xl border p-4 gap-3"
+          style={{ borderColor: tokens.line, backgroundColor: tokens.cardBg }}
+        >
+          <ValueRow
+            icon="mic-outline"
+            text="Record new entries every night"
+            tokens={tokens}
+          />
           <ValueRow
             icon="analytics-outline"
             text="Weekly reports + Life Matrix refreshes"
+            tokens={tokens}
           />
           <ValueRow
             icon="sparkles-outline"
             text="Quarterly Life Audits after month three"
+            tokens={tokens}
           />
         </View>
 
@@ -130,53 +153,59 @@ export default function PaywallScreen() {
               <Pressable
                 onPress={openSubscribe}
                 disabled={opening}
-                className="rounded-full bg-violet-600 py-4 items-center"
-                style={{
-                  shadowColor: "#7C3AED",
-                  shadowOffset: { width: 0, height: 0 },
-                  shadowOpacity: 0.35,
-                  shadowRadius: 12,
-                }}
+                className="rounded-full py-4 items-center"
+                style={[
+                  { backgroundColor: tokens.primary },
+                  tokens.glowPrimary,
+                ]}
               >
-                <Text className="text-white text-sm font-semibold">
+                <Text
+                  className="text-sm font-semibold"
+                  style={{ color: "#FFFFFF" }}
+                >
                   Subscribe in app
                 </Text>
               </Pressable>
 
-              {/* Secondary — external Safari to /upgrade. Stays
-                  visible per 3.1.3(b). */}
+              {/* Secondary — external Safari to /upgrade. */}
               <Pressable
                 onPress={openUpgrade}
                 disabled={opening}
-                className="rounded-full border border-violet-600/40 py-4 items-center"
+                className="rounded-full border py-4 items-center"
+                style={{ borderColor: `${tokens.primary}66` }}
               >
                 {opening ? (
-                  <ActivityIndicator color="#A78BFA" />
+                  <ActivityIndicator color={tokens.primary} />
                 ) : (
-                  <Text className="text-violet-400 text-sm font-semibold">
+                  <Text
+                    className="text-sm font-semibold"
+                    style={{ color: tokens.primary }}
+                  >
                     Continue on web
                   </Text>
                 )}
               </Pressable>
             </>
           ) : (
-            // Flag-off + Android: external-only path, unchanged.
             <Pressable
               onPress={openUpgrade}
               disabled={opening}
-              className="rounded-full bg-violet-600 py-4 items-center"
-              style={{
-                opacity: opening ? 0.85 : 1,
-                shadowColor: "#7C3AED",
-                shadowOffset: { width: 0, height: 0 },
-                shadowOpacity: 0.35,
-                shadowRadius: 12,
-              }}
+              className="rounded-full py-4 items-center"
+              style={[
+                {
+                  backgroundColor: tokens.primary,
+                  opacity: opening ? 0.85 : 1,
+                },
+                tokens.glowPrimary,
+              ]}
             >
               {opening ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text className="text-white text-sm font-semibold">
+                <Text
+                  className="text-sm font-semibold"
+                  style={{ color: "#FFFFFF" }}
+                >
                   Continue on web
                 </Text>
               )}
@@ -188,23 +217,20 @@ export default function PaywallScreen() {
             disabled={opening}
             className="py-3 items-center"
           >
-            <Text className="text-zinc-500 dark:text-zinc-400 text-sm">Remind me later</Text>
+            <Text className="text-sm" style={{ color: tokens.textTer }}>
+              Remind me later
+            </Text>
           </Pressable>
 
-          {/* Restore Purchases — Apple-required affordance. Self-
-              hides on Android + flag-off builds. */}
+          {/* Restore Purchases — Apple-required affordance. */}
           <RestorePurchasesButton onRestored={() => router.back()} />
 
-          {/* App Store Guideline 3.1.2(a) — auto-renewing subscription
-              disclosure. Paywall doesn't directly fire StoreKit (the
-              "Subscribe in app" button routes to /subscribe which is
-              the commit surface) but reviewers can interpret "any
-              paid feature surface" broadly. Defensive disclosure keeps
-              both screens compliant. Same verbatim Apple copy as
-              subscribe.tsx — see that file's docblock for spec link. */}
           {showInAppSubscribe && (
             <>
-              <Text className="text-[11px] text-zinc-500 dark:text-zinc-400 text-center mt-6 leading-relaxed">
+              <Text
+                className="text-[11px] text-center mt-6 leading-relaxed"
+                style={{ color: tokens.textTer }}
+              >
                 Payment will be charged to your Apple ID account at
                 the confirmation of purchase. Subscription
                 automatically renews unless it is canceled at least
@@ -217,7 +243,8 @@ export default function PaywallScreen() {
               </Text>
               <View className="flex-row justify-center gap-3 mt-3">
                 <Text
-                  className="text-[11px] text-violet-400 underline"
+                  className="text-[11px] underline"
+                  style={{ color: tokens.primary }}
                   onPress={() =>
                     void WebBrowser.openBrowserAsync(
                       "https://getacuity.io/terms"
@@ -226,11 +253,15 @@ export default function PaywallScreen() {
                 >
                   Terms of Use
                 </Text>
-                <Text className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                <Text
+                  className="text-[11px]"
+                  style={{ color: tokens.textTer }}
+                >
                   ·
                 </Text>
                 <Text
-                  className="text-[11px] text-violet-400 underline"
+                  className="text-[11px] underline"
+                  style={{ color: tokens.primary }}
                   onPress={() =>
                     void WebBrowser.openBrowserAsync(
                       "https://getacuity.io/privacy"
@@ -243,9 +274,10 @@ export default function PaywallScreen() {
             </>
           )}
 
-          {/* 3.1.3(b) compliance footnote. Updated to reflect both
-              paths now exist. */}
-          <Text className="text-[10px] text-zinc-600 dark:text-zinc-300 text-center mt-4 leading-snug">
+          <Text
+            className="text-[10px] text-center mt-4 leading-snug"
+            style={{ color: tokens.textSec }}
+          >
             {showInAppSubscribe
               ? "Subscribe in the app or on the web. Either path unlocks the same Pro features across all your devices."
               : "Subscriptions are managed through your Acuity web account. Manage or cancel any time at getacuity.io."}
@@ -259,14 +291,21 @@ export default function PaywallScreen() {
 function ValueRow({
   icon,
   text,
+  tokens,
 }: {
   icon: React.ComponentProps<typeof Ionicons>["name"];
   text: string;
+  tokens: AcuityTokens;
 }) {
   return (
     <View className="flex-row items-center gap-3">
-      <Ionicons name={icon} size={18} color="#A78BFA" />
-      <Text className="text-sm text-zinc-700 dark:text-zinc-200 flex-1">{text}</Text>
+      <Ionicons name={icon} size={18} color={tokens.primary} />
+      <Text
+        className="text-sm flex-1"
+        style={{ color: tokens.text }}
+      >
+        {text}
+      </Text>
     </View>
   );
 }

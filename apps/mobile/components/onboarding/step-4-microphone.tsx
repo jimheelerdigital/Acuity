@@ -3,6 +3,8 @@ import { Audio } from "expo-av";
 import { useCallback, useEffect, useState } from "react";
 import { Alert, Linking, Platform, Pressable, Text, View } from "react-native";
 
+import { useTheme } from "@/contexts/theme-context";
+
 import { useOnboarding } from "./context";
 
 /**
@@ -25,6 +27,7 @@ import { useOnboarding } from "./context";
 type Status = "unknown" | "pending" | "granted" | "denied";
 
 export function Step4Microphone() {
+  const { tokens } = useTheme();
   const { setCanContinue, setCapturedData } = useOnboarding();
   const [status, setStatus] = useState<Status>("unknown");
 
@@ -75,17 +78,28 @@ export function Step4Microphone() {
     }
   };
 
+  const stateColor =
+    status === "granted"
+      ? tokens.good
+      : status === "denied"
+        ? tokens.bad
+        : tokens.primary;
+
   return (
     <View className="flex-1">
       <Text
-      className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50"
-      numberOfLines={1}
-      adjustsFontSizeToFit
-      minimumFontScale={0.75}
-    >
+        className="text-3xl font-semibold tracking-tight"
+        style={{ color: tokens.text }}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.75}
+      >
         Mic access
       </Text>
-      <Text className="mt-3 text-base leading-relaxed text-zinc-600 dark:text-zinc-300">
+      <Text
+        className="mt-3 text-base leading-relaxed"
+        style={{ color: tokens.textSec }}
+      >
         We record what you say locally, transcribe it, and then delete
         the audio. No background listening. You can revoke this in
         iOS Settings anytime.
@@ -94,14 +108,7 @@ export function Step4Microphone() {
       <View className="mt-10 items-center">
         <View
           className="h-24 w-24 items-center justify-center rounded-full"
-          style={{
-            backgroundColor:
-              status === "granted"
-                ? "#10B98120"
-                : status === "denied"
-                  ? "#EF444420"
-                  : "#7C3AED20",
-          }}
+          style={{ backgroundColor: `${stateColor}20` }}
         >
           <Ionicons
             name={
@@ -112,17 +119,14 @@ export function Step4Microphone() {
                   : "mic-outline"
             }
             size={48}
-            color={
-              status === "granted"
-                ? "#10B981"
-                : status === "denied"
-                  ? "#EF4444"
-                  : "#7C3AED"
-            }
+            color={stateColor}
           />
         </View>
 
-        <Text className="mt-4 text-sm text-zinc-500 dark:text-zinc-400">
+        <Text
+          className="mt-4 text-sm"
+          style={{ color: tokens.textSec }}
+        >
           {status === "granted"
             ? "Granted."
             : status === "denied"
@@ -136,9 +140,13 @@ export function Step4Microphone() {
           {status !== "granted" && (
             <Pressable
               onPress={request}
-              className="rounded-full bg-violet-600 px-4 py-2.5"
+              className="rounded-full px-4 py-2.5"
+              style={{ backgroundColor: tokens.primary }}
             >
-              <Text className="text-sm font-semibold text-white">
+              <Text
+                className="text-sm font-semibold"
+                style={{ color: "#FFFFFF" }}
+              >
                 {status === "denied" ? "Try again" : "Continue"}
               </Text>
             </Pressable>
@@ -146,9 +154,13 @@ export function Step4Microphone() {
           {status === "denied" && (
             <Pressable
               onPress={openSettings}
-              className="rounded-full border border-zinc-200 dark:border-white/10 px-4 py-2.5"
+              className="rounded-full border px-4 py-2.5"
+              style={{ borderColor: tokens.line }}
             >
-              <Text className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
+              <Text
+                className="text-sm font-medium"
+                style={{ color: tokens.textSec }}
+              >
                 Open Settings
               </Text>
             </Pressable>

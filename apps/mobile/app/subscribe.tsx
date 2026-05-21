@@ -15,6 +15,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { RestorePurchasesButton } from "@/components/restore-purchases-button";
 import { useAuth } from "@/contexts/auth-context";
+import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
 import {
   getMonthlyProduct,
@@ -25,6 +26,7 @@ import {
   type IapProduct,
 } from "@/lib/iap";
 import { isIapEnabled } from "@/lib/iap-config";
+import type { AcuityTokens } from "@/lib/theme/tokens";
 
 /**
  * Phase 3a — Subscribe screen. Modal-style native paywall that
@@ -53,6 +55,7 @@ import { isIapEnabled } from "@/lib/iap-config";
 
 export default function SubscribeScreen() {
   const router = useRouter();
+  const { tokens } = useTheme();
   const { user, refresh } = useAuth();
   const [product, setProduct] = useState<IapProduct | null>(null);
   const [loadState, setLoadState] = useState<"idle" | "loading" | "error">(
@@ -91,13 +94,6 @@ export default function SubscribeScreen() {
     void loadProduct();
   }, [flagOn, isIos, loadProduct]);
 
-  // Subscribe-screen mount recovery. If the user arrived here despite
-  // not being PRO, give Apple a chance to tell us about an existing
-  // sub before they re-tap Subscribe. Forces past the session-once
-  // debounce because the user explicitly navigated to a purchase
-  // surface — we want fresh-Apple state, not a stale earlier read.
-  // Same shape as AuthProvider's recovery hook; the inner re-entrancy
-  // guard prevents both from racing.
   useEffect(() => {
     if (!flagOn || !isIos) return;
     if (user?.subscriptionStatus === "PRO") return;
@@ -107,9 +103,6 @@ export default function SubscribeScreen() {
       if (cancelled) return;
       if (outcome.kind === "restored") {
         await refresh();
-        // Fire the same "Welcome to Pro" confirmation the post-
-        // purchase happy path shows — same user-visible result, just
-        // restored from prior purchase rather than freshly bought.
         Alert.alert(
           "Welcome back to Acuity Pro",
           "Your existing subscription was restored. New entries will get the full debrief.",
@@ -130,9 +123,6 @@ export default function SubscribeScreen() {
       const result = await purchaseMonthly();
       if (result.kind === "error") {
         if (result.message) setErrorMsg(result.message);
-        // Silent kinds (user-cancelled) leave errorMsg null and
-        // the user just stays on the screen; that's the intended
-        // pattern per Apple's HIG.
         return;
       }
       const verify = await verifyAndFinish({
@@ -140,16 +130,7 @@ export default function SubscribeScreen() {
         receipt: result.receipt,
       });
       if (verify.kind === "success" || verify.kind === "idempotent-success") {
-        // Defensive clear: even though the entry-of-handlePurchase
-        // setErrorMsg(null) at line ~96 already cleared any prior
-        // error before this attempt, clearing on success too avoids
-        // any future code path that might set an error mid-purchase
-        // (e.g., a transient retry inside verifyAndFinish) from
-        // bleeding through to the post-success UI. The user's
-        // build-34 paywall report flagged a stuck red banner; this
-        // belt-and-suspenders close-out is part of the fix.
         setErrorMsg(null);
-        // Refresh user state so the dashboard reflects PRO.
         await refresh();
         Alert.alert(
           "Welcome to Acuity Pro",
@@ -199,17 +180,16 @@ export default function SubscribeScreen() {
         setErrorMsg(verify.message);
         return;
       }
-      // transient-error
       setErrorMsg(verify.message);
     } finally {
       setPurchasing(false);
     }
   };
 
-  // ── Feature-flag-off / non-iOS fallback ─────────────────────
   if (!flagOn || !isIos) {
     return (
       <UnavailableScreen
+        tokens={tokens}
         onClose={() => router.back()}
         onContinueOnWeb={async () => {
           await WebBrowser.openBrowserAsync(
@@ -223,59 +203,78 @@ export default function SubscribeScreen() {
 
   return (
     <SafeAreaView
-      className="flex-1 bg-white dark:bg-[#0B0B12]"
+      className="flex-1"
+      style={{ backgroundColor: tokens.bg }}
       edges={["top", "bottom"]}
     >
       <ScrollView
         contentContainerStyle={{ flexGrow: 1, padding: 24, paddingBottom: 40 }}
       >
-        {/* Close button top-right. Respecting the top safe-area edge
-            on the wrapping SafeAreaView keeps this pressable below the
-            iOS status bar — without "top" in edges the X overlapped
-            wifi/signal/battery icons and was mostly untappable on
-            build 38 TestFlight. */}
         <View className="flex-row justify-end mb-4">
           <Pressable
             onPress={() => router.back()}
             hitSlop={16}
-            className="h-8 w-8 items-center justify-center rounded-full bg-zinc-50 dark:bg-[#1E1E2E]"
+            className="h-8 w-8 items-center justify-center rounded-full"
+            style={{ backgroundColor: tokens.bgInset }}
           >
-            <Ionicons name="close" size={18} color="#A1A1AA" />
+            <Ionicons name="close" size={18} color={tokens.textTer} />
           </Pressable>
         </View>
 
-        <View className="h-14 w-14 rounded-2xl bg-violet-600/20 items-center justify-center mb-6 border border-violet-600/30">
-          <Ionicons name="sparkles" size={26} color="#A78BFA" />
+        <View
+          className="h-14 w-14 rounded-2xl items-center justify-center mb-6 border"
+          style={{
+            backgroundColor: `${tokens.primary}33`,
+            borderColor: `${tokens.primary}55`,
+          }}
+        >
+          <Ionicons name="sparkles" size={26} color={tokens.primary} />
         </View>
 
-        <Text className="text-3xl font-bold text-zinc-900 dark:text-zinc-50 leading-tight">
+        <Text
+          className="text-3xl font-bold leading-tight"
+          style={{ color: tokens.text }}
+        >
           Acuity Pro
         </Text>
 
-        <Text className="mt-3 text-base text-zinc-500 dark:text-zinc-400 leading-relaxed">
+        <Text
+          className="mt-3 text-base leading-relaxed"
+          style={{ color: tokens.textTer }}
+        >
           Full debriefs on every recording. Themes, weekly reports,
           Life Matrix, calendar — all the patterns under your nightly
           entries, surfaced.
         </Text>
 
         {/* Product card */}
-        <View className="mt-8 rounded-2xl border border-violet-600/30 bg-violet-600/5 p-5">
+        <View
+          className="mt-8 rounded-2xl border p-5"
+          style={{
+            borderColor: `${tokens.primary}55`,
+            backgroundColor: `${tokens.primary}0D`,
+          }}
+        >
           {loadState === "loading" && (
             <View className="flex-row items-center justify-center py-3">
-              <ActivityIndicator color="#A78BFA" />
+              <ActivityIndicator color={tokens.primary} />
             </View>
           )}
           {loadState === "error" && (
             <View>
-              <Text className="text-sm text-zinc-700 dark:text-zinc-200">
+              <Text className="text-sm" style={{ color: tokens.text }}>
                 Couldn&apos;t load Acuity Pro. The App Store may be
                 temporarily unreachable.
               </Text>
               <Pressable
                 onPress={loadProduct}
-                className="mt-3 self-start rounded-md bg-violet-600/30 px-3 py-1.5"
+                className="mt-3 self-start rounded-md px-3 py-1.5"
+                style={{ backgroundColor: `${tokens.primary}55` }}
               >
-                <Text className="text-xs font-semibold text-violet-100">
+                <Text
+                  className="text-xs font-semibold"
+                  style={{ color: tokens.primaryHi }}
+                >
                   Retry
                 </Text>
               </Pressable>
@@ -283,16 +282,28 @@ export default function SubscribeScreen() {
           )}
           {loadState === "idle" && product && (
             <View>
-              <Text className="text-xs font-semibold uppercase tracking-widest text-violet-400">
+              <Text
+                className="text-xs font-semibold uppercase tracking-widest"
+                style={{ color: tokens.primary }}
+              >
                 Monthly
               </Text>
-              <Text className="mt-1 text-3xl font-bold text-zinc-900 dark:text-zinc-50">
+              <Text
+                className="mt-1 text-3xl font-bold"
+                style={{ color: tokens.text }}
+              >
                 {product.localizedPrice}
-                <Text className="text-base font-normal text-zinc-500 dark:text-zinc-400">
+                <Text
+                  className="text-base font-normal"
+                  style={{ color: tokens.textTer }}
+                >
                   {" "}/ month
                 </Text>
               </Text>
-              <Text className="mt-3 text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+              <Text
+                className="mt-3 text-xs leading-relaxed"
+                style={{ color: tokens.textTer }}
+              >
                 Auto-renews monthly. Cancel any time in iOS Settings →
                 Apple ID → Subscriptions.
               </Text>
@@ -305,28 +316,38 @@ export default function SubscribeScreen() {
           <ValueRow
             icon="analytics-outline"
             text="Themes, wins, blockers extracted from every recording"
+            tokens={tokens}
           />
           <ValueRow
             icon="calendar-outline"
             text="Sunday weekly reports with mood + theme arcs"
+            tokens={tokens}
           />
           <ValueRow
             icon="grid-outline"
             text="Life Matrix radar refreshed as you record"
+            tokens={tokens}
           />
           <ValueRow
             icon="link-outline"
             text="Calendar sync — tasks land where you plan"
+            tokens={tokens}
           />
           <ValueRow
             icon="time-outline"
             text="Quarterly Life Audits + memoir export"
+            tokens={tokens}
           />
         </View>
 
         {errorMsg && (
-          <View className="mt-6 rounded-md bg-rose-500/10 px-3 py-2">
-            <Text className="text-sm text-rose-300">{errorMsg}</Text>
+          <View
+            className="mt-6 rounded-md px-3 py-2"
+            style={{ backgroundColor: `${tokens.bad}1A` }}
+          >
+            <Text className="text-sm" style={{ color: tokens.bad }}>
+              {errorMsg}
+            </Text>
           </View>
         )}
 
@@ -334,19 +355,22 @@ export default function SubscribeScreen() {
           <Pressable
             onPress={handlePurchase}
             disabled={purchasing || loadState !== "idle" || !product}
-            className="rounded-full bg-violet-600 py-4 items-center"
-            style={{
-              opacity: purchasing || !product ? 0.6 : 1,
-              shadowColor: "#7C3AED",
-              shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: 0.35,
-              shadowRadius: 12,
-            }}
+            className="rounded-full py-4 items-center"
+            style={[
+              {
+                backgroundColor: tokens.primary,
+                opacity: purchasing || !product ? 0.6 : 1,
+              },
+              tokens.glowPrimary,
+            ]}
           >
             {purchasing ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text className="text-white text-sm font-semibold">
+              <Text
+                className="text-sm font-semibold"
+                style={{ color: "#FFFFFF" }}
+              >
                 Subscribe — {product?.localizedPrice ?? "$12.99"}/month
               </Text>
             )}
@@ -361,7 +385,7 @@ export default function SubscribeScreen() {
             disabled={purchasing}
             className="py-3 items-center"
           >
-            <Text className="text-zinc-500 dark:text-zinc-400 text-sm">
+            <Text className="text-sm" style={{ color: tokens.textTer }}>
               Continue on web
             </Text>
           </Pressable>
@@ -371,15 +395,11 @@ export default function SubscribeScreen() {
             router.back();
           }} />
 
-          {/* App Store Guideline 3.1.2(a) — auto-renewing subscription
-              disclosure. The four-sentence boilerplate below is
-              Apple's required verbatim copy for every screen that
-              commits an auto-renewing IAP. Removing or paraphrasing
-              any of it is a reliable rejection cause. Functional
-              Terms + Privacy links are also mandated and must open
-              the actual policy pages (not in-app screens).
-              See: developer.apple.com/app-store/review/guidelines/#3.1.2 */}
-          <Text className="text-[11px] text-zinc-500 dark:text-zinc-400 text-center mt-6 leading-relaxed">
+          {/* App Store Guideline 3.1.2(a) disclosure — verbatim. */}
+          <Text
+            className="text-[11px] text-center mt-6 leading-relaxed"
+            style={{ color: tokens.textTer }}
+          >
             Payment will be charged to your Apple ID account at the
             confirmation of purchase. Subscription automatically
             renews unless it is canceled at least 24 hours before the
@@ -392,7 +412,8 @@ export default function SubscribeScreen() {
           </Text>
           <View className="flex-row justify-center gap-3 mt-3">
             <Text
-              className="text-[11px] text-violet-400 underline"
+              className="text-[11px] underline"
+              style={{ color: tokens.primary }}
               onPress={() =>
                 void WebBrowser.openBrowserAsync(
                   "https://getacuity.io/terms"
@@ -401,11 +422,12 @@ export default function SubscribeScreen() {
             >
               Terms of Use
             </Text>
-            <Text className="text-[11px] text-zinc-500 dark:text-zinc-400">
+            <Text className="text-[11px]" style={{ color: tokens.textTer }}>
               ·
             </Text>
             <Text
-              className="text-[11px] text-violet-400 underline"
+              className="text-[11px] underline"
+              style={{ color: tokens.primary }}
               onPress={() =>
                 void WebBrowser.openBrowserAsync(
                   "https://getacuity.io/privacy"
@@ -416,7 +438,10 @@ export default function SubscribeScreen() {
             </Text>
           </View>
 
-          <Text className="text-[10px] text-zinc-500 dark:text-zinc-400 text-center mt-4 leading-snug">
+          <Text
+            className="text-[10px] text-center mt-4 leading-snug"
+            style={{ color: tokens.textTer }}
+          >
             Your existing entries stay free. Acuity Pro unlocks the
             AI debrief layer on every new recording. Cross-platform —
             sign in on the web with the same account to use Pro
@@ -431,14 +456,19 @@ export default function SubscribeScreen() {
 function ValueRow({
   icon,
   text,
+  tokens,
 }: {
   icon: React.ComponentProps<typeof Ionicons>["name"];
   text: string;
+  tokens: AcuityTokens;
 }) {
   return (
     <View className="flex-row items-center gap-3">
-      <Ionicons name={icon} size={18} color="#A78BFA" />
-      <Text className="text-sm text-zinc-700 dark:text-zinc-200 flex-1">
+      <Ionicons name={icon} size={18} color={tokens.primary} />
+      <Text
+        className="text-sm flex-1"
+        style={{ color: tokens.text }}
+      >
         {text}
       </Text>
     </View>
@@ -451,15 +481,18 @@ function ValueRow({
  * Falls back to the existing /upgrade-on-web flow with no surprise.
  */
 function UnavailableScreen({
+  tokens,
   onClose,
   onContinueOnWeb,
 }: {
+  tokens: AcuityTokens;
   onClose: () => void;
   onContinueOnWeb: () => Promise<void> | void;
 }) {
   return (
     <SafeAreaView
-      className="flex-1 bg-white dark:bg-[#0B0B12]"
+      className="flex-1"
+      style={{ backgroundColor: tokens.bg }}
       edges={["top", "bottom"]}
     >
       <ScrollView
@@ -469,16 +502,23 @@ function UnavailableScreen({
           <Pressable
             onPress={onClose}
             hitSlop={16}
-            className="h-8 w-8 items-center justify-center rounded-full bg-zinc-50 dark:bg-[#1E1E2E]"
+            className="h-8 w-8 items-center justify-center rounded-full"
+            style={{ backgroundColor: tokens.bgInset }}
           >
-            <Ionicons name="close" size={18} color="#A1A1AA" />
+            <Ionicons name="close" size={18} color={tokens.textTer} />
           </Pressable>
         </View>
 
-        <Text className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+        <Text
+          className="text-2xl font-bold"
+          style={{ color: tokens.text }}
+        >
           Acuity Pro
         </Text>
-        <Text className="mt-3 text-base text-zinc-500 dark:text-zinc-400 leading-relaxed">
+        <Text
+          className="mt-3 text-base leading-relaxed"
+          style={{ color: tokens.textTer }}
+        >
           Full debriefs, weekly reports, calendar sync, and more.
           Subscribe on the web — your access works on iOS the same
           way.
@@ -487,9 +527,13 @@ function UnavailableScreen({
         <View className="mt-auto pt-10 gap-3">
           <Pressable
             onPress={() => void onContinueOnWeb()}
-            className="rounded-full bg-violet-600 py-4 items-center"
+            className="rounded-full py-4 items-center"
+            style={{ backgroundColor: tokens.primary }}
           >
-            <Text className="text-white text-sm font-semibold">
+            <Text
+              className="text-sm font-semibold"
+              style={{ color: "#FFFFFF" }}
+            >
               Continue on web
             </Text>
           </Pressable>

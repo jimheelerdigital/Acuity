@@ -2,6 +2,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 
+import { useTheme } from "@/contexts/theme-context";
+import type { AcuityTokens } from "@/lib/theme/tokens";
+
 import { useOnboarding } from "./context";
 
 /**
@@ -31,6 +34,7 @@ const CADENCES: Array<{ value: Cadence; label: string; hint: string }> = [
 const DEFAULT_CADENCE: Cadence = "daily";
 
 export function Step8Trial() {
+  const { tokens } = useTheme();
   const { step, setCanContinue, setCapturedData, getCapturedData } =
     useOnboarding();
   const prior = getCapturedData(step) as
@@ -48,14 +52,18 @@ export function Step8Trial() {
   return (
     <View className="flex-1">
       <Text
-      className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50"
-      numberOfLines={1}
-      adjustsFontSizeToFit
-      minimumFontScale={0.75}
-    >
+        className="text-3xl font-semibold tracking-tight"
+        style={{ color: tokens.text }}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.75}
+      >
         How the trial works
       </Text>
-      <Text className="mt-3 text-base leading-relaxed text-zinc-600 dark:text-zinc-300">
+      <Text
+        className="mt-3 text-base leading-relaxed"
+        style={{ color: tokens.textSec }}
+      >
         30 days free. On Day 30 you get your Life Audit — a long-form
         read of your first month. After that, your dashboard freezes
         where it is — entries, insights, and audits don&rsquo;t go
@@ -67,23 +75,32 @@ export function Step8Trial() {
           icon="calendar-outline"
           title="30 days free"
           body="Full access. No credit card yet."
+          tokens={tokens}
         />
         <TrialPoint
           icon="book-outline"
           title="Day 30 Life Audit"
           body="A narrative of your first month. Yours to keep."
+          tokens={tokens}
         />
         <TrialPoint
           icon="lock-closed-outline"
           title="After the trial"
           body="Journal keeps working in read-only. Continue on web to generate new insights."
+          tokens={tokens}
         />
       </View>
 
-      <Text className="mt-8 text-base font-semibold text-zinc-800 dark:text-zinc-100">
+      <Text
+        className="mt-8 text-base font-semibold"
+        style={{ color: tokens.text }}
+      >
         Set your daily commitment
       </Text>
-      <Text className="mt-1 text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed">
+      <Text
+        className="mt-1 text-sm leading-relaxed"
+        style={{ color: tokens.textTer }}
+      >
         Acuity gets better with daily reflection. Pick a starting
         cadence — you can change it anytime.
       </Text>
@@ -97,34 +114,31 @@ export function Step8Trial() {
               onPress={() => setCadence(c.value)}
               accessibilityRole="button"
               accessibilityState={{ selected: active }}
-              className={`rounded-xl border px-4 py-3 ${
-                active
-                  ? "border-violet-500 bg-violet-50/60 dark:bg-violet-950/20"
-                  : isDailyDefault
-                    ? "border-violet-500/40 bg-white dark:bg-[#1E1E2E]"
-                    : "border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E]"
-              }`}
-              style={
-                active && isDailyDefault
-                  ? {
-                      shadowColor: "#7C3AED",
-                      shadowOpacity: 0.35,
-                      shadowRadius: 12,
-                      shadowOffset: { width: 0, height: 4 },
-                    }
-                  : undefined
-              }
+              className="rounded-xl border px-4 py-3"
+              style={[
+                {
+                  backgroundColor: active
+                    ? `${tokens.primary}1A`
+                    : tokens.cardBg,
+                  borderColor: active
+                    ? tokens.primary
+                    : isDailyDefault
+                      ? `${tokens.primary}66`
+                      : tokens.line,
+                },
+                active && isDailyDefault ? tokens.glowPrimary : undefined,
+              ]}
             >
               <Text
-                className={`text-sm font-semibold ${
-                  active
-                    ? "text-violet-700 dark:text-violet-300"
-                    : "text-zinc-800 dark:text-zinc-100"
-                }`}
+                className="text-sm font-semibold"
+                style={{ color: active ? tokens.primary : tokens.text }}
               >
                 {c.label}
               </Text>
-              <Text className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+              <Text
+                className="mt-0.5 text-xs"
+                style={{ color: tokens.textTer }}
+              >
                 {c.hint}
               </Text>
             </Pressable>
@@ -139,21 +153,35 @@ function TrialPoint({
   icon,
   title,
   body,
+  tokens,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   title: string;
   body: string;
+  tokens: AcuityTokens;
 }) {
   return (
-    <View className="flex-row items-start gap-3 rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-4 py-3">
-      <View className="h-8 w-8 rounded-full bg-violet-600/10 items-center justify-center">
-        <Ionicons name={icon} size={16} color="#7C3AED" />
+    <View
+      className="flex-row items-start gap-3 rounded-2xl border px-4 py-3"
+      style={{ borderColor: tokens.line, backgroundColor: tokens.cardBg }}
+    >
+      <View
+        className="h-8 w-8 rounded-full items-center justify-center"
+        style={{ backgroundColor: `${tokens.primary}1A` }}
+      >
+        <Ionicons name={icon} size={16} color={tokens.primary} />
       </View>
       <View className="flex-1">
-        <Text className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+        <Text
+          className="text-sm font-semibold"
+          style={{ color: tokens.text }}
+        >
           {title}
         </Text>
-        <Text className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400 leading-snug">
+        <Text
+          className="mt-0.5 text-xs leading-snug"
+          style={{ color: tokens.textTer }}
+        >
           {body}
         </Text>
       </View>
