@@ -331,19 +331,38 @@ export default function InsightsTab() {
               {/* Q7 — SegmentedTabs swap. "Trend" only appears when
                   hasEnoughHistory is true; previously it was disabled-
                   with-long-press-alert. Cleaner UX, lighter primitive
-                  surface (no need to add disabled support upstream). */}
-              <SegmentedTabs<"current" | "trend">
-                tabs={
-                  trend?.hasEnoughHistory
-                    ? [
-                        { id: "current", label: "Current" },
-                        { id: "trend", label: "Trend" },
-                      ]
-                    : [{ id: "current", label: "Current" }]
-                }
-                activeId={view}
-                onChange={setView}
-              />
+                  surface (no need to add disabled support upstream).
+
+                  Phase D polish 3 (2026-05-21): wrapped in a fixed-
+                  width View. SegmentedTabs has flex:1 Pressables
+                  inside a flex-row container with no own width — in
+                  RN's measurement model that produces ambiguous
+                  layout against a flex-row parent with no width
+                  constraint, which manifested as Trend pill clipping
+                  off the right edge on iPhone 16e. A definite width
+                  on the wrapper resolves the ambiguity; 180pt holds
+                  both pills with breathing room, 110pt for the
+                  single-tab case. Card inner = 303pt; eyebrow ~110pt;
+                  180pt tabs leaves ~13pt of margin against the right
+                  card edge — generous and tested. */}
+              <View
+                style={{
+                  width: trend?.hasEnoughHistory ? 180 : 110,
+                }}
+              >
+                <SegmentedTabs<"current" | "trend">
+                  tabs={
+                    trend?.hasEnoughHistory
+                      ? [
+                          { id: "current", label: "Current" },
+                          { id: "trend", label: "Trend" },
+                        ]
+                      : [{ id: "current", label: "Current" }]
+                  }
+                  activeId={view}
+                  onChange={setView}
+                />
+              </View>
             </View>
             <Animated.View
               style={[{ alignItems: "center" }, radarStyle]}

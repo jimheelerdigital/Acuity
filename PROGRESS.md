@@ -41,6 +41,34 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-21] — Phase D polish 3 — SegmentedTabs overflow on Life Matrix card
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** (pending)
+
+### In plain English (for Keenan)
+
+The Current/Trend pills above the Life Matrix radar were getting clipped on the right edge of the iPhone 16e screen. Wrapped them in a small fixed-width container so they always sit fully visible inside the card. The eyebrow label "LIFE MATRIX" stays anchored left, the pills anchor right, and they no longer overflow.
+
+### Technical changes (for Jimmy)
+
+- `apps/mobile/app/(tabs)/insights.tsx`: wrapped the SegmentedTabs in a `<View style={{ width: 180 | 110 }}>`. Width is 180pt when the Trend tab is present (Current + Trend), 110pt when only Current is shown. The wrapper gives RN's flex layout a definite container to measure against, resolving the ambiguous flex:1 / no-width-parent measurement that produced the overflow.
+
+### Manual steps needed
+
+- [ ] None — pure call-site layout fix. Verify on simulator that both pills render fully visible.
+
+### Notes
+
+- Root cause was an ambiguous flex layout: SegmentedTabs' outer container has `flexDirection: "row"` with no own width, and its Pressable children have `flex: 1` with no flex-basis. Inside a flex-row parent that also has no width constraint, RN's measurement of "natural width" for SegmentedTabs could resolve to either intrinsic-content-width (~155pt) or fill-remaining-space (~218pt). On iPhone 16e it was apparently overshooting against the eyebrow's natural width.
+- The fix is at the call site, not the primitive. Searched for other SegmentedTabs consumers across `apps/mobile/**/*.tsx` — only Insights uses it today. Adding a wrapping width here is the lowest-risk path; future consumers can do the same when embedding the primitive in flex-row layouts.
+- 180pt fits 2 tabs comfortably: 3pt left pad + ~87pt Current pill + ~87pt Trend pill + 3pt right pad = 180pt. Each pill has paddingHorizontal:16, leaving ~55pt for text — plenty for "Current" (~50pt at fontSize 13 sans semibold).
+
+monday: 12058980099
+
+---
+
 ## [2026-05-21] — Phase D polish 2 — Radar empty-axis honesty
 
 **Requested by:** Jimmy
