@@ -10,22 +10,30 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default async function SignupSuccessPage() {
+export default async function SignupSuccessPage({
+  searchParams,
+}: {
+  searchParams: { [key: string]: string | string[] | undefined };
+}) {
+  const force = searchParams.force === "1";
+
   // Check if user has already completed a recording — if so, skip
-  // straight to the download/CTA screen.
+  // straight to the download/CTA screen. ?force=1 bypasses this for testing.
   let skipToDownload = false;
 
-  try {
-    const session = await getServerSession(getAuthOptions());
-    if (session?.user?.id) {
-      const { prisma } = await import("@/lib/prisma");
-      const existing = await prisma.entry.count({
-        where: { userId: session.user.id, status: "COMPLETE" },
-      });
-      if (existing > 0) skipToDownload = true;
+  if (!force) {
+    try {
+      const session = await getServerSession(getAuthOptions());
+      if (session?.user?.id) {
+        const { prisma } = await import("@/lib/prisma");
+        const existing = await prisma.entry.count({
+          where: { userId: session.user.id, status: "COMPLETE" },
+        });
+        if (existing > 0) skipToDownload = true;
+      }
+    } catch {
+      // If auth or DB fails, default to showing the record flow
     }
-  } catch {
-    // If auth or DB fails, default to showing the record flow
   }
 
   return (
