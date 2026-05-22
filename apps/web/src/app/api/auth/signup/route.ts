@@ -146,6 +146,7 @@ export async function POST(req: NextRequest) {
       email,
       referralCodeFromSignup: referralCode,
       skipWelcomeEmail: true,
+      signupMethod: "email",
       attribution: attr ? {
         utmSource: attr.utm_source,
         utmMedium: attr.utm_medium,

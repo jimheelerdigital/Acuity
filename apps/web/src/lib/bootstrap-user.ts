@@ -57,8 +57,10 @@ export async function bootstrapNewUser(params: {
    * undefined so they still get welcome_day0 inline.
    */
   skipWelcomeEmail?: boolean;
+  /** Signup method label for admin notification email. */
+  signupMethod?: string;
 }): Promise<void> {
-  const { userId, email, referralCodeFromSignup, attribution, skipWelcomeEmail } = params;
+  const { userId, email, referralCodeFromSignup, attribution, skipWelcomeEmail, signupMethod } = params;
   const { prisma } = await import("@/lib/prisma");
   const { track } = await import("@/lib/posthog");
   const { generateReferralCode, resolveReferrerByCode } = await import(
@@ -193,20 +195,39 @@ export async function bootstrapNewUser(params: {
     }
   }
 
-  // Admin signup notification — delayed 30 seconds via Inngest so
-  // set-attribution has time to populate UTM data from the client-side
-  // cookie (especially for OAuth signups where attribution arrives
-  // after the redirect). The Inngest function reads the User row fresh
-  // after the delay, so it always has the latest attribution + signupMethod.
-  try {
-    const { inngest } = await import("@/inngest/client");
-    await inngest.send({
-      name: "user/signup.notify",
-      data: { userId },
-    });
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error("[bootstrap-user] Inngest signup.notify dispatch failed:", err);
+  // Read user name once for both admin notification and founder welcome.
+  let userName: string | null = null;
+  if (email) {
+    try {
+      const row = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { name: true },
+      });
+      userName = row?.name ?? null;
+    } catch {
+      // Non-fatal
+    }
+  }
+
+  // Admin signup notification — fires immediately inline. Simple
+  // name/email/method/timestamp notification to both cofounders.
+  // No attribution data, no delays, no Inngest dependency.
+  if (email) {
+    try {
+      const { notifyFoundersOfSignup } = await import(
+        "@/lib/founder-notifications"
+      );
+      await notifyFoundersOfSignup({
+        userId,
+        name: userName,
+        email,
+        signupMethod: signupMethod ?? "unknown",
+        timestamp: new Date(),
+      });
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error("[bootstrap-user] admin signup notification failed:", err);
+    }
   }
 
   // Personal welcome email from Keenan. Plain text, feels like a real
@@ -219,12 +240,8 @@ export async function bootstrapNewUser(params: {
       );
       const { getResendClient } = await import("@/lib/resend");
 
-      const userRow = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { name: true },
-      });
       const firstName =
-        (userRow?.name ?? "").trim().split(/\s+/)[0] || null;
+        (userName ?? "").trim().split(/\s+/)[0] || null;
 
       const { subject, text } = founderWelcomeEmail({
         firstName,

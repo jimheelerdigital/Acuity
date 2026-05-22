@@ -251,6 +251,7 @@ export function getAuthOptions(): NextAuthOptions {
           await bootstrapNewUser({
             userId: user.id,
             email: user.email ?? null,
+            signupMethod: method,
           });
         } catch (err) {
           // Lazy import so Sentry isn't pulled into contexts that

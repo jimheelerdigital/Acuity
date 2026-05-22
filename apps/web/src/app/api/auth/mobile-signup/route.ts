@@ -112,6 +112,7 @@ export async function POST(req: NextRequest) {
       email,
       referralCodeFromSignup: referralCode,
       skipWelcomeEmail: true,
+      signupMethod: "mobile-email",
     });
   }
 

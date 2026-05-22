@@ -265,7 +265,7 @@ export async function POST(req: NextRequest) {
     // NextAuth's createUser event hook doesn't fire here (we bypassed
     // the adapter). Trigger the same side-effects manually.
     const { bootstrapNewUser } = await import("@/lib/bootstrap-user");
-    await bootstrapNewUser({ userId: user.id, email: user.email });
+    await bootstrapNewUser({ userId: user.id, email: user.email, signupMethod: "mobile-google" });
 
     // bootstrapNewUser mutates subscriptionStatus + trialEndsAt — re-read.
     const refreshed = await prisma.user.findUnique({

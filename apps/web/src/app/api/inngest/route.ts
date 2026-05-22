@@ -31,7 +31,6 @@ import {
   autoBlogGenerateFn,
   autoBlogPruneFn,
 } from "@/inngest/functions/auto-blog";
-import { sendSignupNotificationFn } from "@/inngest/functions/send-signup-notification";
 import { waitlistReactivationFn } from "@/inngest/functions/waitlist-reactivation";
 
 export const dynamic = "force-dynamic";
@@ -66,7 +65,6 @@ const handler = serve({
     trialEmailOrchestratorFn,
     autoBlogGenerateFn,
     autoBlogPruneFn,
-    sendSignupNotificationFn,
     waitlistReactivationFn,
     drainPendingCalendarTasksFn,
     backfillExtractionsFn,

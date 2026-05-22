@@ -268,7 +268,7 @@ export async function POST(req: NextRequest) {
     wasCreated = true;
 
     const { bootstrapNewUser } = await import("@/lib/bootstrap-user");
-    await bootstrapNewUser({ userId: user.id, email: user.email });
+    await bootstrapNewUser({ userId: user.id, email: user.email, signupMethod: "mobile-apple" });
 
     const refreshed = await prisma.user.findUnique({
       where: { id: user.id },
