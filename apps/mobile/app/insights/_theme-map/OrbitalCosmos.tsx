@@ -2,7 +2,6 @@ import { useEffect, useMemo, type ComponentType } from "react";
 import { View } from "react-native";
 import Animated, {
   Easing,
-  interpolate,
   useAnimatedProps,
   useSharedValue,
   withDelay,
@@ -25,9 +24,6 @@ import { useTheme } from "@/contexts/theme-context";
 
 import type { OrbitalTheme } from "./types";
 
-// Widen the SVG component types so animatedProps accepts cx/cy/opacity
-// without TS complaining (the inferred RestProps shape narrows
-// otherwise). Same pattern as RingProgress's AnimatedCircle.
 const AnimatedCircle = Animated.createAnimatedComponent(
   Circle as ComponentType<
     CircleProps & { cx?: number; cy?: number; opacity?: number }
@@ -38,88 +34,90 @@ const AnimatedG = Animated.createAnimatedComponent(
 );
 
 /**
- * OrbitalCosmos — the Theme Map's planetary visualization.
+ * OrbitalCosmos — Phase E rebuild (2026-05-21).
  *
- * ─── Geometry math (iPhone 16e 375pt screen) ──────────────────────────
+ * Design spec: _design/design_handoff_acuity_v2/screen-thememap.jsx.
+ * Motion spec: _design/design_handoff_acuity_v2/motion-gallery.jsx
+ * "Theme map solar-system entrance" (6.0s easeInOutCubic staggered).
  *
- * SVG viewBox: 0 0 402 360 (design spec fidelity).
- * Render width is set by the caller (theme-map.tsx); at iPhone 16e
- * 375pt screen with 0 horizontal page padding around the SVG container,
- * the viewBox scales by 375/402 = 0.933×. All planet sizes + label
- * font sizes render at 93.3% of design values — within the spec's
- * intended range.
+ * ─── Geometry (iPhone 16e 375pt) ──────────────────────────────────────
+ *   viewBox 0 0 402 360 (design spec fidelity).
+ *   Render scale: 375 / 402 ≈ 0.933×.
+ *   Center: (CX=201, CY=180). Ring radii: [78, 110, 140, 168].
+ *   9 slots, distribution 2/2/3/2 across rings, sizes 52→20 inside-out.
  *
- * Center: (201, 180).
- * Ring radii: [78, 110, 140, 168].
- * Ring distribution (matches design): 2 / 2 / 3 / 2 = 9 planet slots.
+ *   Slot positions (per design fixtures — angle/size hardcoded):
+ *     0: ring 0  angle 30°   size 52  → (268, 219)
+ *     1: ring 0  angle 200°  size 46  → (128, 153)
+ *     2: ring 1  angle 130°  size 40  → (130, 264)
+ *     3: ring 1  angle 320°  size 34  → (285, 109)
+ *     4: ring 2  angle 80°   size 30  → (225, 318)
+ *     5: ring 2  angle 230°  size 28  → (111, 73)
+ *     6: ring 2  angle 350°  size 26  → (339, 156)
+ *     7: ring 3  angle 200°  size 22  → (43, 122)
+ *     8: ring 3  angle 310°  size 20  → (309, 51)
  *
- * Slot positions + sizes (in viewBox coordinates):
+ * ─── Label budget at iPhone 16e ───────────────────────────────────────
+ *   Labels render in tokens.fontMono fontSize 11, textSec @ 0.85
+ *   opacity, centered (textAnchor="middle") below each planet. In
+ *   monospace, ~6.5pt per char at fontSize 11 in viewBox units; at the
+ *   0.933× screen scale, ~6.06pt per char. Label half-width budget:
+ *     - Edge slots (3, 6, 7, 8) sit close to SVG vertical edges. Slot
+ *       7 at x=43 means worst-case left clearance is 43pt in viewBox.
+ *       A 13-char label = 84.5pt wide / 42pt half — exceeds the 43pt
+ *       budget on the left and clips. Same risk on slot 6 at right.
+ *     - Mitigation: any label > 10 chars truncates to 10 + ellipsis
+ *       ("Relationships" → "Relationsh…"). Applied uniformly so the
+ *       longest in-use names ("Relationships", "Avoidance") never
+ *       clip regardless of which slot they land at.
+ *   Vertical: bottommost label (slot 4 at y=318, planet r=15, label
+ *   baseline at 347) sits 13pt above viewBox bottom — fine.
  *
- *   ring 0 (r=78, biggest planets):
- *     slot 0 — angle  30°  size 52  pos (201+78·cos30°, 180+78·sin30°)  = (268, 219)
- *     slot 1 — angle 200°  size 46  pos (201+78·cos200°, 180+78·sin200°) = (128, 153)
- *   ring 1 (r=110):
- *     slot 2 — angle 130°  size 40  pos (201+110·cos130°, 180+110·sin130°) = (130, 264)
- *     slot 3 — angle 320°  size 34  pos (201+110·cos320°, 180+110·sin320°) = (285, 109)
- *   ring 2 (r=140):
- *     slot 4 — angle  80°  size 30  pos (225, 318)
- *     slot 5 — angle 230°  size 28  pos (111, 73)
- *     slot 6 — angle 350°  size 26  pos (339, 156)
- *   ring 3 (r=168, smallest planets):
- *     slot 7 — angle 200°  size 22  pos (43, 122)
- *     slot 8 — angle 310°  size 20  pos (309, 51)
+ * ─── Planet treatment — FLAT, not 3D ──────────────────────────────────
+ *   Two-stop RadialGradient with off-center origin (cx=35%, cy=35%).
+ *   No inset shadows, no specular highlight, no box-shadow glow.
+ *   Atmospheric-textbook-planet feel, not glossy 3D button.
+ *   Stop 0 — hsl(${hue} 65% 72%): the lit edge.
+ *   Stop 1 — hsl(${hue} 65% 48%): the shaded edge.
  *
- * Worst-case bounds check:
- *   - rightmost: slot 6 at x=339, planet half-width=13 → reaches x=352
- *     (viewBox 402 → 50pt margin) ✓
- *   - leftmost: slot 7 at x=43, half-width=11 → reaches x=32
- *     (viewBox 0 → 32pt margin) ✓
- *   - topmost: slot 8 at y=51, half-height=10 → reaches y=41 ✓
- *   - bottommost: slot 4 at y=318, half-height=15 + label below
- *     (fontSize 12, label baseline at y≈340) → reaches y≈346
- *     (viewBox 360 → 14pt margin) ✓
+ * ─── Motion — SPIN-IN ────────────────────────────────────────────────
+ *   Each planet starts at its target ring radius (NOT 1.45× per the
+ *   web design's spiral-in — Jim's directive overrides that), with
+ *   starting angle = target − 90°. Rotates +90° over 1.2s with
+ *   Easing.out(Easing.cubic), opacity 0→1 in lockstep. Stagger 0.15s
+ *   between slots; last planet's animation ends ~4.5s in.
  *
- * No clipping at the 375pt render size. All 9 planets + labels fit.
+ *   Choreography:
+ *     T=0.0-0.6s   Center sun + halo fade in
+ *     T=0.6-1.8s   Ring guides cascade in (4 rings, all together)
+ *     T=1.5s+      Planet 0 starts (1.5→2.7s)
+ *     T=1.65s+     Planet 1 (1.65→2.85s)
+ *     T=1.80s+     Planet 2 (1.80→3.00s)
+ *     ... +0.15s per slot ...
+ *     T=2.70s+     Planet 8 (2.70→3.90s)
+ *     T=4.0-4.8s   Connector lines fade to 0.7 opacity
+ *   Total: ~4.8s (under 6s by design — solar-system feel without dragging)
  *
- * ─── Animation choreography (6.0s total) ──────────────────────────────
- *
- *   T=0.0-0.6s   Center sun fades + scales in
- *   T=0.6-1.8s   Ring guides fade in (one shared progress, all four)
- *   T=1.5-5.0s   Planets stagger by ring:
- *                  slot 0 (1.5→2.5s)   slot 1 (1.6→2.6s)
- *                  slot 2 (2.0→3.0s)   slot 3 (2.1→3.1s)
- *                  slot 4 (2.5→3.5s)   slot 5 (2.7→3.7s)
- *                  slot 6 (2.9→3.9s)
- *                  slot 7 (3.5→5.0s)   slot 8 (3.7→5.2s)
- *   T=5.0-5.8s   Dashed connector lines fade in
- *
- * Each planet animates from (cx, cy) center outward to its slot
- * position as its local progress 0→1. Center sun + halo use a separate
- * progress. Reanimated 3 worklets keep the animation off the JS thread.
- *
- * `animateOnMount={false}` snaps to final state with no entrance —
- * used on second+ loads in the same session per Jim's UX directive
- * (the 6-second cosmos is a first-impression moment, not a chore).
+ * `animateOnMount={false}` snaps to final state with no entrance.
  */
 
 interface SlotConfig {
   ring: number;
   angle: number;
   size: number;
-  /** Delay in ms before this planet starts its 1000ms tween. */
   delay: number;
 }
 
 const SLOT_CONFIGS: SlotConfig[] = [
   { ring: 0, angle: 30, size: 52, delay: 1500 },
-  { ring: 0, angle: 200, size: 46, delay: 1600 },
-  { ring: 1, angle: 130, size: 40, delay: 2000 },
-  { ring: 1, angle: 320, size: 34, delay: 2100 },
-  { ring: 2, angle: 80, size: 30, delay: 2500 },
-  { ring: 2, angle: 230, size: 28, delay: 2700 },
-  { ring: 2, angle: 350, size: 26, delay: 2900 },
-  { ring: 3, angle: 200, size: 22, delay: 3500 },
-  { ring: 3, angle: 310, size: 20, delay: 3700 },
+  { ring: 0, angle: 200, size: 46, delay: 1650 },
+  { ring: 1, angle: 130, size: 40, delay: 1800 },
+  { ring: 1, angle: 320, size: 34, delay: 1950 },
+  { ring: 2, angle: 80, size: 30, delay: 2100 },
+  { ring: 2, angle: 230, size: 28, delay: 2250 },
+  { ring: 2, angle: 350, size: 26, delay: 2400 },
+  { ring: 3, angle: 200, size: 22, delay: 2550 },
+  { ring: 3, angle: 310, size: 20, delay: 2700 },
 ];
 
 const RING_RADII = [78, 110, 140, 168];
@@ -127,15 +125,15 @@ const VIEWBOX_W = 402;
 const VIEWBOX_H = 360;
 const CX = 201;
 const CY = 180;
-const EASE_STANDARD = Easing.bezier(0.32, 0.72, 0, 1);
-const PLANET_DURATION_MS = 1000;
+const SPIN_DURATION_MS = 1200;
+const SUN_DURATION_MS = 600;
+const RING_DURATION_MS = 1200;
+const LINE_DURATION_MS = 800;
+const EASE_OUT_CUBIC = Easing.out(Easing.cubic);
 
-function angleToXY(angleDeg: number, radius: number) {
-  const a = (angleDeg * Math.PI) / 180;
-  return {
-    x: CX + Math.cos(a) * radius,
-    y: CY + Math.sin(a) * radius,
-  };
+function truncateLabel(label: string, max = 10): string {
+  if (label.length <= max) return label;
+  return label.slice(0, max) + "…";
 }
 
 interface Props {
@@ -143,6 +141,8 @@ interface Props {
   size: number;
   onPlanetTap: (theme: OrbitalTheme) => void;
   animateOnMount: boolean;
+  /** Optional first initial for the center "you" sun. Defaults to "•". */
+  centerInitial?: string;
 }
 
 export function OrbitalCosmos({
@@ -150,23 +150,33 @@ export function OrbitalCosmos({
   size,
   onPlanetTap,
   animateOnMount,
+  centerInitial,
 }: Props) {
   const { tokens, resolved } = useTheme();
 
-  // Take top 9 by mentionCount (sort happens upstream, but defensive).
   const visibleThemes = themes.slice(0, 9);
 
-  // Compute final positions for each slot.
+  // Compute final slot positions + starting angles (target - 90°).
   const slots = useMemo(
     () =>
       SLOT_CONFIGS.map((cfg) => {
-        const { x, y } = angleToXY(cfg.angle, RING_RADII[cfg.ring]);
-        return { ...cfg, x, y };
+        const targetRad = (cfg.angle * Math.PI) / 180;
+        const startAngleDeg = cfg.angle - 90;
+        const startRad = (startAngleDeg * Math.PI) / 180;
+        const r = RING_RADII[cfg.ring];
+        return {
+          ...cfg,
+          startRad,
+          targetRad,
+          finalX: CX + Math.cos(targetRad) * r,
+          finalY: CY + Math.sin(targetRad) * r,
+          ringRadius: r,
+        };
       }),
     []
   );
 
-  // Animation progress shared values.
+  // Per-planet shared progress (0→1 over the planet's spin-in).
   const init = animateOnMount ? 0 : 1;
   const sunP = useSharedValue(init);
   const ringP = useSharedValue(init);
@@ -185,79 +195,91 @@ export function OrbitalCosmos({
   useEffect(() => {
     if (!animateOnMount) return;
     sunP.value = withTiming(1, {
-      duration: 600,
-      easing: EASE_STANDARD,
+      duration: SUN_DURATION_MS,
+      easing: EASE_OUT_CUBIC,
     });
     ringP.value = withDelay(
       600,
-      withTiming(1, { duration: 1200, easing: EASE_STANDARD })
+      withTiming(1, {
+        duration: RING_DURATION_MS,
+        easing: EASE_OUT_CUBIC,
+      })
     );
     slots.forEach((slot, i) => {
       planetProgress[i].value = withDelay(
         slot.delay,
         withTiming(1, {
-          duration: PLANET_DURATION_MS,
-          easing: EASE_STANDARD,
+          duration: SPIN_DURATION_MS,
+          easing: EASE_OUT_CUBIC,
         })
       );
     });
     lineP.value = withDelay(
-      5000,
-      withTiming(1, { duration: 800, easing: EASE_STANDARD })
+      4000,
+      withTiming(1, { duration: LINE_DURATION_MS, easing: EASE_OUT_CUBIC })
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [animateOnMount]);
 
-  // Per-planet animated props (cx/cy/opacity interpolate from center
-  // to final slot position as local progress 0→1). The label inside
-  // the same <G> shares the planet's opacity; geometry stays in sync
-  // because the <SvgText> below also uses the same anchored coordinates
-  // (planet final pos). Labels appear with their planet, faded together.
-  const planet0Props = useAnimatedProps(() => ({
-    cx: interpolate(p0.value, [0, 1], [CX, slots[0].x]),
-    cy: interpolate(p0.value, [0, 1], [CY, slots[0].y]),
-    opacity: p0.value,
-  }));
-  const planet1Props = useAnimatedProps(() => ({
-    cx: interpolate(p1.value, [0, 1], [CX, slots[1].x]),
-    cy: interpolate(p1.value, [0, 1], [CY, slots[1].y]),
-    opacity: p1.value,
-  }));
-  const planet2Props = useAnimatedProps(() => ({
-    cx: interpolate(p2.value, [0, 1], [CX, slots[2].x]),
-    cy: interpolate(p2.value, [0, 1], [CY, slots[2].y]),
-    opacity: p2.value,
-  }));
-  const planet3Props = useAnimatedProps(() => ({
-    cx: interpolate(p3.value, [0, 1], [CX, slots[3].x]),
-    cy: interpolate(p3.value, [0, 1], [CY, slots[3].y]),
-    opacity: p3.value,
-  }));
-  const planet4Props = useAnimatedProps(() => ({
-    cx: interpolate(p4.value, [0, 1], [CX, slots[4].x]),
-    cy: interpolate(p4.value, [0, 1], [CY, slots[4].y]),
-    opacity: p4.value,
-  }));
-  const planet5Props = useAnimatedProps(() => ({
-    cx: interpolate(p5.value, [0, 1], [CX, slots[5].x]),
-    cy: interpolate(p5.value, [0, 1], [CY, slots[5].y]),
-    opacity: p5.value,
-  }));
-  const planet6Props = useAnimatedProps(() => ({
-    cx: interpolate(p6.value, [0, 1], [CX, slots[6].x]),
-    cy: interpolate(p6.value, [0, 1], [CY, slots[6].y]),
-    opacity: p6.value,
-  }));
-  const planet7Props = useAnimatedProps(() => ({
-    cx: interpolate(p7.value, [0, 1], [CX, slots[7].x]),
-    cy: interpolate(p7.value, [0, 1], [CY, slots[7].y]),
-    opacity: p7.value,
-  }));
-  const planet8Props = useAnimatedProps(() => ({
-    cx: interpolate(p8.value, [0, 1], [CX, slots[8].x]),
-    cy: interpolate(p8.value, [0, 1], [CY, slots[8].y]),
-    opacity: p8.value,
-  }));
+  // Per-planet animated props — interpolate the angle from start to
+  // target, compute cx/cy from polar coordinates on the UI thread.
+  // 9 inline useAnimatedProps calls (one per slot) so React's hooks
+  // order stays deterministic across renders. Each closure captures
+  // its own shared value + slot index.
+  const planet0Props = useAnimatedProps(() => {
+    const t = p0.value;
+    const s = slots[0];
+    const a = s.startRad + (s.targetRad - s.startRad) * t;
+    return { cx: CX + Math.cos(a) * s.ringRadius, cy: CY + Math.sin(a) * s.ringRadius, opacity: t };
+  });
+  const planet1Props = useAnimatedProps(() => {
+    const t = p1.value;
+    const s = slots[1];
+    const a = s.startRad + (s.targetRad - s.startRad) * t;
+    return { cx: CX + Math.cos(a) * s.ringRadius, cy: CY + Math.sin(a) * s.ringRadius, opacity: t };
+  });
+  const planet2Props = useAnimatedProps(() => {
+    const t = p2.value;
+    const s = slots[2];
+    const a = s.startRad + (s.targetRad - s.startRad) * t;
+    return { cx: CX + Math.cos(a) * s.ringRadius, cy: CY + Math.sin(a) * s.ringRadius, opacity: t };
+  });
+  const planet3Props = useAnimatedProps(() => {
+    const t = p3.value;
+    const s = slots[3];
+    const a = s.startRad + (s.targetRad - s.startRad) * t;
+    return { cx: CX + Math.cos(a) * s.ringRadius, cy: CY + Math.sin(a) * s.ringRadius, opacity: t };
+  });
+  const planet4Props = useAnimatedProps(() => {
+    const t = p4.value;
+    const s = slots[4];
+    const a = s.startRad + (s.targetRad - s.startRad) * t;
+    return { cx: CX + Math.cos(a) * s.ringRadius, cy: CY + Math.sin(a) * s.ringRadius, opacity: t };
+  });
+  const planet5Props = useAnimatedProps(() => {
+    const t = p5.value;
+    const s = slots[5];
+    const a = s.startRad + (s.targetRad - s.startRad) * t;
+    return { cx: CX + Math.cos(a) * s.ringRadius, cy: CY + Math.sin(a) * s.ringRadius, opacity: t };
+  });
+  const planet6Props = useAnimatedProps(() => {
+    const t = p6.value;
+    const s = slots[6];
+    const a = s.startRad + (s.targetRad - s.startRad) * t;
+    return { cx: CX + Math.cos(a) * s.ringRadius, cy: CY + Math.sin(a) * s.ringRadius, opacity: t };
+  });
+  const planet7Props = useAnimatedProps(() => {
+    const t = p7.value;
+    const s = slots[7];
+    const a = s.startRad + (s.targetRad - s.startRad) * t;
+    return { cx: CX + Math.cos(a) * s.ringRadius, cy: CY + Math.sin(a) * s.ringRadius, opacity: t };
+  });
+  const planet8Props = useAnimatedProps(() => {
+    const t = p8.value;
+    const s = slots[8];
+    const a = s.startRad + (s.targetRad - s.startRad) * t;
+    return { cx: CX + Math.cos(a) * s.ringRadius, cy: CY + Math.sin(a) * s.ringRadius, opacity: t };
+  });
   const planetAnimatedProps = [
     planet0Props,
     planet1Props,
@@ -270,28 +292,17 @@ export function OrbitalCosmos({
     planet8Props,
   ];
 
-  // Group-level opacity for the sun, rings, and connector lines.
-  const sunAnimatedProps = useAnimatedProps(() => ({
-    opacity: sunP.value,
-  }));
-  const ringAnimatedProps = useAnimatedProps(() => ({
-    opacity: ringP.value,
-  }));
-  const lineAnimatedProps = useAnimatedProps(() => ({
-    opacity: lineP.value * 0.7, // full opacity for connectors is 0.7 per design
-  }));
-
-  // Per-planet label opacity reads from the same shared value as the
-  // planet itself. Defined inline so labels and planets share animation.
-  const label0Props = useAnimatedProps(() => ({ opacity: p0.value }));
-  const label1Props = useAnimatedProps(() => ({ opacity: p1.value }));
-  const label2Props = useAnimatedProps(() => ({ opacity: p2.value }));
-  const label3Props = useAnimatedProps(() => ({ opacity: p3.value }));
-  const label4Props = useAnimatedProps(() => ({ opacity: p4.value }));
-  const label5Props = useAnimatedProps(() => ({ opacity: p5.value }));
-  const label6Props = useAnimatedProps(() => ({ opacity: p6.value }));
-  const label7Props = useAnimatedProps(() => ({ opacity: p7.value }));
-  const label8Props = useAnimatedProps(() => ({ opacity: p8.value }));
+  // Labels — quadratic-eased opacity so they pop in ~half-way through
+  // the planet's spin, settling with the planet's arrival.
+  const label0Props = useAnimatedProps(() => ({ opacity: p0.value * p0.value }));
+  const label1Props = useAnimatedProps(() => ({ opacity: p1.value * p1.value }));
+  const label2Props = useAnimatedProps(() => ({ opacity: p2.value * p2.value }));
+  const label3Props = useAnimatedProps(() => ({ opacity: p3.value * p3.value }));
+  const label4Props = useAnimatedProps(() => ({ opacity: p4.value * p4.value }));
+  const label5Props = useAnimatedProps(() => ({ opacity: p5.value * p5.value }));
+  const label6Props = useAnimatedProps(() => ({ opacity: p6.value * p6.value }));
+  const label7Props = useAnimatedProps(() => ({ opacity: p7.value * p7.value }));
+  const label8Props = useAnimatedProps(() => ({ opacity: p8.value * p8.value }));
   const labelAnimatedProps = [
     label0Props,
     label1Props,
@@ -304,10 +315,20 @@ export function OrbitalCosmos({
     label8Props,
   ];
 
-  const gridStroke =
-    resolved === "dark" ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)";
-  const youStroke =
+  const sunAnimatedProps = useAnimatedProps(() => ({ opacity: sunP.value }));
+  const ringAnimatedProps = useAnimatedProps(() => ({ opacity: ringP.value }));
+  const lineAnimatedProps = useAnimatedProps(() => ({
+    opacity: lineP.value * 0.6,
+  }));
+
+  // Ring stroke — palette-primary at strokeOpacity 0.18. Setting via
+  // separate attribute (not hex+alpha suffix) so token-format changes
+  // don't silently break the look.
+  const ringStrokeColor = tokens.primary;
+  const sunStrokeAccent =
     resolved === "dark" ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.85)";
+  const sunFrameStroke =
+    resolved === "dark" ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.08)";
 
   return (
     <View style={{ width: size, height: (size * VIEWBOX_H) / VIEWBOX_W }}>
@@ -317,38 +338,35 @@ export function OrbitalCosmos({
         viewBox={`0 0 ${VIEWBOX_W} ${VIEWBOX_H}`}
       >
         <Defs>
-          {/* Center sun glow halo */}
-          <RadialGradient
-            id="tm-you-glow"
-            cx="50%"
-            cy="50%"
-            r="50%"
-          >
+          {/* Center sun halo */}
+          <RadialGradient id="tm-you-glow" cx="50%" cy="50%" r="50%">
             <Stop offset="0%" stopColor={tokens.primary} stopOpacity="0.45" />
             <Stop offset="100%" stopColor={tokens.primary} stopOpacity="0" />
           </RadialGradient>
-          {/* Center sun body gradient (palette primary → secondary) */}
+          {/* Center sun body */}
           <LinearGradient id="tm-you-body" x1="0" y1="0" x2="1" y2="1">
             <Stop offset="0%" stopColor={tokens.primary} />
             <Stop offset="100%" stopColor={tokens.secondary} />
           </LinearGradient>
-          {/* Per-planet radial gradients — generated per visible slot */}
+          {/* Per-planet flat 2-stop radial gradient.
+              cx=35%, cy=35% gives subtle directional shading without
+              creating a glossy specular highlight. */}
           {visibleThemes.map((theme, i) => (
             <RadialGradient
               key={`planet-grad-${i}`}
               id={`planet-grad-${i}`}
-              cx="32%"
-              cy="28%"
-              r="60%"
+              cx="35%"
+              cy="35%"
+              r="65%"
             >
-              <Stop offset="0%" stopColor={`hsl(${theme.hue}, 70%, 78%)`} />
-              <Stop offset="40%" stopColor={`hsl(${theme.hue}, 65%, 55%)`} />
-              <Stop offset="95%" stopColor={`hsl(${theme.hue}, 55%, 28%)`} />
+              <Stop offset="0%" stopColor={`hsl(${theme.hue}, 65%, 72%)`} />
+              <Stop offset="100%" stopColor={`hsl(${theme.hue}, 65%, 48%)`} />
             </RadialGradient>
           ))}
         </Defs>
 
-        {/* Ring guides — 4 concentric dashed circles */}
+        {/* Ring guides — palette-tinted, faint, dashed "4 4". Ring 0
+            stays solid (innermost frames the center sun). */}
         <AnimatedG animatedProps={ringAnimatedProps}>
           {RING_RADII.map((r, i) => (
             <Circle
@@ -357,14 +375,15 @@ export function OrbitalCosmos({
               cy={CY}
               r={r}
               fill="none"
-              stroke={gridStroke}
-              strokeWidth={0.6}
-              strokeDasharray={i === 0 ? undefined : "2 5"}
+              stroke={ringStrokeColor}
+              strokeOpacity={0.18}
+              strokeWidth={0.8}
+              strokeDasharray={i === 0 ? undefined : "4 4"}
             />
           ))}
         </AnimatedG>
 
-        {/* Dashed connector lines, center→each visible planet */}
+        {/* Dashed connector lines (center → each planet). Fade in last. */}
         <AnimatedG animatedProps={lineAnimatedProps}>
           {visibleThemes.map((theme, i) => {
             const slot = slots[i];
@@ -373,10 +392,10 @@ export function OrbitalCosmos({
                 key={`line-${i}`}
                 x1={CX}
                 y1={CY}
-                x2={slot.x}
-                y2={slot.y}
-                stroke={`hsl(${theme.hue}, 55%, 55%)`}
-                strokeOpacity={resolved === "dark" ? 0.25 : 0.3}
+                x2={slot.finalX}
+                y2={slot.finalY}
+                stroke={`hsl(${theme.hue}, 55%, 60%)`}
+                strokeOpacity={0.35}
                 strokeWidth={0.7}
                 strokeDasharray="1.5 3"
               />
@@ -384,36 +403,31 @@ export function OrbitalCosmos({
           })}
         </AnimatedG>
 
-        {/* Center sun — halo + body + initial + YOU caption */}
+        {/* Center sun — halo + dashed outer frame + gradient body +
+            initial. NO "CENTER" debug text; spec shows "YOU" mono
+            caption only. */}
         <AnimatedG animatedProps={sunAnimatedProps}>
-          {/* Glow halo */}
           <Circle cx={CX} cy={CY} r={40} fill="url(#tm-you-glow)" />
-          {/* Dashed outer ring (subtle frame around the sun) */}
           <Circle
             cx={CX}
             cy={CY}
             r={26}
             fill="none"
-            stroke={gridStroke}
+            stroke={sunFrameStroke}
             strokeWidth={0.6}
             strokeDasharray="2 4"
           />
-          {/* Body */}
           <Circle
             cx={CX}
             cy={CY}
             r={20}
             fill="url(#tm-you-body)"
-            stroke={youStroke}
+            stroke={sunStrokeAccent}
             strokeWidth={1.5}
           />
-          {/* Initial (centered) — use first letter of theme map title for
-              now; could be threaded as a prop from theme-map.tsx for the
-              user's actual first initial. Static "J" placeholder for
-              v1.1; future polish slice. */}
           <SvgText
             x={CX}
-            y={CY + 5}
+            y={CY + 6}
             textAnchor="middle"
             fontSize={17}
             fontWeight="800"
@@ -421,7 +435,7 @@ export function OrbitalCosmos({
             fontFamily={tokens.fontDisplay}
             letterSpacing={-0.4}
           >
-            You
+            {centerInitial ?? "•"}
           </SvgText>
           <SvgText
             x={CX}
@@ -433,55 +447,57 @@ export function OrbitalCosmos({
             fontFamily={tokens.fontMono}
             letterSpacing={1.6}
           >
-            CENTER
+            YOU
           </SvgText>
         </AnimatedG>
 
-        {/* Planets — each is an animated G containing the planet circle
-            + label. Tappable via onPress on the G; the touch area
-            covers the whole group bounds. */}
+        {/* Planets + labels. Each planet wrapped in <G onPress> so the
+            tap target covers planet + label. */}
         {visibleThemes.map((theme, i) => {
           const slot = slots[i];
           const planetR = slot.size / 2;
-          const labelY = slot.y + planetR + 14;
-          const countY = labelY + 12;
-          const isInner = slot.ring <= 1;
+          // Label position: centered below the planet's FINAL position.
+          // Gaps tightened to 11pt + 11pt to keep slot 4 (the
+          // bottommost, y=318+r=15) within viewBox bottom 360:
+          //   labelY = 318 + 15 + 11 = 344
+          //   countY = 344 + 11 = 355  (glyph descender ~358, 2pt margin)
+          // Labels fade in via opacity (slot's progress squared) so they
+          // pop in after the planet settles. They don't move during the
+          // spin — only the planet body does.
+          const labelY = slot.finalY + planetR + 11;
+          const countY = labelY + 11;
+          const labelText = truncateLabel(theme.name, 10);
+
           return (
             <G key={`planet-g-${i}`} onPress={() => onPlanetTap(theme)}>
-              {/* Animated planet circle — cx/cy/opacity animate from
-                  center outward. Radius is static (no scale-up effect
-                  needed; opacity + position-shift carry the entrance). */}
               <AnimatedCircle
                 animatedProps={planetAnimatedProps[i]}
                 r={planetR}
                 fill={`url(#planet-grad-${i})`}
-                stroke="rgba(255,255,255,0.10)"
-                strokeWidth={0.5}
               />
-              {/* Label — appears at the planet's final position, fades in
-                  with the planet's opacity. */}
               <AnimatedG animatedProps={labelAnimatedProps[i]}>
                 <SvgText
-                  x={slot.x}
+                  x={slot.finalX}
                   y={labelY}
                   textAnchor="middle"
-                  fontSize={isInner ? 13 : 11.5}
-                  fontWeight="700"
-                  fill={tokens.text}
-                  fontFamily={tokens.fontSans}
-                  letterSpacing={-0.1}
+                  fontSize={11}
+                  fontWeight="600"
+                  fill={tokens.textSec}
+                  fillOpacity={0.85}
+                  fontFamily={tokens.fontMono}
+                  letterSpacing={0.4}
                 >
-                  {theme.name}
+                  {labelText}
                 </SvgText>
                 <SvgText
-                  x={slot.x}
+                  x={slot.finalX}
                   y={countY}
                   textAnchor="middle"
-                  fontSize={10}
+                  fontSize={9}
                   fontWeight="600"
                   fill={tokens.textTer}
                   fontFamily={tokens.fontMono}
-                  letterSpacing={0.5}
+                  letterSpacing={0.8}
                 >
                   {theme.mentionCount}
                 </SvgText>

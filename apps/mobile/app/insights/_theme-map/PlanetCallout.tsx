@@ -5,22 +5,20 @@ import { Pressable, Text, View } from "react-native";
 import { useTheme } from "@/contexts/theme-context";
 
 /**
- * Glass-blur callout that appears in-place when the user taps a planet
- * on the orbital cosmos Theme Map. Shows the theme's quick stats —
- * mentions, sentiment band, top co-occurrences, latest entry excerpt
- * — and a "See full detail" CTA that navigates to the existing
- * /insights/theme/[id] detail screen for deeper drill-down.
+ * Glass-blur callout that appears in-place when a planet is tapped on
+ * the orbital Theme Map. Matches the design's insight-card glass
+ * treatment (screen-thememap.jsx lines 204-233): BlurView with
+ * theme-aware tint + 0.5pt lineStrong border, padded body, sparkle-
+ * icon-style row, etc.
  *
- * Layout: centered overlay above the orbital, with a dim backdrop that
- * dismisses on tap (so the user can re-tap the orbital without first
- * tapping a close button). The callout itself swallows taps so taps
- * inside don't dismiss it.
+ * Content:
+ *   - Header row: hue-dot + theme name
+ *   - Stat row: mention count + sentiment band
+ *   - Top 3 co-occurrence chips
+ *   - Latest entry excerpt (italic, soft)
+ *   - "See full detail" CTA → /insights/theme/[id]
  *
- * Glass effect: expo-blur BlurView at intensity 40, theme-aware
- * `intensity`+`tint`. Falls back gracefully on Android where blur is
- * less performant — BlurView renders solid bg per platform; the
- * additional 0.5px border + drop shadow sells the elevated feel even
- * when the blur is weak.
+ * Backdrop tap dismisses; inner card swallows taps.
  */
 
 export interface PlanetCalloutData {
@@ -69,17 +67,15 @@ export function PlanetCallout({ data, onDismiss }: Props) {
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: "rgba(0,0,0,0.45)",
+        backgroundColor: "rgba(0,0,0,0.5)",
         justifyContent: "center",
         alignItems: "center",
         paddingHorizontal: 24,
       }}
     >
-      {/* Pressable wrapper swallows taps so tapping inside the callout
-          doesn't bubble up to the dismiss backdrop. */}
-      <Pressable onPress={() => {}}>
+      <Pressable onPress={() => {}} style={{ width: "100%", maxWidth: 340 }}>
         <BlurView
-          intensity={40}
+          intensity={50}
           tint={resolved === "dark" ? "dark" : "light"}
           style={{
             borderRadius: 22,
@@ -93,26 +89,24 @@ export function PlanetCallout({ data, onDismiss }: Props) {
               padding: 18,
               backgroundColor:
                 resolved === "dark"
-                  ? "rgba(22, 18, 38, 0.72)"
+                  ? "rgba(22, 18, 38, 0.7)"
                   : "rgba(255, 255, 255, 0.78)",
-              minWidth: 280,
-              maxWidth: 320,
             }}
           >
-            {/* Header — palette-data dot + theme name */}
+            {/* Header — hue dot + theme name */}
             <View
               style={{
                 flexDirection: "row",
                 alignItems: "center",
                 gap: 10,
-                marginBottom: 12,
+                marginBottom: 14,
               }}
             >
               <View
                 style={{
-                  width: 12,
-                  height: 12,
-                  borderRadius: 6,
+                  width: 10,
+                  height: 10,
+                  borderRadius: 5,
                   backgroundColor: `hsl(${data.hue}, 65%, 60%)`,
                 }}
               />
@@ -131,7 +125,7 @@ export function PlanetCallout({ data, onDismiss }: Props) {
               </Text>
             </View>
 
-            {/* Stat row — mention count + sentiment band */}
+            {/* Stat row */}
             <View
               style={{
                 flexDirection: "row",
@@ -144,7 +138,7 @@ export function PlanetCallout({ data, onDismiss }: Props) {
                   style={{
                     fontFamily: tokens.fontMono,
                     fontSize: 9,
-                    letterSpacing: 1.2,
+                    letterSpacing: 1.4,
                     textTransform: "uppercase",
                     color: tokens.textTer,
                   }}
@@ -169,7 +163,7 @@ export function PlanetCallout({ data, onDismiss }: Props) {
                   style={{
                     fontFamily: tokens.fontMono,
                     fontSize: 9,
-                    letterSpacing: 1.2,
+                    letterSpacing: 1.4,
                     textTransform: "uppercase",
                     color: tokens.textTer,
                   }}
@@ -191,14 +185,14 @@ export function PlanetCallout({ data, onDismiss }: Props) {
               </View>
             </View>
 
-            {/* Top co-occurrences */}
+            {/* Co-occurrences */}
             {data.coOccurrences.length > 0 && (
               <View style={{ marginBottom: 14 }}>
                 <Text
                   style={{
                     fontFamily: tokens.fontMono,
                     fontSize: 9,
-                    letterSpacing: 1.2,
+                    letterSpacing: 1.4,
                     textTransform: "uppercase",
                     color: tokens.textTer,
                     marginBottom: 6,
@@ -218,11 +212,14 @@ export function PlanetCallout({ data, onDismiss }: Props) {
                       key={c.themeName}
                       style={{
                         paddingHorizontal: 10,
-                        paddingVertical: 4,
+                        paddingVertical: 5,
                         borderRadius: 999,
                         borderWidth: 0.5,
                         borderColor: tokens.line,
-                        backgroundColor: tokens.bgInset,
+                        backgroundColor:
+                          resolved === "dark"
+                            ? "rgba(255,255,255,0.04)"
+                            : "rgba(0,0,0,0.03)",
                       }}
                     >
                       <Text
@@ -233,8 +230,11 @@ export function PlanetCallout({ data, onDismiss }: Props) {
                           color: tokens.textSec,
                         }}
                       >
-                        {c.themeName}{" "}
-                        <Text style={{ color: tokens.textTer }}>· {c.count}</Text>
+                        {c.themeName}
+                        <Text style={{ color: tokens.textTer }}>
+                          {" · "}
+                          {c.count}
+                        </Text>
                       </Text>
                     </View>
                   ))}
@@ -242,7 +242,7 @@ export function PlanetCallout({ data, onDismiss }: Props) {
               </View>
             )}
 
-            {/* Recent excerpt — italic, soft */}
+            {/* Latest excerpt */}
             {data.excerpt && (
               <Text
                 style={{
@@ -277,7 +277,7 @@ export function PlanetCallout({ data, onDismiss }: Props) {
                   fontFamily: tokens.fontMono,
                   fontSize: 11,
                   fontWeight: "700",
-                  letterSpacing: 1.2,
+                  letterSpacing: 1.4,
                   textTransform: "uppercase",
                   color: tokens.text,
                 }}
