@@ -61,7 +61,7 @@ export function StateOfMeGenerateButton({
       <button
         onClick={submit}
         disabled={loading}
-        className="rounded-full bg-violet-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-violet-500 disabled:opacity-40"
+        className="rounded-full bg-acuity-primary px-5 py-2 text-sm font-semibold text-white transition hover:bg-acuity-primary disabled:opacity-40"
       >
         {loading ? "Queuing…" : "Generate State of Me"}
       </button>

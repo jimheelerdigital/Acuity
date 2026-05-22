@@ -184,7 +184,7 @@ export function LifeMap() {
   if (loading) {
     return (
       <div className="flex justify-center py-20">
-        <div className="h-6 w-6 animate-spin rounded-full border-2 border-zinc-200 dark:border-white/10 border-t-violet-500" />
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-zinc-200 dark:border-white/10 border-t-acuity-primary" />
       </div>
     );
   }
@@ -236,7 +236,7 @@ export function LifeMap() {
                     }
                     className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
                       view === v
-                        ? "bg-white dark:bg-[#1E1E2E] text-zinc-900 dark:text-zinc-50 shadow-sm"
+                        ? "bg-white dark:bg-acuity-card-bg text-zinc-900 dark:text-zinc-50 shadow-sm"
                         : disabled
                           ? "text-zinc-300 dark:text-zinc-600 cursor-not-allowed"
                           : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
@@ -287,8 +287,8 @@ export function LifeMap() {
                   }}
                   className={`rounded-xl border p-4 text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${
                     isActive
-                      ? "border-violet-300 bg-violet-50/50 shadow-md"
-                      : "border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] shadow-sm"
+                      ? "border-acuity-primary-soft bg-acuity-primary-soft shadow-md"
+                      : "border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg shadow-sm"
                   }`}
                 >
                   <div className="flex items-center justify-between mb-2">
@@ -640,7 +640,7 @@ function DetailPanel({
     .filter((s): s is number => s != null) ?? [];
 
   return (
-    <div className="mt-6 rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] shadow-sm overflow-hidden animate-fade-in">
+    <div className="mt-6 rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg shadow-sm overflow-hidden animate-fade-in">
       {/* Header */}
       <div className="px-6 py-4 border-b border-zinc-100 dark:border-white/5 flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -896,11 +896,11 @@ function TrendLineChart({
           />
           <Tooltip
             contentStyle={{
-              background: "#1E1E2E",
-              border: "1px solid rgba(255,255,255,0.1)",
+              background: "var(--acuity-card-bg)",
+              border: "1px solid var(--acuity-line)",
               borderRadius: 8,
               fontSize: 12,
-              color: "#FAFAFA",
+              color: "var(--acuity-text)",
             }}
             itemStyle={{ color: "#FAFAFA" }}
             labelStyle={{ color: "#A1A1AA", marginBottom: 4 }}

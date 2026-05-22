@@ -52,11 +52,11 @@ export default async function InsightsPage() {
           ) : progression.unlocked.lifeMatrix ? (
             <Link
               href="/life-matrix"
-              className="group block rounded-2xl border border-zinc-200 dark:border-white/10 bg-gradient-to-br from-violet-50 to-white dark:from-violet-950/30 dark:to-[#1E1E2E] p-6 transition hover:border-violet-300 dark:hover:border-violet-700/50"
+              className="group block rounded-2xl border border-zinc-200 dark:border-white/10 bg-gradient-to-br from-acuity-primary-soft to-white dark:from-acuity-primary-soft dark:to-acuity-card-bg p-6 transition hover:border-acuity-primary-soft dark:hover:border-acuity-primary"
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
-                  <p className="text-xs font-semibold uppercase tracking-widest text-violet-600 dark:text-violet-400">
+                  <p className="text-xs font-semibold uppercase tracking-widest text-acuity-primary dark:text-acuity-primary">
                     Flagship
                   </p>
                   <h2 className="mt-2 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
@@ -67,7 +67,7 @@ export default async function InsightsPage() {
                     themes pulled from every debrief you&rsquo;ve recorded.
                   </p>
                 </div>
-                <span className="mt-1 text-zinc-400 group-hover:text-violet-600 dark:group-hover:text-violet-400 transition">
+                <span className="mt-1 text-zinc-400 group-hover:text-acuity-primary dark:group-hover:text-acuity-primary transition">
                   →
                 </span>
               </div>
@@ -81,7 +81,7 @@ export default async function InsightsPage() {
           ) : progression.unlocked.themeMap ? (
             <Link
               href="/insights/theme-map"
-              className="group block rounded-2xl border border-zinc-200 dark:border-white/10 bg-gradient-to-br from-indigo-50 to-white dark:from-indigo-950/30 dark:to-[#1E1E2E] p-6 transition hover:border-indigo-300 dark:hover:border-indigo-700/50"
+              className="group block rounded-2xl border border-zinc-200 dark:border-white/10 bg-gradient-to-br from-indigo-50 to-white dark:from-indigo-950/30 dark:to-acuity-card-bg p-6 transition hover:border-indigo-300 dark:hover:border-indigo-700/50"
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
@@ -113,7 +113,7 @@ export default async function InsightsPage() {
         <div className="mb-10 grid grid-cols-1 gap-4 lg:grid-cols-2">
           <Link
             href="/insights/ask"
-            className="group block rounded-2xl border border-zinc-200 dark:border-white/10 bg-gradient-to-br from-indigo-50/60 to-white dark:from-indigo-950/20 dark:to-[#1E1E2E] p-6 transition hover:border-indigo-300 dark:hover:border-indigo-700/40"
+            className="group block rounded-2xl border border-zinc-200 dark:border-white/10 bg-gradient-to-br from-indigo-50/60 to-white dark:from-indigo-950/20 dark:to-acuity-card-bg p-6 transition hover:border-indigo-300 dark:hover:border-indigo-700/40"
           >
             <p className="text-xs font-semibold uppercase tracking-widest text-indigo-600 dark:text-indigo-400">
               Ask
@@ -129,7 +129,7 @@ export default async function InsightsPage() {
 
           <Link
             href="/insights/state-of-me"
-            className="group block rounded-2xl border border-zinc-200 dark:border-white/10 bg-gradient-to-br from-amber-50/60 to-white dark:from-amber-950/20 dark:to-[#1E1E2E] p-6 transition hover:border-amber-300 dark:hover:border-amber-700/40"
+            className="group block rounded-2xl border border-zinc-200 dark:border-white/10 bg-gradient-to-br from-amber-50/60 to-white dark:from-amber-950/20 dark:to-acuity-card-bg p-6 transition hover:border-amber-300 dark:hover:border-amber-700/40"
           >
             <p className="text-xs font-semibold uppercase tracking-widest text-amber-700 dark:text-amber-400">
               Quarterly

@@ -105,7 +105,7 @@ export default async function LifeAuditPage({
         </Link>
 
         <header className="mt-8 mb-10">
-          <p className="text-xs font-semibold uppercase tracking-widest text-violet-500">
+          <p className="text-xs font-semibold uppercase tracking-widest text-acuity-primary">
             Day 14 Life Audit
           </p>
           <h1 className="mt-3 text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-4xl">
@@ -134,7 +134,7 @@ export default async function LifeAuditPage({
         {/* Themes arc — render as three horizontal groups. Data, not
             prose, so bullets are fine here. */}
         {(starting.length > 0 || emerging.length > 0 || fading.length > 0) && (
-          <section className="mt-12 rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-6">
+          <section className="mt-12 rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg p-6">
             <h2 className="text-sm font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
               Themes across the fourteen days
             </h2>
@@ -226,7 +226,7 @@ function ClosingLetter({ text }: { text: string }) {
 
   return (
     <>
-      <h2 className="text-xs font-semibold uppercase tracking-widest text-violet-500 mb-4">
+      <h2 className="text-xs font-semibold uppercase tracking-widest text-acuity-primary mb-4">
         {header}
       </h2>
       <div className="space-y-5">
@@ -242,7 +242,7 @@ function ClosingLetter({ text }: { text: string }) {
           <p>
             <Link
               href="/upgrade?src=life_audit_body_link"
-              className="text-violet-600 underline decoration-violet-200 underline-offset-4 transition hover:text-violet-900 hover:decoration-violet-600"
+              className="text-acuity-primary underline decoration-acuity-primary-soft underline-offset-4 transition hover:text-acuity-primary hover:decoration-acuity-primary"
             >
               Continue it &rarr;
             </Link>
@@ -259,7 +259,7 @@ function PendingAuditView({ status }: { status: string }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#FAFAF7] px-6">
       <div className="mx-auto max-w-md text-center">
-        <p className="text-xs font-semibold uppercase tracking-widest text-violet-500">
+        <p className="text-xs font-semibold uppercase tracking-widest text-acuity-primary">
           Day 14 Life Audit
         </p>
         <h1 className="mt-3 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
@@ -274,7 +274,7 @@ function PendingAuditView({ status }: { status: string }) {
         </p>
         <Link
           href="/home"
-          className="mt-8 inline-block text-sm text-violet-600 underline underline-offset-4 transition hover:text-violet-900"
+          className="mt-8 inline-block text-sm text-acuity-primary underline underline-offset-4 transition hover:text-acuity-primary"
         >
           Back to dashboard
         </Link>

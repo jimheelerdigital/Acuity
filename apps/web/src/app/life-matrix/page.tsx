@@ -32,7 +32,7 @@ export default async function LifeMatrixPage() {
     <div className="min-h-screen">
       <PageContainer mobileWidth="5xl">
         <header className="mb-8">
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-violet-600 dark:text-violet-400">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-acuity-primary dark:text-acuity-primary">
             Reflect
           </p>
           <h1 className="mt-1 text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 lg:text-4xl">

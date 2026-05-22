@@ -72,7 +72,7 @@ export function StateOfMeShareButton({
           setOpen(true);
           if (!shareUrl) generate();
         }}
-        className="rounded-full border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-4 py-1.5 text-xs font-semibold text-zinc-700 dark:text-zinc-200 hover:border-violet-300 dark:hover:border-violet-700/40 transition"
+        className="rounded-full border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg px-4 py-1.5 text-xs font-semibold text-zinc-700 dark:text-zinc-200 hover:border-acuity-primary-soft dark:hover:border-acuity-primary transition"
       >
         Share this report
       </button>
@@ -82,7 +82,7 @@ export function StateOfMeShareButton({
           onClick={() => setOpen(false)}
         >
           <div
-            className="w-full max-w-md rounded-2xl bg-white dark:bg-[#1E1E2E] border border-zinc-200 dark:border-white/10 p-6 shadow-2xl"
+            className="w-full max-w-md rounded-2xl bg-white dark:bg-acuity-card-bg border border-zinc-200 dark:border-white/10 p-6 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
@@ -94,7 +94,7 @@ export function StateOfMeShareButton({
             </p>
             {loading && !shareUrl ? (
               <div className="py-6 flex justify-center">
-                <div className="h-5 w-5 animate-spin rounded-full border-2 border-zinc-200 dark:border-white/10 border-t-violet-500" />
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-zinc-200 dark:border-white/10 border-t-acuity-primary" />
               </div>
             ) : shareUrl ? (
               <div className="mt-4">

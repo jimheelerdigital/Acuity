@@ -99,7 +99,7 @@ export function AskPastClient() {
         </p>
       </div>
 
-      <div className="rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.04)] dark:shadow-none dark:ring-1 dark:ring-white/5">
+      <div className="rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.04)] dark:shadow-none dark:ring-1 dark:ring-white/5">
         <label htmlFor="ask-input" className="sr-only">
           Ask a question
         </label>
@@ -115,7 +115,7 @@ export function AskPastClient() {
           }}
           placeholder="Ask anything about your past self…"
           rows={3}
-          className="w-full resize-none rounded-xl border border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-[#13131F] px-4 py-3 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-violet-500"
+          className="w-full resize-none rounded-xl border border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-[#13131F] px-4 py-3 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-acuity-primary"
           disabled={loading}
         />
         <div className="mt-3 flex items-center justify-between gap-3">
@@ -125,7 +125,7 @@ export function AskPastClient() {
           <button
             onClick={() => submit()}
             disabled={loading || !question.trim()}
-            className="rounded-full bg-violet-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-violet-500 disabled:opacity-40"
+            className="rounded-full bg-acuity-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-acuity-primary disabled:opacity-40"
           >
             {loading ? "Thinking…" : "Ask"}
           </button>
@@ -149,7 +149,7 @@ export function AskPastClient() {
                   // fire on tap so the user can test without also typing
                   submit(ex);
                 }}
-                className="w-full text-left rounded-xl border border-dashed border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-4 py-3 text-sm text-zinc-700 dark:text-zinc-200 hover:border-violet-300 dark:hover:border-violet-700/40 transition"
+                className="w-full text-left rounded-xl border border-dashed border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg px-4 py-3 text-sm text-zinc-700 dark:text-zinc-200 hover:border-acuity-primary-soft dark:hover:border-acuity-primary transition"
               >
                 {ex}
               </button>
@@ -163,9 +163,9 @@ export function AskPastClient() {
           {history.map((h, i) => (
             <article
               key={i}
-              className="rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-5"
+              className="rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg p-5"
             >
-              <p className="text-xs font-semibold uppercase tracking-widest text-violet-600 dark:text-violet-400 mb-2">
+              <p className="text-xs font-semibold uppercase tracking-widest text-acuity-primary dark:text-acuity-primary mb-2">
                 You asked
               </p>
               <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50 mb-5 italic">
@@ -190,7 +190,7 @@ export function AskPastClient() {
                       <Link
                         key={c.id}
                         href={`/entry/${c.id}`}
-                        className="block rounded-lg border border-zinc-100 dark:border-white/5 bg-zinc-50 dark:bg-[#13131F] px-3 py-2 hover:border-violet-300 dark:hover:border-violet-700/40 transition"
+                        className="block rounded-lg border border-zinc-100 dark:border-white/5 bg-zinc-50 dark:bg-[#13131F] px-3 py-2 hover:border-acuity-primary-soft dark:hover:border-acuity-primary transition"
                       >
                         <p className="text-[11px] text-zinc-400 dark:text-zinc-500 mb-1">
                           {formatRelativeDate(c.createdAt)}

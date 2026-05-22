@@ -96,11 +96,11 @@ export function DimensionDetailModal({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white dark:bg-[#1E1E2E] border border-zinc-200 dark:border-white/10 shadow-2xl"
+        className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white dark:bg-acuity-card-bg border border-zinc-200 dark:border-white/10 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-zinc-100 dark:border-white/5 bg-white/95 dark:bg-[#1E1E2E]/95 backdrop-blur px-5 py-3">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-zinc-100 dark:border-white/5 bg-white/95 dark:bg-acuity-card-bg/95 backdrop-blur px-5 py-3">
           <div className="flex items-center gap-2">
             {data && (
               <>
@@ -142,7 +142,7 @@ export function DimensionDetailModal({
 
         {loading && !data && (
           <div className="flex justify-center py-20">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-zinc-200 dark:border-white/10 border-t-violet-500" />
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-zinc-200 dark:border-white/10 border-t-acuity-primary" />
           </div>
         )}
         {error && (
@@ -293,7 +293,7 @@ export function DimensionDetailModal({
                         <Link
                           href={`/goals/${g.id}`}
                           onClick={onClose}
-                          className="block hover:text-violet-600 dark:hover:text-violet-400"
+                          className="block hover:text-acuity-primary dark:hover:text-acuity-primary"
                         >
                           <p className="text-sm font-medium text-zinc-800 dark:text-zinc-100">
                             {g.title}
@@ -321,8 +321,8 @@ export function DimensionDetailModal({
             </div>
 
             {/* Reflection prompt */}
-            <div className="rounded-2xl border border-violet-500/30 bg-violet-50 dark:bg-violet-950/20 p-4">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-violet-600 dark:text-violet-400">
+            <div className="rounded-2xl border border-acuity-primary/30 bg-acuity-primary-soft dark:bg-acuity-primary-soft p-4">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-acuity-primary dark:text-acuity-primary">
                 Worth reflecting on
               </p>
               <p className="mb-3 text-base leading-relaxed text-zinc-900 dark:text-zinc-50">
@@ -334,7 +334,7 @@ export function DimensionDetailModal({
               <button
                 type="button"
                 onClick={() => setRecordOpen(true)}
-                className="inline-block rounded-xl bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500"
+                className="inline-block rounded-xl bg-acuity-primary px-4 py-2 text-sm font-semibold text-white hover:bg-acuity-primary"
               >
                 Record about this
               </button>

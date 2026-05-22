@@ -66,7 +66,7 @@ export function StateOfMeDetail(props: Props) {
   if (state.status === "QUEUED" || state.status === "GENERATING") {
     return (
       <div className="mt-10 rounded-2xl border border-dashed border-zinc-300 dark:border-white/10 px-6 py-16 text-center">
-        <div className="mx-auto h-6 w-6 animate-spin rounded-full border-2 border-zinc-200 dark:border-white/10 border-t-violet-500 mb-4" />
+        <div className="mx-auto h-6 w-6 animate-spin rounded-full border-2 border-zinc-200 dark:border-white/10 border-t-acuity-primary mb-4" />
         <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
           Synthesizing your quarter…
         </h2>

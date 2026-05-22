@@ -70,7 +70,7 @@ export function RecentTimeline() {
         </h2>
         <Link
           href="/entries"
-          className="text-xs text-violet-600 dark:text-violet-400 hover:underline"
+          className="text-xs text-acuity-primary dark:text-acuity-primary hover:underline"
         >
           View all →
         </Link>
@@ -96,7 +96,7 @@ export function RecentTimeline() {
             <Link
               key={entry.id}
               href="/entries"
-              className="shrink-0 w-64 rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-3 transition hover:border-violet-300 dark:hover:border-violet-700/40 hover:shadow-sm"
+              className="shrink-0 w-64 rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg p-3 transition hover:border-acuity-primary-soft dark:hover:border-acuity-primary hover:shadow-sm"
             >
               <div className="flex items-center gap-2 mb-2">
                 <MoodIcon

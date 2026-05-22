@@ -15,7 +15,7 @@ export function MetricsDrawer({ children }: { children: ReactNode }) {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="w-full rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-4 py-3 flex items-center justify-between hover:border-zinc-300 dark:hover:border-white/20 transition"
+        className="w-full rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg px-4 py-3 flex items-center justify-between hover:border-zinc-300 dark:hover:border-white/20 transition"
       >
         <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
           Metrics & observations

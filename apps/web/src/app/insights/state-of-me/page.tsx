@@ -100,7 +100,7 @@ export default async function StateOfMeListPage() {
                   <Link
                     key={r.id}
                     href={`/insights/state-of-me/${r.id}`}
-                    className="block rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-5 hover:border-violet-300 dark:hover:border-violet-700/40 transition shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.04)] dark:shadow-none dark:ring-1 dark:ring-white/5"
+                    className="block rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg p-5 hover:border-acuity-primary-soft dark:hover:border-acuity-primary transition shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.04)] dark:shadow-none dark:ring-1 dark:ring-white/5"
                   >
                     <p className="text-xs text-zinc-400 dark:text-zinc-500 mb-1">
                       {fmtDate(r.periodStart)} — {fmtDate(r.periodEnd)}

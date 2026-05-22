@@ -157,7 +157,7 @@ export function InsightsView() {
   if (loading) {
     return (
       <div className="flex justify-center py-20">
-        <div className="h-6 w-6 animate-spin rounded-full border-2 border-zinc-200 dark:border-white/10 border-t-violet-500" />
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-zinc-200 dark:border-white/10 border-t-acuity-primary" />
       </div>
     );
   }
@@ -184,7 +184,7 @@ export function InsightsView() {
           <h2 className="mb-4 text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
             Mood trend — last {completedEntries.length} entries
           </h2>
-          <div className="rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-5 py-5 shadow-sm">
+          <div className="rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg px-5 py-5 shadow-sm">
             <div className="flex items-end gap-2 h-32">
               {completedEntries.map((entry) => {
                 const score = entry.moodScore ?? 5;
@@ -263,7 +263,7 @@ export function InsightsView() {
             </h2>
             <ShareReportButton reportId={latestReport.id} />
           </div>
-          <div className="rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] overflow-hidden shadow-sm">
+          <div className="rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg overflow-hidden shadow-sm">
             {/* Report header */}
             <div className="px-5 py-4 border-b border-zinc-100 dark:border-white/5">
               <div className="flex items-center justify-between">
@@ -310,7 +310,7 @@ export function InsightsView() {
             {/* Insights */}
             {latestReport.insightBullets.length > 0 && (
               <div className="px-5 py-4 border-b border-zinc-100 dark:border-white/5">
-                <p className="text-xs font-medium text-violet-600 mb-2">
+                <p className="text-xs font-medium text-acuity-primary mb-2">
                   Insights
                 </p>
                 <ul className="space-y-1.5">
@@ -319,7 +319,7 @@ export function InsightsView() {
                       key={i}
                       className="text-sm text-zinc-600 dark:text-zinc-300 flex gap-2"
                     >
-                      <span className="text-violet-500 shrink-0">-</span>
+                      <span className="text-acuity-primary shrink-0">-</span>
                       {bullet}
                     </li>
                   ))}
@@ -424,7 +424,7 @@ function ShareReportButton({ reportId }: { reportId: string }) {
           setOpen(true);
           if (!shareUrl) generate();
         }}
-        className="rounded-full border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-3 py-1 text-xs font-semibold text-zinc-700 dark:text-zinc-200 hover:border-violet-300 dark:hover:border-violet-700/40 transition"
+        className="rounded-full border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg px-3 py-1 text-xs font-semibold text-zinc-700 dark:text-zinc-200 hover:border-acuity-primary-soft dark:hover:border-acuity-primary transition"
       >
         Share this report
       </button>
@@ -435,7 +435,7 @@ function ShareReportButton({ reportId }: { reportId: string }) {
           onClick={() => setOpen(false)}
         >
           <div
-            className="w-full max-w-md rounded-2xl bg-white dark:bg-[#1E1E2E] border border-zinc-200 dark:border-white/10 p-6 shadow-2xl"
+            className="w-full max-w-md rounded-2xl bg-white dark:bg-acuity-card-bg border border-zinc-200 dark:border-white/10 p-6 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
@@ -448,7 +448,7 @@ function ShareReportButton({ reportId }: { reportId: string }) {
 
             {loading && !shareUrl ? (
               <div className="py-6 flex justify-center">
-                <div className="h-5 w-5 animate-spin rounded-full border-2 border-zinc-200 dark:border-white/10 border-t-violet-500" />
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-zinc-200 dark:border-white/10 border-t-acuity-primary" />
               </div>
             ) : shareUrl ? (
               <div className="mt-4">

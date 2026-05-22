@@ -85,7 +85,7 @@ export function ThemeDetailClient({ themeId }: { themeId: string }) {
   if (loading) {
     return (
       <div className="flex justify-center py-20">
-        <div className="h-6 w-6 animate-spin rounded-full border-2 border-zinc-200 dark:border-white/10 border-t-violet-500" />
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-zinc-200 dark:border-white/10 border-t-acuity-primary" />
       </div>
     );
   }

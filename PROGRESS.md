@@ -41,6 +41,39 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-22] — Web parity slice 6 — insights + life-matrix token migration (orbital cosmos port deferred)
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** _pending_
+
+### In plain English (for Keenan)
+
+The Insights pages — theme map, theme detail, life matrix, ask, state of me, weekly insight — now use the new coral color palette and canonical surfaces, matching the rest of the app. No layout changes, no feature changes. The bigger Theme Map redesign (the orbital cosmos that mobile has — planets orbiting a center point) is deliberately NOT in this slice. That's a real feature port with custom SVG, animation, and design polish; cramming it into a token migration would either rush it or balloon the slice. It's queued as the next dedicated slice (slice 6b) so it gets the focused attention it deserves.
+
+### Technical changes (for Jimmy)
+
+- Mechanical brand-color migration across 15 files under `apps/web/src/app/insights` and `apps/web/src/app/life-matrix`. Sed sweep handled: `bg-[#1E1E2E]` → `bg-acuity-card-bg`, `bg-[#7C5CFC]` / `text-[#7C5CFC]` / `border-[#7C5CFC]` → respective `acuity-primary`, `hover:bg-[#6B4FE0]` → `hover:brightness-110`, every `text-violet-*` / `dark:text-violet-*` → `text-acuity-primary` (mode-invariant), `bg-violet-{500,600,700}` → `bg-acuity-primary`, `border-violet-*` light/dark → `border-acuity-primary[-soft]`, `bg-violet-{50,100,200}/X` / `dark:bg-violet-{900,950}/X` → `bg-acuity-primary-soft`, `from-violet-* / to-violet-* / via-violet-*` gradient stops → `from-acuity-primary-soft / to-acuity-primary-soft / via-acuity-primary-soft`, `ring-violet-*/X` → `ring-acuity-primary-soft`, `hover:shadow-violet-500/30` → `hover:shadow-acuity-glow-primary`, `accent-violet-*` → `accent-acuity-primary`, `decoration-violet-*` → `decoration-acuity-primary[-soft]`, `border-t-violet-*` → `border-t-acuity-primary`. Inline Recharts `Tooltip.contentStyle` in life-map.tsx swapped its three hex literals (`#1E1E2E`, `rgba(255,255,255,0.1)`, `#FAFAFA`) to canonical CSS vars (`var(--acuity-card-bg)`, `var(--acuity-line)`, `var(--acuity-text)`).
+- 15 files modified across insights/ + life-matrix/. Zero structural changes, zero copy edits.
+
+### Manual steps needed
+
+- [ ] Spot-check Vercel deploy: /insights, /insights/ask, /insights/state-of-me, /insights/theme-map, /insights/theme/[id], /insights/life-audit/[id], /life-matrix. Verify coral primary + tinted surfaces render cleanly. Jimmy
+
+### Notes
+
+- **Orbital cosmos port deferred to slice 6b.** The current `/insights/theme-map` already uses the custom `ThemeMapDashboard` + `ThemeRings` web components (4 concentric rings for the top 4 themes, NOT the force-graph the audit originally found — that was the prior state). Replacing the ring-style dashboard with mobile's 9-planet orbital cosmos requires:
+  1. Porting the canonical 9-hue planet table from `apps/mobile/app/insights/_theme-map/types.ts → CANONICAL_HUES` plus the FNV-1a hash fallback for non-canonical themes.
+  2. Building a new SVG-based orbital component (web equivalent of mobile's `OrbitalCosmos.tsx` ~600 lines) with planet positioning by ring + angle, dashed connector lines, center "YOU" pip with halo.
+  3. Atmospheric planet treatment per Phase E lessons (4-stop radial gradient, ~42% saturation — not glossy 3D).
+  4. Optionally: entrance animation (planets drift in from r×1.45 to r×1.0 over 6s, easeOutCubic, ring stagger). Mobile uses Reanimated; web equivalent is Framer Motion or react-spring or pure CSS keyframes.
+  5. Wiring the new component into theme-map-client.tsx in place of ThemeMapDashboard.
+  6. Handling the locked-state gate properly so it stays atmospheric (the gate already lives in `LockedState.tsx`).
+  This is significant work — ~400-600 lines of new code + careful design polish. Doing it cleanly takes a focused slice. Surfacing for Jim's go-ahead before slice 6b kickoff.
+- Generic zinc text classes (`text-zinc-400/500/600/900`) intentionally left alone — same rationale as slice 5. Not brand drift; needs the wider `data-theme="dark"` page-root migration to handle cleanly.
+
+---
+
 ## [2026-05-22] — Web parity slice 5 — daily-use surfaces token migration + 28-night heatmap
 
 **Requested by:** Jimmy
