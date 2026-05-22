@@ -45,6 +45,12 @@
   --acuity-bad-soft: oklch(0.66 0.17 25 / 0.18);
   --acuity-warn: #fbbf24;
 
+  /* Brand soft variants — 18% alpha at primary/secondary chroma.
+     Used for icon-circle backgrounds, focus rings, success/active
+     row tints. Same alpha as good-soft/bad-soft for visual rhythm. */
+  --acuity-primary-soft: oklch(0.76 0.155 38 / 0.18);
+  --acuity-secondary-soft: oklch(0.66 0.18 285 / 0.18);
+
   /* Surfaces — sh+5 = 290 for coral preset */
   --acuity-bg: oklch(0.21 0.022 290);
   --acuity-bg-sub: oklch(0.235 0.024 290);
@@ -123,6 +129,10 @@
   --acuity-bad: oklch(0.66 0.17 25);
   --acuity-bad-soft: oklch(0.66 0.17 25 / 0.18);
   --acuity-warn: #fbbf24;
+
+  /* Brand soft variants — see dark mode block for rationale. */
+  --acuity-primary-soft: oklch(0.76 0.155 38 / 0.18);
+  --acuity-secondary-soft: oklch(0.66 0.18 285 / 0.18);
 
   /* Surfaces */
   --acuity-bg: oklch(0.975 0.005 285);

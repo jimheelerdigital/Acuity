@@ -13,11 +13,20 @@
 //     04b729f hardened bootstrap-user.
 //
 // See docs/AUTH_HARDENING.md for the full test checklist.
+//
+// Visual refresh (slice 2, 2026-05-22): swapped to canonical Acuity
+// tokens + primitives. `data-theme="dark"` is scoped to the page
+// container so the page renders against `bg-acuity-bg` even while
+// the body inherits the legacy light/dark switching. All auth
+// behavior (signIn calls, error handling, magic-link, callback URL)
+// is byte-for-byte unchanged.
 
 import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
+
+import { Button, Card } from "@/components/acuity";
 
 type Loading = "google" | "apple" | "password" | "magic" | null;
 
@@ -63,7 +72,10 @@ function SignInForm() {
       return;
     }
     if (result.error) {
-      setFormError(credentialsErrorMessages[result.error] ?? credentialsErrorMessages.Default);
+      setFormError(
+        credentialsErrorMessages[result.error] ??
+          credentialsErrorMessages.Default
+      );
       return;
     }
     router.push(result.url ?? callbackUrl);
@@ -85,11 +97,12 @@ function SignInForm() {
     return (
       <div className="text-center">
         <div className="mb-4 text-4xl">📬</div>
-        <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50 mb-2">
+        <h2 className="mb-2 font-display text-xl font-semibold text-acuity-text">
           Check your inbox
         </h2>
-        <p className="text-zinc-500 dark:text-zinc-400 text-sm leading-relaxed">
-          We sent a sign-in link to <strong className="text-zinc-700 dark:text-zinc-200">{email}</strong>.
+        <p className="text-sm leading-relaxed text-acuity-text-sec">
+          We sent a sign-in link to{" "}
+          <strong className="text-acuity-text">{email}</strong>.
           <br />
           Click the link to continue.
         </p>
@@ -99,54 +112,69 @@ function SignInForm() {
 
   return (
     <>
-      <div className="text-center mb-8">
-        <img src="/AcuityLogo.png" alt="Acuity logo" className="mx-auto mb-4" style={{ width: 32, height: 32 }} />
-        <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">Sign in to Acuity</h1>
-        <p className="mt-1.5 text-sm text-zinc-500 dark:text-zinc-400">
-          Debrief daily. See your life clearly.
-        </p>
+      <div className="mb-8 text-center">
+        <img
+          src="/AcuityLogo.png"
+          alt="Acuity logo"
+          className="mx-auto mb-4"
+          style={{ width: 32, height: 32 }}
+        />
+        <h1 className="font-display text-2xl font-bold text-acuity-text">
+          Sign in to Acuity
+        </h1>
       </div>
 
       {verified && (
-        <div className="mb-5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/40 dark:text-emerald-300">
-          Email verified — you can sign in now.
+        <div
+          className="mb-5 rounded-acuity-md border border-acuity-good bg-acuity-good-soft px-4 py-3 text-sm text-acuity-good"
+          role="status"
+        >
+          Email verified. You can sign in now.
         </div>
       )}
 
       {(urlError || formError) && (
-        <div className="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-900/40 dark:bg-red-950/40 dark:text-red-400">
-          {formError ?? nextAuthErrorMessages[urlError ?? ""] ?? "Something went wrong. Please try again."}
+        <div
+          className="mb-5 rounded-acuity-md border border-acuity-bad bg-acuity-bad-soft px-4 py-3 text-sm text-acuity-bad"
+          role="alert"
+        >
+          {formError ??
+            nextAuthErrorMessages[urlError ?? ""] ??
+            "Something went wrong. Please try again."}
         </div>
       )}
 
-      {/* Google */}
-      <button
+      {/* Google — secondary variant for OAuth providers */}
+      <Button
+        variant="secondary"
         onClick={handleGoogle}
         disabled={loading !== null}
-        className="flex w-full items-center justify-center gap-3 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-4 py-3 text-sm font-medium text-zinc-800 dark:text-zinc-100 transition-all duration-200 hover:border-zinc-300 dark:hover:border-white/20 hover:shadow-sm disabled:opacity-50"
+        className="w-full"
       >
         <GoogleIcon />
-        {loading === "google" ? "Redirecting..." : "Continue with Google"}
-      </button>
+        {loading === "google" ? "Redirecting…" : "Continue with Google"}
+      </Button>
 
-      {/* Apple */}
+      {/* Apple — branded affordance: keep the standard black-on-white
+          Apple sign-in style. Apple's HIG mandates the black/white
+          treatment for "Sign in with Apple"; it's not Acuity design. */}
       <button
         onClick={handleApple}
         disabled={loading !== null}
-        className="mt-3 flex w-full items-center justify-center gap-3 rounded-xl bg-black px-4 py-3 text-sm font-medium text-white transition-all duration-200 hover:bg-zinc-800 disabled:opacity-50"
+        className="mt-3 flex w-full items-center justify-center gap-3 rounded-acuity-pill bg-black px-6 py-[14px] text-[15px] font-semibold text-white transition-[transform,filter] duration-acuity-base ease-acuity-standard hover:brightness-110 active:scale-[0.98] disabled:opacity-50"
       >
         <AppleIcon />
-        {loading === "apple" ? "Redirecting..." : "Continue with Apple"}
+        {loading === "apple" ? "Redirecting…" : "Continue with Apple"}
       </button>
 
-      {/* Divider */}
       <div className="my-5 flex items-center gap-3">
-        <div className="h-px flex-1 bg-zinc-200 dark:bg-white/10" />
-        <span className="text-xs text-zinc-400 dark:text-zinc-500">or</span>
-        <div className="h-px flex-1 bg-zinc-200 dark:bg-white/10" />
+        <div className="h-px flex-1 bg-acuity-line" />
+        <span className="font-mono text-[10px] font-bold uppercase tracking-[1.4px] text-acuity-text-ter">
+          or
+        </span>
+        <div className="h-px flex-1 bg-acuity-line" />
       </div>
 
-      {/* Email + password */}
       <form onSubmit={handlePassword} className="space-y-3">
         <input
           type="email"
@@ -155,7 +183,7 @@ function SignInForm() {
           placeholder="you@example.com"
           autoComplete="email"
           required
-          className="w-full rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-4 py-3 text-sm text-zinc-900 dark:text-zinc-50 placeholder-zinc-400 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 transition"
+          className="w-full rounded-acuity-sm border border-acuity-line bg-acuity-bg-inset px-4 py-3 text-sm text-acuity-text placeholder:text-acuity-text-quiet outline-none transition focus:border-acuity-primary focus:ring-2 focus:ring-acuity-primary-soft"
         />
         <input
           type="password"
@@ -163,43 +191,50 @@ function SignInForm() {
           onChange={(e) => setPassword(e.target.value)}
           placeholder="Password"
           autoComplete="current-password"
-          className="w-full rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-4 py-3 text-sm text-zinc-900 dark:text-zinc-50 placeholder-zinc-400 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 transition"
+          className="w-full rounded-acuity-sm border border-acuity-line bg-acuity-bg-inset px-4 py-3 text-sm text-acuity-text placeholder:text-acuity-text-quiet outline-none transition focus:border-acuity-primary focus:ring-2 focus:ring-acuity-primary-soft"
         />
-        <button
+        <Button
           type="submit"
+          variant="primary"
           disabled={loading !== null || !email.trim() || !password}
-          className="w-full rounded-xl bg-zinc-900 px-4 py-3 text-sm font-semibold text-white transition-all duration-200 hover:bg-zinc-700 disabled:opacity-50 active:scale-[0.98]"
+          className="w-full"
         >
-          {loading === "password" ? "Signing in..." : "Sign in"}
-        </button>
+          {loading === "password" ? "Signing in…" : "Sign in"}
+        </Button>
       </form>
 
-      {/* Magic link */}
-      <button
+      <Button
         type="button"
+        variant="secondary"
         onClick={handleMagic}
         disabled={loading !== null}
-        className="mt-3 w-full rounded-xl border border-zinc-200 dark:border-white/10 bg-transparent px-4 py-3 text-sm font-medium text-zinc-600 dark:text-zinc-300 transition hover:border-zinc-300 dark:hover:border-white/20 disabled:opacity-50"
+        className="mt-3 w-full"
       >
-        {loading === "magic" ? "Sending link..." : "Email me a sign-in link"}
-      </button>
+        {loading === "magic" ? "Sending link…" : "Email me a sign-in link"}
+      </Button>
 
-      <div className="mt-5 flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400">
-        <Link href="/auth/forgot-password" className="hover:text-zinc-700 dark:hover:text-zinc-200">
+      <div className="mt-5 flex items-center justify-between text-xs text-acuity-text-sec">
+        <Link
+          href="/auth/forgot-password"
+          className="transition hover:text-acuity-text"
+        >
           Forgot password?
         </Link>
-        <Link href="/auth/signup" className="font-semibold text-violet-600 dark:text-violet-400 hover:text-violet-500">
+        <Link
+          href="/auth/signup"
+          className="font-semibold text-acuity-primary transition hover:text-acuity-primary-hi"
+        >
           Create account →
         </Link>
       </div>
 
-      <p className="mt-6 text-center text-xs text-zinc-400 dark:text-zinc-500">
+      <p className="mt-6 text-center text-xs text-acuity-text-quiet">
         By continuing you agree to our{" "}
-        <a href="/terms" className="underline hover:text-zinc-700 dark:hover:text-zinc-200">
+        <a href="/terms" className="underline hover:text-acuity-text-sec">
           Terms
         </a>{" "}
         and{" "}
-        <a href="/privacy" className="underline hover:text-zinc-700 dark:hover:text-zinc-200">
+        <a href="/privacy" className="underline hover:text-acuity-text-sec">
           Privacy Policy
         </a>
         .
@@ -210,11 +245,16 @@ function SignInForm() {
 
 export default function SignInPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center px-6">
-      <div className="w-full max-w-sm rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-8 shadow-lg animate-fade-in">
-        <Suspense>
-          <SignInForm />
-        </Suspense>
+    <div
+      data-theme="dark"
+      className="flex min-h-screen items-center justify-center bg-acuity-bg px-6"
+    >
+      <div className="w-full max-w-sm">
+        <Card variant="default" radius="xl" padding={6}>
+          <Suspense>
+            <SignInForm />
+          </Suspense>
+        </Card>
       </div>
     </div>
   );
@@ -231,7 +271,8 @@ const nextAuthErrorMessages: Record<string, string> = {
   // OAuth flow
   OAuthSignin: "Could not start Google sign-in. Please try again.",
   OAuthCallback: "Google sign-in failed on return. Please try again.",
-  OAuthCreateAccount: "Could not create account from Google. Please try again.",
+  OAuthCreateAccount:
+    "Could not create account from Google. Please try again.",
   OAuthAccountNotLinked:
     "This email already has an account with a different sign-in method. Sign in the way you did originally.",
 
@@ -246,7 +287,8 @@ const nextAuthErrorMessages: Record<string, string> = {
   SessionRequired: "You must be signed in to access that page.",
 
   // User cancelled on the provider's consent screen
-  AccessDenied: "Sign-in was cancelled. Tap Continue with Google to try again.",
+  AccessDenied:
+    "Sign-in was cancelled. Tap Continue with Google to try again.",
 
   // Generic callback — usually means something threw inside our
   // server-side callback chain (events.createUser, callbacks.jwt,
@@ -300,7 +342,13 @@ function GoogleIcon() {
 
 function AppleIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" fill="currentColor">
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 18 18"
+      aria-hidden="true"
+      fill="currentColor"
+    >
       <path d="M14.94 13.5c-.37.82-.55 1.19-.97 1.91-.59.99-1.42 2.24-2.45 2.25-.92.01-1.16-.6-2.41-.59-1.25.01-1.51.6-2.43.59-1.03-.01-1.81-1.13-2.4-2.12C2.92 13.39 2.8 10.77 3.68 9.39c.63-1 1.63-1.58 2.57-1.58.96 0 1.56.6 2.35.6.77 0 1.24-.6 2.35-.6.84 0 1.73.46 2.35 1.24-2.06 1.13-1.73 4.07.37 4.85-.29.7-.43.99-.73 1.6zM11.37 3c.47-.6.83-1.45.7-2.32-.77.05-1.67.54-2.2 1.17-.48.57-.88 1.43-.73 2.26.84.03 1.72-.47 2.23-1.11z" />
     </svg>
   );

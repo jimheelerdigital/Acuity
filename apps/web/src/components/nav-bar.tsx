@@ -140,8 +140,8 @@ function WhoItsForDropdown() {
                   onClick={closeDropdown}
                   className={`block px-4 py-3 transition-all duration-150 border-l-2 ${
                     isActive
-                      ? "border-violet-500 bg-white dark:bg-[#1E1E2E]/80"
-                      : "border-transparent hover:border-violet-500 hover:bg-white/60"
+                      ? "border-acuity-primary bg-white dark:bg-[#1E1E2E]/80"
+                      : "border-transparent hover:border-acuity-primary hover:bg-white/60"
                   }`}
                 >
                   <div

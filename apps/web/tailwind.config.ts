@@ -51,6 +51,10 @@ const config: Config = {
           "bad-soft": "var(--acuity-bad-soft)",
           warn: "var(--acuity-warn)",
 
+          // Brand soft variants (18% alpha at primary/secondary chroma)
+          "primary-soft": "var(--acuity-primary-soft)",
+          "secondary-soft": "var(--acuity-secondary-soft)",
+
           // Surfaces
           bg: "var(--acuity-bg)",
           "bg-sub": "var(--acuity-bg-sub)",

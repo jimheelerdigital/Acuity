@@ -41,6 +41,39 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-22] — Web parity slice 2 (revised) — auth pages + nav-bar token migration
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** _pending_
+
+### In plain English (for Keenan)
+
+The sign-in and sign-up pages now look like the rest of the app's new visual direction — same color palette, same fonts, same buttons. Marketing surfaces (homepage + persona landers) are intentionally untouched and stay how you left them; Jim wants to walk through those with you in person before any rewrite. The nav bar got one small color tweak (purple highlight became coral) to bring it in line; everything else about the nav — the dropdown, the link copy, the layout — is unchanged.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/auth/signin/page.tsx`: rewrote presentation to use canonical primitives (`Button`, `Card` from `components/acuity`) + acuity-* tokens. Page wrapped in `data-theme="dark"` so it renders against `bg-acuity-bg` regardless of body's legacy light/dark state. All auth behavior (NextAuth signIn calls, error handling maps, magic-link flow, callbackUrl routing) byte-for-byte unchanged. Apple sign-in keeps the standard black-on-white affordance (Apple HIG requirement, not Acuity styling). Dropped the "Debrief daily. See your life clearly." subtitle — failed Harry Dry's specific/falsifiable/unique tests per sales-copy rubric §4.
+- `apps/web/src/app/auth/signup/page.tsx`: same primitive + token swap. Removed the "AI handles the rest" claim from the mobile subtitle (violates sales-copy rubric §3.6 — no AI-powered claims above the fold). Replaced with Sunday-morning-specific framing per §7.2 ("Talk for a minute before bed. Acuity turns it into tasks, goals, patterns, and a Sunday morning report."). Sentence-cased the submit CTA ("Start Free Trial" → "Start free trial") per §7.7. Extracted the repeated value-prop row into a local `ValueProp` component using `--acuity-primary-soft` for the check-circle background. All meta-pixel, PostHog, attribution-cookie, referral-code-stash behavior unchanged.
+- `apps/web/src/components/nav-bar.tsx`: minimal — single swap, `border-violet-500` → `border-acuity-primary` (the WhoItsForDropdown active-link indicator on both desktop + mobile accordion). Persona dropdown structure, copy, hover behavior all preserved per direction.
+- `apps/web/src/lib/theme/tokens.css`: added `--acuity-primary-soft` and `--acuity-secondary-soft` (18% alpha at primary/secondary chroma) matching the existing `good-soft`/`bad-soft` convention. Needed for icon-circle backgrounds + focus rings.
+- `apps/web/tailwind.config.ts`: exposed `acuity.primary-soft` and `acuity.secondary-soft` as Tailwind keys.
+
+### Manual steps needed
+
+- [ ] Spot-check Vercel deploy: /auth/signin and /auth/signup render with coral primary + dark canonical surfaces, OAuth providers still work, magic-link still works. Jimmy
+- [ ] Authenticated nav-bar persona dropdown active-state (hover over Who it's for → land on a /for/* page → confirm coral left-border on the active row). Jimmy
+
+### Notes
+
+- Landing (`/` + `landing.tsx`) and persona landers (`/for/*`) intentionally NOT touched. Marketing rewrite deferred for Jim + Keenan synchronous review per direction.
+- The sign-in page subtitle drop was a copy-rubric call ("See your life clearly" is abstract, not falsifiable, not unique). The whole subtitle was removed rather than rewritten — signin doesn't need a hook line for return visitors who already chose the product.
+- "30 days free. No credit card." kept as-is — the rubric's example uses 14-day, but 30-day is what the product currently offers. Product fact, not a rubric concern.
+- "Marcus T." testimonial copy left untouched (would need product confirmation that the testimonial reflects a real user; out of scope for a visual+rubric slice).
+- Did not change the "AI" mention inside the Marcus T. testimonial — quoted user testimonials are allowed to contain "AI" per rubric §3.7 if a real user said it.
+
+---
+
 ## [2026-05-22] — Web parity slice 1 — design foundation (tokens, primitives, fonts)
 
 **Requested by:** Jimmy

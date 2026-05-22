@@ -1,9 +1,26 @@
 "use client";
 
+// Visual refresh (slice 2, 2026-05-22):
+//   - Canonical Acuity tokens + primitives.
+//   - `data-theme="dark"` scoped to the page so it renders against
+//     `bg-acuity-bg` even while the rest of the app still uses the
+//     legacy light/dark switching.
+//   - Copy rubric pass: removed "AI handles the rest" above-the-fold
+//     claim (banned per docs/Acuity_SalesCopy.md §3.6). Replaced
+//     mobile subtitle with a Sunday-morning-specific framing per
+//     §7.2 (weekly report = hero conversion driver).
+//   - Submit CTA sentence-cased per §7.7.
+//
+// All auth behavior (signIn, /api/auth/signup, meta-pixel events,
+// PostHog tracking, attribution cookie, referral code stash) is
+// byte-for-byte unchanged.
+
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { Suspense, useEffect, useState } from "react";
+
+import { Button, Card } from "@/components/acuity";
 
 const PASSWORD_MIN = 8;
 
@@ -16,7 +33,9 @@ function SignUpForm() {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [referralCode, setReferralCode] = useState<string | null>(null);
-  const [loading, setLoading] = useState<"google" | "apple" | "password" | null>(null);
+  const [loading, setLoading] = useState<
+    "google" | "apple" | "password" | null
+  >(null);
   const [error, setError] = useState<string | null>(null);
 
   // Ensure the attribution cookie is set if the user lands directly on
@@ -69,7 +88,7 @@ function SignUpForm() {
     setError(null);
     setLoading("google");
     if (typeof window !== "undefined" && typeof window.fbq === "function") {
-      console.log('[meta-pixel] Firing Lead — Google signup click');
+      console.log("[meta-pixel] Firing Lead — Google signup click");
       window.fbq("track", "Lead", { content_name: "Start Free Trial Click" });
       // CompleteRegistration + StartTrial now fire ONLY on the success page
       // after confirming the user was actually created. Removed from here to
@@ -82,7 +101,7 @@ function SignUpForm() {
     setError(null);
     setLoading("apple");
     if (typeof window !== "undefined" && typeof window.fbq === "function") {
-      console.log('[meta-pixel] Firing Lead — Apple signup click');
+      console.log("[meta-pixel] Firing Lead — Apple signup click");
       window.fbq("track", "Lead", { content_name: "Start Free Trial Click" });
       // CompleteRegistration + StartTrial now fire ONLY on the success page
       // after confirming the user was actually created. Removed from here to
@@ -100,7 +119,7 @@ function SignUpForm() {
     }
     setLoading("password");
     if (typeof window !== "undefined" && typeof window.fbq === "function") {
-      console.log('[meta-pixel] Firing Lead — email signup submit');
+      console.log("[meta-pixel] Firing Lead — email signup submit");
       window.fbq("track", "Lead", { content_name: "Start Free Trial Click" });
     }
     try {
@@ -109,7 +128,10 @@ function SignUpForm() {
         const { getClientAttribution } = require("@/lib/attribution");
         const attr = getClientAttribution();
         if (attr) attribution = attr;
-        console.log("[attribution] email/password signup — cookie data:", attr);
+        console.log(
+          "[attribution] email/password signup — cookie data:",
+          attr
+        );
       } catch {}
 
       const res = await fetch("/api/auth/signup", {
@@ -124,13 +146,21 @@ function SignUpForm() {
         }),
       });
       if (!res.ok) {
-        const body = (await res.json().catch(() => ({}))) as { error?: string; message?: string };
+        const body = (await res.json().catch(() => ({}))) as {
+          error?: string;
+          message?: string;
+        };
         if (res.status === 429) {
           setError("Too many attempts. Wait an hour before trying again.");
         } else if (body.error === "AlreadyRegistered") {
-          setError("An account with that email already exists. Try signing in instead.");
+          setError(
+            "An account with that email already exists. Try signing in instead."
+          );
         } else if (body.error === "WeakPassword") {
-          setError(body.message ?? `Password must be at least ${PASSWORD_MIN} characters.`);
+          setError(
+            body.message ??
+              `Password must be at least ${PASSWORD_MIN} characters.`
+          );
         } else if (body.error === "InvalidEmail") {
           setError("That doesn't look like a valid email address.");
         } else {
@@ -139,9 +169,15 @@ function SignUpForm() {
         return;
       }
       if (typeof window !== "undefined" && typeof window.fbq === "function") {
-        console.log('[meta-pixel] Firing CompleteRegistration — email signup success');
-        window.fbq("track", "CompleteRegistration", { content_name: "Free Trial Signup", currency: "USD", value: 0 });
-        console.log('[meta-pixel] Firing StartTrial — email signup success');
+        console.log(
+          "[meta-pixel] Firing CompleteRegistration — email signup success"
+        );
+        window.fbq("track", "CompleteRegistration", {
+          content_name: "Free Trial Signup",
+          currency: "USD",
+          value: 0,
+        });
+        console.log("[meta-pixel] Firing StartTrial — email signup success");
         window.fbq("track", "StartTrial", { value: 0, currency: "USD" });
       }
       if (attribution) {
@@ -161,151 +197,204 @@ function SignUpForm() {
   };
 
   return (
-    <div className="min-h-screen bg-[#181614]">
+    <div
+      data-theme="dark"
+      className="min-h-screen bg-acuity-bg"
+    >
       <div className="flex min-h-screen">
         {/* Left side — value reinforcement (desktop only) */}
-        <div className="hidden lg:flex lg:w-[55%] flex-col justify-center px-16 xl:px-24">
-          <h1 className="text-4xl xl:text-5xl font-bold text-[#F5EDE4] leading-tight tracking-tight">
-            One minute a day.<br />A life of clarity.
+        <div className="hidden flex-col justify-center px-16 lg:flex lg:w-[55%] xl:px-24">
+          <h1 className="font-display text-4xl font-bold leading-tight tracking-tight text-acuity-text xl:text-5xl">
+            One minute a day.
+            <br />A life of clarity.
           </h1>
 
           <ul className="mt-10 space-y-5">
-            <li className="flex items-start gap-4">
-              <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#7C5CFC]/20">
-                <svg className="h-3.5 w-3.5 text-[#7C5CFC]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-              </span>
-              <span className="text-[#F5EDE4]/80 text-base">Tasks extracted from your voice automatically</span>
-            </li>
-            <li className="flex items-start gap-4">
-              <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#7C5CFC]/20">
-                <svg className="h-3.5 w-3.5 text-[#7C5CFC]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-              </span>
-              <span className="text-[#F5EDE4]/80 text-base">Goals tracked across weeks without lifting a finger</span>
-            </li>
-            <li className="flex items-start gap-4">
-              <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#7C5CFC]/20">
-                <svg className="h-3.5 w-3.5 text-[#7C5CFC]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-              </span>
-              <span className="text-[#F5EDE4]/80 text-base">Patterns surfaced that you can&apos;t see on your own</span>
-            </li>
-            <li className="flex items-start gap-4">
-              <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#7C5CFC]/20">
-                <svg className="h-3.5 w-3.5 text-[#7C5CFC]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-              </span>
-              <span className="text-[#F5EDE4]/80 text-base">Weekly report delivered every Sunday morning</span>
-            </li>
+            <ValueProp>
+              Tasks extracted from your voice automatically
+            </ValueProp>
+            <ValueProp>
+              Goals tracked across weeks without lifting a finger
+            </ValueProp>
+            <ValueProp>
+              Patterns surfaced that you can&apos;t see on your own
+            </ValueProp>
+            <ValueProp>
+              Weekly report delivered every Sunday morning
+            </ValueProp>
           </ul>
 
-          <blockquote className="mt-14 border-l-2 border-[#7C5CFC]/40 pl-5">
-            <p className="text-[#F5EDE4]/70 text-sm italic leading-relaxed">
-              &ldquo;The weekly reports are unreal. It&rsquo;s like having a therapist and a project manager rolled into one AI.&rdquo;
+          <blockquote
+            className="mt-14 border-l-2 pl-5"
+            style={{ borderColor: "var(--acuity-primary-soft)" }}
+          >
+            <p className="text-sm italic leading-relaxed text-acuity-text-sec">
+              &ldquo;The weekly reports are unreal. It&rsquo;s like having
+              a therapist and a project manager rolled into one AI.&rdquo;
             </p>
-            <cite className="mt-2 block text-xs text-[#F5EDE4]/40 not-italic">— Marcus T.</cite>
+            <cite className="mt-2 block text-xs not-italic text-acuity-text-quiet">
+              — Marcus T.
+            </cite>
           </blockquote>
         </div>
 
         {/* Right side — signup form */}
-        <div className="flex w-full lg:w-[45%] flex-col justify-center px-6 sm:px-12 lg:px-16">
-          {/* Mobile value prop (hidden on desktop) */}
-          <div className="lg:hidden mb-8 text-center">
-            <h1 className="text-2xl font-bold text-[#F5EDE4]">Start your free trial</h1>
-            <p className="mt-2 text-sm text-[#F5EDE4]/60 leading-relaxed">
-              Just open the app and talk. AI handles the rest — tasks, goals, patterns, and your weekly report.
+        <div className="flex w-full flex-col justify-center px-6 sm:px-12 lg:w-[45%] lg:px-16">
+          {/* Mobile value prop (hidden on desktop). Specific Sunday-
+              morning framing per sales-copy rubric §7.2 (weekly report
+              is the hero conversion driver). Removed "AI handles the
+              rest" per §3.6 (no AI-powered claims above the fold). */}
+          <div className="mb-8 text-center lg:hidden">
+            <h1 className="font-display text-2xl font-bold text-acuity-text">
+              Start your free trial
+            </h1>
+            <p className="mt-2 text-sm leading-relaxed text-acuity-text-sec">
+              Talk for a minute before bed. Acuity turns it into tasks,
+              goals, patterns, and a Sunday morning report.
             </p>
           </div>
 
-          <div className="w-full max-w-sm mx-auto rounded-2xl border border-white/10 bg-[#1E1E2E] p-8 shadow-xl animate-fade-in">
-            <div className="text-center mb-7">
-              <img src="/AcuityLogo.png" alt="Acuity" className="mx-auto mb-4" style={{ width: 32, height: 32 }} />
-              <h2 className="text-xl font-bold text-[#F5EDE4] hidden lg:block">Start your free trial</h2>
-              <p className="mt-1.5 text-sm text-[#F5EDE4]/50">
-                30 days free. No credit card.
-              </p>
-            </div>
-
-            {error && (
-              <div className="mb-5 rounded-lg border border-red-900/40 bg-red-950/40 px-4 py-3 text-sm text-red-400">
-                {error}
+          <div className="mx-auto w-full max-w-sm">
+            <Card variant="default" radius="xl" padding={6}>
+              <div className="mb-7 text-center">
+                <img
+                  src="/AcuityLogo.png"
+                  alt="Acuity"
+                  className="mx-auto mb-4"
+                  style={{ width: 32, height: 32 }}
+                />
+                <h2 className="hidden font-display text-xl font-bold text-acuity-text lg:block">
+                  Start your free trial
+                </h2>
+                <p className="mt-1.5 text-sm text-acuity-text-sec">
+                  30 days free. No credit card.
+                </p>
               </div>
-            )}
 
-            {/* Google OAuth */}
-            <button
-              onClick={handleGoogle}
-              disabled={loading !== null}
-              className="flex w-full items-center justify-center gap-3 rounded-xl border border-white/10 bg-white px-4 py-3 text-sm font-medium text-zinc-800 transition-all duration-200 hover:bg-zinc-50 hover:shadow-sm disabled:opacity-50"
-            >
-              <GoogleIcon />
-              {loading === "google" ? "Redirecting..." : "Continue with Google"}
-            </button>
+              {error && (
+                <div
+                  className="mb-5 rounded-acuity-md border border-acuity-bad bg-acuity-bad-soft px-4 py-3 text-sm text-acuity-bad"
+                  role="alert"
+                >
+                  {error}
+                </div>
+              )}
 
-            {/* Apple OAuth */}
-            <button
-              onClick={handleApple}
-              disabled={loading !== null}
-              className="mt-3 flex w-full items-center justify-center gap-3 rounded-xl bg-black px-4 py-3 text-sm font-medium text-white transition-all duration-200 hover:bg-zinc-800 disabled:opacity-50"
-            >
-              <AppleIcon />
-              {loading === "apple" ? "Redirecting..." : "Continue with Apple"}
-            </button>
-
-            <div className="my-5 flex items-center gap-3">
-              <div className="h-px flex-1 bg-white/10" />
-              <span className="text-xs text-[#F5EDE4]/40">or</span>
-              <div className="h-px flex-1 bg-white/10" />
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-3">
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Your name (optional)"
-                autoComplete="name"
-                className="w-full rounded-xl border border-white/10 bg-[#282838] px-4 py-3 text-sm text-[#F5EDE4] placeholder-[#F5EDE4]/30 outline-none focus:border-[#7C5CFC] focus:ring-2 focus:ring-[#7C5CFC]/20 transition"
-              />
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                autoComplete="email"
-                required
-                className="w-full rounded-xl border border-white/10 bg-[#282838] px-4 py-3 text-sm text-[#F5EDE4] placeholder-[#F5EDE4]/30 outline-none focus:border-[#7C5CFC] focus:ring-2 focus:ring-[#7C5CFC]/20 transition"
-              />
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Password (8+ characters)"
-                autoComplete="new-password"
-                required
-                minLength={PASSWORD_MIN}
-                className="w-full rounded-xl border border-white/10 bg-[#282838] px-4 py-3 text-sm text-[#F5EDE4] placeholder-[#F5EDE4]/30 outline-none focus:border-[#7C5CFC] focus:ring-2 focus:ring-[#7C5CFC]/20 transition"
-              />
-              <button
-                type="submit"
-                disabled={loading !== null || !email.trim() || password.length < PASSWORD_MIN}
-                className="w-full rounded-xl bg-[#7C5CFC] px-4 py-3 text-sm font-semibold text-white transition-all duration-200 hover:bg-[#6B4FE0] disabled:opacity-50 active:scale-[0.98]"
+              <Button
+                variant="secondary"
+                onClick={handleGoogle}
+                disabled={loading !== null}
+                className="w-full"
               >
-                {loading === "password" ? "Creating account..." : "Start Free Trial"}
+                <GoogleIcon />
+                {loading === "google" ? "Redirecting…" : "Continue with Google"}
+              </Button>
+
+              <button
+                onClick={handleApple}
+                disabled={loading !== null}
+                className="mt-3 flex w-full items-center justify-center gap-3 rounded-acuity-pill bg-black px-6 py-[14px] text-[15px] font-semibold text-white transition-[transform,filter] duration-acuity-base ease-acuity-standard hover:brightness-110 active:scale-[0.98] disabled:opacity-50"
+              >
+                <AppleIcon />
+                {loading === "apple" ? "Redirecting…" : "Continue with Apple"}
               </button>
-            </form>
 
-            <p className="mt-4 text-center text-xs text-[#F5EDE4]/40">
-              You&apos;ll be redirected to download the app after signup.
-            </p>
+              <div className="my-5 flex items-center gap-3">
+                <div className="h-px flex-1 bg-acuity-line" />
+                <span className="font-mono text-[10px] font-bold uppercase tracking-[1.4px] text-acuity-text-ter">
+                  or
+                </span>
+                <div className="h-px flex-1 bg-acuity-line" />
+              </div>
 
-            <p className="mt-5 text-center text-xs text-[#F5EDE4]/50">
-              Already have an account?{" "}
-              <Link href="/auth/signin" className="font-semibold text-[#7C5CFC] hover:text-[#6B4FE0]">
-                Sign in
-              </Link>
-            </p>
+              <form onSubmit={handleSubmit} className="space-y-3">
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Your name (optional)"
+                  autoComplete="name"
+                  className="w-full rounded-acuity-sm border border-acuity-line bg-acuity-bg-inset px-4 py-3 text-sm text-acuity-text placeholder:text-acuity-text-quiet outline-none transition focus:border-acuity-primary focus:ring-2 focus:ring-acuity-primary-soft"
+                />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  autoComplete="email"
+                  required
+                  className="w-full rounded-acuity-sm border border-acuity-line bg-acuity-bg-inset px-4 py-3 text-sm text-acuity-text placeholder:text-acuity-text-quiet outline-none transition focus:border-acuity-primary focus:ring-2 focus:ring-acuity-primary-soft"
+                />
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Password (8+ characters)"
+                  autoComplete="new-password"
+                  required
+                  minLength={PASSWORD_MIN}
+                  className="w-full rounded-acuity-sm border border-acuity-line bg-acuity-bg-inset px-4 py-3 text-sm text-acuity-text placeholder:text-acuity-text-quiet outline-none transition focus:border-acuity-primary focus:ring-2 focus:ring-acuity-primary-soft"
+                />
+                <Button
+                  type="submit"
+                  variant="primary"
+                  disabled={
+                    loading !== null ||
+                    !email.trim() ||
+                    password.length < PASSWORD_MIN
+                  }
+                  className="w-full"
+                >
+                  {loading === "password"
+                    ? "Creating account…"
+                    : "Start free trial"}
+                </Button>
+              </form>
+
+              <p className="mt-4 text-center text-xs text-acuity-text-quiet">
+                You&apos;ll be redirected to download the app after signup.
+              </p>
+
+              <p className="mt-5 text-center text-xs text-acuity-text-sec">
+                Already have an account?{" "}
+                <Link
+                  href="/auth/signin"
+                  className="font-semibold text-acuity-primary transition hover:text-acuity-primary-hi"
+                >
+                  Sign in
+                </Link>
+              </p>
+            </Card>
           </div>
         </div>
       </div>
     </div>
+  );
+}
+
+function ValueProp({ children }: { children: React.ReactNode }) {
+  return (
+    <li className="flex items-start gap-4">
+      <span
+        className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full"
+        style={{ backgroundColor: "var(--acuity-primary-soft)" }}
+      >
+        <svg
+          className="h-3.5 w-3.5 text-acuity-primary"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2.5}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M5 13l4 4L19 7"
+          />
+        </svg>
+      </span>
+      <span className="text-base text-acuity-text-sec">{children}</span>
+    </li>
   );
 }
 
@@ -320,17 +409,35 @@ export default function SignUpPage() {
 function GoogleIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
-      <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" />
-      <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" />
-      <path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" />
-      <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" />
+      <path
+        fill="#4285F4"
+        d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"
+      />
+      <path
+        fill="#34A853"
+        d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"
+      />
+      <path
+        fill="#EA4335"
+        d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"
+      />
     </svg>
   );
 }
 
 function AppleIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" fill="currentColor">
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 18 18"
+      aria-hidden="true"
+      fill="currentColor"
+    >
       <path d="M14.94 13.5c-.37.82-.55 1.19-.97 1.91-.59.99-1.42 2.24-2.45 2.25-.92.01-1.16-.6-2.41-.59-1.25.01-1.51.6-2.43.59-1.03-.01-1.81-1.13-2.4-2.12C2.92 13.39 2.8 10.77 3.68 9.39c.63-1 1.63-1.58 2.57-1.58.96 0 1.56.6 2.35.6.77 0 1.24-.6 2.35-.6.84 0 1.73.46 2.35 1.24-2.06 1.13-1.73 4.07.37 4.85-.29.7-.43.99-.73 1.6zM11.37 3c.47-.6.83-1.45.7-2.32-.77.05-1.67.54-2.2 1.17-.48.57-.88 1.43-.73 2.26.84.03 1.72-.47 2.23-1.11z" />
     </svg>
   );
