@@ -41,6 +41,41 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-22] — Processing screen white theme + enhanced timeline animation
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 7f4fc2a
+
+### In plain English (for Keenan)
+
+The processing screen (where users see "Day 1... Day 7... Day 30..." after recording) now matches the white theme from the recording screen. Each milestone holds longer (3.5 seconds vs 2), the text is bigger and bolder, there's a soft gradient glow behind each stage that shifts color, floating particles in the background, and the progress dots glow when active. The transition from recording to processing is now seamless — no more jarring dark screen.
+
+### Technical changes (for Jimmy)
+
+- Modified `apps/web/src/app/auth/signup/success/first-debrief-flow.tsx`:
+  - Added `"processing"` to white-theme bg class group
+  - Changed stage interval from 2000ms to 3500ms (17.5s total)
+  - Replaced Tailwind transition classes with inline `style` for smoother 0.5s entrance/exit
+  - Added `STAGE_ORBS` gradient backgrounds that shift per stage
+  - Added 12 floating particle elements with staggered float animation
+  - Progress dots now use inline styles with gradient fill and box-shadow glow on active dot
+  - Processing status pill changed from `bg-white/5` to `bg-zinc-100`, text from `text-[#F5EDE4]/70` to `text-zinc-500`
+  - Milestone labels enlarged to `text-sm sm:text-base` with `text-shadow` glow
+  - Description text enlarged to `text-2xl sm:text-3xl font-bold`
+- Widened max-w from `max-w-md` to `max-w-lg` for processing screen
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- The `float` keyframe animation was already defined in globals.css — reused here for the particles
+- The 17.5s total animation time better matches typical Whisper + Claude processing time for 60-90s recordings
+
+---
+
 ## [2026-05-22] — Mic button centered + gradient + ripple animation
 
 **Requested by:** Keenan
