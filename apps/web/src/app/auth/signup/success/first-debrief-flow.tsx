@@ -353,11 +353,11 @@ function RecordScreen({
   const currentTestimonial = MINI_TESTIMONIALS[testimonialIdx];
 
   return (
-    <div className="flex min-h-screen flex-col px-6 py-8 sm:py-12">
-      {/* Top section — headline + subhead */}
-      <div className="flex-none text-center pt-8 sm:pt-16">
+    <div className="flex min-h-screen flex-col items-center justify-center px-6 py-8 sm:py-12">
+      <div className="w-full max-w-md text-center">
+        {/* Headline + subhead — above mic */}
         {isIdle && (
-          <>
+          <div className="mb-12 sm:mb-16">
             <div
               className={`transition-all duration-700 ${
                 showHeadline
@@ -381,14 +381,44 @@ function RecordScreen({
                 mind. The AI handles the rest.
               </p>
             </div>
-          </>
+          </div>
         )}
-      </div>
 
-      {/* Center section — mic button (pushed down on mobile) */}
-      <div className="flex-1 flex flex-col items-center justify-end pb-8 sm:justify-center sm:pb-0">
+        {/* Recording timer — above mic when recording */}
+        {phase === "recording" && (
+          <div className="mb-10 animate-fade-in">
+            <p className="text-4xl font-mono font-semibold tabular-nums text-zinc-900 sm:text-5xl">
+              {formatTime(elapsed)}
+            </p>
+            {tooShort && (
+              <p className="mt-3 text-sm text-zinc-400">
+                Keep going... {MIN_SECONDS - elapsed}s minimum
+              </p>
+            )}
+            {!tooShort && showNudge && (
+              <p className="mt-3 text-sm text-zinc-400">
+                You&rsquo;re doing great. Keep going or tap to stop.
+              </p>
+            )}
+            {!tooShort && !showNudge && (
+              <p className="mt-3 text-sm text-zinc-400">
+                Tap the stop button when you&rsquo;re done
+              </p>
+            )}
+          </div>
+        )}
+
+        {phase === "uploading" && (
+          <div className="mb-10">
+            <p className="text-sm text-zinc-400 animate-pulse">
+              Uploading your recording...
+            </p>
+          </div>
+        )}
+
+        {/* Mic button — dead center */}
         <div
-          className={`transition-all duration-700 ${
+          className={`flex justify-center mb-10 sm:mb-12 transition-all duration-700 ${
             showMic
               ? "opacity-100 scale-100"
               : "opacity-0 scale-50"
@@ -397,74 +427,65 @@ function RecordScreen({
             transitionTimingFunction: "cubic-bezier(0.34, 1.56, 0.64, 1)",
           }}
         >
-          {/* Recording timer — above mic when recording */}
-          {phase === "recording" && (
-            <div className="text-center mb-8 animate-fade-in">
-              <p className="text-4xl font-mono font-semibold tabular-nums text-zinc-900 sm:text-5xl">
-                {formatTime(elapsed)}
-              </p>
-              {tooShort && (
-                <p className="mt-3 text-sm text-zinc-400">
-                  Keep going... {MIN_SECONDS - elapsed}s minimum
-                </p>
-              )}
-              {!tooShort && showNudge && (
-                <p className="mt-3 text-sm text-zinc-400">
-                  You&rsquo;re doing great. Keep going or tap to stop.
-                </p>
-              )}
-              {!tooShort && !showNudge && (
-                <p className="mt-3 text-sm text-zinc-400">
-                  Tap the stop button when you&rsquo;re done
-                </p>
-              )}
-            </div>
-          )}
+          <div className="relative flex items-center justify-center">
+            {/* Ripple rings — idle state, expanding outward */}
+            {phase === "idle" && (
+              <>
+                <span
+                  className="absolute h-32 w-32 rounded-full animate-mic-ripple sm:h-36 sm:w-36"
+                  style={{
+                    background: "radial-gradient(circle, rgba(124,92,252,0.25) 0%, rgba(167,139,250,0.08) 70%, transparent 100%)",
+                  }}
+                />
+                <span
+                  className="absolute h-32 w-32 rounded-full animate-mic-ripple sm:h-36 sm:w-36"
+                  style={{
+                    animationDelay: "1s",
+                    background: "radial-gradient(circle, rgba(124,92,252,0.18) 0%, rgba(196,181,253,0.05) 70%, transparent 100%)",
+                  }}
+                />
+                <span
+                  className="absolute h-32 w-32 rounded-full animate-mic-ripple sm:h-36 sm:w-36"
+                  style={{
+                    animationDelay: "2s",
+                    background: "radial-gradient(circle, rgba(124,92,252,0.12) 0%, rgba(221,214,254,0.03) 70%, transparent 100%)",
+                  }}
+                />
+              </>
+            )}
 
-          {phase === "uploading" && (
-            <div className="text-center mb-8">
-              <p className="text-sm text-zinc-400 animate-pulse">
-                Uploading your recording...
-              </p>
-            </div>
-          )}
-
-          {/* Mic button */}
-          <div className="flex justify-center mb-8">
             <button
               onClick={handleMicClick}
               disabled={phase === "uploading"}
               aria-label={
                 phase === "recording" ? "Stop recording" : "Start recording"
               }
-              className={`relative flex items-center justify-center rounded-full transition-all duration-300 ${
+              className={`relative z-10 flex items-center justify-center rounded-full transition-all duration-300 ${
                 phase === "recording"
-                  ? "h-32 w-32 bg-red-500 hover:bg-red-400 scale-110 shadow-2xl shadow-red-500/30 sm:h-36 sm:w-36"
+                  ? "h-32 w-32 scale-110 sm:h-36 sm:w-36"
                   : phase === "uploading"
                     ? "h-32 w-32 bg-zinc-200 cursor-wait sm:h-36 sm:w-36"
-                    : "h-32 w-32 bg-[#7C5CFC] hover:bg-[#6B4FE0] hover:scale-105 hover:shadow-2xl hover:shadow-[#7C5CFC]/30 active:scale-95 sm:h-36 sm:w-36"
+                    : "h-32 w-32 hover:scale-105 active:scale-95 sm:h-36 sm:w-36 animate-mic-glow"
               }`}
+              style={
+                phase === "recording"
+                  ? {
+                      background: "linear-gradient(135deg, #EF4444 0%, #DC2626 100%)",
+                      boxShadow: "0 8px 32px rgba(239,68,68,0.35), 0 2px 8px rgba(239,68,68,0.2)",
+                    }
+                  : phase === "uploading"
+                    ? undefined
+                    : {
+                        background: "linear-gradient(135deg, #7C5CFC 0%, #9F7AEA 50%, #7C3AED 100%)",
+                        boxShadow: "0 8px 40px rgba(124,92,252,0.3), 0 2px 12px rgba(124,58,237,0.2)",
+                      }
+              }
             >
-              {/* Pulse rings — idle state */}
-              {phase === "idle" && (
-                <>
-                  <span className="absolute inset-0 rounded-full bg-[#7C5CFC]/20 animate-pulse-ring" />
-                  <span
-                    className="absolute inset-0 rounded-full bg-[#7C5CFC]/10 animate-pulse-ring"
-                    style={{ animationDelay: "0.7s" }}
-                  />
-                  <span
-                    className="absolute inset-0 rounded-full bg-[#7C5CFC]/5 animate-pulse-ring"
-                    style={{ animationDelay: "1.4s" }}
-                  />
-                </>
-              )}
-
               {/* Recording pulse */}
               {phase === "recording" && (
                 <>
                   <span className="absolute inset-0 rounded-full bg-red-500 animate-ping opacity-15" />
-                  <span className="absolute -inset-2 rounded-full border-2 border-red-300 animate-pulse" />
+                  <span className="absolute -inset-2 rounded-full border-2 border-red-300/50 animate-pulse" />
                 </>
               )}
 
@@ -492,83 +513,81 @@ function RecordScreen({
               )}
             </button>
           </div>
-
-          {/* Prompt text below mic */}
-          {isIdle && (
-            <p className="text-center text-sm text-zinc-400">
-              No wrong answers. Most people start with &ldquo;Today I...&rdquo;
-            </p>
-          )}
-
-          {phase === "error" && (
-            <div className="text-center animate-fade-in">
-              <p className="text-sm text-red-500">{error}</p>
-              <p className="mt-1 text-xs text-zinc-400">
-                Tap the mic to try again
-              </p>
-            </div>
-          )}
-
-          {/* Suggested prompts — appear after 10s of recording */}
-          {showPrompts && phase === "recording" && (
-            <div className="text-center space-y-2 animate-fade-in">
-              <p className="text-xs text-zinc-300 uppercase tracking-widest">
-                Need a prompt?
-              </p>
-              {SUGGESTED_PROMPTS.map((p) => (
-                <p key={p} className="text-sm text-zinc-400 italic">
-                  &ldquo;{p}&rdquo;
-                </p>
-              ))}
-            </div>
-          )}
         </div>
-      </div>
 
-      {/* Bottom section — social proof + skip */}
-      {isIdle && (
-        <div
-          className={`flex-none text-center pb-8 sm:pb-16 transition-all duration-700 ${
-            showExtra
-              ? "opacity-100 translate-y-0"
-              : "opacity-0 translate-y-4"
-          }`}
-        >
-          {/* Social proof */}
-          <div className="mb-6">
-            <p className="text-sm font-medium text-zinc-400 mb-2">
-              4.9{" "}
-              <span className="text-amber-400">
-                &#9733;&#9733;&#9733;&#9733;&#9733;
-              </span>{" "}
-              from 127+ users
+        {/* Prompt text below mic */}
+        {isIdle && (
+          <p className="text-sm text-zinc-400 mb-10">
+            No wrong answers. Most people start with &ldquo;Today I...&rdquo;
+          </p>
+        )}
+
+        {phase === "error" && (
+          <div className="animate-fade-in mb-10">
+            <p className="text-sm text-red-500">{error}</p>
+            <p className="mt-1 text-xs text-zinc-400">
+              Tap the mic to try again
             </p>
-            <div className="relative h-10 overflow-hidden">
-              {MINI_TESTIMONIALS.map((t, i) => (
-                <p
-                  key={t.name}
-                  className={`absolute inset-x-0 text-sm italic text-zinc-400 transition-all duration-500 ${
-                    i === testimonialIdx
-                      ? "opacity-100 translate-y-0"
-                      : "opacity-0 translate-y-4"
-                  }`}
-                >
-                  &ldquo;{t.quote}&rdquo;{" "}
-                  <span className="not-italic text-zinc-300">&mdash; {t.name}</span>
-                </p>
-              ))}
-            </div>
           </div>
+        )}
 
-          {/* Skip link */}
-          <button
-            onClick={onSkip}
-            className="text-sm text-zinc-300 hover:text-zinc-500 transition underline underline-offset-4"
+        {/* Suggested prompts — appear after 10s of recording */}
+        {showPrompts && phase === "recording" && (
+          <div className="space-y-2 animate-fade-in mb-10">
+            <p className="text-xs text-zinc-300 uppercase tracking-widest">
+              Need a prompt?
+            </p>
+            {SUGGESTED_PROMPTS.map((p) => (
+              <p key={p} className="text-sm text-zinc-400 italic">
+                &ldquo;{p}&rdquo;
+              </p>
+            ))}
+          </div>
+        )}
+
+        {/* Social proof + skip — below mic */}
+        {isIdle && (
+          <div
+            className={`transition-all duration-700 ${
+              showExtra
+                ? "opacity-100 translate-y-0"
+                : "opacity-0 translate-y-4"
+            }`}
           >
-            I&rsquo;ll do this later
-          </button>
-        </div>
-      )}
+            <div className="mb-6">
+              <p className="text-sm font-medium text-zinc-400 mb-2">
+                4.9{" "}
+                <span className="text-amber-400">
+                  &#9733;&#9733;&#9733;&#9733;&#9733;
+                </span>{" "}
+                from 127+ users
+              </p>
+              <div className="relative h-10 overflow-hidden">
+                {MINI_TESTIMONIALS.map((t, i) => (
+                  <p
+                    key={t.name}
+                    className={`absolute inset-x-0 text-sm italic text-zinc-400 transition-all duration-500 ${
+                      i === testimonialIdx
+                        ? "opacity-100 translate-y-0"
+                        : "opacity-0 translate-y-4"
+                    }`}
+                  >
+                    &ldquo;{t.quote}&rdquo;{" "}
+                    <span className="not-italic text-zinc-300">&mdash; {t.name}</span>
+                  </p>
+                ))}
+              </div>
+            </div>
+
+            <button
+              onClick={onSkip}
+              className="text-sm text-zinc-300 hover:text-zinc-500 transition underline underline-offset-4"
+            >
+              I&rsquo;ll do this later
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
