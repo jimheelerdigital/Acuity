@@ -492,16 +492,16 @@ export function OrbitalCosmos({
           })}
         </AnimatedG>
 
-        {/* Center sun — polish 5: shrunk proportionally to match the
-            smaller planet ceiling. Halo 40→32, frame 26→22, body 20→16.
-            Same visual hierarchy (sun still anchors center) but the
-            whole cosmos reads wider. */}
+        {/* Center sun — polish 5b: midpoint between polish-4's (20/26/40)
+            and polish-5's (16/22/32). Body 18, frame 24, halo 36 —
+            preserves the wider-cosmos feel from polish 5 while
+            restoring enough sun presence to anchor the composition. */}
         <AnimatedG animatedProps={sunAnimatedProps}>
-          <Circle cx={CX} cy={CY} r={32} fill="url(#tm-you-glow)" />
+          <Circle cx={CX} cy={CY} r={36} fill="url(#tm-you-glow)" />
           <Circle
             cx={CX}
             cy={CY}
-            r={22}
+            r={24}
             fill="none"
             stroke={sunFrameStroke}
             strokeWidth={0.6}
@@ -510,7 +510,7 @@ export function OrbitalCosmos({
           <Circle
             cx={CX}
             cy={CY}
-            r={16}
+            r={18}
             fill="url(#tm-you-body)"
             stroke={sunStrokeAccent}
             strokeWidth={1.5}
@@ -519,7 +519,7 @@ export function OrbitalCosmos({
             x={CX}
             y={CY + 5}
             textAnchor="middle"
-            fontSize={14}
+            fontSize={16}
             fontWeight="800"
             fill="#FFFFFF"
             fontFamily={tokens.fontDisplay}
@@ -529,7 +529,7 @@ export function OrbitalCosmos({
           </SvgText>
           <SvgText
             x={CX}
-            y={CY + 30}
+            y={CY + 33}
             textAnchor="middle"
             fontSize={9}
             fontWeight="700"
