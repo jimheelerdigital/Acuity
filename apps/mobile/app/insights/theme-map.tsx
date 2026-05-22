@@ -11,7 +11,7 @@ import {
   Text,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { StickyBackButton } from "@/components/back-button";
 import { ProLockedCard } from "@/components/pro-locked-card";
@@ -115,6 +115,7 @@ export default function ThemeMapScreen() {
     null
   );
   const [showInfo, setShowInfo] = useState(false);
+  const insets = useSafeAreaInsets();
 
   const [animateOnMount] = useState(() => {
     if (hasShownEntranceThisSession) return false;
@@ -242,34 +243,44 @@ export default function ThemeMapScreen() {
         accessibilityLabel="Back to Insights"
       />
 
-      {/* Info icon, top-right. Sits in the screen's chrome layer
-          (absolute-positioned at the same top inset as StickyBackButton). */}
+      {/* Info icon — mirror of StickyBackButton in the top-right.
+          Uses the same insets-based positioning + same 40×40 chrome
+          treatment so both icons sit at identical y-coordinates and
+          read as a balanced header row. */}
       <View
+        pointerEvents="box-none"
         style={{
           position: "absolute",
-          top: 8,
-          right: 20,
-          zIndex: 5,
+          top: insets.top + 8,
+          right: 16,
+          zIndex: 100,
+          elevation: 100,
         }}
       >
         <Pressable
           onPress={() => setShowInfo(true)}
-          hitSlop={12}
           accessibilityRole="button"
           accessibilityLabel="About your theme map"
+          hitSlop={8}
           style={{
-            width: 36,
-            height: 36,
-            borderRadius: 18,
+            height: 40,
+            width: 40,
+            borderRadius: 20,
+            borderWidth: 1,
+            borderColor: "rgba(255,255,255,0.1)",
+            backgroundColor: "rgba(11,11,18,0.88)",
             alignItems: "center",
             justifyContent: "center",
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.25,
+            shadowRadius: 6,
           }}
         >
           <Ionicons
             name="information-circle-outline"
-            size={22}
+            size={20}
             color={tokens.textSec}
-            style={{ opacity: 0.7 }}
           />
         </Pressable>
       </View>

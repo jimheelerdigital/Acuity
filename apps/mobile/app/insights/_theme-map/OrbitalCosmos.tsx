@@ -83,52 +83,77 @@ const AnimatedG = Animated.createAnimatedComponent(
 interface SlotConfig {
   ring: number;
   angle: number;
-  size: number;
   delay: number;
 }
 
+/**
+ * Slot layout (ring + angle + animation delay) is purely positional —
+ * size is now data-driven from mentionCount (see sizeForMentionCount).
+ * Ring assignment still goes inside-out so higher-mention themes sit
+ * closer to center; size emphasizes the same hierarchy.
+ */
 function getSlotsForCount(n: number): SlotConfig[] {
   if (n <= 0) return [];
-  if (n === 1) return [{ ring: 0, angle: 30, size: 52, delay: 1500 }];
+  if (n === 1) return [{ ring: 0, angle: 30, delay: 1500 }];
   if (n === 2) {
     return [
-      { ring: 0, angle: 30, size: 52, delay: 1500 },
-      { ring: 0, angle: 200, size: 46, delay: 1650 },
+      { ring: 0, angle: 30, delay: 1500 },
+      { ring: 0, angle: 200, delay: 1650 },
     ];
   }
   if (n === 3) {
     return [
-      { ring: 0, angle: 30, size: 52, delay: 1500 },
-      { ring: 0, angle: 200, size: 46, delay: 1650 },
-      { ring: 1, angle: 130, size: 40, delay: 1800 },
+      { ring: 0, angle: 30, delay: 1500 },
+      { ring: 0, angle: 200, delay: 1650 },
+      { ring: 1, angle: 130, delay: 1800 },
     ];
   }
   if (n === 4) {
     return [
-      { ring: 0, angle: 30, size: 52, delay: 1500 },
-      { ring: 0, angle: 200, size: 46, delay: 1650 },
-      { ring: 1, angle: 130, size: 40, delay: 1800 },
-      { ring: 1, angle: 320, size: 34, delay: 1950 },
+      { ring: 0, angle: 30, delay: 1500 },
+      { ring: 0, angle: 200, delay: 1650 },
+      { ring: 1, angle: 130, delay: 1800 },
+      { ring: 1, angle: 320, delay: 1950 },
     ];
   }
   if (n === 5) {
     return [
-      { ring: 0, angle: 30, size: 52, delay: 1500 },
-      { ring: 0, angle: 200, size: 46, delay: 1650 },
-      { ring: 1, angle: 130, size: 40, delay: 1800 },
-      { ring: 1, angle: 320, size: 34, delay: 1950 },
-      { ring: 2, angle: 350, size: 30, delay: 2100 },
+      { ring: 0, angle: 30, delay: 1500 },
+      { ring: 0, angle: 200, delay: 1650 },
+      { ring: 1, angle: 130, delay: 1800 },
+      { ring: 1, angle: 320, delay: 1950 },
+      { ring: 2, angle: 350, delay: 2100 },
     ];
   }
   // n >= 6
   return [
-    { ring: 0, angle: 30, size: 52, delay: 1500 },
-    { ring: 0, angle: 200, size: 46, delay: 1650 },
-    { ring: 1, angle: 130, size: 40, delay: 1800 },
-    { ring: 1, angle: 320, size: 34, delay: 1950 },
-    { ring: 2, angle: 190, size: 30, delay: 2100 },
-    { ring: 2, angle: 350, size: 28, delay: 2250 },
+    { ring: 0, angle: 30, delay: 1500 },
+    { ring: 0, angle: 200, delay: 1650 },
+    { ring: 1, angle: 130, delay: 1800 },
+    { ring: 1, angle: 320, delay: 1950 },
+    { ring: 2, angle: 190, delay: 2100 },
+    { ring: 2, angle: 350, delay: 2250 },
   ];
+}
+
+const MIN_PLANET_SIZE = 30;
+const MAX_PLANET_SIZE = 52;
+
+/**
+ * Map mentionCount → planet diameter (pt).
+ *   size = MIN + (mentionCount / maxMentionCount) × (MAX - MIN)
+ * When all themes share the same mentionCount, every planet renders
+ * at MAX. When one theme dominates (e.g. 10x another), the smaller
+ * theme renders at the MIN floor. Linear interpolation keeps the
+ * visual proportional to data without runaway scale at the top end.
+ */
+function sizeForMentionCount(
+  mentionCount: number,
+  maxMentionCount: number
+): number {
+  if (maxMentionCount <= 0) return MIN_PLANET_SIZE;
+  const ratio = Math.max(0, Math.min(1, mentionCount / maxMentionCount));
+  return MIN_PLANET_SIZE + ratio * (MAX_PLANET_SIZE - MIN_PLANET_SIZE);
 }
 
 const RING_RADII = [78, 110, 140, 168];
@@ -183,16 +208,34 @@ export function OrbitalCosmos({
   const visibleThemes = themes.slice(0, MAX_PLANETS);
   const slotConfigs = getSlotsForCount(visibleThemes.length);
 
+  // Max mentionCount across the visible set — used to scale planet
+  // sizes data-relatively. When ties exist (all themes at the same
+  // mention count) every planet renders at MAX_PLANET_SIZE.
+  const maxMentionCount = useMemo(
+    () =>
+      visibleThemes.reduce(
+        (max, t) => (t.mentionCount > max ? t.mentionCount : max),
+        0
+      ),
+    [visibleThemes]
+  );
+
   // Compute final slot positions + starting angles (target - 90°).
+  // Size is now per-theme (driven by mentionCount, not slot index).
   const slots = useMemo(
     () =>
-      slotConfigs.map((cfg) => {
+      slotConfigs.map((cfg, i) => {
         const targetRad = (cfg.angle * Math.PI) / 180;
         const startAngleDeg = cfg.angle - 90;
         const startRad = (startAngleDeg * Math.PI) / 180;
         const r = RING_RADII[cfg.ring];
+        const theme = visibleThemes[i];
+        const size = theme
+          ? sizeForMentionCount(theme.mentionCount, maxMentionCount)
+          : MIN_PLANET_SIZE;
         return {
           ...cfg,
+          size,
           startRad,
           targetRad,
           finalX: CX + Math.cos(targetRad) * r,
@@ -200,9 +243,9 @@ export function OrbitalCosmos({
           ringRadius: r,
         };
       }),
-    // slotConfigs is derived from themes.length; depending on it is fine
+    // slots depend on count + the data-driven sizes
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [visibleThemes.length]
+    [visibleThemes.length, maxMentionCount]
   );
 
   // Shared values — declared up-front for stable hook order regardless
@@ -367,12 +410,16 @@ export function OrbitalCosmos({
             <RadialGradient
               key={`planet-grad-${i}`}
               id={`planet-grad-${i}`}
-              cx="35%"
-              cy="35%"
-              r="65%"
+              cx="50%"
+              cy="50%"
+              r="60%"
             >
-              <Stop offset="0%" stopColor={`hsl(${theme.hue}, 65%, 72%)`} />
-              <Stop offset="100%" stopColor={`hsl(${theme.hue}, 65%, 48%)`} />
+              {/* Phase E polish 2: tighter lightness range + centered
+                  origin. No directional highlight — reads as a flat
+                  colored disc with subtle atmospheric depth, not a 3D
+                  marble. */}
+              <Stop offset="0%" stopColor={`hsl(${theme.hue}, 65%, 62%)`} />
+              <Stop offset="100%" stopColor={`hsl(${theme.hue}, 65%, 52%)`} />
             </RadialGradient>
           ))}
         </Defs>
