@@ -41,6 +41,42 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-22] — Processing screen extended — 12 slides at 5s + summary screen
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 735ea19
+
+### In plain English (for Keenan)
+
+The processing slideshow now fills the full processing time with 12 slides (5 seconds each = 60 seconds) plus a summary screen that holds until processing finishes. Added 4 new feature slides covering task management, goal tracking, weekly reports, and Life Matrix — each with a testimonial. After all 12 slides, a summary screen shows "Everything Acuity does for you" with items appearing one at a time. The summary holds indefinitely until processing completes, so there's never a blank screen or spinner.
+
+### Technical changes (for Jimmy)
+
+- Modified `apps/web/src/app/auth/signup/success/first-debrief-flow.tsx`:
+  - Expanded `PROCESSING_SLIDES` from 8 to 12 (added slides 6-9: Task Management, Goal Tracking, Weekly Report, Life Matrix with testimonials)
+  - `SLIDE_MS`: 4000 → 5000 (5s per slide)
+  - Added `SUMMARY_ITEMS` array (10 items: 7 current features + 3 coming soon)
+  - Added `onSummary` state: after slide 12, switches to summary view
+  - Summary screen staggers items with 300ms between each (0.3s × 10 = 3s reveal)
+  - Transition logic: waits for summary items all shown + processing complete + 1.5s delay
+  - Progress dots slightly smaller (`width: 20` active) to fit 12 dots
+  - `SLIDE_ORBS` expanded to 12 entries
+  - Gradient orb hidden on summary screen
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- 12 slides × 5s = 60s of content, covers any realistic processing duration
+- If processing finishes during the slides, progress bar shows 100% but slides continue
+- If processing takes longer than 60s, summary screen holds with the progress bar still filling
+- Summary items use checkmark emoji for current features, clock emoji for coming soon
+
+---
+
 ## [2026-05-22] — Processing screen overhaul — 8 slides with testimonials, progress bar, coming soon teasers
 
 **Requested by:** Keenan
