@@ -41,6 +41,41 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-22] — Mic button centered + gradient + ripple animation
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** eea5c24
+
+### In plain English (for Keenan)
+
+The mic button on the recording screen is now perfectly centered on the screen — headline above, social proof below, mic in the dead center. The button itself has a purple gradient instead of flat color, with a soft inner glow that breathes slowly. Three translucent ripple rings radiate outward from the button like ripples in water, fading as they expand. The whole effect feels calm and inviting, not urgent.
+
+### Technical changes (for Jimmy)
+
+- Modified `apps/web/src/app/auth/signup/success/first-debrief-flow.tsx`:
+  - Changed layout from `flex-col` with `justify-end` to centered `justify-center` single-column
+  - Replaced flat `bg-[#7C5CFC]` with CSS gradient (`linear-gradient(135deg, #7C5CFC, #9F7AEA, #7C3AED)`)
+  - Replaced `animate-pulse-ring` with 3 `animate-mic-ripple` spans using radial gradient fills
+  - Added `animate-mic-glow` class for inner glow breathing (box-shadow animation)
+  - Added depth shadow (`box-shadow: 0 8px 40px ...`) for lift effect
+- Modified `apps/web/src/app/globals.css`:
+  - Added `@keyframes mic-ripple` (3s cycle, scale 1→2.2, opacity fade)
+  - Added `@keyframes mic-glow` (3s cycle, box-shadow breathing with inner glow)
+  - Added `.animate-mic-ripple` and `.animate-mic-glow` utility classes
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- The ripple animation is 3s (slower than the 2s `pulse-ring` used elsewhere) — deliberately calmer
+- Recording state still uses red with ping animation (unchanged)
+- Hover on the mic button intensifies the glow via the existing CSS animation cycle
+
+---
+
 ## [2026-05-22] — Screen 1 celebration animation + light-theme redesign
 
 **Requested by:** Keenan
