@@ -187,6 +187,19 @@ const nextConfig = {
       },
     ];
   },
+  async redirects() {
+    return [
+      {
+        // /waitlist retired 2026-05-22 (slice 7) — the app is live; the
+        // pre-launch waitlist surface has no remaining purpose. 301 to
+        // the homepage so bookmarked links from the waitlist era land on
+        // the live product instead of a 404.
+        source: "/waitlist",
+        destination: "/",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 // Wrap with Sentry when SENTRY_ORG + SENTRY_PROJECT are configured.

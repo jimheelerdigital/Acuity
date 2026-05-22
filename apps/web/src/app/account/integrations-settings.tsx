@@ -125,7 +125,7 @@ export function IntegrationsSettings({
           onClick={handleAutoSendToggle}
           disabled={isPending}
           className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
-            autoSend ? "bg-violet-500" : "bg-zinc-300 dark:bg-zinc-600"
+            autoSend ? "bg-acuity-primary" : "bg-zinc-300 dark:bg-zinc-600"
           } ${isPending ? "opacity-60" : ""}`}
         >
           <span
@@ -228,14 +228,14 @@ function DurationRadio({
       disabled={disabled}
       className={`rounded-lg border px-3 py-2.5 text-left transition ${
         checked
-          ? "border-violet-500 bg-violet-50 dark:bg-violet-900/20"
+          ? "border-acuity-primary bg-acuity-primary-soft dark:bg-acuity-primary-soft"
           : "border-zinc-200 hover:border-zinc-300 dark:border-white/10 dark:hover:border-white/20"
       } ${disabled ? "opacity-60" : ""}`}
     >
       <p
         className={`text-sm font-medium ${
           checked
-            ? "text-violet-700 dark:text-violet-300"
+            ? "text-acuity-primary dark:text-acuity-primary"
             : "text-zinc-900 dark:text-zinc-50"
         }`}
       >

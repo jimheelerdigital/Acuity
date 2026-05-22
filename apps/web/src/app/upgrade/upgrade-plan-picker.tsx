@@ -171,7 +171,7 @@ function IntervalTab({
       onClick={onClick}
       className={`rounded-full py-2 text-sm font-medium transition ${
         selected
-          ? "bg-white text-zinc-900 shadow-sm dark:bg-[#1E1E2E] dark:text-zinc-50"
+          ? "bg-white text-zinc-900 shadow-sm dark:bg-acuity-card-bg dark:text-zinc-50"
           : "text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
       }`}
     >

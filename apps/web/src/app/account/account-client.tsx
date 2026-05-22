@@ -86,7 +86,7 @@ export default function AccountClient({
         </p>
 
         {/* Account info */}
-        <section id="profile" className="mt-8 scroll-mt-24 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-6">
+        <section id="profile" className="mt-8 scroll-mt-24 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg p-6">
           <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
             Profile
           </h2>
@@ -172,7 +172,7 @@ export default function AccountClient({
         </div>
 
         {/* Support & safety — crisis resources pointer */}
-        <section id="support" className="mt-8 scroll-mt-24 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-6">
+        <section id="support" className="mt-8 scroll-mt-24 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg p-6">
           <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
             Support &amp; safety
           </h2>
@@ -183,14 +183,14 @@ export default function AccountClient({
           </p>
           <a
             href="/support/crisis"
-            className="mt-4 inline-flex rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-white/10 dark:bg-[#1E1E2E] dark:text-zinc-200 dark:hover:bg-white/5"
+            className="mt-4 inline-flex rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-white/10 dark:bg-acuity-card-bg dark:text-zinc-200 dark:hover:bg-white/5"
           >
             Crisis resources
           </a>
         </section>
 
         {/* Appearance */}
-        <section id="appearance" className="mt-8 scroll-mt-24 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-6">
+        <section id="appearance" className="mt-8 scroll-mt-24 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg p-6">
           <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
             Appearance
           </h2>
@@ -203,7 +203,7 @@ export default function AccountClient({
         </section>
 
         {/* Privacy choices — entry point to re-open the cookie banner */}
-        <section id="privacy" className="mt-8 scroll-mt-24 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-6">
+        <section id="privacy" className="mt-8 scroll-mt-24 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg p-6">
           <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
             Privacy choices
           </h2>
@@ -222,7 +222,7 @@ export default function AccountClient({
                 // ignore
               }
             }}
-            className="mt-4 rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-white/10 dark:bg-[#1E1E2E] dark:text-zinc-200 dark:hover:bg-white/5"
+            className="mt-4 rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-white/10 dark:bg-acuity-card-bg dark:text-zinc-200 dark:hover:bg-white/5"
           >
             Manage cookie preferences
           </button>
@@ -311,7 +311,7 @@ function DeleteConfirmModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/60 p-4">
-      <div className="w-full max-w-md rounded-2xl bg-white dark:bg-[#1E1E2E] p-6 shadow-xl">
+      <div className="w-full max-w-md rounded-2xl bg-white dark:bg-acuity-card-bg p-6 shadow-xl">
         <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
           Delete your Acuity account?
         </h3>
@@ -334,7 +334,7 @@ function DeleteConfirmModal({
           value={typed}
           onChange={(e) => setTyped(e.target.value)}
           placeholder="your@email.com"
-          className="mt-2 w-full rounded-lg border border-zinc-300 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-3 py-2 text-sm text-zinc-900 dark:text-zinc-50 placeholder:text-zinc-400 focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/20"
+          className="mt-2 w-full rounded-lg border border-zinc-300 dark:border-white/10 bg-white dark:bg-acuity-card-bg px-3 py-2 text-sm text-zinc-900 dark:text-zinc-50 placeholder:text-zinc-400 focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/20"
           disabled={submitting}
         />
 
@@ -423,7 +423,7 @@ function RemindersSection({
   };
 
   return (
-    <section className="mt-8 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-6">
+    <section className="mt-8 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg p-6">
       <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
         Reminders
       </h2>
@@ -437,7 +437,7 @@ function RemindersSection({
           onClick={() => setEnabled((v) => !v)}
           aria-pressed={enabled}
           className={`relative h-6 w-11 rounded-full transition ${
-            enabled ? "bg-violet-600" : "bg-zinc-300 dark:bg-white/10"
+            enabled ? "bg-acuity-primary" : "bg-zinc-300 dark:bg-white/10"
           }`}
         >
           <span
@@ -464,7 +464,7 @@ function RemindersSection({
             type="time"
             value={time}
             onChange={(e) => setTime(e.target.value || "21:00")}
-            className="rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#13131F] px-3 py-1.5 text-sm font-mono text-zinc-900 dark:text-zinc-100 outline-none focus:border-violet-500"
+            className="rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#13131F] px-3 py-1.5 text-sm font-mono text-zinc-900 dark:text-zinc-100 outline-none focus:border-acuity-primary"
           />
           {/* User's local timezone label — sits under the time input
               so the user knows which zone the time is in. Browser
@@ -486,7 +486,7 @@ function RemindersSection({
                   onClick={() => toggleDay(d.i)}
                   className={`h-8 w-8 rounded-full text-xs font-semibold transition ${
                     on
-                      ? "bg-violet-600 text-white"
+                      ? "bg-acuity-primary text-white"
                       : "bg-zinc-100 dark:bg-white/5 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-white/10"
                   }`}
                 >
@@ -502,7 +502,7 @@ function RemindersSection({
         <button
           disabled={saving}
           onClick={save}
-          className="rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-500 disabled:opacity-40"
+          className="rounded-lg bg-acuity-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-acuity-primary disabled:opacity-40"
         >
           {saving ? "Saving…" : "Save"}
         </button>
@@ -753,19 +753,19 @@ function SubscriptionSection({
     <section
       className={`mt-8 rounded-xl border p-6 transition-all duration-500 ${
         highlightVisible
-          ? "border-violet-400 dark:border-violet-500 shadow-[0_0_0_4px_rgba(167,139,250,0.18)] dark:shadow-[0_0_0_4px_rgba(167,139,250,0.22)]"
+          ? "border-acuity-primary dark:border-acuity-primary shadow-[0_0_0_4px_rgba(167,139,250,0.18)] dark:shadow-[0_0_0_4px_rgba(167,139,250,0.22)]"
           : meta.tone === "warn"
             ? "border-amber-300 dark:border-amber-900/40 bg-amber-50/40 dark:bg-amber-950/20"
-            : "border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E]"
+            : "border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg"
       }`}
     >
       {bannerVisible && (
-        <div className="mb-5 flex items-start justify-between gap-3 rounded-lg border border-violet-200 bg-violet-50 px-4 py-3 dark:border-violet-900/40 dark:bg-violet-950/30">
+        <div className="mb-5 flex items-start justify-between gap-3 rounded-lg border border-acuity-primary-soft bg-acuity-primary-soft px-4 py-3 dark:border-acuity-primary-soft dark:bg-acuity-primary-soft">
           <div className="flex-1">
-            <p className="text-sm font-semibold text-violet-800 dark:text-violet-200">
+            <p className="text-sm font-semibold text-acuity-primary dark:text-acuity-primary">
               🎉 Welcome to Acuity Pro.
             </p>
-            <p className="mt-0.5 text-xs text-violet-700/80 dark:text-violet-300/80">
+            <p className="mt-0.5 text-xs text-acuity-primary/80 dark:text-acuity-primary/80">
               Your receipt is on its way to your inbox. Full Pro access
               is live.
             </p>
@@ -774,7 +774,7 @@ function SubscriptionSection({
             type="button"
             onClick={() => setBannerVisible(false)}
             aria-label="Dismiss"
-            className="text-violet-600 hover:text-violet-800 dark:text-violet-400 dark:hover:text-violet-200"
+            className="text-acuity-primary hover:text-acuity-primary dark:text-acuity-primary dark:hover:text-acuity-primary"
           >
             ×
           </button>
@@ -787,10 +787,10 @@ function SubscriptionSection({
 
       <div className="mt-3 flex items-center gap-3">
         {showingActivatingState ? (
-          <span className="inline-flex items-center gap-2 rounded-full bg-violet-100 px-2.5 py-0.5 text-xs font-medium text-violet-800 dark:bg-violet-950/40 dark:text-violet-300">
+          <span className="inline-flex items-center gap-2 rounded-full bg-acuity-primary-soft px-2.5 py-0.5 text-xs font-medium text-acuity-primary dark:bg-acuity-primary-soft dark:text-acuity-primary">
             <span
               aria-hidden="true"
-              className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-violet-300 border-t-violet-700 dark:border-violet-700 dark:border-t-violet-300"
+              className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-acuity-primary-soft border-t-acuity-primary dark:border-acuity-primary-soft dark:border-t-acuity-primary"
             />
             Activating your subscription…
           </span>
@@ -835,7 +835,7 @@ function SubscriptionSection({
           <button
             type="button"
             onClick={() => window.location.reload()}
-            className="mt-3 rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-violet-500"
+            className="mt-3 rounded-lg bg-acuity-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-acuity-primary"
           >
             Refresh
           </button>
@@ -859,7 +859,7 @@ function SubscriptionSection({
           ) : (
             <a
               href="/upgrade"
-              className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-violet-500"
+              className="rounded-lg bg-acuity-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-acuity-primary"
             >
               {status === "TRIAL" ? "Subscribe early" : "Upgrade"}
             </a>
@@ -921,7 +921,7 @@ function ReferralsSection() {
   };
 
   return (
-    <section className="mt-8 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-6">
+    <section className="mt-8 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg p-6">
       <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
         Referrals
       </h2>
@@ -1041,7 +1041,7 @@ function EmailPrefsSection({
   };
 
   return (
-    <section className="mt-8 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-6">
+    <section className="mt-8 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg p-6">
       <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
         Email digests
       </h2>
@@ -1098,7 +1098,7 @@ function PrefRow({
         disabled={disabled}
         onClick={() => onChange(!checked)}
         className={`relative h-6 w-11 rounded-full transition disabled:opacity-40 ${
-          checked ? "bg-violet-600" : "bg-zinc-300 dark:bg-white/10"
+          checked ? "bg-acuity-primary" : "bg-zinc-300 dark:bg-white/10"
         }`}
       >
         <span
@@ -1190,7 +1190,7 @@ function DataExportSection() {
       Date.now() - new Date(row.createdAt).getTime() > 7 * 24 * 60 * 60 * 1000);
 
   return (
-    <section className="mt-8 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-6">
+    <section className="mt-8 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg p-6">
       <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
         Download my data
       </h2>
@@ -1204,7 +1204,7 @@ function DataExportSection() {
         <div className="mt-4 h-4 w-32 rounded bg-zinc-100 dark:bg-white/5 animate-pulse" />
       ) : row && (row.status === "PENDING" || row.status === "PROCESSING") ? (
         <div className="mt-4 flex items-center gap-3 text-sm text-zinc-500 dark:text-zinc-400">
-          <div className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-200 dark:border-white/10 border-t-violet-500" />
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-200 dark:border-white/10 border-t-acuity-primary" />
           Building your export — we&apos;ll email you the link when it&apos;s ready.
         </div>
       ) : row && row.status === "READY" && !isExpired && row.downloadUrl ? (
@@ -1231,7 +1231,7 @@ function DataExportSection() {
         <button
           onClick={request}
           disabled={requesting}
-          className="mt-4 rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-white/10 dark:bg-[#1E1E2E] dark:text-zinc-200 dark:hover:bg-white/5 disabled:opacity-40"
+          className="mt-4 rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-white/10 dark:bg-acuity-card-bg dark:text-zinc-200 dark:hover:bg-white/5 disabled:opacity-40"
         >
           {requesting ? "Requesting…" : "Request data export"}
         </button>

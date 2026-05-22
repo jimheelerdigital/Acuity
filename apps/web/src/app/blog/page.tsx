@@ -123,7 +123,7 @@ export default async function BlogIndex() {
             <Link
               key={post.slug}
               href={`/blog/${post.slug}`}
-              className="group rounded-xl border border-white/10 bg-[#13131F] overflow-hidden transition-all duration-300 hover:border-[#7C5CFC]/40 hover:-translate-y-1 hover:shadow-lg hover:shadow-[#7C5CFC]/5"
+              className="group rounded-xl border border-white/10 bg-[#13131F] overflow-hidden transition-all duration-300 hover:border-acuity-primary/40 hover:-translate-y-1 hover:shadow-lg hover:shadow-acuity-glow-primary"
             >
               {post.heroImageUrl && (
                 <div className="relative w-full aspect-[16/9]">
@@ -148,7 +148,7 @@ export default async function BlogIndex() {
                   <span className="text-white/20">|</span>
                   <span>{post.readingTime}</span>
                 </div>
-                <h2 className="text-lg font-bold leading-snug mb-3 group-hover:text-[#7C5CFC] transition-colors">
+                <h2 className="text-lg font-bold leading-snug mb-3 group-hover:text-acuity-primary transition-colors">
                   {post.title}
                 </h2>
                 <p className="text-sm text-[#A0A0B8] leading-relaxed line-clamp-3">

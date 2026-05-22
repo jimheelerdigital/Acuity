@@ -41,6 +41,50 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-22] — Web parity slice 7 — tail surfaces + waitlist retirement (final)
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** _pending_
+
+### In plain English (for Keenan)
+
+The last set of signed-in pages — account, upgrade/paywall, blog, voice-journaling pillar — now read from the canonical color palette like the rest of the app. Legal pages (privacy + terms) didn't have any drift so they were already clean. The /waitlist page is retired: any bookmarks now redirect to the homepage. Marketing surfaces — the homepage and /for/* persona landers — are NOT in this slice; you and Jim agreed to walk through those together before any rewrite.
+
+### Technical changes (for Jimmy)
+
+- Mechanical brand-color migration across the remaining 10 files under `apps/web/src/app/account`, `apps/web/src/app/upgrade`, `apps/web/src/app/blog`, `apps/web/src/app/voice-journaling`. Same sed pattern as slices 5+6: violet-* / #7C5CFC / #1E1E2E / #6B4FE0 literals swapped to `acuity-*` tokens.
+- `apps/web/src/app/waitlist/` directory deleted entirely.
+- `apps/web/next.config.js`: added `redirects()` block that 301s `/waitlist` → `/` permanently. Bookmarked waitlist links from the pre-launch era now land on the live product.
+- `apps/web/src/app/sitemap.ts`: removed `/waitlist` entry; crawlers stop indexing the redirect.
+
+### Manual steps needed
+
+- [ ] Spot-check Vercel deploy: /account, /upgrade, /blog, /blog/[slug], /voice-journaling, /privacy, /terms. Verify coral primary on /account billing pill / /upgrade CTA. /waitlist 301 redirects to / (try in incognito + with the old bookmark). Jimmy
+- [ ] No env, no Prisma, no Inngest changes.
+
+### Notes
+
+- Legal pages (/privacy, /terms) were already clean — body prose, no brand-color drift to migrate. Slice 7 didn't touch them.
+- Marketing surfaces (apps/web/src/app/page.tsx, apps/web/src/components/landing.tsx, apps/web/src/app/for/*) intentionally NOT touched per the standing scope direction. They remain on the legacy violet brand color + Playfair display family. The legacy `brand-*` Tailwind palette + `warm-*` palette + landing's ambient keyframes stay in place so those surfaces render unchanged.
+- The /voice-journaling pillar page got brand-color tokens but kept its dark `#0A0A0F` body bg — it's a deeper article-style surface that intentionally differs from the canonical `bg-acuity-bg`. Reconciliation of that gradient is part of the marketing rewrite Jim + Keenan will scope together.
+- This is the last slice in the autonomous web parity sequence.
+
+### DEFERRED FOR JIM + KEENAN
+
+Two pieces of work explicitly held back for Jim + Keenan to scope together synchronously:
+
+1. **Marketing landing rewrite** (slice 2 landing portion). `apps/web/src/components/landing.tsx` + `apps/web/src/app/page.tsx`. Currently violet brand + Playfair serif + 10+ ambient animations. Needs a full copy + visual + motion pass against `docs/Acuity_SalesCopy.md` and `_design/DESIGN_SYSTEM.md`. Highest-ROI surface in the audit's tier 1 — every ad lands here.
+2. **Persona landers refresh** (slice 3). `apps/web/src/app/for/[slug]/page.tsx` + the five static persona pages (`/for/therapy`, `/for/decoded`, `/for/sleep`, `/for/weekly-report`, `/for/founders`). Plus the `DynamicLandingPageView` consumer for AdLab-driven landers. Inherits the landing's visual treatment; refresh in tandem with slice 2.
+
+A third piece — slice 6b — was deferred during slice 6 for a different reason (scope, not stakeholder review):
+
+3. **Orbital cosmos port** to the Theme Map. Mobile ships a 9-planet orbital visualization; web currently uses a custom 4-ring `ThemeMapDashboard`. Full port plan documented in the slice 6 PROGRESS entry.
+
+All three are queued for follow-up. The autonomous parity sequence (slices 1, 2-revised, 4, 5, 6, 7) is complete with this commit.
+
+---
+
 ## [2026-05-22] — Web parity slice 6 — insights + life-matrix token migration (orbital cosmos port deferred)
 
 **Requested by:** Jimmy

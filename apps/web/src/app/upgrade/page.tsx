@@ -42,7 +42,7 @@ export default async function UpgradePage({
         </div>
 
         {/* Pricing card */}
-        <div className="rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-6 shadow-sm mb-6">
+        <div className="rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg p-6 shadow-sm mb-6">
           <UpgradePlanPicker />
 
           <ul className="space-y-3 mt-6 mb-2">

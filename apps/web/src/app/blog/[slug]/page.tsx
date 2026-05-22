@@ -277,7 +277,7 @@ export default async function BlogPostPage({ params }: Props) {
             <div className="mb-12">
               <Link
                 href="/blog"
-                className="inline-flex items-center gap-1.5 text-sm text-[#A0A0B8] hover:text-[#7C5CFC] transition-colors mb-8"
+                className="inline-flex items-center gap-1.5 text-sm text-[#A0A0B8] hover:text-acuity-primary transition-colors mb-8"
               >
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
@@ -370,7 +370,7 @@ export default async function BlogPostPage({ params }: Props) {
           <div className="mb-12">
             <Link
               href="/blog"
-              className="inline-flex items-center gap-1.5 text-sm text-[#A0A0B8] hover:text-[#7C5CFC] transition-colors mb-8"
+              className="inline-flex items-center gap-1.5 text-sm text-[#A0A0B8] hover:text-acuity-primary transition-colors mb-8"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
@@ -413,7 +413,7 @@ export default async function BlogPostPage({ params }: Props) {
             <div className="h-px bg-white/10 mb-12" />
           )}
           <div
-            className="prose prose-invert prose-base max-w-none prose-headings:text-white prose-headings:font-bold prose-h2:text-2xl prose-h2:tracking-tight prose-h2:mt-12 prose-h2:mb-4 prose-h3:text-xl prose-h3:mt-8 prose-h3:mb-3 prose-p:text-[#A0A0B8] prose-p:text-base prose-p:leading-[1.8] prose-p:mb-5 prose-a:text-[#7C5CFC] prose-strong:text-white prose-li:text-[#A0A0B8] prose-li:text-base prose-blockquote:border-[#7C5CFC]/40 prose-blockquote:text-[#A0A0B8]"
+            className="prose prose-invert prose-base max-w-none prose-headings:text-white prose-headings:font-bold prose-h2:text-2xl prose-h2:tracking-tight prose-h2:mt-12 prose-h2:mb-4 prose-h3:text-xl prose-h3:mt-8 prose-h3:mb-3 prose-p:text-[#A0A0B8] prose-p:text-base prose-p:leading-[1.8] prose-p:mb-5 prose-a:text-acuity-primary prose-strong:text-white prose-li:text-[#A0A0B8] prose-li:text-base prose-blockquote:border-acuity-primary/40 prose-blockquote:text-[#A0A0B8]"
             dangerouslySetInnerHTML={{ __html: htmlBody }}
           />
           <BlogCta />
@@ -429,7 +429,7 @@ export default async function BlogPostPage({ params }: Props) {
 function BlogCta() {
   return (
     <>
-      <div className="mt-16 rounded-xl border border-[#7C5CFC]/30 bg-[#13131F] p-8 sm:p-10 text-center">
+      <div className="mt-16 rounded-xl border border-acuity-primary/30 bg-[#13131F] p-8 sm:p-10 text-center">
         <h2 className="text-2xl font-bold mb-3">
           Brain dump daily. Get your life back.
         </h2>
@@ -439,7 +439,7 @@ function BlogCta() {
         </p>
         <Link
           href="/?utm_campaign=blog"
-          className="inline-flex items-center gap-2 rounded-full bg-[#7C5CFC] px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-95"
+          className="inline-flex items-center gap-2 rounded-full bg-acuity-primary px-8 py-3.5 text-sm font-semibold text-white transition hover:brightness-110 active:scale-95"
         >
           Try Acuity free for 14 days
         </Link>
@@ -450,7 +450,7 @@ function BlogCta() {
       <div className="mt-12 text-center">
         <Link
           href="/blog"
-          className="text-sm text-[#A0A0B8] hover:text-[#7C5CFC] transition-colors"
+          className="text-sm text-[#A0A0B8] hover:text-acuity-primary transition-colors"
         >
           &larr; More articles
         </Link>
@@ -471,10 +471,10 @@ function RelatedPosts({ currentSlug }: { currentSlug: string }) {
           <Link
             key={post.slug}
             href={`/blog/${post.slug}`}
-            className="group rounded-lg border border-white/10 bg-[#13131F] p-5 transition hover:border-[#7C5CFC]/40"
+            className="group rounded-lg border border-white/10 bg-[#13131F] p-5 transition hover:border-acuity-primary/40"
           >
             <p className="text-xs text-[#A0A0B8] mb-2">{post.readingTime}</p>
-            <h3 className="text-sm font-semibold text-white group-hover:text-[#7C5CFC] transition-colors leading-snug">
+            <h3 className="text-sm font-semibold text-white group-hover:text-acuity-primary transition-colors leading-snug">
               {post.title}
             </h3>
           </Link>

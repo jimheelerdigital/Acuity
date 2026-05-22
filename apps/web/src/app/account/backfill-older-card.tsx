@@ -50,7 +50,7 @@ export function BackfillOlderEntriesCard({
   return (
     <>
       <section
-        className="mt-8 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-6"
+        className="mt-8 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg p-6"
         data-section="backfill-older"
       >
         <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
@@ -84,7 +84,7 @@ export function BackfillOlderEntriesCard({
           onClick={() => !busy && setConfirmOpen(false)}
         >
           <div
-            className="w-full max-w-md rounded-2xl bg-white dark:bg-[#1E1E2E] p-6 shadow-xl"
+            className="w-full max-w-md rounded-2xl bg-white dark:bg-acuity-card-bg p-6 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
@@ -107,7 +107,7 @@ export function BackfillOlderEntriesCard({
                 type="button"
                 onClick={start}
                 disabled={busy}
-                className="rounded-full bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500 disabled:opacity-50"
+                className="rounded-full bg-acuity-primary px-4 py-2 text-sm font-semibold text-white hover:bg-acuity-primary disabled:opacity-50"
               >
                 {busy ? "Starting…" : "Start"}
               </button>

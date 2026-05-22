@@ -28,12 +28,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "weekly",
       priority: 0.8,
     },
-    {
-      url: `${baseUrl}/waitlist`,
-      lastModified,
-      changeFrequency: "monthly",
-      priority: 0.6,
-    },
+    // /waitlist retired 2026-05-22 (slice 7); the route now 301s to /
+    // via next.config.js redirects(). Dropped from the sitemap so
+    // crawlers don't keep re-indexing a redirect.
   ];
 
   // ─── /for/ landing pages (static routes) ─────────────────────────────────

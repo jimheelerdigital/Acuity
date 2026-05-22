@@ -62,7 +62,7 @@ export function IntegrationsSection({
 
   return (
     <section
-      className="mt-8 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-6"
+      className="mt-8 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg p-6"
       data-section="integrations"
     >
       <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">

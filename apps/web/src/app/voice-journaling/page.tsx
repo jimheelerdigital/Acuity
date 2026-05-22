@@ -172,7 +172,7 @@ export default function VoiceJournalingPage() {
             The average person types about 40 words per minute. They speak at 130 to 150 words per minute. That's a 3x difference — and it matters more than you'd think. When you write, your brain is constantly filtering, editing, and second-guessing. When you speak, thoughts flow more naturally and you capture things you'd never bother typing out.
           </p>
           <p className="text-base text-[#A0A0B8] leading-[1.8] mb-5">
-            This isn't just anecdotal. Research in cognitive psychology shows that verbal expression activates different neural pathways than written expression. Speaking engages areas of the brain associated with <Link href="/blog/journaling-for-mental-health" className="text-[#7C5CFC] hover:underline">emotional regulation</Link> and social cognition — the same circuits you use when talking to a friend or a therapist. Writing, by contrast, tends to engage more analytical, sequential processing.
+            This isn't just anecdotal. Research in cognitive psychology shows that verbal expression activates different neural pathways than written expression. Speaking engages areas of the brain associated with <Link href="/blog/journaling-for-mental-health" className="text-acuity-primary hover:underline">emotional regulation</Link> and social cognition — the same circuits you use when talking to a friend or a therapist. Writing, by contrast, tends to engage more analytical, sequential processing.
           </p>
           <p className="text-base text-[#A0A0B8] leading-[1.8] mb-5">
             The result: voice journaling often produces more honest, emotionally rich entries. People say things out loud that they'd never write down. The absence of a visual record being formed in real time removes the inner editor that makes written journaling feel performative.
@@ -182,7 +182,7 @@ export default function VoiceJournalingPage() {
             The speed advantage
           </h3>
           <p className="text-base text-[#A0A0B8] leading-[1.8] mb-5">
-            A short voice journal entry contains roughly 130-150 words of content — the equivalent of a half-page of written journaling. That's a meaningful <Link href="/blog/brain-dump-before-bed" className="text-[#7C5CFC] hover:underline">brain dump before bed</Link> captured in the time it takes to brush your teeth. For people who say they "don't have time to journal," voice journaling removes that excuse entirely.
+            A short voice journal entry contains roughly 130-150 words of content — the equivalent of a half-page of written journaling. That's a meaningful <Link href="/blog/brain-dump-before-bed" className="text-acuity-primary hover:underline">brain dump before bed</Link> captured in the time it takes to brush your teeth. For people who say they "don't have time to journal," voice journaling removes that excuse entirely.
           </p>
 
           <h3 className="text-xl font-semibold mt-8 mb-3 text-white">
@@ -200,7 +200,7 @@ export default function VoiceJournalingPage() {
           </p>
 
           {/* ──── Mid-article CTA ──── */}
-          <div className="my-12 rounded-xl border border-[#7C5CFC]/30 bg-[#13131F] p-8 text-center">
+          <div className="my-12 rounded-xl border border-acuity-primary/30 bg-[#13131F] p-8 text-center">
             <h2 className="text-xl font-bold mb-3">
               Try voice journaling tonight
             </h2>
@@ -209,7 +209,7 @@ export default function VoiceJournalingPage() {
             </p>
             <Link
               href="/auth/signup?utm_campaign=voice-journaling-guide"
-              className="inline-flex items-center gap-2 rounded-full bg-[#7C5CFC] px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-95"
+              className="inline-flex items-center gap-2 rounded-full bg-acuity-primary px-8 py-3.5 text-sm font-semibold text-white transition hover:brightness-110 active:scale-95"
             >
               Start Free Trial
             </Link>
@@ -237,7 +237,7 @@ export default function VoiceJournalingPage() {
             How to Start a Voice Journaling Habit
           </h2>
           <p className="text-base text-[#A0A0B8] leading-[1.8] mb-5">
-            The best journaling habit is the one you actually maintain. Here's a practical framework for making voice journaling a <Link href="/blog/nightly-journaling-habit" className="text-[#7C5CFC] hover:underline">nightly habit</Link> that sticks:
+            The best journaling habit is the one you actually maintain. Here's a practical framework for making voice journaling a <Link href="/blog/nightly-journaling-habit" className="text-acuity-primary hover:underline">nightly habit</Link> that sticks:
           </p>
 
           <h3 className="text-xl font-semibold mt-8 mb-3 text-white">
@@ -272,7 +272,7 @@ export default function VoiceJournalingPage() {
             5. Review weekly, not daily
           </h3>
           <p className="text-base text-[#A0A0B8] leading-[1.8] mb-5">
-            Don't re-listen to every entry. The act of speaking is the therapy. But once a week, glance at your transcripts or AI-generated summary (if your app provides one) to spot patterns. You'll notice recurring themes, unresolved tasks, and emotional trends that are invisible day-to-day but obvious over seven entries. This is where voice journaling becomes more than venting — it becomes <Link href="/blog/journaling-for-productivity" className="text-[#7C5CFC] hover:underline">a productivity system</Link> and a self-awareness tool.
+            Don't re-listen to every entry. The act of speaking is the therapy. But once a week, glance at your transcripts or AI-generated summary (if your app provides one) to spot patterns. You'll notice recurring themes, unresolved tasks, and emotional trends that are invisible day-to-day but obvious over seven entries. This is where voice journaling becomes more than venting — it becomes <Link href="/blog/journaling-for-productivity" className="text-acuity-primary hover:underline">a productivity system</Link> and a self-awareness tool.
           </p>
 
           {/* ──── Voice vs Written ──── */}
@@ -357,7 +357,7 @@ export default function VoiceJournalingPage() {
             Only journaling when you feel bad
           </h3>
           <p className="text-base text-[#A0A0B8] leading-[1.8] mb-5">
-            If you only record entries on hard days, your journal becomes a negativity archive. Record on good days too. Capture wins, gratitude, and excitement alongside frustration and stress. A balanced record is more useful for spotting patterns and more motivating to review. This is especially important when using an <Link href="/blog/ai-journaling-app-2026" className="text-[#7C5CFC] hover:underline">AI journaling app</Link> that analyzes your entries for mood trends.
+            If you only record entries on hard days, your journal becomes a negativity archive. Record on good days too. Capture wins, gratitude, and excitement alongside frustration and stress. A balanced record is more useful for spotting patterns and more motivating to review. This is especially important when using an <Link href="/blog/ai-journaling-app-2026" className="text-acuity-primary hover:underline">AI journaling app</Link> that analyzes your entries for mood trends.
           </p>
 
           <h3 className="text-xl font-semibold mt-8 mb-3 text-white">
@@ -393,7 +393,7 @@ export default function VoiceJournalingPage() {
             Advanced: AI voice journaling apps
           </h3>
           <p className="text-base text-[#A0A0B8] leading-[1.8] mb-5">
-            This is where voice journaling gets genuinely powerful. AI-powered voice journaling apps like Acuity don't just transcribe — they <em>understand</em>. After you record an entry, AI automatically extracts tasks you mentioned, tracks goals you referenced, scores your mood, detects recurring emotional patterns, and generates a <Link href="/blog/weekly-review-template" className="text-[#7C5CFC] hover:underline">weekly narrative report</Link> that reads like a therapist's session notes. Your nightly brain dump becomes structured life intelligence — a Life Matrix that scores your wellbeing across Health, Wealth, Relationships, Spirituality, Career, and Growth.
+            This is where voice journaling gets genuinely powerful. AI-powered voice journaling apps like Acuity don't just transcribe — they <em>understand</em>. After you record an entry, AI automatically extracts tasks you mentioned, tracks goals you referenced, scores your mood, detects recurring emotional patterns, and generates a <Link href="/blog/weekly-review-template" className="text-acuity-primary hover:underline">weekly narrative report</Link> that reads like a therapist's session notes. Your nightly brain dump becomes structured life intelligence — a Life Matrix that scores your wellbeing across Health, Wealth, Relationships, Spirituality, Career, and Growth.
           </p>
 
           {/* ──── Who Voice Journaling Is For ──── */}
@@ -452,7 +452,7 @@ export default function VoiceJournalingPage() {
           </p>
 
           {/* ──── Bottom CTA ──── */}
-          <div className="mt-16 rounded-xl border border-[#7C5CFC]/30 bg-[#13131F] p-8 sm:p-10 text-center">
+          <div className="mt-16 rounded-xl border border-acuity-primary/30 bg-[#13131F] p-8 sm:p-10 text-center">
             <h2 className="text-2xl font-bold mb-3">
               Start voice journaling tonight
             </h2>
@@ -461,7 +461,7 @@ export default function VoiceJournalingPage() {
             </p>
             <Link
               href="/auth/signup?utm_campaign=voice-journaling-guide"
-              className="inline-flex items-center gap-2 rounded-full bg-[#7C5CFC] px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-95"
+              className="inline-flex items-center gap-2 rounded-full bg-acuity-primary px-8 py-3.5 text-sm font-semibold text-white transition hover:brightness-110 active:scale-95"
             >
               Start Free Trial
             </Link>
@@ -473,7 +473,7 @@ export default function VoiceJournalingPage() {
           <div className="mt-12 text-center">
             <Link
               href="/blog"
-              className="text-sm text-[#A0A0B8] hover:text-[#7C5CFC] transition-colors"
+              className="text-sm text-[#A0A0B8] hover:text-acuity-primary transition-colors"
             >
               &larr; More articles
             </Link>

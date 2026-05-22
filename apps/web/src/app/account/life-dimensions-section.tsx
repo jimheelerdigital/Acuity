@@ -118,7 +118,7 @@ export function LifeDimensionsSection() {
   }
 
   return (
-    <section className="mt-8 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-6">
+    <section className="mt-8 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg p-6">
       <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
         Life Matrix dimensions
       </h2>
@@ -145,8 +145,8 @@ export function LifeDimensionsSection() {
                   className={
                     "rounded-full px-4 py-1.5 text-xs font-medium transition " +
                     (active
-                      ? "bg-violet-600 text-white"
-                      : "border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-white/10 dark:bg-[#1E1E2E] dark:text-zinc-200 dark:hover:bg-white/5")
+                      ? "bg-acuity-primary text-white"
+                      : "border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-white/10 dark:bg-acuity-card-bg dark:text-zinc-200 dark:hover:bg-white/5")
                   }
                 >
                   {p === "DEFAULT"
@@ -205,7 +205,7 @@ export function LifeDimensionsSection() {
               <button
                 disabled={saving}
                 onClick={saveCustom}
-                className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-violet-500 disabled:opacity-60"
+                className="rounded-lg bg-acuity-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-acuity-primary disabled:opacity-60"
               >
                 {saving ? "Saving…" : "Save custom labels"}
               </button>
