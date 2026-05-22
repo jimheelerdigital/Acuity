@@ -41,6 +41,42 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-22] — Extraction reveal screen — white theme, per-item stagger, confetti
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 89a475e
+
+### In plain English (for Keenan)
+
+The extraction reveal screen (where users see their tasks, goals, mood, and themes after recording) now matches the white theme. Each task and goal appears one at a time like a checklist writing itself — a small dopamine hit per item. The mood card has a soft colored glow that matches the mood (green for good, red for rough). Theme tags pop in with a bounce. When everything finishes loading, a small confetti burst celebrates the user's first completed debrief. The "Continue" button uses the same purple gradient and glow as the mic button.
+
+### Technical changes (for Jimmy)
+
+- Modified `apps/web/src/app/auth/signup/success/first-debrief-flow.tsx`:
+  - Added `"extraction"` to white-theme bg class group
+  - Rewrote `ExtractionScreen` with per-item stagger animation (400ms initial, 150ms between items)
+  - Stagger is item-level, not section-level: mood → tasks header → task 1 → task 2 → ... → goals header → goal 1 → ... → themes header → theme 1 → ...
+  - Added `MOOD_GLOW` map — colored `box-shadow` per mood level
+  - Tasks have checkbox icon + purple left border accent + priority badge
+  - Goals have flag icon + lighter purple left border
+  - Themes use `scale` transition for pop-in effect
+  - Mini confetti burst (`canvas-confetti`, 40 particles) fires when all sections loaded
+  - Continue button uses `animate-mic-glow` + gradient background
+  - Added `CheckboxIcon` and `FlagIcon` SVG sub-components
+  - Headline enlarged to `text-3xl sm:text-4xl`
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- No new dependencies — reuses canvas-confetti already installed
+- The stagger timing (150ms per item) means a recording with 5 tasks + 2 goals + 3 themes takes ~2.1s to fully reveal — fast enough to feel snappy, slow enough that each item registers
+
+---
+
 ## [2026-05-22] — Processing screen white theme + enhanced timeline animation
 
 **Requested by:** Keenan
