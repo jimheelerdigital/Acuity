@@ -136,24 +136,26 @@ function getSlotsForCount(n: number): SlotConfig[] {
   ];
 }
 
-const BASE_PLANET_SIZE = 28;
-const MAX_PLANET_BONUS = 18;
-const MAX_PLANET_SIZE = BASE_PLANET_SIZE + MAX_PLANET_BONUS; // 46
+const BASE_PLANET_SIZE = 20;
+const MAX_PLANET_BONUS = 12;
+const MAX_PLANET_SIZE = BASE_PLANET_SIZE + MAX_PLANET_BONUS; // 32
 
 /**
  * Map mentionCount → planet diameter (pt).
- *   size = 28 + (mentionCount / maxMentionCount) × 18,  capped at 46
+ *   size = 20 + (mentionCount / maxMentionCount) × 12,  capped at 32
  *
- * Tighter than the prior 30→52 range (polish 2). The 52pt ceiling
- * was reading as chunky when all themes had equal mentionCount and
- * therefore all rendered at the same 52pt max. New ceiling 46pt
- * keeps the composition airier; the 28pt base preserves a visible
- * size delta for low-count themes vs the dominant one.
+ * Polish 5 hard cap. The earlier 46pt ceiling still read as nearby
+ * bubbles even with 4-stop atmospheric gradients; planets should
+ * feel like distant celestial objects, not interactive UI targets.
+ * 32pt max keeps the composition spacious regardless of theme count.
  *
  * Examples:
- *   All themes mentionCount=2  → all render at 46pt
- *   Dominant=10, runners-up=2  → dominant 46pt, runners-up ~31.6pt
- *   Dominant=20, tail=2        → dominant 46pt, tail ~29.8pt
+ *   All themes mentionCount=2  → all render at 32pt
+ *   Dominant=10, runners-up=2  → dominant 32pt, runners-up ~22.4pt
+ *   Dominant=20, tail=2        → dominant 32pt, tail ~21.2pt
+ *
+ * The 20pt floor preserves a perceptible delta when a single theme
+ * dominates without making tail themes invisible.
  */
 function sizeForMentionCount(
   mentionCount: number,
@@ -490,13 +492,16 @@ export function OrbitalCosmos({
           })}
         </AnimatedG>
 
-        {/* Center sun */}
+        {/* Center sun — polish 5: shrunk proportionally to match the
+            smaller planet ceiling. Halo 40→32, frame 26→22, body 20→16.
+            Same visual hierarchy (sun still anchors center) but the
+            whole cosmos reads wider. */}
         <AnimatedG animatedProps={sunAnimatedProps}>
-          <Circle cx={CX} cy={CY} r={40} fill="url(#tm-you-glow)" />
+          <Circle cx={CX} cy={CY} r={32} fill="url(#tm-you-glow)" />
           <Circle
             cx={CX}
             cy={CY}
-            r={26}
+            r={22}
             fill="none"
             stroke={sunFrameStroke}
             strokeWidth={0.6}
@@ -505,16 +510,16 @@ export function OrbitalCosmos({
           <Circle
             cx={CX}
             cy={CY}
-            r={20}
+            r={16}
             fill="url(#tm-you-body)"
             stroke={sunStrokeAccent}
             strokeWidth={1.5}
           />
           <SvgText
             x={CX}
-            y={CY + 6}
+            y={CY + 5}
             textAnchor="middle"
-            fontSize={17}
+            fontSize={14}
             fontWeight="800"
             fill="#FFFFFF"
             fontFamily={tokens.fontDisplay}
@@ -524,7 +529,7 @@ export function OrbitalCosmos({
           </SvgText>
           <SvgText
             x={CX}
-            y={CY + 36}
+            y={CY + 30}
             textAnchor="middle"
             fontSize={9}
             fontWeight="700"
