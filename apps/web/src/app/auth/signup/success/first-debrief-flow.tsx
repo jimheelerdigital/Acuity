@@ -715,22 +715,6 @@ const PROCESSING_SLIDES: ProcessingSlide[] = [
   },
 ];
 
-const SUMMARY_CORE = [
-  "Task extraction",
-  "Goal tracking",
-  "Mood & energy analysis",
-  "Pattern detection",
-  "Weekly reports every Sunday",
-  "Quarterly memoir",
-  "Life Matrix \u2014 six domains",
-];
-
-const SUMMARY_COMING_SOON = [
-  "Calendar integration",
-  "Ask your past self",
-  "Smart notifications",
-];
-
 // Slide 9 is index 8 (0-based). Slides 0-8 are core, 9-11 are coming soon.
 const CORE_SLIDE_COUNT = 9;
 
@@ -761,12 +745,8 @@ function ProcessingScreen({
 }) {
   const poll = useEntryPolling(entryId);
   const [slideIndex, setSlideIndex] = useState(0);
-  const [onSummary, setOnSummary] = useState(false);
-  const [summaryStep, setSummaryStep] = useState(0);
-  const [showedComingSoon, setShowedComingSoon] = useState(false);
   const completedRef = useRef(false);
   const extractionRef = useRef<ExtractionResult | null>(null);
-  // Tracks the highest slide index we reached (for coming-soon detection)
   const maxSlideRef = useRef(0);
 
   const [subStep, setSubStep] = useState(0);
@@ -792,20 +772,33 @@ function ProcessingScreen({
       const current = slideCounterRef.current;
       const next = current + 1;
 
-      // Should we go to summary?
+      // ISSUE 1 FIX: When processing is done, finish the current slide
+      // then go DIRECTLY to extraction — no more slides, no summary gate.
       const processingDone = !!extractionRef.current;
-      const pastCore = next >= CORE_SLIDE_COUNT;
+      const hasFailed = poll.status === "failed" || poll.status === "timeout";
       const pastAll = next >= PROCESSING_SLIDES.length;
 
-      if ((processingDone && pastCore) || pastAll) {
-        // eslint-disable-next-line no-console
-        console.log("[processing-screen] Transitioning to summary. processingDone:", processingDone, "slide:", current, "pastCore:", pastCore, "pastAll:", pastAll);
+      if (processingDone || hasFailed || pastAll) {
         if (intervalRef.current) clearInterval(intervalRef.current);
-        // Track if we showed coming-soon slides
-        if (maxSlideRef.current >= CORE_SLIDE_COUNT) {
-          setShowedComingSoon(true);
+        // Go directly to extraction — skip summary screen
+        if (!completedRef.current) {
+          completedRef.current = true;
+          onComplete(
+            extractionRef.current ?? {
+              summary: "Your recording has been saved.",
+              mood: "NEUTRAL",
+              moodScore: 5,
+              energy: 5,
+              themes: [],
+              themesDetailed: [],
+              wins: [],
+              blockers: [],
+              insights: [],
+              tasks: [],
+              goals: [],
+            }
+          );
         }
-        setOnSummary(true);
         return;
       }
 
@@ -821,35 +814,25 @@ function ProcessingScreen({
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // If processing finishes mid-slide after core slides,
-  // trigger summary on next tick by clearing interval and setting summary
+  // If processing finishes mid-slide, the next interval tick will handle it.
+  // But if all slides already played, exit immediately.
   useEffect(() => {
+    if (completedRef.current) return;
     if (
-      !onSummary &&
       extractionRef.current &&
-      slideCounterRef.current >= CORE_SLIDE_COUNT - 1
+      slideCounterRef.current >= PROCESSING_SLIDES.length - 1
     ) {
-      // Let the current slide's 5s finish, then the interval tick
-      // above will detect processingDone && pastCore and trigger summary.
-      // But if we're already on the last core slide (index 8) and the
-      // interval already fired past it, force summary now.
-      if (slideCounterRef.current >= CORE_SLIDE_COUNT) {
-        // eslint-disable-next-line no-console
-        console.log("[processing-screen] Processing done mid-slide, forcing summary. slide:", slideCounterRef.current);
-        if (intervalRef.current) clearInterval(intervalRef.current);
-        if (maxSlideRef.current >= CORE_SLIDE_COUNT) {
-          setShowedComingSoon(true);
-        }
-        setOnSummary(true);
-      }
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      completedRef.current = true;
+      onComplete(extractionRef.current);
     }
-  }, [poll.status, slideIndex, onSummary]);
+  }, [poll.status, poll.entry, onComplete]);
 
   // Sub-step stagger within each slide
   useEffect(() => {
-    if (onSummary) return;
     setSubStep(0);
     const t1 = setTimeout(() => setSubStep(1), 100);
     const t2 = setTimeout(() => setSubStep(2), 700);
@@ -857,64 +840,7 @@ function ProcessingScreen({
       clearTimeout(t1);
       clearTimeout(t2);
     };
-  }, [slideIndex, onSummary]);
-
-  // Stagger summary items
-  const summaryItems = showedComingSoon
-    ? SUMMARY_CORE.length + SUMMARY_COMING_SOON.length + 1 // +1 for "Coming soon" header
-    : SUMMARY_CORE.length;
-
-  useEffect(() => {
-    if (!onSummary) return;
-    const timers: ReturnType<typeof setTimeout>[] = [];
-    for (let i = 1; i <= summaryItems; i++) {
-      timers.push(setTimeout(() => setSummaryStep(i), 300 + i * 300));
-    }
-    return () => timers.forEach(clearTimeout);
-  }, [onSummary, summaryItems]);
-
-  // Transition: on summary + processing done + summary items all shown → 3s hold → exit
-  useEffect(() => {
-    if (completedRef.current) return;
-    const ext = extractionRef.current;
-    if (onSummary && ext && summaryStep >= summaryItems) {
-      const t = setTimeout(() => {
-        completedRef.current = true;
-        onComplete(ext);
-      }, 3000);
-      return () => clearTimeout(t);
-    }
-  }, [onSummary, summaryStep, summaryItems, poll.status, onComplete]);
-
-  // Handle failures on summary
-  useEffect(() => {
-    if (completedRef.current) return;
-    if (
-      (poll.status === "failed" || poll.status === "timeout") &&
-      onSummary &&
-      summaryStep >= summaryItems
-    ) {
-      const t = setTimeout(() => {
-        completedRef.current = true;
-        onComplete(
-          extractionRef.current ?? {
-            summary: "Your recording has been saved.",
-            mood: "NEUTRAL",
-            moodScore: 5,
-            energy: 5,
-            themes: [],
-            themesDetailed: [],
-            wins: [],
-            blockers: [],
-            insights: [],
-            tasks: [],
-            goals: [],
-          }
-        );
-      }, 3000);
-      return () => clearTimeout(t);
-    }
-  }, [poll.status, onSummary, summaryStep, summaryItems, onComplete]);
+  }, [slideIndex]);
 
   const progressPct = getProgressPct(poll.phase, poll.status);
   const processingLabel = getProcessingLabel(poll.phase);
@@ -940,18 +866,14 @@ function ProcessingScreen({
       </div>
 
       {/* Gradient orb */}
-      {!onSummary && (
-        <div
-          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] sm:w-[500px] sm:h-[500px] transition-all duration-1000 pointer-events-none"
-          style={{ background: SLIDE_ORBS[slideIndex % SLIDE_ORBS.length] }}
-        />
-      )}
+      <div
+        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] sm:w-[500px] sm:h-[500px] transition-all duration-1000 pointer-events-none"
+        style={{ background: SLIDE_ORBS[slideIndex % SLIDE_ORBS.length] }}
+      />
 
       {/* Main content */}
       <div className="flex-1 flex flex-col items-center justify-center relative z-10">
         <div className="w-full max-w-lg">
-          {!onSummary ? (
-            <>
               {/* Slide content */}
               <div className="relative min-h-[280px] sm:min-h-[320px] flex items-center justify-center">
                 {PROCESSING_SLIDES.map((slide, i) => (
@@ -1065,63 +987,6 @@ function ProcessingScreen({
                   />
                 ))}
               </div>
-            </>
-          ) : (
-            /* Summary screen — clean text list, no emojis */
-            <div>
-              <h2 className="text-2xl font-bold text-zinc-900 mb-8 sm:text-3xl animate-fade-in text-center">
-                Everything Acuity does for you.
-              </h2>
-              <div className="space-y-3 max-w-xs mx-auto">
-                {SUMMARY_CORE.map((item, i) => (
-                  <div
-                    key={item}
-                    className={`flex items-center gap-3 transition-all duration-500 ${
-                      summaryStep > i
-                        ? "opacity-100 translate-y-0"
-                        : "opacity-0 translate-y-3"
-                    }`}
-                  >
-                    <span className="h-1.5 w-1.5 rounded-full bg-[#7C5CFC] shrink-0" />
-                    <span className="text-sm font-medium text-zinc-700">
-                      {item}
-                    </span>
-                  </div>
-                ))}
-
-                {showedComingSoon && (
-                  <>
-                    <div
-                      className={`pt-3 transition-all duration-500 ${
-                        summaryStep > SUMMARY_CORE.length
-                          ? "opacity-100 translate-y-0"
-                          : "opacity-0 translate-y-3"
-                      }`}
-                    >
-                      <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-zinc-400">
-                        Coming soon
-                      </p>
-                    </div>
-                    {SUMMARY_COMING_SOON.map((item, i) => (
-                      <div
-                        key={item}
-                        className={`flex items-center gap-3 transition-all duration-500 ${
-                          summaryStep > SUMMARY_CORE.length + 1 + i
-                            ? "opacity-100 translate-y-0"
-                            : "opacity-0 translate-y-3"
-                        }`}
-                      >
-                        <span className="h-1.5 w-1.5 rounded-full bg-zinc-300 shrink-0" />
-                        <span className="text-sm font-medium text-zinc-400">
-                          {item}
-                        </span>
-                      </div>
-                    ))}
-                  </>
-                )}
-              </div>
-            </div>
-          )}
         </div>
       </div>
 

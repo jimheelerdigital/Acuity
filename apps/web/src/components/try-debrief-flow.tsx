@@ -15,9 +15,6 @@ import {
   MIN_SECONDS,
   NUDGE_SECONDS,
   PROCESSING_SLIDES,
-  SUMMARY_CORE,
-  SUMMARY_COMING_SOON,
-  CORE_SLIDE_COUNT,
   SLIDE_MS,
   SLIDE_ORBS,
   MOOD_GLOW,
@@ -36,7 +33,7 @@ import {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Screen = "record" | "processing" | "extraction" | "celebrating";
+type Screen = "record" | "processing" | "extraction" | "celebrating" | "blocked";
 
 interface TryApiResult {
   sessionToken: string;
@@ -55,19 +52,39 @@ const SIMULATED_LABELS = [
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 
+/** Check if a try has already been used in this browser. */
+export function hasTryBeenUsed(): boolean {
+  try {
+    return localStorage.getItem("acuity_try_used") === "1";
+  } catch {
+    return false;
+  }
+}
+
+/** Mark the try as used immediately (before API call completes). */
+function markTryUsed(): void {
+  try {
+    localStorage.setItem("acuity_try_used", "1");
+  } catch {
+    // localStorage unavailable — cookie will catch it server-side
+  }
+}
+
 export function TryDebriefFlow({ onClose }: { onClose?: () => void }) {
-  const [screen, setScreen] = useState<Screen>("record");
+  // ISSUE 2: Check localStorage on mount — if already used, show blocked screen
+  const [screen, setScreen] = useState<Screen>(() =>
+    hasTryBeenUsed() ? "blocked" : "record"
+  );
   const [apiResult, setApiResult] = useState<TryApiResult | null>(null);
-  // Ref holds the in-flight API promise so the processing screen can await it
   const apiPromiseRef = useRef<Promise<TryApiResult> | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
 
   const handleUploaded = useCallback((promise: Promise<TryApiResult>) => {
+    // ISSUE 2: Mark as used IMMEDIATELY when recording is submitted
+    markTryUsed();
     apiPromiseRef.current = promise;
     setScreen("processing");
 
-    // When the promise resolves, store the result. The processing screen
-    // checks apiResult to know when extraction is ready.
     promise
       .then((result) => setApiResult(result))
       .catch((err) => {
@@ -93,7 +110,7 @@ export function TryDebriefFlow({ onClose }: { onClose?: () => void }) {
             setApiResult(result);
             setScreen("extraction");
           }}
-          onError={() => setScreen("record")}
+          onError={() => setScreen("blocked")}
         />
       )}
       {screen === "extraction" && apiResult && (
@@ -102,6 +119,9 @@ export function TryDebriefFlow({ onClose }: { onClose?: () => void }) {
           expiresAt={apiResult.expiresAt}
           onSignedUp={() => setScreen("celebrating")}
         />
+      )}
+      {screen === "blocked" && (
+        <TryBlockedScreen errorMessage={apiError} />
       )}
       {screen === "celebrating" && <CelebrationScreen />}
     </div>
@@ -379,12 +399,8 @@ function TryProcessingScreen({
   onError: () => void;
 }) {
   const [slideIndex, setSlideIndex] = useState(0);
-  const [onSummary, setOnSummary] = useState(false);
-  const [summaryStep, setSummaryStep] = useState(0);
-  const [showedComingSoon, setShowedComingSoon] = useState(false);
   const completedRef = useRef(false);
   const apiResultRef = useRef<TryApiResult | null>(null);
-  const maxSlideRef = useRef(0);
 
   const [subStep, setSubStep] = useState(0);
 
@@ -411,7 +427,6 @@ function TryProcessingScreen({
 
   // Simulated processing label progression
   useEffect(() => {
-    // Find the latest label whose threshold has been passed
     let current = SIMULATED_LABELS[0].label;
     for (const entry of SIMULATED_LABELS) {
       if (simElapsed >= entry.at) current = entry.label;
@@ -423,12 +438,13 @@ function TryProcessingScreen({
   // Simulated progress percentage
   const simProgressPct = (() => {
     if (apiResultRef.current) return 100;
-    // Ease from 0 to ~80% over 30 seconds using a log curve
     const t = Math.min(simElapsed / 30000, 1);
     return Math.round(t * 80);
   })();
 
-  // ── Slide advancement (same logic as post-signup flow) ────────────
+  // ── Slide advancement ─────────────────────────────────────────────
+  // ISSUE 1 FIX: When API response is ready, finish the current slide
+  // then go DIRECTLY to extraction — no summary screen, no extra slides.
   const slideCounterRef = useRef(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -438,20 +454,22 @@ function TryProcessingScreen({
       const next = current + 1;
 
       const processingDone = !!apiResultRef.current;
-      const pastCore = next >= CORE_SLIDE_COUNT;
+      const hasError = !!apiError;
       const pastAll = next >= PROCESSING_SLIDES.length;
 
-      if ((processingDone && pastCore) || pastAll) {
+      // If API is done (success or error), finish current slide then exit
+      if (processingDone || hasError || pastAll) {
         if (intervalRef.current) clearInterval(intervalRef.current);
-        if (maxSlideRef.current >= CORE_SLIDE_COUNT) {
-          setShowedComingSoon(true);
+        if (!completedRef.current) {
+          completedRef.current = true;
+          const result = apiResultRef.current;
+          if (result) {
+            onComplete(result);
+          } else {
+            onError();
+          }
         }
-        setOnSummary(true);
         return;
-      }
-
-      if (next >= CORE_SLIDE_COUNT) {
-        maxSlideRef.current = next;
       }
 
       slideCounterRef.current = next;
@@ -461,26 +479,33 @@ function TryProcessingScreen({
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // If API finishes mid-slide after core slides, trigger summary
+  // If API finishes mid-slide, don't interrupt — the next interval tick
+  // will see processingDone=true and exit after the current slide completes.
+  // But if all slides have already played and we're waiting, exit immediately.
   useEffect(() => {
-    if (
-      !onSummary &&
-      apiResultRef.current &&
-      slideCounterRef.current >= CORE_SLIDE_COUNT
-    ) {
+    if (completedRef.current) return;
+    if (apiResult && slideCounterRef.current >= PROCESSING_SLIDES.length - 1) {
       if (intervalRef.current) clearInterval(intervalRef.current);
-      if (maxSlideRef.current >= CORE_SLIDE_COUNT) {
-        setShowedComingSoon(true);
-      }
-      setOnSummary(true);
+      completedRef.current = true;
+      onComplete(apiResult);
     }
-  }, [apiResult, slideIndex, onSummary]);
+  }, [apiResult, onComplete]);
+
+  // Same for errors
+  useEffect(() => {
+    if (completedRef.current) return;
+    if (apiError && slideCounterRef.current >= PROCESSING_SLIDES.length - 1) {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      completedRef.current = true;
+      onError();
+    }
+  }, [apiError, onError]);
 
   // Sub-step stagger within each slide
   useEffect(() => {
-    if (onSummary) return;
     setSubStep(0);
     const t1 = setTimeout(() => setSubStep(1), 100);
     const t2 = setTimeout(() => setSubStep(2), 700);
@@ -488,46 +513,7 @@ function TryProcessingScreen({
       clearTimeout(t1);
       clearTimeout(t2);
     };
-  }, [slideIndex, onSummary]);
-
-  // Stagger summary items
-  const summaryItems = showedComingSoon
-    ? SUMMARY_CORE.length + SUMMARY_COMING_SOON.length + 1
-    : SUMMARY_CORE.length;
-
-  useEffect(() => {
-    if (!onSummary) return;
-    const timers: ReturnType<typeof setTimeout>[] = [];
-    for (let i = 1; i <= summaryItems; i++) {
-      timers.push(setTimeout(() => setSummaryStep(i), 300 + i * 300));
-    }
-    return () => timers.forEach(clearTimeout);
-  }, [onSummary, summaryItems]);
-
-  // Transition: on summary + API done + summary items all shown → 3s hold → exit
-  useEffect(() => {
-    if (completedRef.current) return;
-    const result = apiResultRef.current;
-    if (onSummary && result && summaryStep >= summaryItems) {
-      const t = setTimeout(() => {
-        completedRef.current = true;
-        onComplete(result);
-      }, 3000);
-      return () => clearTimeout(t);
-    }
-  }, [onSummary, summaryStep, summaryItems, apiResult, onComplete]);
-
-  // Handle API errors on summary
-  useEffect(() => {
-    if (completedRef.current) return;
-    if (apiError && onSummary && summaryStep >= summaryItems) {
-      const t = setTimeout(() => {
-        completedRef.current = true;
-        onError();
-      }, 2000);
-      return () => clearTimeout(t);
-    }
-  }, [apiError, onSummary, summaryStep, summaryItems, onError]);
+  }, [slideIndex]);
 
   return (
     <div className="relative flex min-h-screen flex-col px-6 py-8 overflow-hidden">
@@ -550,188 +536,127 @@ function TryProcessingScreen({
       </div>
 
       {/* Gradient orb */}
-      {!onSummary && (
-        <div
-          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] sm:w-[500px] sm:h-[500px] transition-all duration-1000 pointer-events-none"
-          style={{ background: SLIDE_ORBS[slideIndex % SLIDE_ORBS.length] }}
-        />
-      )}
+      <div
+        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] sm:w-[500px] sm:h-[500px] transition-all duration-1000 pointer-events-none"
+        style={{ background: SLIDE_ORBS[slideIndex % SLIDE_ORBS.length] }}
+      />
 
       {/* Main content */}
       <div className="flex-1 flex flex-col items-center justify-center relative z-10">
         <div className="w-full max-w-lg">
-          {!onSummary ? (
-            <>
-              {/* Slide content */}
-              <div className="relative min-h-[280px] sm:min-h-[320px] flex items-center justify-center">
-                {PROCESSING_SLIDES.map((slide, i) => (
-                  <div
-                    key={i}
-                    className="absolute inset-0 flex flex-col items-center justify-center text-center px-2"
-                    style={{
-                      transition: "opacity 0.5s ease, transform 0.5s ease",
-                      opacity: i === slideIndex ? 1 : 0,
-                      transform:
-                        i === slideIndex
-                          ? "translateY(0)"
-                          : i < slideIndex
-                            ? "translateY(-20px)"
-                            : "translateY(20px)",
-                      pointerEvents: i === slideIndex ? "auto" : "none",
-                    }}
-                  >
-                    <div
-                      className="mb-4"
-                      style={{
-                        transition: "opacity 0.3s ease, transform 0.3s ease",
-                        opacity: i === slideIndex && subStep >= 1 ? 1 : 0,
-                        transform: i === slideIndex && subStep >= 1 ? "translateY(0)" : "translateY(8px)",
-                      }}
+          {/* Slide content */}
+          <div className="relative min-h-[280px] sm:min-h-[320px] flex items-center justify-center">
+            {PROCESSING_SLIDES.map((slide, i) => (
+              <div
+                key={i}
+                className="absolute inset-0 flex flex-col items-center justify-center text-center px-2"
+                style={{
+                  transition: "opacity 0.5s ease, transform 0.5s ease",
+                  opacity: i === slideIndex ? 1 : 0,
+                  transform:
+                    i === slideIndex
+                      ? "translateY(0)"
+                      : i < slideIndex
+                        ? "translateY(-20px)"
+                        : "translateY(20px)",
+                  pointerEvents: i === slideIndex ? "auto" : "none",
+                }}
+              >
+                <div
+                  className="mb-4"
+                  style={{
+                    transition: "opacity 0.3s ease, transform 0.3s ease",
+                    opacity: i === slideIndex && subStep >= 1 ? 1 : 0,
+                    transform: i === slideIndex && subStep >= 1 ? "translateY(0)" : "translateY(8px)",
+                  }}
+                >
+                  {slide.comingSoon ? (
+                    <span
+                      className="inline-block text-xs font-bold uppercase tracking-[0.2em] text-blue-500 bg-blue-50 border border-blue-100 rounded-full px-3 py-1"
+                      style={{ animation: "mic-glow 3s ease-in-out infinite" }}
                     >
-                      {slide.comingSoon ? (
-                        <span
-                          className="inline-block text-xs font-bold uppercase tracking-[0.2em] text-blue-500 bg-blue-50 border border-blue-100 rounded-full px-3 py-1"
-                          style={{ animation: "mic-glow 3s ease-in-out infinite" }}
-                        >
-                          Coming Soon
-                        </span>
-                      ) : (
-                        <span
-                          className="text-sm font-bold uppercase tracking-[0.25em] text-[#7C5CFC] sm:text-base"
-                          style={{ textShadow: "0 0 20px rgba(124,92,252,0.3)" }}
-                        >
-                          {slide.label}
-                        </span>
-                      )}
-                    </div>
-
-                    <div
-                      style={{
-                        transition: "opacity 0.3s ease 0.1s, transform 0.3s ease 0.1s",
-                        opacity: i === slideIndex && subStep >= 1 ? 1 : 0,
-                        transform: i === slideIndex && subStep >= 1 ? "translateY(0)" : "translateY(8px)",
-                      }}
-                    >
-                      <p className="text-2xl font-bold text-zinc-800 leading-relaxed sm:text-3xl mb-6">
-                        {slide.text}
-                      </p>
-                    </div>
-
-                    <div
-                      style={{
-                        transition: "opacity 0.3s ease, transform 0.3s ease",
-                        opacity: i === slideIndex && subStep >= 2 ? 1 : 0,
-                        transform: i === slideIndex && subStep >= 2 ? "translateY(0)" : "translateY(12px)",
-                      }}
-                    >
-                      {slide.testimonial && (
-                        <div className="max-w-sm mx-auto">
-                          <p className="text-sm text-zinc-500 italic leading-relaxed">
-                            <span className="text-[#7C5CFC]/40 text-lg not-italic">&ldquo;</span>
-                            {slide.testimonial.quote}
-                            <span className="text-[#7C5CFC]/40 text-lg not-italic">&rdquo;</span>
-                          </p>
-                          <p className="mt-2 text-xs text-zinc-400">
-                            &mdash; {slide.testimonial.name}
-                          </p>
-                        </div>
-                      )}
-                      {slide.description && (
-                        <p className="max-w-sm mx-auto text-sm text-zinc-500 leading-relaxed">
-                          {slide.description}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Progress dots */}
-              <div className="mt-8 flex items-center justify-center gap-1.5 flex-wrap">
-                {PROCESSING_SLIDES.map((_, i) => (
-                  <div
-                    key={i}
-                    className="rounded-full transition-all duration-500"
-                    style={
-                      i === slideIndex
-                        ? {
-                            width: 20,
-                            height: 5,
-                            background: "linear-gradient(90deg, #7C5CFC, #9F7AEA)",
-                            boxShadow: "0 0 8px 2px rgba(124,92,252,0.3)",
-                          }
-                        : i < slideIndex
-                          ? {
-                              width: 5,
-                              height: 5,
-                              backgroundColor: "rgba(124,92,252,0.3)",
-                            }
-                          : {
-                              width: 5,
-                              height: 5,
-                              backgroundColor: "rgba(0,0,0,0.07)",
-                            }
-                    }
-                  />
-                ))}
-              </div>
-            </>
-          ) : (
-            /* Summary screen — clean text list, no emojis */
-            <div>
-              <h2 className="text-2xl font-bold text-zinc-900 mb-8 sm:text-3xl animate-fade-in text-center">
-                Everything Acuity does for you.
-              </h2>
-              <div className="space-y-3 max-w-xs mx-auto">
-                {SUMMARY_CORE.map((item, i) => (
-                  <div
-                    key={item}
-                    className={`flex items-center gap-3 transition-all duration-500 ${
-                      summaryStep > i
-                        ? "opacity-100 translate-y-0"
-                        : "opacity-0 translate-y-3"
-                    }`}
-                  >
-                    <span className="h-1.5 w-1.5 rounded-full bg-[#7C5CFC] shrink-0" />
-                    <span className="text-sm font-medium text-zinc-700">
-                      {item}
+                      Coming Soon
                     </span>
-                  </div>
-                ))}
-
-                {showedComingSoon && (
-                  <>
-                    <div
-                      className={`pt-3 transition-all duration-500 ${
-                        summaryStep > SUMMARY_CORE.length
-                          ? "opacity-100 translate-y-0"
-                          : "opacity-0 translate-y-3"
-                      }`}
+                  ) : (
+                    <span
+                      className="text-sm font-bold uppercase tracking-[0.25em] text-[#7C5CFC] sm:text-base"
+                      style={{ textShadow: "0 0 20px rgba(124,92,252,0.3)" }}
                     >
-                      <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-zinc-400">
-                        Coming soon
+                      {slide.label}
+                    </span>
+                  )}
+                </div>
+
+                <div
+                  style={{
+                    transition: "opacity 0.3s ease 0.1s, transform 0.3s ease 0.1s",
+                    opacity: i === slideIndex && subStep >= 1 ? 1 : 0,
+                    transform: i === slideIndex && subStep >= 1 ? "translateY(0)" : "translateY(8px)",
+                  }}
+                >
+                  <p className="text-2xl font-bold text-zinc-800 leading-relaxed sm:text-3xl mb-6">
+                    {slide.text}
+                  </p>
+                </div>
+
+                <div
+                  style={{
+                    transition: "opacity 0.3s ease, transform 0.3s ease",
+                    opacity: i === slideIndex && subStep >= 2 ? 1 : 0,
+                    transform: i === slideIndex && subStep >= 2 ? "translateY(0)" : "translateY(12px)",
+                  }}
+                >
+                  {slide.testimonial && (
+                    <div className="max-w-sm mx-auto">
+                      <p className="text-sm text-zinc-500 italic leading-relaxed">
+                        <span className="text-[#7C5CFC]/40 text-lg not-italic">&ldquo;</span>
+                        {slide.testimonial.quote}
+                        <span className="text-[#7C5CFC]/40 text-lg not-italic">&rdquo;</span>
+                      </p>
+                      <p className="mt-2 text-xs text-zinc-400">
+                        &mdash; {slide.testimonial.name}
                       </p>
                     </div>
-                    {SUMMARY_COMING_SOON.map((item, i) => (
-                      <div
-                        key={item}
-                        className={`flex items-center gap-3 transition-all duration-500 ${
-                          summaryStep > SUMMARY_CORE.length + 1 + i
-                            ? "opacity-100 translate-y-0"
-                            : "opacity-0 translate-y-3"
-                        }`}
-                      >
-                        <span className="h-1.5 w-1.5 rounded-full bg-zinc-300 shrink-0" />
-                        <span className="text-sm font-medium text-zinc-400">
-                          {item}
-                        </span>
-                      </div>
-                    ))}
-                  </>
-                )}
+                  )}
+                  {slide.description && (
+                    <p className="max-w-sm mx-auto text-sm text-zinc-500 leading-relaxed">
+                      {slide.description}
+                    </p>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            ))}
+          </div>
+
+          {/* Progress dots */}
+          <div className="mt-8 flex items-center justify-center gap-1.5 flex-wrap">
+            {PROCESSING_SLIDES.map((_, i) => (
+              <div
+                key={i}
+                className="rounded-full transition-all duration-500"
+                style={
+                  i === slideIndex
+                    ? {
+                        width: 20,
+                        height: 5,
+                        background: "linear-gradient(90deg, #7C5CFC, #9F7AEA)",
+                        boxShadow: "0 0 8px 2px rgba(124,92,252,0.3)",
+                      }
+                    : i < slideIndex
+                      ? {
+                          width: 5,
+                          height: 5,
+                          backgroundColor: "rgba(124,92,252,0.3)",
+                        }
+                      : {
+                          width: 5,
+                          height: 5,
+                          backgroundColor: "rgba(0,0,0,0.07)",
+                        }
+                }
+              />
+            ))}
+          </div>
         </div>
       </div>
 
@@ -1030,6 +955,75 @@ function TryExtractionScreen({
             </p>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Blocked Screen (ISSUE 3: shown when second try is blocked) ─────────────
+
+function TryBlockedScreen({ errorMessage }: { errorMessage: string | null }) {
+  const [signupLoading, setSignupLoading] = useState<"google" | "apple" | null>(null);
+
+  const handleOAuthSignup = async (provider: "google" | "apple") => {
+    setSignupLoading(provider);
+    await signIn(provider, { callbackUrl: "/auth/signup/success?from_try=1" });
+  };
+
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center px-6 py-12">
+      <div className="w-full max-w-md text-center">
+        <h2 className="text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl mb-3">
+          You&rsquo;ve already tried a free debrief.
+        </h2>
+        <p className="text-base text-zinc-500 mb-8 leading-relaxed">
+          Sign up to keep going. Your first 30 days are free.
+        </p>
+
+        <div className="space-y-3 mb-4 max-w-sm mx-auto">
+          <button
+            onClick={() => handleOAuthSignup("google")}
+            disabled={signupLoading !== null}
+            className="w-full flex items-center justify-center gap-3 rounded-xl bg-white border border-zinc-200 px-4 py-3.5 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-50 hover:border-zinc-300 active:scale-[0.98] disabled:opacity-50"
+          >
+            {signupLoading === "google" ? (
+              <span className="h-5 w-5 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-600" />
+            ) : (
+              <GoogleLogo />
+            )}
+            Continue with Google
+          </button>
+
+          <button
+            onClick={() => handleOAuthSignup("apple")}
+            disabled={signupLoading !== null}
+            className="w-full flex items-center justify-center gap-3 rounded-xl bg-zinc-900 px-4 py-3.5 text-sm font-semibold text-white transition hover:bg-zinc-800 active:scale-[0.98] disabled:opacity-50"
+          >
+            {signupLoading === "apple" ? (
+              <span className="h-5 w-5 animate-spin rounded-full border-2 border-zinc-600 border-t-white" />
+            ) : (
+              <AppleLogo />
+            )}
+            Continue with Apple
+          </button>
+        </div>
+
+        <div className="flex items-center gap-3 mb-4 max-w-sm mx-auto">
+          <div className="flex-1 h-px bg-zinc-200" />
+          <span className="text-xs text-zinc-400">or</span>
+          <div className="flex-1 h-px bg-zinc-200" />
+        </div>
+
+        <a
+          href="/auth/signup"
+          className="block w-full max-w-sm mx-auto text-center rounded-xl border border-[#7C5CFC]/30 bg-[#7C5CFC]/5 px-4 py-3.5 text-sm font-semibold text-[#7C5CFC] transition hover:bg-[#7C5CFC]/10 active:scale-[0.98]"
+        >
+          Sign up with email
+        </a>
+
+        <p className="mt-6 text-xs text-zinc-400">
+          30-day free trial. No credit card required.
+        </p>
       </div>
     </div>
   );
