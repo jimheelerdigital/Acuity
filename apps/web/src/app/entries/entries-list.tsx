@@ -63,7 +63,7 @@ export function EntriesList({
   return (
     <>
       <div className="mb-5 space-y-3">
-        <div className="flex items-center gap-2 rounded-2xl border border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-[#1E1E2E] px-3 py-2">
+        <div className="flex items-center gap-2 rounded-2xl border border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-acuity-card-bg px-3 py-2">
           <SearchIcon />
           <input
             value={query}
@@ -95,7 +95,7 @@ export function EntriesList({
                 onClick={() => setMoodFilter(m === "ALL" ? null : (m as Mood))}
                 className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 border text-xs font-medium transition ${
                   selected
-                    ? "border-violet-500 bg-violet-500/10 text-violet-700 dark:border-violet-400 dark:bg-violet-500/20 dark:text-violet-300"
+                    ? "border-acuity-primary bg-acuity-primary/10 text-acuity-primary dark:border-acuity-primary dark:bg-acuity-primary/20 dark:text-acuity-primary"
                     : "border-zinc-200 text-zinc-500 hover:border-zinc-300 dark:border-white/10 dark:text-zinc-400 dark:hover:border-white/20"
                 }`}
               >
@@ -135,7 +135,7 @@ export function EntriesList({
               </p>
               <Link
                 href="/home"
-                className="mt-5 inline-block rounded-full bg-violet-600 px-5 py-2 text-sm font-semibold text-white hover:bg-violet-500"
+                className="mt-5 inline-block rounded-full bg-acuity-primary px-5 py-2 text-sm font-semibold text-white hover:bg-acuity-primary"
               >
                 Go to dashboard
               </Link>
@@ -226,7 +226,7 @@ function EntryRowWithMenu({
             }}
           />
           <div
-            className="absolute right-3 top-12 z-40 w-44 overflow-hidden rounded-md border border-zinc-200 bg-white shadow-lg dark:border-white/10 dark:bg-[#1E1E2E]"
+            className="absolute right-3 top-12 z-40 w-44 overflow-hidden rounded-md border border-zinc-200 bg-white shadow-lg dark:border-white/10 dark:bg-acuity-card-bg"
             onClick={(e) => e.stopPropagation()}
           >
             <EntryDeleteButton

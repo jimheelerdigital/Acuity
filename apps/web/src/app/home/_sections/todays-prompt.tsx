@@ -17,10 +17,10 @@ export async function TodaysPromptSection({ userId }: { userId: string }) {
     : "/home#record";
 
   return (
-    <section className="lg:col-span-8 rounded-2xl border border-zinc-200 bg-gradient-to-br from-violet-50/60 via-white to-white p-5 sm:p-6 lg:p-7 shadow-sm dark:border-white/10 dark:from-violet-950/20 dark:via-[#1E1E2E] dark:to-[#1E1E2E]">
+    <section className="lg:col-span-8 rounded-2xl border border-zinc-200 bg-gradient-to-br from-acuity-primary-soft via-white to-white p-5 sm:p-6 lg:p-7 shadow-sm dark:border-white/10 dark:from-acuity-primary-soft dark:via-[#1E1E2E] dark:to-[#1E1E2E]">
       {recommendation.label && (
         <p
-          className="font-semibold uppercase text-violet-600 dark:text-violet-400"
+          className="font-semibold uppercase text-acuity-primary dark:text-acuity-primary"
           style={{ fontSize: 13, letterSpacing: "0.18em" }}
         >
           {recommendation.label}
@@ -31,7 +31,7 @@ export async function TodaysPromptSection({ userId }: { userId: string }) {
       </p>
       <Link
         href={recordHref}
-        className="mt-5 inline-flex items-center gap-1.5 text-[15px] font-semibold text-violet-600 transition hover:text-violet-500 dark:text-violet-400"
+        className="mt-5 inline-flex items-center gap-1.5 text-[15px] font-semibold text-acuity-primary transition hover:text-acuity-primary dark:text-acuity-primary"
       >
         Record about this
         <svg

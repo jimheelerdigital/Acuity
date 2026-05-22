@@ -91,7 +91,7 @@ export function LifeMatrixSnapshot({
     .join(" ");
 
   return (
-    <section className="flex h-full flex-col rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6 lg:p-7 dark:border-white/10 dark:bg-[#1E1E2E]">
+    <section className="flex h-full flex-col rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6 lg:p-7 dark:border-white/10 dark:bg-acuity-card-bg">
       {/* Header — eyebrow + headline. Bumped 2026-04-28 from text-xs/
           text-base to text-[13px]/text-2xl after a designer review
           flagged the previous header as visually weaker than the
@@ -224,7 +224,7 @@ export function LifeMatrixSnapshot({
               <div className="mt-5 flex items-center gap-3">
                 <div className="h-1.5 flex-1 rounded-full bg-zinc-100 dark:bg-white/10">
                   <div
-                    className="h-1.5 rounded-full bg-violet-500"
+                    className="h-1.5 rounded-full bg-acuity-primary"
                     style={{
                       width: `${Math.min(100, (entryCount / ENTRIES_REQUIRED) * 100)}%`,
                     }}
@@ -294,7 +294,7 @@ export function LifeMatrixSnapshot({
       <div className="mt-6 border-t border-zinc-100 pt-5 dark:border-white/5">
         <Link
           href="/life-matrix"
-          className="inline-flex items-center gap-1.5 text-[15px] font-semibold text-violet-600 transition hover:text-violet-500 dark:text-violet-400"
+          className="inline-flex items-center gap-1.5 text-[15px] font-semibold text-acuity-primary transition hover:text-acuity-primary dark:text-acuity-primary"
         >
           See full Life Matrix
           <svg

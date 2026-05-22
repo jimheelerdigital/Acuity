@@ -1,3 +1,4 @@
+import { Heatmap28 } from "../_components/heatmap-28";
 import { EntriesList } from "../entries-list";
 
 /**
@@ -45,7 +46,10 @@ export async function EntriesListSection({ userId }: { userId: string }) {
 
   return (
     <>
-      <p className="-mt-4 mb-6 text-sm text-zinc-500 dark:text-zinc-400">
+      {entries.length > 0 && (
+        <Heatmap28 entryDates={entries.map((e) => e.createdAt)} />
+      )}
+      <p className="-mt-2 mb-6 text-sm text-zinc-500 dark:text-zinc-400">
         {entries.length === 0
           ? "No entries yet."
           : `${entries.length} entr${entries.length === 1 ? "y" : "ies"} — newest first.`}

@@ -106,8 +106,8 @@ export function ProgressSuggestionBanner({
   if (loading || suggestions.length === 0) return null;
 
   return (
-    <section className="rounded-2xl border border-violet-200 dark:border-violet-900/30 bg-violet-50/60 dark:bg-violet-950/20 p-5">
-      <p className="text-xs font-semibold uppercase tracking-widest text-violet-700 dark:text-violet-300">
+    <section className="rounded-2xl border border-acuity-primary-soft dark:border-acuity-primary-soft bg-acuity-primary-soft dark:bg-acuity-primary-soft p-5">
+      <p className="text-xs font-semibold uppercase tracking-widest text-acuity-primary dark:text-acuity-primary">
         Acuity noticed progress
       </p>
       <div className="mt-3 space-y-4">
@@ -118,7 +118,7 @@ export function ProgressSuggestionBanner({
           return (
             <div
               key={s.id}
-              className="rounded-xl border border-violet-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-4"
+              className="rounded-xl border border-acuity-primary-soft dark:border-white/10 bg-white dark:bg-acuity-card-bg p-4"
             >
               <p className="text-sm leading-relaxed text-zinc-700 dark:text-zinc-200">
                 {s.rationale}
@@ -128,7 +128,7 @@ export function ProgressSuggestionBanner({
                   From{" "}
                   <Link
                     href={`/entries/${s.sourceEntryId}`}
-                    className="text-violet-600 dark:text-violet-400 hover:underline"
+                    className="text-acuity-primary dark:text-acuity-primary hover:underline"
                   >
                     {s.sourceEntryAt
                       ? `your ${formatRelativeDate(s.sourceEntryAt)} entry`
@@ -148,7 +148,7 @@ export function ProgressSuggestionBanner({
                     max={100}
                     value={editDraft}
                     onChange={(e) => setEditDraft(Number(e.target.value))}
-                    className="w-16 rounded-md border border-zinc-300 dark:border-white/15 bg-white dark:bg-[#13131F] px-2 py-1 text-sm text-zinc-900 dark:text-zinc-50 outline-none focus:border-violet-500"
+                    className="w-16 rounded-md border border-zinc-300 dark:border-white/15 bg-white dark:bg-[#13131F] px-2 py-1 text-sm text-zinc-900 dark:text-zinc-50 outline-none focus:border-acuity-primary"
                     autoFocus
                   />
                 ) : (
@@ -170,7 +170,7 @@ export function ProgressSuggestionBanner({
                     <button
                       disabled={acting}
                       onClick={() => accept(s, editDraft)}
-                      className="rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-500 disabled:opacity-40"
+                      className="rounded-lg bg-acuity-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-acuity-primary disabled:opacity-40"
                     >
                       Save {editDraft}%
                     </button>

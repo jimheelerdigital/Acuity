@@ -36,7 +36,7 @@ export function GoalsSnapshotCard({
 }) {
   return (
     <section
-      className={`flex h-full flex-col rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6 lg:p-7 dark:border-white/10 dark:bg-[#1E1E2E] ${
+      className={`flex h-full flex-col rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6 lg:p-7 dark:border-white/10 dark:bg-acuity-card-bg ${
         className ?? ""
       }`}
     >
@@ -85,7 +85,7 @@ export function GoalsSnapshotCard({
                 </div>
                 <div className="mt-2 h-1.5 rounded-full bg-zinc-100 dark:bg-white/10">
                   <div
-                    className="h-1.5 rounded-full bg-violet-500"
+                    className="h-1.5 rounded-full bg-acuity-primary"
                     style={{ width: `${progress}%` }}
                   />
                 </div>
@@ -99,7 +99,7 @@ export function GoalsSnapshotCard({
            style={{ marginTop: goals.length === 0 ? "auto" : "1.5rem" }}>
         <Link
           href="/goals"
-          className="inline-flex items-center gap-1.5 text-[15px] font-semibold text-violet-600 transition hover:text-violet-500 dark:text-violet-400"
+          className="inline-flex items-center gap-1.5 text-[15px] font-semibold text-acuity-primary transition hover:text-acuity-primary dark:text-acuity-primary"
         >
           {goals.length === 0 ? "Open Goals" : "See all goals"}
           <svg

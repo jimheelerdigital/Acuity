@@ -91,8 +91,8 @@ const STATUS_STYLES: Record<string, { label: string; bg: string; text: string }>
   },
   COMPLETE: {
     label: "Complete",
-    bg: "bg-violet-50 dark:bg-violet-950/30",
-    text: "text-violet-700 dark:text-violet-300",
+    bg: "bg-acuity-primary-soft dark:bg-acuity-primary-soft",
+    text: "text-acuity-primary dark:text-acuity-primary",
   },
   ARCHIVED: {
     label: "Archived",
@@ -303,7 +303,7 @@ export function GoalList({
   if (loading && !roots) {
     return (
       <div className="flex justify-center py-20">
-        <div className="h-6 w-6 animate-spin rounded-full border-2 border-zinc-200 dark:border-white/10 border-t-violet-500" />
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-zinc-200 dark:border-white/10 border-t-acuity-primary" />
       </div>
     );
   }
@@ -511,9 +511,9 @@ function GoalTreeNode({
   return (
     <div style={{ marginLeft: depth * 24 }}>
       <div
-        className={`rounded-2xl border bg-white dark:bg-[#1E1E2E] px-4 py-3 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.04)] transition-all hover:shadow-[0_1px_3px_rgba(0,0,0,0.06),0_8px_20px_rgba(0,0,0,0.08)] dark:shadow-none dark:ring-1 dark:ring-white/5 ${
+        className={`rounded-2xl border bg-white dark:bg-acuity-card-bg px-4 py-3 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.04)] transition-all hover:shadow-[0_1px_3px_rgba(0,0,0,0.06),0_8px_20px_rgba(0,0,0,0.08)] dark:shadow-none dark:ring-1 dark:ring-white/5 ${
           isSelected
-            ? "border-violet-500 dark:border-violet-400 ring-1 ring-violet-500/40 dark:ring-violet-400/40"
+            ? "border-acuity-primary dark:border-acuity-primary ring-1 ring-acuity-primary-soft dark:ring-acuity-primary-soft"
             : "border-zinc-200 dark:border-white/10"
         }`}
       >
@@ -577,7 +577,7 @@ function GoalTreeNode({
                   onSelectGoal(goal.id);
                 }
               }}
-              className={`block text-sm leading-snug hover:text-violet-600 dark:hover:text-violet-400 transition ${
+              className={`block text-sm leading-snug hover:text-acuity-primary dark:hover:text-acuity-primary transition ${
                 struck
                   ? "text-zinc-400 dark:text-zinc-500 line-through"
                   : "text-zinc-800 dark:text-zinc-100"
@@ -590,7 +590,7 @@ function GoalTreeNode({
             <div className="mt-2 flex items-center gap-3">
               <div className="h-1.5 flex-1 rounded-full bg-zinc-100 dark:bg-white/10">
                 <div
-                  className="h-1.5 rounded-full bg-violet-500 transition-all duration-500"
+                  className="h-1.5 rounded-full bg-acuity-primary transition-all duration-500"
                   style={{ width: `${goal.calculatedProgress}%` }}
                 />
               </div>
@@ -669,7 +669,7 @@ function GoalActions({
       {canAddSubgoal && (
         <button
           onClick={() => onAddSubgoal(goal)}
-          className="p-1.5 rounded-lg text-zinc-400 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-950/30 transition"
+          className="p-1.5 rounded-lg text-zinc-400 hover:text-acuity-primary hover:bg-acuity-primary-soft dark:hover:bg-acuity-primary-soft transition"
           aria-label="Add sub-goal"
           title="Add sub-goal"
         >
@@ -692,7 +692,7 @@ function GoalActions({
       </button>
       {open && (
         <div
-          className="absolute right-0 top-8 z-10 rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] shadow-lg min-w-[140px] py-1"
+          className="absolute right-0 top-8 z-10 rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg shadow-lg min-w-[140px] py-1"
           onMouseLeave={() => setOpen(false)}
         >
           {goal.status !== "IN_PROGRESS" && goal.status !== "COMPLETE" && (
@@ -787,7 +787,7 @@ function TaskRow({
         aria-label={done ? "Mark open" : "Mark done"}
         className={`h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0 transition ${
           done
-            ? "border-violet-500 bg-violet-500"
+            ? "border-acuity-primary bg-acuity-primary"
             : "border-zinc-300 dark:border-white/20"
         }`}
       >
@@ -864,7 +864,7 @@ function AddSubgoalModal({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-2xl bg-white dark:bg-[#1E1E2E] border border-zinc-200 dark:border-white/10 p-6 shadow-2xl"
+        className="w-full max-w-md rounded-2xl bg-white dark:bg-acuity-card-bg border border-zinc-200 dark:border-white/10 p-6 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-1">Under</p>
@@ -884,7 +884,7 @@ function AddSubgoalModal({
             if (e.key === "Escape") onClose();
           }}
           placeholder="What's the next step?"
-          className="w-full rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#13131F] px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-violet-500"
+          className="w-full rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#13131F] px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-acuity-primary"
         />
         {err && (
           <p className="mt-2 text-xs text-red-600 dark:text-red-400">{err}</p>
@@ -900,7 +900,7 @@ function AddSubgoalModal({
           <button
             disabled={saving || !text.trim()}
             onClick={save}
-            className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500 disabled:opacity-40"
+            className="rounded-lg bg-acuity-primary px-4 py-2 text-sm font-semibold text-white hover:bg-acuity-primary disabled:opacity-40"
           >
             {saving ? "Adding…" : "Add sub-goal"}
           </button>
@@ -920,10 +920,10 @@ function SuggestionsBanner({
   return (
     <button
       onClick={onOpen}
-      className="mb-5 w-full rounded-2xl border border-violet-200 dark:border-violet-900/30 bg-gradient-to-br from-violet-50 to-white dark:from-violet-950/20 dark:to-[#1E1E2E] px-5 py-3 flex items-center justify-between gap-3 text-left hover:border-violet-300 dark:hover:border-violet-700/40 transition"
+      className="mb-5 w-full rounded-2xl border border-acuity-primary-soft dark:border-acuity-primary-soft bg-gradient-to-br from-acuity-primary-soft to-white dark:from-acuity-primary-soft dark:to-[#1E1E2E] px-5 py-3 flex items-center justify-between gap-3 text-left hover:border-acuity-primary-soft dark:hover:border-acuity-primary transition"
     >
       <div>
-        <p className="text-xs font-semibold uppercase tracking-widest text-violet-600 dark:text-violet-400">
+        <p className="text-xs font-semibold uppercase tracking-widest text-acuity-primary dark:text-acuity-primary">
           From your recordings
         </p>
         <p className="mt-1 text-sm text-zinc-800 dark:text-zinc-100">
@@ -939,7 +939,7 @@ function SuggestionsBanner({
         stroke="currentColor"
         strokeWidth="2"
         strokeLinecap="round"
-        className="text-violet-500"
+        className="text-acuity-primary"
       >
         <path d="M9 18l6-6-6-6" />
       </svg>

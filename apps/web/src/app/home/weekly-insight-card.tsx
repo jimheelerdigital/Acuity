@@ -49,7 +49,7 @@ export function WeeklyInsightCard({
   const hasContent = unlocked && report != null && snippet != null;
 
   return (
-    <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6 lg:p-7 dark:border-white/10 dark:bg-[#1E1E2E]">
+    <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6 lg:p-7 dark:border-white/10 dark:bg-acuity-card-bg">
       <div className="flex items-baseline justify-between">
         <div>
           <h2
@@ -71,7 +71,7 @@ export function WeeklyInsightCard({
           <figure className="mt-6">
             {/* Vertical rule + quote feel without a serif font.
                 Gives the snippet weight as the artifact it is. */}
-            <div className="border-l-2 border-violet-500 pl-5">
+            <div className="border-l-2 border-acuity-primary pl-5">
               <blockquote className="text-base leading-relaxed text-zinc-800 dark:text-zinc-100">
                 {snippet}
               </blockquote>
@@ -81,7 +81,7 @@ export function WeeklyInsightCard({
           <div className="mt-6 border-t border-zinc-100 pt-5 dark:border-white/5">
             <Link
               href="/insights"
-              className="inline-flex items-center gap-1.5 text-[15px] font-semibold text-violet-600 transition hover:text-violet-500 dark:text-violet-400"
+              className="inline-flex items-center gap-1.5 text-[15px] font-semibold text-acuity-primary transition hover:text-acuity-primary dark:text-acuity-primary"
             >
               Read the full report
               <svg
@@ -113,7 +113,7 @@ export function WeeklyInsightCard({
           <div className="mt-5 flex items-center gap-3">
             <div className="h-1.5 flex-1 rounded-full bg-zinc-100 dark:bg-white/10">
               <div
-                className="h-1.5 rounded-full bg-violet-500"
+                className="h-1.5 rounded-full bg-acuity-primary"
                 style={{
                   width: `${Math.min(100, (entryCount / ENTRIES_REQUIRED) * 100)}%`,
                 }}
@@ -145,12 +145,12 @@ export function WeeklyInsightCard({
                 {topThemes.slice(0, 3).map((t) => (
                   <li
                     key={t.name}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50/50 px-2.5 py-1 dark:border-violet-900/40 dark:bg-violet-950/20"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-acuity-primary-soft bg-acuity-primary-soft px-2.5 py-1 dark:border-acuity-primary-soft dark:bg-acuity-primary-soft"
                   >
-                    <span className="text-xs font-medium text-violet-700 dark:text-violet-300">
+                    <span className="text-xs font-medium text-acuity-primary dark:text-acuity-primary">
                       {t.name}
                     </span>
-                    <span className="text-[10px] font-semibold tabular-nums text-violet-500/70 dark:text-violet-400/70">
+                    <span className="text-[10px] font-semibold tabular-nums text-acuity-primary/70 dark:text-acuity-primary/70">
                       ×{t.count}
                     </span>
                   </li>

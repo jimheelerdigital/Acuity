@@ -34,7 +34,7 @@ export async function StreakSummarySection({ userId }: { userId: string }) {
   const flameActive = currentStreak >= 2;
 
   return (
-    <section className="flex h-full flex-col justify-between lg:col-span-4 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6 lg:p-7 dark:border-white/10 dark:bg-[#1E1E2E]">
+    <section className="flex h-full flex-col justify-between lg:col-span-4 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6 lg:p-7 dark:border-white/10 dark:bg-acuity-card-bg">
       <div>
         <h2
           className="font-semibold uppercase text-zinc-400 dark:text-zinc-500"

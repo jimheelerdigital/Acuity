@@ -14,7 +14,7 @@ export async function RecentSessionsSection({ userId }: { userId: string }) {
   const entries = await fetchEntries(userId);
 
   return (
-    <section className="flex h-full flex-col lg:col-span-6 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6 lg:p-7 dark:border-white/10 dark:bg-[#1E1E2E]">
+    <section className="flex h-full flex-col lg:col-span-6 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6 lg:p-7 dark:border-white/10 dark:bg-acuity-card-bg">
       <div className="flex items-baseline justify-between gap-3">
         <div>
           <h2
@@ -34,7 +34,7 @@ export async function RecentSessionsSection({ userId }: { userId: string }) {
         {entries.length > HOME_ENTRY_LIMIT && (
           <Link
             href="/entries"
-            className="shrink-0 text-[15px] font-semibold text-violet-600 hover:text-violet-500 dark:text-violet-400"
+            className="shrink-0 text-[15px] font-semibold text-acuity-primary hover:text-acuity-primary dark:text-acuity-primary"
           >
             View all →
           </Link>

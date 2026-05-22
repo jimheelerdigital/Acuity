@@ -41,6 +41,41 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-22] — Web parity slice 5 — daily-use surfaces token migration + 28-night heatmap
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** _pending_
+
+### In plain English (for Keenan)
+
+The signed-in pages a daily user actually uses — Home, Entries, the entry detail screen, Goals, Tasks — now read from the new canonical color palette and button styles. No layout changes; same content, same data, same screens. Just consistent coral primary instead of the old violet, consistent card surfaces, consistent typography. The Entries page also got a small new feature at the top: a 28-night recording heatmap that shows at a glance which of the past 28 nights have an entry — today's cell is brightest, gaps are dim, prior wins fade with age. Same heatmap mobile users have had since the v2 refresh.
+
+### Technical changes (for Jimmy)
+
+- Mechanical brand-color migration across 18 files under `apps/web/src/app/home`, `apps/web/src/app/entries`, `apps/web/src/app/goals`, `apps/web/src/app/tasks`. Two sed passes ran the following swaps in-place: `bg-[#1E1E2E]` → `bg-acuity-card-bg`, `bg-[#7C5CFC]` / `text-[#7C5CFC]` / `border-[#7C5CFC]` → respective `acuity-primary`, `hover:bg-[#6B4FE0]` → `hover:brightness-110`, `text-violet-{400,500,600,700}` / `dark:text-violet-{200,300}` → `text-acuity-primary`, `bg-violet-{500,600}` → `bg-acuity-primary`, `border-violet-*` → `border-acuity-primary` or `border-acuity-primary-soft`, `bg-violet-50/X` / `dark:bg-violet-950/X` → `bg-acuity-primary-soft`, `hover:shadow-violet-500/30` → `hover:shadow-acuity-glow-primary`, `accent-violet-600` → `accent-acuity-primary`, `decoration-violet-400` → `decoration-acuity-primary`, `ring-violet-500/40` → `ring-acuity-primary-soft`, `focus:border-violet-500` → `focus:border-acuity-primary`, `focus:ring-violet-500/20` → `focus:ring-acuity-primary-soft`. Zinc text/border classes intentionally left alone for this slice — they're not brand drift and a separate cleanup can address them when each page does its layout pass.
+- Added `apps/web/src/app/entries/_components/heatmap-28.tsx`. 28-cell horizontal grid. Today gets `gradMix`, prior days with entries fade `gradPrimary` from 100% (today) → 30% (28 days ago) opacity, empty days are `line-strong` neutral. Streak calculation walks backward from today until first gap. Header: `Card` + `SectionHeader` primitive with eyebrow + count callout ("X of 28 recorded") + streak badge.
+- Wired heatmap into `apps/web/src/app/entries/_sections/list.tsx` above the entries list when entries.length > 0.
+- 18 files modified across home/entries/goals/tasks. No structural changes — purely token swaps + heatmap addition.
+
+### Manual steps needed
+
+- [ ] Spot-check Vercel deploy: /home (greeting + 7-card grid coral primary), /entries (28-night heatmap renders, streak counts, today cell pops), /entries/[id] (theme pills + extraction review pull-quote), /goals (cards + detail rail), /tasks (task rows). Jimmy
+- [ ] No env, no Prisma, no Inngest changes.
+
+### Notes
+
+- The `~~scaffold~~` text-only zinc classes (`text-zinc-400/500/600/900` etc.) were intentionally NOT swapped. They're not brand-color drift — they're neutral text greys that work in both light + dark mode. Migration to `text-acuity-text*` would require changing them in pairs (light variant + `dark:` variant together) and ideally adding `data-theme="dark"` on each page root. That's a bigger restructure for a follow-up slice; not worth the regression risk in a token-migration sweep.
+- Did NOT add `data-theme="dark"` to home/entries/goals/tasks page roots. Those pages currently rely on the legacy `dark:*` Tailwind variant switching driven by the body's existing `bg-[#181614]` dark class. Adding `data-theme` to those page roots would flip the rendering immediately to the canonical dark surface tokens — most cards would render fine on `bg-acuity-card-bg` but the body bg behind them stays `#181614` (close but not identical to `bg-acuity-bg`'s `oklch(0.21 0.022 290)`). Out of scope for slice 5.
+- Heatmap design choices:
+  - 28 cells in a single row (instead of 4×7 grid) per the mobile spec — saves vertical space on mobile web and reads as a timeline-style "the last month at a glance" affordance.
+  - "X-night streak" header label when streak > 0, "Restart tonight" when streak is 0. Small nudge.
+  - Today cell uses `gradMix` (coral → violet duo) for visual focal point; differentiates from prior wins that all use `gradPrimary` (coral only).
+  - Opacity ramp: `Math.max(0.3, 1 - daysAgo / 40)`. Day 0 = 1.0 (covered by today's gradMix). Day 1 = 0.975. Day 7 = 0.825. Day 14 = 0.65. Day 21 = 0.475. Day 27 = 0.325. Floor at 0.3 so the oldest cells are still visible.
+- One pre-existing comment in `life-matrix-snapshot.tsx` still references "violet-400" but it's in a code comment describing the historical color choice, not a rendered class. Left as-is.
+
+---
+
 ## [2026-05-22] — Web parity slice 4 — onboarding refresh + priorities step replaced with Sunday-report priming
 
 **Requested by:** Jimmy

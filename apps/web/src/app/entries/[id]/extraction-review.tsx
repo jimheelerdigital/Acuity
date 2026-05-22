@@ -162,9 +162,9 @@ export function ExtractionReview({ entryId }: { entryId: string }) {
   const selectedGoals = goals.filter((g) => g.selected).length;
 
   return (
-    <section className="rounded-2xl border border-violet-200 dark:border-violet-900/30 bg-gradient-to-br from-violet-50/60 to-white dark:from-violet-950/20 dark:to-[#1E1E2E] p-5 mb-8">
+    <section className="rounded-2xl border border-acuity-primary-soft dark:border-acuity-primary-soft bg-gradient-to-br from-acuity-primary-soft to-white dark:from-acuity-primary-soft dark:to-[#1E1E2E] p-5 mb-8">
       <div className="mb-4">
-        <p className="text-xs font-semibold uppercase tracking-widest text-violet-700 dark:text-violet-300">
+        <p className="text-xs font-semibold uppercase tracking-widest text-acuity-primary dark:text-acuity-primary">
           Review what Acuity extracted
         </p>
         <p className="mt-1.5 text-sm text-zinc-600 dark:text-zinc-300">
@@ -295,13 +295,13 @@ function ReviewRow({
 }) {
   return (
     <div
-      className={`flex items-start gap-3 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-3 py-2.5 transition ${dimmedWhen && !selected ? "opacity-60" : ""}`}
+      className={`flex items-start gap-3 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg px-3 py-2.5 transition ${dimmedWhen && !selected ? "opacity-60" : ""}`}
     >
       <input
         type="checkbox"
         checked={selected}
         onChange={onToggle}
-        className="mt-1 h-4 w-4 shrink-0 accent-violet-600"
+        className="mt-1 h-4 w-4 shrink-0 accent-acuity-primary"
         aria-label={`Keep "${title}"`}
       />
       <div className="flex-1 min-w-0">
@@ -309,7 +309,7 @@ function ReviewRow({
           type="text"
           value={title}
           onChange={(e) => onTitleChange(e.target.value)}
-          className="w-full bg-transparent text-sm text-zinc-900 dark:text-zinc-50 outline-none focus:underline decoration-violet-400 underline-offset-4"
+          className="w-full bg-transparent text-sm text-zinc-900 dark:text-zinc-50 outline-none focus:underline decoration-acuity-primary underline-offset-4"
         />
         {subline && (
           <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400 line-clamp-2">

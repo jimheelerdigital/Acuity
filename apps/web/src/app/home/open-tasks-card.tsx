@@ -119,7 +119,7 @@ export function OpenTasksCard({
   })();
 
   return (
-    <section className="flex h-full flex-col lg:col-span-6 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6 lg:p-7 dark:border-white/10 dark:bg-[#1E1E2E]">
+    <section className="flex h-full flex-col lg:col-span-6 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6 lg:p-7 dark:border-white/10 dark:bg-acuity-card-bg">
       {/* Standard header pair — matches the rest of the dashboard
           (13px / 0.18em eyebrow + 24px tracking-tight title). */}
       <div className="flex items-baseline justify-between gap-3">
@@ -151,7 +151,7 @@ export function OpenTasksCard({
           </p>
           <a
             href="/home#record"
-            className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-violet-600 transition hover:text-violet-500 active:scale-95 dark:text-violet-400"
+            className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-acuity-primary transition hover:text-acuity-primary active:scale-95 dark:text-acuity-primary"
           >
             Record a debrief →
           </a>

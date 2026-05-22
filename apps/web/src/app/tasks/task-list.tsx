@@ -159,7 +159,7 @@ export function TaskList({ isLocked = false }: { isLocked?: boolean }) {
   if (loading) {
     return (
       <div className="flex justify-center py-20">
-        <div className="h-6 w-6 animate-spin rounded-full border-2 border-zinc-200 dark:border-white/10 border-t-violet-500" />
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-zinc-200 dark:border-white/10 border-t-acuity-primary" />
       </div>
     );
   }
@@ -188,7 +188,7 @@ export function TaskList({ isLocked = false }: { isLocked?: boolean }) {
             onClick={() => setActiveTab(tab.key)}
             className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 ${
               activeTab === tab.key
-                ? "bg-white dark:bg-[#1E1E2E] text-zinc-900 dark:text-zinc-50 shadow-sm"
+                ? "bg-white dark:bg-acuity-card-bg text-zinc-900 dark:text-zinc-50 shadow-sm"
                 : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
             }`}
           >
@@ -528,7 +528,7 @@ function TaskRow({
           </button>
           {moveMenuOpen && (
             <div
-              className="absolute right-0 top-9 z-20 w-40 rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] shadow-lg overflow-hidden"
+              className="absolute right-0 top-9 z-20 w-40 rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg shadow-lg overflow-hidden"
               onMouseLeave={() => setMoveMenuOpen(false)}
             >
               {groups.map((g) => (
@@ -739,7 +739,7 @@ function TaskEditModal({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-2xl bg-white dark:bg-[#1E1E2E] border border-zinc-200 dark:border-white/10 p-6 shadow-2xl"
+        className="w-full max-w-md rounded-2xl bg-white dark:bg-acuity-card-bg border border-zinc-200 dark:border-white/10 p-6 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50 mb-4">
@@ -752,7 +752,7 @@ function TaskEditModal({
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          className="w-full rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#13131F] px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-violet-500"
+          className="w-full rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#13131F] px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-acuity-primary"
         />
 
         <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mt-3 mb-1">
@@ -762,7 +762,7 @@ function TaskEditModal({
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           rows={3}
-          className="w-full rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#13131F] px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-violet-500 resize-none"
+          className="w-full rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#13131F] px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-acuity-primary resize-none"
         />
 
         <div className="mt-3 grid grid-cols-2 gap-3">
@@ -773,7 +773,7 @@ function TaskEditModal({
             <select
               value={priority}
               onChange={(e) => setPriority(e.target.value)}
-              className="w-full rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#13131F] px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-violet-500"
+              className="w-full rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#13131F] px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-acuity-primary"
             >
               <option value="URGENT">Urgent</option>
               <option value="HIGH">High</option>
@@ -789,7 +789,7 @@ function TaskEditModal({
               type="date"
               value={due}
               onChange={(e) => setDue(e.target.value)}
-              className="w-full rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#13131F] px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-violet-500"
+              className="w-full rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#13131F] px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-acuity-primary"
             />
           </div>
         </div>
@@ -800,7 +800,7 @@ function TaskEditModal({
         <select
           value={groupId}
           onChange={(e) => setGroupId(e.target.value)}
-          className="w-full rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#13131F] px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-violet-500"
+          className="w-full rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#13131F] px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-acuity-primary"
         >
           <option value="">Ungrouped</option>
           {groups.map((g) => (
@@ -820,7 +820,7 @@ function TaskEditModal({
           <button
             disabled={saving}
             onClick={save}
-            className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500 disabled:opacity-40"
+            className="rounded-lg bg-acuity-primary px-4 py-2 text-sm font-semibold text-white hover:bg-acuity-primary disabled:opacity-40"
           >
             {saving ? "Saving…" : "Save"}
           </button>
@@ -845,7 +845,7 @@ function EmptyState({ tab, isLocked }: { tab: Tab; isLocked: boolean }) {
     return (
       <section
         data-surface-id="tasks_empty_state"
-        className="rounded-2xl border border-zinc-200 bg-gradient-to-br from-violet-50/40 to-white px-6 py-12 text-center dark:border-white/10 dark:from-violet-950/10 dark:to-[#1E1E2E]"
+        className="rounded-2xl border border-zinc-200 bg-gradient-to-br from-acuity-primary-soft to-white px-6 py-12 text-center dark:border-white/10 dark:from-acuity-primary-soft dark:to-[#1E1E2E]"
       >
         <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
           {copy.title}

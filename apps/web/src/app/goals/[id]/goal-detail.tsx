@@ -135,12 +135,12 @@ export function GoalDetail({
                 }
               }}
               autoFocus
-              className="flex-1 rounded-lg border border-zinc-300 dark:border-white/15 bg-white dark:bg-[#1E1E2E] px-3 py-2 text-xl font-semibold text-zinc-900 dark:text-zinc-50 outline-none focus:border-violet-500"
+              className="flex-1 rounded-lg border border-zinc-300 dark:border-white/15 bg-white dark:bg-acuity-card-bg px-3 py-2 text-xl font-semibold text-zinc-900 dark:text-zinc-50 outline-none focus:border-acuity-primary"
             />
             <button
               disabled={saving}
               onClick={saveTitle}
-              className="rounded-lg bg-violet-600 px-3 py-2 text-sm font-medium text-white hover:bg-violet-500 disabled:opacity-40"
+              className="rounded-lg bg-acuity-primary px-3 py-2 text-sm font-medium text-white hover:bg-acuity-primary disabled:opacity-40"
             >
               Save
             </button>
@@ -150,7 +150,7 @@ export function GoalDetail({
             onClick={() => setEditingTitle(true)}
             className="group text-left w-full"
           >
-            <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50 group-hover:text-violet-600 dark:group-hover:text-violet-400 transition">
+            <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50 group-hover:text-acuity-primary dark:group-hover:text-acuity-primary transition">
               {goal.title}
               <span className="ml-2 text-xs font-normal text-zinc-400 dark:text-zinc-500 opacity-0 group-hover:opacity-100 transition">
                 (click to edit)
@@ -178,7 +178,7 @@ export function GoalDetail({
       />
 
       {/* Status + progress */}
-      <section className="rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.04)] dark:shadow-none dark:ring-1 dark:ring-white/5">
+      <section className="rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.04)] dark:shadow-none dark:ring-1 dark:ring-white/5">
         <div className="flex items-center justify-between gap-4">
           <label className="text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
             Status
@@ -187,7 +187,7 @@ export function GoalDetail({
             value={goal.status}
             onChange={(e) => patch({ status: e.target.value })}
             disabled={saving}
-            className="rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#13131F] px-3 py-1.5 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-violet-500"
+            className="rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#13131F] px-3 py-1.5 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-acuity-primary"
           >
             {STATUS_OPTIONS.map((s) => (
               <option key={s.value} value={s.value}>
@@ -215,7 +215,7 @@ export function GoalDetail({
             onChange={(e) => setGoal((g) => ({ ...g, progress: Number(e.target.value) }))}
             onMouseUp={() => patch({ progress: goal.progress })}
             onTouchEnd={() => patch({ progress: goal.progress })}
-            className="w-full accent-violet-500"
+            className="w-full accent-acuity-primary"
           />
         </div>
       </section>
@@ -232,7 +232,7 @@ export function GoalDetail({
                 setNotesDraft(goal.notes ?? "");
                 setEditingNotes(true);
               }}
-              className="text-xs font-medium text-violet-600 dark:text-violet-400 hover:text-violet-500"
+              className="text-xs font-medium text-acuity-primary dark:text-acuity-primary hover:text-acuity-primary"
             >
               {goal.notes ? "Edit" : "Add notes"}
             </button>
@@ -246,7 +246,7 @@ export function GoalDetail({
               autoFocus
               rows={4}
               placeholder="Reflections, blockers, next steps…"
-              className="w-full rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-4 py-3 text-sm text-zinc-800 dark:text-zinc-100 outline-none focus:border-violet-500 resize-none"
+              className="w-full rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg px-4 py-3 text-sm text-zinc-800 dark:text-zinc-100 outline-none focus:border-acuity-primary resize-none"
             />
             <div className="flex justify-end gap-2">
               <button
@@ -258,7 +258,7 @@ export function GoalDetail({
               <button
                 disabled={saving}
                 onClick={saveNotes}
-                className="rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-500 disabled:opacity-40"
+                className="rounded-lg bg-acuity-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-acuity-primary disabled:opacity-40"
               >
                 Save notes
               </button>
@@ -277,9 +277,9 @@ export function GoalDetail({
       <section>
         <button
           onClick={() => setRecordOpen(true)}
-          className="w-full rounded-2xl border border-violet-200 dark:border-violet-900/30 bg-violet-50 dark:bg-violet-950/20 px-5 py-4 text-left transition hover:border-violet-300 dark:hover:border-violet-700/40"
+          className="w-full rounded-2xl border border-acuity-primary-soft dark:border-acuity-primary-soft bg-acuity-primary-soft dark:bg-acuity-primary-soft px-5 py-4 text-left transition hover:border-acuity-primary-soft dark:hover:border-acuity-primary"
         >
-          <p className="text-xs font-semibold uppercase tracking-widest text-violet-600 dark:text-violet-400">
+          <p className="text-xs font-semibold uppercase tracking-widest text-acuity-primary dark:text-acuity-primary">
             Add a reflection
           </p>
           <p className="mt-1 text-sm font-medium text-zinc-800 dark:text-zinc-100">
@@ -299,7 +299,7 @@ export function GoalDetail({
               <a
                 key={e.id}
                 href={`/entries/${e.id}`}
-                className="block rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-4 py-3 hover:border-violet-300 dark:hover:border-violet-700/40 transition"
+                className="block rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg px-4 py-3 hover:border-acuity-primary-soft dark:hover:border-acuity-primary transition"
               >
                 <p className="text-xs text-zinc-400 dark:text-zinc-500 mb-1">
                   {formatRelativeDate(e.createdAt)}

@@ -105,14 +105,14 @@ export function GoalDetailRail({
 
   if (!detail || !hasAny) {
     return (
-      <aside className="rounded-2xl border border-zinc-200 bg-white p-6 text-sm text-zinc-500 dark:border-white/10 dark:bg-[#1E1E2E] dark:text-zinc-400">
+      <aside className="rounded-2xl border border-zinc-200 bg-white p-6 text-sm text-zinc-500 dark:border-white/10 dark:bg-acuity-card-bg dark:text-zinc-400">
         Pick a goal on the left for full context.
       </aside>
     );
   }
 
   return (
-    <aside className="flex flex-col gap-5 rounded-2xl border border-zinc-200 bg-white p-6 dark:border-white/10 dark:bg-[#1E1E2E]">
+    <aside className="flex flex-col gap-5 rounded-2xl border border-zinc-200 bg-white p-6 dark:border-white/10 dark:bg-acuity-card-bg">
       {/* Header — title + meta row */}
       <header>
         <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
@@ -133,7 +133,7 @@ export function GoalDetailRail({
         <div className="mt-3 flex items-center gap-3">
           <div className="h-1.5 flex-1 rounded-full bg-zinc-100 dark:bg-white/10">
             <div
-              className="h-1.5 rounded-full bg-violet-500 transition-all duration-500"
+              className="h-1.5 rounded-full bg-acuity-primary transition-all duration-500"
               style={{ width: `${detail.calculatedProgress}%` }}
             />
           </div>
@@ -172,7 +172,7 @@ export function GoalDetailRail({
                   <span
                     aria-hidden="true"
                     className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${
-                      done ? "bg-zinc-300 dark:bg-zinc-600" : "bg-violet-500"
+                      done ? "bg-zinc-300 dark:bg-zinc-600" : "bg-acuity-primary"
                     }`}
                   />
                   <span
@@ -227,7 +227,7 @@ export function GoalDetailRail({
           </p>
           <Link
             href={`/entries/${detail.sourceEntry.id}`}
-            className="mt-2 block rounded-lg border-l-2 border-violet-500 bg-zinc-50/60 px-3 py-2 transition hover:bg-zinc-100/60 dark:bg-white/[0.02] dark:hover:bg-white/[0.04]"
+            className="mt-2 block rounded-lg border-l-2 border-acuity-primary bg-zinc-50/60 px-3 py-2 transition hover:bg-zinc-100/60 dark:bg-white/[0.02] dark:hover:bg-white/[0.04]"
           >
             <p className="line-clamp-3 text-sm leading-relaxed text-zinc-700 dark:text-zinc-200">
               {detail.sourceEntry.summary ?? "(no summary)"}
@@ -244,7 +244,7 @@ export function GoalDetailRail({
       <footer className="border-t border-zinc-100 pt-4 dark:border-white/5">
         <Link
           href={`/goals/${detail.id}`}
-          className="text-sm font-semibold text-violet-600 hover:text-violet-500 dark:text-violet-400"
+          className="text-sm font-semibold text-acuity-primary hover:text-acuity-primary dark:text-acuity-primary"
         >
           Open full detail →
         </Link>
@@ -257,7 +257,7 @@ function GoalDetailRailSkeleton() {
   return (
     <aside
       aria-hidden="true"
-      className="flex flex-col gap-5 rounded-2xl border border-zinc-200 bg-white p-6 dark:border-white/10 dark:bg-[#1E1E2E]"
+      className="flex flex-col gap-5 rounded-2xl border border-zinc-200 bg-white p-6 dark:border-white/10 dark:bg-acuity-card-bg"
     >
       <div>
         <Skeleton className="h-3 w-20" />

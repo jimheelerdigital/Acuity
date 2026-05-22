@@ -178,7 +178,7 @@ export function RecordButton() {
   return (
     <div className="w-full">
       <div
-        className={`rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] shadow-sm transition-shadow duration-300 hover:shadow-md ${
+        className={`rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg shadow-sm transition-shadow duration-300 hover:shadow-md ${
           compactIdleAtLg
             ? "flex flex-col items-center gap-5 px-6 py-8 lg:flex-row lg:items-center lg:justify-between lg:gap-6 lg:px-7 lg:py-5"
             : "flex flex-col items-center gap-5 px-6 py-8"
@@ -200,7 +200,7 @@ export function RecordButton() {
               ? "bg-red-500 hover:bg-red-400 scale-110 shadow-lg shadow-red-500/30"
               : isProcessing
                 ? "bg-zinc-200 dark:bg-white/10 cursor-wait"
-                : "bg-violet-600 hover:bg-violet-500 hover:scale-105 hover:shadow-xl hover:shadow-violet-500/30 active:scale-95"
+                : "bg-acuity-primary hover:bg-acuity-primary hover:scale-105 hover:shadow-xl hover:shadow-acuity-glow-primary active:scale-95"
           }`}
         >
           {phase === "recording" && (
@@ -211,7 +211,7 @@ export function RecordButton() {
           )}
 
           {phase === "recording" ? (
-            <span className="h-7 w-7 rounded-md bg-white dark:bg-[#1E1E2E]" />
+            <span className="h-7 w-7 rounded-md bg-white dark:bg-acuity-card-bg" />
           ) : isProcessing ? (
             <Spinner />
           ) : (
@@ -349,7 +349,7 @@ function ResultCard({
   const mood = extraction.mood;
 
   return (
-    <div className="mt-4 rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] overflow-hidden shadow-sm animate-fade-in">
+    <div className="mt-4 rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg overflow-hidden shadow-sm animate-fade-in">
       {/* Header */}
       <div className="px-5 pt-5 pb-4 flex items-start justify-between gap-4">
         <div className="flex-1">
@@ -445,7 +445,7 @@ function ResultCard({
           <ul className="space-y-1.5">
             {extraction.insights.map((ins, i) => (
               <li key={i} className="text-sm text-zinc-500 dark:text-zinc-400 flex gap-2">
-                <span className="text-violet-500 shrink-0">→</span>
+                <span className="text-acuity-primary shrink-0">→</span>
                 {ins}
               </li>
             ))}
@@ -457,7 +457,7 @@ function ResultCard({
       <div className="border-t border-zinc-100 dark:border-white/5 px-5 py-3 flex justify-end">
         <button
           onClick={onRecordAgain}
-          className="text-sm text-violet-600 hover:text-violet-500 transition font-medium"
+          className="text-sm text-acuity-primary hover:text-acuity-primary transition font-medium"
         >
           Record another session
         </button>
