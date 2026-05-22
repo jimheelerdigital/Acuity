@@ -346,7 +346,7 @@ export async function extractFromTranscript(
   // persistence layer — ExtractionResult carries raw labels so Entry
   // themes match what the user actually said.
   const rawThemes: unknown[] = Array.isArray(parsed.themes) ? parsed.themes : [];
-  const themesDetailed = rawThemes
+  let themesDetailed = rawThemes
     .slice(0, 5)
     .map((t) => {
       if (typeof t === "string") {
@@ -365,13 +365,37 @@ export async function extractFromTranscript(
     })
     .filter((t): t is { label: string; sentiment: "POSITIVE" | "NEGATIVE" | "NEUTRAL" } => t !== null);
 
+  // safeLog import — shared by the theme-suppress gate below + the
+  // dispositional-rollout observability further down.
+  const { safeLog } = await import("./safe-log");
+
+  // Phase E polish 1 (2026-05-21): word-count gate on theme extraction.
+  // Transcripts under THEME_WORD_FLOOR words are too thin to surface a
+  // genuine recurring pattern — the AI may still emit a theme label
+  // out of momentum, but it's noise that pollutes the Theme Map.
+  // Suppress themes here at the extraction layer (one floor, all
+  // callers benefit). Other extraction fields (summary, mood, wins,
+  // blockers, insights) stay — they're useful even for a short entry.
+  const THEME_WORD_FLOOR = 8;
+  const wordCount = transcript
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean).length;
+  if (wordCount < THEME_WORD_FLOOR) {
+    safeLog.info("extract.theme_suppressed_short_transcript", {
+      wordCount,
+      transcriptLength: transcript.length,
+      themeCountBeforeSuppress: themesDetailed.length,
+    });
+    themesDetailed = [];
+  }
+
   // Observability for the v1.1 dispositional-themes rollout. Logs
   // which prompt variant produced this extraction's themes plus
   // distribution stats so we can verify lab improvements
   // (docs/v1-1/theme-extraction-phase2.md) hold at production scale.
   // Theme labels are non-PII (no transcript content, no names by
   // construction in V5). safeLog also redacts known-sensitive fields.
-  const { safeLog } = await import("./safe-log");
   safeLog.info("extract.theme_prompt", {
     variant: useDispositionalThemes ? "v5_dispositional" : "v0_legacy",
     themeCount: themesDetailed.length,
