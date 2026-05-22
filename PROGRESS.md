@@ -41,6 +41,44 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-22] — Processing screen overhaul — 8 slides with testimonials, progress bar, coming soon teasers
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 1670b4c
+
+### In plain English (for Keenan)
+
+The processing screen now fills the full 30-second wait with engaging content instead of rushing through 5 slides. There are now 8 slides: 5 milestone slides (Day 1 through 1 Year) each paired with a real testimonial, plus 3 "Coming Soon" teaser slides for calendar integration, memory search, and smart nudges. A progress bar at the top shows actual processing progress. Each slide gets 4 seconds with staggered animations for the headline, description, and testimonial. The processing status text is now subtle at the bottom so the slides are the star.
+
+### Technical changes (for Jimmy)
+
+- Modified `apps/web/src/app/auth/signup/success/first-debrief-flow.tsx`:
+  - Replaced `TIMELINE_STAGES` (5 items) with `PROCESSING_SLIDES` (8 items, typed `ProcessingSlide` interface)
+  - Each slide has: label, text, optional testimonial (quote + name), optional comingSoon flag, optional description
+  - Slide interval: 4000ms (was 3500ms), total: 32s (was 17.5s)
+  - Added progress bar at top: `getProgressPct()` maps pipeline phases to 0-100%
+  - Added sub-step stagger per slide: label+text at 100ms, testimonial/description at 600ms
+  - Coming Soon slides show pulsing badge instead of milestone label
+  - Testimonials have decorative quote marks in purple
+  - Progress dots updated for 8 slides (was 5)
+  - Processing status moved to bottom, smaller text (xs), smaller dot (1.5w)
+  - Removed unused `TIMELINE_STAGES` and `STAGE_MS` constants
+- Slide orb gradients expanded to 8 entries (`SLIDE_ORBS`)
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- 8 slides x 4s = 32s covers the typical 25-35s processing time for a 60s recording
+- If processing finishes early, progress bar shows 100% but slides continue playing
+- If processing takes longer than 32s, last slide holds until processing completes
+- Coming Soon features (calendar, memory search, nudges) are real roadmap items — seeds future expectations
+
+---
+
 ## [2026-05-22] — CTA/download screen — white theme, shining ring buttons, animated counter
 
 **Requested by:** Keenan
