@@ -41,6 +41,43 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-22] — Post-signup first debrief recording flow
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** cd40233
+
+### In plain English (for Keenan)
+
+The "download the app" page that users see after signup has been replaced with a recording experience. New users now do their first debrief right in the browser — they tap a mic, talk for 60 seconds, and immediately see their extracted tasks, goals, mood, and themes. Then they get the download CTA with testimonials and social proof. This means users experience the product before they ever download the app. If someone comes back to this page after already recording, they skip straight to the download screen.
+
+### Technical changes (for Jimmy)
+
+- New file: `apps/web/src/app/auth/signup/success/first-debrief-flow.tsx` — 4-screen client component:
+  - **Screen 1 (Record):** MediaRecorder integration, 15s minimum / 120s max, animated pulse mic button, suggested prompts after 10s, "keep going" nudge
+  - **Screen 2 (Processing):** 5-stage timeline animation (10s total, always plays fully), real-time processing status via `useEntryPolling`, waits for both animation AND processing to complete
+  - **Screen 3 (Extraction Reveal):** Staggered fade-in of mood/summary, tasks, goals, themes from real extraction data
+  - **Screen 4 (CTA):** App Store button, continue in browser, QR code, TestimonialCarousel, value props, urgency copy
+- Modified `apps/web/src/app/auth/signup/success/page.tsx` — server component now checks `Entry.count({ status: "COMPLETE" })` to detect returning users and pass `skipToDownload` prop
+- Reuses existing pipeline: POST /api/record → Inngest processEntryFn → useEntryPolling
+- Reuses existing components: TestimonialCarousel, useEntryPolling hook
+- Old success-client.tsx is no longer imported (kept in repo for reference, not deleted)
+- No schema changes, no new API routes
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- The recording saves as a real Entry — it's the user's actual first debrief, not a throwaway demo
+- All signup paths (Google, Apple, email, magic link) already redirect to `/auth/signup/success`, so no redirect changes needed
+- The old `success-client.tsx` file is still in the directory but is no longer imported. Can be deleted in a future cleanup pass.
+- "Debrief" terminology used throughout — "brain dump" is deprecated per copy standards
+- Mobile-first layout: 128px mic button on mobile, centered column, all text readable on small screens
+
+---
+
 ## [2026-05-22] — Simplify admin signup notification — strip attribution, fire inline
 
 **Requested by:** Keenan
