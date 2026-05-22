@@ -1105,29 +1105,17 @@ export function LandingPage() {
               {/* CTA — mobile version */}
                 <div className="mt-8 flex flex-col items-center gap-3 lg:hidden">
                   <div className="flex flex-row items-center gap-3">
-                    <TryItNowButtonDark />
                     <a
                       href={ctaHref}
                       onClick={trackInitiateCheckout}
-                      className="group relative rounded-full p-[2px] transition active:scale-95 overflow-hidden"
+                      className="group relative rounded-full p-[2px] transition active:scale-95 hover:scale-[1.02] overflow-hidden"
                     >
                       <span className="absolute inset-[-100%] animate-cta-shine" style={{ background: 'conic-gradient(from 0deg, transparent 0%, transparent 60%, #ffffff 75%, #B8A5FF 85%, transparent 100%)' }} />
                       <span className="relative flex items-center justify-center rounded-full bg-[#7C5CFC] px-7 py-3.5 text-sm font-semibold text-white">
                         Start Free Trial
                       </span>
                     </a>
-                    <a
-                      href={APP_STORE_URL}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="group relative rounded-full p-[2px] transition active:scale-95 overflow-hidden"
-                    >
-                      <span className="absolute inset-[-100%] animate-cta-shine" style={{ background: 'conic-gradient(from 0deg, transparent 0%, transparent 60%, #ffffff 75%, #B8A5FF 85%, transparent 100%)' }} />
-                      <span className="relative flex items-center justify-center gap-2 rounded-full bg-black px-7 py-3.5 text-sm font-semibold text-white">
-                        <AppleLogoSmall />
-                        Download App
-                      </span>
-                    </a>
+                    <TryItNowButtonDark />
                   </div>
                   <a
                     href="#how-it-works"
@@ -1139,33 +1127,19 @@ export function LandingPage() {
 
               {/* CTA — desktop version */}
                 <div className="mt-10 hidden lg:flex flex-col items-center lg:items-center gap-3">
-                  {/* Row 1: Try + Free Trial + App Store */}
                   <div className="flex flex-row items-center gap-3">
-                    <TryItNowButtonDark />
                     <a
                       href={ctaHref}
                       onClick={trackInitiateCheckout}
-                      className="group relative rounded-full p-[2px] transition active:scale-95 overflow-hidden"
+                      className="group relative rounded-full p-[2px] transition active:scale-95 hover:scale-[1.02] overflow-hidden"
                     >
                       <span className="absolute inset-[-100%] animate-cta-shine" style={{ background: 'conic-gradient(from 0deg, transparent 0%, transparent 60%, #ffffff 75%, #B8A5FF 85%, transparent 100%)' }} />
                       <span className="relative flex items-center justify-center rounded-full bg-[#7C5CFC] px-7 py-3.5 text-sm font-semibold text-white transition group-hover:bg-[#6B4FE0]">
                         Start Free Trial
                       </span>
                     </a>
-                    <a
-                      href={APP_STORE_URL}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="group relative rounded-full p-[2px] transition active:scale-95 overflow-hidden"
-                    >
-                      <span className="absolute inset-[-100%] animate-cta-shine" style={{ background: 'conic-gradient(from 0deg, transparent 0%, transparent 60%, #ffffff 75%, #B8A5FF 85%, transparent 100%)' }} />
-                      <span className="relative flex items-center justify-center gap-2 rounded-full bg-black px-7 py-3.5 text-sm font-semibold text-white transition group-hover:bg-zinc-900">
-                        <AppleLogoSmall />
-                        Download App
-                      </span>
-                    </a>
+                    <TryItNowButtonDark />
                   </div>
-                  {/* Row 2: Understated "See how it works" link */}
                   <a
                     href="#how-it-works"
                     className="mt-1 text-sm font-medium text-[#A0A0B8] underline underline-offset-4 decoration-[#A0A0B8]/40 transition hover:text-white hover:decoration-white/60"

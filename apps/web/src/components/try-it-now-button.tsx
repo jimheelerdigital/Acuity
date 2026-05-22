@@ -97,7 +97,9 @@ export function TryItNowButton({
 }
 
 /**
- * Dark-theme variant for the landing pages with dark backgrounds.
+ * "Try It First" button with silver/light shining ring animation.
+ * Light background, dark text — designed to sit next to the purple
+ * "Start Free Trial" button on dark landing pages.
  */
 export function TryItNowButtonDark({
   className = "",
@@ -121,9 +123,12 @@ export function TryItNowButtonDark({
     return (
       <a
         href="/auth/signup"
-        className={`rounded-full bg-[#7C5CFC] px-8 py-4 text-sm font-bold text-white transition hover:bg-[#6B4FE0] active:scale-95 inline-block ${className}`}
+        className={`group relative rounded-full p-[2px] transition active:scale-95 overflow-hidden inline-block ${className}`}
       >
-        Sign up to continue
+        <span className="absolute inset-[-100%] animate-cta-shine" style={{ background: 'conic-gradient(from 0deg, transparent 0%, transparent 60%, rgba(255,255,255,0.6) 75%, rgba(200,200,210,0.4) 85%, transparent 100%)' }} />
+        <span className="relative flex items-center justify-center rounded-full bg-[#F0EDE8] px-7 py-3.5 text-sm font-semibold text-[#181614]">
+          Sign up to continue
+        </span>
       </a>
     );
   }
@@ -131,9 +136,12 @@ export function TryItNowButtonDark({
   return (
     <button
       onClick={() => setOpen(true)}
-      className={`rounded-full bg-[#7C5CFC] px-8 py-4 text-sm font-bold text-white transition hover:bg-[#6B4FE0] active:scale-95 ${className}`}
+      className={`group relative rounded-full p-[2px] transition active:scale-95 hover:scale-[1.02] overflow-hidden ${className}`}
     >
-      Try it now &mdash; free
+      <span className="absolute inset-[-100%] animate-cta-shine" style={{ background: 'conic-gradient(from 0deg, transparent 0%, transparent 60%, rgba(255,255,255,0.6) 75%, rgba(200,200,210,0.4) 85%, transparent 100%)' }} />
+      <span className="relative flex items-center justify-center rounded-full bg-[#F0EDE8] px-7 py-3.5 text-sm font-semibold text-[#181614]">
+        Try It First
+      </span>
     </button>
   );
 }

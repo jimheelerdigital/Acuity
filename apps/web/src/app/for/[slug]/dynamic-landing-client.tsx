@@ -71,10 +71,10 @@ export function DynamicLandingPageView({ page, slug, ctaHref }: { page: DynamicL
               </Reveal>
               <Reveal delay={2}>
                 <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-4">
-                  <TryItNowButtonDark />
                   <PulsingCTA href={ctaHref}>
                     Start Free Trial
                   </PulsingCTA>
+                  <TryItNowButtonDark />
                   <p className="mt-2.5 text-xs text-[#B0A898]">
                     No credit card. Quick setup.
                   </p>
@@ -183,13 +183,14 @@ export function DynamicLandingPageView({ page, slug, ctaHref }: { page: DynamicL
                 {page.closingHeadline || "Your week doesn\u2019t have to disappear."}
               </h2>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                <TryItNowButtonDark />
                 <a
                   href={ctaHref}
-                  className="inline-block rounded-full bg-[#7C5CFC] px-8 py-4 text-sm font-bold text-white transition hover:bg-[#6B4FE0] hover:-translate-y-0.5 active:scale-95"
+                  className="group relative rounded-full p-[2px] transition active:scale-95 hover:scale-[1.02] overflow-hidden"
                 >
-                  Start Free Trial
+                  <span className="absolute inset-[-100%] animate-cta-shine" style={{ background: 'conic-gradient(from 0deg, transparent 0%, transparent 60%, #ffffff 75%, #B8A5FF 85%, transparent 100%)' }} />
+                  <span className="relative flex items-center justify-center rounded-full bg-[#7C5CFC] px-7 py-3.5 text-sm font-bold text-white">Start Free Trial</span>
                 </a>
+                <TryItNowButtonDark />
               </div>
               <p className="mt-2.5 text-sm text-[#B0A898]">
                 No credit card. Cancel anytime.

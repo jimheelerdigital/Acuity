@@ -54,8 +54,8 @@ export function StaticPersonaPage({ page, slug }: { page: PersonaPage; slug: str
           <Reveal delay={1}><p className="mt-6 text-lg text-[#B0A898] leading-relaxed max-w-2xl mx-auto">{page.subheadline}</p></Reveal>
           <Reveal delay={2}>
             <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
-              <TryItNowButtonDark />
               <PulsingCTA href={ctaHref}>Start Free Trial</PulsingCTA>
+              <TryItNowButtonDark />
             </div>
           </Reveal>
         </div>
@@ -117,8 +117,11 @@ export function StaticPersonaPage({ page, slug }: { page: PersonaPage; slug: str
             <div className="relative">
               <h2 className="text-3xl font-bold sm:text-4xl tracking-tight mb-6">{page.ctaHeadline}</h2>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                <a href={ctaHref} className="group relative rounded-full p-[2px] transition active:scale-95 hover:scale-[1.02] overflow-hidden">
+                  <span className="absolute inset-[-100%] animate-cta-shine" style={{ background: 'conic-gradient(from 0deg, transparent 0%, transparent 60%, #ffffff 75%, #B8A5FF 85%, transparent 100%)' }} />
+                  <span className="relative flex items-center justify-center rounded-full bg-[#7C5CFC] px-7 py-3.5 text-sm font-bold text-white">Start Free Trial</span>
+                </a>
                 <TryItNowButtonDark />
-                <a href={ctaHref} className="rounded-full bg-[#7C5CFC] px-8 py-4 text-sm font-bold text-white transition hover:bg-[#6B4FE0] active:scale-95">Start Free Trial</a>
               </div>
             </div>
           </div>
