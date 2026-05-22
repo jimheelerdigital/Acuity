@@ -20,6 +20,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
   DEFAULT_LIFE_AREAS,
+  lifeAreaDisplayLabel,
   type EntryDTO,
   type UserProgression,
 } from "@acuity/shared";
@@ -488,11 +489,19 @@ export default function InsightsTab() {
                       className="h-1 w-10 rounded-full mb-3"
                       style={{ backgroundColor: tokens.primary }}
                     />
+                    {/* Use the shared lifeAreaDisplayLabel helper instead
+                        of `area.name ?? area.area`. The LifeMapArea.name
+                        column is stale for Phase D renamed rows
+                        (HEALTH-renamed-to-PHYSICAL_HEALTH still shows
+                        "Health") and null for the 5 brand-new V2 axes
+                        seeded by the migration. The helper maps any V2
+                        enum to its canonical display label and
+                        tolerates legacy V1 keys defensively. */}
                     <Text
                       className="text-sm font-semibold mb-1"
                       style={{ color: tokens.text }}
                     >
-                      {area.name ?? area.area}
+                      {lifeAreaDisplayLabel(area.area)}
                     </Text>
                     <View
                       className="h-1.5 w-full rounded-full mb-2"

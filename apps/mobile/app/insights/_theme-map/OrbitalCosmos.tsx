@@ -422,12 +422,20 @@ export function OrbitalCosmos({
               cy="50%"
               r="60%"
             >
-              {/* Phase E polish 2: tighter lightness range + centered
-                  origin. No directional highlight — reads as a flat
-                  colored disc with subtle atmospheric depth, not a 3D
-                  marble. */}
-              <Stop offset="0%" stopColor={`hsl(${theme.hue}, 65%, 62%)`} />
-              <Stop offset="100%" stopColor={`hsl(${theme.hue}, 65%, 52%)`} />
+              {/* Phase E polish 4: atmospheric astronomy treatment.
+                  Saturation dropped from 65% → 42% (muted, dusty
+                  instead of bright primary). 4 stops produce a
+                  center-to-limb darkening that suggests atmospheric
+                  depth without a directional highlight or glossy
+                  marble feel.
+                    0%   62% lightness — slightly brighter center
+                    40%  48% — base
+                    80%  42%, 38% sat — slight darkening
+                    100% 36%, 30% sat — atmospheric limb */}
+              <Stop offset="0%" stopColor={`hsl(${theme.hue}, 42%, 52%)`} />
+              <Stop offset="40%" stopColor={`hsl(${theme.hue}, 42%, 48%)`} />
+              <Stop offset="80%" stopColor={`hsl(${theme.hue}, 38%, 42%)`} />
+              <Stop offset="100%" stopColor={`hsl(${theme.hue}, 30%, 36%)`} />
             </RadialGradient>
           ))}
         </Defs>
