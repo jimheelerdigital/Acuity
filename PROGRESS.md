@@ -41,6 +41,42 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-22] — Processing screen timing logic, bottom progress bar, clean summary
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** ff7edaf
+
+### In plain English (for Keenan)
+
+The processing slideshow now has smart timing: slides 1-9 (the core features) always play, then if processing is already done, it skips the "coming soon" slides and goes straight to the summary. If processing isn't done yet, the coming-soon slides play as buffer. The progress bar moved from the top to the bottom of the screen, underneath the processing status text. The summary screen is now a clean text list with small purple dots — no emojis. Coming-soon items only appear on the summary if those slides actually played.
+
+### Technical changes (for Jimmy)
+
+- Modified `apps/web/src/app/auth/signup/success/first-debrief-flow.tsx`:
+  - Added `CORE_SLIDE_COUNT = 9` constant (slides 0-8 are core, 9-11 are coming soon)
+  - Added `pendingSkipRef` — flags mid-slide processing completion so next interval tick skips to summary
+  - Added `showedComingSoon` state — tracks whether coming-soon slides were shown
+  - Slide advancement logic: after slide 9, checks `extractionRef.current` — if set, skips to summary
+  - Summary items split into `SUMMARY_CORE` (7 items) and `SUMMARY_COMING_SOON` (3 items)
+  - Summary only shows coming-soon section if `showedComingSoon` is true
+  - Summary uses purple dots for core items, zinc dots for coming-soon — no emojis
+  - Summary holds 3s after all items shown (was 1.5s)
+  - Progress bar moved from top of screen to bottom, underneath processing status text
+  - "Coming soon" subheader in summary uses muted uppercase style
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- Core content: 9 slides x 5s = 45s. If processing finishes in 30s, user sees ~6 core slides then summary.
+- Buffer content: 3 coming-soon slides add 15s if needed (total 60s).
+- Never interrupts a slide mid-animation — always finishes the current 5s cycle.
+
+---
+
 ## [2026-05-22] — Processing screen extended — 12 slides at 5s + summary screen
 
 **Requested by:** Keenan
