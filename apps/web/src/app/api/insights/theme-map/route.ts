@@ -96,6 +96,17 @@ export async function GET(req: NextRequest) {
 
   const { prisma } = await import("@/lib/prisma");
 
+  // Lifetime completed-entry count for the locked-state gate signal.
+  // Decoupled from the mentions query (which is window-scoped) so the
+  // Theme Map unlock gate counts what the user would intuitively count:
+  // their actual completed recordings, not just entries that produced
+  // theme mentions within the active time window. Without this, a user
+  // with 38 completed entries but only 5 entries inside the last 30
+  // days would stay locked behind a "5 of 10" gate (2026-05-21 fix).
+  const completedEntryCount = await prisma.entry.count({
+    where: { userId, status: "COMPLETE" },
+  });
+
   // Pull mentions with their theme + entry ids. We don't need the
   // entry's full summary yet — that's lazy-loaded into the detail
   // panel via the recentEntries projection below.
@@ -143,7 +154,7 @@ export async function GET(req: NextRequest) {
         meta: {
           windowStart: windowStart?.toISOString() ?? null,
           windowEnd: effectiveEnd.toISOString(),
-          totalEntries: 0,
+          totalEntries: completedEntryCount,
           snapshotAt: snapshot ?? null,
         },
       },
@@ -526,7 +537,7 @@ export async function GET(req: NextRequest) {
       meta: {
         windowStart: windowStart?.toISOString() ?? null,
         windowEnd: effectiveEnd.toISOString(),
-        totalEntries: entryIdSet.size,
+        totalEntries: completedEntryCount,
         snapshotAt: snapshot ?? null,
       },
     },

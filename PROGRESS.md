@@ -41,6 +41,36 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-21] — v1.1 ship-blocker — Theme Map locked-state gate counts lifetime entries
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** _pending_
+
+### In plain English (for Keenan)
+
+The Theme Map's unlock gate was lying to users. It read "5 of 10 entries" even on accounts with 38 recordings, because it was counting only the entries that had themes inside the active 30-day view window — not the user's actual recording history. The reviewer account stayed locked when it should have been unlocked, which would have blocked App Store screenshots. Now the gate counts what the user would intuitively count: their lifetime completed recordings.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/api/insights/theme-map/route.ts`:
+  - Added a `prisma.entry.count({ where: { userId, status: "COMPLETE" } })` lifetime query after the prisma import.
+  - Replaced `meta.totalEntries: entryIdSet.size` with `meta.totalEntries: completedEntryCount` (both the empty-mentions early-return at line ~146 and the main return at line ~529).
+- Decouples the unlock gate from the window-scoped mentions query that drives the orbital content. The orbital cosmos still respects window / snapshot; only the gate signal is lifetime.
+
+### Manual steps needed
+
+- [ ] Confirm Vercel deploy reaches READY for main (Jimmy)
+- [ ] Reload simulator with reviewer account; verify Theme Map unlocks at 38 entries (Jimmy)
+
+### Notes
+
+- Decision: lifetime gate via a separate `prisma.entry.count`, not "swap the mentions query to be unbounded." The mentions query has a 1000-cap and per-window semantics that other downstream projections (sparkline, periods, trend, co-occurrence) all depend on. Adding a single count query is cheaper than reshaping the whole pipeline.
+- The empty-mentions early-return (window with zero mentions) previously hardcoded `totalEntries: 0` — that case also now reports the lifetime count, otherwise a user with entries but no themes in-window would still see "0 of 10."
+- App Review blocker: reviewer account had 38 COMPLETED entries but only 5 in the 30-day window. Without this fix, v1.1 screenshots couldn't be captured.
+
+---
+
 ## [2026-05-21] — Phase E — Theme Map orbital cosmos rebuild
 
 **Requested by:** Jimmy
