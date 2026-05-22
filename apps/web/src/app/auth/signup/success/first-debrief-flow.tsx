@@ -738,8 +738,8 @@ function ProcessingScreen({
   const [showedComingSoon, setShowedComingSoon] = useState(false);
   const completedRef = useRef(false);
   const extractionRef = useRef<ExtractionResult | null>(null);
-  // Flag: processing finished, waiting for current slide to end
-  const pendingSkipRef = useRef(false);
+  // Tracks the highest slide index we reached (for coming-soon detection)
+  const maxSlideRef = useRef(0);
 
   const [subStep, setSubStep] = useState(0);
 
@@ -754,51 +754,68 @@ function ProcessingScreen({
     }
   }, [poll.status, poll.entry]);
 
-  // Advance slides every 5s with smart skip logic
+  // Advance slides every 5s. Use a simple counter ref to avoid
+  // calling setOnSummary inside setSlideIndex (which React swallows).
+  const slideCounterRef = useRef(0);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   useEffect(() => {
-    const interval = setInterval(() => {
-      setSlideIndex((prev) => {
-        const next = prev + 1;
+    intervalRef.current = setInterval(() => {
+      const current = slideCounterRef.current;
+      const next = current + 1;
 
-        // If processing is done and we've finished core slides (index 8 = slide 9),
-        // or if pendingSkip was set mid-slide, jump to summary
-        if (extractionRef.current && next >= CORE_SLIDE_COUNT) {
-          clearInterval(interval);
-          setOnSummary(true);
-          return prev;
-        }
+      // Should we go to summary?
+      const processingDone = !!extractionRef.current;
+      const pastCore = next >= CORE_SLIDE_COUNT;
+      const pastAll = next >= PROCESSING_SLIDES.length;
 
-        // If pending skip (processing finished mid-slide), go to summary
-        if (pendingSkipRef.current) {
-          clearInterval(interval);
-          setOnSummary(true);
-          return prev;
-        }
-
-        // Past all slides — go to summary
-        if (next >= PROCESSING_SLIDES.length) {
-          clearInterval(interval);
-          setOnSummary(true);
-          return prev;
-        }
-
-        // Track if we entered coming-soon slides
-        if (next >= CORE_SLIDE_COUNT) {
+      if ((processingDone && pastCore) || pastAll) {
+        // eslint-disable-next-line no-console
+        console.log("[processing-screen] Transitioning to summary. processingDone:", processingDone, "slide:", current, "pastCore:", pastCore, "pastAll:", pastAll);
+        if (intervalRef.current) clearInterval(intervalRef.current);
+        // Track if we showed coming-soon slides
+        if (maxSlideRef.current >= CORE_SLIDE_COUNT) {
           setShowedComingSoon(true);
         }
+        setOnSummary(true);
+        return;
+      }
 
-        return next;
-      });
+      // Track coming-soon visibility
+      if (next >= CORE_SLIDE_COUNT) {
+        maxSlideRef.current = next;
+      }
+
+      slideCounterRef.current = next;
+      setSlideIndex(next);
       setSubStep(0);
     }, SLIDE_MS);
-    return () => clearInterval(interval);
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
   }, []);
 
-  // When processing finishes during a slide, set pending skip
-  // so next interval tick goes to summary
+  // If processing finishes mid-slide after core slides,
+  // trigger summary on next tick by clearing interval and setting summary
   useEffect(() => {
-    if (extractionRef.current && slideIndex >= CORE_SLIDE_COUNT - 1 && !onSummary) {
-      pendingSkipRef.current = true;
+    if (
+      !onSummary &&
+      extractionRef.current &&
+      slideCounterRef.current >= CORE_SLIDE_COUNT - 1
+    ) {
+      // Let the current slide's 5s finish, then the interval tick
+      // above will detect processingDone && pastCore and trigger summary.
+      // But if we're already on the last core slide (index 8) and the
+      // interval already fired past it, force summary now.
+      if (slideCounterRef.current >= CORE_SLIDE_COUNT) {
+        // eslint-disable-next-line no-console
+        console.log("[processing-screen] Processing done mid-slide, forcing summary. slide:", slideCounterRef.current);
+        if (intervalRef.current) clearInterval(intervalRef.current);
+        if (maxSlideRef.current >= CORE_SLIDE_COUNT) {
+          setShowedComingSoon(true);
+        }
+        setOnSummary(true);
+      }
     }
   }, [poll.status, slideIndex, onSummary]);
 
