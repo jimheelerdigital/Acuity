@@ -41,6 +41,44 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-22] — Simplify admin signup notification — strip attribution, fire inline
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 353a9d0
+
+### In plain English (for Keenan)
+
+When someone signs up for Acuity, the email you and Jimmy get was previously delayed 30 seconds and tried to include UTM attribution data, which caused timing issues with Google/Apple sign-ins. Now the notification fires immediately with just the basics: the person's name, email, how they signed up (Google, Apple, email, or magic link), and when. Attribution data still gets saved to the database and admin dashboard — it's just no longer crammed into the notification email.
+
+### Technical changes (for Jimmy)
+
+- Rewrote `apps/web/src/lib/founder-notifications.ts` — stripped attribution params, live counts, founding member data. Now accepts just `name`, `email`, `signupMethod`, `timestamp`.
+- Rewrote `apps/web/src/emails/founder-signup-notification.ts` — simplified email template to 4 rows: name, email, signup method, signed-up-at. Removed attribution section, counts section, founding member badge.
+- Modified `apps/web/src/lib/bootstrap-user.ts` — replaced Inngest dispatch (`user/signup.notify`) with inline call to `notifyFoundersOfSignup()`. Added `signupMethod` param. Consolidated duplicate `prisma.user.findUnique` for name lookup.
+- Deleted `apps/web/src/inngest/functions/send-signup-notification.ts` — the 30-second delayed Inngest function is no longer needed.
+- Modified `apps/web/src/app/api/inngest/route.ts` — removed `sendSignupNotificationFn` registration.
+- Updated all 6 signup call sites to pass `signupMethod` to `bootstrapNewUser`:
+  - `apps/web/src/app/api/auth/signup/route.ts` → `"email"`
+  - `apps/web/src/lib/auth.ts` (NextAuth createUser) → `method` variable (google/apple/email)
+  - `apps/web/src/app/api/auth/mobile-signup/route.ts` → `"mobile-email"`
+  - `apps/web/src/app/api/auth/mobile-callback/route.ts` → `"mobile-google"`
+  - `apps/web/src/app/api/auth/mobile-callback-apple/route.ts` → `"mobile-apple"`
+  - `apps/web/src/app/api/auth/mobile-magic-link/route.ts` → `"magic-link"`
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- Attribution data is still written to the User row and visible in the admin dashboard — only the notification email lost it.
+- The Inngest function `send-signup-notification` was deleted. Inngest will auto-deregister it on next sync (triggered by next GET to `/api/inngest`). No manual Inngest resync needed.
+- The `FounderNotificationLog` table is still written to for audit trail.
+- Slack webhook notification (`SLACK_FOUNDER_WEBHOOK_URL`) still fires if configured, with simplified message.
+
+---
+
 ## [2026-05-21] — v1.1 ship-blocker — Theme Map locked-state gate counts lifetime entries
 
 **Requested by:** Jimmy
