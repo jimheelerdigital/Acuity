@@ -1089,68 +1089,42 @@ export function LandingPage() {
           <div className="absolute top-32 left-[20%] h-[200px] w-[200px] rounded-full bg-indigo-500/10 blur-[80px] animate-blob-drift" />
         </div>
 
-        <div className="relative mx-auto max-w-7xl px-6">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:gap-10">
-            {/* Left content — center on mobile, left on desktop */}
-            <div className="flex-1 max-w-2xl text-center lg:text-left mx-auto lg:mx-0">
-                <h1 className="font-black tracking-tight">
-                  <span className="block text-white whitespace-nowrap text-4xl sm:text-5xl lg:text-[3.25rem] xl:text-[3.75rem] leading-[1.1] mb-2 sm:mb-3">One minute a day.</span>
-                  <span className="block bg-gradient-to-r from-[#B8A5FF] to-[#7C5CFC] bg-clip-text text-transparent whitespace-nowrap text-4xl sm:text-5xl lg:text-[3.25rem] xl:text-[3.75rem] leading-[1.2] pb-1">A life of clarity.</span>
-                </h1>
+        <div className="relative mx-auto max-w-4xl px-6">
+          <div className="flex flex-col items-center text-center">
+            <h1 className="font-black tracking-tight">
+              <span className="block text-white text-4xl sm:text-5xl lg:text-[3.25rem] xl:text-[3.75rem] leading-[1.1] mb-2 sm:mb-3">One minute a day.</span>
+              <span className="block bg-gradient-to-r from-[#B8A5FF] to-[#7C5CFC] bg-clip-text text-transparent text-4xl sm:text-5xl lg:text-[3.25rem] xl:text-[3.75rem] leading-[1.2] pb-1">A life of clarity.</span>
+            </h1>
 
-                <p className="mt-8 text-base text-[#C0C0D0] leading-relaxed max-w-lg mx-auto lg:mx-0">
-                  Acuity is the AI voice journal that turns your daily debrief into action. Talk any time of day — it catches your tasks, tracks the goals you keep circling, and surfaces the patterns you can&rsquo;t see on your own.
-                </p>
+            <p className="mt-8 text-base text-[#C0C0D0] leading-relaxed max-w-2xl mx-auto">
+              Acuity is the AI voice journal that turns your daily debrief into action. Talk any time of day — it catches your tasks, tracks the goals you keep circling, and surfaces the patterns you can&rsquo;t see on your own.
+            </p>
 
-              {/* CTA — mobile version */}
-                <div className="mt-8 flex flex-col items-center gap-3 lg:hidden">
-                  <div className="flex flex-row items-center gap-3">
-                    <a
-                      href={ctaHref}
-                      onClick={trackInitiateCheckout}
-                      className="group relative rounded-full p-[2px] transition active:scale-95 hover:scale-[1.02] overflow-hidden"
-                    >
-                      <span className="absolute inset-[-100%] animate-cta-shine" style={{ background: 'conic-gradient(from 0deg, transparent 0%, transparent 60%, #ffffff 75%, #B8A5FF 85%, transparent 100%)' }} />
-                      <span className="relative flex items-center justify-center rounded-full bg-[#7C5CFC] px-7 py-3.5 text-sm font-semibold text-white">
-                        Start Free Trial
-                      </span>
-                    </a>
-                    <TryItNowButtonDark />
-                  </div>
-                  <a
-                    href="#how-it-works"
-                    className="mt-1 text-sm font-medium text-[#A0A0B8] underline underline-offset-4 decoration-[#A0A0B8]/40 transition hover:text-white hover:decoration-white/60"
-                  >
-                    See how it works
-                  </a>
-                </div>
-
-              {/* CTA — desktop version */}
-                <div className="mt-10 hidden lg:flex flex-col items-center lg:items-center gap-3">
-                  <div className="flex flex-row items-center gap-3">
-                    <a
-                      href={ctaHref}
-                      onClick={trackInitiateCheckout}
-                      className="group relative rounded-full p-[2px] transition active:scale-95 hover:scale-[1.02] overflow-hidden"
-                    >
-                      <span className="absolute inset-[-100%] animate-cta-shine" style={{ background: 'conic-gradient(from 0deg, transparent 0%, transparent 60%, #ffffff 75%, #B8A5FF 85%, transparent 100%)' }} />
-                      <span className="relative flex items-center justify-center rounded-full bg-[#7C5CFC] px-7 py-3.5 text-sm font-semibold text-white transition group-hover:bg-[#6B4FE0]">
-                        Start Free Trial
-                      </span>
-                    </a>
-                    <TryItNowButtonDark />
-                  </div>
-                  <a
-                    href="#how-it-works"
-                    className="mt-1 text-sm font-medium text-[#A0A0B8] underline underline-offset-4 decoration-[#A0A0B8]/40 transition hover:text-white hover:decoration-white/60"
-                  >
-                    See how it works
-                  </a>
-                </div>
+            {/* CTA buttons — centered, single layout for all breakpoints */}
+            <div className="mt-10 flex flex-col items-center gap-3">
+              <div className="flex flex-row items-center gap-3">
+                <a
+                  href={ctaHref}
+                  onClick={trackInitiateCheckout}
+                  className="group relative rounded-full p-[2px] transition active:scale-95 hover:scale-[1.02] overflow-hidden"
+                >
+                  <span className="absolute inset-[-100%] animate-cta-shine" style={{ background: 'conic-gradient(from 0deg, transparent 0%, transparent 60%, #ffffff 75%, #B8A5FF 85%, transparent 100%)' }} />
+                  <span className="relative flex items-center justify-center rounded-full bg-[#7C5CFC] px-7 py-3.5 text-sm font-semibold text-white transition group-hover:bg-[#6B4FE0]">
+                    Start Free Trial
+                  </span>
+                </a>
+                <TryItNowButtonDark />
+              </div>
+              <a
+                href="#how-it-works"
+                className="mt-1 text-sm font-medium text-[#A0A0B8] underline underline-offset-4 decoration-[#A0A0B8]/40 transition hover:text-white hover:decoration-white/60"
+              >
+                See how it works
+              </a>
             </div>
 
-            {/* Right side: Enhanced animated phone mockups — desktop only */}
-            <div className="flex-1 mt-10 lg:mt-0 hidden lg:flex justify-center lg:justify-end">
+            {/* Phone mockups — centered below hero text, desktop only */}
+            <div className="mt-16 hidden lg:flex justify-center">
               <div className="relative w-[320px] h-[540px] sm:w-[360px] sm:h-[600px] lg:w-[400px] lg:h-[660px] xl:w-[440px] xl:h-[720px]">
                 {/* Ambient glow behind phones */}
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] lg:w-[400px] lg:h-[400px] rounded-full bg-[#7C5CFC]/15 blur-[80px] animate-pulse-slow" />
