@@ -70,7 +70,7 @@ export function FirstDebriefFlow({
 
   // Intro screen uses dark bg; record screen uses light bg; others use dark
   const bgClass =
-    screen === "record" || screen === "processing"
+    screen === "record" || screen === "processing" || screen === "extraction"
       ? "bg-white text-zinc-900"
       : "bg-[#181614] text-[#F5EDE4]";
 
@@ -808,6 +808,14 @@ function getProcessingLabel(phase: string | null): string {
 
 // ─── Screen 3: Extraction Reveal ─────────────────────────────────────────────
 
+const MOOD_GLOW: Record<string, string> = {
+  GREAT: "0 0 24px 4px rgba(34,197,94,0.15)",
+  GOOD: "0 0 24px 4px rgba(74,222,128,0.12)",
+  NEUTRAL: "0 0 24px 4px rgba(148,163,184,0.10)",
+  LOW: "0 0 24px 4px rgba(245,158,11,0.12)",
+  ROUGH: "0 0 24px 4px rgba(239,68,68,0.15)",
+};
+
 function ExtractionScreen({
   extraction,
   onContinue,
@@ -815,31 +823,76 @@ function ExtractionScreen({
   extraction: ExtractionResult;
   onContinue: () => void;
 }) {
-  const [visibleSections, setVisibleSections] = useState(0);
-
-  // Stagger sections appearing: 0→1→2→3→4 over ~3 seconds
-  useEffect(() => {
-    const timers: ReturnType<typeof setTimeout>[] = [];
-    const totalSections = 4; // mood, tasks, goals, themes
-    for (let i = 1; i <= totalSections; i++) {
-      timers.push(setTimeout(() => setVisibleSections(i), i * 600));
-    }
-    return () => timers.forEach(clearTimeout);
-  }, []);
+  const [step, setStep] = useState(0);
+  // step 0 = nothing, 1 = mood, 2 = tasks header, 3+ = individual tasks,
+  // then goals header, individual goals, then themes header, individual themes, then button
+  const celebratedRef = useRef(false);
 
   const hasTasks = extraction.tasks.length > 0;
   const hasGoals = extraction.goals.length > 0;
   const hasThemes = extraction.themes.length > 0;
 
+  // Calculate total steps for stagger
+  const taskSteps = hasTasks ? 1 + extraction.tasks.length : 0; // header + items
+  const goalSteps = hasGoals ? 1 + extraction.goals.length : 0;
+  const themeSteps = hasThemes ? 1 + extraction.themes.length : 0;
+  const totalSteps = 1 + taskSteps + goalSteps + themeSteps + 1; // mood + tasks + goals + themes + button
+
+  // Stagger: mood at 400ms, then each subsequent item 150ms apart
+  useEffect(() => {
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    for (let i = 1; i <= totalSteps; i++) {
+      const delay = i === 1 ? 400 : 400 + (i - 1) * 150;
+      timers.push(setTimeout(() => setStep(i), delay));
+    }
+    return () => timers.forEach(clearTimeout);
+  }, [totalSteps]);
+
+  // Mini confetti when all sections loaded
+  useEffect(() => {
+    if (step >= totalSteps && !celebratedRef.current) {
+      celebratedRef.current = true;
+      confetti({
+        particleCount: 40,
+        spread: 70,
+        origin: { x: 0.5, y: 0.3 },
+        colors: ["#7C5CFC", "#A78BFA", "#C4B5FD", "#F59E0B", "#22C55E"],
+        zIndex: 9999,
+        startVelocity: 20,
+        gravity: 1.2,
+      });
+    }
+  }, [step, totalSteps]);
+
+  // Compute which step each section starts at
+  const moodAt = 1;
+  const tasksHeaderAt = moodAt + 1;
+  const taskItemAt = (i: number) => tasksHeaderAt + 1 + i;
+  const goalsHeaderAt = tasksHeaderAt + taskSteps;
+  const goalItemAt = (i: number) => goalsHeaderAt + 1 + i;
+  const themesHeaderAt = goalsHeaderAt + goalSteps;
+  const themeItemAt = (i: number) => themesHeaderAt + 1 + i;
+  const buttonAt = totalSteps;
+
+  const vis = (at: number) =>
+    step >= at
+      ? "opacity-100 translate-y-0"
+      : "opacity-0 translate-y-3";
+
+  const scaleVis = (at: number) =>
+    step >= at
+      ? "opacity-100 scale-100"
+      : "opacity-0 scale-75";
+
   return (
-    <div className="flex min-h-screen flex-col items-center px-6 py-12">
+    <div className="flex min-h-screen flex-col items-center px-6 py-12 sm:py-16">
       <div className="w-full max-w-md">
         {/* Headline */}
         <div className="text-center mb-10 animate-fade-in">
-          <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
+          <h2 className="text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl">
             That&rsquo;s what 60 seconds gets&nbsp;you.
           </h2>
-          <p className="mt-2 text-sm text-[#F5EDE4]/50">
+          <p className="mt-3 text-base text-zinc-500 leading-relaxed">
             Do this daily and every Sunday you&rsquo;ll get a report showing how
             your life is actually going.
           </p>
@@ -847,115 +900,101 @@ function ExtractionScreen({
 
         {/* Summary + Mood */}
         <div
-          className={`mb-4 rounded-2xl bg-[#1E1C1A] border border-white/5 p-5 transition-all duration-700 ${
-            visibleSections >= 1
-              ? "opacity-100 translate-y-0"
-              : "opacity-0 translate-y-4"
-          }`}
+          className={`mb-5 rounded-2xl bg-white border border-zinc-200 p-5 transition-all duration-500 ${vis(moodAt)}`}
+          style={{ boxShadow: step >= moodAt ? (MOOD_GLOW[extraction.mood] ?? MOOD_GLOW.NEUTRAL) : "none" }}
         >
           <div className="flex items-center gap-2 mb-3">
             <MoodDot mood={extraction.mood} />
-            <span className="text-sm font-medium text-white">
+            <span className="text-sm font-semibold text-zinc-800">
               {MOOD_LABELS[extraction.mood] ?? "Neutral"}
             </span>
-            <span className="text-xs text-[#F5EDE4]/40">
+            <span className="text-xs text-zinc-400">
               &middot; Energy {extraction.energy}/10
             </span>
           </div>
-          <p className="text-sm text-[#F5EDE4]/70 leading-relaxed">
-            {extraction.summary}
-          </p>
+          {extraction.summary && (
+            <p className="text-sm text-zinc-600 leading-relaxed">
+              {extraction.summary}
+            </p>
+          )}
         </div>
 
         {/* Tasks */}
         {hasTasks && (
-          <div
-            className={`mb-4 rounded-2xl bg-[#1E1C1A] border border-white/5 p-5 transition-all duration-700 ${
-              visibleSections >= 2
-                ? "opacity-100 translate-y-0"
-                : "opacity-0 translate-y-4"
-            }`}
-          >
-            <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#7C5CFC] mb-3">
-              Tasks found
+          <div className={`mb-5 transition-all duration-500 ${vis(tasksHeaderAt)}`}>
+            <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#7C5CFC] mb-3">
+              Tasks
             </p>
-            <ul className="space-y-2">
+            <div className="space-y-2">
               {extraction.tasks.map((t, i) => (
-                <li
+                <div
                   key={i}
-                  className="flex items-start gap-2.5 rounded-lg bg-[#252220] px-3 py-2.5"
+                  className={`flex items-start gap-3 rounded-xl bg-white border border-zinc-200 px-4 py-3 transition-all duration-400 ${vis(taskItemAt(i))}`}
+                  style={{ borderLeft: "3px solid #7C5CFC" }}
                 >
-                  <span
-                    className="mt-1.5 h-2 w-2 shrink-0 rounded-full"
-                    style={{
-                      backgroundColor:
-                        PRIORITY_COLOR[t.priority] ?? PRIORITY_COLOR.MEDIUM,
-                    }}
-                  />
+                  <CheckboxIcon />
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm text-white">{t.title}</p>
+                    <p className="text-sm font-medium text-zinc-800">{t.title}</p>
                     {t.description && (
-                      <p className="text-xs text-[#F5EDE4]/40 mt-0.5">
+                      <p className="text-xs text-zinc-400 mt-0.5">
                         {t.description}
                       </p>
                     )}
                   </div>
-                </li>
+                  <span
+                    className="shrink-0 mt-0.5 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase"
+                    style={{
+                      color: PRIORITY_COLOR[t.priority] ?? PRIORITY_COLOR.MEDIUM,
+                      backgroundColor: `${PRIORITY_COLOR[t.priority] ?? PRIORITY_COLOR.MEDIUM}15`,
+                    }}
+                  >
+                    {t.priority}
+                  </span>
+                </div>
               ))}
-            </ul>
+            </div>
           </div>
         )}
 
         {/* Goals */}
         {hasGoals && (
-          <div
-            className={`mb-4 rounded-2xl bg-[#1E1C1A] border border-white/5 p-5 transition-all duration-700 ${
-              visibleSections >= 3
-                ? "opacity-100 translate-y-0"
-                : "opacity-0 translate-y-4"
-            }`}
-          >
-            <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#7C5CFC] mb-3">
-              Goals detected
+          <div className={`mb-5 transition-all duration-500 ${vis(goalsHeaderAt)}`}>
+            <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#7C5CFC] mb-3">
+              Goals
             </p>
-            <ul className="space-y-2">
+            <div className="space-y-2">
               {extraction.goals.map((g, i) => (
-                <li
+                <div
                   key={i}
-                  className="flex items-start gap-2.5 rounded-lg bg-[#252220] px-3 py-2.5"
+                  className={`flex items-start gap-3 rounded-xl bg-white border border-zinc-200 px-4 py-3 transition-all duration-400 ${vis(goalItemAt(i))}`}
+                  style={{ borderLeft: "3px solid #A78BFA" }}
                 >
-                  <span className="mt-1 text-[#7C5CFC]">&rarr;</span>
+                  <FlagIcon />
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm text-white">{g.title}</p>
+                    <p className="text-sm font-medium text-zinc-800">{g.title}</p>
                     {g.description && (
-                      <p className="text-xs text-[#F5EDE4]/40 mt-0.5">
+                      <p className="text-xs text-zinc-400 mt-0.5">
                         {g.description}
                       </p>
                     )}
                   </div>
-                </li>
+                </div>
               ))}
-            </ul>
+            </div>
           </div>
         )}
 
         {/* Themes */}
         {hasThemes && (
-          <div
-            className={`mb-8 transition-all duration-700 ${
-              visibleSections >= 4
-                ? "opacity-100 translate-y-0"
-                : "opacity-0 translate-y-4"
-            }`}
-          >
-            <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#7C5CFC] mb-3">
+          <div className={`mb-10 transition-all duration-500 ${vis(themesHeaderAt)}`}>
+            <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#7C5CFC] mb-3">
               What&rsquo;s on your mind
             </p>
             <div className="flex flex-wrap gap-2">
-              {extraction.themes.map((t) => (
+              {extraction.themes.map((t, i) => (
                 <span
                   key={t}
-                  className="rounded-full bg-[#7C5CFC]/10 border border-[#7C5CFC]/20 px-3 py-1 text-sm text-[#F5EDE4]/80"
+                  className={`rounded-full bg-[#7C5CFC]/8 border border-[#7C5CFC]/15 px-3.5 py-1.5 text-sm font-medium text-[#7C5CFC] transition-all duration-300 ${scaleVis(themeItemAt(i))}`}
                 >
                   {t}
                 </span>
@@ -966,21 +1005,36 @@ function ExtractionScreen({
 
         {/* Continue button */}
         <div
-          className={`text-center transition-all duration-700 ${
-            visibleSections >= 4
-              ? "opacity-100 translate-y-0"
-              : "opacity-0 translate-y-4"
-          }`}
+          className={`text-center transition-all duration-500 ${vis(buttonAt)}`}
         >
           <button
             onClick={onContinue}
-            className="inline-flex items-center gap-2 rounded-full bg-[#7C5CFC] px-8 py-4 text-base font-semibold text-white transition-all duration-300 hover:bg-[#6B4FE0] hover:shadow-xl hover:shadow-[#7C5CFC]/25 hover:-translate-y-0.5 active:scale-95"
+            className="animate-mic-glow inline-flex items-center gap-2 rounded-full px-8 py-4 text-base font-semibold text-white transition-all duration-300 hover:scale-105 hover:-translate-y-0.5 active:scale-95"
+            style={{
+              background: "linear-gradient(135deg, #7C5CFC 0%, #9F7AEA 50%, #7C3AED 100%)",
+            }}
           >
             Continue &rarr;
           </button>
         </div>
       </div>
     </div>
+  );
+}
+
+function CheckboxIcon() {
+  return (
+    <svg className="h-5 w-5 shrink-0 mt-0.5 text-zinc-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <rect x="3" y="3" width="18" height="18" rx="4" />
+    </svg>
+  );
+}
+
+function FlagIcon() {
+  return (
+    <svg className="h-5 w-5 shrink-0 mt-0.5 text-[#A78BFA]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2z" />
+    </svg>
   );
 }
 
