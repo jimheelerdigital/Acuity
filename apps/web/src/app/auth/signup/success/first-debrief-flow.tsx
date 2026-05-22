@@ -687,18 +687,24 @@ const PROCESSING_SLIDES: ProcessingSlide[] = [
   },
 ];
 
-const SUMMARY_ITEMS = [
-  { icon: "\u2705", text: "Task extraction", soon: false },
-  { icon: "\u2705", text: "Goal tracking", soon: false },
-  { icon: "\u2705", text: "Mood & energy analysis", soon: false },
-  { icon: "\u2705", text: "Pattern detection", soon: false },
-  { icon: "\u2705", text: "Weekly reports every Sunday", soon: false },
-  { icon: "\u2705", text: "Quarterly memoir", soon: false },
-  { icon: "\u2705", text: "Life Matrix \u2014 six domains", soon: false },
-  { icon: "\uD83D\uDD1C", text: "Calendar integration", soon: true },
-  { icon: "\uD83D\uDD1C", text: "Ask your past self", soon: true },
-  { icon: "\uD83D\uDD1C", text: "Smart notifications", soon: true },
+const SUMMARY_CORE = [
+  "Task extraction",
+  "Goal tracking",
+  "Mood & energy analysis",
+  "Pattern detection",
+  "Weekly reports every Sunday",
+  "Quarterly memoir",
+  "Life Matrix \u2014 six domains",
 ];
+
+const SUMMARY_COMING_SOON = [
+  "Calendar integration",
+  "Ask your past self",
+  "Smart notifications",
+];
+
+// Slide 9 is index 8 (0-based). Slides 0-8 are core, 9-11 are coming soon.
+const CORE_SLIDE_COUNT = 9;
 
 const SLIDE_MS = 5000;
 
@@ -729,27 +735,72 @@ function ProcessingScreen({
   const [slideIndex, setSlideIndex] = useState(0);
   const [onSummary, setOnSummary] = useState(false);
   const [summaryStep, setSummaryStep] = useState(0);
+  const [showedComingSoon, setShowedComingSoon] = useState(false);
   const completedRef = useRef(false);
   const extractionRef = useRef<ExtractionResult | null>(null);
+  // Flag: processing finished, waiting for current slide to end
+  const pendingSkipRef = useRef(false);
 
-  // Track sub-element visibility per slide
   const [subStep, setSubStep] = useState(0);
 
-  // Advance slides every 5 seconds, then switch to summary
+  // Build extraction from polled entry when complete
+  useEffect(() => {
+    if (completedRef.current) return;
+    if (
+      (poll.status === "complete" || poll.status === "partial") &&
+      poll.entry
+    ) {
+      extractionRef.current = polledEntryToExtraction(poll.entry);
+    }
+  }, [poll.status, poll.entry]);
+
+  // Advance slides every 5s with smart skip logic
   useEffect(() => {
     const interval = setInterval(() => {
       setSlideIndex((prev) => {
-        if (prev >= PROCESSING_SLIDES.length - 1) {
+        const next = prev + 1;
+
+        // If processing is done and we've finished core slides (index 8 = slide 9),
+        // or if pendingSkip was set mid-slide, jump to summary
+        if (extractionRef.current && next >= CORE_SLIDE_COUNT) {
           clearInterval(interval);
           setOnSummary(true);
           return prev;
         }
-        return prev + 1;
+
+        // If pending skip (processing finished mid-slide), go to summary
+        if (pendingSkipRef.current) {
+          clearInterval(interval);
+          setOnSummary(true);
+          return prev;
+        }
+
+        // Past all slides — go to summary
+        if (next >= PROCESSING_SLIDES.length) {
+          clearInterval(interval);
+          setOnSummary(true);
+          return prev;
+        }
+
+        // Track if we entered coming-soon slides
+        if (next >= CORE_SLIDE_COUNT) {
+          setShowedComingSoon(true);
+        }
+
+        return next;
       });
       setSubStep(0);
     }, SLIDE_MS);
     return () => clearInterval(interval);
   }, []);
+
+  // When processing finishes during a slide, set pending skip
+  // so next interval tick goes to summary
+  useEffect(() => {
+    if (extractionRef.current && slideIndex >= CORE_SLIDE_COUNT - 1 && !onSummary) {
+      pendingSkipRef.current = true;
+    }
+  }, [poll.status, slideIndex, onSummary]);
 
   // Sub-step stagger within each slide
   useEffect(() => {
@@ -764,39 +815,31 @@ function ProcessingScreen({
   }, [slideIndex, onSummary]);
 
   // Stagger summary items
+  const summaryItems = showedComingSoon
+    ? SUMMARY_CORE.length + SUMMARY_COMING_SOON.length + 1 // +1 for "Coming soon" header
+    : SUMMARY_CORE.length;
+
   useEffect(() => {
     if (!onSummary) return;
     const timers: ReturnType<typeof setTimeout>[] = [];
-    for (let i = 1; i <= SUMMARY_ITEMS.length; i++) {
+    for (let i = 1; i <= summaryItems; i++) {
       timers.push(setTimeout(() => setSummaryStep(i), 300 + i * 300));
     }
     return () => timers.forEach(clearTimeout);
-  }, [onSummary]);
+  }, [onSummary, summaryItems]);
 
-  // Build extraction from polled entry when complete
-  useEffect(() => {
-    if (completedRef.current) return;
-    if (
-      (poll.status === "complete" || poll.status === "partial") &&
-      poll.entry
-    ) {
-      extractionRef.current = polledEntryToExtraction(poll.entry);
-    }
-  }, [poll.status, poll.entry]);
-
-  // Transition: on summary + processing done + summary items all shown
+  // Transition: on summary + processing done + summary items all shown → 3s hold → exit
   useEffect(() => {
     if (completedRef.current) return;
     const ext = extractionRef.current;
-    if (onSummary && ext && summaryStep >= SUMMARY_ITEMS.length) {
-      // Small delay after last summary item before transitioning
+    if (onSummary && ext && summaryStep >= summaryItems) {
       const t = setTimeout(() => {
         completedRef.current = true;
         onComplete(ext);
-      }, 1500);
+      }, 3000);
       return () => clearTimeout(t);
     }
-  }, [onSummary, summaryStep, poll.status, onComplete]);
+  }, [onSummary, summaryStep, summaryItems, poll.status, onComplete]);
 
   // Handle failures on summary
   useEffect(() => {
@@ -804,7 +847,7 @@ function ProcessingScreen({
     if (
       (poll.status === "failed" || poll.status === "timeout") &&
       onSummary &&
-      summaryStep >= SUMMARY_ITEMS.length
+      summaryStep >= summaryItems
     ) {
       const t = setTimeout(() => {
         completedRef.current = true;
@@ -823,29 +866,16 @@ function ProcessingScreen({
             goals: [],
           }
         );
-      }, 1500);
+      }, 3000);
       return () => clearTimeout(t);
     }
-  }, [poll.status, onSummary, summaryStep, onComplete]);
+  }, [poll.status, onSummary, summaryStep, summaryItems, onComplete]);
 
   const progressPct = getProgressPct(poll.phase, poll.status);
   const processingLabel = getProcessingLabel(poll.phase);
 
   return (
     <div className="relative flex min-h-screen flex-col px-6 py-8 overflow-hidden">
-      {/* Progress bar at top */}
-      <div className="flex-none w-full max-w-lg mx-auto mb-2">
-        <div className="h-1 w-full rounded-full bg-zinc-100 overflow-hidden">
-          <div
-            className="h-full rounded-full transition-all duration-1000 ease-out"
-            style={{
-              width: `${progressPct}%`,
-              background: "linear-gradient(90deg, #7C5CFC, #9F7AEA, #7C3AED)",
-            }}
-          />
-        </div>
-      </div>
-
       {/* Floating particles */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         {Array.from({ length: 10 }).map((_, i) => (
@@ -895,7 +925,6 @@ function ProcessingScreen({
                       pointerEvents: i === slideIndex ? "auto" : "none",
                     }}
                   >
-                    {/* Label */}
                     <div
                       className="mb-4"
                       style={{
@@ -921,7 +950,6 @@ function ProcessingScreen({
                       )}
                     </div>
 
-                    {/* Main text */}
                     <div
                       style={{
                         transition: "opacity 0.3s ease 0.1s, transform 0.3s ease 0.1s",
@@ -934,7 +962,6 @@ function ProcessingScreen({
                       </p>
                     </div>
 
-                    {/* Testimonial or description */}
                     <div
                       style={{
                         transition: "opacity 0.3s ease, transform 0.3s ease",
@@ -995,45 +1022,83 @@ function ProcessingScreen({
               </div>
             </>
           ) : (
-            /* Summary screen */
-            <div className="text-center">
-              <h2 className="text-2xl font-bold text-zinc-900 mb-8 sm:text-3xl animate-fade-in">
+            /* Summary screen — clean text list, no emojis */
+            <div>
+              <h2 className="text-2xl font-bold text-zinc-900 mb-8 sm:text-3xl animate-fade-in text-center">
                 Everything Acuity does for you.
               </h2>
               <div className="space-y-3 max-w-xs mx-auto">
-                {SUMMARY_ITEMS.map((item, i) => (
+                {SUMMARY_CORE.map((item, i) => (
                   <div
-                    key={item.text}
-                    className={`flex items-center gap-3 text-left transition-all duration-500 ${
+                    key={item}
+                    className={`flex items-center gap-3 transition-all duration-500 ${
                       summaryStep > i
                         ? "opacity-100 translate-y-0"
                         : "opacity-0 translate-y-3"
                     }`}
                   >
-                    <span className="text-lg shrink-0">{item.icon}</span>
-                    <span
-                      className={`text-sm font-medium ${
-                        item.soon ? "text-zinc-400" : "text-zinc-700"
-                      }`}
-                    >
-                      {item.text}
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#7C5CFC] shrink-0" />
+                    <span className="text-sm font-medium text-zinc-700">
+                      {item}
                     </span>
                   </div>
                 ))}
+
+                {showedComingSoon && (
+                  <>
+                    <div
+                      className={`pt-3 transition-all duration-500 ${
+                        summaryStep > SUMMARY_CORE.length
+                          ? "opacity-100 translate-y-0"
+                          : "opacity-0 translate-y-3"
+                      }`}
+                    >
+                      <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-zinc-400">
+                        Coming soon
+                      </p>
+                    </div>
+                    {SUMMARY_COMING_SOON.map((item, i) => (
+                      <div
+                        key={item}
+                        className={`flex items-center gap-3 transition-all duration-500 ${
+                          summaryStep > SUMMARY_CORE.length + 1 + i
+                            ? "opacity-100 translate-y-0"
+                            : "opacity-0 translate-y-3"
+                        }`}
+                      >
+                        <span className="h-1.5 w-1.5 rounded-full bg-zinc-300 shrink-0" />
+                        <span className="text-sm font-medium text-zinc-400">
+                          {item}
+                        </span>
+                      </div>
+                    ))}
+                  </>
+                )}
               </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* Processing status — subtle at bottom */}
-      <div className="flex-none text-center mt-6 relative z-10">
-        <div className="inline-flex items-center gap-2 px-4 py-2">
-          <span className="relative flex h-1.5 w-1.5">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#7C5CFC] opacity-50" />
-            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#7C5CFC]" />
-          </span>
-          <span className="text-xs text-zinc-400">{processingLabel}</span>
+      {/* Bottom: processing status + progress bar */}
+      <div className="flex-none relative z-10 w-full max-w-lg mx-auto mt-6">
+        <div className="text-center mb-3">
+          <div className="inline-flex items-center gap-2 px-4 py-2">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#7C5CFC] opacity-50" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#7C5CFC]" />
+            </span>
+            <span className="text-xs text-zinc-400">{processingLabel}</span>
+          </div>
+        </div>
+        <div className="h-1 w-full rounded-full bg-zinc-100 overflow-hidden">
+          <div
+            className="h-full rounded-full transition-all duration-1000 ease-out"
+            style={{
+              width: `${progressPct}%`,
+              background: "linear-gradient(90deg, #7C5CFC, #9F7AEA, #7C3AED)",
+            }}
+          />
         </div>
       </div>
     </div>
