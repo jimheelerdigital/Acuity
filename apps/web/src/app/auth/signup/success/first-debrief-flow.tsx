@@ -706,7 +706,7 @@ const SUMMARY_COMING_SOON = [
 // Slide 9 is index 8 (0-based). Slides 0-8 are core, 9-11 are coming soon.
 const CORE_SLIDE_COUNT = 9;
 
-const SLIDE_MS = 5000;
+const SLIDE_MS = 4000;
 
 // Gradient orb colors per slide (12 + summary)
 const SLIDE_ORBS = [
