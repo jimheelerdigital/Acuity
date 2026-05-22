@@ -1440,6 +1440,11 @@ function CTAScreen() {
   const [testimonialIdx, setTestimonialIdx] = useState(0);
   const [counter, setCounter] = useState(0);
 
+  // Scroll to top on mount
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   // Stagger sections
   useEffect(() => {
     const timers = [
