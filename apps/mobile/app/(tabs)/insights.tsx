@@ -170,7 +170,14 @@ export default function InsightsTab() {
       if (prog) setCached(INSIGHTS_PROGRESSION_KEY, prog);
       setEntries(entriesRes.entries ?? []);
       setReports(reportsRes.reports ?? []);
-      setAreas(lifeMapRes.areas ?? []);
+      // Filter out the OTHER sentinel left over from the 6→10 axis
+      // migration (Phase D). It's not in DEFAULT_LIFE_AREAS canonical
+      // and never gets updated by extraction; including it shows an
+      // 11th "Other" card that doesn't belong in the 10-axis matrix.
+      // Server-side DB cleanup happens separately.
+      setAreas(
+        (lifeMapRes.areas ?? []).filter((a) => a.area !== "OTHER")
+      );
       setMemory(lifeMapRes.memory ?? null);
       setTrend(trendRes);
       setProgression(prog);

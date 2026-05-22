@@ -136,24 +136,32 @@ function getSlotsForCount(n: number): SlotConfig[] {
   ];
 }
 
-const MIN_PLANET_SIZE = 30;
-const MAX_PLANET_SIZE = 52;
+const BASE_PLANET_SIZE = 28;
+const MAX_PLANET_BONUS = 18;
+const MAX_PLANET_SIZE = BASE_PLANET_SIZE + MAX_PLANET_BONUS; // 46
 
 /**
  * Map mentionCount → planet diameter (pt).
- *   size = MIN + (mentionCount / maxMentionCount) × (MAX - MIN)
- * When all themes share the same mentionCount, every planet renders
- * at MAX. When one theme dominates (e.g. 10x another), the smaller
- * theme renders at the MIN floor. Linear interpolation keeps the
- * visual proportional to data without runaway scale at the top end.
+ *   size = 28 + (mentionCount / maxMentionCount) × 18,  capped at 46
+ *
+ * Tighter than the prior 30→52 range (polish 2). The 52pt ceiling
+ * was reading as chunky when all themes had equal mentionCount and
+ * therefore all rendered at the same 52pt max. New ceiling 46pt
+ * keeps the composition airier; the 28pt base preserves a visible
+ * size delta for low-count themes vs the dominant one.
+ *
+ * Examples:
+ *   All themes mentionCount=2  → all render at 46pt
+ *   Dominant=10, runners-up=2  → dominant 46pt, runners-up ~31.6pt
+ *   Dominant=20, tail=2        → dominant 46pt, tail ~29.8pt
  */
 function sizeForMentionCount(
   mentionCount: number,
   maxMentionCount: number
 ): number {
-  if (maxMentionCount <= 0) return MIN_PLANET_SIZE;
+  if (maxMentionCount <= 0) return BASE_PLANET_SIZE;
   const ratio = Math.max(0, Math.min(1, mentionCount / maxMentionCount));
-  return MIN_PLANET_SIZE + ratio * (MAX_PLANET_SIZE - MIN_PLANET_SIZE);
+  return BASE_PLANET_SIZE + ratio * MAX_PLANET_BONUS;
 }
 
 const RING_RADII = [78, 110, 140, 168];
@@ -232,7 +240,7 @@ export function OrbitalCosmos({
         const theme = visibleThemes[i];
         const size = theme
           ? sizeForMentionCount(theme.mentionCount, maxMentionCount)
-          : MIN_PLANET_SIZE;
+          : BASE_PLANET_SIZE;
         return {
           ...cfg,
           size,
