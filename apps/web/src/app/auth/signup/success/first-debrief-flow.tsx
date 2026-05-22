@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import confetti from "canvas-confetti";
 import {
   type ExtractionResult,
   MOOD_LABELS,
@@ -45,7 +46,14 @@ const VALUE_PROPS = [
   "Quarterly memoir PDF",
 ];
 
-type Screen = "record" | "processing" | "extraction" | "cta";
+// Short punchy quotes for rotating social proof on record screen
+const MINI_TESTIMONIALS = [
+  { quote: "I just talk. The AI handles everything else.", name: "Jamie L." },
+  { quote: "The weekly reports changed how I see my week.", name: "Marcus T." },
+  { quote: "I actually sleep now. Tasks out of my head.", name: "Sarah K." },
+];
+
+type Screen = "intro" | "record" | "processing" | "extraction" | "cta";
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 
@@ -55,13 +63,22 @@ export function FirstDebriefFlow({
   skipToDownload: boolean;
 }) {
   const [screen, setScreen] = useState<Screen>(
-    skipToDownload ? "cta" : "record"
+    skipToDownload ? "cta" : "intro"
   );
   const [entryId, setEntryId] = useState<string | null>(null);
   const [extraction, setExtraction] = useState<ExtractionResult | null>(null);
 
+  // Intro screen uses dark bg; record screen uses light bg; others use dark
+  const bgClass =
+    screen === "record"
+      ? "bg-white text-zinc-900"
+      : "bg-[#181614] text-[#F5EDE4]";
+
   return (
-    <div className="min-h-screen bg-[#181614] text-[#F5EDE4]">
+    <div className={`min-h-screen transition-colors duration-1000 ${bgClass}`}>
+      {screen === "intro" && (
+        <IntroAnimation onComplete={() => setScreen("record")} />
+      )}
       {screen === "record" && (
         <RecordScreen
           onRecorded={(id) => {
@@ -91,6 +108,90 @@ export function FirstDebriefFlow({
   );
 }
 
+// ─── Intro Animation ─────────────────────────────────────────────────────────
+
+function IntroAnimation({ onComplete }: { onComplete: () => void }) {
+  const [stage, setStage] = useState<"pause" | "text" | "confetti" | "done">(
+    "pause"
+  );
+
+  useEffect(() => {
+    // 0ms: dark screen
+    // 500ms: "You're in." appears
+    // 1500ms: confetti + bg brightens
+    // 3500ms: transition to record screen
+    const t1 = setTimeout(() => setStage("text"), 500);
+    const t2 = setTimeout(() => {
+      setStage("confetti");
+      // Fire confetti burst
+      const duration = 1500;
+      const end = Date.now() + duration;
+      const colors = ["#7C5CFC", "#A78BFA", "#C4B5FD", "#F59E0B", "#22C55E", "#60A5FA", "#F472B6"];
+
+      (function frame() {
+        confetti({
+          particleCount: 4,
+          angle: 60,
+          spread: 65,
+          origin: { x: 0, y: 0.6 },
+          colors,
+          zIndex: 9999,
+        });
+        confetti({
+          particleCount: 4,
+          angle: 120,
+          spread: 65,
+          origin: { x: 1, y: 0.6 },
+          colors,
+          zIndex: 9999,
+        });
+        if (Date.now() < end) requestAnimationFrame(frame);
+      })();
+
+      // Also fire a center burst
+      confetti({
+        particleCount: 80,
+        spread: 100,
+        origin: { x: 0.5, y: 0.45 },
+        colors,
+        zIndex: 9999,
+        startVelocity: 35,
+      });
+    }, 1500);
+    const t3 = setTimeout(() => {
+      setStage("done");
+      onComplete();
+    }, 3500);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+    };
+  }, [onComplete]);
+
+  return (
+    <div
+      className={`fixed inset-0 z-50 flex items-center justify-center transition-all duration-1000 ${
+        stage === "confetti" || stage === "done"
+          ? "bg-white"
+          : "bg-[#181614]"
+      }`}
+    >
+      <h1
+        className={`text-4xl font-bold tracking-tight sm:text-5xl transition-all duration-700 ${
+          stage === "pause"
+            ? "opacity-0 scale-95"
+            : stage === "confetti" || stage === "done"
+              ? "opacity-0 scale-110 text-zinc-900"
+              : "opacity-100 scale-100 text-white"
+        }`}
+      >
+        You&rsquo;re in.
+      </h1>
+    </div>
+  );
+}
+
 // ─── Screen 1: Record ────────────────────────────────────────────────────────
 
 function RecordScreen({
@@ -104,12 +205,41 @@ function RecordScreen({
   const [elapsed, setElapsed] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [showPrompts, setShowPrompts] = useState(false);
+  const [testimonialIdx, setTestimonialIdx] = useState(0);
+
+  // Entrance animation stagger
+  const [showHeadline, setShowHeadline] = useState(false);
+  const [showSubhead, setShowSubhead] = useState(false);
+  const [showMic, setShowMic] = useState(false);
+  const [showExtra, setShowExtra] = useState(false);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef(0);
   const promptTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Stagger entrance animation
+  useEffect(() => {
+    const t1 = setTimeout(() => setShowHeadline(true), 200);
+    const t2 = setTimeout(() => setShowSubhead(true), 600);
+    const t3 = setTimeout(() => setShowMic(true), 1000);
+    const t4 = setTimeout(() => setShowExtra(true), 1400);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+      clearTimeout(t4);
+    };
+  }, []);
+
+  // Rotate testimonials every 5 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTestimonialIdx((prev) => (prev + 1) % MINI_TESTIMONIALS.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Show suggested prompts after 10 seconds of recording
   useEffect(() => {
@@ -219,167 +349,226 @@ function RecordScreen({
 
   const tooShort = phase === "recording" && elapsed < MIN_SECONDS;
   const showNudge = phase === "recording" && elapsed > 0 && elapsed < NUDGE_SECONDS;
+  const isIdle = phase === "idle" || phase === "error";
+  const currentTestimonial = MINI_TESTIMONIALS[testimonialIdx];
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center px-6 py-12">
-      <div className="w-full max-w-md text-center">
-        {/* Logo */}
-        <img
-          src="/AcuityLogo.png"
-          alt="Acuity"
-          className="mx-auto mb-8"
-          style={{ width: 40, height: 40 }}
-        />
-
-        {phase !== "recording" && phase !== "uploading" && (
+    <div className="flex min-h-screen flex-col px-6 py-8 sm:py-12">
+      {/* Top section — headline + subhead */}
+      <div className="flex-none text-center pt-8 sm:pt-16">
+        {isIdle && (
           <>
-            <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-              You&rsquo;re in. Let&rsquo;s do your first&nbsp;debrief.
-            </h1>
-            <p className="mt-3 text-base text-[#F5EDE4]/60 leading-relaxed">
-              Tap the mic and talk for 60 seconds. Whatever&rsquo;s on your
-              mind &mdash; your day, your stress, what you&rsquo;re working on.
-            </p>
+            <div
+              className={`transition-all duration-700 ${
+                showHeadline
+                  ? "opacity-100 translate-y-0"
+                  : "opacity-0 translate-y-4"
+              }`}
+            >
+              <h1 className="text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl">
+                Let&rsquo;s do your first debrief.
+              </h1>
+            </div>
+            <div
+              className={`transition-all duration-700 delay-100 ${
+                showSubhead
+                  ? "opacity-100 translate-y-0"
+                  : "opacity-0 translate-y-4"
+              }`}
+            >
+              <p className="mt-4 text-base text-zinc-500 leading-relaxed max-w-sm mx-auto">
+                Just talk. About your day, your goals, whatever&rsquo;s on your
+                mind. The AI handles the rest.
+              </p>
+            </div>
           </>
         )}
+      </div>
 
-        {/* Mic button */}
-        <div className="mt-10 mb-6 flex justify-center">
-          <button
-            onClick={handleMicClick}
-            disabled={phase === "uploading"}
-            aria-label={
-              phase === "recording" ? "Stop recording" : "Start recording"
-            }
-            className={`relative flex h-28 w-28 items-center justify-center rounded-full transition-all duration-300 sm:h-32 sm:w-32 ${
-              phase === "recording"
-                ? "bg-red-500 hover:bg-red-400 scale-110"
-                : phase === "uploading"
-                  ? "bg-white/10 cursor-wait"
-                  : "bg-[#7C5CFC] hover:bg-[#6B4FE0] hover:scale-105 active:scale-95"
-            }`}
-          >
-            {/* Pulse rings — idle state */}
-            {phase === "idle" && (
-              <>
-                <span className="absolute inset-0 rounded-full bg-[#7C5CFC]/30 animate-pulse-ring" />
-                <span
-                  className="absolute inset-0 rounded-full bg-[#7C5CFC]/20 animate-pulse-ring"
-                  style={{ animationDelay: "0.6s" }}
-                />
-              </>
-            )}
-
-            {/* Recording pulse */}
-            {phase === "recording" && (
-              <>
-                <span className="absolute inset-0 rounded-full bg-red-500 animate-ping opacity-20" />
-                <span className="absolute -inset-1 rounded-full border-2 border-red-400 animate-pulse" />
-              </>
-            )}
-
-            {phase === "recording" ? (
-              tooShort ? (
-                /* Show wave bars while too short to stop */
-                <div className="flex items-center gap-1">
-                  {[0, 1, 2, 3, 4].map((i) => (
-                    <span
-                      key={i}
-                      className="wave-bar w-1 rounded-full bg-white"
-                      style={{
-                        height: 20 + Math.random() * 12,
-                        animationDelay: `${i * 0.15}s`,
-                      }}
-                    />
-                  ))}
-                </div>
-              ) : (
-                /* Stop button square */
-                <span className="h-10 w-10 rounded-lg bg-white" />
-              )
-            ) : phase === "uploading" ? (
-              <Spinner />
-            ) : (
-              <MicIcon size={44} />
-            )}
-          </button>
-        </div>
-
-        {/* Timer */}
-        {phase === "recording" && (
-          <div className="animate-fade-in">
-            <p className="text-3xl font-mono font-semibold tabular-nums">
-              {formatTime(elapsed)}
-            </p>
-            {tooShort && (
-              <p className="mt-2 text-sm text-[#F5EDE4]/50">
-                Keep going... {MIN_SECONDS - elapsed}s minimum
+      {/* Center section — mic button (pushed down on mobile) */}
+      <div className="flex-1 flex flex-col items-center justify-end pb-8 sm:justify-center sm:pb-0">
+        <div
+          className={`transition-all duration-700 ${
+            showMic
+              ? "opacity-100 scale-100"
+              : "opacity-0 scale-50"
+          }`}
+          style={{
+            transitionTimingFunction: "cubic-bezier(0.34, 1.56, 0.64, 1)",
+          }}
+        >
+          {/* Recording timer — above mic when recording */}
+          {phase === "recording" && (
+            <div className="text-center mb-8 animate-fade-in">
+              <p className="text-4xl font-mono font-semibold tabular-nums text-zinc-900 sm:text-5xl">
+                {formatTime(elapsed)}
               </p>
-            )}
-            {!tooShort && showNudge && (
-              <p className="mt-2 text-sm text-[#F5EDE4]/50">
-                You&rsquo;re doing great. Keep going or tap to stop.
+              {tooShort && (
+                <p className="mt-3 text-sm text-zinc-400">
+                  Keep going... {MIN_SECONDS - elapsed}s minimum
+                </p>
+              )}
+              {!tooShort && showNudge && (
+                <p className="mt-3 text-sm text-zinc-400">
+                  You&rsquo;re doing great. Keep going or tap to stop.
+                </p>
+              )}
+              {!tooShort && !showNudge && (
+                <p className="mt-3 text-sm text-zinc-400">
+                  Tap the stop button when you&rsquo;re done
+                </p>
+              )}
+            </div>
+          )}
+
+          {phase === "uploading" && (
+            <div className="text-center mb-8">
+              <p className="text-sm text-zinc-400 animate-pulse">
+                Uploading your recording...
               </p>
-            )}
-            {!tooShort && !showNudge && (
-              <p className="mt-2 text-sm text-[#F5EDE4]/50">
-                Tap the stop button when you&rsquo;re done
-              </p>
-            )}
-          </div>
-        )}
+            </div>
+          )}
 
-        {phase === "uploading" && (
-          <p className="text-sm text-[#F5EDE4]/60 animate-pulse">
-            Uploading your recording...
-          </p>
-        )}
-
-        {phase === "error" && (
-          <div className="mt-2 animate-fade-in">
-            <p className="text-sm text-red-400">{error}</p>
-            <p className="mt-1 text-xs text-[#F5EDE4]/40">
-              Tap the mic to try again
-            </p>
-          </div>
-        )}
-
-        {/* Prompt below mic — idle state */}
-        {phase === "idle" && (
-          <p className="text-sm text-[#F5EDE4]/40">
-            No wrong answers. Most people start with &ldquo;Today I...&rdquo;
-          </p>
-        )}
-
-        {/* Suggested prompts — appear after 10s of recording */}
-        {showPrompts && phase === "recording" && (
-          <div className="mt-6 space-y-2 animate-fade-in">
-            <p className="text-xs text-[#F5EDE4]/30 uppercase tracking-widest">
-              Need a prompt?
-            </p>
-            {SUGGESTED_PROMPTS.map((p) => (
-              <p
-                key={p}
-                className="text-sm text-[#F5EDE4]/50 italic"
-              >
-                &ldquo;{p}&rdquo;
-              </p>
-            ))}
-          </div>
-        )}
-
-        {/* Skip link */}
-        {phase !== "uploading" && phase !== "recording" && (
-          <div className="mt-12">
+          {/* Mic button */}
+          <div className="flex justify-center mb-8">
             <button
-              onClick={onSkip}
-              className="text-sm text-[#F5EDE4]/30 hover:text-[#F5EDE4]/50 transition underline underline-offset-4"
+              onClick={handleMicClick}
+              disabled={phase === "uploading"}
+              aria-label={
+                phase === "recording" ? "Stop recording" : "Start recording"
+              }
+              className={`relative flex items-center justify-center rounded-full transition-all duration-300 ${
+                phase === "recording"
+                  ? "h-32 w-32 bg-red-500 hover:bg-red-400 scale-110 shadow-2xl shadow-red-500/30 sm:h-36 sm:w-36"
+                  : phase === "uploading"
+                    ? "h-32 w-32 bg-zinc-200 cursor-wait sm:h-36 sm:w-36"
+                    : "h-32 w-32 bg-[#7C5CFC] hover:bg-[#6B4FE0] hover:scale-105 hover:shadow-2xl hover:shadow-[#7C5CFC]/30 active:scale-95 sm:h-36 sm:w-36"
+              }`}
             >
-              I&rsquo;ll do this later
+              {/* Pulse rings — idle state */}
+              {phase === "idle" && (
+                <>
+                  <span className="absolute inset-0 rounded-full bg-[#7C5CFC]/20 animate-pulse-ring" />
+                  <span
+                    className="absolute inset-0 rounded-full bg-[#7C5CFC]/10 animate-pulse-ring"
+                    style={{ animationDelay: "0.7s" }}
+                  />
+                  <span
+                    className="absolute inset-0 rounded-full bg-[#7C5CFC]/5 animate-pulse-ring"
+                    style={{ animationDelay: "1.4s" }}
+                  />
+                </>
+              )}
+
+              {/* Recording pulse */}
+              {phase === "recording" && (
+                <>
+                  <span className="absolute inset-0 rounded-full bg-red-500 animate-ping opacity-15" />
+                  <span className="absolute -inset-2 rounded-full border-2 border-red-300 animate-pulse" />
+                </>
+              )}
+
+              {phase === "recording" ? (
+                tooShort ? (
+                  <div className="flex items-center gap-1">
+                    {[0, 1, 2, 3, 4].map((i) => (
+                      <span
+                        key={i}
+                        className="wave-bar w-1.5 rounded-full bg-white"
+                        style={{
+                          height: 24 + Math.random() * 14,
+                          animationDelay: `${i * 0.15}s`,
+                        }}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <span className="h-11 w-11 rounded-lg bg-white" />
+                )
+              ) : phase === "uploading" ? (
+                <Spinner />
+              ) : (
+                <MicIcon size={48} />
+              )}
             </button>
           </div>
-        )}
+
+          {/* Prompt text below mic */}
+          {isIdle && (
+            <p className="text-center text-sm text-zinc-400">
+              No wrong answers. Most people start with &ldquo;Today I...&rdquo;
+            </p>
+          )}
+
+          {phase === "error" && (
+            <div className="text-center animate-fade-in">
+              <p className="text-sm text-red-500">{error}</p>
+              <p className="mt-1 text-xs text-zinc-400">
+                Tap the mic to try again
+              </p>
+            </div>
+          )}
+
+          {/* Suggested prompts — appear after 10s of recording */}
+          {showPrompts && phase === "recording" && (
+            <div className="text-center space-y-2 animate-fade-in">
+              <p className="text-xs text-zinc-300 uppercase tracking-widest">
+                Need a prompt?
+              </p>
+              {SUGGESTED_PROMPTS.map((p) => (
+                <p key={p} className="text-sm text-zinc-400 italic">
+                  &ldquo;{p}&rdquo;
+                </p>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* Bottom section — social proof + skip */}
+      {isIdle && (
+        <div
+          className={`flex-none text-center pb-8 sm:pb-16 transition-all duration-700 ${
+            showExtra
+              ? "opacity-100 translate-y-0"
+              : "opacity-0 translate-y-4"
+          }`}
+        >
+          {/* Social proof */}
+          <div className="mb-6">
+            <p className="text-sm font-medium text-zinc-400 mb-2">
+              4.9{" "}
+              <span className="text-amber-400">
+                &#9733;&#9733;&#9733;&#9733;&#9733;
+              </span>{" "}
+              from 127+ users
+            </p>
+            <div className="relative h-10 overflow-hidden">
+              {MINI_TESTIMONIALS.map((t, i) => (
+                <p
+                  key={t.name}
+                  className={`absolute inset-x-0 text-sm italic text-zinc-400 transition-all duration-500 ${
+                    i === testimonialIdx
+                      ? "opacity-100 translate-y-0"
+                      : "opacity-0 translate-y-4"
+                  }`}
+                >
+                  &ldquo;{t.quote}&rdquo;{" "}
+                  <span className="not-italic text-zinc-300">&mdash; {t.name}</span>
+                </p>
+              ))}
+            </div>
+          </div>
+
+          {/* Skip link */}
+          <button
+            onClick={onSkip}
+            className="text-sm text-zinc-300 hover:text-zinc-500 transition underline underline-offset-4"
+          >
+            I&rsquo;ll do this later
+          </button>
+        </div>
+      )}
     </div>
   );
 }
