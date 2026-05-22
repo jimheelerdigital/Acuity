@@ -86,6 +86,34 @@ export function FirstDebriefFlow({
           onComplete={(ext) => {
             setExtraction(ext);
             setScreen("extraction");
+            // Auto-commit extracted tasks + goals so they appear in
+            // the user's task inbox and goal tracker. Fire-and-forget —
+            // don't block the extraction reveal screen on this call.
+            if (ext.tasks.length > 0 || ext.goals.length > 0) {
+              fetch(`/api/entries/${entryId}/extraction`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  action: "commit",
+                  tasks: ext.tasks.map((t) => ({
+                    title: t.title,
+                    description: t.description ?? null,
+                    priority: t.priority ?? "MEDIUM",
+                    dueDate: t.dueDate ?? null,
+                    groupName: t.groupName ?? null,
+                  })),
+                  goals: ext.goals.map((g) => ({
+                    title: g.title,
+                    description: g.description ?? null,
+                    targetDate: g.targetDate ?? null,
+                    lifeArea: null,
+                  })),
+                }),
+              }).catch((err) => {
+                // eslint-disable-next-line no-console
+                console.error("[first-debrief] auto-commit extraction failed:", err);
+              });
+            }
           }}
         />
       )}
