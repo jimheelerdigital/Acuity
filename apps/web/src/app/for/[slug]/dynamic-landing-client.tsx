@@ -17,6 +17,7 @@ import {
   pickFallbackHeadshot,
   type CarouselTestimonial,
 } from "@/components/testimonial-carousel";
+import { TryItNowButtonDark } from "@/components/try-it-now-button";
 import type { DynamicLandingPage } from "./page";
 
 // Lazy-load ParallaxOrbs — GPU-heavy blur filters, not needed for first paint
@@ -69,9 +70,10 @@ export function DynamicLandingPageView({ page, slug, ctaHref }: { page: DynamicL
                 </p>
               </Reveal>
               <Reveal delay={2}>
-                <div className="mt-6">
+                <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-4">
+                  <TryItNowButtonDark />
                   <PulsingCTA href={ctaHref}>
-                    Start Free Trial — 30 Days Free
+                    Start Free Trial
                   </PulsingCTA>
                   <p className="mt-2.5 text-xs text-[#B0A898]">
                     No credit card. Quick setup.
@@ -180,12 +182,15 @@ export function DynamicLandingPageView({ page, slug, ctaHref }: { page: DynamicL
               <h2 className="text-2xl font-bold sm:text-3xl tracking-tight text-white mb-5">
                 {page.closingHeadline || "Your week doesn\u2019t have to disappear."}
               </h2>
-              <a
-                href={ctaHref}
-                className="inline-block rounded-full bg-[#7C5CFC] px-8 py-4 text-sm font-bold text-white transition hover:bg-[#6B4FE0] hover:-translate-y-0.5 active:scale-95"
-              >
-                Start Free Trial — 30 Days Free
-              </a>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                <TryItNowButtonDark />
+                <a
+                  href={ctaHref}
+                  className="inline-block rounded-full bg-[#7C5CFC] px-8 py-4 text-sm font-bold text-white transition hover:bg-[#6B4FE0] hover:-translate-y-0.5 active:scale-95"
+                >
+                  Start Free Trial
+                </a>
+              </div>
               <p className="mt-2.5 text-sm text-[#B0A898]">
                 No credit card. Cancel anytime.
               </p>

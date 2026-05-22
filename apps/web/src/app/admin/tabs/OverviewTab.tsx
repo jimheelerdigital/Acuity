@@ -45,6 +45,15 @@ interface OverviewData {
   blendedCac?: number | null;
   signupsOverTime: { date: string; count: number }[];
   aiByPurpose: { purpose: string; total: number }[];
+  tryMetrics?: {
+    today: number;
+    thisWeek: number;
+    allTime: number;
+    conversions: number;
+    conversionRate: number;
+    dailyCapUsed: number;
+    dailyCap: number;
+  };
   // From getRevenue
   revenue: {
     mrrCents: number;
@@ -273,6 +282,30 @@ export default function OverviewTab({ start, end }: { start: string; end: string
           <MiniMetric label="CAC" value={rev.unitEconomics.cacCents !== null ? fmt(rev.unitEconomics.cacCents) : "No ad spend"} />
         </div>
       </div>
+
+      {/* ── Try It Now Metrics ────────────────────────────────────── */}
+      {data.tryMetrics && (
+        <div className="rounded-xl border border-[#7C5CFC]/20 bg-[#7C5CFC]/5 p-5">
+          <h3 className="mb-3 text-sm font-medium text-[#7C5CFC]">Try It Now</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <MiniMetric label="Today" value={String(data.tryMetrics.today)} />
+            <MiniMetric label="This Week" value={String(data.tryMetrics.thisWeek)} />
+            <MiniMetric label="All Time" value={String(data.tryMetrics.allTime)} />
+            <MiniMetric label="Conversions" value={String(data.tryMetrics.conversions)} sub={`${data.tryMetrics.conversionRate}% rate`} />
+          </div>
+          <div className="mt-3 flex items-center gap-2">
+            <div className="flex-1 h-2 rounded-full bg-white/5 overflow-hidden">
+              <div
+                className="h-full rounded-full bg-[#7C5CFC]/60"
+                style={{ width: `${Math.min(100, (data.tryMetrics.dailyCapUsed / data.tryMetrics.dailyCap) * 100)}%` }}
+              />
+            </div>
+            <span className="text-xs text-white/40 tabular-nums whitespace-nowrap">
+              {data.tryMetrics.dailyCapUsed}/{data.tryMetrics.dailyCap} daily cap
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* ── Past Due Alerts ──────────────────────────────────────── */}
       {rev.pastDueUsers.length > 0 && (

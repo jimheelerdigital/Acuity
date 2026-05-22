@@ -368,6 +368,8 @@ model User {
   freeRecordingsThisMonth Int?      @default(0)
   freeRecordingsResetAt   DateTime?
 
+  trySessions                   TrySession[]
+
   updatedAt DateTime @default(now()) @updatedAt
 
   @@index([createdAt])
@@ -2112,4 +2114,44 @@ model AdminSentEmail {
 
   @@index([targetUserId, sentAt])
   @@index([adminUserId, sentAt])
+}
+
+// ── "Try it now" unauthenticated recording sessions ──────────────────
+// Stores the result of a try-before-signup recording. The user records
+// without an account; audio is processed through Whisper + Claude and
+// the extraction is stored here. On signup, the TrySession is "claimed"
+// and converted into a real Entry + Tasks + Goals on the new User account.
+// Unclaimed sessions are cleaned up by the try-session-cleanup Inngest
+// cron every 5 minutes (deletes expired + unclaimed rows + Supabase audio).
+model TrySession {
+  id              String   @id @default(cuid())
+  // Opaque token stored in the browser (cookie / sessionStorage) to
+  // link the anonymous recording to a later signup. Unique so the
+  // claim endpoint can look it up in O(1).
+  sessionToken    String   @unique
+  // Full extraction output from Claude: tasks, goals, mood, themes, summary.
+  // Stored as JSON so we don't need to create temporary Task/Goal rows.
+  extractionData  Json
+  // Supabase Storage object path (voice-entries-try/{sessionToken}.{ext}).
+  // Deleted on claim (audio moves to the user's folder) or on expiry cleanup.
+  audioPath       String
+  // Whisper transcript — persisted so the claim endpoint can create an
+  // Entry with transcript without re-running Whisper.
+  transcript      String   @db.Text
+  // Client IP for rate limiting (max 5 tries/hour per IP).
+  ipAddress       String
+  // 5 minutes from creation. The client shows a countdown timer.
+  // Cleanup cron deletes rows past this timestamp.
+  expiresAt       DateTime
+  // Flipped to true when the user signs up and the session is converted
+  // into a real Entry. Prevents double-claim and tells cleanup to skip.
+  claimed         Boolean  @default(false)
+  // FK to the User who claimed this session. Null until signup.
+  claimedByUserId String?
+  claimedByUser   User?    @relation(fields: [claimedByUserId], references: [id], onDelete: SetNull)
+  createdAt       DateTime @default(now())
+
+  @@index([expiresAt, claimed])
+  @@index([ipAddress, createdAt])
+  @@index([claimedByUserId])
 }

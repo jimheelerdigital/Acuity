@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { getPostBySlug, getAllSlugs, BLOG_POSTS } from "@/lib/blog-posts";
+import { BlogTryButton } from "@/components/blog-try-button";
 
 export const revalidate = 300; // 5 minutes
 
@@ -434,15 +435,18 @@ function BlogCta() {
           Brain dump daily. Get your life back.
         </h2>
         <p className="text-[#A0A0B8] mb-6 max-w-md mx-auto">
-          Try Acuity free for 14 days. Just talk.. No typing. Just
+          Try Acuity free for 14 days. Just talk. No typing. Just
           talk.
         </p>
-        <Link
-          href="/?utm_campaign=blog"
-          className="inline-flex items-center gap-2 rounded-full bg-acuity-primary px-8 py-3.5 text-sm font-semibold text-white transition hover:brightness-110 active:scale-95"
-        >
-          Try Acuity free for 14 days
-        </Link>
+        <div className="flex flex-col items-center gap-3">
+          <BlogTryButton />
+          <Link
+            href="/?utm_campaign=blog"
+            className="inline-flex items-center gap-2 rounded-full bg-acuity-primary px-8 py-3.5 text-sm font-semibold text-white transition hover:brightness-110 active:scale-95"
+          >
+            Start Free Trial
+          </Link>
+        </div>
         <p className="mt-3 text-xs text-[#A0A0B8]">
           No credit card required &middot; Cancel anytime
         </p>

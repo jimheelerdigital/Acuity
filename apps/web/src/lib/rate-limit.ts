@@ -154,6 +154,18 @@ export const limiters = {
    * either spam or someone abusing the channel. Key: user:<userId>.
    */
   feedbackSubmit: buildLimiter("feedback-submit", 10, "1 h"),
+  /**
+   * "Try it now" unauthenticated recording — IP-scoped. 5/hr per IP
+   * prevents casual abuse. Combined with a daily global cap (constant
+   * in the route handler, default 100/day) and a per-session cookie.
+   */
+  tryRecordingByIp: buildLimiter("try-recording-ip", 5, "1 h"),
+  /**
+   * Global daily cap for unauthenticated try recordings. Shared across
+   * all IPs. Default 100/day — adjustable via TRY_RECORDING_DAILY_CAP.
+   * Key: literal "global" string.
+   */
+  tryRecordingDaily: buildLimiter("try-recording-daily", 100, "1 d"),
 } as const;
 
 export type LimiterName = keyof typeof limiters;

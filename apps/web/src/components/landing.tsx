@@ -6,6 +6,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { SOCIAL_PROOF, STATS_STRIP } from "@/lib/social-proof";
 import { APP_STORE_URL, AppStoreBadge, useCtaHref } from "@/components/landing-shared";
 import { TestimonialCarousel, STATIC_CAROUSEL_TESTIMONIALS } from "@/components/testimonial-carousel";
+import { TryItNowButtonDark } from "@/components/try-it-now-button";
 
 /* ═══════════════════════════════════════════
    "Who it's for" dropdown for landing nav
@@ -1104,6 +1105,7 @@ export function LandingPage() {
               {/* CTA — mobile version */}
                 <div className="mt-8 flex flex-col items-center gap-3 lg:hidden">
                   <div className="flex flex-row items-center gap-3">
+                    <TryItNowButtonDark />
                     <a
                       href={ctaHref}
                       onClick={trackInitiateCheckout}
@@ -1137,8 +1139,9 @@ export function LandingPage() {
 
               {/* CTA — desktop version */}
                 <div className="mt-10 hidden lg:flex flex-col items-center lg:items-center gap-3">
-                  {/* Row 1: Two matching purple pill buttons */}
+                  {/* Row 1: Try + Free Trial + App Store */}
                   <div className="flex flex-row items-center gap-3">
+                    <TryItNowButtonDark />
                     <a
                       href={ctaHref}
                       onClick={trackInitiateCheckout}

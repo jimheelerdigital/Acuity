@@ -41,6 +41,48 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-22] — "Try it now" unauthenticated recording flow
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 68daf1a
+
+### In plain English (for Keenan)
+
+Visitors can now try a full debrief recording without signing up. A "Try it now — free" button appears on the homepage, all /for/* landing pages, and blog post CTAs. Clicking it opens a recording screen right on the page. After they record, the same processing slides animation plays (Day 1, Day 7, Weekly Report, etc.) while the AI processes their audio. Then they see their extracted tasks, goals, mood, and themes — each with a subtle lock icon saying "Sign up to save." A 5-minute countdown timer creates urgency. When they sign up (Google, Apple, or email), the "You're in" celebration plays with confetti, and their recording is automatically saved to their new account. The admin dashboard now shows try-to-signup conversion metrics.
+
+### Technical changes (for Jimmy)
+
+- New Prisma model: `TrySession` (sessionToken, extractionData as Json, audioPath, transcript, ipAddress, expiresAt, claimed, claimedByUserId FK to User)
+- `POST /api/try-recording` — unauthenticated endpoint. Runs Whisper + Claude sync pipeline, stores result in TrySession. Rate limited: 5/hr per IP, 100/day global, plus per-session cookie.
+- `POST /api/try-recording/claim` — authenticated. Converts TrySession into real Entry + Task + Goal records on the new user's account. Moves audio from `voice-entries-try` to `voice-entries` bucket.
+- `apps/web/src/components/try-debrief-flow.tsx` — full client flow: record screen (no auth, no confetti), processing slides (same 13 slides, 4s timing, simulated progress bar that creeps to ~80% then jumps to 100% on API response), extraction reveal with lock icons + countdown + signup CTA, post-signup celebration.
+- `apps/web/src/components/debrief-shared.tsx` — shared constants/icons/helpers between FirstDebriefFlow and TryDebriefFlow.
+- `apps/web/src/components/try-it-now-button.tsx` — "Try it now — free" button that opens TryDebriefFlow as full-screen overlay.
+- `apps/web/src/app/auth/signup/success/try-session-claimer.tsx` — post-signup: claims try session, plays "You're in" celebration, shows download CTA.
+- `apps/web/src/app/auth/signup/success/page.tsx` — detects `from_try=1` + cookie → renders TrySessionClaimer instead of normal recording flow.
+- `apps/web/src/inngest/functions/cleanup-try-sessions.ts` — cron every 5 min, deletes expired unclaimed TrySessions + Supabase audio.
+- `apps/web/src/lib/rate-limit.ts` — added `tryRecordingByIp` (5/hr) and `tryRecordingDaily` (100/day) limiters.
+- Landing pages updated: `landing.tsx` (homepage mobile + desktop hero), `static-persona-client.tsx` (hero + bottom CTA), `dynamic-landing-client.tsx` (hero + bottom CTA), `blog/[slug]/page.tsx` (blog CTA).
+- Admin dashboard: `OverviewTab.tsx` + `metrics/route.ts` — try metrics section with today/week/all-time counts, conversion rate, daily cap usage bar.
+
+### Manual steps needed
+
+- [ ] Run `npx prisma db push` from home Mac — adds TrySession table (Keenan)
+- [ ] Run `npx prisma generate` after schema push — regenerates Prisma client (Keenan)
+- [ ] Create `voice-entries-try` Supabase Storage bucket — same MIME type allowlist as `voice-entries`, not public (Keenan/Jimmy)
+- [ ] Verify Inngest auto-registers `cleanup-try-sessions` cron on next deploy — check Inngest Cloud dashboard (Jimmy)
+- [ ] Spot-check: visit `/for/therapy`, click "Try it now", record, verify processing slides play, see extraction with lock icons, sign up via Google, verify celebration + download screen (Keenan)
+
+### Notes
+
+- The try recording runs on the **sync pipeline** (Whisper + Claude inline, `maxDuration=120s`). Processing slides are a purely cosmetic UI animation layer — the progress bar simulates progress (creeps to ~80% over 30s, jumps to 100% on API response) rather than tracking real pipeline phases. Same slide-advancement logic as the post-signup flow: after slide 9 (core slides done), if API is ready, skip to summary → extraction. If not, play coming-soon slides as buffer.
+- The cookie `acuity_try_session` lasts 24 hours (prevents retries), but the TrySession data expires in 5 minutes (the countdown visible to the user). Cleanup cron handles the DB/storage side.
+- Rate limiting is defense-in-depth: per-session cookie (casual), 5/hr per IP (Upstash), 100/day global cap (Upstash). Not bulletproof but prevents casual abuse without requiring auth.
+- The `voice-entries-try` bucket is separate from `voice-entries` so cleanup can't accidentally touch real user audio.
+
+---
+
 ## [2026-05-22] — Web parity slice 7 — tail surfaces + waitlist retirement (final)
 
 **Requested by:** Jimmy

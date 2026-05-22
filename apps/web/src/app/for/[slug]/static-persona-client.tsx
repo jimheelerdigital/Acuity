@@ -18,6 +18,7 @@ import {
   TestimonialCarousel,
   buildTestimonialsWithLeader,
 } from "@/components/testimonial-carousel";
+import { TryItNowButtonDark } from "@/components/try-it-now-button";
 
 // Lazy-load ParallaxOrbs — GPU-heavy, not needed for first paint
 const ParallaxOrbs = dynamic(
@@ -53,8 +54,8 @@ export function StaticPersonaPage({ page, slug }: { page: PersonaPage; slug: str
           <Reveal delay={1}><p className="mt-6 text-lg text-[#B0A898] leading-relaxed max-w-2xl mx-auto">{page.subheadline}</p></Reveal>
           <Reveal delay={2}>
             <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
+              <TryItNowButtonDark />
               <PulsingCTA href={ctaHref}>Start Free Trial</PulsingCTA>
-              <a href="#how-it-works" className="rounded-xl border border-white/10 px-7 py-3.5 text-sm font-semibold text-[#B0A898] transition hover:border-white/20 hover:bg-white/5 active:scale-95">See how it works</a>
             </div>
           </Reveal>
         </div>
@@ -115,7 +116,10 @@ export function StaticPersonaPage({ page, slug }: { page: PersonaPage; slug: str
           <div className="mx-auto max-w-4xl rounded-2xl bg-[#1E1C1A] border border-white/10 p-12 sm:p-16 text-center relative overflow-hidden">
             <div className="relative">
               <h2 className="text-3xl font-bold sm:text-4xl tracking-tight mb-6">{page.ctaHeadline}</h2>
-              <a href={ctaHref} className="rounded-full bg-[#7C5CFC] px-8 py-4 text-sm font-bold text-white transition hover:bg-[#6B4FE0] active:scale-95">Start Free Trial</a>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                <TryItNowButtonDark />
+                <a href={ctaHref} className="rounded-full bg-[#7C5CFC] px-8 py-4 text-sm font-bold text-white transition hover:bg-[#6B4FE0] active:scale-95">Start Free Trial</a>
+              </div>
             </div>
           </div>
         </Reveal>

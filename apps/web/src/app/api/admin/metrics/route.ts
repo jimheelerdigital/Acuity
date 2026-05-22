@@ -261,6 +261,31 @@ async function getOverview(
     prevTrialTotal > 0 ? (prevTrialConverted / prevTrialTotal) * 100 : 0;
   const aiSpendCents = Number(aiSpend[0]?.total ?? 0);
 
+  // ── Try Session Metrics ──────────────────────────────────────────────
+  let tryMetrics = { today: 0, thisWeek: 0, allTime: 0, conversions: 0, conversionRate: 0, dailyCapUsed: 0, dailyCap: 100 };
+  try {
+    const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const [today, thisWeek, allTime, conversions] = await Promise.all([
+      prisma.trySession.count({ where: { createdAt: { gte: todayStart } } }),
+      prisma.trySession.count({ where: { createdAt: { gte: weekAgo } } }),
+      prisma.trySession.count(),
+      prisma.trySession.count({ where: { claimed: true } }),
+    ]);
+    const allTimeTries = allTime || 1; // avoid division by zero
+    tryMetrics = {
+      today,
+      thisWeek,
+      allTime,
+      conversions,
+      conversionRate: Math.round((conversions / allTimeTries) * 1000) / 10,
+      dailyCapUsed: today,
+      dailyCap: 100,
+    };
+  } catch {
+    // TrySession table may not exist yet (pre-migration)
+  }
+
   // Blended CAC: total ad spend / total signups in period
   let blendedCac: number | null = null;
   try {
@@ -297,6 +322,7 @@ async function getOverview(
       total: Number(r.total),
     })),
     redFlags: recentRedFlags,
+    tryMetrics,
   };
 }
 
