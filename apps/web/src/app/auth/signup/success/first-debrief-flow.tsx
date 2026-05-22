@@ -1500,7 +1500,7 @@ function CTAScreen() {
             style={{ width: 40, height: 40 }}
           />
           <h2 className="text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl">
-            Get Acuity on your phone.
+            Get Acuity on your phone so you can debrief&nbsp;anywhere.
           </h2>
         </div>
 
