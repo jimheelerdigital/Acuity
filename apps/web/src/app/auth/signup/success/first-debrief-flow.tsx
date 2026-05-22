@@ -636,37 +636,86 @@ const PROCESSING_SLIDES: ProcessingSlide[] = [
     },
   },
   {
+    label: "Task Management",
+    text: "Never forget a task again. Every to-do pulled from your own words.",
+    testimonial: {
+      quote: "I stopped using my notes app entirely. Acuity catches things I didn\u2019t even realize I committed to.",
+      name: "David P.",
+    },
+  },
+  {
+    label: "Goal Tracking",
+    text: "Real-time progress tracking on the goals that matter to you.",
+    testimonial: {
+      quote: "I mentioned wanting to run a marathon once. Three weeks later Acuity asked me how training was going.",
+      name: "Rachel W.",
+    },
+  },
+  {
+    label: "Weekly Report",
+    text: "Every Sunday, a personalized report on how your week actually went.",
+    testimonial: {
+      quote: "Sunday mornings I open my report before I open Instagram. It\u2019s the only app that tells me something real.",
+      name: "Jordan K.",
+    },
+  },
+  {
+    label: "Life Matrix",
+    text: "Your updated \u2018state of you\u2019 \u2014 how have you grown over time?",
+    testimonial: {
+      quote: "The Life Matrix showed me I was crushing it at work but completely neglecting my relationships. That one insight changed everything.",
+      name: "Nina S.",
+    },
+  },
+  {
     label: "Coming Soon",
-    text: "Your calendar meets your debrief.",
+    text: "Your calendar meets your debrief. See how you spend your time vs. how you feel about it.",
     comingSoon: true,
     description: "Connect Google Calendar and Acuity shows you the gap between what you planned and what actually happened.",
   },
   {
     label: "Coming Soon",
-    text: "Search your memory. Ask your past self anything.",
+    text: "Search your memory. Ask \u2018What did I say about that project in March?\u2019",
     comingSoon: true,
     description: "Every debrief becomes searchable. Your past self has answers you\u2019ve forgotten.",
   },
   {
     label: "Coming Soon",
-    text: "Nudges on goals you mentioned but haven\u2019t acted on.",
+    text: "Nudges on tasks and goals you mentioned but haven\u2019t acted on.",
     comingSoon: true,
     description: "Acuity notices when you keep mentioning something but never do it \u2014 and gently calls it out.",
   },
 ];
 
-const SLIDE_MS = 4000;
+const SUMMARY_ITEMS = [
+  { icon: "\u2705", text: "Task extraction", soon: false },
+  { icon: "\u2705", text: "Goal tracking", soon: false },
+  { icon: "\u2705", text: "Mood & energy analysis", soon: false },
+  { icon: "\u2705", text: "Pattern detection", soon: false },
+  { icon: "\u2705", text: "Weekly reports every Sunday", soon: false },
+  { icon: "\u2705", text: "Quarterly memoir", soon: false },
+  { icon: "\u2705", text: "Life Matrix \u2014 six domains", soon: false },
+  { icon: "\uD83D\uDD1C", text: "Calendar integration", soon: true },
+  { icon: "\uD83D\uDD1C", text: "Ask your past self", soon: true },
+  { icon: "\uD83D\uDD1C", text: "Smart notifications", soon: true },
+];
 
-// Gradient orb colors per slide
+const SLIDE_MS = 5000;
+
+// Gradient orb colors per slide (12 + summary)
 const SLIDE_ORBS = [
   "radial-gradient(circle, rgba(124,92,252,0.08) 0%, transparent 70%)",
   "radial-gradient(circle, rgba(139,92,246,0.10) 0%, transparent 70%)",
   "radial-gradient(circle, rgba(167,139,250,0.10) 0%, transparent 70%)",
   "radial-gradient(circle, rgba(196,181,253,0.12) 0%, transparent 70%)",
   "radial-gradient(circle, rgba(245,158,11,0.08) 0%, rgba(124,92,252,0.06) 40%, transparent 70%)",
-  "radial-gradient(circle, rgba(59,130,246,0.08) 0%, transparent 70%)",
+  "radial-gradient(circle, rgba(124,92,252,0.09) 0%, transparent 70%)",
   "radial-gradient(circle, rgba(16,185,129,0.08) 0%, transparent 70%)",
-  "radial-gradient(circle, rgba(249,115,22,0.08) 0%, transparent 70%)",
+  "radial-gradient(circle, rgba(59,130,246,0.08) 0%, transparent 70%)",
+  "radial-gradient(circle, rgba(196,181,253,0.10) 0%, transparent 70%)",
+  "radial-gradient(circle, rgba(59,130,246,0.07) 0%, transparent 70%)",
+  "radial-gradient(circle, rgba(16,185,129,0.07) 0%, transparent 70%)",
+  "radial-gradient(circle, rgba(249,115,22,0.07) 0%, transparent 70%)",
 ];
 
 function ProcessingScreen({
@@ -678,39 +727,51 @@ function ProcessingScreen({
 }) {
   const poll = useEntryPolling(entryId);
   const [slideIndex, setSlideIndex] = useState(0);
-  const [slidesFinished, setSlidesFinished] = useState(false);
+  const [onSummary, setOnSummary] = useState(false);
+  const [summaryStep, setSummaryStep] = useState(0);
   const completedRef = useRef(false);
   const extractionRef = useRef<ExtractionResult | null>(null);
 
-  // Track sub-element visibility per slide (label, text, testimonial stagger)
-  const [subStep, setSubStep] = useState(0); // 0=nothing, 1=label+text, 2=testimonial/desc
+  // Track sub-element visibility per slide
+  const [subStep, setSubStep] = useState(0);
 
-  // Advance slides every 4 seconds
+  // Advance slides every 5 seconds, then switch to summary
   useEffect(() => {
     const interval = setInterval(() => {
       setSlideIndex((prev) => {
         if (prev >= PROCESSING_SLIDES.length - 1) {
           clearInterval(interval);
-          setSlidesFinished(true);
+          setOnSummary(true);
           return prev;
         }
         return prev + 1;
       });
-      setSubStep(0); // reset sub-step for new slide
+      setSubStep(0);
     }, SLIDE_MS);
     return () => clearInterval(interval);
   }, []);
 
   // Sub-step stagger within each slide
   useEffect(() => {
+    if (onSummary) return;
     setSubStep(0);
     const t1 = setTimeout(() => setSubStep(1), 100);
-    const t2 = setTimeout(() => setSubStep(2), 600);
+    const t2 = setTimeout(() => setSubStep(2), 700);
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
     };
-  }, [slideIndex]);
+  }, [slideIndex, onSummary]);
+
+  // Stagger summary items
+  useEffect(() => {
+    if (!onSummary) return;
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    for (let i = 1; i <= SUMMARY_ITEMS.length; i++) {
+      timers.push(setTimeout(() => setSummaryStep(i), 300 + i * 300));
+    }
+    return () => timers.forEach(clearTimeout);
+  }, [onSummary]);
 
   // Build extraction from polled entry when complete
   useEffect(() => {
@@ -723,20 +784,29 @@ function ProcessingScreen({
     }
   }, [poll.status, poll.entry]);
 
-  // Transition when BOTH slides are done AND processing is done
+  // Transition: on summary + processing done + summary items all shown
   useEffect(() => {
     if (completedRef.current) return;
     const ext = extractionRef.current;
-    if (slidesFinished && ext) {
-      completedRef.current = true;
-      onComplete(ext);
+    if (onSummary && ext && summaryStep >= SUMMARY_ITEMS.length) {
+      // Small delay after last summary item before transitioning
+      const t = setTimeout(() => {
+        completedRef.current = true;
+        onComplete(ext);
+      }, 1500);
+      return () => clearTimeout(t);
     }
-  }, [slidesFinished, poll.status, onComplete]);
+  }, [onSummary, summaryStep, poll.status, onComplete]);
 
-  // Handle failures
+  // Handle failures on summary
   useEffect(() => {
-    if (poll.status === "failed" || poll.status === "timeout") {
-      if (slidesFinished) {
+    if (completedRef.current) return;
+    if (
+      (poll.status === "failed" || poll.status === "timeout") &&
+      onSummary &&
+      summaryStep >= SUMMARY_ITEMS.length
+    ) {
+      const t = setTimeout(() => {
         completedRef.current = true;
         onComplete(
           extractionRef.current ?? {
@@ -753,14 +823,13 @@ function ProcessingScreen({
             goals: [],
           }
         );
-      }
+      }, 1500);
+      return () => clearTimeout(t);
     }
-  }, [poll.status, slidesFinished, onComplete]);
+  }, [poll.status, onSummary, summaryStep, onComplete]);
 
-  // Progress bar: driven by processing status, not slides
   const progressPct = getProgressPct(poll.phase, poll.status);
   const processingLabel = getProcessingLabel(poll.phase);
-  const currentSlide = PROCESSING_SLIDES[slideIndex];
 
   return (
     <div className="relative flex min-h-screen flex-col px-6 py-8 overflow-hidden">
@@ -796,132 +865,164 @@ function ProcessingScreen({
       </div>
 
       {/* Gradient orb */}
-      <div
-        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] sm:w-[500px] sm:h-[500px] transition-all duration-1000 pointer-events-none"
-        style={{ background: SLIDE_ORBS[slideIndex] ?? SLIDE_ORBS[0] }}
-      />
+      {!onSummary && (
+        <div
+          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] sm:w-[500px] sm:h-[500px] transition-all duration-1000 pointer-events-none"
+          style={{ background: SLIDE_ORBS[slideIndex % SLIDE_ORBS.length] }}
+        />
+      )}
 
-      {/* Main content — centered */}
+      {/* Main content */}
       <div className="flex-1 flex flex-col items-center justify-center relative z-10">
         <div className="w-full max-w-lg">
-          {/* Slide content */}
-          <div className="relative min-h-[280px] sm:min-h-[320px] flex items-center justify-center">
-            {PROCESSING_SLIDES.map((slide, i) => (
-              <div
-                key={i}
-                className="absolute inset-0 flex flex-col items-center justify-center text-center px-2"
-                style={{
-                  transition: "opacity 0.5s ease, transform 0.5s ease",
-                  opacity: i === slideIndex ? 1 : 0,
-                  transform:
-                    i === slideIndex
-                      ? "translateY(0)"
-                      : i < slideIndex
-                        ? "translateY(-20px)"
-                        : "translateY(20px)",
-                  pointerEvents: i === slideIndex ? "auto" : "none",
-                }}
-              >
-                {/* Label */}
-                <div
-                  className="mb-4"
-                  style={{
-                    transition: "opacity 0.3s ease, transform 0.3s ease",
-                    opacity: i === slideIndex && subStep >= 1 ? 1 : 0,
-                    transform: i === slideIndex && subStep >= 1 ? "translateY(0)" : "translateY(8px)",
-                  }}
-                >
-                  {slide.comingSoon ? (
-                    <span
-                      className="inline-block text-xs font-bold uppercase tracking-[0.2em] text-blue-500 bg-blue-50 border border-blue-100 rounded-full px-3 py-1"
-                      style={{ animation: "mic-glow 3s ease-in-out infinite" }}
-                    >
-                      Coming Soon
-                    </span>
-                  ) : (
-                    <span
-                      className="text-sm font-bold uppercase tracking-[0.25em] text-[#7C5CFC] sm:text-base"
+          {!onSummary ? (
+            <>
+              {/* Slide content */}
+              <div className="relative min-h-[280px] sm:min-h-[320px] flex items-center justify-center">
+                {PROCESSING_SLIDES.map((slide, i) => (
+                  <div
+                    key={i}
+                    className="absolute inset-0 flex flex-col items-center justify-center text-center px-2"
+                    style={{
+                      transition: "opacity 0.5s ease, transform 0.5s ease",
+                      opacity: i === slideIndex ? 1 : 0,
+                      transform:
+                        i === slideIndex
+                          ? "translateY(0)"
+                          : i < slideIndex
+                            ? "translateY(-20px)"
+                            : "translateY(20px)",
+                      pointerEvents: i === slideIndex ? "auto" : "none",
+                    }}
+                  >
+                    {/* Label */}
+                    <div
+                      className="mb-4"
                       style={{
-                        textShadow: "0 0 20px rgba(124,92,252,0.3)",
+                        transition: "opacity 0.3s ease, transform 0.3s ease",
+                        opacity: i === slideIndex && subStep >= 1 ? 1 : 0,
+                        transform: i === slideIndex && subStep >= 1 ? "translateY(0)" : "translateY(8px)",
                       }}
                     >
-                      {slide.label}
-                    </span>
-                  )}
-                </div>
+                      {slide.comingSoon ? (
+                        <span
+                          className="inline-block text-xs font-bold uppercase tracking-[0.2em] text-blue-500 bg-blue-50 border border-blue-100 rounded-full px-3 py-1"
+                          style={{ animation: "mic-glow 3s ease-in-out infinite" }}
+                        >
+                          Coming Soon
+                        </span>
+                      ) : (
+                        <span
+                          className="text-sm font-bold uppercase tracking-[0.25em] text-[#7C5CFC] sm:text-base"
+                          style={{ textShadow: "0 0 20px rgba(124,92,252,0.3)" }}
+                        >
+                          {slide.label}
+                        </span>
+                      )}
+                    </div>
 
-                {/* Main text */}
-                <div
-                  style={{
-                    transition: "opacity 0.3s ease 0.1s, transform 0.3s ease 0.1s",
-                    opacity: i === slideIndex && subStep >= 1 ? 1 : 0,
-                    transform: i === slideIndex && subStep >= 1 ? "translateY(0)" : "translateY(8px)",
-                  }}
-                >
-                  <p className="text-2xl font-bold text-zinc-800 leading-relaxed sm:text-3xl mb-6">
-                    {slide.text}
-                  </p>
-                </div>
-
-                {/* Testimonial or description */}
-                <div
-                  style={{
-                    transition: "opacity 0.3s ease, transform 0.3s ease",
-                    opacity: i === slideIndex && subStep >= 2 ? 1 : 0,
-                    transform: i === slideIndex && subStep >= 2 ? "translateY(0)" : "translateY(12px)",
-                  }}
-                >
-                  {slide.testimonial && (
-                    <div className="max-w-sm mx-auto">
-                      <p className="text-sm text-zinc-500 italic leading-relaxed">
-                        <span className="text-[#7C5CFC]/40 text-lg not-italic">&ldquo;</span>
-                        {slide.testimonial.quote}
-                        <span className="text-[#7C5CFC]/40 text-lg not-italic">&rdquo;</span>
-                      </p>
-                      <p className="mt-2 text-xs text-zinc-400">
-                        &mdash; {slide.testimonial.name}
+                    {/* Main text */}
+                    <div
+                      style={{
+                        transition: "opacity 0.3s ease 0.1s, transform 0.3s ease 0.1s",
+                        opacity: i === slideIndex && subStep >= 1 ? 1 : 0,
+                        transform: i === slideIndex && subStep >= 1 ? "translateY(0)" : "translateY(8px)",
+                      }}
+                    >
+                      <p className="text-2xl font-bold text-zinc-800 leading-relaxed sm:text-3xl mb-6">
+                        {slide.text}
                       </p>
                     </div>
-                  )}
-                  {slide.description && (
-                    <p className="max-w-sm mx-auto text-sm text-zinc-500 leading-relaxed">
-                      {slide.description}
-                    </p>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
 
-          {/* Progress dots */}
-          <div className="mt-8 flex items-center justify-center gap-1.5">
-            {PROCESSING_SLIDES.map((_, i) => (
-              <div
-                key={i}
-                className="rounded-full transition-all duration-500"
-                style={
-                  i === slideIndex
-                    ? {
-                        width: 24,
-                        height: 5,
-                        background: "linear-gradient(90deg, #7C5CFC, #9F7AEA)",
-                        boxShadow: "0 0 10px 2px rgba(124,92,252,0.35)",
-                      }
-                    : i < slideIndex
-                      ? {
-                          width: 5,
-                          height: 5,
-                          backgroundColor: "rgba(124,92,252,0.3)",
-                        }
-                      : {
-                          width: 5,
-                          height: 5,
-                          backgroundColor: "rgba(0,0,0,0.07)",
-                        }
-                }
-              />
-            ))}
-          </div>
+                    {/* Testimonial or description */}
+                    <div
+                      style={{
+                        transition: "opacity 0.3s ease, transform 0.3s ease",
+                        opacity: i === slideIndex && subStep >= 2 ? 1 : 0,
+                        transform: i === slideIndex && subStep >= 2 ? "translateY(0)" : "translateY(12px)",
+                      }}
+                    >
+                      {slide.testimonial && (
+                        <div className="max-w-sm mx-auto">
+                          <p className="text-sm text-zinc-500 italic leading-relaxed">
+                            <span className="text-[#7C5CFC]/40 text-lg not-italic">&ldquo;</span>
+                            {slide.testimonial.quote}
+                            <span className="text-[#7C5CFC]/40 text-lg not-italic">&rdquo;</span>
+                          </p>
+                          <p className="mt-2 text-xs text-zinc-400">
+                            &mdash; {slide.testimonial.name}
+                          </p>
+                        </div>
+                      )}
+                      {slide.description && (
+                        <p className="max-w-sm mx-auto text-sm text-zinc-500 leading-relaxed">
+                          {slide.description}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Progress dots */}
+              <div className="mt-8 flex items-center justify-center gap-1.5 flex-wrap">
+                {PROCESSING_SLIDES.map((_, i) => (
+                  <div
+                    key={i}
+                    className="rounded-full transition-all duration-500"
+                    style={
+                      i === slideIndex
+                        ? {
+                            width: 20,
+                            height: 5,
+                            background: "linear-gradient(90deg, #7C5CFC, #9F7AEA)",
+                            boxShadow: "0 0 8px 2px rgba(124,92,252,0.3)",
+                          }
+                        : i < slideIndex
+                          ? {
+                              width: 5,
+                              height: 5,
+                              backgroundColor: "rgba(124,92,252,0.3)",
+                            }
+                          : {
+                              width: 5,
+                              height: 5,
+                              backgroundColor: "rgba(0,0,0,0.07)",
+                            }
+                    }
+                  />
+                ))}
+              </div>
+            </>
+          ) : (
+            /* Summary screen */
+            <div className="text-center">
+              <h2 className="text-2xl font-bold text-zinc-900 mb-8 sm:text-3xl animate-fade-in">
+                Everything Acuity does for you.
+              </h2>
+              <div className="space-y-3 max-w-xs mx-auto">
+                {SUMMARY_ITEMS.map((item, i) => (
+                  <div
+                    key={item.text}
+                    className={`flex items-center gap-3 text-left transition-all duration-500 ${
+                      summaryStep > i
+                        ? "opacity-100 translate-y-0"
+                        : "opacity-0 translate-y-3"
+                    }`}
+                  >
+                    <span className="text-lg shrink-0">{item.icon}</span>
+                    <span
+                      className={`text-sm font-medium ${
+                        item.soon ? "text-zinc-400" : "text-zinc-700"
+                      }`}
+                    >
+                      {item.text}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
