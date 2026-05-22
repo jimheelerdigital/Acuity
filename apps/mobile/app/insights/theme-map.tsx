@@ -1,8 +1,10 @@
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
+  Modal,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -28,23 +30,15 @@ import { StarField } from "./_theme-map/StarField";
 import { hueForTheme, type OrbitalTheme } from "./_theme-map/types";
 
 /**
- * Phase E rebuild (2026-05-21) — orbital cosmos Theme Map per design
- * spec _design/design_handoff_acuity_v2/screen-thememap.jsx.
+ * Phase E polish 1 (2026-05-21) — orbital cosmos with filtered themes.
  *
- * Layout (top → bottom):
- *   - StarField (absolute full-screen background, 70 deterministic stars)
- *   - StickyBackButton (chrome)
- *   - Header block (eyebrow + title + entries-count subtitle, centered)
- *   - Time selector (3 options, fits 375pt width cleanly)
- *   - OrbitalCosmos (9 planets across 4 ring guides, spin-in animation)
- *   - Insight strip (glass-blur card, sparkle icon, two-line text)
+ * Theme filter pipeline:
+ *   1. mentionCount >= 2 — drops single-mention noise
+ *   2. Sort by mentionCount DESC
+ *   3. Slice to top 6 — keeps the cosmos breathing
  *
- * Planet tap → PlanetCallout glass-blur overlay. Tap outside dismisses.
- *
- * Animation skip: module-scoped `hasShownEntranceThisSession` flag
- * lives for the JS bundle's lifetime — first orbital mount in a
- * session plays the entrance, subsequent mounts snap to final state.
- * Auto-clears on app cold-start when the VM tears down.
+ * If post-filter count is 0 or 1, we show a "patterns emerging" empty
+ * state rather than a degenerate single-planet orbital.
  */
 
 type CategoryToken = "activity" | "reflection" | "life" | "emotional";
@@ -93,9 +87,6 @@ type ApiResponse = {
   };
 };
 
-// Reduced from 5 to 3 options (was overflowing at fontSize 13 + padding
-// 18px each side on iPhone 16e 375pt). 3 options fits cleanly without
-// scroll/clip.
 type TimeWindow = "week" | "month" | "all";
 const TIME_OPTIONS: { key: TimeWindow; label: string }[] = [
   { key: "week", label: "Week" },
@@ -104,11 +95,10 @@ const TIME_OPTIONS: { key: TimeWindow; label: string }[] = [
 ];
 
 const UNLOCK_THRESHOLD = 10;
+const MIN_MENTIONS = 2;
+const MAX_THEMES = 6;
 
-// Module-scoped session flag. Lives for the lifetime of the JS bundle:
-// auto-cleared on app cold-start (VM tear-down) but preserved across
-// foreground/background cycles in the same session. First mount in a
-// session plays the cosmos entrance; subsequent mounts snap.
+// Module-scoped session flag. Cleared on JS VM tear-down (cold start).
 let hasShownEntranceThisSession = false;
 
 export default function ThemeMapScreen() {
@@ -121,8 +111,10 @@ export default function ThemeMapScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [calloutData, setCalloutData] =
-    useState<PlanetCalloutData | null>(null);
+  const [calloutData, setCalloutData] = useState<PlanetCalloutData | null>(
+    null
+  );
+  const [showInfo, setShowInfo] = useState(false);
 
   const [animateOnMount] = useState(() => {
     if (hasShownEntranceThisSession) return false;
@@ -159,11 +151,15 @@ export default function ThemeMapScreen() {
   const entryCount = data?.meta.totalEntries ?? 0;
   const locked = entryCount < UNLOCK_THRESHOLD;
 
+  // Filter: mentionCount >= 2, sort by count DESC, cap at 6.
+  // Single-mention themes are noise (e.g. one-off topic from a single
+  // entry). Recurring themes are the signal worth visualizing.
   const orbitalThemes: OrbitalTheme[] = useMemo(() => {
     if (!data) return [];
     return [...data.themes]
+      .filter((t) => t.mentionCount >= MIN_MENTIONS)
       .sort((a, b) => b.mentionCount - a.mentionCount)
-      .slice(0, 9)
+      .slice(0, MAX_THEMES)
       .map((t) => ({
         id: t.id,
         name: t.name,
@@ -175,11 +171,13 @@ export default function ThemeMapScreen() {
       }));
   }, [data]);
 
+  // "Patterns emerging" empty state: unlocked + has entries but
+  // 0-1 themes survive the mentionCount >= 2 filter.
+  const tooFewRecurring = !locked && orbitalThemes.length < 2;
+
   const screen = Dimensions.get("window");
   const orbitalSize = screen.width;
 
-  // Center "you" initial — first letter of the user's name if known,
-  // else a quiet bullet so the surface doesn't show a stale placeholder.
   const centerInitial = useMemo(() => {
     const name = user?.name?.trim();
     if (!name) return "•";
@@ -222,7 +220,6 @@ export default function ThemeMapScreen() {
       style={{ flex: 1, backgroundColor: tokens.bg }}
       edges={["top"]}
     >
-      {/* Starfield — absolute-positioned full-screen background */}
       <View
         pointerEvents="none"
         style={{
@@ -245,6 +242,38 @@ export default function ThemeMapScreen() {
         accessibilityLabel="Back to Insights"
       />
 
+      {/* Info icon, top-right. Sits in the screen's chrome layer
+          (absolute-positioned at the same top inset as StickyBackButton). */}
+      <View
+        style={{
+          position: "absolute",
+          top: 8,
+          right: 20,
+          zIndex: 5,
+        }}
+      >
+        <Pressable
+          onPress={() => setShowInfo(true)}
+          hitSlop={12}
+          accessibilityRole="button"
+          accessibilityLabel="About your theme map"
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: 18,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Ionicons
+            name="information-circle-outline"
+            size={22}
+            color={tokens.textSec}
+            style={{ opacity: 0.7 }}
+          />
+        </Pressable>
+      </View>
+
       <ScrollView
         refreshControl={
           <RefreshControl
@@ -255,7 +284,6 @@ export default function ThemeMapScreen() {
         }
         contentContainerStyle={{ paddingBottom: 60, paddingTop: 64 }}
       >
-        {/* Header — centered eyebrow + gradient-number title + subtitle */}
         <View style={{ paddingHorizontal: 24, alignItems: "center" }}>
           <Text
             style={{
@@ -293,7 +321,7 @@ export default function ThemeMapScreen() {
                 color: tokens.text,
               }}
             >
-              {" "}active themes
+              {orbitalThemes.length === 1 ? " active theme" : " active themes"}
             </Text>
           </View>
           <Text
@@ -310,9 +338,7 @@ export default function ThemeMapScreen() {
           </Text>
         </View>
 
-        {/* Time selector — 3 options (Week / Month / All time), fits
-            iPhone 16e cleanly without scroll. */}
-        {!error && !locked && !isProLocked && (
+        {!error && !locked && !isProLocked && !tooFewRecurring && (
           <View
             style={{
               marginTop: 18,
@@ -380,7 +406,53 @@ export default function ThemeMapScreen() {
           <LockedState count={entryCount} />
         )}
 
-        {!error && !locked && data && orbitalThemes.length > 0 && (
+        {!error && !isProLocked && !locked && tooFewRecurring && (
+          <View
+            style={{
+              marginHorizontal: 24,
+              marginTop: 40,
+              paddingVertical: 36,
+              paddingHorizontal: 24,
+              alignItems: "center",
+              borderRadius: 22,
+              borderWidth: 0.5,
+              borderColor: tokens.line,
+              backgroundColor:
+                resolved === "dark"
+                  ? "rgba(255,255,255,0.03)"
+                  : "rgba(0,0,0,0.02)",
+            }}
+          >
+            <Text
+              style={{
+                fontFamily: tokens.fontDisplay,
+                fontSize: 18,
+                fontWeight: "700",
+                letterSpacing: -0.3,
+                color: tokens.text,
+                textAlign: "center",
+                marginBottom: 8,
+              }}
+            >
+              Patterns are still forming
+            </Text>
+            <Text
+              style={{
+                fontFamily: tokens.fontSans,
+                fontSize: 13,
+                lineHeight: 18,
+                color: tokens.textSec,
+                textAlign: "center",
+              }}
+            >
+              We need a few more recordings before patterns emerge. Themes
+              show up here once they&rsquo;ve appeared in at least two of
+              your reflections.
+            </Text>
+          </View>
+        )}
+
+        {!error && !locked && !isProLocked && !tooFewRecurring && data && (
           <>
             <View style={{ alignItems: "center", marginTop: 24 }}>
               <OrbitalCosmos
@@ -392,8 +464,6 @@ export default function ThemeMapScreen() {
               />
             </View>
 
-            {/* Insight strip — glass-blur card, sparkle icon, two-line
-                text per design spec lines 204-233 */}
             {data.topThemeName && (
               <View
                 style={{
@@ -467,28 +537,114 @@ export default function ThemeMapScreen() {
             )}
           </>
         )}
+      </ScrollView>
 
-        {!error && !locked && data && orbitalThemes.length === 0 && (
-          <View
+      {/* Info modal — explains what the orbital represents. */}
+      <Modal
+        visible={showInfo}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowInfo(false)}
+      >
+        <Pressable
+          onPress={() => setShowInfo(false)}
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.5)",
+            justifyContent: "center",
+            alignItems: "center",
+            paddingHorizontal: 24,
+          }}
+        >
+          <Pressable
+            onPress={() => {}}
             style={{
-              marginHorizontal: 20,
-              marginVertical: 40,
-              alignItems: "center",
+              width: "100%",
+              maxWidth: 340,
+              borderRadius: 22,
+              borderWidth: 0.5,
+              borderColor: tokens.lineStrong,
+              backgroundColor: tokens.cardBg,
+              padding: 22,
             }}
           >
             <Text
               style={{
-                fontSize: 13,
-                textAlign: "center",
-                color: tokens.textSec,
+                fontFamily: tokens.fontDisplay,
+                fontSize: 18,
+                fontWeight: "700",
+                letterSpacing: -0.3,
+                color: tokens.text,
+                marginBottom: 14,
               }}
             >
-              Not enough theme variety yet — record a few more sessions
-              to see your patterns surface.
+              About your theme map
             </Text>
-          </View>
-        )}
-      </ScrollView>
+            <Text
+              style={{
+                fontFamily: tokens.fontSans,
+                fontSize: 13,
+                lineHeight: 19,
+                color: tokens.textSec,
+                marginBottom: 12,
+              }}
+            >
+              Your most-mentioned themes appear closer to the center. Less
+              frequent themes orbit further out.
+            </Text>
+            <Text
+              style={{
+                fontFamily: tokens.fontSans,
+                fontSize: 13,
+                lineHeight: 19,
+                color: tokens.textSec,
+                marginBottom: 12,
+              }}
+            >
+              Planet size and ring distance both reflect how often the
+              theme has appeared in your reflections during the selected
+              time window.
+            </Text>
+            <Text
+              style={{
+                fontFamily: tokens.fontSans,
+                fontSize: 13,
+                lineHeight: 19,
+                color: tokens.textSec,
+                marginBottom: 18,
+              }}
+            >
+              We only show themes mentioned 2+ times to filter out one-off
+              topics.
+            </Text>
+            <Pressable
+              onPress={() => setShowInfo(false)}
+              style={{
+                paddingVertical: 10,
+                paddingHorizontal: 14,
+                borderRadius: 999,
+                borderWidth: 0.5,
+                borderColor: tokens.lineStrong,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Text
+                style={{
+                  fontFamily: tokens.fontMono,
+                  fontSize: 11,
+                  fontWeight: "700",
+                  letterSpacing: 1.4,
+                  textTransform: "uppercase",
+                  color: tokens.text,
+                }}
+              >
+                Got it
+              </Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       {calloutData && (
         <PlanetCallout
