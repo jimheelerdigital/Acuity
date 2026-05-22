@@ -41,6 +41,40 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-22] — CTA/download screen — white theme, shining ring buttons, animated counter
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 7feb224
+
+### In plain English (for Keenan)
+
+The final download screen now matches the white theme. The App Store button has a light that continuously traces around its edge like a spotlight, making it hard to ignore. The "Continue in browser" button has a subtler version of the same effect. Social proof shows a counter that ticks up from 0 to 127 when it appears, gold stars that twinkle, and testimonials that auto-cycle one at a time. Three value props with emoji icons stagger in. Everything animates smoothly on entrance.
+
+### Technical changes (for Jimmy)
+
+- Modified `apps/web/src/app/auth/signup/success/first-debrief-flow.tsx`:
+  - Rewrote `CTAScreen` with white theme, staggered entrance (6 stages)
+  - App Store button: conic-gradient shining ring overlay rotating every 2.5s, gradient background, inner mask for edge-only glow
+  - Browser button: subtler conic-gradient ring at 3s cycle, white inner mask
+  - Animated counter: requestAnimationFrame + ease-out cubic, 0→127 over 1.5s
+  - Testimonial carousel: single-card auto-cycling every 4s with slide transition (not the full TestimonialCarousel component — simpler inline version for mobile-first single-card display)
+  - Value props: 3 cards with emoji icons, staggered entrance with CSS transition-delay
+  - Star twinkle: per-star animation delay for wave effect
+  - Simplified `bgClass`: only `"intro"` is dark, all other screens are white
+- Modified `apps/web/src/app/globals.css`: added `shine-ring` (360° rotation) and `star-twinkle` (brightness pulse) keyframes
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- The shining ring uses `conic-gradient` with a single bright segment that rotates — works in all modern browsers including mobile Safari
+- TestimonialCarousel component is still imported but only used for its data (`STATIC_CAROUSEL_TESTIMONIALS`) — the CTA screen renders its own simpler single-card carousel optimized for mobile
+
+---
+
 ## [2026-05-22] — Extraction reveal screen — white theme, per-item stagger, confetti
 
 **Requested by:** Keenan
