@@ -41,6 +41,42 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-22] — Screen 1 celebration animation + light-theme redesign
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** b5d7129
+
+### In plain English (for Keenan)
+
+The post-signup recording screen now starts with a cinematic moment: the screen goes dark, "You're in." appears, confetti explodes, and the background brightens to a clean white. Then the recording UI fades in piece by piece with satisfying spring animations. The recording screen itself is now a light/white theme with Apple-style generous spacing, the mic button is pushed to the lower half on mobile for easy thumb tapping, and there's a rotating testimonial quote for social proof. The confetti uses canvas-based animation so it performs well on phones.
+
+### Technical changes (for Jimmy)
+
+- Modified `apps/web/src/app/auth/signup/success/first-debrief-flow.tsx`:
+  - Added `IntroAnimation` component: 3.5s cinematic sequence (dark → "You're in." text → confetti burst via canvas-confetti → bg brightens to white → transition to record screen)
+  - Redesigned `RecordScreen` to light theme (white bg, dark text, zinc palette)
+  - Added staggered entrance animation (headline → subhead → mic → social proof, each 400ms apart with spring easing)
+  - Mic button moved to lower half on mobile via flex layout (thumb-reachable)
+  - Added rotating mini-testimonial quotes (3 short quotes, 5s rotation)
+  - Mic button enlarged to 128px mobile / 144px desktop with triple pulse rings
+  - New `Screen` type: added "intro" state before "record"
+  - Background color transitions with CSS `transition-colors duration-1000`
+- Added `canvas-confetti` (npm) + `@types/canvas-confetti` to `apps/web/package.json`
+- Screens 2-4 (processing, extraction, CTA) unchanged
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- canvas-confetti uses HTML5 Canvas, not DOM particles — performs well on mobile Safari and low-end Android
+- The intro animation only plays on first visit. If user has existing entries and `?force=1` is not set, they skip straight to CTA (same as before).
+- The `?force=1` param still works for testing the full flow.
+
+---
+
 ## [2026-05-22] — Post-signup first debrief recording flow
 
 **Requested by:** Keenan
