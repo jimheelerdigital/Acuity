@@ -41,6 +41,46 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-22] — Web parity slice 1 — design foundation (tokens, primitives, fonts)
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** _pending_
+
+### In plain English (for Keenan)
+
+This is the first piece of foundation work for bringing the web app's look to match the mobile app's recent visual refresh. Nothing visible to users yet — we set up the new color palette, fonts, and a small set of building blocks (button, card, theme pill, avatar, subscription pill, section header) in the codebase. The old colors and fonts on the live landing page are intentionally still working; the next slice (slice 2) is when the homepage actually starts using the new foundation. Think of this commit as laying carpet before moving in furniture — the carpet's down, but the rooms still look the same until we start swapping furniture screen by screen.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/lib/theme/tokens.css`: new file. OKLCH color ramp matching mobile's coral preset (`apps/mobile/lib/theme/tokens.ts → ACUITY_ACCENT_PRESETS.coral`). Dark mode default on `:root` + `:root[data-theme="dark"]`; light mode on `:root[data-theme="light"]`. Includes brand (primary/secondary + hi/lo triplets), status (good/bad/warn — warn hardcoded `#fbbf24` matching `tone-colors.ts`), surfaces, text, hairlines, gradients, shadows, glow tokens, radii, motion easings + durations. Canonical motion utilities (`.acuity-fade-up`, `.acuity-fade-in`, `.acuity-stagger > [data-stagger]`) with `prefers-reduced-motion: reduce` guard.
+- `apps/web/tailwind.config.ts`: added `acuity-*` color scale (reads CSS vars), `acuity-*` borderRadius / boxShadow / backgroundImage / transitionTimingFunction / transitionDuration scales. Fonts swapped: `sans` to system stack, `display` to Manrope via `--font-display`, `mono` to Geist Mono via `--font-geist-mono`. Legacy `serif` alias points at Manrope. `darkMode` now accepts both `class` and `[data-theme="dark"]`. Legacy `brand` + `warm` palettes intentionally retained with `DO NOT add new consumers` comments — slices 2-7 retire them as their consumers migrate.
+- `apps/web/src/app/layout.tsx`: Inter + Playfair Display replaced with Manrope (`next/font/google`) + GeistMono (`geist/font/mono`, self-hosted via the `geist` package already in lockfile — `Geist_Mono` isn't published on Google Fonts). Imported `tokens.css` above `globals.css`. Did NOT add `data-theme="dark"` to `<html>` yet — that flips every existing `dark:*` Tailwind variant immediately, which is a slice 2 concern.
+- `apps/web/src/app/globals.css`: annotated existing keyframes as legacy. Pointed future motion work at `tokens.css` utilities. No keyframes removed — landing's `blob-drift / shimmer / pulse-ring / mic-glow / etc.` consumers stay live until their respective slices migrate.
+- `apps/web/src/components/acuity/`: new directory mirroring `apps/mobile/components/acuity/`. Six primitives + barrel index:
+  - `Button.tsx` — primary / secondary / ghost / destructive variants × sm / md / lg sizes
+  - `Card.tsx` — default / tinted variants × lg / xl radii
+  - `ThemePill.tsx` — 9 canonical theme keys + `other` fallback, 1:1 with mobile's THEME_COLORS
+  - `Avatar.tsx` — gradient circle with initial, sizes 44 / 64 / custom
+  - `SubscriptionPill.tsx` — PRO / TRIAL / FREE / PAST_DUE / CANCELED states
+  - `SectionHeader.tsx` — eyebrow primitive replacing the 8+ inline `text-xs uppercase tracking-widest text-zinc-400` patterns
+- No consumers wired yet. Slices 2-7 consume the primitives as each surface gets refreshed.
+
+### Manual steps needed
+
+- [ ] Spot-check Vercel deploy: landing, /auth/signin, /auth/signup, /admin should render identically to pre-slice-1 (legacy palettes + keyframes retained for exactly this reason). Jimmy
+- [ ] No env vars, no Prisma changes, no Inngest changes — pure frontend foundation. Vercel auto-deploys on main push.
+
+### Notes
+
+- Brand color decision: validated mobile defaults via `apps/mobile/lib/theme/tokens.ts:233`, `apps/mobile/contexts/theme-context.tsx:88`, and `prisma/schema.prisma:138` — all three set coral as default. The "violet branding" perception came from gradMix (coral → violet) being visually dominant on hero surfaces. Audit's "high severity brand drift" rating confirmed correct.
+- Geist Mono path: `geist` npm package (v1.7.0) is already a transitive dep. Exposes `GeistMono` from `geist/font/mono` with `.variable` set to `--font-geist-mono`. Tailwind reads that var name directly — no aliasing layer.
+- Font swap consequence: pages currently using `font-display` now render Manrope (was Playfair serif). This is intentional foundation work. The `font-serif` legacy alias resolves to Manrope so any consumer using `font-serif` inherits the new family without breaking. Visual change is foundation inheritance, not a UI refresh.
+- The hardest call was whether to aggressive-prune the landing's ambient keyframes (blob-drift, shimmer, etc.) in slice 1. Decided no — they're consumed by `landing.tsx` and `first-debrief-flow.tsx` (shipped today). Pruning would break production. Annotated as legacy; slices 2-7 delete keyframes alongside their consumers.
+- `data-theme="dark"` left off `<html>` for the same reason — adding it triggers every `dark:*` variant on every existing page immediately. Slice 2's landing refresh sets it when the landing flips to canonical dark.
+
+---
+
 ## [2026-05-22] — Processing screen timing logic, bottom progress bar, clean summary
 
 **Requested by:** Keenan

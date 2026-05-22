@@ -1,0 +1,283 @@
+/**
+ * Acuity canonical design tokens — web port of mobile's coral preset.
+ *
+ * Source of truth: `apps/mobile/lib/theme/tokens.ts → makeAcuityTokens({
+ * dark: true, accent: "coral" })`. Mobile uses culori to convert OKLCH
+ * to hex at runtime (RN can't parse oklch). Web ships OKLCH natively —
+ * Chrome 111+, Safari 15.4+, Firefox 113+ all support it, which matches
+ * Acuity's stated browser support floor (see _design/DESIGN_SYSTEM.md
+ * §2). Authoring in OKLCH means the values stay 1:1 with mobile's
+ * intent; if we ever swap the preset (sunset/citrus/cobalt), only the
+ * primary/secondary triplets change.
+ *
+ * Convention:
+ *   - `[data-theme="dark"]` is the default. We set it on `<html>` at
+ *     layout time. Light mode is the explicit opt-in.
+ *   - All tokens live under `--acuity-*` keys. Tailwind reads them via
+ *     `colors: { acuity: { primary: 'var(--acuity-primary)', ... } }`.
+ *   - Status colors (good/bad) share their OKLCH triplet across modes.
+ *   - WARN_AMBER is hardcoded as `#FBBF24` — the canonical exception
+ *     for warning surfaces (no palette warning token exists). Source:
+ *     `apps/mobile/lib/tone-colors.ts → WARN_AMBER`.
+ *
+ * The hue rotation pattern in mobile is `bg = oklch(0.21 0.022 sh+5)`
+ * where `sh` is the secondary hue. Coral preset: secondary hue = 285,
+ * so `sh+5 = 290`. Primary hue = 38, so `ph+5 = 43`. These numeric
+ * substitutions are baked in below.
+ */
+
+/* ─── Dark mode (default) ───────────────────────────────────────── */
+
+:root,
+:root[data-theme="dark"] {
+  /* Brand — coral preset */
+  --acuity-primary: oklch(0.76 0.155 38);
+  --acuity-primary-hi: oklch(0.84 0.155 38);
+  --acuity-primary-lo: oklch(0.66 0.155 38);
+  --acuity-secondary: oklch(0.66 0.18 285);
+  --acuity-secondary-hi: oklch(0.74 0.18 285);
+  --acuity-secondary-lo: oklch(0.56 0.18 285);
+
+  /* Status — palette-independent */
+  --acuity-good: oklch(0.74 0.135 165);
+  --acuity-good-soft: oklch(0.74 0.135 165 / 0.18);
+  --acuity-bad: oklch(0.66 0.17 25);
+  --acuity-bad-soft: oklch(0.66 0.17 25 / 0.18);
+  --acuity-warn: #fbbf24;
+
+  /* Surfaces — sh+5 = 290 for coral preset */
+  --acuity-bg: oklch(0.21 0.022 290);
+  --acuity-bg-sub: oklch(0.235 0.024 290);
+  --acuity-bg-inset: oklch(0.185 0.020 285);
+  --acuity-card-bg: oklch(0.245 0.024 290);
+  --acuity-card-bg-tint: oklch(0.255 0.034 43);
+  --acuity-card-bg-raised: oklch(0.27 0.028 290);
+  --acuity-card-border: oklch(1 0 0 / 0.05);
+
+  /* Text */
+  --acuity-text: oklch(0.98 0.004 285);
+  --acuity-text-sec: oklch(0.74 0.010 285);
+  --acuity-text-ter: oklch(0.56 0.012 285);
+  --acuity-text-quiet: oklch(0.40 0.008 285);
+
+  /* Hairlines */
+  --acuity-line: oklch(1 0 0 / 0.07);
+  --acuity-line-strong: oklch(1 0 0 / 0.13);
+
+  /* Gradients — 135deg matches mobile's tlToBr = start{0,0} end{1,1} */
+  --acuity-grad-primary: linear-gradient(
+    135deg,
+    var(--acuity-primary-hi) 0%,
+    var(--acuity-primary) 55%,
+    var(--acuity-primary-lo) 100%
+  );
+  --acuity-grad-secondary: linear-gradient(
+    135deg,
+    var(--acuity-secondary-hi) 0%,
+    var(--acuity-secondary) 55%,
+    var(--acuity-secondary-lo) 100%
+  );
+  --acuity-grad-mix: linear-gradient(
+    135deg,
+    var(--acuity-primary) 0%,
+    var(--acuity-secondary) 100%
+  );
+  --acuity-grad-mix-soft: linear-gradient(
+    135deg,
+    oklch(0.76 0.108 38 / 0.16) 0%,
+    oklch(0.66 0.126 285 / 0.16) 100%
+  );
+
+  /* Shadows — outer drop only on web. The inset highlight that mobile
+     uses isn't worth a second layered element on web cards; web cards
+     read the same atmospheric without it. */
+  --acuity-shadow-soft:
+    0 1px 0 0 oklch(1 0 0 / 0.04) inset,
+    0 8px 22px 0 oklch(0 0 0 / 0.28);
+  --acuity-shadow-lift:
+    0 1px 0 0 oklch(1 0 0 / 0.06) inset,
+    0 14px 36px 0 oklch(0 0 0 / 0.34);
+  --acuity-glow-primary:
+    0 0 16px 0 oklch(0.76 0.155 38 / 0.30),
+    0 8px 18px 0 oklch(0.66 0.155 38 / 0.22);
+  --acuity-glow-secondary:
+    0 0 16px 0 oklch(0.66 0.18 285 / 0.30),
+    0 8px 18px 0 oklch(0.56 0.18 285 / 0.22);
+  --acuity-glow-soft: 0 6px 18px 0 oklch(0.76 0.108 38 / 0.18);
+}
+
+/* ─── Light mode ────────────────────────────────────────────────── */
+
+:root[data-theme="light"] {
+  /* Brand — same triplets, hue invariant across modes */
+  --acuity-primary: oklch(0.76 0.155 38);
+  --acuity-primary-hi: oklch(0.84 0.155 38);
+  --acuity-primary-lo: oklch(0.66 0.155 38);
+  --acuity-secondary: oklch(0.66 0.18 285);
+  --acuity-secondary-hi: oklch(0.74 0.18 285);
+  --acuity-secondary-lo: oklch(0.56 0.18 285);
+
+  /* Status */
+  --acuity-good: oklch(0.74 0.135 165);
+  --acuity-good-soft: oklch(0.74 0.135 165 / 0.18);
+  --acuity-bad: oklch(0.66 0.17 25);
+  --acuity-bad-soft: oklch(0.66 0.17 25 / 0.18);
+  --acuity-warn: #fbbf24;
+
+  /* Surfaces */
+  --acuity-bg: oklch(0.975 0.005 285);
+  --acuity-bg-sub: oklch(0.96 0.007 285);
+  --acuity-bg-inset: oklch(0.95 0.008 285);
+  --acuity-card-bg: oklch(1 0 0);
+  --acuity-card-bg-tint: oklch(0.965 0.012 38);
+  --acuity-card-bg-raised: oklch(1 0 0);
+  --acuity-card-border: oklch(0 0 0 / 0.05);
+
+  /* Text */
+  --acuity-text: oklch(0.14 0.012 285);
+  --acuity-text-sec: oklch(0.42 0.010 285);
+  --acuity-text-ter: oklch(0.58 0.012 285);
+  --acuity-text-quiet: oklch(0.74 0.008 285);
+
+  /* Hairlines */
+  --acuity-line: oklch(0 0 0 / 0.06);
+  --acuity-line-strong: oklch(0 0 0 / 0.10);
+
+  /* Gradient redefinitions inherit fine — primary/secondary triplets
+     unchanged. Re-declaring keeps Tailwind's `var(--acuity-grad-*)`
+     resolution working without falling back to dark stops via
+     cascade specificity (some browsers handle var inheritance
+     unpredictably when redefining the parent custom properties). */
+  --acuity-grad-primary: linear-gradient(
+    135deg,
+    var(--acuity-primary-hi) 0%,
+    var(--acuity-primary) 55%,
+    var(--acuity-primary-lo) 100%
+  );
+  --acuity-grad-secondary: linear-gradient(
+    135deg,
+    var(--acuity-secondary-hi) 0%,
+    var(--acuity-secondary) 55%,
+    var(--acuity-secondary-lo) 100%
+  );
+  --acuity-grad-mix: linear-gradient(
+    135deg,
+    var(--acuity-primary) 0%,
+    var(--acuity-secondary) 100%
+  );
+  --acuity-grad-mix-soft: linear-gradient(
+    135deg,
+    oklch(0.76 0.108 38 / 0.16) 0%,
+    oklch(0.66 0.126 285 / 0.16) 100%
+  );
+
+  /* Shadows — softer in light mode */
+  --acuity-shadow-soft:
+    0 1px 2px 0 oklch(0 0 0 / 0.04),
+    0 10px 24px 0 oklch(0 0 0 / 0.05);
+  --acuity-shadow-lift:
+    0 2px 6px 0 oklch(0 0 0 / 0.05),
+    0 18px 44px 0 oklch(0 0 0 / 0.08);
+  --acuity-glow-primary:
+    0 0 16px 0 oklch(0.76 0.155 38 / 0.30),
+    0 8px 18px 0 oklch(0.66 0.155 38 / 0.22);
+  --acuity-glow-secondary:
+    0 0 16px 0 oklch(0.66 0.18 285 / 0.30),
+    0 8px 18px 0 oklch(0.56 0.18 285 / 0.22);
+  --acuity-glow-soft: 0 6px 18px 0 oklch(0.76 0.108 38 / 0.18);
+}
+
+/* ─── Mode-independent tokens ───────────────────────────────────── */
+
+:root {
+  /* Radii — same numeric scale in both modes. mobile's tokens.radius. */
+  --acuity-radius-xs: 10px;
+  --acuity-radius-sm: 14px;
+  --acuity-radius-md: 18px;
+  --acuity-radius-lg: 22px;
+  --acuity-radius-xl: 28px;
+  --acuity-radius-pill: 999px;
+
+  /* Motion — mobile's durBase / durSlow + easing curves from the
+     design handoff. easeStandard is the default transition; easeEnter
+     is reserved for new-element appearances (springier). */
+  --acuity-dur-base: 280ms;
+  --acuity-dur-slow: 340ms;
+  --acuity-ease-standard: cubic-bezier(0.32, 0.72, 0, 1);
+  --acuity-ease-enter: cubic-bezier(0.16, 0.9, 0.3, 1);
+}
+
+/* ─── Canonical motion utilities (§6.3) ─────────────────────────── */
+
+/*
+ * Web ships a tight motion vocabulary: fade-up for content blocks,
+ * hover lift on cards/buttons (handled component-side), respect for
+ * prefers-reduced-motion. No constant ambient animation — landing's
+ * blob-drift / shimmer / gradient-shift loops are deprecated and live
+ * under the legacy block in globals.css until consumers migrate.
+ */
+
+@keyframes acuity-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes acuity-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.acuity-fade-up {
+  animation: acuity-fade-up var(--acuity-dur-base)
+    var(--acuity-ease-standard) both;
+}
+
+.acuity-fade-in {
+  animation: acuity-fade-in var(--acuity-dur-base)
+    var(--acuity-ease-standard) both;
+}
+
+/* Staggered fade-up — apply to a parent; children with
+   `[data-stagger]` fade in with a 60ms cascade. Used for hero →
+   strip → features sequencing on landing surfaces. Caps the cascade
+   at 6 children so a long list doesn't take 600ms+ to settle. */
+.acuity-stagger > [data-stagger] {
+  animation: acuity-fade-up var(--acuity-dur-base)
+    var(--acuity-ease-standard) both;
+}
+.acuity-stagger > [data-stagger]:nth-child(1) {
+  animation-delay: 0ms;
+}
+.acuity-stagger > [data-stagger]:nth-child(2) {
+  animation-delay: 60ms;
+}
+.acuity-stagger > [data-stagger]:nth-child(3) {
+  animation-delay: 120ms;
+}
+.acuity-stagger > [data-stagger]:nth-child(4) {
+  animation-delay: 180ms;
+}
+.acuity-stagger > [data-stagger]:nth-child(5) {
+  animation-delay: 240ms;
+}
+.acuity-stagger > [data-stagger]:nth-child(6) {
+  animation-delay: 300ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .acuity-fade-up,
+  .acuity-fade-in,
+  .acuity-stagger > [data-stagger] {
+    animation: none;
+  }
+}

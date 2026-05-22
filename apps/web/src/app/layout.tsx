@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Script from "next/script";
-import { Inter, Playfair_Display } from "next/font/google";
+import { Manrope } from "next/font/google";
+import { GeistMono } from "geist/font/mono";
+import "@/lib/theme/tokens.css";
 import "./globals.css";
 
 import { Providers } from "@/components/providers";
@@ -17,16 +19,30 @@ import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
 const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
 const GOOGLE_SITE_VERIFICATION = process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION;
 
-const inter = Inter({
+/**
+ * Canonical font families per DESIGN_SYSTEM.md §3.1:
+ *   - display: Manrope (large stats, titles, hero numbers)
+ *   - sans:    system stack (-apple-system → BlinkMacSystemFont → …)
+ *   - mono:    Geist Mono (numerals, timestamps, eyebrow / overline)
+ *
+ * `sans` doesn't need a Google Font import — the system stack lives in
+ * tailwind.config.ts. Manrope ships via `next/font/google`. Geist Mono
+ * isn't on Google Fonts; we load it self-hosted via the `geist` npm
+ * package (`geist/font/mono`), which exposes the .woff2 files Vercel
+ * publishes. Each font object exposes `.variable` — tailwind reads
+ * `--font-display` (Manrope) and `--font-geist-mono` (Geist Mono).
+ *
+ * Slice 1 (2026-05-22): replaced Inter + Playfair Display. Existing
+ * pages that use `font-sans` now inherit the system stack; pages that
+ * use `font-display` now render Manrope (was Playfair serif). This is
+ * intentional foundation work — `font-serif` is a legacy alias that
+ * also resolves to Manrope so no consumer breaks during migration.
+ */
+const manrope = Manrope({
   subsets: ["latin"],
-  variable: "--font-inter",
+  variable: "--font-display",
   display: "swap",
-});
-
-const playfair = Playfair_Display({
-  subsets: ["latin"],
-  variable: "--font-playfair",
-  display: "swap",
+  weight: ["400", "500", "600", "700", "800"],
 });
 
 export const metadata: Metadata = {
@@ -100,7 +116,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${playfair.variable}`}
+      className={`${manrope.variable} ${GeistMono.variable}`}
       suppressHydrationWarning
     >
       <head>

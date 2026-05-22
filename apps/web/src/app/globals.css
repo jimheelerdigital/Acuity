@@ -2,7 +2,25 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── Landing page animations ── */
+/*
+ * Slice 1 (2026-05-22): canonical motion utilities now live in
+ * `src/lib/theme/tokens.css` under `.acuity-fade-up`, `.acuity-fade-in`,
+ * and `.acuity-stagger > [data-stagger]`. Use those on new surfaces.
+ *
+ * Everything below this header is LEGACY animation infrastructure for
+ * the existing landing page, onboarding flow, recording UI, and blog
+ * shell. Per DESIGN_SYSTEM.md §6.4 the brand explicitly does NOT ship
+ * ambient blob-drift / shimmer / gradient-shift / pulse-ring loops —
+ * they violate the §4.4 glow rule and the §6.3 web motion principles.
+ * Slices 2-7 migrate consumers off these keyframes one screen at a
+ * time. When a slice deletes the last consumer of a given keyframe,
+ * remove the keyframe + utility class in the same commit.
+ *
+ * NEVER add new consumers of the legacy block. New surfaces use the
+ * canonical motion utilities.
+ */
+
+/* ── Landing page animations (legacy — migrate per slice) ── */
 
 @keyframes float {
   0%, 100% { transform: translateY(0px); }
