@@ -11,6 +11,7 @@ import {
   useTransition,
 } from "react";
 
+import { Button } from "@/components/acuity";
 import { trackClient } from "@/lib/analytics-client";
 
 import {
@@ -28,8 +29,10 @@ interface Props {
    *   - step 4 (microphone — permission-granted is soft)
    *   - step 6 (mood baseline)
    *   - step 9 (notifications — "Not now" is fine)
-   * Others are interaction-forced (step 5 practice recording, step 7
-   * life-area picks) or dead-ends (1, 2, 8, 10).
+   * Others are interaction-forced (step 5 practice recording) or
+   * read-only display surfaces (1, 2, 7 weekly-report priming, 8
+   * trial explanation, 10 first-entry CTA) where the Continue
+   * button is sufficient and a Skip link would be noise.
    */
   skippableSteps?: number[];
   children: React.ReactNode;
@@ -196,18 +199,18 @@ export function OnboardingShell({
 
   return (
     <OnboardingContext.Provider value={contextValue}>
-      <div className="min-h-screen bg-[#0B0B12]">
+      <div data-theme="dark" className="min-h-screen bg-acuity-bg">
         {/* Top row — progress + skip-all */}
         <header className="mx-auto flex max-w-lg items-center justify-between px-6 pt-8 sm:pt-10">
           <div className="flex items-center gap-3">
             <ProgressDots current={step} total={totalSteps} />
-            <span className="text-xs font-medium text-zinc-400 dark:text-zinc-500">
+            <span className="font-mono text-[10px] font-bold uppercase tracking-[1.4px] text-acuity-text-ter">
               {step} of {totalSteps}
             </span>
           </div>
           <button
             onClick={() => setShowSkipModal(true)}
-            className="rounded-lg px-2 py-1 text-xs text-zinc-400 dark:text-zinc-500 transition hover:text-zinc-700"
+            className="rounded-acuity-sm px-2 py-1 text-xs text-acuity-text-ter transition hover:text-acuity-text-sec"
           >
             Skip for now
           </button>
@@ -226,7 +229,7 @@ export function OnboardingShell({
               <button
                 onClick={goBack}
                 disabled={isPending}
-                className="rounded-lg px-3 py-2 text-sm font-medium text-zinc-500 dark:text-zinc-400 transition hover:text-zinc-900 disabled:opacity-40"
+                className="rounded-acuity-sm px-3 py-2 text-sm font-medium text-acuity-text-sec transition hover:text-acuity-text disabled:opacity-40"
               >
                 ← Back
               </button>
@@ -239,19 +242,20 @@ export function OnboardingShell({
                 <button
                   onClick={skipStep}
                   disabled={isPending}
-                  className="rounded-lg px-3 py-2 text-sm text-zinc-400 dark:text-zinc-500 transition hover:text-zinc-700 disabled:opacity-40"
+                  className="rounded-acuity-sm px-3 py-2 text-sm text-acuity-text-ter transition hover:text-acuity-text-sec disabled:opacity-40"
                 >
                   Skip this step
                 </button>
               )}
               {!isLastStep && (
-                <button
+                <Button
+                  variant="primary"
+                  size="sm"
                   onClick={goNext}
                   disabled={!canContinue || isPending}
-                  className="rounded-full bg-[#7C5CFC] px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#6B4FE0] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
                 >
                   {isPending ? "…" : "Continue"}
-                </button>
+                </Button>
               )}
             </div>
           </div>
@@ -271,7 +275,10 @@ export function OnboardingShell({
 
 function ProgressDots({ current, total }: { current: number; total: number }) {
   return (
-    <div className="flex items-center gap-1.5" aria-label={`Step ${current} of ${total}`}>
+    <div
+      className="flex items-center gap-1.5"
+      aria-label={`Step ${current} of ${total}`}
+    >
       {Array.from({ length: total }).map((_, i) => {
         const stepNum = i + 1;
         const isFilled = stepNum <= current;
@@ -280,8 +287,8 @@ function ProgressDots({ current, total }: { current: number; total: number }) {
             key={i}
             className={`h-1.5 rounded-full transition-all duration-300 ${
               isFilled
-                ? "w-5 bg-[#7C5CFC]"
-                : "w-1.5 bg-zinc-200 dark:bg-white/10"
+                ? "w-5 bg-acuity-primary"
+                : "w-1.5 bg-acuity-line-strong"
             }`}
           />
         );
@@ -301,37 +308,40 @@ function SkipModal({
 }) {
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-6"
+      data-theme="dark"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-6"
       role="dialog"
       aria-modal="true"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-sm rounded-2xl bg-white dark:bg-[#1E1E2E] p-6 shadow-xl"
+        className="w-full max-w-sm rounded-acuity-xl border border-acuity-card-border bg-acuity-card-bg p-6 shadow-acuity-lift"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+        <h2 className="font-display text-lg font-semibold text-acuity-text">
           Skip the rest of onboarding?
         </h2>
-        <p className="mt-2 text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
-          You can always come back from your dashboard. We&rsquo;ll use defaults
-          for the questions you didn&rsquo;t answer.
+        <p className="mt-2 text-sm leading-relaxed text-acuity-text-sec">
+          You can come back to this from your dashboard. We&rsquo;ll
+          use defaults for the questions you didn&rsquo;t answer.
         </p>
         <div className="mt-6 flex flex-col gap-2 sm:flex-row-reverse sm:justify-start">
-          <button
+          <Button
+            variant="primary"
+            size="sm"
             onClick={onConfirm}
             disabled={isPending}
-            className="rounded-lg bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-zinc-700 disabled:opacity-50"
           >
             {isPending ? "Skipping…" : "Yes, skip"}
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={onClose}
             disabled={isPending}
-            className="rounded-lg bg-zinc-100 dark:bg-white/10 px-5 py-2.5 text-sm font-semibold text-zinc-900 dark:text-zinc-50 transition hover:bg-zinc-200 dark:hover:bg-white/15 disabled:opacity-50"
           >
             Keep going
-          </button>
+          </Button>
         </div>
       </div>
     </div>

@@ -6,7 +6,7 @@ import { Step3Demographics } from "./step-3-demographics";
 import { Step3MicrophonePermission } from "./step-3-microphone-permission";
 import { Step4PracticeRecording } from "./step-4-practice-recording";
 import { Step5MoodBaseline } from "./step-5-mood-baseline";
-import { Step6LifeAreaPriorities } from "./step-6-life-area-priorities";
+import { Step6WeeklyReportPriming } from "./step-6-weekly-report-priming";
 import { Step7TrialExplanation } from "./step-7-trial-explanation";
 import { Step8FirstEntryCta } from "./step-8-first-entry-cta";
 import { Step9Notifications } from "./step-9-notifications";
@@ -32,6 +32,13 @@ export interface OnboardingStep {
  * step number — the registry below is the source of truth. Filename
  * renames would ripple through git history and imports for zero
  * runtime benefit.
+ *
+ * Slice 4 (2026-05-22): step 7 was "What matters most" (life-area
+ * priorities multi-select). Per the parity-audit verdict + audit of
+ * downstream consumers, that field was write-only metadata — nothing
+ * read it. Step replaced in-place with weekly-report priming so the
+ * step count stays 10 and any in-flight users (currentStep = 7)
+ * resume at the same slot instead of an off-by-one error.
  */
 export const ONBOARDING_STEPS: OnboardingStep[] = [
   { step: 1, title: "Welcome", Component: Step1Welcome },
@@ -40,7 +47,7 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
   { step: 4, title: "Microphone access", Component: Step3MicrophonePermission },
   { step: 5, title: "Practice round", Component: Step4PracticeRecording },
   { step: 6, title: "Mood baseline", Component: Step5MoodBaseline },
-  { step: 7, title: "What matters most", Component: Step6LifeAreaPriorities },
+  { step: 7, title: "Your Sunday report", Component: Step6WeeklyReportPriming },
   { step: 8, title: "How the trial works", Component: Step7TrialExplanation },
   { step: 9, title: "Reminders", Component: Step9Notifications },
   { step: 10, title: "Ready when you are", Component: Step8FirstEntryCta },

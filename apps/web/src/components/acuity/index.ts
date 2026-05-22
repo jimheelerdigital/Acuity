@@ -24,6 +24,7 @@
 export { Avatar, type AvatarProps } from "./Avatar";
 export { Button, type ButtonProps } from "./Button";
 export { Card, type CardProps } from "./Card";
+export { HeroCard, type HeroCardProps } from "./HeroCard";
 export { SectionHeader, type SectionHeaderProps } from "./SectionHeader";
 export {
   SubscriptionPill,

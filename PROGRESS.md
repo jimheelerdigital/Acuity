@@ -41,6 +41,45 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-22] — Web parity slice 4 — onboarding refresh + priorities step replaced with Sunday-report priming
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** _pending_
+
+### In plain English (for Keenan)
+
+The web onboarding flow now has the same look as the rest of the app (dark canonical surfaces, coral primary, Manrope display font). The "what matters most" step (the one where users ranked their top 3 life areas) is gone — that data wasn't being used downstream by anything, so we replaced it with a more valuable step: a preview of what the Sunday morning report actually looks like. New users now see a sample report card with concrete numbers, a quoted line, and theme pills — so they understand what they're paying for before the trial pitch on the next screen. Step count stays at 10. Anyone mid-flow keeps their place.
+
+### Technical changes (for Jimmy)
+
+- Deleted `apps/web/src/app/onboarding/steps/step-6-life-area-priorities.tsx`. Per the lifeAreaPriorities consumption audit, the field was write-only — no AI prompts, weekly-report generator, state-of-me generator, or UI surfaces read it. Safe deletion; LifeMapArea axes seed at signup via `bootstrap-user.ts` with schema-default score=5/score100=50 so the radar is never blank.
+- Added `apps/web/src/app/onboarding/steps/step-6-weekly-report-priming.tsx` (new component `Step6WeeklyReportPriming`). Read-only step. Renders a sample weekly report inside the `HeroCard variant="primary"` primitive: "Week 3 · Sunday 8:14am" eyebrow, display 20 pull-quote, three Stat tiles (Entries 6/7, Mood arc 6.8 → 7.4, Tasks done 9/12), three ThemePill chips (career, family, sleep), plus a closing observation. Copy in Accountability voice per sales-copy rubric §7.2 / §8. Closes with "Real reports use your own words and the names you actually mention. Above is a sample." so users don't expect Marcus T.'s data.
+- Updated `apps/web/src/app/onboarding/steps/steps-registry.ts`: swapped `Step6LifeAreaPriorities` for `Step6WeeklyReportPriming` at the same registry slot (step 7 "Your Sunday report"). Step count stays 10. In-flight users at currentStep=7 land on the new step instead of an off-by-one error.
+- Refreshed `apps/web/src/app/onboarding/onboarding-shell.tsx` with canonical tokens + the `Button` primitive: page bg `bg-[#0B0B12]` → `bg-acuity-bg` with `data-theme="dark"` scoping, progress-dots violet `#7C5CFC` → `bg-acuity-primary`, eyebrow "N of N" label → mono-uppercase per type spec, hardcoded Continue button → `<Button variant="primary" size="sm">`, skip-modal hardcoded zinc colors → acuity tokens + `<Button>` primitives.
+- Built `apps/web/src/components/acuity/HeroCard.tsx` primitive (mirror of `apps/mobile/components/acuity/HeroCard.tsx`). Variants: `primary`, `secondary`, `mix`. Corner glow blob for primary/secondary; full-bleed gradient for mix. Updated barrel index.
+- Server (`apps/web/src/app/api/onboarding/update/route.ts`): NO changes required. Already accepts both `lifeAreaPriorities` (legacy / build-42 mobile) and `lifeAreaBaselines` (Phase C). Web stops sending lifeAreaPriorities; the field simply doesn't get updated. Backward compat for mobile build 42 binaries that still send it is preserved.
+- Server `bootstrap-user.ts`: NO changes required. LifeMapArea schema defaults are `score: 5` and `score100: 50` — the radar renders at the neutral midpoint for any axis the user never scored, exactly as Jim directed.
+
+### Manual steps needed
+
+- [ ] Spot-check Vercel deploy: walk through /onboarding from step 1 → 10. Verify the new step 7 renders, sample report content reads cleanly, Continue advances to "How the trial works", LifeMapArea rows exist for new signups (run a fresh signup, check `prisma studio` shows 10 rows with score=5, score100=50). Jimmy
+- [ ] No env vars, no Prisma migrations, no Inngest changes. Pure presentation slice.
+
+### Notes
+
+- Sale copy rubric pass on the new step:
+  - "Every Sunday morning" eyebrow + "A report like this lands in your inbox" headline — passes Harry Dry (specific time, falsifiable, unique per §7.2).
+  - "400-word read on Sunday morning" — concrete + falsifiable (rubric §4.2).
+  - Sample quote uses a specific person ("Your VP") + specific event ("Thursday's review") — passes "Specific to the point of discomfort" per §2.1.
+  - No banned verbs, no AI-powered claim, no tricolons. Sample report doesn't mention AI; the artifact does the talking.
+- "Real reports use your own words and the names you actually mention. Above is a sample." disclaimer added so users don't expect this exact data — would otherwise feel like a bait-and-switch when their actual first Sunday report doesn't reference a VP.
+- The step file kept the `step-6-` filename prefix per the registry's existing convention (filenames are historical not authoritative). Component is `Step6WeeklyReportPriming` so import readability mirrors the file name.
+- Skippable steps array (`[3, 4, 6, 9]`) unchanged. Step 7 wasn't skippable as priorities (interaction-forced); the new read-only priming step doesn't need a Skip link because Continue serves the same purpose.
+- The legacy `next-themes` setTheme("dark") call stays in the shell — additive with `data-theme="dark"` per the slice 1 tailwind config that activates dark variants on either selector.
+
+---
+
 ## [2026-05-22] — Web parity slice 2 (revised) — auth pages + nav-bar token migration
 
 **Requested by:** Jimmy
