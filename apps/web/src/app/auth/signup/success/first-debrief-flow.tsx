@@ -70,7 +70,7 @@ export function FirstDebriefFlow({
 
   // Intro screen uses dark bg; record screen uses light bg; others use dark
   const bgClass =
-    screen === "record"
+    screen === "record" || screen === "processing"
       ? "bg-white text-zinc-900"
       : "bg-[#181614] text-[#F5EDE4]";
 
@@ -594,6 +594,17 @@ function RecordScreen({
 
 // ─── Screen 2: Processing + Timeline ─────────────────────────────────────────
 
+// Gradient orb colors per stage — subtle background bloom
+const STAGE_ORBS = [
+  "radial-gradient(circle, rgba(124,92,252,0.08) 0%, transparent 70%)",
+  "radial-gradient(circle, rgba(139,92,246,0.10) 0%, transparent 70%)",
+  "radial-gradient(circle, rgba(167,139,250,0.10) 0%, transparent 70%)",
+  "radial-gradient(circle, rgba(196,181,253,0.12) 0%, transparent 70%)",
+  "radial-gradient(circle, rgba(245,158,11,0.08) 0%, rgba(124,92,252,0.06) 40%, transparent 70%)",
+];
+
+const STAGE_MS = 3500;
+
 function ProcessingScreen({
   entryId,
   onComplete,
@@ -607,7 +618,7 @@ function ProcessingScreen({
   const completedRef = useRef(false);
   const extractionRef = useRef<ExtractionResult | null>(null);
 
-  // Timeline animation — 2 seconds per stage, 10 seconds total
+  // Timeline animation — 3.5 seconds per stage, 17.5 seconds total
   useEffect(() => {
     const interval = setInterval(() => {
       setTimelineIndex((prev) => {
@@ -618,7 +629,7 @@ function ProcessingScreen({
         }
         return prev + 1;
       });
-    }, 2000);
+    }, STAGE_MS);
     return () => clearInterval(interval);
   }, []);
 
@@ -646,10 +657,8 @@ function ProcessingScreen({
   // Handle failures
   useEffect(() => {
     if (poll.status === "failed" || poll.status === "timeout") {
-      // Still show the animation, then proceed with whatever we have
       if (animationDone) {
         completedRef.current = true;
-        // Create a minimal extraction for the reveal screen
         onComplete(
           extractionRef.current ?? {
             summary: "Your recording has been saved.",
@@ -672,44 +681,91 @@ function ProcessingScreen({
   const processingLabel = getProcessingLabel(poll.phase);
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center px-6 py-12">
-      <div className="w-full max-w-md">
+    <div className="relative flex min-h-screen flex-col items-center justify-center px-6 py-12 overflow-hidden">
+      {/* Floating particles background */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        {Array.from({ length: 12 }).map((_, i) => (
+          <span
+            key={i}
+            className="absolute rounded-full bg-[#7C5CFC]/[0.04]"
+            style={{
+              width: 4 + (i % 3) * 3,
+              height: 4 + (i % 3) * 3,
+              left: `${8 + (i * 7.5) % 85}%`,
+              top: `${10 + ((i * 13) % 75)}%`,
+              animation: `float ${5 + (i % 4) * 2}s ease-in-out infinite`,
+              animationDelay: `${(i * 0.7) % 4}s`,
+            }}
+          />
+        ))}
+      </div>
+
+      {/* Gradient orb behind text — shifts per stage */}
+      <div
+        className="absolute w-[400px] h-[400px] sm:w-[500px] sm:h-[500px] transition-all duration-1000 pointer-events-none"
+        style={{ background: STAGE_ORBS[timelineIndex] ?? STAGE_ORBS[0] }}
+      />
+
+      <div className="relative z-10 w-full max-w-lg">
         {/* Timeline animation */}
-        <div className="mb-16">
-          <div className="relative min-h-[120px] flex items-center justify-center">
+        <div className="mb-20">
+          <div className="relative min-h-[160px] sm:min-h-[180px] flex items-center justify-center">
             {TIMELINE_STAGES.map((stage, i) => (
               <div
                 key={i}
-                className={`absolute inset-0 flex flex-col items-center justify-center text-center transition-all duration-700 ${
-                  i === timelineIndex
-                    ? "opacity-100 translate-y-0 scale-100"
-                    : i < timelineIndex
-                      ? "opacity-0 -translate-y-8 scale-95"
-                      : "opacity-0 translate-y-8 scale-95"
-                }`}
+                className="absolute inset-0 flex flex-col items-center justify-center text-center"
+                style={{
+                  transition: "opacity 0.5s ease, transform 0.5s ease",
+                  opacity: i === timelineIndex ? 1 : 0,
+                  transform:
+                    i === timelineIndex
+                      ? "translateY(0)"
+                      : i < timelineIndex
+                        ? "translateY(-24px)"
+                        : "translateY(24px)",
+                }}
               >
-                <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#7C5CFC] mb-3">
+                <span
+                  className="text-sm font-bold uppercase tracking-[0.25em] text-[#7C5CFC] mb-4 sm:text-base"
+                  style={{
+                    textShadow: i === timelineIndex ? "0 0 20px rgba(124,92,252,0.3)" : "none",
+                  }}
+                >
                   {stage.day}
                 </span>
-                <p className="text-xl font-semibold text-white leading-relaxed sm:text-2xl">
+                <p className="text-2xl font-bold text-zinc-800 leading-relaxed sm:text-3xl">
                   {stage.text}
                 </p>
               </div>
             ))}
           </div>
 
-          {/* Timeline dots */}
-          <div className="mt-8 flex items-center justify-center gap-2">
+          {/* Timeline dots — active dot glows and expands */}
+          <div className="mt-10 flex items-center justify-center gap-2.5">
             {TIMELINE_STAGES.map((_, i) => (
               <div
                 key={i}
-                className={`h-1.5 rounded-full transition-all duration-500 ${
+                className="rounded-full transition-all duration-700"
+                style={
                   i === timelineIndex
-                    ? "w-6 bg-[#7C5CFC]"
+                    ? {
+                        width: 28,
+                        height: 6,
+                        background: "linear-gradient(90deg, #7C5CFC, #9F7AEA)",
+                        boxShadow: "0 0 12px 2px rgba(124,92,252,0.4)",
+                      }
                     : i < timelineIndex
-                      ? "w-1.5 bg-[#7C5CFC]/40"
-                      : "w-1.5 bg-white/10"
-                }`}
+                      ? {
+                          width: 6,
+                          height: 6,
+                          backgroundColor: "rgba(124,92,252,0.35)",
+                        }
+                      : {
+                          width: 6,
+                          height: 6,
+                          backgroundColor: "rgba(0,0,0,0.08)",
+                        }
+                }
               />
             ))}
           </div>
@@ -717,12 +773,12 @@ function ProcessingScreen({
 
         {/* Processing status */}
         <div className="text-center">
-          <div className="inline-flex items-center gap-2.5 rounded-full bg-white/5 px-5 py-2.5">
+          <div className="inline-flex items-center gap-2.5 rounded-full bg-zinc-100 px-5 py-2.5">
             <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#7C5CFC] opacity-75" />
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#7C5CFC] opacity-60" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-[#7C5CFC]" />
             </span>
-            <span className="text-sm text-[#F5EDE4]/70">{processingLabel}</span>
+            <span className="text-sm text-zinc-500">{processingLabel}</span>
           </div>
         </div>
       </div>
