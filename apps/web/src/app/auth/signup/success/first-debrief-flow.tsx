@@ -48,7 +48,7 @@ const VALUE_PROPS = [
 
 // Short punchy quotes for rotating social proof on record screen
 const MINI_TESTIMONIALS = [
-  { quote: "I just talk. The AI handles everything else.", name: "Jamie L." },
+  { quote: "I just talk. Acuity handles everything else.", name: "Jamie L." },
   { quote: "The weekly reports changed how I see my week.", name: "Marcus T." },
   { quote: "I actually sleep now. Tasks out of my head.", name: "Sarah K." },
 ];
@@ -378,7 +378,7 @@ function RecordScreen({
             >
               <p className="mt-4 text-base text-zinc-500 leading-relaxed max-w-sm mx-auto">
                 Just talk. About your day, your goals, whatever&rsquo;s on your
-                mind. The AI handles the rest.
+                mind. We handle the rest.
               </p>
             </div>
           </div>
