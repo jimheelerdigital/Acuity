@@ -24,14 +24,6 @@ const MAX_SECONDS = 120;
 const MIN_SECONDS = 15;
 const NUDGE_SECONDS = 30;
 
-const TIMELINE_STAGES = [
-  { day: "Day 1", text: "Tasks extracted. Goals tracked. Mood captured." },
-  { day: "Day 7", text: "Your first weekly report \u2014 how your week actually went." },
-  { day: "Day 30", text: "Patterns emerge across your life." },
-  { day: "Day 90", text: "Your quarterly memoir \u2014 a story only you could tell." },
-  { day: "1 Year", text: "A living model of your life. Six domains. One debrief at a time." },
-];
-
 const SUGGESTED_PROMPTS = [
   "What happened today?",
   "What\u2019s taking up your mental space?",
@@ -594,16 +586,88 @@ function RecordScreen({
 
 // ─── Screen 2: Processing + Timeline ─────────────────────────────────────────
 
-// Gradient orb colors per stage — subtle background bloom
-const STAGE_ORBS = [
+interface ProcessingSlide {
+  label: string;
+  text: string;
+  testimonial?: { quote: string; name: string };
+  comingSoon?: boolean;
+  description?: string;
+}
+
+const PROCESSING_SLIDES: ProcessingSlide[] = [
+  {
+    label: "Day 1",
+    text: "Tasks extracted. Goals tracked. Mood captured.",
+    testimonial: {
+      quote: "I used to let tasks pile up in my head until 2 AM. Now I debrief into Acuity and actually sleep.",
+      name: "Sarah K.",
+    },
+  },
+  {
+    label: "Day 7",
+    text: "Your first weekly report \u2014 how your week actually went.",
+    testimonial: {
+      quote: "The weekly reports changed how I see my week.",
+      name: "Marcus T.",
+    },
+  },
+  {
+    label: "Day 30",
+    text: "Patterns emerge across your life.",
+    testimonial: {
+      quote: "I didn\u2019t realize I was most productive on Tuesdays until Acuity showed me.",
+      name: "Jamie L.",
+    },
+  },
+  {
+    label: "Day 90",
+    text: "Your quarterly memoir \u2014 a story only you could tell.",
+    testimonial: {
+      quote: "I shared my quarterly memoir with my therapist. She said it was the most useful thing I\u2019d ever brought in.",
+      name: "Alex R.",
+    },
+  },
+  {
+    label: "1 Year",
+    text: "A living model of your life. Six domains. One debrief at a time.",
+    testimonial: {
+      quote: "It\u2019s like having a second brain that actually remembers everything.",
+      name: "Chris M.",
+    },
+  },
+  {
+    label: "Coming Soon",
+    text: "Your calendar meets your debrief.",
+    comingSoon: true,
+    description: "Connect Google Calendar and Acuity shows you the gap between what you planned and what actually happened.",
+  },
+  {
+    label: "Coming Soon",
+    text: "Search your memory. Ask your past self anything.",
+    comingSoon: true,
+    description: "Every debrief becomes searchable. Your past self has answers you\u2019ve forgotten.",
+  },
+  {
+    label: "Coming Soon",
+    text: "Nudges on goals you mentioned but haven\u2019t acted on.",
+    comingSoon: true,
+    description: "Acuity notices when you keep mentioning something but never do it \u2014 and gently calls it out.",
+  },
+];
+
+const SLIDE_MS = 4000;
+
+// Gradient orb colors per slide
+const SLIDE_ORBS = [
   "radial-gradient(circle, rgba(124,92,252,0.08) 0%, transparent 70%)",
   "radial-gradient(circle, rgba(139,92,246,0.10) 0%, transparent 70%)",
   "radial-gradient(circle, rgba(167,139,250,0.10) 0%, transparent 70%)",
   "radial-gradient(circle, rgba(196,181,253,0.12) 0%, transparent 70%)",
   "radial-gradient(circle, rgba(245,158,11,0.08) 0%, rgba(124,92,252,0.06) 40%, transparent 70%)",
+  "radial-gradient(circle, rgba(59,130,246,0.08) 0%, transparent 70%)",
+  "radial-gradient(circle, rgba(16,185,129,0.08) 0%, transparent 70%)",
+  "radial-gradient(circle, rgba(249,115,22,0.08) 0%, transparent 70%)",
 ];
-
-const STAGE_MS = 3500;
 
 function ProcessingScreen({
   entryId,
@@ -613,25 +677,40 @@ function ProcessingScreen({
   onComplete: (extraction: ExtractionResult) => void;
 }) {
   const poll = useEntryPolling(entryId);
-  const [timelineIndex, setTimelineIndex] = useState(0);
-  const [animationDone, setAnimationDone] = useState(false);
+  const [slideIndex, setSlideIndex] = useState(0);
+  const [slidesFinished, setSlidesFinished] = useState(false);
   const completedRef = useRef(false);
   const extractionRef = useRef<ExtractionResult | null>(null);
 
-  // Timeline animation — 3.5 seconds per stage, 17.5 seconds total
+  // Track sub-element visibility per slide (label, text, testimonial stagger)
+  const [subStep, setSubStep] = useState(0); // 0=nothing, 1=label+text, 2=testimonial/desc
+
+  // Advance slides every 4 seconds
   useEffect(() => {
     const interval = setInterval(() => {
-      setTimelineIndex((prev) => {
-        if (prev >= TIMELINE_STAGES.length - 1) {
+      setSlideIndex((prev) => {
+        if (prev >= PROCESSING_SLIDES.length - 1) {
           clearInterval(interval);
-          setAnimationDone(true);
+          setSlidesFinished(true);
           return prev;
         }
         return prev + 1;
       });
-    }, STAGE_MS);
+      setSubStep(0); // reset sub-step for new slide
+    }, SLIDE_MS);
     return () => clearInterval(interval);
   }, []);
+
+  // Sub-step stagger within each slide
+  useEffect(() => {
+    setSubStep(0);
+    const t1 = setTimeout(() => setSubStep(1), 100);
+    const t2 = setTimeout(() => setSubStep(2), 600);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [slideIndex]);
 
   // Build extraction from polled entry when complete
   useEffect(() => {
@@ -644,20 +723,20 @@ function ProcessingScreen({
     }
   }, [poll.status, poll.entry]);
 
-  // Transition when BOTH animation is done AND processing is done
+  // Transition when BOTH slides are done AND processing is done
   useEffect(() => {
     if (completedRef.current) return;
     const ext = extractionRef.current;
-    if (animationDone && ext) {
+    if (slidesFinished && ext) {
       completedRef.current = true;
       onComplete(ext);
     }
-  }, [animationDone, poll.status, onComplete]);
+  }, [slidesFinished, poll.status, onComplete]);
 
   // Handle failures
   useEffect(() => {
     if (poll.status === "failed" || poll.status === "timeout") {
-      if (animationDone) {
+      if (slidesFinished) {
         completedRef.current = true;
         onComplete(
           extractionRef.current ?? {
@@ -676,114 +755,207 @@ function ProcessingScreen({
         );
       }
     }
-  }, [poll.status, animationDone, onComplete]);
+  }, [poll.status, slidesFinished, onComplete]);
 
+  // Progress bar: driven by processing status, not slides
+  const progressPct = getProgressPct(poll.phase, poll.status);
   const processingLabel = getProcessingLabel(poll.phase);
+  const currentSlide = PROCESSING_SLIDES[slideIndex];
 
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center px-6 py-12 overflow-hidden">
-      {/* Floating particles background */}
+    <div className="relative flex min-h-screen flex-col px-6 py-8 overflow-hidden">
+      {/* Progress bar at top */}
+      <div className="flex-none w-full max-w-lg mx-auto mb-2">
+        <div className="h-1 w-full rounded-full bg-zinc-100 overflow-hidden">
+          <div
+            className="h-full rounded-full transition-all duration-1000 ease-out"
+            style={{
+              width: `${progressPct}%`,
+              background: "linear-gradient(90deg, #7C5CFC, #9F7AEA, #7C3AED)",
+            }}
+          />
+        </div>
+      </div>
+
+      {/* Floating particles */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        {Array.from({ length: 12 }).map((_, i) => (
+        {Array.from({ length: 10 }).map((_, i) => (
           <span
             key={i}
-            className="absolute rounded-full bg-[#7C5CFC]/[0.04]"
+            className="absolute rounded-full bg-[#7C5CFC]/[0.03]"
             style={{
-              width: 4 + (i % 3) * 3,
-              height: 4 + (i % 3) * 3,
-              left: `${8 + (i * 7.5) % 85}%`,
-              top: `${10 + ((i * 13) % 75)}%`,
-              animation: `float ${5 + (i % 4) * 2}s ease-in-out infinite`,
-              animationDelay: `${(i * 0.7) % 4}s`,
+              width: 3 + (i % 3) * 3,
+              height: 3 + (i % 3) * 3,
+              left: `${10 + (i * 8) % 80}%`,
+              top: `${15 + ((i * 11) % 65)}%`,
+              animation: `float ${6 + (i % 3) * 2}s ease-in-out infinite`,
+              animationDelay: `${(i * 0.8) % 5}s`,
             }}
           />
         ))}
       </div>
 
-      {/* Gradient orb behind text — shifts per stage */}
+      {/* Gradient orb */}
       <div
-        className="absolute w-[400px] h-[400px] sm:w-[500px] sm:h-[500px] transition-all duration-1000 pointer-events-none"
-        style={{ background: STAGE_ORBS[timelineIndex] ?? STAGE_ORBS[0] }}
+        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] sm:w-[500px] sm:h-[500px] transition-all duration-1000 pointer-events-none"
+        style={{ background: SLIDE_ORBS[slideIndex] ?? SLIDE_ORBS[0] }}
       />
 
-      <div className="relative z-10 w-full max-w-lg">
-        {/* Timeline animation */}
-        <div className="mb-20">
-          <div className="relative min-h-[160px] sm:min-h-[180px] flex items-center justify-center">
-            {TIMELINE_STAGES.map((stage, i) => (
+      {/* Main content — centered */}
+      <div className="flex-1 flex flex-col items-center justify-center relative z-10">
+        <div className="w-full max-w-lg">
+          {/* Slide content */}
+          <div className="relative min-h-[280px] sm:min-h-[320px] flex items-center justify-center">
+            {PROCESSING_SLIDES.map((slide, i) => (
               <div
                 key={i}
-                className="absolute inset-0 flex flex-col items-center justify-center text-center"
+                className="absolute inset-0 flex flex-col items-center justify-center text-center px-2"
                 style={{
                   transition: "opacity 0.5s ease, transform 0.5s ease",
-                  opacity: i === timelineIndex ? 1 : 0,
+                  opacity: i === slideIndex ? 1 : 0,
                   transform:
-                    i === timelineIndex
+                    i === slideIndex
                       ? "translateY(0)"
-                      : i < timelineIndex
-                        ? "translateY(-24px)"
-                        : "translateY(24px)",
+                      : i < slideIndex
+                        ? "translateY(-20px)"
+                        : "translateY(20px)",
+                  pointerEvents: i === slideIndex ? "auto" : "none",
                 }}
               >
-                <span
-                  className="text-sm font-bold uppercase tracking-[0.25em] text-[#7C5CFC] mb-4 sm:text-base"
+                {/* Label */}
+                <div
+                  className="mb-4"
                   style={{
-                    textShadow: i === timelineIndex ? "0 0 20px rgba(124,92,252,0.3)" : "none",
+                    transition: "opacity 0.3s ease, transform 0.3s ease",
+                    opacity: i === slideIndex && subStep >= 1 ? 1 : 0,
+                    transform: i === slideIndex && subStep >= 1 ? "translateY(0)" : "translateY(8px)",
                   }}
                 >
-                  {stage.day}
-                </span>
-                <p className="text-2xl font-bold text-zinc-800 leading-relaxed sm:text-3xl">
-                  {stage.text}
-                </p>
+                  {slide.comingSoon ? (
+                    <span
+                      className="inline-block text-xs font-bold uppercase tracking-[0.2em] text-blue-500 bg-blue-50 border border-blue-100 rounded-full px-3 py-1"
+                      style={{ animation: "mic-glow 3s ease-in-out infinite" }}
+                    >
+                      Coming Soon
+                    </span>
+                  ) : (
+                    <span
+                      className="text-sm font-bold uppercase tracking-[0.25em] text-[#7C5CFC] sm:text-base"
+                      style={{
+                        textShadow: "0 0 20px rgba(124,92,252,0.3)",
+                      }}
+                    >
+                      {slide.label}
+                    </span>
+                  )}
+                </div>
+
+                {/* Main text */}
+                <div
+                  style={{
+                    transition: "opacity 0.3s ease 0.1s, transform 0.3s ease 0.1s",
+                    opacity: i === slideIndex && subStep >= 1 ? 1 : 0,
+                    transform: i === slideIndex && subStep >= 1 ? "translateY(0)" : "translateY(8px)",
+                  }}
+                >
+                  <p className="text-2xl font-bold text-zinc-800 leading-relaxed sm:text-3xl mb-6">
+                    {slide.text}
+                  </p>
+                </div>
+
+                {/* Testimonial or description */}
+                <div
+                  style={{
+                    transition: "opacity 0.3s ease, transform 0.3s ease",
+                    opacity: i === slideIndex && subStep >= 2 ? 1 : 0,
+                    transform: i === slideIndex && subStep >= 2 ? "translateY(0)" : "translateY(12px)",
+                  }}
+                >
+                  {slide.testimonial && (
+                    <div className="max-w-sm mx-auto">
+                      <p className="text-sm text-zinc-500 italic leading-relaxed">
+                        <span className="text-[#7C5CFC]/40 text-lg not-italic">&ldquo;</span>
+                        {slide.testimonial.quote}
+                        <span className="text-[#7C5CFC]/40 text-lg not-italic">&rdquo;</span>
+                      </p>
+                      <p className="mt-2 text-xs text-zinc-400">
+                        &mdash; {slide.testimonial.name}
+                      </p>
+                    </div>
+                  )}
+                  {slide.description && (
+                    <p className="max-w-sm mx-auto text-sm text-zinc-500 leading-relaxed">
+                      {slide.description}
+                    </p>
+                  )}
+                </div>
               </div>
             ))}
           </div>
 
-          {/* Timeline dots — active dot glows and expands */}
-          <div className="mt-10 flex items-center justify-center gap-2.5">
-            {TIMELINE_STAGES.map((_, i) => (
+          {/* Progress dots */}
+          <div className="mt-8 flex items-center justify-center gap-1.5">
+            {PROCESSING_SLIDES.map((_, i) => (
               <div
                 key={i}
-                className="rounded-full transition-all duration-700"
+                className="rounded-full transition-all duration-500"
                 style={
-                  i === timelineIndex
+                  i === slideIndex
                     ? {
-                        width: 28,
-                        height: 6,
+                        width: 24,
+                        height: 5,
                         background: "linear-gradient(90deg, #7C5CFC, #9F7AEA)",
-                        boxShadow: "0 0 12px 2px rgba(124,92,252,0.4)",
+                        boxShadow: "0 0 10px 2px rgba(124,92,252,0.35)",
                       }
-                    : i < timelineIndex
+                    : i < slideIndex
                       ? {
-                          width: 6,
-                          height: 6,
-                          backgroundColor: "rgba(124,92,252,0.35)",
+                          width: 5,
+                          height: 5,
+                          backgroundColor: "rgba(124,92,252,0.3)",
                         }
                       : {
-                          width: 6,
-                          height: 6,
-                          backgroundColor: "rgba(0,0,0,0.08)",
+                          width: 5,
+                          height: 5,
+                          backgroundColor: "rgba(0,0,0,0.07)",
                         }
                 }
               />
             ))}
           </div>
         </div>
+      </div>
 
-        {/* Processing status */}
-        <div className="text-center">
-          <div className="inline-flex items-center gap-2.5 rounded-full bg-zinc-100 px-5 py-2.5">
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#7C5CFC] opacity-60" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-[#7C5CFC]" />
-            </span>
-            <span className="text-sm text-zinc-500">{processingLabel}</span>
-          </div>
+      {/* Processing status — subtle at bottom */}
+      <div className="flex-none text-center mt-6 relative z-10">
+        <div className="inline-flex items-center gap-2 px-4 py-2">
+          <span className="relative flex h-1.5 w-1.5">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#7C5CFC] opacity-50" />
+            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#7C5CFC]" />
+          </span>
+          <span className="text-xs text-zinc-400">{processingLabel}</span>
         </div>
       </div>
     </div>
   );
+}
+
+function getProgressPct(phase: string | null, status: string): number {
+  if (status === "complete" || status === "partial") return 100;
+  switch (phase) {
+    case "QUEUED":
+    case "uploading":
+      return 10;
+    case "TRANSCRIBING":
+      return 35;
+    case "EXTRACTING":
+      return 65;
+    case "PERSISTING":
+      return 90;
+    case "COMPLETE":
+      return 100;
+    default:
+      return 5;
+  }
 }
 
 function getProcessingLabel(phase: string | null): string {
