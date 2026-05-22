@@ -69,10 +69,10 @@ export function FirstDebriefFlow({
   const [extraction, setExtraction] = useState<ExtractionResult | null>(null);
 
   // Intro screen uses dark bg; record screen uses light bg; others use dark
-  const bgClass =
-    screen === "record" || screen === "processing" || screen === "extraction"
-      ? "bg-white text-zinc-900"
-      : "bg-[#181614] text-[#F5EDE4]";
+  // All screens use white theme for seamless flow
+  const bgClass = screen === "intro"
+    ? "bg-[#181614] text-[#F5EDE4]"
+    : "bg-white text-zinc-900";
 
   return (
     <div className={`min-h-screen transition-colors duration-1000 ${bgClass}`}>
@@ -1040,103 +1040,225 @@ function FlagIcon() {
 
 // ─── Screen 4: CTA + Social Proof ────────────────────────────────────────────
 
+const CTA_VALUE_PROPS = [
+  { icon: "\uD83D\uDCCB", text: "Tasks extracted automatically" },
+  { icon: "\uD83D\uDCCA", text: "Weekly reports every Sunday" },
+  { icon: "\uD83D\uDD0D", text: "Patterns detected over time" },
+];
+
+const CTA_TESTIMONIALS = STATIC_CAROUSEL_TESTIMONIALS.map((t) => ({
+  quote: t.quote,
+  name: t.name,
+  role: t.role,
+}));
+
 function CTAScreen() {
+  const [showSection, setShowSection] = useState(0);
+  const [testimonialIdx, setTestimonialIdx] = useState(0);
+  const [counter, setCounter] = useState(0);
+
+  // Stagger sections
+  useEffect(() => {
+    const timers = [
+      setTimeout(() => setShowSection(1), 200),
+      setTimeout(() => setShowSection(2), 500),
+      setTimeout(() => setShowSection(3), 800),
+      setTimeout(() => setShowSection(4), 1100),
+      setTimeout(() => setShowSection(5), 1400),
+      setTimeout(() => setShowSection(6), 1700),
+    ];
+    return () => timers.forEach(clearTimeout);
+  }, []);
+
+  // Animated counter: 0 → 127 over 1.5s
+  useEffect(() => {
+    if (showSection < 4) return;
+    const target = 127;
+    const duration = 1500;
+    const startTime = Date.now();
+    const frame = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      // Ease-out
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setCounter(Math.round(eased * target));
+      if (progress < 1) requestAnimationFrame(frame);
+    };
+    requestAnimationFrame(frame);
+  }, [showSection]);
+
+  // Rotate testimonials every 4 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTestimonialIdx((prev) => (prev + 1) % CTA_TESTIMONIALS.length);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const vis = (at: number) =>
+    showSection >= at
+      ? "opacity-100 translate-y-0"
+      : "opacity-0 translate-y-4";
+
   return (
-    <div className="min-h-screen">
-      {/* Hero CTA */}
-      <div className="flex flex-col items-center justify-center px-6 pt-16 pb-10 sm:pt-24 sm:pb-14">
-        <div className="w-full max-w-md text-center">
+    <div className="min-h-screen px-6">
+      <div className="mx-auto max-w-md">
+        {/* Headline */}
+        <div className={`text-center pt-16 pb-10 sm:pt-24 transition-all duration-700 ${vis(1)}`}>
           <img
             src="/AcuityLogo.png"
             alt="Acuity"
             className="mx-auto mb-6"
             style={{ width: 40, height: 40 }}
           />
-
-          <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
+          <h2 className="text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl">
             Get Acuity on your phone so you can debrief&nbsp;anywhere.
           </h2>
+        </div>
 
-          {/* App Store button */}
-          <div className="mt-8">
-            <a
-              href={APP_STORE_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="group relative inline-flex items-center gap-3 rounded-full bg-[#7C5CFC] px-8 py-4 text-base font-semibold text-white transition-all duration-300 hover:bg-[#6B4FE0] hover:shadow-xl hover:shadow-[#7C5CFC]/25 hover:-translate-y-0.5 active:scale-95"
-            >
-              <span className="absolute inset-0 rounded-full bg-[#7C5CFC]/30 animate-pulse-ring" />
+        {/* App Store button with shining ring */}
+        <div className={`text-center mb-5 transition-all duration-700 ${vis(2)}`}>
+          <a
+            href={APP_STORE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group relative inline-flex items-center gap-3 rounded-full px-8 py-4 text-base font-semibold text-white transition-all duration-300 hover:scale-[1.02] hover:-translate-y-0.5 active:scale-95 overflow-hidden"
+            style={{
+              background: "linear-gradient(135deg, #7C5CFC 0%, #9F7AEA 50%, #7C3AED 100%)",
+              boxShadow: "0 8px 32px rgba(124,92,252,0.3), 0 2px 8px rgba(124,58,237,0.15)",
+            }}
+          >
+            {/* Shining ring overlay */}
+            <span
+              className="absolute inset-[-2px] rounded-full pointer-events-none"
+              style={{
+                background: "conic-gradient(from 0deg, transparent 0%, transparent 70%, rgba(255,255,255,0.5) 78%, transparent 86%, transparent 100%)",
+                animation: "shine-ring 2.5s linear infinite",
+              }}
+            />
+            {/* Inner mask to show ring only at edges */}
+            <span
+              className="absolute inset-[2px] rounded-full pointer-events-none"
+              style={{
+                background: "linear-gradient(135deg, #7C5CFC 0%, #9F7AEA 50%, #7C3AED 100%)",
+              }}
+            />
+            <span className="relative z-10 flex items-center gap-3">
               <AppleLogo />
               Download on the App Store
-            </a>
-          </div>
-
-          {/* Continue in browser */}
-          <div className="mt-6">
-            <a
-              href="/home"
-              className="inline-flex items-center gap-2 rounded-full border border-white/20 px-6 py-3 text-sm font-medium text-[#F5EDE4]/80 transition hover:border-white/40 hover:text-white active:scale-95"
-            >
-              Continue in your browser &rarr;
-            </a>
-          </div>
-
-          {/* QR Code — desktop only */}
-          <div className="mt-6 hidden sm:block">
-            <p className="text-xs text-[#F5EDE4]/40 mb-3">
-              On desktop? Scan to download.
-            </p>
-            <div className="inline-block rounded-xl bg-white p-3">
-              <img
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(APP_STORE_URL)}&bgcolor=ffffff&color=181614`}
-                alt="QR code to download Acuity"
-                width={140}
-                height={140}
-              />
-            </div>
-          </div>
+            </span>
+          </a>
         </div>
-      </div>
 
-      {/* Social proof */}
-      <section className="px-6 pb-8">
-        <div className="mx-auto max-w-md text-center">
-          <p className="text-lg font-semibold text-white mb-1">
-            4.9 stars &middot; 127+ users
+        {/* Continue in browser with subtle shining ring */}
+        <div className={`text-center mb-10 transition-all duration-700 ${vis(2)}`}>
+          <a
+            href="/home"
+            className="group relative inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-medium text-zinc-600 transition-all duration-300 hover:scale-[1.02] hover:text-zinc-900 active:scale-95 overflow-hidden"
+            style={{
+              boxShadow: "0 0 0 1px rgba(0,0,0,0.08)",
+            }}
+          >
+            <span
+              className="absolute inset-[-1px] rounded-full pointer-events-none"
+              style={{
+                background: "conic-gradient(from 0deg, transparent 0%, transparent 75%, rgba(124,92,252,0.25) 82%, transparent 89%, transparent 100%)",
+                animation: "shine-ring 3s linear infinite",
+              }}
+            />
+            <span className="absolute inset-[1px] rounded-full bg-white pointer-events-none" />
+            <span className="relative z-10">Continue in your browser &rarr;</span>
+          </a>
+        </div>
+
+        {/* QR Code — desktop only */}
+        <div className={`text-center mb-12 hidden sm:block transition-all duration-700 ${vis(2)}`}>
+          <p className="text-xs text-zinc-400 mb-3">
+            On desktop? Scan to download.
           </p>
+          <div className="inline-block rounded-xl border border-zinc-200 p-3">
+            <img
+              src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(APP_STORE_URL)}&bgcolor=ffffff&color=181614`}
+              alt="QR code to download Acuity"
+              width={140}
+              height={140}
+            />
+          </div>
         </div>
-      </section>
 
-      {/* Testimonials */}
-      <section className="pb-10">
-        <TestimonialCarousel testimonials={STATIC_CAROUSEL_TESTIMONIALS} />
-      </section>
+        {/* Value props */}
+        <div className="mb-12 space-y-3">
+          {CTA_VALUE_PROPS.map((v, i) => (
+            <div
+              key={v.text}
+              className={`flex items-center gap-3 rounded-xl bg-zinc-50 border border-zinc-100 px-4 py-3 transition-all duration-500 ${vis(3)}`}
+              style={{ transitionDelay: `${i * 100}ms` }}
+            >
+              <span className="text-xl">{v.icon}</span>
+              <span className="text-sm font-medium text-zinc-700">{v.text}</span>
+            </div>
+          ))}
+        </div>
 
-      {/* Value props */}
-      <section className="px-6 pb-10">
-        <div className="mx-auto max-w-md">
-          <div className="flex flex-wrap justify-center gap-2">
-            {VALUE_PROPS.map((v) => (
+        {/* Social proof counter */}
+        <div className={`text-center mb-8 transition-all duration-700 ${vis(4)}`}>
+          <div className="flex items-center justify-center gap-1.5 mb-1">
+            <span className="text-2xl font-bold text-zinc-900">4.9</span>
+            {[0, 1, 2, 3, 4].map((i) => (
               <span
-                key={v}
-                className="rounded-full bg-[#7C5CFC]/10 border border-[#7C5CFC]/20 px-3 py-1.5 text-xs font-medium text-[#F5EDE4]/70"
+                key={i}
+                className="text-xl text-amber-400"
+                style={{
+                  animation: `star-twinkle 2s ease-in-out infinite`,
+                  animationDelay: `${i * 0.3}s`,
+                }}
               >
-                {v}
+                &#9733;
               </span>
             ))}
           </div>
-        </div>
-      </section>
-
-      {/* Urgency */}
-      <section className="px-6 pb-16 sm:pb-24">
-        <div className="mx-auto max-w-md text-center">
-          <p className="text-sm text-amber-400/80">
-            Your 30-day free trial has started. Your first debrief is done.
-            Keep the streak going.
+          <p className="text-sm text-zinc-500">
+            <span className="font-semibold text-zinc-700 tabular-nums">{counter}+</span>{" "}
+            users
           </p>
         </div>
-      </section>
+
+        {/* Testimonial carousel — single card, auto-cycling */}
+        <div className={`mb-10 transition-all duration-700 ${vis(5)}`}>
+          <div className="relative min-h-[120px]">
+            {CTA_TESTIMONIALS.map((t, i) => (
+              <div
+                key={t.name}
+                className={`absolute inset-0 rounded-2xl bg-zinc-50 border border-zinc-100 p-5 transition-all duration-500 ${
+                  i === testimonialIdx
+                    ? "opacity-100 translate-x-0"
+                    : "opacity-0 translate-x-8"
+                }`}
+              >
+                <div className="flex gap-0.5 mb-2">
+                  {[0, 1, 2, 3, 4].map((s) => (
+                    <span key={s} className="text-xs text-amber-400">&#9733;</span>
+                  ))}
+                </div>
+                <p className="text-sm text-zinc-700 leading-relaxed italic mb-3">
+                  &ldquo;{t.quote}&rdquo;
+                </p>
+                <p className="text-xs text-zinc-400">
+                  <span className="font-medium text-zinc-600">{t.name}</span>
+                  {t.role && <> &middot; {t.role}</>}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Urgency */}
+        <div className={`text-center pb-16 sm:pb-24 transition-all duration-700 ${vis(6)}`}>
+          <p className="text-sm text-zinc-400">
+            Your 30-day free trial has started. Keep the streak going.
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
