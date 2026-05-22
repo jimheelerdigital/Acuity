@@ -1,3 +1,9 @@
+# Working on Acuity
+
+For any design, UI, visual, or copy work, READ `_design/DESIGN_SYSTEM.md` first. Match the visual language and tone defined there. This is the canonical reference for both mobile and web. Do not invent your own interpretation — mirror the doc.
+
+---
+
 ## Progress Tracking Rules
 
 This repo uses the existing progress.md at the root as the single source of truth for code changes. Both cofounders ship through Claude Code. These rules apply to every session.
