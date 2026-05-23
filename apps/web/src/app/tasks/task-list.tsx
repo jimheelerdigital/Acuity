@@ -735,7 +735,7 @@ function TaskEditModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 acuity-fade-up"
       onClick={onClose}
     >
       <div

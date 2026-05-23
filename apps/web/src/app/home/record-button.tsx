@@ -349,7 +349,7 @@ function ResultCard({
   const mood = extraction.mood;
 
   return (
-    <div className="mt-4 rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg overflow-hidden shadow-sm animate-fade-in">
+    <div className="mt-4 rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg overflow-hidden shadow-sm acuity-fade-up">
       {/* Header */}
       <div className="px-5 pt-5 pb-4 flex items-start justify-between gap-4">
         <div className="flex-1">

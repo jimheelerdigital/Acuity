@@ -640,7 +640,7 @@ function DetailPanel({
     .filter((s): s is number => s != null) ?? [];
 
   return (
-    <div className="mt-6 rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg shadow-sm overflow-hidden animate-fade-in">
+    <div className="mt-6 rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg shadow-sm overflow-hidden acuity-fade-up">
       {/* Header */}
       <div className="px-6 py-4 border-b border-zinc-100 dark:border-white/5 flex items-center justify-between">
         <div className="flex items-center gap-3">

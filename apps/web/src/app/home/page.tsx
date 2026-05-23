@@ -182,7 +182,7 @@ export default async function DashboardPage() {
   return (
     <div className="min-h-screen">
       <TrackSubscribe />
-      <PageContainer mobileWidth="5xl" className="animate-fade-in">
+      <PageContainer mobileWidth="5xl" className="acuity-fade-up">
         <WelcomeBackBanner reduced={reducedTrial} daysLeft={trialDaysLeft} />
 
         {user?.subscriptionStatus === "PAST_DUE" && (

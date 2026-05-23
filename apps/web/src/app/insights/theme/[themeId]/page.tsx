@@ -31,7 +31,7 @@ export default async function ThemeDetailPage({
 
   return (
     <div className="min-h-screen">
-      <main className="mx-auto max-w-2xl px-6 py-10 animate-fade-in">
+      <main className="mx-auto max-w-2xl px-6 py-10 acuity-fade-up">
         <BackButton className="mb-6" ariaLabel="Back to Theme Map" />
         <ThemeDetailClient themeId={params.themeId} />
       </main>
