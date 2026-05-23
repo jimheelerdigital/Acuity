@@ -41,6 +41,85 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-23] — Try It Now funnel tracking fix
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** c415a7e
+
+### In plain English (for Keenan)
+
+The "Try It Now Funnel" in the admin dashboard was showing 0 for every step even though people were going through the try flow. The tracking events were firing but they weren't tagged with any identifier — like sending anonymous mail with no return address. Now every try session gets a unique ID so the dashboard can count them.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/components/try-debrief-flow.tsx`: generates a client-side session ID via `crypto.randomUUID()` on mount, passes it as `sessionToken` to all `trackOnboardingEvent()` calls via a `trackTry` callback threaded to all sub-screens
+- Root cause: `trackOnboardingEvent("try_*")` was called without `{ sessionToken }`, so events were stored with both `userId=null` and `sessionToken=null`. The funnel query in `getOnboardingFunnel()` filters `sessionToken: { not: null }` and `userId: { not: null }`, so orphaned events were uncounted.
+
+### Manual steps needed
+
+- [ ] Go through the try flow on the live site after deploy and check browser console for `[onboarding-track] try_recording_screen_viewed session:<uuid>` — should show session ID instead of "anon". Keenan
+- [ ] Check admin dashboard Try It Now Funnel — should show counts after the test. Keenan
+
+### Notes
+
+- `try_signup_completed` event is defined in the whitelist and expected in the funnel, but is never fired anywhere in the codebase. It will always show 0. Needs a follow-up to fire it on the signup success page when `from_try=1` query param is present.
+- Console logs already exist in `trackOnboardingEvent` — no additional logging needed.
+
+---
+
+## [2026-05-23] — Onboarding funnel signup count fix
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** d98c1b5
+
+### In plain English (for Keenan)
+
+The admin dashboard onboarding funnel showed 0 signups but 1 for all other steps. The "Signups" count was using the user's creation date to decide who to count, but the date filter was cutting off users who signed up right before tracking was deployed. Now it counts anyone who has any onboarding event — if they went through onboarding, they're counted as a signup.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/api/admin/metrics/route.ts`: `getOnboardingFunnel` no longer uses `user.count({ where: { createdAt } })` for signups. Instead uses `onboardingEvent.groupBy(["userId"])` with `event: { startsWith: "onboarding_" }` — same pattern as the other funnel steps.
+- Removed the `trackingDeployedAt` / `effectiveStart` logic that was artificially narrowing the date range.
+
+### Manual steps needed
+
+None — check admin dashboard after deploy.
+
+### Notes
+
+- The old logic found the earliest onboarding event and used its timestamp as `effectiveStart`. Users who signed up before that timestamp but onboarded after were excluded from the signup count but included in subsequent steps — causing 0 signups / 1 for everything else.
+
+---
+
+## [2026-05-23] — Try It First moved to dedicated /try page
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 847ce6f
+
+### In plain English (for Keenan)
+
+The "Try It First" button used to open the recording flow as an overlay on top of the current page. Now it goes to a clean /try page — full screen, no navbar, no footer, just the recording flow. This gives us a trackable URL in GA4 and a cleaner mobile experience.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/try/page.tsx`: new route, dynamically imports TryDebriefFlow with `ssr: false`, noindex meta
+- `apps/web/src/components/try-it-now-button.tsx`: removed overlay state management and dynamic import of TryDebriefFlow. Both `TryItNowButton` and `TryItNowButtonDark` now render `<Link href="/try">` instead of opening a modal. Still checks localStorage for "used" state to show "Sign up to continue" after first try.
+- All existing button usages (landing.tsx, static-persona-client, dynamic-landing-client, blog-try-button) automatically updated — component API unchanged.
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- The `onClose` prop in TryDebriefFlow is threaded through but never actually called (no close button exists). The /try page works without needing a back button.
+- The try-debrief-flow.tsx dynamic import with `ssr: false` means the component loads client-side only — appropriate since it uses MediaRecorder, localStorage, etc.
+
+---
+
 ## [2026-05-23] — Site-wide page load speed audit and fix
 
 **Requested by:** Keenan
