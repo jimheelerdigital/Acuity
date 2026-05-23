@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import confetti from "canvas-confetti";
 
@@ -158,7 +159,7 @@ function DownloadCTAScreen() {
     <div className="min-h-screen bg-white px-6">
       <div className="mx-auto max-w-md">
         <div className={`text-center pt-16 pb-10 sm:pt-24 transition-all duration-700 ${vis(1)}`}>
-          <img src="/AcuityLogo.png" alt="Acuity" className="mx-auto mb-6" style={{ width: 40, height: 40 }} />
+          <Image src="/AcuityLogo.png" alt="Acuity" width={40} height={40} className="mx-auto mb-6" />
           <h2 className="text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl">
             Get Acuity on your phone so you can debrief&nbsp;anywhere.
           </h2>

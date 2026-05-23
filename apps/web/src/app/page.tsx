@@ -1,9 +1,14 @@
+import nextDynamic from "next/dynamic";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 
 import { getAuthOptions } from "@/lib/auth";
 import { AccountDeletedBanner } from "@/components/account-deleted-banner";
-import { LandingPage } from "@/components/landing";
+
+const LandingPage = nextDynamic(
+  () => import("@/components/landing").then((m) => m.LandingPage),
+  { ssr: true },
+);
 
 export const dynamic = "force-dynamic";
 

@@ -1,3 +1,4 @@
+import nextDynamic from "next/dynamic";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 
@@ -8,7 +9,17 @@ import { LockedFeatureCard } from "@/components/locked-feature-card";
 import { ProLockedCard } from "@/components/pro-locked-card";
 import { PageContainer } from "@/components/page-container";
 
-import { LifeMap } from "../insights/life-map";
+const LifeMap = nextDynamic(
+  () => import("../insights/life-map").then((m) => m.LifeMap),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex items-center justify-center py-24">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-acuity-text/20 border-t-acuity-text" />
+      </div>
+    ),
+  },
+);
 
 export const dynamic = "force-dynamic";
 

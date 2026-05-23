@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -247,7 +248,7 @@ export function NavBar() {
             href="/home"
             className="flex items-center gap-2 group"
           >
-            <img src="/AcuityLogoDark.png" alt="Acuity logo" className="shrink-0" style={{ width: 24, height: 24 }} />
+            <Image src="/AcuityLogoDark.png" alt="Acuity logo" width={24} height={24} className="shrink-0" />
             <span className="font-semibold text-zinc-900 dark:text-zinc-50 hidden sm:block tracking-tight">
               Acuity
             </span>

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import {
   TestimonialCarousel,
@@ -15,7 +16,7 @@ export function SuccessPageClient() {
       <div className="flex flex-col items-center justify-center px-6 pt-16 pb-10 sm:pt-24 sm:pb-14">
         <div className="w-full max-w-md text-center">
           <div className="mb-6">
-            <img src="/AcuityLogo.png" alt="Acuity" className="mx-auto" style={{ width: 48, height: 48 }} />
+            <Image src="/AcuityLogo.png" alt="Acuity" width={48} height={48} className="mx-auto" />
           </div>
 
           <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
