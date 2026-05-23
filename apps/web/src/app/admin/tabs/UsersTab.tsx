@@ -17,7 +17,7 @@ type ListUser = {
   signupUtmSource: string | null;
   signupUtmMedium: string | null;
   signupLandingPath: string | null;
-  onboardingStatus: "Complete" | "Incomplete" | "Not started";
+  onboardingStatus: string;
 };
 
 type DetailUser = ListUser & {
@@ -30,6 +30,7 @@ type DetailUser = ListUser & {
   onboardingStep: number | null;
   firstRecordingAt: string | null;
   firstWeeklyReportAt: string | null;
+  onboardingEvents?: { event: string; createdAt: string }[];
   signupUtmCampaign: string | null;
   signupUtmContent: string | null;
   signupUtmTerm: string | null;
@@ -319,17 +320,22 @@ function PlatformPill({
   );
 }
 
-function OnboardingPill({
-  status,
-}: {
-  status: "Complete" | "Incomplete" | "Not started";
-}) {
-  const bg =
-    status === "Complete"
-      ? "bg-green-500/20 text-green-300"
-      : status === "Incomplete"
-      ? "bg-amber-500/20 text-amber-300"
-      : "bg-white/5 text-white/40";
+function OnboardingPill({ status }: { status: string }) {
+  const PILL_STYLES: Record<string, string> = {
+    "Downloaded app": "bg-green-500/20 text-green-300",
+    "Using browser": "bg-green-500/20 text-green-300",
+    "Reached download": "bg-blue-500/20 text-blue-300",
+    "Saw extraction": "bg-blue-500/20 text-blue-300",
+    "Recorded": "bg-violet-500/20 text-violet-300",
+    "Started recording": "bg-amber-500/20 text-amber-300",
+    "Skipped recording": "bg-amber-500/20 text-amber-300",
+    "Saw recording screen": "bg-amber-500/20 text-amber-300",
+    "Not started": "bg-white/5 text-white/40",
+    // Legacy fallback
+    "Complete": "bg-green-500/20 text-green-300",
+    "Incomplete": "bg-amber-500/20 text-amber-300",
+  };
+  const bg = PILL_STYLES[status] ?? "bg-white/5 text-white/40";
   return (
     <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${bg}`}>
       {status}
@@ -784,24 +790,37 @@ function JourneyTimeline({ user }: { user: DetailUser }) {
     detail?: string;
   };
 
+  // Build event-based milestones from OnboardingEvent records
+  const eventMap: Record<string, string> = {};
+  for (const e of user.onboardingEvents ?? []) {
+    if (!eventMap[e.event]) eventMap[e.event] = e.createdAt;
+  }
+
   const milestones: Milestone[] = [
     { label: "Account created", date: user.createdAt },
     {
+      label: "Recording screen viewed",
+      date: eventMap["onboarding_recording_screen_viewed"] ?? null,
+    },
+    {
+      label: "First recording completed",
+      date: eventMap["onboarding_recording_completed"] ?? user.firstRecordingAt,
+    },
+    {
+      label: "Extraction viewed",
+      date: eventMap["onboarding_extraction_viewed"] ?? null,
+    },
+    {
+      label: "Download CTA reached",
+      date: eventMap["onboarding_download_screen_viewed"] ?? null,
+    },
+    {
       label: "App downloaded",
-      date: user.appFirstOpenedAt,
+      date: user.appFirstOpenedAt ?? eventMap["onboarding_app_store_clicked"] ?? null,
       detail: user.devicePlatform
         ? `${user.devicePlatform === "ios" ? "iOS" : "Android"}`
         : undefined,
     },
-    {
-      label: "Onboarding completed",
-      date: user.onboardingCompletedAt,
-      detail: !user.onboardingCompletedAt && user.onboardingStep
-        ? `Stopped at step ${user.onboardingStep}`
-        : undefined,
-    },
-    { label: "First recording", date: user.firstRecordingAt },
-    { label: "First weekly report", date: user.firstWeeklyReportAt },
   ];
 
   // Find the index of the last completed milestone to determine drop-off

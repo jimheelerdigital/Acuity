@@ -15,6 +15,7 @@ import {
   useEntryPolling,
   type PolledEntry,
 } from "@/hooks/use-entry-polling";
+import { trackOnboardingEvent } from "@/lib/track-onboarding";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -74,16 +75,21 @@ export function FirstDebriefFlow({
       {screen === "record" && (
         <RecordScreen
           onRecorded={(id) => {
+            trackOnboardingEvent("onboarding_recording_completed");
             setEntryId(id);
             setScreen("processing");
           }}
-          onSkip={() => setScreen("cta")}
+          onSkip={() => {
+            trackOnboardingEvent("onboarding_skipped");
+            setScreen("cta");
+          }}
         />
       )}
       {screen === "processing" && entryId && (
         <ProcessingScreen
           entryId={entryId}
           onComplete={(ext) => {
+            trackOnboardingEvent("onboarding_extraction_viewed");
             setExtraction(ext);
             setScreen("extraction");
             // Auto-commit extracted tasks + goals so they appear in
@@ -239,6 +245,11 @@ function RecordScreen({
   const startTimeRef = useRef(0);
   const promptTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Track screen view
+  useEffect(() => {
+    trackOnboardingEvent("onboarding_recording_screen_viewed");
+  }, []);
+
   // Stagger entrance animation
   useEffect(() => {
     const t1 = setTimeout(() => setShowHeadline(true), 200);
@@ -277,6 +288,7 @@ function RecordScreen({
     setError(null);
     setElapsed(0);
     chunksRef.current = [];
+    trackOnboardingEvent("onboarding_recording_started");
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -1305,9 +1317,10 @@ function CTAScreen() {
   const [testimonialIdx, setTestimonialIdx] = useState(0);
   const [counter, setCounter] = useState(0);
 
-  // Scroll to top on mount
+  // Scroll to top on mount + track
   useEffect(() => {
     window.scrollTo(0, 0);
+    trackOnboardingEvent("onboarding_download_screen_viewed");
   }, []);
 
   // Stagger sections
@@ -1375,6 +1388,7 @@ function CTAScreen() {
             href={APP_STORE_URL}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={() => trackOnboardingEvent("onboarding_app_store_clicked")}
             className="group relative inline-flex items-center gap-3 rounded-full px-8 py-4 text-base font-semibold text-white transition-all duration-300 hover:scale-[1.02] hover:-translate-y-0.5 active:scale-95 overflow-hidden"
             style={{
               background: "linear-gradient(135deg, #7C5CFC 0%, #9F7AEA 50%, #7C3AED 100%)",
@@ -1407,6 +1421,7 @@ function CTAScreen() {
         <div className={`text-center mb-10 transition-all duration-700 ${vis(2)}`}>
           <a
             href="/home"
+            onClick={() => trackOnboardingEvent("onboarding_continue_browser_clicked")}
             className="group relative inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-medium text-zinc-600 transition-all duration-300 hover:scale-[1.02] hover:text-zinc-900 active:scale-95 overflow-hidden"
             style={{
               boxShadow: "0 0 0 1px rgba(0,0,0,0.08)",

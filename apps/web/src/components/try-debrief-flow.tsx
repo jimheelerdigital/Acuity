@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import confetti from "canvas-confetti";
 import { signIn } from "next-auth/react";
+import { trackOnboardingEvent } from "@/lib/track-onboarding";
 import {
   type ExtractionResult,
   MOOD_LABELS,
@@ -155,6 +156,11 @@ function TryRecordScreen({
   const startTimeRef = useRef(0);
   const promptTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Track screen view
+  useEffect(() => {
+    trackOnboardingEvent("try_recording_screen_viewed");
+  }, []);
+
   useEffect(() => {
     const t1 = setTimeout(() => setShowHeadline(true), 200);
     const t2 = setTimeout(() => setShowSubhead(true), 600);
@@ -183,6 +189,7 @@ function TryRecordScreen({
     setError(null);
     setElapsed(0);
     chunksRef.current = [];
+    trackOnboardingEvent("try_recording_started");
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mr = new MediaRecorder(stream, { mimeType: bestMimeType() });
@@ -216,11 +223,10 @@ function TryRecordScreen({
   };
 
   const upload = (blob: Blob, mime: string) => {
+    trackOnboardingEvent("try_recording_completed");
     const fd = new FormData();
     fd.append("audio", blob, `recording.${extFromMime(mime)}`);
 
-    // Create the API promise and hand it to the parent — the parent
-    // immediately transitions to the processing slides screen.
     const promise = fetch("/api/try-recording", { method: "POST", body: fd })
       .then(async (res) => {
         if (res.status === 403) {
@@ -703,6 +709,7 @@ function TryExtractionScreen({
   const [countdown, setCountdown] = useState("");
   const [signupLoading, setSignupLoading] = useState<"google" | "apple" | null>(null);
   const celebratedRef = useRef(false);
+  const expiredTrackedRef = useRef(false);
 
   const hasTasks = extraction.tasks.length > 0;
   const hasGoals = extraction.goals.length > 0;
@@ -712,6 +719,11 @@ function TryExtractionScreen({
   const goalSteps = hasGoals ? 1 + extraction.goals.length : 0;
   const themeSteps = hasThemes ? 1 + extraction.themes.length : 0;
   const totalSteps = 1 + taskSteps + goalSteps + themeSteps + 1;
+
+  // Track extraction view
+  useEffect(() => {
+    trackOnboardingEvent("try_extraction_viewed");
+  }, []);
 
   // Stagger animations
   useEffect(() => {
@@ -723,13 +735,17 @@ function TryExtractionScreen({
     return () => timers.forEach(clearTimeout);
   }, [totalSteps]);
 
-  // Countdown timer
+  // Countdown timer + track expiry
   useEffect(() => {
     const tick = () => {
       const remaining = Math.max(0, expiresAt.getTime() - Date.now());
       const mins = Math.floor(remaining / 60000);
       const secs = Math.floor((remaining % 60000) / 1000);
       setCountdown(`${mins}:${secs.toString().padStart(2, "0")}`);
+      if (remaining <= 0 && !expiredTrackedRef.current) {
+        expiredTrackedRef.current = true;
+        trackOnboardingEvent("try_expired");
+      }
     };
     tick();
     const interval = setInterval(tick, 1000);
@@ -753,6 +769,7 @@ function TryExtractionScreen({
   }, [step, totalSteps]);
 
   const handleOAuthSignup = async (provider: "google" | "apple") => {
+    trackOnboardingEvent("try_signup_started");
     setSignupLoading(provider);
     await signIn(provider, { callbackUrl: "/auth/signup/success?from_try=1" });
   };
@@ -1005,6 +1022,7 @@ function TryBlockedScreen({ errorMessage }: { errorMessage: string | null }) {
   const [signupLoading, setSignupLoading] = useState<"google" | "apple" | null>(null);
 
   const handleOAuthSignup = async (provider: "google" | "apple") => {
+    trackOnboardingEvent("try_signup_started");
     setSignupLoading(provider);
     await signIn(provider, { callbackUrl: "/auth/signup/success?from_try=1" });
   };

@@ -98,14 +98,16 @@ export async function GET(req: NextRequest) {
     const computeFn = async () => {
       switch (tab) {
         case "overview": {
-          // Merged tab: Overview + Revenue + Funnel + Red Flags
-          const [overview, revenue, funnel, redFlags] = await Promise.all([
+          // Merged tab: Overview + Revenue + Funnel + Red Flags + Onboarding/Try funnels
+          const [overview, revenue, funnel, redFlags, onboardingFunnel, tryFunnel] = await Promise.all([
             getOverview(prisma, start, end, prevStart, prevEnd, monthStart),
             getRevenue(prisma, start, end, prevStart, prevEnd, monthStart),
             getFunnel(prisma, start, end),
             getRedFlags(prisma),
+            getOnboardingFunnel(prisma, start, end),
+            getTryFunnel(prisma, start, end),
           ]);
-          return { ...overview, revenue, funnel, redFlags };
+          return { ...overview, revenue, funnel, redFlags, onboardingFunnel, tryFunnel };
         }
         // Legacy tab keys still served for backwards compat
         case "growth":
@@ -1247,4 +1249,95 @@ async function getBusinessMetrics(prisma: P, monthStart: Date) {
     breakEvenUsers,
     runwayMonths,
   };
+}
+
+// ── Onboarding Funnel (event-based) ─────────────────────────────────────────
+
+const ONBOARDING_FUNNEL_STEPS = [
+  { event: "onboarding_recording_screen_viewed", label: "Recording screen" },
+  { event: "onboarding_recording_started", label: "Started recording" },
+  { event: "onboarding_recording_completed", label: "Completed recording" },
+  { event: "onboarding_extraction_viewed", label: "Saw extraction" },
+  { event: "onboarding_download_screen_viewed", label: "Download screen" },
+  { event: "onboarding_app_store_clicked", label: "Downloaded app" },
+];
+
+async function getOnboardingFunnel(prisma: P, start: Date, end: Date) {
+  try {
+    const signups = await prisma.user.count({
+      where: { createdAt: { gte: start, lte: end } },
+    });
+
+    const counts = await Promise.all(
+      ONBOARDING_FUNNEL_STEPS.map(async (s) => {
+        const count = await prisma.onboardingEvent.count({
+          where: {
+            event: s.event,
+            createdAt: { gte: start, lte: end },
+            userId: { not: null },
+          },
+          // Count distinct users, not total events
+        });
+        // Use groupBy for distinct user count
+        const distinctUsers = await prisma.onboardingEvent.groupBy({
+          by: ["userId"],
+          where: {
+            event: s.event,
+            createdAt: { gte: start, lte: end },
+            userId: { not: null },
+          },
+        });
+        return { label: s.label, count: distinctUsers.length };
+      })
+    );
+
+    return {
+      steps: [{ label: "Signups", count: signups }, ...counts],
+    };
+  } catch {
+    return { steps: [] };
+  }
+}
+
+// ── Try Flow Funnel ─────────────────────────────────────────────────────────
+
+const TRY_FUNNEL_STEPS = [
+  { event: "try_recording_screen_viewed", label: "Try started" },
+  { event: "try_recording_started", label: "Recording started" },
+  { event: "try_recording_completed", label: "Recording completed" },
+  { event: "try_extraction_viewed", label: "Extraction viewed" },
+  { event: "try_signup_started", label: "Signup started" },
+  { event: "try_signup_completed", label: "Signup completed" },
+];
+
+async function getTryFunnel(prisma: P, start: Date, end: Date) {
+  try {
+    const counts = await Promise.all(
+      TRY_FUNNEL_STEPS.map(async (s) => {
+        // Try events may have sessionToken or userId — count distinct sessions
+        const bySession = await prisma.onboardingEvent.groupBy({
+          by: ["sessionToken"],
+          where: {
+            event: s.event,
+            createdAt: { gte: start, lte: end },
+            sessionToken: { not: null },
+          },
+        });
+        const byUser = await prisma.onboardingEvent.groupBy({
+          by: ["userId"],
+          where: {
+            event: s.event,
+            createdAt: { gte: start, lte: end },
+            userId: { not: null },
+            sessionToken: null,
+          },
+        });
+        return { label: s.label, count: bySession.length + byUser.length };
+      })
+    );
+
+    return { steps: counts };
+  } catch {
+    return { steps: [] };
+  }
 }

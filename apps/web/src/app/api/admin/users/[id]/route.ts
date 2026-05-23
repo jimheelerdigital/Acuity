@@ -82,6 +82,18 @@ export async function GET(
     orderBy: { flagKey: "asc" },
   });
 
+  // Onboarding funnel events for the detail timeline
+  let onboardingEvents: { event: string; createdAt: Date }[] = [];
+  try {
+    onboardingEvents = await prisma.onboardingEvent.findMany({
+      where: { userId: params.id },
+      select: { event: true, createdAt: true },
+      orderBy: { createdAt: "asc" },
+    });
+  } catch {
+    // Table may not exist yet
+  }
+
   return NextResponse.json({
     user: {
       id: user.id,
@@ -105,6 +117,11 @@ export async function GET(
       onboardingStep: user.onboarding?.currentStep ?? null,
       firstRecordingAt: user.firstRecordingAt,
       firstWeeklyReportAt: firstWeeklyReport?.createdAt ?? null,
+      // Onboarding funnel events
+      onboardingEvents: onboardingEvents.map((e) => ({
+        event: e.event,
+        createdAt: e.createdAt,
+      })),
       // Attribution
       signupUtmSource: user.signupUtmSource,
       signupUtmMedium: user.signupUtmMedium,

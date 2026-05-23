@@ -369,6 +369,7 @@ model User {
   freeRecordingsResetAt   DateTime?
 
   trySessions                   TrySession[]
+  onboardingEvents              OnboardingEvent[]
 
   updatedAt DateTime @default(now()) @updatedAt
 
@@ -2154,4 +2155,26 @@ model TrySession {
   @@index([expiresAt, claimed])
   @@index([ipAddress, createdAt])
   @@index([claimedByUserId])
+}
+
+// ── Onboarding funnel events ─────────────────────────────────────────
+// Tracks each step of the post-signup onboarding and "Try it now" flows.
+// userId is nullable so unauthenticated try-flow events can be logged
+// with just a sessionToken. On claim, try-flow events are backfilled
+// with the userId so the user's full journey is reconstructable.
+model OnboardingEvent {
+  id           String   @id @default(cuid())
+  // Null for unauthenticated try-flow events (pre-signup).
+  userId       String?
+  user         User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Try-flow session token — links anonymous events to a TrySession.
+  // Null for post-signup onboarding events (user is already authed).
+  sessionToken String?
+  // Event name — one of the onboarding_* or try_* constants.
+  event        String
+  createdAt    DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([sessionToken, createdAt])
+  @@index([event, createdAt])
 }

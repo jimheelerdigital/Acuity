@@ -55,6 +55,23 @@ export async function GET(req: NextRequest) {
   const hasMore = users.length > limit;
   const page = hasMore ? users.slice(0, limit) : users;
 
+  // Batch-fetch latest onboarding event per user for the status column
+  const userIds = page.map((u) => u.id);
+  let eventsByUser: Record<string, string[]> = {};
+  try {
+    const events = await prisma.onboardingEvent.findMany({
+      where: { userId: { in: userIds }, event: { startsWith: "onboarding_" } },
+      select: { userId: true, event: true },
+    });
+    for (const e of events) {
+      if (!e.userId) continue;
+      if (!eventsByUser[e.userId]) eventsByUser[e.userId] = [];
+      eventsByUser[e.userId].push(e.event);
+    }
+  } catch {
+    // OnboardingEvent table may not exist yet
+  }
+
   return NextResponse.json({
     users: page.map((u) => ({
       id: u.id,
@@ -70,12 +87,32 @@ export async function GET(req: NextRequest) {
       signupUtmSource: u.signupUtmSource,
       signupUtmMedium: u.signupUtmMedium,
       signupLandingPath: u.signupLandingPath,
-      onboardingStatus: u.onboarding?.completedAt
-        ? "Complete"
-        : u.onboarding
-        ? "Incomplete"
-        : "Not started",
+      onboardingStatus: computeOnboardingStatus(
+        eventsByUser[u.id] ?? [],
+        u.appFirstOpenedAt,
+        u.onboarding?.completedAt ?? null
+      ),
     })),
     nextCursor: hasMore ? page[page.length - 1].id : null,
   });
+}
+
+function computeOnboardingStatus(
+  events: string[],
+  appFirstOpenedAt: Date | null,
+  legacyCompletedAt: Date | null
+): string {
+  const has = (e: string) => events.includes(e);
+  // Most advanced state wins
+  if (appFirstOpenedAt || has("onboarding_app_store_clicked")) return "Downloaded app";
+  if (has("onboarding_continue_browser_clicked")) return "Using browser";
+  if (has("onboarding_download_screen_viewed")) return "Reached download";
+  if (has("onboarding_extraction_viewed")) return "Saw extraction";
+  if (has("onboarding_recording_completed")) return "Recorded";
+  if (has("onboarding_recording_started")) return "Started recording";
+  if (has("onboarding_skipped")) return "Skipped recording";
+  if (has("onboarding_recording_screen_viewed")) return "Saw recording screen";
+  // Fallback to legacy if no new events
+  if (legacyCompletedAt) return "Downloaded app";
+  return "Not started";
 }
