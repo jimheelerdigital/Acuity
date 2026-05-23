@@ -80,6 +80,22 @@ export function TryDebriefFlow({ onClose }: { onClose?: () => void }) {
   const apiPromiseRef = useRef<Promise<TryApiResult> | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
 
+  // Generate a stable client-side session ID for tracking. All try-flow
+  // events use this as sessionToken so the admin funnel can count distinct
+  // sessions (events fired before the API returns have no server token).
+  const trySessionId = useRef(
+    typeof crypto !== "undefined" && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `try_${Date.now()}_${Math.random().toString(36).slice(2)}`
+  );
+
+  const trackTry = useCallback(
+    (event: string) => {
+      trackOnboardingEvent(event, { sessionToken: trySessionId.current });
+    },
+    [],
+  );
+
   const handleUploaded = useCallback((promise: Promise<TryApiResult>) => {
     // ISSUE 2: Mark as used IMMEDIATELY when recording is submitted
     markTryUsed();
@@ -101,6 +117,7 @@ export function TryDebriefFlow({ onClose }: { onClose?: () => void }) {
         <TryRecordScreen
           onUploaded={handleUploaded}
           onClose={onClose}
+          trackTry={trackTry}
         />
       )}
       {screen === "processing" && (
@@ -119,10 +136,11 @@ export function TryDebriefFlow({ onClose }: { onClose?: () => void }) {
           extraction={apiResult.extraction}
           expiresAt={apiResult.expiresAt}
           onSignedUp={() => setScreen("celebrating")}
+          trackTry={trackTry}
         />
       )}
       {screen === "blocked" && (
-        <TryBlockedScreen errorMessage={apiError} />
+        <TryBlockedScreen errorMessage={apiError} trackTry={trackTry} />
       )}
       {screen === "celebrating" && <CelebrationScreen />}
     </div>
@@ -134,9 +152,11 @@ export function TryDebriefFlow({ onClose }: { onClose?: () => void }) {
 function TryRecordScreen({
   onUploaded,
   onClose,
+  trackTry,
 }: {
   onUploaded: (promise: Promise<TryApiResult>) => void;
   onClose?: () => void;
+  trackTry: (event: string) => void;
 }) {
   const [phase, setPhase] = useState<"idle" | "recording" | "error">("idle");
   const [elapsed, setElapsed] = useState(0);
@@ -158,8 +178,8 @@ function TryRecordScreen({
 
   // Track screen view
   useEffect(() => {
-    trackOnboardingEvent("try_recording_screen_viewed");
-  }, []);
+    trackTry("try_recording_screen_viewed");
+  }, [trackTry]);
 
   useEffect(() => {
     const t1 = setTimeout(() => setShowHeadline(true), 200);
@@ -189,7 +209,7 @@ function TryRecordScreen({
     setError(null);
     setElapsed(0);
     chunksRef.current = [];
-    trackOnboardingEvent("try_recording_started");
+    trackTry("try_recording_started");
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mr = new MediaRecorder(stream, { mimeType: bestMimeType() });
@@ -223,7 +243,7 @@ function TryRecordScreen({
   };
 
   const upload = (blob: Blob, mime: string) => {
-    trackOnboardingEvent("try_recording_completed");
+    trackTry("try_recording_completed");
     const fd = new FormData();
     fd.append("audio", blob, `recording.${extFromMime(mime)}`);
 
@@ -700,10 +720,12 @@ function TryExtractionScreen({
   extraction,
   expiresAt,
   onSignedUp,
+  trackTry,
 }: {
   extraction: ExtractionResult;
   expiresAt: Date;
   onSignedUp: () => void;
+  trackTry: (event: string) => void;
 }) {
   const [step, setStep] = useState(0);
   const [countdown, setCountdown] = useState("");
@@ -722,8 +744,8 @@ function TryExtractionScreen({
 
   // Track extraction view
   useEffect(() => {
-    trackOnboardingEvent("try_extraction_viewed");
-  }, []);
+    trackTry("try_extraction_viewed");
+  }, [trackTry]);
 
   // Stagger animations
   useEffect(() => {
@@ -744,7 +766,7 @@ function TryExtractionScreen({
       setCountdown(`${mins}:${secs.toString().padStart(2, "0")}`);
       if (remaining <= 0 && !expiredTrackedRef.current) {
         expiredTrackedRef.current = true;
-        trackOnboardingEvent("try_expired");
+        trackTry("try_expired");
       }
     };
     tick();
@@ -769,7 +791,7 @@ function TryExtractionScreen({
   }, [step, totalSteps]);
 
   const handleOAuthSignup = async (provider: "google" | "apple") => {
-    trackOnboardingEvent("try_signup_started");
+    trackTry("try_signup_started");
     setSignupLoading(provider);
     await signIn(provider, { callbackUrl: "/auth/signup/success?from_try=1" });
   };
@@ -1018,11 +1040,11 @@ function TryExtractionScreen({
 
 // ─── Blocked Screen (ISSUE 3: shown when second try is blocked) ─────────────
 
-function TryBlockedScreen({ errorMessage }: { errorMessage: string | null }) {
+function TryBlockedScreen({ errorMessage, trackTry }: { errorMessage: string | null; trackTry: (event: string) => void }) {
   const [signupLoading, setSignupLoading] = useState<"google" | "apple" | null>(null);
 
   const handleOAuthSignup = async (provider: "google" | "apple") => {
-    trackOnboardingEvent("try_signup_started");
+    trackTry("try_signup_started");
     setSignupLoading(provider);
     await signIn(provider, { callbackUrl: "/auth/signup/success?from_try=1" });
   };
