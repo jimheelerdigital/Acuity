@@ -1117,6 +1117,7 @@ export function LandingPage() {
                   </a>
                   <TryItNowButtonDark />
                 </div>
+                <p className="text-xs text-[#A0A0B8]">No credit card. Quick setup.</p>
                 <a
                   href="#how-it-works"
                   className="mt-1 text-sm font-medium text-[#A0A0B8] underline underline-offset-4 decoration-[#A0A0B8]/40 transition hover:text-white hover:decoration-white/60"

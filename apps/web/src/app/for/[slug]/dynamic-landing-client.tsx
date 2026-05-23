@@ -70,12 +70,14 @@ export function DynamicLandingPageView({ page, slug, ctaHref }: { page: DynamicL
                 </p>
               </Reveal>
               <Reveal delay={2}>
-                <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-4">
-                  <PulsingCTA href={ctaHref}>
-                    Start Free Trial
-                  </PulsingCTA>
-                  <TryItNowButtonDark />
-                  <p className="mt-2.5 text-xs text-[#B0A898]">
+                <div className="mt-6 flex flex-col items-center gap-3">
+                  <div className="flex flex-row items-center gap-3">
+                    <PulsingCTA href={ctaHref}>
+                      Start Free Trial
+                    </PulsingCTA>
+                    <TryItNowButtonDark />
+                  </div>
+                  <p className="text-xs text-[#B0A898]">
                     No credit card. Quick setup.
                   </p>
                 </div>

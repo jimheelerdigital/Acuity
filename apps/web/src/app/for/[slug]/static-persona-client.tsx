@@ -53,9 +53,12 @@ export function StaticPersonaPage({ page, slug }: { page: PersonaPage; slug: str
           <Reveal><HeroHeadline text={page.headline} /></Reveal>
           <Reveal delay={1}><p className="mt-6 text-lg text-[#B0A898] leading-relaxed max-w-2xl mx-auto">{page.subheadline}</p></Reveal>
           <Reveal delay={2}>
-            <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
-              <PulsingCTA href={ctaHref}>Start Free Trial</PulsingCTA>
-              <TryItNowButtonDark />
+            <div className="mt-8 flex flex-col items-center gap-3">
+              <div className="flex flex-row items-center gap-3">
+                <PulsingCTA href={ctaHref}>Start Free Trial</PulsingCTA>
+                <TryItNowButtonDark />
+              </div>
+              <p className="text-xs text-[#B0A898]">No credit card. Quick setup.</p>
             </div>
           </Reveal>
         </div>
