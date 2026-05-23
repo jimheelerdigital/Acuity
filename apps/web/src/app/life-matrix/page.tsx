@@ -17,30 +17,42 @@ export const metadata = {
   robots: { index: false, follow: false },
 };
 
+/**
+ * /life-matrix — direct entry point for the 10-axis Life Matrix
+ * radar. Embeds the shared `<LifeMap>` component (lives under
+ * /insights/life-map.tsx). The radar itself owns its empty-axis
+ * treatment + biggest-moves rows + axis-label positioning per
+ * Phase D / Phase E polish.
+ *
+ * Slice 11 (2026-05-22): wrapped in `data-theme="dark"` so the
+ * canonical surface tokens activate. Header chrome refreshed —
+ * display font for the title, mono uppercase eyebrow, generous
+ * subtitle in textSec. The radar component itself stays untouched
+ * — full SVG refresh is its own dedicated slice if needed.
+ */
 export default async function LifeMatrixPage() {
   const session = await getServerSession(getAuthOptions());
   if (!session?.user?.id) redirect("/auth/signin?callbackUrl=/life-matrix");
 
   const progression = await getUserProgression(session.user.id);
   // §B.2.2 — direct deep-link entry point for Life Matrix. FREE
-  // post-trial users see the billing gate (slice 4-mobile picks up
-  // this fix the slice 4-web noted as deferred).
+  // post-trial users see the billing gate.
   const entitlement = await getUserEntitlement(session.user.id);
   const isProLocked = entitlement?.canExtractEntries === false;
 
   return (
-    <div className="min-h-screen">
+    <div data-theme="dark" className="min-h-screen bg-acuity-bg">
       <PageContainer mobileWidth="5xl">
-        <header className="mb-8">
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-acuity-primary dark:text-acuity-primary">
+        <header className="acuity-fade-up mb-10">
+          <p className="font-mono text-[11px] font-bold uppercase tracking-[1.4px] text-acuity-text-ter">
             Reflect
           </p>
-          <h1 className="mt-1 text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 lg:text-4xl">
+          <h1 className="mt-2 font-display text-4xl font-bold leading-[1.05] tracking-tight text-acuity-text lg:text-5xl">
             Life Matrix
           </h1>
-          <p className="mt-2 max-w-2xl text-sm text-zinc-500 dark:text-zinc-400 lg:text-base">
-            Your life, decoded — across every area. Scores move as your
-            debriefs reveal what&rsquo;s actually going on.
+          <p className="mt-3 max-w-2xl text-base leading-relaxed text-acuity-text-sec">
+            Your life, axis by axis. Scores move as your debriefs reveal
+            what&rsquo;s actually going on.
           </p>
         </header>
 
