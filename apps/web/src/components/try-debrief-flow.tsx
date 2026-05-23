@@ -771,10 +771,13 @@ function TryExtractionScreen({
   const scaleVis = (at: number) => step >= at ? "opacity-100 scale-100" : "opacity-0 scale-75";
 
   return (
-    <div className="flex min-h-screen flex-col items-center px-6 py-12 sm:py-16">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen px-6 py-12 sm:py-16">
+      <div className="w-full max-w-md mx-auto">
+
+        {/* ── ABOVE THE FOLD ────────────────────────────────────────── */}
+
         {/* Headline */}
-        <div className="text-center mb-10 animate-fade-in">
+        <div className="text-center mb-6 animate-fade-in">
           <h2 className="text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl">
             That&rsquo;s what 60 seconds gets&nbsp;you.
           </h2>
@@ -782,6 +785,49 @@ function TryExtractionScreen({
             Do this daily and every Sunday you&rsquo;ll get a report showing how your life is actually going.
           </p>
         </div>
+
+        {/* Compact signup bar — above the fold */}
+        <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 mb-3 animate-fade-in">
+          <p className="text-sm font-semibold text-zinc-800 text-center mb-3">
+            Create an account to keep this forever.
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => handleOAuthSignup("google")}
+              disabled={signupLoading !== null}
+              className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-white border border-zinc-200 px-3 py-2.5 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-50 hover:border-zinc-300 active:scale-[0.98] disabled:opacity-50"
+            >
+              {signupLoading === "google" ? (
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-600" />
+              ) : (
+                <GoogleLogo />
+              )}
+              Google
+            </button>
+            <button
+              onClick={() => handleOAuthSignup("apple")}
+              disabled={signupLoading !== null}
+              className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-zinc-900 px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-zinc-800 active:scale-[0.98] disabled:opacity-50"
+            >
+              {signupLoading === "apple" ? (
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-600 border-t-white" />
+              ) : (
+                <AppleLogo />
+              )}
+              Apple
+            </button>
+          </div>
+        </div>
+
+        {/* Countdown timer — below compact signup */}
+        <div className="text-center mb-8">
+          <p className="text-xs text-zinc-400">
+            Debrief expires in{" "}
+            <span className="font-mono font-semibold text-zinc-600 tabular-nums">{countdown}</span>
+          </p>
+        </div>
+
+        {/* ── BELOW THE FOLD — extraction results ───────────────────── */}
 
         {/* Summary + Mood */}
         <div
@@ -879,26 +925,20 @@ function TryExtractionScreen({
           </div>
         )}
 
-        {/* ── Save CTA Section ─────────────────────────────────────── */}
+        {/* ── BOTTOM — full signup section ───────────────────────────── */}
         <div className={`transition-all duration-500 ${vis(buttonAt)}`}>
-          {/* Countdown timer */}
-          <div className="text-center mb-6">
-            <p className="text-xs text-zinc-400">
-              Debrief expires in{" "}
-              <span className="font-mono font-semibold text-zinc-600 tabular-nums">{countdown}</span>
-            </p>
-          </div>
-
           <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-6 sm:p-8">
             <h3 className="text-xl font-bold text-zinc-900 text-center mb-2">
               Your debrief is ready. Create an account to keep it forever.
             </h3>
-            <p className="text-sm text-zinc-500 text-center mb-6">
-              This debrief will be deleted in {countdown}. Don&rsquo;t lose your progress.
+            <p className="text-sm text-zinc-500 text-center mb-2">
+              This debrief will be deleted in{" "}
+              <span className="font-mono font-semibold text-zinc-600 tabular-nums">{countdown}</span>.
+              Don&rsquo;t lose your progress.
             </p>
 
-            {/* OAuth buttons */}
-            <div className="space-y-3 mb-4">
+            {/* Full-width OAuth buttons */}
+            <div className="space-y-3 mb-4 mt-6">
               <button
                 onClick={() => handleOAuthSignup("google")}
                 disabled={signupLoading !== null}
@@ -932,7 +972,6 @@ function TryExtractionScreen({
               <div className="flex-1 h-px bg-zinc-200" />
             </div>
 
-            {/* Email signup link */}
             <a
               href="/auth/signup"
               className="block w-full text-center rounded-xl border border-[#7C5CFC]/30 bg-[#7C5CFC]/5 px-4 py-3.5 text-sm font-semibold text-[#7C5CFC] transition hover:bg-[#7C5CFC]/10 active:scale-[0.98]"
@@ -945,7 +984,7 @@ function TryExtractionScreen({
             </p>
           </div>
 
-          {/* Social proof below CTA */}
+          {/* Social proof */}
           <div className="mt-6 text-center">
             <p className="text-sm font-medium text-zinc-400 mb-1">
               4.9 <span className="text-amber-400">&#9733;&#9733;&#9733;&#9733;&#9733;</span> from 127+ users
