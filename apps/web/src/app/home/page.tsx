@@ -17,6 +17,7 @@ import { getUserProgression } from "@/lib/userProgression";
 import { BackfillBanner } from "@/components/backfill-banner";
 import { PageContainer } from "@/components/page-container";
 import { ProLockedCard } from "@/components/pro-locked-card";
+import { Avatar } from "@/components/acuity";
 import { RecordButton } from "./record-button";
 import { Greeting } from "./greeting";
 
@@ -185,20 +186,32 @@ export default async function DashboardPage() {
         <WelcomeBackBanner reduced={reducedTrial} daysLeft={trialDaysLeft} />
 
         {user?.subscriptionStatus === "PAST_DUE" && (
-          <section className="mb-6 rounded-2xl border border-amber-300 dark:border-amber-900/40 bg-amber-50/60 dark:bg-amber-950/20 px-5 py-4 flex items-start gap-3">
-            <span className="text-lg leading-none">⚠️</span>
+          <section
+            className="mb-6 flex items-start gap-3 rounded-acuity-lg px-5 py-4"
+            style={{
+              borderWidth: 1,
+              borderStyle: "solid",
+              borderColor: "var(--acuity-warn)",
+              backgroundColor: "color-mix(in oklch, var(--acuity-warn), transparent 88%)",
+            }}
+            role="alert"
+          >
+            <span className="text-lg leading-none" aria-hidden="true">
+              ⚠️
+            </span>
             <div className="flex-1">
-              <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
+              <p className="font-display text-sm font-semibold" style={{ color: "var(--acuity-warn)" }}>
                 Stripe couldn&apos;t charge your card
               </p>
-              <p className="mt-1 text-xs text-amber-800/80 dark:text-amber-300/80">
+              <p className="mt-1 text-xs text-acuity-text-sec">
                 Update your payment method to keep your subscription active.
                 Nothing gets cut off right away — Stripe retries over the next
                 couple of weeks.
               </p>
               <a
                 href="/account"
-                className="mt-2 inline-block text-xs font-semibold text-amber-900 dark:text-amber-100 underline"
+                className="mt-2 inline-block text-xs font-semibold underline"
+                style={{ color: "var(--acuity-warn)" }}
               >
                 Update in Account settings →
               </a>
@@ -210,16 +223,31 @@ export default async function DashboardPage() {
           <HomeFocusStack progression={userProg} />
         </div>
 
-        <div className="mb-6 text-center sm:text-left">
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-3xl">
-            <Greeting firstName={firstName} />
-          </h1>
-          {currentStreak >= 2 && (
-            <p className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-orange-600 dark:text-orange-400 lg:hidden">
-              <Flame className="h-4 w-4" aria-hidden="true" />
-              {currentStreak}-day streak
-            </p>
-          )}
+        <div className="mb-6 flex items-center gap-4 text-left">
+          <Avatar
+            initials={
+              session.user.name
+                ? session.user.name
+                    .split(" ")
+                    .map((n) => n[0])
+                    .join("")
+                    .slice(0, 2)
+                    .toUpperCase()
+                : firstName.charAt(0).toUpperCase()
+            }
+            size={48}
+          />
+          <div className="flex-1 min-w-0">
+            <h1 className="font-display text-2xl font-bold tracking-tight text-zinc-900 dark:text-acuity-text sm:text-3xl">
+              <Greeting firstName={firstName} />
+            </h1>
+            {currentStreak >= 2 && (
+              <p className="mt-1 inline-flex items-center gap-1.5 text-sm font-medium text-orange-600 dark:text-orange-400 lg:hidden">
+                <Flame className="h-4 w-4" aria-hidden="true" />
+                {currentStreak}-day streak
+              </p>
+            )}
+          </div>
         </div>
 
         {/* Mobile-only record card. Desktop has the persistent

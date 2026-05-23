@@ -1,9 +1,18 @@
 import { Flame } from "lucide-react";
 
+import { Card, GradientText, SectionHeader } from "@/components/acuity";
+
 /**
  * Streak + sessions-this-week summary — widget #3. Always shows;
  * copy adapts to streak === 0 vs ≥ 1 days. Owns its data fetch so
  * a slow user-row read here doesn't gate other cards.
+ *
+ * Slice 9 (2026-05-22): visual refresh to canonical primitives.
+ *   - Card wrapper (default variant) replaces bespoke border+bg
+ *   - SectionHeader replaces uppercase Tailwind h2
+ *   - GradientText renders the streak number with the canonical
+ *     coral→violet gradMix, mirroring the mobile streak tile
+ *   - Flame stays as the activated indicator at currentStreak >= 2
  */
 export async function StreakSummarySection({ userId }: { userId: string }) {
   const { prisma } = await import("@/lib/prisma");
@@ -34,42 +43,53 @@ export async function StreakSummarySection({ userId }: { userId: string }) {
   const flameActive = currentStreak >= 2;
 
   return (
-    <section className="flex h-full flex-col justify-between lg:col-span-4 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6 lg:p-7 dark:border-white/10 dark:bg-acuity-card-bg">
-      <div>
-        <h2
-          className="font-semibold uppercase text-zinc-400 dark:text-zinc-500"
-          style={{ fontSize: 13, letterSpacing: "0.18em" }}
-        >
-          Streak
-        </h2>
-        <div className="mt-3 flex items-baseline gap-3">
-          <Flame
-            className={`h-9 w-9 self-center shrink-0 ${
-              flameActive ? "text-orange-500" : "text-zinc-300 dark:text-zinc-600"
-            }`}
-            aria-hidden="true"
-            fill={flameActive ? "currentColor" : "none"}
-            strokeWidth={flameActive ? 1.5 : 2}
-          />
-          <span
-            className="font-semibold tabular-nums text-zinc-900 dark:text-zinc-50"
-            style={{
-              fontSize: "clamp(40px, 5vw, 56px)",
-              letterSpacing: "-2px",
-              lineHeight: 1,
-            }}
-          >
-            {currentStreak}
-          </span>
-          <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
-            day streak
-          </span>
+    <div className="lg:col-span-4">
+      <Card variant="default" radius="xl" padding={6} className="flex h-full flex-col justify-between sm:p-7">
+        <div>
+          <SectionHeader label="Streak" />
+          <div className="mt-3 flex items-baseline gap-3">
+            <Flame
+              className={`h-9 w-9 shrink-0 self-center ${
+                flameActive ? "text-orange-500" : "text-zinc-300 dark:text-acuity-text-quiet"
+              }`}
+              aria-hidden="true"
+              fill={flameActive ? "currentColor" : "none"}
+              strokeWidth={flameActive ? 1.5 : 2}
+            />
+            {flameActive ? (
+              <GradientText
+                variant="mix"
+                className="font-display font-extrabold leading-none"
+                style={{
+                  fontSize: "clamp(40px, 5vw, 56px)",
+                  letterSpacing: "-2px",
+                  fontVariantNumeric: "tabular-nums",
+                }}
+              >
+                {currentStreak}
+              </GradientText>
+            ) : (
+              <span
+                className="font-display font-extrabold leading-none text-zinc-900 dark:text-acuity-text"
+                style={{
+                  fontSize: "clamp(40px, 5vw, 56px)",
+                  letterSpacing: "-2px",
+                  fontVariantNumeric: "tabular-nums",
+                }}
+              >
+                {currentStreak}
+              </span>
+            )}
+            <span className="text-sm font-medium text-zinc-500 dark:text-acuity-text-sec">
+              day streak
+            </span>
+          </div>
         </div>
-      </div>
-      <p className="mt-5 border-t border-zinc-100 pt-4 text-sm text-zinc-600 dark:border-white/5 dark:text-zinc-300">
-        {hint}
-      </p>
-    </section>
+        <p className="mt-5 border-t border-acuity-line pt-4 text-sm text-zinc-600 dark:text-acuity-text-sec">
+          {hint}
+        </p>
+      </Card>
+    </div>
   );
 }
 
