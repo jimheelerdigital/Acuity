@@ -22,6 +22,12 @@ export const maxDuration = 300;
 // ── Validation-phase thresholds (all in cents where applicable) ─────
 const VALIDATION_PHASE = true;
 
+// ── KILL/SCALE DECISIONS DISABLED (2026-05-23) ─────────────────────
+// Cron still syncs metrics and sends daily summary email, but takes
+// ZERO automated actions — no pausing, killing, scaling, or budget
+// changes. Set to true to re-enable.
+const DECISIONS_ENABLED = false;
+
 // Safety rails
 const MIN_SPEND_FOR_DECISION = 1000;     // $10 — no decisions below this spend
 const MIN_IMPRESSIONS_FOR_DECISION = 500; // AND this many impressions
@@ -160,6 +166,10 @@ export async function GET(req: NextRequest) {
   }
 
   // ── Step 2: Creative-level decisions ──────────────────────────────
+  if (!DECISIONS_ENABLED) {
+    console.log("[adlab-cron] Decisions disabled — skipping kill/scale/experiment rules. Metrics synced.");
+  }
+
   // Count live ads per experiment for "last active ad" safety rail
   const liveAdsByExp = new Map<string, string[]>();
   for (const ad of ads) {
@@ -196,7 +206,7 @@ export async function GET(req: NextRequest) {
     // ── Safety rail: minimum data ──
     const hasMinData = totalSpend >= MIN_SPEND_FOR_DECISION && totalImpressions >= MIN_IMPRESSIONS_FOR_DECISION;
 
-    if (hasMinData) {
+    if (DECISIONS_ENABLED && hasMinData) {
       // ── KILL RULES (checked in order, first match wins) ──
 
       // Rule 1 — Dead creative (no clicks)
@@ -354,6 +364,8 @@ export async function GET(req: NextRequest) {
   const concluded: string[] = [];
 
   for (const exp of liveExperiments) {
+    if (!DECISIONS_ENABLED) continue;
+
     const allAds = exp.angles.flatMap((a) => a.creatives.flatMap((c) => c.ads));
     const allMetrics = allAds.flatMap((a) => a.metrics);
 
