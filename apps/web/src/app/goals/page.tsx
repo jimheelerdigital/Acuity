@@ -148,8 +148,8 @@ export default async function GoalsPage() {
   }
 
   return (
-    <div className="min-h-screen">
-      <PageContainer mobileWidth="3xl" className="animate-fade-in">
+    <div data-theme="dark" className="min-h-screen bg-acuity-bg">
+      <PageContainer mobileWidth="3xl" className="acuity-fade-up">
         {isProLocked ? (
           <div className="mb-6">
             <ProLockedCard surfaceId="goals_suggestions_locked" />

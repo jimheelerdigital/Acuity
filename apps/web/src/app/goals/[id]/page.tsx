@@ -61,8 +61,8 @@ export default async function GoalDetailPage({
   });
 
   return (
-    <div className="min-h-screen">
-      <main className="mx-auto max-w-3xl px-6 py-10 animate-fade-in">
+    <div data-theme="dark" className="min-h-screen bg-acuity-bg">
+      <main className="acuity-fade-up mx-auto max-w-3xl px-6 py-10">
         <BackButton className="mb-6" ariaLabel="Back to Goals" />
         <GoalDetail
           initialGoal={{
