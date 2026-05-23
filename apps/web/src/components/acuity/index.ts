@@ -1,9 +1,8 @@
 /**
- * Acuity design-system primitives — web (Slice 1, 2026-05-22).
+ * Acuity design-system primitives — web (Slice 1 + slice 8, 2026-05-22).
  *
  * Reference: `_design/DESIGN_SYSTEM.md` §5 primitives spec.
- * Tokens: `src/lib/theme/tokens.css` (CSS variables) +
- *          `tailwind.config.ts` (`acuity-*` color/radius/shadow scale).
+ * Tokens: `src/lib/theme/tokens.css` + `tailwind.config.ts`.
  *
  * All primitives:
  *   - Read from `acuity-*` tokens — never hardcode hex.
@@ -12,20 +11,35 @@
  *     surfaces, never `rounded-full` directly.
  *
  * Import via the barrel:
- *   import { Button, Card, ThemePill } from "@/components/acuity";
- *
- * Slice 1 ships these six primitives. The remaining set (HeroCard,
- * RingProgress, SegmentedTabs, GlassPill, GradientText,
- * GradientCheckbox, Sparkbar, TierPill, MiniRadar) lands as
- * consuming slices need them — no point building primitives ahead
- * of a confirmed consumer.
+ *   import { Button, Card, HeroCard, RingProgress } from
+ *     "@/components/acuity";
  */
 
 export { Avatar, type AvatarProps } from "./Avatar";
 export { Button, type ButtonProps } from "./Button";
 export { Card, type CardProps } from "./Card";
+export {
+  GradientCheckbox,
+  type GradientCheckboxProps,
+} from "./GradientCheckbox";
+export {
+  GradientText,
+  type GradientTextProps,
+  type GradientTextVariant,
+} from "./GradientText";
+export { GlassPill, type GlassPillProps, type GlassPillTint } from "./GlassPill";
 export { HeroCard, type HeroCardProps } from "./HeroCard";
-export { SectionHeader, type SectionHeaderProps } from "./SectionHeader";
+export { MiniRadar, type MiniRadarProps } from "./MiniRadar";
+export { RingProgress, type RingProgressProps } from "./RingProgress";
+export {
+  SectionHeader,
+  type SectionHeaderProps,
+} from "./SectionHeader";
+export {
+  SegmentedTabs,
+  type SegmentedTabsProps,
+} from "./SegmentedTabs";
+export { Sparkbar, type SparkbarProps } from "./Sparkbar";
 export {
   SubscriptionPill,
   type SubscriptionPillProps,
