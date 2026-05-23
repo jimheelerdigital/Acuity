@@ -9,6 +9,13 @@ import { BackButton } from "@/components/back-button";
 import { EntryDeleteButtonWithRedirect } from "./entry-delete-button-wrapper";
 import { MoodIcon } from "@/components/mood-icon";
 import { ProLockedFooter } from "@/components/pro-locked-card";
+import {
+  Card,
+  HeroCard,
+  SectionHeader,
+  ThemePill,
+  type ThemeKey,
+} from "@/components/acuity";
 
 import { EntryStatusGate } from "./entry-status-gate";
 import { ExtractionReview } from "./extraction-review";
@@ -19,6 +26,51 @@ export const metadata = {
   title: "Entry — Acuity",
   robots: { index: false, follow: false },
 };
+
+const CANONICAL_THEME_KEYS: ReadonlyArray<ThemeKey> = [
+  "career",
+  "family",
+  "health",
+  "avoidance",
+  "money",
+  "relationships",
+  "sleep",
+  "growth",
+  "solitude",
+];
+
+/**
+ * Map a free-text theme string to one of the canonical 9 hues for
+ * `<ThemePill>`. Lowercase + lookup; falls through to `other` for
+ * any user-generated theme that isn't in the canonical table. Matches
+ * mobile's `hueForTheme()` fallback chain conceptually — full
+ * FNV-1a hash-to-hue is deferred to slice 6b orbital work.
+ */
+function themeKeyFor(name: string): ThemeKey {
+  const k = name.toLowerCase().trim();
+  return (CANONICAL_THEME_KEYS as readonly string[]).includes(k)
+    ? (k as ThemeKey)
+    : "other";
+}
+
+/**
+ * Extract a pull-quote from the entry summary — first sentence,
+ * trimmed, never longer than ~180 chars. If the summary is short
+ * enough (~120 chars or less), use the whole thing. Mirrors mobile's
+ * entry-detail pull-quote treatment.
+ */
+function pullQuoteFor(summary: string): string {
+  const trimmed = summary.trim();
+  if (trimmed.length <= 120) return trimmed;
+  // Find the first sentence break.
+  const match = trimmed.match(/^[^.!?]+[.!?]/);
+  if (match && match[0].length <= 180) return match[0].trim();
+  // No clean sentence break in the first 180 chars; hard-truncate
+  // on a word boundary.
+  const head = trimmed.slice(0, 170);
+  const lastSpace = head.lastIndexOf(" ");
+  return `${head.slice(0, lastSpace > 0 ? lastSpace : 170).trim()}…`;
+}
 
 export default async function EntryDetailPage({
   params,
@@ -61,37 +113,54 @@ export default async function EntryDetailPage({
   });
   const moodKey = entry.mood as Mood | null;
   const isComplete = entry.status === "COMPLETE";
+  const pullQuote =
+    isComplete && entry.summary ? pullQuoteFor(entry.summary) : null;
 
   return (
-    <div className="min-h-screen">
-      <main className="mx-auto max-w-3xl px-6 py-10 animate-fade-in">
+    <div data-theme="dark" className="min-h-screen bg-acuity-bg">
+      <main className="acuity-fade-up mx-auto max-w-3xl px-6 py-10">
         <div className="mb-6 flex items-center justify-between gap-3">
           <BackButton ariaLabel="Back to entries" />
           <EntryDeleteButtonWithRedirect entryId={entry.id} />
         </div>
 
         <header className="mb-8">
-          <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-2">{date}</p>
-          <div className="flex items-center gap-3 flex-wrap">
+          <p className="font-mono text-[11px] font-bold uppercase tracking-[1.4px] text-acuity-text-ter">
+            {date}
+          </p>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
             {moodKey && (
-              <span className="inline-flex items-center gap-2 text-lg text-zinc-800 dark:text-zinc-100">
+              <span className="inline-flex items-center gap-2 text-base text-acuity-text">
                 <MoodIcon mood={moodKey} size={22} />
                 {MOOD_LABELS[moodKey]}
               </span>
             )}
             {entry.energy !== null && entry.energy !== undefined && (
-              <span className="text-sm text-zinc-500 dark:text-zinc-400">
+              <span className="text-sm text-acuity-text-sec">
                 Energy {entry.energy}/10
+              </span>
+            )}
+            {entry.duration !== null && entry.duration !== undefined && (
+              <span className="text-sm text-acuity-text-sec">
+                {Math.round((entry.duration ?? 0) / 60)} min
               </span>
             )}
           </div>
         </header>
 
-        {/* Non-COMPLETE entries get the client gate: progress bar +
-            polling for in-flight states, retry-with-context for
-            PARTIAL / FAILED. The gate fires router.refresh() once
-            the polled status flips to COMPLETE so this server
-            component re-runs into the full extraction layout below. */}
+        {pullQuote && (
+          <div className="mb-8">
+            <HeroCard variant="primary" padding={7}>
+              <p className="font-mono text-[10px] font-bold uppercase tracking-[1.4px] text-acuity-text-ter">
+                Pull quote
+              </p>
+              <p className="mt-3 font-display text-2xl font-medium leading-snug text-acuity-text sm:text-3xl">
+                “{pullQuote}”
+              </p>
+            </HeroCard>
+          </div>
+        )}
+
         {!isComplete && (
           <EntryStatusGate
             entryId={entry.id}
@@ -105,20 +174,18 @@ export default async function EntryDetailPage({
 
         <div className="space-y-8">
           {isComplete && entry.summary && (
-            <Section title="Summary">
-              <p className="text-sm leading-relaxed text-zinc-700 dark:text-zinc-200 whitespace-pre-wrap">
+            <section>
+              <SectionHeader label="Summary" />
+              <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-acuity-text-sec">
                 {entry.summary}
               </p>
-            </Section>
+            </section>
           )}
 
           {/* §B.2.6 Free-tier locked footer. Heuristic: entry is
               COMPLETE with a summary but no extraction artifacts →
-              the FREE/Haiku branch produced this entry, so the
-              user is FREE post-trial and themes/tasks/goal flags
-              are gated. We avoid fetching the entitlement here so
-              the page remains a thin server component. Inline
-              footer per spec — no Section wrapper. */}
+              the FREE/Haiku branch produced this entry, so themes/
+              tasks/goal flags are gated behind PRO. */}
           {isComplete &&
             entry.summary &&
             entry.themes.length === 0 &&
@@ -127,111 +194,98 @@ export default async function EntryDetailPage({
             entry.tasks.length === 0 && <ProLockedFooter className="-mt-4" />}
 
           {isComplete && entry.themes.length > 0 && (
-            <Section title="Themes">
-              <div className="flex flex-wrap gap-2">
+            <section>
+              <SectionHeader label="Themes" count={entry.themes.length} />
+              <div className="mt-3 flex flex-wrap gap-2">
                 {entry.themes.map((t) => (
-                  <span
-                    key={t}
-                    className="rounded-full bg-zinc-100 dark:bg-white/10 px-3 py-1 text-xs text-zinc-600 dark:text-zinc-300"
-                  >
-                    {t}
-                  </span>
+                  <ThemePill key={t} theme={themeKeyFor(t)} label={t} size="m" />
                 ))}
               </div>
-            </Section>
+            </section>
           )}
 
           {isComplete && entry.wins.length > 0 && (
-            <Section title="Wins">
-              <ul className="space-y-1.5">
+            <section>
+              <SectionHeader label="Wins" count={entry.wins.length} />
+              <ul className="mt-3 space-y-1.5">
                 {entry.wins.map((w, i) => (
                   <li
                     key={i}
-                    className="flex gap-2 text-sm text-zinc-700 dark:text-zinc-200"
+                    className="flex gap-2 text-sm text-acuity-text"
                   >
-                    <span className="text-emerald-500 shrink-0">✓</span>
+                    <span className="shrink-0 text-acuity-good">✓</span>
                     <span>{w}</span>
                   </li>
                 ))}
               </ul>
-            </Section>
+            </section>
           )}
 
           {isComplete && entry.blockers.length > 0 && (
-            <Section title="Blockers">
-              <ul className="space-y-1.5">
+            <section>
+              <SectionHeader label="Blockers" count={entry.blockers.length} />
+              <ul className="mt-3 space-y-1.5">
                 {entry.blockers.map((b, i) => (
                   <li
                     key={i}
-                    className="flex gap-2 text-sm text-zinc-700 dark:text-zinc-200"
+                    className="flex gap-2 text-sm text-acuity-text"
                   >
-                    <span className="text-red-400 shrink-0">↳</span>
+                    <span className="shrink-0 text-acuity-bad">↳</span>
                     <span>{b}</span>
                   </li>
                 ))}
               </ul>
-            </Section>
+            </section>
           )}
 
           {isComplete && entry.tasks.length > 0 && (
-            <Section title={`Tasks (${entry.tasks.length})`}>
-              <div className="space-y-2">
+            <section>
+              <SectionHeader label="Tasks" count={entry.tasks.length} />
+              <div
+                className="acuity-stagger mt-3 space-y-2"
+                data-stagger-children
+              >
                 {entry.tasks.map((t) => {
                   const label = t.title ?? t.text ?? "Untitled task";
-                  const statusLabel = t.status.replace(/_/g, " ").toLowerCase();
+                  const statusLabel = t.status
+                    .replace(/_/g, " ")
+                    .toLowerCase();
                   return (
-                    <div
-                      key={t.id}
-                      className="rounded-xl border border-zinc-200 bg-zinc-50 dark:border-white/10 dark:bg-[#13131F] px-4 py-3"
-                    >
-                      <p className="text-sm text-zinc-800 dark:text-zinc-100">
-                        {label}
-                      </p>
-                      {t.description && (
-                        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
-                          {t.description}
+                    <div key={t.id} data-stagger>
+                      <Card variant="tinted" radius="lg" padding={4}>
+                        <p className="text-sm text-acuity-text">{label}</p>
+                        {t.description && (
+                          <p className="mt-1 text-xs leading-relaxed text-acuity-text-sec">
+                            {t.description}
+                          </p>
+                        )}
+                        <p className="mt-1 font-mono text-[10px] uppercase tracking-[1.4px] text-acuity-text-ter">
+                          {PRIORITY_LABELS[t.priority] ?? t.priority} ·{" "}
+                          {statusLabel}
                         </p>
-                      )}
-                      <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                        {PRIORITY_LABELS[t.priority] ?? t.priority} · {statusLabel}
-                      </p>
+                      </Card>
                     </div>
                   );
                 })}
               </div>
-            </Section>
+            </section>
           )}
 
           {/* Transcript stays ungated by status — for PARTIAL entries
               the user's own words are still saved and worth surfacing
-              alongside the retry card. Empty transcript (FAILED before
-              transcribe step) skips this block via the truthy guard. */}
+              alongside the retry card. */}
           {entry.transcript && (
-            <Section title="Transcript">
-              <p className="text-sm leading-relaxed text-zinc-500 dark:text-zinc-400 whitespace-pre-wrap">
-                {entry.transcript}
-              </p>
-            </Section>
+            <section>
+              <SectionHeader label="Transcript" />
+              <Card variant="tinted" radius="lg" padding={5} className="mt-3">
+                <p className="whitespace-pre-wrap text-sm leading-relaxed text-acuity-text-sec">
+                  {entry.transcript}
+                </p>
+              </Card>
+            </section>
           )}
         </div>
       </main>
     </div>
-  );
-}
-
-function Section({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section>
-      <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
-        {title}
-      </h2>
-      {children}
-    </section>
   );
 }
