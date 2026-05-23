@@ -90,7 +90,10 @@ export const APP_VERSION_CONFIG: Record<AppPlatform, AppVersionConfig> = {
     ctaText: "Update",
     dismissible: true,
     appStoreUrl: `https://apps.apple.com/app/id${IOS_APP_STORE_ID}`,
-    releaseNotes: null,
+    // Empty array (not null) so the modal's "render bullets if any"
+    // branch trips when Jim populates this for v1.2. Add 3-5 bullets
+    // when v1.2 ships — see the procedure in the file header.
+    releaseNotes: [],
   },
   // Android placeholder. No Android build is in distribution yet; the
   // mobile client only checks ?platform=ios for now. Kept here so the
@@ -103,7 +106,7 @@ export const APP_VERSION_CONFIG: Record<AppPlatform, AppVersionConfig> = {
     ctaText: "Update",
     dismissible: true,
     appStoreUrl: "https://play.google.com/store/apps/details?id=com.heelerdigital.acuity",
-    releaseNotes: null,
+    releaseNotes: [],
   },
 };
 
