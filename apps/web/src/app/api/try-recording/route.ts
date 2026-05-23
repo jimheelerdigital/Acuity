@@ -160,7 +160,44 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  // ── 9. Return extraction + set cookie ──────────────────────────────
+  // ── 9. Notify Keenan ────────────────────────────────────────────────
+  try {
+    const { getResendClient } = await import("@/lib/resend");
+    const resend = getResendClient();
+    const referrer = req.headers.get("referer") ?? "unknown";
+    const summary = (extraction.summary as string) ?? "No summary";
+    const taskCount = Array.isArray(extraction.tasks) ? extraction.tasks.length : 0;
+    const goalCount = Array.isArray(extraction.goals) ? extraction.goals.length : 0;
+    const now = new Date();
+
+    await resend.emails.send({
+      from: "keenan@getacuity.io",
+      to: "keenan@heelerdigital.com",
+      subject: "\uD83C\uDFA4 New Try It First recording",
+      html: `
+        <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1a1a1a;">
+          <h2 style="margin:0 0 16px;font-size:18px;">New Try It First Recording</h2>
+          <table style="width:100%;border-collapse:collapse;font-size:14px;">
+            <tr><td style="padding:6px 0;color:#666;width:140px;">IP Address</td><td style="padding:6px 0;">${clientIp}</td></tr>
+            <tr><td style="padding:6px 0;color:#666;">Landing page</td><td style="padding:6px 0;">${referrer}</td></tr>
+            <tr><td style="padding:6px 0;color:#666;">Timestamp</td><td style="padding:6px 0;">${now.toLocaleString("en-US", { timeZone: "America/Chicago" })} CT</td></tr>
+            <tr><td style="padding:6px 0;color:#666;">Tasks extracted</td><td style="padding:6px 0;">${taskCount}</td></tr>
+            <tr><td style="padding:6px 0;color:#666;">Goals extracted</td><td style="padding:6px 0;">${goalCount}</td></tr>
+            <tr><td style="padding:6px 0;color:#666;">Signup status</td><td style="padding:6px 0;">Pending signup — 5 min window</td></tr>
+          </table>
+          <div style="margin-top:16px;padding:12px 16px;background:#f5f3f0;border-radius:8px;">
+            <p style="margin:0 0 4px;font-size:12px;color:#888;text-transform:uppercase;letter-spacing:0.5px;">AI Summary</p>
+            <p style="margin:0;font-size:14px;line-height:1.5;">${summary}</p>
+          </div>
+        </div>
+      `,
+    });
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error("[try-recording] Notification email failed:", err);
+  }
+
+  // ── 10. Return extraction + set cookie ─────────────────────────────
   const response = NextResponse.json(
     {
       sessionToken,
