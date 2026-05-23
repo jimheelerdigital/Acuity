@@ -57,12 +57,12 @@ export function DynamicLandingPageView({ page, slug, ctaHref }: { page: DynamicL
         <ParallaxOrbs />
         <div className="relative mx-auto max-w-6xl px-6">
           <div className="flex flex-col lg:flex-row lg:items-center lg:gap-12">
-            <div className="flex-1 text-center lg:text-left">
+            <div className="flex-1 text-center">
               <Reveal>
                 <SplitHeroHeadline text={page.heroHeadline} />
               </Reveal>
               <Reveal delay={1}>
-                <p className="mt-5 text-base sm:text-lg text-[#F5EDE4] leading-relaxed max-w-xl mx-auto lg:mx-0">
+                <p className="mt-5 text-base sm:text-lg text-[#F5EDE4] leading-relaxed max-w-xl mx-auto">
                   {page.heroSubheadline}
                   {page.heroSubheadline.length < 120 && (
                     <> Acuity is an AI voice journal — just open the app and talk. It extracts your tasks, tracks your goals, scores your mood, spots the patterns you can&#39;t see, and every Sunday delivers a report that tells the story of your week.</>
