@@ -97,7 +97,7 @@ export function TryItNowButton({
 }
 
 /**
- * "Try It First" button with silver/light shining ring animation.
+ * "Try It First" button with purple shining ring animation.
  * Light background, dark text — designed to sit next to the purple
  * "Start Free Trial" button on dark landing pages.
  */
@@ -125,7 +125,7 @@ export function TryItNowButtonDark({
         href="/auth/signup"
         className={`group relative rounded-full p-[2px] transition active:scale-95 overflow-hidden inline-block ${className}`}
       >
-        <span className="absolute inset-[-100%] animate-cta-shine" style={{ background: 'conic-gradient(from 0deg, transparent 0%, transparent 60%, rgba(255,255,255,0.6) 75%, rgba(200,200,210,0.4) 85%, transparent 100%)' }} />
+        <span className="absolute inset-[-100%] animate-cta-shine" style={{ background: 'conic-gradient(from 0deg, transparent 0%, transparent 60%, #ffffff 75%, #B8A5FF 85%, transparent 100%)' }} />
         <span className="relative flex items-center justify-center rounded-full bg-[#F0EDE8] px-7 py-3.5 text-sm font-semibold text-[#181614]">
           Sign up to continue
         </span>
@@ -138,7 +138,7 @@ export function TryItNowButtonDark({
       onClick={() => setOpen(true)}
       className={`group relative rounded-full p-[2px] transition active:scale-95 hover:scale-[1.02] overflow-hidden ${className}`}
     >
-      <span className="absolute inset-[-100%] animate-cta-shine" style={{ background: 'conic-gradient(from 0deg, transparent 0%, transparent 60%, rgba(255,255,255,0.6) 75%, rgba(200,200,210,0.4) 85%, transparent 100%)' }} />
+      <span className="absolute inset-[-100%] animate-cta-shine" style={{ background: 'conic-gradient(from 0deg, transparent 0%, transparent 60%, #ffffff 75%, #B8A5FF 85%, transparent 100%)' }} />
       <span className="relative flex items-center justify-center rounded-full bg-[#F0EDE8] px-7 py-3.5 text-sm font-semibold text-[#181614]">
         Try It First
       </span>

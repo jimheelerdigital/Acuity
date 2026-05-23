@@ -41,6 +41,43 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-22] — Onboarding funnel tracking in admin dashboard
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 3cf9745
+
+### In plain English (for Keenan)
+
+You can now see exactly where users drop off during signup. The admin dashboard tracks every step of both the post-signup onboarding (recording screen → started recording → completed → saw results → download screen → downloaded app) and the "Try it now" flow (opened → recorded → saw results → clicked signup). Two new funnel charts on the Overview tab show counts and drop-off percentages at each step. The Users table now shows specific status like "Recorded" or "Saw extraction" instead of just "Complete/Incomplete". Click "view" on any user to see their full journey timeline with timestamps.
+
+### Technical changes (for Jimmy)
+
+- New Prisma model: `OnboardingEvent` (id, userId nullable, sessionToken nullable, event string, createdAt). Three indexes: (userId, createdAt), (sessionToken, createdAt), (event, createdAt).
+- `POST /api/onboarding-events` — fire-and-forget endpoint for logging events. Supports both authenticated (userId from session) and anonymous (sessionToken for try flow) callers.
+- `apps/web/src/lib/track-onboarding.ts` — client helper with `keepalive: true` so events fire even on page navigation.
+- `first-debrief-flow.tsx` — fires 8 `onboarding_*` events: recording_screen_viewed, recording_started, recording_completed, extraction_viewed, download_screen_viewed, app_store_clicked, continue_browser_clicked, skipped.
+- `try-debrief-flow.tsx` — fires 7 `try_*` events: recording_screen_viewed, recording_started, recording_completed, extraction_viewed, signup_started, signup_completed, expired.
+- Admin users list API: onboarding column now computed from events (8 granular states instead of 3).
+- Admin user detail API: includes `onboardingEvents` array for the journey timeline.
+- `UsersTab.tsx`: `OnboardingPill` updated with 8 color-coded states. `JourneyTimeline` rebuilt from event milestones.
+- `OverviewTab.tsx`: two new `FunnelBars` visualizations (post-signup + try flow) with drop-off percentages.
+- `metrics/route.ts`: `getOnboardingFunnel()` + `getTryFunnel()` queries using distinct user/session groupBy counts.
+
+### Manual steps needed
+
+- [x] Run `npx prisma db push` — adds OnboardingEvent table (Keenan — done 2026-05-22)
+- [x] Run `npx prisma generate` (Keenan — done 2026-05-22)
+
+### Notes
+
+- Events are fire-and-forget — if the endpoint fails, the user flow continues uninterrupted. Analytics should never break the product.
+- The funnel queries use `groupBy` for distinct user/session counts, not raw event counts (a user viewing the recording screen 3 times counts as 1).
+- Legacy users who signed up before this feature won't have events. The onboarding column falls back to `appFirstOpenedAt` or legacy `onboardingCompletedAt` for backwards compatibility.
+- Try flow events use `sessionToken` as the identifier pre-signup. After claim, the events could be backfilled with `userId` in a future enhancement.
+
+---
+
 ## [2026-05-22] — "Try it now" unauthenticated recording flow
 
 **Requested by:** Keenan
