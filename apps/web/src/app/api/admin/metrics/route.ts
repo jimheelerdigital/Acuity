@@ -1264,19 +1264,19 @@ const ONBOARDING_FUNNEL_STEPS = [
 
 async function getOnboardingFunnel(prisma: P, start: Date, end: Date) {
   try {
-    // Only count signups from after tracking was deployed — otherwise
-    // pre-tracking users inflate the top of the funnel with 0% conversion.
-    const firstEvent = await prisma.onboardingEvent.findFirst({
-      where: { event: { startsWith: "onboarding_" } },
-      orderBy: { createdAt: "asc" },
-      select: { createdAt: true },
+    // Count "Signups" as distinct users who have ANY onboarding event in
+    // the date range. This captures users who signed up just before
+    // tracking deployed but completed onboarding after — they'd be missed
+    // by a pure user.createdAt filter.
+    const signupUsers = await prisma.onboardingEvent.groupBy({
+      by: ["userId"],
+      where: {
+        event: { startsWith: "onboarding_" },
+        createdAt: { gte: start, lte: end },
+        userId: { not: null },
+      },
     });
-    const trackingDeployedAt = firstEvent?.createdAt ?? end;
-    const effectiveStart = start > trackingDeployedAt ? start : trackingDeployedAt;
-
-    const signups = await prisma.user.count({
-      where: { createdAt: { gte: effectiveStart, lte: end } },
-    });
+    const signups = signupUsers.length;
 
     const counts = await Promise.all(
       ONBOARDING_FUNNEL_STEPS.map(async (s) => {
@@ -1284,7 +1284,7 @@ async function getOnboardingFunnel(prisma: P, start: Date, end: Date) {
           by: ["userId"],
           where: {
             event: s.event,
-            createdAt: { gte: effectiveStart, lte: end },
+            createdAt: { gte: start, lte: end },
             userId: { not: null },
           },
         });
