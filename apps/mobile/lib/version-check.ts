@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from "expo-constants";
+import * as Linking from "expo-linking";
 import { Platform } from "react-native";
 
 /**
@@ -207,6 +208,43 @@ export function rememberDismissal(recommendedVersion: string): void {
     // Persistence failure is acceptable; worst case the user sees
     // the same prompt again on next launch.
   });
+}
+
+/**
+ * Open the App Store on the device. iOS supports `itms-apps://` for
+ * a direct hand-off into the App Store app (no Safari intermediary);
+ * we prefer that on iOS and fall back to the `https://` URL the
+ * config carries so non-iOS clients (or any odd corner case where
+ * canOpenURL says no) still land on a real product page.
+ *
+ * Returns true when a link opened successfully, false otherwise.
+ * Caller (the modal's onUpdate) doesn't auto-dismiss on success —
+ * the user has left the app to update; the modal staying visible
+ * is fine. The next launch (after they update) passes the version
+ * comparison and the modal won't re-show.
+ */
+export async function openAppStore(httpsUrl: string): Promise<boolean> {
+  if (Platform.OS === "ios") {
+    // Convert https://apps.apple.com/app/idXXXXX → itms-apps://
+    // form. URL parsing kept defensive in case the config carries
+    // an unexpected shape.
+    const itmsUrl = httpsUrl.replace(/^https?:\/\//, "itms-apps://");
+    try {
+      const canOpen = await Linking.canOpenURL(itmsUrl);
+      if (canOpen) {
+        await Linking.openURL(itmsUrl);
+        return true;
+      }
+    } catch {
+      // Fall through to the https path.
+    }
+  }
+  try {
+    await Linking.openURL(httpsUrl);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 // Exports for testing / future consumers.
