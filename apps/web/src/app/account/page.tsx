@@ -115,23 +115,25 @@ export default async function AccountPage({
       user.backfillStartedAt.getTime() > user.backfillCompletedAt.getTime());
 
   return (
-    <AccountClient
-      email={session.user.email}
-      name={session.user.name ?? null}
-      notificationTime={user?.notificationTime ?? "21:00"}
-      notificationDays={user?.notificationDays ?? [0, 1, 2, 3, 4, 5, 6]}
-      notificationsEnabled={user?.notificationsEnabled ?? false}
-      subscriptionStatus={user?.subscriptionStatus ?? "FREE"}
-      hasStripeCustomer={Boolean(user?.stripeCustomerId)}
-      periodEnd={user?.stripeCurrentPeriodEnd?.toISOString() ?? null}
-      trialEndsAt={user?.trialEndsAt?.toISOString() ?? null}
-      weeklyEmailEnabled={user?.weeklyEmailEnabled ?? true}
-      monthlyEmailEnabled={user?.monthlyEmailEnabled ?? true}
-      isProLocked={isProLocked}
-      calendarConnection={calendarConnection}
-      olderBackfillCount={olderBackfillCount}
-      backfillInFlight={backfillInFlight}
-      justUpgraded={searchParams?.upgrade === "success"}
-    />
+    <div data-theme="dark" className="min-h-screen bg-acuity-bg">
+      <AccountClient
+        email={session.user.email}
+        name={session.user.name ?? null}
+        notificationTime={user?.notificationTime ?? "21:00"}
+        notificationDays={user?.notificationDays ?? [0, 1, 2, 3, 4, 5, 6]}
+        notificationsEnabled={user?.notificationsEnabled ?? false}
+        subscriptionStatus={user?.subscriptionStatus ?? "FREE"}
+        hasStripeCustomer={Boolean(user?.stripeCustomerId)}
+        periodEnd={user?.stripeCurrentPeriodEnd?.toISOString() ?? null}
+        trialEndsAt={user?.trialEndsAt?.toISOString() ?? null}
+        weeklyEmailEnabled={user?.weeklyEmailEnabled ?? true}
+        monthlyEmailEnabled={user?.monthlyEmailEnabled ?? true}
+        isProLocked={isProLocked}
+        calendarConnection={calendarConnection}
+        olderBackfillCount={olderBackfillCount}
+        backfillInFlight={backfillInFlight}
+        justUpgraded={searchParams?.upgrade === "success"}
+      />
+    </div>
   );
 }

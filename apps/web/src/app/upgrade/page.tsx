@@ -3,10 +3,21 @@ import { redirect } from "next/navigation";
 
 import { getAuthOptions } from "@/lib/auth";
 import { PLAN_PRO_NAME } from "@acuity/shared";
+import { Card, HeroCard } from "@/components/acuity";
 import { UpgradePlanPicker } from "./upgrade-plan-picker";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * /upgrade — atmospheric paywall. Slice 14 (2026-05-22) refresh:
+ * canonical primitives, Accountability voice per Acuity_SalesCopy.md
+ * §7.2 / §8 ("keep what you've built"). HeroCard variant=mix as the
+ * hero block; bullet list inside a default Card; tokenized check SVG
+ * stroke instead of the hardcoded `#7C3AED`.
+ *
+ * Copy adjusted: "Life Matrix across 6 areas" → "Life Matrix across
+ * 10 areas" (Phase D vocab).
+ */
 export default async function UpgradePage({
   searchParams,
 }: {
@@ -15,10 +26,7 @@ export default async function UpgradePage({
   const session = await getServerSession(getAuthOptions());
   if (!session?.user?.id) redirect("/auth/signin");
 
-  // Analytics event — IMPLEMENTATION_PLAN_PAYWALL §8.3. The `src`
-  // query parameter carries the origin (life_audit_body_link |
-  // email_cta | mobile_profile | paywall_redirect |
-  // lifemap_interstitial | null → "direct").
+  // Analytics event — IMPLEMENTATION_PLAN_PAYWALL §8.3.
   try {
     const { track } = await import("@/lib/posthog");
     await track(session.user.id, "upgrade_page_viewed", {
@@ -29,61 +37,68 @@ export default async function UpgradePage({
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-6">
-      <div className="w-full max-w-sm animate-fade-in">
-        <div className="text-center mb-8">
-          <div className="text-4xl mb-4">⚡</div>
-          <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50 mb-2">
-            Upgrade to {PLAN_PRO_NAME}
-          </h1>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed">
-            Keep everything you've built so far.
-          </p>
-        </div>
+    <div data-theme="dark" className="min-h-screen bg-acuity-bg">
+      <div className="flex min-h-screen items-center justify-center px-6 py-12">
+        <div className="acuity-fade-up w-full max-w-md">
+          <div className="mb-6 text-center">
+            <p className="font-mono text-[11px] font-bold uppercase tracking-[1.4px] text-acuity-text-ter">
+              Acuity Pro
+            </p>
+            <h1 className="mt-2 font-display text-3xl font-bold tracking-tight text-acuity-text">
+              Keep what you&rsquo;ve built.
+            </h1>
+            <p className="mt-3 text-sm leading-relaxed text-acuity-text-sec">
+              Your trial is short. The patterns are long. Pro keeps the
+              weekly report landing and the matrix updating.
+            </p>
+          </div>
 
-        {/* Pricing card */}
-        <div className="rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg p-6 shadow-sm mb-6">
-          <UpgradePlanPicker />
+          <Card variant="default" radius="xl" padding={6} className="mb-4">
+            <UpgradePlanPicker />
 
-          <ul className="space-y-3 mt-6 mb-2">
-            {[
-              "Unlimited nightly debriefs",
-              "Sunday report every week",
-              "Goals tracked across entries",
-              "Life Matrix across 6 areas",
-              "Mood scored nightly",
-              "Priority support",
-            ].map((feature) => (
-              <li key={feature} className="flex items-center gap-2.5 text-sm text-zinc-600 dark:text-zinc-300">
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="#7C3AED"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="shrink-0"
+            <ul className="mt-6 space-y-3">
+              {[
+                "Unlimited nightly debriefs",
+                "Sunday report every week",
+                "Goals tracked across entries",
+                "Life Matrix across 10 areas",
+                "Mood scored nightly",
+                "Priority support",
+              ].map((feature) => (
+                <li
+                  key={feature}
+                  className="flex items-center gap-2.5 text-sm text-acuity-text-sec"
                 >
-                  <path d="M20 6 9 17l-5-5" />
-                </svg>
-                {feature}
-              </li>
-            ))}
-          </ul>
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="var(--acuity-primary)"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="shrink-0"
+                  >
+                    <path d="M20 6 9 17l-5-5" />
+                  </svg>
+                  {feature}
+                </li>
+              ))}
+            </ul>
 
-          <p className="mt-3 text-center text-xs text-zinc-400 dark:text-zinc-500">
-            Cancel anytime. No commitment.
-          </p>
+            <p className="mt-4 text-center text-xs text-acuity-text-quiet">
+              Cancel anytime. No commitment.
+            </p>
+          </Card>
+
+          <a
+            href="/home"
+            className="block text-center text-sm text-acuity-text-sec transition hover:text-acuity-text"
+          >
+            Back to dashboard
+          </a>
         </div>
-
-        <a
-          href="/home"
-          className="block text-center text-sm text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 transition"
-        >
-          Back to dashboard
-        </a>
       </div>
     </div>
   );
