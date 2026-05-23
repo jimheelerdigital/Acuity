@@ -845,7 +845,7 @@ function EmptyState({ tab, isLocked }: { tab: Tab; isLocked: boolean }) {
     return (
       <section
         data-surface-id="tasks_empty_state"
-        className="rounded-2xl border border-zinc-200 bg-gradient-to-br from-acuity-primary-soft to-white px-6 py-12 text-center dark:border-white/10 dark:from-acuity-primary-soft dark:to-[#1E1E2E]"
+        className="rounded-2xl border border-zinc-200 bg-gradient-to-br from-acuity-primary-soft to-white px-6 py-12 text-center dark:border-white/10 dark:from-acuity-primary-soft dark:to-acuity-card-bg"
       >
         <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
           {copy.title}

@@ -35,7 +35,7 @@ function AuthErrorContent() {
 
   return (
     <div className="flex min-h-screen items-center justify-center px-6">
-      <div className="w-full max-w-sm rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-8 text-center shadow-lg animate-fade-in">
+      <div className="w-full max-w-sm rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg p-8 text-center shadow-lg animate-fade-in">
         <div className="mb-4 text-4xl">&#x26A0;&#xFE0F;</div>
         <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50 mb-2">
           Authentication error

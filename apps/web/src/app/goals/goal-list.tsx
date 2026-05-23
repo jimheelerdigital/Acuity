@@ -920,7 +920,7 @@ function SuggestionsBanner({
   return (
     <button
       onClick={onOpen}
-      className="mb-5 w-full rounded-2xl border border-acuity-primary-soft dark:border-acuity-primary-soft bg-gradient-to-br from-acuity-primary-soft to-white dark:from-acuity-primary-soft dark:to-[#1E1E2E] px-5 py-3 flex items-center justify-between gap-3 text-left hover:border-acuity-primary-soft dark:hover:border-acuity-primary transition"
+      className="mb-5 w-full rounded-2xl border border-acuity-primary-soft dark:border-acuity-primary-soft bg-gradient-to-br from-acuity-primary-soft to-white dark:from-acuity-primary-soft dark:to-acuity-card-bg px-5 py-3 flex items-center justify-between gap-3 text-left hover:border-acuity-primary-soft dark:hover:border-acuity-primary transition"
     >
       <div>
         <p className="text-xs font-semibold uppercase tracking-widest text-acuity-primary dark:text-acuity-primary">

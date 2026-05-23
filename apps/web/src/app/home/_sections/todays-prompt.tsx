@@ -17,7 +17,7 @@ export async function TodaysPromptSection({ userId }: { userId: string }) {
     : "/home#record";
 
   return (
-    <section className="lg:col-span-8 rounded-2xl border border-zinc-200 bg-gradient-to-br from-acuity-primary-soft via-white to-white p-5 sm:p-6 lg:p-7 shadow-sm dark:border-white/10 dark:from-acuity-primary-soft dark:via-[#1E1E2E] dark:to-[#1E1E2E]">
+    <section className="lg:col-span-8 rounded-2xl border border-zinc-200 bg-gradient-to-br from-acuity-primary-soft via-white to-white p-5 sm:p-6 lg:p-7 shadow-sm dark:border-white/10 dark:from-acuity-primary-soft dark:via-acuity-card-bg dark:to-acuity-card-bg">
       {recommendation.label && (
         <p
           className="font-semibold uppercase text-acuity-primary dark:text-acuity-primary"

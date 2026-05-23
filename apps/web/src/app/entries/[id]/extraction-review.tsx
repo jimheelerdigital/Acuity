@@ -162,7 +162,7 @@ export function ExtractionReview({ entryId }: { entryId: string }) {
   const selectedGoals = goals.filter((g) => g.selected).length;
 
   return (
-    <section className="rounded-2xl border border-acuity-primary-soft dark:border-acuity-primary-soft bg-gradient-to-br from-acuity-primary-soft to-white dark:from-acuity-primary-soft dark:to-[#1E1E2E] p-5 mb-8">
+    <section className="rounded-2xl border border-acuity-primary-soft dark:border-acuity-primary-soft bg-gradient-to-br from-acuity-primary-soft to-white dark:from-acuity-primary-soft dark:to-acuity-card-bg p-5 mb-8">
       <div className="mb-4">
         <p className="text-xs font-semibold uppercase tracking-widest text-acuity-primary dark:text-acuity-primary">
           Review what Acuity extracted

@@ -61,7 +61,7 @@ function MobileCompleteInner() {
 
   return (
     <div className="flex min-h-screen items-center justify-center px-6">
-      <div className="w-full max-w-sm rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-8 shadow-lg animate-fade-in text-center">
+      <div className="w-full max-w-sm rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg p-8 shadow-lg animate-fade-in text-center">
         {phase === "init" && (
           <>
             <div className="mb-4 text-4xl">✦</div>
@@ -100,7 +100,7 @@ function MobileCompleteInner() {
             </p>
             <Link
               href="/auth/signin"
-              className="mt-6 inline-block text-sm text-violet-600 dark:text-violet-400 hover:text-violet-500"
+              className="mt-6 inline-block text-sm text-acuity-primary dark:text-acuity-primary hover:text-violet-500"
             >
               Sign in on the web instead →
             </Link>

@@ -161,7 +161,7 @@ export function Step9Notifications() {
             type="time"
             value={time}
             onChange={(e) => setTime(e.target.value || DEFAULT_TIME)}
-            className="rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg px-3 py-2 text-lg font-mono tabular-nums text-zinc-900 dark:text-zinc-100 outline-none focus:border-violet-500"
+            className="rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg px-3 py-2 text-lg font-mono tabular-nums text-zinc-900 dark:text-zinc-100 outline-none focus:border-acuity-primary"
           />
           <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">
             In your local timezone.
@@ -181,7 +181,7 @@ export function Step9Notifications() {
                 aria-pressed={frequency === f}
                 className={`rounded-full border px-3 py-1.5 text-sm transition ${
                   frequency === f
-                    ? "border-violet-500 bg-violet-50 text-violet-700 dark:bg-violet-950/30 dark:text-violet-300 dark:border-violet-500"
+                    ? "border-acuity-primary bg-acuity-primary-soft text-acuity-primary dark:bg-acuity-primary-soft dark:text-acuity-primary dark:border-acuity-primary"
                     : "border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-300 hover:border-zinc-300 dark:hover:border-white/20"
                 }`}
               >

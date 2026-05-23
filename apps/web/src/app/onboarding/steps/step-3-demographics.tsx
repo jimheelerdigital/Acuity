@@ -204,7 +204,7 @@ export function Step3Demographics() {
         <select
           value={country ?? ""}
           onChange={(e) => setCountry(e.target.value || null)}
-          className="w-full max-w-xs rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-violet-500"
+          className="w-full max-w-xs rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-acuity-primary"
         >
           <option value="">Prefer not to say</option>
           {COUNTRIES.map((c) => (
@@ -241,7 +241,7 @@ export function Step3Demographics() {
             onChange={(e) => setPrimaryReasonsCustom(e.target.value)}
             maxLength={200}
             placeholder="Tell Acuity more — what brings you here?"
-            className="mt-3 w-full rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-violet-500"
+            className="mt-3 w-full rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-acuity-primary"
             aria-label="What brings you here (freeform)"
           />
         )}
@@ -273,7 +273,7 @@ export function Step3Demographics() {
             onChange={(e) => setLifeStageCustom(e.target.value)}
             maxLength={200}
             placeholder="What's shifting? (layoff, caregiving, sabbatical…)"
-            className="mt-3 w-full rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-violet-500"
+            className="mt-3 w-full rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-acuity-primary"
             aria-label="Life stage (freeform)"
           />
         )}
@@ -297,7 +297,7 @@ function Chip({
       onClick={onClick}
       className={`rounded-full border px-3 py-1.5 text-sm transition ${
         active
-          ? "border-violet-500 bg-violet-50 text-violet-700 dark:bg-violet-950/30 dark:text-violet-300 dark:border-violet-500"
+          ? "border-acuity-primary bg-acuity-primary-soft text-acuity-primary dark:bg-acuity-primary-soft dark:text-acuity-primary dark:border-acuity-primary"
           : "border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-300 hover:border-zinc-300 dark:hover:border-white/20"
       }`}
       aria-pressed={active}

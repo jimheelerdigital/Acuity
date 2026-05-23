@@ -55,7 +55,7 @@ export default async function SharedStateOfMePage({
             Made with{" "}
             <a
               href="/"
-              className="font-medium text-violet-600 dark:text-violet-400 hover:text-violet-500"
+              className="font-medium text-acuity-primary dark:text-acuity-primary hover:text-violet-500"
             >
               Acuity
             </a>
@@ -81,7 +81,7 @@ function ExpiredState() {
         </p>
         <a
           href="/"
-          className="mt-6 inline-block rounded-full bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500"
+          className="mt-6 inline-block rounded-full bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-acuity-primary-soft0"
         >
           Visit Acuity
         </a>

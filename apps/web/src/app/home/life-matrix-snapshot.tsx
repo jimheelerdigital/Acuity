@@ -205,7 +205,7 @@ export function LifeMatrixSnapshot({
                   fill={a.color}
                   stroke="white"
                   strokeWidth={2}
-                  className="dark:[stroke:#1E1E2E]"
+                  className="[stroke:var(--acuity-card-bg)]"
                 />
               );
             })}

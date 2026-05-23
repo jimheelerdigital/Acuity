@@ -41,6 +41,55 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-22] — Web parity slices 8-17 — deep parity pass
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** _final commit on slice 17_
+
+### In plain English (for Keenan)
+
+A second pass through the signed-in pages to close the parity gap with the mobile app's visual feel. The earlier pass (slices 1-7) swapped colors and fonts. This pass added the actual mobile design vocabulary — gradient ring progress, segmented tabs, gradient text, miniature radar charts, blurred-glass floating buttons — and started using them on the pages that needed them. Each page now reads like the same product as the mobile app, not just "the mobile palette with web layout."
+
+Marketing pages (homepage, /for/* persona landers) explicitly NOT touched per the standing direction — Jim wants to walk through those with you in person.
+
+### Technical changes (for Jimmy)
+
+**Slice 8 — primitives port (cdcdf47):** Built 7 missing canonical components in `apps/web/src/components/acuity/`: GradientText, RingProgress, SegmentedTabs, GradientCheckbox, Sparkbar, MiniRadar, GlassPill. Each mirrors mobile spec with web idioms (background-clip:text instead of MaskedView, SVG + stroke-dasharray instead of react-native-svg, backdrop-filter instead of expo-blur).
+
+**Slice 9 — /home composition (351060f):** Avatar primitive on greeting; PAST_DUE warning rewritten using canonical `--acuity-warn` token + color-mix transparency; StreakSummary refactored to Card + SectionHeader + GradientText for the flame-active count.
+
+**Slice 10 — entry detail (cca6cd4):** HeroCard pull-quote at top extracts first sentence (≤180 chars), SectionHeader + ThemePill + Card primitives across the page, acuity-stagger cascade on tasks, data-theme="dark" wrap.
+
+**Slice 11 — /life-matrix header (a5132db):** Manrope display-5xl title, mono uppercase eyebrow, acuity-fade-up on mount, data-theme wrap.
+
+**Slice 12 — /insights hub (54fd54c):** Life Matrix + Theme Map cards converted to HeroCard primary/secondary variants. Ask + State of Me to tinted Card. SectionHeader. Stagger cascade.
+
+**Slice 13 — /goals + /tasks chrome (6309d55):** Page roots wrapped in data-theme="dark" + bg-acuity-bg. Legacy `animate-fade-in` → `.acuity-fade-up`.
+
+**Slice 14 — /account + /upgrade (8cc4eeb):** /upgrade fully rewritten with Accountability voice ("Keep what you've built."), Card primitive wrapper, canonical token check icons, "Life Matrix across 6 areas" corrected to "10 areas" per Phase D. /account wrapped in data-theme.
+
+**Slice 15 — onboarding visual depth (05181ec):** Sed-swept all 9 onboarding step files for literal violet hex codes. step-1-welcome.tsx refreshed to Manrope display headline.
+
+**Slice 16 — motion pass (578476c):** 7 legacy `animate-fade-in` / `animate-fade-in-up` consumers across home/entries/insights/tasks swapped to canonical `.acuity-fade-up`. Same fade-up motion on 280ms easeStandard with prefers-reduced-motion guard.
+
+**Slice 17 — QA + cleanup (this commit):** Final sed sweep for `dark:to-[#1E1E2E]` / `dark:via-[#1E1E2E]` / `dark:[stroke:#1E1E2E]` / `focus:border-violet-*` / `bg-violet-50` / `text-violet-*` / `dark:bg-violet-950/X` / `dark:text-violet-300` patterns. TypeScript check across all touched surfaces: clean (only pre-existing `onboardingEvent` errors in admin routes — needs `prisma generate`).
+
+### Manual steps needed
+
+- [ ] Spot-check Vercel deploy: walk /home → /entries/[any-id] → /insights → /life-matrix → /goals → /tasks → /account → /upgrade. Verify HeroCard pull-quote on entry detail, HeroCard primary+secondary on /insights cards, /upgrade rewrite reads Accountability tone. Confirm no leftover violet hexes. Jimmy
+- [ ] `npx prisma generate` to clear admin route TypeScript errors (pre-existing, unrelated to this work). Jimmy
+- [ ] Optional follow-up: deeper composition refresh on home _sections (life-matrix-snapshot → MiniRadar primitive, weekly-insight-card → HeroCard), full Theme Map orbital cosmos port (slice 6b queued).
+
+### Notes
+
+- **Marketing surfaces deliberately untouched** per direction: landing.tsx, page.tsx, /for/*, try-it-now-button, try-debrief-flow, first-debrief-flow, /admin/*, /mobile/*, prisma/schema.prisma, /api/*.
+- **Composition depth caveat**: Slices 9, 13, 14, 15 ship the high-impact page-shell + primitive-adoption changes but stop short of deeply restructuring multi-component surfaces. Token migration + canonical chrome are in place; deeper composition refactor can land iteratively.
+- **Layout theme-color meta tag** intentionally left as `#7C5CFC` — that's a browser-chrome value, not a CSS token. Update when brand color formally changes.
+- **404 page** still has `bg-[#7C5CFC]` / `text-[#7C5CFC]` literals — tiny follow-up cleanup.
+
+---
+
 ## [2026-05-22] — Onboarding funnel tracking in admin dashboard
 
 **Requested by:** Keenan

@@ -84,7 +84,7 @@ export default async function SharedWeeklyPage({ params }: Params) {
     <div className="min-h-screen bg-[#FAFAF7] dark:bg-[#0B0B12]">
       <main className="mx-auto max-w-2xl px-6 py-16">
         <header className="mb-10">
-          <p className="text-xs font-semibold uppercase tracking-widest text-violet-600 dark:text-violet-400">
+          <p className="text-xs font-semibold uppercase tracking-widest text-acuity-primary dark:text-acuity-primary">
             Shared weekly reflection
           </p>
           <h1 className="mt-2 text-3xl font-semibold text-zinc-900 dark:text-zinc-50 tracking-tight">
@@ -168,7 +168,7 @@ export default async function SharedWeeklyPage({ params }: Params) {
             Made with{" "}
             <a
               href="/"
-              className="font-medium text-violet-600 dark:text-violet-400 hover:text-violet-500"
+              className="font-medium text-acuity-primary dark:text-acuity-primary hover:text-violet-500"
             >
               Acuity
             </a>
@@ -194,7 +194,7 @@ function ExpiredState() {
         </p>
         <a
           href="/"
-          className="mt-6 inline-block rounded-full bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500"
+          className="mt-6 inline-block rounded-full bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-acuity-primary-soft0"
         >
           Visit Acuity
         </a>

@@ -51,7 +51,7 @@ function ForgotPasswordForm() {
         </p>
         <Link
           href="/auth/signin"
-          className="mt-6 inline-block text-sm text-violet-600 dark:text-violet-400 hover:text-violet-500"
+          className="mt-6 inline-block text-sm text-acuity-primary dark:text-acuity-primary hover:text-violet-500"
         >
           Back to sign in →
         </Link>
@@ -82,7 +82,7 @@ function ForgotPasswordForm() {
           placeholder="you@example.com"
           autoComplete="email"
           required
-          className="w-full rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-4 py-3 text-sm text-zinc-900 dark:text-zinc-50 placeholder-zinc-400 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 transition"
+          className="w-full rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg px-4 py-3 text-sm text-zinc-900 dark:text-zinc-50 placeholder-zinc-400 outline-none focus:border-acuity-primary focus:ring-2 focus:ring-violet-500/20 transition"
         />
         <button
           type="submit"
@@ -95,7 +95,7 @@ function ForgotPasswordForm() {
 
       <p className="mt-6 text-center text-xs text-zinc-500 dark:text-zinc-400">
         Remembered it?{" "}
-        <Link href="/auth/signin" className="font-semibold text-violet-600 dark:text-violet-400 hover:text-violet-500">
+        <Link href="/auth/signin" className="font-semibold text-acuity-primary dark:text-acuity-primary hover:text-violet-500">
           Sign in
         </Link>
       </p>
@@ -106,7 +106,7 @@ function ForgotPasswordForm() {
 export default function ForgotPasswordPage() {
   return (
     <div className="flex min-h-screen items-center justify-center px-6">
-      <div className="w-full max-w-sm rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-8 shadow-lg animate-fade-in">
+      <div className="w-full max-w-sm rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg p-8 shadow-lg animate-fade-in">
         <Suspense>
           <ForgotPasswordForm />
         </Suspense>
