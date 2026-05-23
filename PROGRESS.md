@@ -41,6 +41,41 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-23] — Site-wide page load speed audit and fix
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** d9ccd2f
+
+### In plain English (for Keenan)
+
+Pages across the site were loading slowly (~4 seconds) because landing pages were sending all their JavaScript to the browser before showing anything. Now the five marketing pages (/for/sleep, /for/founders, etc.) render their HTML on the server first, so users see content immediately while interactive elements load in the background. The Life Matrix page's heavy charting library now loads after the page shell appears instead of blocking everything. Logo images across the site now use Next.js optimization for smaller file sizes and lazy loading.
+
+### Technical changes (for Jimmy)
+
+- Removed `"use client"` from 5 static `/for/*` page components — they had no client state, so converting to server components drops page JS from ~3.5 kB to ~185 B each and enables SSR
+- `apps/web/src/app/life-matrix/page.tsx`: LifeMap (recharts, ~130KB) now loaded via `next/dynamic` with `ssr: false` — shows loading spinner while chart loads asynchronously
+- `apps/web/src/app/page.tsx`: LandingPage (1911 lines) code-split via `next/dynamic` with `ssr: true`
+- `apps/web/src/components/nav-bar.tsx`: raw `<img>` → Next.js `<Image>` for AcuityLogoDark.png
+- `apps/web/src/app/auth/signup/success/success-client.tsx`: raw `<img>` → `<Image>` for AcuityLogo.png
+- `apps/web/src/app/auth/signup/success/try-session-claimer.tsx`: raw `<img>` → `<Image>` for AcuityLogo.png
+- Confirmed Meta Pixel is `afterInteractive`, GA4 is `afterInteractive`, cookie consent banner deferred 5s, PostHog + Contentsquare consent-gated
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- `/for/*` page JS dropped ~96% (from ~3.5 kB to ~185 B per page). First-load JS dropped ~3 kB per page (118 kB → 115 kB) because page shell no longer ships as JS.
+- `/life-matrix` first-load JS still shows ~230 kB in build output because Next.js counts dynamically imported chunks in the total, but recharts now loads asynchronously after initial paint — real-world FCP improves.
+- Auth pages (`/auth/signin`, `/auth/signup`) legitimately need `"use client"` for form state/hooks — not converted.
+- Admin pages not touched — internal tooling, not user-facing.
+- Shared JS bundle (88 kB) is reasonable and unchanged — no bloated barrel imports found.
+- `canvas-confetti` was missing from node_modules (not installed despite being in package.json) — `npm install` fixed it.
+
+---
+
 ## [2026-05-22] — Web parity slices 8-17 — deep parity pass
 
 **Requested by:** Jimmy
