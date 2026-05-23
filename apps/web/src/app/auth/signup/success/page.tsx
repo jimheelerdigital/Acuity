@@ -31,11 +31,13 @@ export default async function SignupSuccessPage({
   // Check if user has already completed a recording — if so, skip
   // straight to the download/CTA screen. ?force=1 bypasses this for testing.
   let skipToDownload = false;
+  let userId: string | null = null;
 
   if (!force) {
     try {
       const session = await getServerSession(getAuthOptions());
       if (session?.user?.id) {
+        userId = session.user.id;
         const { prisma } = await import("@/lib/prisma");
         const existing = await prisma.entry.count({
           where: { userId: session.user.id, status: "COMPLETE" },
@@ -63,7 +65,7 @@ export default async function SignupSuccessPage({
     <>
       <TrackCompleteRegistration />
       <SyncAttribution />
-      <FirstDebriefFlow skipToDownload={skipToDownload} />
+      <FirstDebriefFlow skipToDownload={skipToDownload} userId={userId} />
     </>
   );
 }

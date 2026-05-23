@@ -52,14 +52,19 @@ type Screen = "intro" | "record" | "processing" | "extraction" | "cta";
 
 export function FirstDebriefFlow({
   skipToDownload,
+  userId,
 }: {
   skipToDownload: boolean;
+  userId: string | null;
 }) {
   const [screen, setScreen] = useState<Screen>(
     skipToDownload ? "cta" : "intro"
   );
   const [entryId, setEntryId] = useState<string | null>(null);
   const [extraction, setExtraction] = useState<ExtractionResult | null>(null);
+
+  // Shorthand for tracking with userId baked in
+  const track = (event: string) => trackOnboardingEvent(event, { userId });
 
   // Intro screen uses dark bg; record screen uses light bg; others use dark
   // All screens use white theme for seamless flow
@@ -74,13 +79,14 @@ export function FirstDebriefFlow({
       )}
       {screen === "record" && (
         <RecordScreen
+          userId={userId}
           onRecorded={(id) => {
-            trackOnboardingEvent("onboarding_recording_completed");
+            track("onboarding_recording_completed");
             setEntryId(id);
             setScreen("processing");
           }}
           onSkip={() => {
-            trackOnboardingEvent("onboarding_skipped");
+            track("onboarding_skipped");
             setScreen("cta");
           }}
         />
@@ -89,7 +95,7 @@ export function FirstDebriefFlow({
         <ProcessingScreen
           entryId={entryId}
           onComplete={(ext) => {
-            trackOnboardingEvent("onboarding_extraction_viewed");
+            track("onboarding_extraction_viewed");
             setExtraction(ext);
             setScreen("extraction");
             // Auto-commit extracted tasks + goals so they appear in
@@ -129,7 +135,7 @@ export function FirstDebriefFlow({
           onContinue={() => setScreen("cta")}
         />
       )}
-      {screen === "cta" && <CTAScreen />}
+      {screen === "cta" && <CTAScreen userId={userId} />}
     </div>
   );
 }
@@ -223,9 +229,11 @@ function IntroAnimation({ onComplete }: { onComplete: () => void }) {
 function RecordScreen({
   onRecorded,
   onSkip,
+  userId,
 }: {
   onRecorded: (entryId: string) => void;
   onSkip: () => void;
+  userId: string | null;
 }) {
   const [phase, setPhase] = useState<"idle" | "recording" | "uploading" | "error">("idle");
   const [elapsed, setElapsed] = useState(0);
@@ -247,8 +255,8 @@ function RecordScreen({
 
   // Track screen view
   useEffect(() => {
-    trackOnboardingEvent("onboarding_recording_screen_viewed");
-  }, []);
+    trackOnboardingEvent("onboarding_recording_screen_viewed", { userId });
+  }, [userId]);
 
   // Stagger entrance animation
   useEffect(() => {
@@ -288,7 +296,7 @@ function RecordScreen({
     setError(null);
     setElapsed(0);
     chunksRef.current = [];
-    trackOnboardingEvent("onboarding_recording_started");
+    trackOnboardingEvent("onboarding_recording_started", { userId });
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -1312,7 +1320,7 @@ const CTA_TESTIMONIALS = STATIC_CAROUSEL_TESTIMONIALS.map((t) => ({
   role: t.role,
 }));
 
-function CTAScreen() {
+function CTAScreen({ userId }: { userId: string | null }) {
   const [showSection, setShowSection] = useState(0);
   const [testimonialIdx, setTestimonialIdx] = useState(0);
   const [counter, setCounter] = useState(0);
@@ -1320,8 +1328,8 @@ function CTAScreen() {
   // Scroll to top on mount + track
   useEffect(() => {
     window.scrollTo(0, 0);
-    trackOnboardingEvent("onboarding_download_screen_viewed");
-  }, []);
+    trackOnboardingEvent("onboarding_download_screen_viewed", { userId });
+  }, [userId]);
 
   // Stagger sections
   useEffect(() => {
@@ -1388,7 +1396,7 @@ function CTAScreen() {
             href={APP_STORE_URL}
             target="_blank"
             rel="noopener noreferrer"
-            onClick={() => trackOnboardingEvent("onboarding_app_store_clicked")}
+            onClick={() => trackOnboardingEvent("onboarding_app_store_clicked", { userId })}
             className="group relative inline-flex items-center gap-3 rounded-full px-8 py-4 text-base font-semibold text-white transition-all duration-300 hover:scale-[1.02] hover:-translate-y-0.5 active:scale-95 overflow-hidden"
             style={{
               background: "linear-gradient(135deg, #7C5CFC 0%, #9F7AEA 50%, #7C3AED 100%)",
@@ -1421,7 +1429,7 @@ function CTAScreen() {
         <div className={`text-center mb-10 transition-all duration-700 ${vis(2)}`}>
           <a
             href="/home"
-            onClick={() => trackOnboardingEvent("onboarding_continue_browser_clicked")}
+            onClick={() => trackOnboardingEvent("onboarding_continue_browser_clicked", { userId })}
             className="group relative inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-medium text-zinc-600 transition-all duration-300 hover:scale-[1.02] hover:text-zinc-900 active:scale-95 overflow-hidden"
             style={{
               boxShadow: "0 0 0 1px rgba(0,0,0,0.08)",

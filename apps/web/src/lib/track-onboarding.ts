@@ -1,14 +1,22 @@
 /**
  * Fire-and-forget onboarding funnel event. Never throws, never blocks.
  * Used by both the post-signup FirstDebriefFlow and the TryDebriefFlow.
+ *
+ * For post-signup events, pass userId (from server component prop) so
+ * the event can be stored even if the NextAuth session cookie hasn't
+ * propagated to the client yet.
  */
 export function trackOnboardingEvent(
   event: string,
-  sessionToken?: string | null
+  opts?: { sessionToken?: string | null; userId?: string | null }
 ): void {
   try {
     const body: Record<string, string> = { event };
-    if (sessionToken) body.sessionToken = sessionToken;
+    if (opts?.sessionToken) body.sessionToken = opts.sessionToken;
+    if (opts?.userId) body.userId = opts.userId;
+
+    // eslint-disable-next-line no-console
+    console.log(`[onboarding-track] ${event}`, opts?.userId ? `user:${opts.userId}` : opts?.sessionToken ? `session:${opts.sessionToken}` : "anon");
 
     fetch("/api/onboarding-events", {
       method: "POST",

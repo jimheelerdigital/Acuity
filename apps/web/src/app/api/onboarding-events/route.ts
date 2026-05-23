@@ -38,7 +38,7 @@ const VALID_EVENTS = new Set([
 ]);
 
 export async function POST(req: NextRequest) {
-  let body: { event?: string; sessionToken?: string };
+  let body: { event?: string; sessionToken?: string; userId?: string };
   try {
     body = await req.json();
   } catch {
@@ -50,14 +50,21 @@ export async function POST(req: NextRequest) {
     return new Response(null, { status: 400 });
   }
 
-  // Try to get userId — will be null for unauthenticated try-flow callers
-  const userId = await getAnySessionUserId(req).catch(() => null);
+  // Try to get userId from session first, fall back to body.userId
+  // (passed by the server component when the session cookie hasn't
+  // propagated to the client yet — common on the signup success page).
+  let userId = await getAnySessionUserId(req).catch(() => null);
+  if (!userId && body.userId) {
+    userId = body.userId;
+  }
   const sessionToken = body.sessionToken ?? null;
 
-  // Must have at least one identifier
-  if (!userId && !sessionToken) {
-    return new Response(null, { status: 400 });
-  }
+  // Allow events without identifiers — post-signup events may fire
+  // before the session cookie propagates, and try-flow events fire
+  // from unauthenticated pages. Store the event anyway so we don't
+  // lose data. The admin dashboard aggregates by event name, so
+  // orphaned events still contribute to funnel counts.
+  // (The identifier check was too strict and silently dropped events.)
 
   try {
     const { prisma } = await import("@/lib/prisma");
