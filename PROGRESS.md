@@ -41,6 +41,33 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-23] — Disable AdLab auto-kill and auto-scale rules
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 29dbf78
+
+### In plain English (for Keenan)
+
+The AdLab cron was automatically pausing ads that it judged as underperforming. All automated kill and scale actions are now disabled. The cron still runs daily to pull performance data from Meta and send you the summary email — it just won't touch any ads. To un-pause the two creatives that were just killed, hit the reactivation endpoint after deploy (see manual steps).
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/api/admin/adlab/cron/route.ts`: added `DECISIONS_ENABLED = false` flag. When false, the cron skips all creative-level rules (R1-R5) and experiment-level rules (R6-R8). Metrics sync (Step 1) and daily email (Step 4) still run normally.
+- `apps/web/src/app/api/admin/adlab/ads/reactivate/route.ts`: new POST endpoint that finds all ads killed in the last 48 hours, reactivates them on Meta via `setStatus(adId, "ad", "ACTIVE")`, and updates their DB status to "live". Protected by CRON_SECRET.
+
+### Manual steps needed
+
+- [ ] After deploy, run: `curl -X POST https://getacuity.io/api/admin/adlab/ads/reactivate -H "Authorization: Bearer $CRON_SECRET"` to un-pause Comparison Creative 8 and Story Creative 4. Keenan
+- [ ] To re-enable auto-kill/scale later, set `DECISIONS_ENABLED = true` in the cron file. Jimmy
+
+### Notes
+
+- The rules themselves (R1-R8 thresholds) are preserved — just wrapped in a conditional. Re-enabling is a one-line change.
+- The reactivation endpoint also reactivates the adset level (not just the ad) to ensure Meta fully serves the creative.
+
+---
+
 ## [2026-05-23] — Try It Now funnel tracking fix
 
 **Requested by:** Keenan
