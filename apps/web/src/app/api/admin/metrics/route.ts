@@ -1264,26 +1264,27 @@ const ONBOARDING_FUNNEL_STEPS = [
 
 async function getOnboardingFunnel(prisma: P, start: Date, end: Date) {
   try {
+    // Only count signups from after tracking was deployed — otherwise
+    // pre-tracking users inflate the top of the funnel with 0% conversion.
+    const firstEvent = await prisma.onboardingEvent.findFirst({
+      where: { event: { startsWith: "onboarding_" } },
+      orderBy: { createdAt: "asc" },
+      select: { createdAt: true },
+    });
+    const trackingDeployedAt = firstEvent?.createdAt ?? end;
+    const effectiveStart = start > trackingDeployedAt ? start : trackingDeployedAt;
+
     const signups = await prisma.user.count({
-      where: { createdAt: { gte: start, lte: end } },
+      where: { createdAt: { gte: effectiveStart, lte: end } },
     });
 
     const counts = await Promise.all(
       ONBOARDING_FUNNEL_STEPS.map(async (s) => {
-        const count = await prisma.onboardingEvent.count({
-          where: {
-            event: s.event,
-            createdAt: { gte: start, lte: end },
-            userId: { not: null },
-          },
-          // Count distinct users, not total events
-        });
-        // Use groupBy for distinct user count
         const distinctUsers = await prisma.onboardingEvent.groupBy({
           by: ["userId"],
           where: {
             event: s.event,
-            createdAt: { gte: start, lte: end },
+            createdAt: { gte: effectiveStart, lte: end },
             userId: { not: null },
           },
         });
