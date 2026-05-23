@@ -75,7 +75,7 @@ export function Step8FirstEntryCta() {
         data point of your first week.
       </p>
 
-      <div className="mt-4 rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-4 text-sm text-zinc-500 dark:text-zinc-400">
+      <div className="mt-4 rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg p-4 text-sm text-zinc-500 dark:text-zinc-400">
         <p>
           <strong className="text-zinc-900 dark:text-zinc-50">One tip.</strong> Don&rsquo;t
           plan what you&rsquo;re going to say. The whole loop works better
@@ -89,7 +89,7 @@ export function Step8FirstEntryCta() {
         <button
           onClick={() => complete(true)}
           disabled={isSubmitting}
-          className="flex items-center justify-center gap-3 rounded-full bg-[#7C5CFC] px-7 py-4 text-base font-semibold text-white shadow-md transition hover:bg-[#6B4FE0] hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-60"
+          className="flex items-center justify-center gap-3 rounded-full bg-acuity-primary px-7 py-4 text-base font-semibold text-white shadow-md transition hover:brightness-110 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-60"
         >
           <MicIcon />
           {isSubmitting ? "Listening…" : "Record your first entry"}

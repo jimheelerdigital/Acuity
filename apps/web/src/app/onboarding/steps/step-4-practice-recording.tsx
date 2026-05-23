@@ -193,7 +193,7 @@ export function Step4PracticeRecording() {
                 setState("idle");
                 setElapsed(0);
               }}
-              className="mt-4 rounded-full border border-amber-300 bg-white dark:bg-[#1E1E2E] px-5 py-2 text-sm font-semibold text-amber-900 transition hover:border-amber-400 hover:bg-amber-50"
+              className="mt-4 rounded-full border border-amber-300 bg-white dark:bg-acuity-card-bg px-5 py-2 text-sm font-semibold text-amber-900 transition hover:border-amber-400 hover:bg-amber-50"
             >
               Try again
             </button>
@@ -208,10 +208,10 @@ function RecordButtonVisual({ onClick }: { onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className="group relative flex h-28 w-28 items-center justify-center rounded-full bg-[#7C5CFC] shadow-lg transition hover:bg-[#6B4FE0] hover:shadow-xl active:scale-95"
+      className="group relative flex h-28 w-28 items-center justify-center rounded-full bg-acuity-primary shadow-lg transition hover:brightness-110 hover:shadow-xl active:scale-95"
       aria-label="Start practice recording"
     >
-      <span className="absolute inset-0 animate-ping rounded-full bg-[#7C5CFC] opacity-25" />
+      <span className="absolute inset-0 animate-ping rounded-full bg-acuity-primary opacity-25" />
       <MicIcon />
     </button>
   );
@@ -259,7 +259,7 @@ function StopButtonVisual({
           style={{ transition: "stroke-dashoffset 200ms linear" }}
         />
       </svg>
-      <span className="h-8 w-8 rounded-sm bg-white dark:bg-[#1E1E2E]" />
+      <span className="h-8 w-8 rounded-sm bg-white dark:bg-acuity-card-bg" />
     </button>
   );
 }

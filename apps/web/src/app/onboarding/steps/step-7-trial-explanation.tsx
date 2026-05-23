@@ -63,13 +63,13 @@ function TimelineRow({
 }) {
   return (
     <div
-      className={`rounded-2xl border bg-white dark:bg-[#1E1E2E] p-4 shadow-sm transition-shadow hover:shadow-md ${
+      className={`rounded-2xl border bg-white dark:bg-acuity-card-bg p-4 shadow-sm transition-shadow hover:shadow-md ${
         dim ? "border-zinc-200 dark:border-white/10" : "border-zinc-200 dark:border-white/10"
       }`}
     >
       <p
         className={`text-[11px] font-semibold uppercase tracking-widest ${
-          dim ? "text-zinc-400 dark:text-zinc-500" : "text-[#7C5CFC]"
+          dim ? "text-zinc-400 dark:text-zinc-500" : "text-acuity-primary"
         }`}
       >
         {marker}

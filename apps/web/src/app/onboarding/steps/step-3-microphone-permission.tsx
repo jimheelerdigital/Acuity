@@ -79,7 +79,7 @@ export function Step3MicrophonePermission() {
         {state === "idle" && (
           <button
             onClick={requestMic}
-            className="rounded-full bg-[#7C5CFC] px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#6B4FE0] hover:shadow-md"
+            className="rounded-full bg-acuity-primary px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:brightness-110 hover:shadow-md"
           >
             Enable microphone
           </button>
@@ -122,7 +122,7 @@ export function Step3MicrophonePermission() {
             </p>
             <button
               onClick={requestMic}
-              className="mt-4 rounded-full border border-amber-300 bg-white dark:bg-[#1E1E2E] px-5 py-2 text-sm font-semibold text-amber-900 transition hover:border-amber-400 hover:bg-amber-50"
+              className="mt-4 rounded-full border border-amber-300 bg-white dark:bg-acuity-card-bg px-5 py-2 text-sm font-semibold text-amber-900 transition hover:border-amber-400 hover:bg-amber-50"
             >
               Try again
             </button>
@@ -170,7 +170,7 @@ function InfoIcon() {
 function Spinner() {
   return (
     <svg
-      className="h-5 w-5 animate-spin text-[#7C5CFC]"
+      className="h-5 w-5 animate-spin text-acuity-primary"
       viewBox="0 0 24 24"
       fill="none"
       aria-hidden="true"

@@ -12,27 +12,24 @@
  */
 export function Step1Welcome() {
   return (
-    <div className="flex flex-col items-start">
-      {/* Subtle brand bug — one small moment of delight without a
-          logo animation library. The violet-500 ring matches the
-          landing page accent + the progress dots above. */}
-      <div className="mb-8 h-10 w-10 rounded-full border-2 border-[#7C5CFC] bg-white dark:bg-[#1E1E2E] shadow-sm" />
+    <div className="acuity-fade-up flex flex-col items-start">
+      <div className="mb-8 h-10 w-10 rounded-full border-2 border-acuity-primary bg-acuity-card-bg shadow-acuity-soft" />
 
-      <h1 className="text-4xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-5xl">
+      <h1 className="font-display text-4xl font-bold leading-[1.05] tracking-tight text-acuity-text sm:text-5xl">
         You&rsquo;re in.
       </h1>
 
-      <p className="mt-5 text-base leading-relaxed text-zinc-600 dark:text-zinc-300 sm:text-lg">
+      <p className="mt-5 text-base leading-relaxed text-acuity-text-sec sm:text-lg">
         Before your first recording, a short walk-through. Just a couple of minutes. Seven questions, most of them quick.
       </p>
 
-      <p className="mt-4 text-base leading-relaxed text-zinc-600 dark:text-zinc-300 sm:text-lg">
+      <p className="mt-4 text-base leading-relaxed text-acuity-text-sec sm:text-lg">
         The answers shape what Acuity pays attention to on your behalf —
         your baseline mood, the areas of your life you&rsquo;re here to
         work on, how often you think you&rsquo;ll actually record.
       </p>
 
-      <p className="mt-6 text-sm text-zinc-400 dark:text-zinc-500">
+      <p className="mt-6 text-sm text-acuity-text-ter">
         You can skip anything. You can come back to it later.
       </p>
     </div>

@@ -204,7 +204,7 @@ export function Step3Demographics() {
         <select
           value={country ?? ""}
           onChange={(e) => setCountry(e.target.value || null)}
-          className="w-full max-w-xs rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-violet-500"
+          className="w-full max-w-xs rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-violet-500"
         >
           <option value="">Prefer not to say</option>
           {COUNTRIES.map((c) => (
@@ -241,7 +241,7 @@ export function Step3Demographics() {
             onChange={(e) => setPrimaryReasonsCustom(e.target.value)}
             maxLength={200}
             placeholder="Tell Acuity more — what brings you here?"
-            className="mt-3 w-full rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-violet-500"
+            className="mt-3 w-full rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-violet-500"
             aria-label="What brings you here (freeform)"
           />
         )}
@@ -273,7 +273,7 @@ export function Step3Demographics() {
             onChange={(e) => setLifeStageCustom(e.target.value)}
             maxLength={200}
             placeholder="What's shifting? (layoff, caregiving, sabbatical…)"
-            className="mt-3 w-full rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-violet-500"
+            className="mt-3 w-full rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-violet-500"
             aria-label="Life stage (freeform)"
           />
         )}

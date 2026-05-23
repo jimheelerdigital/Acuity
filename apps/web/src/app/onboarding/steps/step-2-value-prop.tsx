@@ -65,8 +65,8 @@ function ValueCard({
   body: string;
 }) {
   return (
-    <div className="flex gap-4 rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-4 shadow-sm transition hover:border-zinc-300 dark:hover:border-white/20 hover:shadow-md">
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#F3F0FF] text-[#7C5CFC]">
+    <div className="flex gap-4 rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg p-4 shadow-sm transition hover:border-zinc-300 dark:hover:border-white/20 hover:shadow-md">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#F3F0FF] text-acuity-primary">
         {mark}
       </div>
       <div className="min-w-0 flex-1">
