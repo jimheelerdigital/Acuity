@@ -59,11 +59,12 @@ const REQUESTED_WINDOW_LABEL: Record<string, string> = {
   all: "your entries",
 };
 
-type TimeWindow = "week" | "month" | "year" | "all";
+type TimeWindow = "week" | "month" | "3months" | "year" | "all";
 
 const TIME_TABS = [
   { id: "week" as const, label: "Week" },
   { id: "month" as const, label: "Month" },
+  { id: "3months" as const, label: "3 months" },
   { id: "year" as const, label: "Year" },
   { id: "all" as const, label: "All time" },
 ];

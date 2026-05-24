@@ -106,10 +106,11 @@ const REQUESTED_WINDOW_LABEL: Record<string, string> = {
   all: "your entries",
 };
 
-type TimeWindow = "week" | "month" | "all";
+type TimeWindow = "week" | "month" | "3months" | "all";
 const TIME_OPTIONS: { key: TimeWindow; label: string }[] = [
   { key: "week", label: "Week" },
   { key: "month", label: "Month" },
+  { key: "3months", label: "3 months" },
   { key: "all", label: "All time" },
 ];
 
