@@ -22,6 +22,7 @@ import { RecordButton } from "./record-button";
 import { Greeting } from "./greeting";
 
 import { TodaysPromptSection } from "./_sections/todays-prompt";
+import { TrialHomeBanner } from "./_sections/trial-home-banner";
 import { StreakSummarySection } from "./_sections/streak-summary";
 import { LifeMatrixSection } from "./_sections/life-matrix";
 import { WeeklyInsightSection } from "./_sections/weekly-insight";
@@ -184,6 +185,12 @@ export default async function DashboardPage() {
       <TrackSubscribe />
       <PageContainer mobileWidth="5xl" className="acuity-fade-up">
         <WelcomeBackBanner reduced={reducedTrial} daysLeft={trialDaysLeft} />
+
+        {/* Slice 7 — atmospheric trial countdown banner. Renders only
+            in the final 7 days of a TRIAL or the ~14d FREE-post-expiry
+            window. Server-component reads its own data so it doesn't
+            inflate the shell-level user query. */}
+        <TrialHomeBanner userId={userId} />
 
         {user?.subscriptionStatus === "PAST_DUE" && (
           <section

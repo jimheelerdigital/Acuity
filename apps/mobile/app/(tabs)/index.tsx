@@ -1,7 +1,11 @@
+import Constants from "expo-constants";
+import * as Linking from "expo-linking";
 import { useFocusEffect, useRouter } from "expo-router";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+
+import { GradientText, HeroCard } from "@/components/acuity";
 
 import {
   MOOD_LABELS,
@@ -468,56 +472,248 @@ export default function DashboardTab() {
 }
 
 /**
- * Shows a quiet trial countdown banner in the final 7 days. Same
- * logic as pre-Q4 — only the visual surface changed.
+ * TrialBanner — atmospheric trial countdown / post-expiry hero banner.
+ *
+ * Slice 7 (2026-05-25): the quiet "N days left" pill became a HeroCard
+ * with eyebrow, large countdown (warn-tinted at 1-3d, gradient at 4-7d),
+ * stats row (entries · streak · themes when available), and a
+ * Continue-on-web CTA. Apple Option-C compliant — opens Safari, no
+ * prices, no "Subscribe" copy in-app.
+ *
+ * Gate (renders nothing otherwise):
+ *   - TRIAL with daysRemaining 1-7
+ *   - FREE with trialExpiredAt within the past 14 days
+ *
+ * `currentStreak` and `totalRecordings` come from the auth context's
+ * user object; themesSurfaced is not exposed there so we omit it on
+ * mobile (the web banner shows the full row server-side).
  */
 function TrialBanner() {
   const { user } = useAuth();
   const { tokens } = useTheme();
   if (!user) return null;
-  if (user.subscriptionStatus !== "TRIAL") return null;
-  if (!user.trialEndsAt) return null;
 
-  const msLeft = new Date(user.trialEndsAt).getTime() - Date.now();
-  if (msLeft <= 0) return null;
-  const daysLeft = Math.ceil(msLeft / (24 * 60 * 60 * 1000));
-  if (daysLeft > 7) return null;
+  const MS_PER_DAY = 24 * 60 * 60 * 1000;
+  const POST_EXPIRY_DAYS = 14;
+  const now = Date.now();
+
+  let mode: "trial-warning" | "trial-urgent" | "post-expiry" | null = null;
+  let daysLeft = 0;
+
+  if (user.subscriptionStatus === "TRIAL" && user.trialEndsAt) {
+    const msLeft = new Date(user.trialEndsAt).getTime() - now;
+    daysLeft = Math.max(0, Math.ceil(msLeft / MS_PER_DAY));
+    if (daysLeft <= 0) mode = "post-expiry";
+    else if (daysLeft <= 3) mode = "trial-urgent";
+    else if (daysLeft <= 7) mode = "trial-warning";
+  } else if (
+    user.subscriptionStatus === "FREE" &&
+    user.trialExpiredAt
+  ) {
+    const daysSince =
+      (now - new Date(user.trialExpiredAt).getTime()) / MS_PER_DAY;
+    if (daysSince >= 0 && daysSince <= POST_EXPIRY_DAYS) {
+      mode = "post-expiry";
+    }
+  }
+
+  if (!mode) return null;
 
   return (
-    <View
-      style={{
-        borderRadius: tokens.radius.lg,
-        backgroundColor: tokens.cardBgTint,
-        borderWidth: 0.5,
-        borderColor: tokens.line,
-        paddingHorizontal: 16,
-        paddingVertical: 14,
-        marginBottom: 16,
-      }}
-    >
+    <View style={{ marginBottom: 16 }}>
+      <TrialHeroCard
+        mode={mode}
+        daysLeft={daysLeft}
+        currentStreak={user.currentStreak ?? 0}
+      />
+    </View>
+  );
+}
+
+function TrialHeroCard({
+  mode,
+  daysLeft,
+  currentStreak,
+}: {
+  mode: "trial-warning" | "trial-urgent" | "post-expiry";
+  daysLeft: number;
+  currentStreak: number;
+}) {
+  const { tokens } = useTheme();
+  const isUrgent = mode === "trial-urgent";
+  const isPostExpiry = mode === "post-expiry";
+
+  return (
+    <HeroCard variant="primary" padding={20}>
+      <Text
+        style={{
+          fontFamily: tokens.fontMono,
+          fontSize: 10,
+          fontWeight: "700",
+          letterSpacing: 1.4,
+          color: tokens.textTer,
+          textTransform: "uppercase",
+        }}
+      >
+        {isPostExpiry ? "Trial ended" : "Trial"}
+      </Text>
+
+      {isPostExpiry ? (
+        <Text
+          style={{
+            fontFamily: tokens.fontDisplay,
+            fontSize: 24,
+            fontWeight: "700",
+            color: tokens.text,
+            marginTop: 8,
+          }}
+        >
+          Your insights are paused
+        </Text>
+      ) : isUrgent ? (
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "baseline",
+            marginTop: 8,
+            flexWrap: "wrap",
+          }}
+        >
+          <Text
+            style={{
+              fontFamily: tokens.fontDisplay,
+              fontSize: 32,
+              fontWeight: "700",
+              color: tokens.bad,
+              fontVariant: ["tabular-nums"],
+            }}
+          >
+            {daysLeft} {daysLeft === 1 ? "day" : "days"}
+          </Text>
+          <Text
+            style={{
+              fontFamily: tokens.fontDisplay,
+              fontSize: 32,
+              fontWeight: "700",
+              color: tokens.text,
+            }}
+          >
+            {" left"}
+          </Text>
+        </View>
+      ) : (
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "baseline",
+            marginTop: 8,
+            flexWrap: "wrap",
+          }}
+        >
+          <GradientText
+            colors={tokens.gradMix.colors as unknown as readonly [string, string, ...string[]]}
+            start={tokens.gradMix.start}
+            end={tokens.gradMix.end}
+            style={{
+              fontFamily: tokens.fontDisplay,
+              fontSize: 32,
+              fontWeight: "700",
+              fontVariant: ["tabular-nums"],
+            }}
+          >
+            {daysLeft} {daysLeft === 1 ? "day" : "days"}
+          </GradientText>
+          <Text
+            style={{
+              fontFamily: tokens.fontDisplay,
+              fontSize: 32,
+              fontWeight: "700",
+              color: tokens.text,
+            }}
+          >
+            {" left"}
+          </Text>
+        </View>
+      )}
+
       <Text
         style={{
           fontFamily: tokens.fontSans,
           fontSize: 14,
-          fontWeight: "600",
-          color: tokens.text,
-        }}
-      >
-        {daysLeft === 1
-          ? "Last day of your trial."
-          : `${daysLeft} day${daysLeft === 1 ? "" : "s"} left in your trial.`}
-      </Text>
-      <Text
-        style={{
-          fontFamily: tokens.fontSans,
-          fontSize: 12,
+          lineHeight: 21,
           color: tokens.textSec,
-          marginTop: 4,
+          marginTop: 10,
         }}
       >
-        Your Day 14 Life Audit is coming. Nothing disappears after.
+        {isPostExpiry
+          ? "Recording stays yours. Life Matrix, Theme Map, and weekly insights are saved exactly where you left them — continue on web to bring them back."
+          : isUrgent
+          ? "After your trial ends, recording stays free. Life Matrix and Theme Map lock until you continue on web."
+          : "After your trial, recording stays yours. Life Matrix, Theme Map, and weekly insights move to Pro."}
       </Text>
-    </View>
+
+      {currentStreak >= 2 && (
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "baseline",
+            gap: 6,
+            marginTop: 14,
+          }}
+        >
+          <Text
+            style={{
+              fontFamily: tokens.fontDisplay,
+              fontSize: 18,
+              fontWeight: "700",
+              color: tokens.text,
+              fontVariant: ["tabular-nums"],
+            }}
+          >
+            {currentStreak}
+          </Text>
+          <Text
+            style={{
+              fontFamily: tokens.fontSans,
+              fontSize: 13,
+              color: tokens.textTer,
+            }}
+          >
+            day streak
+          </Text>
+        </View>
+      )}
+
+      <View style={{ marginTop: 16 }}>
+        <Pressable
+          onPress={openContinueOnWeb}
+          style={{
+            alignSelf: "flex-start",
+            borderRadius: tokens.radius.pill,
+            backgroundColor: tokens.cardBgTint,
+            borderWidth: 0.5,
+            borderColor: tokens.cardBorder,
+            paddingHorizontal: 16,
+            paddingVertical: 10,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 6,
+          }}
+        >
+          <Text
+            style={{
+              fontFamily: tokens.fontSans,
+              fontSize: 14,
+              fontWeight: "600",
+              color: tokens.text,
+            }}
+          >
+            Continue on web
+          </Text>
+          <Text style={{ fontSize: 14, color: tokens.text }}>→</Text>
+        </Pressable>
+      </View>
+    </HeroCard>
   );
 }
 
@@ -633,4 +829,20 @@ function formatDuration(seconds: number): string {
   const s = Math.round(seconds % 60);
   if (m === 0) return `${s}s`;
   return `${m}m ${String(s).padStart(2, "0")}s`;
+}
+
+function apiBaseUrl(): string {
+  const extra = Constants.expoConfig?.extra as
+    | { apiUrl?: string }
+    | undefined;
+  return (
+    process.env.EXPO_PUBLIC_API_URL ??
+    extra?.apiUrl ??
+    "https://getacuity.io"
+  );
+}
+
+function openContinueOnWeb() {
+  const url = `${apiBaseUrl()}/upgrade?src=mobile_home_banner`;
+  void Linking.openURL(url);
 }
