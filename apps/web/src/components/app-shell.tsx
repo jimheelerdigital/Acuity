@@ -7,12 +7,10 @@ import { useState } from "react";
 import {
   BarChart3,
   CheckSquare,
-  Compass,
   Home,
   type LucideIcon,
   Mic,
   Settings,
-  Sparkles,
   Target,
 } from "lucide-react";
 
@@ -25,6 +23,11 @@ type NavItem = {
   icon: LucideIcon;
   accent?: boolean;
   matchPrefix?: string;
+  /** Optional list of additional path prefixes that also mark this
+   *  nav item active. Used so Insights stays highlighted when the
+   *  user drills into /life-matrix (which is a featured destination
+   *  from the /insights hub but lives at a top-level URL). */
+  extraMatchPrefixes?: string[];
 };
 
 type NavSection = {
@@ -32,6 +35,20 @@ type NavSection = {
   items: NavItem[];
 };
 
+/**
+ * Bug 5 (2026-05-24): sidebar IA simplification. Life Matrix +
+ * Theme Map are featured cards on /insights — duplicating them in
+ * the sidebar gave two paths to the same destination and made the
+ * Reflect section feel cluttered. Now /insights is the single
+ * entry point; users navigate to Life Matrix / Theme Map / Ask /
+ * State of Me from the cards on that hub. URLs themselves unchanged
+ * — only the sidebar entry pruned. Insights gets `matchPrefix:
+ * "/insights"` so /life-matrix and /insights/theme-map both
+ * highlight Insights as the active section in the sidebar.
+ *
+ * Mobile uses tabs differently (bottom tab bar with limited slots),
+ * so this prune is web-only.
+ */
 const SECTIONS: NavSection[] = [
   {
     heading: "Core",
@@ -45,19 +62,17 @@ const SECTIONS: NavSection[] = [
     heading: "Reflect",
     items: [
       {
-        href: "/life-matrix",
-        label: "Life Matrix",
-        icon: Compass,
+        href: "/insights",
+        label: "Insights",
+        icon: BarChart3,
         accent: true,
-        matchPrefix: "/life-matrix",
+        // Match every reflection route so the sidebar stays active
+        // when the user drills into Life Matrix / Theme Map / Ask /
+        // State of Me from the hub. /life-matrix lives at a top-
+        // level URL but conceptually belongs to the Insights bucket.
+        matchPrefix: "/insights",
+        extraMatchPrefixes: ["/life-matrix"],
       },
-      {
-        href: "/insights/theme-map",
-        label: "Theme Map",
-        icon: Sparkles,
-        matchPrefix: "/insights/theme",
-      },
-      { href: "/insights", label: "Insights", icon: BarChart3 },
     ],
   },
   {
@@ -68,8 +83,11 @@ const SECTIONS: NavSection[] = [
 
 function isActive(pathname: string | null, item: NavItem): boolean {
   if (!pathname) return false;
-  if (item.matchPrefix) {
-    return pathname === item.matchPrefix || pathname.startsWith(item.matchPrefix + "/");
+  const allPrefixes: string[] = [];
+  if (item.matchPrefix) allPrefixes.push(item.matchPrefix);
+  if (item.extraMatchPrefixes) allPrefixes.push(...item.extraMatchPrefixes);
+  for (const prefix of allPrefixes) {
+    if (pathname === prefix || pathname.startsWith(prefix + "/")) return true;
   }
   return pathname === item.href;
 }
