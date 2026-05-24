@@ -1,206 +1,240 @@
 /**
- * Acuity canonical design tokens — web port of mobile's coral preset.
+ * Acuity canonical design tokens. Slice 19 (2026-05-24) restructure:
  *
- * Source of truth: `apps/mobile/lib/theme/tokens.ts → makeAcuityTokens({
- * dark: true, accent: "coral" })`. Mobile uses culori to convert OKLCH
- * to hex at runtime (RN can't parse oklch). Web ships OKLCH natively —
- * Chrome 111+, Safari 15.4+, Firefox 113+ all support it, which matches
- * Acuity's stated browser support floor (see _design/DESIGN_SYSTEM.md
- * §2). Authoring in OKLCH means the values stay 1:1 with mobile's
- * intent; if we ever swap the preset (sunset/citrus/cobalt), only the
- * primary/secondary triplets change.
+ *   1. **Light is the default**, dark is the explicit opt-in. Earlier
+ *      slices defaulted dark and force-flipped each page via a
+ *      `data-theme="dark"` wrapper, which left the AppShell light
+ *      while content panels were dark → broken mid-viewport look.
+ *      `<html data-theme="dark">` is now the single switch that flips
+ *      the entire app.
  *
- * Convention:
- *   - `[data-theme="dark"]` is the default. We set it on `<html>` at
- *     layout time. Light mode is the explicit opt-in.
- *   - All tokens live under `--acuity-*` keys. Tailwind reads them via
- *     `colors: { acuity: { primary: 'var(--acuity-primary)', ... } }`.
- *   - Status colors (good/bad) share their OKLCH triplet across modes.
- *   - WARN_AMBER is hardcoded as `#FBBF24` — the canonical exception
- *     for warning surfaces (no palette warning token exists). Source:
- *     `apps/mobile/lib/tone-colors.ts → WARN_AMBER`.
+ *   2. **Palette is parametric**, controlled by `data-palette` on
+ *      `<html>`. Coral is the default; sunset / citrus / cobalt
+ *      override `--acuity-primary` + `--acuity-secondary` (and the
+ *      derived hi/lo/soft variants). Gradients + glows compose via
+ *      `var()` cascade so a palette switch instantly re-tints every
+ *      surface that consumes a brand color — no per-component
+ *      override needed.
  *
- * The hue rotation pattern in mobile is `bg = oklch(0.21 0.022 sh+5)`
- * where `sh` is the secondary hue. Coral preset: secondary hue = 285,
- * so `sh+5 = 290`. Primary hue = 38, so `ph+5 = 43`. These numeric
- * substitutions are baked in below.
+ *   3. **Theme × palette compose freely**. `<html data-theme="light"
+ *      data-palette="sunset">` renders light surfaces with sunset
+ *      accent. Both selectors target `<html>`; the cascade picks the
+ *      right value at every level. SSR sets the attributes from
+ *      `User.theme` / `User.themePalette` so first paint is correct.
+ *
+ *   4. **No hardcoded palette literals**. Earlier the
+ *      `--acuity-grad-mix-soft` and the glow shadows carried
+ *      hardcoded `oklch(0.76 0.155 38 / …)` values, which broke
+ *      palette switching. Now they're built via `color-mix()` over
+ *      `var(--acuity-primary)` / `var(--acuity-secondary)` so any
+ *      palette switch propagates through.
+ *
+ * OKLCH ramps match `apps/mobile/lib/theme/tokens.ts →
+ * ACUITY_ACCENT_PRESETS`. primary-hi = primary + 0.08 lightness;
+ * primary-lo = primary − 0.10 lightness; soft = 0.18 alpha at the
+ * same chroma + hue.
+ *
+ * WARN_AMBER stays as the hardcoded `#fbbf24` exception per
+ * `apps/mobile/lib/tone-colors.ts`.
  */
 
-/* ─── Dark mode (default) ───────────────────────────────────────── */
+/* ─── Light mode (default) + coral palette (default) ─────────────── */
 
 :root,
-:root[data-theme="dark"] {
-  /* Brand — coral preset */
-  --acuity-primary: oklch(0.76 0.155 38);
-  --acuity-primary-hi: oklch(0.84 0.155 38);
-  --acuity-primary-lo: oklch(0.66 0.155 38);
-  --acuity-secondary: oklch(0.66 0.18 285);
-  --acuity-secondary-hi: oklch(0.74 0.18 285);
-  --acuity-secondary-lo: oklch(0.56 0.18 285);
-
-  /* Status — palette-independent */
-  --acuity-good: oklch(0.74 0.135 165);
-  --acuity-good-soft: oklch(0.74 0.135 165 / 0.18);
-  --acuity-bad: oklch(0.66 0.17 25);
-  --acuity-bad-soft: oklch(0.66 0.17 25 / 0.18);
-  --acuity-warn: #fbbf24;
-
-  /* Brand soft variants — 18% alpha at primary/secondary chroma.
-     Used for icon-circle backgrounds, focus rings, success/active
-     row tints. Same alpha as good-soft/bad-soft for visual rhythm. */
-  --acuity-primary-soft: oklch(0.76 0.155 38 / 0.18);
-  --acuity-secondary-soft: oklch(0.66 0.18 285 / 0.18);
-
-  /* Surfaces — sh+5 = 290 for coral preset */
-  --acuity-bg: oklch(0.21 0.022 290);
-  --acuity-bg-sub: oklch(0.235 0.024 290);
-  --acuity-bg-inset: oklch(0.185 0.020 285);
-  --acuity-card-bg: oklch(0.245 0.024 290);
-  --acuity-card-bg-tint: oklch(0.255 0.034 43);
-  --acuity-card-bg-raised: oklch(0.27 0.028 290);
-  --acuity-card-border: oklch(1 0 0 / 0.05);
-
-  /* Text */
-  --acuity-text: oklch(0.98 0.004 285);
-  --acuity-text-sec: oklch(0.74 0.010 285);
-  --acuity-text-ter: oklch(0.56 0.012 285);
-  --acuity-text-quiet: oklch(0.40 0.008 285);
-
-  /* Hairlines */
-  --acuity-line: oklch(1 0 0 / 0.07);
-  --acuity-line-strong: oklch(1 0 0 / 0.13);
-
-  /* Gradients — 135deg matches mobile's tlToBr = start{0,0} end{1,1} */
-  --acuity-grad-primary: linear-gradient(
-    135deg,
-    var(--acuity-primary-hi) 0%,
-    var(--acuity-primary) 55%,
-    var(--acuity-primary-lo) 100%
-  );
-  --acuity-grad-secondary: linear-gradient(
-    135deg,
-    var(--acuity-secondary-hi) 0%,
-    var(--acuity-secondary) 55%,
-    var(--acuity-secondary-lo) 100%
-  );
-  --acuity-grad-mix: linear-gradient(
-    135deg,
-    var(--acuity-primary) 0%,
-    var(--acuity-secondary) 100%
-  );
-  --acuity-grad-mix-soft: linear-gradient(
-    135deg,
-    oklch(0.76 0.108 38 / 0.16) 0%,
-    oklch(0.66 0.126 285 / 0.16) 100%
-  );
-
-  /* Shadows — outer drop only on web. The inset highlight that mobile
-     uses isn't worth a second layered element on web cards; web cards
-     read the same atmospheric without it. */
-  --acuity-shadow-soft:
-    0 1px 0 0 oklch(1 0 0 / 0.04) inset,
-    0 8px 22px 0 oklch(0 0 0 / 0.28);
-  --acuity-shadow-lift:
-    0 1px 0 0 oklch(1 0 0 / 0.06) inset,
-    0 14px 36px 0 oklch(0 0 0 / 0.34);
-  --acuity-glow-primary:
-    0 0 16px 0 oklch(0.76 0.155 38 / 0.30),
-    0 8px 18px 0 oklch(0.66 0.155 38 / 0.22);
-  --acuity-glow-secondary:
-    0 0 16px 0 oklch(0.66 0.18 285 / 0.30),
-    0 8px 18px 0 oklch(0.56 0.18 285 / 0.22);
-  --acuity-glow-soft: 0 6px 18px 0 oklch(0.76 0.108 38 / 0.18);
-}
-
-/* ─── Light mode ────────────────────────────────────────────────── */
-
 :root[data-theme="light"] {
-  /* Brand — same triplets, hue invariant across modes */
+  /* Brand — coral preset (default). Palette selectors below override
+     these at higher specificity for sunset / citrus / cobalt. */
   --acuity-primary: oklch(0.76 0.155 38);
   --acuity-primary-hi: oklch(0.84 0.155 38);
   --acuity-primary-lo: oklch(0.66 0.155 38);
+  --acuity-primary-soft: oklch(0.76 0.155 38 / 0.18);
   --acuity-secondary: oklch(0.66 0.18 285);
   --acuity-secondary-hi: oklch(0.74 0.18 285);
   --acuity-secondary-lo: oklch(0.56 0.18 285);
+  --acuity-secondary-soft: oklch(0.66 0.18 285 / 0.18);
 
-  /* Status */
+  /* Status — palette + theme invariant */
   --acuity-good: oklch(0.74 0.135 165);
   --acuity-good-soft: oklch(0.74 0.135 165 / 0.18);
   --acuity-bad: oklch(0.66 0.17 25);
   --acuity-bad-soft: oklch(0.66 0.17 25 / 0.18);
   --acuity-warn: #fbbf24;
 
-  /* Brand soft variants — see dark mode block for rationale. */
-  --acuity-primary-soft: oklch(0.76 0.155 38 / 0.18);
-  --acuity-secondary-soft: oklch(0.66 0.18 285 / 0.18);
-
-  /* Surfaces */
+  /* Light surfaces */
   --acuity-bg: oklch(0.975 0.005 285);
   --acuity-bg-sub: oklch(0.96 0.007 285);
   --acuity-bg-inset: oklch(0.95 0.008 285);
   --acuity-card-bg: oklch(1 0 0);
-  --acuity-card-bg-tint: oklch(0.965 0.012 38);
+  /* Subtle palette-tinted card surface. color-mix gives 4% primary
+     against pure white, so the tint shifts when the palette changes
+     without per-palette declaration. Mirrors mobile's `oklch(0.965
+     0.012 ph)` tinted-light-card intent. */
+  --acuity-card-bg-tint: color-mix(
+    in oklch,
+    var(--acuity-card-bg),
+    var(--acuity-primary) 4%
+  );
   --acuity-card-bg-raised: oklch(1 0 0);
   --acuity-card-border: oklch(0 0 0 / 0.05);
 
-  /* Text */
+  /* Light text */
   --acuity-text: oklch(0.14 0.012 285);
   --acuity-text-sec: oklch(0.42 0.010 285);
   --acuity-text-ter: oklch(0.58 0.012 285);
   --acuity-text-quiet: oklch(0.74 0.008 285);
 
-  /* Hairlines */
+  /* Light hairlines */
   --acuity-line: oklch(0 0 0 / 0.06);
   --acuity-line-strong: oklch(0 0 0 / 0.10);
 
-  /* Gradient redefinitions inherit fine — primary/secondary triplets
-     unchanged. Re-declaring keeps Tailwind's `var(--acuity-grad-*)`
-     resolution working without falling back to dark stops via
-     cascade specificity (some browsers handle var inheritance
-     unpredictably when redefining the parent custom properties). */
-  --acuity-grad-primary: linear-gradient(
-    135deg,
-    var(--acuity-primary-hi) 0%,
-    var(--acuity-primary) 55%,
-    var(--acuity-primary-lo) 100%
-  );
-  --acuity-grad-secondary: linear-gradient(
-    135deg,
-    var(--acuity-secondary-hi) 0%,
-    var(--acuity-secondary) 55%,
-    var(--acuity-secondary-lo) 100%
-  );
-  --acuity-grad-mix: linear-gradient(
-    135deg,
-    var(--acuity-primary) 0%,
-    var(--acuity-secondary) 100%
-  );
-  --acuity-grad-mix-soft: linear-gradient(
-    135deg,
-    oklch(0.76 0.108 38 / 0.16) 0%,
-    oklch(0.66 0.126 285 / 0.16) 100%
-  );
-
-  /* Shadows — softer in light mode */
+  /* Light shadows — softer */
   --acuity-shadow-soft:
     0 1px 2px 0 oklch(0 0 0 / 0.04),
     0 10px 24px 0 oklch(0 0 0 / 0.05);
   --acuity-shadow-lift:
     0 2px 6px 0 oklch(0 0 0 / 0.05),
     0 18px 44px 0 oklch(0 0 0 / 0.08);
+
+  /* Gradients & glows — all built from primary/secondary via
+     color-mix so palette switching cascades through. Avoid hardcoded
+     hex/oklch literals here; they'd defeat the parametric design. */
+  --acuity-grad-primary: linear-gradient(
+    135deg,
+    var(--acuity-primary-hi) 0%,
+    var(--acuity-primary) 55%,
+    var(--acuity-primary-lo) 100%
+  );
+  --acuity-grad-secondary: linear-gradient(
+    135deg,
+    var(--acuity-secondary-hi) 0%,
+    var(--acuity-secondary) 55%,
+    var(--acuity-secondary-lo) 100%
+  );
+  --acuity-grad-mix: linear-gradient(
+    135deg,
+    var(--acuity-primary) 0%,
+    var(--acuity-secondary) 100%
+  );
+  --acuity-grad-mix-soft: linear-gradient(
+    135deg,
+    color-mix(in oklch, var(--acuity-primary), transparent 84%) 0%,
+    color-mix(in oklch, var(--acuity-secondary), transparent 84%) 100%
+  );
+
   --acuity-glow-primary:
-    0 0 16px 0 oklch(0.76 0.155 38 / 0.30),
-    0 8px 18px 0 oklch(0.66 0.155 38 / 0.22);
+    0 0 16px 0
+      color-mix(in oklch, var(--acuity-primary), transparent 70%),
+    0 8px 18px 0
+      color-mix(in oklch, var(--acuity-primary-lo), transparent 78%);
   --acuity-glow-secondary:
-    0 0 16px 0 oklch(0.66 0.18 285 / 0.30),
-    0 8px 18px 0 oklch(0.56 0.18 285 / 0.22);
-  --acuity-glow-soft: 0 6px 18px 0 oklch(0.76 0.108 38 / 0.18);
+    0 0 16px 0
+      color-mix(in oklch, var(--acuity-secondary), transparent 70%),
+    0 8px 18px 0
+      color-mix(in oklch, var(--acuity-secondary-lo), transparent 78%);
+  --acuity-glow-soft:
+    0 6px 18px 0
+      color-mix(in oklch, var(--acuity-primary), transparent 82%);
+}
+
+/* ─── Dark mode — surfaces / text / hairlines / shadows only ─────── */
+
+:root[data-theme="dark"] {
+  /* Brand triplets stay as declared by the palette selector below.
+     Dark mode ONLY overrides surface + text + hairline + shadow
+     tokens. Gradients + glows still resolve through var() and
+     auto-pick up the active palette. */
+
+  /* Dark surfaces (sh+5 = 290 for the OKLCH neutral) */
+  --acuity-bg: oklch(0.21 0.022 290);
+  --acuity-bg-sub: oklch(0.235 0.024 290);
+  --acuity-bg-inset: oklch(0.185 0.020 285);
+  --acuity-card-bg: oklch(0.245 0.024 290);
+  --acuity-card-bg-tint: color-mix(
+    in oklch,
+    var(--acuity-card-bg),
+    var(--acuity-primary) 8%
+  );
+  --acuity-card-bg-raised: oklch(0.27 0.028 290);
+  --acuity-card-border: oklch(1 0 0 / 0.05);
+
+  /* Dark text */
+  --acuity-text: oklch(0.98 0.004 285);
+  --acuity-text-sec: oklch(0.74 0.010 285);
+  --acuity-text-ter: oklch(0.56 0.012 285);
+  --acuity-text-quiet: oklch(0.40 0.008 285);
+
+  /* Dark hairlines */
+  --acuity-line: oklch(1 0 0 / 0.07);
+  --acuity-line-strong: oklch(1 0 0 / 0.13);
+
+  /* Dark shadows — heavier outer + inset highlight to lift cards */
+  --acuity-shadow-soft:
+    0 1px 0 0 oklch(1 0 0 / 0.04) inset,
+    0 8px 22px 0 oklch(0 0 0 / 0.28);
+  --acuity-shadow-lift:
+    0 1px 0 0 oklch(1 0 0 / 0.06) inset,
+    0 14px 36px 0 oklch(0 0 0 / 0.34);
+}
+
+/* ─── Palette overrides — primary + secondary ramps ──────────────── */
+/*
+ * Each palette sets eight brand tokens. The gradients + glows + soft
+ * variants all flow from primary/secondary via var() / color-mix, so
+ * no per-palette redeclaration of those is needed.
+ *
+ * Source: `apps/mobile/lib/theme/tokens.ts → ACUITY_ACCENT_PRESETS`.
+ * OKLCH triplets are 1:1 with mobile; hi/lo offsets match mobile's
+ * `Math.min(0.9, l + 0.08)` and `l - 0.1` rules.
+ */
+
+:root[data-palette="coral"] {
+  --acuity-primary: oklch(0.76 0.155 38);
+  --acuity-primary-hi: oklch(0.84 0.155 38);
+  --acuity-primary-lo: oklch(0.66 0.155 38);
+  --acuity-primary-soft: oklch(0.76 0.155 38 / 0.18);
+  --acuity-secondary: oklch(0.66 0.18 285);
+  --acuity-secondary-hi: oklch(0.74 0.18 285);
+  --acuity-secondary-lo: oklch(0.56 0.18 285);
+  --acuity-secondary-soft: oklch(0.66 0.18 285 / 0.18);
+}
+
+:root[data-palette="sunset"] {
+  --acuity-primary: oklch(0.73 0.165 18);
+  --acuity-primary-hi: oklch(0.81 0.165 18);
+  --acuity-primary-lo: oklch(0.63 0.165 18);
+  --acuity-primary-soft: oklch(0.73 0.165 18 / 0.18);
+  --acuity-secondary: oklch(0.62 0.2 330);
+  --acuity-secondary-hi: oklch(0.70 0.2 330);
+  --acuity-secondary-lo: oklch(0.52 0.2 330);
+  --acuity-secondary-soft: oklch(0.62 0.2 330 / 0.18);
+}
+
+:root[data-palette="citrus"] {
+  --acuity-primary: oklch(0.80 0.155 70);
+  --acuity-primary-hi: oklch(0.88 0.155 70);
+  --acuity-primary-lo: oklch(0.70 0.155 70);
+  --acuity-primary-soft: oklch(0.80 0.155 70 / 0.18);
+  --acuity-secondary: oklch(0.68 0.165 195);
+  --acuity-secondary-hi: oklch(0.76 0.165 195);
+  --acuity-secondary-lo: oklch(0.58 0.165 195);
+  --acuity-secondary-soft: oklch(0.68 0.165 195 / 0.18);
+}
+
+:root[data-palette="cobalt"] {
+  --acuity-primary: oklch(0.66 0.18 255);
+  --acuity-primary-hi: oklch(0.74 0.18 255);
+  --acuity-primary-lo: oklch(0.56 0.18 255);
+  --acuity-primary-soft: oklch(0.66 0.18 255 / 0.18);
+  --acuity-secondary: oklch(0.78 0.13 85);
+  --acuity-secondary-hi: oklch(0.86 0.13 85);
+  --acuity-secondary-lo: oklch(0.68 0.13 85);
+  --acuity-secondary-soft: oklch(0.78 0.13 85 / 0.18);
 }
 
 /* ─── Mode-independent tokens ───────────────────────────────────── */
 
 :root {
-  /* Radii — same numeric scale in both modes. mobile's tokens.radius. */
+  /* Radii — same numeric scale across modes + palettes. */
   --acuity-radius-xs: 10px;
   --acuity-radius-sm: 14px;
   --acuity-radius-md: 18px;
@@ -208,24 +242,14 @@
   --acuity-radius-xl: 28px;
   --acuity-radius-pill: 999px;
 
-  /* Motion — mobile's durBase / durSlow + easing curves from the
-     design handoff. easeStandard is the default transition; easeEnter
-     is reserved for new-element appearances (springier). */
+  /* Motion — durBase / durSlow + easeStandard / easeEnter. */
   --acuity-dur-base: 280ms;
   --acuity-dur-slow: 340ms;
   --acuity-ease-standard: cubic-bezier(0.32, 0.72, 0, 1);
   --acuity-ease-enter: cubic-bezier(0.16, 0.9, 0.3, 1);
 }
 
-/* ─── Canonical motion utilities (§6.3) ─────────────────────────── */
-
-/*
- * Web ships a tight motion vocabulary: fade-up for content blocks,
- * hover lift on cards/buttons (handled component-side), respect for
- * prefers-reduced-motion. No constant ambient animation — landing's
- * blob-drift / shimmer / gradient-shift loops are deprecated and live
- * under the legacy block in globals.css until consumers migrate.
- */
+/* ─── Canonical motion utilities (DESIGN_SYSTEM.md §6.3) ────────── */
 
 @keyframes acuity-fade-up {
   from {
@@ -257,10 +281,8 @@
     var(--acuity-ease-standard) both;
 }
 
-/* Staggered fade-up — apply to a parent; children with
-   `[data-stagger]` fade in with a 60ms cascade. Used for hero →
-   strip → features sequencing on landing surfaces. Caps the cascade
-   at 6 children so a long list doesn't take 600ms+ to settle. */
+/* Staggered fade-up — parent .acuity-stagger, children [data-stagger]
+   cascade with 60ms steps, capped at 6 children. */
 .acuity-stagger > [data-stagger] {
   animation: acuity-fade-up var(--acuity-dur-base)
     var(--acuity-ease-standard) both;
