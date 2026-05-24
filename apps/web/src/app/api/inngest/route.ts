@@ -26,6 +26,7 @@ import { computeDailySnapshotFn } from "@/inngest/functions/compute-daily-snapsh
 import { rlsAuditFn } from "@/inngest/functions/rls-audit";
 import { scanRedFlagsFn } from "@/inngest/functions/scan-red-flags";
 import { trialEmailOrchestratorFn } from "@/inngest/functions/trial-email-orchestrator";
+import { trialExpirationCronFn } from "@/inngest/functions/trial-expiration-cron";
 import { weeklyDigestFn } from "@/inngest/functions/weekly-digest";
 import {
   autoBlogGenerateFn,
@@ -64,6 +65,7 @@ const handler = serve({
     generateStateOfMeFn,
     stateOfMeAutoTickFn,
     trialEmailOrchestratorFn,
+    trialExpirationCronFn,
     autoBlogGenerateFn,
     autoBlogPruneFn,
     waitlistReactivationFn,
