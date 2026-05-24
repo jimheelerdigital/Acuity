@@ -205,10 +205,19 @@ export function ThemeMapClient() {
             </p>
           )}
 
-          <div className="mt-8 flex justify-center">
+          {/* Bug 4 (2026-05-24): centered orbital with a sensible
+              max-width. Previously the SVG sized off
+              `Math.min(680, window.innerWidth - 40)` which (a)
+              returned 680 on SSR (`window` undefined), making the
+              orbital wider than the surrounding content cap, and
+              (b) didn't sit centered in the content area — it
+              floated bottom-right with empty space above and to
+              the left. The 440 fixed width fits cleanly under the
+              480 wrapper cap and matches mobile's at-rest size.  */}
+          <div className="mt-8 mx-auto flex max-w-[480px] justify-center">
             <OrbitalCosmos
               themes={orbitalThemes}
-              width={Math.min(680, typeof window !== "undefined" ? window.innerWidth - 40 : 680)}
+              width={440}
               onPlanetTap={(theme) => {
                 router.push(`/insights/theme/${theme.id}`);
               }}
