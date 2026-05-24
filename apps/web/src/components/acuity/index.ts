@@ -30,6 +30,12 @@ export {
 export { GlassPill, type GlassPillProps, type GlassPillTint } from "./GlassPill";
 export { HeroCard, type HeroCardProps } from "./HeroCard";
 export { MiniRadar, type MiniRadarProps } from "./MiniRadar";
+export {
+  OrbitalCosmos,
+  hueForTheme,
+  type OrbitalCosmosProps,
+  type OrbitalTheme,
+} from "./OrbitalCosmos";
 export { RingProgress, type RingProgressProps } from "./RingProgress";
 export {
   SectionHeader,

@@ -1,44 +1,30 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { StickyBackButton } from "@/components/back-button";
+import {
+  Card,
+  GradientText,
+  OrbitalCosmos,
+  SectionHeader,
+  SegmentedTabs,
+  hueForTheme,
+  type OrbitalTheme,
+} from "@/components/acuity";
 import { LockedState } from "@/components/theme-map/LockedState";
-import {
-  ThemeMapDashboard,
-  type DashboardTheme,
-} from "@/components/theme-map/ThemeMapDashboard";
-import {
-  TimeChips,
-  type TimeWindow,
-} from "@/components/theme-map/TimeChips";
 
-type CategoryToken = "activity" | "reflection" | "life" | "emotional";
 type SentimentBand = "positive" | "neutral" | "challenging";
 
 type ApiTheme = {
   id: string;
   name: string;
-  category: CategoryToken;
   mentionCount: number;
-  meanMood: number;
-  avgSentiment: number;
   sentimentBand: SentimentBand;
-  firstMentionedAt: string;
-  lastMentionedAt: string;
-  lastEntryAt: string;
-  firstMentionedDaysAgo: number;
-  sparkline: number[];
-  trendDescription: string;
+  meanMood: number;
   trend: { priorPeriodCount: number; ratio: number | null };
-  entries: { id: string; timestamp: string; mood: number }[];
-  coOccurrences: { themeName: string; count: number }[];
-  recentEntries: {
-    id: string;
-    createdAt: string;
-    sentiment: "POSITIVE" | "NEGATIVE" | "NEUTRAL";
-    excerpt: string;
-  }[];
+  trendDescription: string;
 };
 
 type ApiResponse = {
@@ -47,11 +33,6 @@ type ApiResponse = {
   topTheme: string | null;
   topThemeName: string | null;
   periodLabel: string;
-  periods: {
-    today: { count: number; mood: number };
-    week: { count: number; mood: number };
-    month: { count: number; mood: number };
-  };
   meta: {
     totalEntries: number;
     windowStart: string | null;
@@ -59,9 +40,39 @@ type ApiResponse = {
   };
 };
 
-const UNLOCK_THRESHOLD = 10;
+type TimeWindow = "week" | "month" | "year" | "all";
 
+const TIME_TABS = [
+  { id: "week" as const, label: "Week" },
+  { id: "month" as const, label: "Month" },
+  { id: "year" as const, label: "Year" },
+  { id: "all" as const, label: "All time" },
+];
+
+const UNLOCK_THRESHOLD = 10;
+const MIN_MENTIONS_FOR_PLANET = 2;
+
+/**
+ * /insights/theme-map client — slice 24 / 6b (2026-05-24) rewrite.
+ *
+ * Replaces the previous force-graph / ThemeMapDashboard treatment
+ * with the canonical OrbitalCosmos: 9-planet (up to 6 rendered)
+ * orbital cosmos with atmospheric planet treatment, deterministic
+ * star field, dashed connector lines, and once-per-session spin-in
+ * choreography. Mirrors mobile composition 1:1.
+ *
+ * Data shape match:
+ *   - API returns themes with mentionCount + sentimentBand
+ *   - We filter to mentionCount >= 2 (so single mentions don't bloat
+ *     the cosmos) + sort by mentionCount desc + take first 6
+ *   - Hue derived via hueForTheme() — canonical 9 themes get their
+ *     locked hue, anything else gets FNV-1a hash
+ *
+ * Tap → /insights/theme/[themeId] for the detail view (existing
+ * route, unchanged).
+ */
 export function ThemeMapClient() {
+  const router = useRouter();
   const [window_, setWindow] = useState<TimeWindow>("month");
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -94,37 +105,41 @@ export function ThemeMapClient() {
   const entryCount = data?.meta.totalEntries ?? 0;
   const locked = entryCount < UNLOCK_THRESHOLD;
 
-  const dashboardThemes: DashboardTheme[] = useMemo(() => {
+  // Filter + sort + cap to feed OrbitalCosmos. mentionCount ≥ 2 floor
+  // matches the mobile orbital — singletons don't earn a planet.
+  const orbitalThemes: OrbitalTheme[] = useMemo(() => {
     if (!data) return [];
-    return data.themes.map((t) => ({
-      id: t.id,
-      name: t.name,
-      category: t.category,
-      count: t.mentionCount,
-      meanMood: t.meanMood,
-      lastEntryAt: t.lastEntryAt,
-      trend: t.trend,
-      entries: t.entries,
-      coOccurrences: t.coOccurrences,
-      sentimentBand: t.sentimentBand,
-      sparkline: t.sparkline,
-      trendDescription: t.trendDescription,
-      firstMentionedDaysAgo: t.firstMentionedDaysAgo,
-      recentEntries: t.recentEntries,
-    }));
+    return data.themes
+      .filter((t) => t.mentionCount >= MIN_MENTIONS_FOR_PLANET)
+      .sort((a, b) => b.mentionCount - a.mentionCount)
+      .slice(0, 6)
+      .map((t) => ({
+        id: t.id,
+        name: t.name,
+        hue: hueForTheme(t.name),
+        mentionCount: t.mentionCount,
+        sentimentBand: t.sentimentBand,
+      }));
   }, [data]);
+
+  // Top theme + simple trend descriptor for the insight strip.
+  const topTheme = orbitalThemes[0] ?? null;
+  const topApiTheme = useMemo(() => {
+    if (!topTheme || !data) return null;
+    return data.themes.find((t) => t.id === topTheme.id) ?? null;
+  }, [data, topTheme]);
 
   if (loading && !data) {
     return (
       <div className="flex justify-center py-20">
-        <div className="h-6 w-6 animate-spin rounded-full border-2 border-zinc-200 dark:border-white/10 border-t-acuity-primary" />
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-acuity-line border-t-acuity-primary" />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="py-20 text-center text-sm text-zinc-500 dark:text-zinc-400">
+      <div className="py-20 text-center text-[15px] text-acuity-text-sec">
         {error}
       </div>
     );
@@ -134,7 +149,11 @@ export function ThemeMapClient() {
     return (
       <>
         <StickyBackButton />
-        <Header />
+        <Header
+          activeCount={0}
+          totalEntries={entryCount}
+          windowLabel={data?.periodLabel}
+        />
         <LockedState count={entryCount} />
       </>
     );
@@ -143,26 +162,49 @@ export function ThemeMapClient() {
   return (
     <>
       <StickyBackButton />
-      <Header />
+      <Header
+        activeCount={orbitalThemes.length}
+        totalEntries={entryCount}
+        windowLabel={data?.periodLabel}
+      />
 
-      <div className="mt-4">
-        <TimeChips value={window_} onChange={setWindow} />
+      <div className="mt-5">
+        <SegmentedTabs
+          tabs={TIME_TABS}
+          activeId={window_}
+          onChange={(id) => setWindow(id as TimeWindow)}
+        />
       </div>
 
-      {dashboardThemes.length > 0 && data ? (
-        <div className="mt-5">
-          <ThemeMapDashboard
-            themes={dashboardThemes}
-            totalMentions={data.totalMentions ?? 0}
-            topThemeName={data.topThemeName ?? data.topTheme}
-            periods={data.periods}
-            timeWindow={window_}
-            windowStart={data.meta.windowStart}
-            windowEnd={data.meta.windowEnd}
-          />
-        </div>
+      {orbitalThemes.length > 0 ? (
+        <>
+          <div className="mt-8 flex justify-center">
+            <OrbitalCosmos
+              themes={orbitalThemes}
+              width={Math.min(680, typeof window !== "undefined" ? window.innerWidth - 40 : 680)}
+              onPlanetTap={(theme) => {
+                router.push(`/insights/theme/${theme.id}`);
+              }}
+            />
+          </div>
+
+          {topTheme && topApiTheme && (
+            <Card variant="default" radius="xl" padding={6} className="mt-10">
+              <SectionHeader label="Most-mentioned this period" />
+              <p className="mt-3 font-display text-xl font-semibold text-acuity-text">
+                {topTheme.name}
+              </p>
+              <p className="mt-2 text-[15px] leading-relaxed text-acuity-text-sec">
+                {topApiTheme.trendDescription} ·{" "}
+                <span className="font-mono text-[13px] text-acuity-text-ter">
+                  {topTheme.mentionCount} mentions
+                </span>
+              </p>
+            </Card>
+          )}
+        </>
       ) : (
-        <div className="my-10 text-center text-sm text-zinc-500 dark:text-zinc-400">
+        <div className="my-12 text-center text-[15px] text-acuity-text-sec">
           Not enough theme variety yet — record a few more sessions to
           see your patterns surface.
         </div>
@@ -171,42 +213,29 @@ export function ThemeMapClient() {
   );
 }
 
-function Header() {
+function Header({
+  activeCount,
+  totalEntries,
+  windowLabel,
+}: {
+  activeCount: number;
+  totalEntries: number;
+  windowLabel?: string;
+}) {
   return (
-    <div style={{ marginBottom: 36 }}>
-      <p
-        style={{
-          fontSize: 12,
-          letterSpacing: 2.8,
-          fontWeight: 700,
-          color: "#FCA85A",
-          textTransform: "uppercase",
-          marginBottom: 10,
-        }}
-      >
-        Reflect · Theme Map
+    <header className="acuity-fade-up mb-2">
+      <p className="font-mono text-[11px] font-bold uppercase tracking-[1.4px] text-acuity-text-ter">
+        What you think about
       </p>
-      <h1
-        className="text-zinc-900 dark:text-zinc-50"
-        style={{
-          fontSize: 32,
-          fontWeight: 500,
-          letterSpacing: "-0.4px",
-          lineHeight: 1.15,
-          marginBottom: 8,
-        }}
-      >
-        Theme Map
+      <h1 className="mt-2 font-display text-4xl font-bold leading-[1.05] tracking-tight text-acuity-text lg:text-5xl">
+        <GradientText variant="mix">{activeCount}</GradientText> active theme
+        {activeCount === 1 ? "" : "s"}
       </h1>
-      <p
-        style={{
-          fontSize: 18,
-          color: "rgba(168,168,180,0.75)",
-        }}
-      >
-        Your recurring patterns, surfaced.
+      <p className="mt-2 text-[15px] leading-relaxed text-acuity-text-sec">
+        {totalEntries} {totalEntries === 1 ? "entry" : "entries"}
+        {windowLabel ? ` · ${windowLabel}` : ""}
       </p>
-    </div>
+    </header>
   );
 }
 
