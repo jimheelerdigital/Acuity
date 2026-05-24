@@ -4,6 +4,7 @@ import { signOut } from "next-auth/react";
 import { useEffect, useRef, useState } from "react";
 
 import { AppearanceSection } from "./_components/appearance-section";
+import { TrialStatusCard } from "./_components/trial-status-card";
 
 import {
   IntegrationsSection,
@@ -22,6 +23,10 @@ interface Props {
   hasStripeCustomer: boolean;
   periodEnd: string | null;
   trialEndsAt: string | null;
+  /** Slice 5: stamped by trial-expiration cron at TRIAL → FREE
+   *  transition. TrialStatusCard reads it to show the post-expiry
+   *  treatment for ~14 days after the flip. */
+  trialExpiredAt: string | null;
   weeklyEmailEnabled: boolean;
   monthlyEmailEnabled: boolean;
   /** Slice C5b — true when canExtractEntries is false (FREE post-
@@ -59,6 +64,7 @@ export default function AccountClient({
   hasStripeCustomer,
   periodEnd,
   trialEndsAt,
+  trialExpiredAt,
   weeklyEmailEnabled,
   monthlyEmailEnabled,
   isProLocked,
@@ -103,6 +109,16 @@ export default function AccountClient({
             </div>
           </dl>
         </section>
+
+        {/* Slice 5: TrialStatusCard renders the state-aware
+            countdown ladder during TRIAL + post-expiry. Returns
+            null for PRO / long-dormant FREE, leaving the existing
+            SubscriptionSection to handle those cases. */}
+        <TrialStatusCard
+          subscriptionStatus={subscriptionStatus}
+          trialEndsAt={trialEndsAt}
+          trialExpiredAt={trialExpiredAt}
+        />
 
         {/* Subscription */}
         <div id="subscription" className="scroll-mt-24">

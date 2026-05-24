@@ -43,6 +43,10 @@ export async function GET(req: NextRequest) {
       // never-subscribed users.
       subscriptionSource: true,
       trialEndsAt: true,
+      // Stamped by the trial-expiration cron when TRIAL → FREE.
+      // Drives the post-expiry "Your insights are paused" state on
+      // the TrialStatusCard (web + mobile) for ~14 days after expiry.
+      trialExpiredAt: true,
       // stripeCurrentPeriodEnd is the renewal date once
       // subscriptionStatus flips to PRO. Exposed so the account-page
       // polling can render "Renews [date]" without a second fetch.

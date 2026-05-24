@@ -42,6 +42,10 @@ export default async function AccountPage({
       stripeCustomerId: true,
       stripeCurrentPeriodEnd: true,
       trialEndsAt: true,
+      // Slice 5 (2026-05-25): used by TrialStatusCard to decide
+      // whether to render the post-expiry copy ("Your trial ended,
+      // recording stays yours…") vs the in-trial countdown.
+      trialExpiredAt: true,
       weeklyEmailEnabled: true,
       monthlyEmailEnabled: true,
       // Calendar fields — re-enabled in slice 5 now that prisma db
@@ -126,6 +130,7 @@ export default async function AccountPage({
         hasStripeCustomer={Boolean(user?.stripeCustomerId)}
         periodEnd={user?.stripeCurrentPeriodEnd?.toISOString() ?? null}
         trialEndsAt={user?.trialEndsAt?.toISOString() ?? null}
+        trialExpiredAt={user?.trialExpiredAt?.toISOString() ?? null}
         weeklyEmailEnabled={user?.weeklyEmailEnabled ?? true}
         monthlyEmailEnabled={user?.monthlyEmailEnabled ?? true}
         isProLocked={isProLocked}

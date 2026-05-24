@@ -14,6 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Avatar, SubscriptionPill } from "@/components/acuity";
 import { AppearanceCard } from "@/components/appearance/appearance-card";
+import { TrialStatusCard } from "@/components/TrialStatusCard";
 import { HapticsRow } from "@/components/appearance/haptics-row";
 import { DeleteAccountModal } from "@/components/delete-account-modal";
 import { FeedbackModal } from "@/components/feedback-modal";
@@ -200,6 +201,16 @@ export default function ProfileTab() {
             <SubscriptionPill status={subStatus as never} />
           </View>
         </View>
+
+        {/* Trial countdown / post-expiry card — slice 5 (2026-05-25).
+            Mobile parity for the web /account TrialStatusCard. Renders
+            null for PRO + long-dormant FREE; otherwise shows one of
+            four state-aware compositions. */}
+        <TrialStatusCard
+          subscriptionStatus={subStatus}
+          trialEndsAt={user?.trialEndsAt ?? null}
+          trialExpiredAt={user?.trialExpiredAt ?? null}
+        />
 
         {/* Subscription block — stays at top, not grouped under a
             settings label. The visual refresh's full Subscription

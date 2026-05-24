@@ -47,6 +47,11 @@ export type User = {
   // freshly-created users before the createUser event writes it,
   // or for users who existed before the 2026-04-20 backfill.
   trialEndsAt?: string | null;
+  // ISO-8601 stamp set by the trial-expiration cron when TRIAL → FREE.
+  // Drives the post-expiry "insights paused" card on the Profile tab
+  // for ~14 days after expiry. Null on users who never trialed or
+  // converted before the cron flipped them.
+  trialExpiredAt?: string | null;
   // Renewal date when subscriptionStatus = "PRO". Used by the delete
   // modal to compute "X days remaining" if the user deletes mid-period.
   // Null on free / trial users.
