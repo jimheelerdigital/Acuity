@@ -115,7 +115,7 @@ export default async function AccountPage({
       user.backfillStartedAt.getTime() > user.backfillCompletedAt.getTime());
 
   return (
-    <div data-theme="dark" className="min-h-screen bg-acuity-bg">
+    <div className="min-h-screen bg-acuity-bg text-acuity-text">
       <AccountClient
         email={session.user.email}
         name={session.user.name ?? null}

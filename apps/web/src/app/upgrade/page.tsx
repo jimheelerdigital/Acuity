@@ -37,7 +37,7 @@ export default async function UpgradePage({
   }
 
   return (
-    <div data-theme="dark" className="min-h-screen bg-acuity-bg">
+    <div className="min-h-screen bg-acuity-bg text-acuity-text">
       <div className="flex min-h-screen items-center justify-center px-6 py-12">
         <div className="acuity-fade-up w-full max-w-md">
           <div className="mb-6 text-center">

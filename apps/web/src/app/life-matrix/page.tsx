@@ -52,7 +52,7 @@ export default async function LifeMatrixPage() {
   const isProLocked = entitlement?.canExtractEntries === false;
 
   return (
-    <div data-theme="dark" className="min-h-screen bg-acuity-bg">
+    <div className="min-h-screen bg-acuity-bg text-acuity-text">
       <PageContainer mobileWidth="5xl">
         <header className="acuity-fade-up mb-10">
           <p className="font-mono text-[11px] font-bold uppercase tracking-[1.4px] text-acuity-text-ter">

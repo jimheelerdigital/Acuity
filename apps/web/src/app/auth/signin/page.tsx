@@ -246,7 +246,7 @@ function SignInForm() {
 export default function SignInPage() {
   return (
     <div
-      data-theme="dark"
+     
       className="flex min-h-screen items-center justify-center bg-acuity-bg px-6"
     >
       <div className="w-full max-w-sm">

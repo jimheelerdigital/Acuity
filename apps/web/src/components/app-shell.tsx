@@ -81,8 +81,8 @@ function SidebarLink({ item, active }: { item: NavItem; active: boolean }) {
       href={item.href}
       className={`group relative flex items-center gap-3 rounded-lg px-3 transition-colors ${
         active
-          ? "bg-zinc-100 text-zinc-900 dark:bg-white/10 dark:text-zinc-50"
-          : "text-zinc-600 hover:bg-zinc-100/70 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-white/5 dark:hover:text-zinc-100"
+          ? "bg-acuity-bg-sub text-acuity-text"
+          : "text-acuity-text-sec hover:bg-acuity-bg-sub/70 hover:text-acuity-text"
       }`}
       style={{ paddingTop: 14, paddingBottom: 14, fontSize: 17, fontWeight: 500 }}
       aria-current={active ? "page" : undefined}
@@ -90,14 +90,14 @@ function SidebarLink({ item, active }: { item: NavItem; active: boolean }) {
       {active && (
         <span
           aria-hidden
-          className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full bg-violet-500"
+          className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full bg-acuity-primary"
         />
       )}
       <Icon
         className={`h-[22px] w-[22px] shrink-0 ${
           active
-            ? "text-violet-600 dark:text-violet-400"
-            : "text-zinc-400 group-hover:text-zinc-600 dark:text-zinc-500 dark:group-hover:text-zinc-300"
+            ? "text-acuity-primary"
+            : "text-acuity-text-ter group-hover:text-acuity-text-sec"
         }`}
         aria-hidden
       />
@@ -105,7 +105,7 @@ function SidebarLink({ item, active }: { item: NavItem; active: boolean }) {
       {item.accent && (
         <span
           aria-hidden
-          className="ml-auto h-1.5 w-1.5 rounded-full bg-violet-500 shadow-[0_0_6px_rgba(139,92,246,0.6)]"
+          className="ml-auto h-1.5 w-1.5 rounded-full bg-acuity-primary shadow-acuity-glow-soft"
         />
       )}
     </Link>
@@ -116,12 +116,12 @@ function Sidebar({ onOpenRecord }: { onOpenRecord: () => void }) {
   const pathname = usePathname();
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-40 hidden w-[272px] 2xl:w-[288px] flex-col border-r border-zinc-200 bg-[#FAFAF7] dark:border-white/10 dark:bg-[#0B0B12] lg:flex">
+    <aside className="fixed inset-y-0 left-0 z-40 hidden w-[272px] 2xl:w-[288px] flex-col border-r border-acuity-line bg-acuity-bg lg:flex">
       {/* Logo — h-[68px] matches the top bar (DesktopTopbar) so the
           sidebar header and the top bar appear as one continuous
           horizontal edge across the viewport. If you change one of
           these, change the other. */}
-      <div className="flex h-[68px] items-center border-b border-zinc-200 px-5 dark:border-white/10">
+      <div className="flex h-[68px] items-center border-b border-acuity-line px-5">
         <Link href="/home" className="flex items-center gap-2 group">
           <img
             src="/AcuityLogoDark.png"
@@ -130,7 +130,7 @@ function Sidebar({ onOpenRecord }: { onOpenRecord: () => void }) {
             style={{ width: 28, height: 28 }}
           />
           <span
-            className="font-semibold tracking-tight text-zinc-900 dark:text-zinc-50"
+            className="font-display font-semibold tracking-tight text-acuity-text"
             style={{ fontSize: 20 }}
           >
             Acuity
@@ -138,17 +138,14 @@ function Sidebar({ onOpenRecord }: { onOpenRecord: () => void }) {
         </Link>
       </div>
 
-      {/* Record CTA — opens RecordSheet modal in place. Previously this
-          was a <Link href="/home#record"> hash anchor, but the on-/home
-          RecordButton card is `lg:hidden`, so on desktop the click did
-          nothing visible (page scrolled to a hidden element). Now the
-          sidebar mounts the modal directly so recording works from any
-          authenticated route, not just /home. */}
+      {/* Record CTA — opens RecordSheet modal in place. Sidebar mounts
+          the modal directly so recording works from any authenticated
+          route, not just /home. */}
       <div className="px-3 pt-4">
         <button
           type="button"
           onClick={onOpenRecord}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-violet-600 px-3 text-white shadow-[0_4px_14px_rgba(124,58,237,0.35)] transition hover:bg-violet-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#FAFAF7] dark:focus-visible:ring-offset-[#0B0B12]"
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-acuity-grad-primary px-3 text-white shadow-acuity-glow-primary transition hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-acuity-primary focus-visible:ring-offset-2 focus-visible:ring-offset-acuity-bg"
           style={{ paddingTop: 16, paddingBottom: 16, fontSize: 17, fontWeight: 500 }}
         >
           <Mic className="h-[22px] w-[22px]" aria-hidden />
@@ -162,7 +159,7 @@ function Sidebar({ onOpenRecord }: { onOpenRecord: () => void }) {
           {SECTIONS.map((section) => (
             <div key={section.heading}>
               <p
-                className="px-3 uppercase text-zinc-400 dark:text-zinc-500"
+                className="px-3 uppercase text-acuity-text-ter"
                 style={{
                   fontSize: 13,
                   letterSpacing: "1.6px",
@@ -198,7 +195,7 @@ function DesktopTopbar() {
     // distinguish the chrome from main content without an outright
     // background shift. Avatar trigger lives top-right inside the
     // 1600px content cap below.
-    <header className="sticky top-0 z-30 hidden h-[68px] items-center justify-end border-b border-zinc-200 bg-[#FAFAF7]/85 px-8 backdrop-blur-md dark:border-white/10 dark:bg-[#0B0B12]/85 lg:flex">
+    <header className="sticky top-0 z-30 hidden h-[68px] items-center justify-end border-b border-acuity-line bg-acuity-bg/85 px-8 backdrop-blur-md lg:flex">
       <SessionUserMenu />
     </header>
   );

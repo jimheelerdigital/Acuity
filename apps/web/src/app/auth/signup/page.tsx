@@ -198,8 +198,8 @@ function SignUpForm() {
 
   return (
     <div
-      data-theme="dark"
-      className="min-h-screen bg-acuity-bg"
+     
+      className="min-h-screen bg-acuity-bg text-acuity-text"
     >
       <div className="flex min-h-screen">
         {/* Left side — value reinforcement (desktop only) */}

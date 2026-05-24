@@ -61,7 +61,7 @@ export default async function GoalDetailPage({
   });
 
   return (
-    <div data-theme="dark" className="min-h-screen bg-acuity-bg">
+    <div className="min-h-screen bg-acuity-bg text-acuity-text">
       <main className="acuity-fade-up mx-auto max-w-3xl px-6 py-10">
         <BackButton className="mb-6" ariaLabel="Back to Goals" />
         <GoalDetail

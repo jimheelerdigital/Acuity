@@ -199,7 +199,7 @@ export function OnboardingShell({
 
   return (
     <OnboardingContext.Provider value={contextValue}>
-      <div data-theme="dark" className="min-h-screen bg-acuity-bg">
+      <div className="min-h-screen bg-acuity-bg text-acuity-text">
         {/* Top row — progress + skip-all */}
         <header className="mx-auto flex max-w-lg items-center justify-between px-6 pt-8 sm:pt-10">
           <div className="flex items-center gap-3">
@@ -308,7 +308,7 @@ function SkipModal({
 }) {
   return (
     <div
-      data-theme="dark"
+     
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-6"
       role="dialog"
       aria-modal="true"

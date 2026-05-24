@@ -117,7 +117,7 @@ export default async function EntryDetailPage({
     isComplete && entry.summary ? pullQuoteFor(entry.summary) : null;
 
   return (
-    <div data-theme="dark" className="min-h-screen bg-acuity-bg">
+    <div className="min-h-screen bg-acuity-bg text-acuity-text">
       <main className="acuity-fade-up mx-auto max-w-3xl px-6 py-10">
         <div className="mb-6 flex items-center justify-between gap-3">
           <BackButton ariaLabel="Back to entries" />

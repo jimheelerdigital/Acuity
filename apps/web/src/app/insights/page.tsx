@@ -28,7 +28,7 @@ export const dynamic = "force-dynamic";
  * user. Two featured destinations (Life Matrix + Theme Map) get
  * HeroCard treatment; secondary destinations (Ask + State of Me) get
  * tinted Cards. Slice 12 (2026-05-22) composition refresh: canonical
- * primitives, atmospheric chrome, data-theme="dark" on the page root.
+ * primitives, atmospheric chrome, on the page root.
  */
 export default async function InsightsPage() {
   const session = await getServerSession(getAuthOptions());
@@ -39,7 +39,7 @@ export default async function InsightsPage() {
   const isProLocked = entitlement?.canExtractEntries === false;
 
   return (
-    <div data-theme="dark" className="min-h-screen bg-acuity-bg">
+    <div className="min-h-screen bg-acuity-bg text-acuity-text">
       <PageContainer mobileWidth="4xl">
         <header className="acuity-fade-up mb-10">
           <p className="font-mono text-[11px] font-bold uppercase tracking-[1.4px] text-acuity-text-ter">

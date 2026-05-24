@@ -20,7 +20,7 @@ export default async function TasksPage() {
   const isLocked = entitlement?.canExtractEntries === false;
 
   return (
-    <div data-theme="dark" className="min-h-screen bg-acuity-bg">
+    <div className="min-h-screen bg-acuity-bg text-acuity-text">
       <PageContainer mobileWidth="3xl" className="acuity-fade-up">
         <TaskList isLocked={isLocked} />
       </PageContainer>
