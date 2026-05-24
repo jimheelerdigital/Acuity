@@ -41,6 +41,56 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-24] — Web visual fix — light default + dark/palette toggle + orbital port (slices 19-26)
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** _final commit on slice 26_
+
+### In plain English (for Keenan)
+
+Fixed the half-finished theme migration that left the sidebar light while content panels were dark — looked broken. Now the whole app is light by default, with a real dark/system toggle and four palette options (coral / sunset / citrus / cobalt) in /account → Appearance. Whichever you pick is saved to your account and follows you across devices.
+
+Also shipped the Theme Map redesign that was deferred — the orbital cosmos with planets representing your themes is now live on web (was already on mobile). And bumped body text size across signed-in pages from a too-small 13-14px up to 15-16px.
+
+Marketing pages (the homepage + /for/* persona landers) still untouched per your standing direction.
+
+### Technical changes (for Jimmy)
+
+**Slice 19 (9ca1cf3):** Restructured tokens.css. Light + coral are the defaults at `:root`; dark via `:root[data-theme="dark"]` (surface/text/hairline/shadow overrides only); four palettes via `:root[data-palette="coral|sunset|citrus|cobalt"]` (primary + secondary + hi/lo/soft variants). Theme × palette compose. Hardcoded oklch literals in gradient + glow tokens replaced with color-mix(var(--acuity-primary), transparent X) so palette switching cascades through.
+
+**Slice 20 (f2eabcb):** Stripped `data-theme="dark"` wrappers from 11 page files (home, entries/[id], insights, life-matrix, goals, goals/[id], tasks, account, upgrade, auth/signin, auth/signup, onboarding-shell). Refreshed AppShell — sidebar bg `#FAFAF7/dark-#0B0B12` → `bg-acuity-bg`, sidebar nav from zinc to acuity-* tokens, active-link violet-500 → bg-acuity-primary, Record button bg-violet-600 → bg-acuity-grad-primary + shadow-acuity-glow-primary, topbar same. Crisis footer: violet/zinc → acuity tokens; inherits page surface.
+
+**Slice 21 (ff165ee):** Replaced next-themes with in-house `AppearanceProvider` (`contexts/appearance-context.tsx`). SSR in layout.tsx reads `User.theme` + `User.themePalette` from the session user, stamps `<html data-theme=X data-palette=Y>` on first paint — no client flash. Provider holds resolved theme, theme preference (light/dark/system), and palette; setters POST `/api/user/theme` (existing endpoint mobile already uses). System mode subscribes to matchMedia. Removed forced-dark hack from onboarding shell. ThemeToggle rewritten to consume useAppearance().
+
+**Slice 22 (5f8299e):** `AppearanceSection` component for /account. SegmentedTabs for Light / Dark / System mode toggle. Four swatch row for palette picker — each swatch is an inline SVG circle with linear-gradient using the canonical OKLCH stops from ACUITY_ACCENT_PRESETS. Selected swatch gets a `ring-acuity-primary`. Voice in Accountability tone per Acuity_SalesCopy.md §8: "Choose how Acuity looks for you."
+
+**Slice 23 (5f5d626):** Body paragraph text-sm (14px) → text-[15px] across signed-in surfaces (home, entries, insights, goals, tasks, account, upgrade, life-matrix). Targeted at `text-sm leading-relaxed` prose patterns. Meta/timestamps/eyebrows stay small.
+
+**Slice 24 (a73dac9):** Orbital cosmos port — `components/acuity/OrbitalCosmos.tsx` (~440 lines). 1:1 mirror of mobile's OrbitalCosmos: 402×360 viewBox, ring radii [78, 110, 140, 168], slot distribution by visible-count, atmospheric 4-stop HSL planet gradient at 42% saturation, deterministic 70-star backdrop, dashed connector lines, sun composition (body 22, frame 30, halo 44), 2-line label wrap at 14-char threshold, full spin-in choreography (sun 0-0.6s, rings 0.6-1.8s, planets 1.5s+ with 0.15s stagger, lines 4.0-4.8s). Once-per-session via sessionStorage; respects prefers-reduced-motion. Web idiom translations: RN SVG → plain SVG, Reanimated worklets → single rAF loop, AsyncStorage → sessionStorage. theme-map-client.tsx rewritten — new header chrome (eyebrow + GradientText display + subtitle), SegmentedTabs time chips, OrbitalCosmos canvas, "Most-mentioned this period" insight Card below. hueForTheme() exported from the primitive.
+
+**Slice 25 (91007c9):** Light-mode polish. ThemePill tint hard-coded to dark hex (smudgy on white) — now emits both light + dark tints as CSS variables; tokens.css cascade picks via `[data-theme="dark"]` selector. Keeps ThemePill a server component. HeroCard corner blob at 60% opacity reads aggressive on light cards — dropped to 35% in light, kept 60% in dark via `.acuity-hero-blob` class in tokens.css.
+
+**Slice 26 (this):** Final sweep. typecheck clean across all slice 19-25 surfaces (only pre-existing `onboardingEvent` admin route errors remain — unrelated, needs `prisma generate`). Mobile API contract verified — POST /api/user/theme is shared between mobile + web; mobile already accepts the `{ theme?, palette? }` body shape. PROGRESS.md entry at top.
+
+### Manual steps needed
+
+- [ ] Walk light-mode coral, dark-mode coral, light-mode sunset, dark-mode citrus on /home → /entries → /entries/[id] → /insights → /insights/theme-map (orbital cosmos!) → /life-matrix → /goals → /tasks → /account (Appearance section!) → /upgrade. Flag anything that visually breaks. Jimmy
+- [ ] `npx prisma generate` to clear pre-existing admin-route TS errors (unrelated to this work). Jimmy
+- [ ] Confirm /api/user/theme cross-device sync: toggle palette on web, verify mobile picks it up on next launch (or vice versa). Jimmy
+
+### Notes
+
+- **Marketing surfaces** (landing.tsx, page.tsx, /for/*, try-debrief-flow, try-it-now-button, first-debrief-flow, admin/*, mobile/*, prisma schema, /api/* — apart from /api/user/theme which is reused) intentionally NOT touched.
+- **API endpoint choice:** spec said "PATCH /api/user/appearance"; the existing POST /api/user/theme already accepts the same body shape and is mobile-tested. Used the existing endpoint to avoid fragmenting the contract.
+- **next-themes removed** as a runtime dep (the package may still be in lockfile but no `import` survives). Replaced by AppearanceProvider which handles both theme and palette as a single context.
+- **System theme on SSR:** server can't observe OS preference, so first paint resolves "system" to "light". Client-side matchMedia re-resolves on hydration; minor single-frame flicker on OS-dark-mode users. Far better than the previous forced-dark hack that always lied.
+- **Orbital cosmos:** rAF-driven (not framer-motion — wasn't in lockfile). Single time origin, per-element ramp computations re-render the SVG at 60fps over 4.8s. React reconciler handles the DOM updates efficiently for ~12 animated paths.
+- **HeroCard blob opacity:** the original 60% opacity is preserved in dark mode where it reads atmospheric; light mode drops to 35% via CSS cascade.
+- **Tailwind dark variant** still works via `class="dark"` AND `data-theme="dark"` (slice 1 setup retained). Legacy `dark:*` classes in the codebase remain functional during the migration.
+
+---
+
 ## [2026-05-23] — Disable AdLab auto-kill and auto-scale rules
 
 **Requested by:** Keenan
