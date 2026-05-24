@@ -3,7 +3,7 @@
 import { signOut } from "next-auth/react";
 import { useEffect, useRef, useState } from "react";
 
-import { ThemeToggle } from "@/components/theme-toggle";
+import { AppearanceSection } from "./_components/appearance-section";
 
 import {
   IntegrationsSection,
@@ -189,17 +189,11 @@ export default function AccountClient({
           </a>
         </section>
 
-        {/* Appearance */}
-        <section id="appearance" className="mt-8 scroll-mt-24 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg p-6">
-          <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
-            Appearance
-          </h2>
-          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-            Light, dark, or follow your system preference.
-          </p>
-          <div className="mt-4">
-            <ThemeToggle />
-          </div>
+        {/* Appearance — slice 22 (2026-05-24) replaced the minimal
+            ThemeToggle inline with the richer AppearanceSection that
+            includes the palette picker + canonical primitives. */}
+        <section id="appearance" className="scroll-mt-24">
+          <AppearanceSection />
         </section>
 
         {/* Privacy choices — entry point to re-open the cookie banner */}
