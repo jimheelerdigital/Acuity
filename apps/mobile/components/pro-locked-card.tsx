@@ -9,6 +9,7 @@ import {
   type FreeTierLockedSurfaceId,
 } from "@acuity/shared";
 
+import { HeroCard } from "@/components/acuity";
 import { useTheme } from "@/contexts/theme-context";
 import { isIapEnabled } from "@/lib/iap-config";
 
@@ -76,32 +77,42 @@ export function ProLockedCard({
   };
 
   return (
-    <View
-      className="rounded-2xl border p-5"
-      style={[
-        { borderColor: tokens.line, backgroundColor: tokens.cardBg },
-        style,
-      ]}
-    >
+    <HeroCard variant="primary" padding={20} style={style as never}>
       {copy.eyebrow && (
         <Text
-          className="text-xs font-semibold uppercase tracking-widest"
-          style={{ color: tokens.primary }}
+          style={{
+            fontFamily: tokens.fontMono,
+            fontSize: 10,
+            fontWeight: "700",
+            letterSpacing: 1.4,
+            color: tokens.textTer,
+            textTransform: "uppercase",
+          }}
         >
           {copy.eyebrow}
         </Text>
       )}
       {copy.title && (
         <Text
-          className="mt-2 text-base font-semibold"
-          style={{ color: tokens.text }}
+          style={{
+            fontFamily: tokens.fontDisplay,
+            fontSize: 20,
+            fontWeight: "700",
+            color: tokens.text,
+            marginTop: 10,
+          }}
         >
           {copy.title}
         </Text>
       )}
       <Text
-        className="mt-2 text-sm leading-relaxed"
-        style={{ color: tokens.textSec }}
+        style={{
+          fontFamily: tokens.fontSans,
+          fontSize: 14,
+          lineHeight: 21,
+          color: tokens.textSec,
+          marginTop: 10,
+        }}
       >
         {copy.body}
       </Text>
@@ -148,7 +159,7 @@ export function ProLockedCard({
           <Ionicons name="chevron-forward" size={14} color={tokens.bg} />
         </Pressable>
       )}
-    </View>
+    </HeroCard>
   );
 }
 

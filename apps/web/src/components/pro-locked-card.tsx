@@ -6,9 +6,16 @@ import {
   type FreeTierLockedSurfaceId,
 } from "@acuity/shared";
 
+import { HeroCard } from "@/components/acuity";
+
 /**
  * Pro-tier locked card — the v1.1 free-tier conversion surface from
- * `docs/v1-1/free-tier-phase2-plan.md` §B.2.
+ * `docs/v1-1/free-tier-phase2-plan.md` §B.2. Slice 8 upgrade
+ * (2026-05-25): the bespoke violet-tinted card became an atmospheric
+ * HeroCard composition so the locked state feels like part of the
+ * product, not a blocking error page. The hero blob + tinted surface
+ * read as "preserved, not deleted" — matching the post-expiry
+ * messaging on the home banner + account card (slices 5 + 7).
  *
  * NOT the same component as `LockedFeatureCard` (which gates on
  * EXPERIENTIAL unlocks — "record more to see this"). This card gates
@@ -38,35 +45,39 @@ export function ProLockedCard({
   const href = freeTierUpgradeUrl(baseUrl, surfaceId);
 
   return (
-    <section
-      className={`rounded-2xl border border-zinc-200 bg-gradient-to-br from-violet-50/40 to-white p-6 dark:border-white/10 dark:from-violet-950/10 dark:to-[#1E1E2E] ${className}`}
+    <HeroCard
+      variant="primary"
+      padding={6}
+      className={className}
       data-surface-id={surfaceId}
     >
       {copy.eyebrow && (
         <p
-          className="font-semibold uppercase text-violet-600 dark:text-violet-400"
-          style={{ fontSize: 11, letterSpacing: "0.18em" }}
+          className="font-mono font-bold uppercase text-acuity-text-ter"
+          style={{ fontSize: 10, letterSpacing: "1.4px" }}
         >
           {copy.eyebrow}
         </p>
       )}
       {copy.title && (
-        <h3 className="mt-2 text-base font-semibold text-zinc-900 dark:text-zinc-50">
+        <h3 className="mt-3 font-display text-xl font-bold tracking-tight text-acuity-text sm:text-2xl">
           {copy.title}
         </h3>
       )}
-      <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
+      <p className="mt-3 whitespace-pre-line text-[15px] leading-relaxed text-acuity-text-sec">
         {copy.body}
       </p>
-      <a
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="mt-5 inline-flex items-center gap-1.5 rounded-full bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
-      >
-        {copy.ctaLabel}
-      </a>
-    </section>
+      <div className="mt-5">
+        <a
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 rounded-acuity-pill bg-acuity-grad-primary px-5 py-2.5 text-[14px] font-semibold text-white shadow-acuity-glow-primary transition hover:brightness-110 active:scale-[0.98]"
+        >
+          {copy.ctaLabel}
+        </a>
+      </div>
+    </HeroCard>
   );
 }
 
