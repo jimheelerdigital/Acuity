@@ -149,7 +149,7 @@ export function GoalDetailRail({
           <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
             Description
           </p>
-          <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-zinc-700 dark:text-zinc-200">
+          <p className="mt-2 whitespace-pre-line text-[15px] leading-relaxed text-zinc-700 dark:text-zinc-200">
             {detail.description}
           </p>
         </section>
@@ -229,7 +229,7 @@ export function GoalDetailRail({
             href={`/entries/${detail.sourceEntry.id}`}
             className="mt-2 block rounded-lg border-l-2 border-acuity-primary bg-zinc-50/60 px-3 py-2 transition hover:bg-zinc-100/60 dark:bg-white/[0.02] dark:hover:bg-white/[0.04]"
           >
-            <p className="line-clamp-3 text-sm leading-relaxed text-zinc-700 dark:text-zinc-200">
+            <p className="line-clamp-3 text-[15px] leading-relaxed text-zinc-700 dark:text-zinc-200">
               {detail.sourceEntry.summary ?? "(no summary)"}
             </p>
             <p className="mt-1.5 text-[10px] uppercase tracking-wider text-zinc-400 dark:text-zinc-500">

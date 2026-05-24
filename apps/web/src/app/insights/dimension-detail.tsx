@@ -200,7 +200,7 @@ export function DimensionDetailModal({
               >
                 What's driving this
               </p>
-              <p className="text-sm leading-relaxed text-zinc-800 dark:text-zinc-100">
+              <p className="text-[15px] leading-relaxed text-zinc-800 dark:text-zinc-100">
                 {data.whatsDriving}
               </p>
             </div>

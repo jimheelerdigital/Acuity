@@ -176,7 +176,7 @@ export default async function EntryDetailPage({
           {isComplete && entry.summary && (
             <section>
               <SectionHeader label="Summary" />
-              <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-acuity-text-sec">
+              <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed text-acuity-text-sec">
                 {entry.summary}
               </p>
             </section>
@@ -278,7 +278,7 @@ export default async function EntryDetailPage({
             <section>
               <SectionHeader label="Transcript" />
               <Card variant="tinted" radius="lg" padding={5} className="mt-3">
-                <p className="whitespace-pre-wrap text-sm leading-relaxed text-acuity-text-sec">
+                <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-acuity-text-sec">
                   {entry.transcript}
                 </p>
               </Card>

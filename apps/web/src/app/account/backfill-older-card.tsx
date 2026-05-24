@@ -90,7 +90,7 @@ export function BackfillOlderEntriesCard({
             <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
               Process {olderCount} older {olderCount === 1 ? "entry" : "entries"}?
             </h3>
-            <p className="mt-3 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
+            <p className="mt-3 text-[15px] leading-relaxed text-zinc-600 dark:text-zinc-300">
               This can take 10-20 minutes for users with deep histories.
               You&apos;ll get an email when it&apos;s done.
             </p>

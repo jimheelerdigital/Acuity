@@ -172,7 +172,7 @@ export function AskPastClient() {
                 {h.question}
               </p>
 
-              <div className="prose prose-zinc dark:prose-invert max-w-none text-sm leading-relaxed">
+              <div className="prose prose-zinc dark:prose-invert max-w-none text-[15px] leading-relaxed">
                 {h.answer.split(/\n\n+/).map((para, pi) => (
                   <p key={pi} className="mb-3 text-zinc-700 dark:text-zinc-200">
                     {para}

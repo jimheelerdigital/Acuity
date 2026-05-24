@@ -665,7 +665,7 @@ function DetailPanel({
       {/* Insight callout */}
       {area.insightSummary && (
         <div
-          className="mx-6 mt-4 rounded-xl p-4 text-sm leading-relaxed"
+          className="mx-6 mt-4 rounded-xl p-4 text-[15px] leading-relaxed"
           style={{ backgroundColor: accentColor + "10", color: accentColor }}
         >
           {area.insightSummary}

@@ -72,7 +72,7 @@ export default async function InsightsPage() {
                       <h2 className="mt-3 font-display text-xl font-semibold text-acuity-text">
                         Life Matrix
                       </h2>
-                      <p className="mt-1 text-sm leading-relaxed text-acuity-text-sec">
+                      <p className="mt-1 text-[15px] leading-relaxed text-acuity-text-sec">
                         Your scores across every life area, with trends and
                         recurring themes pulled from every debrief.
                       </p>
@@ -102,7 +102,7 @@ export default async function InsightsPage() {
                       <h2 className="mt-3 font-display text-xl font-semibold text-acuity-text">
                         Theme Map
                       </h2>
-                      <p className="mt-1 text-sm leading-relaxed text-acuity-text-sec">
+                      <p className="mt-1 text-[15px] leading-relaxed text-acuity-text-sec">
                         The patterns your debriefs keep circling back to —
                         sized by frequency, colored by tone.
                       </p>
@@ -133,7 +133,7 @@ export default async function InsightsPage() {
                 <h2 className="mt-3 font-display text-xl font-semibold text-acuity-text">
                   Ask your past self
                 </h2>
-                <p className="mt-1 text-sm leading-relaxed text-acuity-text-sec">
+                <p className="mt-1 text-[15px] leading-relaxed text-acuity-text-sec">
                   Natural-language questions across your journal history —
                   answered in your own words.
                 </p>
@@ -150,7 +150,7 @@ export default async function InsightsPage() {
                 <h2 className="mt-3 font-display text-xl font-semibold text-acuity-text">
                   State of Me
                 </h2>
-                <p className="mt-1 text-sm leading-relaxed text-acuity-text-sec">
+                <p className="mt-1 text-[15px] leading-relaxed text-acuity-text-sec">
                   Every 90 days, a long-form read across the quarter — themes,
                   mood arc, patterns worth noticing.
                 </p>

@@ -47,7 +47,7 @@ export default async function UpgradePage({
             <h1 className="mt-2 font-display text-3xl font-bold tracking-tight text-acuity-text">
               Keep what you&rsquo;ve built.
             </h1>
-            <p className="mt-3 text-sm leading-relaxed text-acuity-text-sec">
+            <p className="mt-3 text-[15px] leading-relaxed text-acuity-text-sec">
               Your trial is short. The patterns are long. Pro keeps the
               weekly report landing and the matrix updating.
             </p>

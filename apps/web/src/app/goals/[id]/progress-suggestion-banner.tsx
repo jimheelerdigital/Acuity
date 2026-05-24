@@ -120,7 +120,7 @@ export function ProgressSuggestionBanner({
               key={s.id}
               className="rounded-xl border border-acuity-primary-soft dark:border-white/10 bg-white dark:bg-acuity-card-bg p-4"
             >
-              <p className="text-sm leading-relaxed text-zinc-700 dark:text-zinc-200">
+              <p className="text-[15px] leading-relaxed text-zinc-700 dark:text-zinc-200">
                 {s.rationale}
               </p>
               {s.sourceEntryId && (
