@@ -41,6 +41,70 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-25] — Trial lifecycle + conversion workstream (slices 1-10)
+
+**Requested by:** Both
+**Committed by:** Claude Code
+**Commit hashes:** 723c971 (s5), a1eaa19 (s6), e90ac6b (s7), c673908 (s8), 7f6e391 (s9) — plus earlier slices 1-4 from this workstream
+
+### In plain English (for Keenan)
+
+The trial-to-paid system now actually nudges users to convert instead of going silent. A user on day-12 of their trial sees a calm "2 days left" countdown on the home screen and at the top of their account page. When their trial ends, the app doesn't just lock things — every locked screen reads "Your insights are paused" in a polished card, and there's a Continue-on-web button that opens the upgrade page. Five emails go out automatically (T-7, T-3, T-1, T+0, T+3) with personalized stats — "you've recorded 18 entries, surfaced 12 themes". Server-side push notifications are wired up and ready to fire for T-3 + T+0 as soon as mobile starts registering devices (paused for App Store risk).
+
+The whole thing respects Apple's rule that we can't say "Subscribe" or show prices in the app — every CTA opens the web for payment.
+
+### Technical changes (for Jimmy)
+
+**Schema (already applied to prod by Jim):**
+- `User.trialExpiredAt` — stamp when expiration cron flips TRIAL → FREE
+- `User.trialT7EmailSentAt`, `trialT3EmailSentAt`, `trialT1EmailSentAt`, `trialEndedEmailSentAt`, `trialT3PostEmailSentAt` — email idempotency
+- `User.trialT3PushSentAt`, `trialEndedPushSentAt` — push idempotency
+
+**Crons (Inngest, hourly except expiration which is daily at 02:00 UTC):**
+- `apps/web/src/inngest/functions/trial-expiration-cron.ts` — daily 02:00 UTC, flips TRIAL → FREE with 1h skew buffer, stamps trialExpiredAt
+- `apps/web/src/inngest/functions/trial-countdown-emails-cron.ts` — hourly, 5 cohorts (T-7 / T-3 / T-1 / T+0 / T+3)
+- `apps/web/src/inngest/functions/trial-countdown-push-cron.ts` — hourly, T-3 + T+0 cohorts, pushToken-NOT-NULL gate (no-op until mobile registration ships)
+
+**Email infrastructure:**
+- `apps/web/src/lib/trial-countdown-emails.ts` — `sendCountdownEmail(userId, key)` + `buildCountdownVars(userId)` (totalRecordings, currentStreak, themesSurfaced, topTheme, secondTheme, axesScored)
+- Five templates rendered via existing `trialLayout`/`trialButton`/`trialCard` helpers — same inbox aesthetic as the onboarding orchestrator
+- Idempotency: `updateMany` with `IS NULL` re-assert on SentAt column
+
+**Push infrastructure (server-only, paused on mobile):**
+- `apps/web/src/lib/trial-countdown-push.ts` — direct fetch to Expo Push API (no SDK dep). Per-user send with SentAt re-assert.
+- ⚠️ HIGH RISK gating: mobile-side Expo push registration is the next step but touches live app launch + auth + adds a new API. Paused pending Jim's go/no-go.
+
+**UI (web):**
+- `apps/web/src/app/account/_components/trial-status-card.tsx` — new 4-state client component on /account: StandardTrialCard (>7d), MidTrialCard (4-7d, gradMix), UrgentTrialCard (1-3d, warn-amber + CTA), PostExpiryCard (FREE within 14d of expiry, CTA). 1-minute interval refresh.
+- `apps/web/src/app/home/_sections/trial-home-banner.tsx` — atmospheric HeroCard banner above the home grid, same 3 modes. Stats row (entries · streak · themes). Server section reads its own data.
+- `apps/web/src/components/acuity/SubscriptionPill.tsx` — added `daysRemaining` + `trialEnded` props. Pill shifts from legacy mint (>7d) to gradMix (4-7d) to warn-amber (1-3d) to "Trial ended" (warn-tinted) based on inputs.
+- `apps/web/src/components/pro-locked-card.tsx` — upgraded to HeroCard composition (atmospheric blob, display title, gradient CTA pill). Cascades automatically to all 6 gated surfaces (Life Matrix, Theme Map, Insights, Weekly Reports, Goals, Tasks).
+- `apps/web/src/app/api/user/me/route.ts` — expose `trialExpiredAt` for mobile + web clients
+
+**UI (mobile):**
+- `apps/mobile/components/TrialStatusCard.tsx` — mobile parity for the /account card, RN primitives + Linking.openURL for the Continue-on-web CTA
+- `apps/mobile/app/(tabs)/profile.tsx` — render TrialStatusCard above subscription block + derive daysRemaining/trialEnded inputs for the SubscriptionPill
+- `apps/mobile/app/(tabs)/index.tsx` — replaced quiet TrialBanner with atmospheric HeroCard composition (same 3 modes, currentStreak chip when ≥2)
+- `apps/mobile/components/acuity/SubscriptionPill.tsx` — daysRemaining + trialEnded props, gradMix for mid-trial, bad-tint for urgent + ended (no warn token on mobile so bad reuse)
+- `apps/mobile/components/pro-locked-card.tsx` — HeroCard wrapper, same Apple Option-C compliance (Continue-on-web + iOS Subscribe-in-app when flag-on)
+- `apps/mobile/lib/auth.ts` — added `trialExpiredAt?: string | null` to User type
+
+### Manual steps needed
+
+- [ ] Verify trial-expiration-cron + trial-countdown-emails-cron + trial-countdown-push-cron are registered in Inngest dashboard after next /api/inngest GET (Jimmy)
+- [ ] Decide on mobile push registration scope — currently paused as HIGH RISK; would require: register Expo push token on auth, POST to a new /api/push/register endpoint, save to User.pushToken (Jimmy go/no-go)
+- [ ] Watch /admin metrics for the first email cohort sends (Both)
+
+### Notes
+
+- Two parallel email systems coexist by design: the existing `trial-email-orchestrator` (signup-driven, uses TrialEmailLog table) handles onboarding/reactivation; the new `trial-countdown` system (calendar-driven, uses User.SentAt columns) handles the endgame. No shared tracking — they don't step on each other.
+- The 1-hour cron skew buffer on trial-expiration is intentional: a Stripe webhook arriving at 23:55 has retries available before the 02:00 UTC cron could accidentally flip a paying user to FREE. Worst-case email latency for a real expiry is 25h.
+- For the home banner stats row, web reads themesSurfaced server-side via a Prisma count; mobile omits it (the field isn't on the auth-context User) and just shows the streak chip. Acceptable disparity — the web version is the conversion focal point.
+- HeroCard cascade on ProLockedCard means all 6 locked surfaces got the atmospheric upgrade with one file change. Same pattern on mobile.
+- Slice 9 server-side ships even though mobile is paused; the cron is a safe no-op (pushToken IS NOT NULL gate) and becomes active automatically when mobile lands. This keeps the system fully decoupled — Jim can decide the mobile timing without a server-side re-deploy.
+
+---
+
 ## [2026-05-24] — Web visual fix — light default + dark/palette toggle + orbital port (slices 19-26)
 
 **Requested by:** Jimmy
