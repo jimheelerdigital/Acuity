@@ -138,6 +138,16 @@ model User {
   // rotated Expo token doesn't go stale silently.
   pushTokenPlatform             String?              // "ios" | "android"
   pushTokenUpdatedAt            DateTime?
+  // Calendar Integration (P1 v1.2, 2026-05-25). The refresh token is
+  // stored encrypted (AES-256-GCM, key derived from NEXTAUTH_SECRET).
+  // See apps/web/src/lib/calendar/encryption.ts. Connection is
+  // separate from NextAuth sign-in — users explicitly opt in via
+  // /account → Connect Calendar so a scope-expansion can't break
+  // existing Google sign-in for users who never wanted calendar.
+  googleCalendarRefreshToken    String?
+  googleCalendarEmail           String?              // shown in /account
+  googleCalendarConnectedAt     DateTime?
+  googleCalendarLastSyncedAt    DateTime?
   // HH:MM in the user's timezone. Combined with `notificationDays`
   // to schedule the local reminder (mobile via expo-notifications)
   // or the daily email (web, future).
