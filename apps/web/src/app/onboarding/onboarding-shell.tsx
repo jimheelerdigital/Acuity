@@ -1,7 +1,6 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useTheme } from "next-themes";
 import {
   useCallback,
   useEffect,
@@ -71,20 +70,13 @@ export function OnboardingShell({
   const [showSkipModal, setShowSkipModal] = useState(false);
   const capturedRef = useRef<Record<string, unknown> | null>(null);
 
-  // Force dark mode for the entire onboarding flow regardless of the
-  // user's preference. Brand identity is dark-first; the light-mode
-  // styling here is half-baked and not worth fixing for a one-shot
-  // surface. Restore their preference on unmount.
-  const { theme, setTheme } = useTheme();
-  useEffect(() => {
-    const previous = theme;
-    setTheme("dark");
-    return () => {
-      if (previous && previous !== "dark") setTheme(previous);
-    };
-    // Only run on mount/unmount.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Slice 21 (2026-05-24): onboarding no longer force-flips theme.
+  // The whole app supports light + dark + 4 palettes via the
+  // AppearanceProvider; onboarding respects whatever the user picked
+  // (or "system" → OS preference). The previous next-themes
+  // setTheme("dark") hack was a slice-1-era workaround for the
+  // half-finished light-mode styling on these steps; slice 25 audits
+  // the steps for light-mode polish.
 
   // Fire onboarding_started exactly once on first mount of step 1.
   // Re-mounts within the same step shouldn't re-fire; crossing into

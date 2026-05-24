@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import { Manrope } from "next/font/google";
 import { GeistMono } from "geist/font/mono";
+import { getServerSession } from "next-auth";
+import { headers } from "next/headers";
 import "@/lib/theme/tokens.css";
 import "./globals.css";
 
@@ -13,6 +15,14 @@ import { CookieConsentBanner } from "@/components/cookie-consent";
 import { ConsentGatedTrackers } from "@/components/consent-gated-trackers";
 import { CrisisFooter } from "@/components/crisis-footer";
 import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
+import { getAuthOptions } from "@/lib/auth";
+import {
+  parsePalette,
+  parseThemePreference,
+  type Palette,
+  type ResolvedTheme,
+  type ThemePreference,
+} from "@/contexts/appearance-context";
 // FoundingMemberBanner is embedded directly in landing.tsx and landing-shared.tsx
 // (above their own fixed navs) rather than in the root layout.
 
@@ -81,11 +91,64 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+/**
+ * Slice 21 SSR appearance read. Pulls the signed-in user's
+ * `theme` + `themePalette` from the database so `<html>` is
+ * server-rendered with the correct `data-theme` + `data-palette`
+ * attributes — no client-side flash between the initial
+ * default and the user's persisted preference.
+ *
+ * Resolution rules:
+ *   - `User.theme === null` → preference is "system". Server falls
+ *     back to "light" for the rendered `data-theme` attribute (we
+ *     can't read OS pref server-side). Client-side
+ *     AppearanceProvider attaches matchMedia and corrects on
+ *     hydration via the change-listener path.
+ *   - Unauthenticated routes (no session) → "system" + "coral"
+ *     defaults. Marketing surfaces don't care about either knob;
+ *     they render light + coral universally.
+ */
+async function readAppearance(): Promise<{
+  preference: ThemePreference;
+  palette: Palette;
+  resolved: ResolvedTheme;
+}> {
+  try {
+    // `headers()` is called only for its side effect — opting into
+    // the dynamic-rendering path for this layout (without it,
+    // Next.js would attempt static optimization and fail on the
+    // session read below).
+    headers();
+    const session = await getServerSession(getAuthOptions());
+    if (!session?.user?.id) {
+      return { preference: "system", palette: "coral", resolved: "light" };
+    }
+    const { prisma } = await import("@/lib/prisma");
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { theme: true, themePalette: true },
+    });
+    const preference = parseThemePreference(user?.theme);
+    const palette = parsePalette(user?.themePalette);
+    // Server can't observe OS pref. For "system" we resolve to
+    // "light" on first paint; the client re-resolves via matchMedia
+    // immediately on hydration. Acceptable single-frame flicker on
+    // OS-dark-mode users — far better than the previous forced-dark
+    // hack which always lied about the user's preference.
+    const resolved: ResolvedTheme =
+      preference === "dark" ? "dark" : preference === "light" ? "light" : "light";
+    return { preference, palette, resolved };
+  } catch {
+    return { preference: "system", palette: "coral", resolved: "light" };
+  }
+}
+
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const appearance = await readAppearance();
   const structuredDataJsonLd = {
     "@context": "https://schema.org",
     "@graph": [
@@ -116,6 +179,8 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      data-theme={appearance.resolved}
+      data-palette={appearance.palette}
       className={`${manrope.variable} ${GeistMono.variable}`}
       suppressHydrationWarning
     >
@@ -141,7 +206,7 @@ export default function RootLayout({
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
         <link rel="manifest" href="/site.webmanifest" />
       </head>
-      <body className="bg-[#FAFAF7] text-zinc-900 antialiased dark:bg-[#181614] dark:text-zinc-50">
+      <body className="bg-acuity-bg text-acuity-text antialiased">
         {/* Meta Pixel — loaded after first paint, not blocking render */}
         <Script id="meta-pixel" strategy="afterInteractive">
           {`
@@ -157,7 +222,11 @@ export default function RootLayout({
             fbq('track', 'PageView');
           `}
         </Script>
-        <Providers>
+        <Providers
+          initialThemePreference={appearance.preference}
+          initialPalette={appearance.palette}
+          initialResolvedTheme={appearance.resolved}
+        >
           <ConsentGatedTrackers />
           <GoogleAnalytics />
           <NavBar />

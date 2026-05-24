@@ -1,39 +1,51 @@
 "use client";
 
 import { SessionProvider } from "next-auth/react";
-import { ThemeProvider } from "next-themes";
 import { type ReactNode } from "react";
 
 import { PostHogProvider } from "@/components/posthog-provider";
+import {
+  AppearanceProvider,
+  type Palette,
+  type ResolvedTheme,
+  type ThemePreference,
+} from "@/contexts/appearance-context";
 
 /**
  * Client-only provider tree. The outer NextAuth session wrapper is on
- * top so all downstream children have auth context. next-themes sits
- * inside because theme preference is UI-only and doesn't need to wait
- * on session to be ready.
+ * top so all downstream children have auth context. Appearance comes
+ * next (light/dark/system + 4-palette parametric) so children can
+ * read it without waiting on session.
  *
- * ThemeProvider config:
- *   - `attribute="class"` pairs with tailwind.config.ts darkMode:"class"
- *     so React toggles class="dark" on <html>.
- *   - `defaultTheme="system"` respects the OS preference on first load.
- *     Once the user picks light/dark via the toggle, next-themes
- *     persists their choice to localStorage and honors it across
- *     reloads.
- *   - `disableTransitionOnChange` prevents a flash of weird-colored
- *     transitions when toggling — stops every element's transition
- *     from firing during the class swap, then re-enables after.
+ * Slice 21 (2026-05-24): replaced `next-themes` with the in-house
+ * `<AppearanceProvider>`. next-themes only modeled `theme` and used
+ * `attribute="class"`; Acuity needs theme + palette as data attribute
+ * pair on `<html>` so the parametric tokens.css cascade works. SSR
+ * passes initial values from User.theme + User.themePalette via
+ * layout.tsx so first paint matches the persisted preference.
  */
-export function Providers({ children }: { children: ReactNode }) {
+export interface ProvidersProps {
+  initialThemePreference: ThemePreference;
+  initialPalette: Palette;
+  initialResolvedTheme: ResolvedTheme;
+  children: ReactNode;
+}
+
+export function Providers({
+  initialThemePreference,
+  initialPalette,
+  initialResolvedTheme,
+  children,
+}: ProvidersProps) {
   return (
     <SessionProvider>
-      <ThemeProvider
-        attribute="class"
-        defaultTheme="dark"
-        forcedTheme="dark"
-        disableTransitionOnChange
+      <AppearanceProvider
+        initialThemePreference={initialThemePreference}
+        initialPalette={initialPalette}
+        initialResolvedTheme={initialResolvedTheme}
       >
         <PostHogProvider>{children}</PostHogProvider>
-      </ThemeProvider>
+      </AppearanceProvider>
     </SessionProvider>
   );
 }
