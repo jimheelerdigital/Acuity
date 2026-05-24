@@ -39,6 +39,19 @@ export interface SubscriptionPillProps {
   status: SubscriptionStatus;
   /** Custom label override. Defaults to a spec-aligned status name. */
   label?: string;
+  /**
+   * Trial-only urgency input (slice 6, 2026-05-25). When `status==="TRIAL"`
+   * and this is set, the pill shifts visual treatment based on days
+   * remaining: gradMix tint at 4-7 days, bad-tinted at 1-3 days. Mobile
+   * doesn't have a `warn` token so we reuse `bad` for the urgent tint.
+   */
+  daysRemaining?: number;
+  /**
+   * When true, force the "TRIAL ENDED" variant regardless of `status`.
+   * Used by surfaces that detect a recent FREE-post-expiry transition
+   * and want to keep the pill expressive for ~14 days afterward.
+   */
+  trialEnded?: boolean;
   style?: ViewStyle;
 }
 
@@ -53,10 +66,50 @@ const DEFAULT_LABELS: Record<SubscriptionStatus, string> = {
 export function SubscriptionPill({
   status,
   label,
+  daysRemaining,
+  trialEnded,
   style,
 }: SubscriptionPillProps) {
   const { tokens } = useTheme();
   const text = label ?? DEFAULT_LABELS[status];
+
+  // TRIAL ENDED — wins over any status. FREE-post-expiry surfaces pass
+  // trialEnded=true while within the ~14-day post-expiry window so the
+  // pill stays expressive instead of silently dropping to "Free Plan".
+  if (trialEnded) {
+    const endedLabel = label ?? "Trial ended";
+    return (
+      <View
+        style={[
+          {
+            flexDirection: "row",
+            alignItems: "center",
+            borderRadius: tokens.radius.pill,
+            backgroundColor: tokens.badSoft,
+            borderWidth: 0.5,
+            borderColor: tokens.bad,
+            paddingHorizontal: 10,
+            paddingVertical: 4,
+            alignSelf: "flex-start",
+          },
+          style,
+        ]}
+      >
+        <Text
+          style={{
+            fontFamily: tokens.fontMono,
+            fontSize: 9,
+            fontWeight: "700",
+            letterSpacing: 1.2,
+            textTransform: "uppercase",
+            color: tokens.bad,
+          }}
+        >
+          {endedLabel}
+        </Text>
+      </View>
+    );
+  }
 
   // PRO renders the gradMix-filled "Pro pill" from the spec.
   if (status === "PRO") {
@@ -72,8 +125,8 @@ export function SubscriptionPill({
         ]}
       >
         <LinearGradient
-          colors={tokens.gradMix.colors}
-          locations={tokens.gradMix.locations}
+          colors={tokens.gradMix.colors as unknown as readonly [string, string, ...string[]]}
+          locations={tokens.gradMix.locations as unknown as readonly [number, number, ...number[]]}
           start={tokens.gradMix.start}
           end={tokens.gradMix.end}
           style={{
@@ -103,8 +156,157 @@ export function SubscriptionPill({
   }
 
   // TRIAL renders with the good (mint) palette as an "active + positive"
-  // affordance, distinct from Pro's gradient.
+  // affordance, distinct from Pro's gradient. Slice 6: when daysRemaining
+  // is provided we shift visual treatment based on urgency.
   if (status === "TRIAL") {
+    if (typeof daysRemaining === "number") {
+      if (daysRemaining <= 0) {
+        // Trial ended but caller passed status=TRIAL anyway (cron not
+        // yet flipped). Treat as ended for visual consistency.
+        const endedLabel = label ?? "Trial ended";
+        return (
+          <View
+            style={[
+              {
+                flexDirection: "row",
+                alignItems: "center",
+                borderRadius: tokens.radius.pill,
+                backgroundColor: tokens.badSoft,
+                borderWidth: 0.5,
+                borderColor: tokens.bad,
+                paddingHorizontal: 10,
+                paddingVertical: 4,
+                alignSelf: "flex-start",
+              },
+              style,
+            ]}
+          >
+            <Text
+              style={{
+                fontFamily: tokens.fontMono,
+                fontSize: 9,
+                fontWeight: "700",
+                letterSpacing: 1.2,
+                textTransform: "uppercase",
+                color: tokens.bad,
+              }}
+            >
+              {endedLabel}
+            </Text>
+          </View>
+        );
+      }
+      const countLabel = label ?? `Trial · ${daysRemaining}d`;
+      if (daysRemaining <= 3) {
+        // Urgent — bad-tinted (mobile's warning red/amber). Hairline.
+        return (
+          <View
+            style={[
+              {
+                flexDirection: "row",
+                alignItems: "center",
+                borderRadius: tokens.radius.pill,
+                backgroundColor: tokens.badSoft,
+                borderWidth: 0.5,
+                borderColor: tokens.bad,
+                paddingHorizontal: 10,
+                paddingVertical: 4,
+                alignSelf: "flex-start",
+              },
+              style,
+            ]}
+          >
+            <Text
+              style={{
+                fontFamily: tokens.fontMono,
+                fontSize: 9,
+                fontWeight: "700",
+                letterSpacing: 1.2,
+                textTransform: "uppercase",
+                color: tokens.bad,
+              }}
+            >
+              {countLabel}
+            </Text>
+          </View>
+        );
+      }
+      if (daysRemaining <= 7) {
+        // Mid-trial — gradMix fill, white text.
+        return (
+          <View
+            style={[
+              {
+                borderRadius: tokens.radius.pill,
+                overflow: "hidden",
+                alignSelf: "flex-start",
+              },
+              style,
+            ]}
+          >
+            <LinearGradient
+              colors={tokens.gradMix.colors as unknown as readonly [string, string, ...string[]]}
+              locations={tokens.gradMix.locations as unknown as readonly [number, number, ...number[]]}
+              start={tokens.gradMix.start}
+              end={tokens.gradMix.end}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                paddingHorizontal: 10,
+                paddingVertical: 4,
+              }}
+            >
+              <Text
+                style={{
+                  fontFamily: tokens.fontMono,
+                  fontSize: 9,
+                  fontWeight: "700",
+                  letterSpacing: 1.2,
+                  textTransform: "uppercase",
+                  color: "#ffffff",
+                }}
+              >
+                {countLabel}
+              </Text>
+            </LinearGradient>
+          </View>
+        );
+      }
+      // > 7 days remaining — legacy mint pill, with the day count.
+      return (
+        <View
+          style={[
+            {
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 5,
+              borderRadius: tokens.radius.pill,
+              backgroundColor: tokens.goodSoft,
+              borderWidth: 0.5,
+              borderColor: tokens.good,
+              paddingHorizontal: 10,
+              paddingVertical: 4,
+              alignSelf: "flex-start",
+            },
+            style,
+          ]}
+        >
+          <Text
+            style={{
+              fontFamily: tokens.fontMono,
+              fontSize: 9,
+              fontWeight: "700",
+              letterSpacing: 1.2,
+              textTransform: "uppercase",
+              color: tokens.good,
+            }}
+          >
+            {countLabel}
+          </Text>
+        </View>
+      );
+    }
+    // No daysRemaining provided — legacy "Trial" pill.
     return (
       <View
         style={[

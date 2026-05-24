@@ -115,6 +115,26 @@ export default function ProfileTab() {
   const subStatus = user?.subscriptionStatus ?? "FREE";
   const subSource = user?.subscriptionSource ?? null;
   const isPro = subStatus === "PRO";
+
+  // Slice 6 — urgency inputs for SubscriptionPill. Match the same
+  // logic as TrialStatusCard so the pill + card stay in sync. The
+  // SubscriptionPill renders the gradMix variant at 4-7d and the
+  // bad-tint at 1-3d when daysRemaining is supplied; trialEnded
+  // wins over status for FREE-post-expiry within the 14-day window.
+  const TRIAL_PILL_POST_EXPIRY_DAYS = 14;
+  let pillDaysRemaining: number | undefined;
+  let pillTrialEnded = false;
+  if (subStatus === "TRIAL" && user?.trialEndsAt) {
+    const ms = new Date(user.trialEndsAt).getTime() - Date.now();
+    pillDaysRemaining = Math.max(0, Math.ceil(ms / (24 * 60 * 60 * 1000)));
+  } else if (subStatus === "FREE" && user?.trialExpiredAt) {
+    const daysSince =
+      (Date.now() - new Date(user.trialExpiredAt).getTime()) /
+      (24 * 60 * 60 * 1000);
+    if (daysSince >= 0 && daysSince <= TRIAL_PILL_POST_EXPIRY_DAYS) {
+      pillTrialEnded = true;
+    }
+  }
   const isAppleSub = subSource === "apple";
   const isStripeSub = subSource === "stripe";
   // Only show Stripe "Manage subscription" when the user actually
@@ -198,7 +218,11 @@ export default function ProfileTab() {
             {email}
           </Text>
           <View style={{ marginTop: 12 }}>
-            <SubscriptionPill status={subStatus as never} />
+            <SubscriptionPill
+              status={subStatus as never}
+              daysRemaining={pillDaysRemaining}
+              trialEnded={pillTrialEnded}
+            />
           </View>
         </View>
 
