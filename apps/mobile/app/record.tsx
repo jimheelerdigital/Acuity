@@ -24,6 +24,7 @@ import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
 import { getToken } from "@/lib/auth";
 import { invalidate } from "@/lib/cache";
+import { registerPushTokenAfterRecording } from "@/lib/push-token";
 
 /**
  * Recording modal. One screen, one state machine. Consolidates the
@@ -164,6 +165,24 @@ export default function RecordScreen() {
       // swipe from detail goes to the dashboard, not back to a
       // post-record spinner.
       router.replace(`/entry/${polledEntryId}`);
+
+      // Slice 9b — post-second-recording push permission ask. The
+      // helper is idempotent (PROMPTED_KEY guard) and silently
+      // skips unless totalRecordings === 2, so it's safe to call
+      // on every successful record. Fire-and-forget: a slow /api/
+      // user/me round-trip must not block the entry-detail nav.
+      void (async () => {
+        try {
+          const meRes = await api.get<{
+            user?: { totalRecordings?: number };
+          }>("/api/user/me");
+          const total = meRes.user?.totalRecordings ?? 0;
+          await registerPushTokenAfterRecording(total);
+        } catch {
+          // Non-fatal — registration will retry on the next
+          // qualifying record completion.
+        }
+      })();
     } else if (poll.status === "failed") {
       setError(poll.entry?.errorMessage ?? "Processing failed.");
       setState("error");
@@ -464,6 +483,20 @@ export default function RecordScreen() {
           // with the extraction already done. Nav straight to detail.
           if (responseEntryId) {
             router.replace(`/entry/${responseEntryId}`);
+            // Slice 9b — same post-second-recording trigger as the
+            // async polling branch above. Both code paths complete a
+            // recording; both should consider asking for push.
+            void (async () => {
+              try {
+                const meRes = await api.get<{
+                  user?: { totalRecordings?: number };
+                }>("/api/user/me");
+                const total = meRes.user?.totalRecordings ?? 0;
+                await registerPushTokenAfterRecording(total);
+              } catch {
+                // non-fatal
+              }
+            })();
             return;
           }
 

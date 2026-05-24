@@ -30,6 +30,7 @@ import { LockScreenOverlay } from "@/components/lock-screen-overlay";
 import { UniversalLinkHandler } from "@/components/universal-link-handler";
 import { UpdatePromptOverlay } from "@/components/UpdatePromptOverlay";
 import { reapplyRemindersIfNeeded } from "@/lib/notifications-boot";
+import { refreshPushTokenOnLaunch } from "@/lib/push-token";
 import { initSentry, setSentryUser } from "@/lib/sentry";
 
 // Sentry init at module scope — idempotent on re-import.
@@ -91,6 +92,11 @@ function AuthGate() {
     if (loading || !user) return;
     const userId = user.id;
     void reapplyRemindersIfNeeded(userId);
+    // Slice 9b — refresh Expo push token on every authenticated cold
+    // launch. No-op when the user has never registered or permission
+    // is currently denied; only writes when Expo's current token
+    // differs from whatever's on the device-local registered marker.
+    void refreshPushTokenOnLaunch();
     const sub = AppState.addEventListener("change", (next) => {
       if (next === "active") {
         void reapplyRemindersIfNeeded(userId);

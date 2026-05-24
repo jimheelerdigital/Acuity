@@ -52,14 +52,17 @@ const COUNTDOWN_PAYLOADS: Record<
   Omit<PushPayload, "to">
 > = {
   trial_countdown_t3_push: {
+    // Accountability voice. Specific, falsifiable, no fake urgency.
+    // No "$", "Subscribe", or price tokens — Apple Option-C requires
+    // payment-related copy to live on web only.
     title: "3 days left in your trial",
-    body: "Your Theme Map and weekly insights stay locked in unless you continue on web.",
+    body: "Keep going.",
     sound: "default",
     data: { src: "trial_countdown_t3" },
   },
   trial_ended_t0_push: {
     title: "Your trial ended",
-    body: "Recording stays free. Your insights are paused — continue on web to bring them back.",
+    body: "Recording's still yours.",
     sound: "default",
     data: { src: "trial_ended_t0" },
   },

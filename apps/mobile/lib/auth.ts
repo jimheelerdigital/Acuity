@@ -64,6 +64,10 @@ export type User = {
   hasStripeCustomer?: boolean;
   currentStreak?: number;
   longestStreak?: number;
+  // Lifetime count of completed recordings. Slice 9b uses this for the
+  // post-second-recording push-permission trigger; other consumers may
+  // read it for streaks / stats UI.
+  totalRecordings?: number;
   lastStreakMilestone?: number | null;
   // Flags flattened from UserOnboarding relation by /api/user/me.
   // `false` when the row doesn't exist OR completedAt is null — both

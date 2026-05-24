@@ -58,6 +58,11 @@ export async function GET(req: NextRequest) {
       timezone: true,
       currentStreak: true,
       longestStreak: true,
+      // Surfaced for mobile slice 9b — push-token registration triggers
+      // exactly when the user hits totalRecordings === 2 (first felt-
+      // value moment). Cheap to expose; the column already populates
+      // on every entry write.
+      totalRecordings: true,
       lastStreakMilestone: true,
       notificationTime: true,
       notificationDays: true,

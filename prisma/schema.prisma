@@ -132,6 +132,12 @@ model User {
   // manually; read paths should prefer `notificationTime`.
   reminderTime                  String               @default("21:00")
   pushToken                     String?
+  // Slice 9b (2026-05-25) — additional push metadata. Stamped by the
+  // mobile push-token registration call after the user grants permission
+  // (post-second-recording). Re-stamped on every cold launch so a
+  // rotated Expo token doesn't go stale silently.
+  pushTokenPlatform             String?              // "ios" | "android"
+  pushTokenUpdatedAt            DateTime?
   // HH:MM in the user's timezone. Combined with `notificationDays`
   // to schedule the local reminder (mobile via expo-notifications)
   // or the daily email (web, future).
