@@ -25,6 +25,7 @@ import { snapshotLifemapHistoryFn } from "@/inngest/functions/snapshot-lifemap-h
 import { computeDailySnapshotFn } from "@/inngest/functions/compute-daily-snapshot";
 import { rlsAuditFn } from "@/inngest/functions/rls-audit";
 import { scanRedFlagsFn } from "@/inngest/functions/scan-red-flags";
+import { trialCountdownEmailsCronFn } from "@/inngest/functions/trial-countdown-emails-cron";
 import { trialEmailOrchestratorFn } from "@/inngest/functions/trial-email-orchestrator";
 import { trialExpirationCronFn } from "@/inngest/functions/trial-expiration-cron";
 import { weeklyDigestFn } from "@/inngest/functions/weekly-digest";
@@ -66,6 +67,7 @@ const handler = serve({
     stateOfMeAutoTickFn,
     trialEmailOrchestratorFn,
     trialExpirationCronFn,
+    trialCountdownEmailsCronFn,
     autoBlogGenerateFn,
     autoBlogPruneFn,
     waitlistReactivationFn,
