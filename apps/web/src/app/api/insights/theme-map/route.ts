@@ -88,23 +88,26 @@ export async function GET(req: NextRequest) {
   const { prisma } = await import("@/lib/prisma");
 
   /**
-   * Bug 1 (2026-05-24): window fallback cascade.
+   * Window logic (fix 2, 2026-05-24): the server NO LONGER
+   * auto-widens. The previous cascade silently switched the user's
+   * chosen window when no themes were present — produced a
+   * viewport where the toggle, subhead, and "showing themes from…"
+   * hint referenced different time spans. Confusing.
    *
-   * A user with 16 entries and clear recurring patterns was seeing
-   * "0 themes" on Month / Year because their older entries fall
-   * outside the recent window. Brutal UX. The data IS there — just
-   * not in the requested time slice.
-   *
-   * Cascade: requested → 3months → 6months → all. Stop at the
-   * smallest window with >= 3 themes meeting the mentionCount >= 2
-   * floor (matches the client's MIN_MENTIONS_FOR_PLANET filter so
-   * the cascade and the rendered count agree). A `windowMs >
-   * requested` filter on candidates means widening only — we never
-   * cascade to a *shorter* window.
-   *
-   * Cheap precheck via groupBy + having so we don't run the full
-   * aggregation 4× for the worst case. ~10ms per candidate on
-   * power-user accounts.
+   * New behavior:
+   *   - Themes returned are ALWAYS for the requested window. If
+   *     that window is empty, themes[] is empty.
+   *   - Server still runs a cheap precheck across wider candidate
+   *     windows and returns `suggestedWindow` — the narrowest
+   *     wider window with >= 3 themes meeting the mentionCount >= 2
+   *     floor, or null if no wider window has enough either.
+   *   - Client renders an actionable empty state with a button:
+   *     "No themes in your last week. Try the last 3 months?" The
+   *     user stays in control of the window selection.
+   *   - `appliedWindow` kept in meta for back-compat but always
+   *     equals `requestedWindow` now. `widened` is removed (read
+   *     as undefined by the build-43+ mobile client; banner stays
+   *     hidden).
    */
   type WindowKey =
     | "week"
@@ -140,28 +143,38 @@ export async function GET(req: NextRequest) {
     ).length;
   }
 
-  // Build the candidate list — requested first, then widening
-  // candidates only. "All" always lands at the end of the chain.
-  const candidates: WindowKey[] = [requestedWindow];
+  // Wider-candidate list — used only to compute suggestedWindow.
+  // Skipped entirely when the requested window already qualifies.
+  const widerCandidates: WindowKey[] = [];
   for (const c of CASCADE_CANDIDATES) {
     if (c === requestedWindow) continue;
     const cSpan = WINDOW_MS[c];
     if (cSpan === null || (requestedSpan !== null && cSpan > requestedSpan)) {
-      candidates.push(c);
+      widerCandidates.push(c);
     }
   }
 
-  let appliedWindow: WindowKey = requestedWindow;
-  for (const candidate of candidates) {
-    const count = await countQualifyingThemes(WINDOW_MS[candidate]);
-    if (count >= QUALIFYING_THEME_FLOOR || candidate === "all") {
-      appliedWindow = candidate;
-      break;
+  let suggestedWindow: WindowKey | null = null;
+  // Only compute the suggestion when the requested window itself
+  // doesn't meet the floor — saves the extra precheck queries when
+  // the user is already on a populated slice.
+  const requestedQualifyingCount = await countQualifyingThemes(
+    WINDOW_MS[requestedWindow]
+  );
+  if (requestedQualifyingCount < QUALIFYING_THEME_FLOOR) {
+    for (const candidate of widerCandidates) {
+      const count = await countQualifyingThemes(WINDOW_MS[candidate]);
+      if (count >= QUALIFYING_THEME_FLOOR) {
+        suggestedWindow = candidate;
+        break;
+      }
     }
   }
 
-  const windowKey = appliedWindow;
-  const widened = appliedWindow !== requestedWindow;
+  // appliedWindow ≡ requestedWindow now — no silent widening.
+  const windowKey = requestedWindow;
+  const appliedWindow = requestedWindow;
+  const widened = false;
   const windowSpan = WINDOW_MS[windowKey];
   const windowStart =
     windowSpan === null ? null : new Date(now.getTime() - windowSpan);
@@ -234,6 +247,7 @@ export async function GET(req: NextRequest) {
           requestedWindow,
           appliedWindow,
           widened,
+          suggestedWindow,
         },
       },
       { headers: { "Cache-Control": "private, max-age=300" } }
@@ -620,6 +634,7 @@ export async function GET(req: NextRequest) {
         requestedWindow,
         appliedWindow,
         widened,
+        suggestedWindow,
       },
     },
     { headers: { "Cache-Control": "private, max-age=60" } }

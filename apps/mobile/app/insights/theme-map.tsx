@@ -84,25 +84,35 @@ type ApiResponse = {
     totalEntries: number;
     windowStart: string | null;
     windowEnd: string;
-    /** Bug 1 (2026-05-24): which window the user asked for. */
+    /** Window the user asked for. */
     requestedWindow?: string;
-    /** Bug 1: which window the server actually used after the
-     *  cascade fallback (requested → 3months → 6months → all). */
+    /** Echoes requestedWindow now — fix 2 (2026-05-24) removed
+     *  silent server-side widening. Kept for back-compat. */
     appliedWindow?: string;
-    /** Bug 1: server widened beyond the requested window because
-     *  fewer than 3 themes met the mentionCount >= 2 floor. */
+    /** Always false now; kept for back-compat. */
     widened?: boolean;
+    /** Fix 2: narrowest wider window with >= 3 themes (if any).
+     *  Drives the empty-state "Try the last 3 months?" CTA. */
+    suggestedWindow?: string;
   };
 };
 
-/** Human-friendly label for the appliedWindow surfacing. */
-const APPLIED_WINDOW_LABEL: Record<string, string> = {
+const SUGGESTED_WINDOW_CTA: Record<string, string> = {
+  week: "Try the last week",
+  month: "Try the last month",
+  "3months": "Try the last 3 months",
+  "6months": "Try the last 6 months",
+  year: "Try the last year",
+  all: "Try all your entries",
+};
+
+const REQUESTED_WINDOW_LABEL: Record<string, string> = {
   week: "your last week",
   month: "your last month",
   "3months": "your last 3 months",
   "6months": "your last 6 months",
   year: "your last year",
-  all: "all your entries",
+  all: "your entries",
 };
 
 type TimeWindow = "week" | "month" | "all";
@@ -441,6 +451,11 @@ export default function ThemeMapScreen() {
           <LockedState count={entryCount} />
         )}
 
+        {/* Fix 2 (2026-05-24): empty state has an actionable CTA
+            when a wider window WOULD have themes. Server returns
+            `suggestedWindow` — narrowest wider window with >= 3
+            themes. Tapping the chip-styled button updates the
+            toggle + refetches. No silent server widening. */}
         {!error && !isProLocked && !locked && tooFewRecurring && (
           <View
             style={{
@@ -469,7 +484,8 @@ export default function ThemeMapScreen() {
                 marginBottom: 8,
               }}
             >
-              Patterns are still forming
+              No themes in{" "}
+              {REQUESTED_WINDOW_LABEL[window_] ?? "this window"} yet
             </Text>
             <Text
               style={{
@@ -480,39 +496,63 @@ export default function ThemeMapScreen() {
                 textAlign: "center",
               }}
             >
-              We need a few more recordings before patterns emerge. Themes
-              show up here once they&rsquo;ve appeared in at least two of
-              your reflections.
+              {data?.meta.suggestedWindow
+                ? "Patterns show up after a couple of mentions. There's more to see in a wider window."
+                : "Themes show up here once they've appeared in at least two of your reflections. Keep recording — patterns surface after about a week of regular entries."}
             </Text>
+            {data?.meta.suggestedWindow && (
+              <Pressable
+                onPress={() => {
+                  const next = data.meta.suggestedWindow as TimeWindow;
+                  if (TIME_OPTIONS.some((opt) => opt.key === next)) {
+                    setWindow(next);
+                  }
+                }}
+                style={({ pressed }) => ({
+                  marginTop: 18,
+                  paddingHorizontal: 18,
+                  paddingVertical: 10,
+                  borderRadius: 999,
+                  backgroundColor: tokens.primary,
+                  opacity: pressed ? 0.85 : 1,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 6,
+                })}
+              >
+                <Text
+                  style={{
+                    fontFamily: tokens.fontSans,
+                    fontSize: 13,
+                    fontWeight: "600",
+                    color: "#FFFFFF",
+                    letterSpacing: -0.1,
+                  }}
+                >
+                  {SUGGESTED_WINDOW_CTA[data.meta.suggestedWindow] ??
+                    "Try a wider window"}
+                </Text>
+                <Text
+                  style={{
+                    fontFamily: tokens.fontSans,
+                    fontSize: 13,
+                    color: "#FFFFFF",
+                  }}
+                >
+                  →
+                </Text>
+              </Pressable>
+            )}
           </View>
         )}
 
         {!error && !locked && !isProLocked && !tooFewRecurring && data && (
           <>
-            {/* Bug 1 (2026-05-24): server widened the requested
-                window because the original slice had < 3 themes
-                meeting the mentionCount >= 2 floor. Surface the
-                widened state so the user knows why the chips don't
-                match what's rendering. */}
-            {data.meta.widened && data.meta.appliedWindow && (
-              <Text
-                style={{
-                  marginTop: 12,
-                  fontFamily: tokens.fontMono,
-                  fontSize: 11,
-                  fontWeight: "700",
-                  letterSpacing: 1.4,
-                  textTransform: "uppercase",
-                  color: tokens.textTer,
-                  textAlign: "center",
-                }}
-              >
-                Showing themes from{" "}
-                {APPLIED_WINDOW_LABEL[data.meta.appliedWindow] ??
-                  "a longer window"}
-              </Text>
-            )}
-
+            {/* Fix 2 (2026-05-24): the widened banner is gone.
+                Server no longer auto-cascades; the toggle + subhead
+                + rendered themes all reference the same time span
+                now. When the user picks a window with no themes,
+                the empty state above offers a CTA to widen. */}
             <View style={{ alignItems: "center", marginTop: 24 }}>
               <OrbitalCosmos
                 themes={orbitalThemes}
