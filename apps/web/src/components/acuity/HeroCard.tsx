@@ -72,12 +72,15 @@ export function HeroCard({
       className={`relative overflow-hidden rounded-acuity-xl border border-acuity-card-border bg-acuity-card-bg-tint ${className}`}
       {...rest}
     >
-      {/* Corner glow blob — 60% opacity, 240×180 absolute in top-right.
-          `rounded-full` keeps the bleed soft. Pointer-events disabled
-          so it doesn't intercept clicks on content. */}
+      {/* Corner glow blob — `.acuity-hero-blob` CSS rule (tokens.css)
+          renders 35% opacity in light mode and 60% in dark; the
+          gradient at 60% reads aggressive against a white card
+          surface. Slice 25 polish. `rounded-full` keeps the bleed
+          soft. Pointer-events disabled so it doesn't intercept
+          clicks on content. */}
       <div
         aria-hidden="true"
-        className={`pointer-events-none absolute -right-5 -top-5 h-[180px] w-[240px] rounded-full opacity-60 ${blobClass}`}
+        className={`acuity-hero-blob pointer-events-none absolute -right-5 -top-5 h-[180px] w-[240px] rounded-full ${blobClass}`}
       />
       <div className={`relative ${paddingClass}`}>{children}</div>
     </div>

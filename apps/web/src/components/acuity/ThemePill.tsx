@@ -1,3 +1,5 @@
+import type { CSSProperties } from "react";
+
 /**
  * Acuity ThemePill — web mirror of `apps/mobile/components/acuity/
  * ThemePill.tsx`. Slice 1 web foundation.
@@ -134,13 +136,17 @@ export function ThemePill({ theme, label, size = "m" }: ThemePillProps) {
 
   return (
     <span
-      className={`inline-flex items-center gap-[7px] rounded-acuity-pill border border-acuity-line ${padV} ${padH}`}
-      style={{
-        // Pill background tint — dark mode default. Light mode swaps
-        // via the inline style override; cleaner than maintaining two
-        // class names per theme key. The 9e suffix is ~62% alpha.
-        backgroundColor: colors.tintDark,
-      }}
+      className={`acuity-theme-pill inline-flex items-center gap-[7px] rounded-acuity-pill border border-acuity-line ${padV} ${padH}`}
+      style={
+        // Both tints are emitted as CSS variables; tokens.css's
+        // `.acuity-theme-pill` + `[data-theme="dark"] .acuity-theme-pill`
+        // rules pick the right one based on the active theme. Keeps
+        // ThemePill a server component and avoids a class explosion.
+        {
+          ["--pill-tint-light" as string]: colors.tintLight,
+          ["--pill-tint-dark" as string]: colors.tintDark,
+        } as CSSProperties
+      }
     >
       <span
         className={`inline-block rounded-full ${dotSize}`}

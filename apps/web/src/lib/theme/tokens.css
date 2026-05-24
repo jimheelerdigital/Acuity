@@ -313,3 +313,37 @@
     animation: none;
   }
 }
+
+/* ─── HeroCard corner blob opacity ──────────────────────────────── */
+
+/*
+ * HeroCard's corner gradient blob looks atmospheric on dark
+ * backgrounds at 60% opacity, but too aggressive on light cards
+ * (fights with the text). Slice 25 polish: 35% in light mode,
+ * 60% in dark.
+ */
+.acuity-hero-blob {
+  opacity: 0.35;
+}
+[data-theme="dark"] .acuity-hero-blob {
+  opacity: 0.6;
+}
+
+/* ─── ThemePill tint switching ──────────────────────────────────── */
+
+/*
+ * ThemePill backgrounds use per-theme hex pairs (light tint vs dark
+ * tint) — see `components/acuity/ThemePill.tsx → THEME_COLORS`. The
+ * component renders both as CSS variables on the pill element, then
+ * this rule picks the right one based on the active theme. Plain
+ * Tailwind can't do dynamic arbitrary-value dark variants, and
+ * making ThemePill a client component just to read useAppearance()
+ * would balloon the bundle for what's effectively a one-line CSS
+ * cascade.
+ */
+.acuity-theme-pill {
+  background-color: var(--pill-tint-light);
+}
+[data-theme="dark"] .acuity-theme-pill {
+  background-color: var(--pill-tint-dark);
+}
