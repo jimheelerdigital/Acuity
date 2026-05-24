@@ -7,10 +7,12 @@ import { useState } from "react";
 import {
   BarChart3,
   CheckSquare,
+  Compass,
   Home,
   type LucideIcon,
   Mic,
   Settings,
+  Sparkles,
   Target,
 } from "lucide-react";
 
@@ -36,18 +38,35 @@ type NavSection = {
 };
 
 /**
- * Bug 5 (2026-05-24): sidebar IA simplification. Life Matrix +
- * Theme Map are featured cards on /insights — duplicating them in
- * the sidebar gave two paths to the same destination and made the
- * Reflect section feel cluttered. Now /insights is the single
- * entry point; users navigate to Life Matrix / Theme Map / Ask /
- * State of Me from the cards on that hub. URLs themselves unchanged
- * — only the sidebar entry pruned. Insights gets `matchPrefix:
- * "/insights"` so /life-matrix and /insights/theme-map both
- * highlight Insights as the active section in the sidebar.
+ * Bug 5 follow-up (2026-05-24): restore Life Matrix + Theme Map to
+ * the sidebar as primary REFLECT items. The hub-only model from the
+ * earlier bug-5 prune cost a click for daily power users who go to
+ * Life Matrix or Theme Map directly. Now:
  *
- * Mobile uses tabs differently (bottom tab bar with limited slots),
- * so this prune is web-only.
+ *   - Sidebar carries Insights → Life Matrix → Theme Map (in the
+ *     order the user encounters them in the product narrative)
+ *   - /insights is the hub specifically for SECONDARY analytical
+ *     features (Ask Your Past Self, State of Me, future Anchor
+ *     People, Goal Velocity, etc.) — not a duplicate-card graveyard
+ *     for the two marquee surfaces
+ *   - Life Matrix keeps `accent: true` (the orange notification dot
+ *     surfaces a separate "new score this week" state indicator)
+ *
+ * Active-state matcher rewritten to "longest matching prefix wins".
+ * Three items in REFLECT all have matchPrefixes that could collide
+ * on certain routes (e.g., /insights/theme-map matches both
+ * Insights's `/insights` AND Theme Map's `/insights/theme-map`).
+ * Picking the longest match resolves the ambiguity cleanly.
+ *
+ *   - /insights → Insights wins (Insights matches at 9, Theme Map
+ *     and Life Matrix at 0)
+ *   - /insights/ask → Insights wins (only Insights matches)
+ *   - /insights/state-of-me → Insights wins
+ *   - /insights/theme-map → Theme Map wins (matches at 19, Insights
+ *     at 9)
+ *   - /insights/theme/{id} → Theme Map wins via its extraMatchPrefixes
+ *     `/insights/theme` (matches at 15, Insights at 9)
+ *   - /life-matrix → Life Matrix wins
  */
 const SECTIONS: NavSection[] = [
   {
@@ -65,13 +84,23 @@ const SECTIONS: NavSection[] = [
         href: "/insights",
         label: "Insights",
         icon: BarChart3,
-        accent: true,
-        // Match every reflection route so the sidebar stays active
-        // when the user drills into Life Matrix / Theme Map / Ask /
-        // State of Me from the hub. /life-matrix lives at a top-
-        // level URL but conceptually belongs to the Insights bucket.
         matchPrefix: "/insights",
-        extraMatchPrefixes: ["/life-matrix"],
+      },
+      {
+        href: "/life-matrix",
+        label: "Life Matrix",
+        icon: Compass,
+        accent: true,
+        matchPrefix: "/life-matrix",
+      },
+      {
+        href: "/insights/theme-map",
+        label: "Theme Map",
+        icon: Sparkles,
+        matchPrefix: "/insights/theme-map",
+        // Theme detail route lives at /insights/theme/[id] — same
+        // bucket as the orbital, should highlight Theme Map.
+        extraMatchPrefixes: ["/insights/theme"],
       },
     ],
   },
@@ -81,15 +110,48 @@ const SECTIONS: NavSection[] = [
   },
 ];
 
-function isActive(pathname: string | null, item: NavItem): boolean {
-  if (!pathname) return false;
-  const allPrefixes: string[] = [];
-  if (item.matchPrefix) allPrefixes.push(item.matchPrefix);
-  if (item.extraMatchPrefixes) allPrefixes.push(...item.extraMatchPrefixes);
-  for (const prefix of allPrefixes) {
-    if (pathname === prefix || pathname.startsWith(prefix + "/")) return true;
+/**
+ * Score this item's match against `pathname`. Score is the length
+ * of the longest prefix that matches via either `===` or
+ * `startsWith(prefix + "/")`. Returns 0 when no prefix matches.
+ *
+ * Used by `isActive` to resolve overlapping items (Insights vs
+ * Theme Map on `/insights/theme-map` — both have matching
+ * prefixes, but Theme Map's is longer + more specific, so it wins).
+ */
+function getMatchScore(pathname: string, item: NavItem): number {
+  const prefixes: string[] = [];
+  if (item.matchPrefix) prefixes.push(item.matchPrefix);
+  if (item.extraMatchPrefixes) prefixes.push(...item.extraMatchPrefixes);
+  // Fall back to the item's href itself when no explicit prefix
+  // was provided.
+  if (prefixes.length === 0) prefixes.push(item.href);
+  let best = 0;
+  for (const p of prefixes) {
+    if (pathname === p || pathname.startsWith(p + "/")) {
+      if (p.length > best) best = p.length;
+    }
   }
-  return pathname === item.href;
+  return best;
+}
+
+function isActive(
+  pathname: string | null,
+  item: NavItem,
+  allItems: NavItem[]
+): boolean {
+  if (!pathname) return false;
+  const myScore = getMatchScore(pathname, item);
+  if (myScore === 0) return false;
+  // Any other item with a strictly-higher score wins, demoting this
+  // one. Equal-score collisions don't happen in the current SECTIONS
+  // (no two items share a matchPrefix); if one ever does, the
+  // declaration-order wins via the `>` comparator.
+  for (const other of allItems) {
+    if (other === item) continue;
+    if (getMatchScore(pathname, other) > myScore) return false;
+  }
+  return true;
 }
 
 function SidebarLink({ item, active }: { item: NavItem; active: boolean }) {
@@ -193,7 +255,7 @@ function Sidebar({ onOpenRecord }: { onOpenRecord: () => void }) {
                   <SidebarLink
                     key={item.href}
                     item={item}
-                    active={isActive(pathname, item)}
+                    active={isActive(pathname, item, section.items)}
                   />
                 ))}
               </div>
