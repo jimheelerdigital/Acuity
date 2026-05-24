@@ -157,9 +157,17 @@ function sizeForMentionCount(
 
 export interface OrbitalCosmosProps {
   themes: OrbitalTheme[];
-  /** Width in px. Component scales height proportionally to maintain
-   *  the 402:360 viewBox aspect. */
-  width: number;
+  /** Optional fixed width in px. When omitted, the SVG sizes itself
+   *  to its container via `width="100%"` + viewBox + the 402/360
+   *  aspect ratio applied to the wrapper. Consumers that want a
+   *  container-responsive orbital should omit this and use
+   *  `className`/wrapper styles to set the container width. */
+  width?: number;
+  /** Optional className for the outer wrapper. Useful for
+   *  responsive max-width caps + aspect-ratio. Default applies
+   *  `aspect-[402/360]` so the wrapper has a real height even when
+   *  width is 100%. */
+  className?: string;
   /** First initial for the center sun. Defaults to "•". */
   centerInitial?: string;
   /** Tap handler — navigate to /insights/theme/[themeId] in the
@@ -170,10 +178,15 @@ export interface OrbitalCosmosProps {
 export function OrbitalCosmos({
   themes,
   width,
+  className,
   centerInitial,
   onPlanetTap,
 }: OrbitalCosmosProps) {
-  const height = (width * VIEWBOX_H) / VIEWBOX_W;
+  // Responsive sizing: when no explicit width is passed, the wrapper
+  // fills its container and the SVG scales via width="100%" +
+  // viewBox. Aspect ratio is locked at the wrapper level so the
+  // container has a sensible height even when width is 100%.
+  const responsive = width === undefined;
   const visibleThemes = useMemo(
     () => themes.slice(0, MAX_PLANETS),
     [themes]
@@ -313,11 +326,22 @@ export function OrbitalCosmos({
   }, []);
 
   return (
-    <div style={{ width, height }} className="relative">
+    <div
+      className={`relative ${responsive ? "aspect-[402/360] w-full" : ""} ${className ?? ""}`}
+      style={
+        responsive
+          ? undefined
+          : {
+              width,
+              height: (width! * VIEWBOX_H) / VIEWBOX_W,
+            }
+      }
+    >
       <svg
-        width={width}
-        height={height}
+        width={responsive ? "100%" : width}
+        height={responsive ? "100%" : (width! * VIEWBOX_H) / VIEWBOX_W}
         viewBox={`0 0 ${VIEWBOX_W} ${VIEWBOX_H}`}
+        preserveAspectRatio="xMidYMid meet"
         role="img"
         aria-label={`Theme orbital with ${visibleThemes.length} active themes`}
       >
