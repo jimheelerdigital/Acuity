@@ -11,7 +11,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { DEFAULT_LIFE_AREAS } from "@acuity/shared";
+import { DEFAULT_LIFE_AREAS, lifeAreaDisplayLabel } from "@acuity/shared";
 
 import {
   PaywallBanner,
@@ -301,7 +301,7 @@ export function LifeMap() {
                     </span>
                   </div>
                   <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50 mb-1">
-                    {area.name ?? area.area}
+                    {lifeAreaDisplayLabel(area.area)}
                   </p>
                   <div className="flex items-baseline gap-2">
                     <span className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
@@ -649,7 +649,7 @@ function DetailPanel({
             style={{ backgroundColor: accentColor }}
           />
           <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-            {area.name ?? area.area}
+            {lifeAreaDisplayLabel(area.area)}
           </h3>
         </div>
         <button
