@@ -149,6 +149,14 @@ export const limiters = {
    */
   askPast: buildLimiter("ask-past", 10, "1 d"),
   /**
+   * On-demand Calendar sync via /api/calendar/sync. The daily cron
+   * handles routine refresh; this is the "I just added a meeting,
+   * pull it in now" path. 1/min keeps a stuck UI from hammering
+   * Google's quota when the user mashes the Sync button.
+   * Key: user:<userId>.
+   */
+  calendarSync: buildLimiter("calendar-sync", 1, "1 m"),
+  /**
    * In-app feedback submissions. Generous (10/hr) — a user reporting
    * multiple bugs in one session is normal, but >10 in an hour is
    * either spam or someone abusing the channel. Key: user:<userId>.

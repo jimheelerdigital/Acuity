@@ -25,6 +25,7 @@ import { snapshotLifemapHistoryFn } from "@/inngest/functions/snapshot-lifemap-h
 import { computeDailySnapshotFn } from "@/inngest/functions/compute-daily-snapshot";
 import { rlsAuditFn } from "@/inngest/functions/rls-audit";
 import { scanRedFlagsFn } from "@/inngest/functions/scan-red-flags";
+import { calendarSyncCronFn } from "@/inngest/functions/calendar-sync-cron";
 import { trialCountdownEmailsCronFn } from "@/inngest/functions/trial-countdown-emails-cron";
 import { trialCountdownPushCronFn } from "@/inngest/functions/trial-countdown-push-cron";
 import { trialEmailOrchestratorFn } from "@/inngest/functions/trial-email-orchestrator";
@@ -70,6 +71,7 @@ const handler = serve({
     trialExpirationCronFn,
     trialCountdownEmailsCronFn,
     trialCountdownPushCronFn,
+    calendarSyncCronFn,
     autoBlogGenerateFn,
     autoBlogPruneFn,
     waitlistReactivationFn,

@@ -294,6 +294,7 @@ model User {
   stateOfMeReports              StateOfMeReport[]
   lifeDimensions                UserLifeDimension[]
   calendarConnections           CalendarConnection[]
+  calendarEvents                CalendarEvent[]
   claudeCallLogs                ClaudeCallLog[]
   // Preset template the user picked for their Life Matrix labels.
   // "DEFAULT" | "STUDENT" | "PARENT" | "CUSTOM" | null. Null means
@@ -1664,6 +1665,38 @@ model UserLifeDimension {
 // for cross-Postgres compatibility, same pattern as other status
 // columns. accessToken / refreshToken are nullable + intended to be
 // encrypted at rest by a KMS wrapper that lands with the OAuth flow.
+// CalendarEvent — events pulled FROM the user's Google Calendar to
+// inform reflection extraction. Distinct from CalendarConnection
+// below (outbound task-sync). Slice 2 v1.2 Calendar Integration.
+//
+// Sync window: last 30 days + next 7 days. Refreshed daily at 03:00
+// UTC and on demand from /account → Sync now.
+//
+// (userId, externalEventId) is the upsert key — re-syncs are
+// idempotent. (userId, startTime) is the hot-read index for entry
+// pipeline lookups in slice 3.
+model CalendarEvent {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Google's event id from the events.list response.
+  externalEventId String
+  summary         String?
+  description     String?  @db.Text
+  startTime       DateTime
+  endTime         DateTime?
+  // Array of { email, displayName?, responseStatus? } from Google.
+  // Stored as Json for forward-compat (Outlook attendee shape will
+  // differ; we normalize at read time).
+  attendees       Json?
+  location        String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([userId, externalEventId])
+  @@index([userId, startTime])
+}
+
 model CalendarConnection {
   id                String    @id @default(cuid())
   userId            String
