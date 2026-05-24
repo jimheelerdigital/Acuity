@@ -97,15 +97,6 @@ type ApiResponse = {
   };
 };
 
-const SUGGESTED_WINDOW_CTA: Record<string, string> = {
-  week: "Try the last week",
-  month: "Try the last month",
-  "3months": "Try the last 3 months",
-  "6months": "Try the last 6 months",
-  year: "Try the last year",
-  all: "Try all your entries",
-};
-
 const REQUESTED_WINDOW_LABEL: Record<string, string> = {
   week: "your last week",
   month: "your last month",
@@ -451,99 +442,27 @@ export default function ThemeMapScreen() {
           <LockedState count={entryCount} />
         )}
 
-        {/* Fix 2 (2026-05-24): empty state has an actionable CTA
-            when a wider window WOULD have themes. Server returns
-            `suggestedWindow` — narrowest wider window with >= 3
-            themes. Tapping the chip-styled button updates the
-            toggle + refetches. No silent server widening. */}
+        {/* Empty state (2026-05-24 follow-up): the actionable
+            "Try the last X" CTA was redundant with the time chips
+            already at the top of the page. Now: soft textTer
+            acknowledgment, centered where the orbital would have
+            been. Server still returns `suggestedWindow` in meta
+            for any future consumer; the screen no longer renders a
+            CTA. */}
         {!error && !isProLocked && !locked && tooFewRecurring && (
-          <View
+          <Text
             style={{
+              marginTop: 64,
               marginHorizontal: 24,
-              marginTop: 40,
-              paddingVertical: 36,
-              paddingHorizontal: 24,
-              alignItems: "center",
-              borderRadius: 22,
-              borderWidth: 0.5,
-              borderColor: tokens.line,
-              backgroundColor:
-                resolved === "dark"
-                  ? "rgba(255,255,255,0.03)"
-                  : "rgba(0,0,0,0.02)",
+              fontFamily: tokens.fontSans,
+              fontSize: 14,
+              color: tokens.textTer,
+              textAlign: "center",
             }}
           >
-            <Text
-              style={{
-                fontFamily: tokens.fontDisplay,
-                fontSize: 18,
-                fontWeight: "700",
-                letterSpacing: -0.3,
-                color: tokens.text,
-                textAlign: "center",
-                marginBottom: 8,
-              }}
-            >
-              No themes in{" "}
-              {REQUESTED_WINDOW_LABEL[window_] ?? "this window"} yet
-            </Text>
-            <Text
-              style={{
-                fontFamily: tokens.fontSans,
-                fontSize: 13,
-                lineHeight: 18,
-                color: tokens.textSec,
-                textAlign: "center",
-              }}
-            >
-              {data?.meta.suggestedWindow
-                ? "Patterns show up after a couple of mentions. There's more to see in a wider window."
-                : "Themes show up here once they've appeared in at least two of your reflections. Keep recording — patterns surface after about a week of regular entries."}
-            </Text>
-            {data?.meta.suggestedWindow && (
-              <Pressable
-                onPress={() => {
-                  const next = data.meta.suggestedWindow as TimeWindow;
-                  if (TIME_OPTIONS.some((opt) => opt.key === next)) {
-                    setWindow(next);
-                  }
-                }}
-                style={({ pressed }) => ({
-                  marginTop: 18,
-                  paddingHorizontal: 18,
-                  paddingVertical: 10,
-                  borderRadius: 999,
-                  backgroundColor: tokens.primary,
-                  opacity: pressed ? 0.85 : 1,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 6,
-                })}
-              >
-                <Text
-                  style={{
-                    fontFamily: tokens.fontSans,
-                    fontSize: 13,
-                    fontWeight: "600",
-                    color: "#FFFFFF",
-                    letterSpacing: -0.1,
-                  }}
-                >
-                  {SUGGESTED_WINDOW_CTA[data.meta.suggestedWindow] ??
-                    "Try a wider window"}
-                </Text>
-                <Text
-                  style={{
-                    fontFamily: tokens.fontSans,
-                    fontSize: 13,
-                    color: "#FFFFFF",
-                  }}
-                >
-                  →
-                </Text>
-              </Pressable>
-            )}
-          </View>
+            No themes in{" "}
+            {REQUESTED_WINDOW_LABEL[window_] ?? "this window"} yet.
+          </Text>
         )}
 
         {!error && !locked && !isProLocked && !tooFewRecurring && data && (

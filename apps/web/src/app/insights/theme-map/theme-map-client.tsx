@@ -50,24 +50,6 @@ type ApiResponse = {
   };
 };
 
-const APPLIED_WINDOW_LABEL: Record<string, string> = {
-  week: "your last week",
-  month: "your last month",
-  "3months": "your last 3 months",
-  "6months": "your last 6 months",
-  year: "your last year",
-  all: "all your entries",
-};
-
-const SUGGESTED_WINDOW_CTA: Record<string, string> = {
-  week: "Try the last week",
-  month: "Try the last month",
-  "3months": "Try the last 3 months",
-  "6months": "Try the last 6 months",
-  year: "Try the last year",
-  all: "Try all your entries",
-};
-
 const REQUESTED_WINDOW_LABEL: Record<string, string> = {
   week: "your last week",
   month: "your last month",
@@ -247,41 +229,18 @@ export function ThemeMapClient() {
           )}
         </>
       ) : (
-        // Fix 2 (2026-05-24): empty state has an inline action when
-        // a wider window WOULD have themes. Server returns
-        // suggestedWindow — narrowest wider window with >= 3
-        // themes. User taps the chip-styled button, the toggle
-        // updates, data refetches. No silent server widening.
-        <div className="my-12 mx-auto max-w-[420px] text-center">
-          <p className="text-[15px] leading-relaxed text-acuity-text-sec">
-            No themes in{" "}
-            {REQUESTED_WINDOW_LABEL[window_] ?? "this window"} yet.
-            {data?.meta.suggestedWindow ? null : (
-              <>
-                {" "}
-                Themes show up once they&rsquo;ve appeared in at least
-                two reflections. Keep recording — patterns surface
-                after about a week of regular entries.
-              </>
-            )}
-          </p>
-          {data?.meta.suggestedWindow && (
-            <button
-              type="button"
-              onClick={() => {
-                const next = data.meta.suggestedWindow as TimeWindow;
-                if (TIME_TABS.some((t) => t.id === next)) {
-                  setWindow(next);
-                }
-              }}
-              className="mt-5 inline-flex items-center gap-2 rounded-acuity-pill bg-acuity-grad-mix px-5 py-2.5 text-[14px] font-semibold text-white transition hover:brightness-110 active:scale-[0.98]"
-            >
-              {SUGGESTED_WINDOW_CTA[data.meta.suggestedWindow] ??
-                "Try a wider window"}
-              <span aria-hidden="true">→</span>
-            </button>
-          )}
-        </div>
+        // Empty state (2026-05-24 follow-up): the "Try the last X"
+        // gradient pill was redundant with the toggle already at
+        // the top of the page. Two paths to the same action with
+        // the pill drawing the eye to the middle of empty space.
+        // Now: just a soft textTer acknowledgment, centered where
+        // the orbital would have been. Server still returns
+        // `suggestedWindow` for any future consumer; client no
+        // longer renders a CTA.
+        <p className="my-16 text-center text-[14px] text-acuity-text-ter">
+          No themes in {REQUESTED_WINDOW_LABEL[window_] ?? "this window"}{" "}
+          yet.
+        </p>
       )}
     </>
   );
