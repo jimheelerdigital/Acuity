@@ -37,7 +37,25 @@ type ApiResponse = {
     totalEntries: number;
     windowStart: string | null;
     windowEnd: string;
+    /** Slice 24/bug 1: which window the user asked for. */
+    requestedWindow?: string;
+    /** Slice 24/bug 1: which window the server actually used after
+     *  the cascade fallback. May differ from requestedWindow when the
+     *  requested slice didn't have enough themes to render meaningfully. */
+    appliedWindow?: string;
+    /** Slice 24/bug 1: server widened the window beyond what the user
+     *  asked for; the UI surfaces a hint when this is true. */
+    widened?: boolean;
   };
+};
+
+const APPLIED_WINDOW_LABEL: Record<string, string> = {
+  week: "your last week",
+  month: "your last month",
+  "3months": "your last 3 months",
+  "6months": "your last 6 months",
+  year: "your last year",
+  all: "all your entries",
 };
 
 type TimeWindow = "week" | "month" | "year" | "all";
@@ -178,6 +196,15 @@ export function ThemeMapClient() {
 
       {orbitalThemes.length > 0 ? (
         <>
+          {/* Server-applied cascade hint. When the requested window
+              didn't have enough themes, the server widened to a
+              broader window and surfaced that via meta.widened. */}
+          {data?.meta.widened && data.meta.appliedWindow && (
+            <p className="mt-3 text-center font-mono text-[11px] uppercase tracking-[1.4px] text-acuity-text-ter">
+              Showing themes from {APPLIED_WINDOW_LABEL[data.meta.appliedWindow] ?? "a longer window"}
+            </p>
+          )}
+
           <div className="mt-8 flex justify-center">
             <OrbitalCosmos
               themes={orbitalThemes}
@@ -204,9 +231,10 @@ export function ThemeMapClient() {
           )}
         </>
       ) : (
-        <div className="my-12 text-center text-[15px] text-acuity-text-sec">
-          Not enough theme variety yet — record a few more sessions to
-          see your patterns surface.
+        <div className="my-12 text-center text-[15px] leading-relaxed text-acuity-text-sec">
+          Themes show up here once they&rsquo;ve appeared in at least
+          two reflections. Keep recording — patterns surface after
+          about a week of regular entries.
         </div>
       )}
     </>

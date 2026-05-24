@@ -81,20 +81,95 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const { window: windowKey, snapshot } = parsed.data;
+  const { window: requestedWindow, snapshot } = parsed.data;
 
   const now = new Date();
+  const windowEnd = snapshot ? new Date(snapshot) : now;
+  const { prisma } = await import("@/lib/prisma");
+
+  /**
+   * Bug 1 (2026-05-24): window fallback cascade.
+   *
+   * A user with 16 entries and clear recurring patterns was seeing
+   * "0 themes" on Month / Year because their older entries fall
+   * outside the recent window. Brutal UX. The data IS there — just
+   * not in the requested time slice.
+   *
+   * Cascade: requested → 3months → 6months → all. Stop at the
+   * smallest window with >= 3 themes meeting the mentionCount >= 2
+   * floor (matches the client's MIN_MENTIONS_FOR_PLANET filter so
+   * the cascade and the rendered count agree). A `windowMs >
+   * requested` filter on candidates means widening only — we never
+   * cascade to a *shorter* window.
+   *
+   * Cheap precheck via groupBy + having so we don't run the full
+   * aggregation 4× for the worst case. ~10ms per candidate on
+   * power-user accounts.
+   */
+  type WindowKey =
+    | "week"
+    | "month"
+    | "3months"
+    | "6months"
+    | "year"
+    | "all";
+  const CASCADE_CANDIDATES: WindowKey[] = ["3months", "6months", "all"];
+  const requestedSpan = WINDOW_MS[requestedWindow];
+  const QUALIFYING_THEME_FLOOR = 3;
+  const MIN_MENTIONS_FOR_PLANET = 2;
+  // Local string narrowing — userId is already guaranteed non-null by
+  // the early-return at the top of the handler, but closures don't
+  // always preserve TS's flow narrowing through Prisma's strict types.
+  const uid: string = userId;
+
+  async function countQualifyingThemes(spanMs: number | null): Promise<number> {
+    const start = spanMs === null ? null : new Date(now.getTime() - spanMs);
+    const rows = await prisma.themeMention.groupBy({
+      by: ["themeId"],
+      where: {
+        theme: { is: { userId: uid } },
+        createdAt: {
+          ...(start ? { gte: start } : {}),
+          lte: windowEnd > now ? now : windowEnd,
+        },
+      },
+      _count: { themeId: true },
+    });
+    return rows.filter(
+      (r) => (r._count?.themeId ?? 0) >= MIN_MENTIONS_FOR_PLANET
+    ).length;
+  }
+
+  // Build the candidate list — requested first, then widening
+  // candidates only. "All" always lands at the end of the chain.
+  const candidates: WindowKey[] = [requestedWindow];
+  for (const c of CASCADE_CANDIDATES) {
+    if (c === requestedWindow) continue;
+    const cSpan = WINDOW_MS[c];
+    if (cSpan === null || (requestedSpan !== null && cSpan > requestedSpan)) {
+      candidates.push(c);
+    }
+  }
+
+  let appliedWindow: WindowKey = requestedWindow;
+  for (const candidate of candidates) {
+    const count = await countQualifyingThemes(WINDOW_MS[candidate]);
+    if (count >= QUALIFYING_THEME_FLOOR || candidate === "all") {
+      appliedWindow = candidate;
+      break;
+    }
+  }
+
+  const windowKey = appliedWindow;
+  const widened = appliedWindow !== requestedWindow;
   const windowSpan = WINDOW_MS[windowKey];
   const windowStart =
     windowSpan === null ? null : new Date(now.getTime() - windowSpan);
-  const windowEnd = snapshot ? new Date(snapshot) : now;
 
   // Defend against the snapshot being AFTER now — clamp. This
   // also clamps a snapshot older than windowStart (we treat it as
   // "all data up through this moment, but still inside the window").
   const effectiveEnd = windowEnd > now ? now : windowEnd;
-
-  const { prisma } = await import("@/lib/prisma");
 
   // Lifetime completed-entry count for the locked-state gate signal.
   // Decoupled from the mentions query (which is window-scoped) so the
@@ -156,6 +231,9 @@ export async function GET(req: NextRequest) {
           windowEnd: effectiveEnd.toISOString(),
           totalEntries: completedEntryCount,
           snapshotAt: snapshot ?? null,
+          requestedWindow,
+          appliedWindow,
+          widened,
         },
       },
       { headers: { "Cache-Control": "private, max-age=300" } }
@@ -539,6 +617,9 @@ export async function GET(req: NextRequest) {
         windowEnd: effectiveEnd.toISOString(),
         totalEntries: completedEntryCount,
         snapshotAt: snapshot ?? null,
+        requestedWindow,
+        appliedWindow,
+        widened,
       },
     },
     { headers: { "Cache-Control": "private, max-age=60" } }

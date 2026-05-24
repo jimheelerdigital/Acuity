@@ -84,7 +84,25 @@ type ApiResponse = {
     totalEntries: number;
     windowStart: string | null;
     windowEnd: string;
+    /** Bug 1 (2026-05-24): which window the user asked for. */
+    requestedWindow?: string;
+    /** Bug 1: which window the server actually used after the
+     *  cascade fallback (requested → 3months → 6months → all). */
+    appliedWindow?: string;
+    /** Bug 1: server widened beyond the requested window because
+     *  fewer than 3 themes met the mentionCount >= 2 floor. */
+    widened?: boolean;
   };
+};
+
+/** Human-friendly label for the appliedWindow surfacing. */
+const APPLIED_WINDOW_LABEL: Record<string, string> = {
+  week: "your last week",
+  month: "your last month",
+  "3months": "your last 3 months",
+  "6months": "your last 6 months",
+  year: "your last year",
+  all: "all your entries",
 };
 
 type TimeWindow = "week" | "month" | "all";
@@ -465,6 +483,30 @@ export default function ThemeMapScreen() {
 
         {!error && !locked && !isProLocked && !tooFewRecurring && data && (
           <>
+            {/* Bug 1 (2026-05-24): server widened the requested
+                window because the original slice had < 3 themes
+                meeting the mentionCount >= 2 floor. Surface the
+                widened state so the user knows why the chips don't
+                match what's rendering. */}
+            {data.meta.widened && data.meta.appliedWindow && (
+              <Text
+                style={{
+                  marginTop: 12,
+                  fontFamily: tokens.fontMono,
+                  fontSize: 11,
+                  fontWeight: "700",
+                  letterSpacing: 1.4,
+                  textTransform: "uppercase",
+                  color: tokens.textTer,
+                  textAlign: "center",
+                }}
+              >
+                Showing themes from{" "}
+                {APPLIED_WINDOW_LABEL[data.meta.appliedWindow] ??
+                  "a longer window"}
+              </Text>
+            )}
+
             <View style={{ alignItems: "center", marginTop: 24 }}>
               <OrbitalCosmos
                 themes={orbitalThemes}
