@@ -367,7 +367,13 @@ export default function ThemeMapScreen() {
           </Text>
         </View>
 
-        {!error && !locked && !isProLocked && !tooFewRecurring && (
+        {/* Bug 3 (2026-05-24): chips visible whenever the page
+            renders, not gated on `!tooFewRecurring`. Previously the
+            chips disappeared when the current window had < 2 themes
+            — trapping the user with no themes and no way to widen
+            the window. Bug 1's server cascade makes this rare, but
+            the user should always be able to re-narrow if they want. */}
+        {!error && !locked && !isProLocked && (
           <View
             style={{
               marginTop: 18,
