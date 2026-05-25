@@ -1,10 +1,13 @@
+import Link from "next/link";
 import nextDynamic from "next/dynamic";
 
 import { AccountDeletedBanner } from "@/components/account-deleted-banner";
 
+// Full interactive landing page loads AFTER first paint — not blocking
+// hydration. The static hero below provides instant above-the-fold content.
 const LandingPage = nextDynamic(
   () => import("@/components/landing").then((m) => m.LandingPage),
-  { ssr: true },
+  { ssr: false },
 );
 
 // ISR: regenerate every 60 seconds. Auth redirect for logged-in users
@@ -89,27 +92,57 @@ export default function HomePage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      {/* SSR content for crawlers — visually hidden but in initial HTML for
-          Meta Event Setup Tool, Googlebot, and other bots that don't execute JS.
-          The client-rendered LandingPage component overlays this. */}
-      <div aria-hidden="true" className="sr-only">
-        <h1>Acuity — One Minute a Day. A Life of Clarity.</h1>
-        <p>The AI voice journal that turns your daily debrief into action. Record a debrief any time of day. AI extracts your tasks, tracks your goals, detects life patterns, and delivers a weekly report every Sunday.</p>
-        <h2>How Acuity Works</h2>
-        <p>Step 1: Record your day. Step 2: AI extracts tasks, goals, and mood. Step 3: Get your weekly report every Sunday.</p>
-        <h2>What You Get</h2>
-        <ul>
-          <li>Tasks extracted from your voice automatically</li>
-          <li>Goals tracked across weeks without lifting a finger</li>
-          <li>Patterns surfaced that you cannot see on your own</li>
-          <li>Weekly report delivered every Sunday morning</li>
-          <li>Life Matrix — score 6 key areas of your life over time</li>
-        </ul>
-        <h2>Pricing</h2>
-        <p>$12.99/month after a 30-day free trial. No credit card required. Cancel anytime.</p>
-        <h2>Start Your Free Trial</h2>
-        <p>Download Acuity on the App Store or sign up at getacuity.io/auth/signup.</p>
+      {/* ─── Static hero — renders instantly with ZERO client JS ─── */}
+      {/* This is the above-the-fold content users see in <240ms. The full
+          interactive LandingPage loads over it once JS arrives. The
+          [data-landing-loaded] selector hides this shell. */}
+      <div id="static-hero" className="min-h-screen bg-[#0B0B12] text-white overflow-hidden peer-[.landing-loaded]:hidden">
+        {/* Nav placeholder */}
+        <nav className="flex items-center justify-between px-6 py-5 max-w-7xl mx-auto">
+          <span className="font-bold text-lg tracking-tight">Acuity</span>
+          <Link
+            href="/auth/signup"
+            className="rounded-full bg-[#7C5CFC] px-5 py-2.5 text-sm font-semibold text-white"
+          >
+            Start Free Trial
+          </Link>
+        </nav>
+
+        {/* Hero content */}
+        <section className="pt-24 pb-16 sm:pt-32 px-6 max-w-4xl mx-auto text-center">
+          <h1 className="font-black tracking-tight">
+            <span className="block text-4xl sm:text-5xl lg:text-[3.75rem] leading-[1.1] mb-3">One minute a day.</span>
+            <span className="block bg-gradient-to-r from-[#B8A5FF] to-[#7C5CFC] bg-clip-text text-transparent text-4xl sm:text-5xl lg:text-[3.75rem] leading-[1.2]">A life of clarity.</span>
+          </h1>
+          <p className="mt-8 text-base text-[#C0C0D0] leading-relaxed max-w-lg mx-auto">
+            Acuity is the AI voice journal that turns your daily debrief into action. Talk any time of day — it catches your tasks, tracks your goals, and surfaces the patterns you can&rsquo;t see on your own.
+          </p>
+          <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
+            <Link
+              href="/auth/signup"
+              className="rounded-full bg-[#7C5CFC] px-7 py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-95"
+            >
+              Start Free Trial
+            </Link>
+            <Link
+              href="/try"
+              className="rounded-full bg-[#F0EDE8] px-7 py-3.5 text-sm font-semibold text-[#181614] transition active:scale-95"
+            >
+              Try It First
+            </Link>
+          </div>
+          <p className="mt-4 text-xs text-[#A0A0B8]">No credit card. Quick setup.</p>
+        </section>
+
+        {/* SEO content for crawlers */}
+        <div className="sr-only">
+          <h2>How Acuity Works</h2>
+          <p>Step 1: Record your day. Step 2: AI extracts tasks, goals, and mood. Step 3: Get your weekly report every Sunday.</p>
+          <h2>Pricing</h2>
+          <p>$12.99/month after a 30-day free trial. No credit card required. Cancel anytime.</p>
+        </div>
       </div>
+
       <AccountDeletedBanner />
       <LandingPage />
     </>

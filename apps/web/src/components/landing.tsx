@@ -904,6 +904,12 @@ export function LandingPage() {
   const [tickerPaused, setTickerPaused] = useState(false);
   const ctaHref = useCtaHref();
 
+  // Hide the static hero shell now that the full interactive page is loaded
+  useEffect(() => {
+    const hero = document.getElementById("static-hero");
+    if (hero) hero.style.display = "none";
+  }, []);
+
   // Set first-touch attribution cookie on landing
   useEffect(() => {
     try {
