@@ -41,6 +41,43 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-25] — Web-to-app onboarding funnel at /start
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** a6f0aa3
+
+### In plain English (for Keenan)
+
+Every "Start Free Trial" and "Try It First" button on the website now leads to a guided 12-step conversion funnel at /start. It starts with an emotional hook, asks 3 diagnostic questions, shows a personalized promise, lets the visitor record a debrief WITHOUT an account, reveals what AI extracted, then asks them to sign up, pay (with 30-day free trial), and download the app. One path, no branches, no navbar, no distractions.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/start/page.tsx`: route entry point (dynamic import, ssr: false)
+- `apps/web/src/components/onboarding-funnel.tsx`: ~600-line client component with 12-step state machine (pain → diagnostic1-3 → failed-solution → promise → record → processing → extraction → signup → paywall → download)
+- `apps/web/src/app/api/onboarding/create-checkout/route.ts`: creates Stripe Checkout Session with `trial_period_days` (30 for founding members, 14 for standard). Uses STRIPE_PRICE_MONTHLY/YEARLY env vars. Success redirects to /start?step=download.
+- `apps/web/src/app/api/onboarding-events/route.ts`: added 13 `funnel_*` events to valid whitelist
+- `apps/web/src/components/landing-shared.tsx`: `useCtaHref()` changed from `/auth/signup` to `/start` — updates all CTAs site-wide
+- `apps/web/src/components/try-it-now-button.tsx`: all paths now link to `/start`
+- `apps/web/src/components/blog-try-button.tsx`: "Start Free Trial" → `/start`
+- `apps/web/src/app/page.tsx`: static hero CTAs → `/start`
+
+### Manual steps needed
+
+- [ ] Verify the funnel loads at getacuity.io/start after deploy. Walk through all 12 steps. Keenan
+- [ ] The Stripe checkout on step 11 requires the STRIPE_PRICE_MONTHLY and STRIPE_PRICE_YEARLY env vars to be set (already done from previous task). Keenan
+- [ ] Consider: redirect /auth/signup to /start for users who land there directly (via old bookmarks or cached links). Currently /auth/signup still works as a standalone form — it's a fallback for edge cases. Keenan
+
+### Notes
+
+- Used `/start` instead of `/onboarding` because `/onboarding` is the existing 8-step post-signup mobile onboarding flow (mood baseline, mic permission, etc.) used by logged-in mobile users. Both flows serve different purposes and need to coexist.
+- The funnel uses the same `/api/try-recording` endpoint for unauthenticated recording — same rate limits, same Whisper + Claude pipeline, same TrySession storage.
+- Diagnostic answers are tracked as OnboardingEvent records (event names) — no schema change needed.
+- The Stripe integration uses `trial_period_days` (different from the existing checkout which starts paid immediately). This means the card is collected but NOT charged until trial ends. The webhook handler already processes `checkout.session.completed` correctly.
+- No schema changes. No prisma db push needed.
+
+---
+
 ## [2026-05-25] — Pricing update $12.99→$4.99, Meta Pixel advanced matching, pixel values
 
 **Requested by:** Keenan
