@@ -724,6 +724,95 @@ export const processEntryFn = inngest.createFunction(
       });
     }
 
+    // Anchor People — Claude Haiku NER over the persisted transcript.
+    // Slice 2 v1.2. Fail-soft per the embedding pattern; a missed
+    // pass doesn't fail the entry, and the slice 7 backfill cron
+    // catches misses. Idempotent on Entry.peopleExtractedAt IS NULL.
+    // Skipped for FREE users — entitlement.canExtractEntries gates
+    // the whole branch above so we only get here on PRO/TRIAL.
+    await step.run("extract-people", async () => {
+      try {
+        const entry = await prisma.entry.findUnique({
+          where: { id: entryId },
+          select: { transcript: true, peopleExtractedAt: true },
+        });
+        if (!entry?.transcript) return;
+        // Idempotency: re-runs on a replay don't re-extract. The
+        // backfill cron uses the same gate.
+        if (entry.peopleExtractedAt) return;
+
+        const { detectNamedPeople, locateMentions } = await import(
+          "@/lib/people-ner"
+        );
+        const { resolveOrCreatePerson } = await import(
+          "@/lib/people-resolver"
+        );
+
+        const candidates = await detectNamedPeople(entry.transcript);
+        const mentions = locateMentions(entry.transcript, candidates);
+
+        if (mentions.length > 0) {
+          // Single load of the user's existing Persons — passed to the
+          // resolver so each call doesn't re-query. The resolver pushes
+          // newly-created rows into the array so later mentions in the
+          // same batch resolve against them.
+          const existing = await prisma.person.findMany({
+            where: { userId },
+            select: {
+              id: true,
+              canonicalName: true,
+              displayName: true,
+              aliases: true,
+              mentionCount: true,
+            },
+          });
+
+          for (const m of mentions) {
+            try {
+              const { personId } = await resolveOrCreatePerson(
+                prisma,
+                userId,
+                m.mentionText,
+                existing
+              );
+              await prisma.entityMention.create({
+                data: {
+                  entryId,
+                  personId,
+                  mentionText: m.mentionText,
+                  startIndex: m.startIndex,
+                  endIndex: m.endIndex,
+                  context: m.context,
+                },
+              });
+            } catch (err) {
+              // Per-mention failures (resolver race, duplicate write
+              // on retry) don't fail the whole batch.
+              const { safeLog } = await import("@/lib/safe-log");
+              safeLog.warn("process-entry.entity-mention-failed", {
+                entryId,
+                mention: m.mentionText.slice(0, 60),
+                err: err instanceof Error ? err.message : String(err),
+              });
+            }
+          }
+        }
+
+        // Stamp idempotency even when zero mentions — we ran, we found
+        // nothing, future replays should skip rather than re-Haiku.
+        await prisma.entry.update({
+          where: { id: entryId },
+          data: { peopleExtractedAt: new Date() },
+        });
+      } catch (err) {
+        const { safeLog } = await import("@/lib/safe-log");
+        safeLog.warn("process-entry.extract-people-failed", {
+          entryId,
+          err: err instanceof Error ? err.message : String(err),
+        });
+      }
+    });
+
     // Recording stats — drives the trial onboarding orchestrator.
     // Runs right after the persist transaction so firstRecordingAt
     // lands before the next hour's trialEmailOrchestrator tick. We
