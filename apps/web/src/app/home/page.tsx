@@ -23,6 +23,7 @@ import { Greeting } from "./greeting";
 
 import { TodaysPromptSection } from "./_sections/todays-prompt";
 import { MeetingDensityCard } from "./_sections/meeting-density-card";
+import { PeopleThisWeekSection } from "./_sections/people-this-week";
 import { TrialHomeBanner } from "./_sections/trial-home-banner";
 import { StreakSummarySection } from "./_sections/streak-summary";
 import { LifeMatrixSection } from "./_sections/life-matrix";
@@ -197,6 +198,12 @@ export default async function DashboardPage() {
             Server-rendered; returns null when the user has no events
             in the last 7 days (disconnected or fresh connection). */}
         <MeetingDensityCard userId={userId} />
+
+        {/* Slice 6 v1.2 Anchor People — top 3 named people by
+            7-day mention count. Server-rendered; returns null when
+            there are no recent mentions so new accounts don't see
+            an empty slot. */}
+        <PeopleThisWeekSection userId={userId} />
 
         {user?.subscriptionStatus === "PAST_DUE" && (
           <section

@@ -11,6 +11,7 @@ import { LockedFeatureCard } from "@/components/locked-feature-card";
 import { PageContainer } from "@/components/page-container";
 import { HeroCard, SectionHeader } from "@/components/acuity";
 
+import { PeopleHubCard } from "./_components/people-hub-card";
 import { InsightsView } from "./insights-view";
 import { RecentTimeline } from "./recent-timeline";
 import { MetricsDrawer } from "./metrics-drawer";
@@ -110,6 +111,10 @@ export default async function InsightsPage() {
                 </div>
               </HeroCard>
             </Link>
+          </div>
+
+          <div data-stagger className="lg:col-span-2">
+            <PeopleHubCard userId={session.user.id} />
           </div>
         </div>
 
