@@ -41,6 +41,36 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-25] — Static generation restored — edge-cached marketing pages
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** e6403cf
+
+### In plain English (for Keenan)
+
+The entire site was loading slowly (~4 seconds on mobile) because every single page was being re-rendered on the server for every visitor. The root cause: a recent theme personalization feature was checking the database on every request to see what color theme the user preferred. Now marketing pages (homepage, landing pages, signup, blog) are pre-built and served instantly from Vercel's edge network. Only logged-in app pages hit the server.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/layout.tsx`: removed `headers()`, `getServerSession()`, and prisma import from `readAppearance()`. Root layout no longer forces dynamic rendering. Replaced with static defaults (light + coral) plus a blocking `<script>` in `<head>` that reads an `acuity_appearance` cookie to set `data-theme`/`data-palette` before first paint.
+- `apps/web/src/app/page.tsx`: removed `force-dynamic` and `getServerSession()` auth check. Added `export const revalidate = 60` for ISR.
+- `apps/web/src/middleware.ts`: added auth redirect — if user has session token and hits `/`, redirect to `/home`. Replaces the server-side session check that was in page.tsx.
+- `apps/web/src/contexts/appearance-context.tsx`: `applyDocumentAttributes()` now sets `acuity_appearance` cookie (format: `theme:palette`) so the blocking script can read it on next page load.
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- Build output before: every page was `ƒ` (Dynamic). After: marketing pages are `○` (Static), served from Vercel edge in <50ms TTFB.
+- The theme cookie approach means there's a potential single-frame flash if a user with dark mode visits a page for the first time after clearing cookies. This is acceptable — it's the same pattern next-themes uses.
+- Authenticated app pages (/home, /tasks, /goals, etc.) are still dynamic — they read session data and DB in their own page components. Only the root layout stopped forcing ALL pages dynamic.
+- The 358KB JS chunk on homepage is react-dom (unavoidable). The 109KB polyfills chunk could be reduced by targeting modern browsers only (future optimization).
+
+---
+
 ## [2026-05-25] — Signup page overhaul — conversion-focused layout
 
 **Requested by:** Keenan
