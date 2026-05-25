@@ -406,9 +406,9 @@ export function OnboardingFunnel() {
       {step === "record" && (
         <RecordScreen
           track={track}
+          onStartedProcessing={() => setStep("processing")}
           onUploaded={(result) => {
             setApiResult(result);
-            setStep("processing");
           }}
           onError={(err) => setApiError(err)}
         />
@@ -685,10 +685,12 @@ function AtmosphericScreen({
 
 function RecordScreen({
   track,
+  onStartedProcessing,
   onUploaded,
   onError,
 }: {
   track: (event: string) => void;
+  onStartedProcessing: () => void;
   onUploaded: (result: TryApiResult) => void;
   onError: (err: string) => void;
 }) {
@@ -734,7 +736,8 @@ function RecordScreen({
 
   const upload = (blob: Blob, mime: string) => {
     track("funnel_recording_completed");
-    setPhase("uploading");
+    // Immediately transition to processing slides — don't wait for API
+    onStartedProcessing();
     const fd = new FormData();
     fd.append("audio", blob, `recording.${extFromMime(mime)}`);
 
