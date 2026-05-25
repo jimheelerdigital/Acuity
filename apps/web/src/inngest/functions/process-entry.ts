@@ -835,6 +835,11 @@ export const processEntryFn = inngest.createFunction(
             },
           });
 
+          // Track every Person id the resolver touches so the
+          // reconcile pass below can recompute their counts. Catches
+          // drift from the resolver's increment-on-create logic and
+          // any P2002 race-recovery paths that bumped a sibling row.
+          const touchedPersonIds = new Set<string>();
           for (const m of mentions) {
             try {
               const { personId } = await resolveOrCreatePerson(
@@ -843,6 +848,7 @@ export const processEntryFn = inngest.createFunction(
                 m.mentionText,
                 existing
               );
+              touchedPersonIds.add(personId);
               await prisma.entityMention.create({
                 data: {
                   entryId,
@@ -860,6 +866,27 @@ export const processEntryFn = inngest.createFunction(
               safeLog.warn("process-entry.entity-mention-failed", {
                 entryId,
                 mention: m.mentionText.slice(0, 60),
+                err: err instanceof Error ? err.message : String(err),
+              });
+            }
+          }
+
+          // Final reconciliation pass — only required on edit-driven
+          // reprocesses. The PATCH endpoint already reconciled the
+          // pre-edit affected Persons before this step ran; this
+          // catches the post-edit set (new Persons + re-touched
+          // existing ones). For brand-new entries the resolver's
+          // increment is the source of truth and we skip this pass.
+          if (skipTranscribe && touchedPersonIds.size > 0) {
+            try {
+              const { reconcilePersonCounts } = await import(
+                "@/lib/people-reconcile"
+              );
+              await reconcilePersonCounts(prisma, touchedPersonIds);
+            } catch (err) {
+              const { safeLog } = await import("@/lib/safe-log");
+              safeLog.warn("process-entry.people-reconcile-failed", {
+                entryId,
                 err: err instanceof Error ? err.message : String(err),
               });
             }

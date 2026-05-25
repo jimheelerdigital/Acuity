@@ -6,6 +6,7 @@ import { Avatar, Card, SectionHeader } from "@/components/acuity";
 import { BackButton } from "@/components/back-button";
 import { getAuthOptions } from "@/lib/auth";
 
+import { PersonDeleteButton } from "./_components/person-delete-button";
 import { PersonDisplayNameEditor } from "./_components/person-display-name-editor";
 
 /**
@@ -142,7 +143,16 @@ export default async function PersonDetailPage({
       archived: true,
     },
   });
-  if (!person || person.archived) notFound();
+  if (!person) notFound();
+
+  // Archived state: keep the page reachable (a bookmarked URL or a
+  // followed timeline link can still land here) but soften the
+  // composition. No sentiment band / pattern card — we ran out of
+  // signal when the user edited the mentions away. Permanent
+  // delete is gated to here so the directory stays uncluttered.
+  if (person.archived) {
+    return <ArchivedPersonView person={person} />;
+  }
 
   // Timeline + sentiment in a single mention query; join the entry
   // fields we need for the row + the mood bucket aggregation.
@@ -311,6 +321,62 @@ export default async function PersonDetailPage({
               })}
             </div>
           )}
+        </section>
+      </main>
+    </div>
+  );
+}
+
+function ArchivedPersonView({
+  person,
+}: {
+  person: {
+    id: string;
+    displayName: string;
+    firstMentionedAt: Date;
+  };
+}) {
+  return (
+    <div className="min-h-screen bg-acuity-bg text-acuity-text">
+      <main className="acuity-fade-up mx-auto max-w-2xl px-6 py-10">
+        <BackButton className="mb-6" ariaLabel="Back to People" />
+
+        <header className="mb-8">
+          <div className="flex items-center gap-4">
+            <Avatar initials={initialsFor(person.displayName)} size={64} />
+            <div className="min-w-0 flex-1">
+              <h1 className="truncate font-display text-3xl font-bold tracking-tight text-acuity-text-ter">
+                {person.displayName}
+              </h1>
+              <p className="mt-1 font-mono text-[10px] font-bold uppercase tracking-[1.4px] text-acuity-text-ter">
+                Archived
+              </p>
+            </div>
+          </div>
+        </header>
+
+        <section className="rounded-acuity-xl border border-acuity-card-border bg-acuity-card-bg-tint p-6">
+          <p className="text-[15px] leading-relaxed text-acuity-text-sec">
+            This person no longer appears in your reflections. The
+            record is kept in case they come up again — the next
+            entry that mentions{" "}
+            <span className="font-semibold text-acuity-text">
+              {person.displayName}
+            </span>{" "}
+            re-attaches to this same person.
+          </p>
+          <p className="mt-3 text-[13px] leading-relaxed text-acuity-text-ter">
+            First mentioned{" "}
+            {person.firstMentionedAt.toLocaleDateString("en-US", {
+              month: "long",
+              day: "numeric",
+              year: "numeric",
+            })}
+            .
+          </p>
+          <div className="mt-5">
+            <PersonDeleteButton personId={person.id} />
+          </div>
         </section>
       </main>
     </div>

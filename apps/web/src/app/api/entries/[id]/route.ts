@@ -159,6 +159,19 @@ export async function PATCH(
 
   try {
     await prisma.$transaction(async (tx) => {
+      // Capture distinct personIds touched by THIS entry's existing
+      // EntityMentions BEFORE deletion so the post-delete reconcile
+      // can recompute their counts. Without this, an edit that
+      // removes a name leaves Person.mentionCount inflated forever.
+      // (2026-05-25 bug — Aaron / Mark / Will showed stale counts in
+      // /insights/people after Jim edited a transcript.)
+      const affected = await tx.entityMention.findMany({
+        where: { entryId: entry.id },
+        distinct: ["personId"],
+        select: { personId: true },
+      });
+      const affectedPersonIds = affected.map((m) => m.personId);
+
       // Wipe derived AI state. linkedEventIds intentionally NOT
       // cleared — user manual choices persist (slice 6).
       await tx.entry.update({
@@ -189,6 +202,18 @@ export async function PATCH(
       // explicitly delete since the row stays.
       await tx.themeMention.deleteMany({ where: { entryId: entry.id } });
       await tx.entityMention.deleteMany({ where: { entryId: entry.id } });
+
+      // Reconcile every Person that had a mention in this entry.
+      // Recompute COUNT(EntityMention WHERE personId = X) and flip
+      // archived = (count === 0). This is the missing decrement
+      // path. Re-extraction can unarchive them again if their name
+      // reappears in the corrected transcript.
+      if (affectedPersonIds.length > 0) {
+        const { reconcilePersonCounts } = await import(
+          "@/lib/people-reconcile"
+        );
+        await reconcilePersonCounts(tx, affectedPersonIds);
+      }
     });
   } catch (err) {
     safeLog.error("entry.patch.transaction_failed", {

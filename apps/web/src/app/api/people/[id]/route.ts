@@ -1,6 +1,9 @@
 /**
  * GET /api/people/[id]   (slice 8 v1.2 — mobile-facing detail fetch)
  * PATCH /api/people/[id] (slice 5 v1.2 — rename)
+ * DELETE /api/people/[id] (2026-05-25 — permanent delete of an
+ *                          archived Person; refused on Persons that
+ *                          still have EntityMentions)
  *
  * GET returns the Person row + its mention timeline (most-recent
  * TIMELINE_LIMIT) with the entry context for each mention. Mirrors
@@ -10,7 +13,12 @@
  * never touch canonicalName, which is the resolver's matching key.
  * 1-80 chars, trimmed.
  *
- * Authorization on both: caller must own the Person.
+ * DELETE: only the archived-state UI exposes the button; we still
+ * defend in depth by refusing the call when the Person has any
+ * EntityMentions. Prevents an out-of-band caller from blowing away
+ * a name the user actively talks about.
+ *
+ * Authorization on all three: caller must own the Person.
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -120,4 +128,41 @@ export async function PATCH(
   });
 
   return NextResponse.json({ ok: true, displayName: next });
+}
+
+export async function DELETE(
+  req: NextRequest,
+  ctx: { params: { id: string } }
+) {
+  const userId = await getAnySessionUserId(req);
+  if (!userId) {
+    return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { prisma } = await import("@/lib/prisma");
+  const person = await prisma.person.findFirst({
+    where: { id: ctx.params.id, userId },
+    select: { id: true },
+  });
+  if (!person) {
+    return NextResponse.json({ ok: false, error: "NotFound" }, { status: 404 });
+  }
+
+  // Defense in depth: refuse the delete if the Person still has any
+  // EntityMentions. The archived UI is the only surface that exposes
+  // the button, but the check here means an out-of-band caller can't
+  // remove an active record. Cascade on Person delete would also wipe
+  // the mentions, so the count check is the safety belt.
+  const remaining = await prisma.entityMention.count({
+    where: { personId: person.id },
+  });
+  if (remaining > 0) {
+    return NextResponse.json(
+      { ok: false, error: "PersonHasMentions" },
+      { status: 409 }
+    );
+  }
+
+  await prisma.person.delete({ where: { id: person.id } });
+  return NextResponse.json({ ok: true });
 }
