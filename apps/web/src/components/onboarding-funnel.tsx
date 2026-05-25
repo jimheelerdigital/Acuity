@@ -683,7 +683,12 @@ function ProcessingScreen({
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setSlideIdx((i) => (i + 1) % PROCESSING_SLIDES.length);
+      setSlideIdx((i) => {
+        const next = i + 1;
+        // Hold on last slide if processing isn't done
+        if (next >= PROCESSING_SLIDES.length) return i;
+        return next;
+      });
     }, SLIDE_MS);
     return () => clearInterval(interval);
   }, []);
@@ -692,28 +697,45 @@ function ProcessingScreen({
   useEffect(() => {
     if (apiResult && !completedRef.current) {
       completedRef.current = true;
-      // Give a moment for the last slide to show
       setTimeout(onComplete, 1500);
     }
   }, [apiResult, onComplete]);
 
   const slide = PROCESSING_SLIDES[slideIdx];
   const statusText = STATUS_TEXTS[slideIdx % STATUS_TEXTS.length];
+  const progressPct = Math.min(100, ((slideIdx + 1) / PROCESSING_SLIDES.length) * 100);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-white text-zinc-900">
-      <div className="max-w-sm text-center">
-        <div className="mb-8">
-          <div className="h-1 w-48 mx-auto rounded-full bg-zinc-200 overflow-hidden">
+      <div className="max-w-sm w-full text-center">
+        {/* Slide content */}
+        <p className="text-xs font-bold uppercase tracking-wider text-[#7C5CFC] mb-3">
+          {slide.label}
+        </p>
+        <h3 className="text-xl font-bold mb-3">{slide.text}</h3>
+        {slide.testimonial && (
+          <blockquote className="mt-4 mb-8">
+            <p className="text-sm italic text-zinc-500 leading-relaxed">
+              "{slide.testimonial.quote}"
+            </p>
+            <cite className="mt-2 block text-xs font-medium not-italic text-zinc-400">
+              — {slide.testimonial.name}
+            </cite>
+          </blockquote>
+        )}
+
+        {/* Status text */}
+        <p className="mt-6 text-xs text-zinc-400 animate-pulse">{statusText}</p>
+
+        {/* Progress bar */}
+        <div className="mt-8">
+          <div className="h-1 w-full rounded-full bg-zinc-200 overflow-hidden">
             <div
               className="h-full bg-[#7C5CFC] transition-all duration-1000"
-              style={{ width: `${Math.min(100, ((slideIdx + 1) / PROCESSING_SLIDES.length) * 100)}%` }}
+              style={{ width: `${progressPct}%` }}
             />
           </div>
         </div>
-        <h3 className="text-xl font-bold mb-2">{slide.title}</h3>
-        <p className="text-sm text-zinc-500">{slide.subtitle}</p>
-        <p className="mt-8 text-xs text-zinc-400 animate-pulse">{statusText}</p>
       </div>
     </div>
   );
@@ -788,12 +810,15 @@ function SignupScreen({
   onComplete: () => void;
 }) {
   const { status } = useSession();
-  const [loading, setLoading] = useState<"google" | "apple" | null>(null);
+  const [loading, setLoading] = useState<"google" | "apple" | "email" | null>(null);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   // If already authenticated, advance
   useEffect(() => {
     if (status === "authenticated") {
-      // Claim the try session
       fetch("/api/try-recording/claim", { method: "POST" }).catch(() => {});
       track("funnel_signup_completed");
       onComplete();
@@ -812,16 +837,54 @@ function SignupScreen({
     await signIn("apple", { callbackUrl: "/start?step=paywall" });
   };
 
+  const handleEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters.");
+      return;
+    }
+    setLoading("email");
+    try {
+      const res = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), password, name: name.trim() || null }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setError(body.error === "AlreadyRegistered" ? "Account exists. Try signing in." : body.message || "Something went wrong.");
+        return;
+      }
+      track("funnel_signup_completed");
+      // Sign in with credentials
+      const result = await signIn("credentials", { email: email.trim(), password, redirect: false });
+      if (result?.ok) {
+        // useEffect above will detect authenticated status and advance
+      } else {
+        // Fallback: redirect manually
+        window.location.href = "/start?step=paywall";
+      }
+    } catch {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setLoading(null);
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-white text-zinc-900">
-      <div className="max-w-sm w-full text-center">
-        <h2 className="text-2xl font-bold tracking-tight mb-2">
-          Save your debrief and start your free trial.
-        </h2>
-        <p className="text-sm text-zinc-500 mb-10">
-          Your tasks, goals, and insights will be saved to your account.
-        </p>
+      <div className="max-w-sm w-full">
+        <div className="text-center mb-8">
+          <h2 className="text-2xl font-bold tracking-tight mb-2">
+            Save your debrief and start your free trial.
+          </h2>
+          <p className="text-sm text-zinc-500">
+            Your tasks, goals, and insights will be saved to your account.
+          </p>
+        </div>
 
+        {/* OAuth */}
         <button
           onClick={handleGoogle}
           disabled={loading !== null}
@@ -840,12 +903,53 @@ function SignupScreen({
           {loading === "apple" ? "Redirecting…" : "Continue with Apple"}
         </button>
 
-        <Link
-          href="/auth/signup"
-          className="mt-4 inline-block text-sm text-[#7C5CFC] font-medium hover:underline"
-        >
-          Or sign up with email
-        </Link>
+        {/* Divider */}
+        <div className="my-6 flex items-center gap-3">
+          <div className="h-px flex-1 bg-zinc-200" />
+          <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-400">or</span>
+          <div className="h-px flex-1 bg-zinc-200" />
+        </div>
+
+        {/* Email form */}
+        {error && (
+          <p className="mb-4 text-center text-sm text-red-500">{error}</p>
+        )}
+        <form onSubmit={handleEmail} className="space-y-3">
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Your name (optional)"
+            autoComplete="name"
+            className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 outline-none transition focus:border-[#7C5CFC] focus:ring-2 focus:ring-[#7C5CFC]/20"
+          />
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@example.com"
+            autoComplete="email"
+            required
+            className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 outline-none transition focus:border-[#7C5CFC] focus:ring-2 focus:ring-[#7C5CFC]/20"
+          />
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Password (8+ characters)"
+            autoComplete="new-password"
+            required
+            minLength={8}
+            className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 outline-none transition focus:border-[#7C5CFC] focus:ring-2 focus:ring-[#7C5CFC]/20"
+          />
+          <button
+            type="submit"
+            disabled={loading !== null || !email.trim() || password.length < 8}
+            className="w-full rounded-full bg-[#7C5CFC] py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98] disabled:opacity-40 disabled:animate-none animate-[funnel-glow_2s_ease-in-out_infinite]"
+          >
+            {loading === "email" ? "Creating account…" : "Create Account"}
+          </button>
+        </form>
       </div>
     </div>
   );
