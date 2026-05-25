@@ -1,5 +1,7 @@
 import { Stack } from "expo-router";
 
+import { OnboardingProvider } from "@/contexts/onboarding-context";
+
 /**
  * Pain-first onboarding flow — slices 2-9 of onboarding-v2.
  * Routes live under /onboarding-new/* so the existing
@@ -11,24 +13,23 @@ import { Stack } from "expo-router";
  * own chrome (the dark/light atmospheric flips are part of the
  * emotional arc; a system header would break the seal).
  *
- * Stack animations stay at expo-router defaults; the per-screen
- * fade/translate compositions live inside each screen using
- * react-native-reanimated.
+ * OnboardingProvider wraps the Stack so q1/q2/q3 answers persist
+ * across navigation between diagnostic screens. Reset happens
+ * only on provider unmount (i.e. when the user leaves
+ * /onboarding-new/* entirely) — back-stack navigation between
+ * screens keeps prior answers, intentionally, so a user editing
+ * Q1 doesn't lose Q2 / Q3.
  */
 export default function OnboardingNewLayout() {
   return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-        // Match the rest of the app — gestureEnabled so a swipe-back
-        // can interrupt a screen, but back-button behavior is
-        // suppressed via headerShown=false. Individual screens
-        // (pain, recording, paywall) override gestureEnabled as
-        // needed for moments where back navigation would corrupt
-        // the funnel state.
-        animation: "fade",
-        contentStyle: { backgroundColor: "transparent" },
-      }}
-    />
+    <OnboardingProvider>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          animation: "fade",
+          contentStyle: { backgroundColor: "transparent" },
+        }}
+      />
+    </OnboardingProvider>
   );
 }

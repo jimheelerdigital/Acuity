@@ -5,42 +5,31 @@ import { StatusBar } from "expo-status-bar";
 
 import { useTheme } from "@/contexts/theme-context";
 import {
-  Q1_OPTIONS,
+  Q2_OPTIONS,
   useOnboardingState,
-  type Q1Answer,
+  type Q2Answer,
 } from "@/contexts/onboarding-context";
 import { makeAcuityTokens } from "@/lib/theme/tokens";
 
 import { DiagnosticCard } from "./_components/diagnostic-card";
 
 /**
- * Screen 2 — Diagnostic Q1, single-select with auto-advance.
- * Slice 3 v1.2. Light theme regardless of user appearance — the
- * flow's emotional arc requires the dark→light flip out of pain.tsx.
- *
- * On tap: persists the answer to the OnboardingProvider context,
- * then after AUTO_ADVANCE_MS pushes /onboarding-new/q2. The brief
- * pause lets the selected-state animation register so the user
- * sees their tap acknowledged before the screen changes.
- *
- * No "Continue" button — single-select diagnostics auto-advance so
- * the flow stays kinetic. The user can swipe back if they need to
- * revise (the back-stack is intact under the Stack layout).
+ * Screen 3 — Diagnostic Q2, single-select with auto-advance.
+ * Same composition as q1.tsx; different header + option set.
  */
 
 const AUTO_ADVANCE_MS = 200;
 
-export default function Q1Screen() {
+export default function Q2Screen() {
   const router = useRouter();
   const { palette } = useTheme();
-  const { q1, setQ1 } = useOnboardingState();
-  // Force light tokens — screen 2 ignores user appearance preference.
+  const { q2, setQ2 } = useOnboardingState();
   const tokens = makeAcuityTokens({ dark: false, accent: palette });
 
-  const onSelect = (key: Q1Answer) => {
-    setQ1(key);
+  const onSelect = (key: Q2Answer) => {
+    setQ2(key);
     setTimeout(() => {
-      router.push("/onboarding-new/q2" as never);
+      router.push("/onboarding-new/q3" as never);
     }, AUTO_ADVANCE_MS);
   };
 
@@ -68,15 +57,15 @@ export default function Q1Screen() {
               marginBottom: 28,
             }}
           >
-            What&apos;s the loop you can&apos;t break?
+            How long have you been stuck in this loop?
           </Text>
 
           <View style={{ gap: 10 }}>
-            {Q1_OPTIONS.map((opt) => (
+            {Q2_OPTIONS.map((opt) => (
               <DiagnosticCard
                 key={opt.key}
                 label={opt.label}
-                selected={q1 === opt.key}
+                selected={q2 === opt.key}
                 onPress={() => onSelect(opt.key)}
                 tokens={tokens}
               />
