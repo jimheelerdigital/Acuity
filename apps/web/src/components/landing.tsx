@@ -6,7 +6,6 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { SOCIAL_PROOF, STATS_STRIP } from "@/lib/social-proof";
 import { APP_STORE_URL, AppStoreBadge, useCtaHref } from "@/components/landing-shared";
 import { TestimonialCarousel, STATIC_CAROUSEL_TESTIMONIALS } from "@/components/testimonial-carousel";
-import { TryItNowButtonDark } from "@/components/try-it-now-button";
 
 /* ═══════════════════════════════════════════
    "Who it's for" dropdown for landing nav
@@ -1121,7 +1120,6 @@ export function LandingPage() {
                       Start Free Trial
                     </span>
                   </a>
-                  <TryItNowButtonDark />
                 </div>
                 <p className="text-xs text-[#A0A0B8]">No credit card. Quick setup.</p>
                 <a

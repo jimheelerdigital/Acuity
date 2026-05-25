@@ -17,7 +17,6 @@ import {
   pickFallbackHeadshot,
   type CarouselTestimonial,
 } from "@/components/testimonial-carousel";
-import { TryItNowButtonDark } from "@/components/try-it-now-button";
 import type { DynamicLandingPage } from "./page";
 
 // Lazy-load ParallaxOrbs — GPU-heavy blur filters, not needed for first paint
@@ -75,7 +74,6 @@ export function DynamicLandingPageView({ page, slug, ctaHref }: { page: DynamicL
                     <PulsingCTA href={ctaHref}>
                       Start Free Trial
                     </PulsingCTA>
-                    <TryItNowButtonDark />
                   </div>
                   <p className="text-xs text-[#B0A898]">
                     No credit card. Quick setup.
@@ -192,7 +190,6 @@ export function DynamicLandingPageView({ page, slug, ctaHref }: { page: DynamicL
                   <span className="absolute inset-[-100%] animate-cta-shine" style={{ background: 'conic-gradient(from 0deg, transparent 0%, transparent 60%, #ffffff 75%, #B8A5FF 85%, transparent 100%)' }} />
                   <span className="relative flex items-center justify-center rounded-full bg-[#7C5CFC] px-7 py-3.5 text-sm font-bold text-white">Start Free Trial</span>
                 </a>
-                <TryItNowButtonDark />
               </div>
               <p className="mt-2.5 text-sm text-[#B0A898]">
                 No credit card. Cancel anytime.

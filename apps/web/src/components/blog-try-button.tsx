@@ -1,16 +1,11 @@
 "use client";
 
-import Link from "next/link";
-import { TryItNowButtonDark } from "@/components/try-it-now-button";
-
 /**
- * Client component wrapper for the blog post CTA section.
- * Renders "Start Free Trial" (purple + ring) and "Try It First" (light + ring)
- * side by side. Needed because the blog page is a server component.
+ * Blog post CTA — single "Start Free Trial" button linking to /start.
  */
 export function BlogCtaButtons() {
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+    <div className="flex items-center justify-center">
       <a
         href="/start"
         className="group relative rounded-full p-[2px] transition active:scale-95 hover:scale-[1.02] overflow-hidden"
@@ -20,7 +15,6 @@ export function BlogCtaButtons() {
           Start Free Trial
         </span>
       </a>
-      <TryItNowButtonDark />
     </div>
   );
 }

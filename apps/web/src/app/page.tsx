@@ -117,18 +117,15 @@ export default function HomePage() {
           <p className="mt-8 text-base text-[#C0C0D0] leading-relaxed max-w-lg mx-auto">
             Acuity is the AI voice journal that turns your daily debrief into action. Talk any time of day — it catches your tasks, tracks your goals, and surfaces the patterns you can&rsquo;t see on your own.
           </p>
-          <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
+          <div className="mt-10 flex flex-col items-center gap-3">
             <Link
               href="/start"
-              className="rounded-full bg-[#7C5CFC] px-7 py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-95"
+              className="group relative rounded-full p-[2px] transition active:scale-95 hover:scale-[1.02] overflow-hidden"
             >
-              Start Free Trial
-            </Link>
-            <Link
-              href="/try"
-              className="rounded-full bg-[#F0EDE8] px-7 py-3.5 text-sm font-semibold text-[#181614] transition active:scale-95"
-            >
-              Try It First
+              <span className="absolute inset-[-100%] animate-cta-shine" style={{ background: 'conic-gradient(from 0deg, transparent 0%, transparent 60%, #ffffff 75%, #B8A5FF 85%, transparent 100%)' }} />
+              <span className="relative flex items-center justify-center rounded-full bg-[#7C5CFC] px-8 py-3.5 text-sm font-semibold text-white">
+                Start Free Trial
+              </span>
             </Link>
           </div>
           <p className="mt-4 text-xs text-[#A0A0B8]">No credit card. Quick setup.</p>
