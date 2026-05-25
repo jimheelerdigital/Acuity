@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import { useState } from "react";
 import {
   BarChart3,
+  BookOpen,
   CheckSquare,
   Compass,
   Home,
@@ -73,6 +74,16 @@ const SECTIONS: NavSection[] = [
     heading: "Core",
     items: [
       { href: "/home", label: "Home", icon: Home },
+      {
+        href: "/entries",
+        label: "Entries",
+        icon: BookOpen,
+        // Entries detail lives at /entries/[id]; keep the sidebar
+        // item active on those pages too. Longest-prefix matcher
+        // means a deeper route can still override (e.g., if a
+        // future /entries/foo got its own sidebar item).
+        matchPrefix: "/entries",
+      },
       { href: "/tasks", label: "Tasks", icon: CheckSquare },
       { href: "/goals", label: "Goals", icon: Target, matchPrefix: "/goals" },
     ],
