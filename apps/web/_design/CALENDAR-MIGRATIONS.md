@@ -56,3 +56,17 @@ CREATE INDEX "CalendarEvent_userId_startTime_idx"
 - `attendees` stored as JSONB; shape is `Array<{ email, displayName, responseStatus }>`. Normalized at read time so Outlook/iCloud variants can land in the same column later.
 - The cron + on-demand sync require **no extra env vars** beyond what slice 1 already needs.
 
+---
+
+## Slice 3 — Entry.linkedEventIds (2026-05-25)
+
+```sql
+ALTER TABLE "Entry"
+  ADD COLUMN "linkedEventIds" TEXT[] NOT NULL DEFAULT '{}'::TEXT[];
+```
+
+**Notes:**
+- Array of `CalendarEvent.id` (our local row ids, NOT Google's externalEventId). Manual link/unlink in slice 6 mutates this column directly.
+- Default `'{}'` makes the migration safe for every existing Entry row (no backfill needed).
+- The auto-linking matcher in `apps/web/src/lib/calendar/context.ts` writes this column after the persist-extraction step inside the process-entry pipeline. It only fires for users with a connected calendar AND with events in the recording window, so most entries keep the default empty array.
+

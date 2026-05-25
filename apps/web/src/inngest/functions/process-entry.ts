@@ -397,6 +397,22 @@ export const processEntryFn = inngest.createFunction(
       return buildMemoryContext(userId);
     });
 
+    // Slice 3 v1.2 Calendar Integration — pull events from the local
+    // mirror around the recording's createdAt and pass them to the
+    // extractor. Connected-calendar users only; everyone else gets a
+    // no-op (empty events + empty promptBlock). The result is held in
+    // closure so the post-extraction linkedEventIds matcher (below)
+    // can score the same events against the persisted summary.
+    const calendarContext = await step.run("fetch-calendar-context", async () => {
+      const { fetchCalendarContext } = await import("@/lib/calendar/context");
+      const entry = await prisma.entry.findUnique({
+        where: { id: entryId },
+        select: { createdAt: true },
+      });
+      if (!entry) return { events: [], promptBlock: "" };
+      return fetchCalendarContext(userId, entry.createdAt);
+    });
+
     // Read the V5 prompt-variant flag once, captured in the closure so
     // both step.run("extract") AND step.run("persist-extraction") can
     // reference it. Idempotent feature-flag read — recomputed on
@@ -489,7 +505,8 @@ export const processEntryFn = inngest.createFunction(
         goalContext,
         taskGroupNames,
         entry.dimensionContext ?? null,
-        useDispositional
+        useDispositional,
+        calendarContext.promptBlock
       );
     });
 
@@ -672,6 +689,40 @@ export const processEntryFn = inngest.createFunction(
         }
       });
     });
+
+    // Slice 3 v1.2 Calendar Integration — auto-link CalendarEvent
+    // rows whose titles substring-match the persisted summary or
+    // transcript. Conservative matcher (>=4 char title or first-
+    // name match in 1-3 attendee meeting). Slice 6's manual link/
+    // unlink UI handles the long tail. Fail-soft: a missing link
+    // is not a broken entry. No-op when calendar isn't connected
+    // (calendarContext.events is empty).
+    if (calendarContext.events.length > 0) {
+      await step.run("link-calendar-events", async () => {
+        try {
+          const { inferLinkedEventIds } = await import("@/lib/calendar/context");
+          const entry = await prisma.entry.findUnique({
+            where: { id: entryId },
+            select: { summary: true, transcript: true },
+          });
+          if (!entry) return;
+          const text = `${entry.summary ?? ""}\n${entry.transcript ?? ""}`;
+          const linkedEventIds = inferLinkedEventIds(text, calendarContext.events);
+          if (linkedEventIds.length > 0) {
+            await prisma.entry.update({
+              where: { id: entryId },
+              data: { linkedEventIds },
+            });
+          }
+        } catch (err) {
+          const { safeLog } = await import("@/lib/safe-log");
+          safeLog.warn("process-entry.link-calendar-events-failed", {
+            entryId,
+            err: err instanceof Error ? err.message : String(err),
+          });
+        }
+      });
+    }
 
     // Recording stats — drives the trial onboarding orchestrator.
     // Runs right after the persist transaction so firstRecordingAt

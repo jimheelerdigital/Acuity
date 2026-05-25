@@ -240,7 +240,12 @@ export async function extractFromTranscript(
   goalContext?: { title: string; description: string | null } | null,
   taskGroupNames?: string[],
   dimensionContext?: string | null,
-  useDispositionalThemes = false
+  useDispositionalThemes = false,
+  // Slice 3 v1.2 Calendar Integration: prompt-ready block describing
+  // the user's calendar window around the recording. Empty string =
+  // no calendar connection or no events in window; both cases are
+  // pass-through (block is interpolated as empty).
+  calendarContextBlock = ""
 ): Promise<ExtractionResult> {
   const contextBlock = memoryContext
     ? `Here is what you know about this user from their entire history with Acuity:\n${memoryContext}\n\nUse these historical patterns to enrich your extraction — for example, if a goal has been mentioned multiple times before, note it as recurring rather than new.\n\n`
@@ -309,7 +314,7 @@ export async function extractFromTranscript(
     messages: [
       {
         role: "user",
-        content: `${contextBlock}${goalBlock}${dimensionBlock}${taskGroupsBlock}Today's date: ${todayISO}\n\nDaily debrief transcript:\n\n${transcript}`,
+        content: `${contextBlock}${goalBlock}${dimensionBlock}${taskGroupsBlock}${calendarContextBlock}Today's date: ${todayISO}\n\nDaily debrief transcript:\n\n${transcript}`,
       },
     ],
   });
