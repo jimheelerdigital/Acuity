@@ -1,5 +1,7 @@
 import { Card, SectionHeader } from "@/components/acuity";
 
+import { EntryEventLinker } from "./entry-event-linker";
+
 /**
  * Calendar Events that day — surfaces below the transcript on the
  * entry detail page. Slice 5 v1.2 Calendar Integration.
@@ -53,10 +55,12 @@ function formatTimeRange(start: Date, end: Date | null): string {
 
 export async function EntryCalendarEventsSection({
   userId,
+  entryId,
   recordedAt,
   linkedEventIds,
 }: {
   userId: string;
+  entryId: string;
   recordedAt: Date;
   linkedEventIds: string[];
 }) {
@@ -123,6 +127,11 @@ export async function EntryCalendarEventsSection({
                     </p>
                   )}
                 </div>
+                <EntryEventLinker
+                  entryId={entryId}
+                  eventId={e.id}
+                  initialLinked={isLinked}
+                />
               </div>
             </Card>
           );

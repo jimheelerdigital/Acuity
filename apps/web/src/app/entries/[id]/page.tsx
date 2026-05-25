@@ -280,6 +280,7 @@ export default async function EntryDetailPage({
           {isComplete && (
             <EntryCalendarEventsSection
               userId={session.user.id}
+              entryId={entry.id}
               recordedAt={entry.createdAt}
               linkedEventIds={entry.linkedEventIds ?? []}
             />
