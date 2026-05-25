@@ -416,7 +416,9 @@ export function OnboardingFunnel() {
       {step === "processing" && (
         <ProcessingScreen
           apiResult={apiResult}
+          apiError={apiError}
           onComplete={() => setStep("extraction")}
+          onError={() => setStep("signup")}
         />
       )}
       {step === "extraction" && apiResult && (
@@ -741,17 +743,27 @@ function RecordScreen({
     const fd = new FormData();
     fd.append("audio", blob, `recording.${extFromMime(mime)}`);
 
+    console.log("[funnel] Starting /api/try-recording upload...");
     fetch("/api/try-recording", { method: "POST", body: fd })
       .then(async (res) => {
-        if (!res.ok) throw new Error("Recording failed");
+        console.log("[funnel] /api/try-recording response:", res.status);
+        if (!res.ok) {
+          const errBody = await res.text().catch(() => "");
+          console.error("[funnel] API error:", res.status, errBody);
+          throw new Error(`Recording failed (${res.status})`);
+        }
         const body = await res.json();
+        console.log("[funnel] Extraction received, transitioning to reveal");
         onUploaded({
           sessionToken: body.sessionToken,
           extraction: body.extraction as ExtractionResult,
           expiresAt: new Date(body.expiresAt as string),
         });
       })
-      .catch((err) => onError(err.message));
+      .catch((err) => {
+        console.error("[funnel] Upload failed:", err);
+        onError(err.message);
+      });
   };
 
   const handleMicClick = () => {
@@ -824,12 +836,17 @@ function RecordScreen({
 
 function ProcessingScreen({
   apiResult,
+  apiError,
   onComplete,
+  onError,
 }: {
   apiResult: TryApiResult | null;
+  apiError: string | null;
   onComplete: () => void;
+  onError: () => void;
 }) {
   const [slideIdx, setSlideIdx] = useState(0);
+  const [fadeState, setFadeState] = useState<"in" | "out">("in");
   const completedRef = useRef(false);
 
   const STATUS_TEXTS = [
@@ -841,12 +858,17 @@ function ProcessingScreen({
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setSlideIdx((i) => {
-        const next = i + 1;
-        // Hold on last slide if processing isn't done
-        if (next >= PROCESSING_SLIDES.length) return i;
-        return next;
-      });
+      // Start fade out
+      setFadeState("out");
+      // After fade out, swap slide and fade in
+      setTimeout(() => {
+        setSlideIdx((i) => {
+          const next = i + 1;
+          if (next >= PROCESSING_SLIDES.length) return i;
+          return next;
+        });
+        setFadeState("in");
+      }, 400);
     }, SLIDE_MS);
     return () => clearInterval(interval);
   }, []);
@@ -855,9 +877,19 @@ function ProcessingScreen({
   useEffect(() => {
     if (apiResult && !completedRef.current) {
       completedRef.current = true;
+      console.log("[funnel] ProcessingScreen: apiResult received, advancing in 1.5s");
       setTimeout(onComplete, 1500);
     }
   }, [apiResult, onComplete]);
+
+  // Handle API errors — skip to signup after a delay
+  useEffect(() => {
+    if (apiError && !completedRef.current) {
+      completedRef.current = true;
+      console.error("[funnel] ProcessingScreen: API error, skipping to signup:", apiError);
+      setTimeout(onError, 2000);
+    }
+  }, [apiError, onError]);
 
   const slide = PROCESSING_SLIDES[slideIdx];
   const statusText = STATUS_TEXTS[slideIdx % STATUS_TEXTS.length];
@@ -866,31 +898,38 @@ function ProcessingScreen({
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-white text-zinc-900">
       <div className="max-w-sm w-full text-center">
-        {/* Slide content */}
-        <p className="text-xs font-bold uppercase tracking-wider text-[#7C5CFC] mb-3">
-          {slide.label}
-        </p>
-        <h3 className="text-xl font-bold mb-3">{slide.text}</h3>
-        {slide.testimonial && (
-          <blockquote className="mt-4 mb-8">
-            <p className="text-sm italic text-zinc-500 leading-relaxed">
-              "{slide.testimonial.quote}"
-            </p>
-            <cite className="mt-2 block text-xs font-medium not-italic text-zinc-400">
-              — {slide.testimonial.name}
-            </cite>
-          </blockquote>
-        )}
+        {/* Slide content — fades as one group */}
+        <div
+          className="transition-all duration-400 ease-out min-h-[200px] flex flex-col justify-center"
+          style={{
+            opacity: fadeState === "in" ? 1 : 0,
+            transform: fadeState === "in" ? "translateY(0)" : "translateY(-12px)",
+            transition: "opacity 0.4s ease-out, transform 0.4s ease-out",
+          }}
+        >
+          <p className="text-xs font-bold uppercase tracking-wider text-[#7C5CFC] mb-3">
+            {slide.label}
+          </p>
+          <h3 className="text-xl font-bold mb-3">{slide.text}</h3>
+          {slide.testimonial && (
+            <blockquote className="mt-4 mb-4">
+              <p className="text-sm italic text-zinc-500 leading-relaxed">
+                "{slide.testimonial.quote}"
+              </p>
+              <cite className="mt-2 block text-xs font-medium not-italic text-zinc-400">
+                — {slide.testimonial.name}
+              </cite>
+            </blockquote>
+          )}
+          <p className="mt-4 text-xs text-zinc-400 animate-pulse">{statusText}</p>
+        </div>
 
-        {/* Status text */}
-        <p className="mt-6 text-xs text-zinc-400 animate-pulse">{statusText}</p>
-
-        {/* Progress bar */}
+        {/* Progress bar — persistent, no fade */}
         <div className="mt-8">
           <div className="h-1 w-full rounded-full bg-zinc-200 overflow-hidden">
             <div
-              className="h-full bg-[#7C5CFC] transition-all duration-1000"
-              style={{ width: `${progressPct}%` }}
+              className="h-full bg-[#7C5CFC]"
+              style={{ width: `${progressPct}%`, transition: "width 1s ease-out" }}
             />
           </div>
         </div>
