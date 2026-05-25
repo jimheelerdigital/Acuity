@@ -11,6 +11,14 @@ function checkTryUsed(): boolean {
   }
 }
 
+// In-app browsers (Facebook, Instagram) don't support MediaRecorder.
+// Skip the try flow and send users straight to signup.
+function isInAppBrowser(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent || "";
+  return /FBAN|FBAV|Instagram|FB_IAB|FBIOS/i.test(ua);
+}
+
 /**
  * "Try it now — free" button that links to /try.
  *
@@ -25,10 +33,11 @@ export function TryItNowButton({
   className?: string;
 }) {
   const [used, setUsed] = useState(false);
+  const [inApp, setInApp] = useState(false);
 
-  useEffect(() => { setUsed(checkTryUsed()); }, []);
+  useEffect(() => { setUsed(checkTryUsed()); setInApp(isInAppBrowser()); }, []);
 
-  const href = used ? "/auth/signup" : "/try";
+  const href = (used || inApp) ? "/auth/signup" : "/try";
   const label = used ? "Sign up to continue" : "Try it now \u2014 free";
 
   if (variant === "secondary") {
@@ -67,10 +76,11 @@ export function TryItNowButtonDark({
   className?: string;
 }) {
   const [used, setUsed] = useState(false);
+  const [inApp, setInApp] = useState(false);
 
-  useEffect(() => { setUsed(checkTryUsed()); }, []);
+  useEffect(() => { setUsed(checkTryUsed()); setInApp(isInAppBrowser()); }, []);
 
-  const href = used ? "/auth/signup" : "/try";
+  const href = (used || inApp) ? "/auth/signup" : "/try";
   const label = used ? "Sign up to continue" : "Try It First";
 
   return (

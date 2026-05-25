@@ -147,6 +147,20 @@ export function TryDebriefFlow({ onClose }: { onClose?: () => void }) {
   );
 }
 
+// ─── In-app browser / recording support detection ────────────────────────────
+
+function isInAppBrowser(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent || "";
+  return /FBAN|FBAV|Instagram|FB_IAB|FBIOS/i.test(ua);
+}
+
+function canRecord(): boolean {
+  if (typeof navigator === "undefined") return false;
+  if (isInAppBrowser()) return false;
+  return !!(navigator.mediaDevices?.getUserMedia && typeof MediaRecorder !== "undefined");
+}
+
 // ─── Screen 1: Record (no auth, different copy) ─────────────────────────────
 
 function TryRecordScreen({
@@ -158,7 +172,7 @@ function TryRecordScreen({
   onClose?: () => void;
   trackTry: (event: string) => void;
 }) {
-  const [phase, setPhase] = useState<"idle" | "recording" | "error">("idle");
+  const [phase, setPhase] = useState<"idle" | "recording" | "error" | "unsupported">("idle");
   const [elapsed, setElapsed] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [showPrompts, setShowPrompts] = useState(false);
@@ -175,10 +189,15 @@ function TryRecordScreen({
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef(0);
   const promptTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const micTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Track screen view
+  // Track screen view + detect unsupported browsers
   useEffect(() => {
     trackTry("try_recording_screen_viewed");
+    if (!canRecord()) {
+      setPhase("unsupported");
+      trackTry("try_mic_failed");
+    }
   }, [trackTry]);
 
   useEffect(() => {
@@ -210,8 +229,20 @@ function TryRecordScreen({
     setElapsed(0);
     chunksRef.current = [];
     trackTry("try_recording_started");
+
+    // 5-second timeout for permission prompt hanging or silent failure
+    micTimeoutRef.current = setTimeout(() => {
+      if (phase !== "recording") {
+        setPhase("unsupported");
+        setError("Recording didn\u2019t start. Your browser may not support microphone access.");
+        trackTry("try_mic_failed");
+      }
+    }, 5000);
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Clear timeout — mic access granted
+      if (micTimeoutRef.current) { clearTimeout(micTimeoutRef.current); micTimeoutRef.current = null; }
       const mr = new MediaRecorder(stream, { mimeType: bestMimeType() });
       mediaRecorderRef.current = mr;
       mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
@@ -231,8 +262,10 @@ function TryRecordScreen({
         if (secs >= MAX_SECONDS) stopRecording();
       }, 500);
     } catch {
-      setError("Microphone access denied. Check your browser permissions.");
-      setPhase("error");
+      if (micTimeoutRef.current) { clearTimeout(micTimeoutRef.current); micTimeoutRef.current = null; }
+      setError("Microphone access denied or unavailable.");
+      setPhase("unsupported");
+      trackTry("try_mic_failed");
     }
   };
 
@@ -268,6 +301,7 @@ function TryRecordScreen({
   };
 
   const handleMicClick = () => {
+    if (phase === "unsupported") return;
     if (phase === "recording") return stopRecording();
     if (phase === "idle" || phase === "error") return startRecording();
   };
@@ -275,6 +309,7 @@ function TryRecordScreen({
   const tooShort = phase === "recording" && elapsed < MIN_SECONDS;
   const showNudge = phase === "recording" && elapsed > 0 && elapsed < NUDGE_SECONDS;
   const isIdle = phase === "idle" || phase === "error";
+  const showMicButton = phase !== "unsupported";
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center px-6 py-8 sm:py-12">
@@ -308,7 +343,7 @@ function TryRecordScreen({
         )}
 
         {/* Mic button */}
-        <div
+        {showMicButton && <div
           className={`flex justify-center mb-10 sm:mb-12 transition-all duration-700 ${showMic ? "opacity-100 scale-100" : "opacity-0 scale-50"}`}
           style={{ transitionTimingFunction: "cubic-bezier(0.34, 1.56, 0.64, 1)" }}
         >
@@ -355,7 +390,7 @@ function TryRecordScreen({
               )}
             </button>
           </div>
-        </div>
+        </div>}
 
         {/* Prompt text */}
         {isIdle && (
@@ -368,6 +403,24 @@ function TryRecordScreen({
           <div className="animate-fade-in mb-10">
             <p className="text-sm text-red-500">{error}</p>
             <p className="mt-1 text-xs text-zinc-400">Tap the mic to try again</p>
+          </div>
+        )}
+
+        {phase === "unsupported" && (
+          <div className="animate-fade-in mb-10 max-w-xs mx-auto">
+            <p className="text-sm text-zinc-600 mb-4">
+              {error || "Your browser doesn\u2019t support recording. Start your free trial instead \u2014 you\u2019ll record your first debrief right after signing up."}
+            </p>
+            <a
+              href="/auth/signup"
+              className="inline-block rounded-full px-8 py-3.5 text-sm font-semibold text-white transition hover:brightness-110 active:scale-[0.98]"
+              style={{
+                background: "linear-gradient(135deg, #7C5CFC 0%, #9F7AEA 50%, #6D28D9 100%)",
+                boxShadow: "0 4px 16px rgba(124,92,252,0.3)",
+              }}
+            >
+              Start Free Trial
+            </a>
           </div>
         )}
 

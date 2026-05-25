@@ -35,6 +35,7 @@ const VALID_EVENTS = new Set([
   "try_signup_started",
   "try_signup_completed",
   "try_expired",
+  "try_mic_failed",
 ]);
 
 export async function POST(req: NextRequest) {
