@@ -10,9 +10,9 @@ type Interval = "monthly" | "yearly";
  * selection state so the price card re-renders in place when the user
  * toggles. POSTs the selected interval to /api/stripe/checkout.
  *
- * Yearly math, locked in PROGRESS.md 2026-04-23 (pricing):
- *   $12.99/mo × 12 = $155.88   → $99/yr saves $56.88 (~36%)
- *   $99/yr / 12     = $8.25/mo effective
+ * Yearly math (updated 2026-05-25):
+ *   $4.99/mo × 12 = $59.88   → $39.99/yr saves $19.89 (~33%)
+ *   $39.99/yr / 12  = $3.33/mo effective
  */
 export function UpgradePlanPicker() {
   const [interval, setInterval] = useState<Interval>("yearly");
@@ -102,7 +102,7 @@ export function UpgradePlanPicker() {
         {interval === "monthly" ? (
           <div className="flex items-baseline gap-1">
             <span className="text-3xl font-bold text-zinc-900 dark:text-zinc-50">
-              $12.99
+              $4.99
             </span>
             <span className="text-sm text-zinc-400 dark:text-zinc-500">
               /month

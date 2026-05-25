@@ -29,14 +29,14 @@ export const trialEndingDay13: TrialEmailTemplate = {
         <td style="padding-bottom:24px;">
           ${trialCard(`
             <p style="margin:0;font-size:15px;color:#D8D8E8;line-height:1.7;">
-              Acuity stays $12.99/month — locked in for you as a Founding Member. Cancel anytime from the app.
+              Acuity stays $4.99/month — locked in for you as a Founding Member. Cancel anytime from the app.
             </p>
           `)}
         </td>
       </tr>
       <tr>
         <td style="padding-bottom:8px;">
-          ${trialButton(upgradeUrl, "Continue for $12.99/mo")}
+          ${trialButton(upgradeUrl, "Continue for $4.99/mo")}
         </td>
       </tr>
       <tr>

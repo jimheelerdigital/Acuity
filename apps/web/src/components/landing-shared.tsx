@@ -668,7 +668,7 @@ export function PricingSection({
               </div>
               <p className="mt-4 flex items-baseline gap-1">
                 <span className="text-5xl font-extrabold text-white">
-                  $12.99
+                  $4.99
                 </span>
                 <span className="text-[#A0A0B8]">/month</span>
               </p>
@@ -1071,7 +1071,7 @@ export function CTABanner({
                 {buttonText}
               </a>
               <span className="text-sm text-[#A0A0B8]">
-                Then $12.99/month &middot; No card. Quick setup.
+                Then $4.99/month &middot; No card. Quick setup.
               </span>
             </div>
           </div>

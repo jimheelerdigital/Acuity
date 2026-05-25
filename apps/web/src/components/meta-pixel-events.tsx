@@ -16,6 +16,37 @@ function fireFbq(event: string, params?: Record<string, unknown>) {
 }
 
 /**
+ * Re-initializes the Meta Pixel with Advanced Matching parameters when
+ * a user session is available. This passes hashed email/name to Meta for
+ * better ad attribution. Safe to call after the initial anonymous init —
+ * fbq merges the user data for all subsequent events.
+ *
+ * Render this once in the root layout (inside Providers).
+ */
+export function MetaPixelAdvancedMatching() {
+  const { data: session } = useSession();
+
+  useEffect(() => {
+    if (!session?.user?.email) return;
+    if (typeof window === "undefined" || typeof window.fbq !== "function") return;
+
+    const userData: Record<string, string> = {};
+    userData.em = session.user.email.toLowerCase().trim();
+
+    if (session.user.name) {
+      const parts = session.user.name.trim().split(/\s+/);
+      if (parts[0]) userData.fn = parts[0].toLowerCase();
+      if (parts.length > 1) userData.ln = parts[parts.length - 1].toLowerCase();
+    }
+
+    console.log("[meta-pixel] Advanced matching — reinit with user data");
+    window.fbq("init", "869829585445303", userData);
+  }, [session]);
+
+  return null;
+}
+
+/**
  * Only fires CompleteRegistration + StartTrial if the current session user
  * was created within the last 5 minutes. This prevents:
  *   1. Firing on repeat visits to the success page
@@ -44,7 +75,7 @@ export function TrackCompleteRegistration() {
         const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
         if (createdAt >= fiveMinutesAgo) {
           fireFbq("CompleteRegistration", { content_name: "Free Trial Signup", currency: "USD", value: 0 });
-          fireFbq("StartTrial", { value: 0, currency: "USD" });
+          fireFbq("StartTrial", { value: 4.99, currency: "USD", predicted_ltv: 39.99 });
           sessionStorage.setItem(key, "1");
         } else {
           console.log("[meta-pixel] User created >5min ago, skipping CompleteRegistration");
@@ -64,7 +95,7 @@ export function TrackSubscribe() {
   useEffect(() => {
     if (searchParams.get("upgraded") === "1") {
       const plan = searchParams.get("plan");
-      const value = plan === "yearly" ? 99 : 12.99;
+      const value = plan === "yearly" ? 39.99 : 4.99;
       fireFbq("Subscribe", { value, currency: "USD" });
     }
   }, [searchParams]);

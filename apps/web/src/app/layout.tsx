@@ -13,6 +13,7 @@ import { CookieConsentBanner } from "@/components/cookie-consent";
 import { ConsentGatedTrackers } from "@/components/consent-gated-trackers";
 import { CrisisFooter } from "@/components/crisis-footer";
 import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
+import { MetaPixelAdvancedMatching } from "@/components/meta-pixel-events";
 import {
   type Palette,
   type ResolvedTheme,
@@ -196,6 +197,7 @@ export default function RootLayout({
           initialPalette={appearance.palette}
           initialResolvedTheme={appearance.resolved}
         >
+          <MetaPixelAdvancedMatching />
           <ConsentGatedTrackers />
           <GoogleAnalytics />
           <NavBar />

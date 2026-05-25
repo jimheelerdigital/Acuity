@@ -1241,7 +1241,7 @@ PRODUCT CONTEXT:
 - Weekly report every Sunday: 400-word narrative of the user's week
 - Life Matrix: 6 life domains tracked over time
 - Monthly memoir PDF
-- Pricing: $12.99/month after 30-day free trial, no card required
+- Pricing: $4.99/month after 30-day free trial, no card required
 - First 100 users are Founding Members (${spotsLeft} spots left)
 
 VOICE RULES:

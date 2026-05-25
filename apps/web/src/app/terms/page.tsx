@@ -137,7 +137,7 @@ export default function TermsPage() {
                 <strong className="text-white">Subscription.</strong>{" "}
                 When you subscribe, you authorise us (via Stripe on
                 the web, or Apple via in-app purchase on iOS) to
-                charge you $12.99 per month or $99 per year, depending
+                charge you $4.99 per month or $39.99 per year, depending
                 on the plan you select. The subscription renews
                 automatically at the end of each billing period until
                 you cancel.

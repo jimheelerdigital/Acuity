@@ -28,7 +28,7 @@ const jsonLd = {
       operatingSystem: "Web, iOS, Android",
       offers: {
         "@type": "Offer",
-        price: "12.99",
+        price: "4.99",
         priceCurrency: "USD",
         name: "Pro",
         description: "14-day free trial. Unlimited voice entries, AI analysis, weekly reports, and Life Matrix.",
@@ -61,7 +61,7 @@ const jsonLd = {
           name: "How much does Acuity cost?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "Acuity costs $12.99/month with a 14-day free trial. No card required. Quick setup.",
+            text: "Acuity costs $4.99/month with a 14-day free trial. No card required. Quick setup.",
           },
         },
         {
@@ -139,7 +139,7 @@ export default function HomePage() {
           <h2>How Acuity Works</h2>
           <p>Step 1: Record your day. Step 2: AI extracts tasks, goals, and mood. Step 3: Get your weekly report every Sunday.</p>
           <h2>Pricing</h2>
-          <p>$12.99/month after a 30-day free trial. No credit card required. Cancel anytime.</p>
+          <p>$4.99/month after a 30-day free trial. No credit card required. Cancel anytime.</p>
         </div>
       </div>
 

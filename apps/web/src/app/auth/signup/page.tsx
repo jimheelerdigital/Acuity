@@ -209,7 +209,7 @@ function SignUpForm() {
           value: 0,
         });
         console.log("[meta-pixel] Firing StartTrial — email signup success");
-        window.fbq("track", "StartTrial", { value: 0, currency: "USD" });
+        window.fbq("track", "StartTrial", { value: 4.99, currency: "USD", predicted_ltv: 39.99 });
       }
       if (attribution) {
         fetch("/api/auth/set-attribution", {

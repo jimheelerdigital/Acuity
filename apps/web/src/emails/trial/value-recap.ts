@@ -48,7 +48,7 @@ export const valueRecap: TrialEmailTemplate = {
       <tr>
         <td style="padding-bottom:20px;">
           <p style="margin:0;font-size:16px;color:#D8D8E8;line-height:1.7;">
-            This is yours. All of it stays if you keep going. Starting ${trialEnd}, it's $12.99/month.
+            This is yours. All of it stays if you keep going. Starting ${trialEnd}, it's $4.99/month.
           </p>
         </td>
       </tr>
