@@ -264,6 +264,39 @@ export function OnboardingFunnel() {
           0%, 100% { box-shadow: 0 4px 16px rgba(124,92,252,0.3); }
           50% { box-shadow: 0 4px 28px rgba(124,92,252,0.55), 0 0 8px rgba(124,92,252,0.2); }
         }
+        @keyframes funnel-slide-up {
+          from { opacity: 0; transform: translateY(24px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes funnel-fade-word {
+          from { opacity: 0; transform: translateY(8px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes funnel-card-in {
+          from { opacity: 0; transform: translateY(12px) scale(0.95); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes funnel-pulse-select {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.03); }
+        }
+        @keyframes funnel-breathe {
+          0%, 100% { transform: scale(0.98); }
+          50% { transform: scale(1.02); }
+        }
+        @keyframes funnel-gradient-shift {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+        @keyframes funnel-bounce-in {
+          0% { opacity: 0; transform: translateY(16px) scale(0.9); }
+          60% { transform: translateY(-4px) scale(1.02); }
+          100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .funnel-screen { animation: funnel-slide-up 0.3s ease-out both; }
+        .funnel-card-stagger { animation: funnel-card-in 0.3s ease-out both; }
+        .funnel-bounce { animation: funnel-bounce-in 0.4s ease-out both; }
       `}} />
       {/* Back button (not on first/last steps) */}
       {step !== "pain" && step !== "download" && step !== "processing" && (
@@ -357,6 +390,7 @@ export function OnboardingFunnel() {
           headline={getPersonalizedPromise(answers)}
           subtext="Over time, the insights get richer as you map your own life in 60 seconds a day."
           testimonial={{ quote: "The weekly reports are unreal. It's like having a therapist and a project manager rolled into one.", name: "Marcus T." }}
+          typewriter
           onContinue={() => setStep("commitment")}
         />
       )}
@@ -428,22 +462,41 @@ function ScreenTestimonial({ quote, name }: { quote: string; name: string }) {
 // ─── Screen Components ───────────────────────────────────────────────────────
 
 function PainHookScreen({ onContinue }: { onContinue: () => void }) {
+  const words = ["Same", "week.", "Same", "loop.", "Same", "you."];
+  const [visibleWords, setVisibleWords] = useState(0);
+  const [showSub, setShowSub] = useState(false);
+  const [showBtn, setShowBtn] = useState(false);
+
+  useEffect(() => {
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    words.forEach((_, i) => { timers.push(setTimeout(() => setVisibleWords(i + 1), 200 + i * 200)); });
+    timers.push(setTimeout(() => setShowSub(true), 200 + words.length * 200 + 600));
+    timers.push(setTimeout(() => setShowBtn(true), 200 + words.length * 200 + 1000));
+    return () => timers.forEach(clearTimeout);
+  }, []);
+
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-white text-zinc-900">
-      <div className="max-w-md text-center">
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-white text-zinc-900 relative overflow-hidden">
+      {/* Subtle living gradient background */}
+      <div className="absolute inset-0 opacity-30" style={{ background: "linear-gradient(135deg, #f8f6ff 0%, #ffffff 40%, #f5f0ff 70%, #ffffff 100%)", backgroundSize: "200% 200%", animation: "funnel-gradient-shift 8s ease infinite" }} />
+      <div className="relative max-w-md text-center">
         <h1 className="text-3xl sm:text-4xl font-bold tracking-tight leading-tight">
-          Same week. Same loop. Same you.
+          {words.map((w, i) => (
+            <span key={i} className={`inline-block mr-2 transition-all duration-300 ${i < visibleWords ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"}`}>{w}</span>
+          ))}
         </h1>
-        <p className="mt-6 text-zinc-500 text-base">
+        <p className={`mt-6 text-zinc-500 text-base transition-all duration-500 ${showSub ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"}`}>
           Days blur. Nothing sticks. Life passes.
         </p>
         <ScreenTestimonial quote="I didn't realize I was living the same week on repeat until Acuity showed me." name="Priya R." />
-        <button
-          onClick={onContinue}
-          className="mt-8 rounded-full bg-[#7C5CFC] px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]"
-        >
-          Continue
-        </button>
+        <div className={`mt-8 transition-all duration-300 ${showBtn ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
+          <button
+            onClick={onContinue}
+            className="rounded-full bg-[#7C5CFC] px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]"
+          >
+            Continue
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -464,22 +517,30 @@ function DiagnosticScreen({
 }) {
   const [selected, setSelected] = useState<string | null>(null);
 
+  const handleSelect = (opt: string) => {
+    setSelected(opt);
+    if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(10);
+  };
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-white text-zinc-900">
-      <div className="max-w-md w-full">
-        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-center mb-10">
+      <div className="max-w-md w-full funnel-screen">
+        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-center mb-10" style={{ animation: "funnel-slide-up 0.3s ease-out" }}>
           {question}
         </h2>
         <div className="space-y-3">
-          {options.map((opt) => (
+          {options.map((opt, i) => (
             <button
               key={opt}
-              onClick={() => setSelected(opt)}
-              className={`w-full text-left rounded-xl border px-5 py-4 text-[15px] transition active:scale-[0.98] ${
+              onClick={() => handleSelect(opt)}
+              className={`w-full text-left rounded-xl border px-5 py-4 text-[15px] transition-all duration-200 active:scale-[0.98] funnel-card-stagger ${
                 selected === opt
-                  ? "border-[#7C5CFC] bg-[#7C5CFC]/10 text-zinc-900"
-                  : "border-zinc-200 bg-zinc-50 text-zinc-700 hover:bg-zinc-100"
+                  ? "border-[#7C5CFC] bg-[#7C5CFC]/10 text-zinc-900 animate-[funnel-pulse-select_0.2s_ease-out]"
+                  : selected
+                    ? "border-zinc-200 bg-zinc-50 text-zinc-700 opacity-50"
+                    : "border-zinc-200 bg-zinc-50 text-zinc-700 hover:bg-zinc-100"
               }`}
+              style={{ animationDelay: `${i * 100}ms` }}
             >
               {selected === opt && <span className="mr-2 text-[#7C5CFC]">&#10003;</span>}
               {opt}
@@ -487,13 +548,15 @@ function DiagnosticScreen({
           ))}
         </div>
         {testimonial && <ScreenTestimonial quote={testimonial.quote} name={testimonial.name} />}
-        <button
-          onClick={() => { if (selected) onSelect(selected); }}
-          disabled={!selected}
-          className="mt-8 w-full rounded-full bg-[#7C5CFC] py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98] disabled:opacity-40 disabled:animate-none animate-[funnel-glow_2s_ease-in-out_infinite]"
-        >
-          Continue
-        </button>
+        <div className={`mt-8 transition-all duration-300 ${selected ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
+          <button
+            onClick={() => { if (selected) onSelect(selected); }}
+            disabled={!selected}
+            className="w-full rounded-full bg-[#7C5CFC] py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]"
+          >
+            Continue
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -526,20 +589,21 @@ function DiagnosticMultiScreen({
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-white text-zinc-900">
-      <div className="max-w-md w-full">
+      <div className="max-w-md w-full funnel-screen">
         <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-center mb-10">
           {question}
         </h2>
         <div className="space-y-3">
-          {options.map((opt) => (
+          {options.map((opt, i) => (
             <button
               key={opt}
-              onClick={() => toggle(opt)}
-              className={`w-full text-left rounded-xl border px-5 py-4 text-[15px] transition active:scale-[0.98] ${
+              onClick={() => { toggle(opt); if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(10); }}
+              className={`w-full text-left rounded-xl border px-5 py-4 text-[15px] transition-all duration-200 active:scale-[0.98] funnel-card-stagger ${
                 selected.includes(opt)
-                  ? "border-[#7C5CFC] bg-[#7C5CFC]/10 text-zinc-900"
+                  ? "border-[#7C5CFC] bg-[#7C5CFC]/10 text-zinc-900 animate-[funnel-pulse-select_0.2s_ease-out]"
                   : "border-zinc-200 bg-zinc-50 text-zinc-700 hover:bg-zinc-100"
               }`}
+              style={{ animationDelay: `${i * 100}ms` }}
             >
               {selected.includes(opt) && <span className="mr-2 text-[#7C5CFC]">&#10003;</span>}
               {opt}
@@ -564,28 +628,56 @@ function AtmosphericScreen({
   subtext,
   onContinue,
   testimonial,
+  typewriter,
 }: {
   headline: string;
   subtext: string;
   onContinue: () => void;
   testimonial?: { quote: string; name: string };
+  typewriter?: boolean;
 }) {
+  const [typedChars, setTypedChars] = useState(0);
+  const [showSub, setShowSub] = useState(false);
+  const [showBtn, setShowBtn] = useState(false);
+
+  useEffect(() => {
+    if (typewriter) {
+      let i = 0;
+      const interval = setInterval(() => {
+        i++;
+        setTypedChars(i);
+        if (i >= headline.length) {
+          clearInterval(interval);
+          setTimeout(() => setShowSub(true), 400);
+          setTimeout(() => setShowBtn(true), 800);
+        }
+      }, 30);
+      return () => clearInterval(interval);
+    } else {
+      setTimeout(() => setShowSub(true), 600);
+      setTimeout(() => setShowBtn(true), 1000);
+    }
+  }, [headline, typewriter]);
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-white text-zinc-900">
-      <div className="max-w-md text-center">
-        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight leading-snug">
-          {headline}
+      <div className="max-w-md text-center funnel-screen">
+        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight leading-snug min-h-[3em]">
+          {typewriter ? headline.slice(0, typedChars) : headline}
+          {typewriter && typedChars < headline.length && <span className="inline-block w-0.5 h-6 bg-[#7C5CFC] ml-0.5 animate-pulse" />}
         </h2>
-        <p className="mt-6 text-zinc-500 text-sm leading-relaxed">
+        <p className={`mt-6 text-zinc-500 text-sm leading-relaxed transition-all duration-500 ${showSub ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"}`}>
           {subtext}
         </p>
         {testimonial && <ScreenTestimonial quote={testimonial.quote} name={testimonial.name} />}
-        <button
-          onClick={onContinue}
-          className="mt-8 rounded-full bg-[#7C5CFC] px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]"
-        >
-          Continue
-        </button>
+        <div className={`mt-8 transition-all duration-300 ${showBtn ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
+          <button
+            onClick={onContinue}
+            className="rounded-full bg-[#7C5CFC] px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]"
+          >
+            Continue
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -834,7 +926,7 @@ function ExtractionScreen({
           {items.slice(0, visibleCount).map((item, i) => (
             <div
               key={i}
-              className="flex items-start gap-3 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 animate-fade-in"
+              className="flex items-start gap-3 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 funnel-bounce"
             >
               <span className="shrink-0 rounded-md bg-[#7C5CFC]/10 px-2 py-0.5 text-[11px] font-bold uppercase text-[#7C5CFC]">
                 {item.label}
@@ -1230,7 +1322,7 @@ function CommitmentScreen({
               onMouseLeave={endHold}
               onTouchStart={startHold}
               onTouchEnd={endHold}
-              className="absolute inset-4 rounded-full bg-[#7C5CFC]/5 border border-zinc-200 flex items-center justify-center transition active:bg-[#7C5CFC]/10"
+              className={`absolute inset-4 rounded-full bg-[#7C5CFC]/5 border border-zinc-200 flex items-center justify-center transition active:bg-[#7C5CFC]/10 ${!holding && progress === 0 ? "animate-[funnel-breathe_2s_ease-in-out_infinite]" : ""}`}
               aria-label="Hold to commit"
             >
               <span className="text-3xl">{progress >= 1 ? "✓" : ""}</span>
@@ -1278,7 +1370,7 @@ function MockExtractionScreen({ onContinue }: { onContinue: () => void }) {
           {items.slice(0, visibleCount).map((item, i) => (
             <div
               key={i}
-              className="flex items-start gap-3 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 animate-fade-in"
+              className="flex items-start gap-3 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 funnel-bounce"
             >
               <span className="shrink-0 rounded-md bg-[#7C5CFC]/10 px-2 py-0.5 text-[11px] font-bold uppercase text-[#7C5CFC]">
                 {item.label}
