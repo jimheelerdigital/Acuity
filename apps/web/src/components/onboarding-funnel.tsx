@@ -87,7 +87,6 @@ const DIAGNOSTIC4_OPTIONS = [
   "My relationships are suffering",
   "My health is slipping",
   "I don't recognize myself anymore",
-  "All of the above",
 ];
 
 const DIAGNOSTIC5_OPTIONS = [
