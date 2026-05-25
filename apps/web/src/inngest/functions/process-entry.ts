@@ -13,6 +13,18 @@ import {
 type ProcessEntryEventData = {
   entryId: string;
   userId: string;
+  // Slice 2 entry-edit reprocess (2026-05-25). When true, the
+  // download-transcribe step short-circuits and trusts the existing
+  // Entry.transcript — the user already edited it, we'd just
+  // overwrite their corrections by re-running Whisper. The audio
+  // path is left untouched so a future re-edit / true reprocess
+  // can still re-transcribe if needed.
+  skipTranscribe?: boolean;
+  // ISO timestamp of the edit that triggered this run. The function
+  // checks it against Entry.lastEditedAt at the top — when a second
+  // edit has landed mid-flight, the older run short-circuits as
+  // stale rather than racing the newer one's writes.
+  triggeredByEditAt?: string;
 };
 
 function truncateForUi(message: string, max = 160): string {
@@ -71,7 +83,12 @@ export const processEntryFn = inngest.createFunction(
     },
   },
   async ({ event, step, runId, logger }) => {
-    const { entryId, userId } = event.data as ProcessEntryEventData;
+    const {
+      entryId,
+      userId,
+      skipTranscribe,
+      triggeredByEditAt,
+    } = event.data as ProcessEntryEventData;
     const { prisma } = await import("@/lib/prisma");
     const { supabase } = await import("@/lib/supabase.server");
 
@@ -82,6 +99,29 @@ export const processEntryFn = inngest.createFunction(
         data: { inngestRunId: runId },
       });
     });
+
+    // Edit-driven reprocess staleness check (slice 2 v1.2 entry edit).
+    // If a second PATCH /api/entries/[id] landed while this run was
+    // queued, the second send bumped Entry.lastEditedAt. Bail out
+    // here so the newer run's writes aren't raced by ours.
+    if (skipTranscribe && triggeredByEditAt) {
+      const stale = await step.run("edit-staleness-check", async () => {
+        const row = await prisma.entry.findUnique({
+          where: { id: entryId },
+          select: { lastEditedAt: true },
+        });
+        const dbStamp = row?.lastEditedAt?.getTime() ?? 0;
+        const eventStamp = new Date(triggeredByEditAt).getTime();
+        // 1s grace handles equality + clock skew between API and worker.
+        return dbStamp > eventStamp + 1000;
+      });
+      if (stale) {
+        logger.info(
+          `process-entry: stale edit-reprocess for entry=${entryId} (event=${triggeredByEditAt}); newer edit landed, bailing`
+        );
+        return { entryId, stale: true };
+      }
+    }
 
     // Cancellation gate before Whisper (Slice C Stage 3, 2026-05-16).
     // Whisper is the first expensive call ($$ per minute of audio).
@@ -147,6 +187,26 @@ export const processEntryFn = inngest.createFunction(
     const { transcriptLength } = await step.run(
       "download-transcribe-and-persist",
       async () => {
+        // Edit-driven reprocess: the user just PATCHed
+        // /api/entries/:id with a new transcript. We don't want to
+        // re-run Whisper and stomp their corrections. Return early
+        // with the existing transcript length as the marker.
+        if (skipTranscribe) {
+          const editedEntry = await prisma.entry.findUniqueOrThrow({
+            where: { id: entryId },
+            select: { userId: true, transcript: true },
+          });
+          if (editedEntry.userId !== userId) {
+            throw new NonRetriableError(
+              `Entry ${entryId} does not belong to user ${userId}`
+            );
+          }
+          await prisma.entry.update({
+            where: { id: entryId },
+            data: { status: "EXTRACTING" },
+          });
+          return { transcriptLength: editedEntry.transcript?.length ?? 0 };
+        }
         const entry = await prisma.entry.findUniqueOrThrow({
           where: { id: entryId },
           select: { audioPath: true, userId: true },
@@ -577,6 +637,10 @@ export const processEntryFn = inngest.createFunction(
             themePromptVersion: useDispositional
               ? "v5_dispositional"
               : "v0_legacy",
+            // Slice 2 v1.2 entry edit — clear the "Re-processing…"
+            // marker once persist lands. Null is the steady state
+            // for both fresh recordings and post-edit reprocesses.
+            reprocessingStartedAt: null,
           },
         });
 
@@ -697,7 +761,11 @@ export const processEntryFn = inngest.createFunction(
     // unlink UI handles the long tail. Fail-soft: a missing link
     // is not a broken entry. No-op when calendar isn't connected
     // (calendarContext.events is empty).
-    if (calendarContext.events.length > 0) {
+    // Edit reprocess: preserve the user's manual link/unlink choices
+    // through the edit. The auto-linker would otherwise re-add events
+    // they had explicitly unlinked. Manual linking via the slice 6 UI
+    // remains available after reprocess completes.
+    if (calendarContext.events.length > 0 && !skipTranscribe) {
       await step.run("link-calendar-events", async () => {
         try {
           const { inferLinkedEventIds } = await import("@/lib/calendar/context");

@@ -20,6 +20,7 @@ import {
 import { EntryStatusGate } from "./entry-status-gate";
 import { EntryCalendarEventsSection } from "./calendar-events-section";
 import { ExtractionReview } from "./extraction-review";
+import { TranscriptEditor } from "./transcript-editor";
 
 export const dynamic = "force-dynamic";
 
@@ -288,15 +289,18 @@ export default async function EntryDetailPage({
 
           {/* Transcript stays ungated by status — for PARTIAL entries
               the user's own words are still saved and worth surfacing
-              alongside the retry card. */}
+              alongside the retry card. Slice 2 v1.2 entry editing
+              wraps the read view in a client editor with a small
+              "Edit" affordance. Save → PATCH /api/entries/[id] →
+              triggers re-extraction; the editor polls until
+              reprocessingStartedAt clears, then router.refresh. */}
           {entry.transcript && (
             <section>
-              <SectionHeader label="Transcript" />
-              <Card variant="tinted" radius="lg" padding={5} className="mt-3">
-                <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-acuity-text-sec">
-                  {entry.transcript}
-                </p>
-              </Card>
+              <TranscriptEditor
+                entryId={entry.id}
+                initialTranscript={entry.transcript}
+                reprocessing={Boolean(entry.reprocessingStartedAt)}
+              />
             </section>
           )}
         </div>

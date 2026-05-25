@@ -596,6 +596,15 @@ model Entry {
   // ~60MB max per-user read, well under memory limits; if we blow
   // past that we promote to pgvector.
   embedding             Float[]
+  // Entry editing v1.2 (2026-05-25). lastEditedAt stamps the most
+  // recent PATCH /api/entries/[id] transcript edit; the re-extraction
+  // Inngest event carries this value so a second edit landing mid-
+  // run can short-circuit the stale first run.
+  // reprocessingStartedAt is set by PATCH and cleared once the
+  // pipeline persist-extraction completes — drives the "Re-
+  // processing…" UI on /entries/[id].
+  lastEditedAt          DateTime?
+  reprocessingStartedAt DateTime?
   // Calendar Integration v1.2 slice 3 — IDs of CalendarEvent rows
   // (the local mirror, not Google's externalEventId) that this entry
   // references. Populated by the post-extraction substring-matcher

@@ -70,3 +70,19 @@ ALTER TABLE "Entry"
 - Default `'{}'` makes the migration safe for every existing Entry row (no backfill needed).
 - The auto-linking matcher in `apps/web/src/lib/calendar/context.ts` writes this column after the persist-extraction step inside the process-entry pipeline. It only fires for users with a connected calendar AND with events in the recording window, so most entries keep the default empty array.
 
+
+---
+
+## Entry editing — Entry.lastEditedAt + reprocessingStartedAt (2026-05-25)
+
+(Filed here because Calendar migrations doc is the active per-workstream notes file — this isn't a Calendar change but it sits next to it.)
+
+```sql
+ALTER TABLE "Entry"
+  ADD COLUMN "lastEditedAt"          TIMESTAMP(3),
+  ADD COLUMN "reprocessingStartedAt" TIMESTAMP(3);
+```
+
+**Notes:**
+- Both nullable, no default. `lastEditedAt` is set by `PATCH /api/entries/[id]` on transcript edits; never updated on the original create.
+- `reprocessingStartedAt` is set by PATCH and cleared by the persist-extraction step in `process-entry.ts` when status flips back to COMPLETE. Drives the "Re-processing…" UI on /entries/[id] (web) and the equivalent mobile state (slice 3).
