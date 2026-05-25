@@ -41,6 +41,38 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-25] — Pricing update $12.99→$4.99, Meta Pixel advanced matching, pixel values
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 27c4f7b
+
+### In plain English (for Keenan)
+
+All pricing across the entire site now reflects $4.99/month and $39.99/year (save 33%). The Meta Pixel now sends hashed email+name for logged-in users (advanced matching), which helps Meta match conversions back to ad clicks. StartTrial and Subscribe pixel events now send correct dollar values instead of $0.
+
+### Technical changes (for Jimmy)
+
+- 19 files modified: replaced every `$12.99` with `$4.99`, every `$99/year` with `$39.99/year`
+- Files: homepage (page.tsx), landing.tsx, landing-shared.tsx, /for/sleep, /for/founders, /for/therapy, /for/weekly-report, voice-journaling, terms, upgrade-plan-picker, signup page, drip-emails, trial emails, auto-blog, content-factory, admin GuideTab
+- `apps/web/src/components/meta-pixel-events.tsx`: new `MetaPixelAdvancedMatching` component (uses `useSession()` to get email/name, re-inits pixel with user data); StartTrial value:0→value:4.99+predicted_ltv:39.99; Subscribe value:12.99→4.99 monthly, 99→39.99 yearly
+- `apps/web/src/app/layout.tsx`: renders `MetaPixelAdvancedMatching` inside Providers
+- `apps/web/src/app/auth/signup/page.tsx`: StartTrial value:0→value:4.99+predicted_ltv:39.99
+
+### Manual steps needed
+
+- [ ] Update Vercel env vars — `STRIPE_PRICE_MONTHLY` = `price_1Tb20a0q7eSdZzmFX1BCX0Sh`, `STRIPE_PRICE_YEARLY` = `price_1Tb20r0q7eSdZzmFZewbwtXF`. Keenan
+- [ ] Trigger Vercel redeploy after env var update. Keenan
+- [ ] Verify Stripe dashboard has both prices active and at correct amounts ($4.99/mo, $39.99/yr). Keenan
+
+### Notes
+
+- Stripe price IDs are env-var driven (STRIPE_PRICE_MONTHLY / STRIPE_PRICE_YEARLY) — no hardcoded price IDs in codebase. The checkout route already supports both monthly and annual intervals. The upgrade page already has a monthly/yearly toggle.
+- Advanced matching re-initializes the pixel on every page for logged-in users. Meta auto-hashes the data (SHA-256) before sending.
+- No schema changes.
+
+---
+
 ## [2026-05-25] — Mobile signup layout + sticky CTA
 
 **Requested by:** Keenan
