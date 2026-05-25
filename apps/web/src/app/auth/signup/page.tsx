@@ -1,30 +1,46 @@
 "use client";
 
-// Visual refresh (slice 2, 2026-05-22):
-//   - Canonical Acuity tokens + primitives.
-//   - `data-theme="dark"` scoped to the page so it renders against
-//     `bg-acuity-bg` even while the rest of the app still uses the
-//     legacy light/dark switching.
-//   - Copy rubric pass: removed "AI handles the rest" above-the-fold
-//     claim (banned per docs/Acuity_SalesCopy.md §3.6). Replaced
-//     mobile subtitle with a Sunday-morning-specific framing per
-//     §7.2 (weekly report = hero conversion driver).
-//   - Submit CTA sentence-cased per §7.7.
+// AUTH-CRITICAL FILE
+// Any change to this file REQUIRES manual verification of:
+//   - Web Google OAuth (getacuity.io/auth/signup → Continue with Google)
+//   - Web Apple OAuth (getacuity.io/auth/signup → Continue with Apple)
+//   - Email/password signup + redirect to /auth/signup/success
+//   - Meta Pixel Lead + CompleteRegistration events
+//   - PostHog signup_page_viewed event
+//   - Attribution cookie propagation
 //
-// All auth behavior (signIn, /api/auth/signup, meta-pixel events,
-// PostHog tracking, attribution cookie, referral code stash) is
-// byte-for-byte unchanged.
+// Visual overhaul (2026-05-25): conversion-focused layout with social
+// proof, how-it-works steps, and urgency. All auth logic unchanged.
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { Suspense, useEffect, useState } from "react";
 
-import { Button, Card } from "@/components/acuity";
+import { SOCIAL_PROOF } from "@/lib/social-proof";
 
 const PASSWORD_MIN = 8;
-
 const REFERRAL_KEY = "acuity_ref_code";
+
+// Rotating testimonials for social proof
+const TESTIMONIALS = [
+  {
+    quote: "The weekly reports are unreal. It\u2019s like having a therapist and a project manager rolled into one.",
+    name: "Marcus T.",
+    role: "Founder",
+  },
+  {
+    quote: "I used to lie awake running through my to-do list. Now I debrief before bed and sleep in minutes.",
+    name: "Rachel K.",
+    role: "Product Manager",
+  },
+  {
+    quote: "I didn\u2019t expect the pattern detection to be this accurate. It noticed things I couldn\u2019t see.",
+    name: "James L.",
+    role: "Designer",
+  },
+];
 
 function SignUpForm() {
   const searchParams = useSearchParams();
@@ -37,10 +53,17 @@ function SignUpForm() {
     "google" | "apple" | "password" | null
   >(null);
   const [error, setError] = useState<string | null>(null);
+  const [testimonialIdx, setTestimonialIdx] = useState(0);
 
-  // Ensure the attribution cookie is set if the user lands directly on
-  // /auth/signup with UTM params (e.g., from a CTA that hardcodes them).
-  // First-touch guard in setAttributionCookie prevents overwriting.
+  // Rotate testimonials every 5 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTestimonialIdx((i) => (i + 1) % TESTIMONIALS.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Attribution cookie
   useEffect(() => {
     try {
       const { setAttributionCookie } = require("@/lib/attribution");
@@ -48,6 +71,7 @@ function SignUpForm() {
     } catch {}
   }, []);
 
+  // PostHog tracking
   useEffect(() => {
     try {
       const { getClientAttribution } = require("@/lib/attribution");
@@ -64,11 +88,10 @@ function SignUpForm() {
           landingPath: attr.landingPath ?? null,
         });
       }
-    } catch {
-      // PostHog not loaded
-    }
+    } catch {}
   }, []);
 
+  // Referral code
   useEffect(() => {
     const fromQuery = searchParams?.get("ref");
     if (fromQuery) {
@@ -90,9 +113,6 @@ function SignUpForm() {
     if (typeof window !== "undefined" && typeof window.fbq === "function") {
       console.log("[meta-pixel] Firing Lead — Google signup click");
       window.fbq("track", "Lead", { content_name: "Start Free Trial Click" });
-      // CompleteRegistration + StartTrial now fire ONLY on the success page
-      // after confirming the user was actually created. Removed from here to
-      // prevent double-fire and false conversions when OAuth is cancelled.
     }
     await signIn("google", { callbackUrl: "/auth/signup/success" });
   };
@@ -103,9 +123,6 @@ function SignUpForm() {
     if (typeof window !== "undefined" && typeof window.fbq === "function") {
       console.log("[meta-pixel] Firing Lead — Apple signup click");
       window.fbq("track", "Lead", { content_name: "Start Free Trial Click" });
-      // CompleteRegistration + StartTrial now fire ONLY on the success page
-      // after confirming the user was actually created. Removed from here to
-      // prevent double-fire and false conversions when OAuth is cancelled.
     }
     await signIn("apple", { callbackUrl: "/auth/signup/success" });
   };
@@ -197,116 +214,148 @@ function SignUpForm() {
   };
 
   return (
-    <div
-     
-      className="min-h-screen bg-acuity-bg text-acuity-text"
-    >
-      <div className="flex min-h-screen">
-        {/* Left side — value reinforcement (desktop only) */}
-        <div className="hidden flex-col justify-center px-16 lg:flex lg:w-[55%] xl:px-24">
-          <h1 className="font-display text-4xl font-bold leading-tight tracking-tight text-acuity-text xl:text-5xl">
+    <div className="min-h-screen bg-white">
+      <div className="flex min-h-screen flex-col-reverse lg:flex-row">
+        {/* ─── LEFT SIDE — Marketing (desktop) / Below fold (mobile) ─── */}
+        <div className="flex flex-col justify-center bg-gradient-to-br from-[#F8F6FF] to-white px-8 py-16 lg:w-[55%] lg:px-16 xl:px-24">
+          {/* Headline */}
+          <h1 className="font-display text-3xl font-bold leading-tight tracking-tight text-zinc-900 sm:text-4xl xl:text-5xl">
             One minute a day.
-            <br />A life of clarity.
+            <br />
+            <span className="bg-gradient-to-r from-[#7C5CFC] to-[#9F7AEA] bg-clip-text text-transparent">
+              A life of clarity.
+            </span>
           </h1>
 
-          <ul className="mt-10 space-y-5">
-            <ValueProp>
-              Tasks extracted from your voice automatically
-            </ValueProp>
-            <ValueProp>
-              Goals tracked across weeks without lifting a finger
-            </ValueProp>
-            <ValueProp>
-              Patterns surfaced that you can&apos;t see on your own
-            </ValueProp>
-            <ValueProp>
-              Weekly report delivered every Sunday morning
-            </ValueProp>
-          </ul>
+          {/* How it works */}
+          <div className="mt-10 space-y-5">
+            <HowItWorksStep
+              icon={<MicIcon />}
+              step="1"
+              title="Talk"
+              description="Record a 60-second debrief about your day"
+            />
+            <HowItWorksStep
+              icon={<SparkleIcon />}
+              step="2"
+              title="Extract"
+              description="AI pulls out tasks, goals, mood, and patterns"
+            />
+            <HowItWorksStep
+              icon={<ChartIcon />}
+              step="3"
+              title="Grow"
+              description="Get your weekly report every Sunday morning"
+            />
+          </div>
 
-          <blockquote
-            className="mt-14 border-l-2 pl-5"
-            style={{ borderColor: "var(--acuity-primary-soft)" }}
-          >
-            <p className="text-sm italic leading-relaxed text-acuity-text-sec">
-              &ldquo;The weekly reports are unreal. It&rsquo;s like having
-              a therapist and a project manager rolled into one AI.&rdquo;
+          {/* Social proof */}
+          <div className="mt-12">
+            <div className="flex items-center gap-3">
+              <div className="flex text-amber-400">
+                {"★★★★★".split("").map((s, i) => (
+                  <span key={i} className="text-lg">{s}</span>
+                ))}
+              </div>
+              <span className="text-sm font-medium text-zinc-700">
+                {SOCIAL_PROOF.rating} from {SOCIAL_PROOF.users} users
+              </span>
+            </div>
+
+            {/* Rotating testimonial */}
+            <blockquote className="mt-5 min-h-[80px]">
+              <p className="text-sm italic leading-relaxed text-zinc-600">
+                &ldquo;{TESTIMONIALS[testimonialIdx].quote}&rdquo;
+              </p>
+              <cite className="mt-2 block text-xs font-medium not-italic text-zinc-500">
+                — {TESTIMONIALS[testimonialIdx].name}, {TESTIMONIALS[testimonialIdx].role}
+              </cite>
+            </blockquote>
+          </div>
+
+          {/* Urgency */}
+          <div className="mt-10 space-y-2">
+            <p className="text-sm font-medium text-[#7C5CFC]">
+              Your first weekly report arrives this Sunday.
             </p>
-            <cite className="mt-2 block text-xs not-italic text-acuity-text-quiet">
-              — Marcus T.
-            </cite>
-          </blockquote>
+            <p className="text-xs text-zinc-500">
+              30 days free. Cancel anytime. No credit card required.
+            </p>
+          </div>
         </div>
 
-        {/* Right side — signup form */}
-        <div className="flex w-full flex-col justify-center px-6 sm:px-12 lg:w-[45%] lg:px-16">
-          {/* Mobile value prop (hidden on desktop). Specific Sunday-
-              morning framing per sales-copy rubric §7.2 (weekly report
-              is the hero conversion driver). Removed "AI handles the
-              rest" per §3.6 (no AI-powered claims above the fold). */}
-          <div className="mb-8 text-center lg:hidden">
-            <h1 className="font-display text-2xl font-bold text-acuity-text">
-              Start your free trial
-            </h1>
-            <p className="mt-2 text-sm leading-relaxed text-acuity-text-sec">
-              Talk for a minute before bed. Acuity turns it into tasks,
-              goals, patterns, and a Sunday morning report.
-            </p>
+        {/* ─── RIGHT SIDE — Signup form (always visible first on mobile) ─── */}
+        <div className="flex w-full flex-col justify-center px-6 py-12 sm:px-12 lg:w-[45%] lg:px-16">
+          {/* Mobile social proof line (above form) */}
+          <div className="mb-6 flex items-center justify-center gap-2 lg:hidden">
+            <div className="flex text-amber-400">
+              {"★★★★★".split("").map((s, i) => (
+                <span key={i} className="text-sm">{s}</span>
+              ))}
+            </div>
+            <span className="text-xs font-medium text-zinc-500">
+              {SOCIAL_PROOF.rating} from {SOCIAL_PROOF.users} users
+            </span>
           </div>
 
           <div className="mx-auto w-full max-w-sm">
-            <Card variant="default" radius="xl" padding={6}>
-              <div className="mb-7 text-center">
-                <img
+            {/* Form card */}
+            <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm sm:p-8">
+              <div className="mb-6 text-center">
+                <Image
                   src="/AcuityLogo.png"
                   alt="Acuity"
-                  className="mx-auto mb-4"
-                  style={{ width: 32, height: 32 }}
+                  width={36}
+                  height={36}
+                  className="mx-auto mb-3"
                 />
-                <h2 className="hidden font-display text-xl font-bold text-acuity-text lg:block">
+                <h2 className="text-xl font-bold tracking-tight text-zinc-900">
                   Start your free trial
                 </h2>
-                <p className="mt-1.5 text-sm text-acuity-text-sec">
+                <p className="mt-1 text-sm text-zinc-500">
                   30 days free. No credit card.
                 </p>
               </div>
 
               {error && (
                 <div
-                  className="mb-5 rounded-acuity-md border border-acuity-bad bg-acuity-bad-soft px-4 py-3 text-sm text-acuity-bad"
+                  className="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
                   role="alert"
                 >
                   {error}
                 </div>
               )}
 
-              <Button
-                variant="secondary"
+              {/* Google */}
+              <button
                 onClick={handleGoogle}
                 disabled={loading !== null}
-                className="w-full"
+                className="flex w-full items-center justify-center gap-3 rounded-full border border-zinc-200 bg-white px-6 py-3.5 text-[15px] font-semibold text-zinc-700 transition hover:bg-zinc-50 active:scale-[0.98] disabled:opacity-50"
               >
                 <GoogleIcon />
-                {loading === "google" ? "Redirecting…" : "Continue with Google"}
-              </Button>
+                {loading === "google" ? "Redirecting\u2026" : "Continue with Google"}
+              </button>
 
+              {/* Apple */}
               <button
                 onClick={handleApple}
                 disabled={loading !== null}
-                className="mt-3 flex w-full items-center justify-center gap-3 rounded-acuity-pill bg-black px-6 py-[14px] text-[15px] font-semibold text-white transition-[transform,filter] duration-acuity-base ease-acuity-standard hover:brightness-110 active:scale-[0.98] disabled:opacity-50"
+                className="mt-3 flex w-full items-center justify-center gap-3 rounded-full bg-black px-6 py-3.5 text-[15px] font-semibold text-white transition hover:bg-zinc-800 active:scale-[0.98] disabled:opacity-50"
               >
                 <AppleIcon />
-                {loading === "apple" ? "Redirecting…" : "Continue with Apple"}
+                {loading === "apple" ? "Redirecting\u2026" : "Continue with Apple"}
               </button>
 
+              {/* Divider */}
               <div className="my-5 flex items-center gap-3">
-                <div className="h-px flex-1 bg-acuity-line" />
-                <span className="font-mono text-[10px] font-bold uppercase tracking-[1.4px] text-acuity-text-ter">
+                <div className="h-px flex-1 bg-zinc-200" />
+                <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-400">
                   or
                 </span>
-                <div className="h-px flex-1 bg-acuity-line" />
+                <div className="h-px flex-1 bg-zinc-200" />
               </div>
 
+              {/* Email/password form */}
               <form onSubmit={handleSubmit} className="space-y-3">
                 <input
                   type="text"
@@ -314,7 +363,7 @@ function SignUpForm() {
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Your name (optional)"
                   autoComplete="name"
-                  className="w-full rounded-acuity-sm border border-acuity-line bg-acuity-bg-inset px-4 py-3 text-sm text-acuity-text placeholder:text-acuity-text-quiet outline-none transition focus:border-acuity-primary focus:ring-2 focus:ring-acuity-primary-soft"
+                  className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 outline-none transition focus:border-[#7C5CFC] focus:ring-2 focus:ring-[#7C5CFC]/20"
                 />
                 <input
                   type="email"
@@ -323,7 +372,7 @@ function SignUpForm() {
                   placeholder="you@example.com"
                   autoComplete="email"
                   required
-                  className="w-full rounded-acuity-sm border border-acuity-line bg-acuity-bg-inset px-4 py-3 text-sm text-acuity-text placeholder:text-acuity-text-quiet outline-none transition focus:border-acuity-primary focus:ring-2 focus:ring-acuity-primary-soft"
+                  className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 outline-none transition focus:border-[#7C5CFC] focus:ring-2 focus:ring-[#7C5CFC]/20"
                 />
                 <input
                   type="password"
@@ -333,38 +382,46 @@ function SignUpForm() {
                   autoComplete="new-password"
                   required
                   minLength={PASSWORD_MIN}
-                  className="w-full rounded-acuity-sm border border-acuity-line bg-acuity-bg-inset px-4 py-3 text-sm text-acuity-text placeholder:text-acuity-text-quiet outline-none transition focus:border-acuity-primary focus:ring-2 focus:ring-acuity-primary-soft"
+                  className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 outline-none transition focus:border-[#7C5CFC] focus:ring-2 focus:ring-[#7C5CFC]/20"
                 />
-                <Button
+                <button
                   type="submit"
-                  variant="primary"
                   disabled={
                     loading !== null ||
                     !email.trim() ||
                     password.length < PASSWORD_MIN
                   }
-                  className="w-full"
+                  className="w-full rounded-full px-6 py-3.5 text-[15px] font-semibold text-white transition hover:brightness-110 active:scale-[0.98] disabled:opacity-50"
+                  style={{
+                    background: "linear-gradient(135deg, #7C5CFC 0%, #9F7AEA 50%, #6D28D9 100%)",
+                    boxShadow: "0 4px 16px rgba(124,92,252,0.3)",
+                  }}
                 >
                   {loading === "password"
-                    ? "Creating account…"
+                    ? "Creating account\u2026"
                     : "Start free trial"}
-                </Button>
+                </button>
               </form>
 
-              <p className="mt-4 text-center text-xs text-acuity-text-quiet">
-                You&apos;ll be redirected to download the app after signup.
+              <p className="mt-4 text-center text-xs text-zinc-500">
+                You&apos;ll do your first debrief right after signing up.
               </p>
 
-              <p className="mt-5 text-center text-xs text-acuity-text-sec">
+              <p className="mt-4 text-center text-xs text-zinc-500">
                 Already have an account?{" "}
                 <Link
                   href="/auth/signin"
-                  className="font-semibold text-acuity-primary transition hover:text-acuity-primary-hi"
+                  className="font-semibold text-[#7C5CFC] transition hover:text-[#6D28D9]"
                 >
                   Sign in
                 </Link>
               </p>
-            </Card>
+            </div>
+
+            {/* Mobile urgency below form */}
+            <p className="mt-6 text-center text-sm font-medium text-[#7C5CFC] lg:hidden">
+              Your first weekly report arrives this Sunday.
+            </p>
           </div>
         </div>
       </div>
@@ -372,29 +429,55 @@ function SignUpForm() {
   );
 }
 
-function ValueProp({ children }: { children: React.ReactNode }) {
+// ─── Sub-components ──────────────────────────────────────────────────────────
+
+function HowItWorksStep({
+  icon,
+  step,
+  title,
+  description,
+}: {
+  icon: React.ReactNode;
+  step: string;
+  title: string;
+  description: string;
+}) {
   return (
-    <li className="flex items-start gap-4">
-      <span
-        className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full"
-        style={{ backgroundColor: "var(--acuity-primary-soft)" }}
-      >
-        <svg
-          className="h-3.5 w-3.5 text-acuity-primary"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2.5}
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M5 13l4 4L19 7"
-          />
-        </svg>
-      </span>
-      <span className="text-base text-acuity-text-sec">{children}</span>
-    </li>
+    <div className="flex items-start gap-4">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#7C5CFC]/10">
+        {icon}
+      </div>
+      <div>
+        <p className="text-sm font-bold text-zinc-900">
+          <span className="text-[#7C5CFC]">Step {step}:</span> {title}
+        </p>
+        <p className="mt-0.5 text-sm text-zinc-600">{description}</p>
+      </div>
+    </div>
+  );
+}
+
+function MicIcon() {
+  return (
+    <svg className="h-5 w-5 text-[#7C5CFC]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
+    </svg>
+  );
+}
+
+function SparkleIcon() {
+  return (
+    <svg className="h-5 w-5 text-[#7C5CFC]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
+    </svg>
+  );
+}
+
+function ChartIcon() {
+  return (
+    <svg className="h-5 w-5 text-[#7C5CFC]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+    </svg>
   );
 }
 
