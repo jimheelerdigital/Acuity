@@ -27,7 +27,7 @@ export function useIsIOS(): boolean {
  * UTM params should only come from external traffic (ads, emails), not internal links.
  */
 export function useCtaHref(_utmCampaign?: string): string {
-  return "/auth/signup";
+  return "/start";
 }
 
 /** Official "Download on the App Store" black badge as inline SVG. */

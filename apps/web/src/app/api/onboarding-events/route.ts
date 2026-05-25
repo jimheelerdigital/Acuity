@@ -36,6 +36,20 @@ const VALID_EVENTS = new Set([
   "try_signup_completed",
   "try_expired",
   "try_mic_failed",
+  // Conversion funnel (/start)
+  "funnel_pain_hook_viewed",
+  "funnel_diagnostic_1_completed",
+  "funnel_diagnostic_2_completed",
+  "funnel_diagnostic_3_completed",
+  "funnel_promise_viewed",
+  "funnel_recording_started",
+  "funnel_recording_completed",
+  "funnel_extraction_viewed",
+  "funnel_signup_completed",
+  "funnel_paywall_viewed",
+  "funnel_payment_completed",
+  "funnel_download_screen_viewed",
+  "funnel_app_store_clicked",
 ]);
 
 export async function POST(req: NextRequest) {

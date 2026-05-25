@@ -37,7 +37,7 @@ export function TryItNowButton({
 
   useEffect(() => { setUsed(checkTryUsed()); setInApp(isInAppBrowser()); }, []);
 
-  const href = (used || inApp) ? "/auth/signup" : "/try";
+  const href = "/start";
   const label = used ? "Sign up to continue" : "Try it now \u2014 free";
 
   if (variant === "secondary") {
@@ -80,7 +80,7 @@ export function TryItNowButtonDark({
 
   useEffect(() => { setUsed(checkTryUsed()); setInApp(isInAppBrowser()); }, []);
 
-  const href = (used || inApp) ? "/auth/signup" : "/try";
+  const href = "/start";
   const label = used ? "Sign up to continue" : "Try It First";
 
   return (

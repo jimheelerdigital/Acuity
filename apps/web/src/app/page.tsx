@@ -101,7 +101,7 @@ export default function HomePage() {
         <nav className="flex items-center justify-between px-6 py-5 max-w-7xl mx-auto">
           <span className="font-bold text-lg tracking-tight">Acuity</span>
           <Link
-            href="/auth/signup"
+            href="/start"
             className="rounded-full bg-[#7C5CFC] px-5 py-2.5 text-sm font-semibold text-white"
           >
             Start Free Trial
@@ -119,7 +119,7 @@ export default function HomePage() {
           </p>
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
             <Link
-              href="/auth/signup"
+              href="/start"
               className="rounded-full bg-[#7C5CFC] px-7 py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-95"
             >
               Start Free Trial
