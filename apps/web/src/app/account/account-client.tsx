@@ -4,6 +4,7 @@ import { signOut } from "next-auth/react";
 import { useEffect, useRef, useState } from "react";
 
 import { AppearanceSection } from "./_components/appearance-section";
+import { CalendarIntegrationSection } from "./_components/calendar-integration-section";
 import { TrialStatusCard } from "./_components/trial-status-card";
 
 import {
@@ -52,6 +53,19 @@ interface Props {
    *  SubscriptionSection. Read server-side in page.tsx so we don't
    *  need useSearchParams + a client-side Suspense boundary. */
   justUpgraded: boolean;
+  /** Slice 4 v1.2 Calendar Integration — inbound Google Calendar
+   *  connection state. Drives the new CalendarIntegrationSection
+   *  card (separate from the outbound iOS EventKit task-sync flow
+   *  the IntegrationsSection already covers). */
+  calendarIntegration: {
+    connectedEmail: string | null;
+    connectedAt: string | null;
+    lastSyncedAt: string | null;
+  };
+  /** Slice 4 v1.2 — status flash key from the OAuth callback redirect
+   *  (?calendar=connected|denied|error|no_token). Null when arriving
+   *  via any other path. */
+  calendarStatusFlash: string | null;
 }
 
 export default function AccountClient({
@@ -72,6 +86,8 @@ export default function AccountClient({
   olderBackfillCount,
   backfillInFlight,
   justUpgraded,
+  calendarIntegration,
+  calendarStatusFlash,
 }: Props) {
   const [confirmOpen, setConfirmOpen] = useState(false);
 
@@ -167,6 +183,19 @@ export default function AccountClient({
           <IntegrationsSection
             isProLocked={isProLocked}
             connection={calendarConnection}
+          />
+        </div>
+
+        {/* Slice 4 v1.2 Calendar Integration (inbound) — Google
+            Calendar reads. Distinct from the outbound iOS EventKit
+            task-sync above. Renders for all subscription tiers; the
+            connect flow itself is the only thing gated. */}
+        <div id="calendar" className="scroll-mt-24">
+          <CalendarIntegrationSection
+            connectedEmail={calendarIntegration.connectedEmail}
+            connectedAt={calendarIntegration.connectedAt}
+            lastSyncedAt={calendarIntegration.lastSyncedAt}
+            statusFlash={calendarStatusFlash}
           />
         </div>
 

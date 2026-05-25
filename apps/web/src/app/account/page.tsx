@@ -23,7 +23,13 @@ export default async function AccountPage({
    *  but it lives in the URL so the client could log it if needed.
    *  See apps/web/src/app/api/stripe/checkout/route.ts success_url
    *  for the source. */
-  searchParams?: { upgrade?: string; session_id?: string };
+  searchParams?: {
+    upgrade?: string;
+    session_id?: string;
+    // Slice 4 v1.2 Calendar Integration — connect/callback redirect
+    // hands status via ?calendar=connected|denied|error|no_token.
+    calendar?: string;
+  };
 }) {
   const session = await getServerSession(getAuthOptions());
   if (!session?.user?.id || !session.user.email) {
@@ -59,6 +65,13 @@ export default async function AccountPage({
       // button visibility + the in-flight indicator.
       backfillStartedAt: true,
       backfillCompletedAt: true,
+      // Slice 4 v1.2 Calendar Integration — inbound (Google
+      // Calendar → CalendarEvent) connection metadata. Distinct
+      // from the outbound calendarConnected* columns above (those
+      // are for sending tasks to a calendar via EventKit/etc).
+      googleCalendarEmail: true,
+      googleCalendarConnectedAt: true,
+      googleCalendarLastSyncedAt: true,
     },
   });
 
@@ -138,6 +151,12 @@ export default async function AccountPage({
         olderBackfillCount={olderBackfillCount}
         backfillInFlight={backfillInFlight}
         justUpgraded={searchParams?.upgrade === "success"}
+        calendarIntegration={{
+          connectedEmail: user?.googleCalendarEmail ?? null,
+          connectedAt: user?.googleCalendarConnectedAt?.toISOString() ?? null,
+          lastSyncedAt: user?.googleCalendarLastSyncedAt?.toISOString() ?? null,
+        }}
+        calendarStatusFlash={searchParams?.calendar ?? null}
       />
     </div>
   );
