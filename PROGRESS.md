@@ -41,6 +41,37 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-25] — Signup page overhaul — conversion-focused layout
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 2afe7eb
+
+### In plain English (for Keenan)
+
+The signup page looked like a generic SaaS form — bland checkboxes on the left, no urgency, no social proof, and the button was salmon/coral instead of Acuity purple. Now it's a conversion page: purple gradient headline, 3-step "How it works" with icons, rotating testimonials, star ratings, urgency copy ("Your first weekly report arrives this Sunday"), and a glowing purple CTA button matching the rest of the marketing site. On mobile, the form shows first above the fold so users don't have to scroll.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/auth/signup/page.tsx`: full visual rewrite of the layout
+- Left side: gradient headline with purple clip-text, HowItWorksStep components with SVG icons, rotating testimonials (5s interval), star rating from `SOCIAL_PROOF`, urgency messaging
+- Right side: form card with white bg, purple focus rings, purple gradient CTA button (hardcoded `#7C5CFC` to match landing pages, not coral theme tokens), replaced "redirected to download" → "first debrief right after"
+- Mobile: `flex-col-reverse` puts form above marketing content
+- Imports `SOCIAL_PROOF` from `@/lib/social-proof.ts` for canonical user count + rating
+- All auth logic (OAuth handlers, pixel events, PostHog, attribution, referral code) unchanged
+- Replaced raw `<img>` logo with `next/image`
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- Used hardcoded `#7C5CFC` purple instead of `acuity-primary` tokens because the default palette is now coral (Jimmy's slice 19 parametric theme system). The signup page is a marketing/acquisition page that needs to match the purple landing pages, not the user's personalized palette.
+- The page went from ○ (Static) to ƒ (Dynamic) in the build — likely due to upstream layout changes in Jimmy's 67 commits, not this change. Not a performance concern for a signup page.
+
+---
+
 ## [2026-05-25] — Anchor People workstream (slices 1-8)
 
 **Requested by:** Both
