@@ -85,6 +85,11 @@ function applyDocumentAttributes(
   if (typeof document === "undefined") return;
   document.documentElement.setAttribute("data-theme", theme);
   document.documentElement.setAttribute("data-palette", palette);
+  // Persist to cookie so the blocking <script> in root layout can
+  // apply the correct theme before first paint on next navigation.
+  try {
+    document.cookie = `acuity_appearance=${theme}:${palette};path=/;max-age=31536000;SameSite=Lax`;
+  } catch {}
 }
 
 function resolveSystemTheme(): ResolvedTheme {

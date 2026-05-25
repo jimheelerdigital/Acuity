@@ -2,8 +2,6 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import { Manrope } from "next/font/google";
 import { GeistMono } from "geist/font/mono";
-import { getServerSession } from "next-auth";
-import { headers } from "next/headers";
 import "@/lib/theme/tokens.css";
 import "./globals.css";
 
@@ -15,10 +13,7 @@ import { CookieConsentBanner } from "@/components/cookie-consent";
 import { ConsentGatedTrackers } from "@/components/consent-gated-trackers";
 import { CrisisFooter } from "@/components/crisis-footer";
 import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
-import { getAuthOptions } from "@/lib/auth";
 import {
-  parsePalette,
-  parseThemePreference,
   type Palette,
   type ResolvedTheme,
   type ThemePreference,
@@ -92,63 +87,28 @@ export const metadata: Metadata = {
 };
 
 /**
- * Slice 21 SSR appearance read. Pulls the signed-in user's
- * `theme` + `themePalette` from the database so `<html>` is
- * server-rendered with the correct `data-theme` + `data-palette`
- * attributes — no client-side flash between the initial
- * default and the user's persisted preference.
+ * Theme + palette defaults. The root layout no longer reads the
+ * user's DB preference server-side — that was forcing the entire
+ * site dynamic (headers() + getServerSession on every request).
  *
- * Resolution rules:
- *   - `User.theme === null` → preference is "system". Server falls
- *     back to "light" for the rendered `data-theme` attribute (we
- *     can't read OS pref server-side). Client-side
- *     AppearanceProvider attaches matchMedia and corrects on
- *     hydration via the change-listener path.
- *   - Unauthenticated routes (no session) → "system" + "coral"
- *     defaults. Marketing surfaces don't care about either knob;
- *     they render light + coral universally.
+ * Instead, a blocking <script> in <head> reads the `acuity_appearance`
+ * cookie (set by AppearanceProvider on theme change) and applies
+ * data-theme + data-palette before first paint. Marketing pages
+ * always render light+coral. Logged-in users get instant correction
+ * via the cookie or AppearanceProvider hydration.
  */
-async function readAppearance(): Promise<{
+const DEFAULT_APPEARANCE: {
   preference: ThemePreference;
   palette: Palette;
   resolved: ResolvedTheme;
-}> {
-  try {
-    // `headers()` is called only for its side effect — opting into
-    // the dynamic-rendering path for this layout (without it,
-    // Next.js would attempt static optimization and fail on the
-    // session read below).
-    headers();
-    const session = await getServerSession(getAuthOptions());
-    if (!session?.user?.id) {
-      return { preference: "system", palette: "coral", resolved: "light" };
-    }
-    const { prisma } = await import("@/lib/prisma");
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { theme: true, themePalette: true },
-    });
-    const preference = parseThemePreference(user?.theme);
-    const palette = parsePalette(user?.themePalette);
-    // Server can't observe OS pref. For "system" we resolve to
-    // "light" on first paint; the client re-resolves via matchMedia
-    // immediately on hydration. Acceptable single-frame flicker on
-    // OS-dark-mode users — far better than the previous forced-dark
-    // hack which always lied about the user's preference.
-    const resolved: ResolvedTheme =
-      preference === "dark" ? "dark" : preference === "light" ? "light" : "light";
-    return { preference, palette, resolved };
-  } catch {
-    return { preference: "system", palette: "coral", resolved: "light" };
-  }
-}
+} = { preference: "system", palette: "coral", resolved: "light" };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const appearance = await readAppearance();
+  const appearance = DEFAULT_APPEARANCE;
   const structuredDataJsonLd = {
     "@context": "https://schema.org",
     "@graph": [
@@ -185,6 +145,15 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <head>
+        {/* Blocking theme script — reads acuity_appearance cookie and sets
+            data-theme + data-palette on <html> before first paint. Prevents
+            flash of wrong theme for logged-in users with non-default prefs.
+            Cookie format: "theme:palette" e.g. "dark:cobalt" */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var c=document.cookie.match(/acuity_appearance=([^;]+)/);if(c){var p=c[1].split(":");if(p[0])document.documentElement.setAttribute("data-theme",p[0]);if(p[1])document.documentElement.setAttribute("data-palette",p[1])}}catch(e){}})()`,
+          }}
+        />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredDataJsonLd) }}

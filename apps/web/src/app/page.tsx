@@ -1,8 +1,5 @@
 import nextDynamic from "next/dynamic";
-import { getServerSession } from "next-auth";
-import { redirect } from "next/navigation";
 
-import { getAuthOptions } from "@/lib/auth";
 import { AccountDeletedBanner } from "@/components/account-deleted-banner";
 
 const LandingPage = nextDynamic(
@@ -10,7 +7,10 @@ const LandingPage = nextDynamic(
   { ssr: true },
 );
 
-export const dynamic = "force-dynamic";
+// ISR: regenerate every 60 seconds. Auth redirect for logged-in users
+// is handled by middleware (not getServerSession here) so this page
+// can be statically generated and served from edge cache.
+export const revalidate = 60;
 
 const jsonLd = {
   "@context": "https://schema.org",
@@ -82,10 +82,7 @@ const jsonLd = {
   ],
 };
 
-export default async function HomePage() {
-  const session = await getServerSession(getAuthOptions());
-  if (session) redirect("/home");
-
+export default function HomePage() {
   return (
     <>
       <script

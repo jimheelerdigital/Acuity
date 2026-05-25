@@ -11,6 +11,13 @@ export default withAuth(
       return NextResponse.redirect(new URL("/auth/signin", req.url));
     }
 
+    // Authenticated users hitting the marketing homepage → redirect to /home.
+    // This replaces the getServerSession check that was in page.tsx
+    // (which forced the homepage to be dynamically rendered on every request).
+    if (pathname === "/" && !host.startsWith("app.") && req.nextauth.token) {
+      return NextResponse.redirect(new URL("/home", req.url));
+    }
+
     return NextResponse.next();
   },
   {
