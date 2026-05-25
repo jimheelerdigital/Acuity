@@ -29,8 +29,11 @@ type Step =
   | "diagnostic1"
   | "diagnostic2"
   | "diagnostic3"
+  | "diagnostic4"
+  | "diagnostic5"
   | "failed-solution"
   | "promise"
+  | "commitment"
   | "record"
   | "processing"
   | "extraction"
@@ -48,6 +51,8 @@ interface DiagnosticAnswers {
   loop?: string;
   duration?: string;
   tried?: string[];
+  cost?: string[];
+  desire?: string;
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -77,8 +82,39 @@ const DIAGNOSTIC3_OPTIONS = [
   "All of the above",
 ];
 
+const DIAGNOSTIC4_OPTIONS = [
+  "I'm dropping balls at work",
+  "My relationships are suffering",
+  "My health is slipping",
+  "I don't recognize myself anymore",
+  "All of the above",
+];
+
+const DIAGNOSTIC5_OPTIONS = [
+  "I'd stop repeating the same mistakes",
+  "I'd actually follow through on goals",
+  "I'd feel in control of my life again",
+  "I'd be the person I know I can be",
+];
+
 function getPersonalizedPromise(answers: DiagnosticAnswers): string {
-  const { loop, duration } = answers;
+  const { loop, duration, cost, desire } = answers;
+
+  // Priority: combinations with cost/desire first (more specific)
+  if (loop === "Days that blur together" && duration === "Over a year" && cost?.includes("My relationships are suffering")) {
+    return "You\u2019ve been stuck in this loop for over a year, and your relationships are paying the price. Acuity will show you the pattern in 60 seconds of your voice.";
+  }
+  if (loop === "Work bleeds into life" && cost?.includes("I don't recognize myself anymore")) {
+    return "Work has been swallowing your life and you don\u2019t even recognize yourself anymore. Acuity will show you exactly where you disappeared.";
+  }
+  if (loop === "Goals that never become real" && desire === "I'd actually follow through on goals") {
+    return "You know what you want. Acuity catches the goals you mention and holds you to them \u2014 so this time, you actually follow through.";
+  }
+  if (loop === "Same fights, same conversations" && cost?.includes("My relationships are suffering")) {
+    return "The same arguments keep cycling and your relationships are paying for it. Acuity surfaces the pattern so you can finally break it.";
+  }
+
+  // Fallback: original combinations
   if (loop === "Days that blur together" && duration === "Over a year") {
     return "You\u2019ve been stuck in this loop for over a year. Acuity will show you the pattern in 60 seconds of your voice.";
   }
@@ -161,7 +197,7 @@ export function OnboardingFunnel() {
   }, [step, track]);
 
   const goBack = () => {
-    const order: Step[] = ["pain", "diagnostic1", "diagnostic2", "diagnostic3", "failed-solution", "promise", "record", "processing", "extraction", "signup", "paywall", "download"];
+    const order: Step[] = ["pain", "diagnostic1", "diagnostic2", "diagnostic3", "diagnostic4", "diagnostic5", "failed-solution", "promise", "commitment", "record", "processing", "extraction", "signup", "paywall", "download"];
     const idx = order.indexOf(step);
     if (idx > 0) setStep(order[idx - 1]);
   };
@@ -239,6 +275,29 @@ export function OnboardingFunnel() {
           onSubmit={(vals) => {
             setAnswers((a) => ({ ...a, tried: vals }));
             track("funnel_diagnostic_3_completed");
+            setStep("diagnostic4");
+          }}
+        />
+      )}
+      {step === "diagnostic4" && (
+        <DiagnosticMultiScreen
+          question="What\u2019s it costing you?"
+          options={DIAGNOSTIC4_OPTIONS}
+          onSubmit={(vals) => {
+            setAnswers((a) => ({ ...a, cost: vals }));
+            track("funnel_diagnostic_cost");
+            setStep("diagnostic5");
+          }}
+        />
+      )}
+      {step === "diagnostic5" && (
+        <DiagnosticScreen
+          question="What would change if you could finally see the pattern?"
+          options={DIAGNOSTIC5_OPTIONS}
+          multiSelect={false}
+          onSelect={(val) => {
+            setAnswers((a) => ({ ...a, desire: val as string }));
+            track("funnel_diagnostic_desire");
             setStep("failed-solution");
           }}
         />
@@ -254,7 +313,13 @@ export function OnboardingFunnel() {
         <AtmosphericScreen
           headline={getPersonalizedPromise(answers)}
           subtext="Over time, the insights get richer as you map your own life in 60 seconds a day."
-          onContinue={() => setStep("record")}
+          onContinue={() => setStep("commitment")}
+        />
+      )}
+      {step === "commitment" && (
+        <CommitmentScreen
+          track={track}
+          onComplete={() => setStep("record")}
         />
       )}
       {step === "record" && (
@@ -848,6 +913,138 @@ function UnlockItem({ week, text, badge }: { week: string; text: string; badge?:
         )}
       </div>
     </div>
+  );
+}
+
+function CommitmentScreen({
+  track,
+  onComplete,
+}: {
+  track: (event: string) => void;
+  onComplete: () => void;
+}) {
+  const [progress, setProgress] = useState(0);
+  const [holding, setHolding] = useState(false);
+  const [flash, setFlash] = useState(false);
+  const [abandonCount, setAbandonCount] = useState(0);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const startTimeRef = useRef(0);
+
+  const HOLD_DURATION = 3000; // 3 seconds
+
+  const startHold = () => {
+    setHolding(true);
+    startTimeRef.current = Date.now();
+    // Haptic feedback on mobile
+    if (typeof navigator !== "undefined" && navigator.vibrate) {
+      navigator.vibrate([10, 50, 10, 50, 10]);
+    }
+    intervalRef.current = setInterval(() => {
+      const elapsed = Date.now() - startTimeRef.current;
+      const pct = Math.min(1, elapsed / HOLD_DURATION);
+      setProgress(pct);
+      // Continuous haptic pulses
+      if (typeof navigator !== "undefined" && navigator.vibrate && pct < 1) {
+        navigator.vibrate(5);
+      }
+      if (pct >= 1) {
+        // Completed!
+        if (intervalRef.current) clearInterval(intervalRef.current);
+        setHolding(false);
+        track("funnel_commitment_completed");
+        // White flash → transition to recording
+        setFlash(true);
+        setTimeout(onComplete, 250);
+      }
+    }, 16);
+  };
+
+  const endHold = () => {
+    if (!holding) return;
+    if (progress < 1) {
+      // Released early
+      setAbandonCount((c) => {
+        const next = c + 1;
+        if (next >= 3) track("funnel_commitment_abandoned");
+        return next;
+      });
+    }
+    setHolding(false);
+    setProgress(0);
+    if (intervalRef.current) clearInterval(intervalRef.current);
+  };
+
+  // Shake intensity based on progress
+  const shakeIntensity = Math.round(progress * 5);
+  const shakeStyle = holding
+    ? { animation: `funnel-shake ${0.1 - progress * 0.04}s infinite linear` }
+    : {};
+
+  return (
+    <>
+      {/* White flash overlay */}
+      {flash && (
+        <div className="fixed inset-0 z-[100] bg-white animate-[funnel-flash_250ms_ease-out_forwards]" />
+      )}
+      <div
+        className="min-h-screen flex flex-col items-center justify-center px-6 bg-[#0B0B12] text-white select-none"
+        style={shakeStyle}
+      >
+        <style dangerouslySetInnerHTML={{ __html: `
+          @keyframes funnel-shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(${shakeIntensity}px); }
+            75% { transform: translateX(-${shakeIntensity}px); }
+          }
+          @keyframes funnel-flash {
+            0% { opacity: 0; }
+            40% { opacity: 1; }
+            100% { opacity: 1; }
+          }
+        `}} />
+        <div className="max-w-md text-center">
+          <h2 className="text-xl sm:text-2xl font-bold tracking-tight mb-12">
+            Hold to commit to one minute a day for a life of clarity.
+          </h2>
+
+          {/* Hold circle with progress ring */}
+          <div className="relative inline-flex items-center justify-center">
+            <svg className="h-40 w-40" viewBox="0 0 120 120">
+              {/* Background ring */}
+              <circle cx="60" cy="60" r="54" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="4" />
+              {/* Progress ring */}
+              <circle
+                cx="60" cy="60" r="54"
+                fill="none"
+                stroke="#7C5CFC"
+                strokeWidth="4"
+                strokeLinecap="round"
+                strokeDasharray={`${2 * Math.PI * 54}`}
+                strokeDashoffset={`${2 * Math.PI * 54 * (1 - progress)}`}
+                transform="rotate(-90 60 60)"
+                className="transition-[stroke-dashoffset] duration-100"
+              />
+            </svg>
+            {/* Touch target */}
+            <button
+              onMouseDown={startHold}
+              onMouseUp={endHold}
+              onMouseLeave={endHold}
+              onTouchStart={startHold}
+              onTouchEnd={endHold}
+              className="absolute inset-4 rounded-full bg-white/5 border border-white/10 flex items-center justify-center transition active:bg-white/10"
+              aria-label="Hold to commit"
+            >
+              <span className="text-3xl">{progress >= 1 ? "\u2713" : ""}</span>
+            </button>
+          </div>
+
+          <p className="mt-8 text-xs text-[#A0A0B8]/60">
+            {holding ? "Keep holding..." : "Press and hold the circle"}
+          </p>
+        </div>
+      </div>
+    </>
   );
 }
 
