@@ -227,6 +227,13 @@ export function OnboardingFunnel() {
 
   return (
     <div className="min-h-screen">
+      {/* Global funnel animations */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes funnel-glow {
+          0%, 100% { box-shadow: 0 4px 16px rgba(124,92,252,0.3); }
+          50% { box-shadow: 0 4px 28px rgba(124,92,252,0.55), 0 0 8px rgba(124,92,252,0.2); }
+        }
+      `}} />
       {/* Back button (not on first/last steps) */}
       {step !== "pain" && step !== "download" && step !== "processing" && (
         <button
@@ -379,7 +386,7 @@ function PainHookScreen({ onContinue }: { onContinue: () => void }) {
         </p>
         <button
           onClick={onContinue}
-          className="mt-12 rounded-full bg-[#7C5CFC] px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98]"
+          className="mt-12 rounded-full bg-[#7C5CFC] px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]"
         >
           Continue
         </button>
@@ -426,7 +433,7 @@ function DiagnosticScreen({
         <button
           onClick={() => { if (selected) onSelect(selected); }}
           disabled={!selected}
-          className="mt-8 w-full rounded-full bg-[#7C5CFC] py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98] disabled:opacity-40"
+          className="mt-8 w-full rounded-full bg-[#7C5CFC] py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98] disabled:opacity-40 disabled:animate-none animate-[funnel-glow_2s_ease-in-out_infinite]"
         >
           Continue
         </button>
@@ -483,7 +490,7 @@ function DiagnosticMultiScreen({
         <button
           onClick={() => onSubmit(selected.length > 0 ? selected : ["Nothing — I just push through"])}
           disabled={selected.length === 0}
-          className="mt-8 w-full rounded-full bg-[#7C5CFC] py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98] disabled:opacity-40"
+          className="mt-8 w-full rounded-full bg-[#7C5CFC] py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98] disabled:opacity-40 disabled:animate-none animate-[funnel-glow_2s_ease-in-out_infinite]"
         >
           Continue
         </button>
@@ -512,7 +519,7 @@ function AtmosphericScreen({
         </p>
         <button
           onClick={onContinue}
-          className="mt-12 rounded-full bg-[#7C5CFC] px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98]"
+          className="mt-12 rounded-full bg-[#7C5CFC] px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]"
         >
           Continue
         </button>
@@ -762,7 +769,7 @@ function ExtractionScreen({
             </p>
             <button
               onClick={onContinue}
-              className="rounded-full bg-[#7C5CFC] px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98]"
+              className="rounded-full bg-[#7C5CFC] px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]"
             >
               Continue
             </button>
@@ -821,7 +828,7 @@ function SignupScreen({
           className="flex w-full items-center justify-center gap-3 rounded-full border border-zinc-200 bg-white px-6 py-3.5 text-[15px] font-semibold text-zinc-700 transition hover:bg-zinc-50 active:scale-[0.98] disabled:opacity-50"
         >
           <GoogleLogo />
-          {loading === "google" ? "Redirecting\u2026" : "Continue with Google"}
+          {loading === "google" ? "Redirecting…" : "Continue with Google"}
         </button>
 
         <button
@@ -830,7 +837,7 @@ function SignupScreen({
           className="mt-3 flex w-full items-center justify-center gap-3 rounded-full bg-black px-6 py-3.5 text-[15px] font-semibold text-white transition hover:bg-zinc-800 active:scale-[0.98] disabled:opacity-50"
         >
           <AppleLogo />
-          {loading === "apple" ? "Redirecting\u2026" : "Continue with Apple"}
+          {loading === "apple" ? "Redirecting…" : "Continue with Apple"}
         </button>
 
         <Link
@@ -909,7 +916,7 @@ function PaywallScreen({
             boxShadow: "0 4px 16px rgba(124,92,252,0.3)",
           }}
         >
-          {loading ? "Loading\u2026" : "Start My 30-Day Free Trial"}
+          {loading ? "Loading…" : "Start My 30-Day Free Trial"}
         </button>
 
         <p className="mt-4 text-center text-xs text-zinc-400">
@@ -1059,7 +1066,7 @@ function CommitmentScreen({
               className="absolute inset-4 rounded-full bg-[#7C5CFC]/5 border border-zinc-200 flex items-center justify-center transition active:bg-[#7C5CFC]/10"
               aria-label="Hold to commit"
             >
-              <span className="text-3xl">{progress >= 1 ? "\u2713" : ""}</span>
+              <span className="text-3xl">{progress >= 1 ? "✓" : ""}</span>
             </button>
           </div>
 
