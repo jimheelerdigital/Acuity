@@ -15,6 +15,7 @@ import {
   Settings,
   Sparkles,
   Target,
+  Users,
 } from "lucide-react";
 
 import { RecordSheet } from "./record-sheet";
@@ -112,6 +113,18 @@ const SECTIONS: NavSection[] = [
         // Theme detail route lives at /insights/theme/[id] — same
         // bucket as the orbital, should highlight Theme Map.
         extraMatchPrefixes: ["/insights/theme"],
+      },
+      {
+        // Anchor People sidebar entry (2026-05-25). Promoted from
+        // /insights hub card to sidebar-primary so daily users hit
+        // it in one tap, same treatment as Life Matrix + Theme Map.
+        // matchPrefix is longer than Insights' /insights so the
+        // longest-wins matcher resolves /insights/people/* to this
+        // item, not the Insights one.
+        href: "/insights/people",
+        label: "People",
+        icon: Users,
+        matchPrefix: "/insights/people",
       },
     ],
   },

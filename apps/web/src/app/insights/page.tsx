@@ -11,7 +11,6 @@ import { LockedFeatureCard } from "@/components/locked-feature-card";
 import { PageContainer } from "@/components/page-container";
 import { HeroCard, SectionHeader } from "@/components/acuity";
 
-import { PeopleHubCard } from "./_components/people-hub-card";
 import { InsightsView } from "./insights-view";
 import { RecentTimeline } from "./recent-timeline";
 import { MetricsDrawer } from "./metrics-drawer";
@@ -113,9 +112,10 @@ export default async function InsightsPage() {
             </Link>
           </div>
 
-          <div data-stagger className="lg:col-span-2">
-            <PeopleHubCard userId={session.user.id} />
-          </div>
+          {/* People moved to sidebar-primary 2026-05-25 — same
+              treatment as Life Matrix + Theme Map. Hub stays focused
+              on the long-tail analytical destinations (Ask + State
+              of Me + future Goal Velocity, Mood Triggers, etc.). */}
         </div>
 
         {/* Timeline — recent activity. Lightweight chrome; not a
