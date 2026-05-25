@@ -41,6 +41,72 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-25] — Anchor People workstream (slices 1-8)
+
+**Requested by:** Both
+**Committed by:** Claude Code
+**Commit hashes:** 77b8567 (s1), 4163c56 (s2/3 NER+resolver), 5de3e77 (s3 merge), d788a53 (s4 directory), 5c93a36 (s5 detail+rename), 136b07f (s6 home+hub), 7aff84d (s7 backfill), and the slice 8 commit below.
+
+### In plain English (for Keenan)
+
+Acuity now picks up the named people you mention in your reflections — Erin, Mike, your sister Sarah — and tracks them as real entities. A new /insights/people directory lists everyone you've talked about, sorted by how often. Each person has a detail page showing every time you've mentioned them, with the surrounding sentence highlighted, plus a small sentiment band (positive / neutral / challenging proportions across those entries) and a "you've mentioned Mike 5 times this month, mostly in the context of work" pattern when there's enough signal.
+
+Home gets a small "People on your mind this week" card showing your top 3. Mobile has the same screens.
+
+Important framing: this surface is about frequency, not relationship analysis. We never tell you what your relationship with someone is — we just show what you've been carrying. The copy is intentionally restrained.
+
+### Technical changes (for Jimmy)
+
+**Schema (apply via Supabase MCP — SQL in `apps/web/_design/PEOPLE-MIGRATIONS.md`):**
+- `Person` table: id, userId, canonicalName (lowercase resolver key), displayName (preserved case), aliases (TEXT[]), firstMentionedAt, mentionCount, archived, createdAt, updatedAt — UNIQUE(userId, canonicalName), INDEX(userId, mentionCount)
+- `EntityMention` table: id, entryId, personId, mentionText, startIndex, endIndex, context (~50-char window), createdAt — INDEX(entryId), INDEX(personId), both cascade on FK delete
+- `Entry.peopleExtractedAt` — NER idempotency stamp used by inline pipeline + backfill cron
+
+**NER + resolver:**
+- `apps/web/src/lib/people-ner.ts` — Claude Haiku detector + position locator. We do NOT trust Haiku's character positions; the locator string-scans the actual transcript and uses the snippet to disambiguate when the same name appears multiple times.
+- `apps/web/src/lib/people-resolver.ts` — resolvePersonId (pure) + resolveOrCreatePerson (Prisma). Resolution order: exact canonical → exact alias → ≤1-edit Levenshtein (length ≥4) → unique prefix/contains substring (length ≥4). P2002 race-handler retries on the winning row.
+- `apps/web/src/inngest/functions/process-entry.ts` — new `extract-people` step.run after `link-calendar-events`, gated on entitlement.canExtractEntries (PRO/TRIAL only), fail-soft, stamps `peopleExtractedAt` at end.
+
+**Backfill:**
+- `apps/web/src/inngest/functions/people-backfill.ts` — event-triggered function. `{ userId }` → canary single user; `{}` → all eligible PRO/TRIAL with ≥5 unprocessed entries. Concurrency=1 on the parent, batched ENTRIES_PER_BATCH=10 per user, ceiling MAX_ENTRIES_PER_USER=500.
+- `apps/web/src/app/api/admin/people/backfill/route.ts` — admin-only POST that fires the inngest event.
+
+**Web APIs:**
+- `GET /api/people` — directory list with `?topN` + `?withinDays` query params. The withinDays branch returns window-scoped mention counts (used by the mobile "this week" card).
+- `GET /api/people/[id]` — single person + timeline mentions for the mobile detail screen.
+- `PATCH /api/people/[id]` — rename (displayName only; canonicalName stays bound to the resolver).
+- `POST /api/people/[id]/merge` — merges source Person into target inside a transaction; aliases deduped, mentionCount summed, source deleted.
+
+**Web UI:**
+- `apps/web/src/app/insights/people/page.tsx` — directory with client-side substring filter.
+- `apps/web/src/app/insights/people/[id]/page.tsx` — header, sentiment band (stacked bar of mood proportions), care-pattern card (frequency + top theme), timeline with mention highlighting.
+- `apps/web/src/app/insights/people/[id]/_components/person-display-name-editor.tsx` — inline pencil-to-edit displayName.
+- `apps/web/src/app/home/_sections/people-this-week.tsx` — top-3 by 7-day mention count, server-rendered.
+- `apps/web/src/app/insights/_components/people-hub-card.tsx` — third featured-destination card on /insights alongside Ask + State of Me, with preview chips of top 3 names.
+
+**Mobile UI:**
+- `apps/mobile/app/insights/people.tsx` — directory parity, client filter.
+- `apps/mobile/app/insights/people/[id].tsx` — detail parity (rename deferred to web for v1).
+- `apps/mobile/components/home/people-this-week.tsx` — top-3 card on home tab.
+
+### Manual steps needed
+
+- [ ] Apply the Person + EntityMention CREATE TABLEs + indexes + `Entry.peopleExtractedAt` ALTER via Supabase MCP (Jimmy — SQL in `apps/web/_design/PEOPLE-MIGRATIONS.md`)
+- [ ] Confirm `peopleBackfillFn` registers in Inngest dashboard after next /api/inngest GET (Jimmy)
+- [ ] Canary backfill on Jim's account first: `POST /api/admin/people/backfill { userId: "<jim>" }`. Watch the Inngest UI. Verify /insights/people surfaces Persons after.
+- [ ] After the canary passes, fire `POST /api/admin/people/backfill { }` to process all eligible PRO/TRIAL users.
+
+### Notes
+
+- NER cost: Haiku 4.5 at ~$0.0005 per entry. Inline pipeline only runs on PRO/TRIAL entries (FREE post-trial short-circuits well before the extract-people step). Backfill is the only spike — 100 users × 200 entries ≈ $10. Manual trigger until cost story is settled.
+- The resolver is intentionally conservative on substring matching (length ≥4 + uniquely identifying) — we'd rather create a duplicate "Erin C." that the user manually merges later than collapse two real people into one Person row that's hard to split. Slice 3's merge endpoint handles the duplicate case; split is deferred to v2.
+- Sentiment band requires ≥2 entries with a mood to render — small samples are too noisy to surface honestly. Care-pattern card requires ≥2 monthly mentions AND a theme appearing ≥2 times. Both are intentional silence rather than hand-waving.
+- Copy: every user-facing string went through the Acuity_SalesCopy.md Accountability voice filter. Headline "Who you think about, anchored over time" and pattern copy "frequency, not judgment" set the tone. We never characterize the user's relationships ("you seem distant from…", "your bond with…"), only surface frequency + tonal patterns.
+- Mobile rename intentionally deferred to web: single edit field on a small screen next to the avatar + counters reads ambiguously, and rename is rare enough to not warrant native UI work. Users who want to rename open the web Person detail.
+- Idempotency: `Entry.peopleExtractedAt` is the single gate for both inline NER and backfill. A partial backfill resume picks up exactly where it left off; the inline pipeline never re-processes a backfilled entry on Inngest replay.
+
+---
+
 ## [2026-05-25] — Calendar Integration workstream (slices 1-7)
 
 **Requested by:** Both

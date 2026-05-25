@@ -1,17 +1,16 @@
 /**
- * PATCH /api/people/[id]
+ * GET /api/people/[id]   (slice 8 v1.2 — mobile-facing detail fetch)
+ * PATCH /api/people/[id] (slice 5 v1.2 — rename)
  *
- * Body: { displayName: string }
+ * GET returns the Person row + its mention timeline (most-recent
+ * TIMELINE_LIMIT) with the entry context for each mention. Mirrors
+ * what the web /insights/people/[id] page renders via direct Prisma.
  *
- * Renames a Person's displayName. Slice 5 v1.2 Anchor People. Surfaces
- * in the inline editor on the Person detail page. We deliberately do
- * NOT touch canonicalName — that's the resolver's matching key and
- * changing it would orphan past mention resolution. Renames are
- * cosmetic; resolution stays bound to the original.
+ * PATCH body: { displayName: string }. Renames cosmetically — we
+ * never touch canonicalName, which is the resolver's matching key.
+ * 1-80 chars, trimmed.
  *
- * Validation: 1-80 chars, trim, no other normalization.
- *
- * Authorization: caller must own the Person.
+ * Authorization on both: caller must own the Person.
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -26,6 +25,70 @@ interface Body {
 }
 
 const MAX_LEN = 80;
+const TIMELINE_LIMIT = 50;
+
+export async function GET(
+  req: NextRequest,
+  ctx: { params: { id: string } }
+) {
+  const userId = await getAnySessionUserId(req);
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { prisma } = await import("@/lib/prisma");
+
+  const person = await prisma.person.findFirst({
+    where: { id: ctx.params.id, userId, archived: false },
+    select: {
+      id: true,
+      displayName: true,
+      mentionCount: true,
+      firstMentionedAt: true,
+    },
+  });
+  if (!person) {
+    return NextResponse.json({ error: "NotFound" }, { status: 404 });
+  }
+
+  const mentions = await prisma.entityMention.findMany({
+    where: { personId: person.id },
+    orderBy: { createdAt: "desc" },
+    take: TIMELINE_LIMIT,
+    select: {
+      id: true,
+      mentionText: true,
+      context: true,
+      createdAt: true,
+      entry: {
+        select: { id: true, createdAt: true, mood: true, themes: true },
+      },
+    },
+  });
+
+  return NextResponse.json({
+    person: {
+      id: person.id,
+      displayName: person.displayName,
+      mentionCount: person.mentionCount,
+      firstMentionedAt: person.firstMentionedAt.toISOString(),
+    },
+    mentions: mentions
+      .filter((m) => m.entry)
+      .map((m) => ({
+        id: m.id,
+        mentionText: m.mentionText,
+        context: m.context,
+        createdAt: m.createdAt.toISOString(),
+        entry: {
+          id: m.entry!.id,
+          createdAt: m.entry!.createdAt.toISOString(),
+          mood: m.entry!.mood,
+          themes: m.entry!.themes,
+        },
+      })),
+  });
+}
 
 export async function PATCH(
   req: NextRequest,

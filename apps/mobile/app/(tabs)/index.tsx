@@ -18,6 +18,7 @@ import {
 import { HomeFocusStack } from "@/components/home-focus-stack";
 import { IdentityHero } from "@/components/home/identity-hero";
 import { LastNightCard } from "@/components/home/last-night-card";
+import { PeopleThisWeek } from "@/components/home/people-this-week";
 import { RecentThemesRow } from "@/components/home/recent-themes-row";
 import { TodayStatsRow } from "@/components/home/today-stats-row";
 import { TonightCTA } from "@/components/home/tonight-cta";
@@ -293,6 +294,11 @@ export default function DashboardTab() {
             <RecentThemesRow themes={recentThemes} />
           </>
         )}
+
+        {/* Slice 8 v1.2 Anchor People — top 3 named people this week.
+            Self-fetches; renders null on empty so the home screen
+            stays clean for new/disconnected accounts. */}
+        <PeopleThisWeek />
 
         {/* Progression checklist (preserved) */}
         {homeData?.progression && (
