@@ -1,20 +1,74 @@
 /**
- * Single source of truth for plan prices used by the admin dashboard.
- * Marketing copy (landing pages, /for/*, terms, blog posts) intentionally
- * keeps inline prices for SEO/sales-copy precision and is NOT covered
- * by these constants — copy edits there go through docs/Acuity_SalesCopy.md.
+ * Single source of truth for displayed pricing across the web
+ * /upgrade page, the marketing landing pricing section, persona
+ * landers, trial-lifecycle email templates, and the onboarding-v2
+ * paywall (slice 9). Mobile inherits via SFSafari handoff to
+ * /upgrade — never duplicate price strings in apps/mobile.
  *
- * Stripe Price IDs live in env (STRIPE_PRICE_MONTHLY / STRIPE_PRICE_YEARLY)
- * and are not duplicated here. The cents values below mirror the prices
- * those Stripe Prices encode; if you change a price in Stripe, change
- * here too. Real Stripe-driven MRR (Slice 3) will read invoices and stop
- * relying on these constants for the headline number, but they remain
- * correct for per-row "this user pays $X" displays.
+ * Stripe Price IDs live in env (STRIPE_PRICE_MONTHLY /
+ * STRIPE_PRICE_YEARLY) so per-env testing + rollback don't require
+ * a code change. The `stripeId` fields below are the fallback
+ * defaults for local dev when env is missing; the production checkout
+ * route always reads `process.env` directly.
+ *
+ * Pricing change 2026-05-25: $12.99 / $99 → $4.99 / $39.99. Old
+ * Price IDs preserved in the comments below for rollback documentation
+ * (Stripe-side they remain active — pointing back is a one-env-var
+ * change).
  */
 
-export const MONTHLY_PRICE_CENTS = 1299;
-export const ANNUAL_PRICE_CENTS = 9900;
+// ── Active prices ───────────────────────────────────────────────────
+export const MONTHLY_PRICE_CENTS = 499;
+export const ANNUAL_PRICE_CENTS = 3999;
 export const ANNUAL_AS_MONTHLY_CENTS = Math.round(ANNUAL_PRICE_CENTS / 12);
+
+// ── Rollback reference ──────────────────────────────────────────────
+// Old monthly $12.99: price_1TPqUqD9XJakJqj54TZyFYXZ
+// Old annual  $99   : price_1TPqVGD9XJakJqj5spcrLTmE
+// Old MONTHLY_PRICE_CENTS = 1299
+// Old ANNUAL_PRICE_CENTS  = 9900
+// Rollback steps (no code change required for prices):
+//   1. Set STRIPE_PRICE_MONTHLY back to the $12.99 Price ID in
+//      Vercel + .env.local
+//   2. Set STRIPE_PRICE_YEARLY back to the $99 Price ID
+//   3. Revert this file or update the constants/PRICING block
+
+/**
+ * Source-of-truth shape consumed by /upgrade and the slice 9
+ * onboarding paywall (PARENT 12098990473). Both surfaces import
+ * `PRICING` instead of hardcoding prices so a future change is a
+ * single-file edit + one Stripe Price ID swap.
+ *
+ * `savingsVsMonthly` is computed at module load so any future price
+ * change recomputes the badge string correctly. Math:
+ *   monthly × 12       = $4.99 × 12 = $59.88
+ *   annual             = $39.99
+ *   savings            = $19.89
+ *   pct vs monthly run = 19.89 / 59.88 ≈ 33%
+ */
+const monthlyRunRate = MONTHLY_PRICE_CENTS * 12;
+const annualSavingsCents = monthlyRunRate - ANNUAL_PRICE_CENTS;
+const annualSavingsPct =
+  monthlyRunRate > 0
+    ? Math.round((annualSavingsCents / monthlyRunRate) * 100)
+    : 0;
+
+export const PRICING = {
+  monthly: {
+    price: MONTHLY_PRICE_CENTS / 100,
+    cents: MONTHLY_PRICE_CENTS,
+    stripeId:
+      process.env.STRIPE_PRICE_MONTHLY ?? "price_1Tb335D9XJakJqj5nwTjb4cf",
+  },
+  annual: {
+    price: ANNUAL_PRICE_CENTS / 100,
+    cents: ANNUAL_PRICE_CENTS,
+    stripeId:
+      process.env.STRIPE_PRICE_YEARLY ?? "price_1Tb33YD9XJakJqj5KmfpYrGJ",
+    savingsVsMonthly: `${annualSavingsPct}%`,
+    savingsCents: annualSavingsCents,
+  },
+} as const;
 
 export function formatDollars(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
