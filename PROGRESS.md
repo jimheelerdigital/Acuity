@@ -41,6 +41,34 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-25] — Try flow mic failure handling for in-app browsers
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** f832e49
+
+### In plain English (for Keenan)
+
+3 people started the Try It First recording but 0 completed it — likely because they were in Facebook or Instagram's in-app browser, which doesn't support microphone recording. Now those users see "Start Free Trial" instead of the broken mic button, and we track mic failures in the admin dashboard so we can see how many people hit this issue.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/components/try-debrief-flow.tsx`: added `isInAppBrowser()` detection (FBAN/FBAV/Instagram user agents), `canRecord()` check, 5-second timeout on mic permission prompt, "unsupported" phase with signup fallback CTA
+- `apps/web/src/components/try-it-now-button.tsx`: in-app browser detection — skips /try and sends users directly to /auth/signup
+- `apps/web/src/app/api/onboarding-events/route.ts`: added `try_mic_failed` to valid event whitelist
+- New `try_mic_failed` event fires when: (a) browser detected as in-app, (b) MediaRecorder unavailable, (c) mic permission times out after 5s, (d) mic permission denied
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- The 5-second timeout catches the scenario where the permission prompt hangs silently (common on some Android WebViews).
+- In-app browser users never even enter /try — the button links directly to /auth/signup.
+
+---
+
 ## [2026-05-25] — Static generation restored — edge-cached marketing pages
 
 **Requested by:** Keenan
