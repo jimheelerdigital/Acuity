@@ -16,7 +16,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 
 import { SOCIAL_PROOF } from "@/lib/social-proof";
 
@@ -54,13 +54,27 @@ function SignUpForm() {
   >(null);
   const [error, setError] = useState<string | null>(null);
   const [testimonialIdx, setTestimonialIdx] = useState(0);
+  const [showStickyCta, setShowStickyCta] = useState(false);
+  const formRef = useRef<HTMLDivElement>(null);
 
-  // Rotate testimonials every 5 seconds
+  // Rotate testimonials every 4 seconds
   useEffect(() => {
     const interval = setInterval(() => {
       setTestimonialIdx((i) => (i + 1) % TESTIMONIALS.length);
-    }, 5000);
+    }, 4000);
     return () => clearInterval(interval);
+  }, []);
+
+  // Sticky CTA appears after scrolling past the form on mobile
+  useEffect(() => {
+    const el = formRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setShowStickyCta(!entry.isIntersecting),
+      { threshold: 0 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
   }, []);
 
   // Attribution cookie
@@ -213,11 +227,31 @@ function SignUpForm() {
     }
   };
 
+  const scrollToForm = () => {
+    formRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
   return (
     <div className="min-h-screen bg-white">
-      <div className="flex min-h-screen flex-col-reverse lg:flex-row">
-        {/* ─── LEFT SIDE — Marketing (desktop) / Below fold (mobile) ─── */}
-        <div className="flex flex-col justify-center bg-gradient-to-br from-[#F8F6FF] to-white px-8 py-16 lg:w-[55%] lg:px-16 xl:px-24">
+      {/* ─── MOBILE STICKY CTA (appears after scrolling past form) ─── */}
+      <div
+        className={`fixed top-0 inset-x-0 z-50 lg:hidden transition-transform duration-300 ${showStickyCta ? "translate-y-0" : "-translate-y-full"}`}
+      >
+        <div className="flex items-center justify-between bg-white/95 backdrop-blur-sm border-b border-zinc-100 px-4 py-2.5">
+          <span className="text-sm font-semibold text-zinc-900">Start your free trial</span>
+          <button
+            onClick={scrollToForm}
+            className="rounded-full px-5 py-2 text-xs font-semibold text-white"
+            style={{ background: "linear-gradient(135deg, #7C5CFC 0%, #9F7AEA 50%, #6D28D9 100%)" }}
+          >
+            Sign up
+          </button>
+        </div>
+      </div>
+
+      <div className="flex min-h-screen flex-col lg:flex-row">
+        {/* ─── LEFT/TOP — Marketing content ─── */}
+        <div className="flex flex-col justify-center bg-gradient-to-br from-[#F8F6FF] to-white px-6 py-10 lg:w-[55%] lg:px-16 lg:py-16 xl:px-24">
           {/* Headline */}
           <h1 className="font-display text-3xl font-bold leading-tight tracking-tight text-zinc-900 sm:text-4xl xl:text-5xl">
             One minute a day.
@@ -227,8 +261,33 @@ function SignUpForm() {
             </span>
           </h1>
 
-          {/* How it works */}
-          <div className="mt-10 space-y-5">
+          {/* Rotating testimonial — visible on all screens */}
+          <div className="mt-8">
+            <blockquote className="min-h-[72px]">
+              <p className="text-sm italic leading-relaxed text-zinc-600">
+                &ldquo;{TESTIMONIALS[testimonialIdx].quote}&rdquo;
+              </p>
+              <cite className="mt-2 block text-xs font-medium not-italic text-zinc-500">
+                — {TESTIMONIALS[testimonialIdx].name}, {TESTIMONIALS[testimonialIdx].role}
+              </cite>
+            </blockquote>
+          </div>
+
+          {/* Social proof + urgency */}
+          <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2">
+            <div className="flex items-center gap-1.5">
+              <span className="text-amber-400 text-sm">★★★★★</span>
+              <span className="text-xs font-medium text-zinc-600">
+                {SOCIAL_PROOF.rating} from {SOCIAL_PROOF.users} users
+              </span>
+            </div>
+            <span className="text-xs font-medium text-[#7C5CFC]">
+              Your first weekly report arrives this Sunday.
+            </span>
+          </div>
+
+          {/* How it works — below fold on mobile, visible on desktop */}
+          <div className="mt-10 space-y-5 hidden lg:block">
             <HowItWorksStep
               icon={<MicIcon />}
               step="1"
@@ -248,56 +307,10 @@ function SignUpForm() {
               description="Get your weekly report every Sunday morning"
             />
           </div>
-
-          {/* Social proof */}
-          <div className="mt-12">
-            <div className="flex items-center gap-3">
-              <div className="flex text-amber-400">
-                {"★★★★★".split("").map((s, i) => (
-                  <span key={i} className="text-lg">{s}</span>
-                ))}
-              </div>
-              <span className="text-sm font-medium text-zinc-700">
-                {SOCIAL_PROOF.rating} from {SOCIAL_PROOF.users} users
-              </span>
-            </div>
-
-            {/* Rotating testimonial */}
-            <blockquote className="mt-5 min-h-[80px]">
-              <p className="text-sm italic leading-relaxed text-zinc-600">
-                &ldquo;{TESTIMONIALS[testimonialIdx].quote}&rdquo;
-              </p>
-              <cite className="mt-2 block text-xs font-medium not-italic text-zinc-500">
-                — {TESTIMONIALS[testimonialIdx].name}, {TESTIMONIALS[testimonialIdx].role}
-              </cite>
-            </blockquote>
-          </div>
-
-          {/* Urgency */}
-          <div className="mt-10 space-y-2">
-            <p className="text-sm font-medium text-[#7C5CFC]">
-              Your first weekly report arrives this Sunday.
-            </p>
-            <p className="text-xs text-zinc-500">
-              30 days free. Cancel anytime. No credit card required.
-            </p>
-          </div>
         </div>
 
-        {/* ─── RIGHT SIDE — Signup form (always visible first on mobile) ─── */}
-        <div className="flex w-full flex-col justify-center px-6 py-12 sm:px-12 lg:w-[45%] lg:px-16">
-          {/* Mobile social proof line (above form) */}
-          <div className="mb-6 flex items-center justify-center gap-2 lg:hidden">
-            <div className="flex text-amber-400">
-              {"★★★★★".split("").map((s, i) => (
-                <span key={i} className="text-sm">{s}</span>
-              ))}
-            </div>
-            <span className="text-xs font-medium text-zinc-500">
-              {SOCIAL_PROOF.rating} from {SOCIAL_PROOF.users} users
-            </span>
-          </div>
-
+        {/* ─── RIGHT/MIDDLE — Signup form ─── */}
+        <div ref={formRef} className="flex w-full flex-col justify-center px-6 py-10 sm:px-12 lg:w-[45%] lg:px-16 lg:py-12">
           <div className="mx-auto w-full max-w-sm">
             {/* Form card */}
             <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm sm:p-8">
@@ -418,10 +431,43 @@ function SignUpForm() {
               </p>
             </div>
 
-            {/* Mobile urgency below form */}
-            <p className="mt-6 text-center text-sm font-medium text-[#7C5CFC] lg:hidden">
-              Your first weekly report arrives this Sunday.
+          </div>
+        </div>
+
+        {/* ─── BOTTOM — How it works (mobile only, below form) ─── */}
+        <div className="lg:hidden px-6 py-12 bg-zinc-50 border-t border-zinc-100">
+          <div className="mx-auto max-w-sm space-y-5">
+            <p className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-4">How it works</p>
+            <HowItWorksStep
+              icon={<MicIcon />}
+              step="1"
+              title="Talk"
+              description="Record a 60-second debrief about your day"
+            />
+            <HowItWorksStep
+              icon={<SparkleIcon />}
+              step="2"
+              title="Extract"
+              description="AI pulls out tasks, goals, mood, and patterns"
+            />
+            <HowItWorksStep
+              icon={<ChartIcon />}
+              step="3"
+              title="Grow"
+              description="Get your weekly report every Sunday morning"
+            />
+            <p className="pt-4 text-center text-xs text-zinc-500">
+              30 days free. Cancel anytime. No credit card required.
             </p>
+            {/* Extra testimonial for scrollers */}
+            <blockquote className="pt-4 border-t border-zinc-200">
+              <p className="text-sm italic leading-relaxed text-zinc-600">
+                &ldquo;{TESTIMONIALS[(testimonialIdx + 1) % TESTIMONIALS.length].quote}&rdquo;
+              </p>
+              <cite className="mt-2 block text-xs font-medium not-italic text-zinc-500">
+                — {TESTIMONIALS[(testimonialIdx + 1) % TESTIMONIALS.length].name}, {TESTIMONIALS[(testimonialIdx + 1) % TESTIMONIALS.length].role}
+              </cite>
+            </blockquote>
           </div>
         </div>
       </div>
