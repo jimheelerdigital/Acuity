@@ -54,6 +54,7 @@ const VALID_EVENTS = new Set([
   "funnel_diagnostic_desire",
   "funnel_commitment_completed",
   "funnel_commitment_abandoned",
+  "funnel_inapp_browser_detected",
 ]);
 
 export async function POST(req: NextRequest) {

@@ -34,6 +34,7 @@ type Step =
   | "failed-solution"
   | "promise"
   | "commitment"
+  | "mock-extraction"
   | "record"
   | "processing"
   | "extraction"
@@ -129,6 +130,27 @@ function getPersonalizedPromise(answers: DiagnosticAnswers): string {
   return "Acuity will show you the pattern in 60 seconds of your voice.";
 }
 
+// ─── In-app browser detection ────────────────────────────────────────────────
+
+function isInAppBrowser(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent || "";
+  return /FBAN|FBAV|Instagram|FB_IAB|FBIOS/i.test(ua);
+}
+
+// Mock extraction for in-app browser path (can't record in FB/IG WebView)
+const MOCK_EXTRACTION = {
+  mood: "good",
+  summary: "A productive day with a gym session and two big meetings. Feeling stretched but making progress on the quarterly goal.",
+  tasks: [
+    { title: "Follow up on client proposal", priority: "HIGH" },
+    { title: "Book dentist appointment", priority: "MEDIUM" },
+    { title: "Review budget spreadsheet", priority: "LOW" },
+  ],
+  goals: [{ title: "Close 3 new deals this quarter — mentioned 4 of last 5 entries" }],
+  themes: ["Work-Life Balance", "Fitness Goals", "Career Growth"],
+};
+
 // ─── Tracking helper ─────────────────────────────────────────────────────────
 
 function useFunnelTracker() {
@@ -153,7 +175,16 @@ export function OnboardingFunnel() {
   const [apiError, setApiError] = useState<string | null>(null);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<"monthly" | "yearly">("monthly");
+  const [inApp, setInApp] = useState(false);
   const track = useFunnelTracker();
+
+  // Detect in-app browser on mount
+  useEffect(() => {
+    if (isInAppBrowser()) {
+      setInApp(true);
+      track("funnel_inapp_browser_detected");
+    }
+  }, [track]);
 
   // Check URL params for return from Stripe
   useEffect(() => {
@@ -196,7 +227,7 @@ export function OnboardingFunnel() {
   }, [step, track]);
 
   const goBack = () => {
-    const order: Step[] = ["pain", "diagnostic1", "diagnostic2", "diagnostic3", "diagnostic4", "diagnostic5", "failed-solution", "promise", "commitment", "record", "processing", "extraction", "signup", "paywall", "download"];
+    const order: Step[] = ["pain", "diagnostic1", "diagnostic2", "diagnostic3", "diagnostic4", "diagnostic5", "failed-solution", "promise", "commitment", "mock-extraction", "record", "processing", "extraction", "signup", "paywall", "download"];
     const idx = order.indexOf(step);
     if (idx > 0) setStep(order[idx - 1]);
   };
@@ -255,6 +286,7 @@ export function OnboardingFunnel() {
           question="What's the loop you can't break?"
           options={DIAGNOSTIC1_OPTIONS}
           multiSelect={false}
+          testimonial={{ quote: "I picked 'days that blur together.' Seeing it written down hit different.", name: "David K." }}
           onSelect={(val) => {
             setAnswers((a) => ({ ...a, loop: val as string }));
             track("funnel_diagnostic_1_completed");
@@ -267,6 +299,7 @@ export function OnboardingFunnel() {
           question="How long have you been stuck in this loop?"
           options={DIAGNOSTIC2_OPTIONS}
           multiSelect={false}
+          testimonial={{ quote: "Over a year. It was uncomfortable to admit, but that's what made me try it.", name: "Sarah K." }}
           onSelect={(val) => {
             setAnswers((a) => ({ ...a, duration: val as string }));
             track("funnel_diagnostic_2_completed");
@@ -278,6 +311,7 @@ export function OnboardingFunnel() {
         <DiagnosticMultiScreen
           question="What have you tried to fix it?"
           options={DIAGNOSTIC3_OPTIONS}
+          testimonial={{ quote: "I tried three journaling apps. This is the first one that stuck because I just talk.", name: "Jamie L." }}
           onSubmit={(vals) => {
             setAnswers((a) => ({ ...a, tried: vals }));
             track("funnel_diagnostic_3_completed");
@@ -289,6 +323,7 @@ export function OnboardingFunnel() {
         <DiagnosticMultiScreen
           question="What's it costing you?"
           options={DIAGNOSTIC4_OPTIONS}
+          testimonial={{ quote: "My partner noticed the difference before I did. I'm actually present when I get home now.", name: "David K." }}
           onSubmit={(vals) => {
             setAnswers((a) => ({ ...a, cost: vals }));
             track("funnel_diagnostic_cost");
@@ -301,6 +336,7 @@ export function OnboardingFunnel() {
           question="What would change if you could finally see the pattern?"
           options={DIAGNOSTIC5_OPTIONS}
           multiSelect={false}
+          testimonial={{ quote: "I finally feel like I'm in control of my week instead of my week controlling me.", name: "Marcus T." }}
           onSelect={(val) => {
             setAnswers((a) => ({ ...a, desire: val as string }));
             track("funnel_diagnostic_desire");
@@ -312,6 +348,7 @@ export function OnboardingFunnel() {
         <AtmosphericScreen
           headline="Written journaling asks for discipline. Acuity just asks for one minute."
           subtext="No typing. No prompts. No blank pages. Just talk."
+          testimonial={{ quote: "I used to let tasks pile up in my head until 2 AM. Now I debrief into Acuity and actually sleep.", name: "Sarah K." }}
           onContinue={() => setStep("promise")}
         />
       )}
@@ -319,14 +356,18 @@ export function OnboardingFunnel() {
         <AtmosphericScreen
           headline={getPersonalizedPromise(answers)}
           subtext="Over time, the insights get richer as you map your own life in 60 seconds a day."
+          testimonial={{ quote: "The weekly reports are unreal. It's like having a therapist and a project manager rolled into one.", name: "Marcus T." }}
           onContinue={() => setStep("commitment")}
         />
       )}
       {step === "commitment" && (
         <CommitmentScreen
           track={track}
-          onComplete={() => setStep("record")}
+          onComplete={() => setStep(inApp ? "mock-extraction" : "record")}
         />
+      )}
+      {step === "mock-extraction" && (
+        <MockExtractionScreen onContinue={() => setStep("signup")} />
       )}
       {step === "record" && (
         <RecordScreen
@@ -372,6 +413,18 @@ export function OnboardingFunnel() {
   );
 }
 
+// ─── Shared: subtle testimonial at bottom of screen ──────────────────────────
+
+function ScreenTestimonial({ quote, name }: { quote: string; name: string }) {
+  const [visible, setVisible] = useState(false);
+  useEffect(() => { const t = setTimeout(() => setVisible(true), 500); return () => clearTimeout(t); }, []);
+  return (
+    <p className={`mt-10 text-xs italic text-zinc-400 transition-opacity duration-500 ${visible ? "opacity-100" : "opacity-0"}`}>
+      "{quote}" — {name}
+    </p>
+  );
+}
+
 // ─── Screen Components ───────────────────────────────────────────────────────
 
 function PainHookScreen({ onContinue }: { onContinue: () => void }) {
@@ -384,9 +437,10 @@ function PainHookScreen({ onContinue }: { onContinue: () => void }) {
         <p className="mt-6 text-zinc-500 text-base">
           Days blur. Nothing sticks. Life passes.
         </p>
+        <ScreenTestimonial quote="I didn't realize I was living the same week on repeat until Acuity showed me." name="Priya R." />
         <button
           onClick={onContinue}
-          className="mt-12 rounded-full bg-[#7C5CFC] px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]"
+          className="mt-8 rounded-full bg-[#7C5CFC] px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]"
         >
           Continue
         </button>
@@ -400,11 +454,13 @@ function DiagnosticScreen({
   options,
   multiSelect,
   onSelect,
+  testimonial,
 }: {
   question: string;
   options: string[];
   multiSelect: boolean;
   onSelect: (val: string | string[]) => void;
+  testimonial?: { quote: string; name: string };
 }) {
   const [selected, setSelected] = useState<string | null>(null);
 
@@ -430,6 +486,7 @@ function DiagnosticScreen({
             </button>
           ))}
         </div>
+        {testimonial && <ScreenTestimonial quote={testimonial.quote} name={testimonial.name} />}
         <button
           onClick={() => { if (selected) onSelect(selected); }}
           disabled={!selected}
@@ -446,10 +503,12 @@ function DiagnosticMultiScreen({
   question,
   options,
   onSubmit,
+  testimonial,
 }: {
   question: string;
   options: string[];
   onSubmit: (vals: string[]) => void;
+  testimonial?: { quote: string; name: string };
 }) {
   const [selected, setSelected] = useState<string[]>([]);
 
@@ -487,6 +546,7 @@ function DiagnosticMultiScreen({
             </button>
           ))}
         </div>
+        {testimonial && <ScreenTestimonial quote={testimonial.quote} name={testimonial.name} />}
         <button
           onClick={() => onSubmit(selected.length > 0 ? selected : ["Nothing — I just push through"])}
           disabled={selected.length === 0}
@@ -503,10 +563,12 @@ function AtmosphericScreen({
   headline,
   subtext,
   onContinue,
+  testimonial,
 }: {
   headline: string;
   subtext: string;
   onContinue: () => void;
+  testimonial?: { quote: string; name: string };
 }) {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-white text-zinc-900">
@@ -517,9 +579,10 @@ function AtmosphericScreen({
         <p className="mt-6 text-zinc-500 text-sm leading-relaxed">
           {subtext}
         </p>
+        {testimonial && <ScreenTestimonial quote={testimonial.quote} name={testimonial.name} />}
         <button
           onClick={onContinue}
-          className="mt-12 rounded-full bg-[#7C5CFC] px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]"
+          className="mt-8 rounded-full bg-[#7C5CFC] px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]"
         >
           Continue
         </button>
@@ -1180,6 +1243,69 @@ function CommitmentScreen({
         </div>
       </div>
     </>
+  );
+}
+
+function MockExtractionScreen({ onContinue }: { onContinue: () => void }) {
+  const [visibleCount, setVisibleCount] = useState(0);
+  const items = [
+    { label: "Mood", value: "Good · Energy 7/10" },
+    { label: "Task", value: "Follow up on client proposal (HIGH)" },
+    { label: "Task", value: "Book dentist appointment (MEDIUM)" },
+    { label: "Task", value: "Review budget spreadsheet (LOW)" },
+    { label: "Goal", value: "Close 3 new deals this quarter — mentioned 4 of last 5 entries" },
+    { label: "Theme", value: "Work-Life Balance" },
+    { label: "Theme", value: "Fitness Goals" },
+    { label: "Theme", value: "Career Growth" },
+  ];
+
+  useEffect(() => {
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    items.forEach((_, i) => {
+      timers.push(setTimeout(() => setVisibleCount(i + 1), 400 + i * 200));
+    });
+    return () => timers.forEach(clearTimeout);
+  }, [items.length]);
+
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12 bg-white text-zinc-900">
+      <div className="max-w-md w-full">
+        <p className="text-sm text-zinc-500 text-center mb-6">
+          Here's what Acuity pulls from a single 60-second debrief:
+        </p>
+
+        <div className="space-y-3 mb-10">
+          {items.slice(0, visibleCount).map((item, i) => (
+            <div
+              key={i}
+              className="flex items-start gap-3 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 animate-fade-in"
+            >
+              <span className="shrink-0 rounded-md bg-[#7C5CFC]/10 px-2 py-0.5 text-[11px] font-bold uppercase text-[#7C5CFC]">
+                {item.label}
+              </span>
+              <span className="text-sm text-zinc-700">{item.value}</span>
+            </div>
+          ))}
+        </div>
+
+        {visibleCount >= items.length && (
+          <div className="text-center animate-fade-in">
+            <p className="text-lg font-bold text-zinc-900 mb-2">
+              That's what 60 seconds gets you.
+            </p>
+            <p className="text-sm text-zinc-500 mb-8">
+              Your first real debrief happens in the app.
+            </p>
+            <button
+              onClick={onContinue}
+              className="rounded-full bg-[#7C5CFC] px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]"
+            >
+              Continue
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
