@@ -41,6 +41,77 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-25] — Calendar Integration workstream (slices 1-7)
+
+**Requested by:** Both
+**Committed by:** Claude Code
+**Commit hashes:** bcd446f (s1), 4723395 (s2), 47977c8 (s3), e16ca3a (s4), 32135c1 (s5), df4886f (s6), and the slice 7 commit below.
+
+### In plain English (for Keenan)
+
+Acuity can now read your Google Calendar (read-only) and use that context to make reflections smarter. When you record at night, the AI knows what was on your calendar that day — the 3pm meeting, the lunch with your sister, the deadline — and anchors your reflection to specific events. After the recording, your entry detail page shows the events from that day, with a small "Linked" badge on the ones the AI tied to what you said. You can add or remove links by hand. Home gets a small "You had 8 meetings this week" insight that opens a basic calendar list.
+
+The connect flow is opt-in from the Account page. NextAuth Google sign-in is unchanged, so existing users don't get re-prompted on next login.
+
+### Technical changes (for Jimmy)
+
+**Schema (apply via Supabase MCP — SQL in `apps/web/_design/CALENDAR-MIGRATIONS.md`):**
+- `User.googleCalendarRefreshToken` (TEXT, AES-256-GCM ciphertext)
+- `User.googleCalendarEmail` (TEXT)
+- `User.googleCalendarConnectedAt` (TIMESTAMP)
+- `User.googleCalendarLastSyncedAt` (TIMESTAMP)
+- New `CalendarEvent` table with `(userId, externalEventId)` UNIQUE and `(userId, startTime)` index
+- `Entry.linkedEventIds` (TEXT[] DEFAULT '{}')
+
+**OAuth flow (separate from NextAuth sign-in):**
+- `apps/web/src/lib/calendar/encryption.ts` — AES-256-GCM, key derived from `NEXTAUTH_SECRET` via SHA-256
+- `apps/web/src/lib/calendar/oauth.ts` — googleapis OAuth2Client + HMAC-signed state + token exchange + revoke
+- `GET /api/calendar/connect` — 302 to Google consent
+- `GET /api/calendar/callback` — verifies state, exchanges code, encrypts + persists refresh token, redirects to `/account?calendar=<status>`
+- `POST /api/calendar/disconnect` — best-effort Google revoke + local clear
+
+**Sync infrastructure:**
+- `apps/web/src/lib/calendar/sync.ts` — paginated fetch, exponential backoff on 429, fail-soft on exhaustion
+- `apps/web/src/inngest/functions/calendar-sync-cron.ts` — daily 03:00 UTC cron
+- `POST /api/calendar/sync` — on-demand sync, 1/min rate limit
+- `calendarSync` limiter added to `apps/web/src/lib/rate-limit.ts`
+
+**Extraction grounding:**
+- `apps/web/src/lib/calendar/context.ts` — fetchCalendarContext + inferLinkedEventIds (substring matcher)
+- `apps/web/src/lib/pipeline.ts` — `extractFromTranscript` accepts optional `calendarContextBlock`
+- `apps/web/src/inngest/functions/process-entry.ts` — new `fetch-calendar-context` step before extract; `link-calendar-events` step after persist. PRO/TRIAL only (FREE post-trial short-circuits before extraction).
+
+**Web UI:**
+- `apps/web/src/app/account/_components/calendar-integration-section.tsx` — Connect/Connected card with Sync now + Disconnect controls
+- `apps/web/src/app/entries/[id]/calendar-events-section.tsx` — server-rendered events-that-day list with "Linked" pill
+- `apps/web/src/app/entries/[id]/entry-event-linker.tsx` — + / × link/unlink button with optimistic state
+- `PATCH /api/entries/[id]/link-event` — read-modify-write mutation
+- `apps/web/src/app/home/_sections/meeting-density-card.tsx` — "You had N meetings this week" home insight
+- `apps/web/src/app/insights/calendar/page.tsx` — basic last-30-days list (stub for the richer Anchor People × Patterns Across Time workstream)
+
+**Mobile parity:**
+- `apps/mobile/components/entry/calendar-events-section.tsx` — RN equivalent of the web sidebar, fetches via new `GET /api/entries/[id]/calendar-events` endpoint
+- `apps/mobile/app/(tabs)/profile.tsx` — "Connect Google Calendar" MenuItem that opens `/account#calendar` in Safari
+- `apps/mobile/app/entry/[id].tsx` — renders CalendarEventsSection below Transcript
+- `packages/shared/src/types.ts` — `EntryDTO.linkedEventIds`
+
+### Manual steps needed
+
+- [ ] Apply the four-column User ALTER, CalendarEvent CREATE TABLE + indexes, and `Entry.linkedEventIds` ALTER via Supabase MCP (Jimmy — SQL in `apps/web/_design/CALENDAR-MIGRATIONS.md`)
+- [ ] Add `https://getacuity.io/api/calendar/callback` and `http://localhost:3000/api/calendar/callback` to the Google Cloud Console OAuth client used by NextAuth Google sign-in (Jimmy)
+- [ ] Confirm `calendarSyncCronFn` registers in Inngest dashboard after next /api/inngest GET (Jimmy)
+- [ ] First end-to-end QA: connect a calendar, record a debrief that mentions a meeting, verify (a) the extraction Claude call includes the events block, (b) the entry detail shows the day's events, (c) the substring matcher auto-linked at least one event (Both)
+
+### Notes
+
+- NextAuth Google sign-in is intentionally untouched. The calendar OAuth is a separate flow with its own state HMAC + redirect URI. Adding `calendar.readonly` to the NextAuth provider would have changed the consent screen for every existing user on their next sign-in — high risk for a live app. The opt-in path on `/account` lets users grant scope when they care, with no surprise prompts.
+- Refresh tokens encrypted at rest. Key is `SHA-256(NEXTAUTH_SECRET)` so the env vars Jim already maintains stay the only secret-keeping surface. If `NEXTAUTH_SECRET` rotates, decrypt returns null and the user is silently bumped back to a "Connect" CTA.
+- Sync window is `[recordedAt - 12h, recordedAt + 6h]` — captures the prior evening through the next afternoon for a typical evening reflection. The cron pulls `[now - 30d, now + 7d]` daily so the local mirror always covers any recording's lookup window.
+- Mobile calendar connect intentionally opens the web `/account#calendar`. A native OAuth flow would have needed either (a) cookie-bridge from mobile bearer or (b) a separate mobile-callback endpoint with its own token shape. Opening Safari is the simplest path that doesn't fragment the auth model, and users who care about calendar are already comfortable with a one-time browser hop.
+- `Entry.linkedEventIds` is conservative by design — the post-extraction matcher only links events whose title substring-matches the entry text (or a 1-3 attendee meeting whose attendee first name appears). Slice 6's manual link/unlink handles the long tail. We don't ask Claude to "extract event references" because that would mean trusting hallucinated event ids, which is worse than missing a soft match.
+
+---
+
 ## [2026-05-25] — Trial lifecycle + conversion workstream (slices 1-10)
 
 **Requested by:** Both

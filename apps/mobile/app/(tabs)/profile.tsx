@@ -335,6 +335,22 @@ export default function ProfileTab() {
             sublabel="Send tasks to your iOS calendar"
             onPress={() => router.push("/integrations")}
           />
+          {/* Slice 7 v1.2 Calendar Integration (inbound) — opens
+              Acuity on web to complete the Google Calendar OAuth
+              flow. We open the web /account#calendar anchor so the
+              user signs in via web if needed and lands directly on
+              the connect card. Distinct from the iOS EventKit
+              outbound row above. */}
+          <MenuItem
+            icon="link-outline"
+            label="Connect Google Calendar"
+            sublabel="Acuity reads your day to ground reflections — opens on web"
+            onPress={() => {
+              const base =
+                process.env.EXPO_PUBLIC_API_URL ?? "https://getacuity.io";
+              void Linking.openURL(`${base}/account#calendar`);
+            }}
+          />
           <MenuItem
             icon="heart-outline"
             label="Connect Apple Health"

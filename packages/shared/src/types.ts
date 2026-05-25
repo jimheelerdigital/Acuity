@@ -179,6 +179,11 @@ export interface EntryDTO {
   audioDuration: number | null;
   status: string;
   createdAt: string;
+  // Slice 6 v1.2 Calendar Integration — CalendarEvent ids manually
+  // linked or auto-linked to this entry. Empty default for entries
+  // recorded before calendar was connected. Mobile entry-detail UI
+  // surfaces these as a "Linked" badge on the events-that-day list.
+  linkedEventIds?: string[];
 }
 
 export interface TaskDTO {

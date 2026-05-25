@@ -22,6 +22,7 @@ import {
   ThemePill,
   type ThemeKey,
 } from "@/components/acuity";
+import { CalendarEventsSection } from "@/components/entry/calendar-events-section";
 import { ExtractionReview } from "@/components/extraction-review";
 import { MoodIcon } from "@/components/mood-icon";
 import { ProLockedFooter } from "@/components/pro-locked-card";
@@ -633,6 +634,13 @@ export default function EntryDetailScreen() {
           {entry.transcript || "Transcript still processing…"}
         </Text>
       </Section>
+
+      {/* Slice 7 v1.2 Calendar Integration — events that day with
+          link/unlink controls. Component fetches its own data and
+          renders nothing when the user isn't connected or has no
+          events in the window, so disconnected users see no extra
+          chrome on this screen. */}
+      <CalendarEventsSection entryId={entry.id} />
     </ScrollView>
   );
 }
