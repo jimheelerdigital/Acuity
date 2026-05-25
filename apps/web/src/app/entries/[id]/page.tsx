@@ -18,6 +18,7 @@ import {
 } from "@/components/acuity";
 
 import { EntryStatusGate } from "./entry-status-gate";
+import { EntryCalendarEventsSection } from "./calendar-events-section";
 import { ExtractionReview } from "./extraction-review";
 
 export const dynamic = "force-dynamic";
@@ -269,6 +270,19 @@ export default async function EntryDetailPage({
                 })}
               </div>
             </section>
+          )}
+
+          {/* Calendar events that day (slice 5 v1.2 Calendar
+              Integration). Server-rendered; returns null when the
+              user isn't connected or has no events in window. Sits
+              above Transcript so a reader sees "what happened" before
+              "what was said". */}
+          {isComplete && (
+            <EntryCalendarEventsSection
+              userId={session.user.id}
+              recordedAt={entry.createdAt}
+              linkedEventIds={entry.linkedEventIds ?? []}
+            />
           )}
 
           {/* Transcript stays ungated by status — for PARTIAL entries
