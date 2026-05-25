@@ -41,6 +41,30 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-25] — Mobile signup layout + sticky CTA
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 09e707e
+
+### In plain English (for Keenan)
+
+On mobile, the signup page now puts the most convincing content above the form: headline with purple accent, rotating testimonials cycling every 4 seconds, star rating, and urgency line ("Your first weekly report arrives this Sunday"). The form sits in the middle. Below the form: how-it-works steps and an extra testimonial for scrollers. A slim sticky bar appears at the top after scrolling past the form so users can jump back to sign up.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/auth/signup/page.tsx`: removed `flex-col-reverse`, restructured to headline → testimonials → social proof → form → steps (mobile). Desktop unchanged (two-column). Added IntersectionObserver on form to show/hide sticky CTA bar. Testimonial rotation 5s → 4s.
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- Sticky bar uses `position: fixed` + `backdrop-blur` + `translateY` transition. Only visible on mobile (`lg:hidden`).
+
+---
+
 ## [2026-05-25] — Try flow mic failure handling for in-app browsers
 
 **Requested by:** Keenan
