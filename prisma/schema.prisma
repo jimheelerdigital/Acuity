@@ -295,6 +295,7 @@ model User {
   lifeDimensions                UserLifeDimension[]
   calendarConnections           CalendarConnection[]
   calendarEvents                CalendarEvent[]
+  people                        Person[]
   claudeCallLogs                ClaudeCallLog[]
   // Preset template the user picked for their Life Matrix labels.
   // "DEFAULT" | "STUDENT" | "PARENT" | "CUSTOM" | null. Null means
@@ -664,6 +665,11 @@ model Entry {
   dimensionContext      String?
   tasks                 Task[]
   themeMentions         ThemeMention[]
+  entityMentions        EntityMention[]
+  // Anchor People slice 2 (2026-05-25) — stamped by the NER step in
+  // process-entry. Drives idempotency on backfill + replay. Null on
+  // legacy entries (the slice 7 backfill cron stamps them).
+  peopleExtractedAt     DateTime?
 
   // v1.1 free-tier slice 5 — flag set when the entry has been run
   // through the full extraction pipeline (themes/wins/blockers/
@@ -2253,4 +2259,56 @@ model OnboardingEvent {
   @@index([userId, createdAt])
   @@index([sessionToken, createdAt])
   @@index([event, createdAt])
+}
+
+// Anchor People — named-entity extraction + relationship tracking.
+// Slice 1 v1.2 (2026-05-25). Persons are surfaced from the user's
+// own reflections via Claude Haiku NER in process-entry; each
+// detected mention writes an EntityMention row pointing at a Person
+// (matched via the resolver in lib/people-resolver.ts).
+//
+// canonicalName is the lowercase normalized form used for resolver
+// matching; displayName is what the UI surfaces (preserved case).
+// Aliases hold alternate strings the resolver should match against.
+//
+// (userId, canonicalName) is the upsert key. We never share Persons
+// across users — "Erin" in one user's reflections is a different
+// record from "Erin" in another's.
+model Person {
+  id                String          @id @default(cuid())
+  userId            String
+  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  canonicalName     String
+  displayName       String
+  aliases           String[]        @default([])
+  firstMentionedAt  DateTime        @default(now())
+  mentionCount      Int             @default(0)
+  archived          Boolean         @default(false)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  mentions          EntityMention[]
+
+  @@unique([userId, canonicalName])
+  @@index([userId, mentionCount])
+}
+
+// EntityMention — one row per named-person occurrence in an entry.
+// Cascade-deletes when its Entry or Person goes away. context is a
+// ~50-char window around the mention so the UI can show the user
+// what was said without re-fetching the whole transcript.
+model EntityMention {
+  id            String   @id @default(cuid())
+  entryId       String
+  entry         Entry    @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  personId      String
+  person        Person   @relation(fields: [personId], references: [id], onDelete: Cascade)
+  mentionText   String
+  startIndex    Int
+  endIndex      Int
+  context       String   @db.Text
+  createdAt     DateTime @default(now())
+
+  @@index([entryId])
+  @@index([personId])
 }
