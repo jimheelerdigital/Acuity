@@ -26,6 +26,7 @@ import { computeDailySnapshotFn } from "@/inngest/functions/compute-daily-snapsh
 import { rlsAuditFn } from "@/inngest/functions/rls-audit";
 import { scanRedFlagsFn } from "@/inngest/functions/scan-red-flags";
 import { calendarSyncCronFn } from "@/inngest/functions/calendar-sync-cron";
+import { peopleBackfillFn } from "@/inngest/functions/people-backfill";
 import { trialCountdownEmailsCronFn } from "@/inngest/functions/trial-countdown-emails-cron";
 import { trialCountdownPushCronFn } from "@/inngest/functions/trial-countdown-push-cron";
 import { trialEmailOrchestratorFn } from "@/inngest/functions/trial-email-orchestrator";
@@ -72,6 +73,7 @@ const handler = serve({
     trialCountdownEmailsCronFn,
     trialCountdownPushCronFn,
     calendarSyncCronFn,
+    peopleBackfillFn,
     autoBlogGenerateFn,
     autoBlogPruneFn,
     waitlistReactivationFn,
