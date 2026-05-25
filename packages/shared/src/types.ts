@@ -184,6 +184,13 @@ export interface EntryDTO {
   // recorded before calendar was connected. Mobile entry-detail UI
   // surfaces these as a "Linked" badge on the events-that-day list.
   linkedEventIds?: string[];
+  // Slice 2 v1.2 entry editing — set by PATCH /api/entries/[id]
+  // when the user edits the transcript; cleared by the
+  // process-entry pipeline's persist-extraction step. Mobile +
+  // web entry-detail render a "Re-processing…" state while this
+  // is non-null.
+  reprocessingStartedAt?: string | null;
+  lastEditedAt?: string | null;
 }
 
 export interface TaskDTO {

@@ -23,6 +23,7 @@ import {
   type ThemeKey,
 } from "@/components/acuity";
 import { CalendarEventsSection } from "@/components/entry/calendar-events-section";
+import { TranscriptEditor } from "@/components/entry/transcript-editor";
 import { ExtractionReview } from "@/components/extraction-review";
 import { MoodIcon } from "@/components/mood-icon";
 import { ProLockedFooter } from "@/components/pro-locked-card";
@@ -614,26 +615,18 @@ export default function EntryDetailScreen() {
         </Section>
       )}
 
-      {/* Transcript — full text plain. EntryDTO has no "highlights"
-          field today, so we render uniform weight and leave a
-          backlog note for when the extraction pipeline starts
-          persisting per-sentence highlight flags. */}
-      <Section title="Transcript" tokens={tokens}>
-        {/* TODO(post-Q6): when EntryDTO gains a `highlights` field
-            (array of {start, end} indices or sentence IDs), branch
-            here to render flagged sentences with a soft palette-
-            tinted background. */}
-        <Text
-          style={{
-            fontFamily: tokens.fontSans,
-            fontSize: 14,
-            lineHeight: 22,
-            color: tokens.textSec,
-          }}
-        >
-          {entry.transcript || "Transcript still processing…"}
-        </Text>
-      </Section>
+      {/* Transcript — slice 3 v1.2 entry editing wraps the read
+          view in TranscriptEditor. Save triggers PATCH /api/entries
+          /[id]; the editor polls until reprocessingStartedAt clears
+          then calls reload() so the new derived state shows up. */}
+      <View style={{ marginTop: 28 }}>
+        <TranscriptEditor
+          entryId={entry.id}
+          initialTranscript={entry.transcript ?? ""}
+          reprocessing={Boolean(entry.reprocessingStartedAt)}
+          onReprocessComplete={reload}
+        />
+      </View>
 
       {/* Slice 7 v1.2 Calendar Integration — events that day with
           link/unlink controls. Component fetches its own data and
