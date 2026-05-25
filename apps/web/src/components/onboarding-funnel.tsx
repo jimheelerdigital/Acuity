@@ -1257,7 +1257,6 @@ function CommitmentScreen({
 }) {
   const [progress, setProgress] = useState(0);
   const [holding, setHolding] = useState(false);
-  const [flash, setFlash] = useState(false);
   const [abandonCount, setAbandonCount] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef(0);
@@ -1267,7 +1266,6 @@ function CommitmentScreen({
   const startHold = () => {
     setHolding(true);
     startTimeRef.current = Date.now();
-    // Haptic feedback on mobile
     if (typeof navigator !== "undefined" && navigator.vibrate) {
       navigator.vibrate([10, 50, 10, 50, 10]);
     }
@@ -1275,18 +1273,23 @@ function CommitmentScreen({
       const elapsed = Date.now() - startTimeRef.current;
       const pct = Math.min(1, elapsed / HOLD_DURATION);
       setProgress(pct);
-      // Continuous haptic pulses
       if (typeof navigator !== "undefined" && navigator.vibrate && pct < 1) {
         navigator.vibrate(5);
       }
       if (pct >= 1) {
-        // Completed!
         if (intervalRef.current) clearInterval(intervalRef.current);
         setHolding(false);
         track("funnel_commitment_completed");
-        // White flash → transition to recording
-        setFlash(true);
-        setTimeout(onComplete, 250);
+        // Confetti burst on completion
+        import("canvas-confetti").then((mod) => {
+          const confetti = mod.default;
+          confetti({ particleCount: 100, spread: 80, origin: { y: 0.5 }, colors: ["#7C5CFC", "#A78BFA", "#C4B5FD", "#F59E0B", "#22C55E"] });
+          // Second burst slightly delayed
+          setTimeout(() => confetti({ particleCount: 50, spread: 100, origin: { y: 0.4, x: 0.3 } }), 200);
+          setTimeout(() => confetti({ particleCount: 50, spread: 100, origin: { y: 0.4, x: 0.7 } }), 350);
+        });
+        // Transition to recording after confetti starts
+        setTimeout(onComplete, 800);
       }
     }, 16);
   };
@@ -1294,7 +1297,6 @@ function CommitmentScreen({
   const endHold = () => {
     if (!holding) return;
     if (progress < 1) {
-      // Released early
       setAbandonCount((c) => {
         const next = c + 1;
         if (next >= 3) track("funnel_commitment_abandoned");
@@ -1306,34 +1308,11 @@ function CommitmentScreen({
     if (intervalRef.current) clearInterval(intervalRef.current);
   };
 
-  // Shake intensity based on progress
-  const shakeIntensity = Math.round(progress * 5);
-  const shakeStyle = holding
-    ? { animation: `funnel-shake ${0.1 - progress * 0.04}s infinite linear` }
-    : {};
-
   return (
     <>
-      {/* Purple flash overlay on completion */}
-      {flash && (
-        <div className="fixed inset-0 z-[100] bg-[#7C5CFC] animate-[funnel-flash_250ms_ease-out_forwards]" />
-      )}
       <div
         className="min-h-screen flex flex-col items-center justify-center px-6 bg-white text-zinc-900 select-none"
-        style={shakeStyle}
       >
-        <style dangerouslySetInnerHTML={{ __html: `
-          @keyframes funnel-shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(${shakeIntensity}px); }
-            75% { transform: translateX(-${shakeIntensity}px); }
-          }
-          @keyframes funnel-flash {
-            0% { opacity: 0; }
-            40% { opacity: 1; }
-            100% { opacity: 0; }
-          }
-        `}} />
         <div className="max-w-md text-center">
           <h2 className="text-xl sm:text-2xl font-bold tracking-tight mb-12">
             Hold to commit to one minute a day for a life of clarity.
