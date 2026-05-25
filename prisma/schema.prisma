@@ -2232,6 +2232,12 @@ model TrySession {
   transcript      String   @db.Text
   // Client IP for rate limiting (max 5 tries/hour per IP).
   ipAddress       String
+  // Mobile device UUID (AsyncStorage `acuity.anon_session_id`) —
+  // separate from sessionToken because mobile re-uses the device id
+  // across multiple try attempts while each TrySession is single-use.
+  // Onboarding-v2 slice 1 (2026-05-25). Null on web rows; the web
+  // try flow doesn't have a stable per-device identifier.
+  anonDeviceId    String?
   // 5 minutes from creation. The client shows a countdown timer.
   // Cleanup cron deletes rows past this timestamp.
   expiresAt       DateTime
@@ -2246,6 +2252,7 @@ model TrySession {
   @@index([expiresAt, claimed])
   @@index([ipAddress, createdAt])
   @@index([claimedByUserId])
+  @@index([anonDeviceId])
 }
 
 // ── Onboarding funnel events ─────────────────────────────────────────

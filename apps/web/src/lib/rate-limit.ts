@@ -169,6 +169,13 @@ export const limiters = {
    */
   tryRecordingByIp: buildLimiter("try-recording-ip", 5, "1 h"),
   /**
+   * Mobile onboarding-v2 "try recording" — separate bucket from web
+   * because mobile users (paid traffic) hit a different funnel and
+   * tolerate a tighter ceiling. 3/hr per IP. Daily global cap is
+   * shared with web below (tryRecordingDaily).
+   */
+  tryRecordingByIpMobile: buildLimiter("try-recording-ip-mobile", 3, "1 h"),
+  /**
    * Global daily cap for unauthenticated try recordings. Shared across
    * all IPs. Default 100/day — adjustable via TRY_RECORDING_DAILY_CAP.
    * Key: literal "global" string.
