@@ -224,8 +224,8 @@ export function NavBar() {
   const pathname = usePathname();
   const { data: session } = useSession();
 
-  // Don't show nav on auth pages or landing
-  if (!session || pathname?.startsWith("/auth") || pathname === "/") {
+  // Don't show nav on auth pages, landing, or onboarding funnel
+  if (!session || pathname?.startsWith("/auth") || pathname === "/" || pathname?.startsWith("/start") || pathname?.startsWith("/onboarding")) {
     return null;
   }
 

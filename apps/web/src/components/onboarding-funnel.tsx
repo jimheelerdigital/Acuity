@@ -234,21 +234,25 @@ export function OnboardingFunnel() {
 
   const handleCheckout = async () => {
     setCheckoutLoading(true);
+    setApiError(null);
     try {
+      console.log("[funnel] Creating checkout session...", { interval: selectedPlan });
       const res = await fetch("/api/onboarding/create-checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ interval: selectedPlan }),
       });
       const data = await res.json();
+      console.log("[funnel] Checkout response:", res.status, data);
       if (data.url) {
         track("funnel_payment_completed");
         window.location.href = data.url;
       } else {
-        setApiError(data.error || "Checkout failed");
+        setApiError(data.error || `Checkout failed (${res.status})`);
         setCheckoutLoading(false);
       }
-    } catch {
+    } catch (err) {
+      console.error("[funnel] Checkout error:", err);
       setApiError("Something went wrong. Please try again.");
       setCheckoutLoading(false);
     }

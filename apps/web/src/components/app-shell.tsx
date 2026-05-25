@@ -333,6 +333,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     pathname.startsWith("/terms") ||
     pathname.startsWith("/support") ||
     pathname.startsWith("/onboarding") ||
+    pathname.startsWith("/start") ||
     pathname.startsWith("/upgrade") ||
     // /admin owns its own layout (dark theme, full-width, no consumer
     // sidebar). The admin/layout.tsx server component still gates on

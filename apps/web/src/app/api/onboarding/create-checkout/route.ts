@@ -54,20 +54,28 @@ export async function POST(req: NextRequest) {
   // Founding members get 30-day trial, standard users get 14
   const trialDays = user?.isFoundingMember ? 30 : 14;
 
-  const checkoutSession = await stripe.checkout.sessions.create({
-    mode: "subscription",
-    payment_method_types: ["card"],
-    customer: user?.stripeCustomerId ?? undefined,
-    customer_email: user?.stripeCustomerId ? undefined : (user?.email ?? undefined),
-    line_items: [{ price: priceId, quantity: 1 }],
-    subscription_data: {
-      trial_period_days: trialDays,
-      metadata: { userId: session.user.id, interval, source: "onboarding_funnel" },
-    },
-    success_url: `${process.env.NEXTAUTH_URL}/start?step=download&session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${process.env.NEXTAUTH_URL}/start?step=paywall`,
-    metadata: { userId: session.user.id, interval, source: "onboarding_funnel" },
-  });
+  try {
+    console.log("[onboarding/create-checkout] Creating session:", { userId: session.user.id, interval, priceId, trialDays, email: user?.email });
 
-  return NextResponse.json({ url: checkoutSession.url });
+    const checkoutSession = await stripe.checkout.sessions.create({
+      mode: "subscription",
+      payment_method_types: ["card"],
+      customer: user?.stripeCustomerId ?? undefined,
+      customer_email: user?.stripeCustomerId ? undefined : (user?.email ?? undefined),
+      line_items: [{ price: priceId, quantity: 1 }],
+      subscription_data: {
+        trial_period_days: trialDays,
+        metadata: { userId: session.user.id, interval, source: "onboarding_funnel" },
+      },
+      success_url: `${process.env.NEXTAUTH_URL}/start?step=download&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.NEXTAUTH_URL}/start?step=paywall`,
+      metadata: { userId: session.user.id, interval, source: "onboarding_funnel" },
+    });
+
+    return NextResponse.json({ url: checkoutSession.url });
+  } catch (err) {
+    console.error("[onboarding/create-checkout] Stripe error:", err);
+    const message = err instanceof Error ? err.message : "Stripe checkout failed";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }
