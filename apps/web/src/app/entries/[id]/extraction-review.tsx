@@ -25,9 +25,17 @@ type ReviewGoal = {
 /**
  * Review banner on the entry detail page. Surfaces the tasks + goals
  * Acuity extracted from the recording and lets the user tick what to
- * commit. Checkboxes default to checked for tasks (the user can
- * unselect noise) and unchecked for goals-that-already-exist (no-op
- * re-mentions already bump lastMentionedAt in the pipeline).
+ * commit.
+ *
+ * Default state (2026-05-25): everything starts UNCHECKED. Mobile
+ * has shipped this way for a while; web had been defaulting tasks to
+ * checked + new-goals to checked, which let users hit Commit without
+ * reviewing and accept low-quality extractions by accident. Forcing
+ * the affirmative tick treats Commit as a "yes to these" rather than
+ * a "yes to defaults".
+ *
+ * Commit with zero ticked items opens a small inline confirm: the
+ * user can Discard (calls skip()) or Cancel back to the picker.
  *
  * On Commit: POST /api/entries/[id]/extraction with {action:"commit",
  * tasks, goals}. Server creates rows + sets extractionCommittedAt.
@@ -42,6 +50,7 @@ export function ExtractionReview({ entryId }: { entryId: string }) {
   const [hidden, setHidden] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -61,10 +70,10 @@ export function ExtractionReview({ entryId }: { entryId: string }) {
           setHidden(true);
           return;
         }
-        setTasks(data.tasks.map((t) => ({ ...t, selected: true })));
-        setGoals(
-          data.goals.map((g) => ({ ...g, selected: !g.alreadyExists }))
-        );
+        // 2026-05-25: default UNCHECKED for everything so the user has
+        // to affirmatively tick what to keep. Matches mobile behavior.
+        setTasks(data.tasks.map((t) => ({ ...t, selected: false })));
+        setGoals(data.goals.map((g) => ({ ...g, selected: false })));
       } catch {
         // silent — banner just doesn't render if the endpoint fails
       } finally {
@@ -81,6 +90,16 @@ export function ExtractionReview({ entryId }: { entryId: string }) {
 
   const commit = async () => {
     setError(null);
+    // Empty-state guard: if the user hits Commit with nothing ticked
+    // we don't silently send a no-op. Show an inline confirmation so
+    // they can either Discard explicitly or go back and tick items.
+    const totalSelected =
+      tasks.filter((t) => t.selected).length +
+      goals.filter((g) => g.selected).length;
+    if (totalSelected === 0) {
+      setConfirmDiscard(true);
+      return;
+    }
     setSubmitting(true);
     try {
       const res = await fetch(
@@ -263,6 +282,37 @@ export function ExtractionReview({ entryId }: { entryId: string }) {
           Skip all
         </button>
       </div>
+
+      {confirmDiscard && (
+        <div
+          role="alertdialog"
+          className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg px-3 py-2"
+        >
+          <span className="text-sm text-zinc-600 dark:text-zinc-300">
+            Nothing selected. Discard the extraction?
+          </span>
+          <button
+            type="button"
+            disabled={submitting}
+            onClick={() => {
+              setConfirmDiscard(false);
+              void skip();
+            }}
+            className="rounded-acuity-pill px-3 py-1 text-xs font-semibold"
+            style={{ color: "var(--acuity-warn)" }}
+          >
+            Discard
+          </button>
+          <button
+            type="button"
+            disabled={submitting}
+            onClick={() => setConfirmDiscard(false)}
+            className="rounded-acuity-pill px-3 py-1 text-xs font-medium text-zinc-500 dark:text-zinc-400"
+          >
+            Cancel
+          </button>
+        </div>
+      )}
 
       {error && (
         <p
