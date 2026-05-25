@@ -78,8 +78,8 @@ const DIAGNOSTIC3_OPTIONS = [
   "Journaling (couldn't keep it up)",
   "Therapy (not enough between sessions)",
   "Productivity apps (too much work)",
-  "Nothing \u2014 I just push through",
-  "All of the above",
+  "Meditation or mindfulness (didn't stick)",
+  "Nothing — I just push through",
 ];
 
 const DIAGNOSTIC4_OPTIONS = [
@@ -102,13 +102,13 @@ function getPersonalizedPromise(answers: DiagnosticAnswers): string {
 
   // Priority: combinations with cost/desire first (more specific)
   if (loop === "Days that blur together" && duration === "Over a year" && cost?.includes("My relationships are suffering")) {
-    return "You\u2019ve been stuck in this loop for over a year, and your relationships are paying the price. Acuity will show you the pattern in 60 seconds of your voice.";
+    return "You've been stuck in this loop for over a year, and your relationships are paying the price. Acuity will show you the pattern in 60 seconds of your voice.";
   }
   if (loop === "Work bleeds into life" && cost?.includes("I don't recognize myself anymore")) {
-    return "Work has been swallowing your life and you don\u2019t even recognize yourself anymore. Acuity will show you exactly where you disappeared.";
+    return "Work has been swallowing your life and you don't even recognize yourself anymore. Acuity will show you exactly where you disappeared.";
   }
   if (loop === "Goals that never become real" && desire === "I'd actually follow through on goals") {
-    return "You know what you want. Acuity catches the goals you mention and holds you to them \u2014 so this time, you actually follow through.";
+    return "You know what you want. Acuity catches the goals you mention and holds you to them — so this time, you actually follow through.";
   }
   if (loop === "Same fights, same conversations" && cost?.includes("My relationships are suffering")) {
     return "The same arguments keep cycling and your relationships are paying for it. Acuity surfaces the pattern so you can finally break it.";
@@ -116,7 +116,7 @@ function getPersonalizedPromise(answers: DiagnosticAnswers): string {
 
   // Fallback: original combinations
   if (loop === "Days that blur together" && duration === "Over a year") {
-    return "You\u2019ve been stuck in this loop for over a year. Acuity will show you the pattern in 60 seconds of your voice.";
+    return "You've been stuck in this loop for over a year. Acuity will show you the pattern in 60 seconds of your voice.";
   }
   if (loop === "Work bleeds into life" && (duration === "A few months" || duration === "Over a year")) {
     return "Work has been bleeding into your life for months. Acuity will show you exactly where the line disappears.";
@@ -232,7 +232,7 @@ export function OnboardingFunnel() {
       {step !== "pain" && step !== "download" && step !== "processing" && (
         <button
           onClick={goBack}
-          className="fixed top-5 left-5 z-50 rounded-full bg-white/10 backdrop-blur-sm p-2 text-white/70 hover:text-white transition"
+          className="fixed top-5 left-5 z-50 rounded-full bg-zinc-100 p-2 text-zinc-500 hover:text-zinc-900 transition"
           aria-label="Go back"
         >
           <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -246,7 +246,7 @@ export function OnboardingFunnel() {
       )}
       {step === "diagnostic1" && (
         <DiagnosticScreen
-          question="What\u2019s the loop you can\u2019t break?"
+          question="What's the loop you can't break?"
           options={DIAGNOSTIC1_OPTIONS}
           multiSelect={false}
           onSelect={(val) => {
@@ -281,7 +281,7 @@ export function OnboardingFunnel() {
       )}
       {step === "diagnostic4" && (
         <DiagnosticMultiScreen
-          question="What\u2019s it costing you?"
+          question="What's it costing you?"
           options={DIAGNOSTIC4_OPTIONS}
           onSubmit={(vals) => {
             setAnswers((a) => ({ ...a, cost: vals }));
@@ -370,18 +370,20 @@ export function OnboardingFunnel() {
 
 function PainHookScreen({ onContinue }: { onContinue: () => void }) {
   return (
-    <div
-      className="min-h-screen flex flex-col items-center justify-center px-6 bg-[#0B0B12] text-white cursor-pointer"
-      onClick={onContinue}
-    >
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-white text-zinc-900">
       <div className="max-w-md text-center">
         <h1 className="text-3xl sm:text-4xl font-bold tracking-tight leading-tight">
           Same week. Same loop. Same you.
         </h1>
-        <p className="mt-6 text-[#A0A0B8] text-base">
+        <p className="mt-6 text-zinc-500 text-base">
           Days blur. Nothing sticks. Life passes.
         </p>
-        <p className="mt-12 text-xs text-[#A0A0B8]/60 animate-pulse">Tap to continue</p>
+        <button
+          onClick={onContinue}
+          className="mt-12 rounded-full bg-[#7C5CFC] px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98]"
+        >
+          Continue
+        </button>
       </div>
     </div>
   );
@@ -398,8 +400,10 @@ function DiagnosticScreen({
   multiSelect: boolean;
   onSelect: (val: string | string[]) => void;
 }) {
+  const [selected, setSelected] = useState<string | null>(null);
+
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-[#0B0B12] text-white">
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-white text-zinc-900">
       <div className="max-w-md w-full">
         <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-center mb-10">
           {question}
@@ -408,13 +412,25 @@ function DiagnosticScreen({
           {options.map((opt) => (
             <button
               key={opt}
-              onClick={() => onSelect(opt)}
-              className="w-full text-left rounded-xl border border-white/10 bg-white/5 px-5 py-4 text-[15px] text-white/90 transition hover:bg-white/10 hover:border-white/20 active:scale-[0.98]"
+              onClick={() => setSelected(opt)}
+              className={`w-full text-left rounded-xl border px-5 py-4 text-[15px] transition active:scale-[0.98] ${
+                selected === opt
+                  ? "border-[#7C5CFC] bg-[#7C5CFC]/10 text-zinc-900"
+                  : "border-zinc-200 bg-zinc-50 text-zinc-700 hover:bg-zinc-100"
+              }`}
             >
+              {selected === opt && <span className="mr-2 text-[#7C5CFC]">&#10003;</span>}
               {opt}
             </button>
           ))}
         </div>
+        <button
+          onClick={() => { if (selected) onSelect(selected); }}
+          disabled={!selected}
+          className="mt-8 w-full rounded-full bg-[#7C5CFC] py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98] disabled:opacity-40"
+        >
+          Continue
+        </button>
       </div>
     </div>
   );
@@ -432,13 +448,19 @@ function DiagnosticMultiScreen({
   const [selected, setSelected] = useState<string[]>([]);
 
   const toggle = (opt: string) => {
-    setSelected((prev) =>
-      prev.includes(opt) ? prev.filter((o) => o !== opt) : [...prev, opt]
-    );
+    const isExclusive = opt === "Nothing — I just push through";
+    if (isExclusive) {
+      setSelected([opt]);
+    } else {
+      setSelected((prev) => {
+        const without = prev.filter((o) => o !== "Nothing — I just push through");
+        return without.includes(opt) ? without.filter((o) => o !== opt) : [...without, opt];
+      });
+    }
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-[#0B0B12] text-white">
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-white text-zinc-900">
       <div className="max-w-md w-full">
         <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-center mb-10">
           {question}
@@ -450,18 +472,19 @@ function DiagnosticMultiScreen({
               onClick={() => toggle(opt)}
               className={`w-full text-left rounded-xl border px-5 py-4 text-[15px] transition active:scale-[0.98] ${
                 selected.includes(opt)
-                  ? "border-[#7C5CFC] bg-[#7C5CFC]/10 text-white"
-                  : "border-white/10 bg-white/5 text-white/90 hover:bg-white/10"
+                  ? "border-[#7C5CFC] bg-[#7C5CFC]/10 text-zinc-900"
+                  : "border-zinc-200 bg-zinc-50 text-zinc-700 hover:bg-zinc-100"
               }`}
             >
-              {selected.includes(opt) && <span className="mr-2">&#10003;</span>}
+              {selected.includes(opt) && <span className="mr-2 text-[#7C5CFC]">&#10003;</span>}
               {opt}
             </button>
           ))}
         </div>
         <button
-          onClick={() => onSubmit(selected.length > 0 ? selected : ["Nothing \u2014 I just push through"])}
-          className="mt-8 w-full rounded-full bg-[#7C5CFC] py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98]"
+          onClick={() => onSubmit(selected.length > 0 ? selected : ["Nothing — I just push through"])}
+          disabled={selected.length === 0}
+          className="mt-8 w-full rounded-full bg-[#7C5CFC] py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98] disabled:opacity-40"
         >
           Continue
         </button>
@@ -480,18 +503,20 @@ function AtmosphericScreen({
   onContinue: () => void;
 }) {
   return (
-    <div
-      className="min-h-screen flex flex-col items-center justify-center px-6 bg-[#0B0B12] text-white cursor-pointer"
-      onClick={onContinue}
-    >
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-white text-zinc-900">
       <div className="max-w-md text-center">
         <h2 className="text-2xl sm:text-3xl font-bold tracking-tight leading-snug">
           {headline}
         </h2>
-        <p className="mt-6 text-[#A0A0B8] text-sm leading-relaxed">
+        <p className="mt-6 text-zinc-500 text-sm leading-relaxed">
           {subtext}
         </p>
-        <p className="mt-12 text-xs text-[#A0A0B8]/60 animate-pulse">Tap to continue</p>
+        <button
+          onClick={onContinue}
+          className="mt-12 rounded-full bg-[#7C5CFC] px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98]"
+        >
+          Continue
+        </button>
       </div>
     </div>
   );
@@ -646,7 +671,7 @@ function ProcessingScreen({
   const STATUS_TEXTS = [
     "Finding the pattern...",
     "Reading between your words...",
-    "Mapping what\u2019s on your mind...",
+    "Mapping what's on your mind...",
     "Building your first snapshot...",
   ];
 
@@ -982,12 +1007,12 @@ function CommitmentScreen({
 
   return (
     <>
-      {/* White flash overlay */}
+      {/* Purple flash overlay on completion */}
       {flash && (
-        <div className="fixed inset-0 z-[100] bg-white animate-[funnel-flash_250ms_ease-out_forwards]" />
+        <div className="fixed inset-0 z-[100] bg-[#7C5CFC] animate-[funnel-flash_250ms_ease-out_forwards]" />
       )}
       <div
-        className="min-h-screen flex flex-col items-center justify-center px-6 bg-[#0B0B12] text-white select-none"
+        className="min-h-screen flex flex-col items-center justify-center px-6 bg-white text-zinc-900 select-none"
         style={shakeStyle}
       >
         <style dangerouslySetInnerHTML={{ __html: `
@@ -999,7 +1024,7 @@ function CommitmentScreen({
           @keyframes funnel-flash {
             0% { opacity: 0; }
             40% { opacity: 1; }
-            100% { opacity: 1; }
+            100% { opacity: 0; }
           }
         `}} />
         <div className="max-w-md text-center">
@@ -1011,7 +1036,7 @@ function CommitmentScreen({
           <div className="relative inline-flex items-center justify-center">
             <svg className="h-40 w-40" viewBox="0 0 120 120">
               {/* Background ring */}
-              <circle cx="60" cy="60" r="54" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="4" />
+              <circle cx="60" cy="60" r="54" fill="none" stroke="#e4e4e7" strokeWidth="4" />
               {/* Progress ring */}
               <circle
                 cx="60" cy="60" r="54"
@@ -1032,14 +1057,14 @@ function CommitmentScreen({
               onMouseLeave={endHold}
               onTouchStart={startHold}
               onTouchEnd={endHold}
-              className="absolute inset-4 rounded-full bg-white/5 border border-white/10 flex items-center justify-center transition active:bg-white/10"
+              className="absolute inset-4 rounded-full bg-[#7C5CFC]/5 border border-zinc-200 flex items-center justify-center transition active:bg-[#7C5CFC]/10"
               aria-label="Hold to commit"
             >
               <span className="text-3xl">{progress >= 1 ? "\u2713" : ""}</span>
             </button>
           </div>
 
-          <p className="mt-8 text-xs text-[#A0A0B8]/60">
+          <p className="mt-8 text-xs text-zinc-400">
             {holding ? "Keep holding..." : "Press and hold the circle"}
           </p>
         </div>
@@ -1050,28 +1075,29 @@ function CommitmentScreen({
 
 function DownloadScreen({ track }: { track: (event: string) => void }) {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-[#0B0B12] text-white">
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-white text-zinc-900">
       <div className="max-w-sm w-full text-center">
         <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-3">
-          You&rsquo;re all set. Get Acuity on your phone.
+          You're all set. Get Acuity on your phone.
         </h2>
-        <p className="text-sm text-[#A0A0B8] mb-10">
+        <p className="text-sm text-zinc-500 mb-10">
           Your debrief, tasks, and goals are waiting for you in the app.
         </p>
 
         <a
           href={APP_STORE_URL}
           onClick={() => track("funnel_app_store_clicked")}
-          className="inline-block w-full rounded-full bg-white px-8 py-4 text-[15px] font-semibold text-zinc-900 transition hover:bg-zinc-100 active:scale-[0.98]"
+          className="inline-block w-full rounded-full px-8 py-4 text-[15px] font-semibold text-white transition hover:brightness-110 active:scale-[0.98]"
+          style={{ background: "linear-gradient(135deg, #7C5CFC 0%, #9F7AEA 50%, #6D28D9 100%)", boxShadow: "0 4px 16px rgba(124,92,252,0.3)" }}
         >
           Download on the App Store
         </a>
 
         {/* QR for desktop */}
         <div className="mt-8 hidden sm:block">
-          <p className="text-xs text-[#A0A0B8] mb-3">Or scan with your phone</p>
+          <p className="text-xs text-zinc-400 mb-3">Or scan with your phone</p>
           <img
-            src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(APP_STORE_URL)}&bgcolor=0B0B12&color=ffffff`}
+            src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(APP_STORE_URL)}&bgcolor=ffffff&color=181614`}
             alt="QR code"
             width={140}
             height={140}
