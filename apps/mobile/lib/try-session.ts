@@ -32,6 +32,11 @@ import Constants from "expo-constants";
 const DEVICE_ID_KEY = "acuity.anon_session_id";
 const TRY_SESSION_TOKEN_KEY = "acuity.try_session_token";
 const TRY_SESSION_EXPIRES_KEY = "acuity.try_session_expires_at";
+// Slice 9 (2026-05-26) — extraction body persisted alongside the
+// token so the slice 10 reveal screen can render the user's real
+// extraction without re-fetching. Cleared on claim alongside the
+// token. AsyncStorage JSON-serialized.
+const TRY_SESSION_EXTRACTION_KEY = "acuity.try_session_extraction";
 
 /**
  * Returns the device's stable anonymous id, generating + persisting
@@ -102,8 +107,42 @@ export async function clearStoredTrySession(): Promise<void> {
   try {
     await AsyncStorage.removeItem(TRY_SESSION_TOKEN_KEY);
     await AsyncStorage.removeItem(TRY_SESSION_EXPIRES_KEY);
+    await AsyncStorage.removeItem(TRY_SESSION_EXTRACTION_KEY);
   } catch {
     // ignore
+  }
+}
+
+/**
+ * Persist the extraction body returned by /api/mobile/try-recording
+ * so the slice 10 reveal screen can render the user's real
+ * extraction without re-fetching. JSON-serialized; replaced on every
+ * new submitTryRecording success; cleared on claim or sign-out.
+ */
+export async function setStoredTryExtraction(
+  extraction: Record<string, unknown>
+): Promise<void> {
+  try {
+    await AsyncStorage.setItem(
+      TRY_SESSION_EXTRACTION_KEY,
+      JSON.stringify(extraction)
+    );
+  } catch {
+    // Fail-soft — the reveal screen handles a missing extraction by
+    // rendering a fallback message; we'd rather lose continuity than
+    // crash the funnel here.
+  }
+}
+
+export async function getStoredTryExtraction(): Promise<
+  Record<string, unknown> | null
+> {
+  try {
+    const raw = await AsyncStorage.getItem(TRY_SESSION_EXTRACTION_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as Record<string, unknown>;
+  } catch {
+    return null;
   }
 }
 
@@ -161,6 +200,7 @@ export async function submitTryRecording(
   }
   const body = (await res.json()) as TryRecordingResponse;
   await setStoredTrySession(body.sessionToken, body.expiresAt);
+  await setStoredTryExtraction(body.extraction);
   return body;
 }
 
