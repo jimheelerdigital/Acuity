@@ -41,6 +41,53 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-26] — Fix signup screen for Facebook in-app browser (WebView) traffic
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** c037816
+
+### In plain English (for Keenan)
+
+Two users from Meta ads reached the signup screen in the /start funnel and dropped off. They were almost certainly in Facebook's in-app browser (WebView), which silently breaks Google and Apple sign-in — the OAuth redirect just fails or loops back without creating an account.
+
+Now, when someone opens the funnel from a Facebook ad (in Facebook's built-in browser), the signup screen automatically:
+1. Shows an amber banner at the top: "Open in Safari/Chrome for the best experience" with instructions on how to do it
+2. Puts email/password signup **first** — this works in every browser
+3. Grays out Google and Apple sign-in buttons so users don't waste time tapping something that won't work
+4. Labels the disabled OAuth buttons: "Google & Apple sign-in require Safari/Chrome"
+
+Users who open the link in a regular browser (Safari, Chrome) see the normal layout with Google/Apple on top and email below.
+
+We also now log which browser environment users are in when they reach the signup screen, so we can see exactly how many people are hitting this from Facebook WebView vs. Safari vs. Chrome in the funnel dashboard.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/components/onboarding-funnel.tsx`: rewrote `SignupScreen` component
+  - Added `detectBrowserEnv()` — checks user-agent for FBAN, FBAV, FB_IAB, FBIOS, Instagram, LinkedIn, Twitter WebView signatures
+  - When WebView detected: email form renders first, OAuth buttons rendered with `opacity-50 pointer-events-none`, amber banner with Safari/Chrome instructions
+  - Now fires `funnel_signup_started` event on mount with `{ browser, isWebView, ua }` — was registered as valid event but never actually fired on web
+  - Now fires `funnel_signup_failed` event on error with `{ method, reason }` — was only fired on mobile, not web
+  - Fires `funnel_inapp_browser_detected` event when WebView detected
+- `prisma/schema.prisma`: added `browser String?` to `OnboardingEvent` model
+- `apps/web/src/app/api/onboarding-events/route.ts`: accepts and stores `browser` field
+- `apps/web/src/lib/track-onboarding.ts`: passes through `browser` param
+
+### Manual steps needed
+
+- [ ] Run `npx prisma db push` to add the `browser` column to `OnboardingEvent` table (Keenan — from home network)
+- [ ] Check Vercel function logs / Sentry for auth errors around the timestamps of sessions `0897687b` and `bdedd377` (Jimmy)
+- [ ] After deploy, verify the WebView banner appears by opening `getacuity.io/start` from a Facebook post in the Facebook app (Keenan — tap through to screen 13)
+
+### Notes
+
+- **OAuth in WebView is fundamentally broken**, not fixable from our side. Google's OAuth explicitly blocks WebView user-agents per their security policy. Apple Sign In similarly fails. The only reliable fix is (a) get users to the system browser, or (b) offer a non-OAuth signup path. We now do both.
+- Investigated force-opening the system browser from WebView (Android intent URLs, `window.open` with `_system` target). None work reliably across both platforms — Facebook's WebView intercepts outbound navigation. The manual "tap ⋯ → Open in Safari" instruction is the industry-standard approach.
+- The two dropped sessions (`0897687b`, `bdedd377`) happened before this fix, so we have no `browser` field on their events. To investigate: query `OnboardingEvent WHERE sessionToken LIKE '0897687b%'` to see their full funnel journey, and check Sentry/Vercel logs for auth errors near those timestamps.
+- `funnel_signup_started` was registered as a valid event since the funnel was built but was never actually emitted on web — only `funnel_signup_completed` was fired. This means we had no visibility into how many people *saw* the signup screen vs. *completed* it. Now we do.
+
+---
+
 ## [2026-05-26] — AdLab: hide landing page section when destination is "Direct to Funnel"
 
 **Requested by:** Keenan
