@@ -128,18 +128,38 @@ function AuthGate() {
 
     const inAuth = segments[0] === "(auth)";
     const inOnboarding = segments[0] === "onboarding";
+    // Onboarding-v2 pain-first flow (parent 12098990473). Lives at
+    // /onboarding-new/* so the existing /onboarding/* post-signup
+    // flow is untouched. AuthGate now allows both pre-auth (slice 2
+    // pain screen → slice 11 account creation) and post-auth
+    // (slices 11-12 between signup and paywall) traversal of this
+    // tree without yanking the user away. Slice 13's feature flag
+    // is what ROUTES unauthenticated users INTO this tree on cold
+    // launch; this just stops the existing redirect logic from
+    // kicking them out of it.
+    // String() bypasses expo-router's strict typed-routes segment
+    // union — the /onboarding-new folder exists in the file tree
+    // but the auto-generated union won't include it until the next
+    // `expo start` regenerates expo-env.d.ts. Runtime is unchanged.
+    const inOnboardingNew = String(segments[0]) === "onboarding-new";
     // Deep-link handoff from the magic-link email. AuthGate must
     // let the user stay on /auth-callback while the token-exchange
     // runs — bouncing them back to sign-in mid-exchange would lose
     // the token and drop them into an infinite loop.
     const inAuthCallback = segments[0] === "auth-callback";
 
-    if (!user && !inAuth && !inAuthCallback) {
+    if (!user && !inAuth && !inAuthCallback && !inOnboardingNew) {
       router.replace("/(auth)/sign-in");
       return;
     }
 
-    if (user && !user.onboardingCompleted && !inOnboarding && !inAuthCallback) {
+    if (
+      user &&
+      !user.onboardingCompleted &&
+      !inOnboarding &&
+      !inOnboardingNew &&
+      !inAuthCallback
+    ) {
       // Fresh signup OR a user who existed before the onboarding
       // schema landed (no row → completedAt is falsy). Drop them at
       // the step they last reached so re-launches resume cleanly.

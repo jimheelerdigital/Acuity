@@ -30,6 +30,7 @@ export type OnboardingEventName =
   | "funnel_extraction_viewed"
   | "funnel_signup_started"
   | "funnel_signup_completed"
+  | "funnel_signup_failed"
   | "funnel_paywall_viewed"
   | "funnel_trial_started"
   | "funnel_paywall_dismissed";
