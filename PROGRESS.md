@@ -41,6 +41,58 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-25] — Meta SDK (Facebook App Events) install on mobile
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (pending push)
+
+### In plain English (for Keenan)
+
+The mobile app can now report installs, opens, signups, trial starts, and purchases back to your Meta ad account so Facebook and Instagram can attribute conversions to the ads people clicked. This is the iOS/Android twin of the Meta Pixel that's already running on the website — together they close the loop for paid traffic that bounces between web and app.
+
+On iOS, the first time someone opens the app after signing in, they'll see Apple's standard tracking prompt. We wrote the copy honestly: "Acuity uses this only to help us see which Facebook or Instagram ads led you here, so we can keep showing the ones that actually helped. You can decline — nothing in the app changes." Declining doesn't change anything the user sees. Granting unlocks the better attribution.
+
+Important: this code change is dormant until Jim cuts a new EAS build and submits to App Store (manual release). v1.1.0 build 42 in the wild today is unaffected.
+
+### Technical changes (for Jimmy)
+
+- `apps/mobile/package.json`: added `react-native-fbsdk-next ^13.4.3` + `expo-tracking-transparency ^56.0.5`. Lockfile updated at the root.
+- `apps/mobile/app.json`:
+  - New `expo-tracking-transparency` plugin entry with `userTrackingPermission` copy
+  - New `react-native-fbsdk-next` plugin entry with App ID `859310533882226`, displayName `Acuity`, scheme `fb859310533882226`, `isAutoInitEnabled: false`, `advertiserIDCollectionEnabled: false`, `autoLogAppEventsEnabled: true`, `clientToken: "FACEBOOK_CLIENT_TOKEN_PLACEHOLDER"` (see manual step below)
+  - `expo.ios.privacyManifests.NSPrivacyTracking` flipped from `false` to `true`
+  - New `NSPrivacyTrackingDomains` array: `graph.facebook.com`, `connect.facebook.net`
+  - `NSPrivacyCollectedDataTypes` updated: UserID, DeviceID, ProductInteraction now declare `NSPrivacyCollectedDataTypeTracking: true` with ThirdPartyAdvertising purpose
+  - DeviceID entry added (IDFA — collected only post-ATT-grant)
+  - `extra.facebookAppId` + `extra.facebookPixelId` for JS-side access via `Constants.expoConfig.extra`
+- `apps/mobile/lib/meta-sdk.ts` (new): `initMetaSdk()` (ATT prompt → SDK init with tracking flag set by grant outcome), `setMetaUserId(userId)`, event helpers `logRecordingCompleted`, `logCompletedRegistration(method)`, `logStartTrial(value?, currency?)`, `logSubscribe(value, currency?)`. Init is idempotent.
+- `apps/mobile/app/_layout.tsx`: imports + calls `initMetaSdk()` and `setMetaUserId(user.id)` on the first authenticated render. Clears the SDK user id on sign-out so a subsequent different-user sign-in doesn't inherit identity.
+
+Manual call-site wiring for the four conversion events is intentionally deferred — the auth signup path + IAP purchase listener fit Jim's "auth/IAP changes require explicit confirmation" gate from the Live App Operating Rules block above. The `logCompletedRegistration` / `logSubscribe` / `logStartTrial` helpers are ready; the call sites wait for a focused follow-up. `logRecordingCompleted` waits for slice 6 of the onboarding-v2 workstream (parent 12098990473).
+
+### Manual steps needed
+
+- [ ] **HIGH RISK — requires EAS rebuild + manual App Store promotion.** Native dependency added; cannot OTA. Jim coordinates next EAS build window. Live v1.1.0 build 42 is unaffected until promotion. (Jimmy)
+- [ ] **Obtain Facebook Client Token** from Meta App Dashboard → Settings → Advanced → Client Token. Replace `"FACEBOOK_CLIENT_TOKEN_PLACEHOLDER"` in `apps/mobile/app.json` (under the `react-native-fbsdk-next` plugin config) before running the next EAS build. SDK init throws without it. (Keenan or Jimmy)
+- [ ] **Update App Store Connect privacy declarations** to match the flipped `NSPrivacyTracking: true` — add IDFA + Identifiers + Product Interaction as tracking-purpose data types in App Privacy → Data Collection. Apple cross-checks at submission. (Keenan)
+- [ ] **Verify Facebook App Dashboard** has the iOS bundle id `com.heelerdigital.acuity` and Android package `com.heelerdigital.acuity` registered under Settings → Basic → Add Platform. Without this, App Events won't attribute. (Keenan)
+- [ ] **Follow-up commit to wire conversion events**: `logCompletedRegistration` in `(auth)/sign-up.tsx` + post-OAuth success paths; `logSubscribe` in `lib/iap.ts` purchase listener; `logStartTrial` wherever a TRIAL transition lands on mobile. Auth + IAP code paths under the Live App Operating Rules HIGH RISK gate — Jim's call on timing. (Jimmy)
+- [ ] **TestFlight QA pass after EAS build**: confirm ATT prompt appears with our copy on first authenticated render, App Install + App Open events appear in Meta Events Manager → App Events within 5-10 minutes, ATT decline path renders cleanly (no broken UI), no IDFA collected when ATT denied. (Jimmy on real device)
+
+### Notes
+
+- ATT prompt timing: fires on first authenticated render, NOT on cold launch. Apple's review guidance prefers prompts shown "with context" — the user has signed in and seen the app's purpose; the system prompt now reads as "this app you just used wants to attribute its install" rather than a cold demand at splash.
+- `isAutoInitEnabled: false` is deliberate. The SDK normally inits at app launch and starts collecting IDFA before the user can answer ATT, which violates Apple policy. Manual `Settings.initializeSDK()` after ATT resolution is the policy-safe path.
+- `autoLogAppEventsEnabled: true` covers App Install + App Open with no extra code. These fire automatically once `initializeSDK()` runs.
+- Android has no ATT equivalent — `initMetaSdk()` skips the ATT branch on Android and goes straight to `initializeSDK()`.
+- The `react-native-fbsdk-next` config plugin handles iOS Info.plist injection (FacebookAppID, FacebookClientToken, FacebookDisplayName, FacebookAutoLogAppEventsEnabled, FacebookAdvertiserIDCollectionEnabled, LSApplicationQueriesSchemes for fbapi/fbauth2) and AndroidManifest meta-data injection (com.facebook.sdk.ApplicationId, ClientToken). We don't hand-edit Info.plist.
+- Pixel ID `869829585445303` is stored in `extra.facebookPixelId` for completeness but not consumed by the SDK directly — Pixel IDs are web-side. Mobile attribution flows through the FB App + App Events; Meta Business Manager joins App + Pixel data on the dashboard side.
+- No schema changes. No `prisma db push` needed.
+- This commit is dormant until Jim cuts the next EAS build. The live binary (v1.1.0 build 42) is unaffected.
+
+---
+
 ## [2026-05-25] — Web-to-app onboarding funnel at /start
 
 **Requested by:** Keenan

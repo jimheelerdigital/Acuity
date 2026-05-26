@@ -37,7 +37,11 @@
         "usesNonExemptEncryption": false
       },
       "privacyManifests": {
-        "NSPrivacyTracking": false,
+        "NSPrivacyTracking": true,
+        "NSPrivacyTrackingDomains": [
+          "graph.facebook.com",
+          "connect.facebook.net"
+        ],
         "NSPrivacyCollectedDataTypes": [
           {
             "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeEmailAddress",
@@ -78,11 +82,21 @@
           {
             "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeUserID",
             "NSPrivacyCollectedDataTypeLinked": true,
-            "NSPrivacyCollectedDataTypeTracking": false,
+            "NSPrivacyCollectedDataTypeTracking": true,
             "NSPrivacyCollectedDataTypePurposes": [
               "NSPrivacyCollectedDataTypePurposeAppFunctionality",
               "NSPrivacyCollectedDataTypePurposeAnalytics",
-              "NSPrivacyCollectedDataTypePurposeProductPersonalization"
+              "NSPrivacyCollectedDataTypePurposeProductPersonalization",
+              "NSPrivacyCollectedDataTypePurposeThirdPartyAdvertising"
+            ]
+          },
+          {
+            "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeDeviceID",
+            "NSPrivacyCollectedDataTypeLinked": true,
+            "NSPrivacyCollectedDataTypeTracking": true,
+            "NSPrivacyCollectedDataTypePurposes": [
+              "NSPrivacyCollectedDataTypePurposeAnalytics",
+              "NSPrivacyCollectedDataTypePurposeThirdPartyAdvertising"
             ]
           },
           {
@@ -97,10 +111,11 @@
           {
             "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeProductInteraction",
             "NSPrivacyCollectedDataTypeLinked": true,
-            "NSPrivacyCollectedDataTypeTracking": false,
+            "NSPrivacyCollectedDataTypeTracking": true,
             "NSPrivacyCollectedDataTypePurposes": [
               "NSPrivacyCollectedDataTypePurposeAppFunctionality",
-              "NSPrivacyCollectedDataTypePurposeAnalytics"
+              "NSPrivacyCollectedDataTypePurposeAnalytics",
+              "NSPrivacyCollectedDataTypePurposeThirdPartyAdvertising"
             ]
           },
           {
@@ -187,6 +202,25 @@
           }
         }
       ],
+      [
+        "expo-tracking-transparency",
+        {
+          "userTrackingPermission": "Acuity uses this only to help us see which Facebook or Instagram ads led you here, so we can keep showing the ones that actually helped. You can decline — nothing in the app changes."
+        }
+      ],
+      [
+        "react-native-fbsdk-next",
+        {
+          "appID": "859310533882226",
+          "clientToken": "FACEBOOK_CLIENT_TOKEN_PLACEHOLDER",
+          "displayName": "Acuity",
+          "scheme": "fb859310533882226",
+          "advertiserIDCollectionEnabled": false,
+          "autoLogAppEventsEnabled": true,
+          "isAutoInitEnabled": false,
+          "iosUserTrackingPermission": "Acuity uses this only to help us see which Facebook or Instagram ads led you here, so we can keep showing the ones that actually helped. You can decline — nothing in the app changes."
+        }
+      ],
       "./plugins/with-folly-mobile-flag.js"
     ],
     "experiments": {
@@ -199,6 +233,8 @@
       "apiUrl": "https://getacuity.io",
       "googleIosClientId": "657670168959-l1qn5imd2ad8fdbp96pius9a6cpi5hdl.apps.googleusercontent.com",
       "iapEnabled": true,
+      "facebookAppId": "859310533882226",
+      "facebookPixelId": "869829585445303",
       "eas": {
         "projectId": "dc4dcfc3-54f4-44e8-bc84-dfcedb8ba533"
       }

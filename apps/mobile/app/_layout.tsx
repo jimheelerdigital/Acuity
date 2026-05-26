@@ -29,6 +29,7 @@ import { ThemeProvider, useTheme } from "@/contexts/theme-context";
 import { LockScreenOverlay } from "@/components/lock-screen-overlay";
 import { UniversalLinkHandler } from "@/components/universal-link-handler";
 import { UpdatePromptOverlay } from "@/components/UpdatePromptOverlay";
+import { initMetaSdk, setMetaUserId } from "@/lib/meta-sdk";
 import { reapplyRemindersIfNeeded } from "@/lib/notifications-boot";
 import { refreshPushTokenOnLaunch } from "@/lib/push-token";
 import { initSentry, setSentryUser } from "@/lib/sentry";
@@ -89,6 +90,13 @@ function AuthGate() {
   // Skipped when the user is signed out — the API call would 401 and
   // the local schedule should already be empty.
   useEffect(() => {
+    // Clear the Meta SDK user id on sign-out so a subsequent
+    // sign-in by a different user doesn't inherit the previous
+    // identity in conversion events. Cheap, idempotent.
+    if (!loading && !user) {
+      setMetaUserId(null);
+      return;
+    }
     if (loading || !user) return;
     const userId = user.id;
     void reapplyRemindersIfNeeded(userId);
@@ -97,6 +105,14 @@ function AuthGate() {
     // is currently denied; only writes when Expo's current token
     // differs from whatever's on the device-local registered marker.
     void refreshPushTokenOnLaunch();
+    // Meta SDK (2026-05-25, Keenan request) — initialize on the
+    // first authenticated render so the ATT prompt appears with
+    // context (the user has signed in, has seen the app's value,
+    // and the iOS system prompt now reads as "this app you just
+    // used wants to attribute its install" rather than a cold
+    // demand at splash. Idempotent — subsequent calls are no-ops.
+    void initMetaSdk();
+    setMetaUserId(userId);
     const sub = AppState.addEventListener("change", (next) => {
       if (next === "active") {
         void reapplyRemindersIfNeeded(userId);
