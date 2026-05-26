@@ -255,6 +255,9 @@ export function OnboardingFunnel() {
     if (eventMap[step]) track(eventMap[step]);
   }, [step, track]);
 
+  // Reset scroll on every screen transition
+  useEffect(() => { window.scrollTo(0, 0); }, [step]);
+
   const goBack = () => {
     const idx = STEP_ORDER.indexOf(step);
     if (idx > 0) setStep(STEP_ORDER[idx - 1]);
@@ -737,43 +740,68 @@ function PromiseScreen({ headline, onContinue }: { headline: string; onContinue:
 // ─── Screen 10: Commitment ───────────────────────────────────────────────────
 
 function CommitmentScreen({ track, onComplete }: { track: (event: string) => void; onComplete: () => void }) {
-  const [progress, setProgress] = useState(0);
   const [holding, setHolding] = useState(false);
+  const [completed, setCompleted] = useState(false);
   const [abandonCount, setAbandonCount] = useState(0);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const ringRef = useRef<SVGCircleElement>(null);
+  const rafRef = useRef<number>(0);
   const startTimeRef = useRef(0);
+  const holdingRef = useRef(false);
+  const completedRef = useRef(false);
+
+  const CIRCUMFERENCE = 2 * Math.PI * 54;
+  const DURATION = 3000;
+
+  const animateRing = () => {
+    if (!holdingRef.current || completedRef.current) return;
+    const elapsed = Date.now() - startTimeRef.current;
+    const pct = Math.min(1, elapsed / DURATION);
+    if (ringRef.current) {
+      ringRef.current.style.strokeDashoffset = `${CIRCUMFERENCE * (1 - pct)}`;
+    }
+    if (pct >= 1) {
+      completedRef.current = true;
+      holdingRef.current = false;
+      setHolding(false);
+      setCompleted(true);
+      track("funnel_commitment_completed");
+      if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate([30, 50, 30]);
+      import("canvas-confetti").then((mod) => {
+        const confetti = mod.default;
+        confetti({ particleCount: 100, spread: 80, origin: { y: 0.5 }, colors: ["#7C5CFC", "#A78BFA", "#C4B5FD", "#F59E0B", "#22C55E"] });
+        setTimeout(() => confetti({ particleCount: 50, spread: 100, origin: { y: 0.4, x: 0.3 } }), 200);
+        setTimeout(() => confetti({ particleCount: 50, spread: 100, origin: { y: 0.4, x: 0.7 } }), 350);
+      });
+      setTimeout(onComplete, 800);
+      return;
+    }
+    rafRef.current = requestAnimationFrame(animateRing);
+  };
 
   const startHold = () => {
+    if (completedRef.current) return;
+    holdingRef.current = true;
     setHolding(true);
     startTimeRef.current = Date.now();
     if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate([10, 50, 10, 50, 10]);
-    intervalRef.current = setInterval(() => {
-      const elapsed = Date.now() - startTimeRef.current;
-      const pct = Math.min(1, elapsed / 3000);
-      setProgress(pct);
-      if (typeof navigator !== "undefined" && navigator.vibrate && pct < 1) navigator.vibrate(5);
-      if (pct >= 1) {
-        if (intervalRef.current) clearInterval(intervalRef.current);
-        setHolding(false);
-        track("funnel_commitment_completed");
-        import("canvas-confetti").then((mod) => {
-          const confetti = mod.default;
-          confetti({ particleCount: 100, spread: 80, origin: { y: 0.5 }, colors: ["#7C5CFC", "#A78BFA", "#C4B5FD", "#F59E0B", "#22C55E"] });
-          setTimeout(() => confetti({ particleCount: 50, spread: 100, origin: { y: 0.4, x: 0.3 } }), 200);
-          setTimeout(() => confetti({ particleCount: 50, spread: 100, origin: { y: 0.4, x: 0.7 } }), 350);
-        });
-        setTimeout(onComplete, 800);
-      }
-    }, 16);
+    rafRef.current = requestAnimationFrame(animateRing);
   };
 
   const endHold = () => {
-    if (!holding) return;
-    if (progress < 1) setAbandonCount((c) => { const n = c + 1; if (n >= 3) track("funnel_commitment_abandoned"); return n; });
+    if (!holdingRef.current || completedRef.current) return;
+    holdingRef.current = false;
     setHolding(false);
-    setProgress(0);
-    if (intervalRef.current) clearInterval(intervalRef.current);
+    cancelAnimationFrame(rafRef.current);
+    // Reset ring smoothly
+    if (ringRef.current) {
+      ringRef.current.style.transition = "stroke-dashoffset 0.3s ease-out";
+      ringRef.current.style.strokeDashoffset = `${CIRCUMFERENCE}`;
+      setTimeout(() => { if (ringRef.current) ringRef.current.style.transition = ""; }, 300);
+    }
+    setAbandonCount((c) => { const n = c + 1; if (n >= 3) track("funnel_commitment_abandoned"); return n; });
   };
+
+  useEffect(() => { return () => cancelAnimationFrame(rafRef.current); }, []);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-white text-zinc-900 select-none">
@@ -782,14 +810,14 @@ function CommitmentScreen({ track, onComplete }: { track: (event: string) => voi
         <div className="relative inline-flex items-center justify-center">
           <svg className="h-40 w-40" viewBox="0 0 120 120">
             <circle cx="60" cy="60" r="54" fill="none" stroke="#e4e4e7" strokeWidth="4" />
-            <circle cx="60" cy="60" r="54" fill="none" stroke="#7C5CFC" strokeWidth="4" strokeLinecap="round"
-              strokeDasharray={`${2 * Math.PI * 54}`} strokeDashoffset={`${2 * Math.PI * 54 * (1 - progress)}`}
-              transform="rotate(-90 60 60)" className="transition-[stroke-dashoffset] duration-100" />
+            <circle ref={ringRef} cx="60" cy="60" r="54" fill="none" stroke="#7C5CFC" strokeWidth="4" strokeLinecap="round"
+              strokeDasharray={CIRCUMFERENCE} strokeDashoffset={CIRCUMFERENCE}
+              transform="rotate(-90 60 60)" />
           </svg>
-          <button onMouseDown={startHold} onMouseUp={endHold} onMouseLeave={endHold} onTouchStart={startHold} onTouchEnd={endHold}
-            className={`absolute inset-4 rounded-full bg-[#7C5CFC]/5 border border-zinc-200 flex items-center justify-center transition active:bg-[#7C5CFC]/10 ${!holding && progress === 0 ? "animate-[funnel-breathe_2s_ease-in-out_infinite]" : ""}`}
-            aria-label="Hold to commit">
-            <span className="text-3xl">{progress >= 1 ? "\u2713" : ""}</span>
+          <button onPointerDown={startHold} onPointerUp={endHold} onPointerLeave={endHold} onPointerCancel={endHold}
+            className={`absolute inset-4 rounded-full bg-[#7C5CFC]/5 border border-zinc-200 flex items-center justify-center transition active:bg-[#7C5CFC]/10 ${!holding && !completed ? "animate-[funnel-breathe_2s_ease-in-out_infinite]" : ""}`}
+            aria-label="Hold to commit" style={{ touchAction: "none" }}>
+            <span className="text-3xl">{completed ? "\u2713" : ""}</span>
           </button>
         </div>
         <p className="mt-8 text-xs text-zinc-400">{holding ? "Keep holding..." : "Press and hold the circle"}</p>
@@ -958,6 +986,9 @@ const JOURNEY_STAGES = [
 function JourneyScreen({ onContinue }: { onContinue: () => void }) {
   const [visibleStage, setVisibleStage] = useState(0);
   const [showBtn, setShowBtn] = useState(false);
+
+  // Reset scroll to top on mount — prevents inheriting scroll from previous screen
+  useEffect(() => { window.scrollTo(0, 0); }, []);
 
   useEffect(() => {
     const timers: ReturnType<typeof setTimeout>[] = [];
