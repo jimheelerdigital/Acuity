@@ -41,6 +41,40 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-26] — Avatar thumbnails and voice preview playback in HeyGen picker
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** a4cdca2
+
+### In plain English (for Keenan)
+
+The HeyGen avatar picker in project settings now shows visual previews everywhere. When browsing avatars, each one has a small thumbnail image so you can see the face before selecting. When browsing voices, each voice has a play button — tap it to hear a sample clip before committing. The saved avatar card also shows the thumbnail so you can visually confirm which avatar is set.
+
+If an avatar was entered manually (no preview image), a placeholder silhouette icon is shown instead.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/admin/adlab/projects/project-form.tsx`:
+  - New `AvatarThumb` component: renders `<img>` from `previewUrl` or `User` icon placeholder, with `onError` fallback
+  - New `VoicePreviewButton` component: creates `HTMLAudioElement` on first click, toggles play/pause, shows `Volume2`/`VolumeX` icons
+  - Both integrated into avatar browse list (36px thumbs), voice picker (play buttons), and saved state display (48px thumb)
+  - `VideoAvatar` interface extended with `previewUrl?: string | null`
+  - `pendingAvatar` state now carries `previewUrl` from the browsed avatar option
+- `apps/web/src/app/api/admin/adlab/projects/route.ts` + `[id]/route.ts`: added `previewUrl: z.string().nullable().optional()` to both avatar Zod schemas
+
+### Manual steps needed
+
+None — UI-only change, no schema migration.
+
+### Notes
+
+- The `previewUrl` is stored in the JSON alongside the avatar config in the database. This is fine — it's just a URL and avoids having to re-fetch from HeyGen to display the thumbnail later.
+- Voice preview audio URLs come from HeyGen's `/v2/voices` response (`preview_audio` field). If no preview audio exists for a voice, the play button is simply hidden.
+- The audio element is created lazily on first click and reused — no preloading of audio clips.
+
+---
+
 ## [2026-05-26] — Fix HeyGen voice picker: avatars now save with correct voice_id
 
 **Requested by:** Keenan
