@@ -70,6 +70,8 @@ interface Experiment {
   createdAt: string;
   metaCampaignId: string | null;
   conclusionSummary: string | null;
+  campaignType?: string;
+  destination?: string;
   project: { name: string; slug: string; landingPageUrl?: string };
   landingPage?: LandingPage | null;
   referenceImages?: ReferenceImage[];
@@ -1996,16 +1998,46 @@ function LandingPageSection({
   onCopy: (url: string) => void;
   copiedUrl: boolean;
 }) {
-  const isAppInstall = (experiment as Record<string, unknown>).campaignType === "app_install";
+  const isAppInstall = experiment.campaignType === "app_install";
   if (isAppInstall) return null;
 
+  const isDirectFunnel = experiment.destination !== "landing_page";
+
+  // Direct to Funnel — show confirmation card with full UTM URL
+  if (isDirectFunnel) {
+    const funnelUrl = `https://getacuity.io/start?utm_source=meta&utm_medium=paid&utm_campaign=${encodeURIComponent(experiment.topicBrief || experiment.id)}&utm_content=${experiment.id}`;
+
+    return (
+      <div className="mb-4">
+        <p className="text-xs font-medium text-[#A0A0B8] uppercase tracking-wider mb-2">Destination</p>
+        <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3 space-y-2">
+          <p className="text-sm text-emerald-400 font-medium">Destination: getacuity.io/start</p>
+          <p className="text-xs text-[#A0A0B8]">
+            Ad clicks go directly to the onboarding funnel with UTM tracking.
+          </p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <LinkIcon className="h-3.5 w-3.5 text-[#7C5CFC] shrink-0" />
+            <span className="text-xs text-[#A0A0B8] font-mono break-all">{funnelUrl}</span>
+            <button
+              onClick={() => onCopy(funnelUrl)}
+              className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-medium text-[#A0A0B8] hover:text-white bg-white/5 hover:bg-white/10 transition shrink-0"
+            >
+              <Copy className="h-3 w-3" />
+              {copiedUrl ? "Copied!" : "Copy URL"}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Landing Page destination — show generate button or existing page
   const landingPage = experiment.landingPage;
   const projectUrl = experiment.project.landingPageUrl;
   const landingPageUrl = landingPage
     ? `https://getacuity.io/for/${landingPage.slug}`
     : null;
 
-  // The destination URL that ads actually point to (with UTMs)
   const destinationUrl = landingPageUrl
     ? `${landingPageUrl}?utm_source=meta&utm_medium=paid&utm_campaign=${experiment.id}`
     : projectUrl
