@@ -41,6 +41,44 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-26] — Dual-avatar video generation: every script renders with both presenters
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 42bba16
+
+### In plain English (for Keenan)
+
+When you generate a video for any AdLab creative, it now automatically renders **two versions** — one with your avatar (primary) and one with a female avatar (secondary). Same exact script, same words, different presenter. Both videos are saved as separate creatives under the same angle.
+
+When you push to Meta, both versions go into the same ad set. Advantage+ tests them against each other and automatically spends more on whichever presenter converts better. You'll see both versions side by side in the experiment view with individual performance metrics (spend, clicks, conversions) so you can compare.
+
+In project settings, the Video/HeyGen section now has two dedicated avatar slots: "Primary Avatar" (you) and "Secondary Avatar" (female presenter). Each has its own browse-from-HeyGen button. If you only configure the primary avatar, it falls back to generating just the one video — no secondary required to start generating.
+
+### Technical changes (for Jimmy)
+
+- `prisma/schema.prisma`: added `videoPrimaryAvatar Json?` and `videoSecondaryAvatar Json?` on `AdLabProject`; added `videoPresenterTag String?` on `AdLabCreative`
+- `apps/web/src/app/admin/adlab/projects/project-form.tsx`: replaced generic `AvatarList` component with `AvatarSlot` component used twice (primary + secondary), each with browse-from-HeyGen and manual entry
+- `apps/web/src/app/api/admin/adlab/video/generate/route.ts`: returns `{ primaryAvatar, secondaryAvatar }` from project settings instead of rotating through an array
+- `apps/web/src/app/api/admin/adlab/video/confirm/route.ts`: fires HeyGen calls in parallel (one per avatar), creates `AdLabCreative` records (type=video) tagged with `videoPresenterTag` (e.g. "Male — Keenan", "Female — Angela")
+- `apps/web/src/app/admin/adlab/experiments/[id]/page.tsx`: video preview shows all video creatives side by side with presenter tag labels and per-creative metrics; script draft UI shows both avatar names
+- API validation (projects create + update routes): added `videoPrimaryAvatar` and `videoSecondaryAvatar` to Zod schemas
+- Backward compatible: old single-avatar confirm calls still work (falls back to `body.avatarId`/`body.voiceId`), and angle-level `videoUrl` still gets set from the primary avatar result
+
+### Manual steps needed
+
+- [ ] Run `npx prisma db push` to add `videoPrimaryAvatar`, `videoSecondaryAvatar` columns to `adlab_projects` and `videoPresenterTag` to `adlab_creatives` (Keenan — from home network)
+- [ ] Go to AdLab → Acuity project → Edit → Video/HeyGen → set Primary Avatar (Keenan's Instant Avatar) and Secondary Avatar (female presenter) → Save (Keenan)
+
+### Notes
+
+- Both HeyGen API calls run in parallel (`Promise.all`), so total wait time is ~the duration of one video, not two. The Vercel function has a 5-minute timeout (`maxDuration: 300`) which should be sufficient for both.
+- Video creatives created by the confirm route are auto-approved (`approved: true`) so they're immediately launchable. The headline is set to the hook line, primary text to the full script.
+- The old `videoAvatars` array field on the project is still in the schema but no longer used by the generate route. It's kept for backward compatibility — the new primary/secondary fields take precedence.
+- If a presenter tag already exists on an existing video creative for that angle, the confirm route updates it instead of creating a duplicate.
+
+---
+
 ## [2026-05-26] — Fix HeyGen avatar look ID error + make configurable from project settings
 
 **Requested by:** Keenan
