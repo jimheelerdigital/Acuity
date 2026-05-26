@@ -35,7 +35,8 @@ async function fetchFreshVideoUrl(heygenVideoId: string): Promise<string> {
   if (status !== "completed") {
     throw new Error(`HeyGen video status is "${status}", not completed`);
   }
-  const videoUrl = data?.data?.video_url;
+  // Prefer captioned version (has burned-in subtitles)
+  const videoUrl = data?.data?.captioned_video_url || data?.data?.video_url;
   if (!videoUrl) {
     throw new Error("HeyGen returned no video_url");
   }

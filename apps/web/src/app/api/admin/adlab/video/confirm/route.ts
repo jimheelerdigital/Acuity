@@ -60,6 +60,9 @@ async function createHeyGenVideo(params: {
       width: 1080,
       height: 1920,
     },
+    // Enable auto-captions — HeyGen burns bold word-by-word subtitles into the video
+    // and returns a separate captioned_video_url in the status response
+    caption: true,
   };
 
   console.log("[adlab-heygen] Creating video, avatar:", params.avatarId);
@@ -115,10 +118,19 @@ async function pollVideoStatus(videoId: string): Promise<{ status: string; video
 
     const data = await res.json();
     const status = data?.data?.status;
-    console.log(`[adlab-heygen] Poll ${i + 1}: status=${status}`);
+    const captionedUrl = data?.data?.captioned_video_url;
+    const regularUrl = data?.data?.video_url;
+    console.log(`[adlab-heygen] Poll ${i + 1}: status=${status}, captioned=${!!captionedUrl}, regular=${!!regularUrl}`);
 
     if (status === "completed") {
-      return { status: "completed", videoUrl: data.data.video_url };
+      // Prefer the captioned version (has burned-in subtitles)
+      const videoUrl = captionedUrl || regularUrl;
+      if (captionedUrl) {
+        console.log("[adlab-heygen] Using captioned video URL");
+      } else {
+        console.log("[adlab-heygen] No captioned URL available, using regular video URL");
+      }
+      return { status: "completed", videoUrl };
     }
     if (status === "failed") {
       return { status: "failed", error: data.data.error || "HeyGen rendering failed" };
