@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState, useCallback } from "react";
+import { MONTHLY_PRICE_CENTS, formatDollars } from "@/lib/pricing";
 import { SOCIAL_PROOF } from "@/lib/social-proof";
 
 /* ═══════════════════════════════════════════
@@ -668,7 +669,7 @@ export function PricingSection({
               </div>
               <p className="mt-4 flex items-baseline gap-1">
                 <span className="text-5xl font-extrabold text-white">
-                  $4.99
+                  {formatDollars(MONTHLY_PRICE_CENTS)}
                 </span>
                 <span className="text-[#A0A0B8]">/month</span>
               </p>
@@ -1071,7 +1072,8 @@ export function CTABanner({
                 {buttonText}
               </a>
               <span className="text-sm text-[#A0A0B8]">
-                Then $4.99/month &middot; No card. Quick setup.
+                Then {formatDollars(MONTHLY_PRICE_CENTS)}/month &middot; No
+                card. Quick setup.
               </span>
             </div>
           </div>

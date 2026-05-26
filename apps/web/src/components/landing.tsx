@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState, useCallback } from "react";
+import { MONTHLY_PRICE_CENTS, formatDollars } from "@/lib/pricing";
 import { SOCIAL_PROOF, STATS_STRIP } from "@/lib/social-proof";
 import { APP_STORE_URL, AppStoreBadge, useCtaHref } from "@/components/landing-shared";
 import { TestimonialCarousel, STATIC_CAROUSEL_TESTIMONIALS } from "@/components/testimonial-carousel";
@@ -1613,7 +1614,7 @@ export function LandingPage() {
                 </p>
                 <p className="mt-4 flex items-baseline gap-1">
                   <span className="text-5xl font-extrabold">
-                    $4.99
+                    {formatDollars(MONTHLY_PRICE_CENTS)}
                   </span>
                   <span className="text-[#A0A0B8]">/month</span>
                 </p>
