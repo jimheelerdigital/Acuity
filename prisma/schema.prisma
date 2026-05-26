@@ -2027,6 +2027,10 @@ model AdLabProject {
   imageEnabled              Boolean            @default(true)
   videoEnabled              Boolean            @default(false)
   videoAvatars              Json               @default("[]")
+  // Primary avatar (e.g. Keenan) — { id, voiceId, name, gender }
+  videoPrimaryAvatar        Json?
+  // Secondary avatar (e.g. female presenter) — same shape
+  videoSecondaryAvatar      Json?
   createdAt                 DateTime           @default(now())
   experiments               AdLabExperiment[]
 
@@ -2129,6 +2133,7 @@ model AdLabCreative {
   cta              String
   imageUrl         String?
   videoUrl         String?
+  videoPresenterTag String?              // e.g. "Male", "Female" — identifies which avatar version
   generationPrompt String?                 @db.Text
   complianceStatus AdLabComplianceStatus   @default(pending)
   complianceNotes  String?                 @db.Text

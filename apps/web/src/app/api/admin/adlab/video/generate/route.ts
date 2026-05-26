@@ -3,7 +3,7 @@
  * Returns the script for user review before sending to HeyGen.
  *
  * Accepts: { angleId }
- * Returns: { scriptText, hookLine, avatarId, voiceId, avatarName }
+ * Returns: { scriptText, hookLine, primaryAvatar, secondaryAvatar? }
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -15,42 +15,16 @@ import { callAdLabClaude, extractJson } from "@/lib/adlab/claude";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-// Default curated HeyGen avatars — diverse UGC-style lineup
-// These are well-known HeyGen public avatar IDs for natural-looking people
-const DEFAULT_AVATARS = [
-  { id: "Angela-inblackskirt-20220820", voiceId: "2d5b0e6cf36f460aa7fc47e3eee4ba54", name: "Angela", gender: "female" },
-  { id: "josh_lite3_20230714", voiceId: "131a436c47064f708210df6628ef8f32", name: "Josh", gender: "male" },
-  { id: "Kayla-incasualsuit-20220818", voiceId: "1bd001e7e50f421d891986aad5571760", name: "Kayla", gender: "female" },
-  { id: "Tyler-incasualsuit-20220721", voiceId: "077ab11b14f04ce0b49b5f0f3ccb7f09", name: "Tyler", gender: "male" },
-  { id: "anna_public_3_20240108", voiceId: "1bd001e7e50f421d891986aad5571760", name: "Anna", gender: "female" },
-  { id: "Ethan_public_20240828", voiceId: "131a436c47064f708210df6628ef8f32", name: "Ethan", gender: "male" },
-];
-
-function selectAvatar(
-  usedAvatarIds: string[],
-  projectAvatars: { id: string; voiceId: string; name: string; gender: string }[] | null
-): { id: string; voiceId: string; name: string; gender: string } {
-  const avatars = projectAvatars && projectAvatars.length > 0 ? projectAvatars : DEFAULT_AVATARS;
-
-  // Determine what gender was last used to alternate
-  const lastUsedId = usedAvatarIds[usedAvatarIds.length - 1];
-  const lastUsed = avatars.find((a) => a.id === lastUsedId);
-  const preferGender = lastUsed?.gender === "female" ? "male" : "female";
-
-  // Filter to preferred gender first
-  const preferred = avatars.filter((a) => a.gender === preferGender && !usedAvatarIds.includes(a.id));
-  if (preferred.length > 0) return preferred[0];
-
-  // Fall back to any unused avatar
-  const unused = avatars.filter((a) => !usedAvatarIds.includes(a.id));
-  if (unused.length > 0) return unused[0];
-
-  // All used — cycle back, still prefer gender alternation
-  const cycled = avatars.filter((a) => a.gender === preferGender);
-  if (cycled.length > 0) return cycled[0];
-
-  return avatars[0];
+interface AvatarConfig {
+  id: string;
+  voiceId: string;
+  name: string;
+  gender: string;
 }
+
+// Default fallback avatars — used only when no primary/secondary configured on the project
+const DEFAULT_PRIMARY: AvatarConfig = { id: "josh_lite3_20230714", voiceId: "131a436c47064f708210df6628ef8f32", name: "Josh", gender: "male" };
+const DEFAULT_SECONDARY: AvatarConfig = { id: "Angela-inblackskirt-20220820", voiceId: "2d5b0e6cf36f460aa7fc47e3eee4ba54", name: "Angela", gender: "female" };
 
 export async function POST(req: NextRequest) {
   const guard = await requireAdmin();
@@ -66,10 +40,7 @@ export async function POST(req: NextRequest) {
       where: { id: angleId },
       include: {
         experiment: {
-          include: {
-            project: true,
-            angles: { select: { id: true, videoAvatarId: true } },
-          },
+          include: { project: true },
         },
         creatives: { take: 3 },
       },
@@ -128,13 +99,10 @@ Return ONLY valid JSON: { "scriptText": "the full script", "hookLine": "just the
       return NextResponse.json({ error: "Script generation returned empty result" }, { status: 500 });
     }
 
-    // Select avatar — rotate through, alternating gender
-    const usedAvatarIds = angle.experiment.angles
-      .map((a) => a.videoAvatarId)
-      .filter((id): id is string => !!id);
-
-    const projectAvatars = (project as Record<string, unknown>).videoAvatars as { id: string; voiceId: string; name: string; gender: string }[] | null;
-    const avatar = selectAvatar(usedAvatarIds, Array.isArray(projectAvatars) && projectAvatars.length > 0 ? projectAvatars : null);
+    // Resolve avatars from project settings, fall back to defaults
+    const primaryAvatar = ((project as Record<string, unknown>).videoPrimaryAvatar as AvatarConfig | null) || DEFAULT_PRIMARY;
+    const secondaryRaw = (project as Record<string, unknown>).videoSecondaryAvatar as AvatarConfig | null;
+    const secondaryAvatar = secondaryRaw?.id ? secondaryRaw : null;
 
     // Save script to angle (status = generating, meaning script ready for review)
     await prisma.adLabAngle.update({
@@ -142,7 +110,7 @@ Return ONLY valid JSON: { "scriptText": "the full script", "hookLine": "just the
       data: {
         videoScriptText: scriptText,
         videoHookLine: hookLine,
-        videoAvatarId: avatar.id,
+        videoAvatarId: primaryAvatar.id,
         videoStatus: "generating",
       },
     });
@@ -150,9 +118,8 @@ Return ONLY valid JSON: { "scriptText": "the full script", "hookLine": "just the
     return NextResponse.json({
       scriptText,
       hookLine,
-      avatarId: avatar.id,
-      voiceId: avatar.voiceId,
-      avatarName: avatar.name,
+      primaryAvatar,
+      secondaryAvatar,
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";

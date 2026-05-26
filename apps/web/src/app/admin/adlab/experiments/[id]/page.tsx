@@ -25,6 +25,7 @@ interface Creative {
   cta: string;
   imageUrl: string | null;
   videoUrl: string | null;
+  videoPresenterTag: string | null;
   generationPrompt: string | null;
   complianceStatus: string;
   complianceNotes: string | null;
@@ -1573,7 +1574,12 @@ function AngleCard({
   const [expanded, setExpanded] = useState(false);
   const [videoGenerating, setVideoGenerating] = useState(false);
   const [videoProgress, setVideoProgress] = useState<string | null>(null);
-  const [scriptDraft, setScriptDraft] = useState<{ scriptText: string; hookLine: string; avatarId: string; voiceId: string; avatarName: string } | null>(null);
+  const [scriptDraft, setScriptDraft] = useState<{
+    scriptText: string;
+    hookLine: string;
+    primaryAvatar: { id: string; voiceId: string; name: string; gender: string };
+    secondaryAvatar?: { id: string; voiceId: string; name: string; gender: string } | null;
+  } | null>(null);
   const [editedScript, setEditedScript] = useState("");
   const [editedHook, setEditedHook] = useState("");
   const [videoConfirming, setVideoConfirming] = useState(false);
@@ -1612,7 +1618,8 @@ function AngleCard({
     if (!scriptDraft) return;
     setVideoConfirming(true);
     setVideoError(null);
-    setVideoProgress("Sending to HeyGen...");
+    const avatarCount = scriptDraft.secondaryAvatar?.id ? 2 : 1;
+    setVideoProgress(`Sending to HeyGen (${avatarCount} avatar${avatarCount > 1 ? "s" : ""})...`);
 
     try {
       const res = await fetch("/api/admin/adlab/video/confirm", {
@@ -1622,17 +1629,19 @@ function AngleCard({
           angleId: angle.id,
           scriptText: editedScript,
           hookLine: editedHook,
-          avatarId: scriptDraft.avatarId,
-          voiceId: scriptDraft.voiceId,
+          primaryAvatar: scriptDraft.primaryAvatar,
+          secondaryAvatar: scriptDraft.secondaryAvatar || null,
         }),
       });
 
-      // Update progress while waiting
-      setVideoProgress("Processing video (this may take 1-3 minutes)...");
+      setVideoProgress(`Processing ${avatarCount} video${avatarCount > 1 ? "s" : ""} (1-3 min each)...`);
       const data = await res.json();
 
       if (res.ok) {
-        setVideoProgress("Complete!");
+        const msg = data.totalGenerated > 1
+          ? `${data.totalGenerated} videos complete!`
+          : "Video complete!";
+        setVideoProgress(data.totalFailed > 0 ? `${msg} (${data.totalFailed} failed)` : msg);
         setScriptDraft(null);
         onReload();
         setTimeout(() => setVideoProgress(null), 3000);
@@ -1749,33 +1758,63 @@ function AngleCard({
           {/* ─── Video Section ─── */}
           {angle.advanced && angle.creatives.length > 0 && (
             <div className="mt-4 border-t border-white/5 pt-4">
-              {/* Completed video preview */}
-              {angle.videoStatus === "complete" && angle.videoUrl && (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Video className="h-3.5 w-3.5 text-sky-400" />
-                    <span className="text-[10px] font-medium text-sky-400 uppercase tracking-wider">AI Video</span>
-                  </div>
-                  <div className="relative rounded-lg overflow-hidden bg-black/30" style={{ maxWidth: "200px" }}>
-                    <video
-                      src={angle.videoUrl}
-                      controls
-                      className="w-full rounded-lg"
-                      style={{ aspectRatio: "9/16", maxHeight: "360px" }}
-                    />
-                  </div>
-                  {angle.videoScriptText && (
-                    <p className="text-[10px] text-[#A0A0B8] italic leading-relaxed">
-                      &ldquo;{angle.videoScriptText}&rdquo;
-                    </p>
-                  )}
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => downloadVideo(angle.videoUrl!)}
-                      className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-medium text-[#A0A0B8] hover:text-white bg-white/5 hover:bg-white/10 transition"
-                    >
-                      <Download className="h-3 w-3" /> Download
-                    </button>
+              {/* Completed video preview — show all video creatives side by side */}
+              {angle.videoStatus === "complete" && (() => {
+                const videoCreatives = angle.creatives.filter((c) => c.creativeType === "video" && c.videoUrl);
+                // Fall back to angle-level video if no video creatives exist (backward compat)
+                const hasVideoCreatives = videoCreatives.length > 0;
+                return (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Video className="h-3.5 w-3.5 text-sky-400" />
+                      <span className="text-[10px] font-medium text-sky-400 uppercase tracking-wider">
+                        AI Video{hasVideoCreatives && videoCreatives.length > 1 ? `s (${videoCreatives.length})` : ""}
+                      </span>
+                    </div>
+                    <div className="flex gap-4 flex-wrap">
+                      {hasVideoCreatives ? videoCreatives.map((vc) => (
+                        <div key={vc.id} className="space-y-1.5" style={{ maxWidth: "180px" }}>
+                          <div className="relative rounded-lg overflow-hidden bg-black/30">
+                            <video src={vc.videoUrl!} controls className="w-full rounded-lg" style={{ aspectRatio: "9/16", maxHeight: "320px" }} />
+                          </div>
+                          {vc.videoPresenterTag && (
+                            <p className="text-[10px] font-medium text-white text-center">{vc.videoPresenterTag}</p>
+                          )}
+                          {vc.ads?.[0]?.metrics?.length > 0 && (() => {
+                            const m = vc.ads[0].metrics;
+                            const totalSpend = m.reduce((s: number, x: { spendCents: number }) => s + x.spendCents, 0);
+                            const totalClicks = m.reduce((s: number, x: { clicks: number }) => s + x.clicks, 0);
+                            const totalConv = m.reduce((s: number, x: { conversions: number }) => s + x.conversions, 0);
+                            return (
+                              <div className="text-[9px] text-[#A0A0B8] text-center space-x-2">
+                                <span>${(totalSpend / 100).toFixed(0)} spent</span>
+                                <span>{totalClicks} clicks</span>
+                                <span>{totalConv} conv</span>
+                              </div>
+                            );
+                          })()}
+                          <button onClick={() => downloadVideo(vc.videoUrl!)}
+                            className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-medium text-[#A0A0B8] hover:text-white bg-white/5 hover:bg-white/10 transition w-full justify-center">
+                            <Download className="h-3 w-3" /> Download
+                          </button>
+                        </div>
+                      )) : angle.videoUrl && (
+                        <div className="space-y-1.5" style={{ maxWidth: "200px" }}>
+                          <div className="relative rounded-lg overflow-hidden bg-black/30">
+                            <video src={angle.videoUrl} controls className="w-full rounded-lg" style={{ aspectRatio: "9/16", maxHeight: "360px" }} />
+                          </div>
+                          <button onClick={() => downloadVideo(angle.videoUrl!)}
+                            className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-medium text-[#A0A0B8] hover:text-white bg-white/5 hover:bg-white/10 transition">
+                            <Download className="h-3 w-3" /> Download
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    {angle.videoScriptText && (
+                      <p className="text-[10px] text-[#A0A0B8] italic leading-relaxed">
+                        &ldquo;{angle.videoScriptText}&rdquo;
+                      </p>
+                    )}
                     <button
                       onClick={generateVideoScript}
                       disabled={videoGenerating || videoConfirming}
@@ -1784,8 +1823,8 @@ function AngleCard({
                       <RefreshCw className="h-3 w-3" /> Regenerate
                     </button>
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* Script review/edit (draft stage) */}
               {scriptDraft && !videoConfirming && (
@@ -1793,7 +1832,10 @@ function AngleCard({
                   <div className="flex items-center gap-2">
                     <Video className="h-3.5 w-3.5 text-[#7C5CFC]" />
                     <span className="text-[10px] font-medium text-[#7C5CFC] uppercase tracking-wider">Video Script — Review & Edit</span>
-                    <span className="text-[10px] text-[#A0A0B8]">Avatar: {scriptDraft.avatarName}</span>
+                    <span className="text-[10px] text-[#A0A0B8]">
+                      Avatars: {scriptDraft.primaryAvatar.name}
+                      {scriptDraft.secondaryAvatar?.id ? ` + ${scriptDraft.secondaryAvatar.name}` : ""}
+                    </span>
                   </div>
                   <div>
                     <label className="text-[10px] text-[#A0A0B8] mb-1 block">Hook line (becomes Meta ad headline)</label>

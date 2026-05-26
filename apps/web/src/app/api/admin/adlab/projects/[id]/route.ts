@@ -53,6 +53,18 @@ const UpdateProjectSchema = z.object({
     name: z.string(),
     gender: z.string(),
   })).optional(),
+  videoPrimaryAvatar: z.object({
+    id: z.string(),
+    voiceId: z.string(),
+    name: z.string(),
+    gender: z.string(),
+  }).nullable().optional(),
+  videoSecondaryAvatar: z.object({
+    id: z.string(),
+    voiceId: z.string(),
+    name: z.string(),
+    gender: z.string(),
+  }).nullable().optional(),
 });
 
 interface RouteParams {

@@ -1,8 +1,9 @@
 /**
- * POST /api/admin/adlab/video/confirm — send script to HeyGen, poll until complete,
- * upload to Supabase, save video URL on the angle.
+ * POST /api/admin/adlab/video/confirm — send script to HeyGen for BOTH avatars (primary + secondary),
+ * poll until complete, upload to Supabase, create video creatives under the angle.
  *
- * Accepts: { angleId, scriptText, hookLine, avatarId, voiceId }
+ * Accepts: { angleId, scriptText, hookLine, primaryAvatar: { id, voiceId, name, gender }, secondaryAvatar?: same }
+ * If secondaryAvatar is omitted or null, only one video is generated.
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -14,6 +15,13 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300; // 5 min — HeyGen rendering can take a while
 
 const HEYGEN_BASE = "https://api.heygen.com";
+
+interface AvatarConfig {
+  id: string;
+  voiceId: string;
+  name: string;
+  gender: string;
+}
 
 function heygenHeaders(): Record<string, string> {
   const key = process.env.HEYGEN_API_KEY;
@@ -66,14 +74,12 @@ async function createHeyGenVideo(params: {
     const text = await res.text();
     console.error("[adlab-heygen] Create failed:", res.status, text);
 
-    // Parse specific HeyGen error codes for actionable messages
     if (res.status === 400 || res.status === 404) {
       const lower = text.toLowerCase();
       if (lower.includes("avatar") && (lower.includes("not found") || lower.includes("look"))) {
         throw new Error(
           `HeyGen avatar not found (look_id: ${params.avatarId}). ` +
-          `The avatar may have been deleted or the look ID is stale. ` +
-          `Update the Avatar Look ID in project settings, or browse available avatars at /api/admin/adlab/heygen/avatars.`
+          `Update the Avatar Look ID in project settings.`
         );
       }
     }
@@ -92,7 +98,7 @@ async function createHeyGenVideo(params: {
 }
 
 async function pollVideoStatus(videoId: string): Promise<{ status: string; videoUrl?: string; error?: string }> {
-  const maxAttempts = 60; // 5 minutes at 5s intervals
+  const maxAttempts = 60;
   const pollInterval = 5000;
 
   for (let i = 0; i < maxAttempts; i++) {
@@ -117,7 +123,6 @@ async function pollVideoStatus(videoId: string): Promise<{ status: string; video
     if (status === "failed") {
       return { status: "failed", error: data.data.error || "HeyGen rendering failed" };
     }
-    // "processing" or "pending" — continue polling
   }
 
   return { status: "timeout", error: "Video processing timed out after 5 minutes" };
@@ -127,7 +132,6 @@ async function uploadToSupabase(videoUrl: string, filename: string): Promise<str
   try {
     const { supabase } = await import("@/lib/supabase.server");
 
-    // Download the video from HeyGen
     const res = await fetch(videoUrl);
     if (!res.ok) throw new Error(`Failed to download video: ${res.status}`);
     const buffer = Buffer.from(await res.arrayBuffer());
@@ -151,78 +155,186 @@ async function uploadToSupabase(videoUrl: string, filename: string): Promise<str
   }
 }
 
+/** Process one avatar: create HeyGen video → poll → upload → create creative record */
+async function processOneAvatar(params: {
+  avatar: AvatarConfig;
+  angleId: string;
+  scriptText: string;
+  hookLine: string;
+  presenterTag: string;
+  existingCreative: { id: string; headline: string; primaryText: string; description: string; cta: string } | null;
+}): Promise<{ status: string; videoUrl?: string; creativeId?: string; error?: string; presenterTag: string }> {
+  const { avatar, angleId, scriptText, hookLine, presenterTag, existingCreative } = params;
+  const tag = presenterTag;
+
+  try {
+    const heygenVideoId = await createHeyGenVideo({
+      avatarId: avatar.id,
+      voiceId: avatar.voiceId,
+      scriptText,
+    });
+
+    const result = await pollVideoStatus(heygenVideoId);
+
+    if (result.status !== "completed" || !result.videoUrl) {
+      return { status: "failed", error: result.error || `${tag} video failed`, presenterTag: tag };
+    }
+
+    // Upload to Supabase with presenter tag in filename
+    const safeName = avatar.name.replace(/[^a-z0-9]/gi, "_").toLowerCase();
+    const supabaseUrl = await uploadToSupabase(result.videoUrl, `${angleId}_${safeName}.mp4`);
+    const finalUrl = supabaseUrl || result.videoUrl;
+
+    // Create or update video creative record under this angle
+    let creativeId: string;
+    if (existingCreative) {
+      // Update existing video creative for this presenter
+      await prisma.adLabCreative.update({
+        where: { id: existingCreative.id },
+        data: { videoUrl: finalUrl, videoPresenterTag: tag },
+      });
+      creativeId = existingCreative.id;
+    } else {
+      const creative = await prisma.adLabCreative.create({
+        data: {
+          angleId,
+          creativeType: "video",
+          headline: hookLine,
+          primaryText: scriptText,
+          description: `Video — ${tag}`,
+          cta: "Learn More",
+          videoUrl: finalUrl,
+          videoPresenterTag: tag,
+          generationPrompt: scriptText,
+          approved: true,
+        },
+      });
+      creativeId = creative.id;
+    }
+
+    return { status: "complete", videoUrl: finalUrl, creativeId, presenterTag: tag };
+  } catch (err) {
+    return {
+      status: "failed",
+      error: `${tag}: ${err instanceof Error ? err.message : String(err)}`,
+      presenterTag: tag,
+    };
+  }
+}
+
 export async function POST(req: NextRequest) {
   const guard = await requireAdmin();
   if (!guard.ok) return guard.response;
 
   try {
-    const { angleId, scriptText, hookLine, avatarId, voiceId } = await req.json();
+    const body = await req.json();
+    const { angleId, scriptText, hookLine, primaryAvatar, secondaryAvatar } = body as {
+      angleId: string;
+      scriptText: string;
+      hookLine: string;
+      primaryAvatar: AvatarConfig;
+      secondaryAvatar?: AvatarConfig | null;
+    };
 
-    if (!angleId || !scriptText || !avatarId || !voiceId) {
-      return NextResponse.json({ error: "angleId, scriptText, avatarId, voiceId required" }, { status: 400 });
+    // Backward compat: accept old { avatarId, voiceId } format
+    const primary: AvatarConfig = primaryAvatar || {
+      id: body.avatarId,
+      voiceId: body.voiceId,
+      name: body.avatarName || body.avatarId || "Unknown",
+      gender: "male",
+    };
+
+    if (!angleId || !scriptText || !primary.id || !primary.voiceId) {
+      return NextResponse.json({ error: "angleId, scriptText, primaryAvatar (with id + voiceId) required" }, { status: 400 });
     }
 
-    // Update angle with possibly edited script and mark as processing
+    // Mark angle as processing
     await prisma.adLabAngle.update({
       where: { id: angleId },
       data: {
         videoScriptText: scriptText,
         videoHookLine: hookLine || scriptText.split(/[.!?]/)[0].trim(),
-        videoAvatarId: avatarId,
+        videoAvatarId: primary.id,
         videoStatus: "processing",
       },
     });
 
-    // Send to HeyGen
-    let heygenVideoId: string;
-    try {
-      heygenVideoId = await createHeyGenVideo({ avatarId, voiceId, scriptText });
-    } catch (err) {
-      await prisma.adLabAngle.update({
-        where: { id: angleId },
-        data: { videoStatus: "failed" },
-      });
-      return NextResponse.json({
-        error: `HeyGen creation failed: ${err instanceof Error ? err.message : String(err)}`,
-      }, { status: 500 });
-    }
-
-    // Save HeyGen video ID for reference
-    await prisma.adLabAngle.update({
-      where: { id: angleId },
-      data: { heygenVideoId },
+    // Find existing video creatives for this angle (to update rather than duplicate)
+    const existingVideoCreatives = await prisma.adLabCreative.findMany({
+      where: { angleId, creativeType: "video" },
+      select: { id: true, videoPresenterTag: true, headline: true, primaryText: true, description: true, cta: true },
     });
 
-    // Poll until complete
-    const result = await pollVideoStatus(heygenVideoId);
+    const presenterTag = (a: AvatarConfig) => {
+      const g = a.gender?.charAt(0).toUpperCase() + a.gender?.slice(1);
+      return `${g} — ${a.name}`;
+    };
 
-    if (result.status !== "completed" || !result.videoUrl) {
-      await prisma.adLabAngle.update({
-        where: { id: angleId },
-        data: { videoStatus: "failed" },
-      });
-      return NextResponse.json({
-        error: result.error || "Video processing failed",
-      }, { status: 500 });
+    const primaryTag = presenterTag(primary);
+    const existingPrimary = existingVideoCreatives.find((c) => c.videoPresenterTag === primaryTag) || null;
+
+    // Build list of avatar jobs to run in parallel
+    const jobs: Promise<{ status: string; videoUrl?: string; creativeId?: string; error?: string; presenterTag: string }>[] = [];
+
+    jobs.push(processOneAvatar({
+      avatar: primary,
+      angleId,
+      scriptText,
+      hookLine,
+      presenterTag: primaryTag,
+      existingCreative: existingPrimary,
+    }));
+
+    if (secondaryAvatar?.id && secondaryAvatar?.voiceId) {
+      const secTag = presenterTag(secondaryAvatar);
+      const existingSec = existingVideoCreatives.find((c) => c.videoPresenterTag === secTag) || null;
+
+      jobs.push(processOneAvatar({
+        avatar: secondaryAvatar,
+        angleId,
+        scriptText,
+        hookLine,
+        presenterTag: secTag,
+        existingCreative: existingSec,
+      }));
     }
 
-    // Upload to Supabase
-    const supabaseUrl = await uploadToSupabase(result.videoUrl, `${angleId}.mp4`);
-    const finalUrl = supabaseUrl || result.videoUrl; // Fall back to HeyGen URL if upload fails
+    // Fire both HeyGen jobs in parallel
+    console.log(`[adlab-heygen] Processing ${jobs.length} avatar(s) for angle ${angleId}`);
+    const results = await Promise.all(jobs);
 
-    // Save final video URL
+    // Check results
+    const successes = results.filter((r) => r.status === "complete");
+    const failures = results.filter((r) => r.status === "failed");
+
+    // Update angle status based on primary result
+    const primaryResult = results[0];
     await prisma.adLabAngle.update({
       where: { id: angleId },
       data: {
-        videoUrl: finalUrl,
-        videoStatus: "complete",
+        videoUrl: primaryResult.videoUrl || null,
+        videoStatus: successes.length > 0 ? "complete" : "failed",
+        heygenVideoId: null, // Multiple videos now — tracked per creative
       },
     });
 
+    if (successes.length === 0) {
+      return NextResponse.json({
+        error: failures.map((f) => f.error).join("; "),
+      }, { status: 500 });
+    }
+
     return NextResponse.json({
-      videoUrl: finalUrl,
-      heygenVideoId,
       status: "complete",
+      results: results.map((r) => ({
+        presenterTag: r.presenterTag,
+        status: r.status,
+        videoUrl: r.videoUrl,
+        creativeId: r.creativeId,
+        error: r.error,
+      })),
+      totalGenerated: successes.length,
+      totalFailed: failures.length,
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";
