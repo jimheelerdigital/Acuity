@@ -57,12 +57,14 @@ const CreateProjectSchema = z.object({
     voiceId: z.string(),
     name: z.string(),
     gender: z.string(),
+    previewUrl: z.string().nullable().optional(),
   }).optional().nullable().default(null),
   videoSecondaryAvatar: z.object({
     id: z.string(),
     voiceId: z.string(),
     name: z.string(),
     gender: z.string(),
+    previewUrl: z.string().nullable().optional(),
   }).optional().nullable().default(null),
 });
 

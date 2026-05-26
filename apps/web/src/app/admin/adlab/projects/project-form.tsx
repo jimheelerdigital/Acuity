@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { X, Plus, Upload, Loader2, Search, Eye } from "lucide-react";
+import { X, Plus, Upload, Loader2, Search, Eye, Volume2, VolumeX, User } from "lucide-react";
 
 interface TargetAudience {
   ageMin: number;
@@ -19,6 +19,7 @@ interface VideoAvatar {
   voiceId: string;
   name: string;
   gender: string;
+  previewUrl?: string | null;
 }
 
 interface ProjectFormData {
@@ -822,6 +823,50 @@ interface HeyGenVoiceOption {
   previewAudio: string | null;
 }
 
+// Tiny play/pause toggle for voice previews
+function VoicePreviewButton({ src }: { src: string }) {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [playing, setPlaying] = useState(false);
+
+  function toggle(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!audioRef.current) {
+      audioRef.current = new Audio(src);
+      audioRef.current.addEventListener("ended", () => setPlaying(false));
+    }
+    if (playing) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      setPlaying(false);
+    } else {
+      audioRef.current.play().catch(() => {});
+      setPlaying(true);
+    }
+  }
+
+  return (
+    <button type="button" onClick={toggle}
+      className="shrink-0 rounded-full p-1 text-[#A0A0B8] hover:text-white hover:bg-white/10 transition" title="Preview voice">
+      {playing ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
+    </button>
+  );
+}
+
+// Avatar thumbnail — shows preview image or placeholder silhouette
+function AvatarThumb({ src, size = 40 }: { src?: string | null; size?: number }) {
+  if (src) {
+    return (
+      <img src={src} alt="" className="shrink-0 rounded-lg object-cover bg-white/5"
+        style={{ width: size, height: size }} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+    );
+  }
+  return (
+    <div className="shrink-0 rounded-lg bg-white/5 flex items-center justify-center" style={{ width: size, height: size }}>
+      <User className="h-4 w-4 text-[#A0A0B8]/40" />
+    </div>
+  );
+}
+
 function AvatarSlot({
   label,
   description,
@@ -840,7 +885,7 @@ function AvatarSlot({
   const [browseError, setBrowseError] = useState<string | null>(null);
 
   // Two-step browser: pick avatar, then pick voice
-  const [pendingAvatar, setPendingAvatar] = useState<{ id: string; name: string; gender: string } | null>(null);
+  const [pendingAvatar, setPendingAvatar] = useState<{ id: string; name: string; gender: string; previewUrl: string | null } | null>(null);
   const [selectedVoiceId, setSelectedVoiceId] = useState("");
 
   // Manual entry
@@ -879,8 +924,8 @@ function AvatarSlot({
       id: opt.lookId,
       name: `${opt.avatarName} (${opt.lookName})`,
       gender: opt.gender,
+      previewUrl: opt.previewUrl,
     });
-    // Auto-select voice if there's only one cloned voice
     const cloned = voices.filter((v) => v.isCloned);
     if (cloned.length === 1) {
       setSelectedVoiceId(cloned[0].voiceId);
@@ -896,6 +941,7 @@ function AvatarSlot({
       voiceId: selectedVoiceId,
       name: pendingAvatar.name,
       gender: pendingAvatar.gender,
+      previewUrl: pendingAvatar.previewUrl,
     });
     setShowBrowser(false);
     setPendingAvatar(null);
@@ -921,9 +967,6 @@ function AvatarSlot({
     setManualName("");
   }
 
-  const voiceLabel = (v: HeyGenVoiceOption) =>
-    `${v.voiceName}${v.isCloned ? " (cloned)" : ""} — ${v.gender}, ${v.language}`;
-
   return (
     <div className="rounded-lg border border-white/10 bg-[#0D0D17] p-4 space-y-3">
       <div>
@@ -931,8 +974,10 @@ function AvatarSlot({
         <p className="text-[10px] text-[#A0A0B8]">{description}</p>
       </div>
 
+      {/* Saved avatar display with thumbnail */}
       {avatar ? (
-        <div className="flex items-center gap-2 rounded-lg bg-[#1E1E2E] px-3 py-2 border border-white/10">
+        <div className="flex items-center gap-3 rounded-lg bg-[#1E1E2E] px-3 py-2 border border-white/10">
+          <AvatarThumb src={avatar.previewUrl} size={48} />
           <div className="flex-1 min-w-0">
             <p className="text-sm text-white truncate">{avatar.name}</p>
             <p className="text-[10px] text-[#A0A0B8] font-mono truncate">
@@ -985,10 +1030,10 @@ function AvatarSlot({
         </div>
       )}
 
-      {/* Browser panel — step 1: pick avatar, step 2: pick voice */}
+      {/* Browser panel — step 1: pick avatar with thumbnails */}
       {showBrowser && !pendingAvatar && available.length > 0 && (
-        <div className="rounded-lg border border-white/10 bg-[#1E1E2E] max-h-48 overflow-y-auto">
-          <div className="sticky top-0 flex items-center justify-between px-3 py-2 bg-[#1E1E2E] border-b border-white/10">
+        <div className="rounded-lg border border-white/10 bg-[#1E1E2E] max-h-64 overflow-y-auto">
+          <div className="sticky top-0 flex items-center justify-between px-3 py-2 bg-[#1E1E2E] border-b border-white/10 z-10">
             <span className="text-xs font-medium text-[#A0A0B8]">Step 1: Select avatar ({available.length})</span>
             <button type="button" onClick={() => setShowBrowser(false)} className="text-[#A0A0B8] hover:text-white">
               <X className="h-3.5 w-3.5" />
@@ -998,27 +1043,35 @@ function AvatarSlot({
             <button key={opt.lookId} type="button"
               onClick={() => pickAvatar(opt)}
               className="w-full text-left px-3 py-2 border-b border-white/5 last:border-0 transition-colors text-white hover:bg-white/5">
-              <div className="flex items-center gap-2">
-                {opt.isInstantAvatar && (
-                  <span className="shrink-0 rounded bg-amber-500/20 px-1.5 py-0.5 text-[9px] font-medium text-amber-400">INSTANT</span>
-                )}
-                <span className="text-sm truncate">{opt.avatarName}</span>
-                <span className="text-[10px] text-[#A0A0B8]">({opt.lookName})</span>
-                <span className="text-[10px] text-[#A0A0B8]">{opt.gender}</span>
+              <div className="flex items-center gap-3">
+                <AvatarThumb src={opt.previewUrl} size={36} />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    {opt.isInstantAvatar && (
+                      <span className="shrink-0 rounded bg-amber-500/20 px-1.5 py-0.5 text-[9px] font-medium text-amber-400">INSTANT</span>
+                    )}
+                    <span className="text-sm truncate">{opt.avatarName}</span>
+                    <span className="text-[10px] text-[#A0A0B8]">({opt.lookName})</span>
+                    <span className="text-[10px] text-[#A0A0B8]">{opt.gender}</span>
+                  </div>
+                  <p className="text-[10px] text-[#A0A0B8] font-mono truncate">ID: {opt.lookId}</p>
+                </div>
               </div>
-              <p className="text-[10px] text-[#A0A0B8] font-mono truncate mt-0.5">ID: {opt.lookId}</p>
             </button>
           ))}
         </div>
       )}
 
-      {/* Step 2: pick voice for the selected avatar */}
+      {/* Step 2: pick voice with play previews */}
       {showBrowser && pendingAvatar && (
         <div className="rounded-lg border border-[#7C5CFC]/30 bg-[#1E1E2E] p-3 space-y-3">
           <div className="flex items-center justify-between">
-            <div>
-              <span className="text-xs font-medium text-[#A0A0B8]">Step 2: Select voice for </span>
-              <span className="text-xs font-medium text-white">{pendingAvatar.name}</span>
+            <div className="flex items-center gap-2">
+              <AvatarThumb src={pendingAvatar.previewUrl} size={32} />
+              <div>
+                <span className="text-xs font-medium text-[#A0A0B8]">Step 2: Select voice for </span>
+                <span className="text-xs font-medium text-white">{pendingAvatar.name}</span>
+              </div>
             </div>
             <button type="button" onClick={() => setPendingAvatar(null)} className="text-[10px] text-[#A0A0B8] hover:text-white">
               &larr; Back
@@ -1026,7 +1079,7 @@ function AvatarSlot({
           </div>
 
           {voices.length > 0 ? (
-            <div className="max-h-36 overflow-y-auto rounded-lg border border-white/10">
+            <div className="max-h-40 overflow-y-auto rounded-lg border border-white/10">
               {voices.map((v) => (
                 <button key={v.voiceId} type="button"
                   onClick={() => setSelectedVoiceId(v.voiceId)}
@@ -1036,11 +1089,13 @@ function AvatarSlot({
                       : "text-white hover:bg-white/5"
                   }`}>
                   <div className="flex items-center gap-2">
+                    {v.previewAudio && <VoicePreviewButton src={v.previewAudio} />}
                     {v.isCloned && (
                       <span className="shrink-0 rounded bg-emerald-500/20 px-1.5 py-0.5 text-[9px] font-medium text-emerald-400">CLONED</span>
                     )}
                     <span className="text-sm truncate">{v.voiceName}</span>
                     <span className="text-[10px] text-[#A0A0B8]">{v.gender} · {v.language}</span>
+                    {selectedVoiceId === v.voiceId && <span className="text-[10px] text-[#7C5CFC]">&#10003;</span>}
                   </div>
                   <p className="text-[10px] text-[#A0A0B8] font-mono truncate mt-0.5">ID: {v.voiceId}</p>
                 </button>

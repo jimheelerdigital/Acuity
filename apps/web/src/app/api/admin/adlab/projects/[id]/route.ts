@@ -58,12 +58,14 @@ const UpdateProjectSchema = z.object({
     voiceId: z.string(),
     name: z.string(),
     gender: z.string(),
+    previewUrl: z.string().nullable().optional(),
   }).nullable().optional(),
   videoSecondaryAvatar: z.object({
     id: z.string(),
     voiceId: z.string(),
     name: z.string(),
     gender: z.string(),
+    previewUrl: z.string().nullable().optional(),
   }).nullable().optional(),
 });
 
