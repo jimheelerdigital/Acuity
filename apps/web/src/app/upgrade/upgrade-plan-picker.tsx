@@ -3,6 +3,14 @@
 import posthog from "posthog-js";
 import { useEffect, useState } from "react";
 
+import {
+  ANNUAL_AS_MONTHLY_CENTS,
+  ANNUAL_PRICE_CENTS,
+  MONTHLY_PRICE_CENTS,
+  PRICING,
+  formatDollars,
+} from "@/lib/pricing";
+
 type Interval = "monthly" | "yearly";
 
 /**
@@ -10,10 +18,19 @@ type Interval = "monthly" | "yearly";
  * selection state so the price card re-renders in place when the user
  * toggles. POSTs the selected interval to /api/stripe/checkout.
  *
- * Yearly math (updated 2026-05-25):
- *   $4.99/mo × 12 = $59.88   → $39.99/yr saves $19.89 (~33%)
- *   $39.99/yr / 12  = $3.33/mo effective
+ * Price strings are derived from `lib/pricing.PRICING` so any future
+ * change is a single-file edit. 2026-05-25: the prior literals
+ * ($99, $8.25, $56.88, Save 36%) were stale post-slice-1 — Stripe
+ * was charging $39.99 while the page kept advertising $99. This
+ * surface now reads from the same source as the checkout route's
+ * Stripe Price IDs (env-var-driven; PRICING holds the displayed
+ * dollar values).
  */
+const YEARLY_SAVINGS_DOLLARS_ROUNDED = (() => {
+  const monthlyRunCents = MONTHLY_PRICE_CENTS * 12;
+  const savings = monthlyRunCents - ANNUAL_PRICE_CENTS;
+  return formatDollars(savings);
+})();
 export function UpgradePlanPicker() {
   const [interval, setInterval] = useState<Interval>("yearly");
   const [loading, setLoading] = useState(false);
@@ -94,7 +111,7 @@ export function UpgradePlanPicker() {
           label="Yearly"
           selected={interval === "yearly"}
           onClick={() => setInterval("yearly")}
-          badge="Save 36%"
+          badge={`Save ${PRICING.annual.savingsVsMonthly}`}
         />
       </div>
 
@@ -102,7 +119,7 @@ export function UpgradePlanPicker() {
         {interval === "monthly" ? (
           <div className="flex items-baseline gap-1">
             <span className="text-3xl font-bold text-zinc-900 dark:text-zinc-50">
-              $4.99
+              {formatDollars(MONTHLY_PRICE_CENTS)}
             </span>
             <span className="text-sm text-zinc-400 dark:text-zinc-500">
               /month
@@ -112,14 +129,15 @@ export function UpgradePlanPicker() {
           <>
             <div className="flex items-baseline gap-1">
               <span className="text-3xl font-bold text-zinc-900 dark:text-zinc-50">
-                $99
+                {formatDollars(ANNUAL_PRICE_CENTS)}
               </span>
               <span className="text-sm text-zinc-400 dark:text-zinc-500">
                 /year
               </span>
             </div>
             <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-              Just $8.25/month, billed annually. Save $56.88 vs monthly.
+              Just {formatDollars(ANNUAL_AS_MONTHLY_CENTS)}/month, billed
+              annually. Save {YEARLY_SAVINGS_DOLLARS_ROUNDED} vs monthly.
             </p>
           </>
         )}
