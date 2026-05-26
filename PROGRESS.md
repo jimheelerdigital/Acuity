@@ -41,6 +41,49 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-26] — Fix HeyGen avatar look ID error + make configurable from project settings
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 2a271f8
+
+### In plain English (for Keenan)
+
+HeyGen video generation was failing because the avatar look ID stored for the project was stale — HeyGen changed or deleted the avatar on their end, and we had no way to update it without a code change.
+
+Now there's a "Video / HeyGen" section in AdLab project settings where you can:
+1. See which avatars are currently configured
+2. Manually add a new avatar by pasting its Look ID and Voice ID
+3. Click "Browse Available Avatars from HeyGen" to see every avatar in the account and add one with a click
+4. Remove stale avatars
+
+If video generation fails because an avatar isn't found, the error message now says exactly what happened and where to fix it ("Update the Avatar Look ID in project settings") instead of dumping raw JSON.
+
+**To fix the current error:** Go to the Acuity project in AdLab → edit project settings → Video/HeyGen section → click "Browse Available Avatars from HeyGen" → find Keenan's Instant Avatar (grey hoodie podcaster look) → click to add it → save. Then retry video generation.
+
+### Technical changes (for Jimmy)
+
+- New file `apps/web/src/app/api/admin/adlab/heygen/avatars/route.ts`: GET endpoint that proxies HeyGen `/v2/avatars`, flattens avatar+look pairs, returns sorted list with instant avatars first
+- `apps/web/src/app/admin/adlab/projects/project-form.tsx`: added `VideoAvatar` interface, `AvatarList` component with manual add + browse-from-API functionality, "Video / HeyGen" section with `videoEnabled` toggle and avatar management
+- `apps/web/src/app/api/admin/adlab/projects/route.ts`: added `videoAvatars` to Zod create schema
+- `apps/web/src/app/api/admin/adlab/projects/[id]/route.ts`: added `videoAvatars` to Zod update schema
+- `apps/web/src/app/api/admin/adlab/video/confirm/route.ts`: detects avatar-not-found errors from HeyGen (400/404 with "avatar" + "not found" in body) and returns actionable error message
+
+### Manual steps needed
+
+- [ ] Go to AdLab → Acuity project → Edit → Video/HeyGen section → browse avatars → add correct avatar look ID (Keenan)
+- [ ] If Keenan's Instant Avatar doesn't appear in the browse list, it may need to be recreated in HeyGen's dashboard (Keenan)
+- [ ] HEYGEN_API_KEY must be set in Vercel env vars for the browse endpoint to work — verify it's there (Jimmy)
+
+### Notes
+
+- The error string was "avatar look not found, look_id: Angular-inblackshirt..." — this ID doesn't match any hardcoded default in the codebase. It was likely stored in the project's `videoAvatars` JSON field in the database. The default hardcoded avatars use IDs like "Angela-inblackskirt-20220820" which are public HeyGen avatars and may also be stale.
+- Could not call the HeyGen API locally to list avatars because HEYGEN_API_KEY is only in Vercel env vars, not in any local .env file. The browse feature will work in production once deployed.
+- The `videoAvatars` JSON field on AdLabProject already existed in the Prisma schema (added in initial AdLab setup) but was never exposed in the project settings UI — it was always an empty array. Now it's fully wired up.
+- Voice IDs must be set separately from avatar look IDs. When browsing avatars from HeyGen, the voice ID field is left blank — the user needs to add it manually or the system falls back to matching voice from the default avatar lineup.
+
+---
+
 ## [2026-05-26] — Fix signup screen for Facebook in-app browser (WebView) traffic
 
 **Requested by:** Keenan
