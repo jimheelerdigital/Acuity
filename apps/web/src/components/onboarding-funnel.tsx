@@ -3,6 +3,12 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { signIn, useSession } from "next-auth/react";
+import {
+  ANNUAL_PRICE_CENTS,
+  MONTHLY_PRICE_CENTS,
+  PRICING,
+  formatDollars,
+} from "@/lib/pricing";
 import { trackOnboardingEvent } from "@/lib/track-onboarding";
 import {
   type ExtractionResult,
@@ -1195,7 +1201,7 @@ function PaywallScreen({
               selectedPlan === "monthly" ? "bg-[#7C5CFC] text-white" : "text-zinc-600"
             }`}
           >
-            $4.99/month
+            {formatDollars(MONTHLY_PRICE_CENTS)}/month
           </button>
           <button
             onClick={() => onPlanChange("yearly")}
@@ -1203,8 +1209,10 @@ function PaywallScreen({
               selectedPlan === "yearly" ? "bg-[#7C5CFC] text-white" : "text-zinc-600"
             }`}
           >
-            $39.99/year
-            <span className="ml-1 text-xs opacity-75">save 33%</span>
+            {formatDollars(ANNUAL_PRICE_CENTS)}/year
+            <span className="ml-1 text-xs opacity-75">
+              save {PRICING.annual.savingsVsMonthly}
+            </span>
           </button>
         </div>
 
