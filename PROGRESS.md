@@ -41,6 +41,46 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-25] — Pricing centralization (slices 2-6) — UI/checkout mismatch fix
+
+**Requested by:** Both
+**Committed by:** Claude Code
+**Commit hashes:** 00e2c08 (s1 central PRICING config), a715043 (s2 /upgrade UI), bceb739 (s3 landing surfaces), bdc52ce (s4 trial emails), a246203 (s5 onboarding paywall), this commit (s6 sweep + mobile fallbacks)
+
+### In plain English (for Keenan)
+
+The /upgrade page was showing the old $99/yr and "Save 36%" while Stripe was already charging $39.99 — users saw one price, got billed another. Slice 2 swapped the literal strings for a config-driven read so display and checkout always agree. Slices 3-5 wired every other price-displaying surface (landing pages, trial emails, /start onboarding paywall) through the same config, so the next price change is a single-file edit instead of a hunt-and-replace across 8+ files. Slice 6 was the final grep sweep — no $99 / $12.99 stragglers remain on web; the three mobile $12.99 fallback strings flipped to $4.99 to match what StoreKit returns post-Apple price update.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/upgrade/upgrade-plan-picker.tsx` (s2): imports `MONTHLY_PRICE_CENTS` / `ANNUAL_PRICE_CENTS` / `ANNUAL_AS_MONTHLY_CENTS` / `PRICING` / `formatDollars`. Four hardcoded literals (`$99`, `$8.25`, `$56.88`, `"Save 36%"`) → derived. Yearly-savings literal recomputed at module load.
+- `apps/web/src/components/landing.tsx` (s3): pricing card hero numeral → `formatDollars(MONTHLY_PRICE_CENTS)`.
+- `apps/web/src/components/landing-shared.tsx` (s3): pricing card hero numeral + CTA tail prose → `formatDollars(MONTHLY_PRICE_CENTS)`.
+- `apps/web/src/emails/trial/trial-ending-day13.ts` (s4): T-1 email card body + button label → `${PRICE}/month` / `${PRICE}/mo`.
+- `apps/web/src/emails/trial/value-recap.ts` (s4): mid-trial email prose → `${PRICE}/month`.
+- `apps/web/src/components/onboarding-funnel.tsx` (s5): plan-toggle pill labels + "save 33%" → `PRICING.annual.savingsVsMonthly`.
+- `apps/mobile/app/paywall.tsx` (s6): App Store Guideline 3.1.2(a) disclosure body `$12.99/month` → `$4.99/month` (defensive fallback, matches what StoreKit returns post-Apple price flip).
+- `apps/mobile/app/subscribe.tsx` (s6): two fallback strings (Subscribe button label + disclosure body) `?? "$12.99"` → `?? "$4.99"`.
+- `apps/mobile/lib/iap.ts` (s6): doc-comment example `(e.g. "$12.99")` → `(e.g. "$4.99")`.
+
+Surfaces deliberately left literal (editorial-prose risk): FAQ answer in landing.tsx, persona lander comparison rows (/for/sleep, /for/founders, /for/therapy, /for/weekly-report) — already at $4.99, future price changes there need a content rewrite anyway ("now just $X.YY, half what it was") rather than mechanical substitution.
+
+### Manual steps needed
+
+- [ ] **Verify production /upgrade renders $39.99/year and "Save 33%"** after the slice 2 deploy (Vercel auto-redeploys on push). End-to-end test: click Subscribe Now → confirm Stripe checkout shows $39.99 matching the page. (Keenan)
+- [ ] **Monday parent** — the slice 1 commit (`00e2c08`) carries `PARENT_ID_PENDING_PRICING` because Monday parent wasn't created yet when it landed. Slices 2-6 all carry `monday: 12100202567`. Optional housekeeping: amend the slice 1 message with the real parent id if cleanup matters. (Jimmy)
+- [ ] **Mobile fallback strings ride the next EAS build** alongside the Meta SDK work — they're dormant code until promotion to App Store. (Jimmy)
+- [ ] **Final QA grep**: `grep -rE "\$99|\$12\.99|\$8\.25|\$56\.88|Save 36%" apps/web/src apps/mobile` — should return only doc-comments in `lib/pricing.ts` rollback block + the explanatory comment in `upgrade-plan-picker.tsx` + the test-regex in `trial-email-orchestrator.test.ts`. No render-path hits. (Already verified at commit time.)
+
+### Notes
+
+- `lib/pricing.ts` PRICING export is the new single source of truth for displayed prices. Future changes are a single-file edit + the matching `STRIPE_PRICE_MONTHLY` / `STRIPE_PRICE_YEARLY` env-var flip on Vercel. The rollback block in the same file documents the exact env vars to reset for a snap-back.
+- `savingsVsMonthly` is computed at module load from `MONTHLY_PRICE_CENTS × 12 - ANNUAL_PRICE_CENTS` — moving prices in either direction recomputes the badge correctly without any per-call-site math.
+- The mobile $12.99 → $4.99 fallback edits are display-only defensive code. StoreKit returns Apple's live `localizedPrice` whenever it loads successfully; the fallbacks only render during a brief pre-fetch window or a StoreKit failure. Aligning them to $4.99 closes the window where a slow-network install could show stale copy.
+- No schema changes. No `prisma db push` needed.
+
+---
+
 ## [2026-05-25] — Meta SDK (Facebook App Events) install on mobile
 
 **Requested by:** Keenan

@@ -257,7 +257,7 @@ export interface IapProduct {
   title: string;
   /** Localized description from Apple. */
   description: string;
-  /** Localized price string (e.g. "$12.99"). */
+  /** Localized price string (e.g. "$4.99"). */
   localizedPrice: string;
   /** Currency code from the user's App Store account. */
   currency: string;
