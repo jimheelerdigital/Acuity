@@ -283,6 +283,8 @@ export function OnboardingFunnel() {
     }
   };
 
+  const progressPct = (STEP_ORDER.indexOf(step) / (STEP_ORDER.length - 1)) * 100;
+
   return (
     <div className="min-h-screen">
       <style dangerouslySetInnerHTML={{ __html: `
@@ -291,11 +293,11 @@ export function OnboardingFunnel() {
           50% { box-shadow: 0 4px 28px rgba(124,92,252,0.55), 0 0 8px rgba(124,92,252,0.2); }
         }
         @keyframes funnel-slide-up {
-          from { opacity: 0; transform: translateY(24px); }
+          from { opacity: 0; transform: translateY(20px); }
           to { opacity: 1; transform: translateY(0); }
         }
         @keyframes funnel-card-in {
-          from { opacity: 0; transform: translateY(12px) scale(0.95); }
+          from { opacity: 0; transform: translateY(30px) scale(0.97); }
           to { opacity: 1; transform: translateY(0) scale(1); }
         }
         @keyframes funnel-pulse-select {
@@ -320,10 +322,19 @@ export function OnboardingFunnel() {
           0% { background-position: -200% 0; }
           100% { background-position: 200% 0; }
         }
-        .funnel-screen { animation: funnel-slide-up 0.3s ease-out both; }
-        .funnel-card-stagger { animation: funnel-card-in 0.3s ease-out both; }
+        .funnel-screen { animation: funnel-slide-up 0.4s ease-out both; }
+        .funnel-card-stagger { animation: funnel-card-in 0.35s ease-out both; }
         .funnel-bounce { animation: funnel-bounce-in 0.4s ease-out both; }
+        @media (prefers-reduced-motion: reduce) {
+          .funnel-screen, .funnel-card-stagger, .funnel-bounce { animation: none !important; opacity: 1 !important; transform: none !important; }
+          * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+        }
       `}} />
+
+      {/* Progress bar */}
+      <div className="fixed top-0 inset-x-0 z-50 h-[2px] bg-zinc-200/50">
+        <div className="h-full bg-[#7C5CFC] transition-all duration-700 ease-out" style={{ width: `${progressPct}%` }} />
+      </div>
 
       {step !== "pain" && step !== "download" && (
         <button
@@ -388,6 +399,7 @@ export function OnboardingFunnel() {
         <PaywallScreen
           selectedPlan={selectedPlan} onPlanChange={setSelectedPlan}
           onCheckout={handleCheckout} loading={checkoutLoading} error={apiError}
+          answers={answers}
         />
       )}
       {step === "download" && <DownloadScreen track={track} />}
@@ -442,9 +454,16 @@ function DiagnosticScreen({ question, options, multiSelect, onSelect, testimonia
   testimonial?: { quote: string; name: string };
 }) {
   const [selected, setSelected] = useState<string | null>(null);
+  const advancedRef = useRef(false);
+
   const handleSelect = (opt: string) => {
     setSelected(opt);
     if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(10);
+    // Single-select: auto-advance after 500ms
+    if (!advancedRef.current) {
+      advancedRef.current = true;
+      setTimeout(() => onSelect(opt), 500);
+    }
   };
 
   return (
@@ -455,7 +474,7 @@ function DiagnosticScreen({ question, options, multiSelect, onSelect, testimonia
           {options.map((opt, i) => (
             <button key={opt} onClick={() => handleSelect(opt)}
               className={`w-full text-left rounded-xl border px-5 py-4 text-[15px] transition-all duration-200 active:scale-[0.98] funnel-card-stagger ${
-                selected === opt ? "border-[#7C5CFC] bg-[#7C5CFC]/10 text-zinc-900" : selected ? "border-zinc-200 bg-zinc-50 text-zinc-700 opacity-50" : "border-zinc-200 bg-zinc-50 text-zinc-700 hover:bg-zinc-100"
+                selected === opt ? "border-[#7C5CFC] bg-[#7C5CFC]/10 text-zinc-900 animate-[funnel-pulse-select_0.2s_ease-out]" : selected ? "border-zinc-200 bg-zinc-50 text-zinc-700 opacity-50" : "border-zinc-200 bg-zinc-50 text-zinc-700 hover:bg-zinc-100"
               }`}
               style={{ animationDelay: `${i * 100}ms` }}
             >
@@ -464,12 +483,6 @@ function DiagnosticScreen({ question, options, multiSelect, onSelect, testimonia
           ))}
         </div>
         {testimonial && <ScreenTestimonial quote={testimonial.quote} name={testimonial.name} />}
-        <div className={`mt-8 transition-all duration-300 ${selected ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
-          <button onClick={() => { if (selected) onSelect(selected); }} disabled={!selected}
-            className="w-full rounded-full bg-[#7C5CFC] py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]">
-            Continue
-          </button>
-        </div>
       </div>
     </div>
   );
@@ -787,17 +800,38 @@ function CommitmentScreen({ track, onComplete }: { track: (event: string) => voi
 
 // ─── Screen 11: Mock Extraction ──────────────────────────────────────────────
 
-function MockExtractionScreen({ answers, onContinue }: { answers: DiagnosticAnswers; onContinue: () => void }) {
-  const [step, setStep] = useState(0);
-  const totalSteps = 14; // mood + tasksH + 3tasks + goalsH + 2goals + themesH + 3themes + insight + button
+const PROCESSING_TEXTS = [
+  "Finding the pattern...",
+  "Reading between your words...",
+  "Mapping what\u2019s on your mind...",
+  "Building your snapshot...",
+];
 
+function MockExtractionScreen({ answers, onContinue }: { answers: DiagnosticAnswers; onContinue: () => void }) {
+  const [phase, setPhase] = useState<"processing" | "reveal">("processing");
+  const [statusIdx, setStatusIdx] = useState(0);
+  const [step, setStep] = useState(0);
+  const totalSteps = 14;
+
+  // Processing phase: cycle status text for 3.5s, then reveal
   useEffect(() => {
+    const statusTimer = setInterval(() => setStatusIdx((i) => (i + 1) % PROCESSING_TEXTS.length), 900);
+    const revealTimer = setTimeout(() => {
+      clearInterval(statusTimer);
+      setPhase("reveal");
+    }, 3500);
+    return () => { clearInterval(statusTimer); clearTimeout(revealTimer); };
+  }, []);
+
+  // Reveal phase: stagger extraction sections
+  useEffect(() => {
+    if (phase !== "reveal") return;
     const timers: ReturnType<typeof setTimeout>[] = [];
     for (let i = 1; i <= totalSteps; i++) {
-      timers.push(setTimeout(() => setStep(i), i === 1 ? 400 : 400 + (i - 1) * 150));
+      timers.push(setTimeout(() => setStep(i), i === 1 ? 300 : 300 + (i - 1) * 150));
     }
     return () => timers.forEach(clearTimeout);
-  }, []);
+  }, [phase]);
 
   const vis = (at: number) => step >= at ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3";
   const scaleVis = (at: number) => step >= at ? "opacity-100 scale-100" : "opacity-0 scale-75";
@@ -808,10 +842,28 @@ function MockExtractionScreen({ answers, onContinue }: { answers: DiagnosticAnsw
     { title: "Review budget spreadsheet", desc: "End-of-month review before team sync on Friday.", priority: "LOW" },
   ];
 
+  if (phase === "processing") {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-white text-zinc-900">
+        <div className="max-w-md text-center funnel-screen">
+          <div className="mb-8 flex justify-center">
+            <div className="h-12 w-12 rounded-full border-2 border-[#7C5CFC] border-t-transparent animate-spin" />
+          </div>
+          <p className="text-sm text-zinc-500 animate-pulse transition-all duration-300">{PROCESSING_TEXTS[statusIdx]}</p>
+          <div className="mt-6 mx-auto w-48">
+            <div className="h-1 w-full rounded-full bg-zinc-200 overflow-hidden">
+              <div className="h-full bg-[#7C5CFC] rounded-full" style={{ width: `${((statusIdx + 1) / PROCESSING_TEXTS.length) * 100}%`, transition: "width 0.8s ease-out" }} />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col items-center px-6 py-12 bg-white text-zinc-900">
       <div className="w-full max-w-md">
-        <div className="text-center mb-10 animate-fade-in">
+        <div className="text-center mb-10 funnel-screen">
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-2">
             Here&rsquo;s what Acuity pulls from a single 60-second debrief.
           </h2>
@@ -924,14 +976,15 @@ function JourneyScreen({ onContinue }: { onContinue: () => void }) {
         </h2>
 
         <div className="relative">
-          {/* Timeline line */}
-          <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-zinc-200" />
+          {/* Timeline line — grows as stages appear */}
+          <div className="absolute left-4 top-0 w-0.5 bg-zinc-200" style={{ bottom: 0 }} />
+          <div className="absolute left-4 top-0 w-0.5 bg-[#7C5CFC]/30 transition-all duration-1000 ease-out" style={{ height: `${visibleStage > 0 ? Math.min(100, (visibleStage / JOURNEY_STAGES.length) * 100) : 0}%` }} />
 
           <div className="space-y-8">
             {JOURNEY_STAGES.map((stage, i) => (
               <div key={i} className={`relative pl-12 transition-all duration-700 ${i < visibleStage ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
                 {/* Timeline dot */}
-                <div className={`absolute left-2 top-1 h-5 w-5 rounded-full border-2 flex items-center justify-center text-[10px] transition-colors duration-300 ${i < visibleStage ? "border-[#7C5CFC] bg-[#7C5CFC]/10" : "border-zinc-300 bg-white"}`}>
+                <div className={`absolute left-2 top-1 h-5 w-5 rounded-full border-2 flex items-center justify-center text-[10px] transition-all duration-500 ${i < visibleStage ? "border-[#7C5CFC] bg-[#7C5CFC]/10 scale-100" : "border-zinc-300 bg-white scale-75"}`}>
                   <span>{stage.icon}</span>
                 </div>
                 <div className="rounded-xl border border-zinc-200 bg-white p-4">
@@ -1004,17 +1057,19 @@ function SignupScreen({ track, onComplete }: { track: (event: string, props?: Re
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-white text-zinc-900">
-      <div className="max-w-sm w-full">
+      <div className="max-w-sm w-full funnel-screen">
         <div className="text-center mb-8">
           <h2 className="text-2xl font-bold tracking-tight mb-2">Create your account.</h2>
           <p className="text-sm text-zinc-500">Your first real debrief is waiting.</p>
         </div>
         <button onClick={handleGoogle} disabled={loading !== null}
-          className="flex w-full items-center justify-center gap-3 rounded-full border border-zinc-200 bg-white px-6 py-3.5 text-[15px] font-semibold text-zinc-700 transition hover:bg-zinc-50 active:scale-[0.98] disabled:opacity-50">
+          className="flex w-full items-center justify-center gap-3 rounded-full border border-zinc-200 bg-white px-6 py-3.5 text-[15px] font-semibold text-zinc-700 transition hover:bg-zinc-50 active:scale-[0.98] disabled:opacity-50 funnel-card-stagger"
+          style={{ animationDelay: "100ms" }}>
           <GoogleLogo />{loading === "google" ? "Redirecting\u2026" : "Continue with Google"}
         </button>
         <button onClick={handleApple} disabled={loading !== null}
-          className="mt-3 flex w-full items-center justify-center gap-3 rounded-full bg-black px-6 py-3.5 text-[15px] font-semibold text-white transition hover:bg-zinc-800 active:scale-[0.98] disabled:opacity-50">
+          className="mt-3 flex w-full items-center justify-center gap-3 rounded-full bg-black px-6 py-3.5 text-[15px] font-semibold text-white transition hover:bg-zinc-800 active:scale-[0.98] disabled:opacity-50 funnel-card-stagger"
+          style={{ animationDelay: "200ms" }}>
           <AppleLogo />{loading === "apple" ? "Redirecting\u2026" : "Continue with Apple"}
         </button>
         <div className="my-6 flex items-center gap-3">
@@ -1040,130 +1095,172 @@ function SignupScreen({ track, onComplete }: { track: (event: string, props?: Re
 
 // ─── Screen 14: Paywall (full selling page) ──────────────────────────────────
 
-function PaywallScreen({ selectedPlan, onPlanChange, onCheckout, loading, error }: {
+const PAYWALL_OUTCOMES = [
+  { icon: "\uD83D\uDCCB", title: "Never lose a task again", desc: "Every action item you mention is captured automatically." },
+  { icon: "\uD83D\uDD0D", title: "See your patterns", desc: "Weekly reports surface what you can\u2019t see yourself." },
+  { icon: "\uD83C\uDFAF", title: "Track what matters", desc: "Goals tracked passively from your own words." },
+  { icon: "\uD83D\uDCD6", title: "A living record of your life", desc: "Monthly memoirs you\u2019ll actually want to read." },
+];
+
+const PAYWALL_TIMELINE = [
+  { week: "Week 1", text: "Tasks extracted. Goals tracked. Mood captured.", badge: "You just did this" },
+  { week: "Week 2", text: "Patterns start forming across your days." },
+  { week: "Week 3", text: "Your Life Matrix takes shape \u2014 see how you\u2019re spending your life." },
+  { week: "Week 4", text: "Your first monthly memoir \u2014 a story of your month, written by AI that knows you." },
+];
+
+const PAYWALL_QUOTES = [
+  { quote: "I didn\u2019t realize I was living the same week on repeat until Acuity showed me.", name: "Sarah M." },
+  { quote: "It\u2019s like having a life coach who actually remembers everything.", name: "James K." },
+  { quote: "The weekly report made me cry. In a good way.", name: "Priya R." },
+];
+
+const FAQ_ITEMS = [
+  { q: "What happens during the free trial?", a: "You get full access for 14 days. Cancel anytime before your trial ends and you won\u2019t be charged." },
+  { q: "How does the daily debrief work?", a: "Open the app, tap record, talk for 60 seconds about whatever\u2019s on your mind. AI extracts your tasks, goals, mood, and themes instantly." },
+  { q: "Is my data private?", a: "Your recordings are transcribed and deleted within 24 hours. Your data is encrypted and never sold." },
+  { q: "Can I cancel anytime?", a: "Yes. Cancel in one tap from your account settings. No questions asked." },
+];
+
+function paywallHookSub(answers: DiagnosticAnswers): string {
+  const MAP: Record<string, string> = {
+    "Work bleeds into life": "You told us work bleeds into your life. Here\u2019s how Acuity draws the line back.",
+    "Same fights, same conversations": "You told us the same conversations keep cycling. Here\u2019s how Acuity breaks the loop.",
+    "Goals that never become real": "You told us your goals never become real. Here\u2019s how Acuity holds you to them.",
+    "Days that blur together": "You told us your days blur together. Here\u2019s how Acuity brings them into focus.",
+    "Something else": "You told us something needs to change. Here\u2019s how Acuity makes it visible.",
+  };
+  return MAP[answers.loop ?? ""] ?? "Here\u2019s how Acuity changes everything.";
+}
+
+function PaywallScreen({ selectedPlan, onPlanChange, onCheckout, loading, error, answers }: {
   selectedPlan: "monthly" | "yearly"; onPlanChange: (p: "monthly" | "yearly") => void;
-  onCheckout: () => void; loading: boolean; error: string | null;
+  onCheckout: () => void; loading: boolean; error: string | null; answers: DiagnosticAnswers;
 }) {
-  const [testimonialIdx, setTestimonialIdx] = useState(0);
-  useEffect(() => {
-    const interval = setInterval(() => setTestimonialIdx((i) => (i + 1) % PAYWALL_TESTIMONIALS.length), 4000);
-    return () => clearInterval(interval);
-  }, []);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
+
+  const annualMonthly = Math.round(ANNUAL_PRICE_CENTS / 12);
 
   return (
     <div className="min-h-screen bg-white text-zinc-900">
-      <div className="max-w-lg mx-auto px-6 pt-16 pb-40">
+      <div className="max-w-lg mx-auto px-6 pt-16 pb-48">
 
-        {/* Section 1 — Hook */}
-        <section className="text-center mb-16 funnel-screen">
-          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight leading-tight">
-            Change your life for less than a cup of&nbsp;coffee.
+        {/* Section 1 — Personalized Hook */}
+        <section className="text-center mb-16 funnel-card-stagger" style={{ animationDelay: "0ms" }}>
+          <h2 className="text-[28px] sm:text-4xl font-bold tracking-tight leading-tight">
+            You&rsquo;ve already taken the first step.
           </h2>
-          <p className="mt-4 text-zinc-500 text-base leading-relaxed">
-            That latte you buy every morning? Acuity costs less. And it actually changes something.
+          <p className="mt-4 text-zinc-500 text-base leading-relaxed max-w-sm mx-auto">
+            {paywallHookSub(answers)}
           </p>
         </section>
 
-        {/* Section 2 — Timeline */}
+        {/* Section 2 — Outcomes */}
         <section className="mb-16">
-          <h3 className="text-lg font-bold mb-6">What your next 14 days look like:</h3>
           <div className="space-y-4">
-            {[
-              { day: "Day 1", text: "Tasks extracted. Goals tracked. Mood captured.", badge: "You just saw this" },
-              { day: "Day 3", text: "Patterns start forming between your entries" },
-              { day: "Day 7", text: "Your first weekly report \u2014 a 400-word narrative of your week" },
-              { day: "Day 10", text: "Your Life Matrix takes shape across 6 life domains" },
-              { day: "Day 14", text: "You see yourself more clearly than you have in years" },
-            ].map((item, i) => (
-              <div key={i} className="flex items-start gap-3">
-                <span className="shrink-0 mt-0.5 h-5 w-5 rounded-full bg-[#7C5CFC]/10 flex items-center justify-center"><CheckIcon /></span>
+            {PAYWALL_OUTCOMES.map((item, i) => (
+              <div key={i} className="flex items-start gap-4 rounded-xl border border-zinc-200 bg-white px-5 py-4 funnel-card-stagger" style={{ animationDelay: `${150 + i * 100}ms` }}>
+                <span className="text-2xl shrink-0 mt-0.5">{item.icon}</span>
                 <div>
-                  <p className="text-sm font-medium text-zinc-900"><span className="font-bold">{item.day}:</span> {item.text}</p>
+                  <p className="text-sm font-semibold text-zinc-900">{item.title}</p>
+                  <p className="text-xs text-zinc-500 mt-0.5 leading-relaxed">{item.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Section 3 — Timeline */}
+        <section className="mb-16">
+          <h3 className="text-lg font-bold mb-6">Your next 30 days:</h3>
+          <div className="relative">
+            <div className="absolute left-3 top-2 bottom-2 w-0.5 bg-zinc-200" />
+            <div className="space-y-5">
+              {PAYWALL_TIMELINE.map((item, i) => (
+                <div key={i} className="relative pl-10 funnel-card-stagger" style={{ animationDelay: `${400 + i * 100}ms` }}>
+                  <div className="absolute left-1 top-1 h-5 w-5 rounded-full border-2 border-[#7C5CFC] bg-[#7C5CFC]/10 flex items-center justify-center">
+                    {i === 0 ? <CheckIcon /> : <span className="h-1.5 w-1.5 rounded-full bg-[#7C5CFC]" />}
+                  </div>
+                  <p className="text-sm text-zinc-900"><span className="font-bold">{item.week}:</span> {item.text}</p>
                   {item.badge && <span className="text-[11px] text-[#7C5CFC] font-medium">{item.badge}</span>}
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </section>
 
-        {/* Section 3 — Social proof */}
-        <section className="mb-16 text-center">
-          <p className="text-sm font-semibold text-zinc-900 mb-1">
-            4.9 <span className="text-amber-400">&#9733;&#9733;&#9733;&#9733;&#9733;</span> from 127+ users
-          </p>
-          <div className="mt-4 min-h-[80px] relative">
-            {PAYWALL_TESTIMONIALS.map((t, i) => (
-              <div key={i} className={`transition-opacity duration-500 ${i === testimonialIdx ? "opacity-100" : "opacity-0 absolute inset-0"}`}>
-                <p className="text-sm italic text-zinc-600 leading-relaxed">&ldquo;{t.quote}&rdquo;</p>
-                <p className="mt-2 text-xs font-medium text-zinc-400">&mdash; {t.name}, {t.role}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Section 4 — Comparison */}
+        {/* Section 4 — Social Proof */}
         <section className="mb-16">
-          <h3 className="text-lg font-bold mb-5">What else costs {formatDollars(MONTHLY_PRICE_CENTS)} a month?</h3>
           <div className="space-y-3">
-            {[
-              { emoji: "\u2615", label: "A coffee", desc: "gone in 10 minutes" },
-              { emoji: "\uD83D\uDCFA", label: "A streaming service", desc: "passive entertainment" },
-              { emoji: "\uD83D\uDDA4", label: "Acuity", desc: "an actual understanding of your own life" },
-            ].map((item, i) => (
-              <div key={i} className={`flex items-center gap-3 rounded-xl border px-4 py-3 ${i === 2 ? "border-[#7C5CFC] bg-[#7C5CFC]/5" : "border-zinc-200 bg-zinc-50"}`}>
-                <span className="text-lg">{item.emoji}</span>
-                <div>
-                  <p className={`text-sm font-medium ${i === 2 ? "text-[#7C5CFC]" : "text-zinc-700"}`}>{item.label}</p>
-                  <p className="text-xs text-zinc-400">{item.desc}</p>
+            {PAYWALL_QUOTES.map((t, i) => (
+              <div key={i} className="rounded-xl border border-zinc-200 bg-zinc-50 px-5 py-4 funnel-card-stagger" style={{ animationDelay: `${600 + i * 100}ms` }}>
+                <p className="text-sm italic text-zinc-600 leading-relaxed">&ldquo;{t.quote}&rdquo;</p>
+                <p className="mt-2 text-xs font-medium text-zinc-400">&mdash; {t.name}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Section 5 — Pricing */}
+        <section className="mb-12">
+          <div className="flex gap-3">
+            {/* Monthly */}
+            <button onClick={() => onPlanChange("monthly")}
+              className={`flex-1 rounded-xl border-2 p-4 text-left transition-all duration-200 ${selectedPlan === "monthly" ? "border-[#7C5CFC] bg-[#7C5CFC]/5" : "border-zinc-200 bg-white"}`}
+              style={selectedPlan === "monthly" ? { boxShadow: "0 0 16px rgba(124,92,252,0.15)" } : {}}>
+              <p className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-1">Monthly</p>
+              <p className="text-2xl font-bold text-zinc-900">{formatDollars(MONTHLY_PRICE_CENTS)}<span className="text-sm font-normal text-zinc-400">/mo</span></p>
+            </button>
+            {/* Annual */}
+            <button onClick={() => onPlanChange("yearly")}
+              className={`flex-1 rounded-xl border-2 p-4 text-left transition-all duration-200 relative ${selectedPlan === "yearly" ? "border-[#7C5CFC] bg-[#7C5CFC]/5" : "border-zinc-200 bg-white"}`}
+              style={selectedPlan === "yearly" ? { boxShadow: "0 0 16px rgba(124,92,252,0.15)" } : {}}>
+              <span className="absolute -top-2.5 right-3 rounded-full bg-[#7C5CFC] px-2.5 py-0.5 text-[10px] font-bold text-white uppercase funnel-bounce">
+                Save {PRICING.annual.savingsVsMonthly}
+              </span>
+              <p className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-1">Annual</p>
+              <p className="text-2xl font-bold text-zinc-900">{formatDollars(annualMonthly)}<span className="text-sm font-normal text-zinc-400">/mo</span></p>
+              <p className="text-xs text-zinc-400 mt-0.5">{formatDollars(ANNUAL_PRICE_CENTS)} billed yearly</p>
+            </button>
+          </div>
+          <p className="mt-4 text-center text-xs text-zinc-400 leading-relaxed">
+            All plans include a 14-day free trial. Cancel anytime. You won&rsquo;t be charged today.
+          </p>
+        </section>
+
+        {/* Section 6 — FAQ */}
+        <section className="mb-16">
+          <h3 className="text-lg font-bold mb-4">Questions?</h3>
+          <div className="space-y-2">
+            {FAQ_ITEMS.map((faq, i) => (
+              <div key={i} className="rounded-xl border border-zinc-200 overflow-hidden">
+                <button onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                  className="w-full flex items-center justify-between px-4 py-3.5 text-sm font-medium text-zinc-900 text-left">
+                  {faq.q}
+                  <svg className={`h-4 w-4 shrink-0 text-zinc-400 transition-transform duration-200 ${openFaq === i ? "rotate-180" : ""}`}
+                    fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                <div className={`overflow-hidden transition-all duration-300 ${openFaq === i ? "max-h-40 opacity-100" : "max-h-0 opacity-0"}`}>
+                  <p className="px-4 pb-4 text-sm text-zinc-500 leading-relaxed">{faq.a}</p>
                 </div>
               </div>
             ))}
           </div>
-        </section>
-
-        {/* Section 5 — What's included */}
-        <section className="mb-16">
-          <h3 className="text-lg font-bold mb-5">What&rsquo;s included:</h3>
-          <div className="space-y-2.5">
-            {INCLUDED_FEATURES.map((f) => (
-              <div key={f} className="flex items-center gap-2.5">
-                <CheckIcon /><span className="text-sm text-zinc-700">{f}</span>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Section 6 — Reassurance */}
-        <section className="mb-8 text-center">
-          <p className="text-xs text-zinc-400 leading-relaxed">
-            Your data is encrypted and private. Audio is deleted within 24 hours. We never sell your data.
-          </p>
         </section>
       </div>
 
       {/* Sticky CTA */}
       <div className="fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-zinc-200 px-6 py-4 z-40">
         <div className="max-w-lg mx-auto">
-          {/* Plan toggle */}
-          <div className="flex rounded-full border border-zinc-200 p-1 mb-3">
-            <button onClick={() => onPlanChange("monthly")}
-              className={`flex-1 rounded-full py-2 text-sm font-medium transition ${selectedPlan === "monthly" ? "bg-[#7C5CFC] text-white" : "text-zinc-600"}`}>
-              {formatDollars(MONTHLY_PRICE_CENTS)}/month
-            </button>
-            <button onClick={() => onPlanChange("yearly")}
-              className={`flex-1 rounded-full py-2 text-sm font-medium transition ${selectedPlan === "yearly" ? "bg-[#7C5CFC] text-white" : "text-zinc-600"}`}>
-              {formatDollars(ANNUAL_PRICE_CENTS)}/year <span className="text-xs opacity-75">save {PRICING.annual.savingsVsMonthly}</span>
-            </button>
-          </div>
-
           {error && <p className="mb-2 text-center text-xs text-red-500">{error}</p>}
-
           <button onClick={onCheckout} disabled={loading}
             className="w-full rounded-full py-3.5 text-[15px] font-semibold text-white transition hover:brightness-110 active:scale-[0.98] disabled:opacity-50 animate-[funnel-glow_2s_ease-in-out_infinite]"
             style={{ background: "linear-gradient(135deg, #7C5CFC 0%, #9F7AEA 50%, #6D28D9 100%)" }}>
-            {loading ? "Loading\u2026" : "Start My 14-Day Free Trial"}
+            {loading ? "Loading\u2026" : "Start My Free Trial"}
           </button>
-          <p className="mt-2 text-center text-[11px] text-zinc-400">Cancel anytime. You won&rsquo;t be charged for 14 days.</p>
+          <p className="mt-2 text-center text-[11px] text-zinc-400">Cancel anytime before {formatTrialEndDate()} and you won&rsquo;t be charged.</p>
         </div>
       </div>
     </div>
@@ -1195,7 +1292,7 @@ function DownloadScreen({ track }: { track: (event: string) => void }) {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-white text-zinc-900">
-      <div className="max-w-sm w-full text-center">
+      <div className="max-w-sm w-full text-center funnel-screen">
         <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-3">
           You&rsquo;re in. Your first real debrief is&nbsp;waiting.
         </h2>
@@ -1204,7 +1301,7 @@ function DownloadScreen({ track }: { track: (event: string) => void }) {
         </p>
 
         <a href={APP_STORE_URL} onClick={() => track("funnel_app_store_clicked")}
-          className="relative inline-block w-full rounded-full px-8 py-4 text-[15px] font-semibold text-white transition hover:brightness-110 active:scale-[0.98] overflow-hidden"
+          className="relative inline-block w-full rounded-full px-8 py-4 text-[15px] font-semibold text-white transition hover:brightness-110 active:scale-[0.98] overflow-hidden funnel-bounce"
           style={{ background: "linear-gradient(135deg, #7C5CFC 0%, #9F7AEA 50%, #6D28D9 100%)", boxShadow: "0 4px 24px rgba(124,92,252,0.4)" }}>
           <span className="absolute inset-0 rounded-full" style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)", backgroundSize: "200% 100%", animation: "funnel-shimmer 2s ease-in-out infinite" }} />
           <span className="relative">Download on the App Store</span>
