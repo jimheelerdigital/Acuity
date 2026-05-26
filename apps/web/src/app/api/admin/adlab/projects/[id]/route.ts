@@ -47,6 +47,12 @@ const UpdateProjectSchema = z.object({
   targetInterests: z.array(z.object({ id: z.string(), name: z.string() })).nullable().optional(),
   imageEnabled: z.boolean().optional(),
   videoEnabled: z.boolean().optional(),
+  videoAvatars: z.array(z.object({
+    id: z.string(),
+    voiceId: z.string(),
+    name: z.string(),
+    gender: z.string(),
+  })).optional(),
 });
 
 interface RouteParams {

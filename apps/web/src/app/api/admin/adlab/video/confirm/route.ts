@@ -65,6 +65,19 @@ async function createHeyGenVideo(params: {
   if (!res.ok) {
     const text = await res.text();
     console.error("[adlab-heygen] Create failed:", res.status, text);
+
+    // Parse specific HeyGen error codes for actionable messages
+    if (res.status === 400 || res.status === 404) {
+      const lower = text.toLowerCase();
+      if (lower.includes("avatar") && (lower.includes("not found") || lower.includes("look"))) {
+        throw new Error(
+          `HeyGen avatar not found (look_id: ${params.avatarId}). ` +
+          `The avatar may have been deleted or the look ID is stale. ` +
+          `Update the Avatar Look ID in project settings, or browse available avatars at /api/admin/adlab/heygen/avatars.`
+        );
+      }
+    }
+
     throw new Error(`HeyGen API error ${res.status}: ${text}`);
   }
 

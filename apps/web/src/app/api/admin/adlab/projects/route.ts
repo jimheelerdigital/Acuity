@@ -46,6 +46,12 @@ const CreateProjectSchema = z.object({
   targetInterests: z.array(z.object({ id: z.string(), name: z.string() })).optional().nullable().default(null),
   imageEnabled: z.boolean().default(true),
   videoEnabled: z.boolean().default(false),
+  videoAvatars: z.array(z.object({
+    id: z.string(),
+    voiceId: z.string(),
+    name: z.string(),
+    gender: z.string(),
+  })).optional().default([]),
 });
 
 export async function GET() {

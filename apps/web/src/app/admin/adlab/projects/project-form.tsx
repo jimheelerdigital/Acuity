@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { X, Plus, Upload, Loader2, Search } from "lucide-react";
+import { X, Plus, Upload, Loader2, Search, Eye } from "lucide-react";
 
 interface TargetAudience {
   ageMin: number;
@@ -12,6 +12,13 @@ interface TargetAudience {
   painPoints: string[];
   desires: string[];
   identityMarkers: string[];
+}
+
+interface VideoAvatar {
+  id: string;
+  voiceId: string;
+  name: string;
+  gender: string;
 }
 
 interface ProjectFormData {
@@ -35,6 +42,7 @@ interface ProjectFormData {
   targetInterests: { id: string; name: string }[];
   imageEnabled: boolean;
   videoEnabled: boolean;
+  videoAvatars: VideoAvatar[];
 }
 
 interface ProjectFormProps {
@@ -72,6 +80,7 @@ const DEFAULT_DATA: ProjectFormData = {
   targetInterests: [],
   imageEnabled: true,
   videoEnabled: false,
+  videoAvatars: [],
 };
 
 function slugify(str: string): string {
@@ -108,6 +117,7 @@ export function ProjectForm({ initialData, projectId, mode }: ProjectFormProps) 
     conversionEvent: initialData?.conversionEvent ?? DEFAULT_DATA.conversionEvent,
     metaAdAccountId: initialData?.metaAdAccountId ?? DEFAULT_DATA.metaAdAccountId,
     metaPixelId: initialData?.metaPixelId ?? DEFAULT_DATA.metaPixelId,
+    videoAvatars: (initialData?.videoAvatars as VideoAvatar[] | undefined) ?? DEFAULT_DATA.videoAvatars,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -420,6 +430,37 @@ export function ProjectForm({ initialData, projectId, mode }: ProjectFormProps) 
           </div>
           <span className="text-sm text-[#A0A0B8]">Image creatives enabled (OpenAI gpt-image)</span>
         </label>
+      </Section>
+
+      {/* Video / HeyGen */}
+      <Section title="Video / HeyGen">
+        <label className="flex items-center gap-3 cursor-pointer">
+          <div
+            className={`relative h-5 w-9 rounded-full transition-colors ${
+              data.videoEnabled ? "bg-[#7C5CFC]" : "bg-white/20"
+            }`}
+            onClick={() => updateField("videoEnabled", !data.videoEnabled)}
+          >
+            <div
+              className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
+                data.videoEnabled ? "translate-x-4" : "translate-x-0.5"
+              }`}
+            />
+          </div>
+          <span className="text-sm text-[#A0A0B8]">Video creatives enabled (HeyGen)</span>
+        </label>
+        {data.videoEnabled && (
+          <div className="space-y-4 mt-2">
+            <p className="text-xs text-[#A0A0B8]">
+              Custom avatars override the default lineup. Leave empty to use HeyGen&apos;s public avatars.
+              To find valid Look IDs, use the &quot;Browse Available&quot; button below.
+            </p>
+            <AvatarList
+              avatars={data.videoAvatars}
+              onChange={(avatars) => updateField("videoAvatars", avatars)}
+            />
+          </div>
+        )}
       </Section>
 
       {/* Ad Config */}
@@ -742,6 +783,172 @@ function InterestSearch({
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// ─── Avatar list manager ────────────────────────────────────────────────
+
+interface HeyGenAvatarOption {
+  avatarId: string;
+  avatarName: string;
+  gender: string;
+  lookId: string;
+  lookName: string;
+  previewUrl: string | null;
+  isInstantAvatar: boolean;
+}
+
+function AvatarList({
+  avatars,
+  onChange,
+}: {
+  avatars: VideoAvatar[];
+  onChange: (avatars: VideoAvatar[]) => void;
+}) {
+  const [showBrowser, setShowBrowser] = useState(false);
+  const [browsing, setBrowsing] = useState(false);
+  const [available, setAvailable] = useState<HeyGenAvatarOption[]>([]);
+  const [browseError, setBrowseError] = useState<string | null>(null);
+
+  // Manual add fields
+  const [manualId, setManualId] = useState("");
+  const [manualVoice, setManualVoice] = useState("");
+  const [manualName, setManualName] = useState("");
+  const [manualGender, setManualGender] = useState("female");
+
+  async function browseAvatars() {
+    setBrowsing(true);
+    setBrowseError(null);
+    try {
+      const res = await fetch("/api/admin/adlab/heygen/avatars");
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setBrowseError(body.error || `Error ${res.status}`);
+        return;
+      }
+      const data = await res.json();
+      setAvailable(data.avatars || []);
+      setShowBrowser(true);
+    } catch {
+      setBrowseError("Failed to fetch avatars");
+    } finally {
+      setBrowsing(false);
+    }
+  }
+
+  function addFromBrowser(opt: HeyGenAvatarOption) {
+    if (avatars.some((a) => a.id === opt.lookId)) return;
+    onChange([...avatars, {
+      id: opt.lookId,
+      voiceId: "", // User needs to set voice separately or we could default
+      name: `${opt.avatarName} (${opt.lookName})`,
+      gender: opt.gender,
+    }]);
+  }
+
+  function addManual() {
+    if (!manualId.trim()) return;
+    if (avatars.some((a) => a.id === manualId.trim())) return;
+    onChange([...avatars, {
+      id: manualId.trim(),
+      voiceId: manualVoice.trim(),
+      name: manualName.trim() || manualId.trim(),
+      gender: manualGender,
+    }]);
+    setManualId("");
+    setManualVoice("");
+    setManualName("");
+  }
+
+  function removeAvatar(index: number) {
+    onChange(avatars.filter((_, i) => i !== index));
+  }
+
+  return (
+    <div className="space-y-3">
+      {/* Current avatars */}
+      {avatars.length > 0 && (
+        <div className="space-y-1.5">
+          {avatars.map((a, i) => (
+            <div key={i} className="flex items-center gap-2 rounded-lg bg-[#1E1E2E] px-3 py-2 border border-white/10">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-white truncate">{a.name}</p>
+                <p className="text-[10px] text-[#A0A0B8] font-mono truncate">
+                  ID: {a.id}{a.voiceId ? ` | Voice: ${a.voiceId}` : ""} | {a.gender}
+                </p>
+              </div>
+              <button type="button" onClick={() => removeAvatar(i)}
+                className="shrink-0 rounded-lg border border-white/10 p-1.5 text-[#A0A0B8] hover:text-red-400 hover:border-red-400/30 transition-colors">
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Manual add */}
+      <div className="grid gap-2 sm:grid-cols-4">
+        <input type="text" value={manualId} onChange={(e) => setManualId(e.target.value)}
+          className={inputClass} placeholder="Avatar/Look ID" />
+        <input type="text" value={manualVoice} onChange={(e) => setManualVoice(e.target.value)}
+          className={inputClass} placeholder="Voice ID (optional)" />
+        <input type="text" value={manualName} onChange={(e) => setManualName(e.target.value)}
+          className={inputClass} placeholder="Display name" />
+        <div className="flex gap-2">
+          <select value={manualGender} onChange={(e) => setManualGender(e.target.value)}
+            className={`${inputClass} w-24`}>
+            <option value="female">F</option>
+            <option value="male">M</option>
+          </select>
+          <button type="button" onClick={addManual} disabled={!manualId.trim()}
+            className="shrink-0 rounded-lg border border-white/10 px-3 py-2 text-xs text-[#A0A0B8] hover:text-white hover:border-white/20 transition-colors disabled:opacity-40">
+            Add
+          </button>
+        </div>
+      </div>
+
+      {/* Browse from HeyGen */}
+      <div>
+        <button type="button" onClick={browseAvatars} disabled={browsing}
+          className="inline-flex items-center gap-1.5 text-xs text-[#7C5CFC] hover:text-[#9B7FFF] transition-colors disabled:opacity-50">
+          {browsing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Eye className="h-3 w-3" />}
+          Browse Available Avatars from HeyGen
+        </button>
+        {browseError && <p className="mt-1 text-xs text-red-400">{browseError}</p>}
+      </div>
+
+      {/* Browser panel */}
+      {showBrowser && available.length > 0 && (
+        <div className="rounded-lg border border-white/10 bg-[#1E1E2E] max-h-64 overflow-y-auto">
+          <div className="sticky top-0 flex items-center justify-between px-3 py-2 bg-[#1E1E2E] border-b border-white/10">
+            <span className="text-xs font-medium text-[#A0A0B8]">{available.length} avatars available</span>
+            <button type="button" onClick={() => setShowBrowser(false)} className="text-[#A0A0B8] hover:text-white">
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          {available.map((opt) => {
+            const alreadyAdded = avatars.some((a) => a.id === opt.lookId);
+            return (
+              <button key={opt.lookId} type="button" disabled={alreadyAdded}
+                onClick={() => addFromBrowser(opt)}
+                className={`w-full text-left px-3 py-2 border-b border-white/5 last:border-0 transition-colors ${
+                  alreadyAdded ? "text-[#A0A0B8]/40 cursor-not-allowed" : "text-white hover:bg-white/5"
+                }`}>
+                <div className="flex items-center gap-2">
+                  {opt.isInstantAvatar && (
+                    <span className="shrink-0 rounded bg-amber-500/20 px-1.5 py-0.5 text-[9px] font-medium text-amber-400">INSTANT</span>
+                  )}
+                  <span className="text-sm truncate">{opt.avatarName}</span>
+                  <span className="text-[10px] text-[#A0A0B8]">({opt.lookName})</span>
+                  <span className="text-[10px] text-[#A0A0B8]">{opt.gender}</span>
+                </div>
+                <p className="text-[10px] text-[#A0A0B8] font-mono truncate mt-0.5">ID: {opt.lookId}</p>
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
