@@ -29,6 +29,7 @@ import { ThemeProvider, useTheme } from "@/contexts/theme-context";
 import { LockScreenOverlay } from "@/components/lock-screen-overlay";
 import { UniversalLinkHandler } from "@/components/universal-link-handler";
 import { UpdatePromptOverlay } from "@/components/UpdatePromptOverlay";
+import { isNewOnboardingEnabled } from "@/lib/feature-flags";
 import { initMetaSdk, setMetaUserId } from "@/lib/meta-sdk";
 import { reapplyRemindersIfNeeded } from "@/lib/notifications-boot";
 import { refreshPushTokenOnLaunch } from "@/lib/push-token";
@@ -149,7 +150,17 @@ function AuthGate() {
     const inAuthCallback = segments[0] === "auth-callback";
 
     if (!user && !inAuth && !inAuthCallback && !inOnboardingNew) {
-      router.replace("/(auth)/sign-in");
+      // Slice 13 (2026-05-26) — when the onboarding-v2 feature flag
+      // is on, cold-launches with no session route into the new
+      // pain-first flow. Flag-off keeps the existing /(auth)/sign-in
+      // path so prod is unaffected until Jim flips it. The flag is
+      // read once per AuthGate render — the underlying env var is
+      // bundle-time-baked by Metro.
+      if (isNewOnboardingEnabled()) {
+        router.replace("/onboarding-new/pain" as never);
+      } else {
+        router.replace("/(auth)/sign-in");
+      }
       return;
     }
 
