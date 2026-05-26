@@ -76,6 +76,7 @@ export async function POST(req: NextRequest) {
     event?: string; sessionToken?: string; userId?: string; value?: string;
     utmSource?: string; utmMedium?: string; utmCampaign?: string;
     utmContent?: string; utmTerm?: string; fbclid?: string;
+    browser?: string;
   };
   try {
     body = await req.json();
@@ -118,6 +119,7 @@ export async function POST(req: NextRequest) {
         utmContent: body.utmContent ?? null,
         utmTerm: body.utmTerm ?? null,
         fbclid: body.fbclid ?? null,
+        browser: body.browser ?? null,
       },
     });
   } catch (err) {

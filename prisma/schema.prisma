@@ -2282,6 +2282,9 @@ model OnboardingEvent {
   utmContent   String?  // Maps to AdLab creative ID
   utmTerm      String?
   fbclid       String?  // Meta click ID
+  // Browser environment — user agent string logged on signup-related events
+  // so we can identify in-app browsers (Facebook WebView, Instagram, etc.)
+  browser      String?
   createdAt    DateTime @default(now())
 
   @@index([userId, createdAt])

@@ -24,6 +24,7 @@ export function trackOnboardingEvent(
     value?: string | null;
     values?: unknown;
     utm?: UtmParams;
+    browser?: string | null;
   }
 ): void {
   try {
@@ -33,6 +34,8 @@ export function trackOnboardingEvent(
     // Store diagnostic answer values — flatten arrays to comma-separated string
     if (opts?.value != null) body.value = String(opts.value);
     else if (opts?.values != null) body.value = Array.isArray(opts.values) ? opts.values.join(", ") : String(opts.values);
+    // Browser environment
+    if (opts?.browser) body.browser = opts.browser;
     // UTM attribution
     if (opts?.utm) {
       if (opts.utm.utmSource) body.utmSource = opts.utm.utmSource;

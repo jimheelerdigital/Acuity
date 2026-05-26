@@ -1052,6 +1052,16 @@ function JourneyScreen({ onContinue }: { onContinue: () => void }) {
 
 // ─── Screen 13: Signup ───────────────────────────────────────────────────────
 
+function detectBrowserEnv(): { isWebView: boolean; label: string; ua: string } {
+  if (typeof navigator === "undefined") return { isWebView: false, label: "ssr", ua: "" };
+  const ua = navigator.userAgent || "";
+  if (/FBAN|FBAV|FB_IAB|FBIOS/i.test(ua)) return { isWebView: true, label: "facebook", ua };
+  if (/Instagram/i.test(ua)) return { isWebView: true, label: "instagram", ua };
+  if (/LinkedInApp/i.test(ua)) return { isWebView: true, label: "linkedin", ua };
+  if (/Twitter|TwitterAndroid/i.test(ua)) return { isWebView: true, label: "twitter", ua };
+  return { isWebView: false, label: "browser", ua };
+}
+
 function SignupScreen({ track, onComplete }: { track: (event: string, props?: Record<string, unknown>) => void; onComplete: () => void }) {
   const { status } = useSession();
   const [loading, setLoading] = useState<"google" | "apple" | "email" | null>(null);
@@ -1059,6 +1069,22 @@ function SignupScreen({ track, onComplete }: { track: (event: string, props?: Re
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const trackedStart = useRef(false);
+
+  const browserEnv = typeof window !== "undefined" ? detectBrowserEnv() : { isWebView: false, label: "ssr", ua: "" };
+  const isWebView = browserEnv.isWebView;
+  const isIOS = typeof navigator !== "undefined" && /iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+  // Fire funnel_signup_started once on mount with browser info
+  useEffect(() => {
+    if (trackedStart.current) return;
+    trackedStart.current = true;
+    const env = detectBrowserEnv();
+    track("funnel_signup_started", { browser: env.label, isWebView: env.isWebView, ua: env.ua });
+    if (env.isWebView) {
+      track("funnel_inapp_browser_detected", { browser: env.label });
+    }
+  }, [track]);
 
   useEffect(() => {
     if (status === "authenticated") {
@@ -1082,14 +1108,56 @@ function SignupScreen({ track, onComplete }: { track: (event: string, props?: Re
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        setError(body.error === "AlreadyRegistered" ? "Account exists. Try signing in." : body.message || "Something went wrong.");
+        const msg = body.error === "AlreadyRegistered" ? "Account exists. Try signing in." : body.message || "Something went wrong.";
+        setError(msg);
+        track("funnel_signup_failed", { method: "email", reason: body.error || "unknown" });
         return;
       }
       track("funnel_signup_completed", { method: "email" });
       const result = await signIn("credentials", { email: email.trim(), password, redirect: false });
       if (!result?.ok) window.location.href = "/start?step=paywall";
-    } catch { setError("Something went wrong. Please try again."); } finally { setLoading(null); }
+    } catch {
+      setError("Something went wrong. Please try again.");
+      track("funnel_signup_failed", { method: "email", reason: "network_error" });
+    } finally { setLoading(null); }
   };
+
+  // Email signup form (shared between both layouts)
+  const emailForm = (
+    <form onSubmit={handleEmail} className="space-y-3">
+      <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name (optional)" autoComplete="name"
+        className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 outline-none transition focus:border-[#7C5CFC] focus:ring-2 focus:ring-[#7C5CFC]/20" />
+      <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" required
+        className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 outline-none transition focus:border-[#7C5CFC] focus:ring-2 focus:ring-[#7C5CFC]/20" />
+      <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password (8+ characters)" autoComplete="new-password" required minLength={8}
+        className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 outline-none transition focus:border-[#7C5CFC] focus:ring-2 focus:ring-[#7C5CFC]/20" />
+      <button type="submit" disabled={loading !== null || !email.trim() || password.length < 8}
+        className="w-full rounded-full bg-[#7C5CFC] py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98] disabled:opacity-40 disabled:animate-none animate-[funnel-glow_2s_ease-in-out_infinite]">
+        {loading === "email" ? "Creating account\u2026" : "Create Account"}
+      </button>
+    </form>
+  );
+
+  const oauthButtons = (
+    <>
+      <button onClick={handleGoogle} disabled={loading !== null || isWebView}
+        className="flex w-full items-center justify-center gap-3 rounded-full border border-zinc-200 bg-white px-6 py-3.5 text-[15px] font-semibold text-zinc-700 transition hover:bg-zinc-50 active:scale-[0.98] disabled:opacity-50 funnel-card-stagger"
+        style={{ animationDelay: "100ms" }}>
+        <GoogleLogo />{loading === "google" ? "Redirecting\u2026" : "Continue with Google"}
+      </button>
+      <button onClick={handleApple} disabled={loading !== null || isWebView}
+        className="mt-3 flex w-full items-center justify-center gap-3 rounded-full bg-black px-6 py-3.5 text-[15px] font-semibold text-white transition hover:bg-zinc-800 active:scale-[0.98] disabled:opacity-50 funnel-card-stagger"
+        style={{ animationDelay: "200ms" }}>
+        <AppleLogo />{loading === "apple" ? "Redirecting\u2026" : "Continue with Apple"}
+      </button>
+    </>
+  );
+
+  const divider = (
+    <div className="my-6 flex items-center gap-3">
+      <div className="h-px flex-1 bg-zinc-200" /><span className="text-[11px] font-medium uppercase tracking-wider text-zinc-400">or</span><div className="h-px flex-1 bg-zinc-200" />
+    </div>
+  );
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-white text-zinc-900">
@@ -1098,32 +1166,42 @@ function SignupScreen({ track, onComplete }: { track: (event: string, props?: Re
           <h2 className="text-2xl font-bold tracking-tight mb-2">Create your account.</h2>
           <p className="text-sm text-zinc-500">Your first real debrief is waiting.</p>
         </div>
-        <button onClick={handleGoogle} disabled={loading !== null}
-          className="flex w-full items-center justify-center gap-3 rounded-full border border-zinc-200 bg-white px-6 py-3.5 text-[15px] font-semibold text-zinc-700 transition hover:bg-zinc-50 active:scale-[0.98] disabled:opacity-50 funnel-card-stagger"
-          style={{ animationDelay: "100ms" }}>
-          <GoogleLogo />{loading === "google" ? "Redirecting\u2026" : "Continue with Google"}
-        </button>
-        <button onClick={handleApple} disabled={loading !== null}
-          className="mt-3 flex w-full items-center justify-center gap-3 rounded-full bg-black px-6 py-3.5 text-[15px] font-semibold text-white transition hover:bg-zinc-800 active:scale-[0.98] disabled:opacity-50 funnel-card-stagger"
-          style={{ animationDelay: "200ms" }}>
-          <AppleLogo />{loading === "apple" ? "Redirecting\u2026" : "Continue with Apple"}
-        </button>
-        <div className="my-6 flex items-center gap-3">
-          <div className="h-px flex-1 bg-zinc-200" /><span className="text-[11px] font-medium uppercase tracking-wider text-zinc-400">or</span><div className="h-px flex-1 bg-zinc-200" />
-        </div>
+
+        {/* WebView banner — instruct user to open in system browser */}
+        {isWebView && (
+          <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-center">
+            <p className="text-sm font-semibold text-amber-900 mb-1">
+              Open in {isIOS ? "Safari" : "Chrome"} for the best experience
+            </p>
+            <p className="text-xs text-amber-700 leading-relaxed">
+              Tap <span className="inline-flex items-center font-bold">&nbsp;&#8942;&nbsp;</span> or <span className="inline-flex items-center font-bold">&nbsp;&#8943;&nbsp;</span> at the {isIOS ? "bottom" : "top"} right, then tap <strong>&quot;Open in {isIOS ? "Safari" : "Chrome"}&quot;</strong>.
+              {"\n"}Google and Apple sign-in don&apos;t work inside this browser.
+            </p>
+          </div>
+        )}
+
         {error && <p className="mb-4 text-center text-sm text-red-500">{error}</p>}
-        <form onSubmit={handleEmail} className="space-y-3">
-          <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name (optional)" autoComplete="name"
-            className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 outline-none transition focus:border-[#7C5CFC] focus:ring-2 focus:ring-[#7C5CFC]/20" />
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" required
-            className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 outline-none transition focus:border-[#7C5CFC] focus:ring-2 focus:ring-[#7C5CFC]/20" />
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password (8+ characters)" autoComplete="new-password" required minLength={8}
-            className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 outline-none transition focus:border-[#7C5CFC] focus:ring-2 focus:ring-[#7C5CFC]/20" />
-          <button type="submit" disabled={loading !== null || !email.trim() || password.length < 8}
-            className="w-full rounded-full bg-[#7C5CFC] py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98] disabled:opacity-40 disabled:animate-none animate-[funnel-glow_2s_ease-in-out_infinite]">
-            {loading === "email" ? "Creating account\u2026" : "Create Account"}
-          </button>
-        </form>
+
+        {isWebView ? (
+          <>
+            {/* In WebView: email first (it works), OAuth below disabled */}
+            {emailForm}
+            {divider}
+            <div className="opacity-50 pointer-events-none">
+              {oauthButtons}
+              <p className="mt-2 text-center text-[11px] text-zinc-400">
+                Google &amp; Apple sign-in require {isIOS ? "Safari" : "Chrome"}
+              </p>
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Normal browser: OAuth first, email below */}
+            {oauthButtons}
+            {divider}
+            {emailForm}
+          </>
+        )}
       </div>
     </div>
   );
