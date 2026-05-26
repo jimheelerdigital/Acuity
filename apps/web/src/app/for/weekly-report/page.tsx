@@ -21,7 +21,7 @@ import {
 } from "@/components/landing-shared";
 
 const UTM = "weekly-report";
-const WAITLIST = `/auth/signup?utm_campaign=${UTM}`;
+const WAITLIST = `/start?utm_campaign=${UTM}`;
 
 export default function WeeklyReportPage() {
   return (

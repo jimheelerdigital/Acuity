@@ -22,7 +22,7 @@ const EMAIL_FROM = "hello@getacuity.io";
 const BASE_URL = "https://www.getacuity.io";
 
 function signupUrl(emailNum: 1 | 2): string {
-  return `${BASE_URL}/auth/signup?utm_source=email&utm_medium=reactivation&utm_campaign=waitlist&utm_content=email_${emailNum}`;
+  return `${BASE_URL}/start?utm_source=email&utm_medium=reactivation&utm_campaign=waitlist&utm_content=email_${emailNum}`;
 }
 
 function firstNameFrom(name: string | null): string {

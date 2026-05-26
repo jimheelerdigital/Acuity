@@ -190,12 +190,21 @@ const nextConfig = {
   async redirects() {
     return [
       {
-        // /waitlist retired 2026-05-22 (slice 7) — the app is live; the
-        // pre-launch waitlist surface has no remaining purpose. 301 to
-        // the homepage so bookmarked links from the waitlist era land on
-        // the live product instead of a 404.
+        // /waitlist retired 2026-05-22 (slice 7)
         source: "/waitlist",
-        destination: "/",
+        destination: "/start",
+        permanent: true,
+      },
+      {
+        // Old signup page → new onboarding funnel
+        source: "/auth/signup",
+        destination: "/start",
+        permanent: true,
+      },
+      {
+        // Old try flow → new onboarding funnel
+        source: "/try",
+        destination: "/start",
         permanent: true,
       },
     ];

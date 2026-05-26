@@ -1,29 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-
-function checkTryUsed(): boolean {
-  try {
-    return localStorage.getItem("acuity_try_used") === "1";
-  } catch {
-    return false;
-  }
-}
-
-// In-app browsers (Facebook, Instagram) don't support MediaRecorder.
-// Skip the try flow and send users straight to signup.
-function isInAppBrowser(): boolean {
-  if (typeof navigator === "undefined") return false;
-  const ua = navigator.userAgent || "";
-  return /FBAN|FBAV|Instagram|FB_IAB|FBIOS/i.test(ua);
-}
 
 /**
- * "Try it now — free" button that links to /try.
- *
- * After the first try, the button changes to "Sign up to continue"
- * and links to the signup page instead.
+ * Primary CTA button that links to /start (the onboarding funnel).
+ * Always shows "Start Free Trial" — consistent label sitewide.
  */
 export function TryItNowButton({
   variant = "primary",
@@ -32,13 +13,8 @@ export function TryItNowButton({
   variant?: "primary" | "secondary";
   className?: string;
 }) {
-  const [used, setUsed] = useState(false);
-  const [inApp, setInApp] = useState(false);
-
-  useEffect(() => { setUsed(checkTryUsed()); setInApp(isInAppBrowser()); }, []);
-
   const href = "/start";
-  const label = used ? "Sign up to continue" : "Try it now \u2014 free";
+  const label = "Start Free Trial";
 
   if (variant === "secondary") {
     return (
@@ -66,31 +42,22 @@ export function TryItNowButton({
 }
 
 /**
- * "Try It First" button with purple shining ring animation.
- * Light background, dark text — designed to sit next to the purple
- * "Start Free Trial" button on dark landing pages.
+ * Dark variant CTA with shining ring animation.
+ * Light background, dark text — designed for dark landing pages.
  */
 export function TryItNowButtonDark({
   className = "",
 }: {
   className?: string;
 }) {
-  const [used, setUsed] = useState(false);
-  const [inApp, setInApp] = useState(false);
-
-  useEffect(() => { setUsed(checkTryUsed()); setInApp(isInAppBrowser()); }, []);
-
-  const href = "/start";
-  const label = used ? "Sign up to continue" : "Try It First";
-
   return (
     <Link
-      href={href}
-      className={`group relative rounded-full p-[2px] transition active:scale-95 ${used ? "" : "hover:scale-[1.02]"} overflow-hidden inline-block ${className}`}
+      href="/start"
+      className={`group relative rounded-full p-[2px] transition active:scale-95 hover:scale-[1.02] overflow-hidden inline-block ${className}`}
     >
       <span className="absolute inset-[-100%] animate-cta-shine" style={{ background: 'conic-gradient(from 0deg, transparent 0%, transparent 60%, #ffffff 75%, #B8A5FF 85%, transparent 100%)' }} />
       <span className="relative flex items-center justify-center rounded-full bg-[#F0EDE8] px-7 py-3.5 text-sm font-semibold text-[#181614]">
-        {label}
+        Start Free Trial
       </span>
     </Link>
   );

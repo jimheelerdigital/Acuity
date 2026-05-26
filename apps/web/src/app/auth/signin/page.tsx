@@ -221,10 +221,10 @@ function SignInForm() {
           Forgot password?
         </Link>
         <Link
-          href="/auth/signup"
+          href="/start"
           className="font-semibold text-acuity-primary transition hover:text-acuity-primary-hi"
         >
-          Create account →
+          Start Free Trial →
         </Link>
       </div>
 

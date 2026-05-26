@@ -67,7 +67,7 @@ export default async function Layout({ children, params }: { children: React.Rea
             ))}
           </ul>
           <blockquote>{page.testimonial.quote} — {page.testimonial.name}</blockquote>
-          <a href="/auth/signup">Start Free Trial</a>
+          <a href="/start">Start Free Trial</a>
         </div>
         {children}
       </>
@@ -89,7 +89,7 @@ export default async function Layout({ children, params }: { children: React.Rea
               {lp.valueProps.map((v) => <li key={v}>{v}</li>)}
             </ul>
             {lp.testimonialQuote && <blockquote>{lp.testimonialQuote}</blockquote>}
-            <a href="/auth/signup">{lp.ctaText}</a>
+            <a href="/start">{lp.ctaText}</a>
           </div>
           {children}
         </>

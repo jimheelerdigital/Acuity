@@ -20,7 +20,7 @@ import {
 } from "@/components/landing-shared";
 
 const UTM = "decoded";
-const WAITLIST = `/auth/signup?utm_campaign=${UTM}`;
+const WAITLIST = `/start?utm_campaign=${UTM}`;
 
 export default function DecodedPage() {
   return (

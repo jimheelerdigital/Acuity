@@ -12,7 +12,7 @@
  *   // Send via Resend with subject "You're in — here's your access link"
  */
 
-const SIGNUP_URL = "https://www.getacuity.io/auth/signup";
+const SIGNUP_URL = "https://www.getacuity.io/start";
 
 export function buildWaitlistActivationEmail(
   name: string,

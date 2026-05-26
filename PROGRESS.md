@@ -41,6 +41,46 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-26] — Sitewide onboarding rollout — all CTAs to /start, old routes redirected
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** PENDING
+
+### In plain English (for Keenan)
+
+Every single CTA, signup link, and entry point across the entire site now routes to /start (the new 15-screen onboarding funnel). The old /auth/signup page, /try page, and /waitlist page all 301 redirect to /start. Every CTA button now says "Start Free Trial" instead of "Try It Now", "Get Started", "Sign Up", or "Join Waitlist". This includes all persona landing pages (/for/therapy, /for/founders, /for/sleep, /for/decoded, /for/weekly-report), the voice journaling guide, the signin page, email templates, and the ad landing page system.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/next.config.js`: Added 301 redirects: `/auth/signup` → `/start`, `/try` → `/start`, updated `/waitlist` → `/start`
+- `apps/web/src/app/for/[slug]/layout.tsx`: `/auth/signup` → `/start` (2 instances)
+- `apps/web/src/app/for/[slug]/page.tsx`: Dynamic CTA href `/auth/signup` → `/start`
+- `apps/web/src/app/for/sleep/page.tsx`: WAITLIST const → `/start`
+- `apps/web/src/app/for/therapy/page.tsx`: same
+- `apps/web/src/app/for/decoded/page.tsx`: same
+- `apps/web/src/app/for/weekly-report/page.tsx`: same
+- `apps/web/src/app/for/founders/page.tsx`: same
+- `apps/web/src/app/voice-journaling/page.tsx`: Both CTA hrefs → `/start`
+- `apps/web/src/app/auth/signin/page.tsx`: "Create account" link → `/start` with "Start Free Trial" text
+- `apps/web/src/components/try-it-now-button.tsx`: Simplified — removed localStorage check, in-app detection, conditional text. Always shows "Start Free Trial", always links to `/start`
+- `apps/web/src/app/start/page.tsx`: Title "Get Started" → "Start Free Trial"
+- `emails/waitlist-activation.tsx`: SIGNUP_URL → `getacuity.io/start`
+- `apps/web/src/inngest/functions/waitlist-reactivation.ts`: signupUrl → `/start`
+
+### Manual steps needed
+
+None — all changes are web-only, no schema changes
+
+### Notes
+
+- The old /auth/signup page still exists as a file but the 301 redirect in next.config.js takes precedence — visitors always land on /start. Did not delete the page file because it's in the AUTH-CRITICAL path and the signup success flow still references it.
+- The try-debrief-flow.tsx component is dead code but preserved for now — it has no route that renders it (the /try page now redirects). Can be safely deleted in a future cleanup.
+- /api/try-recording and /api/mobile/try-recording API routes preserved — mobile may still use them.
+- The `TryItNowButton` and `TryItNowButtonDark` export names are kept for backwards compatibility (other components import them) but the text and behavior are updated.
+
+---
+
 ## [2026-05-26] — New onboarding funnel dashboard + event pipeline fix + payment notifications
 
 **Requested by:** Keenan

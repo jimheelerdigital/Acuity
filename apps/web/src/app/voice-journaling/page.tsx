@@ -208,7 +208,7 @@ export default function VoiceJournalingPage() {
               Acuity turns a nightly voice brain dump into tasks, mood tracking, pattern detection, and weekly AI reports. 14-day free trial.
             </p>
             <Link
-              href="/auth/signup?utm_campaign=voice-journaling-guide"
+              href="/start?utm_campaign=voice-journaling-guide"
               className="inline-flex items-center gap-2 rounded-full bg-acuity-primary px-8 py-3.5 text-sm font-semibold text-white transition hover:brightness-110 active:scale-95"
             >
               Start Free Trial
@@ -460,7 +460,7 @@ export default function VoiceJournalingPage() {
               Acuity turns a nightly voice brain dump into tasks, mood tracking, pattern detection, and weekly AI reports. 14-day free trial.
             </p>
             <Link
-              href="/auth/signup?utm_campaign=voice-journaling-guide"
+              href="/start?utm_campaign=voice-journaling-guide"
               className="inline-flex items-center gap-2 rounded-full bg-acuity-primary px-8 py-3.5 text-sm font-semibold text-white transition hover:brightness-110 active:scale-95"
             >
               Start Free Trial

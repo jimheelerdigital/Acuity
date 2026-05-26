@@ -22,7 +22,7 @@ import {
 } from "@/components/landing-shared";
 
 const UTM = "founders";
-const WAITLIST = `/auth/signup?utm_campaign=${UTM}`;
+const WAITLIST = `/start?utm_campaign=${UTM}`;
 
 export default function FoundersPage() {
   return (

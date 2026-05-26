@@ -71,7 +71,7 @@ export default async function PersonaLandingPage({ params }: { params: { slug: s
   }
 
   if (dynamicPage) {
-    const ctaHref = `/auth/signup?ref=${params.slug}&utm_source=meta&utm_medium=paid&utm_campaign=${params.slug}`;
+    const ctaHref = `/start?ref=${params.slug}&utm_source=meta&utm_medium=paid&utm_campaign=${params.slug}`;
     return (
       <>
         <AttributionSetter slug={params.slug} />
