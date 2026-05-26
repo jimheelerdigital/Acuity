@@ -1,6 +1,9 @@
 import { escapeHtml } from "@/lib/escape-html";
+import { MONTHLY_PRICE_CENTS, formatDollars } from "@/lib/pricing";
 import { trialButton, trialCard, trialLayout } from "./layout";
 import type { TrialEmailTemplate, TrialVars } from "./types";
+
+const PRICE = formatDollars(MONTHLY_PRICE_CENTS);
 
 export const trialEndingDay13: TrialEmailTemplate = {
   subject: () => "Your Acuity trial ends tomorrow",
@@ -29,14 +32,14 @@ export const trialEndingDay13: TrialEmailTemplate = {
         <td style="padding-bottom:24px;">
           ${trialCard(`
             <p style="margin:0;font-size:15px;color:#D8D8E8;line-height:1.7;">
-              Acuity stays $4.99/month — locked in for you as a Founding Member. Cancel anytime from the app.
+              Acuity stays ${PRICE}/month — locked in for you as a Founding Member. Cancel anytime from the app.
             </p>
           `)}
         </td>
       </tr>
       <tr>
         <td style="padding-bottom:8px;">
-          ${trialButton(upgradeUrl, "Continue for $4.99/mo")}
+          ${trialButton(upgradeUrl, `Continue for ${PRICE}/mo`)}
         </td>
       </tr>
       <tr>

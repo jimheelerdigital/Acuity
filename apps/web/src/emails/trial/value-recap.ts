@@ -1,6 +1,9 @@
 import { escapeHtml } from "@/lib/escape-html";
+import { MONTHLY_PRICE_CENTS, formatDollars } from "@/lib/pricing";
 import { trialButton, trialLayout } from "./layout";
 import type { TrialEmailTemplate, TrialVars } from "./types";
+
+const PRICE = formatDollars(MONTHLY_PRICE_CENTS);
 
 function statRow(label: string, value: string): string {
   return `<tr>
@@ -48,7 +51,7 @@ export const valueRecap: TrialEmailTemplate = {
       <tr>
         <td style="padding-bottom:20px;">
           <p style="margin:0;font-size:16px;color:#D8D8E8;line-height:1.7;">
-            This is yours. All of it stays if you keep going. Starting ${trialEnd}, it's $4.99/month.
+            This is yours. All of it stays if you keep going. Starting ${trialEnd}, it's ${PRICE}/month.
           </p>
         </td>
       </tr>
