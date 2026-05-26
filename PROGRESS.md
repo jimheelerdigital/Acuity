@@ -41,6 +41,38 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-26] — Auto-captions on all HeyGen-generated AdLab videos
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** b0c4a95
+
+### In plain English (for Keenan)
+
+Every video generated through AdLab now has captions baked in by default. No toggle, no extra steps — when HeyGen finishes rendering, the system grabs the captioned version of the video (with bold word-by-word subtitles burned into the video itself). This is HeyGen's native caption feature, which renders large readable text in the bottom third of the frame.
+
+If HeyGen's captioning isn't available for a specific video (e.g. API limitation), the system falls back to the regular uncaptioned video so generation never blocks.
+
+Went with Option A (HeyGen native captions) because it ships immediately — just two parameter changes, no post-processing pipeline needed. HeyGen handles transcription + burn-in on their end.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/api/admin/adlab/video/confirm/route.ts`: added `caption: true` to the HeyGen v2 create video request body. Updated `pollVideoStatus` to check for `captioned_video_url` in the status response and prefer it over `video_url`. Logs which URL type was used.
+- `apps/web/src/app/api/admin/adlab/video/refetch/route.ts`: `fetchFreshVideoUrl` also prefers `captioned_video_url` when re-fetching existing videos.
+
+### Manual steps needed
+
+None — code change only, no schema migration.
+
+### Notes
+
+- HeyGen's `caption: true` parameter triggers their native caption rendering pipeline. The captioned video is returned at a separate URL (`captioned_video_url`) in the status response. It may take slightly longer to render than the uncaptioned version.
+- HeyGen's default caption style is bold word-by-word highlight, white text, positioned in the lower third. The v2 API doesn't expose style customization — for custom colors (e.g. Acuity purple highlights) we'd need to either move to v3 or add post-processing. Good enough to ship now.
+- If the v2 API ignores the `caption` parameter (v2 may not support it), `captioned_video_url` will be null and we fall back to the regular video. The next step would be testing in production — generate a video and check the logs for "Using captioned video URL" vs. "No captioned URL available."
+- Existing videos are unaffected — only newly generated videos get captions.
+
+---
+
 ## [2026-05-26] — Fix HeyGen video playback and download — persist to Supabase Storage
 
 **Requested by:** Keenan
