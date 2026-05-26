@@ -41,6 +41,36 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-26] — Fix HeyGen voice picker: avatars now save with correct voice_id
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 5fdba9f
+
+### In plain English (for Keenan)
+
+When browsing HeyGen avatars in project settings, the voice wasn't being saved — avatars were added with "Voice: not set." This happened because Instant Avatars (like yours) store their cloned voice separately in HeyGen's voice API, not on the avatar object itself.
+
+Now when you click "Browse HeyGen" and select an avatar, a second step appears: a voice picker showing all available voices. Cloned voices (like yours) are highlighted green at the top labeled "CLONED." If there's only one cloned voice in the account, it auto-selects — so you just click confirm.
+
+You can also paste a Voice ID directly into the text field if you know it. Manual entry now requires a Voice ID — you'll see a red validation error if you try to save without one.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/api/admin/adlab/heygen/avatars/route.ts`: now fetches `/v2/voices` alongside `/v2/avatars` in parallel. Returns `voices` array with `{ voiceId, voiceName, language, gender, isCloned }`. Voices sorted with cloned first.
+- `apps/web/src/app/admin/adlab/projects/project-form.tsx`: rewrote `AvatarSlot` component with two-step browser flow — Step 1: pick avatar from list, Step 2: pick voice from voice list. Added `pendingAvatar` + `selectedVoiceId` state. Auto-selects if only one cloned voice exists. Manual entry validates `voiceId` is non-empty before saving.
+
+### Manual steps needed
+
+None — this is a UI fix, no schema changes.
+
+### Notes
+
+- The `/v2/voices` endpoint returns all voices including HeyGen's stock voices and any cloned voices. Cloned voices have `type: "cloned"` in the API response.
+- If the voices API call fails, the avatar picker still works — users can paste a Voice ID manually in the text field.
+
+---
+
 ## [2026-05-26] — Dual-avatar video generation: every script renders with both presenters
 
 **Requested by:** Keenan
