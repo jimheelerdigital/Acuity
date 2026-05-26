@@ -6,17 +6,16 @@
  * (which starts paid immediately), this uses Stripe's native trial so
  * the card is collected but not charged until the trial ends.
  *
- * Founding members (first 100) get 30-day trial; standard users get 14.
+ * Trial length: 14 days for all users.
  */
 import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 
 import { getAuthOptions } from "@/lib/auth";
+import { PRICING } from "@/lib/pricing";
 import { stripe } from "@/lib/stripe";
 
 export const dynamic = "force-dynamic";
-
-const FOUNDING_MEMBER_CAP = 100;
 
 type Interval = "monthly" | "yearly";
 
@@ -32,12 +31,14 @@ export async function POST(req: NextRequest) {
     if (body?.interval === "yearly") interval = "yearly";
   } catch {}
 
+  // Use PRICING config which includes env-var fallbacks for local dev
   const priceId =
     interval === "yearly"
-      ? process.env.STRIPE_PRICE_YEARLY
-      : process.env.STRIPE_PRICE_MONTHLY;
+      ? PRICING.annual.stripeId
+      : PRICING.monthly.stripeId;
 
   if (!priceId) {
+    console.error("[onboarding/create-checkout] No price ID for interval:", interval);
     return NextResponse.json(
       { error: "Pricing misconfigured" },
       { status: 500 }
@@ -48,14 +49,20 @@ export async function POST(req: NextRequest) {
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { stripeCustomerId: true, email: true, isFoundingMember: true },
+    select: { stripeCustomerId: true, email: true },
   });
 
-  // Founding members get 30-day trial, standard users get 14
-  const trialDays = user?.isFoundingMember ? 30 : 14;
+  const trialDays = 14;
 
   try {
-    console.log("[onboarding/create-checkout] Creating session:", { userId: session.user.id, interval, priceId, trialDays, email: user?.email });
+    console.log("[onboarding/create-checkout] Creating session:", {
+      userId: session.user.id,
+      interval,
+      priceId,
+      trialDays,
+      email: user?.email,
+      hasCustomerId: !!user?.stripeCustomerId,
+    });
 
     const checkoutSession = await stripe.checkout.sessions.create({
       mode: "subscription",
@@ -73,8 +80,17 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ url: checkoutSession.url });
-  } catch (err) {
-    console.error("[onboarding/create-checkout] Stripe error:", err);
+  } catch (err: unknown) {
+    const stripeErr = err as { type?: string; code?: string; message?: string; statusCode?: number };
+    console.error("[onboarding/create-checkout] Stripe error:", {
+      type: stripeErr.type,
+      code: stripeErr.code,
+      message: stripeErr.message,
+      statusCode: stripeErr.statusCode,
+      userId: session.user.id,
+      interval,
+      priceId,
+    });
     const message = err instanceof Error ? err.message : "Stripe checkout failed";
     return NextResponse.json({ error: message }, { status: 500 });
   }

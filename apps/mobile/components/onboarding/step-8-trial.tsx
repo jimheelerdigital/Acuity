@@ -9,7 +9,7 @@ import { useOnboarding } from "./context";
 
 /**
  * Step 8 — Trial explanation + daily-commitment goal-setting. Sets
- * expectations on the trial (30 days, Day 30 audit, post-trial free
+ * expectations on the trial (14 days, Day 14 audit, post-trial free
  * tier) and captures a target cadence on the User row.
  *
  * The target cadence is goal-setting only — Acuity doesn't gate any
@@ -64,8 +64,8 @@ export function Step8Trial() {
         className="mt-3 text-base leading-relaxed"
         style={{ color: tokens.textSec }}
       >
-        30 days free. On Day 30 you get your Life Audit — a long-form
-        read of your first month. After that, your dashboard freezes
+        14 days free. On Day 14 you get your Life Audit — a long-form
+        read of your first two weeks. After that, your dashboard freezes
         where it is — entries, insights, and audits don&rsquo;t go
         anywhere. Continue on web to keep generating new content.
       </Text>
@@ -73,7 +73,7 @@ export function Step8Trial() {
       <View className="mt-6 gap-3">
         <TrialPoint
           icon="calendar-outline"
-          title="30 days free"
+          title="14 days free"
           body="Full access. No credit card yet."
           tokens={tokens}
         />

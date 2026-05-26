@@ -41,8 +41,8 @@ export function welcomeVerifyEmail(
   const name = escapeHtml(opts.firstName);
   const verifyUrl = escapeHtml(opts.verifyUrl);
   const fmLine = opts.foundingMemberNumber
-    ? `You're Founding Member #${opts.foundingMemberNumber}. 30 days free, no card. If you're not into it in 2 weeks, delete the app and I'll buy your next coffee.`
-    : `30 days free, no card required. If you're not into it in 2 weeks, delete the app and I'll buy your next coffee.`;
+    ? `You're Founding Member #${opts.foundingMemberNumber}. 14 days free, no card. If you're not into it in a week, delete the app and I'll buy your next coffee.`
+    : `14 days free, no card required. If you're not into it in a week, delete the app and I'll buy your next coffee.`;
 
   const para = (text: string) =>
     `<tr><td style="padding-bottom:20px;"><p style="margin:0;font-size:16px;color:#D8D8E8;line-height:1.7;">${text}</p></td></tr>`;

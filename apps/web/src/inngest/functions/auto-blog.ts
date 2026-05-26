@@ -1241,7 +1241,7 @@ PRODUCT CONTEXT:
 - Weekly report every Sunday: 400-word narrative of the user's week
 - Life Matrix: 6 life domains tracked over time
 - Monthly memoir PDF
-- Pricing: $4.99/month after 30-day free trial, no card required
+- Pricing: $4.99/month after 14-day free trial, no card required
 - First 100 users are Founding Members (${spotsLeft} spots left)
 
 VOICE RULES:
@@ -1265,7 +1265,7 @@ CTA POLICY:
 ${
     topic.searchIntent === "informational" ||
     topic.searchIntent === "problem-solving"
-      ? `INCLUDE a CTA around 2/3 of the way down. Phrase as natural next step. Example: "If you've read this far, Acuity is basically what this article describes — a voice entry that pulls out your tasks and tracks the goals you keep circling. First 100 members get 30 days free. ${spotsLeft} spots left." Never CTA in first 40% of post.`
+      ? `INCLUDE a CTA around 2/3 of the way down. Phrase as natural next step. Example: "If you've read this far, Acuity is basically what this article describes — a voice entry that pulls out your tasks and tracks the goals you keep circling. First 100 members get early access. ${spotsLeft} spots left." Never CTA in first 40% of post.`
       : `NO CTA — this topic is a loose tangent. End with 2-3 internal links to related posts.`
   }
 

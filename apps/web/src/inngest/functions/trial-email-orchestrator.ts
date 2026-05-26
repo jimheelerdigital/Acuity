@@ -20,7 +20,7 @@
  *
  * Emails that live on the TRIAL_ENDING_DAY13 trigger key off
  * User.trialEndsAt - 24h rather than hoursSinceSignup, because the
- * trial length varies (14 / 30 / 3 days depending on Founding Member
+ * trial length varies (14 / 3 days depending on referral bonus /
  * status + DeletedUser retention). Everything else keys off signup.
  *
  * 2026-04-29: Refactored per-user processing into batched step.run()

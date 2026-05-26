@@ -112,7 +112,7 @@ const jsonLd = {
           name: "What is the best voice journaling app?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "Acuity is a voice journaling app that combines AI transcription with automatic task extraction, mood tracking, mental pattern detection, and weekly AI reports. It turns a nightly voice brain dump into structured insights about your life, goals, and emotional patterns. It costs $4.99/month with a 30-day free trial.",
+            text: "Acuity is a voice journaling app that combines AI transcription with automatic task extraction, mood tracking, mental pattern detection, and weekly AI reports. It turns a nightly voice brain dump into structured insights about your life, goals, and emotional patterns. It costs $4.99/month with a 14-day free trial.",
           },
         },
       ],
@@ -205,7 +205,7 @@ export default function VoiceJournalingPage() {
               Try voice journaling tonight
             </h2>
             <p className="text-[#A0A0B8] mb-6 max-w-md mx-auto">
-              Acuity turns a nightly voice brain dump into tasks, mood tracking, pattern detection, and weekly AI reports. 30-day free trial.
+              Acuity turns a nightly voice brain dump into tasks, mood tracking, pattern detection, and weekly AI reports. 14-day free trial.
             </p>
             <Link
               href="/auth/signup?utm_campaign=voice-journaling-guide"
@@ -448,7 +448,7 @@ export default function VoiceJournalingPage() {
             What is the best voice journaling app?
           </h3>
           <p className="text-base text-[#A0A0B8] leading-[1.8] mb-5">
-            Acuity is a voice journaling app that combines AI transcription with automatic task extraction, mood tracking, mental pattern detection, and weekly AI reports. It turns a nightly voice brain dump into structured insights about your life, goals, and emotional patterns. It costs $4.99/month with a 30-day free trial.
+            Acuity is a voice journaling app that combines AI transcription with automatic task extraction, mood tracking, mental pattern detection, and weekly AI reports. It turns a nightly voice brain dump into structured insights about your life, goals, and emotional patterns. It costs $4.99/month with a 14-day free trial.
           </p>
 
           {/* ──── Bottom CTA ──── */}
@@ -457,7 +457,7 @@ export default function VoiceJournalingPage() {
               Start voice journaling tonight
             </h2>
             <p className="text-[#A0A0B8] mb-6 max-w-md mx-auto">
-              Acuity turns a nightly voice brain dump into tasks, mood tracking, pattern detection, and weekly AI reports. 30-day free trial.
+              Acuity turns a nightly voice brain dump into tasks, mood tracking, pattern detection, and weekly AI reports. 14-day free trial.
             </p>
             <Link
               href="/auth/signup?utm_campaign=voice-journaling-guide"

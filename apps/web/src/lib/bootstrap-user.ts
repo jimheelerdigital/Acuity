@@ -77,22 +77,21 @@ export async function bootstrapNewUser(params: {
     referredById = await resolveReferrerByCode(prisma, referralCodeFromSignup);
   }
 
-  // First 100 signups are Founding Members — 30-day trial instead of 14.
+  // First 100 signups are Founding Members — same 14-day trial, locked-in pricing.
   // Count existing founding members to determine eligibility and number.
   const FOUNDING_MEMBER_CAP = 100;
-  const FOUNDING_MEMBER_TRIAL_DAYS = 30;
+  const FOUNDING_MEMBER_TRIAL_DAYS = 14;
   const foundingCount = await prisma.user.count({
     where: { isFoundingMember: true },
   });
   const isFoundingMember = foundingCount < FOUNDING_MEMBER_CAP;
   const foundingMemberNumber = isFoundingMember ? foundingCount + 1 : null;
 
-  // Founding members get 30-day trial. Standard users get base trial.
-  // Referral bonus stacks on top of either.
+  // All users get 14-day trial. Referral bonus stacks on top.
   const effectiveBaseDays = isFoundingMember
     ? FOUNDING_MEMBER_TRIAL_DAYS
     : baseTrialDays;
-  const trialDays = effectiveBaseDays + (referredById ? 30 : 0);
+  const trialDays = effectiveBaseDays + (referredById ? 14 : 0);
   const trialEndsAt = new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000);
 
   // Issue a referral code up-front. Retry-on-collision a few times —

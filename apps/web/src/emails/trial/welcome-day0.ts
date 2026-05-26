@@ -14,8 +14,8 @@ export const welcomeDay0: TrialEmailTemplate = {
     const appUrl = escapeHtml(v.appUrl);
     const fmNumber = v.foundingMemberNumber;
     const psLine = fmNumber
-      ? `You're Founding Member #${fmNumber}. 30 days free, no card. If you're not into it in 2 weeks, delete the app and I'll buy your next coffee.`
-      : `30 days free, no card required. If you're not into it in 2 weeks, delete the app and I'll buy your next coffee.`;
+      ? `You're Founding Member #${fmNumber}. 14 days free, no card. If you're not into it in a week, delete the app and I'll buy your next coffee.`
+      : `14 days free, no card required. If you're not into it in a week, delete the app and I'll buy your next coffee.`;
 
     const content = `
       <tr>

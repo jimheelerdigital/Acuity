@@ -1531,7 +1531,7 @@ function CTAScreen({ userId }: { userId: string | null }) {
         {/* Urgency */}
         <div className={`text-center pb-16 sm:pb-24 transition-all duration-700 ${vis(6)}`}>
           <p className="text-sm text-zinc-400">
-            Your 30-day free trial has started. Keep the streak going.
+            Your 14-day free trial has started. Keep the streak going.
           </p>
         </div>
       </div>

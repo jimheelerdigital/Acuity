@@ -45,19 +45,19 @@ export function waitlistReactivation1Html(opts: {
       `What it does: you just open the app and talk, any time of day. Acuity catches the tasks you mentioned, the goals you keep circling, and by Sunday morning, writes you a 400-word narrative of your week that reads like someone was paying attention.`
     )}
     ${p(
-      `Because you signed up early, you get 30 days free instead of 14. No card required. If you don't love it, delete it and I'll buy your next coffee.`
+      `Because you signed up early, you get 14 days free. No card required. If you don't love it, delete it and I'll buy your next coffee.`
     )}
-    <tr><td style="padding-bottom:24px;">${trialButton(opts.signupUrl, "Claim Your 30-Day Trial")}</td></tr>
+    <tr><td style="padding-bottom:24px;">${trialButton(opts.signupUrl, "Claim Your 14-Day Trial")}</td></tr>
     ${sig()}
     ${p(
-      `<span style="font-size:14px;color:#666;">P.S. The first 100 members lock in 30 days free permanently. There are still spots left, but they're going fast.</span>`
+      `<span style="font-size:14px;color:#666;">P.S. Founding Members get early access and locked-in pricing. There are still spots left, but they're going fast.</span>`
     )}
   `;
 
   return trialLayout({
     content,
     unsubscribeUrl: opts.unsubscribeUrl,
-    preheader: "The wait is over — your 30-day free trial is ready.",
+    preheader: "The wait is over — your 14-day free trial is ready.",
   });
 }
 
@@ -79,12 +79,12 @@ export function waitlistReactivation2Html(opts: {
       `Quick follow-up. You signed up for the Acuity waitlist but haven't claimed your spot yet.`
     )}
     ${p(
-      `Here's what I want to be honest about: the Founding Member offer (30 days free, locked in forever) only goes to the first 100 people. We're closing in on that. Once it caps, new signups get the standard 14-day trial and that's it.`
+      `Here's what I want to be honest about: the Founding Member offer (locked-in pricing forever) only goes to the first 100 people. We're closing in on that. Once it caps, that's it.`
     )}
     ${p(
       `If you're not interested anymore, I get it — you can ignore this email and I won't send another. But if you signed up because something about it caught you, this is the moment.`
     )}
-    <tr><td style="padding-bottom:24px;">${trialButton(opts.signupUrl, "Start My 30-Day Trial")}</td></tr>
+    <tr><td style="padding-bottom:24px;">${trialButton(opts.signupUrl, "Start My 14-Day Trial")}</td></tr>
     ${sig()}
     ${p(
       `<span style="font-size:14px;color:#666;">P.S. If you reply and tell me what's holding you back, I read every one. Sometimes it helps me fix something. Sometimes it helps you decide.</span>`

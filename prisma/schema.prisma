@@ -208,9 +208,9 @@ model User {
   // runs; stale snapshots are fine — they only seed the "what unlocked
   // since last check" diff.
   progressionSnapshot           Json?
-  // First 100 signups are Founding Members — 30-day trial, badge, and
-  // sequential number 1-100. After 100 the fields stay false/null and
-  // new users get the standard 14-day trial.
+  // First 100 signups are Founding Members — locked-in pricing, badge,
+  // and sequential number 1-100. After 100 the fields stay false/null.
+  // All users get a 14-day trial regardless of founding status.
   isFoundingMember              Boolean              @default(false)
   foundingMemberNumber          Int?
   // Apple's stable per-user identifier (`sub` claim from the Apple ID

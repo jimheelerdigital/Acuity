@@ -326,7 +326,7 @@ function SignUpForm() {
                   Start your free trial
                 </h2>
                 <p className="mt-1 text-sm text-zinc-500">
-                  30 days free. No credit card.
+                  14 days free. No credit card.
                 </p>
               </div>
 
@@ -457,7 +457,7 @@ function SignUpForm() {
               description="Get your weekly report every Sunday morning"
             />
             <p className="pt-4 text-center text-xs text-zinc-500">
-              30 days free. Cancel anytime. No credit card required.
+              14 days free. Cancel anytime. No credit card required.
             </p>
             {/* Extra testimonial for scrollers */}
             <blockquote className="pt-4 border-t border-zinc-200">

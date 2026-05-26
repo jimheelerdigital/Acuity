@@ -18,6 +18,7 @@ import {
   PROCESSING_SLIDES,
   SLIDE_MS,
   MicIcon,
+  MoodDot,
   Spinner,
   bestMimeType,
   extFromMime,
@@ -27,6 +28,7 @@ import {
   AppleLogo,
   GoogleLogo,
 } from "@/components/debrief-shared";
+import { PRIORITY_COLOR } from "@acuity/shared";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -434,6 +436,7 @@ export function OnboardingFunnel() {
       {step === "extraction" && apiResult && (
         <ExtractionScreen
           extraction={apiResult.extraction}
+          answers={answers}
           onContinue={() => setStep("signup")}
         />
       )}
@@ -948,62 +951,260 @@ function ProcessingScreen({
   );
 }
 
+const MOOD_GLOW: Record<string, string> = {
+  GREAT: "0 0 24px 4px rgba(34,197,94,0.15)",
+  GOOD: "0 0 24px 4px rgba(74,222,128,0.12)",
+  NEUTRAL: "0 0 24px 4px rgba(148,163,184,0.10)",
+  LOW: "0 0 24px 4px rgba(245,158,11,0.12)",
+  ROUGH: "0 0 24px 4px rgba(239,68,68,0.15)",
+};
+
+function getPersonalizedInsight(answers: DiagnosticAnswers, extraction: ExtractionResult): string {
+  const { loop } = answers;
+  const hasGoals = extraction.goals.length > 0;
+  const hasTasks = extraction.tasks.length > 0;
+  const hasThemes = extraction.themes.length > 0;
+  const workThemes = extraction.themes.filter((t) =>
+    /work|career|job|office|meeting|deal|client|project|deadline/i.test(t)
+  );
+
+  if (loop === "Goals that never become real" && hasGoals) {
+    return `You told us goals never become real. We just found ${extraction.goals.length} goal${extraction.goals.length > 1 ? "s" : ""} in your debrief. Acuity will track them every day so this time, they stick.`;
+  }
+  if (loop === "Days that blur together" && extraction.mood) {
+    return "You said your days blur together. We just mapped your mood, energy, tasks, and themes from one 60-second debrief. Imagine what a week of this looks like.";
+  }
+  if (loop === "Work bleeds into life" && workThemes.length > 0) {
+    return `You said work bleeds into life. We just found ${workThemes.length} work-related theme${workThemes.length > 1 ? "s" : ""} in a single debrief. Your weekly report will show you exactly where the line disappears.`;
+  }
+  if (loop === "Same fights, same conversations" && hasThemes) {
+    return "You said the same conversations keep happening. We just pulled themes from a single debrief. Do this daily and the patterns become impossible to ignore.";
+  }
+  return "This is what one debrief gets you. Do this daily and patterns emerge that you\u2019d never see on your own.";
+}
+
+function CheckboxIcon() {
+  return (
+    <svg className="h-5 w-5 shrink-0 mt-0.5 text-zinc-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <rect x="3" y="3" width="18" height="18" rx="4" />
+    </svg>
+  );
+}
+
+function FlagIcon() {
+  return (
+    <svg className="h-5 w-5 shrink-0 mt-0.5 text-[#A78BFA]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2z" />
+    </svg>
+  );
+}
+
 function ExtractionScreen({
   extraction,
+  answers,
   onContinue,
 }: {
   extraction: ExtractionResult;
+  answers: DiagnosticAnswers;
   onContinue: () => void;
 }) {
-  const [visibleCount, setVisibleCount] = useState(0);
-  const items: { type: string; label: string; value: string }[] = [];
+  const [step, setStep] = useState(0);
+  const celebratedRef = useRef(false);
 
-  if (extraction.mood) items.push({ type: "mood", label: "Mood", value: MOOD_LABELS[extraction.mood] || extraction.mood });
-  extraction.tasks.forEach((t) => items.push({ type: "task", label: "Task", value: t.title }));
-  extraction.goals.forEach((g) => items.push({ type: "goal", label: "Goal", value: g.title }));
-  extraction.themes.forEach((t) => items.push({ type: "theme", label: "Theme", value: t }));
+  const hasTasks = extraction.tasks.length > 0;
+  const hasGoals = extraction.goals.length > 0;
+  const hasThemes = extraction.themes.length > 0;
+
+  // Calculate total steps for stagger
+  const taskSteps = hasTasks ? 1 + extraction.tasks.length : 0;
+  const goalSteps = hasGoals ? 1 + extraction.goals.length : 0;
+  const themeSteps = hasThemes ? 1 + extraction.themes.length : 0;
+  const totalSteps = 1 + taskSteps + goalSteps + themeSteps + 1 + 1; // mood + tasks + goals + themes + insight + button
 
   useEffect(() => {
     const timers: ReturnType<typeof setTimeout>[] = [];
-    items.forEach((_, i) => {
-      timers.push(setTimeout(() => setVisibleCount(i + 1), 400 + i * 200));
-    });
+    for (let i = 1; i <= totalSteps; i++) {
+      const delay = i === 1 ? 400 : 400 + (i - 1) * 150;
+      timers.push(setTimeout(() => setStep(i), delay));
+    }
     return () => timers.forEach(clearTimeout);
-  }, [items.length]);
+  }, [totalSteps]);
+
+  // Mini confetti when all sections loaded
+  useEffect(() => {
+    if (step >= totalSteps && !celebratedRef.current) {
+      celebratedRef.current = true;
+      import("canvas-confetti").then((mod) => {
+        mod.default({
+          particleCount: 40,
+          spread: 70,
+          origin: { x: 0.5, y: 0.3 },
+          colors: ["#7C5CFC", "#A78BFA", "#C4B5FD", "#F59E0B", "#22C55E"],
+          zIndex: 9999,
+          startVelocity: 20,
+          gravity: 1.2,
+        });
+      });
+    }
+  }, [step, totalSteps]);
+
+  // Compute which step each section starts at
+  const moodAt = 1;
+  const tasksHeaderAt = moodAt + 1;
+  const taskItemAt = (i: number) => tasksHeaderAt + 1 + i;
+  const goalsHeaderAt = tasksHeaderAt + taskSteps;
+  const goalItemAt = (i: number) => goalsHeaderAt + 1 + i;
+  const themesHeaderAt = goalsHeaderAt + goalSteps;
+  const themeItemAt = (i: number) => themesHeaderAt + 1 + i;
+  const insightAt = themesHeaderAt + themeSteps + (hasThemes ? 0 : 0) + 1;
+  const buttonAt = totalSteps;
+
+  const vis = (at: number) =>
+    step >= at ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3";
+
+  const scaleVis = (at: number) =>
+    step >= at ? "opacity-100 scale-100" : "opacity-0 scale-75";
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12 bg-white text-zinc-900">
-      <div className="max-w-md w-full">
-        <div className="space-y-3 mb-10">
-          {items.slice(0, visibleCount).map((item, i) => (
-            <div
-              key={i}
-              className="flex items-start gap-3 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 funnel-bounce"
-            >
-              <span className="shrink-0 rounded-md bg-[#7C5CFC]/10 px-2 py-0.5 text-[11px] font-bold uppercase text-[#7C5CFC]">
-                {item.label}
-              </span>
-              <span className="text-sm text-zinc-700">{item.value}</span>
-            </div>
-          ))}
+    <div className="min-h-screen flex flex-col items-center px-6 py-12 bg-white text-zinc-900">
+      <div className="w-full max-w-md">
+        {/* Headline */}
+        <div className="text-center mb-10 animate-fade-in">
+          <h2 className="text-3xl font-bold tracking-tight text-zinc-900">
+            That&rsquo;s what 60 seconds gets&nbsp;you.
+          </h2>
+          <p className="mt-3 text-base text-zinc-500 leading-relaxed">
+            Do this daily and every Sunday you&rsquo;ll get a report showing how
+            your life is actually going.
+          </p>
         </div>
 
-        {visibleCount >= items.length && (
-          <div className="text-center animate-fade-in">
-            <p className="text-lg font-bold text-zinc-900 mb-2">
-              That&rsquo;s what 60 seconds gets you.
+        {/* Mood Card */}
+        <div
+          className={`mb-5 rounded-2xl bg-white border border-zinc-200 p-5 transition-all duration-500 ${vis(moodAt)}`}
+          style={{ boxShadow: step >= moodAt ? (MOOD_GLOW[extraction.mood] ?? MOOD_GLOW.NEUTRAL) : "none" }}
+        >
+          <div className="flex items-center gap-2 mb-3">
+            <MoodDot mood={extraction.mood} />
+            <span className="text-sm font-semibold text-zinc-800">
+              {MOOD_LABELS[extraction.mood] ?? "Neutral"}
+            </span>
+            <span className="text-xs text-zinc-400">
+              &middot; Energy {extraction.energy}/10
+            </span>
+          </div>
+          {extraction.summary && (
+            <p className="text-sm text-zinc-600 leading-relaxed">
+              {extraction.summary}
             </p>
-            <p className="text-sm text-zinc-500 mb-8">
-              Do this daily and every Sunday you&rsquo;ll get a report showing how your life is actually going.
+          )}
+        </div>
+
+        {/* Tasks */}
+        {hasTasks && (
+          <div className={`mb-5 transition-all duration-500 ${vis(tasksHeaderAt)}`}>
+            <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#7C5CFC] mb-3">
+              Tasks
             </p>
-            <button
-              onClick={onContinue}
-              className="rounded-full bg-[#7C5CFC] px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]"
-            >
-              Continue
-            </button>
+            <div className="space-y-2">
+              {extraction.tasks.map((t, i) => (
+                <div
+                  key={i}
+                  className={`flex items-start gap-3 rounded-xl bg-white border border-zinc-200 px-4 py-3 transition-all duration-400 ${vis(taskItemAt(i))}`}
+                  style={{ borderLeft: "3px solid #7C5CFC" }}
+                >
+                  <CheckboxIcon />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-zinc-800">{t.title}</p>
+                    {t.description && (
+                      <p className="text-xs text-zinc-400 mt-0.5">
+                        {t.description}
+                      </p>
+                    )}
+                  </div>
+                  <span
+                    className="shrink-0 mt-0.5 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase"
+                    style={{
+                      color: PRIORITY_COLOR[t.priority] ?? PRIORITY_COLOR.MEDIUM,
+                      backgroundColor: `${PRIORITY_COLOR[t.priority] ?? PRIORITY_COLOR.MEDIUM}15`,
+                    }}
+                  >
+                    {t.priority}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
+
+        {/* Goals */}
+        {hasGoals && (
+          <div className={`mb-5 transition-all duration-500 ${vis(goalsHeaderAt)}`}>
+            <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#7C5CFC] mb-3">
+              Goals
+            </p>
+            <div className="space-y-2">
+              {extraction.goals.map((g, i) => (
+                <div
+                  key={i}
+                  className={`flex items-start gap-3 rounded-xl bg-white border border-zinc-200 px-4 py-3 transition-all duration-400 ${vis(goalItemAt(i))}`}
+                  style={{ borderLeft: "3px solid #A78BFA" }}
+                >
+                  <FlagIcon />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-zinc-800">{g.title}</p>
+                    {g.description && (
+                      <p className="text-xs text-zinc-400 mt-0.5">
+                        {g.description}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Themes */}
+        {hasThemes && (
+          <div className={`mb-5 transition-all duration-500 ${vis(themesHeaderAt)}`}>
+            <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#7C5CFC] mb-3">
+              What&rsquo;s on your mind
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {extraction.themes.map((t, i) => (
+                <span
+                  key={t}
+                  className={`rounded-full bg-[#7C5CFC]/8 border border-[#7C5CFC]/15 px-3.5 py-1.5 text-sm font-medium text-[#7C5CFC] transition-all duration-300 ${scaleVis(themeItemAt(i))}`}
+                >
+                  {t}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Personalized Insight */}
+        <div
+          className={`mb-10 rounded-2xl border border-[#7C5CFC]/20 bg-[#7C5CFC]/5 p-5 transition-all duration-500 ${vis(insightAt)}`}
+        >
+          <p className="text-sm font-medium text-zinc-800 leading-relaxed">
+            {getPersonalizedInsight(answers, extraction)}
+          </p>
+        </div>
+
+        {/* Continue button */}
+        <div className={`text-center transition-all duration-500 ${vis(buttonAt)}`}>
+          <button
+            onClick={onContinue}
+            className="inline-flex items-center gap-2 rounded-full px-8 py-4 text-base font-semibold text-white transition-all duration-300 hover:scale-105 hover:-translate-y-0.5 active:scale-95 animate-[funnel-glow_2s_ease-in-out_infinite]"
+            style={{
+              background: "linear-gradient(135deg, #7C5CFC 0%, #9F7AEA 50%, #7C3AED 100%)",
+            }}
+          >
+            Continue &rarr;
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -1182,7 +1383,7 @@ function PaywallScreen({
           You&rsquo;ve already started. Keep going.
         </h2>
         <p className="text-sm text-zinc-500 text-center mb-8">
-          All of this is free for 30 days.
+          All of this is free for 14 days.
         </p>
 
         {/* What they unlock */}
@@ -1229,7 +1430,7 @@ function PaywallScreen({
             boxShadow: "0 4px 16px rgba(124,92,252,0.3)",
           }}
         >
-          {loading ? "Loading…" : "Start My 30-Day Free Trial"}
+          {loading ? "Loading…" : "Start My 14-Day Free Trial"}
         </button>
 
         <p className="mt-4 text-center text-xs text-zinc-400">
@@ -1372,60 +1573,130 @@ function CommitmentScreen({
 }
 
 function MockExtractionScreen({ onContinue }: { onContinue: () => void }) {
-  const [visibleCount, setVisibleCount] = useState(0);
-  const items = [
-    { label: "Mood", value: "Good · Energy 7/10" },
-    { label: "Task", value: "Follow up on client proposal (HIGH)" },
-    { label: "Task", value: "Book dentist appointment (MEDIUM)" },
-    { label: "Task", value: "Review budget spreadsheet (LOW)" },
-    { label: "Goal", value: "Close 3 new deals this quarter — mentioned 4 of last 5 entries" },
-    { label: "Theme", value: "Work-Life Balance" },
-    { label: "Theme", value: "Fitness Goals" },
-    { label: "Theme", value: "Career Growth" },
-  ];
+  const [step, setStep] = useState(0);
+  // mood(1) + tasks header(2) + 3 tasks + goals header + 1 goal + themes header + 3 themes + button = 12
+  const totalSteps = 12;
 
   useEffect(() => {
     const timers: ReturnType<typeof setTimeout>[] = [];
-    items.forEach((_, i) => {
-      timers.push(setTimeout(() => setVisibleCount(i + 1), 400 + i * 200));
-    });
+    for (let i = 1; i <= totalSteps; i++) {
+      const delay = i === 1 ? 400 : 400 + (i - 1) * 150;
+      timers.push(setTimeout(() => setStep(i), delay));
+    }
     return () => timers.forEach(clearTimeout);
-  }, [items.length]);
+  }, []);
+
+  const vis = (at: number) =>
+    step >= at ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3";
+  const scaleVis = (at: number) =>
+    step >= at ? "opacity-100 scale-100" : "opacity-0 scale-75";
+
+  const mockTasks = [
+    { title: "Follow up on client proposal", description: "You're targeting 9 deals this month. Map out your pipeline to stay on track.", priority: "HIGH" },
+    { title: "Book dentist appointment", description: "", priority: "MEDIUM" },
+    { title: "Review budget spreadsheet", description: "End-of-month review before team sync on Friday.", priority: "LOW" },
+  ];
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12 bg-white text-zinc-900">
-      <div className="max-w-md w-full">
-        <p className="text-sm text-zinc-500 text-center mb-6">
-          Here's what Acuity pulls from a single 60-second debrief:
-        </p>
-
-        <div className="space-y-3 mb-10">
-          {items.slice(0, visibleCount).map((item, i) => (
-            <div
-              key={i}
-              className="flex items-start gap-3 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 funnel-bounce"
-            >
-              <span className="shrink-0 rounded-md bg-[#7C5CFC]/10 px-2 py-0.5 text-[11px] font-bold uppercase text-[#7C5CFC]">
-                {item.label}
-              </span>
-              <span className="text-sm text-zinc-700">{item.value}</span>
-            </div>
-          ))}
+    <div className="min-h-screen flex flex-col items-center px-6 py-12 bg-white text-zinc-900">
+      <div className="w-full max-w-md">
+        <div className="text-center mb-10 animate-fade-in">
+          <p className="text-sm text-zinc-500 mb-2">
+            Here&rsquo;s what Acuity pulls from a single 60-second debrief:
+          </p>
         </div>
 
-        {visibleCount >= items.length && (
+        {/* Mood Card */}
+        <div
+          className={`mb-5 rounded-2xl bg-white border border-zinc-200 p-5 transition-all duration-500 ${vis(1)}`}
+          style={{ boxShadow: step >= 1 ? MOOD_GLOW.GOOD : "none" }}
+        >
+          <div className="flex items-center gap-2 mb-3">
+            <MoodDot mood="GOOD" />
+            <span className="text-sm font-semibold text-zinc-800">Good</span>
+            <span className="text-xs text-zinc-400">&middot; Energy 7/10</span>
+          </div>
+          <p className="text-sm text-zinc-600 leading-relaxed">
+            A productive day with a gym session and two big meetings. Feeling stretched but making progress on the quarterly goal.
+          </p>
+        </div>
+
+        {/* Tasks */}
+        <div className={`mb-5 transition-all duration-500 ${vis(2)}`}>
+          <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#7C5CFC] mb-3">Tasks</p>
+          <div className="space-y-2">
+            {mockTasks.map((t, i) => (
+              <div
+                key={i}
+                className={`flex items-start gap-3 rounded-xl bg-white border border-zinc-200 px-4 py-3 transition-all duration-400 ${vis(3 + i)}`}
+                style={{ borderLeft: "3px solid #7C5CFC" }}
+              >
+                <CheckboxIcon />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-zinc-800">{t.title}</p>
+                  {t.description && <p className="text-xs text-zinc-400 mt-0.5">{t.description}</p>}
+                </div>
+                <span
+                  className="shrink-0 mt-0.5 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase"
+                  style={{
+                    color: PRIORITY_COLOR[t.priority] ?? PRIORITY_COLOR.MEDIUM,
+                    backgroundColor: `${PRIORITY_COLOR[t.priority] ?? PRIORITY_COLOR.MEDIUM}15`,
+                  }}
+                >
+                  {t.priority}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Goals */}
+        <div className={`mb-5 transition-all duration-500 ${vis(6)}`}>
+          <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#7C5CFC] mb-3">Goals</p>
+          <div
+            className={`flex items-start gap-3 rounded-xl bg-white border border-zinc-200 px-4 py-3 transition-all duration-400 ${vis(7)}`}
+            style={{ borderLeft: "3px solid #A78BFA" }}
+          >
+            <FlagIcon />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-zinc-800">Close 3 new deals this quarter</p>
+              <p className="text-xs text-zinc-400 mt-0.5">Mentioned 4 of last 5 entries. Acuity will track this daily.</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Themes */}
+        <div className={`mb-10 transition-all duration-500 ${vis(8)}`}>
+          <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#7C5CFC] mb-3">
+            What&rsquo;s on your mind
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {["Work-Life Balance", "Fitness Goals", "Career Growth"].map((t, i) => (
+              <span
+                key={t}
+                className={`rounded-full bg-[#7C5CFC]/8 border border-[#7C5CFC]/15 px-3.5 py-1.5 text-sm font-medium text-[#7C5CFC] transition-all duration-300 ${scaleVis(9 + i)}`}
+              >
+                {t}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* Continue button */}
+        {step >= totalSteps && (
           <div className="text-center animate-fade-in">
             <p className="text-lg font-bold text-zinc-900 mb-2">
-              That's what 60 seconds gets you.
+              That&rsquo;s what 60 seconds gets you.
             </p>
             <p className="text-sm text-zinc-500 mb-8">
               Your first real debrief happens in the app.
             </p>
             <button
               onClick={onContinue}
-              className="rounded-full bg-[#7C5CFC] px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]"
+              className="inline-flex items-center gap-2 rounded-full px-8 py-4 text-base font-semibold text-white transition-all duration-300 hover:scale-105 active:scale-95 animate-[funnel-glow_2s_ease-in-out_infinite]"
+              style={{ background: "linear-gradient(135deg, #7C5CFC 0%, #9F7AEA 50%, #7C3AED 100%)" }}
             >
-              Continue
+              Continue &rarr;
             </button>
           </div>
         )}
@@ -1467,7 +1738,7 @@ function DownloadScreen({ track }: { track: (event: string) => void }) {
         </div>
 
         <p className="mt-10 text-sm text-[#7C5CFC] font-medium">
-          Your 30-day free trial has started. Open the app to keep the streak going.
+          Your 14-day free trial has started. Open the app to keep the streak going.
         </p>
       </div>
     </div>

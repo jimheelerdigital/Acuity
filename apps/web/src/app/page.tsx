@@ -136,7 +136,7 @@ export default function HomePage() {
           <h2>How Acuity Works</h2>
           <p>Step 1: Record your day. Step 2: AI extracts tasks, goals, and mood. Step 3: Get your weekly report every Sunday.</p>
           <h2>Pricing</h2>
-          <p>$4.99/month after a 30-day free trial. No credit card required. Cancel anytime.</p>
+          <p>$4.99/month after a 14-day free trial. No credit card required. Cancel anytime.</p>
         </div>
       </div>
 

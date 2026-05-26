@@ -1082,7 +1082,7 @@ function TryExtractionScreen({
               4.9 <span className="text-amber-400">&#9733;&#9733;&#9733;&#9733;&#9733;</span> from 127+ users
             </p>
             <p className="text-xs text-zinc-400">
-              30-day free trial. No credit card.
+              14-day free trial. No credit card.
             </p>
           </div>
         </div>
@@ -1109,7 +1109,7 @@ function TryBlockedScreen({ errorMessage, trackTry }: { errorMessage: string | n
           You&rsquo;ve already tried a free debrief.
         </h2>
         <p className="text-base text-zinc-500 mb-8 leading-relaxed">
-          Sign up to keep going. Your first 30 days are free.
+          Sign up to keep going. Your first 14 days are free.
         </p>
 
         <div className="space-y-3 mb-4 max-w-sm mx-auto">
@@ -1154,7 +1154,7 @@ function TryBlockedScreen({ errorMessage, trackTry }: { errorMessage: string | n
         </a>
 
         <p className="mt-6 text-xs text-zinc-400">
-          30-day free trial. No credit card required.
+          14-day free trial. No credit card required.
         </p>
       </div>
     </div>

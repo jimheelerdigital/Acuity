@@ -966,7 +966,7 @@ function ReferralsSection() {
       </h2>
       <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
         Share Acuity with someone who might want it. They get an extra
-        30 days on their trial, and you get 30 days added to your
+        14 days on their trial, and you get 14 days added to your
         subscription when they convert to paid — up to{" "}
         {data?.annualCap ?? 12} rewarded conversions per year.
       </p>

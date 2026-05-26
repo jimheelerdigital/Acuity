@@ -28,7 +28,7 @@ export function SuccessPageClient() {
 
           {/* Urgency nudge */}
           <p className="mt-4 text-sm text-amber-400/80">
-            Your 30-day free trial has started — don&rsquo;t let it tick away in silence.
+            Your 14-day free trial has started — don&rsquo;t let it tick away in silence.
           </p>
 
           {/* ── App Store hero button — pulsing purple ── */}

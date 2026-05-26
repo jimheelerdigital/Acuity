@@ -664,7 +664,7 @@ export function PricingSection({
                   Pro
                 </p>
                 <span className="rounded-full bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 text-xs font-semibold text-emerald-400">
-                  30-day free trial
+                  14-day free trial
                 </span>
               </div>
               <p className="mt-4 flex items-baseline gap-1">
@@ -674,7 +674,7 @@ export function PricingSection({
                 <span className="text-[#A0A0B8]">/month</span>
               </p>
               <p className="mt-2 text-sm text-[#A0A0B8]">
-                30-day free trial &middot; No card. Quick setup.
+                14-day free trial &middot; No card. Quick setup.
               </p>
 
               <ul className="mt-8 space-y-3 text-sm text-[#A0A0B8]">
@@ -1053,7 +1053,7 @@ export function CTABanner({
 
           <div className="relative">
             <p className="text-sm font-medium text-violet-400 mb-4 uppercase tracking-wider">
-              Start your 30-day free trial today
+              Start your 14-day free trial today
             </p>
             <h2 className="text-3xl font-bold sm:text-5xl tracking-tight">
               {headline}
@@ -1773,7 +1773,7 @@ export function TrustStrip() {
     "Audio deleted within 24hrs",
     "No card. Quick setup.",
     "Cancel anytime",
-    "30-day free trial",
+    "14-day free trial",
   ];
   return (
     <section className="px-6 py-8">
@@ -1857,7 +1857,7 @@ export function StickyCTA({ utmCampaign }: { utmCampaign: string }) {
           Start Free Trial
         </a>
         <p className="mt-1.5 text-center text-xs text-[#A0A0B8]">
-          Free for 30 days &middot; No card required
+          Free for 14 days &middot; No card required
         </p>
       </div>
     </div>

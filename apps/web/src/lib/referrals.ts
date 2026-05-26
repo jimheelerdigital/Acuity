@@ -47,17 +47,17 @@ export const REFERRAL_ANNUAL_CAP = 12;
 
 /** Days of reward granted per qualifying conversion (referrer side).
  *  Symmetric with the referred-user bonus in bootstrap-user.ts. */
-export const REFERRAL_REWARD_DAYS = 30;
+export const REFERRAL_REWARD_DAYS = 14;
 
 /**
  * Called from the Stripe webhook when a user's trial converts to
  * paid. If they have a referrer, write a ReferralConversion row
- * and (subject to the 12/year cap) grant the referrer a 30-day
+ * and (subject to the 12/year cap) grant the referrer a 14-day
  * reward.
  *
  * Reward application — the tricky part since referrers can be in
  * different subscription states:
- *   - TRIAL referrer → extend trialEndsAt by 30 days in-place.
+ *   - TRIAL referrer → extend trialEndsAt by 14 days in-place.
  *   - PAID / PAST_DUE / FREE → accrue the days on a User column
  *     (`referralRewardDays`). A future renewal-time job will apply
  *     the credit; for beta the counter is the source of truth and

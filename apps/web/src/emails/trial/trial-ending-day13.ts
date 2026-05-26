@@ -24,7 +24,7 @@ export const trialEndingDay13: TrialEmailTemplate = {
       <tr>
         <td style="padding-bottom:20px;">
           <p style="margin:0;font-size:16px;color:#D8D8E8;line-height:1.7;">
-            Your 30-day trial wraps ${trialEnd}. To keep your data and keep recording, add a card.
+            Your trial wraps ${trialEnd}. To keep your data and keep recording, add a card.
           </p>
         </td>
       </tr>

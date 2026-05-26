@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 
 import { getAuthOptions } from "@/lib/auth";
+import { PRICING } from "@/lib/pricing";
 import { stripe } from "@/lib/stripe";
 
 export const dynamic = "force-dynamic";
@@ -11,11 +12,11 @@ type Interval = "monthly" | "yearly";
 function resolvePriceId(interval: Interval): string {
   const priceId =
     interval === "yearly"
-      ? process.env.STRIPE_PRICE_YEARLY
-      : process.env.STRIPE_PRICE_MONTHLY;
+      ? PRICING.annual.stripeId
+      : PRICING.monthly.stripeId;
   if (!priceId) {
     throw new Error(
-      `Missing Stripe price env var for interval=${interval} — expected STRIPE_PRICE_${interval === "yearly" ? "YEARLY" : "MONTHLY"}`
+      `Missing Stripe price for interval=${interval}`
     );
   }
   return priceId;
