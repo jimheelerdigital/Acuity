@@ -813,6 +813,15 @@ interface HeyGenAvatarOption {
   isInstantAvatar: boolean;
 }
 
+interface HeyGenVoiceOption {
+  voiceId: string;
+  voiceName: string;
+  language: string;
+  gender: string;
+  isCloned: boolean;
+  previewAudio: string | null;
+}
+
 function AvatarSlot({
   label,
   description,
@@ -827,12 +836,20 @@ function AvatarSlot({
   const [showBrowser, setShowBrowser] = useState(false);
   const [browsing, setBrowsing] = useState(false);
   const [available, setAvailable] = useState<HeyGenAvatarOption[]>([]);
+  const [voices, setVoices] = useState<HeyGenVoiceOption[]>([]);
   const [browseError, setBrowseError] = useState<string | null>(null);
+
+  // Two-step browser: pick avatar, then pick voice
+  const [pendingAvatar, setPendingAvatar] = useState<{ id: string; name: string; gender: string } | null>(null);
+  const [selectedVoiceId, setSelectedVoiceId] = useState("");
+
+  // Manual entry
   const [showManual, setShowManual] = useState(false);
   const [manualId, setManualId] = useState("");
   const [manualVoice, setManualVoice] = useState("");
   const [manualName, setManualName] = useState("");
   const [manualGender, setManualGender] = useState("male");
+  const [manualError, setManualError] = useState<string | null>(null);
 
   async function browseAvatars() {
     setBrowsing(true);
@@ -846,7 +863,10 @@ function AvatarSlot({
       }
       const data = await res.json();
       setAvailable(data.avatars || []);
+      setVoices(data.voices || []);
       setShowBrowser(true);
+      setPendingAvatar(null);
+      setSelectedVoiceId("");
     } catch {
       setBrowseError("Failed to fetch avatars");
     } finally {
@@ -854,18 +874,41 @@ function AvatarSlot({
     }
   }
 
-  function selectFromBrowser(opt: HeyGenAvatarOption) {
-    onChange({
+  function pickAvatar(opt: HeyGenAvatarOption) {
+    setPendingAvatar({
       id: opt.lookId,
-      voiceId: "",
       name: `${opt.avatarName} (${opt.lookName})`,
       gender: opt.gender,
     });
+    // Auto-select voice if there's only one cloned voice
+    const cloned = voices.filter((v) => v.isCloned);
+    if (cloned.length === 1) {
+      setSelectedVoiceId(cloned[0].voiceId);
+    } else {
+      setSelectedVoiceId("");
+    }
+  }
+
+  function confirmAvatarWithVoice() {
+    if (!pendingAvatar || !selectedVoiceId) return;
+    onChange({
+      id: pendingAvatar.id,
+      voiceId: selectedVoiceId,
+      name: pendingAvatar.name,
+      gender: pendingAvatar.gender,
+    });
     setShowBrowser(false);
+    setPendingAvatar(null);
+    setSelectedVoiceId("");
   }
 
   function saveManual() {
     if (!manualId.trim()) return;
+    if (!manualVoice.trim()) {
+      setManualError("Select a voice before saving.");
+      return;
+    }
+    setManualError(null);
     onChange({
       id: manualId.trim(),
       voiceId: manualVoice.trim(),
@@ -877,6 +920,9 @@ function AvatarSlot({
     setManualVoice("");
     setManualName("");
   }
+
+  const voiceLabel = (v: HeyGenVoiceOption) =>
+    `${v.voiceName}${v.isCloned ? " (cloned)" : ""} — ${v.gender}, ${v.language}`;
 
   return (
     <div className="rounded-lg border border-white/10 bg-[#0D0D17] p-4 space-y-3">
@@ -890,7 +936,7 @@ function AvatarSlot({
           <div className="flex-1 min-w-0">
             <p className="text-sm text-white truncate">{avatar.name}</p>
             <p className="text-[10px] text-[#A0A0B8] font-mono truncate">
-              ID: {avatar.id}{avatar.voiceId ? ` | Voice: ${avatar.voiceId}` : " | Voice: not set"} | {avatar.gender}
+              ID: {avatar.id} | Voice: {avatar.voiceId} | {avatar.gender}
             </p>
           </div>
           <button type="button" onClick={() => onChange(null)}
@@ -905,7 +951,7 @@ function AvatarSlot({
             {browsing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Eye className="h-3 w-3" />}
             Browse HeyGen
           </button>
-          <button type="button" onClick={() => setShowManual(!showManual)}
+          <button type="button" onClick={() => { setShowManual(!showManual); setManualError(null); }}
             className="inline-flex items-center gap-1.5 text-xs text-[#A0A0B8] hover:text-white transition">
             <Plus className="h-3 w-3" /> Enter manually
           </button>
@@ -915,39 +961,42 @@ function AvatarSlot({
 
       {/* Manual entry */}
       {showManual && !avatar && (
-        <div className="grid gap-2 sm:grid-cols-2">
-          <input type="text" value={manualId} onChange={(e) => setManualId(e.target.value)}
-            className={inputClass} placeholder="Avatar/Look ID *" />
-          <input type="text" value={manualVoice} onChange={(e) => setManualVoice(e.target.value)}
-            className={inputClass} placeholder="Voice ID" />
-          <input type="text" value={manualName} onChange={(e) => setManualName(e.target.value)}
-            className={inputClass} placeholder="Display name" />
-          <div className="flex gap-2">
-            <select value={manualGender} onChange={(e) => setManualGender(e.target.value)}
-              className={inputClass}>
-              <option value="male">Male</option>
-              <option value="female">Female</option>
-            </select>
-            <button type="button" onClick={saveManual} disabled={!manualId.trim()}
-              className="shrink-0 rounded-lg bg-[#7C5CFC] px-3 py-2 text-xs font-medium text-white hover:bg-[#6B4FE0] transition disabled:opacity-40">
-              Set
-            </button>
+        <div className="space-y-2">
+          <div className="grid gap-2 sm:grid-cols-2">
+            <input type="text" value={manualId} onChange={(e) => setManualId(e.target.value)}
+              className={inputClass} placeholder="Avatar/Look ID *" />
+            <input type="text" value={manualVoice} onChange={(e) => { setManualVoice(e.target.value); setManualError(null); }}
+              className={`${inputClass} ${manualError ? "border-red-500/50" : ""}`} placeholder="Voice ID *" />
+            <input type="text" value={manualName} onChange={(e) => setManualName(e.target.value)}
+              className={inputClass} placeholder="Display name" />
+            <div className="flex gap-2">
+              <select value={manualGender} onChange={(e) => setManualGender(e.target.value)}
+                className={inputClass}>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+              </select>
+              <button type="button" onClick={saveManual} disabled={!manualId.trim()}
+                className="shrink-0 rounded-lg bg-[#7C5CFC] px-3 py-2 text-xs font-medium text-white hover:bg-[#6B4FE0] transition disabled:opacity-40">
+                Set
+              </button>
+            </div>
           </div>
+          {manualError && <p className="text-xs text-red-400">{manualError}</p>}
         </div>
       )}
 
-      {/* Browser panel */}
-      {showBrowser && available.length > 0 && (
+      {/* Browser panel — step 1: pick avatar, step 2: pick voice */}
+      {showBrowser && !pendingAvatar && available.length > 0 && (
         <div className="rounded-lg border border-white/10 bg-[#1E1E2E] max-h-48 overflow-y-auto">
           <div className="sticky top-0 flex items-center justify-between px-3 py-2 bg-[#1E1E2E] border-b border-white/10">
-            <span className="text-xs font-medium text-[#A0A0B8]">{available.length} avatars</span>
+            <span className="text-xs font-medium text-[#A0A0B8]">Step 1: Select avatar ({available.length})</span>
             <button type="button" onClick={() => setShowBrowser(false)} className="text-[#A0A0B8] hover:text-white">
               <X className="h-3.5 w-3.5" />
             </button>
           </div>
           {available.map((opt) => (
             <button key={opt.lookId} type="button"
-              onClick={() => selectFromBrowser(opt)}
+              onClick={() => pickAvatar(opt)}
               className="w-full text-left px-3 py-2 border-b border-white/5 last:border-0 transition-colors text-white hover:bg-white/5">
               <div className="flex items-center gap-2">
                 {opt.isInstantAvatar && (
@@ -960,6 +1009,57 @@ function AvatarSlot({
               <p className="text-[10px] text-[#A0A0B8] font-mono truncate mt-0.5">ID: {opt.lookId}</p>
             </button>
           ))}
+        </div>
+      )}
+
+      {/* Step 2: pick voice for the selected avatar */}
+      {showBrowser && pendingAvatar && (
+        <div className="rounded-lg border border-[#7C5CFC]/30 bg-[#1E1E2E] p-3 space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-xs font-medium text-[#A0A0B8]">Step 2: Select voice for </span>
+              <span className="text-xs font-medium text-white">{pendingAvatar.name}</span>
+            </div>
+            <button type="button" onClick={() => setPendingAvatar(null)} className="text-[10px] text-[#A0A0B8] hover:text-white">
+              &larr; Back
+            </button>
+          </div>
+
+          {voices.length > 0 ? (
+            <div className="max-h-36 overflow-y-auto rounded-lg border border-white/10">
+              {voices.map((v) => (
+                <button key={v.voiceId} type="button"
+                  onClick={() => setSelectedVoiceId(v.voiceId)}
+                  className={`w-full text-left px-3 py-2 border-b border-white/5 last:border-0 transition-colors ${
+                    selectedVoiceId === v.voiceId
+                      ? "bg-[#7C5CFC]/15 text-white"
+                      : "text-white hover:bg-white/5"
+                  }`}>
+                  <div className="flex items-center gap-2">
+                    {v.isCloned && (
+                      <span className="shrink-0 rounded bg-emerald-500/20 px-1.5 py-0.5 text-[9px] font-medium text-emerald-400">CLONED</span>
+                    )}
+                    <span className="text-sm truncate">{v.voiceName}</span>
+                    <span className="text-[10px] text-[#A0A0B8]">{v.gender} · {v.language}</span>
+                  </div>
+                  <p className="text-[10px] text-[#A0A0B8] font-mono truncate mt-0.5">ID: {v.voiceId}</p>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-[#A0A0B8]">No voices found. Enter a Voice ID manually.</p>
+          )}
+
+          {/* Manual voice ID fallback */}
+          <div className="flex gap-2">
+            <input type="text" value={selectedVoiceId} onChange={(e) => setSelectedVoiceId(e.target.value)}
+              className={`${inputClass} flex-1 text-xs`} placeholder="Voice ID (select above or paste)" />
+          </div>
+
+          <button type="button" onClick={confirmAvatarWithVoice} disabled={!selectedVoiceId}
+            className="w-full rounded-lg bg-[#7C5CFC] px-3 py-2 text-xs font-medium text-white hover:bg-[#6B4FE0] transition disabled:opacity-40">
+            {selectedVoiceId ? "Confirm Avatar + Voice" : "Select a voice to continue"}
+          </button>
         </div>
       )}
     </div>

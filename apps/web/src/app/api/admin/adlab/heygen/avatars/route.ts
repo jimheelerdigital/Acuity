@@ -1,6 +1,6 @@
 /**
- * GET /api/admin/adlab/heygen/avatars — list all available HeyGen avatars and looks.
- * Proxies to HeyGen's /v2/avatars endpoint.
+ * GET /api/admin/adlab/heygen/avatars — list all available HeyGen avatars, looks, AND voices.
+ * Fetches both /v2/avatars and /v2/voices in parallel and returns a combined response.
  */
 
 import { NextResponse } from "next/server";
@@ -21,23 +21,56 @@ export async function GET() {
     );
   }
 
-  try {
-    const res = await fetch("https://api.heygen.com/v2/avatars", {
-      headers: { "X-Api-Key": key },
-    });
+  const headers = { "X-Api-Key": key };
 
-    if (!res.ok) {
-      const text = await res.text();
+  try {
+    // Fetch avatars and voices in parallel
+    const [avatarsRes, voicesRes] = await Promise.all([
+      fetch("https://api.heygen.com/v2/avatars", { headers }),
+      fetch("https://api.heygen.com/v2/voices", { headers }),
+    ]);
+
+    if (!avatarsRes.ok) {
+      const text = await avatarsRes.text();
       return NextResponse.json(
-        { error: `HeyGen API error ${res.status}: ${text}` },
-        { status: res.status }
+        { error: `HeyGen avatars API error ${avatarsRes.status}: ${text}` },
+        { status: avatarsRes.status }
       );
     }
 
-    const data = await res.json();
-    const avatars = data?.data?.avatars ?? [];
+    const avatarsData = await avatarsRes.json();
+    const avatars = avatarsData?.data?.avatars ?? [];
 
-    // Flatten into a usable list: each avatar can have multiple looks
+    // Parse voices — handle both success and failure gracefully
+    let voices: {
+      voiceId: string;
+      voiceName: string;
+      language: string;
+      gender: string;
+      isCloned: boolean;
+      previewAudio: string | null;
+    }[] = [];
+
+    if (voicesRes.ok) {
+      const voicesData = await voicesRes.json();
+      const rawVoices = voicesData?.data?.voices ?? [];
+      voices = rawVoices.map((v: Record<string, unknown>) => ({
+        voiceId: (v.voice_id as string) || "",
+        voiceName: (v.display_name as string) || (v.name as string) || (v.voice_id as string) || "",
+        language: (v.language as string) || "en",
+        gender: (v.gender as string) || "unknown",
+        isCloned: v.type === "cloned" || v.is_cloned === true,
+        previewAudio: (v.preview_audio as string) || null,
+      }));
+    }
+
+    // Sort voices: cloned first, then by name
+    voices.sort((a, b) => {
+      if (a.isCloned !== b.isCloned) return a.isCloned ? -1 : 1;
+      return a.voiceName.localeCompare(b.voiceName);
+    });
+
+    // Flatten avatars into a usable list
     const flat: {
       avatarId: string;
       avatarName: string;
@@ -51,7 +84,6 @@ export async function GET() {
     for (const avatar of avatars) {
       const isInstant = avatar.avatar_type === "instant" || avatar.avatar_type === "photo";
       if (avatar.avatar_id && !avatar.looks?.length) {
-        // Avatar with no looks — the avatar_id IS the look_id
         flat.push({
           avatarId: avatar.avatar_id,
           avatarName: avatar.avatar_name || avatar.avatar_id,
@@ -77,13 +109,17 @@ export async function GET() {
       }
     }
 
-    // Sort: instant avatars first, then by name
     flat.sort((a, b) => {
       if (a.isInstantAvatar !== b.isInstantAvatar) return a.isInstantAvatar ? -1 : 1;
       return a.avatarName.localeCompare(b.avatarName);
     });
 
-    return NextResponse.json({ avatars: flat, total: flat.length });
+    return NextResponse.json({
+      avatars: flat,
+      voices,
+      totalAvatars: flat.length,
+      totalVoices: voices.length,
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });
