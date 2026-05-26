@@ -49,6 +49,28 @@ export type Q3Answer =
   | "push_through"
   | "all_of_above";
 
+// Diagnostic Q4 — "What's it costing you?". Multi-select, mirrors
+// the web funnel's DIAGNOSTIC4_OPTIONS (apps/web/src/components/
+// onboarding-funnel.tsx). Web does NOT include an "All of the above"
+// option here, intentionally — none of the cost framings reduce to
+// a single bucket. Mobile matches.
+export type Q4Answer =
+  | "dropping_balls_work"
+  | "relationships_suffering"
+  | "health_slipping"
+  | "dont_recognize_self";
+
+// Diagnostic Q5 — "What would change if you could finally see the
+// pattern?". Single-select, mirrors DIAGNOSTIC5_OPTIONS. The four
+// answers feed into the slice 6 personalized-promise expansion
+// (web's getPersonalizedPromise uses all of loop/duration/cost/
+// desire to pick the variant).
+export type Q5Answer =
+  | "stop_repeating"
+  | "follow_through"
+  | "control_life"
+  | "be_the_person";
+
 export interface OnboardingOption<K extends string> {
   key: K;
   label: string;
@@ -77,13 +99,31 @@ export const Q3_OPTIONS: OnboardingOption<Q3Answer>[] = [
   { key: "all_of_above", label: "All of the above" },
 ];
 
+export const Q4_OPTIONS: OnboardingOption<Q4Answer>[] = [
+  { key: "dropping_balls_work", label: "I'm dropping balls at work" },
+  { key: "relationships_suffering", label: "My relationships are suffering" },
+  { key: "health_slipping", label: "My health is slipping" },
+  { key: "dont_recognize_self", label: "I don't recognize myself anymore" },
+];
+
+export const Q5_OPTIONS: OnboardingOption<Q5Answer>[] = [
+  { key: "stop_repeating", label: "I'd stop repeating the same mistakes" },
+  { key: "follow_through", label: "I'd actually follow through on goals" },
+  { key: "control_life", label: "I'd feel in control of my life again" },
+  { key: "be_the_person", label: "I'd be the person I know I can be" },
+];
+
 interface OnboardingContextValue {
   q1: Q1Answer | null;
   q2: Q2Answer | null;
   q3: Q3Answer[];
+  q4: Q4Answer[];
+  q5: Q5Answer | null;
   setQ1: (answer: Q1Answer) => void;
   setQ2: (answer: Q2Answer) => void;
   toggleQ3: (answer: Q3Answer) => void;
+  toggleQ4: (answer: Q4Answer) => void;
+  setQ5: (answer: Q5Answer) => void;
   reset: () => void;
 }
 
@@ -93,9 +133,13 @@ const OnboardingContext = createContext<OnboardingContextValue>({
   q1: null,
   q2: null,
   q3: [],
+  q4: [],
+  q5: null,
   setQ1: noop,
   setQ2: noop,
   toggleQ3: noop,
+  toggleQ4: noop,
+  setQ5: noop,
   reset: noop,
 });
 
@@ -103,6 +147,8 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
   const [q1, setQ1State] = useState<Q1Answer | null>(null);
   const [q2, setQ2State] = useState<Q2Answer | null>(null);
   const [q3, setQ3State] = useState<Q3Answer[]>([]);
+  const [q4, setQ4State] = useState<Q4Answer[]>([]);
+  const [q5, setQ5State] = useState<Q5Answer | null>(null);
 
   const setQ1 = useCallback((answer: Q1Answer) => {
     setQ1State(answer);
@@ -128,15 +174,41 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  // Q4 — plain multi-select (no "All of the above" mutex; web's
+  // DIAGNOSTIC4_OPTIONS doesn't include that option, mobile matches).
+  const toggleQ4 = useCallback((answer: Q4Answer) => {
+    setQ4State((prev) =>
+      prev.includes(answer) ? prev.filter((x) => x !== answer) : [...prev, answer]
+    );
+  }, []);
+
+  const setQ5 = useCallback((answer: Q5Answer) => {
+    setQ5State(answer);
+  }, []);
+
   const reset = useCallback(() => {
     setQ1State(null);
     setQ2State(null);
     setQ3State([]);
+    setQ4State([]);
+    setQ5State(null);
   }, []);
 
   const value = useMemo<OnboardingContextValue>(
-    () => ({ q1, q2, q3, setQ1, setQ2, toggleQ3, reset }),
-    [q1, q2, q3, setQ1, setQ2, toggleQ3, reset]
+    () => ({
+      q1,
+      q2,
+      q3,
+      q4,
+      q5,
+      setQ1,
+      setQ2,
+      toggleQ3,
+      toggleQ4,
+      setQ5,
+      reset,
+    }),
+    [q1, q2, q3, q4, q5, setQ1, setQ2, toggleQ3, toggleQ4, setQ5, reset]
   );
 
   return (

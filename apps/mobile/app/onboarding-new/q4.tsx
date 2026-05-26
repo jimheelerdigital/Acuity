@@ -5,36 +5,43 @@ import { StatusBar } from "expo-status-bar";
 
 import { useTheme } from "@/contexts/theme-context";
 import {
-  Q3_OPTIONS,
+  Q4_OPTIONS,
   useOnboardingState,
 } from "@/contexts/onboarding-context";
 import { makeAcuityTokens } from "@/lib/theme/tokens";
 
 import { DiagnosticCard } from "./_components/diagnostic-card";
+import { ScreenTestimonial } from "./_components/screen-testimonial";
 
 /**
- * Screen 4 — Diagnostic Q3, multi-select with explicit Continue.
- * Slice 3 v1.2. The provider's toggleQ3 owns the "All of the above"
- * mutual-exclusivity logic so screens stay dumb.
+ * Screen 5 — Diagnostic Q4 ("What's it costing you?"), multi-select
+ * with explicit Continue. Mirrors web's DIAGNOSTIC4_OPTIONS exactly
+ * (apps/web/src/components/onboarding-funnel.tsx).
  *
- * Continue is disabled until at least one option is selected. On
- * tap → pushes /onboarding-new/bridge (slice 4 — placeholder
- * shipped here so the nav doesn't crash during the QA window).
+ * No "All of the above" semantics here — none of the cost framings
+ * collapse to a single bucket and the web funnel doesn't include
+ * that option either.
+ *
+ * David K. testimonial at the bottom matches the web pairing.
  */
 
-export default function Q3Screen() {
+const TESTIMONIAL = {
+  quote:
+    "My partner noticed the difference before I did. I'm actually present when I get home now.",
+  name: "David K.",
+};
+
+export default function Q4Screen() {
   const router = useRouter();
   const { palette } = useTheme();
-  const { q3, toggleQ3 } = useOnboardingState();
+  const { q4, toggleQ4 } = useOnboardingState();
   const tokens = makeAcuityTokens({ dark: false, accent: palette });
 
-  const canContinue = q3.length > 0;
+  const canContinue = q4.length > 0;
 
   const onContinue = () => {
     if (!canContinue) return;
-    // Updated flow 2026-05-25: Q3 → Q4 → Q5 → bridge. Mirrors web's
-    // 5-question diagnostic vector before the failed-solution pivot.
-    router.push("/onboarding-new/q4" as never);
+    router.push("/onboarding-new/q5" as never);
   };
 
   return (
@@ -60,7 +67,7 @@ export default function Q3Screen() {
               color: tokens.text,
             }}
           >
-            What have you tried to fix it?
+            What&apos;s it costing you?
           </Text>
           <Text
             style={{
@@ -76,15 +83,23 @@ export default function Q3Screen() {
           </Text>
 
           <View style={{ gap: 10 }}>
-            {Q3_OPTIONS.map((opt) => (
+            {Q4_OPTIONS.map((opt) => (
               <DiagnosticCard
                 key={opt.key}
                 label={opt.label}
-                selected={q3.includes(opt.key)}
-                onPress={() => toggleQ3(opt.key)}
+                selected={q4.includes(opt.key)}
+                onPress={() => toggleQ4(opt.key)}
                 tokens={tokens}
               />
             ))}
+          </View>
+
+          <View style={{ marginTop: 32 }}>
+            <ScreenTestimonial
+              quote={TESTIMONIAL.quote}
+              name={TESTIMONIAL.name}
+              tokens={tokens}
+            />
           </View>
         </ScrollView>
 
@@ -102,9 +117,7 @@ export default function Q3Screen() {
             accessibilityLabel="Continue"
             accessibilityState={{ disabled: !canContinue }}
             style={({ pressed }) => ({
-              backgroundColor: canContinue
-                ? tokens.text
-                : tokens.cardBgTint,
+              backgroundColor: canContinue ? tokens.text : tokens.cardBgTint,
               borderRadius: tokens.radius.pill,
               paddingVertical: 14,
               alignItems: "center",
