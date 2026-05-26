@@ -99,15 +99,15 @@ export async function GET(req: NextRequest) {
       switch (tab) {
         case "overview": {
           // Merged tab: Overview + Revenue + Funnel + Red Flags + Onboarding/Try funnels
-          const [overview, revenue, funnel, redFlags, onboardingFunnel, tryFunnel] = await Promise.all([
+          const [overview, revenue, funnel, redFlags, onboardingFunnel, webFunnel] = await Promise.all([
             getOverview(prisma, start, end, prevStart, prevEnd, monthStart),
             getRevenue(prisma, start, end, prevStart, prevEnd, monthStart),
             getFunnel(prisma, start, end),
             getRedFlags(prisma),
             getOnboardingFunnel(prisma, start, end),
-            getTryFunnel(prisma, start, end),
+            getWebOnboardingFunnel(prisma, start, end),
           ]);
-          return { ...overview, revenue, funnel, redFlags, onboardingFunnel, tryFunnel };
+          return { ...overview, revenue, funnel, redFlags, onboardingFunnel, webFunnel };
         }
         // Legacy tab keys still served for backwards compat
         case "growth":
@@ -1300,45 +1300,216 @@ async function getOnboardingFunnel(prisma: P, start: Date, end: Date) {
   }
 }
 
-// ── Try Flow Funnel ─────────────────────────────────────────────────────────
+// ── Web Onboarding Funnel (/start) ──────────────────────────────────────────
 
-const TRY_FUNNEL_STEPS = [
-  { event: "try_recording_screen_viewed", label: "Try started" },
-  { event: "try_recording_started", label: "Recording started" },
-  { event: "try_recording_completed", label: "Recording completed" },
-  { event: "try_extraction_viewed", label: "Extraction viewed" },
-  { event: "try_signup_started", label: "Signup started" },
-  { event: "try_signup_completed", label: "Signup completed" },
+const WEB_FUNNEL_STEPS = [
+  { event: "funnel_pain_hook_viewed", label: "Pain hook viewed" },
+  { event: "_diagnostics_all", label: "Diagnostics completed" }, // special: requires all 5
+  { event: "funnel_mirror_viewed", label: "Mirror viewed" },
+  { event: "funnel_commitment_completed", label: "Commitment completed" },
+  { event: "funnel_mock_extraction_viewed", label: "Extraction viewed" },
+  { event: "funnel_signup_completed", label: "Signup completed" },
+  { event: "funnel_paywall_viewed", label: "Paywall viewed" },
+  { event: "funnel_payment_completed", label: "Payment completed" },
+  { event: "funnel_app_store_clicked", label: "App download clicked" },
 ];
 
-async function getTryFunnel(prisma: P, start: Date, end: Date) {
+const DIAGNOSTIC_EVENTS = [
+  "funnel_diagnostic_loop",
+  "funnel_diagnostic_duration",
+  "funnel_diagnostic_attempts",
+  "funnel_diagnostic_cost",
+  "funnel_diagnostic_desire",
+];
+
+const DROP_OFF_FIXES: Record<string, string> = {
+  "Pain hook viewed": "Hook didn\u2019t land. A/B test alternative hooks.",
+  "Diagnostics completed": "Diagnostic fatigue. Consider reducing questions.",
+  "Mirror viewed": "Mirror didn\u2019t resonate. Review copy quality.",
+  "Commitment completed": "Won\u2019t commit. Make commitment optional or reduce hold time.",
+  "Extraction viewed": "Won\u2019t create account. Simplify to Google/Apple one-tap only.",
+  "Signup completed": "Post-signup friction. Check redirect timing.",
+  "Paywall viewed": "Won\u2019t pay. Test lower price or extended trial.",
+  "Payment completed": "Paid but didn\u2019t download. Improve download screen urgency.",
+};
+
+async function countDistinctSessions(prisma: P, event: string, start: Date, end: Date) {
+  const bySession = await prisma.onboardingEvent.groupBy({
+    by: ["sessionToken"],
+    where: { event, createdAt: { gte: start, lte: end }, sessionToken: { not: null } },
+  });
+  const byUser = await prisma.onboardingEvent.groupBy({
+    by: ["userId"],
+    where: { event, createdAt: { gte: start, lte: end }, userId: { not: null }, sessionToken: null },
+  });
+  return bySession.length + byUser.length;
+}
+
+async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date) {
   try {
-    const counts = await Promise.all(
-      TRY_FUNNEL_STEPS.map(async (s) => {
-        // Try events may have sessionToken or userId — count distinct sessions
-        const bySession = await prisma.onboardingEvent.groupBy({
-          by: ["sessionToken"],
-          where: {
-            event: s.event,
-            createdAt: { gte: start, lte: end },
-            sessionToken: { not: null },
-          },
-        });
-        const byUser = await prisma.onboardingEvent.groupBy({
-          by: ["userId"],
-          where: {
-            event: s.event,
-            createdAt: { gte: start, lte: end },
-            userId: { not: null },
-            sessionToken: null,
-          },
-        });
-        return { label: s.label, count: bySession.length + byUser.length };
+    // ── Funnel steps ────────────────────────────────────
+    const steps = await Promise.all(
+      WEB_FUNNEL_STEPS.map(async (s) => {
+        if (s.event === "_diagnostics_all") {
+          // Count sessions that completed ALL 5 diagnostic events
+          const sessionSets = await Promise.all(
+            DIAGNOSTIC_EVENTS.map(async (de) => {
+              const rows = await prisma.onboardingEvent.findMany({
+                where: { event: de, createdAt: { gte: start, lte: end }, sessionToken: { not: null } },
+                select: { sessionToken: true },
+              });
+              return new Set(rows.map((r) => r.sessionToken));
+            })
+          );
+          // Intersect all sets
+          let intersection = sessionSets[0] ?? new Set();
+          for (let i = 1; i < sessionSets.length; i++) {
+            intersection = new Set([...intersection].filter((t) => sessionSets[i].has(t)));
+          }
+          return { label: s.label, count: intersection.size };
+        }
+        return { label: s.label, count: await countDistinctSessions(prisma, s.event, start, end) };
       })
     );
 
-    return { steps: counts };
-  } catch {
-    return { steps: [] };
+    // ── Drop-off alerts ─────────────────────────────────
+    const alerts: { step: string; dropPct: number; severity: "red" | "yellow"; fix: string }[] = [];
+    for (let i = 1; i < steps.length; i++) {
+      const prev = steps[i - 1].count;
+      const curr = steps[i].count;
+      if (prev > 0) {
+        const dropPct = Math.round(((prev - curr) / prev) * 100);
+        if (dropPct > 50) alerts.push({ step: steps[i].label, dropPct, severity: "red", fix: DROP_OFF_FIXES[steps[i].label] ?? "" });
+        else if (dropPct > 30) alerts.push({ step: steps[i].label, dropPct, severity: "yellow", fix: DROP_OFF_FIXES[steps[i].label] ?? "" });
+      }
+    }
+
+    // ── Diagnostic breakdowns ───────────────────────────
+    const diagnosticBreakdowns: Record<string, { value: string; count: number }[]> = {};
+    for (const de of DIAGNOSTIC_EVENTS) {
+      const rows = await prisma.onboardingEvent.groupBy({
+        by: ["value"],
+        where: { event: de, createdAt: { gte: start, lte: end }, value: { not: null } },
+        _count: true,
+      });
+      const label = de.replace("funnel_diagnostic_", "");
+      diagnosticBreakdowns[label] = rows
+        .map((r) => ({ value: r.value ?? "", count: r._count }))
+        .sort((a, b) => b.count - a.count);
+    }
+
+    // ── Commitment stats ────────────────────────────────
+    const commitCompleted = await countDistinctSessions(prisma, "funnel_commitment_completed", start, end);
+    const commitAbandoned = await countDistinctSessions(prisma, "funnel_commitment_abandoned", start, end);
+    const commitmentStats = {
+      completed: commitCompleted,
+      abandoned: commitAbandoned,
+      successRate: commitCompleted + commitAbandoned > 0
+        ? Math.round((commitCompleted / (commitCompleted + commitAbandoned)) * 100)
+        : 0,
+    };
+
+    // ── Live sessions (last 50) ─────────────────────────
+    const recentEvents = await prisma.onboardingEvent.findMany({
+      where: {
+        event: { startsWith: "funnel_" },
+        createdAt: { gte: start, lte: end },
+        sessionToken: { not: null },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 5000, // cap for aggregation
+      select: { sessionToken: true, userId: true, event: true, value: true, createdAt: true },
+    });
+
+    // Group by session
+    const sessionMap = new Map<string, typeof recentEvents>();
+    for (const e of recentEvents) {
+      const key = e.sessionToken!;
+      if (!sessionMap.has(key)) sessionMap.set(key, []);
+      sessionMap.get(key)!.push(e);
+    }
+
+    // Build session rows
+    const STEP_PROGRESS: Record<string, number> = {
+      funnel_pain_hook_viewed: 1,
+      funnel_diagnostic_loop: 2, funnel_diagnostic_duration: 3,
+      funnel_diagnostic_attempts: 4, funnel_diagnostic_cost: 5, funnel_diagnostic_desire: 6,
+      funnel_mirror_viewed: 7, funnel_failed_solution_viewed: 8,
+      funnel_promise_viewed: 9, funnel_commitment_completed: 10,
+      funnel_mock_extraction_viewed: 11, funnel_journey_viewed: 12,
+      funnel_signup_completed: 13, funnel_paywall_viewed: 14,
+      funnel_payment_completed: 15, funnel_app_store_clicked: 16,
+    };
+    const STEP_LABELS: Record<number, string> = {
+      1: "Pain Hook", 2: "Diagnostics", 3: "Diagnostics", 4: "Diagnostics",
+      5: "Diagnostics", 6: "Diagnostics", 7: "Mirror", 8: "Bridge",
+      9: "Promise", 10: "Commitment", 11: "Extraction", 12: "Timeline",
+      13: "Signup", 14: "Paywall", 15: "Download", 16: "COMPLETED",
+    };
+
+    const sessions = [...sessionMap.entries()]
+      .map(([token, events]) => {
+        const sorted = events.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+        const first = sorted[0];
+        const last = sorted[sorted.length - 1];
+        const maxStep = Math.max(...events.map((e) => STEP_PROGRESS[e.event] ?? 0));
+        const minutesSinceLast = (Date.now() - new Date(last.createdAt).getTime()) / 60000;
+        const completed = events.some((e) => e.event === "funnel_app_store_clicked");
+        const paid = events.some((e) => e.event === "funnel_payment_completed");
+
+        let status: "completed" | "paid" | "active" | "stalled" | "dropped";
+        if (completed) status = "completed";
+        else if (paid) status = "paid";
+        else if (minutesSinceLast < 10) status = "active";
+        else if (minutesSinceLast < 60) status = "stalled";
+        else status = "dropped";
+
+        const diagnosticAnswers: Record<string, string> = {};
+        for (const e of events) {
+          if (e.event.startsWith("funnel_diagnostic_") && e.value) {
+            diagnosticAnswers[e.event.replace("funnel_diagnostic_", "")] = e.value;
+          }
+        }
+
+        return {
+          sessionId: token.slice(0, 8),
+          userId: events.find((e) => e.userId)?.userId ?? null,
+          started: first.createdAt,
+          lastEvent: last.createdAt,
+          currentStep: STEP_LABELS[maxStep] ?? "Unknown",
+          stepNumber: maxStep,
+          totalSteps: 16,
+          status,
+          timeInFunnel: Math.round((new Date(last.createdAt).getTime() - new Date(first.createdAt).getTime()) / 60000),
+          diagnosticAnswers,
+        };
+      })
+      .sort((a, b) => new Date(b.started).getTime() - new Date(a.started).getTime())
+      .slice(0, 50);
+
+    // Summary stats
+    const activeSessions = sessions.filter((s) => s.status === "active").length;
+    const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+    const completedToday = sessions.filter((s) => s.status === "completed" && new Date(s.started) >= todayStart).length;
+    const completedSessions = sessions.filter((s) => s.status === "completed" && s.timeInFunnel > 0);
+    const avgCompletionTime = completedSessions.length > 0
+      ? Math.round(completedSessions.reduce((sum, s) => sum + s.timeInFunnel, 0) / completedSessions.length)
+      : 0;
+    const droppedSessions = sessions.filter((s) => s.status === "dropped");
+    const dropStepCounts: Record<string, number> = {};
+    for (const s of droppedSessions) { dropStepCounts[s.currentStep] = (dropStepCounts[s.currentStep] ?? 0) + 1; }
+    const mostCommonDrop = Object.entries(dropStepCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "N/A";
+
+    return {
+      steps,
+      alerts,
+      diagnosticBreakdowns,
+      commitmentStats,
+      sessions,
+      sessionsSummary: { activeSessions, completedToday, avgCompletionTime, mostCommonDrop },
+    };
+  } catch (err) {
+    console.error("[metrics] webFunnel error:", err);
+    return { steps: [], alerts: [], diagnosticBreakdowns: {}, commitmentStats: { completed: 0, abandoned: 0, successRate: 0 }, sessions: [], sessionsSummary: { activeSessions: 0, completedToday: 0, avgCompletionTime: 0, mostCommonDrop: "N/A" } };
   }
 }

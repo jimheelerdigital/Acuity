@@ -2268,8 +2268,10 @@ model OnboardingEvent {
   // Try-flow session token — links anonymous events to a TrySession.
   // Null for post-signup onboarding events (user is already authed).
   sessionToken String?
-  // Event name — one of the onboarding_* or try_* constants.
+  // Event name — one of the onboarding_*, try_*, or funnel_* constants.
   event        String
+  // Optional payload — e.g. diagnostic answer value, plan selection.
+  value        String?
   createdAt    DateTime @default(now())
 
   @@index([userId, createdAt])

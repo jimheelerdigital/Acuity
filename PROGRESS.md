@@ -41,6 +41,243 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-26] — New onboarding funnel dashboard + event pipeline fix + payment notifications
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 3d45784
+
+### In plain English (for Keenan)
+
+The admin dashboard now has a full "Web Onboarding Funnel" section replacing the old "Try It Now" funnel. It shows a 9-step conversion funnel (pain hook → diagnostics → mirror → commitment → extraction → signup → paywall → payment → download) with drop-off percentages, colored alerts when any step drops more than 30%, diagnostic answer breakdowns showing which pain points resonate most, commitment success rate, and a live sessions table showing individual users moving through the funnel in real time.
+
+The event tracking pipeline was also broken — many funnel events were being silently dropped because they weren't in the valid events list, and diagnostic answer values weren't being stored. Both are now fixed. A new `value` column stores what users selected so we can see answer distributions.
+
+Both cofounders now get an email notification whenever someone completes payment through the paywall. Subject: "New payment: user@email.com (monthly)".
+
+### Technical changes (for Jimmy)
+
+**Schema change (requires `prisma db push`):**
+- `prisma/schema.prisma`: Added `value String?` column to `OnboardingEvent` model — stores diagnostic answer selections and plan choices
+
+**Event pipeline fixes:**
+- `apps/web/src/lib/track-onboarding.ts`: Now accepts `value` and `values` in opts, flattens arrays to comma-separated strings
+- `apps/web/src/app/api/onboarding-events/route.ts`: Added 8 new events to VALID_EVENTS (funnel_diagnostic_loop, funnel_diagnostic_duration, funnel_diagnostic_attempts, funnel_mirror_viewed, funnel_failed_solution_viewed, funnel_mock_extraction_viewed, funnel_journey_viewed, funnel_promise_viewed). Stores `body.value` in the new column.
+
+**Admin dashboard:**
+- `apps/web/src/app/api/admin/metrics/route.ts`: Replaced `getTryFunnel()` with `getWebOnboardingFunnel()` — computes 9-step funnel with distinct session counts, diagnostic intersections for "all 5 completed" step, drop-off alerts with severity + suggested fixes, diagnostic answer breakdowns, commitment stats, live session aggregation (last 50 sessions with status, progress, time, diagnostic answers)
+- `apps/web/src/app/admin/tabs/OverviewTab.tsx`: Replaced Try It Now metrics + funnel sections with: drop-off alert cards, web onboarding funnel bars, commitment stat cards, diagnostic answer breakdown bars, live sessions table with progress bars and status badges. Added `webFunnel` type definition.
+
+**Payment notifications:**
+- `apps/web/src/lib/founder-notifications.ts`: Added `notifyFoundersOfPayment()` — sends email to both cofounders with user email, plan, source, and timestamp
+- `apps/web/src/app/api/stripe/webhook/route.ts`: Calls `notifyFoundersOfPayment()` on `checkout.session.completed` event
+
+### Manual steps needed
+
+- [ ] **Run `npx prisma db push` from home Mac** — required before deploy. Adds `value` column to OnboardingEvent table. (Keenan — work Mac blocks Supabase ports)
+- [ ] Verify admin dashboard at /admin after deploy shows the new funnel sections (Keenan)
+
+### Notes
+
+- The `value` column is nullable and additive — no data loss, no migration needed for existing rows. Existing events will have `value: null`.
+- The diagnostic "all 5 completed" funnel step uses set intersection across all 5 diagnostic event types per session token. A user who completed only 3/5 diagnostics does NOT count.
+- Live sessions table caps at 5000 recent events for aggregation to avoid slow queries on large datasets.
+- The old Try It Now funnel data is still in the database (OnboardingEvent rows with `try_*` events) — it's just no longer displayed. No data was deleted.
+- Payment notification emails are fail-soft — a send failure never blocks the webhook processing.
+
+---
+
+## [2026-05-26] — Fix commitment ring jitter + journey scroll position
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 27b8ac9
+
+### In plain English (for Keenan)
+
+Two bugs fixed: (1) The hold-to-commit circle now fills smoothly over 3 seconds with no jitter or flicker. Previously it was updating React state 60 times per second which caused janky rendering. Now it drives the SVG ring directly with requestAnimationFrame and only touches React state on completion. Releasing early resets the ring with a smooth 300ms ease-out instead of snapping. (2) The journey timeline no longer loads scrolled to Day 3 — every screen now resets to the top when it appears.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/components/onboarding-funnel.tsx`:
+  - **CommitmentScreen**: Replaced `setInterval` + `setProgress` (caused 60fps re-renders) with `requestAnimationFrame` loop that sets `ringRef.current.style.strokeDashoffset` directly on the SVG element. React state only changes on hold start, release, and completion. Ring reset on early release uses CSS `transition: stroke-dashoffset 0.3s ease-out` for smooth fallback. Switched from `onMouseDown/onMouseUp/onTouchStart/onTouchEnd` to unified `onPointerDown/onPointerUp/onPointerLeave/onPointerCancel` with `touchAction: none` for reliable cross-device behavior.
+  - **Global scroll reset**: Added `useEffect(() => { window.scrollTo(0, 0); }, [step])` in the main `OnboardingFunnel` component so every screen transition resets to top.
+  - **JourneyScreen**: Additional `window.scrollTo(0, 0)` on mount as a safety net.
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- The ring animation now runs at native display refresh rate (typically 60fps on most devices, 120fps on ProMotion) since it uses `requestAnimationFrame` instead of a 16ms interval. No React re-renders during the fill animation = zero jank.
+- `onPointerDown/Up` is the modern unified API that handles both mouse and touch events without needing separate handlers. `touchAction: none` on the button prevents the browser from intercepting the touch for scrolling.
+- The cleanup in `useEffect` calls `cancelAnimationFrame` to prevent memory leaks if the component unmounts mid-hold.
+
+---
+
+## [2026-05-26] — Full animation polish + paywall rebuild — all 15 screens
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** b47bf2b
+
+### In plain English (for Keenan)
+
+Every screen in the /start onboarding funnel now has polished animations and transitions. A thin purple progress bar at the top shows forward momentum. Single-select diagnostic questions auto-advance 500ms after tapping — no Continue button needed, the tap IS the action. The mock extraction now shows a 3.5-second "processing" spinner with cycling status text before revealing results. The journey timeline has an animated purple line that draws itself. The paywall has been completely rebuilt as a full conversion landing page: personalized hook tied to diagnostic answers, outcome-focused feature cards, 30-day timeline, testimonial cards, pricing with "Save 33%" badge and effective monthly price, collapsible FAQ, and a sticky CTA that never leaves the screen. All animations respect prefers-reduced-motion.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/components/onboarding-funnel.tsx`:
+  - **Progress bar**: Fixed 2px purple bar at top, width tied to `STEP_ORDER.indexOf(step)`, transitions with `duration-700 ease-out`
+  - **prefers-reduced-motion**: CSS media query override disables all animations and transitions
+  - **DiagnosticScreen**: Single-select now auto-advances after 500ms via `setTimeout` + `advancedRef` guard. Continue button removed. Scale pulse animation on selected card.
+  - **MockExtractionScreen**: Added `phase` state ("processing" | "reveal"). Processing phase shows spinner + cycling `PROCESSING_TEXTS` for 3.5s with progress bar, then transitions to reveal phase with staggered sections.
+  - **JourneyScreen**: Timeline vertical line now has an animated purple fill that grows proportionally to `visibleStage`. Timeline dots scale from 0.75 → 1.0 on appear.
+  - **SignupScreen**: Added `funnel-screen` wrapper + `funnel-card-stagger` with staggered delays on Google/Apple buttons.
+  - **PaywallScreen**: Complete rebuild — personalized hook via `paywallHookSub(answers)`, outcome cards (`PAYWALL_OUTCOMES`), 30-day timeline (`PAYWALL_TIMELINE`), testimonial cards (`PAYWALL_QUOTES`), side-by-side pricing cards with glow highlight and "Save 33%" bounce badge, annual shows effective `$3.33/mo`, collapsible FAQ (`FAQ_ITEMS`), sticky CTA with computed cancel date.
+  - **DownloadScreen**: Added `funnel-screen` class + `funnel-bounce` on App Store button.
+  - CSS: `.funnel-slide-up` increased to 20px offset, `.funnel-card-in` increased to 30px offset, both durations bumped slightly.
+
+### Manual steps needed
+
+- [ ] QA the full 15-screen flow — especially: diagnostic auto-advance timing, mock extraction processing phase, paywall pricing cards + FAQ + sticky CTA, download screen confetti (Keenan)
+
+### Notes
+
+- Single-select auto-advance uses a `useRef` guard (`advancedRef`) to prevent double-firing if the user taps rapidly.
+- The paywall `answers` prop is now passed down so the personalized hook can reference the user's loop selection.
+- The FAQ uses `max-h` animation for expand/collapse — no external accordion library needed.
+- Annual pricing shows `$3.33/mo` (computed from `Math.round(ANNUAL_PRICE_CENTS / 12)`) alongside the `$39.99/year` total.
+
+---
+
+## [2026-05-26] — Mirror screen redesign — verbiage engine, staggered reveal, visual polish
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 8e051e8
+
+### In plain English (for Keenan)
+
+The "We heard you" mirror screen in the onboarding funnel now reads like a therapist reflecting your words back — not a database dump. Each line fades in one at a time with a purple left-border accent, proper grammar, and clean phrasing. Raw diagnostic selections are mapped through a verbiage engine so "I don't recognize myself anymore" becomes "your sense of self" and "I'd actually follow through on goals" becomes "to finally follow through." The background subtly shifts as lines build, and the closing line ("You don't have to keep living like this.") lands last in bold after a long pause — the emotional pivot before the promise screen.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/components/onboarding-funnel.tsx`: Rewrote `MirrorScreen` component and added four mapping functions:
+  - `mirrorDuration()` — maps raw duration selections to clean phrasing (e.g. "I can't remember when it started" → "longer than you can remember")
+  - `mirrorAttempts()` — joins multi-select with Oxford comma + "and", strips parenthetical suffixes, handles "Nothing" exclusive case
+  - `mirrorCosts()` — maps each cost to a noun phrase (e.g. "My health is slipping" → "your health"), joins with "and"
+  - `mirrorDesire()` — maps desires to clean aspirational phrasing (e.g. "I'd be the person I know I can be" → "to become who you know you can be")
+- Visual: each line has `border-l-2 border-[#7C5CFC]/40 pl-5` left-border accent, `space-y-6` vertical spacing, staggered 700ms delay between lines
+- Pivot line appears 1.2s after last line, button 1.2s after that — total ~7s reveal sequence
+- Background gradient opacity increases as lines appear (0.08 → 0.35)
+- Header changed: "Here's what you just told us." → "We heard you."
+- Pivot line upgraded: plain `text-sm text-zinc-500` → `text-lg font-semibold text-zinc-900`
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- No raw user text is ever displayed. Every diagnostic answer goes through a mapping function before render.
+- The staggered timing (500ms initial + 700ms per line + 1200ms pivot pause + 1200ms button pause) totals ~7-8 seconds depending on how many lines are generated. This is intentional — the screen should feel deliberate, not fast.
+
+---
+
+## [2026-05-26] — Complete rebuild of /start onboarding funnel — 15 screens, no recording, mandatory payment
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** f7afc06
+
+### In plain English (for Keenan)
+
+The web onboarding funnel at /start has been completely rebuilt from scratch. It's now a 15-screen pain-focused flow that never asks users to record on web — recording only happens in the app. The funnel deepens the emotional hook through diagnostics, shows users their own answers reflected back (the "mirror" screen), reveals what Acuity extracts with mock data, shows a 30-day journey timeline, creates an account, takes payment (mandatory — no skip option), and sends them to download the app. The paywall is now a full scrollable selling page with a sticky CTA at the bottom.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/components/onboarding-funnel.tsx`: Complete rewrite (~800 lines, down from ~1750). Removed all recording/processing/extraction logic, API calls to /api/try-recording, mic access, audio upload, MediaRecorder usage, in-app browser detection (no longer needed since there's no recording).
+- New screens added: MirrorScreen (Screen 7 — reflects diagnostic answers back), FailedSolutionScreen (word-by-word fade with Acuity in purple), PromiseScreen (typewriter effect), JourneyScreen (Screen 12 — animated timeline showing Day 1 through Day 365), full PaywallScreen with scrollable content + sticky CTA + testimonial carousel + comparison section + features list.
+- Updated DownloadScreen: confetti on load, shimmering App Store button, computed trial end date, testimonial carousel, star rating.
+- Step flow: pain → diagnostic1-5 → mirror → failed-solution → promise → commitment → mock-extraction → journey → signup → paywall → download.
+- Removed imports: PROCESSING_SLIDES, SLIDE_MS, MicIcon, Spinner, bestMimeType, extFromMime, formatTime, MAX_SECONDS, MIN_SECONDS, ExtractionResult, MOOD_LABELS, Link.
+- `apps/web/src/app/start/page.tsx`: Updated meta description (removed "Record" reference).
+- No schema changes. No new API endpoints.
+
+### Manual steps needed
+
+- [ ] QA the full 15-screen flow at /start after deploy — click through every screen, verify animations, create a test account, complete Stripe checkout (Keenan)
+- [ ] Verify Stripe checkout success redirects back to /start?step=download correctly (Keenan)
+
+### Notes
+
+- The funnel no longer imports any recording-related code. All mic/audio/transcription logic has been removed. Users only record in the app after download.
+- Payment is mandatory — there is no "skip" or "remind me later" on the paywall. The only path forward from the paywall is completing Stripe checkout.
+- The mock extraction on Screen 11 uses the same card components (MoodDot, CheckboxIcon, FlagIcon, PRIORITY_COLOR) as the post-signup FirstDebriefFlow for visual consistency.
+- The Mirror screen (Screen 7) builds emotional tension by reflecting the user's diagnostic answers back at them. The Continue button delays 3 seconds after all lines appear.
+- The Journey screen (Screen 12) auto-advances through 6 timeline stages (Day 1 → Day 365) with staggered animations.
+- The paywall's sticky CTA bar uses backdrop-blur for a premium feel. pb-40 on the content ensures the last section isn't hidden behind the sticky bar.
+
+---
+
+## [2026-05-26] — Three urgent fixes: extraction reveal overhaul, Stripe checkout fix, 30→14 day trial sweep
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** ced04e9
+
+### In plain English (for Keenan)
+
+Three things fixed in one commit:
+
+1. **The extraction reveal in /onboarding now looks like a real debrief.** Instead of a flat list of labels (MOOD, TASK, GOAL, THEME), users now see a full evaluated breakdown: a mood card with energy score and AI summary, task cards with priority badges and context, goal cards with descriptions, theme tags as colored pills, and a personalized insight that ties their diagnostic answers back to what the AI found. The mock extraction for in-app browsers (Facebook/Instagram) got the same treatment.
+
+2. **Stripe checkout actually works now.** The checkout was failing because the API route was reading price IDs from env vars that weren't set, instead of using the centralized pricing config that already has fallback IDs. Fixed both checkout routes (/api/onboarding/create-checkout and /api/stripe/checkout) to use the PRICING config. Also added detailed Stripe error logging so if it breaks again, the logs will show exactly what Stripe said.
+
+3. **Every reference to "30 days free" is now "14 days free."** Founding members no longer get a longer trial — everyone gets 14 days. This hit 33 files across the entire codebase: landing pages, onboarding funnel, signup, emails, mobile app, backend trial logic, Stripe checkout, referral bonuses, content generation prompts, ad landing pages, and schema comments.
+
+### Technical changes (for Jimmy)
+
+**FIX 1 — Extraction reveal overhaul:**
+- `apps/web/src/components/onboarding-funnel.tsx`: Complete rewrite of `ExtractionScreen` — now matches FirstDebriefFlow's card-based layout with MoodDot, MOOD_GLOW, CheckboxIcon, FlagIcon, PRIORITY_COLOR badges, theme pills with scale animations, staggered reveal timing (400ms start, 150ms per item), confetti on completion, and personalized insight section that maps diagnostic answers to extraction results
+- `apps/web/src/components/onboarding-funnel.tsx`: `MockExtractionScreen` also rebuilt with same card components for in-app browser path
+- New imports: `MoodDot` from debrief-shared, `PRIORITY_COLOR` from @acuity/shared
+- New helper: `getPersonalizedInsight(answers, extraction)` — returns copy based on which diagnostic option they selected and what the AI found
+
+**FIX 2 — Stripe checkout:**
+- `apps/web/src/app/api/onboarding/create-checkout/route.ts`: Switched from `process.env.STRIPE_PRICE_MONTHLY/YEARLY` (which were unset) to `PRICING.monthly.stripeId` / `PRICING.annual.stripeId` from lib/pricing.ts (which have fallback defaults). Hardcoded `trialDays = 14` (removed founding member distinction). Added structured Stripe error logging (type, code, message, statusCode).
+- `apps/web/src/app/api/stripe/checkout/route.ts`: Same PRICING config switch for the /upgrade checkout route.
+
+**FIX 3 — 30→14 day trial sweep (33 files):**
+- `apps/web/src/lib/bootstrap-user.ts`: `FOUNDING_MEMBER_TRIAL_DAYS` 30→14, referral bonus 30→14 days
+- `apps/web/src/lib/referrals.ts`: `REFERRAL_REWARD_DAYS` 30→14
+- `apps/web/src/app/api/auth/mobile-callback/route.ts`: Default trial safety net 30→14 days
+- `apps/web/src/app/api/auth/mobile-callback-apple/route.ts`: Same
+- Copy changes across: onboarding-funnel.tsx, landing-shared.tsx, landing.tsx, page.tsx, voice-journaling/page.tsx, signup/page.tsx, try-debrief-flow.tsx, founding-member-banner.tsx, first-debrief-flow.tsx, success-client.tsx, try-session-claimer.tsx, for/decoded/page.tsx, account-client.tsx
+- Email changes: welcome-verify.ts, welcome-day0.ts, trial-ending-day13.ts, power-deepen.ts, waitlist-reactivation.ts, drip-emails.ts, waitlist-activation.tsx
+- Mobile: sign-up.tsx, step-8-trial.tsx
+- Backend: content-factory/generate.ts, adlab/landing-page.ts, auto-blog.ts, trial-email-orchestrator.ts
+- Schema: prisma/schema.prisma (comment only — no structural change)
+
+### Manual steps needed
+
+- [ ] Set `STRIPE_PRICE_MONTHLY` and `STRIPE_PRICE_YEARLY` env vars in Vercel to the correct live price IDs: `price_1Tb20a0q7eSdZzmFX1BCX0Sh` (monthly) and `price_1Tb20r0q7eSdZzmFZewbwtXF` (annual) — OR verify the fallback IDs in lib/pricing.ts match your live Stripe account. The checkout now uses fallbacks, but explicit env vars are still preferred for production. (Keenan)
+- [ ] Test checkout flow end-to-end after deploy: click "Start My 14-Day Free Trial" → should redirect to Stripe Checkout → complete → return to /start?step=download (Keenan)
+- [ ] Mobile step-8-trial copy changes ride the next EAS build — dormant until App Store promotion (Jimmy)
+- [ ] Verify no "30 days" copy appears anywhere on production after deploy (Keenan)
+
+### Notes
+
+- The schema.prisma change is comment-only — no structural change. No `prisma db push` needed.
+- The founding member banner was reworded to remove the "30 days free (normally 14)" distinction since everyone now gets 14. It now says "First 100 founding members get early access."
+- The checkout route now uses `PRICING.monthly.stripeId` / `PRICING.annual.stripeId` which read `process.env.STRIPE_PRICE_MONTHLY` / `STRIPE_PRICE_YEARLY` with hardcoded fallbacks. This means checkout will work even without env vars (using the fallback price IDs), but the fallback IDs may be for a different Stripe account than production.
+- Existing users who already have `trialEndsAt` set to 30 days from signup are NOT affected — their trial end date is already written to the database. Only new signups get 14 days.
+- The `STRIPE_SECRET_KEY` in `.env` is a test key (`sk_test_...`). The price IDs Keenan provided (`price_1Tb20a...`) look like live mode prices. If the production Vercel env has the live secret key, the checkout should work — but the fallback IDs in pricing.ts (`price_1Tb335D9X...`) may be from a different Stripe account. Verify which account owns which price IDs.
+
+---
+
 ## [2026-05-25] — Pricing centralization (slices 2-6) — UI/checkout mismatch fix
 
 **Requested by:** Both

@@ -89,3 +89,44 @@ export async function notifyFoundersOfSignup(params: {
     }
   }
 }
+
+/**
+ * Notify founders when someone completes payment through the onboarding
+ * funnel paywall. Same fail-soft pattern as signup notifications.
+ */
+export async function notifyFoundersOfPayment(params: {
+  userId: string;
+  email: string;
+  plan: string;
+  source: string;
+  timestamp: Date;
+}): Promise<void> {
+  if (process.env.FOUNDER_NOTIFICATIONS_ENABLED === "false") return;
+
+  const { email, plan, source, timestamp } = params;
+
+  try {
+    const { getResendClient } = await import("@/lib/resend");
+    const resend = getResendClient();
+    const timeStr = timestamp.toLocaleString("en-US", { timeZone: "America/Chicago", dateStyle: "medium", timeStyle: "short" });
+
+    await resend.emails.send({
+      from: EMAIL_FROM,
+      to: FOUNDER_NOTIFICATION_RECIPIENTS,
+      subject: `\u{1F4B0} New payment: ${email} (${plan})`,
+      html: `
+        <div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:480px;margin:0 auto;padding:24px;">
+          <h2 style="color:#7C5CFC;margin:0 0 16px;">New Payment</h2>
+          <table style="width:100%;border-collapse:collapse;">
+            <tr><td style="padding:8px 0;color:#666;">Email</td><td style="padding:8px 0;font-weight:600;">${email}</td></tr>
+            <tr><td style="padding:8px 0;color:#666;">Plan</td><td style="padding:8px 0;font-weight:600;">${plan}</td></tr>
+            <tr><td style="padding:8px 0;color:#666;">Source</td><td style="padding:8px 0;">${source}</td></tr>
+            <tr><td style="padding:8px 0;color:#666;">Time</td><td style="padding:8px 0;">${timeStr}</td></tr>
+          </table>
+        </div>
+      `,
+    });
+  } catch (err) {
+    console.error("[founder-notification] Payment email failed:", err instanceof Error ? err.message : err);
+  }
+}

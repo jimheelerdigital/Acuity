@@ -36,29 +36,37 @@ const VALID_EVENTS = new Set([
   "try_signup_completed",
   "try_expired",
   "try_mic_failed",
-  // Conversion funnel (/start)
+  // Web onboarding funnel (/start)
   "funnel_pain_hook_viewed",
-  "funnel_diagnostic_1_completed",
-  "funnel_diagnostic_2_completed",
-  "funnel_diagnostic_3_completed",
+  "funnel_diagnostic_loop",
+  "funnel_diagnostic_duration",
+  "funnel_diagnostic_attempts",
+  "funnel_diagnostic_cost",
+  "funnel_diagnostic_desire",
+  "funnel_mirror_viewed",
+  "funnel_failed_solution_viewed",
   "funnel_promise_viewed",
-  "funnel_recording_started",
-  "funnel_recording_completed",
+  "funnel_commitment_completed",
+  "funnel_commitment_abandoned",
+  "funnel_mock_extraction_viewed",
   "funnel_extraction_viewed",
+  "funnel_journey_viewed",
   "funnel_signup_completed",
   "funnel_paywall_viewed",
   "funnel_payment_completed",
   "funnel_download_screen_viewed",
   "funnel_app_store_clicked",
-  "funnel_diagnostic_cost",
-  "funnel_diagnostic_desire",
-  "funnel_commitment_completed",
-  "funnel_commitment_abandoned",
+  // Legacy (kept for historical queries)
+  "funnel_diagnostic_1_completed",
+  "funnel_diagnostic_2_completed",
+  "funnel_diagnostic_3_completed",
+  "funnel_recording_started",
+  "funnel_recording_completed",
   "funnel_inapp_browser_detected",
 ]);
 
 export async function POST(req: NextRequest) {
-  let body: { event?: string; sessionToken?: string; userId?: string };
+  let body: { event?: string; sessionToken?: string; userId?: string; value?: string };
   try {
     body = await req.json();
   } catch {
@@ -93,6 +101,7 @@ export async function POST(req: NextRequest) {
         userId,
         sessionToken,
         event,
+        value: body.value ?? null,
       },
     });
   } catch (err) {

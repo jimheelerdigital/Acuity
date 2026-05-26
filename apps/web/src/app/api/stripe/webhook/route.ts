@@ -108,6 +108,20 @@ export async function POST(req: NextRequest) {
         console.warn("[stripe-webhook] subscription_started track failed:", err);
       }
 
+      // Notify founders of new payment
+      try {
+        const { notifyFoundersOfPayment } = await import("@/lib/founder-notifications");
+        await notifyFoundersOfPayment({
+          userId,
+          email: user.email ?? "unknown",
+          plan: session.metadata?.interval ?? "monthly",
+          source: session.metadata?.source ?? "direct",
+          timestamp: new Date(),
+        });
+      } catch (err) {
+        console.warn("[stripe-webhook] payment notification failed:", err);
+      }
+
       // Fire referral conversion if this user was referred. Stub
       // reward-fulfillment logic — Jim decides the actual reward.
       try {

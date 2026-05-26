@@ -8,12 +8,15 @@
  */
 export function trackOnboardingEvent(
   event: string,
-  opts?: { sessionToken?: string | null; userId?: string | null }
+  opts?: { sessionToken?: string | null; userId?: string | null; value?: string | null; values?: unknown }
 ): void {
   try {
     const body: Record<string, string> = { event };
     if (opts?.sessionToken) body.sessionToken = opts.sessionToken;
     if (opts?.userId) body.userId = opts.userId;
+    // Store diagnostic answer values — flatten arrays to comma-separated string
+    if (opts?.value != null) body.value = String(opts.value);
+    else if (opts?.values != null) body.value = Array.isArray(opts.values) ? opts.values.join(", ") : String(opts.values);
 
     // eslint-disable-next-line no-console
     console.log(`[onboarding-track] ${event}`, opts?.userId ? `user:${opts.userId}` : opts?.sessionToken ? `session:${opts.sessionToken}` : "anon");

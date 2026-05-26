@@ -54,6 +54,19 @@ interface OverviewData {
     dailyCapUsed: number;
     dailyCap: number;
   };
+  webFunnel?: {
+    steps: { label: string; count: number }[];
+    alerts: { step: string; dropPct: number; severity: "red" | "yellow"; fix: string }[];
+    diagnosticBreakdowns: Record<string, { value: string; count: number }[]>;
+    commitmentStats: { completed: number; abandoned: number; successRate: number };
+    sessions: {
+      sessionId: string; userId: string | null; started: string; lastEvent: string;
+      currentStep: string; stepNumber: number; totalSteps: number;
+      status: "completed" | "paid" | "active" | "stalled" | "dropped";
+      timeInFunnel: number; diagnosticAnswers: Record<string, string>;
+    }[];
+    sessionsSummary: { activeSessions: number; completedToday: number; avgCompletionTime: number; mostCommonDrop: string };
+  };
   // From getRevenue
   revenue: {
     mrrCents: number;
@@ -80,7 +93,7 @@ interface OverviewData {
   onboardingFunnel?: {
     steps: { label: string; count: number }[];
   };
-  // From getTryFunnel
+  // Deprecated — kept for type compat, no longer fetched
   tryFunnel?: {
     steps: { label: string; count: number }[];
   };
@@ -291,43 +304,118 @@ export default function OverviewTab({ start, end }: { start: string; end: string
         </div>
       </div>
 
-      {/* ── Try It Now Metrics ────────────────────────────────────── */}
-      {data.tryMetrics && (
-        <div className="rounded-xl border border-[#7C5CFC]/20 bg-[#7C5CFC]/5 p-5">
-          <h3 className="mb-3 text-sm font-medium text-[#7C5CFC]">Try It Now</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <MiniMetric label="Today" value={String(data.tryMetrics.today)} />
-            <MiniMetric label="This Week" value={String(data.tryMetrics.thisWeek)} />
-            <MiniMetric label="All Time" value={String(data.tryMetrics.allTime)} />
-            <MiniMetric label="Conversions" value={String(data.tryMetrics.conversions)} sub={`${data.tryMetrics.conversionRate}% rate`} />
-          </div>
-          <div className="mt-3 flex items-center gap-2">
-            <div className="flex-1 h-2 rounded-full bg-white/5 overflow-hidden">
-              <div
-                className="h-full rounded-full bg-[#7C5CFC]/60"
-                style={{ width: `${Math.min(100, (data.tryMetrics.dailyCapUsed / data.tryMetrics.dailyCap) * 100)}%` }}
-              />
+      {/* ── Web Onboarding Funnel ──────────────────────────────── */}
+      {data.webFunnel && data.webFunnel.steps.length > 0 && (
+        <>
+          {/* Drop-off alerts */}
+          {data.webFunnel.alerts.length > 0 && (
+            <div className="space-y-2">
+              {data.webFunnel.alerts.map((a, i) => (
+                <div key={i} className={`rounded-lg border px-4 py-3 text-sm ${a.severity === "red" ? "border-red-500/30 bg-red-900/10 text-red-300" : "border-amber-500/30 bg-amber-900/10 text-amber-300"}`}>
+                  <span className="font-semibold">{a.step}:</span> {a.dropPct}% drop-off — {a.fix}
+                </div>
+              ))}
             </div>
-            <span className="text-xs text-white/40 tabular-nums whitespace-nowrap">
-              {data.tryMetrics.dailyCapUsed}/{data.tryMetrics.dailyCap} daily cap
-            </span>
+          )}
+
+          {/* Main funnel bars */}
+          <div className="rounded-xl bg-[#13131F] p-6">
+            <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-white/40">Web Onboarding Funnel</h3>
+            <FunnelBars steps={data.webFunnel.steps} />
           </div>
-        </div>
+
+          {/* Commitment stats */}
+          <div className="grid grid-cols-3 gap-3">
+            <MiniMetric label="Commitment Completed" value={String(data.webFunnel.commitmentStats.completed)} />
+            <MiniMetric label="Commitment Abandoned" value={String(data.webFunnel.commitmentStats.abandoned)} />
+            <MiniMetric label="Commit Success Rate" value={`${data.webFunnel.commitmentStats.successRate}%`} color={data.webFunnel.commitmentStats.successRate >= 70 ? "text-emerald-400" : "text-amber-400"} />
+          </div>
+
+          {/* Diagnostic breakdowns */}
+          {Object.keys(data.webFunnel.diagnosticBreakdowns).length > 0 && (
+            <div className="rounded-xl bg-[#13131F] p-6">
+              <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-white/40">Diagnostic Answers</h3>
+              <div className="space-y-6">
+                {Object.entries(data.webFunnel.diagnosticBreakdowns).map(([key, values]) => {
+                  const maxVal = Math.max(...values.map((v) => v.count), 1);
+                  return (
+                    <div key={key}>
+                      <p className="text-xs font-medium text-[#7C5CFC] uppercase tracking-wider mb-2">{key.replace(/_/g, " ")}</p>
+                      <div className="space-y-1.5">
+                        {values.map((v) => (
+                          <div key={v.value} className="flex items-center gap-3">
+                            <span className="text-xs text-white/50 w-48 truncate shrink-0" title={v.value}>{v.value}</span>
+                            <div className="flex-1 h-1.5 rounded-full bg-white/5 overflow-hidden">
+                              <div className="h-full rounded-full bg-[#7C5CFC]/60" style={{ width: `${(v.count / maxVal) * 100}%` }} />
+                            </div>
+                            <span className="text-xs text-white/40 tabular-nums w-8 text-right">{v.count}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Live sessions */}
+          <div className="rounded-xl bg-[#13131F] p-6">
+            <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-white/40">Live Onboarding Sessions</h3>
+            {/* Summary stats */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+              <MiniMetric label="Active Now" value={String(data.webFunnel.sessionsSummary.activeSessions)} color="text-emerald-400" />
+              <MiniMetric label="Completed Today" value={String(data.webFunnel.sessionsSummary.completedToday)} />
+              <MiniMetric label="Avg Completion" value={`${data.webFunnel.sessionsSummary.avgCompletionTime}m`} />
+              <MiniMetric label="Most Drop At" value={data.webFunnel.sessionsSummary.mostCommonDrop} />
+            </div>
+            {/* Sessions table */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-white/10 text-white/30 text-xs uppercase tracking-wider">
+                    <th className="pb-2 pr-4">Session</th>
+                    <th className="pb-2 pr-4">Started</th>
+                    <th className="pb-2 pr-4">Step</th>
+                    <th className="pb-2 pr-4">Status</th>
+                    <th className="pb-2 pr-4">Time</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.webFunnel.sessions.map((s) => {
+                    const statusColors: Record<string, string> = {
+                      completed: "text-emerald-400", paid: "text-emerald-400",
+                      active: "text-blue-400", stalled: "text-amber-400", dropped: "text-red-400",
+                    };
+                    return (
+                      <tr key={s.sessionId} className="border-b border-white/5 text-white/60 hover:bg-white/[0.02]">
+                        <td className="py-2 pr-4 font-mono text-xs">{s.sessionId}</td>
+                        <td className="py-2 pr-4 text-xs">{new Date(s.started).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</td>
+                        <td className="py-2 pr-4">
+                          <div className="flex items-center gap-2">
+                            <div className="w-16 h-1 rounded-full bg-white/10 overflow-hidden">
+                              <div className="h-full rounded-full bg-[#7C5CFC]" style={{ width: `${(s.stepNumber / s.totalSteps) * 100}%` }} />
+                            </div>
+                            <span className="text-xs">{s.currentStep}</span>
+                          </div>
+                        </td>
+                        <td className={`py-2 pr-4 text-xs font-medium capitalize ${statusColors[s.status] ?? ""}`}>{s.status}</td>
+                        <td className="py-2 pr-4 text-xs tabular-nums">{s.timeInFunnel}m</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
       )}
 
-      {/* ── Onboarding Funnel ────────────────────────────────────── */}
+      {/* ── Post-Signup Onboarding Funnel ────────────────────────── */}
       {data.onboardingFunnel && data.onboardingFunnel.steps.length > 0 && (
         <div className="rounded-xl bg-[#13131F] p-6">
           <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-white/40">Post-Signup Onboarding Funnel</h3>
           <FunnelBars steps={data.onboardingFunnel.steps} />
-        </div>
-      )}
-
-      {/* ── Try Flow Funnel ──────────────────────────────────────── */}
-      {data.tryFunnel && data.tryFunnel.steps.length > 0 && (
-        <div className="rounded-xl bg-[#13131F] p-6">
-          <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-white/40">Try It Now Funnel</h3>
-          <FunnelBars steps={data.tryFunnel.steps} />
         </div>
       )}
 
