@@ -24,11 +24,21 @@ export function useIsIOS(): boolean {
 }
 
 /**
- * All "Start Free Trial" CTAs link to web signup. No device-aware routing.
- * UTM params should only come from external traffic (ads, emails), not internal links.
+ * All "Start Free Trial" CTAs link to /start. When the current page has
+ * UTM params (e.g. user arrived from an ad), the CTA preserves them so
+ * attribution carries through to the onboarding funnel.
  */
 export function useCtaHref(_utmCampaign?: string): string {
-  return "/start";
+  if (typeof window === "undefined") return "/start";
+  const sp = new URLSearchParams(window.location.search);
+  const utmKeys = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "fbclid"];
+  const carry = new URLSearchParams();
+  for (const key of utmKeys) {
+    const val = sp.get(key);
+    if (val) carry.set(key, val);
+  }
+  const qs = carry.toString();
+  return qs ? `/start?${qs}` : "/start";
 }
 
 /** Official "Download on the App Store" black badge as inline SVG. */

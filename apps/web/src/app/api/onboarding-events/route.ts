@@ -66,7 +66,11 @@ const VALID_EVENTS = new Set([
 ]);
 
 export async function POST(req: NextRequest) {
-  let body: { event?: string; sessionToken?: string; userId?: string; value?: string };
+  let body: {
+    event?: string; sessionToken?: string; userId?: string; value?: string;
+    utmSource?: string; utmMedium?: string; utmCampaign?: string;
+    utmContent?: string; utmTerm?: string; fbclid?: string;
+  };
   try {
     body = await req.json();
   } catch {
@@ -102,6 +106,12 @@ export async function POST(req: NextRequest) {
         sessionToken,
         event,
         value: body.value ?? null,
+        utmSource: body.utmSource ?? null,
+        utmMedium: body.utmMedium ?? null,
+        utmCampaign: body.utmCampaign ?? null,
+        utmContent: body.utmContent ?? null,
+        utmTerm: body.utmTerm ?? null,
+        fbclid: body.fbclid ?? null,
       },
     });
   } catch (err) {

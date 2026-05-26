@@ -8,10 +8,25 @@ import { useSession } from "next-auth/react";
  * Safe fbq wrapper — only fires if the pixel has loaded.
  * Uses window.fbq check to avoid issues with SSR and race conditions.
  */
+function getStoredUtm(): Record<string, string> {
+  try {
+    const stored = sessionStorage.getItem("acuity_funnel_utm");
+    if (stored) return JSON.parse(stored);
+  } catch {}
+  return {};
+}
+
 function fireFbq(event: string, params?: Record<string, unknown>) {
   if (typeof window !== "undefined" && typeof window.fbq === "function") {
-    console.log(`[meta-pixel] Firing ${event}`, params ?? "");
-    window.fbq("track", event, params);
+    // Enrich pixel events with UTM attribution from the funnel session
+    const utm = getStoredUtm();
+    const enriched = {
+      ...params,
+      ...(utm.utmCampaign ? { content_name: utm.utmCampaign } : {}),
+      ...(utm.utmContent ? { content_category: utm.utmContent } : {}),
+    };
+    console.log(`[meta-pixel] Firing ${event}`, enriched);
+    window.fbq("track", event, enriched);
   }
 }
 

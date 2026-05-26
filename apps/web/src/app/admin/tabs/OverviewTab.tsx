@@ -64,8 +64,14 @@ interface OverviewData {
       currentStep: string; stepNumber: number; totalSteps: number;
       status: "completed" | "paid" | "active" | "stalled" | "dropped";
       timeInFunnel: number; diagnosticAnswers: Record<string, string>;
+      source: string; campaign: string | null; creative: string | null;
     }[];
     sessionsSummary: { activeSessions: number; completedToday: number; avgCompletionTime: number; mostCommonDrop: string };
+    adAttribution: {
+      creativeId: string; sessionsStarted: number; reachedMirror: number;
+      reachedCommitment: number; signedUp: number; paid: number;
+      completionRate: number; avgTimeToPay: number;
+    }[];
   };
   // From getRevenue
   revenue: {
@@ -359,26 +365,62 @@ export default function OverviewTab({ start, end }: { start: string; end: string
             </div>
           )}
 
+          {/* Ad Attribution Summary */}
+          {data.webFunnel.adAttribution && data.webFunnel.adAttribution.length > 0 && (
+            <div className="rounded-xl bg-[#13131F] p-6">
+              <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-white/40">Ad Attribution Summary</h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-white/10 text-white/30 text-xs uppercase tracking-wider">
+                      <th className="pb-2 pr-3">Creative</th>
+                      <th className="pb-2 pr-3 text-right">Sessions</th>
+                      <th className="pb-2 pr-3 text-right">Mirror</th>
+                      <th className="pb-2 pr-3 text-right">Commit</th>
+                      <th className="pb-2 pr-3 text-right">Signup</th>
+                      <th className="pb-2 pr-3 text-right">Paid</th>
+                      <th className="pb-2 pr-3 text-right">Rate</th>
+                      <th className="pb-2 text-right">Avg Time</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.webFunnel.adAttribution.map((a) => (
+                      <tr key={a.creativeId} className="border-b border-white/5 text-white/60 hover:bg-white/[0.02]">
+                        <td className="py-2 pr-3 font-mono text-xs">{a.creativeId === "organic" ? <span className="text-white/30">organic</span> : a.creativeId.slice(0, 12)}</td>
+                        <td className="py-2 pr-3 text-xs text-right tabular-nums">{a.sessionsStarted}</td>
+                        <td className="py-2 pr-3 text-xs text-right tabular-nums">{a.reachedMirror}</td>
+                        <td className="py-2 pr-3 text-xs text-right tabular-nums">{a.reachedCommitment}</td>
+                        <td className="py-2 pr-3 text-xs text-right tabular-nums">{a.signedUp}</td>
+                        <td className="py-2 pr-3 text-xs text-right tabular-nums font-medium text-emerald-400">{a.paid}</td>
+                        <td className="py-2 pr-3 text-xs text-right tabular-nums">{a.completionRate}%</td>
+                        <td className="py-2 text-xs text-right tabular-nums">{a.avgTimeToPay ? `${a.avgTimeToPay}m` : "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
           {/* Live sessions */}
           <div className="rounded-xl bg-[#13131F] p-6">
             <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-white/40">Live Onboarding Sessions</h3>
-            {/* Summary stats */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
               <MiniMetric label="Active Now" value={String(data.webFunnel.sessionsSummary.activeSessions)} color="text-emerald-400" />
               <MiniMetric label="Completed Today" value={String(data.webFunnel.sessionsSummary.completedToday)} />
               <MiniMetric label="Avg Completion" value={`${data.webFunnel.sessionsSummary.avgCompletionTime}m`} />
               <MiniMetric label="Most Drop At" value={data.webFunnel.sessionsSummary.mostCommonDrop} />
             </div>
-            {/* Sessions table */}
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-white/10 text-white/30 text-xs uppercase tracking-wider">
-                    <th className="pb-2 pr-4">Session</th>
-                    <th className="pb-2 pr-4">Started</th>
-                    <th className="pb-2 pr-4">Step</th>
-                    <th className="pb-2 pr-4">Status</th>
-                    <th className="pb-2 pr-4">Time</th>
+                    <th className="pb-2 pr-3">Session</th>
+                    <th className="pb-2 pr-3">Source</th>
+                    <th className="pb-2 pr-3">Campaign</th>
+                    <th className="pb-2 pr-3">Step</th>
+                    <th className="pb-2 pr-3">Status</th>
+                    <th className="pb-2 pr-3">Time</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -389,9 +431,10 @@ export default function OverviewTab({ start, end }: { start: string; end: string
                     };
                     return (
                       <tr key={s.sessionId} className="border-b border-white/5 text-white/60 hover:bg-white/[0.02]">
-                        <td className="py-2 pr-4 font-mono text-xs">{s.sessionId}</td>
-                        <td className="py-2 pr-4 text-xs">{new Date(s.started).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</td>
-                        <td className="py-2 pr-4">
+                        <td className="py-2 pr-3 font-mono text-xs">{s.sessionId}</td>
+                        <td className="py-2 pr-3 text-xs">{s.source}</td>
+                        <td className="py-2 pr-3 text-xs truncate max-w-[120px]" title={s.campaign ?? ""}>{s.campaign ?? "—"}</td>
+                        <td className="py-2 pr-3">
                           <div className="flex items-center gap-2">
                             <div className="w-16 h-1 rounded-full bg-white/10 overflow-hidden">
                               <div className="h-full rounded-full bg-[#7C5CFC]" style={{ width: `${(s.stepNumber / s.totalSteps) * 100}%` }} />
@@ -399,8 +442,8 @@ export default function OverviewTab({ start, end }: { start: string; end: string
                             <span className="text-xs">{s.currentStep}</span>
                           </div>
                         </td>
-                        <td className={`py-2 pr-4 text-xs font-medium capitalize ${statusColors[s.status] ?? ""}`}>{s.status}</td>
-                        <td className="py-2 pr-4 text-xs tabular-nums">{s.timeInFunnel}m</td>
+                        <td className={`py-2 pr-3 text-xs font-medium capitalize ${statusColors[s.status] ?? ""}`}>{s.status}</td>
+                        <td className="py-2 pr-3 text-xs tabular-nums">{s.timeInFunnel}m</td>
                       </tr>
                     );
                   })}

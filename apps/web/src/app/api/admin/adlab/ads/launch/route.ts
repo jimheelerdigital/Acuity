@@ -307,14 +307,24 @@ export async function POST(req: NextRequest) {
         let adLinkUrl: string;
         if (isAppInstall) {
           adLinkUrl = APP_STORE_URL;
+        } else if (experiment.destination === "direct_funnel") {
+          // Send directly to /start onboarding funnel
+          const linkUrl = new URL("https://getacuity.io/start");
+          linkUrl.searchParams.set("utm_source", "meta");
+          linkUrl.searchParams.set("utm_medium", "paid");
+          linkUrl.searchParams.set("utm_campaign", experiment.campaignName ?? experiment.id);
+          linkUrl.searchParams.set("utm_content", creative.id);
+          linkUrl.searchParams.set("utm_term", experiment.topicBrief.slice(0, 50));
+          adLinkUrl = linkUrl.toString();
         } else {
+          // Send to landing page (/for/*)
           const baseUrl = effectiveLandingPage?.slug
             ? `https://getacuity.io/for/${effectiveLandingPage.slug}`
             : landingPageUrl!;
           const linkUrl = new URL(baseUrl);
           linkUrl.searchParams.set("utm_source", "meta");
           linkUrl.searchParams.set("utm_medium", "paid");
-          linkUrl.searchParams.set("utm_campaign", experiment.id);
+          linkUrl.searchParams.set("utm_campaign", experiment.campaignName ?? experiment.id);
           linkUrl.searchParams.set("utm_content", creative.id);
           adLinkUrl = linkUrl.toString();
         }

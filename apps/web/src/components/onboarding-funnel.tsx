@@ -8,7 +8,7 @@ import {
   PRICING,
   formatDollars,
 } from "@/lib/pricing";
-import { trackOnboardingEvent } from "@/lib/track-onboarding";
+import { trackOnboardingEvent, captureUtmParams, type UtmParams } from "@/lib/track-onboarding";
 import { PRIORITY_COLOR } from "@acuity/shared";
 import { MoodDot, AppleLogo, GoogleLogo } from "@/components/debrief-shared";
 
@@ -158,8 +158,13 @@ function useFunnelTracker() {
       ? crypto.randomUUID()
       : `funnel_${Date.now()}_${Math.random().toString(36).slice(2)}`
   );
+  const utmRef = useRef<UtmParams>({});
+
+  // Capture UTMs once on mount
+  useEffect(() => { utmRef.current = captureUtmParams(); }, []);
+
   return useCallback((event: string, props?: Record<string, unknown>) => {
-    trackOnboardingEvent(event, { sessionToken: sessionId.current, ...props });
+    trackOnboardingEvent(event, { sessionToken: sessionId.current, utm: utmRef.current, ...props });
   }, []);
 }
 

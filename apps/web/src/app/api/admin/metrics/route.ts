@@ -1418,7 +1418,7 @@ async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date) {
       },
       orderBy: { createdAt: "desc" },
       take: 5000, // cap for aggregation
-      select: { sessionToken: true, userId: true, event: true, value: true, createdAt: true },
+      select: { sessionToken: true, userId: true, event: true, value: true, createdAt: true, utmSource: true, utmMedium: true, utmCampaign: true, utmContent: true },
     });
 
     // Group by session
@@ -1471,6 +1471,13 @@ async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date) {
           }
         }
 
+        // UTM attribution — take from the first event that has it
+        const utmEvent = events.find((e) => e.utmSource);
+        const source = utmEvent?.utmSource ?? null;
+        const medium = utmEvent?.utmMedium ?? null;
+        const campaign = utmEvent?.utmCampaign ?? null;
+        const creative = utmEvent?.utmContent ?? null;
+
         return {
           sessionId: token.slice(0, 8),
           userId: events.find((e) => e.userId)?.userId ?? null,
@@ -1482,6 +1489,9 @@ async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date) {
           status,
           timeInFunnel: Math.round((new Date(last.createdAt).getTime() - new Date(first.createdAt).getTime()) / 60000),
           diagnosticAnswers,
+          source: source && medium ? `${source} / ${medium}` : source ?? "direct",
+          campaign: campaign ?? null,
+          creative: creative ?? null,
         };
       })
       .sort((a, b) => new Date(b.started).getTime() - new Date(a.started).getTime())
@@ -1500,6 +1510,29 @@ async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date) {
     for (const s of droppedSessions) { dropStepCounts[s.currentStep] = (dropStepCounts[s.currentStep] ?? 0) + 1; }
     const mostCommonDrop = Object.entries(dropStepCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "N/A";
 
+    // ── Ad attribution summary (grouped by creative) ──
+    const creativeMap = new Map<string, { started: number; mirror: number; commitment: number; signup: number; paid: number; totalTime: number; paidCount: number }>();
+    for (const s of sessions) {
+      const cid = s.creative ?? "organic";
+      if (!creativeMap.has(cid)) creativeMap.set(cid, { started: 0, mirror: 0, commitment: 0, signup: 0, paid: 0, totalTime: 0, paidCount: 0 });
+      const c = creativeMap.get(cid)!;
+      c.started++;
+      if (s.stepNumber >= 7) c.mirror++;
+      if (s.stepNumber >= 10) c.commitment++;
+      if (s.stepNumber >= 13) c.signup++;
+      if (s.status === "paid" || s.status === "completed") { c.paid++; c.totalTime += s.timeInFunnel; c.paidCount++; }
+    }
+    const adAttribution = [...creativeMap.entries()].map(([id, c]) => ({
+      creativeId: id,
+      sessionsStarted: c.started,
+      reachedMirror: c.mirror,
+      reachedCommitment: c.commitment,
+      signedUp: c.signup,
+      paid: c.paid,
+      completionRate: c.started > 0 ? Math.round((c.paid / c.started) * 100) : 0,
+      avgTimeToPay: c.paidCount > 0 ? Math.round(c.totalTime / c.paidCount) : 0,
+    })).sort((a, b) => b.sessionsStarted - a.sessionsStarted);
+
     return {
       steps,
       alerts,
@@ -1507,6 +1540,7 @@ async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date) {
       commitmentStats,
       sessions,
       sessionsSummary: { activeSessions, completedToday, avgCompletionTime, mostCommonDrop },
+      adAttribution,
     };
   } catch (err) {
     console.error("[metrics] webFunnel error:", err);

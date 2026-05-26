@@ -17,6 +17,7 @@ export default function NewExperimentPage() {
   const [projectId, setProjectId] = useState("");
   const [topicBrief, setTopicBrief] = useState(searchParams.get("brief") || "");
   const [campaignType, setCampaignType] = useState("website");
+  const [destination, setDestination] = useState("direct_funnel");
   const [campaignObjective, setCampaignObjective] = useState("OUTCOME_TRAFFIC");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -45,7 +46,7 @@ export default function NewExperimentPage() {
       const createRes = await fetch("/api/admin/adlab/experiments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId, topicBrief, campaignType, campaignObjective: campaignType === "website" ? campaignObjective : undefined }),
+        body: JSON.stringify({ projectId, topicBrief, campaignType, destination, campaignObjective: campaignType === "website" ? campaignObjective : undefined }),
       });
 
       if (!createRes.ok) {
@@ -144,9 +145,28 @@ export default function NewExperimentPage() {
               <p className="mt-1 text-xs text-[#A0A0B8]/60">
                 {campaignType === "app_install"
                   ? "Links to App Store. Uses OUTCOME_APP_PROMOTION objective."
-                  : "Links to landing page with UTM tracking."}
+                  : "Links to landing page or funnel with UTM tracking."}
               </p>
             </div>
+
+            {campaignType === "website" && (
+              <div>
+                <label className="block text-xs text-[#A0A0B8] mb-1.5">Destination</label>
+                <select
+                  value={destination}
+                  onChange={(e) => setDestination(e.target.value)}
+                  className="w-full rounded-lg border border-white/10 bg-[#1E1E2E] px-3 py-2 text-sm text-white outline-none focus:border-[#7C5CFC]"
+                >
+                  <option value="direct_funnel">Direct to Funnel (/start) — recommended</option>
+                  <option value="landing_page">Landing Page (/for/*)</option>
+                </select>
+                <p className="mt-1 text-xs text-[#A0A0B8]/60">
+                  {destination === "direct_funnel"
+                    ? "Ad clicks go directly to the 15-screen onboarding funnel. Best for conversion."
+                    : "Ad clicks go to a generated landing page. CTA on the page sends to /start with UTMs."}
+                </p>
+              </div>
+            )}
 
             {campaignType === "website" && (
               <div>

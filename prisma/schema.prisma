@@ -2043,6 +2043,8 @@ model AdLabExperiment {
   campaignName          String?
   campaignObjective     String?
   campaignType          String                  @default("website")
+  // "landing_page" = send to generated /for/* page, "direct_funnel" = send directly to /start
+  destination           String                  @default("direct_funnel")
   specialAdCategories   String[]                @default([])
   campaignTags          String[]                @default([])
   adSetDailyBudgetCents Int?
@@ -2272,11 +2274,20 @@ model OnboardingEvent {
   event        String
   // Optional payload — e.g. diagnostic answer value, plan selection.
   value        String?
+  // Ad attribution — captured from URL params on /start load, persisted
+  // on every event so each funnel step can be attributed to a specific ad.
+  utmSource    String?
+  utmMedium    String?
+  utmCampaign  String?
+  utmContent   String?  // Maps to AdLab creative ID
+  utmTerm      String?
+  fbclid       String?  // Meta click ID
   createdAt    DateTime @default(now())
 
   @@index([userId, createdAt])
   @@index([sessionToken, createdAt])
   @@index([event, createdAt])
+  @@index([utmContent, createdAt])
 }
 
 // Anchor People — named-entity extraction + relationship tracking.

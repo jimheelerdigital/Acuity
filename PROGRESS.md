@@ -41,6 +41,60 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-26] — Full ad attribution pipeline: UTM capture, AdLab destination, dashboard attribution
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** PENDING
+
+### In plain English (for Keenan)
+
+Ad traffic can now be tracked from click to payment. When someone clicks a Meta ad and lands on /start, their UTM params (source, medium, campaign, creative ID, fbclid) are captured on page load, stored in the browser session, and attached to every single funnel event they fire. The admin dashboard now shows a "Source" and "Campaign" column in the live sessions table, plus a new "Ad Attribution Summary" table that groups sessions by creative ID and shows how many reached each funnel step, how many paid, and the conversion rate per ad creative.
+
+AdLab now has a "Destination" toggle when creating experiments: "Direct to Funnel" (sends ad clicks straight to /start) or "Landing Page" (sends to /for/* page). Default is "Direct to Funnel." Landing page CTAs now pass UTMs through to /start so attribution is never lost regardless of path.
+
+Meta Pixel events (Lead, CompleteRegistration, StartTrial, Subscribe) now include the campaign and creative ID as custom data parameters for redundant attribution in Meta's reporting.
+
+### Technical changes (for Jimmy)
+
+**Schema changes (requires `prisma db push`):**
+- `OnboardingEvent`: Added `utmSource`, `utmMedium`, `utmCampaign`, `utmContent`, `utmTerm`, `fbclid` (all String?, nullable). Added index on `[utmContent, createdAt]`.
+- `AdLabExperiment`: Added `destination` (String, default "direct_funnel").
+
+**Event pipeline:**
+- `apps/web/src/lib/track-onboarding.ts`: Added `UtmParams` interface, `captureUtmParams()` function (reads from URL on first load, persists to sessionStorage, returns cached on subsequent calls), `readUtmsFromUrl()` helper. Updated `trackOnboardingEvent` to accept `utm` option and pass all 6 UTM fields to the API.
+- `apps/web/src/app/api/onboarding-events/route.ts`: Accepts and stores all 6 UTM fields in OnboardingEvent create.
+- `apps/web/src/components/onboarding-funnel.tsx`: `useFunnelTracker` now calls `captureUtmParams()` on mount and passes UTMs with every event via `utmRef`.
+
+**Admin dashboard:**
+- `apps/web/src/app/api/admin/metrics/route.ts`: Sessions now include `source`, `campaign`, `creative` fields (derived from first UTM-bearing event). New `adAttribution` array groups sessions by `utmContent` (creative ID) with columns: sessionsStarted, reachedMirror, reachedCommitment, signedUp, paid, completionRate, avgTimeToPay.
+- `apps/web/src/app/admin/tabs/OverviewTab.tsx`: Added "Ad Attribution Summary" table above live sessions. Sessions table now has Source and Campaign columns. Updated type definitions.
+
+**AdLab:**
+- `apps/web/src/app/admin/adlab/experiments/new/page.tsx`: Added destination dropdown (direct_funnel / landing_page) with description text.
+- `apps/web/src/app/api/admin/adlab/ads/launch/route.ts`: Destination-aware URL construction — "direct_funnel" sends to `getacuity.io/start` with full UTMs including `utm_term`, "landing_page" keeps current behavior.
+
+**Landing page UTM passthrough:**
+- `apps/web/src/components/landing-shared.tsx`: `useCtaHref()` now reads UTM params from the current URL and appends them to the /start CTA link, so attribution carries through from landing page → funnel.
+
+**Meta Pixel:**
+- `apps/web/src/components/meta-pixel-events.tsx`: `fireFbq()` now reads UTMs from sessionStorage and enriches pixel events with `content_name` (campaign) and `content_category` (creative ID).
+
+### Manual steps needed
+
+- [ ] **Run `npx prisma db push` from home Mac** — adds 6 UTM columns to OnboardingEvent + destination column to AdLabExperiment (Keenan)
+- [ ] Verify attribution by running a test: visit /start?utm_source=test&utm_campaign=test_campaign — check admin dashboard shows "test / undefined" in source column (Keenan)
+
+### Notes
+
+- UTM params are stored in `sessionStorage` (not `localStorage`) so they're scoped to the browser tab and don't persist across sessions. A new tab/visit gets fresh UTMs.
+- If the URL has UTMs on first load but not on subsequent step navigations (because step transitions use `setStep` not URL changes), the sessionStorage cache ensures they persist for all events.
+- The `fbclid` parameter is Meta's click ID — it's always present on Meta ad clicks and enables server-side attribution via CAPI.
+- The `destination` field defaults to "direct_funnel" for new experiments. Existing experiments in the database will get "direct_funnel" as the default value when the column is added.
+- Pre-existing OnboardingEvent rows will have null for all UTM fields — this is expected and doesn't affect funnel counts.
+
+---
+
 ## [2026-05-26] — Sitewide onboarding rollout — all CTAs to /start, old routes redirected
 
 **Requested by:** Keenan
