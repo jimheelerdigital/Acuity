@@ -519,46 +519,108 @@ function DiagnosticMultiScreen({ question, options, onSubmit, testimonial }: {
 
 // ─── Screen 7: The Mirror ────────────────────────────────────────────────────
 
+function mirrorDuration(raw: string | undefined): string {
+  const MAP: Record<string, string> = {
+    "A few weeks": "a few weeks",
+    "A few months": "a few months",
+    "Over a year": "over a year",
+    "I can't remember when it started": "longer than you can remember",
+  };
+  return MAP[raw ?? ""] ?? "longer than you\u2019d like to admit";
+}
+
+function mirrorAttempts(raw: string[] | undefined): string {
+  if (!raw?.length) return "You haven\u2019t found anything that works yet.";
+  if (raw.includes("Nothing \u2014 I just push through")) return "You haven\u2019t tried anything \u2014 you just push through.";
+  const cleaned = raw.map((t) => t.replace(/ \(.*\)/, "").toLowerCase());
+  const joined = cleaned.length === 1
+    ? cleaned[0]
+    : cleaned.slice(0, -1).join(", ") + " and " + cleaned[cleaned.length - 1];
+  return `You\u2019ve tried ${joined}. None of them stuck.`;
+}
+
+function mirrorCosts(raw: string[] | undefined): string {
+  if (!raw?.length) return "";
+  const MAP: Record<string, string> = {
+    "I'm dropping balls at work": "your career",
+    "My relationships are suffering": "your relationships",
+    "My health is slipping": "your health",
+    "I don't recognize myself anymore": "your sense of self",
+  };
+  const mapped = raw.map((c) => MAP[c] ?? c.toLowerCase());
+  const joined = mapped.length === 1
+    ? mapped[0]
+    : mapped.slice(0, -1).join(", ") + " and " + mapped[mapped.length - 1];
+  return `It\u2019s costing you ${joined}.`;
+}
+
+function mirrorDesire(raw: string | undefined): string {
+  const MAP: Record<string, string> = {
+    "I'd stop repeating the same mistakes": "to break the cycle",
+    "I'd actually follow through on goals": "to finally follow through",
+    "I'd feel in control of my life again": "to feel in control again",
+    "I'd be the person I know I can be": "to become who you know you can be",
+  };
+  return `What you want: ${MAP[raw ?? ""] ?? "to feel in control again"}.`;
+}
+
 function MirrorScreen({ answers, onContinue }: { answers: DiagnosticAnswers; onContinue: () => void }) {
   const [visibleLines, setVisibleLines] = useState(0);
-  const [showCta, setShowCta] = useState(false);
+  const [showPivot, setShowPivot] = useState(false);
+  const [showBtn, setShowBtn] = useState(false);
 
   const lines = [
     `You\u2019re stuck in a loop of ${(answers.loop ?? "something you can\u2019t name").toLowerCase()}.`,
-    `You\u2019ve been stuck for ${(answers.duration ?? "longer than you\u2019d like to admit").toLowerCase()}.`,
-    answers.tried?.length
-      ? `You\u2019ve tried ${answers.tried.map((t) => t.replace(/ \(.*\)/, "").toLowerCase()).join(", ")}. ${answers.tried.includes("Nothing \u2014 I just push through") ? "" : "None of them stuck."}`
-      : "You haven\u2019t found anything that works yet.",
-    answers.cost?.length
-      ? `It\u2019s costing you: ${answers.cost.map((c) => c.replace("I'm ", "you\u2019re ").replace("My ", "your ").toLowerCase()).join(" and ")}.`
-      : "",
-    `What you want: ${(answers.desire ?? "to feel in control again").replace("I'd ", "to ").toLowerCase()}.`,
+    `You\u2019ve been stuck for ${mirrorDuration(answers.duration)}.`,
+    mirrorAttempts(answers.tried),
+    mirrorCosts(answers.cost),
+    mirrorDesire(answers.desire),
   ].filter(Boolean);
+
+  const LINE_DELAY = 700;
 
   useEffect(() => {
     const timers: ReturnType<typeof setTimeout>[] = [];
     lines.forEach((_, i) => {
-      timers.push(setTimeout(() => setVisibleLines(i + 1), 400 + i * 600));
+      timers.push(setTimeout(() => setVisibleLines(i + 1), 500 + i * LINE_DELAY));
     });
-    timers.push(setTimeout(() => setShowCta(true), 400 + lines.length * 600 + 2500));
+    const afterLines = 500 + lines.length * LINE_DELAY;
+    timers.push(setTimeout(() => setShowPivot(true), afterLines + 1200));
+    timers.push(setTimeout(() => setShowBtn(true), afterLines + 2400));
     return () => timers.forEach(clearTimeout);
   }, [lines.length]);
 
+  // Subtle gradient intensity tied to reveal progress
+  const gradientOpacity = Math.min(0.35, 0.08 + visibleLines * 0.05);
+
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-white text-zinc-900">
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-zinc-900 relative overflow-hidden transition-colors duration-1000"
+      style={{ background: `linear-gradient(180deg, #ffffff ${100 - gradientOpacity * 100}%, #f8f6ff 100%)` }}>
       <div className="max-w-md w-full funnel-screen">
-        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-center mb-12">
-          Here&rsquo;s what you just told us.
+        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-center mb-14">
+          We heard you.
         </h2>
-        <div className="space-y-4">
+        <div className="space-y-6">
           {lines.map((line, i) => (
-            <p key={i} className={`text-base text-zinc-700 leading-relaxed transition-all duration-500 ${i < visibleLines ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"}`}>
-              {line}
-            </p>
+            <div key={i}
+              className={`transition-all duration-700 ease-out ${i < visibleLines ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
+              style={{ transitionDelay: `${i < visibleLines ? 0 : 100}ms` }}>
+              <div className="border-l-2 border-[#7C5CFC]/40 pl-5 py-1">
+                <p className="text-base text-zinc-700 leading-relaxed">{line}</p>
+              </div>
+            </div>
           ))}
         </div>
-        <div className={`mt-12 text-center transition-all duration-700 ${showCta ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
-          <p className="text-sm text-zinc-500 mb-8">You don&rsquo;t have to keep living like this.</p>
+
+        {/* Emotional pivot */}
+        <div className={`mt-14 text-center transition-all duration-1000 ${showPivot ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
+          <p className="text-lg font-semibold text-zinc-900 tracking-tight">
+            You don&rsquo;t have to keep living like this.
+          </p>
+        </div>
+
+        {/* Continue */}
+        <div className={`mt-10 text-center transition-all duration-700 ${showBtn ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
           <button onClick={onContinue} className="rounded-full bg-[#7C5CFC] px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]">
             Continue
           </button>
