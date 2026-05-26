@@ -151,13 +151,15 @@ export default function AccountScreen() {
     // gives slice 14 everything it needs to write UserOnboarding
     // columns or OnboardingEvent rows.
     void trackOnboardingEvent("funnel_signup_completed", {
-      method,
-      isFirst100,
-      q1,
-      q2,
-      q3,
-      q4,
-      q5,
+      metadata: {
+        method,
+        isFirst100,
+        q1,
+        q2,
+        q3,
+        q4,
+        q5,
+      },
     });
 
     // Pull updated user state from server so AuthGate sees the
@@ -182,15 +184,14 @@ export default function AccountScreen() {
     inflightRef.current = true;
     setError(null);
     setPendingMethod("apple");
-    void trackOnboardingEvent("funnel_signup_started", { method: "apple" });
+    void trackOnboardingEvent("funnel_signup_started", { value: "apple" });
     try {
       const result = await signInWithApple();
       if (!result.ok) {
         if (result.reason !== "Cancelled") {
           setError(friendlyErrorFor(result.reason));
           void trackOnboardingEvent("funnel_signup_failed", {
-            method: "apple",
-            errorCode: result.reason,
+            value: `apple:${result.reason ?? "unknown"}`,
           });
         }
         return;
@@ -201,8 +202,7 @@ export default function AccountScreen() {
       const msg = err instanceof Error ? err.message : "unknown";
       setError("Couldn't sign in with Apple. Try again.");
       void trackOnboardingEvent("funnel_signup_failed", {
-        method: "apple",
-        errorCode: msg,
+        value: `apple:${msg}`,
       });
     } finally {
       inflightRef.current = false;
@@ -219,15 +219,14 @@ export default function AccountScreen() {
     inflightRef.current = true;
     setError(null);
     setPendingMethod("google");
-    void trackOnboardingEvent("funnel_signup_started", { method: "google" });
+    void trackOnboardingEvent("funnel_signup_started", { value: "google" });
     try {
       const result = await googleSignIn();
       if (!result.ok) {
         if (result.reason !== "cancelled") {
           setError(friendlyErrorFor(result.reason));
           void trackOnboardingEvent("funnel_signup_failed", {
-            method: "google",
-            errorCode: result.reason,
+            value: `google:${result.reason ?? "unknown"}`,
           });
         }
         return;
@@ -238,8 +237,7 @@ export default function AccountScreen() {
       const msg = err instanceof Error ? err.message : "unknown";
       setError("Couldn't sign in with Google. Try again.");
       void trackOnboardingEvent("funnel_signup_failed", {
-        method: "google",
-        errorCode: msg,
+        value: `google:${msg}`,
       });
     } finally {
       inflightRef.current = false;
@@ -261,14 +259,13 @@ export default function AccountScreen() {
     inflightRef.current = true;
     setError(null);
     setPendingMethod("email");
-    void trackOnboardingEvent("funnel_signup_started", { method: "email" });
+    void trackOnboardingEvent("funnel_signup_started", { value: "email" });
     try {
       const signupResult = await signUpWithPassword(trimmedEmail, password);
       if (!signupResult.ok) {
         setError(friendlyErrorFor(signupResult.reason));
         void trackOnboardingEvent("funnel_signup_failed", {
-          method: "email",
-          errorCode: signupResult.reason,
+          value: `email:${signupResult.reason ?? "unknown"}`,
         });
         return;
       }
@@ -279,8 +276,7 @@ export default function AccountScreen() {
       if (!loginResult.ok) {
         setError(friendlyErrorFor(loginResult.reason));
         void trackOnboardingEvent("funnel_signup_failed", {
-          method: "email",
-          errorCode: loginResult.reason,
+          value: `email:${loginResult.reason ?? "unknown"}`,
         });
         return;
       }
@@ -290,8 +286,7 @@ export default function AccountScreen() {
       const msg = err instanceof Error ? err.message : "unknown";
       setError("Couldn't create your account. Try again.");
       void trackOnboardingEvent("funnel_signup_failed", {
-        method: "email",
-        errorCode: msg,
+        value: `email:${msg}`,
       });
     } finally {
       inflightRef.current = false;

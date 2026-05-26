@@ -9,9 +9,17 @@ import {
   useOnboardingState,
   type Q1Answer,
 } from "@/contexts/onboarding-context";
+import { trackOnboardingEvent } from "@/lib/onboarding-events";
 import { makeAcuityTokens } from "@/lib/theme/tokens";
 
 import { DiagnosticCard } from "./_components/diagnostic-card";
+import { ScreenTestimonial } from "./_components/screen-testimonial";
+
+const TESTIMONIAL = {
+  quote:
+    "I picked 'days that blur together.' Seeing it written down hit different.",
+  name: "David K.",
+};
 
 /**
  * Screen 2 — Diagnostic Q1, single-select with auto-advance.
@@ -39,6 +47,7 @@ export default function Q1Screen() {
 
   const onSelect = (key: Q1Answer) => {
     setQ1(key);
+    void trackOnboardingEvent("funnel_diagnostic_loop", { value: key });
     setTimeout(() => {
       router.push("/onboarding-new/q2" as never);
     }, AUTO_ADVANCE_MS);
@@ -81,6 +90,14 @@ export default function Q1Screen() {
                 tokens={tokens}
               />
             ))}
+          </View>
+
+          <View style={{ marginTop: 32 }}>
+            <ScreenTestimonial
+              quote={TESTIMONIAL.quote}
+              name={TESTIMONIAL.name}
+              tokens={tokens}
+            />
           </View>
         </ScrollView>
       </SafeAreaView>

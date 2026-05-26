@@ -8,6 +8,7 @@ import {
   Q4_OPTIONS,
   useOnboardingState,
 } from "@/contexts/onboarding-context";
+import { trackOnboardingEvent } from "@/lib/onboarding-events";
 import { makeAcuityTokens } from "@/lib/theme/tokens";
 
 import { DiagnosticCard } from "./_components/diagnostic-card";
@@ -41,6 +42,7 @@ export default function Q4Screen() {
 
   const onContinue = () => {
     if (!canContinue) return;
+    void trackOnboardingEvent("funnel_diagnostic_cost", { values: q4 });
     router.push("/onboarding-new/q5" as never);
   };
 

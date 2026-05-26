@@ -12,6 +12,7 @@ import { StatusBar } from "expo-status-bar";
 
 import { useTheme } from "@/contexts/theme-context";
 import { useOnboardingState } from "@/contexts/onboarding-context";
+import { trackOnboardingEvent } from "@/lib/onboarding-events";
 import { makeAcuityTokens } from "@/lib/theme/tokens";
 
 import { ScreenTestimonial } from "./_components/screen-testimonial";
@@ -80,6 +81,10 @@ export default function PromiseScreen() {
   const subY = useSharedValue(8);
   const ctaOpacity = useSharedValue(0);
   const cursorOpacity = useSharedValue(1);
+
+  useEffect(() => {
+    void trackOnboardingEvent("funnel_promise_viewed");
+  }, []);
 
   // Resolve reduce-motion preference before deciding the entrance path.
   useEffect(() => {

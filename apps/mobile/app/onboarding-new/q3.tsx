@@ -8,9 +8,17 @@ import {
   Q3_OPTIONS,
   useOnboardingState,
 } from "@/contexts/onboarding-context";
+import { trackOnboardingEvent } from "@/lib/onboarding-events";
 import { makeAcuityTokens } from "@/lib/theme/tokens";
 
 import { DiagnosticCard } from "./_components/diagnostic-card";
+import { ScreenTestimonial } from "./_components/screen-testimonial";
+
+const TESTIMONIAL = {
+  quote:
+    "I tried three journaling apps. This is the first one that stuck because I just talk.",
+  name: "Jamie L.",
+};
 
 /**
  * Screen 4 — Diagnostic Q3, multi-select with explicit Continue.
@@ -32,6 +40,7 @@ export default function Q3Screen() {
 
   const onContinue = () => {
     if (!canContinue) return;
+    void trackOnboardingEvent("funnel_diagnostic_attempts", { values: q3 });
     // Updated flow 2026-05-25: Q3 → Q4 → Q5 → bridge. Mirrors web's
     // 5-question diagnostic vector before the failed-solution pivot.
     router.push("/onboarding-new/q4" as never);
@@ -85,6 +94,14 @@ export default function Q3Screen() {
                 tokens={tokens}
               />
             ))}
+          </View>
+
+          <View style={{ marginTop: 32 }}>
+            <ScreenTestimonial
+              quote={TESTIMONIAL.quote}
+              name={TESTIMONIAL.name}
+              tokens={tokens}
+            />
           </View>
         </ScrollView>
 

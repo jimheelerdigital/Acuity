@@ -236,7 +236,7 @@ export default function RecordScreen() {
     try {
       await submitTryRecording(uri, "audio/mp4");
       void trackOnboardingEvent("funnel_recording_completed", {
-        durationSeconds: finalElapsed,
+        value: String(finalElapsed),
       });
       router.push("/onboarding-new/processing" as never);
     } catch (err) {

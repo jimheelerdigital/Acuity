@@ -9,6 +9,7 @@ import {
   useOnboardingState,
   type Q5Answer,
 } from "@/contexts/onboarding-context";
+import { trackOnboardingEvent } from "@/lib/onboarding-events";
 import { makeAcuityTokens } from "@/lib/theme/tokens";
 
 import { DiagnosticCard } from "./_components/diagnostic-card";
@@ -43,6 +44,7 @@ export default function Q5Screen() {
 
   const onSelect = (key: Q5Answer) => {
     setQ5(key);
+    void trackOnboardingEvent("funnel_diagnostic_desire", { value: key });
     setTimeout(() => {
       router.push("/onboarding-new/bridge" as never);
     }, AUTO_ADVANCE_MS);

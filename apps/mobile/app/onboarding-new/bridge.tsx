@@ -12,6 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 
 import { useTheme } from "@/contexts/theme-context";
+import { trackOnboardingEvent } from "@/lib/onboarding-events";
 import { makeAcuityTokens } from "@/lib/theme/tokens";
 
 import { ScreenTestimonial } from "./_components/screen-testimonial";
@@ -69,6 +70,10 @@ export default function BridgeScreen() {
   const ctaOpacity = useSharedValue(0);
 
   const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    void trackOnboardingEvent("funnel_failed_solution_viewed");
+  }, []);
 
   useEffect(() => {
     let cancelled = false;

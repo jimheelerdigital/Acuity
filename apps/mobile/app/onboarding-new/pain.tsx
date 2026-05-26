@@ -12,7 +12,16 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 
 import { useTheme } from "@/contexts/theme-context";
+import { trackOnboardingEvent } from "@/lib/onboarding-events";
 import { makeAcuityTokens } from "@/lib/theme/tokens";
+
+import { ScreenTestimonial } from "./_components/screen-testimonial";
+
+const TESTIMONIAL = {
+  quote:
+    "I didn't realize I was living the same week on repeat until Acuity showed me.",
+  name: "Priya R.",
+};
 
 /**
  * Screen 1 of the pain-first onboarding (slice 2 v1.2). The hook.
@@ -63,6 +72,11 @@ export default function PainScreen() {
   const ctaOpacity = useSharedValue(0);
 
   const [ready, setReady] = useState(false);
+
+  // Fire on mount — the cold-launch entry for the pain-first funnel.
+  useEffect(() => {
+    void trackOnboardingEvent("funnel_pain_hook_viewed");
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -170,6 +184,14 @@ export default function PainScreen() {
               Days blur. Nothing sticks. Life passes.
             </Text>
           </Animated.View>
+
+          <View style={{ marginTop: 32 }}>
+            <ScreenTestimonial
+              quote={TESTIMONIAL.quote}
+              name={TESTIMONIAL.name}
+              tokens={tokens}
+            />
+          </View>
         </View>
 
         <Animated.View

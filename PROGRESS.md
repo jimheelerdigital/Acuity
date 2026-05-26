@@ -41,6 +41,86 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-26] — Mobile pain-first onboarding: paywall + cold-launch flag + analytics complete (slices 12-14)
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** PENDING (closes 092f73b → d9e6630 → e6ce183 → this)
+
+### In plain English (for Keenan)
+
+The mobile pain-first onboarding flow is now end-to-end complete and instrumented. A new user opening the app cold (with the feature flag on) walks through the same 15-screen story that web's /start funnel uses — pain hook → 5 diagnostic questions with social proof testimonials underneath → failed-solution bridge → personalized promise → commitment gesture → 60-second recording → atmospheric processing → reveal of their actual extraction → account creation → 30-day journey paywall with a 30-day free trial start. Every step now reports a funnel event back to the dashboard, so we can see exactly where people drop off and which diagnostic answers correlate with conversion.
+
+The paywall screen at the end is a soft paywall — users can tap "Remind me later" and still enter the app. That's intentional and different from web /start: mobile users already gave us a real recording and have unsaved value to lose if they bail, so we don't need the hard wall.
+
+The cold-launch routing flag (EXPO_PUBLIC_NEW_ONBOARDING_ENABLED) is OFF by default. Flipping it requires an EAS rebuild or expo-updates OTA push. Until Jim's TestFlight pass and explicit go-ahead, no one in production sees the new flow — all current traffic continues to the existing sign-in screen.
+
+### Technical changes (for Jimmy)
+
+**Slice 12 — Paywall (committed d9e6630):**
+- New file: `apps/mobile/app/onboarding-new/paywall.tsx` — atmospheric 30-day journey timeline, 4 cards with 300ms staggered cascade, Week 1 marked complete with PURPLE checkmark + "You just did this", `formatDollars(MONTHLY_PRICE_CENTS)/month after trial` body, Start trial → SFSafariView to `/upgrade?src=onboarding_paywall&signup=fresh`, Remind me later → `/(tabs)`
+- New file: `apps/mobile/lib/pricing.ts` — mobile mirror of `apps/web/src/lib/pricing.ts` (MONTHLY_PRICE_CENTS=499, ANNUAL_PRICE_CENTS=3999, formatDollars). Web canonical; promotion to `packages/shared` flagged as cleanup.
+- Onboarding-complete POST on paywall mount + `refresh()` so AuthGate's `!onboardingCompleted` check doesn't yank the user back to `/onboarding?step=1` on the route to `/(tabs)`.
+
+**Slice 13 — Feature flag (committed e6ce183):**
+- New file: `apps/mobile/lib/feature-flags.ts` — `isNewOnboardingEnabled()` reads `process.env.EXPO_PUBLIC_NEW_ONBOARDING_ENABLED === "true"`. Default false (env var missing/malformed never silently enables experimental paths).
+- Modified `apps/mobile/app/_layout.tsx` — AuthGate's `!user` branch routes to `/onboarding-new/pain` when flag is on, falls back to `/(auth)/sign-in` otherwise. `String(segments[0]) === "onboarding-new"` bypasses expo-router strict typed-routes union until `expo-env.d.ts` regenerates.
+- Modified `.env.example` — added `EXPO_PUBLIC_NEW_ONBOARDING_ENABLED="false"` with docstring explaining the flip-on procedure (env var + EAS rebuild OR expo-updates OTA push).
+
+**Slice 14 — Analytics network surface + testimonial backfill (this commit):**
+- Rewrote `apps/mobile/lib/onboarding-events.ts` — now actually POSTs to `/api/onboarding-events` with Bearer auth fallback + AsyncStorage `try_session_token` for the anon pre-signup arc. Fail-soft so analytics never blocks user flow.
+- Reconciled `OnboardingEventName` union to match web's `VALID_EVENTS` whitelist verbatim: `funnel_pain_viewed → funnel_pain_hook_viewed`, `funnel_bridge_viewed → funnel_failed_solution_viewed`, `funnel_diagnostic_{1,2,3}_completed → funnel_diagnostic_{loop,duration,attempts}`.
+- Added 6 missing event names to `apps/web/src/app/api/onboarding-events/route.ts` VALID_EVENTS: `funnel_commitment_started`, `funnel_processing_viewed`, `funnel_signup_started`, `funnel_signup_failed`, `funnel_trial_started`, `funnel_paywall_dismissed`. Whitelist was rejecting these silently with HTTP 400.
+- New `TrackOptions` signature: `{ value?: string; values?: readonly string[]; metadata?: Record<string, unknown> }`. Single-value events use `value`, multi-select use `values` (comma-joined wire-side), rich metadata events (paywall_viewed, signup_completed, extraction_viewed) JSON-encode into the `value` column.
+- Fired diagnostic events on Q1-Q5: `funnel_diagnostic_loop` (Q1 select), `_duration` (Q2 select), `_attempts` (Q3 continue), `_cost` (Q4 continue), `_desire` (Q5 select). Multi-select answers ride the `values` field.
+- Fired mount events on pain (`funnel_pain_hook_viewed`), bridge (`funnel_failed_solution_viewed`), promise (`funnel_promise_viewed`) screens.
+- Testimonial backfill on pain/Q1/Q2/Q3 using the web-canonical pairings from `apps/web/src/components/onboarding-funnel.tsx`: Priya R. (pain), David K. (Q1), Sarah K. (Q2), Jamie L. (Q3).
+- Paywall `funnel_paywall_viewed` now ships rich metadata: `{ trialDaysRemaining, isFirst100, q1, q2, q3, q4, q5 }` — JSON-encoded into the `value` column so dashboards can correlate the full diagnostic vector to paywall reach + trial start conversion.
+- Existing call sites refactored to the new signature: account.tsx, record.tsx, paywall.tsx, reveal.tsx, commitment.tsx, processing.tsx.
+
+**Full event vocabulary now firing across the mobile onboarding-v2 flow:**
+1. `funnel_pain_hook_viewed` — pain.tsx mount
+2. `funnel_diagnostic_loop` — Q1 select (value: q1Answer)
+3. `funnel_diagnostic_duration` — Q2 select (value: q2Answer)
+4. `funnel_diagnostic_attempts` — Q3 continue (values: q3Answers[])
+5. `funnel_diagnostic_cost` — Q4 continue (values: q4Answers[])
+6. `funnel_diagnostic_desire` — Q5 select (value: q5Answer)
+7. `funnel_failed_solution_viewed` — bridge.tsx mount
+8. `funnel_promise_viewed` — promise.tsx mount
+9. `funnel_commitment_started` — commitment-ring touch begin
+10. `funnel_commitment_completed` — commitment-ring 2s hold complete
+11. `funnel_commitment_abandoned` — commitment-ring release before complete
+12. `funnel_recording_started` — record.tsx mic recording start
+13. `funnel_recording_completed` — record.tsx upload success (value: durationSeconds)
+14. `funnel_processing_viewed` — processing.tsx mount
+15. `funnel_extraction_viewed` — reveal.tsx cascade kick (metadata: hasMood, themeCount, taskCount, goalCount)
+16. `funnel_signup_started` — account.tsx Apple/Google/Email tap (value: method)
+17. `funnel_signup_completed` — account.tsx claim+route success (metadata: method, isFirst100, q1-q5)
+18. `funnel_signup_failed` — account.tsx OAuth/email failure (value: method:errorCode)
+19. `funnel_paywall_viewed` — paywall.tsx mount (metadata: trialDaysRemaining, isFirst100, q1-q5)
+20. `funnel_trial_started` — paywall.tsx Start trial tap (pre-SFSafariView)
+21. `funnel_paywall_dismissed` — paywall.tsx Remind me later tap
+
+All 21 events route through the web `VALID_EVENTS` whitelist; the `value` column is JSON-encoded for the 4 metadata-rich events and raw string for the others. Dashboards parsing the value column should `try/catch` JSON.parse and fall back to raw on the simple events.
+
+### Manual steps needed
+
+- [ ] **Jim:** Internal TestFlight pass (build pending) on the full pain→paywall flow. Spec is `docs/PRODUCTION_AUDIT_2026-04-21.md` + `docs/WEB_MOBILE_PARITY_2026-04-24.md`. Specifically verify: (a) flag-off behavior — cold launch still goes to `/(auth)/sign-in`; (b) flag-on behavior — `EXPO_PUBLIC_NEW_ONBOARDING_ENABLED=true` in EAS profile + rebuild, cold launch goes to `/onboarding-new/pain`; (c) reduce-motion respected on every screen (toggle in iOS Settings → Accessibility → Motion); (d) full record → reveal → signup → paywall handoff via Apple AND Google AND email; (e) "Remind me later" on the paywall doesn't yank back to `/onboarding?step=1`.
+- [ ] **Jim:** Verify the funnel events arrive in Keenan's onboarding-events dashboard with the new names (`funnel_pain_hook_viewed` etc.). The 6 newly-whitelisted events (signup_started, signup_failed, trial_started, paywall_dismissed, processing_viewed, commitment_started) were being rejected silently with HTTP 400 before this commit.
+- [ ] **Jim:** Flip `EXPO_PUBLIC_NEW_ONBOARDING_ENABLED=true` in EAS production profile when ready. Either cut a fresh EAS build or push an expo-updates OTA bundle — the env var is inlined at bundle time, so flipping in Vercel alone is insufficient for mobile.
+- [ ] **Jim:** App Store submission (manual release setting per the 2026-05-15 rule). Hold release button until Jim confirms TestFlight pass.
+
+### Notes
+
+- Diagnostic answer persistence rides the analytics path, not the auth payload — the spec considered writing q1-q5 onto the User row at signup, but that would have meant touching `/api/auth/*` (HIGH-RISK gate) and adding a column to the User schema (HIGH-RISK gate, plus a `prisma db push` Keenan would need to run). The analytics path is additive only, doesn't touch the auth surface, and the dashboard already aggregates by event so the data lands in queryable form on day one.
+- The `value` column is a single nullable string per schema. JSON-encoding rich metadata into it works for now but flagged as future tech debt — a structured `metadata Json?` column would let us index on individual diagnostic answers without parsing. Not worth a schema migration for the launch-readiness sprint; revisit post-Beta if the dashboards need joined queries.
+- `apps/mobile/lib/pricing.ts` duplicates `apps/web/src/lib/pricing.ts` because mobile can't import from `apps/web`. Promotion to `packages/shared` is the clean follow-up but expands slice 12's scope. Web is canonical; manual sync required on any price change until the constants move.
+- Pre-existing TypeScript noise in `apps/web` (`canvas-confetti` and `facebook-nodejs-business-sdk` missing types, admin metrics implicit `any`, content-piece enum mismatch) is unchanged by this work and not introduced by it. Pre-existing mobile JSX-component-type errors on `react-native-svg` + Reanimated 4 strict typing also unchanged (commitment-ring carries the same warnings, runtime correct).
+- The working tree has unrelated `apps/mobile/app.json` changes (Facebook SDK app ID change with an inline `clientToken`) and a batch of supabase migration deletions. These were NOT staged in this commit — flagged for Jim to triage separately because (a) the FB client token is inline-redacted in a way the secret-handling rule says to flag, and (b) the supabase migration deletions are unrelated to onboarding work.
+- The 6 missing events in the web whitelist were silently dropped with HTTP 400 before this commit. Any commitment-screen / signup-failure / trial-start telemetry from slices 7-12 in TestFlight is unreliable. New events going forward are clean.
+
+---
+
 ## [2026-05-26] — Full ad attribution pipeline: UTM capture, AdLab destination, dashboard attribution
 
 **Requested by:** Keenan

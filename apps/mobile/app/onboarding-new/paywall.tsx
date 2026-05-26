@@ -19,6 +19,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 
 import { useAuth } from "@/contexts/auth-context";
+import { useOnboardingState } from "@/contexts/onboarding-context";
 import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
 import { trackOnboardingEvent } from "@/lib/onboarding-events";
@@ -100,10 +101,18 @@ export default function PaywallScreen() {
   const router = useRouter();
   const { palette } = useTheme();
   const tokens = makeAcuityTokens({ dark: false, accent: palette });
-  const { refresh } = useAuth();
+  const { user, refresh } = useAuth();
+  const { q1, q2, q3, q4, q5 } = useOnboardingState();
 
   const [reduceMotion, setReduceMotion] = useState<boolean | null>(null);
   const inflightRef = useRef(false);
+
+  // Compute the funnel metadata up front — used in both the
+  // paywall_viewed mount event and any subsequent trial_started
+  // event so the dashboards can correlate the full diagnostic
+  // vector to conversion.
+  const trialDaysRemaining = computeTrialDaysRemaining(user?.trialEndsAt);
+  const isFirst100 = trialDaysRemaining !== null && trialDaysRemaining > 20;
 
   // One sharedValue per card for the staggered cascade.
   const card1 = useSharedValue(0);
@@ -118,7 +127,17 @@ export default function PaywallScreen() {
   // Fire paywall_viewed + mark onboarding complete + probe reduce-motion.
   useEffect(() => {
     let cancelled = false;
-    void trackOnboardingEvent("funnel_paywall_viewed");
+    void trackOnboardingEvent("funnel_paywall_viewed", {
+      metadata: {
+        trialDaysRemaining,
+        isFirst100,
+        q1,
+        q2,
+        q3,
+        q4,
+        q5,
+      },
+    });
 
     void (async () => {
       try {
@@ -465,4 +484,13 @@ function TimelineCardView({
       </View>
     </Animated.View>
   );
+}
+
+function computeTrialDaysRemaining(
+  trialEndsAt: string | null | undefined
+): number | null {
+  if (!trialEndsAt) return null;
+  const end = new Date(trialEndsAt).getTime();
+  if (!Number.isFinite(end)) return null;
+  return Math.max(0, Math.round((end - Date.now()) / 86400_000));
 }

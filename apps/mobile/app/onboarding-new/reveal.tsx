@@ -225,10 +225,12 @@ export default function RevealScreen() {
       setExtraction(normalized);
       setLoadState("ready");
       void trackOnboardingEvent("funnel_extraction_viewed", {
-        hasMood: normalized.mood !== null,
-        themeCount: normalized.themes.length,
-        taskCount: normalized.tasks.length,
-        goalCount: normalized.goals.length,
+        metadata: {
+          hasMood: normalized.mood !== null,
+          themeCount: normalized.themes.length,
+          taskCount: normalized.tasks.length,
+          goalCount: normalized.goals.length,
+        },
       });
     });
     return () => {
