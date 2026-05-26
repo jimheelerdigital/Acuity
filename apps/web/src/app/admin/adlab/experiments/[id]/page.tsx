@@ -1678,7 +1678,6 @@ function AngleCard({
     }
     setRefetching(null);
   }
-  }
 
   return (
     <div
