@@ -42,12 +42,16 @@ export type Q2Answer =
   | "over_a_year"
   | "cant_remember";
 
+// 2026-05-25 sync to web canonical: dropped "all_of_above" (web
+// doesn't offer it), added "meditation" so the mobile and web
+// option lists match exactly. Safe pre-launch — no in-flight
+// users have persisted Q3 answers.
 export type Q3Answer =
   | "journaling"
   | "therapy"
   | "productivity"
-  | "push_through"
-  | "all_of_above";
+  | "meditation"
+  | "push_through";
 
 // Diagnostic Q4 — "What's it costing you?". Multi-select, mirrors
 // the web funnel's DIAGNOSTIC4_OPTIONS (apps/web/src/components/
@@ -95,8 +99,8 @@ export const Q3_OPTIONS: OnboardingOption<Q3Answer>[] = [
   { key: "journaling", label: "Journaling (couldn't keep it up)" },
   { key: "therapy", label: "Therapy (not enough between sessions)" },
   { key: "productivity", label: "Productivity apps (too much work)" },
+  { key: "meditation", label: "Meditation or mindfulness (didn't stick)" },
   { key: "push_through", label: "Nothing — I just push through" },
-  { key: "all_of_above", label: "All of the above" },
 ];
 
 export const Q4_OPTIONS: OnboardingOption<Q4Answer>[] = [
@@ -158,19 +162,15 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
     setQ2State(answer);
   }, []);
 
-  // Q3 is multi-select with a special "all_of_above" semantic — when
-  // the user taps it, the other selections clear; tapping any other
-  // option while "all_of_above" is selected clears the all_of_above
-  // and leaves only the new pick. Standard "All of the above" UX.
+  // Q3 multi-select — plain toggle now that "all_of_above" is
+  // gone (2026-05-25 sync to web). Web's DIAGNOSTIC3_OPTIONS doesn't
+  // include an all-of-the-above bucket, so the mutex special case
+  // we previously carried is dead.
   const toggleQ3 = useCallback((answer: Q3Answer) => {
     setQ3State((prev) => {
-      if (answer === "all_of_above") {
-        return prev.includes("all_of_above") ? [] : ["all_of_above"];
-      }
-      const filtered = prev.filter((x) => x !== "all_of_above");
-      return filtered.includes(answer)
-        ? filtered.filter((x) => x !== answer)
-        : [...filtered, answer];
+      return prev.includes(answer)
+        ? prev.filter((x) => x !== answer)
+        : [...prev, answer];
     });
   }, []);
 
