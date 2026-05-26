@@ -41,6 +41,34 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-26] — AdLab: hide landing page section when destination is "Direct to Funnel"
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 7db5de1
+
+### In plain English (for Keenan)
+
+When creating an AdLab experiment and choosing "Direct to Funnel (/start)" as the destination, the Landing Page section (with the "Generate Landing Page" button and fallback destination) no longer shows. Instead, you see a clean confirmation card that says the destination is getacuity.io/start with full UTM tracking, plus the exact URL the ad will send people to. The "Generate Landing Page" button only appears when "Landing Page" is selected as the destination.
+
+### Technical changes (for Jimmy)
+
+- Modified `LandingPageSection` component in `apps/web/src/app/admin/adlab/experiments/[id]/page.tsx`
+- Added `destination` and `campaignType` fields to the `Experiment` TypeScript interface (already existed on the Prisma model, just wasn't typed on the frontend)
+- Component now checks `experiment.destination`: if not `"landing_page"`, renders a direct-funnel confirmation card with UTM URL; otherwise shows the existing generate/preview landing page UI
+- UTM URL format: `getacuity.io/start?utm_source=meta&utm_medium=paid&utm_campaign={topicBrief}&utm_content={experiment_id}`
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- The `destination` field already existed on the `adLabExperiment` Prisma model with a default of `"direct_funnel"`, and was already being saved during experiment creation. It just wasn't being checked on the detail page UI.
+- Used `experiment.destination !== "landing_page"` (rather than `=== "direct_funnel"`) so that existing experiments without an explicit destination value default to showing the funnel card, matching the Prisma default.
+
+---
+
 ## [2026-05-26] — Mobile pain-first onboarding: paywall + cold-launch flag + analytics complete (slices 12-14)
 
 **Requested by:** Jimmy
