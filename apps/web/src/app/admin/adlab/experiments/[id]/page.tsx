@@ -1656,17 +1656,28 @@ function AngleCard({
     setVideoConfirming(false);
   }
 
-  async function downloadVideo(url: string) {
-    const res = await fetch(url);
-    const blob = await res.blob();
-    const blobUrl = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = blobUrl;
-    a.download = `${angle.valueSurface}_video.mp4`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(blobUrl);
+  const [refetching, setRefetching] = useState<string | null>(null);
+
+  async function refetchVideo(creativeId: string) {
+    setRefetching(creativeId);
+    setVideoError(null);
+    try {
+      const res = await fetch("/api/admin/adlab/video/refetch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ creativeId }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        onReload();
+      } else {
+        setVideoError(`Re-fetch failed: ${data.error}`);
+      }
+    } catch {
+      setVideoError("Re-fetch failed: network error");
+    }
+    setRefetching(null);
+  }
   }
 
   return (
@@ -1793,20 +1804,27 @@ function AngleCard({
                               </div>
                             );
                           })()}
-                          <button onClick={() => downloadVideo(vc.videoUrl!)}
-                            className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-medium text-[#A0A0B8] hover:text-white bg-white/5 hover:bg-white/10 transition w-full justify-center">
-                            <Download className="h-3 w-3" /> Download
-                          </button>
+                          <div className="flex items-center gap-1">
+                            <a href={vc.videoUrl!} download={`${vc.videoPresenterTag || "video"}.mp4`}
+                              className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-medium text-[#A0A0B8] hover:text-white bg-white/5 hover:bg-white/10 transition flex-1 justify-center">
+                              <Download className="h-3 w-3" /> Download
+                            </a>
+                            <button onClick={() => refetchVideo(vc.id)} disabled={refetching === vc.id}
+                              className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium text-[#A0A0B8] hover:text-white bg-white/5 hover:bg-white/10 transition"
+                              title="Re-download from HeyGen">
+                              {refetching === vc.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                            </button>
+                          </div>
                         </div>
                       )) : angle.videoUrl && (
                         <div className="space-y-1.5" style={{ maxWidth: "200px" }}>
                           <div className="relative rounded-lg overflow-hidden bg-black/30">
                             <video src={angle.videoUrl} controls className="w-full rounded-lg" style={{ aspectRatio: "9/16", maxHeight: "360px" }} />
                           </div>
-                          <button onClick={() => downloadVideo(angle.videoUrl!)}
+                          <a href={angle.videoUrl} download={`${angle.valueSurface}_video.mp4`}
                             className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-medium text-[#A0A0B8] hover:text-white bg-white/5 hover:bg-white/10 transition">
                             <Download className="h-3 w-3" /> Download
-                          </button>
+                          </a>
                         </div>
                       )}
                     </div>

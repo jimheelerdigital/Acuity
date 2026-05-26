@@ -128,31 +128,30 @@ async function pollVideoStatus(videoId: string): Promise<{ status: string; video
   return { status: "timeout", error: "Video processing timed out after 5 minutes" };
 }
 
-async function uploadToSupabase(videoUrl: string, filename: string): Promise<string | null> {
-  try {
-    const { supabase } = await import("@/lib/supabase.server");
+async function uploadToSupabase(videoUrl: string, filename: string): Promise<string> {
+  const { supabase } = await import("@/lib/supabase.server");
 
-    const res = await fetch(videoUrl);
-    if (!res.ok) throw new Error(`Failed to download video: ${res.status}`);
-    const buffer = Buffer.from(await res.arrayBuffer());
+  // Download the video from HeyGen (URL expires — must persist to our own storage)
+  const res = await fetch(videoUrl);
+  if (!res.ok) throw new Error(`Failed to download video from HeyGen: ${res.status}`);
+  const buffer = Buffer.from(await res.arrayBuffer());
 
-    console.log(`[adlab-heygen] Uploading to Supabase: ${filename}, size: ${buffer.length} bytes`);
-
-    const { error } = await supabase.storage
-      .from("adlab-videos")
-      .upload(filename, buffer, { contentType: "video/mp4", upsert: true });
-
-    if (error) {
-      console.error("[adlab-heygen] Supabase upload failed:", error.message);
-      return null;
-    }
-
-    const { data } = supabase.storage.from("adlab-videos").getPublicUrl(filename);
-    return data.publicUrl;
-  } catch (err) {
-    console.error("[adlab-heygen] Supabase upload error:", err);
-    return null;
+  if (buffer.length < 1000) {
+    throw new Error(`Downloaded video is suspiciously small (${buffer.length} bytes) — HeyGen URL may have expired`);
   }
+
+  console.log(`[adlab-heygen] Uploading to Supabase: ${filename}, size: ${buffer.length} bytes`);
+
+  const { error } = await supabase.storage
+    .from("adlab-videos")
+    .upload(filename, buffer, { contentType: "video/mp4", upsert: true });
+
+  if (error) {
+    throw new Error(`Supabase upload failed: ${error.message}`);
+  }
+
+  const { data } = supabase.storage.from("adlab-videos").getPublicUrl(filename);
+  return data.publicUrl;
 }
 
 /** Process one avatar: create HeyGen video → poll → upload → create creative record */
@@ -180,18 +179,16 @@ async function processOneAvatar(params: {
       return { status: "failed", error: result.error || `${tag} video failed`, presenterTag: tag };
     }
 
-    // Upload to Supabase with presenter tag in filename
+    // Upload to Supabase — HeyGen URLs expire, so we MUST persist our own copy
     const safeName = avatar.name.replace(/[^a-z0-9]/gi, "_").toLowerCase();
-    const supabaseUrl = await uploadToSupabase(result.videoUrl, `${angleId}_${safeName}.mp4`);
-    const finalUrl = supabaseUrl || result.videoUrl;
+    const finalUrl = await uploadToSupabase(result.videoUrl, `${angleId}_${safeName}.mp4`);
 
     // Create or update video creative record under this angle
     let creativeId: string;
     if (existingCreative) {
-      // Update existing video creative for this presenter
       await prisma.adLabCreative.update({
         where: { id: existingCreative.id },
-        data: { videoUrl: finalUrl, videoPresenterTag: tag },
+        data: { videoUrl: finalUrl, videoPresenterTag: tag, heygenVideoId },
       });
       creativeId = existingCreative.id;
     } else {
@@ -205,6 +202,7 @@ async function processOneAvatar(params: {
           cta: "Learn More",
           videoUrl: finalUrl,
           videoPresenterTag: tag,
+          heygenVideoId,
           generationPrompt: scriptText,
           approved: true,
         },

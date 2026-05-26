@@ -2134,6 +2134,7 @@ model AdLabCreative {
   imageUrl         String?
   videoUrl         String?
   videoPresenterTag String?              // e.g. "Male", "Female" — identifies which avatar version
+  heygenVideoId    String?              // HeyGen video ID for re-fetching if Supabase URL breaks
   generationPrompt String?                 @db.Text
   complianceStatus AdLabComplianceStatus   @default(pending)
   complianceNotes  String?                 @db.Text
