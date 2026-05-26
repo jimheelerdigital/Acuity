@@ -41,6 +41,41 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-26] — Fix HeyGen video playback and download — persist to Supabase Storage
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 9de2db9
+
+### In plain English (for Keenan)
+
+HeyGen videos were showing "video ready" but wouldn't play or download. The root cause: HeyGen's video URLs expire after a period. We were supposed to download the video and save it to our own storage (Supabase) immediately after generation, but if that upload step failed, the code silently fell back to saving HeyGen's temporary URL. Once it expired, the video was gone.
+
+Now: Supabase upload is mandatory. If it fails, the whole generation fails with a clear error — no more silently saving a URL that will break later. The download button is also fixed: it was using a JavaScript `fetch()` call that fails silently on expired cross-origin URLs. Now it's a direct download link that works in every browser.
+
+For any existing broken videos: there's now a small refresh icon next to each video's download button. Click it to re-download the video from HeyGen (if the HeyGen video ID is still valid) and save it to Supabase. This only works for videos generated after this fix (which store the HeyGen video ID).
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/api/admin/adlab/video/confirm/route.ts`: `uploadToSupabase()` now throws on failure instead of returning null. Removed `|| result.videoUrl` fallback. Also stores `heygenVideoId` on the creative record for recovery.
+- New endpoint `apps/web/src/app/api/admin/adlab/video/refetch/route.ts`: POST with `{ creativeId }` or `{ angleId }` — calls HeyGen `/v1/video_status.get` for a fresh URL, downloads the MP4, uploads to Supabase, updates the database record.
+- `apps/web/src/app/admin/adlab/experiments/[id]/page.tsx`: replaced `downloadVideo()` fetch+blob approach with `<a href download>` links. Added per-creative re-fetch button (refresh icon) that calls the refetch endpoint.
+- `prisma/schema.prisma`: added `heygenVideoId String?` to `AdLabCreative` model.
+
+### Manual steps needed
+
+- [ ] Run `npx prisma db push` to add `heygenVideoId` column to `adlab_creatives` table (Keenan — from home network)
+- [ ] Verify the `adlab-videos` Supabase Storage bucket exists and is set to public (Jimmy — check Supabase dashboard → Storage)
+- [ ] For the currently broken video: regenerate it after deploy (the old video has no heygenVideoId stored, so re-fetch won't work for it)
+
+### Notes
+
+- The `adlab-videos` Supabase Storage bucket must be public for the video URLs to work in the browser. If videos still won't play after this fix, check the bucket's public access setting in Supabase dashboard.
+- HeyGen video IDs remain valid for re-fetching even after the download URL expires. The `/v1/video_status.get` endpoint returns a fresh temporary URL each time. However, HeyGen may eventually purge old videos — re-fetch is a recovery mechanism, not a permanent solution.
+- The file size check (`buffer.length < 1000`) catches cases where HeyGen returns an error page instead of a video file.
+
+---
+
 ## [2026-05-26] — Avatar thumbnails and voice preview playback in HeyGen picker
 
 **Requested by:** Keenan
