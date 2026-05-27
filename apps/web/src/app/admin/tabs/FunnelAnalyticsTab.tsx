@@ -28,11 +28,15 @@ interface SessionRow {
   events: { event: string; value: string | null; createdAt: string }[];
   browser: string | null;
 }
+interface BranchRow {
+  branch: string; sessions: number; mirror: number; commit: number; paywall: number; paid: number; convRate: number;
+}
 interface FunnelData {
   keyMetrics: { totalSessions: number; todaySessions: number; completionRate: number; biggestDrop: { step: string; dropPct: number }; avgFunnelTimeSec: number };
   funnelSteps: FunnelStep[];
   alerts: Alert[];
   campaignFunnels: CampaignFunnel[];
+  branchBreakdown?: BranchRow[];
   sessions: SessionRow[];
   totalSessionCount: number;
 }
@@ -235,6 +239,43 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
           </table>
         </div>
       </div>
+
+      {/* ── Branch Breakdown ── */}
+      {data.branchBreakdown && data.branchBreakdown.length > 0 && (
+        <div className="rounded-xl bg-[#13131F] p-6">
+          <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-white/40">Branch Breakdown</h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-white/10 text-white/30 text-xs uppercase tracking-wider">
+                  <th className="pb-2 pr-3">Branch</th>
+                  <th className="pb-2 pr-3 text-right">Sessions</th>
+                  <th className="pb-2 pr-3 text-right">&rarr; Mirror</th>
+                  <th className="pb-2 pr-3 text-right">&rarr; Commit</th>
+                  <th className="pb-2 pr-3 text-right">&rarr; Paywall</th>
+                  <th className="pb-2 pr-3 text-right">&rarr; Paid</th>
+                  <th className="pb-2 pr-3 text-right">Rate</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.branchBreakdown.map((b) => (
+                  <tr key={b.branch} className="border-b border-white/5 text-white/60">
+                    <td className="py-2 pr-3 text-xs capitalize">{b.branch}</td>
+                    <td className="py-2 pr-3 text-xs text-right tabular-nums">{b.sessions}</td>
+                    <td className="py-2 pr-3 text-xs text-right tabular-nums">{b.mirror}</td>
+                    <td className="py-2 pr-3 text-xs text-right tabular-nums">{b.commit}</td>
+                    <td className="py-2 pr-3 text-xs text-right tabular-nums">{b.paywall}</td>
+                    <td className="py-2 pr-3 text-xs text-right tabular-nums">{b.paid}</td>
+                    <td className={`py-2 pr-3 text-xs text-right font-medium ${b.convRate >= 5 ? "text-emerald-400" : b.convRate > 0 ? "text-amber-400" : "text-red-400"}`}>
+                      {b.convRate}%
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* ── Live Sessions ── */}
       <div className="rounded-xl bg-[#13131F] p-6">

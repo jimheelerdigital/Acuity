@@ -1579,18 +1579,25 @@ async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date) {
 // ════════════════════════════════════════════════════════════════════════
 
 async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, showBots = false) {
+  // v2 funnel steps — branching quiz flow
   const FUNNEL_STEPS = [
-    { key: "pain_hook", event: "funnel_pain_hook_viewed", label: "Pain Hook" },
-    { key: "diagnostic", event: "funnel_diagnostic_loop_viewed", label: "Diagnostics" },
+    { key: "entry", event: "funnel_entry_viewed", label: "Entry", fallback: "funnel_pain_hook_viewed" },
+    { key: "branch_q2", event: "funnel_branch_q2_viewed", label: "Branch Q2", fallback: "funnel_diagnostic_loop_viewed" },
+    { key: "branch_q3", event: "funnel_branch_q3_viewed", label: "Q3" },
+    { key: "branch_q4", event: "funnel_branch_q4_viewed", label: "Q4" },
+    { key: "shared_q5", event: "funnel_shared_q5_viewed", label: "Q5" },
+    { key: "shared_q6", event: "funnel_shared_q6_viewed", label: "Q6 (Cost)" },
+    { key: "shared_q7", event: "funnel_shared_q7_viewed", label: "Q7" },
+    { key: "shared_q8", event: "funnel_shared_q8_viewed", label: "Q8" },
+    { key: "shared_q9", event: "funnel_shared_q9_viewed", label: "Q9" },
     { key: "mirror", event: "funnel_mirror_viewed", label: "Mirror" },
-    { key: "bridge", event: "funnel_bridge_viewed", label: "Bridge", fallback: "funnel_failed_solution_viewed" },
-    { key: "promise", event: "funnel_promise_viewed", label: "Promise" },
-    { key: "commitment", event: "funnel_commitment_viewed", label: "Commitment", fallback: "funnel_commitment_completed" },
-    { key: "extraction", event: "funnel_extraction_viewed", label: "Extraction", fallback: "funnel_mock_extraction_viewed" },
+    { key: "commit", event: "funnel_commit_viewed", label: "Commit", fallback: "funnel_commitment_viewed" },
+    { key: "processing", event: "funnel_processing_viewed", label: "Processing" },
+    { key: "snapshot", event: "funnel_snapshot_viewed", label: "Snapshot", fallback: "funnel_extraction_viewed" },
     { key: "timeline", event: "funnel_timeline_viewed", label: "Timeline", fallback: "funnel_journey_viewed" },
-    { key: "signup", event: "funnel_signup_viewed", label: "Signup", fallback: "funnel_signup_completed" },
     { key: "paywall", event: "funnel_paywall_viewed", label: "Paywall" },
-    { key: "paid", event: "funnel_payment_completed", label: "Paid" },
+    { key: "signup", event: "funnel_signup_completed", label: "Signup" },
+    { key: "paid", event: "funnel_payment_completed", label: "Paid", fallback: "funnel_checkout_started" },
     { key: "download", event: "funnel_download_viewed", label: "Download", fallback: "funnel_app_store_clicked" },
   ];
 
@@ -1841,6 +1848,37 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     };
   }).sort((a, b) => b.sessions - a.sessions);
 
+  // ── Branch breakdown — which pain path converts best ──
+  const BRANCH_KEYS = ["blur", "patterns", "rumination", "graveyard", "mask", "drift"];
+  const branchMap = new Map<string, typeof sessions>();
+  for (const s of sessions) {
+    // Find the funnel_entry_selected event to determine branch
+    const entryEvent = s.events.find((e) => e.event === "funnel_entry_selected");
+    const b = entryEvent?.value ?? "unknown";
+    if (!branchMap.has(b)) branchMap.set(b, []);
+    branchMap.get(b)!.push(s);
+  }
+
+  const branchBreakdown = [...branchMap.entries()]
+    .filter(([key]) => BRANCH_KEYS.includes(key))
+    .map(([branchKey, bSessions]) => {
+      const total = bSessions.length;
+      const reachedMirror = bSessions.filter((s) => s.stepNumber >= 10).length;
+      const reachedCommit = bSessions.filter((s) => s.stepNumber >= 11).length;
+      const reachedPaywall = bSessions.filter((s) => s.stepNumber >= 15).length;
+      const paidCount = bSessions.filter((s) => s.status === "paid" || s.status === "completed").length;
+      return {
+        branch: branchKey,
+        sessions: total,
+        mirror: reachedMirror,
+        commit: reachedCommit,
+        paywall: reachedPaywall,
+        paid: paidCount,
+        convRate: total > 0 ? Math.round((paidCount / total) * 100) : 0,
+      };
+    })
+    .sort((a, b) => b.sessions - a.sessions);
+
   return {
     keyMetrics: {
       totalSessions,
@@ -1852,6 +1890,7 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     funnelSteps,
     alerts,
     campaignFunnels,
+    branchBreakdown,
     sessions: sessions.slice(0, 100),
     totalSessionCount: sessions.length,
   };
