@@ -1,16 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import {
-  CartesianGrid,
-  Legend,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+// Recharts removed — trend chart uses CSS
 import { DEFAULT_LIFE_AREAS, lifeAreaDisplayLabel } from "@acuity/shared";
 
 import {
@@ -870,60 +861,36 @@ function TrendLineChart({
   }
 
   return (
-    <div className="h-[320px] w-full">
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart
-          data={data}
-          margin={{ top: 8, right: 16, left: -12, bottom: 0 }}
-        >
-          <CartesianGrid
-            stroke="#E4E4E7"
-            strokeDasharray="3 3"
-            vertical={false}
-          />
-          <XAxis
-            dataKey="label"
-            tick={{ fontSize: 11, fill: "#A1A1AA" }}
-            axisLine={{ stroke: "#E4E4E7" }}
-            tickLine={false}
-          />
-          <YAxis
-            domain={[0, 100]}
-            tick={{ fontSize: 11, fill: "#A1A1AA" }}
-            axisLine={{ stroke: "#E4E4E7" }}
-            tickLine={false}
-            width={32}
-          />
-          <Tooltip
-            contentStyle={{
-              background: "var(--acuity-card-bg)",
-              border: "1px solid var(--acuity-line)",
-              borderRadius: 8,
-              fontSize: 12,
-              color: "var(--acuity-text)",
-            }}
-            itemStyle={{ color: "#FAFAFA" }}
-            labelStyle={{ color: "#A1A1AA", marginBottom: 4 }}
-          />
-          <Legend
-            wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
-            iconType="circle"
-          />
-          {series.map((config) => (
-            <Line
-              key={config.enum}
-              type="monotone"
-              dataKey={config.enum}
-              name={config.name}
-              stroke={config.color}
-              strokeWidth={2}
-              dot={{ r: 3, strokeWidth: 0 }}
-              activeDot={{ r: 5 }}
-              connectNulls={false}
-            />
-          ))}
-        </LineChart>
-      </ResponsiveContainer>
+    <div className="w-full space-y-3">
+      {/* Legend */}
+      <div className="flex flex-wrap gap-3 mb-2">
+        {series.map((config) => (
+          <span key={config.enum} className="flex items-center gap-1.5 text-[11px] text-zinc-500 dark:text-zinc-400">
+            <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: config.color }} />
+            {config.name}
+          </span>
+        ))}
+      </div>
+      {/* Rows per week */}
+      {data.map((row, wi) => (
+        <div key={wi}>
+          <p className="text-[10px] text-zinc-400 mb-1">{row.label as string}</p>
+          <div className="flex gap-1">
+            {series.map((config) => {
+              const val = row[config.enum] as number | null;
+              return (
+                <div key={config.enum} className="flex-1" title={`${config.name}: ${val ?? "—"}`}>
+                  <div className="h-5 rounded bg-zinc-100 dark:bg-white/5 overflow-hidden">
+                    {val != null && (
+                      <div className="h-full rounded" style={{ width: `${val}%`, background: config.color, opacity: 0.7 }} />
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
