@@ -45,7 +45,7 @@ interface OverviewData {
   blendedCac?: number | null;
   signupsOverTime: { date: string; count: number }[];
   aiByPurpose: { purpose: string; total: number }[];
-  tryMetrics?: {
+  tryMet?: {
     today: number;
     thisWeek: number;
     allTime: number;
@@ -174,10 +174,17 @@ export default function OverviewTab({ start, end }: { start: string; end: string
     }
   };
 
-  const visibleFlags = data.redFlags.flags.filter((f) => !dismissed.has(f.id));
-  const signupSparkline = data.signupsOverTime.map((d) => ({ v: d.count }));
-  const rev = data.revenue;
-  const maxFunnelCount = Math.max(...data.funnel.steps.map((s) => s.count), 1);
+  // Safe accessors — if a sub-query failed via safe(), these defaults prevent render crashes
+  const redFlagsData = data.redFlags?.flags ?? [];
+  const signupsOverTimeData: { date: string; count: number }[] = data.signupsOverTime ?? [];
+  const rev = data.revenue ?? ({} as OverviewData["revenue"]);
+  const funnelStepsData = data.funnel?.steps ?? [];
+  const webFunnelData = data.webFunnel;
+  const tryMet = data.tryMet ?? { today: 0, thisWeek: 0, allTime: 0, conversions: 0, conversionRate: 0, dailyCapUsed: 0, dailyCap: 100 };
+
+  const visibleFlags = redFlagsData.filter((f) => !dismissed.has(f.id));
+  const signupSparkline = signupsOverTimeData.map((d) => ({ v: d.count }));
+  const maxFunnelCount = Math.max(...(funnelStepsData.length > 0 ? funnelStepsData.map((s) => s.count) : [1]), 1);
 
   return (
     <div className="space-y-6">
@@ -222,9 +229,9 @@ export default function OverviewTab({ start, end }: { start: string; end: string
       <div className="rounded-xl bg-[#13131F] p-6">
         <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-white/40">User Funnel</h3>
         <div className="space-y-3 max-w-3xl mx-auto">
-          {data.funnel.steps.map((step, i) => {
+          {funnelStepsData.map((step, i) => {
             const pct = (step.count / maxFunnelCount) * 100;
-            const prevCount = i > 0 ? data.funnel.steps[i - 1].count : null;
+            const prevCount = i > 0 ? funnelStepsData[i - 1].count : null;
             const dropOff = prevCount != null && prevCount > 0 ? Math.round(((prevCount - step.count) / prevCount) * 100) : null;
             const stepKey = STEP_KEY[step.label];
             const drillable = stepKey && step.count > 0;
@@ -249,12 +256,12 @@ export default function OverviewTab({ start, end }: { start: string; end: string
       {/* ── Charts Row ────────────────────────────────────────────── */}
       <div className="grid gap-4 lg:grid-cols-2">
         <ChartCard title="Signups Over Time">
-          {data.signupsOverTime.length === 0 ? (
+          {signupsOverTimeData.length === 0 ? (
             <p className="text-sm text-white/40 py-12 text-center">Not enough data yet</p>
           ) : (
             <div className="h-56">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={data.signupsOverTime}>
+                <BarChart data={signupsOverTimeData}>
                   <XAxis dataKey="date" tick={{ fill: "rgba(255,255,255,0.55)", fontSize: 12 }} tickFormatter={(v) => v.slice(5)} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fill: "rgba(255,255,255,0.55)", fontSize: 12 }} axisLine={false} tickLine={false} allowDecimals={false} />
                   <Tooltip contentStyle={{ background: "#13131F", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }} />
@@ -266,14 +273,14 @@ export default function OverviewTab({ start, end }: { start: string; end: string
         </ChartCard>
 
         <ChartCard title="AI Cost by Feature (MTD)">
-          {data.aiByPurpose.length === 0 ? (
+          {(data.aiByPurpose ?? []).length === 0 ? (
             <p className="text-sm text-white/40 py-12 text-center">Not enough data yet</p>
           ) : (
             <div className="h-56 flex items-center justify-center">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={data.aiByPurpose.map((d) => ({ name: d.purpose, value: d.total }))} cx="50%" cy="50%" innerRadius={50} outerRadius={80} dataKey="value" label={false}>
-                    {data.aiByPurpose.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+                  <Pie data={(data.aiByPurpose ?? []).map((d) => ({ name: d.purpose, value: d.total }))} cx="50%" cy="50%" innerRadius={50} outerRadius={80} dataKey="value" label={false}>
+                    {(data.aiByPurpose ?? []).map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                   </Pie>
                   <Legend wrapperStyle={{ fontSize: 12, color: "rgba(255,255,255,0.7)" }} />
                   <Tooltip formatter={(value) => `$${(Number(value) / 100).toFixed(2)}`} contentStyle={{ background: "#13131F", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }} />
@@ -285,7 +292,7 @@ export default function OverviewTab({ start, end }: { start: string; end: string
       </div>
 
       {/* ── Revenue Summary ──────────────────────────────────────── */}
-      <div className={`rounded-xl border p-5 ${marginBg(rev.margin.grossMarginPct)}`}>
+      {rev?.margin ? <><div className={`rounded-xl border p-5 ${marginBg(rev.margin.grossMarginPct)}`}>
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-sm font-medium text-white/60 mb-1">Gross Margin</h3>
@@ -310,14 +317,15 @@ export default function OverviewTab({ start, end }: { start: string; end: string
           <MiniMetric label="CAC" value={rev.unitEconomics.cacCents !== null ? fmt(rev.unitEconomics.cacCents) : "No ad spend"} />
         </div>
       </div>
+      </> : null}
 
       {/* ── Funnel quick link — full analytics in dedicated tab ── */}
-      {data.webFunnel && (
+      {webFunnelData?.steps && (
         <div className="rounded-xl bg-[#13131F] p-5 flex items-center justify-between">
           <div>
             <h3 className="text-sm font-semibold text-white">Onboarding Funnel</h3>
             <p className="text-xs text-[#A0A0B8] mt-0.5">
-              {data.webFunnel.sessionsSummary.activeSessions} active, {data.webFunnel.sessionsSummary.completedToday} completed today
+              {webFunnelData.sessionsSummary.activeSessions} active, {webFunnelData.sessionsSummary.completedToday} completed today
             </p>
           </div>
           <button onClick={() => router.push("/admin?tab=funnel-analytics")}
@@ -327,191 +335,7 @@ export default function OverviewTab({ start, end }: { start: string; end: string
         </div>
       )}
 
-      {/* ── Legacy funnel detail (hidden, replaced by Funnel Analytics tab) ── */}
-      {false && data.webFunnel && data.webFunnel.steps.length > 0 && (
-        <>
-          {/* Drop-off alerts */}
-          {data.webFunnel.alerts.length > 0 && (
-            <div className="space-y-2">
-              {data.webFunnel.alerts.map((a, i) => (
-                <div key={i} className={`rounded-lg border px-4 py-3 text-sm ${a.severity === "red" ? "border-red-500/30 bg-red-900/10 text-red-300" : "border-amber-500/30 bg-amber-900/10 text-amber-300"}`}>
-                  <span className="font-semibold">{a.step}:</span> {a.dropPct}% drop-off — {a.fix}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Main funnel bars */}
-          <div className="rounded-xl bg-[#13131F] p-6">
-            <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-white/40">Web Onboarding Funnel</h3>
-            <FunnelBars steps={data.webFunnel.steps} />
-          </div>
-
-          {/* Commitment stats */}
-          <div className="grid grid-cols-3 gap-3">
-            <MiniMetric label="Commitment Completed" value={String(data.webFunnel.commitmentStats.completed)} />
-            <MiniMetric label="Commitment Abandoned" value={String(data.webFunnel.commitmentStats.abandoned)} />
-            <MiniMetric label="Commit Success Rate" value={`${data.webFunnel.commitmentStats.successRate}%`} color={data.webFunnel.commitmentStats.successRate >= 70 ? "text-emerald-400" : "text-amber-400"} />
-          </div>
-
-          {/* Diagnostic breakdowns */}
-          {Object.keys(data.webFunnel.diagnosticBreakdowns).length > 0 && (
-            <div className="rounded-xl bg-[#13131F] p-6">
-              <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-white/40">Diagnostic Answers</h3>
-              <div className="space-y-6">
-                {Object.entries(data.webFunnel.diagnosticBreakdowns).map(([key, values]) => {
-                  const maxVal = Math.max(...values.map((v) => v.count), 1);
-                  return (
-                    <div key={key}>
-                      <p className="text-xs font-medium text-[#7C5CFC] uppercase tracking-wider mb-2">{key.replace(/_/g, " ")}</p>
-                      <div className="space-y-1.5">
-                        {values.map((v) => (
-                          <div key={v.value} className="flex items-center gap-3">
-                            <span className="text-xs text-white/50 w-48 truncate shrink-0" title={v.value}>{v.value}</span>
-                            <div className="flex-1 h-1.5 rounded-full bg-white/5 overflow-hidden">
-                              <div className="h-full rounded-full bg-[#7C5CFC]/60" style={{ width: `${(v.count / maxVal) * 100}%` }} />
-                            </div>
-                            <span className="text-xs text-white/40 tabular-nums w-8 text-right">{v.count}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Ad Attribution Summary */}
-          {data.webFunnel.adAttribution && data.webFunnel.adAttribution.length > 0 && (
-            <div className="rounded-xl bg-[#13131F] p-6">
-              <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-white/40">Ad Attribution Summary</h3>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                  <thead>
-                    <tr className="border-b border-white/10 text-white/30 text-xs uppercase tracking-wider">
-                      <th className="pb-2 pr-3">Creative</th>
-                      <th className="pb-2 pr-3 text-right">Sessions</th>
-                      <th className="pb-2 pr-3 text-right">Mirror</th>
-                      <th className="pb-2 pr-3 text-right">Commit</th>
-                      <th className="pb-2 pr-3 text-right">Signup</th>
-                      <th className="pb-2 pr-3 text-right">Paid</th>
-                      <th className="pb-2 pr-3 text-right">Rate</th>
-                      <th className="pb-2 text-right">Avg Time</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.webFunnel.adAttribution.map((a) => (
-                      <tr key={a.creativeId} className="border-b border-white/5 text-white/60 hover:bg-white/[0.02]">
-                        <td className="py-2 pr-3 font-mono text-xs">{a.creativeId === "organic" ? <span className="text-white/30">organic</span> : a.creativeId.slice(0, 12)}</td>
-                        <td className="py-2 pr-3 text-xs text-right tabular-nums">{a.sessionsStarted}</td>
-                        <td className="py-2 pr-3 text-xs text-right tabular-nums">{a.reachedMirror}</td>
-                        <td className="py-2 pr-3 text-xs text-right tabular-nums">{a.reachedCommitment}</td>
-                        <td className="py-2 pr-3 text-xs text-right tabular-nums">{a.signedUp}</td>
-                        <td className="py-2 pr-3 text-xs text-right tabular-nums font-medium text-emerald-400">{a.paid}</td>
-                        <td className="py-2 pr-3 text-xs text-right tabular-nums">{a.completionRate}%</td>
-                        <td className="py-2 text-xs text-right tabular-nums">{a.avgTimeToPay ? `${a.avgTimeToPay}m` : "—"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* Live sessions */}
-          <div className="rounded-xl bg-[#13131F] p-6">
-            <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-white/40">Live Onboarding Sessions</h3>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-              <MiniMetric label="Active Now" value={String(data.webFunnel.sessionsSummary.activeSessions)} color="text-emerald-400" />
-              <MiniMetric label="Completed Today" value={String(data.webFunnel.sessionsSummary.completedToday)} />
-              <MiniMetric label="Avg Completion" value={`${data.webFunnel.sessionsSummary.avgCompletionTime}m`} />
-              <MiniMetric label="Most Drop At" value={data.webFunnel.sessionsSummary.mostCommonDrop} />
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b border-white/10 text-white/30 text-xs uppercase tracking-wider">
-                    <th className="pb-2 pr-3">Session</th>
-                    <th className="pb-2 pr-3">Started At</th>
-                    <th className="pb-2 pr-3">Source</th>
-                    <th className="pb-2 pr-3">Campaign</th>
-                    <th className="pb-2 pr-3">Step</th>
-                    <th className="pb-2 pr-3">Status</th>
-                    <th className="pb-2 pr-3">Time</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.webFunnel.sessions.map((s) => {
-                    const statusColors: Record<string, string> = {
-                      completed: "text-emerald-400", paid: "text-emerald-400",
-                      active: "text-blue-400", stalled: "text-amber-400", dropped: "text-red-400",
-                    };
-                    const startDate = new Date(s.started);
-                    const startedLabel = startDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })
-                      + ", " + startDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
-                    const sec = s.timeInFunnelSec ?? s.timeInFunnel * 60;
-                    const timeLabel = sec < 60 ? `${sec}s` : `${Math.round(sec / 60)}m`;
-                    return (
-                      <React.Fragment key={s.sessionId}>
-                      <tr className="border-b border-white/5 text-white/60 hover:bg-white/[0.02] cursor-pointer"
-                        onClick={() => setExpandedSession(expandedSession === s.sessionId ? null : s.sessionId)}>
-                        <td className="py-2 pr-3 font-mono text-xs">{s.sessionId}</td>
-                        <td className="py-2 pr-3 text-xs text-white/40 whitespace-nowrap">{startedLabel}</td>
-                        <td className="py-2 pr-3 text-xs">{s.source}</td>
-                        <td className="py-2 pr-3 text-xs truncate max-w-[120px]" title={s.campaign ?? ""}>{s.campaign ?? "—"}</td>
-                        <td className="py-2 pr-3">
-                          <div className="flex items-center gap-2">
-                            <div className="w-16 h-1 rounded-full bg-white/10 overflow-hidden">
-                              <div className="h-full rounded-full bg-[#7C5CFC]" style={{ width: `${(s.stepNumber / s.totalSteps) * 100}%` }} />
-                            </div>
-                            <span className="text-xs">{s.currentStep}</span>
-                          </div>
-                        </td>
-                        <td className={`py-2 pr-3 text-xs font-medium capitalize ${statusColors[s.status] ?? ""}`}>{s.status}</td>
-                        <td className="py-2 pr-3 text-xs tabular-nums">{timeLabel}</td>
-                      </tr>
-                      {expandedSession === s.sessionId && (
-                        <tr>
-                          <td colSpan={7} className="p-0">
-                            <div className="bg-[#0D0D17] border-b border-white/10 px-4 py-3 space-y-2">
-                              <div className="flex gap-6 text-[10px] text-white/40 mb-2">
-                                <span>Full token: <span className="font-mono text-white/60">{s.sessionId}</span></span>
-                                {s.diagnosticAnswers && Object.keys(s.diagnosticAnswers).length > 0 && (
-                                  <span>Diagnostics: {Object.entries(s.diagnosticAnswers).map(([k, v]) => `${k}=${v}`).join(", ")}</span>
-                                )}
-                              </div>
-                              <div className="space-y-0.5">
-                                {(s.events ?? []).map((ev: { event: string; value: string | null; createdAt: string }, idx: number) => {
-                                  const evTime = new Date(ev.createdAt);
-                                  const prevTime = idx > 0 ? new Date((s.events as { createdAt: string }[])[idx - 1].createdAt) : null;
-                                  const gap = prevTime ? Math.round((evTime.getTime() - prevTime.getTime()) / 1000) : 0;
-                                  return (
-                                    <div key={idx} className="flex items-center gap-3 text-[10px]">
-                                      <span className="text-white/30 tabular-nums w-20 shrink-0">
-                                        {evTime.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true })}
-                                      </span>
-                                      {idx > 0 && <span className="text-white/20 w-10 shrink-0 text-right">+{gap}s</span>}
-                                      {idx === 0 && <span className="w-10 shrink-0" />}
-                                      <span className="text-white/60 font-mono">{ev.event.replace("funnel_", "")}</span>
-                                      {ev.value && <span className="text-[#7C5CFC]/70">{ev.value}</span>}
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          </td>
-                        </tr>
-                      )}
-                      </React.Fragment>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </>
-      )}
+      {/* Legacy funnel detail removed — see Funnel Analytics tab */}
 
       {/* ── Post-Signup Onboarding Funnel ────────────────────────── */}
       {data.onboardingFunnel && data.onboardingFunnel.steps.length > 0 && (

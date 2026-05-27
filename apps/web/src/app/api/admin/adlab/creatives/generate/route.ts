@@ -37,10 +37,10 @@ function openai(): OpenAI {
   return _openai;
 }
 
-async function generateImage(prompt: string, referenceImageUrl?: string): Promise<{ imageBuffer: Buffer } | null> {
+async function generateImage(prompt: string, referenceImageUrl?: string): Promise<{ imageBuffer: Buffer } | { error: string } | null> {
   if (!process.env.OPENAI_API_KEY) {
     console.warn("[adlab] OPENAI_API_KEY not set, skipping image generation");
-    return null;
+    return { error: "OPENAI_API_KEY not configured" };
   }
 
   try {
@@ -87,8 +87,9 @@ async function generateImage(prompt: string, referenceImageUrl?: string): Promis
 
     return { imageBuffer: Buffer.from(b64, "base64") };
   } catch (err) {
-    console.error("[adlab] Image generation failed:", err instanceof Error ? err.message : err);
-    return null;
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[adlab] Image generation failed:", msg);
+    return { error: msg };
   }
 }
 
@@ -263,7 +264,7 @@ Return ONLY a JSON array of exactly 3 objects, each with: headline, primaryText,
         },
       });
 
-      if (imageResult) {
+      if (imageResult && "imageBuffer" in imageResult) {
         const imageUrl = await uploadToSupabase(
           imageResult.imageBuffer,
           `${creative.id}.png`,
@@ -275,11 +276,16 @@ Return ONLY a JSON array of exactly 3 objects, each with: headline, primaryText,
             data: { imageUrl },
           });
         } else {
-          console.error(`[adlab] Supabase upload failed for image creative ${creative.id}`);
-          uploadErrors.push({ creativeId: creative.id, error: "Image upload to Supabase failed" });
+          const errMsg = "Image upload to Supabase failed";
+          console.error(`[adlab] ${errMsg} for creative ${creative.id}`);
+          await prisma.adLabCreative.update({ where: { id: creative.id }, data: { complianceNotes: `IMAGE_ERROR: ${errMsg}` } }).catch(() => {});
+          uploadErrors.push({ creativeId: creative.id, error: errMsg });
         }
       } else {
-        console.warn(`[adlab] Image generation returned null for creative ${creative.id}`);
+        const errMsg = imageResult && "error" in imageResult ? imageResult.error : "Image generation returned null";
+        console.warn(`[adlab] ${errMsg} for creative ${creative.id}`);
+        await prisma.adLabCreative.update({ where: { id: creative.id }, data: { complianceNotes: `IMAGE_ERROR: ${errMsg}` } }).catch(() => {});
+        uploadErrors.push({ creativeId: creative.id, error: errMsg });
       }
 
       allCreated.push(creative.id);

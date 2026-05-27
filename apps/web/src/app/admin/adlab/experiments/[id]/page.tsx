@@ -1861,6 +1861,14 @@ function CreativeCard({
           </button>
         </div>
       )}
+      {creative.creativeType === "image" && !creative.imageUrl && creative.complianceNotes?.startsWith("IMAGE_ERROR:") && (
+        <div className="aspect-square bg-red-900/10 border-b border-red-500/20 flex items-center justify-center p-4">
+          <div className="text-center">
+            <p className="text-xs font-semibold text-red-400 mb-1">Image Generation Failed</p>
+            <p className="text-[10px] text-red-300/70 leading-relaxed">{creative.complianceNotes.replace("IMAGE_ERROR: ", "")}</p>
+          </div>
+        </div>
+      )}
       <div className="p-3 space-y-2">
         <p className="text-xs font-semibold text-white leading-snug">{creative.headline}</p>
         <p className="text-[11px] text-[#A0A0B8] leading-relaxed">{creative.primaryText}</p>
