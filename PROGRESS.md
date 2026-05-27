@@ -41,6 +41,32 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-27] — Paywall founding rate anchoring + price lock urgency
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (pending)
+
+### In plain English (for Keenan)
+
+The paywall pricing section now anchors against a $14.99/mo "regular" price, making the $4.99 founding rate feel like a steal. Both cards show the regular price struck through. The annual card shows "SAVE 73%" (vs $149/year). A green banner says "You're early. Lock in the founding rate before it's gone." Below the cards: "This rate locks in for life as long as your subscription stays active" — creating urgency without a countdown timer. New FAQ at top: "Will the price go up? → Yes."
+
+### Technical changes (for Jimmy)
+
+- `onboarding-funnel.tsx`: Pricing section rebuilt with founding rate anchoring. Monthly card: $14.99 strikethrough → $4.99 + "Founding Member Rate" badge. Annual card: $149/year strikethrough → $39.99/year, $3.33/mo, "SAVE 73%" badge. Added green banner above cards. Below-cards copy replaced with founding rate lock-in language.
+- `funnel-config.ts`: Added "Will the price go up?" FAQ item at top of PAYWALL_FAQ array.
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- The $14.99 and $149 "regular" prices are hardcoded copy anchors, not actual Stripe prices. If real pricing ever changes, these need manual updating.
+- "Locks in for life" is a retention lever — it gives users a reason not to cancel even during low-usage periods.
+
+---
+
 ## [2026-05-27] — Snapshot + Timeline rewrite: pattern insight, weekly previews, transformation story
 
 **Requested by:** Keenan

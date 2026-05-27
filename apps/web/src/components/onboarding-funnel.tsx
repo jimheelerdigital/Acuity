@@ -958,27 +958,30 @@ function PaywallScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
 
         {/* Section 5 — Pricing */}
         <section className="mb-14">
-          {branch && (
-            <p className="text-sm text-zinc-600 text-center mb-5">{PRICING_COPY[branch]}</p>
-          )}
+          <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-center mb-5">
+            <p className="text-sm text-emerald-800 font-medium">You&rsquo;re early. Lock in the founding rate before it&rsquo;s gone.</p>
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <button onClick={() => onPlanChange("monthly")}
               className={`rounded-xl border-2 p-4 text-center transition ${selectedPlan === "monthly" ? "border-[#7C5CFC] bg-[#7C5CFC]/5" : "border-zinc-200 bg-white"}`}>
               <p className="text-xs text-zinc-500 mb-1">Monthly</p>
+              <p className="text-sm text-zinc-400 line-through">$14.99/mo</p>
               <p className="text-xl font-bold">{formatDollars(MONTHLY_PRICE_CENTS)}<span className="text-sm font-normal text-zinc-400">/mo</span></p>
+              <span className="inline-block mt-1.5 rounded-full bg-emerald-100 text-emerald-700 px-2 py-0.5 text-[10px] font-bold">Founding Member Rate</span>
               <p className="text-[10px] text-zinc-400 mt-1">Billed monthly</p>
             </button>
             <button onClick={() => onPlanChange("yearly")}
               className={`rounded-xl border-2 p-4 text-center transition relative ${selectedPlan === "yearly" ? "border-[#7C5CFC] bg-[#7C5CFC]/5 shadow-[0_0_16px_rgba(124,92,252,0.15)]" : "border-zinc-200 bg-white"}`}>
-              <span className="absolute -top-2.5 right-3 rounded-full bg-emerald-500 px-2 py-0.5 text-[10px] font-bold text-white">SAVE $19.89</span>
+              <span className="absolute -top-2.5 right-3 rounded-full bg-emerald-500 px-2 py-0.5 text-[10px] font-bold text-white">SAVE 73%</span>
               <p className="text-xs text-zinc-500 mb-1">Annual</p>
-              <p className="text-sm text-zinc-400 line-through">{formatDollars(MONTHLY_PRICE_CENTS)}/mo</p>
+              <p className="text-sm text-zinc-400 line-through">$149/year</p>
               <p className="text-xl font-bold">{formatDollars(annualMonthly)}<span className="text-sm font-normal text-zinc-400">/mo</span></p>
               <p className="text-[10px] text-zinc-400 mt-0.5">{formatDollars(ANNUAL_PRICE_CENTS)}/year</p>
             </button>
           </div>
-          <p className="text-sm font-semibold text-zinc-800 text-center mt-6">
-            What&rsquo;s worth more &mdash; a coffee on Monday, or understanding yourself by Sunday?
+          <p className="text-sm text-zinc-600 text-center mt-6 leading-relaxed">
+            Regular price: $14.99/mo. Founding members pay {formatDollars(MONTHLY_PRICE_CENTS)} &mdash; less than a coffee a week.
+            <span className="font-semibold text-zinc-800"> This rate locks in for life</span> as long as your subscription stays active.
           </p>
         </section>
 
