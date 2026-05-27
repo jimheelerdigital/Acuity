@@ -228,7 +228,7 @@ function ScreenTestimonial({ quote, name }: { quote: string; name: string }) {
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 
-export function OnboardingFunnel() {
+export function OnboardingFunnel({ ssrHook }: { ssrHook?: { headline: string; subheadline: string } | null } = {}) {
   const { data: session, status: authStatus } = useSession();
   const [step, setStep] = useState<Step>("pain");
   const [answers, setAnswers] = useState<DiagnosticAnswers>({});
@@ -238,7 +238,7 @@ export function OnboardingFunnel() {
   const [dynamicHook, setDynamicHook] = useState<{
     headline: string; subheadline: string;
     bridge?: string | null; promise?: string | null; paywallHook?: string | null;
-  } | null>(null);
+  } | null>(ssrHook ?? null);
   const track = useFunnelTracker();
 
   // Check URL params for return from Stripe + fetch dynamic pain hook
@@ -247,14 +247,15 @@ export function OnboardingFunnel() {
     if (params.get("step") === "download") setStep("download");
     else if (params.get("step") === "paywall") setStep("paywall");
 
-    // Dynamic pain hook: look up ad creative from UTM params
+    // Fetch full hook data (bridge/promise/paywall) if not already provided via SSR
+    // SSR only provides headline + subheadline; client fetch gets the rest
     const utmContent = params.get("utm_content");
     const utmCampaign = params.get("utm_campaign");
     if (utmContent || utmCampaign) {
       fetch(`/api/onboarding/hook?${utmContent ? `creativeId=${encodeURIComponent(utmContent)}` : `campaign=${encodeURIComponent(utmCampaign!)}`}`)
         .then((r) => r.ok ? r.json() : null)
         .then((data) => { if (data?.headline) setDynamicHook(data); })
-        .catch(() => {}); // Silent fallback to default hook
+        .catch(() => {});
     }
   }, []);
 
