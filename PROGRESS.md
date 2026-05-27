@@ -41,6 +41,49 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-26] — Fix invisible landing pages — SSR content hidden behind JS animations
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 59e269f
+
+### In plain English (for Keenan)
+
+Two AdLab landing pages (`/for/what-happened-to-you-in-april-j09ew8` and `/for/you-had-it-then-lost-it-xeaiaj`) were showing 0s engagement and 25% bounce in GA4. The server was returning full 200 OK responses with all the content — the pages weren't broken at the server level.
+
+The real problem: every piece of visible content (headline, subheadline, CTA, pain points) was rendered with `opacity: 0` in the server HTML. The animation system hid everything and waited for JavaScript to hydrate, then used IntersectionObserver to reveal elements one by one. On slow mobile connections from Meta ads, users saw a completely blank page for several seconds — many bounced before JS loaded.
+
+Now the headline, subheadline, CTA, and all content render **fully visible by default** in the server HTML. If JavaScript loads successfully, the animations still play (words cascade in, sections slide up). If JS is slow or fails, users see all the content immediately. No more blank pages.
+
+This affects ALL /for/* dynamic landing pages, not just the two flagged ones.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/for/[slug]/dynamic-landing-client.tsx`:
+  - `SplitHeroHeadline`: `visibleCount` starts at `allWords.length` (all visible) instead of `0`. Client-side useEffect resets to 0 and re-animates only after hydration. Added `animated` flag to avoid applying CSS transitions during SSR.
+  - `SlideIn`: no longer re-hides content on scroll-out — once revealed, stays visible.
+- `apps/web/src/components/landing-shared.tsx`:
+  - `useReveal`: calls `obs.unobserve(el)` after first reveal instead of toggling opacity back to 0 on scroll-out. Content stays visible permanently after first reveal.
+
+### Manual steps needed
+
+None — code change only.
+
+### Notes
+
+- The root cause is a common SSR + animation anti-pattern: using `useState(0)` for reveal counters means the SSR output renders with all items hidden. The fix is to initialize the state as "fully revealed" and only animate on the client after hydration.
+- The `Reveal` component (`useReveal` hook) was also re-hiding elements on scroll-out. This could cause content to disappear if the user scrolled quickly — now elements stay visible once revealed.
+- Both pages were verified: HTTP 200, ~118KB HTML, real titles, CTAs point to `/start` with UTMs. No redirect, no 404, no empty shell. The issue was purely client-side opacity.
+- **Full /for/* page audit:**
+  - **Static persona pages (20 total):** anxiety, adhd, remote-workers, new-parents, burnout, students, entrepreneurs, creatives, couples, grief, career-change, nurses, teachers, therapists, overthinkers, introverts, managers, freelancers, athletes, chronic-pain — all defined in `lib/persona-pages.ts`, render independently of the database
+  - **Static route pages:** decoded, founders, sleep, therapy, weekly-report — have their own route-level `page.tsx`
+  - **Dynamic AdLab pages:** any slug not matching the above hits the `[slug]` catch-all and queries `adlab_landing_pages` by slug. These are the ones affected by this fix.
+  - No 301 redirects needed — the pages render content correctly now.
+- Did not set up redirects to /start for the two pages since they render real content. If you want to redirect them anyway (to consolidate traffic), that can be done in `next.config.js` redirects.
+- Cannot check which Meta campaigns point to these URLs from the codebase — that's in Meta Ads Manager. Check Ads Manager → filter by URL containing the slug.
+
+---
+
 ## [2026-05-26] — Fix destination URL validation in pre-launch checklist
 
 **Requested by:** Keenan
