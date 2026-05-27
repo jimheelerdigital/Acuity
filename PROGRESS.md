@@ -41,6 +41,34 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-26] — Remove AU from AdLab geo targeting
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 4fa173e
+
+### In plain English (for Keenan)
+
+Australia (AU) is now automatically excluded from all ad campaigns launched through AdLab. Even if AU is still in a project's geo settings, the launch route strips it before sending to Meta. Validation now shows a warning instead of blocking — "AU will be excluded at launch."
+
+The seed/default for new projects was already US, CA, GB only — AU was only in your existing project data.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/api/admin/adlab/ads/launch/route.ts`: added `.filter((c) => c.toUpperCase() !== "AU")` to geo array before ad set creation
+- `apps/web/src/app/api/admin/adlab/ads/validate/route.ts`: AU check changed from `status: "fail"` to `status: "warn"` with guidance message
+
+### Manual steps needed
+
+- [ ] Edit the Acuity project in AdLab → Target Audience → Geographies → remove "AU" → Save (Keenan — cleans up the warning)
+
+### Notes
+
+- The default geo for new projects (seed route) was already ["US", "CA", "GB"] — no code change needed there.
+- AU is stripped at launch time as a safety net, so even if someone adds it back to project settings, it won't reach Meta.
+
+---
+
 ## [2026-05-26] — Security: move Meta SDK app ID + client token off committed config
 
 **Requested by:** Jimmy
