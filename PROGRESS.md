@@ -41,6 +41,39 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-26] — SSR Screen 1 on /start — instant visible content before JS loads
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 3e19566
+
+### In plain English (for Keenan)
+
+The #1 conversion killer was that /start showed a blank white screen for 3-5 seconds while JavaScript downloaded. FB in-app browser users closed the tab before seeing any content. Every ad dollar was wasted.
+
+Now Screen 1 (the pain hook headline, subtext, testimonial, and Continue button) is rendered as real HTML by the server — visible INSTANTLY on page load, before any JavaScript executes. The page went from client-only (`ssr: false`) to server-rendered. The dynamic pain hook from UTM matching is also resolved server-side, so ad-matched headlines appear on first paint.
+
+Once JavaScript loads (1-3 seconds later), the client takes over for interactive step navigation. But the critical first impression — the headline that matches the ad — is visible from the very first byte of the response.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/start/page.tsx`: rewritten from `dynamic(..., { ssr: false })` to an `async` server component. Reads `searchParams` for UTM params, queries Prisma for the matching experiment's custom pain hook, renders Screen 1 HTML with inline `<style>` block (no external CSS dependency). Falls back to default hook if no UTM match.
+- New `apps/web/src/app/start/client.tsx`: `"use client"` wrapper that imports `OnboardingFunnel`, hides the SSR content on mount (`document.getElementById("ssr-pain-hook").style.display = "none"`).
+- `apps/web/src/components/onboarding-funnel.tsx`: `OnboardingFunnel` now accepts `ssrHook` prop. `dynamicHook` state initializes from `ssrHook` to avoid a duplicate fetch. Client-side fetch still runs for bridge/promise/paywall copy (not needed on Screen 1).
+
+### Manual steps needed
+
+None — code change only.
+
+### Notes
+
+- Build output confirms `/start` is now `ƒ` (Dynamic — server-rendered on demand), not `○` (Static). The server makes a Prisma query on every request to check for UTM-matched hooks.
+- The inline CSS block uses plain class names (`.ssr-pain-hook`) not Tailwind — this ensures styles work before the Tailwind CSS bundle loads.
+- When JS hydrates, the SSR content is hidden and replaced by the React-rendered funnel. There may be a brief flash if the React component renders slightly differently. The content is the same text, so the visual impact is minimal.
+- The SSR Continue button is not interactive until JS hydrates. If a user clicks it before hydration, nothing happens — but they see content and know the page is working, so they wait. This is infinitely better than a blank screen.
+
+---
+
 ## [2026-05-26] — Funnel Analytics tab, pain-specific funnel content, admin dashboard rebuild
 
 **Requested by:** Keenan
