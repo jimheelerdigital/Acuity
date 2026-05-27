@@ -1,5 +1,6 @@
 "use client";
 
+import { SafeChart } from "./SafeChart";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -116,8 +117,8 @@ export default function MetricCard({
         )}
       </div>
       {sparklineData && sparklineData.length > 1 && (
-        <div className="mt-2 h-8">
-          <ResponsiveContainer width="100%" height="100%">
+        <SafeChart height={32}>
+          <ResponsiveContainer width="100%" height={32}>
             <AreaChart data={sparklineData}>
               <defs>
                 <linearGradient id="sparkGrad" x1="0" y1="0" x2="0" y2="1">
@@ -135,7 +136,7 @@ export default function MetricCard({
               />
             </AreaChart>
           </ResponsiveContainer>
-        </div>
+        </SafeChart>
       )}
     </Wrapper>
   );

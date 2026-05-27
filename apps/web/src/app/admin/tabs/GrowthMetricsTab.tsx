@@ -14,6 +14,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
+import { SafeChart } from "../components/SafeChart";
 import MetricCard from "../components/MetricCard";
 import ChartCard from "../components/ChartCard";
 import RefreshButton from "../components/RefreshButton";
@@ -228,7 +229,7 @@ export default function GrowthMetricsTab({
 
       {/* Weekly signups bar chart */}
       <ChartCard title="Weekly Signups">
-        <ResponsiveContainer width="100%" height={240}>
+        <SafeChart height={240}><ResponsiveContainer width="100%" height={240}>
           <BarChart data={data.weeklySignups}>
             <CartesianGrid stroke={GRID_STROKE} vertical={false} />
             <XAxis
@@ -250,12 +251,12 @@ export default function GrowthMetricsTab({
             />
             <Bar dataKey="count" fill="#7C5CFC" radius={[4, 4, 0, 0]} />
           </BarChart>
-        </ResponsiveContainer>
+        </ResponsiveContainer></SafeChart>
       </ChartCard>
 
       {/* Cumulative users line chart */}
       <ChartCard title="Cumulative Users">
-        <ResponsiveContainer width="100%" height={240}>
+        <SafeChart height={240}><ResponsiveContainer width="100%" height={240}>
           <LineChart data={data.cumulativeUsers}>
             <CartesianGrid stroke={GRID_STROKE} vertical={false} />
             <XAxis
@@ -283,12 +284,12 @@ export default function GrowthMetricsTab({
               dot={false}
             />
           </LineChart>
-        </ResponsiveContainer>
+        </ResponsiveContainer></SafeChart>
       </ChartCard>
 
       {/* Signups by source stacked area */}
       <ChartCard title="Signups by Source">
-        <ResponsiveContainer width="100%" height={240}>
+        <SafeChart height={240}><ResponsiveContainer width="100%" height={240}>
           <AreaChart data={data.signupsBySource}>
             <CartesianGrid stroke={GRID_STROKE} vertical={false} />
             <XAxis
@@ -344,7 +345,7 @@ export default function GrowthMetricsTab({
               fillOpacity={0.3}
             />
           </AreaChart>
-        </ResponsiveContainer>
+        </ResponsiveContainer></SafeChart>
       </ChartCard>
 
       {/* Projections callout */}
@@ -433,7 +434,7 @@ export default function GrowthMetricsTab({
       <SectionHeader>Engagement Trends</SectionHeader>
 
       <ChartCard title="Weekly Recordings">
-        <ResponsiveContainer width="100%" height={240}>
+        <SafeChart height={240}><ResponsiveContainer width="100%" height={240}>
           <BarChart data={data.weeklyRecordings}>
             <CartesianGrid stroke={GRID_STROKE} vertical={false} />
             <XAxis
@@ -455,12 +456,12 @@ export default function GrowthMetricsTab({
             />
             <Bar dataKey="count" fill="#7C5CFC" radius={[4, 4, 0, 0]} />
           </BarChart>
-        </ResponsiveContainer>
+        </ResponsiveContainer></SafeChart>
       </ChartCard>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <ChartCard title="Avg Recordings / User">
-          <ResponsiveContainer width="100%" height={240}>
+          <SafeChart height={240}><ResponsiveContainer width="100%" height={240}>
             <LineChart data={data.avgRecordingsPerUser}>
               <CartesianGrid stroke={GRID_STROKE} vertical={false} />
               <XAxis
@@ -488,11 +489,11 @@ export default function GrowthMetricsTab({
                 dot={false}
               />
             </LineChart>
-          </ResponsiveContainer>
+          </ResponsiveContainer></SafeChart>
         </ChartCard>
 
         <ChartCard title="Avg Recording Duration">
-          <ResponsiveContainer width="100%" height={240}>
+          <SafeChart height={240}><ResponsiveContainer width="100%" height={240}>
             <LineChart data={data.avgDuration}>
               <CartesianGrid stroke={GRID_STROKE} vertical={false} />
               <XAxis
@@ -521,7 +522,7 @@ export default function GrowthMetricsTab({
                 dot={false}
               />
             </LineChart>
-          </ResponsiveContainer>
+          </ResponsiveContainer></SafeChart>
         </ChartCard>
       </div>
 
@@ -532,7 +533,7 @@ export default function GrowthMetricsTab({
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <ChartCard title="Trial → Paid Rate">
-          <ResponsiveContainer width="100%" height={240}>
+          <SafeChart height={240}><ResponsiveContainer width="100%" height={240}>
             <LineChart data={data.trialToPaidRate}>
               <CartesianGrid stroke={GRID_STROKE} vertical={false} />
               <XAxis
@@ -561,11 +562,11 @@ export default function GrowthMetricsTab({
                 dot={false}
               />
             </LineChart>
-          </ResponsiveContainer>
+          </ResponsiveContainer></SafeChart>
         </ChartCard>
 
         <ChartCard title="Median Time to First Recording">
-          <ResponsiveContainer width="100%" height={240}>
+          <SafeChart height={240}><ResponsiveContainer width="100%" height={240}>
             <LineChart data={data.medianTimeToFirstRecording}>
               <CartesianGrid stroke={GRID_STROKE} vertical={false} />
               <XAxis
@@ -594,7 +595,7 @@ export default function GrowthMetricsTab({
                 dot={false}
               />
             </LineChart>
-          </ResponsiveContainer>
+          </ResponsiveContainer></SafeChart>
         </ChartCard>
       </div>
 
@@ -604,7 +605,7 @@ export default function GrowthMetricsTab({
       <SectionHeader>Revenue Growth</SectionHeader>
 
       <ChartCard title="MRR Over Time">
-        <ResponsiveContainer width="100%" height={240}>
+        <SafeChart height={240}><ResponsiveContainer width="100%" height={240}>
           <AreaChart data={data.mrrOverTime}>
             <CartesianGrid stroke={GRID_STROKE} vertical={false} />
             <XAxis
@@ -634,11 +635,11 @@ export default function GrowthMetricsTab({
               fillOpacity={0.2}
             />
           </AreaChart>
-        </ResponsiveContainer>
+        </ResponsiveContainer></SafeChart>
       </ChartCard>
 
       <ChartCard title="Paying Users Over Time">
-        <ResponsiveContainer width="100%" height={240}>
+        <SafeChart height={240}><ResponsiveContainer width="100%" height={240}>
           <BarChart data={data.payingUsersOverTime}>
             <CartesianGrid stroke={GRID_STROKE} vertical={false} />
             <XAxis
@@ -660,7 +661,7 @@ export default function GrowthMetricsTab({
             />
             <Bar dataKey="count" fill="#A78BFA" radius={[4, 4, 0, 0]} />
           </BarChart>
-        </ResponsiveContainer>
+        </ResponsiveContainer></SafeChart>
       </ChartCard>
     </div>
   );

@@ -13,6 +13,7 @@ import {
 } from "recharts";
 import MetricCard from "../components/MetricCard";
 import ChartCard from "../components/ChartCard";
+import { SafeChart } from "../components/SafeChart";
 import RefreshButton from "../components/RefreshButton";
 import { SkeletonMetric, SkeletonChart, SkeletonTable } from "../components/SkeletonCard";
 import { TabError } from "../components/TabError";
@@ -138,8 +139,8 @@ export default function BusinessMetricsTab({
             {data.mrrTrend.length < 2 ? (
               <p className="py-12 text-center text-sm text-white/40">Not enough data</p>
             ) : (
-              <div className="h-60">
-                <ResponsiveContainer width="100%" height="100%">
+              <SafeChart height={240}>
+                <ResponsiveContainer width="100%" height={240}>
                   <AreaChart data={data.mrrTrend}>
                     <defs>
                       <linearGradient id="mrrFill" x1="0" y1="0" x2="0" y2="1">
@@ -178,7 +179,7 @@ export default function BusinessMetricsTab({
                     />
                   </AreaChart>
                 </ResponsiveContainer>
-              </div>
+              </SafeChart>
             )}
           </ChartCard>
         </div>
@@ -304,8 +305,8 @@ export default function BusinessMetricsTab({
             {data.profitTrend.length < 2 ? (
               <p className="py-12 text-center text-sm text-white/40">Not enough data</p>
             ) : (
-              <div className="h-60">
-                <ResponsiveContainer width="100%" height="100%">
+              <SafeChart height={240}>
+                <ResponsiveContainer width="100%" height={240}>
                   <LineChart data={data.profitTrend}>
                     <XAxis
                       dataKey="month"
@@ -357,7 +358,7 @@ export default function BusinessMetricsTab({
                     />
                   </LineChart>
                 </ResponsiveContainer>
-              </div>
+              </SafeChart>
             )}
           </ChartCard>
         </div>

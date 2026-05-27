@@ -21,6 +21,7 @@ import {
   ReferenceLine,
   Legend,
 } from "recharts";
+import { SafeChart } from "../../components/SafeChart";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -402,7 +403,7 @@ export default function PerformancePage() {
               {/* Chart 1: Daily Spend & Conversions */}
               <div className="rounded-xl border border-white/10 bg-[#13131F] p-5">
                 <h3 className="text-sm font-semibold text-white mb-4">Daily Spend & Conversions</h3>
-                <ResponsiveContainer width="100%" height={280}>
+                <SafeChart height={280}><ResponsiveContainer width="100%" height={280}>
                   <LineChart data={data.dailySeries}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                     <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#A0A0B8" }} tickFormatter={(v: string) => v.slice(5)} />
@@ -439,13 +440,13 @@ export default function PerformancePage() {
                       />
                     ))}
                   </LineChart>
-                </ResponsiveContainer>
+                </ResponsiveContainer></SafeChart>
               </div>
 
               {/* Chart 2: Daily CPL */}
               <div className="rounded-xl border border-white/10 bg-[#13131F] p-5">
                 <h3 className="text-sm font-semibold text-white mb-4">Daily CPL</h3>
-                <ResponsiveContainer width="100%" height={280}>
+                <SafeChart height={280}><ResponsiveContainer width="100%" height={280}>
                   <LineChart data={data.dailySeries}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                     <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#A0A0B8" }} tickFormatter={(v: string) => v.slice(5)} />
@@ -476,7 +477,7 @@ export default function PerformancePage() {
                       />
                     ))}
                   </LineChart>
-                </ResponsiveContainer>
+                </ResponsiveContainer></SafeChart>
               </div>
             </div>
           )}
