@@ -41,6 +41,56 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-26] — Funnel Analytics tab, pain-specific funnel content, admin dashboard rebuild
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 17c1139
+
+### In plain English (for Keenan)
+
+Three major features:
+
+**1. New "Funnel" tab in admin dashboard.** Click the Funnel tab to see:
+- 4 metric cards at the top: total sessions, completion rate (Pain Hook → Paid), biggest drop-off step, and average time for completed sessions
+- A visual conversion funnel showing how many people reach each step, with green/yellow/red color coding and step-to-step percentages
+- Red alert banners that auto-fire when any step drops below 50% with a suggested fix (e.g. "Hook doesn't match ad. Enable dynamic Screen 1.")
+- Campaign funnels table showing per-campaign conversion at each step — click any campaign to see diagnostic answer distribution and per-creative breakdown
+- Full sessions table with timestamp, expandable event journey, and a "Download CSV" button
+
+**2. Pain-specific funnel content.** Each AdLab experiment can now have custom copy for Screens 1, 8, 9, and 14. In the experiment detail page, expand "Custom Funnel Copy" to:
+- Click "Generate from Topic Brief" — Claude generates pain-specific hook, bridge, promise, and paywall copy based on the experiment's topic
+- Edit any of the 4 fields manually
+- When someone clicks an ad from this experiment and lands on /start, they see the custom copy instead of the generic default
+
+**3. Overview tab cleanup.** The inline funnel section on the Overview tab is replaced with a compact card that shows active/completed counts with a link to the full Funnel Analytics tab.
+
+### Technical changes (for Jimmy)
+
+- `prisma/schema.prisma`: added `customPainHook`, `customBridge`, `customPromise`, `customPaywallHook` (all `String? @db.Text`) on `AdLabExperiment`
+- New `apps/web/src/app/admin/tabs/FunnelAnalyticsTab.tsx`: 350-line tab with key metrics, conversion funnel bars, campaign funnels with expandable rows, sessions table with CSV export
+- `apps/web/src/app/api/admin/metrics/route.ts`: new `getFunnelAnalytics()` function (~180 lines) computing step-reach counts, campaign breakdowns, per-creative stats, diagnostic distributions
+- `apps/web/src/app/admin/admin-dashboard.tsx`: registered "funnel-analytics" tab, updated legacy redirect
+- `apps/web/src/app/admin/adlab/experiments/[id]/page.tsx`: `FunnelCopyEditor` component with inline editor + AI generation button
+- New `apps/web/src/app/api/admin/adlab/experiments/[id]/funnel-copy/route.ts`: PUT (save) + POST (AI generate) routes
+- `apps/web/src/app/api/onboarding/hook/route.ts`: expanded to return `bridge`, `promise`, `paywallHook` from experiment custom fields
+- `apps/web/src/components/onboarding-funnel.tsx`: `FailedSolutionScreen` accepts `customCopy`, `PaywallScreen` accepts `customPaywallHook`, both fall back to defaults
+- `apps/web/src/app/admin/tabs/OverviewTab.tsx`: replaced inline funnel section with compact link card
+
+### Manual steps needed
+
+- [ ] Run `npx prisma db push` to add the 4 custom funnel copy columns to `adlab_experiments` (Keenan — from home network)
+- [ ] For each existing experiment with "Direct to Funnel" destination: open the experiment → expand "Custom Funnel Copy" → click "Generate from Topic Brief" → review + save (Keenan)
+
+### Notes
+
+- The funnel analytics query fetches up to 50,000 events and processes them in memory. For very large date ranges, this may be slow. The TTL cache is set to 2 minutes.
+- Campaign funnels use the `utm_campaign` value from session events. Sessions without UTM data are grouped under "direct / organic".
+- The conversion funnel counts use "reach" logic: if you reached Mirror (step 7), you're counted as having reached all prior steps (Pain Hook through Diagnostics). This avoids undercounting from missing viewed events on older sessions.
+- The Overview tab still loads `webFunnel` data (for the summary card) but the detailed section is hidden behind `{false && ...}` rather than deleted — keeping the code intact in case we need to restore it.
+
+---
+
 ## [2026-05-26] — Complete funnel tracking: viewed events on every screen, session persistence, dashboard accuracy
 
 **Requested by:** Keenan
