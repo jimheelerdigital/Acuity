@@ -41,6 +41,46 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-26] — 5 funnel + dashboard fixes: mobile commitment, session times, timestamps, dynamic hooks, expandable rows
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 054f110
+
+### In plain English (for Keenan)
+
+Five fixes shipped together:
+
+1. **Hold-to-commit works on mobile now.** The circle on Screen 10 wasn't responding to touch on iOS/Android. Added touch event handlers as a fallback — the ring fills smoothly on touch-and-hold and resets if released early.
+
+2. **Session time no longer shows 0m.** Every session was showing "0m" because the time was calculated in minutes and rounded — sessions under 30 seconds showed zero. Now shows seconds (e.g. "23s") for short sessions and minutes for longer ones.
+
+3. **Dynamic pain hook from ad creative.** When someone clicks a Meta ad and lands on /start, the pain hook headline (Screen 1) now matches the ad they clicked. If utm_content matches an AdLab creative ID, that creative's headline is shown instead of the generic "Same week. Same loop. Same you." Falls back to the default if no match.
+
+4. **"Started At" timestamp column.** The Live Sessions table now shows when each session started (e.g. "May 26, 9:37 PM") as the second column.
+
+5. **Clickable session rows.** Click any row in the Live Sessions table to expand it and see the full journey: every event with timestamp, time between steps, and diagnostic answers.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/components/onboarding-funnel.tsx`: added `onTouchStart`/`onTouchEnd` to commitment button with `e.preventDefault()`, `WebkitTouchCallout: none`. `PainHookScreen` now accepts `dynamicHook` prop. `OnboardingFunnel` fetches `/api/onboarding/hook` on mount with UTM params.
+- `apps/web/src/app/api/admin/metrics/route.ts`: added `timeInFunnelSec` (seconds) and `events` array to session response objects.
+- `apps/web/src/app/admin/tabs/OverviewTab.tsx`: added "Started At" column, `expandedSession` state, expandable detail row with event timeline, seconds-based time display.
+- New file `apps/web/src/app/api/onboarding/hook/route.ts`: public GET endpoint, looks up AdLab creative by ID (utm_content) or experiment by campaign name (utm_campaign), returns `{ headline, subheadline }`.
+
+### Manual steps needed
+
+None — code changes only.
+
+### Notes
+
+- The dynamic hook API is public (no auth) since it's called from /start before signup. It never exposes sensitive data — only returns a headline and subheadline string.
+- The hook endpoint uses Prisma's `contains` + `insensitive` mode for campaign name matching, which is a loose match. If multiple experiments match, it returns the most recent.
+- Session events are now returned in the API response, increasing payload size slightly. Limited to 50 sessions max.
+- FIX 5 (Full Session Report page with CSV export, bar charts, etc.) and FIX 6 (Funnel Metrics dashboard) are not included in this commit — they're larger features that need their own pass.
+
+---
+
 ## [2026-05-26] — Remove all HeyGen video from AdLab + debug image generation
 
 **Requested by:** Keenan
