@@ -1578,7 +1578,15 @@ async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date) {
 // funnels, key metrics, and per-session data with CSV export support
 // ════════════════════════════════════════════════════════════════════════
 
+// v2 funnel deployed — only count events after this date to avoid old
+// Pain Hook / diagnostic events polluting the new branching quiz metrics.
+const FUNNEL_V2_EPOCH = new Date("2026-05-27T15:00:00Z");
+
 async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, showBots = false) {
+ try {
+  // Clamp start to v2 epoch so old v1 events don't pollute metrics
+  const effectiveStart = start > FUNNEL_V2_EPOCH ? start : FUNNEL_V2_EPOCH;
+
   // v2 funnel steps — branching quiz flow
   const FUNNEL_STEPS = [
     { key: "entry", event: "funnel_entry_viewed", label: "Entry", fallback: "funnel_pain_hook_viewed" },
@@ -1605,7 +1613,7 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
   const events = await prisma.onboardingEvent.findMany({
     where: {
       event: { startsWith: "funnel_" },
-      createdAt: { gte: start, lte: end },
+      createdAt: { gte: effectiveStart, lte: end },
       sessionToken: { not: null },
       ...(showBots ? {} : { isBot: false }),
     },
@@ -1676,8 +1684,16 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
 
     const diagnosticAnswers: Record<string, string> = {};
     for (const e of evts) {
-      if (e.event.startsWith("funnel_diagnostic_") && !e.event.endsWith("_viewed") && e.value) {
-        diagnosticAnswers[e.event.replace("funnel_diagnostic_", "")] = e.value;
+      // v2 events: funnel_entry_selected, funnel_branch_q*_selected, funnel_shared_q*_selected
+      if (e.value) {
+        if (e.event === "funnel_entry_selected") diagnosticAnswers["entry"] = e.value;
+        else if (e.event.match(/^funnel_(branch|shared)_q\d+_selected$/)) {
+          diagnosticAnswers[e.event.replace("funnel_", "").replace("_selected", "")] = e.value;
+        }
+        // v1 compat
+        else if (e.event.startsWith("funnel_diagnostic_") && !e.event.endsWith("_viewed")) {
+          diagnosticAnswers[e.event.replace("funnel_diagnostic_", "")] = e.value;
+        }
       }
     }
 
@@ -1710,9 +1726,9 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
   const funnelSteps = FUNNEL_STEPS.map((s, i) => {
     const count = stepReach[s.key].size;
     const prevCount = i > 0 ? stepReach[FUNNEL_STEPS[i - 1].key].size : count;
-    const painHookCount = stepReach["pain_hook"].size;
+    const entryCount = stepReach["entry"].size;
     const stepConversion = prevCount > 0 ? Math.round((count / prevCount) * 100) : 0;
-    const overallConversion = painHookCount > 0 ? Math.round((count / painHookCount) * 100) : 0;
+    const overallConversion = entryCount > 0 ? Math.round((count / entryCount) * 100) : 0;
     return {
       key: s.key,
       label: s.label,
@@ -1725,17 +1741,23 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
 
   // ── Drop-off alerts ──
   const SUGGESTED_FIXES: Record<string, string> = {
-    diagnostic: "Hook doesn't match ad. Enable dynamic Screen 1.",
-    mirror: "Diagnostic fatigue. Consider fewer questions.",
-    bridge: "Mirror didn't resonate. Review copy.",
-    promise: "Bridge copy too generic. Customize per pain angle.",
-    commitment: "Commitment friction. Check hold button on mobile.",
-    extraction: "Won't commit. Simplify the ask.",
-    timeline: "Post-extraction drop. Check transitions.",
-    signup: "Won't create account. Simplify auth options.",
-    paywall: "Post-signup drop. Check redirect.",
-    paid: "Won't pay. Test pricing or extend trial.",
-    download: "Paid but didn't download. Improve download urgency.",
+    branch_q2: "Entry question isn\u2019t resonating. Test different options.",
+    branch_q3: "Branch questions too many. Consider reducing.",
+    branch_q4: "Fatigue at Q4. Shorten or rephrase.",
+    shared_q5: "Drop after branch. Shared questions feel generic.",
+    shared_q6: "Multi-select friction. Simplify cost question.",
+    shared_q7: "Skepticism question causing drop. Review placement.",
+    shared_q8: "Too many questions before mirror. Test skipping.",
+    shared_q9: "Last question before mirror. Low intent users leave.",
+    mirror: "Mirror didn\u2019t resonate. Review emotional copy.",
+    commit: "Hold-to-commit friction. Check mobile touch handling.",
+    processing: "Processing theater drop. Users leaving during wait.",
+    snapshot: "Snapshot not compelling. Personalize more.",
+    timeline: "Timeline not motivating. Review copy per branch.",
+    paywall: "Paywall drop. Test pricing or copy.",
+    signup: "Won\u2019t create account. Simplify auth options.",
+    paid: "Won\u2019t pay. Test pricing or extend trial.",
+    download: "Paid but didn\u2019t download. Improve download urgency.",
   };
 
   const alerts = funnelSteps
@@ -1750,9 +1772,9 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
   const totalSessions = sessions.length;
   const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
   const todaySessions = sessions.filter((s) => new Date(s.started) >= todayStart).length;
-  const painHookCount = stepReach["pain_hook"].size;
+  const entryCountTotal = stepReach["entry"].size;
   const paidCount = stepReach["paid"].size;
-  const completionRate = painHookCount > 0 ? Math.round((paidCount / painHookCount) * 100) : 0;
+  const completionRate = entryCountTotal > 0 ? Math.round((paidCount / entryCountTotal) * 100) : 0;
 
   // Biggest drop-off
   let biggestDrop = { step: "N/A", dropPct: 0 };
@@ -1894,4 +1916,16 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     sessions: sessions.slice(0, 100),
     totalSessionCount: sessions.length,
   };
+ } catch (err) {
+    console.error("[getFunnelAnalytics] Query failed:", err);
+    return {
+      keyMetrics: { totalSessions: 0, todaySessions: 0, completionRate: 0, biggestDrop: { step: "N/A", dropPct: 0 }, avgFunnelTimeSec: 0 },
+      funnelSteps: [],
+      alerts: [],
+      campaignFunnels: [],
+      branchBreakdown: [],
+      sessions: [],
+      totalSessionCount: 0,
+    };
+  }
 }
