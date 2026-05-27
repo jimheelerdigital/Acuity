@@ -154,7 +154,7 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
     const total = ss.length;
     const paid = ss.filter((s) => s.status === "paid" || s.status === "completed").length;
     const rate = total > 0 ? Math.round((paid / total) * 100) : 0;
-    const bestCampaign = filteredCampaignFunnels.sort((a, b) => b.conversionRate - a.conversionRate)[0];
+    const bestCampaign = [...filteredCampaignFunnels].sort((a, b) => b.conversionRate - a.conversionRate)[0];
     return { total, paid, rate, bestCampaign: bestCampaign?.campaign ?? null };
   }, [data, subTab, filteredSessions, filteredCampaignFunnels]);
 
@@ -376,7 +376,7 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
           {subTab === "overall" && (
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
               <MetricCard label="Total Sessions" value={String(km.totalSessions)} sub={`${km.todaySessions} today`} />
-              <MetricCard label="Funnel Completion" value={`${km.completionRate}%`} sub="Entry &rarr; Paid" color={km.completionRate >= 5 ? "text-emerald-400" : "text-red-400"} />
+              <MetricCard label="Funnel Completion" value={`${km.completionRate}%`} sub="Entry → Paid" color={km.completionRate >= 5 ? "text-emerald-400" : "text-red-400"} />
               <MetricCard label="Biggest Drop-off" value={km.biggestDrop.step} sub={`${km.biggestDrop.dropPct}% lost`} color="text-amber-400" />
               <MetricCard label="Avg Funnel Time" value={fmtTime(km.avgFunnelTimeSec)} sub="completed sessions" />
             </div>
@@ -659,7 +659,7 @@ function MetricCard({ label, value, sub, color }: { label: string; value: string
     <div className="rounded-xl bg-[#13131F] p-5">
       <p className="text-[10px] font-medium uppercase tracking-wider text-white/40 mb-1">{label}</p>
       <p className={`text-2xl font-bold tabular-nums ${color ?? "text-white"}`}>{value}</p>
-      {sub && <p className="text-xs text-white/30 mt-0.5" dangerouslySetInnerHTML={{ __html: sub }} />}
+      {sub && <p className="text-xs text-white/30 mt-0.5">{sub}</p>}
     </div>
   );
 }
