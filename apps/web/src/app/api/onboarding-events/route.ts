@@ -85,7 +85,7 @@ const VALID_EVENTS = new Set([
   "funnel_inapp_browser_detected",
 ]);
 
-const BOT_PATTERNS = /facebookexternalhit|Facebot|FacebookBot|WhatsApp|Twitterbot|LinkedInBot|Googlebot|bingbot|Bytespider|Amazonbot|prefetch|prerender|HeadlessChrome|Slurp|DuckDuckBot|Baiduspider|YandexBot|Sogou|Exabot|ia_archiver|MJ12bot|AhrefsBot|SemrushBot|DotBot|PetalBot|bot\/|crawler|spider/i;
+const BOT_PATTERNS = /facebookexternalhit|Facebot|FacebookBot|WhatsApp|Twitterbot|LinkedInBot|Googlebot|AdsBot-Google|AdsBot|Google-Ads|Google-Safety|Mediapartners-Google|APIs-Google|FeedFetcher-Google|Google-Read-Aloud|DuplexWeb-Google|Storebot-Google|bingbot|Bytespider|Amazonbot|prefetch|prerender|HeadlessChrome|Slurp|DuckDuckBot|Baiduspider|YandexBot|Sogou|Exabot|ia_archiver|MJ12bot|AhrefsBot|SemrushBot|DotBot|PetalBot|bot\/|crawler|spider/i;
 
 export async function POST(req: NextRequest) {
   let body: {
