@@ -16,6 +16,7 @@
       "**/*"
     ],
     "ios": {
+      "buildNumber": "45",
       "supportsTablet": false,
       "bundleIdentifier": "com.heelerdigital.acuity",
       "usesAppleSignIn": true,
