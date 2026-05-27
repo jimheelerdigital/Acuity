@@ -41,6 +41,60 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-27] — Add missing Google bot UAs to bot detection + expand pattern list
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 9efc3fd
+
+### In plain English (for Keenan)
+
+"AdsBot-Google" and other Google advertising crawlers were slipping through bot detection because the filter only recognized "Googlebot." Now 10 additional Google bot patterns are blocked. The regex was already case-insensitive so casing variations were handled.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/api/onboarding-events/route.ts`: Added to BOT_PATTERNS regex: AdsBot-Google, AdsBot, Google-Ads, Google-Safety, Mediapartners-Google, APIs-Google, FeedFetcher-Google, Google-Read-Aloud, DuplexWeb-Google, Storebot-Google.
+
+### Manual steps needed
+
+- [ ] Run retroactive backfill SQL to mark existing bot events (Jimmy — direct SQL against Supabase):
+```sql
+UPDATE "OnboardingEvent" SET "isBot" = true WHERE "browser" ILIKE '%AdsBot%' OR "browser" ILIKE '%APIs-Google%' OR "browser" ILIKE '%Mediapartners%' OR "browser" ILIKE '%FeedFetcher%' OR "browser" ILIKE '%Storebot%' OR "browser" ILIKE '%DuplexWeb%' OR "browser" ILIKE '%Google-Safety%' OR "browser" ILIKE '%Google-Read-Aloud%' OR "browser" ILIKE '%Google-Ads%';
+```
+
+### Notes
+
+- The `/i` flag on the BOT_PATTERNS regex means the check is already case-insensitive — "adsbot-google", "ADSBOT-GOOGLE", etc. all match.
+- Dashboard queries confirmed filtering `isBot: false` on all 7 query locations in metrics/route.ts. The "Show bots" toggle in the Funnel Analytics tab conditionally bypasses this filter.
+- New bot events are dropped at intake (204, no DB write). Existing events need the SQL backfill above.
+
+---
+
+## [2026-05-27] — Fix Save Funnel Copy button + add Preview Funnel link in AdLab
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 33a2a62
+
+### In plain English (for Keenan)
+
+The "Save Funnel Copy" button in AdLab experiments wasn't showing any feedback — it silently failed or appeared to do nothing. Now it shows a green "Funnel copy saved" message on success, or a red error message if something goes wrong. Also added a "Preview Funnel" link that lets you open the funnel in a new tab with the experiment's custom copy, plus a copyable URL for sharing or mobile testing.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/admin/adlab/experiments/[id]/page.tsx`: FunnelCopyEditor `save()` function now checks `res.ok` before calling `onSave()`. Errors from the API (500, network failures) are caught and displayed as red inline status text. Success shows green "Funnel copy saved" text. Added `previewUrl` computed from experiment ID, rendered as a clickable "Preview Funnel" link + copyable input when any custom copy field is populated.
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- The API route (`PUT /api/admin/adlab/experiments/{id}/funnel-copy`) was already correctly implemented — the bug was purely client-side (empty catch block + no res.ok check).
+- The preview link uses `utm_source=preview&utm_medium=adlab&utm_campaign={experiment.id}` so preview traffic is distinguishable in analytics.
+
+---
+
 ## [2026-05-27] — Fix 6 critical bugs in /start onboarding funnel blocking revenue
 
 **Requested by:** Keenan
