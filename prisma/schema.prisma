@@ -2025,12 +2025,6 @@ model AdLabProject {
   metaAppId                 String?
   targetInterests           Json?
   imageEnabled              Boolean            @default(true)
-  videoEnabled              Boolean            @default(false)
-  videoAvatars              Json               @default("[]")
-  // Primary avatar (e.g. Keenan) — { id, voiceId, name, gender }
-  videoPrimaryAvatar        Json?
-  // Secondary avatar (e.g. female presenter) — same shape
-  videoSecondaryAvatar      Json?
   createdAt                 DateTime           @default(now())
   experiments               AdLabExperiment[]
 
@@ -2111,12 +2105,6 @@ model AdLabAngle {
   score            Int               @default(0)
   advanced         Boolean           @default(false)
   creatives        AdLabCreative[]
-  videoScriptText  String?           @db.Text
-  videoHookLine    String?
-  videoUrl         String?
-  videoAvatarId    String?
-  videoStatus      String?
-  heygenVideoId    String?
 
   @@index([experimentId])
   @@map("adlab_angles")
@@ -2132,9 +2120,6 @@ model AdLabCreative {
   description      String
   cta              String
   imageUrl         String?
-  videoUrl         String?
-  videoPresenterTag String?              // e.g. "Male", "Female" — identifies which avatar version
-  heygenVideoId    String?              // HeyGen video ID for re-fetching if Supabase URL breaks
   generationPrompt String?                 @db.Text
   complianceStatus AdLabComplianceStatus   @default(pending)
   complianceNotes  String?                 @db.Text

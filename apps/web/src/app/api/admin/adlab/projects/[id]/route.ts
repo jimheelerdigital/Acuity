@@ -46,27 +46,6 @@ const UpdateProjectSchema = z.object({
   metaPageId: z.string().nullable().optional(),
   targetInterests: z.array(z.object({ id: z.string(), name: z.string() })).nullable().optional(),
   imageEnabled: z.boolean().optional(),
-  videoEnabled: z.boolean().optional(),
-  videoAvatars: z.array(z.object({
-    id: z.string(),
-    voiceId: z.string(),
-    name: z.string(),
-    gender: z.string(),
-  })).optional(),
-  videoPrimaryAvatar: z.object({
-    id: z.string(),
-    voiceId: z.string(),
-    name: z.string(),
-    gender: z.string(),
-    previewUrl: z.string().nullable().optional(),
-  }).nullable().optional(),
-  videoSecondaryAvatar: z.object({
-    id: z.string(),
-    voiceId: z.string(),
-    name: z.string(),
-    gender: z.string(),
-    previewUrl: z.string().nullable().optional(),
-  }).nullable().optional(),
 });
 
 interface RouteParams {

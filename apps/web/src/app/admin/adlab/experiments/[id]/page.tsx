@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Loader2, CheckCircle2, ChevronDown, ChevronUp, Sparkles, RefreshCw, Shield, Copy, Trash2, Rocket, XCircle, Upload, ImageIcon, X as XIcon, Info, Download, ExternalLink, Link as LinkIcon, PlusCircle, TrendingUp, DollarSign, AlertTriangle, ClipboardCheck, Video, Play } from "lucide-react";
+import { Loader2, CheckCircle2, ChevronDown, ChevronUp, Sparkles, RefreshCw, Shield, Copy, Trash2, Rocket, XCircle, Upload, ImageIcon, X as XIcon, Info, Download, ExternalLink, Link as LinkIcon, PlusCircle, TrendingUp, DollarSign, AlertTriangle, ClipboardCheck } from "lucide-react";
 
 interface DailyMetric {
   spendCents: number;
@@ -24,8 +24,6 @@ interface Creative {
   description: string;
   cta: string;
   imageUrl: string | null;
-  videoUrl: string | null;
-  videoPresenterTag: string | null;
   generationPrompt: string | null;
   complianceStatus: string;
   complianceNotes: string | null;
@@ -44,11 +42,6 @@ interface Angle {
   score: number;
   advanced: boolean;
   creatives: Creative[];
-  videoScriptText: string | null;
-  videoHookLine: string | null;
-  videoUrl: string | null;
-  videoAvatarId: string | null;
-  videoStatus: string | null;
 }
 
 interface ReferenceImage {
@@ -1572,112 +1565,6 @@ function AngleCard({
   onReload: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const [videoGenerating, setVideoGenerating] = useState(false);
-  const [videoProgress, setVideoProgress] = useState<string | null>(null);
-  const [scriptDraft, setScriptDraft] = useState<{
-    scriptText: string;
-    hookLine: string;
-    primaryAvatar: { id: string; voiceId: string; name: string; gender: string };
-    secondaryAvatar?: { id: string; voiceId: string; name: string; gender: string } | null;
-  } | null>(null);
-  const [editedScript, setEditedScript] = useState("");
-  const [editedHook, setEditedHook] = useState("");
-  const [videoConfirming, setVideoConfirming] = useState(false);
-  const [videoError, setVideoError] = useState<string | null>(null);
-
-  async function generateVideoScript() {
-    setVideoGenerating(true);
-    setVideoError(null);
-    setVideoProgress("Generating script...");
-    setScriptDraft(null);
-
-    try {
-      const res = await fetch("/api/admin/adlab/video/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ angleId: angle.id }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setScriptDraft(data);
-        setEditedScript(data.scriptText);
-        setEditedHook(data.hookLine);
-        setVideoProgress(null);
-      } else {
-        setVideoError(data.error || "Script generation failed");
-        setVideoProgress(null);
-      }
-    } catch {
-      setVideoError("Network error");
-      setVideoProgress(null);
-    }
-    setVideoGenerating(false);
-  }
-
-  async function confirmAndGenerate() {
-    if (!scriptDraft) return;
-    setVideoConfirming(true);
-    setVideoError(null);
-    const avatarCount = scriptDraft.secondaryAvatar?.id ? 2 : 1;
-    setVideoProgress(`Sending to HeyGen (${avatarCount} avatar${avatarCount > 1 ? "s" : ""})...`);
-
-    try {
-      const res = await fetch("/api/admin/adlab/video/confirm", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          angleId: angle.id,
-          scriptText: editedScript,
-          hookLine: editedHook,
-          primaryAvatar: scriptDraft.primaryAvatar,
-          secondaryAvatar: scriptDraft.secondaryAvatar || null,
-        }),
-      });
-
-      setVideoProgress(`Processing ${avatarCount} video${avatarCount > 1 ? "s" : ""} (1-3 min each)...`);
-      const data = await res.json();
-
-      if (res.ok) {
-        const msg = data.totalGenerated > 1
-          ? `${data.totalGenerated} videos complete!`
-          : "Video complete!";
-        setVideoProgress(data.totalFailed > 0 ? `${msg} (${data.totalFailed} failed)` : msg);
-        setScriptDraft(null);
-        onReload();
-        setTimeout(() => setVideoProgress(null), 3000);
-      } else {
-        setVideoError(data.error || "Video generation failed");
-        setVideoProgress(null);
-      }
-    } catch {
-      setVideoError("Network error");
-      setVideoProgress(null);
-    }
-    setVideoConfirming(false);
-  }
-
-  const [refetching, setRefetching] = useState<string | null>(null);
-
-  async function refetchVideo(creativeId: string) {
-    setRefetching(creativeId);
-    setVideoError(null);
-    try {
-      const res = await fetch("/api/admin/adlab/video/refetch", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ creativeId }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        onReload();
-      } else {
-        setVideoError(`Re-fetch failed: ${data.error}`);
-      }
-    } catch {
-      setVideoError("Re-fetch failed: network error");
-    }
-    setRefetching(null);
-  }
 
   return (
     <div
@@ -1712,11 +1599,6 @@ function AngleCard({
             {angle.advanced && (
               <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
                 advanced
-              </span>
-            )}
-            {angle.videoStatus === "complete" && (
-              <span className="rounded-full bg-sky-500/15 px-2 py-0.5 text-[10px] font-medium text-sky-400">
-                video ready
               </span>
             )}
           </div>
@@ -1765,9 +1647,9 @@ function AngleCard({
             </p>
           )}
 
-          {/* ─── Video Section ─── */}
-          {angle.advanced && angle.creatives.length > 0 && (
-            <div className="mt-4 border-t border-white/5 pt-4">
+          {/* Video section removed — AdLab is copy + images only */}
+          {false && (
+            <div>
               {/* Completed video preview — show all video creatives side by side */}
               {angle.videoStatus === "complete" && (() => {
                 const videoCreatives = angle.creatives.filter((c) => c.creativeType === "video" && c.videoUrl);
@@ -1962,21 +1844,6 @@ function CreativeCard({
           </button>
         </div>
       )}
-      {creative.creativeType === "video" && creative.videoUrl && (
-        <div className="aspect-square bg-black/20">
-          <video
-            src={creative.videoUrl}
-            controls
-            className="w-full h-full object-cover"
-          />
-        </div>
-      )}
-      {creative.creativeType === "video" && !creative.videoUrl && (
-        <div className="aspect-square bg-black/20 flex items-center justify-center">
-          <span className="text-xs text-[#A0A0B8]">Video pending</span>
-        </div>
-      )}
-
       <div className="p-3 space-y-2">
         <p className="text-xs font-semibold text-white leading-snug">{creative.headline}</p>
         <p className="text-[11px] text-[#A0A0B8] leading-relaxed">{creative.primaryText}</p>

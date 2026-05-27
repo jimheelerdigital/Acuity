@@ -107,7 +107,6 @@ Show artifacts (the weekly report, the memoir PDF), not mechanisms.`,
       landingPageUrl: "https://getacuity.io",
       conversionEvent: "Lead",
       conversionObjective: "OUTCOME_LEADS",
-      videoEnabled: false,
     },
   });
 

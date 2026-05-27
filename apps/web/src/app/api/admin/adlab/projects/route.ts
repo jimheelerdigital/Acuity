@@ -45,27 +45,6 @@ const CreateProjectSchema = z.object({
   metaPageId: z.string().optional().default(""),
   targetInterests: z.array(z.object({ id: z.string(), name: z.string() })).optional().nullable().default(null),
   imageEnabled: z.boolean().default(true),
-  videoEnabled: z.boolean().default(false),
-  videoAvatars: z.array(z.object({
-    id: z.string(),
-    voiceId: z.string(),
-    name: z.string(),
-    gender: z.string(),
-  })).optional().default([]),
-  videoPrimaryAvatar: z.object({
-    id: z.string(),
-    voiceId: z.string(),
-    name: z.string(),
-    gender: z.string(),
-    previewUrl: z.string().nullable().optional(),
-  }).optional().nullable().default(null),
-  videoSecondaryAvatar: z.object({
-    id: z.string(),
-    voiceId: z.string(),
-    name: z.string(),
-    gender: z.string(),
-    previewUrl: z.string().nullable().optional(),
-  }).optional().nullable().default(null),
 });
 
 export async function GET() {
