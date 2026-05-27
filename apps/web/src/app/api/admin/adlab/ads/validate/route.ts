@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
       angles: {
         include: {
           creatives: {
-            where: { approved: true, complianceStatus: { not: "fail" } },
+            where: { approved: true, complianceStatus: { not: "flagged" } },
           },
         },
       },
