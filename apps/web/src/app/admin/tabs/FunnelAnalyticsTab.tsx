@@ -1,7 +1,9 @@
 "use client";
 
 import React, { useState } from "react";
-import { useTabData, TabError, SkeletonMetric, SkeletonChart, SkeletonTable } from "./useTabData";
+import { useTabData } from "./useTabData";
+import { TabError } from "../components/TabError";
+import { SkeletonMetric, SkeletonChart, SkeletonTable } from "../components/SkeletonCard";
 
 interface FunnelStep {
   key: string; label: string; count: number;
