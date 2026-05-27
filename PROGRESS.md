@@ -41,6 +41,33 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-27] — Paywall rewrite: outcomes over features, dynamic headlines, therapy price anchor
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 281915a
+
+### In plain English (for Keenan)
+
+The paywall was listing features nobody pays for. Now it sells outcomes. The headline is personalized from the user's actual quiz answers ("You've been losing days for over a year. What's that worth?"). There's a side-by-side comparison card showing what they already tried (and how it failed) vs. what Acuity costs. The outcome section shows specific numbers (30 debriefs, 4 weekly reports, 1 memoir) instead of vague features. The therapy price anchor ($150/session vs $4.99/month) is the emotional centerpiece. Testimonials are now outcome-specific ("Week 3, Acuity connected my mom to my work stress. A year of therapy never did."). FAQ answers are written to overcome specific objections, not just provide information.
+
+### Technical changes (for Jimmy)
+
+- `funnel-config.ts`: Added `getPaywallHeadline()` (personalizes from branch + Q2/Q3/Q5 answers), `getComparisonLeft()` (what-failed card per branch), `PAYWALL_FAQ` (5 objection-handling items), `PAYWALL_TESTIMONIALS_V2` (3 outcome-specific quotes)
+- `onboarding-funnel.tsx`: PaywallScreen rewritten with 7 sections. Now accepts `answers` prop. Removed old `PAYWALL_OUTCOMES`, `PAYWALL_TESTIMONIALS`, `FAQ_ITEMS` constants. Download screen testimonials moved to `DOWNLOAD_TESTIMONIALS`.
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- The "$150 therapy session" comparison is the most compelling data point on the page. It reframes $4.99/month as absurdly cheap without directly saying so.
+- The comparison card (Section 2) pulls the user's actual Q2/Q3 answers for the graveyard branch, making it feel personally targeted.
+- All old paywall copy (generic feature cards, rotating testimonials) is deleted. The new version is ~20% shorter but significantly more dense with value.
+
+---
+
 ## [2026-05-27] — 9 analytics features added to Funnel Analytics dashboard
 
 **Requested by:** Keenan
