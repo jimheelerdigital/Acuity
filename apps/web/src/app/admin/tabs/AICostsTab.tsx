@@ -1,14 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
+// Recharts removed — chart uses CSS bars
 import MetricCard from "../components/MetricCard";
 import ChartCard from "../components/ChartCard";
 import RefreshButton from "../components/RefreshButton";
@@ -163,45 +156,18 @@ export default function AICostsTab({
           <p className="text-sm text-white/40 py-12 text-center">
             Not enough data
           </p>
-        ) : (
-          <div className="h-56">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={data.byDay}>
-                <XAxis
-                  dataKey="date"
-                  tick={{ fill: "rgba(255,255,255,0.55)", fontSize: 12 }}
-                  tickFormatter={(v) => v.slice(5)}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  tick={{ fill: "rgba(255,255,255,0.55)", fontSize: 12 }}
-                  axisLine={false}
-                  tickLine={false}
-                  tickFormatter={(v) => `$${(v / 100).toFixed(0)}`}
-                />
-                <Tooltip
-                  formatter={(value) =>
-                    `$${(Number(value) / 100).toFixed(2)}`
-                  }
-                  contentStyle={{
-                    background: "#13131F",
-                    border: "1px solid rgba(255,255,255,0.1)",
-                    borderRadius: 8,
-                    fontSize: 12,
-                  }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="totalCents"
-                  stroke="#7C5CFC"
-                  strokeWidth={2}
-                  dot={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        )}
+        ) : (() => {
+          const max = Math.max(...data.byDay.map((d: { totalCents: number }) => d.totalCents), 1);
+          return (
+            <div className="flex items-end gap-1 h-48 pt-4">
+              {data.byDay.map((d: { date: string; totalCents: number }, i: number) => (
+                <div key={i} className="flex-1 flex flex-col items-center justify-end" title={`${d.date}: $${(d.totalCents / 100).toFixed(2)}`}>
+                  <div className="w-full rounded-t bg-[#7C5CFC]" style={{ height: `${Math.max(2, (d.totalCents / max) * 100)}%` }} />
+                </div>
+              ))}
+            </div>
+          );
+        })()}
       </ChartCard>
 
       {/* Recent calls table */}

@@ -2,22 +2,11 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  Legend,
-} from "recharts";
+// Recharts removed — charts use CSS bars
 import MetricCard from "../components/MetricCard";
 import ChartCard from "../components/ChartCard";
 import RefreshButton from "../components/RefreshButton";
-import { SafeChart } from "../components/SafeChart";
+// SafeChart no longer needed — all charts are CSS bars
 import { SkeletonMetric, SkeletonChart, SkeletonTable } from "../components/SkeletonCard";
 import { DrilldownModal } from "../components/DrilldownModal";
 import { TabError } from "../components/TabError";
@@ -259,36 +248,43 @@ export default function OverviewTab({ start, end }: { start: string; end: string
         <ChartCard title="Signups Over Time">
           {signupsOverTimeData.length === 0 ? (
             <p className="text-sm text-white/40 py-12 text-center">Not enough data yet</p>
-          ) : (
-            <SafeChart height={224}>
-              <ResponsiveContainer width="100%" height={224}>
-                <BarChart data={signupsOverTimeData}>
-                  <XAxis dataKey="date" tick={{ fill: "rgba(255,255,255,0.55)", fontSize: 12 }} tickFormatter={(v) => v.slice(5)} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fill: "rgba(255,255,255,0.55)", fontSize: 12 }} axisLine={false} tickLine={false} allowDecimals={false} />
-                  <Tooltip contentStyle={{ background: "#13131F", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }} />
-                  <Bar dataKey="count" fill="#7C5CFC" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </SafeChart>
-          )}
+          ) : (() => {
+            const max = Math.max(...signupsOverTimeData.map((d) => d.count), 1);
+            return (
+              <div className="flex items-end gap-1 h-48 pt-4">
+                {signupsOverTimeData.map((d, i) => (
+                  <div key={i} className="flex-1 flex flex-col items-center justify-end" title={`${d.date}: ${d.count}`}>
+                    <div className="w-full rounded-t bg-[#7C5CFC]" style={{ height: `${Math.max(2, (d.count / max) * 100)}%` }} />
+                    {signupsOverTimeData.length <= 14 && (
+                      <span className="text-[8px] text-white/30 mt-1 tabular-nums">{d.date.slice(5)}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
         </ChartCard>
 
         <ChartCard title="AI Cost by Feature (MTD)">
           {(data.aiByPurpose ?? []).length === 0 ? (
             <p className="text-sm text-white/40 py-12 text-center">Not enough data yet</p>
-          ) : (
-            <SafeChart height={224}>
-              <ResponsiveContainer width="100%" height={224}>
-                <PieChart>
-                  <Pie data={(data.aiByPurpose ?? []).map((d) => ({ name: d.purpose, value: d.total }))} cx="50%" cy="50%" innerRadius={50} outerRadius={80} dataKey="value" label={false}>
-                    {(data.aiByPurpose ?? []).map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
-                  </Pie>
-                  <Legend wrapperStyle={{ fontSize: 12, color: "rgba(255,255,255,0.7)" }} />
-                  <Tooltip formatter={(value) => `$${(Number(value) / 100).toFixed(2)}`} contentStyle={{ background: "#13131F", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }} />
-                </PieChart>
-              </ResponsiveContainer>
-            </SafeChart>
-          )}
+          ) : (() => {
+            const items = data.aiByPurpose ?? [];
+            const total = items.reduce((s, d) => s + d.total, 0) || 1;
+            return (
+              <div className="space-y-2 py-4">
+                {items.map((d, i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <span className="text-xs text-white/50 w-28 truncate shrink-0">{d.purpose}</span>
+                    <div className="flex-1 h-5 bg-white/5 rounded overflow-hidden">
+                      <div className="h-full rounded" style={{ width: `${(d.total / total) * 100}%`, background: PIE_COLORS[i % PIE_COLORS.length] }} />
+                    </div>
+                    <span className="text-xs text-white/40 w-16 shrink-0 text-right tabular-nums">${(d.total / 100).toFixed(2)}</span>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
         </ChartCard>
       </div>
 

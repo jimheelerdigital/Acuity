@@ -1,19 +1,8 @@
 "use client";
 
-import {
-  AreaChart,
-  Area,
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-} from "recharts";
+// Recharts removed — charts use CSS bars
 import MetricCard from "../components/MetricCard";
 import ChartCard from "../components/ChartCard";
-import { SafeChart } from "../components/SafeChart";
 import RefreshButton from "../components/RefreshButton";
 import { SkeletonMetric, SkeletonChart, SkeletonTable } from "../components/SkeletonCard";
 import { TabError } from "../components/TabError";
@@ -138,49 +127,18 @@ export default function BusinessMetricsTab({
           <ChartCard title="MRR Trend">
             {data.mrrTrend.length < 2 ? (
               <p className="py-12 text-center text-sm text-white/40">Not enough data</p>
-            ) : (
-              <SafeChart height={240}>
-                <ResponsiveContainer width="100%" height={240}>
-                  <AreaChart data={data.mrrTrend}>
-                    <defs>
-                      <linearGradient id="mrrFill" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#7C5CFC" stopOpacity={0.2} />
-                        <stop offset="100%" stopColor="#7C5CFC" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <XAxis
-                      dataKey="month"
-                      tick={{ fill: "rgba(255,255,255,0.55)", fontSize: 12 }}
-                      axisLine={false}
-                      tickLine={false}
-                    />
-                    <YAxis
-                      tick={{ fill: "rgba(255,255,255,0.55)", fontSize: 12 }}
-                      axisLine={false}
-                      tickLine={false}
-                      tickFormatter={(v) => `$${(v / 100).toFixed(0)}`}
-                    />
-                    <Tooltip
-                      formatter={(value: number) => fmtDollars(value)}
-                      contentStyle={{
-                        background: "#13131F",
-                        border: "1px solid rgba(255,255,255,0.1)",
-                        borderRadius: 8,
-                        fontSize: 12,
-                      }}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="mrr"
-                      stroke="#7C5CFC"
-                      fill="url(#mrrFill)"
-                      strokeWidth={2}
-                      dot={false}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </SafeChart>
-            )}
+            ) : (() => {
+                const max = Math.max(...data.mrrTrend.map((d: { mrr: number }) => d.mrr), 1);
+                return (
+                  <div className="flex items-end gap-1 h-48 pt-4">
+                    {data.mrrTrend.map((d: { month: string; mrr: number }, i: number) => (
+                      <div key={i} className="flex-1 flex flex-col items-center justify-end" title={`${d.month}: ${fmtDollars(d.mrr)}`}>
+                        <div className="w-full rounded-t bg-[#7C5CFC]" style={{ height: `${Math.max(2, (d.mrr / max) * 100)}%` }} />
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
           </ChartCard>
         </div>
       </section>
@@ -305,60 +263,23 @@ export default function BusinessMetricsTab({
             {data.profitTrend.length < 2 ? (
               <p className="py-12 text-center text-sm text-white/40">Not enough data</p>
             ) : (
-              <SafeChart height={240}>
-                <ResponsiveContainer width="100%" height={240}>
-                  <LineChart data={data.profitTrend}>
-                    <XAxis
-                      dataKey="month"
-                      tick={{ fill: "rgba(255,255,255,0.55)", fontSize: 12 }}
-                      axisLine={false}
-                      tickLine={false}
-                    />
-                    <YAxis
-                      tick={{ fill: "rgba(255,255,255,0.55)", fontSize: 12 }}
-                      axisLine={false}
-                      tickLine={false}
-                      tickFormatter={(v) => `$${(v / 100).toFixed(0)}`}
-                    />
-                    <Tooltip
-                      formatter={(value: number) => fmtDollars(value)}
-                      contentStyle={{
-                        background: "#13131F",
-                        border: "1px solid rgba(255,255,255,0.1)",
-                        borderRadius: 8,
-                        fontSize: 12,
-                      }}
-                    />
-                    <Legend
-                      wrapperStyle={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="revenue"
-                      name="Revenue"
-                      stroke="#34D399"
-                      strokeWidth={2}
-                      dot={false}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="costs"
-                      name="Costs"
-                      stroke="#EF4444"
-                      strokeWidth={2}
-                      dot={false}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="net"
-                      name="Net"
-                      stroke="#7C5CFC"
-                      strokeWidth={2}
-                      dot={false}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </SafeChart>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead><tr className="border-b border-white/10 text-white/30 text-xs">
+                    <th className="pb-2 pr-3">Month</th><th className="pb-2 pr-3 text-right">Revenue</th><th className="pb-2 pr-3 text-right">Costs</th><th className="pb-2 pr-3 text-right">Net</th>
+                  </tr></thead>
+                  <tbody>
+                    {data.profitTrend.map((d: { month: string; revenue: number; costs: number; net: number }, i: number) => (
+                      <tr key={i} className="border-b border-white/5 text-white/60">
+                        <td className="py-1.5 pr-3 text-xs">{d.month}</td>
+                        <td className="py-1.5 pr-3 text-xs text-right text-emerald-400 tabular-nums">{fmtDollars(d.revenue)}</td>
+                        <td className="py-1.5 pr-3 text-xs text-right text-red-400 tabular-nums">{fmtDollars(d.costs)}</td>
+                        <td className={`py-1.5 pr-3 text-xs text-right font-medium tabular-nums ${d.net >= 0 ? "text-emerald-400" : "text-red-400"}`}>{fmtDollars(d.net)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </ChartCard>
         </div>

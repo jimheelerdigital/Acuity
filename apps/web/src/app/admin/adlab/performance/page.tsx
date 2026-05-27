@@ -10,18 +10,8 @@ import {
   ChevronUp,
   BarChart3,
 } from "lucide-react";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  ReferenceLine,
-  Legend,
-} from "recharts";
-import { SafeChart } from "../../components/SafeChart";
+// Recharts removed
+
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -403,81 +393,13 @@ export default function PerformancePage() {
               {/* Chart 1: Daily Spend & Conversions */}
               <div className="rounded-xl border border-white/10 bg-[#13131F] p-5">
                 <h3 className="text-sm font-semibold text-white mb-4">Daily Spend & Conversions</h3>
-                <SafeChart height={280}><ResponsiveContainer width="100%" height={280}>
-                  <LineChart data={data.dailySeries}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                    <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#A0A0B8" }} tickFormatter={(v: string) => v.slice(5)} />
-                    <YAxis yAxisId="spend" tick={{ fontSize: 10, fill: "#A0A0B8" }} tickFormatter={(v: number) => `$${v}`} />
-                    <YAxis yAxisId="conv" orientation="right" tick={{ fontSize: 10, fill: "#10B981" }} />
-                    <Tooltip
-                      contentStyle={{ background: "#1E1E2E", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }}
-                      labelStyle={{ color: "#A0A0B8" }}
-                    />
-                    <Legend wrapperStyle={{ fontSize: 11 }} />
-                    {data.experimentIds.map((id, i) => (
-                      <Line
-                        key={`spend_${id}`}
-                        yAxisId="spend"
-                        type="monotone"
-                        dataKey={`spend_${id}`}
-                        name={`Spend: ${data.experimentLabels[id] ?? id.slice(0, 8)}`}
-                        stroke={EXP_COLORS[i % EXP_COLORS.length]}
-                        strokeWidth={2}
-                        dot={false}
-                      />
-                    ))}
-                    {data.experimentIds.map((id, i) => (
-                      <Line
-                        key={`conv_${id}`}
-                        yAxisId="conv"
-                        type="monotone"
-                        dataKey={`conv_${id}`}
-                        name={`Conv: ${data.experimentLabels[id] ?? id.slice(0, 8)}`}
-                        stroke={EXP_COLORS[i % EXP_COLORS.length]}
-                        strokeWidth={2}
-                        strokeDasharray="5 5"
-                        dot={false}
-                      />
-                    ))}
-                  </LineChart>
-                </ResponsiveContainer></SafeChart>
+                <div className="flex items-center justify-center h-48 text-xs text-white/30 bg-white/5 rounded-lg">Chart temporarily unavailable</div>
               </div>
 
               {/* Chart 2: Daily CPL */}
               <div className="rounded-xl border border-white/10 bg-[#13131F] p-5">
                 <h3 className="text-sm font-semibold text-white mb-4">Daily CPL</h3>
-                <SafeChart height={280}><ResponsiveContainer width="100%" height={280}>
-                  <LineChart data={data.dailySeries}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                    <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#A0A0B8" }} tickFormatter={(v: string) => v.slice(5)} />
-                    <YAxis tick={{ fontSize: 10, fill: "#A0A0B8" }} tickFormatter={(v: number) => `$${v}`} />
-                    <Tooltip
-                      contentStyle={{ background: "#1E1E2E", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }}
-                      labelStyle={{ color: "#A0A0B8" }}
-                    />
-                    <Legend wrapperStyle={{ fontSize: 11 }} />
-                    {data.targetCplCents && (
-                      <ReferenceLine
-                        y={data.targetCplCents / 100}
-                        stroke="#EF4444"
-                        strokeDasharray="8 4"
-                        label={{ value: `Target $${(data.targetCplCents / 100).toFixed(2)}`, fill: "#EF4444", fontSize: 10, position: "right" }}
-                      />
-                    )}
-                    {data.experimentIds.map((id, i) => (
-                      <Line
-                        key={`cpl_${id}`}
-                        type="monotone"
-                        dataKey={`cpl_${id}`}
-                        name={data.experimentLabels[id] ?? id.slice(0, 8)}
-                        stroke={EXP_COLORS[i % EXP_COLORS.length]}
-                        strokeWidth={2}
-                        dot={false}
-                        connectNulls
-                      />
-                    ))}
-                  </LineChart>
-                </ResponsiveContainer></SafeChart>
+                <div className="flex items-center justify-center h-48 text-xs text-white/30 bg-white/5 rounded-lg">Chart temporarily unavailable</div>
               </div>
             </div>
           )}

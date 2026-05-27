@@ -1,11 +1,6 @@
 "use client";
 
-import { SafeChart } from "./SafeChart";
-import {
-  ResponsiveContainer,
-  AreaChart,
-  Area,
-} from "recharts";
+// Recharts removed — sparkline uses CSS bars
 
 interface Props {
   label: string;
@@ -116,28 +111,16 @@ export default function MetricCard({
           </div>
         )}
       </div>
-      {sparklineData && sparklineData.length > 1 && (
-        <SafeChart height={32}>
-          <ResponsiveContainer width="100%" height={32}>
-            <AreaChart data={sparklineData}>
-              <defs>
-                <linearGradient id="sparkGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#7C5CFC" stopOpacity={0.3} />
-                  <stop offset="100%" stopColor="#7C5CFC" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <Area
-                type="monotone"
-                dataKey="v"
-                stroke="#7C5CFC"
-                fill="url(#sparkGrad)"
-                strokeWidth={1.5}
-                dot={false}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </SafeChart>
-      )}
+      {sparklineData && sparklineData.length > 1 && (() => {
+        const max = Math.max(...sparklineData.map((d) => d.v), 1);
+        return (
+          <div className="mt-2 flex items-end gap-px h-8">
+            {sparklineData.map((d, i) => (
+              <div key={i} className="flex-1 rounded-t bg-[#7C5CFC]/40" style={{ height: `${Math.max(2, (d.v / max) * 100)}%` }} />
+            ))}
+          </div>
+        );
+      })()}
     </Wrapper>
   );
 }

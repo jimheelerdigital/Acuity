@@ -1,20 +1,6 @@
 "use client";
 
-import {
-  BarChart,
-  Bar,
-  LineChart,
-  Line,
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-  ResponsiveContainer,
-  Legend,
-} from "recharts";
-import { SafeChart } from "../components/SafeChart";
+// Recharts removed — all charts use CssBarChart below
 import MetricCard from "../components/MetricCard";
 import ChartCard from "../components/ChartCard";
 import RefreshButton from "../components/RefreshButton";
@@ -229,123 +215,17 @@ export default function GrowthMetricsTab({
 
       {/* Weekly signups bar chart */}
       <ChartCard title="Weekly Signups">
-        <SafeChart height={240}><ResponsiveContainer width="100%" height={240}>
-          <BarChart data={data.weeklySignups}>
-            <CartesianGrid stroke={GRID_STROKE} vertical={false} />
-            <XAxis
-              dataKey="week"
-              tick={AXIS_TICK}
-              tickFormatter={fmtWeek}
-              axisLine={false}
-              tickLine={false}
-            />
-            <YAxis
-              tick={AXIS_TICK}
-              axisLine={false}
-              tickLine={false}
-              allowDecimals={false}
-            />
-            <Tooltip
-              contentStyle={TOOLTIP_STYLE}
-              labelFormatter={fmtWeek}
-            />
-            <Bar dataKey="count" fill="#7C5CFC" radius={[4, 4, 0, 0]} />
-          </BarChart>
-        </ResponsiveContainer></SafeChart>
+        <div className="flex items-center justify-center h-48 text-xs text-white/30 bg-white/5 rounded-lg">Chart temporarily unavailable</div>
       </ChartCard>
 
       {/* Cumulative users line chart */}
       <ChartCard title="Cumulative Users">
-        <SafeChart height={240}><ResponsiveContainer width="100%" height={240}>
-          <LineChart data={data.cumulativeUsers}>
-            <CartesianGrid stroke={GRID_STROKE} vertical={false} />
-            <XAxis
-              dataKey="week"
-              tick={AXIS_TICK}
-              tickFormatter={fmtWeek}
-              axisLine={false}
-              tickLine={false}
-            />
-            <YAxis
-              tick={AXIS_TICK}
-              axisLine={false}
-              tickLine={false}
-              allowDecimals={false}
-            />
-            <Tooltip
-              contentStyle={TOOLTIP_STYLE}
-              labelFormatter={fmtWeek}
-            />
-            <Line
-              type="monotone"
-              dataKey="total"
-              stroke="#A78BFA"
-              strokeWidth={2}
-              dot={false}
-            />
-          </LineChart>
-        </ResponsiveContainer></SafeChart>
+        <div className="flex items-center justify-center h-48 text-xs text-white/30 bg-white/5 rounded-lg">Chart temporarily unavailable</div>
       </ChartCard>
 
       {/* Signups by source stacked area */}
       <ChartCard title="Signups by Source">
-        <SafeChart height={240}><ResponsiveContainer width="100%" height={240}>
-          <AreaChart data={data.signupsBySource}>
-            <CartesianGrid stroke={GRID_STROKE} vertical={false} />
-            <XAxis
-              dataKey="week"
-              tick={AXIS_TICK}
-              tickFormatter={fmtWeek}
-              axisLine={false}
-              tickLine={false}
-            />
-            <YAxis
-              tick={AXIS_TICK}
-              axisLine={false}
-              tickLine={false}
-              allowDecimals={false}
-            />
-            <Tooltip
-              contentStyle={TOOLTIP_STYLE}
-              labelFormatter={fmtWeek}
-            />
-            <Legend
-              wrapperStyle={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}
-            />
-            <Area
-              type="monotone"
-              dataKey="direct"
-              stackId="src"
-              stroke={SOURCE_COLORS.direct}
-              fill={SOURCE_COLORS.direct}
-              fillOpacity={0.3}
-            />
-            <Area
-              type="monotone"
-              dataKey="meta"
-              stackId="src"
-              stroke={SOURCE_COLORS.meta}
-              fill={SOURCE_COLORS.meta}
-              fillOpacity={0.3}
-            />
-            <Area
-              type="monotone"
-              dataKey="organic"
-              stackId="src"
-              stroke={SOURCE_COLORS.organic}
-              fill={SOURCE_COLORS.organic}
-              fillOpacity={0.3}
-            />
-            <Area
-              type="monotone"
-              dataKey="referral"
-              stackId="src"
-              stroke={SOURCE_COLORS.referral}
-              fill={SOURCE_COLORS.referral}
-              fillOpacity={0.3}
-            />
-          </AreaChart>
-        </ResponsiveContainer></SafeChart>
+        <div className="flex items-center justify-center h-48 text-xs text-white/30 bg-white/5 rounded-lg">Chart temporarily unavailable</div>
       </ChartCard>
 
       {/* Projections callout */}
@@ -434,95 +314,16 @@ export default function GrowthMetricsTab({
       <SectionHeader>Engagement Trends</SectionHeader>
 
       <ChartCard title="Weekly Recordings">
-        <SafeChart height={240}><ResponsiveContainer width="100%" height={240}>
-          <BarChart data={data.weeklyRecordings}>
-            <CartesianGrid stroke={GRID_STROKE} vertical={false} />
-            <XAxis
-              dataKey="week"
-              tick={AXIS_TICK}
-              tickFormatter={fmtWeek}
-              axisLine={false}
-              tickLine={false}
-            />
-            <YAxis
-              tick={AXIS_TICK}
-              axisLine={false}
-              tickLine={false}
-              allowDecimals={false}
-            />
-            <Tooltip
-              contentStyle={TOOLTIP_STYLE}
-              labelFormatter={fmtWeek}
-            />
-            <Bar dataKey="count" fill="#7C5CFC" radius={[4, 4, 0, 0]} />
-          </BarChart>
-        </ResponsiveContainer></SafeChart>
+        <div className="flex items-center justify-center h-48 text-xs text-white/30 bg-white/5 rounded-lg">Chart temporarily unavailable</div>
       </ChartCard>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <ChartCard title="Avg Recordings / User">
-          <SafeChart height={240}><ResponsiveContainer width="100%" height={240}>
-            <LineChart data={data.avgRecordingsPerUser}>
-              <CartesianGrid stroke={GRID_STROKE} vertical={false} />
-              <XAxis
-                dataKey="week"
-                tick={AXIS_TICK}
-                tickFormatter={fmtWeek}
-                axisLine={false}
-                tickLine={false}
-              />
-              <YAxis
-                tick={AXIS_TICK}
-                axisLine={false}
-                tickLine={false}
-              />
-              <Tooltip
-                contentStyle={TOOLTIP_STYLE}
-                labelFormatter={fmtWeek}
-                formatter={(v: number) => [v.toFixed(1), "Avg"]}
-              />
-              <Line
-                type="monotone"
-                dataKey="avg"
-                stroke="#A78BFA"
-                strokeWidth={2}
-                dot={false}
-              />
-            </LineChart>
-          </ResponsiveContainer></SafeChart>
+          <div className="flex items-center justify-center h-48 text-xs text-white/30 bg-white/5 rounded-lg">Chart temporarily unavailable</div>
         </ChartCard>
 
         <ChartCard title="Avg Recording Duration">
-          <SafeChart height={240}><ResponsiveContainer width="100%" height={240}>
-            <LineChart data={data.avgDuration}>
-              <CartesianGrid stroke={GRID_STROKE} vertical={false} />
-              <XAxis
-                dataKey="week"
-                tick={AXIS_TICK}
-                tickFormatter={fmtWeek}
-                axisLine={false}
-                tickLine={false}
-              />
-              <YAxis
-                tick={AXIS_TICK}
-                axisLine={false}
-                tickLine={false}
-                tickFormatter={(v: number) => fmtDuration(v)}
-              />
-              <Tooltip
-                contentStyle={TOOLTIP_STYLE}
-                labelFormatter={fmtWeek}
-                formatter={(v: number) => [fmtDuration(v), "Duration"]}
-              />
-              <Line
-                type="monotone"
-                dataKey="seconds"
-                stroke="#22D3EE"
-                strokeWidth={2}
-                dot={false}
-              />
-            </LineChart>
-          </ResponsiveContainer></SafeChart>
+          <div className="flex items-center justify-center h-48 text-xs text-white/30 bg-white/5 rounded-lg">Chart temporarily unavailable</div>
         </ChartCard>
       </div>
 
@@ -533,69 +334,11 @@ export default function GrowthMetricsTab({
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <ChartCard title="Trial → Paid Rate">
-          <SafeChart height={240}><ResponsiveContainer width="100%" height={240}>
-            <LineChart data={data.trialToPaidRate}>
-              <CartesianGrid stroke={GRID_STROKE} vertical={false} />
-              <XAxis
-                dataKey="week"
-                tick={AXIS_TICK}
-                tickFormatter={fmtWeek}
-                axisLine={false}
-                tickLine={false}
-              />
-              <YAxis
-                tick={AXIS_TICK}
-                axisLine={false}
-                tickLine={false}
-                tickFormatter={(v: number) => `${v}%`}
-              />
-              <Tooltip
-                contentStyle={TOOLTIP_STYLE}
-                labelFormatter={fmtWeek}
-                formatter={(v: number) => [fmtPct(v), "Rate"]}
-              />
-              <Line
-                type="monotone"
-                dataKey="rate"
-                stroke="#34D399"
-                strokeWidth={2}
-                dot={false}
-              />
-            </LineChart>
-          </ResponsiveContainer></SafeChart>
+          <div className="flex items-center justify-center h-48 text-xs text-white/30 bg-white/5 rounded-lg">Chart temporarily unavailable</div>
         </ChartCard>
 
         <ChartCard title="Median Time to First Recording">
-          <SafeChart height={240}><ResponsiveContainer width="100%" height={240}>
-            <LineChart data={data.medianTimeToFirstRecording}>
-              <CartesianGrid stroke={GRID_STROKE} vertical={false} />
-              <XAxis
-                dataKey="week"
-                tick={AXIS_TICK}
-                tickFormatter={fmtWeek}
-                axisLine={false}
-                tickLine={false}
-              />
-              <YAxis
-                tick={AXIS_TICK}
-                axisLine={false}
-                tickLine={false}
-                tickFormatter={(v: number) => `${v}h`}
-              />
-              <Tooltip
-                contentStyle={TOOLTIP_STYLE}
-                labelFormatter={fmtWeek}
-                formatter={(v: number) => [`${v.toFixed(1)}h`, "Median"]}
-              />
-              <Line
-                type="monotone"
-                dataKey="hours"
-                stroke="#FBBF24"
-                strokeWidth={2}
-                dot={false}
-              />
-            </LineChart>
-          </ResponsiveContainer></SafeChart>
+          <div className="flex items-center justify-center h-48 text-xs text-white/30 bg-white/5 rounded-lg">Chart temporarily unavailable</div>
         </ChartCard>
       </div>
 
@@ -605,63 +348,11 @@ export default function GrowthMetricsTab({
       <SectionHeader>Revenue Growth</SectionHeader>
 
       <ChartCard title="MRR Over Time">
-        <SafeChart height={240}><ResponsiveContainer width="100%" height={240}>
-          <AreaChart data={data.mrrOverTime}>
-            <CartesianGrid stroke={GRID_STROKE} vertical={false} />
-            <XAxis
-              dataKey="month"
-              tick={AXIS_TICK}
-              tickFormatter={fmtMonth}
-              axisLine={false}
-              tickLine={false}
-            />
-            <YAxis
-              tick={AXIS_TICK}
-              axisLine={false}
-              tickLine={false}
-              tickFormatter={(v: number) => fmtDollars(v)}
-            />
-            <Tooltip
-              contentStyle={TOOLTIP_STYLE}
-              labelFormatter={fmtMonth}
-              formatter={(v: number) => [fmtDollars(v), "MRR"]}
-            />
-            <Area
-              type="monotone"
-              dataKey="mrr"
-              stroke="#7C5CFC"
-              strokeWidth={2}
-              fill="#7C5CFC"
-              fillOpacity={0.2}
-            />
-          </AreaChart>
-        </ResponsiveContainer></SafeChart>
+        <div className="flex items-center justify-center h-48 text-xs text-white/30 bg-white/5 rounded-lg">Chart temporarily unavailable</div>
       </ChartCard>
 
       <ChartCard title="Paying Users Over Time">
-        <SafeChart height={240}><ResponsiveContainer width="100%" height={240}>
-          <BarChart data={data.payingUsersOverTime}>
-            <CartesianGrid stroke={GRID_STROKE} vertical={false} />
-            <XAxis
-              dataKey="month"
-              tick={AXIS_TICK}
-              tickFormatter={fmtMonth}
-              axisLine={false}
-              tickLine={false}
-            />
-            <YAxis
-              tick={AXIS_TICK}
-              axisLine={false}
-              tickLine={false}
-              allowDecimals={false}
-            />
-            <Tooltip
-              contentStyle={TOOLTIP_STYLE}
-              labelFormatter={fmtMonth}
-            />
-            <Bar dataKey="count" fill="#A78BFA" radius={[4, 4, 0, 0]} />
-          </BarChart>
-        </ResponsiveContainer></SafeChart>
+        <div className="flex items-center justify-center h-48 text-xs text-white/30 bg-white/5 rounded-lg">Chart temporarily unavailable</div>
       </ChartCard>
     </div>
   );
