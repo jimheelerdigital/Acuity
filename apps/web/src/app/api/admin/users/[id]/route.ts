@@ -86,7 +86,7 @@ export async function GET(
   let onboardingEvents: { event: string; createdAt: Date }[] = [];
   try {
     onboardingEvents = await prisma.onboardingEvent.findMany({
-      where: { userId: params.id },
+      where: { userId: params.id, isBot: false },
       select: { event: true, createdAt: true },
       orderBy: { createdAt: "asc" },
     });

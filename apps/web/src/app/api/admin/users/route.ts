@@ -60,7 +60,7 @@ export async function GET(req: NextRequest) {
   let eventsByUser: Record<string, string[]> = {};
   try {
     const events = await prisma.onboardingEvent.findMany({
-      where: { userId: { in: userIds }, event: { startsWith: "onboarding_" } },
+      where: { userId: { in: userIds }, event: { startsWith: "onboarding_" }, isBot: false },
       select: { userId: true, event: true },
     });
     for (const e of events) {

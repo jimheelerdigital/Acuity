@@ -1277,6 +1277,7 @@ async function getOnboardingFunnel(prisma: P, start: Date, end: Date) {
         event: { startsWith: "onboarding_" },
         createdAt: { gte: start, lte: end },
         userId: { not: null },
+        isBot: false,
       },
     });
     const signups = signupUsers.length;
@@ -1289,6 +1290,7 @@ async function getOnboardingFunnel(prisma: P, start: Date, end: Date) {
             event: s.event,
             createdAt: { gte: start, lte: end },
             userId: { not: null },
+            isBot: false,
           },
         });
         return { label: s.label, count: distinctUsers.length };
@@ -1339,11 +1341,11 @@ const DROP_OFF_FIXES: Record<string, string> = {
 async function countDistinctSessions(prisma: P, event: string, start: Date, end: Date) {
   const bySession = await prisma.onboardingEvent.groupBy({
     by: ["sessionToken"],
-    where: { event, createdAt: { gte: start, lte: end }, sessionToken: { not: null } },
+    where: { event, createdAt: { gte: start, lte: end }, sessionToken: { not: null }, isBot: false },
   });
   const byUser = await prisma.onboardingEvent.groupBy({
     by: ["userId"],
-    where: { event, createdAt: { gte: start, lte: end }, userId: { not: null }, sessionToken: null },
+    where: { event, createdAt: { gte: start, lte: end }, userId: { not: null }, sessionToken: null, isBot: false },
   });
   return bySession.length + byUser.length;
 }
@@ -1358,7 +1360,7 @@ async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date) {
           const sessionSets = await Promise.all(
             DIAGNOSTIC_EVENTS.map(async (de) => {
               const rows = await prisma.onboardingEvent.findMany({
-                where: { event: de, createdAt: { gte: start, lte: end }, sessionToken: { not: null } },
+                where: { event: de, createdAt: { gte: start, lte: end }, sessionToken: { not: null }, isBot: false },
                 select: { sessionToken: true },
               });
               return new Set(rows.map((r) => r.sessionToken));
@@ -1392,7 +1394,7 @@ async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date) {
     for (const de of DIAGNOSTIC_EVENTS) {
       const rows = await prisma.onboardingEvent.groupBy({
         by: ["value"],
-        where: { event: de, createdAt: { gte: start, lte: end }, value: { not: null } },
+        where: { event: de, createdAt: { gte: start, lte: end }, value: { not: null }, isBot: false },
         _count: true,
       });
       const label = de.replace("funnel_diagnostic_", "");
