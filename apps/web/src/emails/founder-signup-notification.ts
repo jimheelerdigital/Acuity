@@ -26,6 +26,7 @@ export interface FounderNotificationVars {
   email: string;
   signupMethod: string;
   timestamp: Date;
+  campaign?: string | null;
 }
 
 export function founderNotificationSubject(v: FounderNotificationVars): string {
@@ -60,6 +61,7 @@ export function founderNotificationHtml(v: FounderNotificationVars): string {
             ${row("Name", name)}
             ${row("Email", esc(v.email))}
             ${row("Signup method", esc(v.signupMethod))}
+            ${row("Campaign", v.campaign ? esc(v.campaign) : "direct / organic")}
             ${row("Signed up at", signedUpAt)}
           </table>
         `)}

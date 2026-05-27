@@ -1,9 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useTabData } from "./useTabData";
 import { TabError } from "../components/TabError";
 import { SkeletonMetric, SkeletonChart, SkeletonTable } from "../components/SkeletonCard";
+
+type SortCol = "session" | "started" | "source" | "campaign" | "step" | "status" | "time";
+type SortDir = "asc" | "desc";
 
 interface FunnelStep {
   key: string; label: string; count: number;
@@ -35,9 +38,37 @@ interface FunnelData {
 }
 
 export default function FunnelAnalyticsTab({ start, end }: { start: string; end: string }) {
-  const { data, loading, error, refresh } = useTabData<FunnelData>("funnel-analytics", start, end);
+  const [showBots, setShowBots] = useState(false);
+  const [sortCol, setSortCol] = useState<SortCol>("started");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const extraParams = useMemo(() => (showBots ? { showBots: "true" } : undefined), [showBots]);
+  const { data, loading, error, refresh } = useTabData<FunnelData>("funnel-analytics", start, end, extraParams);
   const [expandedCampaign, setExpandedCampaign] = useState<string | null>(null);
   const [expandedSession, setExpandedSession] = useState<string | null>(null);
+
+  const handleSort = (col: SortCol) => {
+    if (sortCol === col) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else { setSortCol(col); setSortDir(col === "started" ? "desc" : "asc"); }
+  };
+
+  const sortedSessions = useMemo(() => {
+    if (!data) return [];
+    const arr = [...data.sessions];
+    const dir = sortDir === "asc" ? 1 : -1;
+    arr.sort((a, b) => {
+      switch (sortCol) {
+        case "session": return dir * a.sessionId.localeCompare(b.sessionId);
+        case "started": return dir * (new Date(a.started).getTime() - new Date(b.started).getTime());
+        case "source": return dir * a.source.localeCompare(b.source);
+        case "campaign": return dir * (a.campaign ?? "").localeCompare(b.campaign ?? "");
+        case "step": return dir * (a.stepNumber - b.stepNumber);
+        case "status": return dir * a.status.localeCompare(b.status);
+        case "time": return dir * (a.timeInFunnelSec - b.timeInFunnelSec);
+        default: return 0;
+      }
+    });
+    return arr;
+  }, [data, sortCol, sortDir]);
 
   if (error && !data) return <TabError message={error} onRetry={refresh} />;
   if (loading || !data) return (
@@ -211,26 +242,41 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
           <h3 className="text-sm font-semibold uppercase tracking-wider text-white/40">
             Sessions ({data.totalSessionCount})
           </h3>
-          <button onClick={downloadCSV}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-xs text-[#A0A0B8] hover:text-white hover:border-white/20 transition">
-            Download CSV
-          </button>
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <span className="text-xs text-white/30">Show bots</span>
+              <button
+                role="switch" aria-checked={showBots}
+                onClick={() => setShowBots((v) => !v)}
+                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${showBots ? "bg-[#7C5CFC]" : "bg-white/10"}`}>
+                <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform ${showBots ? "translate-x-[18px]" : "translate-x-[3px]"}`} />
+              </button>
+            </label>
+            <button onClick={downloadCSV}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-xs text-[#A0A0B8] hover:text-white hover:border-white/20 transition">
+              Download CSV
+            </button>
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-white/10 text-white/30 text-xs uppercase tracking-wider">
-                <th className="pb-2 pr-3">Session</th>
-                <th className="pb-2 pr-3">Started</th>
-                <th className="pb-2 pr-3">Source</th>
-                <th className="pb-2 pr-3">Campaign</th>
-                <th className="pb-2 pr-3">Step</th>
-                <th className="pb-2 pr-3">Status</th>
-                <th className="pb-2 pr-3">Time</th>
+                {([
+                  ["session", "Session"], ["started", "Started"], ["source", "Source"],
+                  ["campaign", "Campaign"], ["step", "Step"], ["status", "Status"], ["time", "Time"],
+                ] as [SortCol, string][]).map(([col, label]) => (
+                  <th key={col}
+                    className="pb-2 pr-3 cursor-pointer hover:text-white/60 transition select-none"
+                    onClick={() => handleSort(col)}>
+                    {label}
+                    {sortCol === col && <span className="ml-1 text-[10px]">{sortDir === "asc" ? "\u25B2" : "\u25BC"}</span>}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
-              {sessions.map((s) => {
+              {sortedSessions.map((s) => {
                 const statusColors: Record<string, string> = {
                   completed: "text-emerald-400", paid: "text-emerald-400",
                   active: "text-blue-400", stalled: "text-amber-400", dropped: "text-red-400",

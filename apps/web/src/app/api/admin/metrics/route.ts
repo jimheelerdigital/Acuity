@@ -92,7 +92,8 @@ export async function GET(req: NextRequest) {
   }
 
   const ttl = TAB_TTLS[tab] ?? 5 * 60_000;
-  const cacheKey = `tab:${tab}:${startStr}:${endStr}`;
+  const extraParams = req.nextUrl.searchParams.get("showBots") === "true" ? ":bots" : "";
+  const cacheKey = `tab:${tab}:${startStr}:${endStr}${extraParams}`;
   const t0 = Date.now();
 
   try {
@@ -129,8 +130,10 @@ export async function GET(req: NextRequest) {
           return getGrowthMetrics(prisma, start, end);
         case "business-metrics":
           return getBusinessMetrics(prisma, monthStart);
-        case "funnel-analytics":
-          return getFunnelAnalytics(prisma, start, end);
+        case "funnel-analytics": {
+          const showBots = req.nextUrl.searchParams.get("showBots") === "true";
+          return getFunnelAnalytics(prisma, start, end, showBots);
+        }
         case "guide":
           return getGuide();
         default:
@@ -1575,7 +1578,7 @@ async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date) {
 // funnels, key metrics, and per-session data with CSV export support
 // ════════════════════════════════════════════════════════════════════════
 
-async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date) {
+async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, showBots = false) {
   const FUNNEL_STEPS = [
     { key: "pain_hook", event: "funnel_pain_hook_viewed", label: "Pain Hook" },
     { key: "diagnostic", event: "funnel_diagnostic_loop_viewed", label: "Diagnostics" },
@@ -1591,13 +1594,13 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date) 
     { key: "download", event: "funnel_download_viewed", label: "Download", fallback: "funnel_app_store_clicked" },
   ];
 
-  // Fetch all funnel events in range (exclude bots)
+  // Fetch all funnel events in range (exclude bots unless showBots is true)
   const events = await prisma.onboardingEvent.findMany({
     where: {
       event: { startsWith: "funnel_" },
       createdAt: { gte: start, lte: end },
       sessionToken: { not: null },
-      isBot: false,
+      ...(showBots ? {} : { isBot: false }),
     },
     orderBy: { createdAt: "asc" },
     take: 50000,

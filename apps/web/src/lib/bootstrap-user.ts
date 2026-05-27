@@ -222,6 +222,7 @@ export async function bootstrapNewUser(params: {
         email,
         signupMethod: signupMethod ?? "unknown",
         timestamp: new Date(),
+        campaign: attribution?.utmCampaign ?? null,
       });
     } catch (err) {
       // eslint-disable-next-line no-console

@@ -25,11 +25,12 @@ export async function notifyFoundersOfSignup(params: {
   email: string;
   signupMethod: string;
   timestamp: Date;
+  campaign?: string | null;
 }): Promise<void> {
   // Env toggle — default enabled
   if (process.env.FOUNDER_NOTIFICATIONS_ENABLED === "false") return;
 
-  const { userId, name, email, signupMethod, timestamp } = params;
+  const { userId, name, email, signupMethod, timestamp, campaign } = params;
 
   const { prisma } = await import("@/lib/prisma");
   const { getResendClient } = await import("@/lib/resend");
@@ -40,7 +41,7 @@ export async function notifyFoundersOfSignup(params: {
 
   const firstName = (name ?? "").trim().split(/\s+/)[0] || email.split("@")[0];
 
-  const vars = { firstName, email, signupMethod, timestamp };
+  const vars = { firstName, email, signupMethod, timestamp, campaign: campaign ?? null };
 
   let success = false;
   let errorMessage: string | null = null;
@@ -78,7 +79,7 @@ export async function notifyFoundersOfSignup(params: {
   const slackUrl = process.env.SLACK_FOUNDER_WEBHOOK_URL;
   if (slackUrl) {
     try {
-      const text = `\u{1F389} New Acuity signup: ${firstName} (${email}) via ${signupMethod}`;
+      const text = `\u{1F389} New Acuity signup: ${firstName} (${email}) via ${signupMethod}${campaign ? ` | campaign: ${campaign}` : ""}`;
       await fetch(slackUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

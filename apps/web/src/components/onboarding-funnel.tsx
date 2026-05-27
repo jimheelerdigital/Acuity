@@ -154,17 +154,32 @@ function formatTrialEndDate(): string {
 
 const SESSION_STORAGE_KEY = "acuity_funnel_session";
 
+const SESSION_LOCALSTORAGE_KEY = "acuity_funnel_session_persist";
+
 function getOrCreateSessionId(): string {
+  // Check sessionStorage first (primary — scoped to tab)
   if (typeof sessionStorage !== "undefined") {
     try {
       const existing = sessionStorage.getItem(SESSION_STORAGE_KEY);
       if (existing) return existing;
     } catch {}
   }
+  // Fallback: check localStorage (survives OAuth / Stripe redirects)
+  if (typeof localStorage !== "undefined") {
+    try {
+      const persisted = localStorage.getItem(SESSION_LOCALSTORAGE_KEY);
+      if (persisted) {
+        // Restore into sessionStorage for the rest of this tab
+        try { sessionStorage.setItem(SESSION_STORAGE_KEY, persisted); } catch {}
+        return persisted;
+      }
+    } catch {}
+  }
   const id = typeof crypto !== "undefined" && crypto.randomUUID
     ? crypto.randomUUID()
     : `funnel_${Date.now()}_${Math.random().toString(36).slice(2)}`;
   try { sessionStorage.setItem(SESSION_STORAGE_KEY, id); } catch {}
+  try { localStorage.setItem(SESSION_LOCALSTORAGE_KEY, id); } catch {}
   return id;
 }
 
@@ -241,11 +256,24 @@ export function OnboardingFunnel({ ssrHook }: { ssrHook?: { headline: string; su
   } | null>(ssrHook ?? null);
   const track = useFunnelTracker();
 
-  // Check URL params for return from Stripe + fetch dynamic pain hook
+  // Check URL params for return from OAuth / Stripe + fetch dynamic pain hook
+  const oauthReturnTracked = useRef(false);
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("step") === "download") setStep("download");
-    else if (params.get("step") === "paywall") setStep("paywall");
+    if (params.get("step") === "download") {
+      setStep("download");
+      // User returned from Stripe checkout → payment actually completed
+      if (params.get("session_id")) {
+        track("funnel_payment_completed", { plan: "stripe_return" });
+      }
+    } else if (params.get("step") === "paywall") {
+      setStep("paywall");
+      // User returned from OAuth → signup actually completed
+      if (authStatus === "authenticated" && !oauthReturnTracked.current) {
+        oauthReturnTracked.current = true;
+        track("funnel_signup_completed", { method: "oauth_return" });
+      }
+    }
 
     // Fetch full hook data (bridge/promise/paywall) if not already provided via SSR
     // SSR only provides headline + subheadline; client fetch gets the rest
@@ -262,6 +290,12 @@ export function OnboardingFunnel({ ssrHook }: { ssrHook?: { headline: string; su
   // If already logged in with active subscription, skip to download
   useEffect(() => {
     if (authStatus === "authenticated" && session?.user) {
+      // Track OAuth return to paywall once auth status resolves
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("step") === "paywall" && !oauthReturnTracked.current) {
+        oauthReturnTracked.current = true;
+        track("funnel_signup_completed", { method: "oauth_return" });
+      }
       fetch("/api/user/me")
         .then((r) => r.ok ? r.json() : null)
         .then((data) => {
@@ -270,7 +304,7 @@ export function OnboardingFunnel({ ssrHook }: { ssrHook?: { headline: string; su
         })
         .catch(() => {});
     }
-  }, [authStatus, session, step]);
+  }, [authStatus, session, step, track]);
 
   // Track step views — every screen fires a "viewed" event on mount
   useEffect(() => {
@@ -313,7 +347,7 @@ export function OnboardingFunnel({ ssrHook }: { ssrHook?: { headline: string; su
       });
       const data = await res.json();
       if (data.url) {
-        track("funnel_payment_completed", { plan: selectedPlan });
+        track("funnel_checkout_started", { plan: selectedPlan });
         window.location.href = data.url;
       } else {
         setApiError(data.error || `Checkout failed (${res.status})`);
@@ -1127,15 +1161,18 @@ function SignupScreen({ track, onComplete }: { track: (event: string, props?: Re
     }
   }, [track]);
 
+  const completedRef = useRef(false);
   useEffect(() => {
-    if (status === "authenticated") {
+    if (status === "authenticated" && !completedRef.current) {
+      completedRef.current = true;
+      // User is already authenticated (returning from OAuth or was logged in)
       track("funnel_signup_completed", { method: "session" });
       onComplete();
     }
   }, [status, track, onComplete]);
 
-  const handleGoogle = async () => { setLoading("google"); track("funnel_signup_completed", { method: "google" }); await signIn("google", { callbackUrl: "/start?step=paywall" }); };
-  const handleApple = async () => { setLoading("apple"); track("funnel_signup_completed", { method: "apple" }); await signIn("apple", { callbackUrl: "/start?step=paywall" }); };
+  const handleGoogle = async () => { setLoading("google"); track("funnel_signup_attempted", { method: "google" }); await signIn("google", { callbackUrl: "/start?step=paywall" }); };
+  const handleApple = async () => { setLoading("apple"); track("funnel_signup_attempted", { method: "apple" }); await signIn("apple", { callbackUrl: "/start?step=paywall" }); };
 
   const handleEmail = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1156,7 +1193,12 @@ function SignupScreen({ track, onComplete }: { track: (event: string, props?: Re
       }
       track("funnel_signup_completed", { method: "email" });
       const result = await signIn("credentials", { email: email.trim(), password, redirect: false });
-      if (!result?.ok) window.location.href = "/start?step=paywall";
+      if (result?.ok) {
+        onComplete();
+      } else {
+        // Credentials signin failed but account was created — force redirect
+        window.location.href = "/start?step=paywall";
+      }
     } catch {
       setError("Something went wrong. Please try again.");
       track("funnel_signup_failed", { method: "email", reason: "network_error" });

@@ -11,7 +11,8 @@ interface Meta {
 export function useTabData<T>(
   tab: string,
   start: string,
-  end: string
+  end: string,
+  extraParams?: Record<string, string>,
 ): {
   data: T | null;
   loading: boolean;
@@ -38,7 +39,8 @@ export function useTabData<T>(
 
     (async () => {
       try {
-        const url = `/api/admin/metrics?tab=${tab}&start=${start}&end=${end}${isRefresh ? "&refresh=true" : ""}`;
+        const extra = extraParams ? Object.entries(extraParams).map(([k, v]) => `&${k}=${encodeURIComponent(v)}`).join("") : "";
+        const url = `/api/admin/metrics?tab=${tab}&start=${start}&end=${end}${isRefresh ? "&refresh=true" : ""}${extra}`;
         const res = await fetch(url);
         if (!res.ok) {
           if (!cancelled) setError(`Failed (${res.status})`);
@@ -60,7 +62,8 @@ export function useTabData<T>(
     return () => {
       cancelled = true;
     };
-  }, [tab, start, end, refreshKey]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, start, end, refreshKey, JSON.stringify(extraParams)]);
 
   return { data, loading, error, meta, refresh };
 }
