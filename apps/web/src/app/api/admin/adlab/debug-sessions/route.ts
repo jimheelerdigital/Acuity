@@ -1,6 +1,6 @@
 /**
- * GET /api/admin/adlab/debug-sessions — debug endpoint showing raw session event counts.
- * Shows all OnboardingEvent records from the last 24 hours grouped by sessionToken.
+ * GET /api/admin/adlab/debug-sessions — debug endpoint showing raw session event counts
+ * with bot detection analysis.
  */
 
 import { NextResponse } from "next/server";
@@ -9,6 +9,13 @@ import { requireAdmin } from "@/lib/admin-guard";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
+
+const BOT_PATTERNS = /facebookexternalhit|Facebot|FacebookBot|WhatsApp|Twitterbot|LinkedInBot|Googlebot|bingbot|Bytespider|Amazonbot|prefetch|prerender|HeadlessChrome|Slurp|DuckDuckBot|Baiduspider|YandexBot|Sogou|Exabot|ia_archiver|MJ12bot|AhrefsBot|SemrushBot|DotBot|PetalBot|bot\/|crawler|spider/i;
+
+function isBot(ua: string | null): boolean {
+  if (!ua) return false;
+  return BOT_PATTERNS.test(ua);
+}
 
 export async function GET() {
   const guard = await requireAdmin();
@@ -45,13 +52,27 @@ export async function GET() {
     sessionMap.get(key)!.push(e);
   }
 
+  // Step progress for "advanced past pain hook" check
+  const ADVANCED_EVENTS = new Set([
+    "funnel_diagnostic_loop_viewed", "funnel_diagnostic_loop",
+    "funnel_mirror_viewed", "funnel_commitment_completed",
+    "funnel_signup_completed", "funnel_payment_completed",
+  ]);
+
   // Build summary
   const sessions = [...sessionMap.entries()].map(([token, evts]) => {
     const sorted = evts.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    const browserField = evts.find((e) => e.browser)?.browser ?? null;
+    const botDetected = isBot(browserField);
+    const advancedPastPainHook = evts.some((e) => ADVANCED_EVENTS.has(e.event));
+
     return {
       sessionId: token.slice(0, 8),
       fullToken: token,
       eventCount: evts.length,
+      browser: browserField,
+      isBot: botDetected,
+      advancedPastPainHook,
       events: sorted.map((e) => ({
         event: e.event,
         value: e.value,
@@ -73,16 +94,46 @@ export async function GET() {
     countDist[s.eventCount] = (countDist[s.eventCount] ?? 0) + 1;
   }
 
-  const singleEventSessions = sessions.filter((s) => s.eventCount === 1);
-  const multiEventSessions = sessions.filter((s) => s.eventCount > 1);
+  // Bot analysis
+  const botSessions = sessions.filter((s) => s.isBot);
+  const realSessions = sessions.filter((s) => !s.isBot);
+  const noBrowserSessions = sessions.filter((s) => !s.browser);
+  const realAdvanced = realSessions.filter((s) => s.advancedPastPainHook);
+
+  // UA breakdown — show unique UAs and how many sessions each has
+  const uaCounts: Record<string, { count: number; isBot: boolean }> = {};
+  for (const s of sessions) {
+    const ua = s.browser || "(no browser field)";
+    if (!uaCounts[ua]) uaCounts[ua] = { count: 0, isBot: s.isBot };
+    uaCounts[ua].count++;
+  }
+  const uaBreakdown = Object.entries(uaCounts)
+    .sort((a, b) => b[1].count - a[1].count)
+    .map(([ua, { count, isBot: bot }]) => ({ ua: ua.slice(0, 200), count, isBot: bot }));
 
   return NextResponse.json({
-    totalEvents: events.length,
-    eventsWithoutToken: noTokenCount,
-    totalSessions: sessions.length,
-    singleEventSessions: singleEventSessions.length,
-    multiEventSessions: multiEventSessions.length,
+    summary: {
+      totalEvents: events.length,
+      eventsWithoutToken: noTokenCount,
+      totalSessions: sessions.length,
+      botSessions: botSessions.length,
+      realSessions: realSessions.length,
+      noBrowserField: noBrowserSessions.length,
+      realSessionsAdvancedPastPainHook: realAdvanced.length,
+      realSessionsStuckAtPainHook: realSessions.length - realAdvanced.length,
+    },
     eventCountDistribution: countDist,
-    sessions: sessions.slice(0, 100), // Limit to 100 for response size
+    uaBreakdown,
+    // Show bot sessions first, then real, limited to 50 each
+    botSessionDetails: botSessions.slice(0, 50).map((s) => ({
+      sessionId: s.sessionId, browser: s.browser, eventCount: s.eventCount,
+      firstEvent: s.firstEvent, source: s.source, campaign: s.campaign,
+    })),
+    realSessionDetails: realSessions.slice(0, 50).map((s) => ({
+      sessionId: s.sessionId, browser: s.browser, eventCount: s.eventCount,
+      advancedPastPainHook: s.advancedPastPainHook,
+      firstEvent: s.firstEvent, lastEvent: s.lastEvent, durationSec: s.durationSec,
+      source: s.source, campaign: s.campaign,
+    })),
   });
 }

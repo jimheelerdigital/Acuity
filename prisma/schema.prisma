@@ -2281,12 +2281,14 @@ model OnboardingEvent {
   // Browser environment — user agent string logged on signup-related events
   // so we can identify in-app browsers (Facebook WebView, Instagram, etc.)
   browser      String?
+  isBot        Boolean  @default(false)
   createdAt    DateTime @default(now())
 
   @@index([userId, createdAt])
   @@index([sessionToken, createdAt])
   @@index([event, createdAt])
   @@index([utmContent, createdAt])
+  @@index([isBot, createdAt])
 }
 
 // Anchor People — named-entity extraction + relationship tracking.

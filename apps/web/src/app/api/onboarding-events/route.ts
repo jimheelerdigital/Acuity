@@ -83,6 +83,8 @@ const VALID_EVENTS = new Set([
   "funnel_inapp_browser_detected",
 ]);
 
+const BOT_PATTERNS = /facebookexternalhit|Facebot|FacebookBot|WhatsApp|Twitterbot|LinkedInBot|Googlebot|bingbot|Bytespider|Amazonbot|prefetch|prerender|HeadlessChrome|Slurp|DuckDuckBot|Baiduspider|YandexBot|Sogou|Exabot|ia_archiver|MJ12bot|AhrefsBot|SemrushBot|DotBot|PetalBot|bot\/|crawler|spider/i;
+
 export async function POST(req: NextRequest) {
   let body: {
     event?: string; sessionToken?: string; userId?: string; value?: string;
@@ -101,21 +103,20 @@ export async function POST(req: NextRequest) {
     return new Response(null, { status: 400 });
   }
 
-  // Try to get userId from session first, fall back to body.userId
-  // (passed by the server component when the session cookie hasn't
-  // propagated to the client yet — common on the signup success page).
+  // Capture user-agent from request headers (always available, unlike body.browser which is optional)
+  const ua = req.headers.get("user-agent") ?? body.browser ?? null;
+  const isBot = ua ? BOT_PATTERNS.test(ua) : false;
+
+  // Drop bot events entirely — they inflate funnel metrics and waste DB space
+  if (isBot) {
+    return new Response(null, { status: 204 });
+  }
+
   let userId = await getAnySessionUserId(req).catch(() => null);
   if (!userId && body.userId) {
     userId = body.userId;
   }
   const sessionToken = body.sessionToken ?? null;
-
-  // Allow events without identifiers — post-signup events may fire
-  // before the session cookie propagates, and try-flow events fire
-  // from unauthenticated pages. Store the event anyway so we don't
-  // lose data. The admin dashboard aggregates by event name, so
-  // orphaned events still contribute to funnel counts.
-  // (The identifier check was too strict and silently dropped events.)
 
   try {
     const { prisma } = await import("@/lib/prisma");
@@ -131,12 +132,11 @@ export async function POST(req: NextRequest) {
         utmContent: body.utmContent ?? null,
         utmTerm: body.utmTerm ?? null,
         fbclid: body.fbclid ?? null,
-        browser: body.browser ?? null,
+        browser: ua,
+        isBot: false,
       },
     });
   } catch (err) {
-    // Non-fatal — don't break the user flow for analytics
-    // eslint-disable-next-line no-console
     console.error("[onboarding-events] Failed to log event:", err);
   }
 

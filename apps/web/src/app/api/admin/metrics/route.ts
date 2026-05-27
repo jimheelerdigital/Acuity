@@ -1418,6 +1418,7 @@ async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date) {
         event: { startsWith: "funnel_" },
         createdAt: { gte: start, lte: end },
         sessionToken: { not: null },
+        isBot: false,
       },
       orderBy: { createdAt: "desc" },
       take: 5000, // cap for aggregation
@@ -1588,12 +1589,13 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date) 
     { key: "download", event: "funnel_download_viewed", label: "Download", fallback: "funnel_app_store_clicked" },
   ];
 
-  // Fetch all funnel events in range
+  // Fetch all funnel events in range (exclude bots)
   const events = await prisma.onboardingEvent.findMany({
     where: {
       event: { startsWith: "funnel_" },
       createdAt: { gte: start, lte: end },
       sessionToken: { not: null },
+      isBot: false,
     },
     orderBy: { createdAt: "asc" },
     take: 50000,
