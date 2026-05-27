@@ -33,6 +33,7 @@ const TAB_TTLS: Record<string, number> = {
   "feature-flags": 1 * 60_000,
   "growth-metrics": 15 * 60_000,
   "business-metrics": 10 * 60_000,
+  "funnel-analytics": 2 * 60_000,
   guide: Infinity, // static content
 };
 
@@ -128,6 +129,8 @@ export async function GET(req: NextRequest) {
           return getGrowthMetrics(prisma, start, end);
         case "business-metrics":
           return getBusinessMetrics(prisma, monthStart);
+        case "funnel-analytics":
+          return getFunnelAnalytics(prisma, start, end);
         case "guide":
           return getGuide();
         default:
@@ -1562,4 +1565,287 @@ async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date) {
     console.error("[metrics] webFunnel error:", err);
     return { steps: [], alerts: [], diagnosticBreakdowns: {}, commitmentStats: { completed: 0, abandoned: 0, successRate: 0 }, sessions: [], sessionsSummary: { activeSessions: 0, completedToday: 0, avgCompletionTime: 0, mostCommonDrop: "N/A" } };
   }
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// Funnel Analytics — dedicated tab with conversion funnel, campaign
+// funnels, key metrics, and per-session data with CSV export support
+// ════════════════════════════════════════════════════════════════════════
+
+async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date) {
+  const FUNNEL_STEPS = [
+    { key: "pain_hook", event: "funnel_pain_hook_viewed", label: "Pain Hook" },
+    { key: "diagnostic", event: "funnel_diagnostic_loop_viewed", label: "Diagnostics" },
+    { key: "mirror", event: "funnel_mirror_viewed", label: "Mirror" },
+    { key: "bridge", event: "funnel_bridge_viewed", label: "Bridge", fallback: "funnel_failed_solution_viewed" },
+    { key: "promise", event: "funnel_promise_viewed", label: "Promise" },
+    { key: "commitment", event: "funnel_commitment_viewed", label: "Commitment", fallback: "funnel_commitment_completed" },
+    { key: "extraction", event: "funnel_extraction_viewed", label: "Extraction", fallback: "funnel_mock_extraction_viewed" },
+    { key: "timeline", event: "funnel_timeline_viewed", label: "Timeline", fallback: "funnel_journey_viewed" },
+    { key: "signup", event: "funnel_signup_viewed", label: "Signup", fallback: "funnel_signup_completed" },
+    { key: "paywall", event: "funnel_paywall_viewed", label: "Paywall" },
+    { key: "paid", event: "funnel_payment_completed", label: "Paid" },
+    { key: "download", event: "funnel_download_viewed", label: "Download", fallback: "funnel_app_store_clicked" },
+  ];
+
+  // Fetch all funnel events in range
+  const events = await prisma.onboardingEvent.findMany({
+    where: {
+      event: { startsWith: "funnel_" },
+      createdAt: { gte: start, lte: end },
+      sessionToken: { not: null },
+    },
+    orderBy: { createdAt: "asc" },
+    take: 50000,
+    select: {
+      sessionToken: true, userId: true, event: true, value: true,
+      createdAt: true, utmSource: true, utmMedium: true, utmCampaign: true, utmContent: true, browser: true,
+    },
+  });
+
+  // Group by session
+  const sessionMap = new Map<string, typeof events>();
+  for (const e of events) {
+    const key = e.sessionToken!;
+    if (!sessionMap.has(key)) sessionMap.set(key, []);
+    sessionMap.get(key)!.push(e);
+  }
+
+  // Step reach counts (how many sessions reached each step)
+  const stepReach: Record<string, Set<string>> = {};
+  for (const s of FUNNEL_STEPS) {
+    stepReach[s.key] = new Set();
+  }
+
+  // Build session rows
+  const sessions: {
+    sessionId: string; started: string; lastEvent: string; status: string;
+    currentStep: string; stepNumber: number; timeInFunnelSec: number;
+    source: string; campaign: string | null; creative: string | null;
+    diagnosticAnswers: Record<string, string>;
+    events: { event: string; value: string | null; createdAt: Date }[];
+    browser: string | null;
+  }[] = [];
+
+  for (const [token, evts] of sessionMap) {
+    const sorted = evts.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    const first = sorted[0];
+    const last = sorted[sorted.length - 1];
+    const eventNames = new Set(evts.map((e) => e.event));
+
+    // Determine max step reached
+    let maxStep = 0;
+    let maxStepLabel = "Unknown";
+    for (let i = 0; i < FUNNEL_STEPS.length; i++) {
+      const s = FUNNEL_STEPS[i];
+      if (eventNames.has(s.event) || (s.fallback && eventNames.has(s.fallback))) {
+        maxStep = i + 1;
+        maxStepLabel = s.label;
+        stepReach[s.key].add(token);
+      }
+    }
+    // Also count earlier steps (if you reached Mirror, you reached Pain Hook)
+    for (let i = 0; i < maxStep; i++) {
+      stepReach[FUNNEL_STEPS[i].key].add(token);
+    }
+
+    const minutesSinceLast = (Date.now() - new Date(last.createdAt).getTime()) / 60000;
+    const completed = eventNames.has("funnel_app_store_clicked") || eventNames.has("funnel_download_viewed");
+    const paid = eventNames.has("funnel_payment_completed");
+
+    let status: string;
+    if (completed) status = "completed";
+    else if (paid) status = "paid";
+    else if (minutesSinceLast < 10) status = "active";
+    else if (minutesSinceLast < 60) status = "stalled";
+    else status = "dropped";
+
+    const diagnosticAnswers: Record<string, string> = {};
+    for (const e of evts) {
+      if (e.event.startsWith("funnel_diagnostic_") && !e.event.endsWith("_viewed") && e.value) {
+        diagnosticAnswers[e.event.replace("funnel_diagnostic_", "")] = e.value;
+      }
+    }
+
+    const utmEvent = evts.find((e) => e.utmSource);
+    const source = utmEvent?.utmSource ?? null;
+    const medium = utmEvent?.utmMedium ?? null;
+    const campaign = utmEvent?.utmCampaign ?? null;
+    const creative = utmEvent?.utmContent ?? null;
+
+    sessions.push({
+      sessionId: token.slice(0, 8),
+      started: first.createdAt.toISOString(),
+      lastEvent: last.createdAt.toISOString(),
+      status,
+      currentStep: maxStepLabel,
+      stepNumber: maxStep,
+      timeInFunnelSec: Math.round((new Date(last.createdAt).getTime() - new Date(first.createdAt).getTime()) / 1000),
+      source: source && medium ? `${source} / ${medium}` : source ?? "direct",
+      campaign,
+      creative,
+      diagnosticAnswers,
+      events: sorted.map((e) => ({ event: e.event, value: e.value, createdAt: e.createdAt })),
+      browser: evts.find((e) => e.browser)?.browser ?? null,
+    });
+  }
+
+  sessions.sort((a, b) => new Date(b.started).getTime() - new Date(a.started).getTime());
+
+  // ── Conversion funnel bars ──
+  const funnelSteps = FUNNEL_STEPS.map((s, i) => {
+    const count = stepReach[s.key].size;
+    const prevCount = i > 0 ? stepReach[FUNNEL_STEPS[i - 1].key].size : count;
+    const painHookCount = stepReach["pain_hook"].size;
+    const stepConversion = prevCount > 0 ? Math.round((count / prevCount) * 100) : 0;
+    const overallConversion = painHookCount > 0 ? Math.round((count / painHookCount) * 100) : 0;
+    return {
+      key: s.key,
+      label: s.label,
+      count,
+      stepConversion,
+      overallConversion,
+      color: stepConversion >= 70 ? "green" : stepConversion >= 50 ? "yellow" : "red",
+    };
+  });
+
+  // ── Drop-off alerts ──
+  const SUGGESTED_FIXES: Record<string, string> = {
+    diagnostic: "Hook doesn't match ad. Enable dynamic Screen 1.",
+    mirror: "Diagnostic fatigue. Consider fewer questions.",
+    bridge: "Mirror didn't resonate. Review copy.",
+    promise: "Bridge copy too generic. Customize per pain angle.",
+    commitment: "Commitment friction. Check hold button on mobile.",
+    extraction: "Won't commit. Simplify the ask.",
+    timeline: "Post-extraction drop. Check transitions.",
+    signup: "Won't create account. Simplify auth options.",
+    paywall: "Post-signup drop. Check redirect.",
+    paid: "Won't pay. Test pricing or extend trial.",
+    download: "Paid but didn't download. Improve download urgency.",
+  };
+
+  const alerts = funnelSteps
+    .filter((s, i) => i > 0 && s.stepConversion < 50)
+    .map((s) => ({
+      step: s.label,
+      conversion: s.stepConversion,
+      suggestion: SUGGESTED_FIXES[s.key] ?? "Review this step.",
+    }));
+
+  // ── Key metrics ──
+  const totalSessions = sessions.length;
+  const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+  const todaySessions = sessions.filter((s) => new Date(s.started) >= todayStart).length;
+  const painHookCount = stepReach["pain_hook"].size;
+  const paidCount = stepReach["paid"].size;
+  const completionRate = painHookCount > 0 ? Math.round((paidCount / painHookCount) * 100) : 0;
+
+  // Biggest drop-off
+  let biggestDrop = { step: "N/A", dropPct: 0 };
+  for (let i = 1; i < funnelSteps.length; i++) {
+    const prev = funnelSteps[i - 1].count;
+    const curr = funnelSteps[i].count;
+    const drop = prev > 0 ? Math.round(((prev - curr) / prev) * 100) : 0;
+    if (drop > biggestDrop.dropPct) {
+      biggestDrop = { step: funnelSteps[i].label, dropPct: drop };
+    }
+  }
+
+  // Avg funnel time (completed sessions)
+  const completedSessions = sessions.filter((s) => s.status === "completed" || s.status === "paid");
+  const avgFunnelTimeSec = completedSessions.length > 0
+    ? Math.round(completedSessions.reduce((sum, s) => sum + s.timeInFunnelSec, 0) / completedSessions.length)
+    : 0;
+
+  // ── Campaign funnels ──
+  const campaignMap = new Map<string, typeof sessions>();
+  for (const s of sessions) {
+    const key = s.campaign || "direct / organic";
+    if (!campaignMap.has(key)) campaignMap.set(key, []);
+    campaignMap.get(key)!.push(s);
+  }
+
+  const campaignFunnels = [...campaignMap.entries()].map(([campaign, csessions]) => {
+    const cStepReach: Record<string, number> = {};
+    for (const s of FUNNEL_STEPS) cStepReach[s.key] = 0;
+
+    for (const sess of csessions) {
+      const eventNames = new Set(sess.events.map((e) => e.event));
+      let maxIdx = -1;
+      for (let i = 0; i < FUNNEL_STEPS.length; i++) {
+        const fs = FUNNEL_STEPS[i];
+        if (eventNames.has(fs.event) || (fs.fallback && eventNames.has(fs.fallback))) {
+          maxIdx = i;
+        }
+      }
+      for (let i = 0; i <= maxIdx; i++) {
+        cStepReach[FUNNEL_STEPS[i].key]++;
+      }
+    }
+
+    const total = csessions.length;
+    const paidC = cStepReach["paid"];
+    const convRate = total > 0 ? Math.round((paidC / total) * 100) : 0;
+    const completedC = csessions.filter((s) => s.status === "completed" || s.status === "paid");
+    const avgTime = completedC.length > 0
+      ? Math.round(completedC.reduce((sum, s) => sum + s.timeInFunnelSec, 0) / completedC.length)
+      : 0;
+
+    // Diagnostic answer distribution for this campaign
+    const diagDist: Record<string, Record<string, number>> = {};
+    for (const sess of csessions) {
+      for (const [k, v] of Object.entries(sess.diagnosticAnswers)) {
+        if (!diagDist[k]) diagDist[k] = {};
+        diagDist[k][v] = (diagDist[k][v] ?? 0) + 1;
+      }
+    }
+
+    // Per-creative breakdown within campaign
+    const creativeMap = new Map<string, { sessions: number; maxStep: number; paid: number }>();
+    for (const sess of csessions) {
+      const cid = sess.creative ?? "unknown";
+      if (!creativeMap.has(cid)) creativeMap.set(cid, { sessions: 0, maxStep: 0, paid: 0 });
+      const c = creativeMap.get(cid)!;
+      c.sessions++;
+      c.maxStep = Math.max(c.maxStep, sess.stepNumber);
+      if (sess.status === "paid" || sess.status === "completed") c.paid++;
+    }
+
+    return {
+      campaign,
+      sessions: total,
+      steps: {
+        diagnostic: cStepReach["diagnostic"],
+        mirror: cStepReach["mirror"],
+        commitment: cStepReach["commitment"],
+        signup: cStepReach["signup"],
+        paid: paidC,
+      },
+      conversionRate: convRate,
+      avgTimeSec: avgTime,
+      diagnosticDistribution: diagDist,
+      creatives: [...creativeMap.entries()].map(([id, c]) => ({
+        creativeId: id,
+        sessions: c.sessions,
+        maxStep: c.maxStep,
+        paid: c.paid,
+        convRate: c.sessions > 0 ? Math.round((c.paid / c.sessions) * 100) : 0,
+      })).sort((a, b) => b.sessions - a.sessions),
+    };
+  }).sort((a, b) => b.sessions - a.sessions);
+
+  return {
+    keyMetrics: {
+      totalSessions,
+      todaySessions,
+      completionRate,
+      biggestDrop,
+      avgFunnelTimeSec,
+    },
+    funnelSteps,
+    alerts,
+    campaignFunnels,
+    sessions: sessions.slice(0, 100),
+    totalSessionCount: sessions.length,
+  };
 }

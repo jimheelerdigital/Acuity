@@ -1,12 +1,13 @@
 /**
  * GET /api/onboarding/hook?creativeId=xxx or ?campaign=xxx
  *
- * Returns dynamic pain hook copy based on the ad creative or campaign that
- * brought the user to /start. If a matching AdLab creative or experiment
- * exists, returns the angle's headline + hypothesis as the hook. Falls back
- * to null if no match found (the funnel uses its default hook).
+ * Returns pain-specific funnel copy based on the ad creative or campaign.
+ * Used to customize Screens 1, 8, 9, and 14 of the /start funnel.
  *
- * Public endpoint — no auth required (called from /start before signup).
+ * Returns: { headline, subheadline, bridge?, promise?, paywallHook? }
+ * Falls back to null if no match (funnel uses defaults).
+ *
+ * Public endpoint — no auth required.
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -33,25 +34,41 @@ export async function GET(req: NextRequest) {
           headline: true,
           primaryText: true,
           angle: {
-            select: { hypothesis: true, targetPersona: true },
+            select: {
+              hypothesis: true,
+              targetPersona: true,
+              experiment: {
+                select: {
+                  topicBrief: true,
+                  customPainHook: true,
+                  customBridge: true,
+                  customPromise: true,
+                  customPaywallHook: true,
+                },
+              },
+            },
           },
         },
       });
 
       if (creative) {
+        const exp = creative.angle.experiment;
         return NextResponse.json({
-          headline: creative.headline,
-          subheadline: creative.primaryText.slice(0, 150),
+          headline: tryParse(exp.customPainHook)?.headline || creative.headline,
+          subheadline: tryParse(exp.customPainHook)?.subheadline || creative.primaryText.slice(0, 150),
+          bridge: exp.customBridge || null,
+          promise: exp.customPromise || null,
+          paywallHook: exp.customPaywallHook || null,
         });
       }
     }
 
-    // Fall back to campaign name match (utm_campaign)
+    // Fall back to campaign name match
     if (campaign) {
-      // Campaign name might match experiment topicBrief or campaignName
       const experiment = await prisma.adLabExperiment.findFirst({
         where: {
           OR: [
+            { campaignName: { contains: campaign, mode: "insensitive" } },
             { topicBrief: { contains: campaign, mode: "insensitive" } },
           ],
         },
@@ -66,11 +83,14 @@ export async function GET(req: NextRequest) {
         orderBy: { createdAt: "desc" },
       });
 
-      if (experiment?.angles[0]?.creatives[0]) {
-        const c = experiment.angles[0].creatives[0];
+      if (experiment) {
+        const c = experiment.angles[0]?.creatives[0];
         return NextResponse.json({
-          headline: c.headline,
-          subheadline: c.primaryText.slice(0, 150),
+          headline: tryParse(experiment.customPainHook)?.headline || c?.headline || null,
+          subheadline: tryParse(experiment.customPainHook)?.subheadline || c?.primaryText?.slice(0, 150) || null,
+          bridge: experiment.customBridge || null,
+          promise: experiment.customPromise || null,
+          paywallHook: experiment.customPaywallHook || null,
         });
       }
     }
@@ -78,6 +98,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(null, { status: 200 });
   } catch (err) {
     console.error("[onboarding-hook] Error:", err);
-    return NextResponse.json(null, { status: 200 }); // Never block the funnel
+    return NextResponse.json(null, { status: 200 });
   }
+}
+
+function tryParse(json: string | null | undefined): Record<string, string> | null {
+  if (!json) return null;
+  try { return JSON.parse(json); } catch { return null; }
 }

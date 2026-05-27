@@ -17,9 +17,11 @@ const AICostsTab = dynamic(() => import("./tabs/AICostsTab"));
 const GrowthMetricsTab = dynamic(() => import("./tabs/GrowthMetricsTab"));
 const BusinessMetricsTab = dynamic(() => import("./tabs/BusinessMetricsTab"));
 const SettingsTab = dynamic(() => import("./tabs/SettingsTab"));
+const FunnelAnalyticsTab = dynamic(() => import("./tabs/FunnelAnalyticsTab"));
 
 const TABS = [
   { key: "overview", label: "Overview" },
+  { key: "funnel-analytics", label: "Funnel" },
   { key: "users", label: "Users" },
   { key: "ads", label: "Ads" },
   { key: "content", label: "Content" },
@@ -37,7 +39,7 @@ const LEGACY_REDIRECT: Record<string, TabKey> = {
   growth: "overview",
   engagement: "users",
   revenue: "overview",
-  funnel: "overview",
+  funnel: "funnel-analytics",
   "red-flags": "overview",
   acquisition: "ads",
   "content-factory": "content",
@@ -200,6 +202,9 @@ export default function AdminDashboard() {
           )}
           {activeTab === "business-metrics" && (
             <BusinessMetricsTab start={startStr} end={endStr} />
+          )}
+          {activeTab === "funnel-analytics" && (
+            <FunnelAnalyticsTab start={startStr} end={endStr} />
           )}
           {activeTab === "settings" && <SettingsTab />}
         </div>

@@ -311,8 +311,24 @@ export default function OverviewTab({ start, end }: { start: string; end: string
         </div>
       </div>
 
-      {/* ── Web Onboarding Funnel ──────────────────────────────── */}
-      {data.webFunnel && data.webFunnel.steps.length > 0 && (
+      {/* ── Funnel quick link — full analytics in dedicated tab ── */}
+      {data.webFunnel && (
+        <div className="rounded-xl bg-[#13131F] p-5 flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-semibold text-white">Onboarding Funnel</h3>
+            <p className="text-xs text-[#A0A0B8] mt-0.5">
+              {data.webFunnel.sessionsSummary.activeSessions} active, {data.webFunnel.sessionsSummary.completedToday} completed today
+            </p>
+          </div>
+          <button onClick={() => router.push("/admin?tab=funnel-analytics")}
+            className="rounded-lg border border-[#7C5CFC]/30 bg-[#7C5CFC]/10 px-4 py-2 text-xs text-[#7C5CFC] hover:bg-[#7C5CFC]/20 transition">
+            View Funnel Analytics &rarr;
+          </button>
+        </div>
+      )}
+
+      {/* ── Legacy funnel detail (hidden, replaced by Funnel Analytics tab) ── */}
+      {false && data.webFunnel && data.webFunnel.steps.length > 0 && (
         <>
           {/* Drop-off alerts */}
           {data.webFunnel.alerts.length > 0 && (

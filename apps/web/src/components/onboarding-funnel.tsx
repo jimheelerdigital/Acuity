@@ -235,7 +235,10 @@ export function OnboardingFunnel() {
   const [apiError, setApiError] = useState<string | null>(null);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<"monthly" | "yearly">("monthly");
-  const [dynamicHook, setDynamicHook] = useState<{ headline: string; subheadline: string } | null>(null);
+  const [dynamicHook, setDynamicHook] = useState<{
+    headline: string; subheadline: string;
+    bridge?: string | null; promise?: string | null; paywallHook?: string | null;
+  } | null>(null);
   const track = useFunnelTracker();
 
   // Check URL params for return from Stripe + fetch dynamic pain hook
@@ -420,10 +423,10 @@ export function OnboardingFunnel() {
       )}
       {step === "mirror" && <MirrorScreen answers={answers} onContinue={() => setStep("failed-solution")} />}
       {step === "failed-solution" && (
-        <FailedSolutionScreen onContinue={() => setStep("promise")} />
+        <FailedSolutionScreen onContinue={() => setStep("promise")} customCopy={dynamicHook?.bridge} />
       )}
       {step === "promise" && (
-        <PromiseScreen headline={getPersonalizedPromise(answers)} onContinue={() => setStep("commitment")} />
+        <PromiseScreen headline={dynamicHook?.promise || getPersonalizedPromise(answers)} onContinue={() => setStep("commitment")} />
       )}
       {step === "commitment" && (
         <CommitmentScreen track={track} onComplete={() => setStep("mock-extraction")} />
@@ -437,7 +440,7 @@ export function OnboardingFunnel() {
         <PaywallScreen
           selectedPlan={selectedPlan} onPlanChange={setSelectedPlan}
           onCheckout={handleCheckout} loading={checkoutLoading} error={apiError}
-          answers={answers}
+          answers={answers} customPaywallHook={dynamicHook?.paywallHook}
         />
       )}
       {step === "download" && <DownloadScreen track={track} />}
@@ -685,9 +688,11 @@ function MirrorScreen({ answers, onContinue }: { answers: DiagnosticAnswers; onC
 
 // ─── Screen 8: Failed Solution ───────────────────────────────────────────────
 
-function FailedSolutionScreen({ onContinue }: { onContinue: () => void }) {
-  const words1 = "Written journaling asks for discipline.".split(" ");
-  const words2 = "Acuity just asks for one minute.".split(" ");
+function FailedSolutionScreen({ onContinue, customCopy }: { onContinue: () => void; customCopy?: string | null }) {
+  const line1 = customCopy?.split(". ")[0] ?? "Written journaling asks for discipline.";
+  const line2 = customCopy?.split(". ").slice(1).join(". ") || "Acuity just asks for one minute.";
+  const words1 = (line1.endsWith(".") ? line1 : line1 + ".").split(" ");
+  const words2 = (line2.endsWith(".") ? line2 : line2 + ".").split(" ");
   const [vis1, setVis1] = useState(0);
   const [vis2, setVis2] = useState(0);
   const [showSub, setShowSub] = useState(false);
@@ -1282,9 +1287,10 @@ function paywallHookSub(answers: DiagnosticAnswers): string {
   return MAP[answers.loop ?? ""] ?? "Here\u2019s how Acuity changes everything.";
 }
 
-function PaywallScreen({ selectedPlan, onPlanChange, onCheckout, loading, error, answers }: {
+function PaywallScreen({ selectedPlan, onPlanChange, onCheckout, loading, error, answers, customPaywallHook }: {
   selectedPlan: "monthly" | "yearly"; onPlanChange: (p: "monthly" | "yearly") => void;
   onCheckout: () => void; loading: boolean; error: string | null; answers: DiagnosticAnswers;
+  customPaywallHook?: string | null;
 }) {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
@@ -1297,7 +1303,7 @@ function PaywallScreen({ selectedPlan, onPlanChange, onCheckout, loading, error,
         {/* Section 1 — Personalized Hook */}
         <section className="text-center mb-16 funnel-card-stagger" style={{ animationDelay: "0ms" }}>
           <h2 className="text-[28px] sm:text-4xl font-bold tracking-tight leading-tight">
-            You&rsquo;ve already taken the first step.
+            {customPaywallHook || "You\u2019ve already taken the first step."}
           </h2>
           <p className="mt-4 text-zinc-500 text-base leading-relaxed max-w-sm mx-auto">
             {paywallHookSub(answers)}

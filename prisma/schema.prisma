@@ -2051,6 +2051,11 @@ model AdLabExperiment {
   launchedAt            DateTime?
   concludedAt           DateTime?
   conclusionSummary     String?                 @db.Text
+  // Pain-specific funnel copy — customizes /start screens based on this experiment's angle
+  customPainHook        String?                 @db.Text  // Screen 1 headline + subtext JSON
+  customBridge          String?                 @db.Text  // Screen 8 copy
+  customPromise         String?                 @db.Text  // Screen 9 copy
+  customPaywallHook     String?                 @db.Text  // Screen 14 top section
   createdAt             DateTime                @default(now())
   angles                AdLabAngle[]
   referenceImages       AdLabReferenceImage[]

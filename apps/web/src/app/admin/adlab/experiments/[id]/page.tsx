@@ -66,6 +66,10 @@ interface Experiment {
   conclusionSummary: string | null;
   campaignType?: string;
   destination?: string;
+  customPainHook?: string | null;
+  customBridge?: string | null;
+  customPromise?: string | null;
+  customPaywallHook?: string | null;
   project: { name: string; slug: string; landingPageUrl?: string };
   landingPage?: LandingPage | null;
   referenceImages?: ReferenceImage[];
@@ -772,6 +776,11 @@ export default function ExperimentDetailPage() {
           )}
         </div>
       </div>
+
+      {/* Custom Funnel Copy — pain-specific overrides for /start screens */}
+      {experiment.destination === "direct_funnel" && (
+        <FunnelCopyEditor experiment={experiment} onSave={loadExperiment} />
+      )}
 
       {/* Reference Images — collapsible */}
       <div className="mb-6 rounded-xl border border-white/10 bg-[#13131F] overflow-hidden">
@@ -2032,6 +2041,102 @@ function LandingPageSection({
               <span className="text-[10px] text-[#A0A0B8] font-mono truncate max-w-md">{projectUrl}</span>
             </div>
           )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Funnel Copy Editor ─────────────────────────────────────────────────
+
+function FunnelCopyEditor({ experiment, onSave }: { experiment: Experiment; onSave: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [painHook, setPainHook] = useState(experiment.customPainHook || "");
+  const [bridge, setBridge] = useState(experiment.customBridge || "");
+  const [promise, setPromise] = useState(experiment.customPromise || "");
+  const [paywallHook, setPaywallHook] = useState(experiment.customPaywallHook || "");
+
+  async function save() {
+    setSaving(true);
+    try {
+      await fetch(`/api/admin/adlab/experiments/${experiment.id}/funnel-copy`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ customPainHook: painHook || null, customBridge: bridge || null, customPromise: promise || null, customPaywallHook: paywallHook || null }),
+      });
+      onSave();
+    } catch {}
+    setSaving(false);
+  }
+
+  async function generateCopy() {
+    setGenerating(true);
+    try {
+      const res = await fetch(`/api/admin/adlab/experiments/${experiment.id}/funnel-copy`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.customPainHook) setPainHook(data.customPainHook);
+        if (data.customBridge) setBridge(data.customBridge);
+        if (data.customPromise) setPromise(data.customPromise);
+        if (data.customPaywallHook) setPaywallHook(data.customPaywallHook);
+      }
+    } catch {}
+    setGenerating(false);
+  }
+
+  const inputClass = "w-full rounded-lg border border-white/10 bg-[#1E1E2E] px-3 py-2 text-xs text-white outline-none focus:border-[#7C5CFC] resize-y min-h-[60px]";
+
+  return (
+    <div className="mb-6 rounded-xl border border-white/10 bg-[#13131F] overflow-hidden">
+      <button onClick={() => setOpen(!open)} className="flex items-center justify-between w-full px-5 py-3 text-left">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-white">
+            Custom Funnel Copy
+            {(painHook || bridge || promise || paywallHook) && (
+              <span className="ml-1.5 rounded-full bg-[#7C5CFC]/20 px-2 py-0.5 text-[9px] text-[#7C5CFC]">configured</span>
+            )}
+          </span>
+        </div>
+        <ChevronDown className={`h-4 w-4 text-[#A0A0B8] transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <div className="px-5 pb-5 space-y-4">
+          <p className="text-[10px] text-[#A0A0B8]">
+            Customize funnel screens for users arriving from this experiment&apos;s ads. Leave empty to use defaults.
+          </p>
+          <div className="flex gap-2 mb-3">
+            <button onClick={generateCopy} disabled={generating}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-[#7C5CFC]/30 bg-[#7C5CFC]/10 px-3 py-1.5 text-xs text-[#7C5CFC] hover:bg-[#7C5CFC]/20 transition disabled:opacity-50">
+              {generating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+              Generate from Topic Brief
+            </button>
+          </div>
+          <div>
+            <label className="text-[10px] text-[#A0A0B8] block mb-1">Screen 1 — Pain Hook (JSON: {`{"headline":"...","subheadline":"..."}`})</label>
+            <textarea value={painHook} onChange={(e) => setPainHook(e.target.value)} className={inputClass} placeholder='{"headline":"The same fight every week.","subheadline":"Different words. Same pattern. Same ending."}' />
+          </div>
+          <div>
+            <label className="text-[10px] text-[#A0A0B8] block mb-1">Screen 8 — Bridge (two sentences separated by period)</label>
+            <textarea value={bridge} onChange={(e) => setBridge(e.target.value)} className={inputClass} placeholder="You've tried to break the loop before. Acuity just asks for one minute." />
+          </div>
+          <div>
+            <label className="text-[10px] text-[#A0A0B8] block mb-1">Screen 9 — Promise</label>
+            <textarea value={promise} onChange={(e) => setPromise(e.target.value)} className={inputClass} placeholder="Acuity will show you the pattern inside the loop so you can finally step out of it." />
+          </div>
+          <div>
+            <label className="text-[10px] text-[#A0A0B8] block mb-1">Screen 14 — Paywall Hook</label>
+            <textarea value={paywallHook} onChange={(e) => setPaywallHook(e.target.value)} className={inputClass} placeholder="You've already seen the pattern. Now let Acuity track it for you." />
+          </div>
+          <button onClick={save} disabled={saving}
+            className="inline-flex items-center gap-2 rounded-lg bg-[#7C5CFC] px-4 py-2 text-xs font-semibold text-white hover:bg-[#6B4FE0] transition disabled:opacity-50">
+            {saving && <Loader2 className="h-3 w-3 animate-spin" />}
+            Save Funnel Copy
+          </button>
         </div>
       )}
     </div>
