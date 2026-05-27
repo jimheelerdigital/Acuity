@@ -92,7 +92,9 @@ export async function GET(req: NextRequest) {
   }
 
   const ttl = TAB_TTLS[tab] ?? 5 * 60_000;
-  const extraParams = req.nextUrl.searchParams.get("showBots") === "true" ? ":bots" : "";
+  const showBotsParam = req.nextUrl.searchParams.get("showBots") === "true";
+  const resetParam = req.nextUrl.searchParams.get("resetAfter") ?? "";
+  const extraParams = `${showBotsParam ? ":bots" : ""}${resetParam ? `:r${resetParam}` : ""}`;
   const cacheKey = `tab:${tab}:${startStr}:${endStr}${extraParams}`;
   const t0 = Date.now();
 
@@ -132,7 +134,8 @@ export async function GET(req: NextRequest) {
           return getBusinessMetrics(prisma, monthStart);
         case "funnel-analytics": {
           const showBots = req.nextUrl.searchParams.get("showBots") === "true";
-          return getFunnelAnalytics(prisma, start, end, showBots);
+          const resetAfter = req.nextUrl.searchParams.get("resetAfter") ?? null;
+          return getFunnelAnalytics(prisma, start, end, showBots, resetAfter);
         }
         case "guide":
           return getGuide();
@@ -1582,10 +1585,11 @@ async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date) {
 // Pain Hook / diagnostic events polluting the new branching quiz metrics.
 const FUNNEL_V2_EPOCH = new Date("2026-05-27T15:00:00Z");
 
-async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, showBots = false) {
+async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, showBots = false, resetAfter: string | null = null) {
  try {
-  // Clamp start to v2 epoch so old v1 events don't pollute metrics
-  const effectiveStart = start > FUNNEL_V2_EPOCH ? start : FUNNEL_V2_EPOCH;
+  // Clamp start to v2 epoch (or user-set reset timestamp) so old events don't pollute metrics
+  const epoch = resetAfter ? new Date(resetAfter) : FUNNEL_V2_EPOCH;
+  const effectiveStart = start > epoch ? start : epoch;
 
   // v2 funnel steps — branching quiz flow
   const FUNNEL_STEPS = [
@@ -1851,10 +1855,10 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
       campaign,
       sessions: total,
       steps: {
-        diagnostic: cStepReach["diagnostic"],
-        mirror: cStepReach["mirror"],
-        commitment: cStepReach["commitment"],
-        signup: cStepReach["signup"],
+        branch_q2: cStepReach["branch_q2"] ?? 0,
+        mirror: cStepReach["mirror"] ?? 0,
+        commit: cStepReach["commit"] ?? 0,
+        signup: cStepReach["signup"] ?? 0,
         paid: paidC,
       },
       conversionRate: convRate,
@@ -1870,11 +1874,10 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     };
   }).sort((a, b) => b.sessions - a.sessions);
 
-  // ── Branch breakdown — which pain path converts best ──
+  // ── Branch breakdown — step-by-step conversion per branch ──
   const BRANCH_KEYS = ["blur", "patterns", "rumination", "graveyard", "mask", "drift"];
   const branchMap = new Map<string, typeof sessions>();
   for (const s of sessions) {
-    // Find the funnel_entry_selected event to determine branch
     const entryEvent = s.events.find((e) => e.event === "funnel_entry_selected");
     const b = entryEvent?.value ?? "unknown";
     if (!branchMap.has(b)) branchMap.set(b, []);
@@ -1885,21 +1888,160 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     .filter(([key]) => BRANCH_KEYS.includes(key))
     .map(([branchKey, bSessions]) => {
       const total = bSessions.length;
-      const reachedMirror = bSessions.filter((s) => s.stepNumber >= 10).length;
-      const reachedCommit = bSessions.filter((s) => s.stepNumber >= 11).length;
-      const reachedPaywall = bSessions.filter((s) => s.stepNumber >= 15).length;
-      const paidCount = bSessions.filter((s) => s.status === "paid" || s.status === "completed").length;
+      const entryToQ4 = bSessions.filter((s) => s.stepNumber >= 4).length;
+      const q4ToMirror = bSessions.filter((s) => s.stepNumber >= 10).length;
+      const mirrorToCommit = bSessions.filter((s) => s.stepNumber >= 11).length;
+      const commitToPaywall = bSessions.filter((s) => s.stepNumber >= 15).length;
+      const paywallToPaid = bSessions.filter((s) => s.status === "paid" || s.status === "completed").length;
       return {
         branch: branchKey,
         sessions: total,
-        mirror: reachedMirror,
-        commit: reachedCommit,
-        paywall: reachedPaywall,
-        paid: paidCount,
-        convRate: total > 0 ? Math.round((paidCount / total) * 100) : 0,
+        entryToQ4,
+        q4ToMirror,
+        mirrorToCommit,
+        commitToPaywall,
+        paywallToPaid,
+        overallRate: total > 0 ? Math.round((paywallToPaid / total) * 100) : 0,
       };
     })
     .sort((a, b) => b.sessions - a.sessions);
+
+  // ── Time per step (median seconds between step viewed events) ──
+  const stepTimeBuckets: Record<string, number[]> = {};
+  for (const s of FUNNEL_STEPS) stepTimeBuckets[s.key] = [];
+  for (const sess of sessions) {
+    const evts = sess.events;
+    for (let i = 0; i < evts.length - 1; i++) {
+      const curr = evts[i];
+      // Only measure _viewed events
+      if (!curr.event.endsWith("_viewed")) continue;
+      // Find next _viewed event
+      for (let j = i + 1; j < evts.length; j++) {
+        if (evts[j].event.endsWith("_viewed") || evts[j].event.endsWith("_completed") || evts[j].event.endsWith("_selected")) {
+          const gap = Math.round((new Date(evts[j].createdAt).getTime() - new Date(curr.createdAt).getTime()) / 1000);
+          if (gap > 0 && gap < 600) { // ignore >10min gaps (likely left and came back)
+            const stepKey = FUNNEL_STEPS.find((s) => s.event === curr.event)?.key;
+            if (stepKey) stepTimeBuckets[stepKey].push(gap);
+          }
+          break;
+        }
+      }
+    }
+  }
+  const median = (arr: number[]) => {
+    if (!arr.length) return 0;
+    const sorted = [...arr].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    return sorted.length % 2 ? sorted[mid] : Math.round((sorted[mid - 1] + sorted[mid]) / 2);
+  };
+  const timePerStep = FUNNEL_STEPS.map((s) => ({
+    step: s.label,
+    key: s.key,
+    medianSec: median(stepTimeBuckets[s.key]),
+    samples: stepTimeBuckets[s.key].length,
+  }));
+
+  // ── Answer distribution (what people select on every question) ──
+  const answerBuckets: Record<string, Record<string, number>> = {};
+  const ANSWER_EVENTS = [
+    { event: "funnel_entry_selected", label: "Entry: What\u2019s been on your mind?" },
+    { event: "funnel_branch_q2_selected", label: "Branch Q2" },
+    { event: "funnel_branch_q3_selected", label: "Branch Q3" },
+    { event: "funnel_branch_q4_selected", label: "Branch Q4" },
+    { event: "funnel_shared_q5_selected", label: "Q5: How long?" },
+    { event: "funnel_shared_q6_selected", label: "Q6: What\u2019s it costing?" },
+    { event: "funnel_shared_q7_selected", label: "Q7: Imagine change" },
+    { event: "funnel_shared_q8_selected", label: "Q8: Brain state" },
+    { event: "funnel_shared_q9_selected", label: "Q9: Pattern to see" },
+  ];
+  for (const ae of ANSWER_EVENTS) answerBuckets[ae.event] = {};
+  for (const e of events) {
+    if (e.value && answerBuckets[e.event]) {
+      // Q6 is multi-select — split comma-separated values
+      const vals = e.event === "funnel_shared_q6_selected" ? e.value.split(", ") : [e.value];
+      for (const v of vals) {
+        answerBuckets[e.event][v] = (answerBuckets[e.event][v] ?? 0) + 1;
+      }
+    }
+  }
+  const answerDistribution = ANSWER_EVENTS.map((ae) => {
+    const dist = answerBuckets[ae.event];
+    const totalAnswers = Object.values(dist).reduce((s, c) => s + c, 0);
+    return {
+      question: ae.label,
+      answers: Object.entries(dist)
+        .map(([answer, count]) => ({ answer, count, pct: totalAnswers > 0 ? Math.round((count / totalAnswers) * 100) : 0 }))
+        .sort((a, b) => b.count - a.count),
+    };
+  }).filter((d) => d.answers.length > 0);
+
+  // ── Drop-off analysis ──
+  const dropOffMap: Record<string, { count: number; branches: Record<string, number>; times: number[] }> = {};
+  for (const s of sessions) {
+    if (s.status !== "dropped" && s.status !== "stalled") continue;
+    const step = s.currentStep;
+    if (!dropOffMap[step]) dropOffMap[step] = { count: 0, branches: {}, times: [] };
+    dropOffMap[step].count++;
+    const branch = s.events.find((e) => e.event === "funnel_entry_selected")?.value ?? "unknown";
+    dropOffMap[step].branches[branch] = (dropOffMap[step].branches[branch] ?? 0) + 1;
+    // Time on last screen = time from last _viewed to lastEvent
+    const viewedEvts = s.events.filter((e) => e.event.endsWith("_viewed"));
+    if (viewedEvts.length > 0) {
+      const lastViewed = viewedEvts[viewedEvts.length - 1];
+      const lastEvt = s.events[s.events.length - 1];
+      const timeOnScreen = Math.round((new Date(lastEvt.createdAt).getTime() - new Date(lastViewed.createdAt).getTime()) / 1000);
+      if (timeOnScreen >= 0) dropOffMap[step].times.push(timeOnScreen);
+    }
+  }
+  const dropOffAnalysis = Object.entries(dropOffMap)
+    .map(([step, d]) => {
+      const topBranch = Object.entries(d.branches).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "unknown";
+      return { step, count: d.count, topBranch, avgTimeSec: d.times.length > 0 ? Math.round(d.times.reduce((s, t) => s + t, 0) / d.times.length) : 0 };
+    })
+    .sort((a, b) => b.count - a.count);
+
+  // ── Daily completion rate (last 30 days) ──
+  const dailyRates: { date: string; entry: number; paid: number; rate: number }[] = [];
+  const dayMap = new Map<string, { entry: number; paid: number }>();
+  for (const s of sessions) {
+    const day = s.started.slice(0, 10);
+    if (!dayMap.has(day)) dayMap.set(day, { entry: 0, paid: 0 });
+    const d = dayMap.get(day)!;
+    d.entry++;
+    if (s.status === "paid" || s.status === "completed") d.paid++;
+  }
+  for (const [date, d] of [...dayMap.entries()].sort()) {
+    dailyRates.push({ date, entry: d.entry, paid: d.paid, rate: d.entry > 0 ? Math.round((d.paid / d.entry) * 100) : 0 });
+  }
+
+  // ── Active sessions (last event < 5 min ago) ──
+  const fiveMinAgo = Date.now() - 5 * 60 * 1000;
+  const activeSessions = sessions.filter((s) => new Date(s.lastEvent).getTime() > fiveMinAgo).length;
+
+  // ── Recent payments ──
+  const recentPayments = sessions
+    .filter((s) => s.status === "paid" || s.status === "completed")
+    .slice(0, 5)
+    .map((s) => ({
+      branch: s.events.find((e) => e.event === "funnel_entry_selected")?.value ?? "unknown",
+      campaign: s.campaign ?? "direct",
+      time: s.lastEvent,
+    }));
+
+  // ── Campaign name lookup (resolve experiment IDs to readable names) ──
+  const campaignIds = [...new Set(sessions.map((s) => s.campaign).filter(Boolean))] as string[];
+  const campaignNames: Record<string, string> = {};
+  if (campaignIds.length > 0) {
+    try {
+      const experiments = await prisma.adLabExperiment.findMany({
+        where: { id: { in: campaignIds } },
+        select: { id: true, campaignName: true, topicBrief: true },
+      });
+      for (const exp of experiments) {
+        campaignNames[exp.id] = exp.campaignName || exp.topicBrief.slice(0, 40);
+      }
+    } catch { /* non-fatal */ }
+  }
 
   return {
     keyMetrics: {
@@ -1913,6 +2055,14 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     alerts,
     campaignFunnels,
     branchBreakdown,
+    timePerStep,
+    answerDistribution,
+    dropOffAnalysis,
+    dailyRates,
+    activeSessions,
+    recentPayments,
+    campaignNames,
+    effectiveStart: effectiveStart.toISOString(),
     sessions: sessions.slice(0, 100),
     totalSessionCount: sessions.length,
   };
@@ -1924,6 +2074,14 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
       alerts: [],
       campaignFunnels: [],
       branchBreakdown: [],
+      timePerStep: [],
+      answerDistribution: [],
+      dropOffAnalysis: [],
+      dailyRates: [],
+      activeSessions: 0,
+      recentPayments: [],
+      campaignNames: {},
+      effectiveStart: FUNNEL_V2_EPOCH.toISOString(),
       sessions: [],
       totalSessionCount: 0,
     };
