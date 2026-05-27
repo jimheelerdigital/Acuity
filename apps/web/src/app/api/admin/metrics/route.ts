@@ -1313,35 +1313,37 @@ async function getOnboardingFunnel(prisma: P, start: Date, end: Date) {
 
 // ── Web Onboarding Funnel (/start) ──────────────────────────────────────────
 
+// v2 funnel steps for the Overview tab web funnel widget
 const WEB_FUNNEL_STEPS = [
-  { event: "funnel_pain_hook_viewed", label: "Pain hook viewed" },
-  { event: "_diagnostics_all", label: "Diagnostics completed" }, // special: requires all 5
+  { event: "funnel_entry_viewed", label: "Entry viewed" },
+  { event: "funnel_branch_q2_viewed", label: "Branch Q2" },
   { event: "funnel_mirror_viewed", label: "Mirror viewed" },
-  { event: "funnel_commitment_completed", label: "Commitment completed" },
-  { event: "funnel_mock_extraction_viewed", label: "Extraction viewed" },
-  { event: "funnel_signup_completed", label: "Signup completed" },
+  { event: "funnel_commit_completed", label: "Commit completed" },
+  { event: "funnel_snapshot_viewed", label: "Snapshot viewed" },
   { event: "funnel_paywall_viewed", label: "Paywall viewed" },
+  { event: "funnel_signup_completed", label: "Signup completed" },
   { event: "funnel_payment_completed", label: "Payment completed" },
-  { event: "funnel_app_store_clicked", label: "App download clicked" },
+  { event: "funnel_download_viewed", label: "Download viewed" },
 ];
 
 const DIAGNOSTIC_EVENTS = [
-  "funnel_diagnostic_loop",
-  "funnel_diagnostic_duration",
-  "funnel_diagnostic_attempts",
-  "funnel_diagnostic_cost",
-  "funnel_diagnostic_desire",
+  "funnel_entry_selected",
+  "funnel_branch_q2_selected",
+  "funnel_branch_q3_selected",
+  "funnel_branch_q4_selected",
+  "funnel_shared_q5_selected",
 ];
 
 const DROP_OFF_FIXES: Record<string, string> = {
-  "Pain hook viewed": "Hook didn\u2019t land. A/B test alternative hooks.",
-  "Diagnostics completed": "Diagnostic fatigue. Consider reducing questions.",
-  "Mirror viewed": "Mirror didn\u2019t resonate. Review copy quality.",
-  "Commitment completed": "Won\u2019t commit. Make commitment optional or reduce hold time.",
-  "Extraction viewed": "Won\u2019t create account. Simplify to Google/Apple one-tap only.",
-  "Signup completed": "Post-signup friction. Check redirect timing.",
-  "Paywall viewed": "Won\u2019t pay. Test lower price or extended trial.",
-  "Payment completed": "Paid but didn\u2019t download. Improve download screen urgency.",
+  "Entry viewed": "Entry question not resonating. Test different options.",
+  "Branch Q2": "Dropping after entry. Branch questions may feel generic.",
+  "Mirror viewed": "Mirror didn\u2019t resonate. Review emotional copy.",
+  "Commit completed": "Won\u2019t commit. Check hold button on mobile.",
+  "Snapshot viewed": "Snapshot not compelling. Personalize more.",
+  "Paywall viewed": "Paywall drop. Test pricing or copy.",
+  "Signup completed": "Won\u2019t create account. Simplify auth options.",
+  "Payment completed": "Won\u2019t pay. Test pricing or extend trial.",
+  "Download viewed": "Paid but didn\u2019t download. Improve download urgency.",
 };
 
 async function countDistinctSessions(prisma: P, event: string, start: Date, end: Date) {
@@ -1403,15 +1405,15 @@ async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date) {
         where: { event: de, createdAt: { gte: start, lte: end }, value: { not: null }, isBot: false },
         _count: true,
       });
-      const label = de.replace("funnel_diagnostic_", "");
+      const label = de.replace("funnel_", "").replace("_selected", "");
       diagnosticBreakdowns[label] = rows
         .map((r) => ({ value: r.value ?? "", count: r._count }))
         .sort((a, b) => b.count - a.count);
     }
 
     // ── Commitment stats ────────────────────────────────
-    const commitCompleted = await countDistinctSessions(prisma, "funnel_commitment_completed", start, end);
-    const commitAbandoned = await countDistinctSessions(prisma, "funnel_commitment_abandoned", start, end);
+    const commitCompleted = await countDistinctSessions(prisma, "funnel_commit_completed", start, end);
+    const commitAbandoned = await countDistinctSessions(prisma, "funnel_commit_abandoned", start, end);
     const commitmentStats = {
       completed: commitCompleted,
       abandoned: commitAbandoned,
@@ -1583,7 +1585,7 @@ async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date) {
 
 // v2 funnel deployed — only count events after this date to avoid old
 // Pain Hook / diagnostic events polluting the new branching quiz metrics.
-const FUNNEL_V2_EPOCH = new Date("2026-05-27T15:00:00Z");
+const FUNNEL_V2_EPOCH = new Date("2026-05-27T00:00:00Z");
 
 async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, showBots = false, resetAfter: string | null = null) {
  try {
