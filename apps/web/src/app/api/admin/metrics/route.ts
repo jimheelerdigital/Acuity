@@ -99,39 +99,48 @@ export async function GET(req: NextRequest) {
   const t0 = Date.now();
 
   try {
+    // Safe wrapper: if a query throws, return fallback instead of crashing the page
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    async function safe(label: string, fn: () => Promise<any>, fallback: any = {}): Promise<any> {
+      try { return await fn(); }
+      catch (err) {
+        console.error(`[metrics/${label}] query failed:`, err);
+        return { ...fallback, _error: `Failed to load ${label}` };
+      }
+    }
+
     const computeFn = async () => {
       switch (tab) {
         case "overview": {
-          // Merged tab: Overview + Revenue + Funnel + Red Flags + Onboarding/Try funnels
+          // Each query wrapped independently — one failure doesn't kill the page
           const [overview, revenue, funnel, redFlags, onboardingFunnel, webFunnel] = await Promise.all([
-            getOverview(prisma, start, end, prevStart, prevEnd, monthStart),
-            getRevenue(prisma, start, end, prevStart, prevEnd, monthStart),
-            getFunnel(prisma, start, end),
-            getRedFlags(prisma),
-            getOnboardingFunnel(prisma, start, end),
-            getWebOnboardingFunnel(prisma, start, end),
+            safe("overview", () => getOverview(prisma, start, end, prevStart, prevEnd, monthStart), {} as Record<string, unknown>),
+            safe("revenue", () => getRevenue(prisma, start, end, prevStart, prevEnd, monthStart), {} as Record<string, unknown>),
+            safe("funnel", () => getFunnel(prisma, start, end), {} as Record<string, unknown>),
+            safe("redFlags", () => getRedFlags(prisma), {} as Record<string, unknown>),
+            safe("onboardingFunnel", () => getOnboardingFunnel(prisma, start, end), { steps: [], alerts: [], commitmentStats: { completed: 0, abandoned: 0, successRate: 0 }, sessions: [] } as Record<string, unknown>),
+            safe("webFunnel", () => getWebOnboardingFunnel(prisma, start, end), { steps: [], alerts: [], diagnosticBreakdowns: {}, commitmentStats: { completed: 0, abandoned: 0, successRate: 0 }, sessions: [] } as Record<string, unknown>),
           ]);
           return { ...overview, revenue, funnel, redFlags, onboardingFunnel, webFunnel };
         }
-        // Legacy tab keys still served for backwards compat
         case "growth":
-          return getGrowth(prisma, start, end, prevStart, prevEnd);
+          return safe("growth", () => getGrowth(prisma, start, end, prevStart, prevEnd), {});
         case "engagement":
-          return getEngagement(prisma, start, end, prevStart, prevEnd);
+          return safe("engagement", () => getEngagement(prisma, start, end, prevStart, prevEnd), {});
         case "revenue":
-          return getRevenue(prisma, start, end, prevStart, prevEnd, monthStart);
+          return safe("revenue", () => getRevenue(prisma, start, end, prevStart, prevEnd, monthStart), {});
         case "funnel":
-          return getFunnel(prisma, start, end);
+          return safe("funnel", () => getFunnel(prisma, start, end), {});
         case "ads":
-          return getAds(prisma, start, end, prevStart, prevEnd);
+          return safe("ads", () => getAds(prisma, start, end, prevStart, prevEnd), {});
         case "ai-costs":
-          return getAICosts(prisma, start, end, monthStart);
+          return safe("ai-costs", () => getAICosts(prisma, start, end, monthStart), {});
         case "red-flags":
-          return getRedFlags(prisma);
+          return safe("redFlags", () => getRedFlags(prisma), {});
         case "growth-metrics":
-          return getGrowthMetrics(prisma, start, end);
+          return safe("growth-metrics", () => getGrowthMetrics(prisma, start, end), {});
         case "business-metrics":
-          return getBusinessMetrics(prisma, monthStart);
+          return safe("business-metrics", () => getBusinessMetrics(prisma, monthStart), {});
         case "funnel-analytics": {
           const showBots = req.nextUrl.searchParams.get("showBots") === "true";
           const resetAfter = req.nextUrl.searchParams.get("resetAfter") ?? null;
@@ -1447,32 +1456,44 @@ async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date) {
     // Step progress — "viewed" events track screen reach, action events track engagement.
     // Use the higher of viewed vs action for each step so we never undercount progress.
     const STEP_PROGRESS: Record<string, number> = {
+      // v2 events
+      funnel_entry_viewed: 1, funnel_entry_selected: 1,
+      funnel_branch_q2_viewed: 2, funnel_branch_q2_selected: 2,
+      funnel_branch_q3_viewed: 3, funnel_branch_q3_selected: 3,
+      funnel_branch_q4_viewed: 4, funnel_branch_q4_selected: 4,
+      funnel_shared_q5_viewed: 5, funnel_shared_q5_selected: 5,
+      funnel_shared_q6_viewed: 6, funnel_shared_q6_selected: 6,
+      funnel_shared_q7_viewed: 7, funnel_shared_q7_selected: 7,
+      funnel_shared_q8_viewed: 8, funnel_shared_q8_selected: 8,
+      funnel_shared_q9_viewed: 9, funnel_shared_q9_selected: 9,
+      funnel_mirror_viewed: 10,
+      funnel_commit_viewed: 11, funnel_commit_completed: 11, funnel_commit_abandoned: 11,
+      funnel_processing_viewed: 12,
+      funnel_snapshot_viewed: 13,
+      funnel_timeline_viewed: 14,
+      funnel_paywall_viewed: 15,
+      funnel_signup_attempted: 16, funnel_signup_completed: 16,
+      funnel_checkout_started: 17, funnel_payment_completed: 17,
+      funnel_download_viewed: 18, funnel_app_store_clicked: 18,
+      // v1 compat
       funnel_pain_hook_viewed: 1,
-      // Diagnostic viewed events (screen reached)
-      funnel_diagnostic_loop_viewed: 2,
-      funnel_diagnostic_duration_viewed: 3,
-      funnel_diagnostic_attempts_viewed: 4,
-      funnel_diagnostic_cost_viewed: 5,
-      funnel_diagnostic_desire_viewed: 6,
-      // Diagnostic answer events (also count as reaching that step)
-      funnel_diagnostic_loop: 2, funnel_diagnostic_duration: 3,
-      funnel_diagnostic_attempts: 4, funnel_diagnostic_cost: 5, funnel_diagnostic_desire: 6,
-      funnel_mirror_viewed: 7,
-      funnel_bridge_viewed: 8, funnel_failed_solution_viewed: 8,
-      funnel_promise_viewed: 9,
-      funnel_commitment_viewed: 10, funnel_commitment_completed: 10,
-      funnel_extraction_viewed: 11, funnel_mock_extraction_viewed: 11,
-      funnel_timeline_viewed: 12, funnel_journey_viewed: 12,
-      funnel_signup_viewed: 13, funnel_signup_started: 13, funnel_signup_completed: 13,
-      funnel_paywall_viewed: 14,
-      funnel_payment_completed: 15,
-      funnel_download_viewed: 16, funnel_download_screen_viewed: 16, funnel_app_store_clicked: 16,
+      funnel_diagnostic_loop_viewed: 2, funnel_diagnostic_loop: 2,
+      funnel_diagnostic_duration_viewed: 3, funnel_diagnostic_duration: 3,
+      funnel_diagnostic_attempts_viewed: 4, funnel_diagnostic_attempts: 4,
+      funnel_diagnostic_cost_viewed: 5, funnel_diagnostic_cost: 5,
+      funnel_diagnostic_desire_viewed: 6, funnel_diagnostic_desire: 6,
+      funnel_bridge_viewed: 10, funnel_failed_solution_viewed: 10,
+      funnel_promise_viewed: 10,
+      funnel_commitment_viewed: 11, funnel_commitment_completed: 11,
+      funnel_extraction_viewed: 13, funnel_mock_extraction_viewed: 13,
+      funnel_journey_viewed: 14,
+      funnel_signup_viewed: 16, funnel_signup_started: 16,
     };
     const STEP_LABELS: Record<number, string> = {
-      1: "Pain Hook", 2: "Diagnostic 1", 3: "Diagnostic 2", 4: "Diagnostic 3",
-      5: "Diagnostic 4", 6: "Diagnostic 5", 7: "Mirror", 8: "Bridge",
-      9: "Promise", 10: "Commitment", 11: "Extraction", 12: "Timeline",
-      13: "Signup", 14: "Paywall", 15: "Paid", 16: "Download",
+      1: "Entry", 2: "Q2", 3: "Q3", 4: "Q4", 5: "Q5", 6: "Q6", 7: "Q7",
+      8: "Q8", 9: "Q9", 10: "Mirror", 11: "Commit", 12: "Processing",
+      13: "Snapshot", 14: "Timeline", 15: "Paywall", 16: "Signup",
+      17: "Paid", 18: "Download",
     };
 
     const sessions = [...sessionMap.entries()]
@@ -1494,8 +1515,12 @@ async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date) {
 
         const diagnosticAnswers: Record<string, string> = {};
         for (const e of events) {
-          if (e.event.startsWith("funnel_diagnostic_") && e.value) {
-            diagnosticAnswers[e.event.replace("funnel_diagnostic_", "")] = e.value;
+          if (e.value) {
+            if (e.event === "funnel_entry_selected") diagnosticAnswers["entry"] = e.value;
+            else if (e.event.match(/^funnel_(branch|shared)_q\d+_selected$/))
+              diagnosticAnswers[e.event.replace("funnel_", "").replace("_selected", "")] = e.value;
+            else if (e.event.startsWith("funnel_diagnostic_") && !e.event.endsWith("_viewed"))
+              diagnosticAnswers[e.event.replace("funnel_diagnostic_", "")] = e.value;
           }
         }
 
