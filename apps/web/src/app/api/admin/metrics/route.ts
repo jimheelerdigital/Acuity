@@ -2033,14 +2033,18 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
   // ── Campaign name lookup (resolve experiment IDs to readable names) ──
   const campaignIds = [...new Set(sessions.map((s) => s.campaign).filter(Boolean))] as string[];
   const campaignNames: Record<string, string> = {};
+  const campaignObjectives: Record<string, string> = {};
   if (campaignIds.length > 0) {
     try {
       const experiments = await prisma.adLabExperiment.findMany({
         where: { id: { in: campaignIds } },
-        select: { id: true, campaignName: true, topicBrief: true },
+        select: { id: true, campaignName: true, topicBrief: true, campaignObjective: true },
       });
       for (const exp of experiments) {
         campaignNames[exp.id] = exp.campaignName || exp.topicBrief.slice(0, 40);
+        if (exp.campaignObjective) {
+          campaignObjectives[exp.id] = exp.campaignObjective;
+        }
       }
     } catch { /* non-fatal */ }
   }
@@ -2064,6 +2068,7 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     activeSessions,
     recentPayments,
     campaignNames,
+    campaignObjectives,
     effectiveStart: effectiveStart.toISOString(),
     sessions: sessions.slice(0, 100),
     totalSessionCount: sessions.length,
@@ -2083,6 +2088,7 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
       activeSessions: 0,
       recentPayments: [],
       campaignNames: {},
+      campaignObjectives: {},
       effectiveStart: FUNNEL_V2_EPOCH.toISOString(),
       sessions: [],
       totalSessionCount: 0,

@@ -65,6 +65,7 @@ interface Experiment {
   metaCampaignId: string | null;
   conclusionSummary: string | null;
   campaignType?: string;
+  campaignObjective?: string | null;
   destination?: string;
   customPainHook?: string | null;
   customBridge?: string | null;
@@ -760,6 +761,13 @@ export default function ExperimentDetailPage() {
           <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${STATUS_COLORS[experiment.status] || ""}`}>
             {experiment.status.replace("_", " ")}
           </span>
+          {experiment.campaignObjective && (
+            <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
+              experiment.campaignObjective === "OUTCOME_TRAFFIC_LPV" ? "bg-blue-500/10 text-blue-400" : "bg-white/5 text-white/40"
+            }`}>
+              {experiment.campaignObjective === "OUTCOME_TRAFFIC_LPV" ? "LPV" : experiment.campaignObjective === "OUTCOME_TRAFFIC" ? "Link Clicks" : experiment.campaignObjective === "OUTCOME_SALES" ? "Conversions" : experiment.campaignObjective}
+            </span>
+          )}
         </div>
         <h1 className="text-2xl font-bold text-white mb-2">Experiment</h1>
         <div className="rounded-lg border border-white/10 bg-[#1E1E2E] p-4">

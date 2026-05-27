@@ -177,12 +177,15 @@ export default function NewExperimentPage() {
                   className="w-full rounded-lg border border-white/10 bg-[#1E1E2E] px-3 py-2 text-sm text-white outline-none focus:border-[#7C5CFC]"
                 >
                   <option value="OUTCOME_TRAFFIC">Traffic (Link Clicks) — recommended</option>
+                  <option value="OUTCOME_TRAFFIC_LPV">Traffic (Landing Page Views)</option>
                   <option value="OUTCOME_SALES">Conversions (Complete Registration)</option>
                 </select>
                 <p className="mt-1 text-xs text-[#A0A0B8]/60">
                   {campaignObjective === "OUTCOME_TRAFFIC"
                     ? "Optimizes for link clicks. Best for new accounts and creative testing. Delivers immediately."
-                    : "Optimizes for conversions. Only use when your pixel has 50+ weekly conversion events — otherwise Meta won't deliver."}
+                    : campaignObjective === "OUTCOME_TRAFFIC_LPV"
+                      ? "Optimizes for landing page views. Higher quality than link clicks — Meta only counts users who actually load the page. Slightly higher CPC."
+                      : "Optimizes for conversions. Only use when your pixel has 50+ weekly conversion events — otherwise Meta won't deliver."}
                 </p>
               </div>
             )}

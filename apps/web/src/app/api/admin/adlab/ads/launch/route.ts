@@ -182,9 +182,11 @@ export async function POST(req: NextRequest) {
       || `${project.name} | ${topicSlug} | ${month}`;
     // Default to OUTCOME_TRAFFIC for website campaigns — delivers immediately.
     // OUTCOME_SALES requires 50+ weekly conversion events on the pixel.
+    const rawObjective = (experiment as Record<string, unknown>).campaignObjective as string || "OUTCOME_TRAFFIC";
+    // OUTCOME_TRAFFIC_LPV is our internal label — Meta receives OUTCOME_TRAFFIC for both link clicks and LPV
     const campaignObjective = isAppInstall
       ? "OUTCOME_APP_PROMOTION"
-      : ((experiment as Record<string, unknown>).campaignObjective as string || "OUTCOME_TRAFFIC");
+      : rawObjective === "OUTCOME_TRAFFIC_LPV" ? "OUTCOME_TRAFFIC" : rawObjective;
 
     console.log("[adlab-launch] Creating campaign:", { campaignName, campaignObjective });
 
@@ -216,9 +218,10 @@ export async function POST(req: NextRequest) {
     const audience = project.targetAudience as Record<string, unknown>;
     const expRecord = experiment as Record<string, unknown>;
     const adsetBudget = (expRecord.adSetDailyBudgetCents as number) || project.dailyBudgetCentsPerVariant;
-    const isTraffic = campaignObjective === "OUTCOME_TRAFFIC";
+    const isTraffic = campaignObjective === "OUTCOME_TRAFFIC" || campaignObjective === "OUTCOME_TRAFFIC_LPV";
+    const isLPV = campaignObjective === "OUTCOME_TRAFFIC_LPV";
     const convEvent = isTraffic ? undefined : ((expRecord.optimizationEvent as string) || project.conversionEvent || "Lead");
-    const optimizationGoal = isTraffic ? "LINK_CLICKS" : "OFFSITE_CONVERSIONS";
+    const optimizationGoal = isLPV ? "LANDING_PAGE_VIEWS" : isTraffic ? "LINK_CLICKS" : "OFFSITE_CONVERSIONS";
     const dateStr = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
     const adsetName = `${project.name} | ${topicSlug} | ${dateStr}`;
 
