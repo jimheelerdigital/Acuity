@@ -34,6 +34,7 @@
   "dependencies": {
     "@prisma/client": "^5.22.0",
     "ajv": "^8.18.0",
+    "expo-tracking-transparency": "~6.0.8",
     "recharts": "^3.8.1"
   },
   "engines": {
