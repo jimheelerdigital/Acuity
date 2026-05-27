@@ -1430,21 +1430,35 @@ async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date) {
     }
 
     // Build session rows
+    // Step progress — "viewed" events track screen reach, action events track engagement.
+    // Use the higher of viewed vs action for each step so we never undercount progress.
     const STEP_PROGRESS: Record<string, number> = {
       funnel_pain_hook_viewed: 1,
+      // Diagnostic viewed events (screen reached)
+      funnel_diagnostic_loop_viewed: 2,
+      funnel_diagnostic_duration_viewed: 3,
+      funnel_diagnostic_attempts_viewed: 4,
+      funnel_diagnostic_cost_viewed: 5,
+      funnel_diagnostic_desire_viewed: 6,
+      // Diagnostic answer events (also count as reaching that step)
       funnel_diagnostic_loop: 2, funnel_diagnostic_duration: 3,
       funnel_diagnostic_attempts: 4, funnel_diagnostic_cost: 5, funnel_diagnostic_desire: 6,
-      funnel_mirror_viewed: 7, funnel_failed_solution_viewed: 8,
-      funnel_promise_viewed: 9, funnel_commitment_completed: 10,
-      funnel_mock_extraction_viewed: 11, funnel_journey_viewed: 12,
-      funnel_signup_completed: 13, funnel_paywall_viewed: 14,
-      funnel_payment_completed: 15, funnel_app_store_clicked: 16,
+      funnel_mirror_viewed: 7,
+      funnel_bridge_viewed: 8, funnel_failed_solution_viewed: 8,
+      funnel_promise_viewed: 9,
+      funnel_commitment_viewed: 10, funnel_commitment_completed: 10,
+      funnel_extraction_viewed: 11, funnel_mock_extraction_viewed: 11,
+      funnel_timeline_viewed: 12, funnel_journey_viewed: 12,
+      funnel_signup_viewed: 13, funnel_signup_started: 13, funnel_signup_completed: 13,
+      funnel_paywall_viewed: 14,
+      funnel_payment_completed: 15,
+      funnel_download_viewed: 16, funnel_download_screen_viewed: 16, funnel_app_store_clicked: 16,
     };
     const STEP_LABELS: Record<number, string> = {
-      1: "Pain Hook", 2: "Diagnostics", 3: "Diagnostics", 4: "Diagnostics",
-      5: "Diagnostics", 6: "Diagnostics", 7: "Mirror", 8: "Bridge",
+      1: "Pain Hook", 2: "Diagnostic 1", 3: "Diagnostic 2", 4: "Diagnostic 3",
+      5: "Diagnostic 4", 6: "Diagnostic 5", 7: "Mirror", 8: "Bridge",
       9: "Promise", 10: "Commitment", 11: "Extraction", 12: "Timeline",
-      13: "Signup", 14: "Paywall", 15: "Download", 16: "COMPLETED",
+      13: "Signup", 14: "Paywall", 15: "Paid", 16: "Download",
     };
 
     const sessions = [...sessionMap.entries()]

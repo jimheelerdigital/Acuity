@@ -152,12 +152,24 @@ function formatTrialEndDate(): string {
 
 // ─── Tracking helper ─────────────────────────────────────────────────────────
 
+const SESSION_STORAGE_KEY = "acuity_funnel_session";
+
+function getOrCreateSessionId(): string {
+  if (typeof sessionStorage !== "undefined") {
+    try {
+      const existing = sessionStorage.getItem(SESSION_STORAGE_KEY);
+      if (existing) return existing;
+    } catch {}
+  }
+  const id = typeof crypto !== "undefined" && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `funnel_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  try { sessionStorage.setItem(SESSION_STORAGE_KEY, id); } catch {}
+  return id;
+}
+
 function useFunnelTracker() {
-  const sessionId = useRef(
-    typeof crypto !== "undefined" && crypto.randomUUID
-      ? crypto.randomUUID()
-      : `funnel_${Date.now()}_${Math.random().toString(36).slice(2)}`
-  );
+  const sessionId = useRef(getOrCreateSessionId());
   const utmRef = useRef<UtmParams>({});
 
   // Capture UTMs once on mount
@@ -256,17 +268,24 @@ export function OnboardingFunnel() {
     }
   }, [authStatus, session, step]);
 
-  // Track step views
+  // Track step views — every screen fires a "viewed" event on mount
   useEffect(() => {
     const eventMap: Record<string, string> = {
       pain: "funnel_pain_hook_viewed",
+      diagnostic1: "funnel_diagnostic_loop_viewed",
+      diagnostic2: "funnel_diagnostic_duration_viewed",
+      diagnostic3: "funnel_diagnostic_attempts_viewed",
+      diagnostic4: "funnel_diagnostic_cost_viewed",
+      diagnostic5: "funnel_diagnostic_desire_viewed",
       mirror: "funnel_mirror_viewed",
-      "failed-solution": "funnel_failed_solution_viewed",
+      "failed-solution": "funnel_bridge_viewed",
       promise: "funnel_promise_viewed",
-      "mock-extraction": "funnel_mock_extraction_viewed",
-      journey: "funnel_journey_viewed",
+      commitment: "funnel_commitment_viewed",
+      "mock-extraction": "funnel_extraction_viewed",
+      journey: "funnel_timeline_viewed",
+      signup: "funnel_signup_viewed",
       paywall: "funnel_paywall_viewed",
-      download: "funnel_download_screen_viewed",
+      download: "funnel_download_viewed",
     };
     if (eventMap[step]) track(eventMap[step]);
   }, [step, track]);
