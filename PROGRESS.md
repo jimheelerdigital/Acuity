@@ -41,6 +41,43 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-26] — Complete funnel tracking: viewed events on every screen, session persistence, dashboard accuracy
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 3265d70
+
+### In plain English (for Keenan)
+
+Three fixes that make funnel analytics accurate:
+
+1. **Every screen now fires a "viewed" event.** Previously, Screens 2-6 (diagnostics) only fired events when the user selected an answer. If someone reached the diagnostic screen but bounced before tapping an option, the dashboard showed them stuck at "Pain Hook" — even though they'd actually advanced. Now every screen fires a "viewed" event the instant it appears, so we can see exactly where people drop.
+
+2. **Session ID survives OAuth redirect.** The session ID was stored in React memory (useRef), which dies on page reload. When someone signed in via Google/Apple at Screen 13 and got redirected back to /start, they got a brand new session ID — so all their post-signup events appeared as a separate session. Now the session ID is stored in sessionStorage, which survives the redirect.
+
+3. **Dashboard shows accurate step names.** The "Step" column now shows which specific diagnostic screen someone reached (Diagnostic 1, Diagnostic 2, etc.) instead of grouping them all as "Diagnostics."
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/components/onboarding-funnel.tsx`:
+  - `useFunnelTracker` now calls `getOrCreateSessionId()` which reads/writes `sessionStorage` under key `acuity_funnel_session`
+  - Step view `useEffect` eventMap expanded from 8 entries to 15 — every screen now has a viewed event
+  - New events: `funnel_diagnostic_loop_viewed`, `funnel_diagnostic_duration_viewed`, `funnel_diagnostic_attempts_viewed`, `funnel_diagnostic_cost_viewed`, `funnel_diagnostic_desire_viewed`, `funnel_bridge_viewed`, `funnel_commitment_viewed`, `funnel_extraction_viewed`, `funnel_timeline_viewed`, `funnel_signup_viewed`, `funnel_download_viewed`
+- `apps/web/src/app/api/onboarding-events/route.ts`: 11 new events added to `VALID_EVENTS` whitelist
+- `apps/web/src/app/api/admin/metrics/route.ts`: `STEP_PROGRESS` mapping expanded to include viewed events (same step number as action events). `STEP_LABELS` refined to show "Diagnostic 1-5" instead of "Diagnostics" for all.
+
+### Manual steps needed
+
+None — code changes only.
+
+### Notes
+
+- The existing action events (funnel_diagnostic_loop, funnel_commitment_completed, etc.) are kept. They now coexist with the viewed events. A session reaching "Diagnostic 1" screen gets step 2 from the viewed event; if they also answer, they still get step 2 from the action event — `Math.max` handles deduplication.
+- sessionStorage is per-tab, so opening /start in two tabs creates two separate sessions. This is correct behavior.
+- The session persists until the tab is closed or sessionStorage is cleared. For users who close and reopen the tab hours later, they'll get a new session — which is the right UX.
+
+---
+
 ## [2026-05-26] — 5 funnel + dashboard fixes: mobile commitment, session times, timestamps, dynamic hooks, expandable rows
 
 **Requested by:** Keenan
