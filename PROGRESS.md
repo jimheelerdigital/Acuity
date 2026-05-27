@@ -41,6 +41,38 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-26] — Security: move Meta SDK app ID + client token off committed config
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** PENDING
+
+### In plain English (for Keenan)
+
+The Facebook ad attribution SDK needs an app ID and a client token to work. Earlier this week those values landed inside the mobile app's static config file — meaning if you checked the repo, you could read the secret token. That's a leak. This change moves both values into environment variables stored as EAS Build secrets (an encrypted store managed by Expo) that get pulled in at build time. The values never appear in a committed file again. The app behaves exactly the same once the secrets are set; the only visible difference is that the gitleaks pre-commit hook will now allow commits to land instead of blocking them.
+
+### Technical changes (for Jimmy)
+
+- New file: `apps/mobile/app.config.ts` — dynamic Expo config that layers over `app.json`. Reads `process.env.EXPO_PUBLIC_FACEBOOK_APP_ID` + `EXPO_PUBLIC_FACEBOOK_CLIENT_TOKEN` at config-evaluation time. When both are set, splices the `react-native-fbsdk-next` plugin block back into the plugins array (inserted before `with-folly-mobile-flag.js` so native build order is preserved) and adds `facebookAppId` back into `extra`. When either is missing AND `EAS_BUILD=true`, logs a `console.warn` so the EAS build log surfaces the misconfiguration loudly instead of producing a binary that silently can't fire Meta events.
+- `apps/mobile/app.json` — removed the inline `react-native-fbsdk-next` plugin block entirely; removed `extra.facebookAppId`. Kept `extra.facebookPixelId` (it's a public identifier embedded in the web pixel, not a secret) and the `NSPrivacyTrackingDomains` privacy manifest entries (graph.facebook.com, connect.facebook.net are public references).
+- New file: `apps/mobile/.env.example` — documents both Facebook env vars + the existing `EXPO_PUBLIC_NEW_ONBOARDING_ENABLED` flag with usage notes (local dev via `.env`, EAS Build via the dashboard secrets store).
+- `apps/mobile/lib/meta-sdk.ts` is unchanged — the SDK init goes through `Settings.initializeSDK()` which reads the values from the native binary that the plugin block writes at build time. No runtime config read from `Constants.expoConfig.extra` was happening before, so nothing to refactor at the SDK init layer.
+
+### Manual steps needed
+
+- [ ] **Jim:** Set both `EXPO_PUBLIC_FACEBOOK_APP_ID` and `EXPO_PUBLIC_FACEBOOK_CLIENT_TOKEN` as EAS Secrets at https://expo.dev → Acuity project → Configuration → Secrets **BEFORE the next EAS build**. Without them, the Meta SDK plugin block is omitted from the resolved native config and `Settings.initializeSDK()` no-ops at runtime — meaning no FB App Events fire, no Meta attribution, no Subscribe/StartTrial/CompletedRegistration events stitched back to ad clicks.
+- [ ] **Jim:** Copy the same two values into a local `apps/mobile/.env` (gitignored) if you want Meta SDK working in `expo start` dev builds. Not required for the JS-only dev loop.
+- [ ] **Jim:** Verify gitleaks pre-commit hook accepts the diff on this commit — the smoke test scan reported clean ("no leaks found").
+
+### Notes
+
+- Smoke tested both branches of `app.config.ts`: `npx expo config --type public` with no env vars set shows the Meta SDK plugin OMITTED from the resolved config and only `facebookPixelId` under `extra`. With placeholder env vars (`EXPO_PUBLIC_FACEBOOK_APP_ID=TEST_APP_ID EXPO_PUBLIC_FACEBOOK_CLIENT_TOKEN=TEST_CLIENT_TOKEN npx expo config --type public`), the plugin block appears with the placeholder values correctly interpolated into `appID`, `clientToken`, and `scheme: fbTEST_APP_ID`. The env-var pattern works in both directions.
+- The plugin block needs to land before `with-folly-mobile-flag.js` in the plugins array because folly applies a mod-shaped change to the iOS Podfile that depends on the FB SDK pods already being declared. Inserting at `findIndex(folly)` preserves that ordering exactly as it was pre-refactor.
+- The `displayName` field in the plugin block stays hardcoded as `"Acuity"` (not an env var) — it's the public-facing app name shown in the FB Login dialog, not a secret. Same call as keeping `facebookPixelId` static in `app.json`.
+- Did NOT include the working-tree supabase migration deletions or any pre-existing untracked files (CREDENTIAL_LEAK_AUDIT.md, IMPLEMENTATION_PLAN_PAYWALL.md, docs/launch-audit-2026-04-26/*, _design/design_handoff_acuity_v2/, etc.) in this commit — they're unrelated to the FB secrets refactor and should be triaged separately.
+
+---
+
 ## [2026-05-26] — Auto-captions on all HeyGen-generated AdLab videos
 
 **Requested by:** Keenan
