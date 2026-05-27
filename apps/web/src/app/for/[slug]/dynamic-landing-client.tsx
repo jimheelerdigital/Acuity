@@ -229,20 +229,24 @@ function SplitHeroHeadline({ text }: { text: string }) {
 
   const allWords = text.split(" ");
   const whiteWordCount = whitePart.split(" ").length;
-  const [visibleCount, setVisibleCount] = useState(0);
+  // Start fully visible so SSR renders readable headline — animate on client
+  const [visibleCount, setVisibleCount] = useState(allWords.length);
+  const [animated, setAnimated] = useState(false);
   const ref = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    // Reset to 0 then animate in — only on client after hydration
+    setVisibleCount(0);
+    setAnimated(true);
     const obs = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
           allWords.forEach((_, i) => {
             setTimeout(() => setVisibleCount((c) => Math.max(c, i + 1)), i * 80);
           });
-        } else {
-          setVisibleCount(0);
         }
       },
       { threshold: 0.3 }
@@ -260,13 +264,13 @@ function SplitHeroHeadline({ text }: { text: string }) {
         <span key={i}>
           {i === whiteWordCount && purplePart && <br />}
           <span
-            className={`inline-block mr-[0.3em] transition-all duration-500 ${
+            className={`inline-block mr-[0.3em] ${animated ? "transition-all duration-500" : ""} ${
               i < whiteWordCount ? "text-white" : "text-[#7C5CFC]"
             }`}
             style={{
               opacity: i < visibleCount ? 1 : 0,
               transform: i < visibleCount ? "translateY(0)" : "translateY(20px)",
-              transitionDelay: `${i * 60}ms`,
+              ...(animated ? { transitionDelay: `${i * 60}ms` } : {}),
             }}
           >
             {word}
@@ -298,6 +302,7 @@ function SlideIn({
       direction === "right" ? "translateX(30px)" :
       "translateY(20px)";
 
+    // Only hide + animate after JS hydration — SSR content stays visible
     el.style.opacity = "0";
     el.style.transform = startTransform;
     el.style.transition = `opacity 0.5s ease-out ${delay}ms, transform 0.5s ease-out ${delay}ms`;
@@ -307,10 +312,8 @@ function SlideIn({
         if (entry.isIntersecting) {
           el.style.opacity = "1";
           el.style.transform = "translate(0)";
-        } else {
-          el.style.opacity = "0";
-          el.style.transform = startTransform;
         }
+        // Don't re-hide on scroll out — content should stay visible once shown
       },
       { threshold: 0.1 }
     );

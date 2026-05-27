@@ -100,6 +100,7 @@ function useReveal(delay = 0) {
     const el = ref.current;
     if (!el) return;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    // Hide + animate only after JS hydration — SSR content stays visible by default
     el.style.opacity = '0';
     el.style.transform = 'translateY(24px)';
     el.style.transition = 'opacity 0.6s ease-out, transform 0.6s ease-out';
@@ -109,9 +110,8 @@ function useReveal(delay = 0) {
         if (entry.isIntersecting) {
           el.style.opacity = '1';
           el.style.transform = 'translateY(0)';
-        } else {
-          el.style.opacity = '0';
-          el.style.transform = 'translateY(24px)';
+          // Once revealed, stay visible — don't re-hide on scroll out
+          obs.unobserve(el);
         }
       },
       { threshold: 0.1 }
