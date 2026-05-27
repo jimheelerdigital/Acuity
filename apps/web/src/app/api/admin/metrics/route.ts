@@ -1585,7 +1585,7 @@ async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date) {
 
 // v2 funnel deployed — only count events after this date to avoid old
 // Pain Hook / diagnostic events polluting the new branching quiz metrics.
-const FUNNEL_V2_EPOCH = new Date("2026-05-27T00:00:00Z");
+const FUNNEL_V2_EPOCH = new Date("2026-05-27T15:30:00Z");
 
 async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, showBots = false, resetAfter: string | null = null) {
  try {
