@@ -41,6 +41,51 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-26] — Remove all HeyGen video from AdLab + debug image generation
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 248e987
+
+### In plain English (for Keenan)
+
+Two changes:
+
+**1. Video generation removed entirely.** All HeyGen video functionality has been deleted from AdLab — the Generate Video button, the Video/HeyGen project settings section, the avatar/voice pickers, the video preview displays, and all the API routes that talked to HeyGen. AdLab now generates ad copy and images only. 1,612 lines of code removed.
+
+**2. Image generation diagnosis.** Images show "Download All (0)" because image generation is silently failing. The code is correct — it calls OpenAI's gpt-image-2 API, generates the image, and uploads to Supabase. But if `OPENAI_API_KEY` is missing or invalid in Vercel env vars, the function returns `null` silently and the creative is saved without an image. The server logs will say `[adlab] OPENAI_API_KEY not set, skipping image generation` or `[adlab] Image generation failed: {error}`.
+
+**To fix images:** Check Vercel env vars for `OPENAI_API_KEY`. If it's set, check Vercel function logs for `[adlab-generate]` entries after generating creatives — the error will be there. Common issues: expired key, billing limit reached, or wrong key.
+
+### Technical changes (for Jimmy)
+
+**Deleted:**
+- `/api/admin/adlab/video/generate`, `/confirm`, `/refetch` API routes (3 files)
+- `/api/admin/adlab/heygen/avatars` API route
+- `AvatarSlot`, `VoicePreviewButton`, `AvatarThumb` components from project form
+- Video/HeyGen section from project settings UI
+- Video generation UI from experiment detail page (state, functions, JSX)
+- Prisma schema fields: `videoEnabled`, `videoAvatars`, `videoPrimaryAvatar`, `videoSecondaryAvatar` on AdLabProject; `videoScriptText`, `videoHookLine`, `videoUrl`, `videoAvatarId`, `videoStatus`, `heygenVideoId` on AdLabAngle; `videoPresenterTag`, `heygenVideoId` on AdLabCreative
+- Video-related Zod validation schemas
+- `videoEnabled` from seed route
+
+**Kept:** Video upload code paths in launch/add-to-campaign routes (dead branches that won't execute without video creatives — not worth touching the critical launch flow)
+
+### Manual steps needed
+
+- [ ] Run `npx prisma db push` to remove video columns from database tables (Keenan — from home network)
+- [ ] Check `OPENAI_API_KEY` in Vercel env vars — verify it's set and valid (Keenan)
+- [ ] After deploy, generate creatives and check Vercel function logs for `[adlab-generate]` to diagnose image generation (Keenan)
+- [ ] Can remove `HEYGEN_API_KEY` from Vercel env vars if it exists (cleanup — Jimmy)
+
+### Notes
+
+- The Prisma schema changes remove columns from `adlab_projects`, `adlab_angles`, and `adlab_creatives`. The `prisma db push` will drop these columns — any existing video data in those columns will be lost. That's fine since video is being removed.
+- The `adlab-videos` Supabase storage bucket is not deleted — other things may reference it. It can be manually cleaned up later.
+- Image generation failures are logged server-side but NOT surfaced in the UI. Creatives are created with `imageUrl: null` and show as text-only cards. A future improvement would be to show a red badge on creatives that failed image generation.
+
+---
+
 ## [2026-05-26] — Fix invisible landing pages — SSR content hidden behind JS animations
 
 **Requested by:** Keenan
