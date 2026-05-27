@@ -41,6 +41,64 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-27] — Fix 6 critical bugs in /start onboarding funnel blocking revenue
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 4f20333
+
+### In plain English (for Keenan)
+
+The funnel dashboard was showing 20+ users hit "signup" but zero accounts were actually created. The root cause: the tracking event `funnel_signup_completed` was firing when someone **clicked** the Google/Apple button — before they actually signed up. If someone clicked but then closed the browser, backed out, or got stuck in Facebook's in-app browser, the dashboard counted them as a completed signup even though no account was created. This is now fixed — the dashboard only counts someone as "signed up" after they actually come back from Google/Apple with a real account in the database.
+
+Other fixes in this batch:
+- **Session tracking survives redirects.** When users go to Google or Stripe and come back, the funnel now remembers it's the same person (session ID backed up to localStorage). This fixes the 50% signup→paywall drop and the "paid but no download" gap.
+- **Admin notification emails now include the campaign name** so you can see which ad drove each signup.
+- **Dashboard bot toggle.** There's now a "Show bots" switch in the Funnel Analytics tab (off by default). Flip it on to see bot sessions for debugging.
+- **Sortable sessions table.** Every column header in the Live Sessions table is now clickable — click once for ascending, again for descending. Default sort is newest first.
+
+### Technical changes (for Jimmy)
+
+**Bug 1 — Signup tracking:**
+- `onboarding-funnel.tsx`: OAuth click events renamed from `funnel_signup_completed` → `funnel_signup_attempted`. Real `funnel_signup_completed` fires only after OAuth return (authStatus === "authenticated" + step=paywall URL param). Email signup already fired after POST success (correct), but now calls `onComplete()` directly instead of relying on useSession re-render.
+- `onboarding-events/route.ts`: Added `funnel_signup_attempted` and `funnel_checkout_started` to VALID_EVENTS.
+
+**Bug 2 — Admin notifications:**
+- `bootstrap-user.ts`: Passes `attribution?.utmCampaign` to `notifyFoundersOfSignup`.
+- `founder-notifications.ts`: Accepts optional `campaign` param, includes in Slack message.
+- `founder-signup-notification.ts`: Email template now shows Campaign row (defaults to "direct / organic").
+- Note: Notifications were already wired correctly via bootstrapNewUser → notifyFoundersOfSignup. They'll fire once real signups happen.
+
+**Bug 3 — Session persistence:**
+- `onboarding-funnel.tsx`: `getOrCreateSessionId()` now writes to both `sessionStorage` (primary, per-tab) and `localStorage` (backup key `acuity_funnel_session_persist`). On mount, checks sessionStorage first, then localStorage. This survives OAuth redirects (Google/Apple external domains) and Stripe checkout redirects.
+
+**Bug 4 — Paid but no download:**
+- `onboarding-funnel.tsx`: Renamed premature `funnel_payment_completed` (fired on checkout click before Stripe) → `funnel_checkout_started`. Real `funnel_payment_completed` now fires when user returns from Stripe with `session_id` URL param.
+- Stripe success_url already correctly redirects to `/start?step=download` — the issue was lost session tokens, fixed by Bug 3.
+
+**Bug 5 — Bot toggle:**
+- `FunnelAnalyticsTab.tsx`: Added "Show bots" toggle switch (off by default). Passes `showBots=true` query param when on.
+- `useTabData.ts`: Added `extraParams` argument to pass arbitrary query params to the metrics API.
+- `metrics/route.ts`: `getFunnelAnalytics()` accepts `showBots` param. When false (default), filters `isBot: false`. When true, includes all events. Separate cache key per mode.
+
+**Bug 6 — Sortable sessions table:**
+- `FunnelAnalyticsTab.tsx`: Column headers are now clickable with sort state (`sortCol`, `sortDir`). Client-side sort using `useMemo` over sessions array. Supports: Session ID (alpha), Started At (date), Source (alpha), Campaign (alpha), Step (by step number), Status (alpha), Time (numeric). Default: Started At descending. Visual indicator (▲/▼) on active sort column.
+
+### Manual steps needed
+
+- [ ] Run `npx prisma db push` if not done from previous entry — the isBot column + index must exist for bot toggle to work (Keenan — from home network)
+- [ ] After deploy, test OAuth signup through /start on a real phone (Keenan — use Chrome, not Facebook in-app browser)
+- [ ] Verify admin notification arrives at keenan@heelerdigital.com after a test signup (Keenan)
+
+### Notes
+
+- The actual NextAuth signup flow (events.createUser → bootstrapNewUser → admin notification → welcome email) was always correctly wired. The problem was purely a TRACKING misfire — `funnel_signup_completed` fired on button click, making it look like people signed up when they hadn't. The auth infrastructure works; the metrics lied.
+- Facebook in-app browser users still can't use OAuth (this was already handled with a WebView detection banner + disabled OAuth buttons). They can use the email/password form instead.
+- The `funnel_checkout_started` / `funnel_payment_completed` rename means the dashboard "Paid" funnel step now correctly counts only users who returned from Stripe, not users who merely clicked "Start Trial." Historical data will show a lower Paid count until new events accumulate.
+- localStorage session backup key (`acuity_funnel_session_persist`) is separate from the sessionStorage key. It's never cleared automatically — this is intentional for funnel continuity. If the same user starts a new funnel later, sessionStorage will have a new ID that takes precedence.
+
+---
+
 ## [2026-05-26] — Bot detection: filter Facebook prefetch/crawler from funnel metrics
 
 **Requested by:** Keenan
