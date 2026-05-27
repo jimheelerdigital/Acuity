@@ -41,6 +41,40 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-27] — Funnel Analytics sub-tabs by campaign objective + Landing Page Views in AdLab
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 235f261
+
+### In plain English (for Keenan)
+
+The Funnel Analytics tab now has sub-tabs at the top: **Overall | Link Clicks | Landing Page Views | Split Test**. Overall shows everything (same as before). Link Clicks shows only sessions from Link Click campaigns. Landing Page Views shows only LPV campaigns. Split Test lets you compare any two things side-by-side — campaigns, branches, objectives — with a funnel comparison table showing step-by-step differences.
+
+Also added "Landing Page Views" as a campaign objective option when creating AdLab experiments. Both Link Clicks and LPV use the Traffic objective; only the optimization goal differs (Meta optimizes for page loads instead of clicks, giving higher-quality traffic at slightly higher CPC).
+
+Campaign funnels table now shows an "Obj" column so you can see which objective each campaign uses at a glance. Experiment detail page shows an objective badge (Link Clicks / LPV / Conversions) next to the status badge.
+
+### Technical changes (for Jimmy)
+
+- `FunnelAnalyticsTab.tsx`: Complete rewrite with sub-tab navigation. Overall/LC/LPV tabs filter sessions client-side by `campaignObjectives` map (campaign ID → objective). Split Test tab has two dropdowns (all campaigns, all branches, all-link-clicks, all-lpv), funnel comparison table with step-by-step diff (starred if >10pp), quick-compare presets.
+- `metrics/route.ts`: Extended AdLabExperiment lookup to include `campaignObjective`. Returns `campaignObjectives: Record<string, string>` mapping campaign IDs to objectives.
+- `experiments/new/page.tsx`: Added `OUTCOME_TRAFFIC_LPV` option to Campaign Objective dropdown.
+- `ads/launch/route.ts`: `OUTCOME_TRAFFIC_LPV` maps to `OUTCOME_TRAFFIC` for Meta campaign creation but `LANDING_PAGE_VIEWS` for ad set optimization_goal.
+- `experiments/[id]/page.tsx`: Added `campaignObjective` to Experiment interface, renders objective badge.
+
+### Manual steps needed
+
+None — no Prisma schema changes. `campaignObjective` field already exists on AdLabExperiment.
+
+### Notes
+
+- LC/LPV tabs only show sessions where the campaign ID matches an AdLabExperiment with a known objective. Organic/direct sessions only appear in Overall.
+- The Split Test "Best vs Worst" preset requires 10+ sessions per campaign to avoid noise.
+- `OUTCOME_TRAFFIC_LPV` is an internal label, not a Meta API value. The launch route converts it to `OUTCOME_TRAFFIC` (campaign level) + `LANDING_PAGE_VIEWS` (ad set optimization_goal).
+
+---
+
 ## [2026-05-27] — Paywall founding rate anchoring + price lock urgency
 
 **Requested by:** Keenan
