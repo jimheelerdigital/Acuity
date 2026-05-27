@@ -486,6 +486,15 @@ export const PAYWALL_HOOKS: Record<Branch, string> = {
   drift: "Start paying attention before another year slips by.",
 };
 
+export const PRICING_COPY: Record<Branch, string> = {
+  blur: "Get your days back for less than a coffee a week.",
+  patterns: "Break the cycle for less than a coffee a week.",
+  rumination: "Quiet your brain for less than a coffee a week.",
+  graveyard: "The tool that finally sticks \u2014 for less than a coffee a week.",
+  mask: "A place to be honest with yourself \u2014 for less than a coffee a week.",
+  drift: "Start paying attention again \u2014 for less than a coffee a week.",
+};
+
 // ─── Processing Theater Text (Screen 12) ────────────────────────────────────
 
 export const PROCESSING_STAGES: { text: string; endSec: number }[] = [

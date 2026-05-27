@@ -24,6 +24,7 @@ import {
   getSnapshotGoal,
   TIMELINE_TEMPLATES,
   PAYWALL_HOOKS,
+  PRICING_COPY,
 } from "@/lib/funnel-config";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -139,7 +140,7 @@ export function OnboardingFunnel() {
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
   const [apiError, setApiError] = useState<string | null>(null);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<"monthly" | "yearly">("monthly");
+  const [selectedPlan, setSelectedPlan] = useState<"monthly" | "yearly">("yearly");
   const track = useFunnelTracker();
 
   // Handle return from OAuth / Stripe
@@ -970,20 +971,28 @@ function PaywallScreen({ branch, track, selectedPlan, onPlanChange, onCheckout, 
 
         {/* Section 4 — Pricing */}
         <section className="mb-16">
+          {branch && (
+            <p className="text-sm text-zinc-600 text-center mb-5">{PRICING_COPY[branch]}</p>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <button onClick={() => onPlanChange("monthly")}
               className={`rounded-xl border-2 p-4 text-center transition ${selectedPlan === "monthly" ? "border-[#7C5CFC] bg-[#7C5CFC]/5" : "border-zinc-200 bg-white"}`}>
               <p className="text-xs text-zinc-500 mb-1">Monthly</p>
               <p className="text-xl font-bold">{formatDollars(MONTHLY_PRICE_CENTS)}<span className="text-sm font-normal text-zinc-400">/mo</span></p>
+              <p className="text-[10px] text-zinc-400 mt-1">Billed monthly</p>
             </button>
             <button onClick={() => onPlanChange("yearly")}
-              className={`rounded-xl border-2 p-4 text-center transition relative ${selectedPlan === "yearly" ? "border-[#7C5CFC] bg-[#7C5CFC]/5" : "border-zinc-200 bg-white"}`}>
-              <span className="absolute -top-2.5 right-3 rounded-full bg-emerald-500 px-2 py-0.5 text-[10px] font-bold text-white">Save 33%</span>
+              className={`rounded-xl border-2 p-4 text-center transition relative ${selectedPlan === "yearly" ? "border-[#7C5CFC] bg-[#7C5CFC]/5 shadow-[0_0_16px_rgba(124,92,252,0.15)]" : "border-zinc-200 bg-white"}`}>
+              <span className="absolute -top-2.5 right-3 rounded-full bg-emerald-500 px-2 py-0.5 text-[10px] font-bold text-white">SAVE $19.89</span>
               <p className="text-xs text-zinc-500 mb-1">Annual</p>
+              <p className="text-sm text-zinc-400 line-through">{formatDollars(MONTHLY_PRICE_CENTS)}/mo</p>
               <p className="text-xl font-bold">{formatDollars(annualMonthly)}<span className="text-sm font-normal text-zinc-400">/mo</span></p>
-              <p className="text-[10px] text-zinc-400">{formatDollars(ANNUAL_PRICE_CENTS)}/year</p>
+              <p className="text-[10px] text-zinc-400 mt-0.5">{formatDollars(ANNUAL_PRICE_CENTS)}/year</p>
             </button>
           </div>
+          <p className="text-sm font-semibold text-zinc-800 text-center mt-6">
+            What&rsquo;s worth more &mdash; a coffee on Monday, or understanding yourself by Sunday?
+          </p>
         </section>
 
         {/* Section 5 — FAQ */}
@@ -1013,9 +1022,10 @@ function PaywallScreen({ branch, track, selectedPlan, onPlanChange, onCheckout, 
           {error && <p className="text-xs text-red-500 text-center mb-2">{error}</p>}
           <button onClick={handleCTA} disabled={loading}
             className="w-full rounded-full bg-[#7C5CFC] py-4 text-[15px] font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98] disabled:opacity-50 animate-[funnel-glow_2s_ease-in-out_infinite]">
-            {loading ? "Loading\u2026" : isAuthenticated ? "Start My Free Trial" : "Start My Free Trial"}
+            {loading ? "Loading\u2026" : "Start My Free Trial"}
           </button>
-          <p className="text-[11px] text-zinc-400 text-center mt-2">14-day free trial. Cancel anytime. You won&rsquo;t be charged today.</p>
+          <p className="text-xs text-zinc-700 font-medium text-center mt-2">Your patterns are already running. The only question is whether you&rsquo;ll see them.</p>
+          <p className="text-[10px] text-zinc-400 text-center mt-1">14-day free trial. Cancel anytime. You won&rsquo;t be charged today.</p>
         </div>
       </div>
 
