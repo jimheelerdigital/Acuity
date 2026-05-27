@@ -41,6 +41,36 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-27] — Snapshot + Timeline rewrite: pattern insight, weekly previews, transformation story
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** a69d121
+
+### In plain English (for Keenan)
+
+Both the Snapshot screen ("Here's what one debrief reveals") and the Timeline screen ("Here's what the next 30 days look like") were too generic and feature-focused. Now they feel like a psychic reading built from the user's actual quiz answers.
+
+**Snapshot (Screen 13)** — Instead of showing generic tasks and goals, it now shows ONE big insight card that connects the user's answers in a way that feels personally targeted ("You described your days as busy but empty. But you also said you want to know where your time and energy go. That gap is the pattern."). Below that, 3 fake weekly report excerpts that look like real product output ("You mentioned 'busy' 11 times but 'meaningful' zero times"). The screen makes the user think "I need to see MY version of this."
+
+**Timeline (Screen 14)** — Instead of a feature roadmap, it tells a transformation story. Each week escalates emotionally, showing how their specific pain dissolves. Week 1 names it. Week 2 shows the weekly report insight. Week 3 builds the Life Matrix. Week 4 delivers the monthly memoir with a personalized callback to their quiz answers.
+
+### Technical changes (for Jimmy)
+
+- `funnel-config.ts`: Removed `SNAPSHOT_TEMPLATES`, `DESIRE_TO_THEME`, `getSnapshotGoal`. Added `getSnapshotInsight()` (per-branch using Q2-Q9 answers), `SNAPSHOT_PREVIEWS` (3 weekly report excerpts per branch, 18 total), `SNAPSHOT_BOTTOM` (6 branch-specific closers). Replaced static `TIMELINE_TEMPLATES` with `getTimelineWeeks()` function that embeds Q2/Q5 answers into Week 1/4 copy.
+- `onboarding-funnel.tsx`: SnapshotScreen rewritten with 3 sections (insight card, weekly previews, bottom line). TimelineScreen accepts `answers` prop, headline changed to "This is what changes.", slower animation (900ms per node).
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- The weekly report excerpts in the Snapshot are fake (nobody has used Acuity yet at this point in the funnel) but they reference the user's branch, creating the illusion of personalized analysis.
+- The Timeline's Week 4 copy for graveyard branch embeds the Q2 answer ("You're still here on Day 7. That's already further than [a journaling app] got you."), which creates a direct comparison to what failed.
+
+---
+
 ## [2026-05-27] — Paywall rewrite: outcomes over features, dynamic headlines, therapy price anchor
 
 **Requested by:** Keenan
