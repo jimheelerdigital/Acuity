@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   BarChart,
@@ -143,6 +143,7 @@ export default function OverviewTab({ start, end }: { start: string; end: string
   const [drilldown, setDrilldown] = useState<Drilldown>(null);
   const [resolving, setResolving] = useState<string | null>(null);
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+  const [expandedSession, setExpandedSession] = useState<string | null>(null);
   const router = useRouter();
 
   if (error && !data) return <TabError message={error} onRetry={refresh} />;
@@ -416,6 +417,7 @@ export default function OverviewTab({ start, end }: { start: string; end: string
                 <thead>
                   <tr className="border-b border-white/10 text-white/30 text-xs uppercase tracking-wider">
                     <th className="pb-2 pr-3">Session</th>
+                    <th className="pb-2 pr-3">Started At</th>
                     <th className="pb-2 pr-3">Source</th>
                     <th className="pb-2 pr-3">Campaign</th>
                     <th className="pb-2 pr-3">Step</th>
@@ -429,9 +431,17 @@ export default function OverviewTab({ start, end }: { start: string; end: string
                       completed: "text-emerald-400", paid: "text-emerald-400",
                       active: "text-blue-400", stalled: "text-amber-400", dropped: "text-red-400",
                     };
+                    const startDate = new Date(s.started);
+                    const startedLabel = startDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+                      + ", " + startDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+                    const sec = s.timeInFunnelSec ?? s.timeInFunnel * 60;
+                    const timeLabel = sec < 60 ? `${sec}s` : `${Math.round(sec / 60)}m`;
                     return (
-                      <tr key={s.sessionId} className="border-b border-white/5 text-white/60 hover:bg-white/[0.02]">
+                      <React.Fragment key={s.sessionId}>
+                      <tr className="border-b border-white/5 text-white/60 hover:bg-white/[0.02] cursor-pointer"
+                        onClick={() => setExpandedSession(expandedSession === s.sessionId ? null : s.sessionId)}>
                         <td className="py-2 pr-3 font-mono text-xs">{s.sessionId}</td>
+                        <td className="py-2 pr-3 text-xs text-white/40 whitespace-nowrap">{startedLabel}</td>
                         <td className="py-2 pr-3 text-xs">{s.source}</td>
                         <td className="py-2 pr-3 text-xs truncate max-w-[120px]" title={s.campaign ?? ""}>{s.campaign ?? "—"}</td>
                         <td className="py-2 pr-3">
@@ -443,8 +453,41 @@ export default function OverviewTab({ start, end }: { start: string; end: string
                           </div>
                         </td>
                         <td className={`py-2 pr-3 text-xs font-medium capitalize ${statusColors[s.status] ?? ""}`}>{s.status}</td>
-                        <td className="py-2 pr-3 text-xs tabular-nums">{s.timeInFunnel}m</td>
+                        <td className="py-2 pr-3 text-xs tabular-nums">{timeLabel}</td>
                       </tr>
+                      {expandedSession === s.sessionId && (
+                        <tr>
+                          <td colSpan={7} className="p-0">
+                            <div className="bg-[#0D0D17] border-b border-white/10 px-4 py-3 space-y-2">
+                              <div className="flex gap-6 text-[10px] text-white/40 mb-2">
+                                <span>Full token: <span className="font-mono text-white/60">{s.sessionId}</span></span>
+                                {s.diagnosticAnswers && Object.keys(s.diagnosticAnswers).length > 0 && (
+                                  <span>Diagnostics: {Object.entries(s.diagnosticAnswers).map(([k, v]) => `${k}=${v}`).join(", ")}</span>
+                                )}
+                              </div>
+                              <div className="space-y-0.5">
+                                {(s.events ?? []).map((ev: { event: string; value: string | null; createdAt: string }, idx: number) => {
+                                  const evTime = new Date(ev.createdAt);
+                                  const prevTime = idx > 0 ? new Date((s.events as { createdAt: string }[])[idx - 1].createdAt) : null;
+                                  const gap = prevTime ? Math.round((evTime.getTime() - prevTime.getTime()) / 1000) : 0;
+                                  return (
+                                    <div key={idx} className="flex items-center gap-3 text-[10px]">
+                                      <span className="text-white/30 tabular-nums w-20 shrink-0">
+                                        {evTime.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true })}
+                                      </span>
+                                      {idx > 0 && <span className="text-white/20 w-10 shrink-0 text-right">+{gap}s</span>}
+                                      {idx === 0 && <span className="w-10 shrink-0" />}
+                                      <span className="text-white/60 font-mono">{ev.event.replace("funnel_", "")}</span>
+                                      {ev.value && <span className="text-[#7C5CFC]/70">{ev.value}</span>}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                      </React.Fragment>
                     );
                   })}
                 </tbody>

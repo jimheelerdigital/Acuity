@@ -223,13 +223,24 @@ export function OnboardingFunnel() {
   const [apiError, setApiError] = useState<string | null>(null);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<"monthly" | "yearly">("monthly");
+  const [dynamicHook, setDynamicHook] = useState<{ headline: string; subheadline: string } | null>(null);
   const track = useFunnelTracker();
 
-  // Check URL params for return from Stripe
+  // Check URL params for return from Stripe + fetch dynamic pain hook
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("step") === "download") setStep("download");
     else if (params.get("step") === "paywall") setStep("paywall");
+
+    // Dynamic pain hook: look up ad creative from UTM params
+    const utmContent = params.get("utm_content");
+    const utmCampaign = params.get("utm_campaign");
+    if (utmContent || utmCampaign) {
+      fetch(`/api/onboarding/hook?${utmContent ? `creativeId=${encodeURIComponent(utmContent)}` : `campaign=${encodeURIComponent(utmCampaign!)}`}`)
+        .then((r) => r.ok ? r.json() : null)
+        .then((data) => { if (data?.headline) setDynamicHook(data); })
+        .catch(() => {}); // Silent fallback to default hook
+    }
   }, []);
 
   // If already logged in with active subscription, skip to download
@@ -356,7 +367,7 @@ export function OnboardingFunnel() {
         </button>
       )}
 
-      {step === "pain" && <PainHookScreen onContinue={() => setStep("diagnostic1")} />}
+      {step === "pain" && <PainHookScreen onContinue={() => setStep("diagnostic1")} dynamicHook={dynamicHook} />}
 
       {step === "diagnostic1" && (
         <DiagnosticScreen question="What's the loop you can't break?" options={DIAGNOSTIC1_OPTIONS} multiSelect={false}
@@ -417,8 +428,10 @@ export function OnboardingFunnel() {
 
 // ─── Screen 1: Pain Hook ─────────────────────────────────────────────────────
 
-function PainHookScreen({ onContinue }: { onContinue: () => void }) {
-  const words = ["Same", "week.", "Same", "loop.", "Same", "you."];
+function PainHookScreen({ onContinue, dynamicHook }: { onContinue: () => void; dynamicHook?: { headline: string; subheadline: string } | null }) {
+  const defaultWords = ["Same", "week.", "Same", "loop.", "Same", "you."];
+  const words = dynamicHook?.headline ? dynamicHook.headline.split(" ") : defaultWords;
+  const subText = dynamicHook?.subheadline || "Days blur. Nothing sticks. Life passes.";
   const [visibleWords, setVisibleWords] = useState(0);
   const [showSub, setShowSub] = useState(false);
   const [showBtn, setShowBtn] = useState(false);
@@ -429,7 +442,7 @@ function PainHookScreen({ onContinue }: { onContinue: () => void }) {
     timers.push(setTimeout(() => setShowSub(true), 200 + words.length * 200 + 600));
     timers.push(setTimeout(() => setShowBtn(true), 200 + words.length * 200 + 1000));
     return () => timers.forEach(clearTimeout);
-  }, []);
+  }, [words.length]);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-white text-zinc-900 relative overflow-hidden">
@@ -441,7 +454,7 @@ function PainHookScreen({ onContinue }: { onContinue: () => void }) {
           ))}
         </h1>
         <p className={`mt-6 text-zinc-500 text-base transition-all duration-500 ${showSub ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"}`}>
-          Days blur. Nothing sticks. Life passes.
+          {subText}
         </p>
         <ScreenTestimonial quote="I didn't realize I was living the same week on repeat until Acuity showed me." name="Priya R." />
         <div className={`mt-8 transition-all duration-300 ${showBtn ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
@@ -819,9 +832,12 @@ function CommitmentScreen({ track, onComplete }: { track: (event: string) => voi
               strokeDasharray={CIRCUMFERENCE} strokeDashoffset={CIRCUMFERENCE}
               transform="rotate(-90 60 60)" />
           </svg>
-          <button onPointerDown={startHold} onPointerUp={endHold} onPointerLeave={endHold} onPointerCancel={endHold}
+          <button
+            onPointerDown={startHold} onPointerUp={endHold} onPointerLeave={endHold} onPointerCancel={endHold}
+            onTouchStart={(e) => { e.preventDefault(); startHold(); }} onTouchEnd={endHold}
+            onContextMenu={(e) => e.preventDefault()}
             className={`absolute inset-4 rounded-full bg-[#7C5CFC]/5 border border-zinc-200 flex items-center justify-center transition active:bg-[#7C5CFC]/10 ${!holding && !completed ? "animate-[funnel-breathe_2s_ease-in-out_infinite]" : ""}`}
-            aria-label="Hold to commit" style={{ touchAction: "none" }}>
+            aria-label="Hold to commit" style={{ touchAction: "none", WebkitTouchCallout: "none", userSelect: "none" }}>
             <span className="text-3xl">{completed ? "\u2713" : ""}</span>
           </button>
         </div>
