@@ -41,6 +41,37 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-27] — Mirror screen: slow animation to ~15s + rewrite all copy to be emotionally confrontational
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 47bbf0a
+
+### In plain English (for Keenan)
+
+The "We heard you" mirror screen was showing lines too fast and the copy read like a data summary. Now it takes ~15 seconds for all content to appear, giving each line time to land. The copy has been completely rewritten for all 6 pain paths to be emotionally confrontational — the user should feel uncomfortably seen, like the screen knows them personally.
+
+Example before: "You tried a journaling app. It lasted less than a week. It stopped because too much effort."
+Example after: "You downloaded a journaling app because you read somewhere that writing helps. You used it for a few days. Then you stopped — not because it was bad, but because staring at a blank screen felt like one more thing to fail at."
+
+Every line for every answer option across all 6 branches has been individually rewritten with this intensity — including duration, cost, brain state, and desire lines.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/lib/funnel-config.ts`: Replaced generic `MIRROR_TEMPLATES` (one paragraph per branch) with per-answer lookup maps (`BLUR_LINE1`, `PATTERNS_LINE1`, `RUMINATION_LINE1`, `GRAVEYARD_LINE1`, `MASK_LINE1`, `DRIFT_LINE1`). Each Q2 answer option has a unique emotionally-weighted paragraph. Added `DURATION_LINES` (4 options), `COST_REWRITES` (6 options), `BRAIN_REWRITES` (5 options), `DESIRE_REWRITES` (4 options) — all rewritten with sensory, confrontational language. Total: ~40 unique copy blocks.
+- `apps/web/src/components/onboarding-funnel.tsx`: MirrorScreen timing: `firstLineAt=1600ms`, `LINE_INTERVAL=2000ms` (800ms fade + 1200ms pause), closing line after 2000ms pause, button after 1500ms. Header uses 0.6s animation. Line text bumped to `text-[15px]`. Closing line uses `text-lg font-bold`. Transition durations set to `duration-[800ms]`.
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- The GRAVEYARD branch Line 1 is a function (not a string) because it embeds the Q3 duration answer into the copy dynamically (e.g. "You used it for less than a week").
+- All other branches use direct string lookups keyed by the exact Q2 answer label.
+
+---
+
 ## [2026-05-27] — Paywall: dynamic pricing copy, price anchoring, urgency line
 
 **Requested by:** Keenan
