@@ -649,3 +649,52 @@ export function getSnapshotGoal(branch: Branch, answers: Record<string, string |
   }
   return SNAPSHOT_TEMPLATES[branch].goal;
 }
+
+// ─── Paywall Dynamic Headlines (Screen 15, Section 1) ───────────────────────
+
+export function getPaywallHeadline(branch: Branch, answers: Record<string, string | string[]>): string {
+  const dur = lc(String(answers.shared_q5 ?? "too long"));
+  const q2 = String(answers.branch_q2 ?? "");
+  const q3 = String(answers.branch_q3 ?? "");
+  switch (branch) {
+    case "blur": return `You\u2019ve been losing days for ${dur}. What\u2019s that worth?`;
+    case "patterns": return `The same cycle has been running for ${dur}. What\u2019s one more year of it cost?`;
+    case "rumination": return `Your brain has been keeping you up for ${dur}. What would you pay to sleep?`;
+    case "graveyard": return `You\u2019ve spent money on ${lc(q2 || "things")} that lasted ${lc(q3 || "a while")}. This costs less.`;
+    case "mask": return `You hold it together for ${lc(q2 || "everyone")} every day. Who holds it together for you?`;
+    case "drift": return `${String(answers.shared_q5 ?? "Months")} of drifting. How many more years before you do something?`;
+  }
+}
+
+// ─── Paywall Comparison (Section 2 — what didn't work vs Acuity) ────────────
+
+export function getComparisonLeft(branch: Branch, answers: Record<string, string | string[]>): { label: string; cost: string; result: string } {
+  const q2 = String(answers.branch_q2 ?? "");
+  const q3 = String(answers.branch_q3 ?? "");
+  switch (branch) {
+    case "blur": return { label: "Hoping tomorrow is different", cost: "Free", result: "It wasn\u2019t" };
+    case "patterns": return { label: "Talking it out", cost: "Free", result: "Same fight next week" };
+    case "rumination": return { label: "Scrolling until exhausted", cost: "Free", result: "Still awake at midnight" };
+    case "graveyard": return { label: q2 || "The last thing you tried", cost: "$0\u2013150/mo", result: `Lasted ${lc(q3 || "a while")}` };
+    case "mask": return { label: "Carrying it alone", cost: "Free", result: "Costing you everything" };
+    case "drift": return { label: "Meaning to change", cost: "Free", result: "Another year gone" };
+  }
+}
+
+// ─── Paywall FAQ (Section 7) ────────────────────────────────────────────────
+
+export const PAYWALL_FAQ = [
+  { q: "What happens during the free trial?", a: "Full access for 14 days. Record daily, get your first weekly report on Sunday, see your patterns emerge. Cancel anytime before day 14 and pay nothing." },
+  { q: "How does it actually work?", a: "Open the app. Talk for 60 seconds about whatever\u2019s on your mind. AI extracts your tasks, goals, mood, and themes. Every Sunday, you get a 400-word report connecting the dots across your week." },
+  { q: "Is it actually worth $4.99/month?", a: "One therapy session costs $150. One month of Acuity costs $4.99 and catches things therapists miss \u2014 because it listens every single day, not once a week. Your patterns don\u2019t wait for your next appointment." },
+  { q: "Is my data private?", a: "Your recordings are transcribed and deleted within 24 hours. Data is encrypted, never sold, never shared. This is your space." },
+  { q: "What if I\u2019ve tried everything and nothing works?", a: "Everything you tried before asked for effort \u2014 writing, meditating, showing up. Acuity asks for 60 seconds of talking. That\u2019s it. The AI does the rest. That\u2019s why it sticks when everything else didn\u2019t." },
+];
+
+// ─── Paywall Testimonials (outcome-specific) ────────────────────────────────
+
+export const PAYWALL_TESTIMONIALS_V2 = [
+  { quote: "I found out I mention quitting my job every Monday. I never noticed until the weekly report showed me. That one pattern changed everything.", name: "Sarah M." },
+  { quote: "My therapist asked what changed. I showed her my Acuity report. She said \u2018this is what I try to do in sessions.\u2019", name: "James K." },
+  { quote: "Week 3, Acuity told me I bring up my mom every time I\u2019m stressed about work. I\u2019ve been in therapy for a year and never connected those.", name: "Priya R." },
+];

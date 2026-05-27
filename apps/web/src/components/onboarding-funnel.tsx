@@ -25,6 +25,10 @@ import {
   TIMELINE_TEMPLATES,
   PAYWALL_HOOKS,
   PRICING_COPY,
+  getPaywallHeadline,
+  getComparisonLeft,
+  PAYWALL_FAQ,
+  PAYWALL_TESTIMONIALS_V2,
 } from "@/lib/funnel-config";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -54,24 +58,11 @@ const TOTAL_STEPS = STEP_ORDER.length;
 
 const APP_STORE_URL = "https://apps.apple.com/us/app/acuity-daily/id6762633410";
 
-const PAYWALL_OUTCOMES = [
-  { icon: "\uD83D\uDCCB", title: "Never lose a task again", desc: "Every action item you mention is captured automatically." },
-  { icon: "\uD83D\uDD0D", title: "See your patterns", desc: "Weekly reports surface what you can\u2019t see yourself." },
-  { icon: "\uD83C\uDFAF", title: "Track what matters", desc: "Goals tracked passively from your own words." },
-  { icon: "\uD83D\uDCD6", title: "A living record of your life", desc: "Monthly memoirs you\u2019ll actually want to read." },
-];
-
-const PAYWALL_TESTIMONIALS = [
-  { quote: "I didn\u2019t realize I was living the same week on repeat until Acuity showed me.", name: "Sarah M." },
-  { quote: "It\u2019s like having a life coach who actually remembers everything.", name: "James K." },
-  { quote: "The weekly report made me cry. In a good way.", name: "Priya R." },
-];
-
-const FAQ_ITEMS = [
-  { q: "What happens during the free trial?", a: "You get full access for 14 days. Cancel anytime before your trial ends and you won\u2019t be charged." },
-  { q: "How does it work?", a: "Open the app, tap record, talk for 60 seconds about whatever\u2019s on your mind. AI extracts your tasks, goals, mood, and themes instantly." },
-  { q: "Is my data private?", a: "Your recordings are transcribed and deleted within 24 hours. Your data is encrypted and never sold." },
-  { q: "Can I cancel anytime?", a: "Yes. Cancel in one tap from your account settings. No questions asked." },
+// Testimonials used on Download screen
+const DOWNLOAD_TESTIMONIALS = [
+  { quote: "I found out I mention quitting my job every Monday. That one pattern changed everything.", name: "Sarah M." },
+  { quote: "My therapist asked what changed. I showed her my Acuity report.", name: "James K." },
+  { quote: "Week 3, Acuity connected my mom to my work stress. A year of therapy never did.", name: "Priya R." },
 ];
 
 // ─── Session Tracking ───────────────────────────────────────────────────────
@@ -401,6 +392,7 @@ export function OnboardingFunnel() {
         <PaywallScreen
           key="paywall"
           branch={branch}
+          answers={answers}
           track={track}
           selectedPlan={selectedPlan}
           onPlanChange={setSelectedPlan}
@@ -857,8 +849,9 @@ function TimelineScreen({ branch, onContinue }: { branch: Branch; onContinue: ()
 
 // ─── Paywall + Inline Signup (Screen 15) ────────────────────────────────────
 
-function PaywallScreen({ branch, track, selectedPlan, onPlanChange, onCheckout, loading, error }: {
+function PaywallScreen({ branch, answers, track, selectedPlan, onPlanChange, onCheckout, loading, error }: {
   branch: Branch | null;
+  answers: Record<string, string | string[]>;
   track: (event: string, props?: Record<string, unknown>) => void;
   selectedPlan: "monthly" | "yearly"; onPlanChange: (p: "monthly" | "yearly") => void;
   onCheckout: () => void; loading: boolean; error: string | null;
@@ -871,40 +864,20 @@ function PaywallScreen({ branch, track, selectedPlan, onPlanChange, onCheckout, 
   const [name, setName] = useState("");
   const [authError, setAuthError] = useState<string | null>(null);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
-  const [testimonialIdx, setTestimonialIdx] = useState(0);
 
   const browserEnv = typeof window !== "undefined" ? detectBrowserEnv() : { isWebView: false, label: "ssr", ua: "" };
   const isWebView = browserEnv.isWebView;
   const isAuthenticated = status === "authenticated";
 
-  useEffect(() => {
-    const interval = setInterval(() => setTestimonialIdx((i) => (i + 1) % PAYWALL_TESTIMONIALS.length), 4000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const headline = branch ? PAYWALL_HOOKS[branch] : "You\u2019ve already taken the first step.";
+  const headline = branch ? getPaywallHeadline(branch, answers) : "You\u2019ve already taken the first step.";
+  const comparison = branch ? getComparisonLeft(branch, answers) : null;
   const annualMonthly = Math.round(ANNUAL_PRICE_CENTS / 12);
 
   const handleCTA = () => {
-    if (isAuthenticated) {
-      onCheckout();
-    } else {
-      setShowAuth(true);
-    }
+    if (isAuthenticated) { onCheckout(); } else { setShowAuth(true); }
   };
-
-  const handleGoogle = async () => {
-    setAuthLoading("google");
-    track("funnel_signup_attempted", { value: "google" });
-    await signIn("google", { callbackUrl: "/start?step=paywall" });
-  };
-
-  const handleApple = async () => {
-    setAuthLoading("apple");
-    track("funnel_signup_attempted", { value: "apple" });
-    await signIn("apple", { callbackUrl: "/start?step=paywall" });
-  };
-
+  const handleGoogle = async () => { setAuthLoading("google"); track("funnel_signup_attempted", { value: "google" }); await signIn("google", { callbackUrl: "/start?step=paywall" }); };
+  const handleApple = async () => { setAuthLoading("apple"); track("funnel_signup_attempted", { value: "apple" }); await signIn("apple", { callbackUrl: "/start?step=paywall" }); };
   const handleEmail = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError(null);
@@ -923,58 +896,88 @@ function PaywallScreen({ branch, track, selectedPlan, onPlanChange, onCheckout, 
       }
       track("funnel_signup_completed", { value: "email" });
       const result = await signIn("credentials", { email: email.trim(), password, redirect: false });
-      if (result?.ok) {
-        setShowAuth(false);
-        // Small delay for session to propagate, then trigger checkout
-        setTimeout(onCheckout, 500);
-      } else {
-        window.location.href = "/start?step=paywall";
-      }
-    } catch {
-      setAuthError("Something went wrong. Please try again.");
-    } finally { setAuthLoading(null); }
+      if (result?.ok) { setShowAuth(false); setTimeout(onCheckout, 500); }
+      else { window.location.href = "/start?step=paywall"; }
+    } catch { setAuthError("Something went wrong. Please try again."); }
+    finally { setAuthLoading(null); }
   };
 
   return (
     <div className="min-h-screen bg-white text-zinc-900 pb-32">
       <div className="max-w-lg mx-auto px-6 pt-16">
-        {/* Section 1 — Personalized Hook */}
-        <section className="text-center mb-16 funnel-screen">
-          <h2 className="text-[28px] sm:text-4xl font-bold tracking-tight leading-tight">{headline}</h2>
-          <p className="mt-3 text-sm text-zinc-500">14 days free. Cancel anytime.</p>
+
+        {/* Section 1 — Dynamic Headline */}
+        <section className="text-center mb-14 funnel-screen">
+          <h2 className="text-[26px] sm:text-[34px] font-bold tracking-tight leading-tight">{headline}</h2>
         </section>
 
-        {/* Section 2 — Outcomes */}
-        <section className="mb-16">
-          <div className="space-y-4">
-            {PAYWALL_OUTCOMES.map((item, i) => (
-              <div key={i} className="flex items-start gap-4 rounded-xl border border-zinc-200 bg-white px-5 py-4 funnel-card-stagger" style={{ animationDelay: `${150 + i * 100}ms` }}>
-                <span className="text-2xl shrink-0 mt-0.5">{item.icon}</span>
+        {/* Section 2 — The Comparison */}
+        {comparison && (
+          <section className="mb-14 funnel-card-stagger" style={{ animationDelay: "100ms" }}>
+            <p className="text-xs font-bold uppercase tracking-[0.15em] text-zinc-400 text-center mb-4">What you&rsquo;ve tried vs. what Acuity costs</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-red-400 mb-2">What didn&rsquo;t work</p>
+                <p className="text-sm font-semibold text-zinc-800 mb-1">{comparison.label}</p>
+                <p className="text-xs text-zinc-500">{comparison.cost}</p>
+                <p className="text-xs text-red-400 font-medium mt-2">{comparison.result}</p>
+              </div>
+              <div className="rounded-xl border-2 border-[#7C5CFC] bg-[#7C5CFC]/5 p-4">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[#7C5CFC] mb-2">Acuity</p>
+                <p className="text-sm font-semibold text-zinc-800 mb-1">60 seconds a day</p>
+                <p className="text-xs text-zinc-500">{formatDollars(MONTHLY_PRICE_CENTS)}/month</p>
+                <p className="text-xs text-emerald-500 font-medium mt-2">Patterns visible in 7 days</p>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* Section 3 — What $4.99/month gets you (outcomes, not features) */}
+        <section className="mb-14">
+          <p className="text-sm text-zinc-600 text-center mb-5">Every month for less than one coffee, you get:</p>
+          <div className="space-y-3">
+            {[
+              { num: "~30", label: "debriefs captured", desc: "Everything you said, organized, searchable." },
+              { num: "4", label: "weekly reports", desc: "A 400-word narrative of your week that reads like a therapy session." },
+              { num: "1", label: "monthly memoir", desc: "A PDF of your month you\u2019ll actually want to read." },
+              { num: "\u221E", label: "pattern detection", desc: "Connections between your days you\u2019d never see alone." },
+              { num: "6", label: "Life Matrix domains", desc: "Health, Career, Relationships, Growth, Fun, Purpose \u2014 scored by your own words." },
+            ].map((item, i) => (
+              <div key={i} className="flex items-start gap-4 funnel-card-stagger" style={{ animationDelay: `${200 + i * 80}ms` }}>
+                <span className="text-lg font-bold text-[#7C5CFC] w-8 shrink-0 text-right tabular-nums">{item.num}</span>
                 <div>
-                  <p className="text-sm font-semibold text-zinc-900">{item.title}</p>
-                  <p className="text-xs text-zinc-500 mt-0.5 leading-relaxed">{item.desc}</p>
+                  <p className="text-sm font-semibold text-zinc-900">{item.label}</p>
+                  <p className="text-xs text-zinc-500 leading-relaxed">{item.desc}</p>
                 </div>
               </div>
             ))}
           </div>
+          <div className="mt-8 rounded-xl bg-zinc-50 border border-zinc-200 px-5 py-4 text-center">
+            <p className="text-sm text-zinc-700 leading-relaxed">
+              <span className="font-semibold">One therapy session: $150.</span>{" "}
+              <span className="font-semibold">One month of Acuity: {formatDollars(MONTHLY_PRICE_CENTS)}.</span>{" "}
+              The insight is the same &mdash; except Acuity never forgets what you said last week.
+            </p>
+          </div>
         </section>
 
-        {/* Section 3 — Social Proof */}
-        <section className="mb-16 text-center">
-          <p className="text-sm font-semibold text-zinc-500 mb-1">
+        {/* Section 4 — Social Proof */}
+        <section className="mb-14">
+          <p className="text-sm font-semibold text-zinc-500 text-center mb-4">
             4.9 <span className="text-amber-400">&#9733;&#9733;&#9733;&#9733;&#9733;</span> from 127+ users
           </p>
-          <div className="mt-3 min-h-[60px] relative">
-            {PAYWALL_TESTIMONIALS.map((t, i) => (
-              <div key={i} className={`transition-opacity duration-500 ${i === testimonialIdx ? "opacity-100" : "opacity-0 absolute inset-0"}`}>
-                <p className="text-xs italic text-zinc-400">&ldquo;{t.quote}&rdquo; &mdash; {t.name}</p>
+          <div className="space-y-3">
+            {PAYWALL_TESTIMONIALS_V2.map((t, i) => (
+              <div key={i} className="rounded-xl border border-zinc-200 bg-white px-5 py-4 funnel-card-stagger" style={{ animationDelay: `${300 + i * 100}ms` }}>
+                <p className="text-xs text-zinc-600 leading-relaxed italic">&ldquo;{t.quote}&rdquo;</p>
+                <p className="text-[11px] text-zinc-400 font-medium mt-2">&mdash; {t.name}</p>
               </div>
             ))}
           </div>
         </section>
 
-        {/* Section 4 — Pricing */}
-        <section className="mb-16">
+        {/* Section 5 — Pricing */}
+        <section className="mb-14">
           {branch && (
             <p className="text-sm text-zinc-600 text-center mb-5">{PRICING_COPY[branch]}</p>
           )}
@@ -999,15 +1002,15 @@ function PaywallScreen({ branch, track, selectedPlan, onPlanChange, onCheckout, 
           </p>
         </section>
 
-        {/* Section 5 — FAQ */}
+        {/* Section 7 — FAQ */}
         <section className="mb-16">
           <div className="space-y-2">
-            {FAQ_ITEMS.map((faq, i) => (
+            {PAYWALL_FAQ.map((faq, i) => (
               <div key={i} className="rounded-xl border border-zinc-200 overflow-hidden">
                 <button onClick={() => setOpenFaq(openFaq === i ? null : i)}
                   className="w-full flex items-center justify-between px-5 py-3.5 text-left text-sm font-medium text-zinc-900">
                   {faq.q}
-                  <span className={`text-zinc-400 transition-transform ${openFaq === i ? "rotate-180" : ""}`}>&#9662;</span>
+                  <span className={`text-zinc-400 transition-transform shrink-0 ml-2 ${openFaq === i ? "rotate-180" : ""}`}>&#9662;</span>
                 </button>
                 {openFaq === i && (
                   <div className="px-5 pb-4">
@@ -1020,7 +1023,7 @@ function PaywallScreen({ branch, track, selectedPlan, onPlanChange, onCheckout, 
         </section>
       </div>
 
-      {/* Sticky CTA */}
+      {/* Section 6 — Sticky CTA */}
       <div className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur border-t border-zinc-100 px-6 py-4 safe-area-pb">
         <div className="max-w-lg mx-auto">
           {error && <p className="text-xs text-red-500 text-center mb-2">{error}</p>}
@@ -1040,14 +1043,11 @@ function PaywallScreen({ branch, track, selectedPlan, onPlanChange, onCheckout, 
           <div className="relative w-full max-w-lg bg-white rounded-t-2xl px-6 pt-6 pb-10 safe-area-pb animate-[funnel-slide-up_0.3s_ease-out]">
             <div className="w-10 h-1 rounded-full bg-zinc-200 mx-auto mb-6" />
             <h3 className="text-lg font-bold text-center mb-6">Create your account</h3>
-
             {isWebView && (
               <div className="mb-4 rounded-lg bg-amber-50 border border-amber-200 px-4 py-3">
                 <p className="text-xs text-amber-700">Open in Safari or Chrome for Google/Apple sign in.</p>
               </div>
             )}
-
-            {/* OAuth */}
             <div className="space-y-3 mb-4">
               <button onClick={handleGoogle} disabled={authLoading !== null || isWebView}
                 className="flex w-full items-center justify-center gap-3 rounded-full border border-zinc-200 bg-white px-6 py-3.5 text-[15px] font-semibold text-zinc-700 transition hover:bg-zinc-50 active:scale-[0.98] disabled:opacity-50">
@@ -1058,15 +1058,11 @@ function PaywallScreen({ branch, track, selectedPlan, onPlanChange, onCheckout, 
                 <AppleLogo />{authLoading === "apple" ? "Redirecting\u2026" : "Continue with Apple"}
               </button>
             </div>
-
-            {/* Divider */}
             <div className="my-4 flex items-center gap-3">
               <div className="h-px flex-1 bg-zinc-200" />
               <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-400">or</span>
               <div className="h-px flex-1 bg-zinc-200" />
             </div>
-
-            {/* Email form */}
             <form onSubmit={handleEmail} className="space-y-3">
               <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name (optional)" autoComplete="name"
                 className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 outline-none focus:border-[#7C5CFC] focus:ring-2 focus:ring-[#7C5CFC]/20" />
@@ -1106,7 +1102,7 @@ function DownloadScreen({ track }: { track: (event: string) => void }) {
   }, []);
 
   useEffect(() => {
-    const interval = setInterval(() => setTestimonialIdx((i) => (i + 1) % PAYWALL_TESTIMONIALS.length), 4000);
+    const interval = setInterval(() => setTestimonialIdx((i) => (i + 1) % DOWNLOAD_TESTIMONIALS.length), 4000);
     return () => clearInterval(interval);
   }, []);
 
@@ -1139,7 +1135,7 @@ function DownloadScreen({ track }: { track: (event: string) => void }) {
             4.9 <span className="text-amber-400">&#9733;&#9733;&#9733;&#9733;&#9733;</span> from 127+ users
           </p>
           <div className="mt-3 min-h-[60px] relative">
-            {PAYWALL_TESTIMONIALS.map((t, i) => (
+            {DOWNLOAD_TESTIMONIALS.map((t, i) => (
               <div key={i} className={`transition-opacity duration-500 ${i === testimonialIdx ? "opacity-100" : "opacity-0 absolute inset-0"}`}>
                 <p className="text-xs italic text-zinc-400">&ldquo;{t.quote}&rdquo; &mdash; {t.name}</p>
               </div>
