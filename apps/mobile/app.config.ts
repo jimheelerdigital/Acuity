@@ -76,6 +76,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
 
   return {
     ...(config as ExpoConfig),
+    entryPoint: "expo-router/entry",
     plugins,
     extra,
   };
