@@ -41,6 +41,62 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-27] — 9 analytics features added to Funnel Analytics dashboard
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 5e27675
+
+### In plain English (for Keenan)
+
+The Funnel Analytics dashboard now has everything needed to optimize conversion:
+
+1. **Time Per Step** — horizontal bar chart showing median time users spend on each screen. Green = fast/engaged, yellow = hesitating, red = confused. If Q7 takes 45 seconds, the question is broken.
+2. **Answer Distribution** — bar charts showing what % of users picked each option on every question. Shows which pains resonate, which options nobody picks, and whether ad targeting matches real pain.
+3. **Drop-off Analysis** — table showing where people leave, which branch they were on, and how long they stared at the screen before leaving.
+4. **Branch Conversion Comparison** — expanded table with step-by-step conversion per branch (Entry→Q4, Q4→Mirror, Mirror→Commit, Commit→Paywall, Paywall→Paid). Shows exactly where each branch breaks down.
+5. **Session Replay** — clicking a session row now shows a visual timeline with timestamps, actual answers selected, time between steps (yellow >20s, red >40s), and "DROPPED" label on the last event.
+6. **Daily Completion Rate** — bar chart showing daily (Paid/Entry) %. See if changes improve conversion over time.
+7. **Real-time Indicator** — green pulse showing how many people are in the funnel right now, plus the most recent payment.
+8. **Campaign Names** — raw experiment IDs resolved to readable names from AdLab.
+9. **Reset Metrics** — button that sets a new baseline timestamp. Old data excluded from all dashboards. Shows "Metrics since [date]" next to the button.
+
+### Technical changes (for Jimmy)
+
+**Backend (`metrics/route.ts`):**
+- `timePerStep`: computes median time between consecutive _viewed events per step (ignores >10min gaps)
+- `answerDistribution`: aggregates _selected event values for all 9 questions, handles Q6 multi-select split
+- `dropOffAnalysis`: groups dropped/stalled sessions by last step, counts per branch, computes avg time on drop screen
+- `branchBreakdown` expanded: entryToQ4, q4ToMirror, mirrorToCommit, commitToPaywall, paywallToPaid per branch
+- `dailyRates`: per-day entry/paid/rate from session started dates
+- `activeSessions`: count of sessions with lastEvent < 5 min ago
+- `recentPayments`: last 5 paid sessions with branch + campaign
+- `campaignNames`: looks up AdLabExperiment by campaign ID, returns campaignName or topicBrief
+- `resetAfter` param: overrides FUNNEL_V2_EPOCH when passed from client
+- `effectiveStart` returned so client can display "Metrics since"
+- Campaign funnel steps updated to v2 keys (branch_q2, mirror, commit, signup, paid)
+
+**Frontend (`FunnelAnalyticsTab.tsx`):**
+- Complete rewrite — all 9 sections added
+- Reset Metrics: stores timestamp in localStorage (`acuity_funnel_reset_ts`), passes as `resetAfter` query param
+- Daily rate chart: simple bar chart, last 30 days, color-coded (green >=5%, amber >0%, grey 0)
+- Time per step: horizontal bars with green/yellow/red thresholds
+- Answer distribution: per-question bars with count + percentage
+- Session replay: color-coded gaps (green/yellow/red), DROPPED label, branch shown
+- Campaign names resolved via `campaignNames` map from backend
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- Reset Metrics timestamp is stored in the browser's localStorage, not the database. Each admin user has their own reset timestamp. If you need a shared reset, change the `FUNNEL_V2_EPOCH` constant in metrics/route.ts.
+- The `campaignNames` lookup queries AdLabExperiment by ID. If the campaign value isn't a valid experiment ID (e.g. "direct / organic"), it falls through gracefully.
+- Time per step ignores gaps >10 minutes (assumes user left and came back). Median is used instead of average to avoid outlier skew.
+
+---
+
 ## [2026-05-27] — Fix crashing Funnel Analytics tab + add v2 epoch cutoff
 
 **Requested by:** Keenan
