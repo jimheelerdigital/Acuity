@@ -540,40 +540,44 @@ function MirrorScreen({ branch, answers, onContinue }: {
   const [showClosing, setShowClosing] = useState(false);
   const [showBtn, setShowBtn] = useState(false);
 
+  // Slow, deliberate timing: header 600ms fade → 1s pause → each line 800ms fade
+  // + 1.2s pause → 2s pause → closing → 1.5s → button. Total ~15s.
   useEffect(() => {
     const timers: ReturnType<typeof setTimeout>[] = [];
-    // Header fades in at 400ms, then lines stagger
+    const LINE_INTERVAL = 2000; // 800ms fade + 1200ms pause
+    const firstLineAt = 1600; // 600ms header fade + 1000ms pause
     lines.forEach((_, i) => {
-      timers.push(setTimeout(() => setVisibleLines(i + 1), 1200 + i * 800));
+      timers.push(setTimeout(() => setVisibleLines(i + 1), firstLineAt + i * LINE_INTERVAL));
     });
-    timers.push(setTimeout(() => setShowClosing(true), 1200 + lines.length * 800 + 1200));
-    timers.push(setTimeout(() => setShowBtn(true), 1200 + lines.length * 800 + 2000));
+    const lastLineAt = firstLineAt + (lines.length - 1) * LINE_INTERVAL;
+    timers.push(setTimeout(() => setShowClosing(true), lastLineAt + 2000));
+    timers.push(setTimeout(() => setShowBtn(true), lastLineAt + 2000 + 1500));
     return () => timers.forEach(clearTimeout);
   }, [lines.length]);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-white text-zinc-900">
       <div className="max-w-md w-full">
-        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-center mb-10 funnel-screen">
+        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-center mb-10"
+          style={{ animation: "funnel-slide-up 0.6s ease-out both" }}>
           We heard you.
         </h2>
         <div className="space-y-6">
           {lines.map((line, i) => (
             <div
               key={i}
-              className={`border-l-2 border-[#7C5CFC]/40 pl-5 transition-all duration-600 ${
-                i < visibleLines ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+              className={`border-l-2 border-[#7C5CFC]/40 pl-5 transition-all duration-[800ms] ease-out ${
+                i < visibleLines ? "opacity-100 translate-y-0" : "opacity-0 translate-y-[15px]"
               }`}
-              style={{ transitionDelay: "0ms" }}
             >
-              <p className="text-sm text-zinc-700 leading-relaxed">{line}</p>
+              <p className="text-[15px] text-zinc-700 leading-relaxed">{line}</p>
             </div>
           ))}
         </div>
-        <div className={`mt-10 text-center transition-all duration-500 ${showClosing ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"}`}>
-          <p className="text-base font-semibold text-zinc-900">You don&rsquo;t have to keep living like this.</p>
+        <div className={`mt-10 text-center transition-all duration-[800ms] ease-out ${showClosing ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"}`}>
+          <p className="text-lg font-bold text-zinc-900">You don&rsquo;t have to keep living like this.</p>
         </div>
-        <div className={`mt-8 text-center transition-all duration-300 ${showBtn ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
+        <div className={`mt-8 text-center transition-all duration-500 ${showBtn ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
           <button onClick={onContinue}
             className="rounded-full bg-[#7C5CFC] px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]">
             Continue
