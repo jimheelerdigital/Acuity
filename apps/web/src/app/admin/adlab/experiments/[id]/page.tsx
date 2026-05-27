@@ -2053,22 +2053,36 @@ function FunnelCopyEditor({ experiment, onSave }: { experiment: Experiment; onSa
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<{ ok: boolean; msg: string } | null>(null);
   const [painHook, setPainHook] = useState(experiment.customPainHook || "");
   const [bridge, setBridge] = useState(experiment.customBridge || "");
   const [promise, setPromise] = useState(experiment.customPromise || "");
   const [paywallHook, setPaywallHook] = useState(experiment.customPaywallHook || "");
 
+  const hasAnyCopy = !!(painHook || bridge || promise || paywallHook);
+  const previewUrl = `https://getacuity.io/start?utm_source=preview&utm_medium=adlab&utm_campaign=${experiment.id}`;
+
   async function save() {
     setSaving(true);
+    setSaveStatus(null);
     try {
-      await fetch(`/api/admin/adlab/experiments/${experiment.id}/funnel-copy`, {
+      const res = await fetch(`/api/admin/adlab/experiments/${experiment.id}/funnel-copy`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ customPainHook: painHook || null, customBridge: bridge || null, customPromise: promise || null, customPaywallHook: paywallHook || null }),
       });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setSaveStatus({ ok: false, msg: body.error || `Save failed (${res.status})` });
+        return;
+      }
+      setSaveStatus({ ok: true, msg: "Funnel copy saved" });
       onSave();
-    } catch {}
-    setSaving(false);
+    } catch (err) {
+      setSaveStatus({ ok: false, msg: err instanceof Error ? err.message : "Network error — check your connection" });
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function generateCopy() {
@@ -2132,11 +2146,35 @@ function FunnelCopyEditor({ experiment, onSave }: { experiment: Experiment; onSa
             <label className="text-[10px] text-[#A0A0B8] block mb-1">Screen 14 — Paywall Hook</label>
             <textarea value={paywallHook} onChange={(e) => setPaywallHook(e.target.value)} className={inputClass} placeholder="You've already seen the pattern. Now let Acuity track it for you." />
           </div>
-          <button onClick={save} disabled={saving}
-            className="inline-flex items-center gap-2 rounded-lg bg-[#7C5CFC] px-4 py-2 text-xs font-semibold text-white hover:bg-[#6B4FE0] transition disabled:opacity-50">
-            {saving && <Loader2 className="h-3 w-3 animate-spin" />}
-            Save Funnel Copy
-          </button>
+          <div className="flex items-center gap-3 flex-wrap">
+            <button onClick={save} disabled={saving}
+              className="inline-flex items-center gap-2 rounded-lg bg-[#7C5CFC] px-4 py-2 text-xs font-semibold text-white hover:bg-[#6B4FE0] transition disabled:opacity-50">
+              {saving && <Loader2 className="h-3 w-3 animate-spin" />}
+              Save Funnel Copy
+            </button>
+            {saveStatus && (
+              <span className={`text-xs font-medium ${saveStatus.ok ? "text-emerald-400" : "text-red-400"}`}>
+                {saveStatus.msg}
+              </span>
+            )}
+          </div>
+          {hasAnyCopy && (
+            <div className="mt-3 rounded-lg border border-white/10 bg-[#1E1E2E] p-3 space-y-2">
+              <a href={previewUrl} target="_blank" rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#7C5CFC] hover:text-[#A78BFA] transition">
+                Preview Funnel &rarr;
+              </a>
+              <div className="flex items-center gap-2">
+                <input readOnly value={previewUrl}
+                  className="flex-1 rounded border border-white/10 bg-[#0D0D17] px-2 py-1 text-[10px] text-[#A0A0B8] font-mono outline-none select-all"
+                  onFocus={(e) => e.target.select()} />
+                <button onClick={() => { navigator.clipboard.writeText(previewUrl); }}
+                  className="shrink-0 rounded border border-white/10 px-2 py-1 text-[10px] text-[#A0A0B8] hover:text-white hover:border-white/20 transition">
+                  Copy
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
