@@ -19,10 +19,10 @@ import {
   SHARED_QUESTIONS,
   buildMirrorLines,
   PROCESSING_STAGES,
-  SNAPSHOT_TEMPLATES,
-  DESIRE_TO_THEME,
-  getSnapshotGoal,
-  TIMELINE_TEMPLATES,
+  getSnapshotInsight,
+  SNAPSHOT_PREVIEWS,
+  SNAPSHOT_BOTTOM,
+  getTimelineWeeks,
   PAYWALL_HOOKS,
   PRICING_COPY,
   getPaywallHeadline,
@@ -384,7 +384,7 @@ export function OnboardingFunnel() {
 
       {/* ── Personalized Timeline (Screen 14) ── */}
       {step === "timeline" && branch && (
-        <TimelineScreen key="timeline" branch={branch} onContinue={() => setStep("paywall")} />
+        <TimelineScreen key="timeline" branch={branch} answers={answers} onContinue={() => setStep("paywall")} />
       )}
 
       {/* ── Paywall + Inline Signup (Screen 15) ── */}
@@ -714,72 +714,52 @@ function ProcessingTheater({ onComplete }: { onComplete: () => void }) {
 function SnapshotScreen({ branch, answers, onContinue }: {
   branch: Branch; answers: Record<string, string | string[]>; onContinue: () => void;
 }) {
-  const snap = SNAPSHOT_TEMPLATES[branch];
-  const goal = getSnapshotGoal(branch, answers);
-  const desire = String(answers.shared_q9 ?? "");
-  const theme = DESIRE_TO_THEME[desire] ?? snap.theme;
-  const [visibleSections, setVisibleSections] = useState(0);
+  const insight = getSnapshotInsight(branch, answers);
+  const previews = SNAPSHOT_PREVIEWS[branch];
+  const bottomLine = SNAPSHOT_BOTTOM[branch];
+  const [vis, setVis] = useState(0);
 
   useEffect(() => {
     const timers: ReturnType<typeof setTimeout>[] = [];
-    for (let i = 1; i <= 5; i++) {
-      timers.push(setTimeout(() => setVisibleSections(i), 400 + i * 500));
-    }
+    for (let i = 1; i <= 6; i++) timers.push(setTimeout(() => setVis(i), 600 + i * 800));
     return () => timers.forEach(clearTimeout);
   }, []);
 
-  const vis = (at: number) => visibleSections >= at ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4";
+  const show = (at: number) => vis >= at ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4";
 
   return (
     <div className="min-h-screen flex flex-col items-center px-6 py-16 bg-white text-zinc-900">
       <div className="max-w-md w-full">
-        <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-center mb-2 funnel-screen">
-          Here&rsquo;s what one 60-second debrief reveals.
+        <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-center mb-10 funnel-screen">
+          In 60 seconds, you said more than you realize.
         </h2>
-        <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#7C5CFC] text-center mb-8">Day 1</p>
 
-        {/* Mood */}
-        <div className={`mb-5 rounded-2xl bg-white border border-zinc-200 p-5 transition-all duration-500 ${vis(1)}`}
-          style={{ boxShadow: visibleSections >= 1 ? "0 0 24px 4px rgba(245,158,11,0.12)" : "none" }}>
-          <div className="flex items-center gap-2 mb-2">
-            <MoodDot mood="NEUTRAL" />
-            <span className="text-sm font-semibold text-zinc-800">Overwhelmed</span>
-            <span className="text-xs text-zinc-400">&rarr; Aware</span>
-          </div>
-          <p className="text-xs text-zinc-500">First debrief captured. Awareness is the first shift.</p>
+        {/* Section 1 — The Pattern You Can't See */}
+        <div className={`mb-10 rounded-2xl border-2 border-[#7C5CFC]/30 bg-white p-6 transition-all duration-[800ms] ${show(1)}`}
+          style={{ boxShadow: vis >= 1 ? "0 0 24px 4px rgba(124,92,252,0.1)" : "none" }}>
+          <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#7C5CFC] mb-3">The pattern you can&rsquo;t see</p>
+          <p className="text-[15px] text-zinc-700 leading-relaxed">{insight}</p>
         </div>
 
-        {/* Tasks */}
-        <div className={`mb-5 transition-all duration-500 ${vis(2)}`}>
-          <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#7C5CFC] mb-3">Tasks Extracted</p>
-          <div className="space-y-2">
-            {snap.tasks.map((t, i) => (
-              <div key={i} className="flex items-start gap-3 rounded-xl bg-white border border-zinc-200 px-4 py-3" style={{ borderLeft: "3px solid #7C5CFC" }}>
-                <p className="text-sm text-zinc-700">{t}</p>
+        {/* Section 2 — What One Week Reveals */}
+        <div className={`mb-10 transition-all duration-[800ms] ${show(2)}`}>
+          <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-zinc-400 mb-4">What one week reveals</p>
+          <div className="space-y-3">
+            {previews.map((p, i) => (
+              <div key={i} className={`rounded-xl bg-zinc-50 border border-zinc-200 px-4 py-3 transition-all duration-500 ${vis >= 3 + i ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"}`}
+                style={{ borderLeft: "3px solid #7C5CFC" }}>
+                <p className="text-xs text-zinc-600 leading-relaxed font-mono">{p}</p>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Goal */}
-        <div className={`mb-5 transition-all duration-500 ${vis(3)}`}>
-          <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#7C5CFC] mb-3">Goal Tracked</p>
-          <div className="rounded-xl bg-white border border-zinc-200 px-4 py-3" style={{ borderLeft: "3px solid #A78BFA" }}>
-            <p className="text-sm text-zinc-700">{goal}</p>
-          </div>
+        {/* Section 3 — Bottom Line */}
+        <div className={`mb-8 text-center transition-all duration-[800ms] ${show(5)}`}>
+          <p className="text-base font-semibold text-zinc-900 leading-relaxed">{bottomLine}</p>
         </div>
 
-        {/* Theme */}
-        <div className={`mb-8 transition-all duration-500 ${vis(4)}`}>
-          <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#7C5CFC] mb-3">Theme Detected</p>
-          <div className="rounded-xl bg-[#7C5CFC]/5 border border-[#7C5CFC]/20 px-4 py-3">
-            <p className="text-sm font-medium text-[#7C5CFC]">{theme}</p>
-          </div>
-        </div>
-
-        {/* CTA */}
-        <div className={`text-center transition-all duration-500 ${vis(5)}`}>
-          <p className="text-xs text-zinc-500 mb-6">This is what 60 seconds of talking produces. Do this daily and watch the patterns emerge.</p>
+        <div className={`text-center transition-all duration-500 ${show(6)}`}>
           <button onClick={onContinue}
             className="rounded-full bg-[#7C5CFC] px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]">
             Continue
@@ -792,17 +772,17 @@ function SnapshotScreen({ branch, answers, onContinue }: {
 
 // ─── Personalized Timeline (Screen 14) ──────────────────────────────────────
 
-function TimelineScreen({ branch, onContinue }: { branch: Branch; onContinue: () => void }) {
-  const weeks = TIMELINE_TEMPLATES[branch];
+function TimelineScreen({ branch, answers, onContinue }: { branch: Branch; answers: Record<string, string | string[]>; onContinue: () => void }) {
+  const weeks = getTimelineWeeks(branch, answers);
   const [visibleNodes, setVisibleNodes] = useState(0);
   const [showBtn, setShowBtn] = useState(false);
 
   useEffect(() => {
     const timers: ReturnType<typeof setTimeout>[] = [];
     weeks.forEach((_, i) => {
-      timers.push(setTimeout(() => setVisibleNodes(i + 1), 600 + i * 700));
+      timers.push(setTimeout(() => setVisibleNodes(i + 1), 600 + i * 900));
     });
-    timers.push(setTimeout(() => setShowBtn(true), 600 + weeks.length * 700 + 500));
+    timers.push(setTimeout(() => setShowBtn(true), 600 + weeks.length * 900 + 600));
     return () => timers.forEach(clearTimeout);
   }, [weeks.length]);
 
@@ -810,7 +790,7 @@ function TimelineScreen({ branch, onContinue }: { branch: Branch; onContinue: ()
     <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-white text-zinc-900">
       <div className="max-w-md w-full">
         <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-center mb-10 funnel-screen">
-          Here&rsquo;s what the next 30 days look like.
+          This is what changes.
         </h2>
         <div className="relative">
           <div className="absolute left-3 top-2 bottom-2 w-0.5 bg-zinc-200 overflow-hidden">

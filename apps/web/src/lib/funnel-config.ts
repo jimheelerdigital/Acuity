@@ -489,69 +489,73 @@ export function buildMirrorLines(branch: Branch, answers: Record<string, string 
   return lines;
 }
 
-// ─── Snapshot Templates (Screen 13) ─────────────────────────────────────────
+// ─── Snapshot: Pattern Insight (Screen 13, Section 1) ────────────────────────
 
-export interface SnapshotData {
-  tasks: string[];
-  goal: string;
-  theme: string;
+export function getSnapshotInsight(branch: Branch, a: Record<string, string | string[]>): string {
+  const q2 = lc(String(a.branch_q2 ?? ""));
+  const q3 = lc(String(a.branch_q3 ?? ""));
+  const q4 = lc(String(a.branch_q4 ?? ""));
+  const q9 = lc(String(a.shared_q9 ?? "what\u2019s driving this"));
+  switch (branch) {
+    case "blur":
+      return `You described your days as ${q2}. But you also said you want to know ${q9}. That gap \u2014 between how you\u2019re living and what you\u2019re looking for \u2014 is the pattern. Acuity tracks it daily until you can see it yourself.`;
+    case "patterns":
+      return `You said ${q2} keeps repeating. You feel ${q3} every time. There\u2019s a trigger hiding in the 48 hours before it happens. Acuity finds it.`;
+    case "rumination":
+      return `Your brain turns on ${q2}. It runs through ${q3}. There\u2019s a pattern in WHEN it starts \u2014 a specific moment earlier in your day that lights the fuse. Acuity catches that moment.`;
+    case "graveyard":
+      return `${String(a.branch_q2 ?? "What you tried")} lasted ${q3} before you stopped. It failed because ${q4}. Acuity works because it asks for 60 seconds of talking \u2014 not discipline, not structure, not a blank page.`;
+    case "mask":
+      return `You said you need ${q4}. But you\u2019ve been saying \u201c${lc(String(a.branch_q3 ?? "\u2018fine\u2019"))}\u201d when people ask. The distance between those two answers is exactly what Acuity measures \u2014 every day, without you performing.`;
+    case "drift":
+      return `${String(a.branch_q4 ?? "What matters most")} slipped the most. You\u2019ve known for ${q2}. Every week that passes without tracking it is another week of evidence you\u2019ll never get back. Acuity starts collecting it today.`;
+  }
 }
 
-export const SNAPSHOT_TEMPLATES: Record<Branch, SnapshotData> = {
-  blur: {
-    tasks: [
-      "\u2610 Review last week\u2019s calendar for patterns",
-      "\u2610 Set 3 priorities for tomorrow",
-      "\u2610 Block 30 minutes for the thing you keep postponing",
-    ],
-    goal: "\uD83C\uDFAF Build a record of my days \u2192 0% this week",
-    theme: "Memory Gap: Untracked \u2014 recording begins",
-  },
-  patterns: {
-    tasks: [
-      "\u2610 Write down what triggered today\u2019s cycle",
-      "\u2610 Ask the other person how they experienced it",
-      "\u2610 Notice the pattern next time before reacting",
-    ],
-    goal: "\uD83C\uDFAF Break the cycle \u2192 0% this week",
-    theme: "Recurring Conflict: Unresolved \u2014 tracking begins",
-  },
-  rumination: {
-    tasks: [
-      "\u2610 Do a 60-second brain dump before bed tonight",
-      "\u2610 Write down the 3 thoughts that keep looping",
-      "\u2610 Schedule the thing you keep worrying about",
-    ],
-    goal: "\uD83C\uDFAF Process my day before bed \u2192 0% this week",
-    theme: "Rumination Loop: Active \u2014 tracking begins",
-  },
-  graveyard: {
-    tasks: [
-      "\u2610 Delete one app you\u2019re not using",
-      "\u2610 Try Acuity for 7 days instead",
-      "\u2610 Set a reminder to check your weekly report Sunday",
-    ],
-    goal: "\uD83C\uDFAF Stick with one thing for 30 days \u2192 0% this week",
-    theme: "Commitment Pattern: Short cycles \u2014 tracking begins",
-  },
-  mask: {
-    tasks: [
-      "\u2610 Tell one person how you actually feel this week",
-      "\u2610 Take 10 minutes for yourself today \u2014 no screens",
-      "\u2610 Read your weekly report before saying \u2018I\u2019m fine\u2019 again",
-    ],
-    goal: "\uD83C\uDFAF Check in with myself daily \u2192 0% this week",
-    theme: "Emotional Masking: High \u2014 tracking begins",
-  },
-  drift: {
-    tasks: [
-      "\u2610 Write down one thing you used to care about",
-      "\u2610 Compare this week to what you wanted 2 years ago",
-      "\u2610 Pick one small thing to reclaim this week",
-    ],
-    goal: "\uD83C\uDFAF Reconnect with what matters \u2192 0% this week",
-    theme: "Life Direction: Off-course \u2014 tracking begins",
-  },
+// ─── Snapshot: Weekly Report Previews (Screen 13, Section 2) ────────────────
+
+export const SNAPSHOT_PREVIEWS: Record<Branch, string[]> = {
+  blur: [
+    "Monday\u2013Wednesday: high task volume, zero reflection. Thursday: everything blurred. Friday: you couldn\u2019t name one win.",
+    "You mentioned \u2018busy\u2019 11 times but \u2018meaningful\u2019 zero times.",
+    "Your energy peaks at 9am and craters by 2pm. Every day. You\u2019ve never noticed.",
+  ],
+  patterns: [
+    "The argument happened Tuesday. But the tension started Sunday \u2014 you mentioned the same frustration three days before it surfaced.",
+    "You used the word \u2018always\u2019 7 times this week. Each time, about the same person.",
+    "Your mood drops 2 points the day BEFORE the pattern triggers. Not after. Before.",
+  ],
+  rumination: [
+    "You recorded at 10:47pm. Your brain was running through tomorrow\u2019s problems. The trigger was something that happened at 2:15pm \u2014 8 hours earlier.",
+    "The same thought appeared in 4 out of 7 debriefs. You described it differently each time but it\u2019s the same fear.",
+    "Your calmest day was Wednesday. The only day you processed out loud before 6pm.",
+  ],
+  graveyard: [
+    "Day 4: you almost stopped. The exact same day you stopped last time. The pattern isn\u2019t the tool. It\u2019s the day.",
+    "You mentioned wanting to quit on days when you felt drained. On days you didn\u2019t feel that, you forgot you wanted to quit.",
+    "One week in and you\u2019ve already said more to Acuity than you wrote in 3 months of journaling.",
+  ],
+  mask: [
+    "You said \u2018I\u2019m fine\u2019 in 3 debriefs. Your mood score on those days was the lowest of the week.",
+    "Thursday you let something real slip. One sentence about what you actually need. It\u2019s the most honest thing you said all week.",
+    "Your energy for everyone else: 8/10. Your energy for yourself: 3/10. Every single day.",
+  ],
+  drift: [
+    "You mentioned who you used to be twice. You mentioned who you want to become zero times. That ratio is the drift.",
+    "Your highest energy was Sunday morning. By Monday evening it was gone. Every week resets to zero because nothing captures the spark.",
+    "One week of data and Acuity already knows: the drift isn\u2019t random. It follows your calendar.",
+  ],
+};
+
+// ─── Snapshot: Bottom Line (Screen 13, Section 3) ───────────────────────────
+
+export const SNAPSHOT_BOTTOM: Record<Branch, string> = {
+  blur: "Your days have a pattern. You just can\u2019t see it from inside them. One week of Acuity and you will.",
+  patterns: "The cycle has a trigger. You\u2019ve been looking at the explosion. Acuity shows you the fuse.",
+  rumination: "Your brain isn\u2019t broken. It\u2019s processing a backlog you\u2019ve never cleared. 60 seconds a day starts clearing it.",
+  graveyard: "You didn\u2019t fail at journaling. Journaling failed you. This is what it should have been all along.",
+  mask: "You\u2019ve been performing for too long. One minute a day of honesty and the mask starts to crack \u2014 in a good way.",
+  drift: "You don\u2019t need motivation. You need a mirror. Acuity shows you who you\u2019re actually becoming, one day at a time.",
 };
 
 // ─── Timeline Templates (Screen 14) ─────────────────────────────────────────
@@ -562,44 +566,42 @@ export interface TimelineWeek {
   badge?: string;
 }
 
-export const TIMELINE_TEMPLATES: Record<Branch, TimelineWeek[]> = {
-  blur: [
-    { week: "Week 1", text: "Tasks captured. Mood tracked. For the first time, your days have a record.", badge: "You\u2019re here" },
-    { week: "Week 2", text: "Patterns emerge. You mentioned the same thing three times without realizing it." },
-    { week: "Week 3", text: "Your Life Matrix takes shape. Six domains \u2014 Health, Career, Relationships, Growth, Fun, Purpose \u2014 each scored by your own words." },
-    { week: "Week 4", text: "Your first monthly memoir. A story of your month. You remember every week." },
-  ],
-  patterns: [
-    { week: "Week 1", text: "The cycle gets named. Acuity spots the trigger you keep missing.", badge: "You\u2019re here" },
-    { week: "Week 2", text: "The weekly report shows it happens on the same days, for the same reasons." },
-    { week: "Week 3", text: "Your Life Matrix takes shape. Six domains \u2014 Health, Career, Relationships, Growth, Fun, Purpose \u2014 each scored by your own words." },
-    { week: "Week 4", text: "Your first memoir. The pattern is documented. Now you can choose differently." },
-  ],
-  rumination: [
-    { week: "Week 1", text: "Your brain has somewhere to put it. The nightly replay starts to lose its grip.", badge: "You\u2019re here" },
-    { week: "Week 2", text: "You\u2019re sleeping better. The debrief caught the thought before it reached the pillow." },
-    { week: "Week 3", text: "Your Life Matrix takes shape. Six domains \u2014 Health, Career, Relationships, Growth, Fun, Purpose \u2014 each scored by your own words." },
-    { week: "Week 4", text: "Your first memoir. A month of processed thoughts instead of spiraling ones." },
-  ],
-  graveyard: [
-    { week: "Week 1", text: "Day 1 done. Then day 2. This is already longer than the last thing you tried.", badge: "You\u2019re here" },
-    { week: "Week 2", text: "Two weeks. You haven\u2019t quit. Because it only asks for 60 seconds." },
-    { week: "Week 3", text: "Your Life Matrix takes shape. Six domains \u2014 Health, Career, Relationships, Growth, Fun, Purpose \u2014 each scored by your own words." },
-    { week: "Week 4", text: "Your first memoir. 30 days in a row. The longest you\u2019ve stuck with anything." },
-  ],
-  mask: [
-    { week: "Week 1", text: "You said how you actually feel. Nobody judged. Nobody worried. It just listened.", badge: "You\u2019re here" },
-    { week: "Week 2", text: "The weekly report sees what no one else does. It reads like a conversation you needed to have." },
-    { week: "Week 3", text: "Your Life Matrix takes shape. Six domains \u2014 Health, Career, Relationships, Growth, Fun, Purpose \u2014 each scored by your own words." },
-    { week: "Week 4", text: "Your first memoir. A month of honesty. You\u2019ve never had that before." },
-  ],
-  drift: [
-    { week: "Week 1", text: "You started paying attention again. Your Life Matrix shows where you actually spend your time.", badge: "You\u2019re here" },
-    { week: "Week 2", text: "You can feel the difference between a week you chose and a week that just happened." },
-    { week: "Week 3", text: "Your Life Matrix takes shape. Six domains \u2014 Health, Career, Relationships, Growth, Fun, Purpose \u2014 each scored by your own words." },
-    { week: "Week 4", text: "Your first memoir. A month of paying attention. You\u2019re not drifting anymore." },
-  ],
-};
+export function getTimelineWeeks(branch: Branch, answers: Record<string, string | string[]>): TimelineWeek[] {
+  const q2 = String(answers.branch_q2 ?? "what you tried");
+  const q5 = lc(String(answers.shared_q5 ?? "too long"));
+  const WEEK_3_ALL = "Your Life Matrix takes shape. Six domains \u2014 Health, Career, Relationships, Growth, Fun, Purpose \u2014 each scored by your own words. For the first time, you can see where your life actually goes. Not where you think it goes. Where it actually goes.";
+
+  const w1: Record<Branch, string> = {
+    blur: "For the first time, your days have a record. You\u2019ll look back at this week and actually remember it.",
+    patterns: "The cycle gets named. Not fixed yet \u2014 named. That\u2019s the part nobody else could do for you.",
+    rumination: "Your brain has somewhere to put it. The 11pm replay starts losing its power because the backlog is shrinking.",
+    graveyard: `You\u2019re still here on Day 7. That\u2019s already further than ${lc(q2)} got you. And it took 60 seconds a day.`,
+    mask: "You said how you actually feel. Seven times. Nobody judged. Nobody worried. Something shifted.",
+    drift: "You paid attention for one week straight. The fog is already thinner. You\u2019re starting to recognize yourself.",
+  };
+  const w2: Record<Branch, string> = {
+    blur: "Your weekly report arrives Sunday. 400 words about YOUR week. You read it and think: \u2018That\u2019s exactly what happened, but I couldn\u2019t have said it myself.\u2019",
+    patterns: "The report shows you the trigger. Not the fight \u2014 what happened 48 hours before it. For the first time, you\u2019re ahead of the cycle instead of inside it.",
+    rumination: "The thoughts that used to ambush you at night are in your report now. Seeing them on paper takes away their power.",
+    graveyard: "Two weeks. You opened the app 12 out of 14 days. Not because of discipline \u2014 because it only takes 60 seconds and the output actually matters.",
+    mask: "The weekly report says something nobody in your life has ever said to you: \u2018Here\u2019s what\u2019s actually going on with you.\u2019 And it\u2019s right.",
+    drift: "You can feel the difference between a week you paid attention to and the years you didn\u2019t. The contrast is uncomfortable. That means it\u2019s working.",
+  };
+  const w4: Record<Branch, string> = {
+    blur: `Your first monthly memoir arrives. A story of your month. You read it and realize \u2014 you remember every week. That hasn\u2019t happened in ${q5}.`,
+    patterns: "Your memoir documents the pattern from the outside. You can see the cycle on paper. You can show it to someone. You can choose differently next month.",
+    rumination: "30 days of processed thoughts. Your brain is quieter. Not because the thoughts stopped \u2014 because they have somewhere to go now.",
+    graveyard: "30 days. The longest you\u2019ve stuck with anything. Not because you\u2019re more disciplined \u2014 because this is the first thing that was built for how your brain actually works.",
+    mask: "A month of honesty with yourself. The memoir reads like a letter from someone who finally knows you. Because it does. It\u2019s you.",
+    drift: `One month of paying attention. The memoir shows you: you\u2019re not the person from ${lc(String(answers.branch_q2 ?? "before"))} anymore. You\u2019re the person who stopped drifting.`,
+  };
+  return [
+    { week: "Week 1", text: w1[branch], badge: "Starting now" },
+    { week: "Week 2", text: w2[branch] },
+    { week: "Week 3", text: WEEK_3_ALL },
+    { week: "Week 4", text: w4[branch] },
+  ];
+}
 
 // ─── Paywall Hooks (Screen 15) ──────────────────────────────────────────────
 
@@ -631,24 +633,7 @@ export const PROCESSING_STAGES: { text: string; endSec: number }[] = [
   { text: "Your profile is ready.", endSec: 10 },
 ];
 
-// ─── Q9 → Theme Mapping (for snapshot) ──────────────────────────────────────
-
-export const DESIRE_TO_THEME: Record<string, string> = {
-  "Why I keep repeating the same mistakes": "Pattern Repetition: Unidentified \u2014 tracking begins",
-  "What\u2019s actually stressing me out": "Stress Source: Unidentified \u2014 tracking begins",
-  "Where my time and energy go": "Energy Drain: Unmapped \u2014 tracking begins",
-  "What I really want but won\u2019t admit": "Hidden Desire: Suppressed \u2014 tracking begins",
-};
-
-// ─── Snapshot Goal Override (per branch, with Q2 mapping for patterns) ──────
-
-export function getSnapshotGoal(branch: Branch, answers: Record<string, string | string[]>): string {
-  if (branch === "patterns") {
-    const q2 = String(answers.branch_q2 ?? "the cycle");
-    return `\uD83C\uDFAF Break the ${lc(q2)} cycle \u2192 0% this week`;
-  }
-  return SNAPSHOT_TEMPLATES[branch].goal;
-}
+// (DESIRE_TO_THEME and getSnapshotGoal removed — snapshot rewritten in v2)
 
 // ─── Paywall Dynamic Headlines (Screen 15, Section 1) ───────────────────────
 
