@@ -41,6 +41,36 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-27] — Fix crashing Funnel Analytics tab + add v2 epoch cutoff
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 7f79448
+
+### In plain English (for Keenan)
+
+The Funnel Analytics dashboard tab was crashing with a 500 error because the funnel rebuild changed all the internal key names but the metrics code still referenced the old ones. Also, old data from the previous funnel (Pain Hook events, diagnostic events) was polluting the new metrics. Now the dashboard only shows data from the new branching quiz, and if anything goes wrong it shows an empty state instead of crashing.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/api/admin/metrics/route.ts`:
+  - Fixed `stepReach["pain_hook"]` → `stepReach["entry"]` (two references — conversion bars + completion rate)
+  - Updated `diagnosticAnswers` extraction to read v2 events (`funnel_entry_selected`, `funnel_branch_q*_selected`, `funnel_shared_q*_selected`) in addition to v1 compat
+  - Rewrote `SUGGESTED_FIXES` record with v2 step keys (`branch_q2`, `shared_q5`, `commit`, `snapshot`, etc.)
+  - Added `FUNNEL_V2_EPOCH = new Date("2026-05-27T15:00:00Z")` — all queries clamp start date to this epoch
+  - Wrapped entire `getFunnelAnalytics` in try/catch returning empty state (`{ keyMetrics: {...0s}, funnelSteps: [], ... }`) on error
+
+### Manual steps needed
+
+None — deploys automatically on push.
+
+### Notes
+
+- The v2 epoch is hardcoded to 2026-05-27T15:00:00Z (approximate time the funnel rebuild deployed). If you need to adjust it, change the `FUNNEL_V2_EPOCH` constant in metrics/route.ts.
+- v1 events still exist in the database but are filtered out by the epoch clamp. They can be queried directly in SQL if needed for historical analysis.
+
+---
+
 ## [2026-05-27] — Mirror screen: slow animation to ~15s + rewrite all copy to be emotionally confrontational
 
 **Requested by:** Keenan
