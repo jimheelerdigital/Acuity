@@ -148,9 +148,19 @@ export async function POST(req: NextRequest) {
 
   try {
     const { prisma } = await import("@/lib/prisma");
+    // Verify userId exists in User table to avoid FK constraint violation
+    // (stale sessions can reference deleted/non-existent users)
+    let verifiedUserId = userId;
+    if (verifiedUserId) {
+      const userExists = await prisma.user.findUnique({
+        where: { id: verifiedUserId },
+        select: { id: true },
+      });
+      if (!userExists) verifiedUserId = null;
+    }
     await prisma.onboardingEvent.create({
       data: {
-        userId,
+        userId: verifiedUserId,
         sessionToken,
         event,
         value: body.value ?? null,

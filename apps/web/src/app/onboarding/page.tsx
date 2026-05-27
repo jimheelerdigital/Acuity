@@ -55,15 +55,26 @@ export default async function OnboardingPage({
   // on forward nav. Back-nav intentionally does NOT rewind
   // currentStep — that column exists to tell the dashboard the
   // furthest point the user reached, not their current view.
-  if (!onboarding) {
-    await prisma.userOnboarding.create({
-      data: { userId: session.user.id, currentStep: step },
+  try {
+    // Verify user still exists (stale sessions can reference deleted users)
+    const userExists = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { id: true },
     });
-  } else if (step > onboarding.currentStep) {
-    await prisma.userOnboarding.update({
-      where: { userId: session.user.id },
-      data: { currentStep: step },
-    });
+    if (userExists) {
+      if (!onboarding) {
+        await prisma.userOnboarding.create({
+          data: { userId: session.user.id, currentStep: step },
+        });
+      } else if (step > onboarding.currentStep) {
+        await prisma.userOnboarding.update({
+          where: { userId: session.user.id },
+          data: { currentStep: step },
+        });
+      }
+    }
+  } catch (err) {
+    console.error("[onboarding] Failed to update onboarding state:", err);
   }
 
   const entry = ONBOARDING_STEPS.find((s) => s.step === step);
