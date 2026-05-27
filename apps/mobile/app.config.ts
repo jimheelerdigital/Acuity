@@ -42,33 +42,26 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   };
 
   if (FB_APP_ID && FB_CLIENT_TOKEN) {
-    // TEMPORARY BISECT (2026-05-27): Meta SDK plugin insert disabled to
-    // test whether react-native-fbsdk-next is the source of the
-    // launch-time NSException seen in builds 43-46. Native module init
-    // (FBSDKApplicationDelegate AppDelegate hooks) is the prime suspect
-    // for the background-thread Obj-C exception that triggers
-    // expo-updates' ErrorRecovery → crash() rethrow. extra.facebookAppId
-    // stays populated so any JS reading from Constants.expoConfig.extra
-    // continues to work; the SDK itself is fully removed from native.
-    // RESTORE BEFORE MERGE.
-    //
-    // const follyIdx = plugins.findIndex(
-    //   (p) => typeof p === "string" && p.endsWith("with-folly-mobile-flag.js")
-    // );
-    // const insertAt = follyIdx >= 0 ? follyIdx : plugins.length;
-    // plugins.splice(insertAt, 0, [
-    //   "react-native-fbsdk-next",
-    //   {
-    //     appID: FB_APP_ID,
-    //     clientToken: FB_CLIENT_TOKEN,
-    //     displayName: "Acuity",
-    //     scheme: `fb${FB_APP_ID}`,
-    //     advertiserIDCollectionEnabled: false,
-    //     autoLogAppEventsEnabled: true,
-    //     isAutoInitEnabled: false,
-    //     iosUserTrackingPermission: FB_TRACKING_PERMISSION,
-    //   },
-    // ]);
+    // Insert the Meta SDK plugin just before the folly mobile-flag
+    // plugin so the native build order matches the pre-refactor
+    // layout — folly stays last per its mod-application contract.
+    const follyIdx = plugins.findIndex(
+      (p) => typeof p === "string" && p.endsWith("with-folly-mobile-flag.js")
+    );
+    const insertAt = follyIdx >= 0 ? follyIdx : plugins.length;
+    plugins.splice(insertAt, 0, [
+      "react-native-fbsdk-next",
+      {
+        appID: FB_APP_ID,
+        clientToken: FB_CLIENT_TOKEN,
+        displayName: "Acuity",
+        scheme: `fb${FB_APP_ID}`,
+        advertiserIDCollectionEnabled: false,
+        autoLogAppEventsEnabled: true,
+        isAutoInitEnabled: false,
+        iosUserTrackingPermission: FB_TRACKING_PERMISSION,
+      },
+    ]);
     extra.facebookAppId = FB_APP_ID;
   } else if (process.env.EAS_BUILD === "true") {
     // EAS build environment with missing secrets is almost certainly
