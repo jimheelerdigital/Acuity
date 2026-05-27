@@ -119,15 +119,32 @@ export async function POST(req: NextRequest) {
       return { id: "budget", label: "Daily budget", status: "pass", message: `$${budgetDollars.toFixed(2)}/day` };
     })(),
 
-    // 5. Landing page check
+    // 5. Destination / landing page check — validates the actual URL ads will point to
     (async (): Promise<CheckResult> => {
       if (isAppInstall) {
-        return { id: "landing_page", label: "Landing page", status: "pass", message: "App Install — links to App Store" };
+        return { id: "landing_page", label: "Destination", status: "pass", message: "App Install — links to App Store" };
       }
 
+      const destination = expRecord.destination as string | undefined;
+
+      if (destination === "direct_funnel") {
+        // Direct to /start — validate that URL is reachable
+        const funnelUrl = "https://getacuity.io/start";
+        try {
+          const res = await fetch(funnelUrl, { method: "HEAD", redirect: "follow" });
+          if (res.ok) {
+            return { id: "landing_page", label: "Destination", status: "pass", message: `Direct to Funnel — ${funnelUrl} — HTTP ${res.status}` };
+          }
+          return { id: "landing_page", label: "Destination", status: "fail", message: `Funnel URL returned HTTP ${res.status} — ${funnelUrl}` };
+        } catch (err) {
+          return { id: "landing_page", label: "Destination", status: "fail", message: `Funnel URL unreachable: ${err instanceof Error ? err.message : "network error"}` };
+        }
+      }
+
+      // Landing page destination — check generated page or project URL
       const lp = experiment.landingPage;
       if (!lp && !landingPageUrl) {
-        return { id: "landing_page", label: "Landing page", status: "fail", message: "No landing page generated and no project URL set. Every campaign needs its own landing page." };
+        return { id: "landing_page", label: "Destination", status: "fail", message: "No landing page generated and no project URL set. Generate a landing page or switch destination to Direct to Funnel." };
       }
 
       const urlToCheck = lp
@@ -137,11 +154,11 @@ export async function POST(req: NextRequest) {
       try {
         const res = await fetch(urlToCheck, { method: "HEAD", redirect: "follow" });
         if (res.ok) {
-          return { id: "landing_page", label: "Landing page", status: "pass", message: `${urlToCheck} — HTTP ${res.status}` };
+          return { id: "landing_page", label: "Destination", status: "pass", message: `Landing page — ${urlToCheck} — HTTP ${res.status}` };
         }
-        return { id: "landing_page", label: "Landing page", status: "fail", message: `Landing page returned HTTP ${res.status} — generate one first or check the URL` };
+        return { id: "landing_page", label: "Destination", status: "fail", message: `Landing page returned HTTP ${res.status} — generate one first or check the URL` };
       } catch (err) {
-        return { id: "landing_page", label: "Landing page", status: "fail", message: `Landing page unreachable: ${err instanceof Error ? err.message : "network error"}` };
+        return { id: "landing_page", label: "Destination", status: "fail", message: `Landing page unreachable: ${err instanceof Error ? err.message : "network error"}` };
       }
     })(),
 
