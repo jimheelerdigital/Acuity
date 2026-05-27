@@ -41,6 +41,37 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-27] — Paywall: dynamic pricing copy, price anchoring, urgency line
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 110b940
+
+### In plain English (for Keenan)
+
+Three changes to the paywall screen to increase conversion:
+
+1. **Path-specific pricing line** above the cards — e.g. "Get your days back for less than a coffee a week" for blur users, "Break the cycle for less than a coffee a week" for patterns users. Plus a bold reframing question below: "What's worth more — a coffee on Monday, or understanding yourself by Sunday?"
+
+2. **Annual plan is now the default selection** (was monthly). The annual card shows the monthly price crossed out ($4.99/mo ~~strikethrough~~), the real annual price in bold ($3.33/mo), the yearly total ($39.99/year), and a green "SAVE $19.89" badge. Monthly card is simple: $4.99/mo, "Billed monthly."
+
+3. **Urgency line replaces "cancel anytime"** as the primary sub-CTA text: "Your patterns are already running. The only question is whether you'll see them." The trial disclaimer is still there, just moved to smaller grey text below.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/lib/funnel-config.ts`: Added `PRICING_COPY` record mapping each branch to a pricing line
+- `apps/web/src/components/onboarding-funnel.tsx`: Default plan state changed from "monthly" to "yearly". Pricing section rebuilt with branch-specific copy, strikethrough anchoring on annual card, SAVE badge, reframing question. Sticky CTA sub-text changed to urgency copy with trial disclaimer below in smaller text.
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- The $19.89 savings figure is hardcoded ($4.99 * 12 = $59.88 minus $39.99 = $19.89). If pricing changes, this badge text needs updating.
+
+---
+
 ## [2026-05-27] — Full rebuild: replace /start funnel with dynamic branching quiz
 
 **Requested by:** Keenan
