@@ -239,7 +239,7 @@ export async function POST(req: NextRequest) {
           targetAudience: {
             ageMin: (audience.ageMin as number) || 25,
             ageMax: (audience.ageMax as number) || 55,
-            geo: (audience.geo as string[]) || ["US", "CA", "GB"],
+            geo: ((audience.geo as string[]) || ["US", "CA", "GB"]).filter((c) => c.toUpperCase() !== "AU"),
           },
           targetInterests: projectInterests || undefined,
           placementType,

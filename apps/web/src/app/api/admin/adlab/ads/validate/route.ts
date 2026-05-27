@@ -172,8 +172,9 @@ export async function POST(req: NextRequest) {
         return { id: "geo", label: "Geo targeting", status: "fail", message: "No countries configured — set geo targeting on the project" };
       }
       const hasAU = geo.some((c) => c.toUpperCase() === "AU");
+      const filtered = geo.filter((c) => c.toUpperCase() !== "AU");
       if (hasAU) {
-        return { id: "geo", label: "Geo targeting", status: "fail", message: `Countries include AU (Australia) — remove AU from geo targeting. Current: ${geo.join(", ")}` };
+        return { id: "geo", label: "Geo targeting", status: "warn", message: `AU (Australia) will be excluded at launch. Remaining: ${filtered.join(", ")}. Remove AU from project settings to clear this warning.` };
       }
       return { id: "geo", label: "Geo targeting", status: "pass", message: `Countries: ${geo.join(", ")}` };
     })(),
