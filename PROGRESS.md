@@ -41,6 +41,79 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-27] — Full rebuild: replace /start funnel with dynamic branching quiz
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 1551552
+
+### In plain English (for Keenan)
+
+The entire /start funnel has been rebuilt from scratch. Instead of a static headline followed by 5 generic diagnostic questions, users now land on a single question: "What's been on your mind lately?" They pick one of 6 options, and the entire funnel branches based on their answer. Every screen after that is personalized to their specific pain — the mirror reads back their exact answers, the mock extraction shows tasks/goals relevant to their issue, the timeline describes what their specific 30 days look like, and the paywall headline hits their pain directly.
+
+The old flow had 15 screens with several "reading" screens (Bridge, Promise) that required scrolling. The new flow has 16 screens but moves faster because every screen is a single tap — no Continue buttons on single-select questions (auto-advance after 400ms), no reading screens between diagnostics and mirror.
+
+Signup is now built into the paywall screen instead of being a separate screen. When users tap "Start My Free Trial," an auth panel slides up from the bottom with Google/Apple/email options. After signup, it goes straight to Stripe checkout.
+
+The dashboard's Funnel Analytics tab now shows a Branch Breakdown table so you can see which pain path converts best (blur, patterns, rumination, graveyard, mask, drift) without needing separate funnel URLs.
+
+### Technical changes (for Jimmy)
+
+**New file: `apps/web/src/lib/funnel-config.ts`**
+- All quiz content extracted into a config object: entry question, 6 branch paths (3 questions each), 5 shared questions, mirror templates, snapshot templates (tasks/goals/themes per branch), timeline templates (4 weeks per branch), paywall hooks
+- Typed with `Branch`, `Question`, `QuestionOption` interfaces
+- `buildMirrorLines()` composes 5 personalized lines from all answers
+- `getSnapshotGoal()` and `DESIRE_TO_THEME` map answers to snapshot content
+
+**Rewritten: `apps/web/src/components/onboarding-funnel.tsx`**
+- Complete rewrite (~900 lines, down from ~1500 with cleaner structure)
+- Step type: `"entry" | "branch-q2" | "branch-q3" | "branch-q4" | "shared-q5" | ... | "mirror" | "commit" | "processing" | "snapshot" | "timeline" | "paywall" | "download"`
+- State: `branch: Branch | null` + `answers: Record<string, string | string[]>`
+- `SingleSelectScreen`: generic single-select with auto-advance (400ms), stagger animation, tap pulse
+- `MultiSelectScreen`: multi-select with Continue button (Q6 only)
+- `MirrorScreen`: builds 5 personalized lines from branch + shared answers, staggered fade-in with purple left-border
+- `CommitmentScreen`: preserved from v1 (hold-to-commit, confetti, haptics)
+- `ProcessingTheater`: 10-second animated build with progress bar + cycling status text + social proof at 4s
+- `SnapshotScreen`: personalized mock extraction card (tasks, goal, mood shift, theme detection)
+- `TimelineScreen`: personalized 4-week timeline with animated vertical line draw
+- `PaywallScreen`: merged paywall + inline signup. Sticky CTA at bottom. Auth panel slides up from bottom on tap. WebView detection disables OAuth. FAQ collapsible.
+- `DownloadScreen`: simplified — "Welcome to Acuity" + App Store + QR
+- Session ID backed to localStorage (survives OAuth/Stripe redirects)
+- `prefers-reduced-motion` respected — all animations disabled
+
+**Updated: `apps/web/src/app/start/page.tsx`**
+- SSR now renders the entry question + 6 option cards (not the old Pain Hook headline)
+- Options are plain HTML buttons visible before any JS loads
+- Still fetches no dynamic hook for SSR (entry question is static)
+
+**Updated: `apps/web/src/app/start/client.tsx`**
+- Simplified — no longer passes hook prop to OnboardingFunnel
+- Hides `#ssr-entry` on mount
+
+**Updated: `apps/web/src/app/api/onboarding-events/route.ts`**
+- Added all v2 event names: `funnel_entry_*`, `funnel_branch_q{2,3,4}_*`, `funnel_shared_q{5,6,7,8,9}_*`, `funnel_commit_*`, `funnel_processing_viewed`, `funnel_snapshot_viewed`
+- v1 events kept as legacy for historical queries
+
+**Updated: `apps/web/src/app/api/admin/metrics/route.ts`**
+- FUNNEL_STEPS updated for v2 events with v1 fallbacks (e.g. `funnel_entry_viewed` falls back to `funnel_pain_hook_viewed`)
+- Added `branchBreakdown` to `getFunnelAnalytics` response: per-branch session counts + conversion through mirror/commit/paywall/paid
+
+**Updated: `apps/web/src/app/admin/tabs/FunnelAnalyticsTab.tsx`**
+- Added Branch Breakdown table showing: Branch | Sessions | → Mirror | → Commit | → Paywall | → Paid | Rate
+
+### Manual steps needed
+
+None — no Prisma schema changes. All state is in React. Events use existing OnboardingEvent model.
+
+### Notes
+
+- The old /api/onboarding/hook and utm_campaign-based custom copy system is still intact in the API layer but no longer drives Screen 1 copy (the entry question is static). Custom copy from AdLab experiments could be re-wired to customize branch questions or paywall hooks per experiment in a future iteration.
+- The `funnel_payment_completed` event now fires on Stripe return (when `session_id` is in the URL), not on checkout button click. The checkout click fires `funnel_checkout_started`. Dashboard FUNNEL_STEPS has `funnel_checkout_started` as a fallback for the "Paid" step during the transition.
+- Branch is determined by the `funnel_entry_selected` event's `value` field. The dashboard reads this to build the branch breakdown.
+- v1 events are accepted by the API but no longer emitted by the funnel. They'll age out of the dashboard's date range naturally.
+
+---
+
 ## [2026-05-27] — Add missing Google bot UAs to bot detection + expand pattern list
 
 **Requested by:** Keenan
