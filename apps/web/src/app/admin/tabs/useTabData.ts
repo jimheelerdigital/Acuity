@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface Meta {
   cached: boolean;
@@ -25,6 +25,15 @@ export function useTabData<T>(
   const [error, setError] = useState<string | null>(null);
   const [meta, setMeta] = useState<Meta | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+
+  // Stable serialization of extraParams — avoids JSON.stringify in dep array
+  const extraStr = extraParams ? Object.keys(extraParams).sort().map((k) => `${k}=${extraParams[k]}`).join("&") : "";
+  const prevExtraRef = useRef(extraStr);
+  const [stableExtra, setStableExtra] = useState(extraStr);
+  if (extraStr !== prevExtraRef.current) {
+    prevExtraRef.current = extraStr;
+    setStableExtra(extraStr);
+  }
 
   const refresh = useCallback(() => {
     setRefreshKey((k) => k + 1);
@@ -62,8 +71,7 @@ export function useTabData<T>(
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, start, end, refreshKey, JSON.stringify(extraParams)]);
+  }, [tab, start, end, refreshKey, stableExtra]);
 
   return { data, loading, error, meta, refresh };
 }
