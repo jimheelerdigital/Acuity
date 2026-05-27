@@ -41,6 +41,47 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-26] — Bot detection: filter Facebook prefetch/crawler from funnel metrics
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** ecb2c58
+
+### In plain English (for Keenan)
+
+50+ "sessions" in the funnel dashboard may be Facebook crawlers, not real users. Facebook prefetches URLs when someone shares a link or when the ad system previews a landing page — these automated requests fire the Pain Hook event, creating fake sessions that inflate metrics and make it look like everyone bounces at Screen 1.
+
+Now: bot events are **dropped entirely** before they hit the database. The event tracking endpoint checks the user-agent header against a list of 25+ known bot patterns (Facebook prefetch, Google, Bing, etc.). If it's a bot, the event is silently discarded — 204 response, no DB write.
+
+For existing bot events already in the database: the dashboard queries now filter them out using the `isBot` flag.
+
+**To see the actual data:** After deploy, hit `GET /admin/api/admin/adlab/debug-sessions` (logged in as admin). The response shows:
+- `summary.botSessions` — how many sessions have bot UAs
+- `summary.realSessions` — how many are real browsers
+- `summary.realSessionsAdvancedPastPainHook` — how many real users actually got past Screen 1
+- `uaBreakdown` — every unique user-agent string and how many sessions it generated
+
+### Technical changes (for Jimmy)
+
+- `prisma/schema.prisma`: added `isBot Boolean @default(false)` to `OnboardingEvent` with `@@index([isBot, createdAt])`
+- `apps/web/src/app/api/onboarding-events/route.ts`: captures `user-agent` from request headers (always available), checks against `BOT_PATTERNS` regex. Bot events return 204 without DB write. Non-bot events save with `isBot: false` and the full UA in `browser`.
+- `apps/web/src/app/api/admin/metrics/route.ts`: both `getWebOnboardingFunnel` and `getFunnelAnalytics` queries now include `isBot: false` in the where clause.
+- `apps/web/src/app/api/admin/adlab/debug-sessions/route.ts`: added bot detection per session, UA breakdown, bot vs real summary stats.
+
+### Manual steps needed
+
+- [ ] Run `npx prisma db push` to add the `isBot` column + index to `OnboardingEvent` (Keenan — from home network)
+- [ ] After deploy, check `/api/admin/adlab/debug-sessions` to see the bot vs real breakdown
+- [ ] Consider running a one-time backfill to mark existing bot events: `UPDATE "OnboardingEvent" SET "isBot" = true WHERE browser LIKE '%facebookexternalhit%' OR browser LIKE '%Googlebot%'` (Jimmy — direct SQL)
+
+### Notes
+
+- The browser field was only recently added, so most existing events have `browser: null`. The `isBot` default is `false`, so these are treated as real sessions. The backfill SQL above would only catch events that happened to have the browser field set.
+- Bot events are dropped (not saved with `isBot: true`) to avoid wasting database space on high-volume crawler traffic. This means we can't retroactively analyze bot patterns — but we don't need to.
+- The bot regex includes both exact matches (e.g. `facebookexternalhit`) and generic patterns (e.g. `bot/`, `crawler`, `spider`). It may occasionally false-positive on unusual legitimate browsers, but the pattern list is conservative.
+
+---
+
 ## [2026-05-26] — SSR Screen 1 on /start — instant visible content before JS loads
 
 **Requested by:** Keenan
