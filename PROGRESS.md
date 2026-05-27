@@ -41,6 +41,32 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-26] — Fix destination URL validation in pre-launch checklist
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 5c0fa35
+
+### In plain English (for Keenan)
+
+The pre-launch validation checklist was checking the wrong URL. When an experiment had "Direct to Funnel (/start)" selected as the destination, validation was still checking the project's homepage URL (getacuity.io) instead of the actual funnel URL (getacuity.io/start). Now it checks the correct URL based on the destination setting.
+
+The actual ad click URL pushed to Meta was already correct (ads pointed to /start with UTMs) — only the validation check was wrong, which could cause false failures.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/api/admin/adlab/ads/validate/route.ts`: landing page check now reads `experiment.destination`. If `"direct_funnel"`, validates `https://getacuity.io/start`. If landing page, validates `/for/*` or project URL. Label renamed from "Landing page" to "Destination" for clarity.
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- The launch route (`ads/launch/route.ts` lines 310-318) already handled destination correctly — it sends direct_funnel clicks to `/start` with UTMs. Only the validation route was checking the wrong URL.
+
+---
+
 ## [2026-05-26] — Remove AU from AdLab geo targeting
 
 **Requested by:** Keenan
