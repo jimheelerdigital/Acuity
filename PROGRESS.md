@@ -41,6 +41,35 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-28] — Rewrite mechanism screen: single scrollable page, no slides
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 7f3d673
+
+### In plain English (for Keenan)
+
+Complete redo of the "Here's how it works" screen. The old version used swipeable slides with a mic icon that made people think they needed to record, and the animations were broken (undefined CSS keyframe meant nothing animated on web). New version is one scrollable page where three steps build from top to bottom: "Talk for 60 seconds" with a looping waveform, "We pull out what matters" with extraction cards popping in one at a time, and "A living picture of your life" with week dots filling in and a sample weekly insight. No mic button anywhere. Nothing looks tappable except Continue.
+
+### Technical changes (for Jimmy)
+
+- Rewrote `apps/mobile/app/onboarding-new/how-it-works.tsx` from scratch: replaced slide-based architecture with single ScrollView, sequential FadeSlideIn animations using Reanimated withDelay cascade, looping waveform using withRepeat+withSequence (no canvas), WeekDot components with fill+connecting-line animations, weekly insight card, ~8s total animation timeline
+- Rewrote MechanismScreen in `apps/web/src/components/onboarding-funnel.tsx`: single scrollable div, CSS-only looping waveform (scaleY animation on individual bars), staggered card animations, week dots with mech-dot-fill and mech-line-grow keyframes, fixed the broken `funnel-fade-up` references (now uses existing `funnel-slide-up` keyframe)
+- Removed: MicIcon component, ProgressDots component, SlideInput/SlideMagic/SlidePicture components, ExtractionCard component, slide auto-advance timer, tap-to-advance interaction
+- Added: FadeSlideIn wrapper, WaveformBar with withRepeat loop, WeekDot with fill animation, weekly insight card, proper reduced-motion handling (everything visible immediately)
+
+### Manual steps needed
+
+None — JS-only change, ships via OTA.
+
+### Notes
+
+- The old web version referenced `funnel-fade-up` keyframe which was never defined in the style block (only `funnel-slide-up` existed). This is why animations weren't working on web. Fixed in this rewrite.
+- Waveform is purely ambient decoration — each bar oscillates independently with slightly different timing to create organic wave effect. No canvas or SVG animation libraries needed.
+- Total animation timeline: headline (0ms) -> Step 1 (800ms) -> Step 2 (2600ms) -> Step 3 (4800ms) -> closing (6800ms) -> CTA (7600ms). User can scroll ahead but animations still play regardless of viewport position.
+
+---
+
 ## [2026-05-28] — Add "How It Works" product explainer screen to onboarding funnel
 
 **Requested by:** Keenan
