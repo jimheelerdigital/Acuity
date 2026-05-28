@@ -39,15 +39,15 @@ const EASE_CUBIC_OUT = Easing.bezier(0.215, 0.61, 0.355, 1);
 const HEADLINE_DUR = 400;
 const STEP1_START = 800;
 const STEP1_DUR = 600;
-const STEP2_START = 2600; // step1 start + step1 dur + 1200 pause
+const STEP2_START = 2200; // step1 start + step1 dur + 800ms pause
 const STEP2_DUR = 600;
 const CARD_STAGGER = 200;
-const STEP3_START = 4800;
+const STEP3_START = 3800; // step2 start + step2 dur + cards (800ms) + 800ms pause
 const STEP3_DUR = 600;
 const DOT_STAGGER = 100;
-const INSIGHT_DELAY = 700;
-const CLOSING_START = 6200; // step3 visible + 400ms pause (fast)
-const CTA_START = 6600; // closing + 200ms (never make user wait)
+const INSIGHT_DELAY = 500;
+const CLOSING_START = 5000; // step3 visible + 400ms pause
+const CTA_START = 5000; // same as closing — appear simultaneously
 
 // ─── Branch mapping ─────────────────────────────────────────────────
 

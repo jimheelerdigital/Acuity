@@ -732,7 +732,7 @@ function MechanismScreen({ branch, answers, onContinue }: {
 
   // Faster timing: closing at 6200ms, CTA at 6400ms
   useEffect(() => {
-    const t = setTimeout(() => setShowCta(true), prefersReducedMotion ? 0 : 6400);
+    const t = setTimeout(() => setShowCta(true), prefersReducedMotion ? 0 : 5000);
     return () => clearTimeout(t);
   }, [prefersReducedMotion]);
 
@@ -779,14 +779,14 @@ function MechanismScreen({ branch, answers, onContinue }: {
       </div>
 
       {/* ── STEP 2: WE EXTRACT (branch-personalized) ── */}
-      <div className="mb-8" style={fadeUp(2600)}>
+      <div className="mb-8" style={fadeUp(2200)}>
         <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.1em] text-[#7C5CFC]">Step 2</p>
         <p className="mb-1.5 text-xl font-bold text-zinc-900">We pull out what matters.</p>
         <p className="mb-4 text-sm leading-5 text-zinc-500">Tasks, goals, mood shifts, and patterns &mdash; extracted from your own words.</p>
         <div className="space-y-2">
           {cards.map((c, i) => (
             <div key={i} className="flex items-center rounded-xl border-l-[3px] border-[#7C5CFC] bg-white px-3.5 py-3 shadow-sm"
-              style={fadeUpShort(2600 + 600 + i * 200)}>
+              style={fadeUpShort(2200 + 600 + i * 200)}>
               <span className="mr-2.5 text-[13px] font-semibold text-[#7C5CFC]">{c.icon}</span>
               <span className="text-[13px] font-medium leading-[18px] text-zinc-900">{c.text}</span>
             </div>
@@ -795,14 +795,14 @@ function MechanismScreen({ branch, answers, onContinue }: {
       </div>
 
       {/* ── STEP 3: YOUR PICTURE (branch-personalized) ── */}
-      <div className="mb-8" style={fadeUp(4800)}>
+      <div className="mb-8" style={fadeUp(3800)}>
         <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.1em] text-[#7C5CFC]">Step 3</p>
         <p className="mb-1.5 text-xl font-bold text-zinc-900">A living picture of your life.</p>
         <p className="mb-5 text-sm leading-5 text-zinc-500">{content.step3Sub}</p>
         <div className="mb-4 flex items-center justify-between px-2">
           {["M","T","W","T","F","S","S"].map((d, i) => {
             const filled = i < 5;
-            const dotDelay = 4800 + 600 + i * 100;
+            const dotDelay = 3800 + 600 + i * 100;
             return (
               <div key={i} className="flex flex-col items-center">
                 <div className="relative flex items-center">
@@ -823,20 +823,20 @@ function MechanismScreen({ branch, answers, onContinue }: {
           })}
         </div>
         <div className="rounded-xl border-l-[3px] border-[#7C5CFC] bg-[#F0ECFF] px-3.5 py-3"
-          style={fadeUpShort(4800 + 600 + 700 + 700)}>
+          style={fadeUpShort(3800 + 600 + 500 + 500)}>
           <p className="mb-1 text-[9px] font-bold uppercase tracking-[0.06em] text-[#7C5CFC]">Weekly insight</p>
           <p className="text-[13px] font-medium leading-[18px] text-zinc-900">{content.insight}</p>
         </div>
       </div>
 
       {/* ── Closing line ── */}
-      <p className="mb-6 text-center text-base font-bold italic text-zinc-900" style={fadeUp(6200)}>
+      <p className="mb-6 text-center text-base font-bold italic text-zinc-900" style={fadeUp(5000)}>
         You already think about your life every day. Acuity just makes sure it counts.
       </p>
 
       {/* ── Continue button (200ms after closing — never make user wait) ── */}
       {showCta && (
-        <div className="text-center" style={fadeUpShort(prefersReducedMotion ? 0 : 6400)}>
+        <div className="text-center" style={fadeUpShort(prefersReducedMotion ? 0 : 5000)}>
           <button onClick={onContinue}
             className="rounded-full bg-[#7C5CFC] px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]">
             Continue
