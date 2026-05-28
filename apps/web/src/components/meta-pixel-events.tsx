@@ -16,7 +16,7 @@ function getStoredUtm(): Record<string, string> {
   return {};
 }
 
-function fireFbq(event: string, params?: Record<string, unknown>) {
+export function fireFbq(event: string, params?: Record<string, unknown>) {
   if (typeof window !== "undefined" && typeof window.fbq === "function") {
     // Enrich pixel events with UTM attribution from the funnel session
     const utm = getStoredUtm();

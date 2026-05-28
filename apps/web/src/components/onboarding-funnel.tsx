@@ -11,6 +11,7 @@ import {
 import { trackOnboardingEvent, captureUtmParams, type UtmParams } from "@/lib/track-onboarding";
 import { PRIORITY_COLOR } from "@acuity/shared";
 import { MoodDot, AppleLogo, GoogleLogo } from "@/components/debrief-shared";
+import { fireFbq } from "@/components/meta-pixel-events";
 import {
   type Branch,
   type Question,
@@ -142,12 +143,15 @@ export function OnboardingFunnel() {
       setStep("download");
       if (params.get("session_id")) {
         track("funnel_payment_completed", { value: "stripe_return" });
+        fireFbq("Purchase", { value: 4.99, currency: "USD", content_name: "Free Trial Subscription" });
       }
     } else if (params.get("step") === "paywall") {
       setStep("paywall");
       if (authStatus === "authenticated" && !oauthReturnTracked.current) {
         oauthReturnTracked.current = true;
         track("funnel_signup_completed", { value: "oauth_return" });
+        fireFbq("CompleteRegistration", { content_name: "Free Trial Signup", currency: "USD", value: 0 });
+        fireFbq("StartTrial", { value: 4.99, currency: "USD", predicted_ltv: 39.99 });
       }
     }
   }, []);
@@ -159,6 +163,8 @@ export function OnboardingFunnel() {
       if (params.get("step") === "paywall") {
         oauthReturnTracked.current = true;
         track("funnel_signup_completed", { value: "oauth_return" });
+        fireFbq("CompleteRegistration", { content_name: "Free Trial Signup", currency: "USD", value: 0 });
+        fireFbq("StartTrial", { value: 4.99, currency: "USD", predicted_ltv: 39.99 });
       }
     }
     // If already logged in with active subscription, skip to download
@@ -192,7 +198,10 @@ export function OnboardingFunnel() {
       paywall: "funnel_paywall_viewed",
       download: "funnel_download_viewed",
     };
-    if (eventMap[step]) track(eventMap[step]);
+    if (eventMap[step]) {
+      track(eventMap[step]);
+      if (step === "paywall") fireFbq("Lead", { content_name: "Funnel Paywall Reached" });
+    }
   }, [step, track]);
 
   useEffect(() => { window.scrollTo(0, 0); }, [step]);
@@ -237,6 +246,7 @@ export function OnboardingFunnel() {
       const data = await res.json();
       if (data.url) {
         track("funnel_checkout_started", { value: selectedPlan });
+        fireFbq("InitiateCheckout", { content_name: "Start Free Trial", currency: "USD", value: selectedPlan === "yearly" ? 39.99 : 4.99 });
         window.location.href = data.url;
       } else {
         setApiError(data.error || `Checkout failed (${res.status})`);
@@ -875,6 +885,8 @@ function PaywallScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
         return;
       }
       track("funnel_signup_completed", { value: "email" });
+      fireFbq("CompleteRegistration", { content_name: "Free Trial Signup", currency: "USD", value: 0 });
+      fireFbq("StartTrial", { value: 4.99, currency: "USD", predicted_ltv: 39.99 });
       const result = await signIn("credentials", { email: email.trim(), password, redirect: false });
       if (result?.ok) { setShowAuth(false); setTimeout(onCheckout, 500); }
       else { window.location.href = "/start?step=paywall"; }
