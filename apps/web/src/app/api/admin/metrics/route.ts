@@ -1719,11 +1719,14 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
 
     const minutesSinceLast = (Date.now() - new Date(last.createdAt).getTime()) / 60000;
     const completed = eventNames.has("funnel_app_store_clicked") || eventNames.has("funnel_download_viewed");
-    const paid = eventNames.has("funnel_payment_completed");
+    const paid = eventNames.has("funnel_payment_completed") || eventNames.has("funnel_checkout_started");
+    const signedup = eventNames.has("funnel_signup_completed");
 
+    // Payment and signup are terminal success states — never show as dropped
     let status: string;
     if (completed) status = "completed";
     else if (paid) status = "paid";
+    else if (signedup) status = "signed_up";
     else if (minutesSinceLast < 10) status = "active";
     else if (minutesSinceLast < 60) status = "stalled";
     else status = "dropped";
@@ -2091,6 +2094,10 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     } catch { /* non-fatal */ }
   }
 
+  // Diagnostic: raw event counts for page loads vs taps
+  const entryViewedCount = events.filter((e) => e.event === "funnel_entry_viewed").length;
+  const entrySelectedCount = events.filter((e) => e.event === "funnel_entry_selected").length;
+
   return {
     keyMetrics: {
       totalSessions,
@@ -2100,6 +2107,12 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
       avgFunnelTimeSec,
       pageLoadCount,
       interactedCount,
+    },
+    diagnostics: {
+      entryViewedEvents: entryViewedCount,
+      entrySelectedEvents: entrySelectedCount,
+      tapRate: entryViewedCount > 0 ? Math.round((entrySelectedCount / entryViewedCount) * 100) : 0,
+      totalEventsInRange: events.length,
     },
     funnelSteps,
     alerts,

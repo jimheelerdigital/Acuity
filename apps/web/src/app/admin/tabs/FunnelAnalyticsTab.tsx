@@ -40,6 +40,7 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
   const dailyRates = data.dailyRates || [];
   const names = data.campaignNames || {};
 
+  const diag = data.diagnostics || {};
   const cn = (id: string | null) => (id && names[id]) || id || "direct";
   const fmt = (s: number) => s < 60 ? `${s}s` : `${Math.round(s / 60)}m`;
 
@@ -110,6 +111,16 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
           <span style={{ fontSize: 10, color: "rgba(255,255,255,0.2)" }}>
             {(km.pageLoadCount ?? 0) - (km.interactedCount ?? 0)} bot/prefetch filtered
           </span>
+        </div>
+      )}
+
+      {/* Raw event diagnostics */}
+      {diag.entryViewedEvents > 0 && (
+        <div style={{ ...S, padding: "10px 20px", display: "flex", gap: 20, alignItems: "center", fontSize: 11, color: "rgba(255,255,255,0.3)" }}>
+          <span>Raw events: <strong style={{ color: "rgba(255,255,255,0.6)" }}>{diag.totalEventsInRange}</strong></span>
+          <span>entry_viewed: <strong style={{ color: "rgba(255,255,255,0.6)" }}>{diag.entryViewedEvents}</strong></span>
+          <span>entry_selected: <strong style={{ color: "rgba(255,255,255,0.6)" }}>{diag.entrySelectedEvents}</strong></span>
+          <span>Tap rate: <strong style={{ color: diag.tapRate >= 50 ? "#22c55e" : diag.tapRate >= 20 ? "#f59e0b" : "#ef4444" }}>{diag.tapRate}%</strong></span>
         </div>
       )}
 
@@ -311,7 +322,7 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
             </tr></thead>
             <tbody>
               {sorted.slice(0, 100).map((s: any) => {
-                const sc: Record<string, string> = { completed: "#22c55e", paid: "#22c55e", active: "#3b82f6", stalled: "#f59e0b", dropped: "#ef4444" };
+                const sc: Record<string, string> = { completed: "#22c55e", paid: "#22c55e", signed_up: "#3b82f6", active: "#3b82f6", stalled: "#f59e0b", dropped: "#ef4444" };
                 return (
                   <tr key={s.sessionId} onClick={() => setExpanded(expanded === s.sessionId ? null : s.sessionId)} style={{ cursor: "pointer" }}>
                     <td style={{ ...TD, fontFamily: "monospace", fontSize: 11 }}>{s.sessionId}</td>

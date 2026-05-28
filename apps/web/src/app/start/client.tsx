@@ -19,6 +19,12 @@ export function StartPageClient({ skipSSR }: { skipSSR?: boolean }) {
       mounted.current = true;
       const ssrEl = document.getElementById("ssr-entry");
       if (ssrEl) ssrEl.style.display = "none";
+
+      // Set attribution cookie so UTMs survive the OAuth redirect
+      try {
+        const { setAttributionCookie } = require("@/lib/attribution");
+        setAttributionCookie();
+      } catch {}
     }
   }, []);
 

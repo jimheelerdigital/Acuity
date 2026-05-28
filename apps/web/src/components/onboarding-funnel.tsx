@@ -178,6 +178,49 @@ export function OnboardingFunnel() {
     }
   }, [authStatus, session, track]);
 
+  // Sync UTM attribution to User record after OAuth signup in the funnel.
+  // OAuth users never visit /auth/signup/success (where SyncAttribution runs),
+  // so we backfill from the funnel's sessionStorage UTMs + the attribution cookie.
+  const attributionSynced = useRef(false);
+  useEffect(() => {
+    if (authStatus !== "authenticated" || attributionSynced.current) return;
+    attributionSynced.current = true;
+
+    // Read funnel UTMs from sessionStorage
+    let funnelUtm: Record<string, string> = {};
+    try {
+      const stored = sessionStorage.getItem("acuity_funnel_utm");
+      if (stored) funnelUtm = JSON.parse(stored);
+    } catch {}
+
+    // Also try the attribution cookie
+    let cookieAttr: Record<string, string> = {};
+    try {
+      const { getClientAttribution } = require("@/lib/attribution");
+      const attr = getClientAttribution();
+      if (attr) cookieAttr = attr;
+    } catch {}
+
+    // Merge: funnel UTMs take priority (they're from the ad click URL), cookie is fallback
+    const utm_source = funnelUtm.utmSource || cookieAttr.utm_source;
+    const utm_medium = funnelUtm.utmMedium || cookieAttr.utm_medium;
+    const utm_campaign = funnelUtm.utmCampaign || cookieAttr.utm_campaign;
+    const utm_content = funnelUtm.utmContent || cookieAttr.utm_content;
+    const utm_term = funnelUtm.utmTerm || cookieAttr.utm_term;
+
+    if (utm_source || utm_campaign) {
+      fetch("/api/auth/set-attribution", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          utm_source, utm_medium, utm_campaign, utm_content, utm_term,
+          referrer: cookieAttr.referrer || document.referrer || undefined,
+          landingPath: cookieAttr.landingPath || "/start",
+        }),
+      }).catch(() => {});
+    }
+  }, [authStatus]);
+
   // Track step views
   useEffect(() => {
     const eventMap: Record<string, string> = {
@@ -874,9 +917,19 @@ function PaywallScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
     if (password.length < 8) { setAuthError("Password must be at least 8 characters."); return; }
     setAuthLoading("email");
     try {
+      // Read funnel UTMs to pass as attribution
+      let funnelUtm: Record<string, string> = {};
+      try { const s = sessionStorage.getItem("acuity_funnel_utm"); if (s) funnelUtm = JSON.parse(s); } catch {}
+      const attribution = {
+        ...(funnelUtm.utmSource ? { utm_source: funnelUtm.utmSource } : {}),
+        ...(funnelUtm.utmMedium ? { utm_medium: funnelUtm.utmMedium } : {}),
+        ...(funnelUtm.utmCampaign ? { utm_campaign: funnelUtm.utmCampaign } : {}),
+        ...(funnelUtm.utmContent ? { utm_content: funnelUtm.utmContent } : {}),
+        landingPath: "/start",
+      };
       const res = await fetch("/api/auth/signup", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), password, name: name.trim() || null }),
+        body: JSON.stringify({ email: email.trim(), password, name: name.trim() || null, attribution }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
