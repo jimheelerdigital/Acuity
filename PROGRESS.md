@@ -41,6 +41,41 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-27] — Filter Facebook prefetch bots from funnel metrics + reset epoch
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 57f89d7
+
+### In plain English (for Keenan)
+
+Facebook was pre-loading the /start page for every ad click before the user actually saw it, creating 196 fake "sessions" in 6 minutes that all showed 0% progress. This made funnel metrics useless. Now: a session only counts if the user actually taps an answer. Bot page loads still get recorded but are hidden by default. A new card at the top of Funnel Analytics shows "Page Loads: X → First Tap: Y (Z%)" so you can see the real drop-off. All funnel metrics have also been reset to zero starting now.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/api/admin/metrics/route.ts`:
+  - Added `hasInteracted` flag per session — true if any event beyond `funnel_entry_viewed` exists
+  - All metric calculations (key metrics, step reach, campaign funnels, branch breakdown, time per step, drop-off, daily rates, active sessions, recent payments) now only use interacted sessions
+  - Added `pageLoadCount` and `interactedCount` to API response
+  - Reset `FUNNEL_V2_EPOCH` to `2026-05-28T02:35:00Z` (May 27 9:35 PM CDT) — all events before this are excluded
+- `apps/web/src/app/admin/tabs/FunnelAnalyticsTab.tsx`:
+  - Added "Page Loads → First Tap" metric card above key metrics
+  - Sessions table filters to interacted-only by default
+  - Added "Show page-load-only sessions" checkbox toggle (off by default) for debugging
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- No Prisma schema change needed — filtering is done in-memory by checking whether a session has any event beyond `funnel_entry_viewed`
+- Facebook prefetch bots fire the page load JS but never interact with UI elements, so this cleanly separates real users from bots
+- The debug toggle shows ALL sessions (including page-load-only) when enabled, useful for investigating bot patterns
+- Epoch reset means all historical funnel data before 9:35 PM CDT May 27 is excluded from metrics
+
+---
+
 ## [2026-05-27] — Fire Meta pixel events in /start funnel (CompleteRegistration, Lead, InitiateCheckout, Purchase)
 
 **Requested by:** Keenan
