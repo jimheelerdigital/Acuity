@@ -41,6 +41,43 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-28] — Users tab audit: fix source display, entry counts, onboarding status, total count
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 7f412f4
+
+### In plain English (for Keenan)
+
+Full audit of the Users tab. Found and fixed four bugs: (1) Users who signed up via Meta ads showed "direct" as their source because the dashboard checked for a landing page path instead of UTM data — now shows "meta / paid" correctly. (2) Entry counts included failed and queued recordings that never produced a debrief — now only counts completed entries. (3) New users from the /start funnel showed "Not started" for onboarding status because the dashboard only checked the old onboarding events — now recognizes funnel events like "Signed up via funnel", "Reached paywall", "Paid via funnel". (4) The "Total Users" card showed however many users had been loaded (50) instead of the real database total.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/admin/tabs/UsersTab.tsx`:
+  - Source column now checks `signupUtmSource`/`signupUtmMedium` first, falls back to `signupLandingPath`, then "direct"
+  - Added pill styles for new funnel onboarding statuses
+  - Total Users card reads `totalCount` from API instead of `users.length`
+- `apps/web/src/app/api/admin/users/route.ts`:
+  - `_count.entries` now filters `{ where: { status: "COMPLETE" } }` — excludes QUEUED/FAILED/PARTIAL
+  - Event query removed `startsWith: "onboarding_"` filter — now fetches all events so funnel events are included
+  - `computeOnboardingStatus()` now checks `funnel_*` events: `funnel_payment_completed` → "Paid via funnel", `funnel_signup_completed` → "Signed up via funnel", `funnel_paywall_viewed` → "Reached paywall", etc.
+  - Returns `totalCount` from `prisma.user.count()` on first page load
+- `apps/web/src/app/api/admin/users/[id]/route.ts`:
+  - Entry count and `latestEntry` query both filter to `status: "COMPLETE"`
+
+### Manual steps needed
+
+- [ ] Manually update UTM data for kayleighxaviagray@gmail.com and stopthepaininminutes@gmail.com via Supabase — set signupUtmSource="meta", signupUtmMedium="paid", signupUtmCampaign to their campaign ID (Keenan)
+- [ ] Check Keenan's entry count after deploy to verify yesterday's recording shows correctly — if entry exists with status COMPLETE it will now display; if status is FAILED/QUEUED it was a pipeline failure (Keenan)
+
+### Notes
+
+- Keenan's recording not showing up: I can't query the DB from this Mac (Supabase ports blocked), but the fix to filter `status: "COMPLETE"` means only successfully processed entries display. If yesterday's recording failed in the pipeline (stuck at QUEUED or went to FAILED), it wouldn't show even before this fix. Check the Entry table for Keenan's userId and look at the `status` column — if it's not COMPLETE, the Inngest pipeline failed.
+- Platform showing "Never opened app" for new signups is correct — they signed up via web and haven't downloaded/opened the iOS app yet. The platform field is set by the mobile app's `/api/user/me` call with `devicePlatform` param.
+- The two new users' onboarding status will show correctly after deploy: if they completed signup via the funnel, they'll show "Signed up via funnel" instead of "Not started".
+
+---
+
 ## [2026-05-28] — Remove dead onboarding funnel from Overview + LPV campaign session investigation
 
 **Requested by:** Keenan
