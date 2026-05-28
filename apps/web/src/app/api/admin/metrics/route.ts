@@ -1441,7 +1441,7 @@ async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date) {
       1: "Entry", 2: "Q2", 3: "Q3", 4: "Q4", 5: "Q5", 6: "Q6", 7: "Q7",
       8: "Q8", 9: "Q9", 10: "Mirror", 11: "Mechanism", 12: "Commit",
       13: "Processing", 14: "Snapshot", 15: "Timeline", 16: "Paywall",
-      17: "Signup", 18: "Paid", 19: "Download",
+      17: "Signup", 18: "Checkout", 19: "Paid", 20: "Download",
     };
 
     const sessions = [...sessionMap.entries()]
@@ -1521,8 +1521,8 @@ async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date) {
       const c = creativeMap.get(cid)!;
       c.started++;
       if (s.stepNumber >= 7) c.mirror++;
-      if (s.stepNumber >= 11) c.commitment++;
-      if (s.stepNumber >= 14) c.signup++;
+      if (s.stepNumber >= 12) c.commitment++;
+      if (s.stepNumber >= 15) c.signup++;
       if (s.status === "paid" || s.status === "completed") { c.paid++; c.totalTime += s.timeInFunnel; c.paidCount++; }
     }
     const adAttribution = [...creativeMap.entries()].map(([id, c]) => ({
@@ -1585,7 +1585,8 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     { key: "timeline", event: "funnel_timeline_viewed", label: "Timeline", fallback: "funnel_journey_viewed" },
     { key: "paywall", event: "funnel_paywall_viewed", label: "Paywall" },
     { key: "signup", event: "funnel_signup_completed", label: "Signup" },
-    { key: "paid", event: "funnel_payment_completed", label: "Paid", fallback: "funnel_checkout_started" },
+    { key: "checkout_started", event: "funnel_checkout_started", label: "Checkout" },
+    { key: "paid", event: "funnel_payment_completed", label: "Paid" },
     { key: "download", event: "funnel_download_viewed", label: "Download", fallback: "funnel_app_store_clicked" },
   ];
 
@@ -1756,7 +1757,8 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     timeline: "Timeline not motivating. Review copy per branch.",
     paywall: "Paywall drop. Test pricing or copy.",
     signup: "Won\u2019t create account. Simplify auth options.",
-    paid: "Won\u2019t pay. Test pricing or extend trial.",
+    checkout_started: "Signed up but didn\u2019t start checkout. Review paywall copy.",
+    paid: "Started checkout but didn\u2019t pay. Card declines or abandoned.",
     download: "Paid but didn\u2019t download. Improve download urgency.",
   };
 
@@ -1889,7 +1891,7 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
       const q4ToMirror = bSessions.filter((s) => s.stepNumber >= 10).length;
       const mirrorToMechanism = bSessions.filter((s) => s.stepNumber >= 11).length;
       const mechanismToCommit = bSessions.filter((s) => s.stepNumber >= 12).length;
-      const commitToPaywall = bSessions.filter((s) => s.stepNumber >= 16).length;
+      const commitToPaywall = bSessions.filter((s) => s.stepNumber >= 17).length;
       const paywallToPaid = bSessions.filter((s) => s.status === "paid" || s.status === "completed").length;
       return {
         branch: branchKey,

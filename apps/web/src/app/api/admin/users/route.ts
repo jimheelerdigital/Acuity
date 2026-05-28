@@ -43,6 +43,8 @@ export async function GET(req: NextRequest) {
       createdAt: true,
       lastSeenAt: true,
       subscriptionStatus: true,
+      stripeCustomerId: true,
+      stripeSubscriptionId: true,
       trialEndsAt: true,
       devicePlatform: true,
       appVersion: true,
@@ -93,8 +95,11 @@ export async function GET(req: NextRequest) {
       onboardingStatus: computeOnboardingStatus(
         eventsByUser[u.id] ?? [],
         u.appFirstOpenedAt,
-        u.onboarding?.completedAt ?? null
+        u.onboarding?.completedAt ?? null,
+        u.subscriptionStatus,
+        u.stripeSubscriptionId
       ),
+      paymentStatus: computePaymentStatus(u.subscriptionStatus, u.stripeCustomerId, u.stripeSubscriptionId),
     })),
     nextCursor: hasMore ? page[page.length - 1].id : null,
     ...(totalCount !== undefined ? { totalCount } : {}),
@@ -104,15 +109,22 @@ export async function GET(req: NextRequest) {
 function computeOnboardingStatus(
   events: string[],
   appFirstOpenedAt: Date | null,
-  legacyCompletedAt: Date | null
+  legacyCompletedAt: Date | null,
+  subscriptionStatus: string | null,
+  stripeSubscriptionId: string | null
 ): string {
   const has = (e: string) => events.includes(e);
   // Most advanced state wins — check both old onboarding_* and new funnel_* events
   if (appFirstOpenedAt || has("onboarding_app_store_clicked") || has("funnel_app_store_clicked")) return "Downloaded app";
   if (has("onboarding_continue_browser_clicked")) return "Using browser";
   if (has("onboarding_download_screen_viewed") || has("funnel_download_viewed")) return "Reached download";
-  if (has("funnel_payment_completed") || has("funnel_checkout_started")) return "Paid via funnel";
-  if (has("funnel_signup_completed")) return "Signed up via funnel";
+
+  // Payment status — check actual Stripe state, not just events
+  if (subscriptionStatus === "PRO" || subscriptionStatus === "TRIALING") return "Paid";
+  if (stripeSubscriptionId && subscriptionStatus !== "PRO" && subscriptionStatus !== "TRIALING") return "Payment failed";
+  if (has("funnel_checkout_started") && !stripeSubscriptionId) return "Checkout abandoned";
+  if (has("funnel_signup_completed") && !has("funnel_checkout_started")) return "Signed up (no checkout)";
+
   if (has("funnel_paywall_viewed")) return "Reached paywall";
   if (has("onboarding_extraction_viewed")) return "Saw extraction";
   if (has("onboarding_recording_completed")) return "Recorded";
@@ -125,4 +137,15 @@ function computeOnboardingStatus(
   // Fallback to legacy if no new events
   if (legacyCompletedAt) return "Downloaded app";
   return "Not started";
+}
+
+function computePaymentStatus(
+  subscriptionStatus: string | null,
+  stripeCustomerId: string | null,
+  stripeSubscriptionId: string | null
+): string {
+  if (subscriptionStatus === "PRO" || subscriptionStatus === "TRIALING") return "Active";
+  if (stripeCustomerId && !stripeSubscriptionId) return "Failed";
+  if (stripeSubscriptionId) return "Failed"; // has sub but not active
+  return "None";
 }

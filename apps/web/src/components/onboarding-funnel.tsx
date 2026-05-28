@@ -138,13 +138,34 @@ export function OnboardingFunnel() {
 
   // Handle return from OAuth / Stripe
   const oauthReturnTracked = useRef(false);
+  const paymentVerified = useRef(false);
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("step") === "download") {
-      setStep("download");
-      if (params.get("session_id")) {
-        track("funnel_payment_completed", { value: "stripe_return" });
-        fireFbq("Purchase", { value: 4.99, currency: "USD", content_name: "Free Trial Subscription" });
+      const sessionId = params.get("session_id");
+      if (sessionId && !paymentVerified.current) {
+        paymentVerified.current = true;
+        // Verify payment server-side before firing completion event
+        fetch(`/api/onboarding/verify-payment?session_id=${encodeURIComponent(sessionId)}`)
+          .then((r) => r.json())
+          .then((data) => {
+            if (data.paid) {
+              setStep("download");
+              track("funnel_payment_completed", { value: "stripe_verified" });
+              fireFbq("Purchase", { value: 4.99, currency: "USD", content_name: "Free Trial Subscription" });
+            } else {
+              // Payment not confirmed — send back to paywall with error
+              setStep("paywall");
+              setApiError("Payment incomplete. Try again.");
+            }
+          })
+          .catch(() => {
+            // Verification failed — show download anyway (fail-open)
+            // but don't fire the payment event
+            setStep("download");
+          });
+      } else if (!sessionId) {
+        setStep("download");
       }
     } else if (params.get("step") === "paywall") {
       setStep("paywall");

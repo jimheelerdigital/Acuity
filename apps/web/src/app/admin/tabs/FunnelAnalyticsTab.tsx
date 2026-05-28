@@ -274,7 +274,7 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
         <div style={H}>Campaign Funnels</div>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead><tr>
-            {["Campaign", "Sessions", "Q2", "Mirror", "Mech", "Commit", "Signup", "Paid", "Rate"].map((h) => (
+            {["Campaign", "Sessions", "Q2", "Mirror", "Mech", "Commit", "Signup", "Checkout", "Paid", "Rate"].map((h) => (
               <th key={h} style={{ ...TH, textAlign: h === "Campaign" ? "left" : "right" }}>{h}</th>
             ))}
           </tr></thead>
@@ -288,6 +288,7 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
                 <td style={{ ...TD, textAlign: "right" }}>{cf.steps?.mechanism ?? 0}</td>
                 <td style={{ ...TD, textAlign: "right" }}>{cf.steps?.commit ?? 0}</td>
                 <td style={{ ...TD, textAlign: "right" }}>{cf.steps?.signup ?? 0}</td>
+                <td style={{ ...TD, textAlign: "right" }}>{cf.steps?.checkout_started ?? 0}</td>
                 <td style={{ ...TD, textAlign: "right" }}>{cf.steps?.paid ?? 0}</td>
                 <td style={{ ...TD, textAlign: "right", fontWeight: 600, color: cf.conversionRate >= 5 ? "#22c55e" : cf.conversionRate > 0 ? "#f59e0b" : "#ef4444" }}>{cf.conversionRate}%</td>
               </tr>

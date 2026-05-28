@@ -18,6 +18,7 @@ type ListUser = {
   signupUtmMedium: string | null;
   signupLandingPath: string | null;
   onboardingStatus: string;
+  paymentStatus: string;
 };
 
 type DetailUser = ListUser & {
@@ -179,6 +180,7 @@ export default function UsersTab() {
                 <th className="px-4 py-3">Platform</th>
                 <th className="px-4 py-3">Last active</th>
                 <th className="px-4 py-3">Onboarding</th>
+                <th className="px-4 py-3">Payment</th>
                 <th className="px-4 py-3 text-right">Entries</th>
                 <th className="px-4 py-3" />
               </tr>
@@ -238,6 +240,9 @@ export default function UsersTab() {
                   </td>
                   <td className="px-4 py-3">
                     <OnboardingPill status={u.onboardingStatus} />
+                  </td>
+                  <td className="px-4 py-3">
+                    <PaymentPill status={u.paymentStatus} />
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums">
                     {u.entryCount}
@@ -336,8 +341,10 @@ function OnboardingPill({ status }: { status: string }) {
     "Downloaded app": "bg-green-500/20 text-green-300",
     "Using browser": "bg-green-500/20 text-green-300",
     "Reached download": "bg-green-500/20 text-green-300",
-    "Paid via funnel": "bg-green-500/20 text-green-300",
-    "Signed up via funnel": "bg-blue-500/20 text-blue-300",
+    "Paid": "bg-green-500/20 text-green-300",
+    "Payment failed": "bg-red-500/20 text-red-300",
+    "Checkout abandoned": "bg-amber-500/20 text-amber-300",
+    "Signed up (no checkout)": "bg-blue-500/20 text-blue-300",
     "Reached paywall": "bg-blue-500/20 text-blue-300",
     "Saw extraction": "bg-blue-500/20 text-blue-300",
     "Recorded": "bg-violet-500/20 text-violet-300",
@@ -355,6 +362,19 @@ function OnboardingPill({ status }: { status: string }) {
   const bg = PILL_STYLES[status] ?? "bg-white/5 text-white/40";
   return (
     <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${bg}`}>
+      {status}
+    </span>
+  );
+}
+
+function PaymentPill({ status }: { status: string }) {
+  const styles: Record<string, string> = {
+    Active: "bg-green-500/20 text-green-300",
+    Failed: "bg-red-500/20 text-red-300",
+    None: "bg-white/5 text-white/40",
+  };
+  return (
+    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${styles[status] ?? styles.None}`}>
       {status}
     </span>
   );
