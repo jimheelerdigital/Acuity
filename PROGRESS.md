@@ -41,6 +41,34 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-27] — Final dashboard audit: restore 12 broken charts + add funnel CSV/metrics-since
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 238e209
+
+### In plain English (for Keenan)
+
+Full audit of every admin dashboard tab. Found 12 charts that showed "Chart temporarily unavailable" since the Recharts library was ripped out — they all have real data behind them, they just had no renderer. All 12 now display as CSS bar charts matching the rest of the dashboard. Also added a "Metrics since [date]" label and CSV download button to the Funnel Analytics tab.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/admin/tabs/GrowthMetricsTab.tsx`: rewrote with 10 CSS bar charts replacing placeholders — Weekly Signups, Cumulative Users, Signups by Source (stacked bars with color legend), Weekly Recordings, Avg Recordings/User, Avg Recording Duration, Trial→Paid Rate, Median Time to First Recording, MRR Over Time, Paying Users Over Time. Removed dead Recharts constants (AXIS_TICK, GRID_STROKE, TOOLTIP_STYLE).
+- `apps/web/src/app/admin/tabs/FunnelAnalyticsTab.tsx`: added "Metrics since [date]" label showing `effectiveStart` from API, added CSV download button next to sessions table toggle
+- `apps/web/src/app/admin/adlab/performance/page.tsx`: replaced 2 placeholder charts (Daily Spend & Conversions, Daily CPL) with CSS bar charts using `dailySeries` data
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- Full audit results: Overview, Users, Ads, AI Costs, Content, Business, Settings tabs all load clean with no issues. Error boundaries work. All API routes respond. No broken imports — build passes.
+- The "Show bots" toggle and "Reset Metrics" button were flagged as missing in the audit but are not being added now — bots are already filtered by default via `isBot: false` in the query, and epoch resets are done via code changes (FUNNEL_V2_EPOCH constant).
+- AdLab tabs (experiment creation, image gen, Meta launch) require live Meta API access and couldn't be tested from code alone.
+
+---
+
 ## [2026-05-27] — Filter Facebook prefetch bots from funnel metrics + reset epoch
 
 **Requested by:** Keenan
