@@ -41,6 +41,35 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-28] — Personalize mechanism screen with branch-dynamic content
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** ecfd984
+
+### In plain English (for Keenan)
+
+The "Here's how it works" screen now shows different content depending on which problem the user identified in Q1. Someone who said "same fights, same conversations" sees extraction cards about relationship patterns, a weekly insight about argument timing, and subtext about cycle mapping. Someone who said "days blur together" sees cards about tracking their days, an insight about unstructured time, and subtext about explaining the fog. Six branches total (blur, patterns, rumination, graveyard, mask, drift), each with unique cards, Step 3 copy, and weekly insight. On web, the cards even template in the user's Q2 answer (e.g., "Talk to your partner" vs "Talk to your colleague"). The Continue button also appears much faster now — 200ms after the closing line instead of 800ms.
+
+### Technical changes (for Jimmy)
+
+- Rewrote `apps/mobile/app/onboarding-new/how-it-works.tsx`: reads Q1 from `useOnboardingState()`, maps Q1Answer to branch via `q1ToBranch()` (work_bleeds/blurry_days->blur, same_fights->patterns, goals_not_real->drift), BRANCH_CONTENT lookup with 6 branch variants for cards, step3Sub, and insight
+- Rewrote MechanismScreen in `apps/web/src/components/onboarding-funnel.tsx`: now accepts `branch` and `answers` props, MECH_CONTENT lookup with Q2 answer templating (patterns branch parses Q2 for partner/colleague/family, graveyard branch inserts the tool name from Q2), faster timing (closing at 6200ms, CTA at 6400ms)
+- Updated MechanismScreen call site to pass `branch` and `answers` from funnel state
+- Mobile only reaches 3 of 6 branches (blur, patterns, drift) given current Q1 options; other branches (rumination, graveyard, mask) have content defined but won't be reached on mobile
+
+### Manual steps needed
+
+None — JS-only change, ships via OTA.
+
+### Notes
+
+- Mobile Q1 has 5 options mapping to 3 branches. Web entry question has 6 options mapping 1:1 to 6 branches. The mobile mapping is: work_bleeds->blur, blurry_days->blur, same_fights->patterns, goals_not_real->drift, something_else->blur (default).
+- Web Q2 templating: patterns branch extracts "partner/colleague/family" from the Q2 answer text and templates it into the task card. Graveyard branch templates the Q2 answer (the tool they tried) into the task card.
+- Timing change: closing line now appears 400ms after Step 3 (was 1500ms), CTA appears 200ms after closing (was 800ms). Total animation ~6.4s (was ~8s).
+
+---
+
 ## [2026-05-28] — Rewrite mechanism screen: single scrollable page, no slides
 
 **Requested by:** Keenan
