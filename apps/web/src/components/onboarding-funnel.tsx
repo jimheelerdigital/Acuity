@@ -39,6 +39,7 @@ type Step =
   | "branch-q2" | "branch-q3" | "branch-q4"
   | "shared-q5" | "shared-q6" | "shared-q7" | "shared-q8" | "shared-q9"
   | "mirror"
+  | "mechanism"
   | "commit"
   | "processing"
   | "snapshot"
@@ -49,7 +50,7 @@ type Step =
 const STEP_ORDER: Step[] = [
   "entry", "branch-q2", "branch-q3", "branch-q4",
   "shared-q5", "shared-q6", "shared-q7", "shared-q8", "shared-q9",
-  "mirror", "commit", "processing", "snapshot", "timeline",
+  "mirror", "mechanism", "commit", "processing", "snapshot", "timeline",
   "paywall", "download",
 ];
 
@@ -234,6 +235,7 @@ export function OnboardingFunnel() {
       "shared-q8": "funnel_shared_q8_viewed",
       "shared-q9": "funnel_shared_q9_viewed",
       mirror: "funnel_mirror_viewed",
+      mechanism: "funnel_mechanism_viewed",
       commit: "funnel_commit_viewed",
       processing: "funnel_processing_viewed",
       snapshot: "funnel_snapshot_viewed",
@@ -416,11 +418,16 @@ export function OnboardingFunnel() {
           key="mirror"
           branch={branch}
           answers={answers}
-          onContinue={() => setStep("commit")}
+          onContinue={() => setStep("mechanism")}
         />
       )}
 
-      {/* ── Hold-to-Commit (Screen 11) ── */}
+      {/* ── Mechanism / Product Explainer (Screen 10.5) ── */}
+      {step === "mechanism" && (
+        <MechanismScreen key="mechanism" onContinue={() => setStep("commit")} />
+      )}
+
+      {/* ── Hold-to-Commit (Screen 12) ── */}
       {step === "commit" && (
         <CommitmentScreen key="commit" track={track} onComplete={() => setStep("processing")} />
       )}
@@ -633,7 +640,172 @@ function MirrorScreen({ branch, answers, onContinue }: {
   );
 }
 
-// ─── Hold-to-Commit Screen (Screen 11) ──────────────────────────────────────
+// ─── Mechanism Screen (Product Explainer) ───────────────────────────────────
+
+const MECHANISM_CARDS = [
+  { text: "Follow up with Jamie about Friday", accent: "#7C5CFC", icon: "\u25A1" },
+  { text: "Career transition \u2014 34% this month", accent: "#7C5CFC", icon: "\u25B2" },
+  { text: "Anxious \u2192 Grounded", accent: "#6B8E6B", icon: "\u25CF" },
+  { text: "You mentioned sleep 4 times this week", accent: "#B8A9FE", icon: "\u25C6" },
+];
+
+function MechanismScreen({ onContinue }: { onContinue: () => void }) {
+  const [slide, setSlide] = useState(0);
+  const [showClosing, setShowClosing] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prefersReducedMotion = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  const durations = [2500, 3000, 3000];
+
+  useEffect(() => {
+    if (prefersReducedMotion) {
+      setShowClosing(true);
+      return;
+    }
+    if (slide >= 3) return;
+    const delay = slide === 0 ? 800 : 0;
+    timerRef.current = setTimeout(() => {
+      if (slide < 2) {
+        setSlide((s) => s + 1);
+      } else {
+        setSlide(3);
+        setShowClosing(true);
+      }
+    }, delay + durations[slide]);
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, [slide, prefersReducedMotion]);
+
+  const advance = () => {
+    if (prefersReducedMotion) return;
+    if (timerRef.current) clearTimeout(timerRef.current);
+    if (slide < 2) setSlide((s) => s + 1);
+    else if (!showClosing) { setSlide(3); setShowClosing(true); }
+  };
+
+  if (prefersReducedMotion) {
+    return (
+      <div className="flex min-h-[100dvh] flex-col items-center justify-center px-6 py-12">
+        <h2 className="mb-8 text-center text-2xl font-bold text-zinc-900">One minute. Every day.<br />That&rsquo;s all it takes.</h2>
+        <p className="mb-2 text-base font-semibold text-zinc-900">Open the app. Tap record. Talk.</p>
+        <p className="mb-6 text-sm text-zinc-500">About your day. Your stress. Your wins. Whatever&rsquo;s on your mind.</p>
+        <div className="mb-6 w-full max-w-sm space-y-2">
+          {MECHANISM_CARDS.map((c, i) => (
+            <div key={i} className="flex items-center rounded-xl border-l-[3px] bg-white px-4 py-3 shadow-sm" style={{ borderLeftColor: c.accent }}>
+              <span className="mr-3 font-semibold" style={{ color: c.accent }}>{c.icon}</span>
+              <span className="text-sm font-medium text-zinc-900">{c.text}</span>
+            </div>
+          ))}
+        </div>
+        <p className="mb-4 text-sm text-zinc-500">AI pulls out what matters. Instantly.</p>
+        <p className="mb-8 text-sm italic text-zinc-700">You already think about your life every day. Acuity just makes sure it counts.</p>
+        <button onClick={onContinue} className="rounded-full bg-[#7C5CFC] px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0]">Continue</button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex min-h-[100dvh] cursor-pointer flex-col" onClick={advance}>
+      {/* Headline */}
+      <div className="pt-10 text-center animate-[funnel-fade-up_600ms_cubic-bezier(0.215,0.61,0.355,1)_forwards]">
+        <h2 className="text-2xl font-bold text-zinc-900">One minute. Every day.<br />That&rsquo;s all it takes.</h2>
+      </div>
+
+      {/* Slide content */}
+      <div className="flex flex-1 items-center justify-center px-6">
+        {slide === 0 && (
+          <div className="flex flex-col items-center animate-[funnel-fade-up_500ms_cubic-bezier(0.215,0.61,0.355,1)_forwards]">
+            {/* Mic icon */}
+            <div className="mb-7 flex h-[72px] w-[72px] items-center justify-center rounded-full border-2 border-[#7C5CFC] bg-[#F0ECFF]">
+              <svg width="24" height="32" viewBox="0 0 24 32" fill="none"><rect x="6" y="0" width="12" height="20" rx="6" fill="#7C5CFC"/><path d="M2 16 C2 22 7 26 12 26 C17 26 22 22 22 16" stroke="#7C5CFC" strokeWidth="2" fill="none"/><line x1="12" y1="26" x2="12" y2="30" stroke="#7C5CFC" strokeWidth="2"/></svg>
+            </div>
+            <p className="text-lg font-semibold text-zinc-900">Open the app. Tap record. Talk.</p>
+            <p className="mt-2 text-sm text-zinc-500">About your day. Your stress. Your wins.<br />Whatever&rsquo;s on your mind.</p>
+            {/* Waveform */}
+            <div className="mt-6 flex items-center justify-center gap-[3px]">
+              {[0.3,0.5,0.7,0.4,0.9,0.6,0.8,0.3,0.5,0.95,0.4,0.7,0.6,0.85,0.3,0.5,0.4,0.8,0.6,0.3,0.7,0.5,0.9,0.4].map((h, i) => (
+                <div key={i} className="w-[3px] rounded-full bg-[#B8A9FE] animate-[funnel-fade-up_600ms_cubic-bezier(0.215,0.61,0.355,1)_forwards]" style={{ height: h * 28, animationDelay: `${i * 30}ms`, opacity: 0 }} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {slide === 1 && (
+          <div className="w-full max-w-sm animate-[funnel-fade-up_400ms_cubic-bezier(0.215,0.61,0.355,1)_forwards]">
+            <div className="space-y-2.5">
+              {MECHANISM_CARDS.map((c, i) => (
+                <div key={i} className="flex items-center rounded-xl border-l-[3px] bg-white px-4 py-3.5 shadow-sm animate-[funnel-fade-up_400ms_cubic-bezier(0.215,0.61,0.355,1)_forwards]"
+                  style={{ borderLeftColor: c.accent, animationDelay: `${i * 200}ms`, opacity: 0 }}>
+                  <span className="mr-3 text-sm font-semibold" style={{ color: c.accent }}>{c.icon}</span>
+                  <span className="text-sm font-medium text-zinc-900">{c.text}</span>
+                </div>
+              ))}
+            </div>
+            <p className="mt-5 text-center text-base font-semibold text-zinc-900 animate-[funnel-fade-up_400ms_cubic-bezier(0.215,0.61,0.355,1)_forwards]" style={{ animationDelay: "1000ms", opacity: 0 }}>AI pulls out what matters. Instantly.</p>
+            <p className="mt-2 text-center text-sm text-zinc-500 animate-[funnel-fade-up_400ms_cubic-bezier(0.215,0.61,0.355,1)_forwards]" style={{ animationDelay: "1200ms", opacity: 0 }}>Tasks you mentioned. Goals you&rsquo;re tracking. Moods you didn&rsquo;t notice shifting. Patterns you can&rsquo;t see yourself.</p>
+          </div>
+        )}
+
+        {slide === 2 && (
+          <div className="flex w-full max-w-sm flex-col items-center animate-[funnel-fade-up_500ms_cubic-bezier(0.215,0.61,0.355,1)_forwards]">
+            <p className="mb-6 text-center text-lg font-semibold text-zinc-900">Over time, you build a living picture of your life.</p>
+            {/* Week timeline */}
+            <div className="mb-5 flex w-full justify-between px-1">
+              {["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map((d, i) => {
+                const filled = i < 5;
+                return (
+                  <div key={d} className="flex flex-col items-center">
+                    <div className={`flex h-10 w-8 flex-col items-center justify-center rounded-lg border ${filled ? "border-[#B8A9FE] bg-[#F0ECFF]" : "border-zinc-200 bg-zinc-50"}`}>
+                      {filled && <><div className="mb-1 h-0.5 w-4 rounded-full bg-[#7C5CFC]" /><div className="h-0.5 w-3 rounded-full bg-[#B8A9FE]" /></>}
+                    </div>
+                    <span className={`mt-1.5 text-[9px] font-semibold uppercase tracking-wide ${filled ? "text-zinc-500" : "text-zinc-400"}`}>{d}</span>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="text-center text-sm text-zinc-500">Not a journal you&rsquo;ll abandon. Not an app you&rsquo;ll forget. A record that grows every time you talk &mdash; and shows you what you couldn&rsquo;t see alone.</p>
+          </div>
+        )}
+
+        {slide >= 3 && (
+          <div className="flex flex-col items-center">
+            <div className="mb-8 w-full max-w-sm space-y-1.5">
+              {MECHANISM_CARDS.map((c, i) => (
+                <div key={i} className="flex items-center rounded-xl border-l-[3px] bg-white px-4 py-2.5 shadow-sm" style={{ borderLeftColor: c.accent }}>
+                  <span className="mr-3 text-xs font-semibold" style={{ color: c.accent }}>{c.icon}</span>
+                  <span className="text-xs font-medium text-zinc-900">{c.text}</span>
+                </div>
+              ))}
+            </div>
+            <p className={`text-center text-base font-semibold italic text-zinc-900 transition-all duration-500 ${showClosing ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"}`}>
+              You already think about your life every day. Acuity just makes sure it counts.
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Progress dots */}
+      {slide < 3 && (
+        <div className="flex justify-center gap-2 py-3">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className={`h-2 w-2 rounded-full ${i === slide ? "bg-[#7C5CFC]" : "bg-zinc-200"}`} />
+          ))}
+        </div>
+      )}
+
+      {/* Continue button */}
+      {showClosing && (
+        <div className="pb-6 text-center animate-[funnel-fade-up_400ms_cubic-bezier(0.215,0.61,0.355,1)_forwards]" style={{ animationDelay: "600ms", opacity: 0 }}>
+          <button onClick={(e) => { e.stopPropagation(); onContinue(); }}
+            className="rounded-full bg-[#7C5CFC] px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98]">
+            Continue
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Hold-to-Commit Screen (Screen 12) ──────────────────────────────────────
 
 function CommitmentScreen({ track, onComplete }: { track: (event: string) => void; onComplete: () => void }) {
   const [holding, setHolding] = useState(false);

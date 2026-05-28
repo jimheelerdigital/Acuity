@@ -178,7 +178,7 @@ export default function PromiseScreen() {
   }));
 
   const onContinue = () => {
-    router.push("/onboarding-new/commitment" as never);
+    router.push("/onboarding-new/how-it-works" as never);
   };
 
   const showCursor =

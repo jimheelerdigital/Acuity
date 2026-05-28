@@ -1439,9 +1439,9 @@ async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date) {
     };
     const STEP_LABELS: Record<number, string> = {
       1: "Entry", 2: "Q2", 3: "Q3", 4: "Q4", 5: "Q5", 6: "Q6", 7: "Q7",
-      8: "Q8", 9: "Q9", 10: "Mirror", 11: "Commit", 12: "Processing",
-      13: "Snapshot", 14: "Timeline", 15: "Paywall", 16: "Signup",
-      17: "Paid", 18: "Download",
+      8: "Q8", 9: "Q9", 10: "Mirror", 11: "Mechanism", 12: "Commit",
+      13: "Processing", 14: "Snapshot", 15: "Timeline", 16: "Paywall",
+      17: "Signup", 18: "Paid", 19: "Download",
     };
 
     const sessions = [...sessionMap.entries()]
@@ -1521,8 +1521,8 @@ async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date) {
       const c = creativeMap.get(cid)!;
       c.started++;
       if (s.stepNumber >= 7) c.mirror++;
-      if (s.stepNumber >= 10) c.commitment++;
-      if (s.stepNumber >= 13) c.signup++;
+      if (s.stepNumber >= 11) c.commitment++;
+      if (s.stepNumber >= 14) c.signup++;
       if (s.status === "paid" || s.status === "completed") { c.paid++; c.totalTime += s.timeInFunnel; c.paidCount++; }
     }
     const adAttribution = [...creativeMap.entries()].map(([id, c]) => ({
@@ -1578,6 +1578,7 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     { key: "shared_q8", event: "funnel_shared_q8_viewed", label: "Q8" },
     { key: "shared_q9", event: "funnel_shared_q9_viewed", label: "Q9" },
     { key: "mirror", event: "funnel_mirror_viewed", label: "Mirror" },
+    { key: "mechanism", event: "funnel_mechanism_viewed", label: "Mechanism" },
     { key: "commit", event: "funnel_commit_viewed", label: "Commit", fallback: "funnel_commitment_viewed" },
     { key: "processing", event: "funnel_processing_viewed", label: "Processing" },
     { key: "snapshot", event: "funnel_snapshot_viewed", label: "Snapshot", fallback: "funnel_extraction_viewed" },
@@ -1748,6 +1749,7 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     shared_q8: "Too many questions before mirror. Test skipping.",
     shared_q9: "Last question before mirror. Low intent users leave.",
     mirror: "Mirror didn\u2019t resonate. Review emotional copy.",
+    mechanism: "Product explainer not converting. Simplify or shorten slides.",
     commit: "Hold-to-commit friction. Check mobile touch handling.",
     processing: "Processing theater drop. Users leaving during wait.",
     snapshot: "Snapshot not compelling. Personalize more.",
@@ -1885,15 +1887,17 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
       const total = bSessions.length;
       const entryToQ4 = bSessions.filter((s) => s.stepNumber >= 4).length;
       const q4ToMirror = bSessions.filter((s) => s.stepNumber >= 10).length;
-      const mirrorToCommit = bSessions.filter((s) => s.stepNumber >= 11).length;
-      const commitToPaywall = bSessions.filter((s) => s.stepNumber >= 15).length;
+      const mirrorToMechanism = bSessions.filter((s) => s.stepNumber >= 11).length;
+      const mechanismToCommit = bSessions.filter((s) => s.stepNumber >= 12).length;
+      const commitToPaywall = bSessions.filter((s) => s.stepNumber >= 16).length;
       const paywallToPaid = bSessions.filter((s) => s.status === "paid" || s.status === "completed").length;
       return {
         branch: branchKey,
         sessions: total,
         entryToQ4,
         q4ToMirror,
-        mirrorToCommit,
+        mirrorToMechanism,
+        mechanismToCommit,
         commitToPaywall,
         paywallToPaid,
         overallRate: total > 0 ? Math.round((paywallToPaid / total) * 100) : 0,

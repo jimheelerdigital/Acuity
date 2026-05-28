@@ -37,6 +37,7 @@ export type OnboardingEventName =
   | "funnel_diagnostic_desire"
   | "funnel_failed_solution_viewed"
   | "funnel_promise_viewed"
+  | "funnel_mechanism_viewed"
   // Commitment + recording
   | "funnel_commitment_started"
   | "funnel_commitment_completed"

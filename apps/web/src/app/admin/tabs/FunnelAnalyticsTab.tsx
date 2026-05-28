@@ -243,7 +243,7 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
           <div style={H}>Branch Conversion</div>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead><tr>
-              {["Branch", "Sessions", "E→Q4", "Q4→M", "M→C", "C→PW", "PW→$", "Overall"].map((h) => (
+              {["Branch", "Sessions", "E→Q4", "Q4→M", "M→Mech", "Mech→C", "C→PW", "PW→$", "Overall"].map((h) => (
                 <th key={h} style={{ ...TH, textAlign: h === "Branch" ? "left" : "right" }}>{h}</th>
               ))}
             </tr></thead>
@@ -256,8 +256,9 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
                     <td style={{ ...TD, textAlign: "right" }}>{b.sessions}</td>
                     <td style={{ ...TD, textAlign: "right" }}>{p(b.entryToQ4, b.sessions)}</td>
                     <td style={{ ...TD, textAlign: "right" }}>{p(b.q4ToMirror, b.entryToQ4)}</td>
-                    <td style={{ ...TD, textAlign: "right" }}>{p(b.mirrorToCommit, b.q4ToMirror)}</td>
-                    <td style={{ ...TD, textAlign: "right" }}>{p(b.commitToPaywall, b.mirrorToCommit)}</td>
+                    <td style={{ ...TD, textAlign: "right" }}>{p(b.mirrorToMechanism, b.q4ToMirror)}</td>
+                    <td style={{ ...TD, textAlign: "right" }}>{p(b.mechanismToCommit, b.mirrorToMechanism)}</td>
+                    <td style={{ ...TD, textAlign: "right" }}>{p(b.commitToPaywall, b.mechanismToCommit)}</td>
                     <td style={{ ...TD, textAlign: "right" }}>{p(b.paywallToPaid, b.commitToPaywall)}</td>
                     <td style={{ ...TD, textAlign: "right", fontWeight: 600, color: b.overallRate >= 5 ? "#22c55e" : b.overallRate > 0 ? "#f59e0b" : "#ef4444" }}>{b.overallRate}%</td>
                   </tr>
@@ -273,7 +274,7 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
         <div style={H}>Campaign Funnels</div>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead><tr>
-            {["Campaign", "Sessions", "Q2", "Mirror", "Commit", "Signup", "Paid", "Rate"].map((h) => (
+            {["Campaign", "Sessions", "Q2", "Mirror", "Mech", "Commit", "Signup", "Paid", "Rate"].map((h) => (
               <th key={h} style={{ ...TH, textAlign: h === "Campaign" ? "left" : "right" }}>{h}</th>
             ))}
           </tr></thead>
@@ -284,6 +285,7 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
                 <td style={{ ...TD, textAlign: "right" }}>{cf.sessions}</td>
                 <td style={{ ...TD, textAlign: "right" }}>{cf.steps?.branch_q2 ?? 0}</td>
                 <td style={{ ...TD, textAlign: "right" }}>{cf.steps?.mirror ?? 0}</td>
+                <td style={{ ...TD, textAlign: "right" }}>{cf.steps?.mechanism ?? 0}</td>
                 <td style={{ ...TD, textAlign: "right" }}>{cf.steps?.commit ?? 0}</td>
                 <td style={{ ...TD, textAlign: "right" }}>{cf.steps?.signup ?? 0}</td>
                 <td style={{ ...TD, textAlign: "right" }}>{cf.steps?.paid ?? 0}</td>

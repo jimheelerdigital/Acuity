@@ -58,8 +58,9 @@ const VALID_EVENTS = new Set([
   "funnel_shared_q8_selected",
   "funnel_shared_q9_viewed",
   "funnel_shared_q9_selected",
-  // Mirror + Commit
+  // Mirror + Mechanism + Commit
   "funnel_mirror_viewed",
+  "funnel_mechanism_viewed",
   "funnel_commit_viewed",
   "funnel_commit_completed",
   "funnel_commit_abandoned",
