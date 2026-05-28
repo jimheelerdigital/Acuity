@@ -41,6 +41,38 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-28] — Add "How It Works" product explainer screen to onboarding funnel
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** cb498d5
+
+### In plain English (for Keenan)
+
+New users now see a short animated explainer between the Mirror screen and the Hold-to-Commit gesture. It shows three quick slides — "open and talk" with a pulsing mic and waveform, then the AI pulling out tasks/goals/moods/patterns as floating cards, then those cards arranging into a week timeline. The whole thing takes about 10 seconds or one tap to skip. The closing line is: "You already think about your life every day. Acuity just makes sure it counts." This positions Acuity as a living mirror for your life, not about the Sunday report.
+
+### Technical changes (for Jimmy)
+
+- New file: `apps/mobile/app/onboarding-new/how-it-works.tsx` — 3-slide auto-advancing animated screen with mic icon, waveform bars, extraction cards, week timeline. Reanimated animations with cubic-out easing, prefers-reduced-motion support (shows all content stacked statically), tap-to-advance interaction, progress dots
+- Modified `apps/mobile/app/onboarding-new/promise.tsx` — routes to `/onboarding-new/how-it-works` instead of `/onboarding-new/commitment`
+- Added `funnel_mechanism_viewed` event to mobile (`apps/mobile/lib/onboarding-events.ts`) and web whitelist (`apps/web/src/app/api/onboarding-events/route.ts`)
+- Added `MechanismScreen` component to web funnel (`apps/web/src/components/onboarding-funnel.tsx`) with matching 3-slide layout, CSS animations, Tailwind styling
+- Updated funnel analytics API (`apps/web/src/app/api/admin/metrics/route.ts`): added `mechanism` to FUNNEL_STEPS array, shifted STEP_LABELS numbering (11→Mechanism, 12→Commit, etc.), updated branch breakdown to split Mirror→Commit into Mirror→Mechanism and Mechanism→Commit, updated ad attribution step thresholds
+- Updated `apps/web/src/app/admin/tabs/FunnelAnalyticsTab.tsx`: added Mechanism column to Branch Conversion and Campaign Funnels tables
+
+### Manual steps needed
+
+None — JS-only change, ships via OTA. No schema changes, no new env vars.
+
+### Notes
+
+- The screen sits at position 8.5 in the flow (between Promise/Mirror at 8 and Commitment at 9). Expo Router auto-discovers the new file as a route.
+- No emojis used anywhere on this screen per spec — card types differentiated by left-border color accents and Unicode geometric symbols.
+- Step numbers in the admin metrics API shifted by 1 for everything after Mirror. If any external dashboards or Metabase queries reference hardcoded step numbers >= 11, they'll need updating.
+- The waveform-to-cards transition on mobile is a cross-fade (slide change) rather than a literal morphing animation — true morphing would require shared element transitions which add native complexity for marginal benefit in a 3-second window.
+
+---
+
 ## [2026-05-28] — Users tab audit: fix source display, entry counts, onboarding status, total count
 
 **Requested by:** Keenan
