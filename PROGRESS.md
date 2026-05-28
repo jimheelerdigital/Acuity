@@ -41,6 +41,40 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-28] — Fix payment tracking: verify Stripe before marking paid, fix admin status labels
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 54bb991
+
+### In plain English (for Keenan)
+
+Three users were showing as "Paid via funnel" in the admin dashboard without actually paying in Stripe. The bug was twofold: (1) the admin dashboard was checking whether someone *clicked* the checkout button, not whether they actually *paid*, and (2) the "payment completed" event fired the moment someone returned from Stripe without verifying the payment went through. Now the system calls Stripe directly to confirm payment before recording it, and the admin dashboard checks actual Stripe subscription status instead of click events. You'll also see a new "Payment" column in the Users table — green "Active" means Stripe confirms they paid, red "Failed" means something went wrong, grey "None" means they never entered payment info. The old "Paid via funnel" label is replaced with more specific labels: "Paid", "Payment failed", "Checkout abandoned", "Signed up (no checkout)".
+
+### Technical changes (for Jimmy)
+
+- New endpoint: `apps/web/src/app/api/onboarding/verify-payment/route.ts` — GET endpoint that calls `stripe.checkout.sessions.retrieve(session_id)` and returns `{ paid: true/false }` based on `payment_status === 'paid'` or `status === 'complete'`
+- Modified `apps/web/src/components/onboarding-funnel.tsx` (success URL handler): now fetches `/api/onboarding/verify-payment?session_id=xxx` before firing `funnel_payment_completed`. If verification fails, redirects to paywall with "Payment incomplete. Try again." error. Fail-open on fetch errors (shows download but doesn't fire the event)
+- Rewrote `computeOnboardingStatus()` in `apps/web/src/app/api/admin/users/route.ts`: checks `subscriptionStatus` (PRO/TRIALING) for "Paid", `stripeSubscriptionId` without active status for "Payment failed", `funnel_checkout_started` without subscription for "Checkout abandoned", `funnel_signup_completed` without checkout for "Signed up (no checkout)". Added `stripeCustomerId` and `stripeSubscriptionId` to user select query
+- New `computePaymentStatus()` function returns "Active" / "Failed" / "None" based on Stripe data
+- Added `paymentStatus` field to users API response and `PaymentPill` component to `UsersTab.tsx`
+- Split funnel step: `paid` (with `funnel_checkout_started` fallback) is now two steps — `checkout_started` (funnel_checkout_started) and `paid` (funnel_payment_completed, no fallback). Shows drop-off between "wanted to pay" and "actually paid"
+- Updated `STEP_LABELS` (18: Checkout, 19: Paid, 20: Download), `SUGGESTED_FIXES`, step number thresholds in ad attribution and branch breakdown
+- Added "Checkout" column to campaign funnels table in `FunnelAnalyticsTab.tsx`
+
+### Manual steps needed
+
+None — web-only changes, deploy automatically on push.
+
+### Notes
+
+- The verify-payment endpoint does not require auth — the Stripe checkout session ID itself is the secret (unguessable `cs_live_xxx` format). This matches Stripe's own recommendation for success URL handling.
+- Fail-open design: if the verify-payment call itself fails (network error, Stripe down), the user still sees the download screen but `funnel_payment_completed` is NOT fired. This prevents analytics corruption while not blocking the user.
+- The `funnel_payment_completed` event value changed from "stripe_return" to "stripe_verified" so you can distinguish old unverified events from new verified ones in analytics.
+- The three false-positive users will now show accurate status on the next admin page load. Their onboardingStatus will show "Checkout abandoned" or "Payment failed" instead of "Paid via funnel", and their Payment column will show "Failed" or "None".
+
+---
+
 ## [2026-05-28] — Personalize mechanism screen with branch-dynamic content
 
 **Requested by:** Keenan
