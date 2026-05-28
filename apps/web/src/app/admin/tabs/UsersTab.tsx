@@ -63,6 +63,7 @@ type SummaryData = {
 export default function UsersTab() {
   const [users, setUsers] = useState<ListUser[] | null>(null);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [totalCount, setTotalCount] = useState<number | null>(null);
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
   const [showBulkEmail, setShowBulkEmail] = useState(false);
@@ -93,6 +94,7 @@ export default function UsersTab() {
         setUsers((prev) => (prev ? [...prev, ...data.users] : data.users));
       }
       setNextCursor(data.nextCursor);
+      if (data.totalCount !== undefined) setTotalCount(data.totalCount);
     },
     [q, nextCursor]
   );
@@ -141,7 +143,7 @@ export default function UsersTab() {
           </div>
           <div className="rounded-lg bg-[#13131F] p-4">
             <div className="text-[11px] uppercase tracking-wider text-white/40">Total Users</div>
-            <div className="text-2xl font-semibold text-white">{users?.length ?? "—"}</div>
+            <div className="text-2xl font-semibold text-white">{totalCount ?? users?.length ?? "—"}</div>
           </div>
         </div>
       )}
@@ -189,22 +191,31 @@ export default function UsersTab() {
                 >
                   <td className="px-4 py-3">{u.email}</td>
                   <td className="px-4 py-3">
-                    {u.signupLandingPath && u.signupLandingPath !== "/" ? (
+                    {(u.signupUtmSource || u.signupUtmMedium) ? (
                       <div>
-                        <a
-                          href={`https://getacuity.io${u.signupLandingPath}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-[#A78BFA] hover:underline"
-                        >
-                          {u.signupLandingPath}
-                        </a>
-                        {(u.signupUtmSource || u.signupUtmMedium) && (
-                          <div className="text-[10px] text-white/30 mt-0.5">
-                            {[u.signupUtmSource, u.signupUtmMedium].filter(Boolean).join(" / ")}
-                          </div>
+                        <div className="text-xs text-white/70">
+                          {[u.signupUtmSource, u.signupUtmMedium].filter(Boolean).join(" / ")}
+                        </div>
+                        {u.signupLandingPath && u.signupLandingPath !== "/" && (
+                          <a
+                            href={`https://getacuity.io${u.signupLandingPath}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[10px] text-[#A78BFA] hover:underline"
+                          >
+                            {u.signupLandingPath}
+                          </a>
                         )}
                       </div>
+                    ) : u.signupLandingPath && u.signupLandingPath !== "/" ? (
+                      <a
+                        href={`https://getacuity.io${u.signupLandingPath}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-[#A78BFA] hover:underline"
+                      >
+                        {u.signupLandingPath}
+                      </a>
                     ) : (
                       <span className="text-xs text-white/30">direct</span>
                     )}
@@ -324,12 +335,18 @@ function OnboardingPill({ status }: { status: string }) {
   const PILL_STYLES: Record<string, string> = {
     "Downloaded app": "bg-green-500/20 text-green-300",
     "Using browser": "bg-green-500/20 text-green-300",
-    "Reached download": "bg-blue-500/20 text-blue-300",
+    "Reached download": "bg-green-500/20 text-green-300",
+    "Paid via funnel": "bg-green-500/20 text-green-300",
+    "Signed up via funnel": "bg-blue-500/20 text-blue-300",
+    "Reached paywall": "bg-blue-500/20 text-blue-300",
     "Saw extraction": "bg-blue-500/20 text-blue-300",
     "Recorded": "bg-violet-500/20 text-violet-300",
     "Started recording": "bg-amber-500/20 text-amber-300",
     "Skipped recording": "bg-amber-500/20 text-amber-300",
     "Saw recording screen": "bg-amber-500/20 text-amber-300",
+    "Funnel: mirror": "bg-violet-500/20 text-violet-300",
+    "Funnel: started quiz": "bg-amber-500/20 text-amber-300",
+    "Funnel: page loaded": "bg-white/10 text-white/50",
     "Not started": "bg-white/5 text-white/40",
     // Legacy fallback
     "Complete": "bg-green-500/20 text-green-300",

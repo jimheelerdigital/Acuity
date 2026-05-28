@@ -29,6 +29,9 @@ export async function GET(req: NextRequest) {
     ? { email: { contains: q, mode: "insensitive" as const } }
     : {};
 
+  // Total count for the summary card (only on first page load, not paginated requests)
+  const totalCount = !cursor ? await prisma.user.count({ where }) : undefined;
+
   const users = await prisma.user.findMany({
     where,
     orderBy: { createdAt: "desc" },
@@ -48,19 +51,19 @@ export async function GET(req: NextRequest) {
       signupUtmMedium: true,
       signupLandingPath: true,
       onboarding: { select: { completedAt: true, currentStep: true } },
-      _count: { select: { entries: true } },
+      _count: { select: { entries: { where: { status: "COMPLETE" } } } },
     },
   });
 
   const hasMore = users.length > limit;
   const page = hasMore ? users.slice(0, limit) : users;
 
-  // Batch-fetch latest onboarding event per user for the status column
+  // Batch-fetch onboarding + funnel events per user for the status column
   const userIds = page.map((u) => u.id);
   let eventsByUser: Record<string, string[]> = {};
   try {
     const events = await prisma.onboardingEvent.findMany({
-      where: { userId: { in: userIds }, event: { startsWith: "onboarding_" }, isBot: false },
+      where: { userId: { in: userIds }, isBot: false },
       select: { userId: true, event: true },
     });
     for (const e of events) {
@@ -94,6 +97,7 @@ export async function GET(req: NextRequest) {
       ),
     })),
     nextCursor: hasMore ? page[page.length - 1].id : null,
+    ...(totalCount !== undefined ? { totalCount } : {}),
   });
 }
 
@@ -103,15 +107,21 @@ function computeOnboardingStatus(
   legacyCompletedAt: Date | null
 ): string {
   const has = (e: string) => events.includes(e);
-  // Most advanced state wins
-  if (appFirstOpenedAt || has("onboarding_app_store_clicked")) return "Downloaded app";
+  // Most advanced state wins — check both old onboarding_* and new funnel_* events
+  if (appFirstOpenedAt || has("onboarding_app_store_clicked") || has("funnel_app_store_clicked")) return "Downloaded app";
   if (has("onboarding_continue_browser_clicked")) return "Using browser";
-  if (has("onboarding_download_screen_viewed")) return "Reached download";
+  if (has("onboarding_download_screen_viewed") || has("funnel_download_viewed")) return "Reached download";
+  if (has("funnel_payment_completed") || has("funnel_checkout_started")) return "Paid via funnel";
+  if (has("funnel_signup_completed")) return "Signed up via funnel";
+  if (has("funnel_paywall_viewed")) return "Reached paywall";
   if (has("onboarding_extraction_viewed")) return "Saw extraction";
   if (has("onboarding_recording_completed")) return "Recorded";
   if (has("onboarding_recording_started")) return "Started recording";
   if (has("onboarding_skipped")) return "Skipped recording";
   if (has("onboarding_recording_screen_viewed")) return "Saw recording screen";
+  if (has("funnel_mirror_viewed")) return "Funnel: mirror";
+  if (has("funnel_entry_selected")) return "Funnel: started quiz";
+  if (has("funnel_entry_viewed")) return "Funnel: page loaded";
   // Fallback to legacy if no new events
   if (legacyCompletedAt) return "Downloaded app";
   return "Not started";

@@ -55,7 +55,7 @@ export async function GET(
       signupReferrer: true,
       signupLandingPath: true,
       onboarding: { select: { completedAt: true, currentStep: true } },
-      _count: { select: { entries: true } },
+      _count: { select: { entries: { where: { status: "COMPLETE" } } } },
     },
   });
   if (!user) {
@@ -65,7 +65,7 @@ export async function GET(
   // One extra query: most recent entry timestamp (not content).
   // Restricted to `createdAt` — never summary/transcript/audio.
   const latestEntry = await prisma.entry.findFirst({
-    where: { userId: params.id },
+    where: { userId: params.id, status: "COMPLETE" },
     orderBy: { createdAt: "desc" },
     select: { createdAt: true },
   });
