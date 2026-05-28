@@ -85,10 +85,6 @@ interface OverviewData {
   redFlags: {
     flags: { id: string; severity: string; category: string; title: string; description: string; affectedUserIds: string[]; createdAt: string }[];
   };
-  // From getOnboardingFunnel
-  onboardingFunnel?: {
-    steps: { label: string; count: number }[];
-  };
   // Deprecated — kept for type compat, no longer fetched
   tryFunnel?: {
     steps: { label: string; count: number }[];
@@ -332,16 +328,6 @@ export default function OverviewTab({ start, end }: { start: string; end: string
         </div>
       )}
 
-      {/* Legacy funnel detail removed — see Funnel Analytics tab */}
-
-      {/* ── Post-Signup Onboarding Funnel ────────────────────────── */}
-      {data.onboardingFunnel && data.onboardingFunnel.steps.length > 0 && (
-        <div className="rounded-xl bg-[#13131F] p-6">
-          <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-white/40">Post-Signup Onboarding Funnel</h3>
-          <FunnelBars steps={data.onboardingFunnel.steps} />
-        </div>
-      )}
-
       {/* ── Past Due Alerts ──────────────────────────────────────── */}
       {rev.pastDueUsers.length > 0 && (
         <div className="rounded-xl border border-red-500/20 bg-red-900/10 p-5">
@@ -379,39 +365,3 @@ function MiniMetric({ label, value, sub, color }: { label: string; value: string
   );
 }
 
-function FunnelBars({ steps }: { steps: { label: string; count: number }[] }) {
-  const maxCount = Math.max(...steps.map((s) => s.count), 1);
-  return (
-    <div className="space-y-3 max-w-3xl mx-auto">
-      {steps.map((step, i) => {
-        const pct = (step.count / maxCount) * 100;
-        const prevCount = i > 0 ? steps[i - 1].count : null;
-        const dropOff = prevCount != null && prevCount > 0
-          ? Math.round(((prevCount - step.count) / prevCount) * 100)
-          : null;
-        return (
-          <div key={step.label}>
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-sm text-white/70">{step.label}</span>
-              <div className="flex items-center gap-3">
-                {dropOff != null && dropOff > 0 && (
-                  <span className="text-xs text-red-400/60">-{dropOff}%</span>
-                )}
-                <span className="text-sm font-semibold text-white tabular-nums">{step.count}</span>
-              </div>
-            </div>
-            <div className="h-2 w-full rounded-full bg-white/5 overflow-hidden">
-              <div
-                className="h-full rounded-full transition-all duration-700"
-                style={{
-                  width: `${pct}%`,
-                  background: "linear-gradient(90deg, #7C5CFC, #9F7AEA)",
-                }}
-              />
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}

@@ -113,15 +113,14 @@ export async function GET(req: NextRequest) {
       switch (tab) {
         case "overview": {
           // Each query wrapped independently — one failure doesn't kill the page
-          const [overview, revenue, funnel, redFlags, onboardingFunnel, webFunnel] = await Promise.all([
+          const [overview, revenue, funnel, redFlags, webFunnel] = await Promise.all([
             safe("overview", () => getOverview(prisma, start, end, prevStart, prevEnd, monthStart), {} as Record<string, unknown>),
             safe("revenue", () => getRevenue(prisma, start, end, prevStart, prevEnd, monthStart), {} as Record<string, unknown>),
             safe("funnel", () => getFunnel(prisma, start, end), {} as Record<string, unknown>),
             safe("redFlags", () => getRedFlags(prisma), {} as Record<string, unknown>),
-            safe("onboardingFunnel", () => getOnboardingFunnel(prisma, start, end), { steps: [], alerts: [], commitmentStats: { completed: 0, abandoned: 0, successRate: 0 }, sessions: [] } as Record<string, unknown>),
             safe("webFunnel", () => getWebOnboardingFunnel(prisma, start, end), { steps: [], alerts: [], diagnosticBreakdowns: {}, commitmentStats: { completed: 0, abandoned: 0, successRate: 0 }, sessions: [] } as Record<string, unknown>),
           ]);
-          return { ...overview, revenue, funnel, redFlags, onboardingFunnel, webFunnel };
+          return { ...overview, revenue, funnel, redFlags, webFunnel };
         }
         case "growth":
           return safe("growth", () => getGrowth(prisma, start, end, prevStart, prevEnd), {});
@@ -1267,57 +1266,6 @@ async function getBusinessMetrics(prisma: P, monthStart: Date) {
     breakEvenUsers,
     runwayMonths,
   };
-}
-
-// ── Onboarding Funnel (event-based) ─────────────────────────────────────────
-
-const ONBOARDING_FUNNEL_STEPS = [
-  { event: "onboarding_recording_screen_viewed", label: "Recording screen" },
-  { event: "onboarding_recording_started", label: "Started recording" },
-  { event: "onboarding_recording_completed", label: "Completed recording" },
-  { event: "onboarding_extraction_viewed", label: "Saw extraction" },
-  { event: "onboarding_download_screen_viewed", label: "Download screen" },
-  { event: "onboarding_app_store_clicked", label: "Downloaded app" },
-];
-
-async function getOnboardingFunnel(prisma: P, start: Date, end: Date) {
-  try {
-    // Count "Signups" as distinct users who have ANY onboarding event in
-    // the date range. This captures users who signed up just before
-    // tracking deployed but completed onboarding after — they'd be missed
-    // by a pure user.createdAt filter.
-    const signupUsers = await prisma.onboardingEvent.groupBy({
-      by: ["userId"],
-      where: {
-        event: { startsWith: "onboarding_" },
-        createdAt: { gte: start, lte: end },
-        userId: { not: null },
-        isBot: false,
-      },
-    });
-    const signups = signupUsers.length;
-
-    const counts = await Promise.all(
-      ONBOARDING_FUNNEL_STEPS.map(async (s) => {
-        const distinctUsers = await prisma.onboardingEvent.groupBy({
-          by: ["userId"],
-          where: {
-            event: s.event,
-            createdAt: { gte: start, lte: end },
-            userId: { not: null },
-            isBot: false,
-          },
-        });
-        return { label: s.label, count: distinctUsers.length };
-      })
-    );
-
-    return {
-      steps: [{ label: "Signups", count: signups }, ...counts],
-    };
-  } catch {
-    return { steps: [] };
-  }
 }
 
 // ── Web Onboarding Funnel (/start) ──────────────────────────────────────────
