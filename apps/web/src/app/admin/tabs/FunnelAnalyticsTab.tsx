@@ -69,8 +69,31 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
   const TH: React.CSSProperties = { padding: "6px 8px", fontSize: 11, color: "rgba(255,255,255,0.3)", borderBottom: "1px solid rgba(255,255,255,0.08)", cursor: "pointer", userSelect: "none" as const };
   const TD: React.CSSProperties = { padding: "6px 8px", fontSize: 12, color: "rgba(255,255,255,0.5)", borderBottom: "1px solid rgba(255,255,255,0.04)" };
 
+  // CSV export
+  const downloadCsv = () => {
+    const rows = [["Session", "Started", "Source", "Campaign", "Step", "Status", "Time (s)", "Interacted"]];
+    for (const s of filteredSessions) {
+      rows.push([s.sessionId, s.started, s.source, cn(s.campaign), s.currentStep, s.status, String(s.timeInFunnelSec), s.hasInteracted ? "yes" : "no"]);
+    }
+    const csv = rows.map((r: string[]) => r.map((c: string) => `"${(c ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `funnel-sessions-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
+      {/* Metrics since label */}
+      {data.effectiveStart && (
+        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.25)", textAlign: "right" }}>
+          Metrics since {new Date(data.effectiveStart).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" })}
+        </div>
+      )}
 
       {/* Page Load → First Tap funnel */}
       {(km.pageLoadCount ?? 0) > 0 && (
@@ -264,15 +287,20 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
       <div style={S}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
           <div style={H as any}>Sessions ({showPageLoadOnly ? sessions.length : data.totalSessionCount ?? filteredSessions.length})</div>
-          <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 11, color: "rgba(255,255,255,0.3)" }}>
-            <input
-              type="checkbox"
-              checked={showPageLoadOnly}
-              onChange={(e) => setShowPageLoadOnly(e.target.checked)}
-              style={{ accentColor: "#7C5CFC" }}
-            />
-            Show page-load-only sessions
-          </label>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 11, color: "rgba(255,255,255,0.3)" }}>
+              <input
+                type="checkbox"
+                checked={showPageLoadOnly}
+                onChange={(e) => setShowPageLoadOnly(e.target.checked)}
+                style={{ accentColor: "#7C5CFC" }}
+              />
+              Show page-load-only sessions
+            </label>
+            <button onClick={downloadCsv} style={{ background: "rgba(255,255,255,0.06)", border: "none", borderRadius: 6, padding: "4px 12px", fontSize: 11, color: "rgba(255,255,255,0.4)", cursor: "pointer" }}>
+              Download CSV
+            </button>
+          </div>
         </div>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>

@@ -393,13 +393,42 @@ export default function PerformancePage() {
               {/* Chart 1: Daily Spend & Conversions */}
               <div className="rounded-xl border border-white/10 bg-[#13131F] p-5">
                 <h3 className="text-sm font-semibold text-white mb-4">Daily Spend & Conversions</h3>
-                <div className="flex items-center justify-center h-48 text-xs text-white/30 bg-white/5 rounded-lg">Chart temporarily unavailable</div>
+                {(() => {
+                  const series = data.dailySeries as { date: string; spendCents?: number; conversions?: number }[];
+                  const maxSpend = Math.max(...series.map((d) => d.spendCents ?? 0), 1);
+                  return (
+                    <div className="flex items-end gap-1 h-48 pt-4">
+                      {series.map((d, i) => (
+                        <div key={i} className="flex-1 flex flex-col items-center justify-end" title={`${d.date}: $${((d.spendCents ?? 0) / 100).toFixed(2)} spend, ${d.conversions ?? 0} conv`}>
+                          <div className="w-full rounded-t bg-[#7C5CFC]" style={{ height: `${Math.max(2, ((d.spendCents ?? 0) / maxSpend) * 100)}%` }} />
+                          {series.length <= 14 && <span className="text-[8px] text-white/30 mt-1">{d.date?.slice(5)}</span>}
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Chart 2: Daily CPL */}
               <div className="rounded-xl border border-white/10 bg-[#13131F] p-5">
                 <h3 className="text-sm font-semibold text-white mb-4">Daily CPL</h3>
-                <div className="flex items-center justify-center h-48 text-xs text-white/30 bg-white/5 rounded-lg">Chart temporarily unavailable</div>
+                {(() => {
+                  const series = data.dailySeries as { date: string; cplCents?: number }[];
+                  const maxCpl = Math.max(...series.map((d) => d.cplCents ?? 0), 1);
+                  return (
+                    <div className="flex items-end gap-1 h-48 pt-4">
+                      {series.map((d, i) => {
+                        const cpl = d.cplCents ?? 0;
+                        return (
+                          <div key={i} className="flex-1 flex flex-col items-center justify-end" title={`${d.date}: $${(cpl / 100).toFixed(2)} CPL`}>
+                            <div className="w-full rounded-t" style={{ background: cpl > 0 ? (cpl > 500 ? "#ef4444" : cpl > 300 ? "#f59e0b" : "#22c55e") : "rgba(255,255,255,0.05)", height: `${Math.max(2, (cpl / maxCpl) * 100)}%` }} />
+                            {series.length <= 14 && <span className="text-[8px] text-white/30 mt-1">{d.date?.slice(5)}</span>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           )}
