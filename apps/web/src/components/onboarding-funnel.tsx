@@ -423,8 +423,8 @@ export function OnboardingFunnel() {
       )}
 
       {/* ── Mechanism / Product Explainer (Screen 10.5) ── */}
-      {step === "mechanism" && (
-        <MechanismScreen key="mechanism" onContinue={() => setStep("commit")} />
+      {step === "mechanism" && branch && (
+        <MechanismScreen key="mechanism" branch={branch} answers={answers} onContinue={() => setStep("commit")} />
       )}
 
       {/* ── Hold-to-Commit (Screen 12) ── */}
@@ -640,27 +640,102 @@ function MirrorScreen({ branch, answers, onContinue }: {
   );
 }
 
-// ─── Mechanism Screen (Product Explainer) ───────────────────────────────────
-
-const MECHANISM_CARDS = [
-  { text: "Follow up with Jamie about Friday", icon: "\u25A1" },
-  { text: "Career transition \u2014 34% this month", icon: "\u25B2" },
-  { text: "Anxious \u2192 Grounded", icon: "\u25CF" },
-  { text: "Sleep mentioned 4 times this week", icon: "\u25C6" },
-];
+// ─── Mechanism Screen (Product Explainer — branch-personalized) ─────────────
 
 const MECHANISM_WAVE_HEIGHTS = [12,20,28,16,32,24,30,14,22,34,18,26,20,30,14,24,18,28];
 
-function MechanismScreen({ onContinue }: { onContinue: () => void }) {
+interface MechBranchContent {
+  cards: (q2: string) => { text: string; icon: string }[];
+  step3Sub: string;
+  insight: string;
+}
+
+const MECH_CONTENT: Record<Branch, MechBranchContent> = {
+  blur: {
+    cards: () => [
+      { text: "Block 30 minutes for the thing you keep postponing", icon: "\u25A1" },
+      { text: "Build a record of my days \u2014 0% this week", icon: "\u25B2" },
+      { text: "Foggy \u2192 Aware", icon: "\u25CF" },
+      { text: "You described 3 days as \u2018fine\u2019 but couldn\u2019t name a single highlight", icon: "\u25C6" },
+    ],
+    step3Sub: "Over time, Acuity shows you where your days actually go \u2014 not where you think they go. Patterns across weeks and months that explain the fog.",
+    insight: "Your \u2018fine\u2019 days had zero unstructured time. Your best day had 2 hours of nothing planned.",
+  },
+  patterns: {
+    cards: (q2) => {
+      const who = q2.includes("partner") ? "your partner" : q2.includes("work") ? "your colleague" : q2.includes("family") ? "your family" : "them";
+      const cycle = q2.replace(/^The same /i, "").replace(/ with.*/, "").toLowerCase();
+      return [
+        { text: `Talk to ${who} about what happened Tuesday`, icon: "\u25A1" },
+        { text: `Break the ${cycle || "cycle"} cycle \u2014 0% this week`, icon: "\u25B2" },
+        { text: "Frustrated \u2192 Aware", icon: "\u25CF" },
+        { text: "The tension started 2 days before the argument \u2014 every time", icon: "\u25C6" },
+      ];
+    },
+    step3Sub: "Over time, Acuity maps the cycle \u2014 what triggers it, when it starts, and why it keeps repeating. The pattern becomes visible.",
+    insight: "The argument happened Tuesday. The tension started Sunday. Same pattern, 3 weeks in a row.",
+  },
+  rumination: {
+    cards: () => [
+      { text: "Write down the 3 thoughts that keep looping", icon: "\u25A1" },
+      { text: "Process my day before bed \u2014 0% this week", icon: "\u25B2" },
+      { text: "Racing \u2192 Settled", icon: "\u25CF" },
+      { text: "Your 11pm spiral starts with something that happened at 2pm", icon: "\u25C6" },
+    ],
+    step3Sub: "Over time, Acuity catches what your brain is processing before it reaches your pillow. The backlog shrinks because it finally has somewhere to go.",
+    insight: "You slept best on Wednesday \u2014 the only day you processed out loud before 6pm.",
+  },
+  graveyard: {
+    cards: (q2) => {
+      const tool = q2 || "what hasn\u2019t worked";
+      return [
+        { text: `Try Acuity for 7 days instead of ${tool.charAt(0).toLowerCase() + tool.slice(1)}`, icon: "\u25A1" },
+        { text: "Stick with one thing for 30 days \u2014 0% this week", icon: "\u25B2" },
+        { text: "Skeptical \u2192 Curious", icon: "\u25CF" },
+        { text: "You\u2019ve quit every tool on Day 4. There\u2019s a reason for that.", icon: "\u25C6" },
+      ];
+    },
+    step3Sub: "Over time, Acuity becomes the record you\u2019ve never been able to keep. Not because you\u2019re more disciplined \u2014 because 60 seconds is all it asks.",
+    insight: "Day 4 is when you almost quit. Every tool. Every time. Now you know when to push through.",
+  },
+  mask: {
+    cards: () => [
+      { text: "Tell one person how you actually feel this week", icon: "\u25A1" },
+      { text: "Check in with myself daily \u2014 0% this week", icon: "\u25B2" },
+      { text: "Performing \u2192 Honest", icon: "\u25CF" },
+      { text: "You said \u2018I\u2019m fine\u2019 on your lowest days. Every time.", icon: "\u25C6" },
+    ],
+    step3Sub: "Over time, Acuity sees what nobody else does \u2014 the gap between how you perform and how you actually feel. Tracked daily, visible weekly.",
+    insight: "Your energy for everyone else averaged 8/10. For yourself: 3/10. Every single day.",
+  },
+  drift: {
+    cards: () => [
+      { text: "Name one thing you used to care about", icon: "\u25A1" },
+      { text: "Reconnect with what matters \u2014 0% this week", icon: "\u25B2" },
+      { text: "Numb \u2192 Present", icon: "\u25CF" },
+      { text: "You talked about who you used to be twice. Who you want to become \u2014 zero times.", icon: "\u25C6" },
+    ],
+    step3Sub: "Over time, Acuity tracks who you\u2019re becoming \u2014 so you notice before another year disappears without you choosing it.",
+    insight: "Your highest energy was Sunday morning. By Monday evening, gone. The reset happens every week.",
+  },
+};
+
+function MechanismScreen({ branch, answers, onContinue }: {
+  branch: Branch; answers: Record<string, string | string[]>; onContinue: () => void;
+}) {
   const [showCta, setShowCta] = useState(false);
   const prefersReducedMotion = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+  const content = MECH_CONTENT[branch];
+  const q2 = typeof answers.branch_q2 === "string" ? answers.branch_q2 : "";
+  const cards = content.cards(q2);
+
+  // Faster timing: closing at 6200ms, CTA at 6400ms
   useEffect(() => {
-    const t = setTimeout(() => setShowCta(true), prefersReducedMotion ? 0 : 7600);
+    const t = setTimeout(() => setShowCta(true), prefersReducedMotion ? 0 : 6400);
     return () => clearTimeout(t);
   }, [prefersReducedMotion]);
 
-  // Inline styles for mechanism-specific keyframes
   const mechanismStyles = `
     @keyframes mech-wave {
       0%, 100% { transform: scaleY(0.3); }
@@ -677,11 +752,9 @@ function MechanismScreen({ onContinue }: { onContinue: () => void }) {
   `;
 
   const fadeUp = (delay: number) => prefersReducedMotion
-    ? {}
-    : { animation: `funnel-slide-up 600ms cubic-bezier(0.215,0.61,0.355,1) ${delay}ms both` };
+    ? {} : { animation: `funnel-slide-up 600ms cubic-bezier(0.215,0.61,0.355,1) ${delay}ms both` };
   const fadeUpShort = (delay: number) => prefersReducedMotion
-    ? {}
-    : { animation: `funnel-slide-up 400ms cubic-bezier(0.215,0.61,0.355,1) ${delay}ms both` };
+    ? {} : { animation: `funnel-slide-up 400ms cubic-bezier(0.215,0.61,0.355,1) ${delay}ms both` };
 
   return (
     <div className="min-h-[100dvh] overflow-y-auto px-6 py-10">
@@ -697,35 +770,23 @@ function MechanismScreen({ onContinue }: { onContinue: () => void }) {
         <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.1em] text-[#7C5CFC]">Step 1</p>
         <p className="mb-1.5 text-xl font-bold text-zinc-900">Talk for 60 seconds.</p>
         <p className="mb-4 text-sm leading-5 text-zinc-500">About your day. Your stress. Your wins. Whatever&rsquo;s on your mind.</p>
-
-        {/* Looping waveform — CSS only */}
         <div className="flex items-end gap-[4px]" style={{ height: 40 }}>
           {MECHANISM_WAVE_HEIGHTS.map((h, i) => (
-            <div
-              key={i}
-              className="w-[3px] origin-bottom rounded-full bg-[#B8A9FE]"
-              style={{
-                height: h,
-                animation: prefersReducedMotion ? "none" : `mech-wave ${600 + (i % 5) * 80}ms ease-in-out ${i * 40}ms infinite alternate`,
-              }}
-            />
+            <div key={i} className="w-[3px] origin-bottom rounded-full bg-[#B8A9FE]"
+              style={{ height: h, animation: prefersReducedMotion ? "none" : `mech-wave ${600 + (i % 5) * 80}ms ease-in-out ${i * 40}ms infinite alternate` }} />
           ))}
         </div>
       </div>
 
-      {/* ── STEP 2: WE EXTRACT ── */}
+      {/* ── STEP 2: WE EXTRACT (branch-personalized) ── */}
       <div className="mb-8" style={fadeUp(2600)}>
         <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.1em] text-[#7C5CFC]">Step 2</p>
         <p className="mb-1.5 text-xl font-bold text-zinc-900">We pull out what matters.</p>
         <p className="mb-4 text-sm leading-5 text-zinc-500">Tasks, goals, mood shifts, and patterns &mdash; extracted from your own words.</p>
-
         <div className="space-y-2">
-          {MECHANISM_CARDS.map((c, i) => (
-            <div
-              key={i}
-              className="flex items-center rounded-xl border-l-[3px] border-[#7C5CFC] bg-white px-3.5 py-3 shadow-sm"
-              style={fadeUpShort(2600 + 600 + i * 200)}
-            >
+          {cards.map((c, i) => (
+            <div key={i} className="flex items-center rounded-xl border-l-[3px] border-[#7C5CFC] bg-white px-3.5 py-3 shadow-sm"
+              style={fadeUpShort(2600 + 600 + i * 200)}>
               <span className="mr-2.5 text-[13px] font-semibold text-[#7C5CFC]">{c.icon}</span>
               <span className="text-[13px] font-medium leading-[18px] text-zinc-900">{c.text}</span>
             </div>
@@ -733,15 +794,11 @@ function MechanismScreen({ onContinue }: { onContinue: () => void }) {
         </div>
       </div>
 
-      {/* ── STEP 3: YOUR PICTURE ── */}
+      {/* ── STEP 3: YOUR PICTURE (branch-personalized) ── */}
       <div className="mb-8" style={fadeUp(4800)}>
         <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.1em] text-[#7C5CFC]">Step 3</p>
         <p className="mb-1.5 text-xl font-bold text-zinc-900">A living picture of your life.</p>
-        <p className="mb-5 text-sm leading-5 text-zinc-500">
-          Over time, Acuity connects the dots you can&rsquo;t see &mdash; patterns across your days, weeks, and months that show you who you&rsquo;re becoming.
-        </p>
-
-        {/* Week dots */}
+        <p className="mb-5 text-sm leading-5 text-zinc-500">{content.step3Sub}</p>
         <div className="mb-4 flex items-center justify-between px-2">
           {["M","T","W","T","F","S","S"].map((d, i) => {
             const filled = i < 5;
@@ -751,17 +808,13 @@ function MechanismScreen({ onContinue }: { onContinue: () => void }) {
                 <div className="relative flex items-center">
                   <div className={`flex h-7 w-7 items-center justify-center rounded-full border-[1.5px] ${filled ? "border-[#B8A9FE]" : "border-zinc-200"}`}>
                     {filled && (
-                      <div
-                        className="h-[18px] w-[18px] rounded-full bg-[#7C5CFC]"
-                        style={prefersReducedMotion ? {} : { animation: `mech-dot-fill 300ms cubic-bezier(0.215,0.61,0.355,1) ${dotDelay}ms both` }}
-                      />
+                      <div className="h-[18px] w-[18px] rounded-full bg-[#7C5CFC]"
+                        style={prefersReducedMotion ? {} : { animation: `mech-dot-fill 300ms cubic-bezier(0.215,0.61,0.355,1) ${dotDelay}ms both` }} />
                     )}
                   </div>
                   {filled && i < 4 && (
-                    <div
-                      className="h-0.5 w-2 origin-left bg-[#B8A9FE]"
-                      style={prefersReducedMotion ? {} : { animation: `mech-line-grow 200ms cubic-bezier(0.215,0.61,0.355,1) ${dotDelay + 200}ms both` }}
-                    />
+                    <div className="h-0.5 w-2 origin-left bg-[#B8A9FE]"
+                      style={prefersReducedMotion ? {} : { animation: `mech-line-grow 200ms cubic-bezier(0.215,0.61,0.355,1) ${dotDelay + 200}ms both` }} />
                   )}
                 </div>
                 <span className={`mt-1 text-[9px] font-semibold ${filled ? "text-zinc-500" : "text-zinc-400"}`}>{d}</span>
@@ -769,34 +822,23 @@ function MechanismScreen({ onContinue }: { onContinue: () => void }) {
             );
           })}
         </div>
-
-        {/* Weekly insight card */}
-        <div
-          className="rounded-xl border-l-[3px] border-[#7C5CFC] bg-[#F0ECFF] px-3.5 py-3"
-          style={fadeUpShort(4800 + 600 + 700 + 700)}
-        >
+        <div className="rounded-xl border-l-[3px] border-[#7C5CFC] bg-[#F0ECFF] px-3.5 py-3"
+          style={fadeUpShort(4800 + 600 + 700 + 700)}>
           <p className="mb-1 text-[9px] font-bold uppercase tracking-[0.06em] text-[#7C5CFC]">Weekly insight</p>
-          <p className="text-[13px] font-medium leading-[18px] text-zinc-900">
-            You bring up work stress every Monday and Thursday. On days you exercise, your mood improves by evening.
-          </p>
+          <p className="text-[13px] font-medium leading-[18px] text-zinc-900">{content.insight}</p>
         </div>
       </div>
 
       {/* ── Closing line ── */}
-      <p
-        className="mb-6 text-center text-base font-bold italic text-zinc-900"
-        style={fadeUp(6800)}
-      >
+      <p className="mb-6 text-center text-base font-bold italic text-zinc-900" style={fadeUp(6200)}>
         You already think about your life every day. Acuity just makes sure it counts.
       </p>
 
-      {/* ── Continue button ── */}
+      {/* ── Continue button (200ms after closing — never make user wait) ── */}
       {showCta && (
-        <div className="text-center" style={fadeUpShort(prefersReducedMotion ? 0 : 7600)}>
-          <button
-            onClick={onContinue}
-            className="rounded-full bg-[#7C5CFC] px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]"
-          >
+        <div className="text-center" style={fadeUpShort(prefersReducedMotion ? 0 : 6400)}>
+          <button onClick={onContinue}
+            className="rounded-full bg-[#7C5CFC] px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]">
             Continue
           </button>
         </div>
