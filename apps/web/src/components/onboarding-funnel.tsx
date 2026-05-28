@@ -643,160 +643,160 @@ function MirrorScreen({ branch, answers, onContinue }: {
 // ─── Mechanism Screen (Product Explainer) ───────────────────────────────────
 
 const MECHANISM_CARDS = [
-  { text: "Follow up with Jamie about Friday", accent: "#7C5CFC", icon: "\u25A1" },
-  { text: "Career transition \u2014 34% this month", accent: "#7C5CFC", icon: "\u25B2" },
-  { text: "Anxious \u2192 Grounded", accent: "#6B8E6B", icon: "\u25CF" },
-  { text: "You mentioned sleep 4 times this week", accent: "#B8A9FE", icon: "\u25C6" },
+  { text: "Follow up with Jamie about Friday", icon: "\u25A1" },
+  { text: "Career transition \u2014 34% this month", icon: "\u25B2" },
+  { text: "Anxious \u2192 Grounded", icon: "\u25CF" },
+  { text: "Sleep mentioned 4 times this week", icon: "\u25C6" },
 ];
 
+const MECHANISM_WAVE_HEIGHTS = [12,20,28,16,32,24,30,14,22,34,18,26,20,30,14,24,18,28];
+
 function MechanismScreen({ onContinue }: { onContinue: () => void }) {
-  const [slide, setSlide] = useState(0);
-  const [showClosing, setShowClosing] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [showCta, setShowCta] = useState(false);
   const prefersReducedMotion = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  const durations = [2500, 3000, 3000];
-
   useEffect(() => {
-    if (prefersReducedMotion) {
-      setShowClosing(true);
-      return;
+    const t = setTimeout(() => setShowCta(true), prefersReducedMotion ? 0 : 7600);
+    return () => clearTimeout(t);
+  }, [prefersReducedMotion]);
+
+  // Inline styles for mechanism-specific keyframes
+  const mechanismStyles = `
+    @keyframes mech-wave {
+      0%, 100% { transform: scaleY(0.3); }
+      50% { transform: scaleY(1); }
     }
-    if (slide >= 3) return;
-    const delay = slide === 0 ? 800 : 0;
-    timerRef.current = setTimeout(() => {
-      if (slide < 2) {
-        setSlide((s) => s + 1);
-      } else {
-        setSlide(3);
-        setShowClosing(true);
-      }
-    }, delay + durations[slide]);
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [slide, prefersReducedMotion]);
+    @keyframes mech-dot-fill {
+      from { transform: scale(0); }
+      to { transform: scale(1); }
+    }
+    @keyframes mech-line-grow {
+      from { transform: scaleX(0); }
+      to { transform: scaleX(1); }
+    }
+  `;
 
-  const advance = () => {
-    if (prefersReducedMotion) return;
-    if (timerRef.current) clearTimeout(timerRef.current);
-    if (slide < 2) setSlide((s) => s + 1);
-    else if (!showClosing) { setSlide(3); setShowClosing(true); }
-  };
-
-  if (prefersReducedMotion) {
-    return (
-      <div className="flex min-h-[100dvh] flex-col items-center justify-center px-6 py-12">
-        <h2 className="mb-8 text-center text-2xl font-bold text-zinc-900">One minute. Every day.<br />That&rsquo;s all it takes.</h2>
-        <p className="mb-2 text-base font-semibold text-zinc-900">Open the app. Tap record. Talk.</p>
-        <p className="mb-6 text-sm text-zinc-500">About your day. Your stress. Your wins. Whatever&rsquo;s on your mind.</p>
-        <div className="mb-6 w-full max-w-sm space-y-2">
-          {MECHANISM_CARDS.map((c, i) => (
-            <div key={i} className="flex items-center rounded-xl border-l-[3px] bg-white px-4 py-3 shadow-sm" style={{ borderLeftColor: c.accent }}>
-              <span className="mr-3 font-semibold" style={{ color: c.accent }}>{c.icon}</span>
-              <span className="text-sm font-medium text-zinc-900">{c.text}</span>
-            </div>
-          ))}
-        </div>
-        <p className="mb-4 text-sm text-zinc-500">AI pulls out what matters. Instantly.</p>
-        <p className="mb-8 text-sm italic text-zinc-700">You already think about your life every day. Acuity just makes sure it counts.</p>
-        <button onClick={onContinue} className="rounded-full bg-[#7C5CFC] px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0]">Continue</button>
-      </div>
-    );
-  }
+  const fadeUp = (delay: number) => prefersReducedMotion
+    ? {}
+    : { animation: `funnel-slide-up 600ms cubic-bezier(0.215,0.61,0.355,1) ${delay}ms both` };
+  const fadeUpShort = (delay: number) => prefersReducedMotion
+    ? {}
+    : { animation: `funnel-slide-up 400ms cubic-bezier(0.215,0.61,0.355,1) ${delay}ms both` };
 
   return (
-    <div className="flex min-h-[100dvh] cursor-pointer flex-col" onClick={advance}>
+    <div className="min-h-[100dvh] overflow-y-auto px-6 py-10">
+      <style dangerouslySetInnerHTML={{ __html: mechanismStyles }} />
+
       {/* Headline */}
-      <div className="pt-10 text-center animate-[funnel-fade-up_600ms_cubic-bezier(0.215,0.61,0.355,1)_forwards]">
-        <h2 className="text-2xl font-bold text-zinc-900">One minute. Every day.<br />That&rsquo;s all it takes.</h2>
-      </div>
+      <h2 className="mb-9 text-center text-[26px] font-bold leading-[33px] tracking-tight text-zinc-900" style={fadeUp(0)}>
+        One minute. Every day.<br />That&rsquo;s all it takes.
+      </h2>
 
-      {/* Slide content */}
-      <div className="flex flex-1 items-center justify-center px-6">
-        {slide === 0 && (
-          <div className="flex flex-col items-center animate-[funnel-fade-up_500ms_cubic-bezier(0.215,0.61,0.355,1)_forwards]">
-            {/* Mic icon */}
-            <div className="mb-7 flex h-[72px] w-[72px] items-center justify-center rounded-full border-2 border-[#7C5CFC] bg-[#F0ECFF]">
-              <svg width="24" height="32" viewBox="0 0 24 32" fill="none"><rect x="6" y="0" width="12" height="20" rx="6" fill="#7C5CFC"/><path d="M2 16 C2 22 7 26 12 26 C17 26 22 22 22 16" stroke="#7C5CFC" strokeWidth="2" fill="none"/><line x1="12" y1="26" x2="12" y2="30" stroke="#7C5CFC" strokeWidth="2"/></svg>
-            </div>
-            <p className="text-lg font-semibold text-zinc-900">Open the app. Tap record. Talk.</p>
-            <p className="mt-2 text-sm text-zinc-500">About your day. Your stress. Your wins.<br />Whatever&rsquo;s on your mind.</p>
-            {/* Waveform */}
-            <div className="mt-6 flex items-center justify-center gap-[3px]">
-              {[0.3,0.5,0.7,0.4,0.9,0.6,0.8,0.3,0.5,0.95,0.4,0.7,0.6,0.85,0.3,0.5,0.4,0.8,0.6,0.3,0.7,0.5,0.9,0.4].map((h, i) => (
-                <div key={i} className="w-[3px] rounded-full bg-[#B8A9FE] animate-[funnel-fade-up_600ms_cubic-bezier(0.215,0.61,0.355,1)_forwards]" style={{ height: h * 28, animationDelay: `${i * 30}ms`, opacity: 0 }} />
-              ))}
-            </div>
-          </div>
-        )}
+      {/* ── STEP 1: TALK ── */}
+      <div className="mb-8" style={fadeUp(800)}>
+        <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.1em] text-[#7C5CFC]">Step 1</p>
+        <p className="mb-1.5 text-xl font-bold text-zinc-900">Talk for 60 seconds.</p>
+        <p className="mb-4 text-sm leading-5 text-zinc-500">About your day. Your stress. Your wins. Whatever&rsquo;s on your mind.</p>
 
-        {slide === 1 && (
-          <div className="w-full max-w-sm animate-[funnel-fade-up_400ms_cubic-bezier(0.215,0.61,0.355,1)_forwards]">
-            <div className="space-y-2.5">
-              {MECHANISM_CARDS.map((c, i) => (
-                <div key={i} className="flex items-center rounded-xl border-l-[3px] bg-white px-4 py-3.5 shadow-sm animate-[funnel-fade-up_400ms_cubic-bezier(0.215,0.61,0.355,1)_forwards]"
-                  style={{ borderLeftColor: c.accent, animationDelay: `${i * 200}ms`, opacity: 0 }}>
-                  <span className="mr-3 text-sm font-semibold" style={{ color: c.accent }}>{c.icon}</span>
-                  <span className="text-sm font-medium text-zinc-900">{c.text}</span>
-                </div>
-              ))}
-            </div>
-            <p className="mt-5 text-center text-base font-semibold text-zinc-900 animate-[funnel-fade-up_400ms_cubic-bezier(0.215,0.61,0.355,1)_forwards]" style={{ animationDelay: "1000ms", opacity: 0 }}>AI pulls out what matters. Instantly.</p>
-            <p className="mt-2 text-center text-sm text-zinc-500 animate-[funnel-fade-up_400ms_cubic-bezier(0.215,0.61,0.355,1)_forwards]" style={{ animationDelay: "1200ms", opacity: 0 }}>Tasks you mentioned. Goals you&rsquo;re tracking. Moods you didn&rsquo;t notice shifting. Patterns you can&rsquo;t see yourself.</p>
-          </div>
-        )}
-
-        {slide === 2 && (
-          <div className="flex w-full max-w-sm flex-col items-center animate-[funnel-fade-up_500ms_cubic-bezier(0.215,0.61,0.355,1)_forwards]">
-            <p className="mb-6 text-center text-lg font-semibold text-zinc-900">Over time, you build a living picture of your life.</p>
-            {/* Week timeline */}
-            <div className="mb-5 flex w-full justify-between px-1">
-              {["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map((d, i) => {
-                const filled = i < 5;
-                return (
-                  <div key={d} className="flex flex-col items-center">
-                    <div className={`flex h-10 w-8 flex-col items-center justify-center rounded-lg border ${filled ? "border-[#B8A9FE] bg-[#F0ECFF]" : "border-zinc-200 bg-zinc-50"}`}>
-                      {filled && <><div className="mb-1 h-0.5 w-4 rounded-full bg-[#7C5CFC]" /><div className="h-0.5 w-3 rounded-full bg-[#B8A9FE]" /></>}
-                    </div>
-                    <span className={`mt-1.5 text-[9px] font-semibold uppercase tracking-wide ${filled ? "text-zinc-500" : "text-zinc-400"}`}>{d}</span>
-                  </div>
-                );
-              })}
-            </div>
-            <p className="text-center text-sm text-zinc-500">Not a journal you&rsquo;ll abandon. Not an app you&rsquo;ll forget. A record that grows every time you talk &mdash; and shows you what you couldn&rsquo;t see alone.</p>
-          </div>
-        )}
-
-        {slide >= 3 && (
-          <div className="flex flex-col items-center">
-            <div className="mb-8 w-full max-w-sm space-y-1.5">
-              {MECHANISM_CARDS.map((c, i) => (
-                <div key={i} className="flex items-center rounded-xl border-l-[3px] bg-white px-4 py-2.5 shadow-sm" style={{ borderLeftColor: c.accent }}>
-                  <span className="mr-3 text-xs font-semibold" style={{ color: c.accent }}>{c.icon}</span>
-                  <span className="text-xs font-medium text-zinc-900">{c.text}</span>
-                </div>
-              ))}
-            </div>
-            <p className={`text-center text-base font-semibold italic text-zinc-900 transition-all duration-500 ${showClosing ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"}`}>
-              You already think about your life every day. Acuity just makes sure it counts.
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* Progress dots */}
-      {slide < 3 && (
-        <div className="flex justify-center gap-2 py-3">
-          {[0, 1, 2].map((i) => (
-            <div key={i} className={`h-2 w-2 rounded-full ${i === slide ? "bg-[#7C5CFC]" : "bg-zinc-200"}`} />
+        {/* Looping waveform — CSS only */}
+        <div className="flex items-end gap-[4px]" style={{ height: 40 }}>
+          {MECHANISM_WAVE_HEIGHTS.map((h, i) => (
+            <div
+              key={i}
+              className="w-[3px] origin-bottom rounded-full bg-[#B8A9FE]"
+              style={{
+                height: h,
+                animation: prefersReducedMotion ? "none" : `mech-wave ${600 + (i % 5) * 80}ms ease-in-out ${i * 40}ms infinite alternate`,
+              }}
+            />
           ))}
         </div>
-      )}
+      </div>
 
-      {/* Continue button */}
-      {showClosing && (
-        <div className="pb-6 text-center animate-[funnel-fade-up_400ms_cubic-bezier(0.215,0.61,0.355,1)_forwards]" style={{ animationDelay: "600ms", opacity: 0 }}>
-          <button onClick={(e) => { e.stopPropagation(); onContinue(); }}
-            className="rounded-full bg-[#7C5CFC] px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98]">
+      {/* ── STEP 2: WE EXTRACT ── */}
+      <div className="mb-8" style={fadeUp(2600)}>
+        <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.1em] text-[#7C5CFC]">Step 2</p>
+        <p className="mb-1.5 text-xl font-bold text-zinc-900">We pull out what matters.</p>
+        <p className="mb-4 text-sm leading-5 text-zinc-500">Tasks, goals, mood shifts, and patterns &mdash; extracted from your own words.</p>
+
+        <div className="space-y-2">
+          {MECHANISM_CARDS.map((c, i) => (
+            <div
+              key={i}
+              className="flex items-center rounded-xl border-l-[3px] border-[#7C5CFC] bg-white px-3.5 py-3 shadow-sm"
+              style={fadeUpShort(2600 + 600 + i * 200)}
+            >
+              <span className="mr-2.5 text-[13px] font-semibold text-[#7C5CFC]">{c.icon}</span>
+              <span className="text-[13px] font-medium leading-[18px] text-zinc-900">{c.text}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── STEP 3: YOUR PICTURE ── */}
+      <div className="mb-8" style={fadeUp(4800)}>
+        <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.1em] text-[#7C5CFC]">Step 3</p>
+        <p className="mb-1.5 text-xl font-bold text-zinc-900">A living picture of your life.</p>
+        <p className="mb-5 text-sm leading-5 text-zinc-500">
+          Over time, Acuity connects the dots you can&rsquo;t see &mdash; patterns across your days, weeks, and months that show you who you&rsquo;re becoming.
+        </p>
+
+        {/* Week dots */}
+        <div className="mb-4 flex items-center justify-between px-2">
+          {["M","T","W","T","F","S","S"].map((d, i) => {
+            const filled = i < 5;
+            const dotDelay = 4800 + 600 + i * 100;
+            return (
+              <div key={i} className="flex flex-col items-center">
+                <div className="relative flex items-center">
+                  <div className={`flex h-7 w-7 items-center justify-center rounded-full border-[1.5px] ${filled ? "border-[#B8A9FE]" : "border-zinc-200"}`}>
+                    {filled && (
+                      <div
+                        className="h-[18px] w-[18px] rounded-full bg-[#7C5CFC]"
+                        style={prefersReducedMotion ? {} : { animation: `mech-dot-fill 300ms cubic-bezier(0.215,0.61,0.355,1) ${dotDelay}ms both` }}
+                      />
+                    )}
+                  </div>
+                  {filled && i < 4 && (
+                    <div
+                      className="h-0.5 w-2 origin-left bg-[#B8A9FE]"
+                      style={prefersReducedMotion ? {} : { animation: `mech-line-grow 200ms cubic-bezier(0.215,0.61,0.355,1) ${dotDelay + 200}ms both` }}
+                    />
+                  )}
+                </div>
+                <span className={`mt-1 text-[9px] font-semibold ${filled ? "text-zinc-500" : "text-zinc-400"}`}>{d}</span>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Weekly insight card */}
+        <div
+          className="rounded-xl border-l-[3px] border-[#7C5CFC] bg-[#F0ECFF] px-3.5 py-3"
+          style={fadeUpShort(4800 + 600 + 700 + 700)}
+        >
+          <p className="mb-1 text-[9px] font-bold uppercase tracking-[0.06em] text-[#7C5CFC]">Weekly insight</p>
+          <p className="text-[13px] font-medium leading-[18px] text-zinc-900">
+            You bring up work stress every Monday and Thursday. On days you exercise, your mood improves by evening.
+          </p>
+        </div>
+      </div>
+
+      {/* ── Closing line ── */}
+      <p
+        className="mb-6 text-center text-base font-bold italic text-zinc-900"
+        style={fadeUp(6800)}
+      >
+        You already think about your life every day. Acuity just makes sure it counts.
+      </p>
+
+      {/* ── Continue button ── */}
+      {showCta && (
+        <div className="text-center" style={fadeUpShort(prefersReducedMotion ? 0 : 7600)}>
+          <button
+            onClick={onContinue}
+            className="rounded-full bg-[#7C5CFC] px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]"
+          >
             Continue
           </button>
         </div>
