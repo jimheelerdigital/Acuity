@@ -41,6 +41,39 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-28] — Fix three tracking bugs: paid status, OAuth UTM attribution, event diagnostics
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 98f6316
+
+### In plain English (for Keenan)
+
+Three bugs fixed: (1) Users who started checkout were showing as "Dropped" in the sessions table even though they paid — now payment is a permanent success state that never reverts to dropped. (2) The two new signups from Meta ads (kayleighxaviagray, stopthepaininminutes) showed "direct" instead of "meta/paid" because UTM data was lost during Google/Apple OAuth redirect — now the funnel saves UTMs before the redirect and syncs them to the user record after. (3) Added a raw event count row to Funnel Analytics showing total page loads vs taps so you can see the real traffic volume from ads vs how many people actually interacted.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/api/admin/metrics/route.ts`:
+  - Status logic: `funnel_checkout_started` now counts as "paid" status, `funnel_signup_completed` now counts as "signed_up" status — both are terminal success states that skip the time-based dropped/stalled logic
+  - Added `diagnostics` object to funnel analytics response: `entryViewedEvents`, `entrySelectedEvents`, `tapRate`, `totalEventsInRange`
+- `apps/web/src/components/onboarding-funnel.tsx`:
+  - New `useEffect` syncs UTM attribution to `/api/auth/set-attribution` when `authStatus` becomes "authenticated" — reads from both `acuity_funnel_utm` sessionStorage and `acuity_attribution` cookie
+  - Email signup handler now includes `attribution` object in POST body to `/api/auth/signup` with funnel UTMs
+- `apps/web/src/app/start/client.tsx`: calls `setAttributionCookie()` on mount so UTMs survive the OAuth redirect (cookie persists, sessionStorage doesn't)
+- `apps/web/src/app/admin/tabs/FunnelAnalyticsTab.tsx`: displays `signed_up` status in blue, renders diagnostics row with raw event counts
+
+### Manual steps needed
+
+- [ ] Manually update UTM data for the two existing users (kayleighxaviagray@gmail.com and stopthepaininminutes@gmail.com) via Supabase since they signed up before this fix — set signupUtmSource="meta", signupUtmMedium="paid", signupUtmCampaign to their campaign ID (Keenan)
+
+### Notes
+
+- The `signed_up` status is a new intermediate state between "active" and "paid" — it means the user created an account but hasn't completed Stripe checkout yet. It shows as blue in the sessions table.
+- The attribution cookie uses a first-touch model (never overwrites). The funnel's sessionStorage UTMs take priority over the cookie when both exist.
+- For Bug 3 (session count): the diagnostics row will show the raw entry_viewed vs entry_selected counts once deployed. If entry_viewed is much higher than sessions, it means most ad traffic is Facebook prefetch. If entry_viewed is also low, the ads may not be driving much click volume. This is now visible in the dashboard.
+
+---
+
 ## [2026-05-27] — Final dashboard audit: restore 12 broken charts + add funnel CSV/metrics-since
 
 **Requested by:** Keenan
