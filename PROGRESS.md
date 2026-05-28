@@ -41,6 +41,39 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-27] — Fire Meta pixel events in /start funnel (CompleteRegistration, Lead, InitiateCheckout, Purchase)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** b8e0366
+
+### In plain English (for Keenan)
+
+Meta's ad campaigns had no signal to optimize against because the /start funnel never told Meta when someone signed up, started checkout, or completed a purchase. The pixel events (Lead, CompleteRegistration, InitiateCheckout, Purchase) were only wired up on the old /auth/signup page that nobody from ads ever visits. Now every step of the /start funnel fires the correct Meta pixel event, so Conversions campaigns can actually learn who converts and optimize delivery.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/components/meta-pixel-events.tsx`: exported `fireFbq()` helper so it can be called from outside the component
+- `apps/web/src/components/onboarding-funnel.tsx`: added 5 `fireFbq()` calls at the correct moments:
+  - `Lead` fires when user reaches the paywall screen (step view tracking)
+  - `InitiateCheckout` fires when Stripe checkout URL is obtained and user is redirected
+  - `CompleteRegistration` + `StartTrial` fire on email signup (right after `funnel_signup_completed`) and on OAuth return (both the sync and async detection paths)
+  - `Purchase` fires on Stripe return (`?step=download&session_id=...`)
+- PageView already fires globally from layout.tsx — no change needed
+
+### Manual steps needed
+
+- [ ] Test with Meta Pixel Helper browser extension: go through /start funnel and confirm Lead, CompleteRegistration, InitiateCheckout, Purchase fire at correct steps (Keenan)
+- [ ] Check Meta Events Manager to confirm events appear with correct parameters after test (Keenan)
+
+### Notes
+
+- The old `/auth/signup/success` page still has its own `TrackCompleteRegistration` component — left intact since direct signup still routes there. No duplication risk because /start funnel users never visit that page.
+- OAuth signup redirects to `/start?step=paywall`, not `/auth/signup/success`, which is why the pixel was never firing for funnel users.
+- Two code paths handle OAuth return (sync in first useEffect, async in second useEffect) — both now fire the pixel to cover race conditions with NextAuth session resolution.
+
+---
+
 ## [2026-05-27] — Funnel Analytics sub-tabs by campaign objective + Landing Page Views in AdLab
 
 **Requested by:** Keenan
