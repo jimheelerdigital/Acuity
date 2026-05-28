@@ -41,6 +41,34 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-28] — Remove dead onboarding funnel from Overview + LPV campaign session investigation
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** df21e5d
+
+### In plain English (for Keenan)
+
+Removed the "Post-Signup Onboarding Funnel" from the Overview tab — it tracked the old /onboarding flow that doesn't exist anymore. The /start Funnel Analytics tab is the only funnel view now.
+
+Investigated why Landing Page View campaigns (like "slowly becoming someone", "holding it together", etc.) show 246+ views in Meta but zero sessions in the funnel: **those campaigns send users to `/for/*` landing pages, not `/start`**. The funnel analytics only tracks `/start` sessions. Users who land on `/for/*` and then click "Start Free Trial" will get redirected to `/start` (creating a funnel session), but most LPV traffic bounces before clicking. This is expected — LPV campaigns optimize for page views, not funnel entries. The 246 views are counted by Meta's pixel, not by the funnel tracker.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/admin/tabs/OverviewTab.tsx`: removed Post-Signup Onboarding Funnel section, FunnelBars component, onboardingFunnel type
+- `apps/web/src/app/api/admin/metrics/route.ts`: removed `getOnboardingFunnel` function + ONBOARDING_FUNNEL_STEPS constant + its Promise.all call (saves one DB roundtrip per Overview load)
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- LPV campaign traffic goes to `/for/*` landing pages which set the attribution cookie and have a CTA button. Only users who click through to `/start` appear in the funnel. To see LPV campaign performance, check Meta Ads Manager for landing page view counts, or check the Ads tab's "Signup Source Breakdown" for users who eventually signed up with that campaign's UTM.
+- The `partner_argument` campaign uses `destination: "direct_funnel"` which sends directly to `/start` — that's why it shows sessions. Other LPV campaigns use the default landing page flow.
+
+---
+
 ## [2026-05-28] — Fix three tracking bugs: paid status, OAuth UTM attribution, event diagnostics
 
 **Requested by:** Keenan
