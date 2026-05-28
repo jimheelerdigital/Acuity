@@ -1610,7 +1610,7 @@ async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date) {
 
 // v2 funnel deployed — only count events after this date to avoid old
 // Pain Hook / diagnostic events polluting the new branching quiz metrics.
-const FUNNEL_V2_EPOCH = new Date("2026-05-27T15:30:00Z");
+const FUNNEL_V2_EPOCH = new Date("2026-05-28T02:35:00Z");
 
 async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, showBots = false, resetAfter: string | null = null) {
  try {
@@ -1664,6 +1664,18 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     sessionMap.get(key)!.push(e);
   }
 
+  // Determine which sessions have real interaction (any event beyond funnel_entry_viewed)
+  const interactedSessions = new Set<string>();
+  const allSessionTokens = new Set<string>();
+  for (const [token, evts] of sessionMap) {
+    allSessionTokens.add(token);
+    if (evts.some((e) => e.event !== "funnel_entry_viewed")) {
+      interactedSessions.add(token);
+    }
+  }
+  const pageLoadCount = allSessionTokens.size;
+  const interactedCount = interactedSessions.size;
+
   // Step reach counts (how many sessions reached each step)
   const stepReach: Record<string, Set<string>> = {};
   for (const s of FUNNEL_STEPS) {
@@ -1678,6 +1690,7 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     diagnosticAnswers: Record<string, string>;
     events: { event: string; value: string | null; createdAt: Date }[];
     browser: string | null;
+    hasInteracted: boolean;
   }[] = [];
 
   for (const [token, evts] of sessionMap) {
@@ -1685,6 +1698,7 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     const first = sorted[0];
     const last = sorted[sorted.length - 1];
     const eventNames = new Set(evts.map((e) => e.event));
+    const hasInteracted = interactedSessions.has(token);
 
     // Determine max step reached
     let maxStep = 0;
@@ -1694,12 +1708,13 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
       if (eventNames.has(s.event) || (s.fallback && eventNames.has(s.fallback))) {
         maxStep = i + 1;
         maxStepLabel = s.label;
-        stepReach[s.key].add(token);
+        // Only count interacted sessions in step reach (excludes bot prefetches)
+        if (hasInteracted) stepReach[s.key].add(token);
       }
     }
     // Also count earlier steps (if you reached Mirror, you reached Pain Hook)
     for (let i = 0; i < maxStep; i++) {
-      stepReach[FUNNEL_STEPS[i].key].add(token);
+      if (hasInteracted) stepReach[FUNNEL_STEPS[i].key].add(token);
     }
 
     const minutesSinceLast = (Date.now() - new Date(last.createdAt).getTime()) / 60000;
@@ -1748,6 +1763,7 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
       diagnosticAnswers,
       events: sorted.map((e) => ({ event: e.event, value: e.value, createdAt: e.createdAt })),
       browser: evts.find((e) => e.browser)?.browser ?? null,
+      hasInteracted,
     });
   }
 
@@ -1799,10 +1815,11 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
       suggestion: SUGGESTED_FIXES[s.key] ?? "Review this step.",
     }));
 
-  // ── Key metrics ──
-  const totalSessions = sessions.length;
+  // ── Key metrics (only count interacted sessions) ──
+  const interactedSessionsList = sessions.filter((s) => s.hasInteracted);
+  const totalSessions = interactedSessionsList.length;
   const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
-  const todaySessions = sessions.filter((s) => new Date(s.started) >= todayStart).length;
+  const todaySessions = interactedSessionsList.filter((s) => new Date(s.started) >= todayStart).length;
   const entryCountTotal = stepReach["entry"].size;
   const paidCount = stepReach["paid"].size;
   const completionRate = entryCountTotal > 0 ? Math.round((paidCount / entryCountTotal) * 100) : 0;
@@ -1824,9 +1841,9 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     ? Math.round(completedSessions.reduce((sum, s) => sum + s.timeInFunnelSec, 0) / completedSessions.length)
     : 0;
 
-  // ── Campaign funnels ──
+  // ── Campaign funnels (interacted sessions only) ──
   const campaignMap = new Map<string, typeof sessions>();
-  for (const s of sessions) {
+  for (const s of interactedSessionsList) {
     const key = s.campaign || "direct / organic";
     if (!campaignMap.has(key)) campaignMap.set(key, []);
     campaignMap.get(key)!.push(s);
@@ -1904,7 +1921,7 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
   // ── Branch breakdown — step-by-step conversion per branch ──
   const BRANCH_KEYS = ["blur", "patterns", "rumination", "graveyard", "mask", "drift"];
   const branchMap = new Map<string, typeof sessions>();
-  for (const s of sessions) {
+  for (const s of interactedSessionsList) {
     const entryEvent = s.events.find((e) => e.event === "funnel_entry_selected");
     const b = entryEvent?.value ?? "unknown";
     if (!branchMap.has(b)) branchMap.set(b, []);
@@ -1936,7 +1953,7 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
   // ── Time per step (median seconds between step viewed events) ──
   const stepTimeBuckets: Record<string, number[]> = {};
   for (const s of FUNNEL_STEPS) stepTimeBuckets[s.key] = [];
-  for (const sess of sessions) {
+  for (const sess of interactedSessionsList) {
     const evts = sess.events;
     for (let i = 0; i < evts.length - 1; i++) {
       const curr = evts[i];
@@ -2002,9 +2019,9 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     };
   }).filter((d) => d.answers.length > 0);
 
-  // ── Drop-off analysis ──
+  // ── Drop-off analysis (interacted sessions only) ──
   const dropOffMap: Record<string, { count: number; branches: Record<string, number>; times: number[] }> = {};
-  for (const s of sessions) {
+  for (const s of interactedSessionsList) {
     if (s.status !== "dropped" && s.status !== "stalled") continue;
     const step = s.currentStep;
     if (!dropOffMap[step]) dropOffMap[step] = { count: 0, branches: {}, times: [] };
@@ -2027,10 +2044,10 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     })
     .sort((a, b) => b.count - a.count);
 
-  // ── Daily completion rate (last 30 days) ──
+  // ── Daily completion rate (last 30 days, interacted sessions only) ──
   const dailyRates: { date: string; entry: number; paid: number; rate: number }[] = [];
   const dayMap = new Map<string, { entry: number; paid: number }>();
-  for (const s of sessions) {
+  for (const s of interactedSessionsList) {
     const day = s.started.slice(0, 10);
     if (!dayMap.has(day)) dayMap.set(day, { entry: 0, paid: 0 });
     const d = dayMap.get(day)!;
@@ -2041,12 +2058,12 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     dailyRates.push({ date, entry: d.entry, paid: d.paid, rate: d.entry > 0 ? Math.round((d.paid / d.entry) * 100) : 0 });
   }
 
-  // ── Active sessions (last event < 5 min ago) ──
+  // ── Active sessions (last event < 5 min ago, interacted only) ──
   const fiveMinAgo = Date.now() - 5 * 60 * 1000;
-  const activeSessions = sessions.filter((s) => new Date(s.lastEvent).getTime() > fiveMinAgo).length;
+  const activeSessions = interactedSessionsList.filter((s) => new Date(s.lastEvent).getTime() > fiveMinAgo).length;
 
   // ── Recent payments ──
-  const recentPayments = sessions
+  const recentPayments = interactedSessionsList
     .filter((s) => s.status === "paid" || s.status === "completed")
     .slice(0, 5)
     .map((s) => ({
@@ -2056,7 +2073,7 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     }));
 
   // ── Campaign name lookup (resolve experiment IDs to readable names) ──
-  const campaignIds = [...new Set(sessions.map((s) => s.campaign).filter(Boolean))] as string[];
+  const campaignIds = [...new Set(interactedSessionsList.map((s) => s.campaign).filter(Boolean))] as string[];
   const campaignNames: Record<string, string> = {};
   const campaignObjectives: Record<string, string> = {};
   if (campaignIds.length > 0) {
@@ -2081,6 +2098,8 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
       completionRate,
       biggestDrop,
       avgFunnelTimeSec,
+      pageLoadCount,
+      interactedCount,
     },
     funnelSteps,
     alerts,
@@ -2095,8 +2114,8 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     campaignNames,
     campaignObjectives,
     effectiveStart: effectiveStart.toISOString(),
-    sessions: sessions.slice(0, 100),
-    totalSessionCount: sessions.length,
+    sessions: sessions.slice(0, 200),
+    totalSessionCount: interactedSessionsList.length,
   };
  } catch (err) {
     console.error("[getFunnelAnalytics] Query failed:", err);

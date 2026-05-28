@@ -9,6 +9,7 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
   const [sortCol, setSortCol] = useState("started");
   const [sortDir, setSortDir] = useState(-1);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [showPageLoadOnly, setShowPageLoadOnly] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -42,8 +43,11 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
   const cn = (id: string | null) => (id && names[id]) || id || "direct";
   const fmt = (s: number) => s < 60 ? `${s}s` : `${Math.round(s / 60)}m`;
 
+  // Filter sessions: by default only show interacted sessions
+  const filteredSessions = showPageLoadOnly ? sessions : sessions.filter((s: any) => s.hasInteracted);
+
   // Simple client-side sort — no useMemo, just a sorted copy
-  const sorted = [...sessions].sort((a: any, b: any) => {
+  const sorted = [...filteredSessions].sort((a: any, b: any) => {
     const av = sortCol === "started" ? new Date(a.started).getTime()
       : sortCol === "step" ? a.stepNumber
       : sortCol === "time" ? a.timeInFunnelSec
@@ -67,6 +71,24 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
+      {/* Page Load → First Tap funnel */}
+      {(km.pageLoadCount ?? 0) > 0 && (
+        <div style={{ ...S, display: "flex", alignItems: "center", gap: 16, padding: "14px 20px" }}>
+          <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.3)" }}>Page Loads:</span>
+          <span style={{ fontSize: 20, fontWeight: 700, color: "#fff" }}>{km.pageLoadCount}</span>
+          <span style={{ fontSize: 16, color: "rgba(255,255,255,0.2)" }}>→</span>
+          <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.3)" }}>First Tap:</span>
+          <span style={{ fontSize: 20, fontWeight: 700, color: "#22c55e" }}>{km.interactedCount}</span>
+          <span style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", fontWeight: 600 }}>
+            ({km.pageLoadCount > 0 ? Math.round((km.interactedCount / km.pageLoadCount) * 100) : 0}%)
+          </span>
+          <span style={{ flex: 1 }} />
+          <span style={{ fontSize: 10, color: "rgba(255,255,255,0.2)" }}>
+            {(km.pageLoadCount ?? 0) - (km.interactedCount ?? 0)} bot/prefetch filtered
+          </span>
+        </div>
+      )}
 
       {/* Key Metrics */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
@@ -240,7 +262,18 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
 
       {/* Sessions */}
       <div style={S}>
-        <div style={H}>Sessions ({data.totalSessionCount ?? sessions.length})</div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+          <div style={H as any}>Sessions ({showPageLoadOnly ? sessions.length : data.totalSessionCount ?? filteredSessions.length})</div>
+          <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 11, color: "rgba(255,255,255,0.3)" }}>
+            <input
+              type="checkbox"
+              checked={showPageLoadOnly}
+              onChange={(e) => setShowPageLoadOnly(e.target.checked)}
+              style={{ accentColor: "#7C5CFC" }}
+            />
+            Show page-load-only sessions
+          </label>
+        </div>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead><tr>
