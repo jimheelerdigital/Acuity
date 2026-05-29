@@ -28,6 +28,7 @@ import {
   PRICING_COPY,
   getPaywallHeadline,
   getComparisonLeft,
+  getCostOfInaction,
   PAYWALL_FAQ,
   PAYWALL_TESTIMONIALS_V2,
 } from "@/lib/funnel-config";
@@ -133,7 +134,7 @@ export function OnboardingFunnel() {
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
   const [apiError, setApiError] = useState<string | null>(null);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<"monthly" | "yearly">("yearly");
+  const [selectedPlan, setSelectedPlan] = useState<"monthly" | "yearly">("monthly");
   const track = useFunnelTracker();
 
   // Handle return from OAuth / Stripe
@@ -1138,7 +1139,7 @@ function PaywallScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
   const isAuthenticated = status === "authenticated";
 
   const headline = branch ? getPaywallHeadline(branch, answers) : "You\u2019ve already taken the first step.";
-  const comparison = branch ? getComparisonLeft(branch, answers) : null;
+  const costOfInaction = branch ? getCostOfInaction(branch, answers) : null;
   const annualMonthly = Math.round(ANNUAL_PRICE_CENTS / 12);
 
   const handleCTA = () => {
@@ -1186,69 +1187,28 @@ function PaywallScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
     <div className="min-h-screen bg-white text-zinc-900 pb-32">
       <div className="max-w-lg mx-auto px-6 pt-16">
 
-        {/* Section 1 — Dynamic Headline */}
-        <section className="text-center mb-14 funnel-screen">
+        {/* Section 1 — Pain Recap Headline */}
+        <section className="text-center mb-10 funnel-screen">
           <h2 className="text-[26px] sm:text-[34px] font-bold tracking-tight leading-tight">{headline}</h2>
         </section>
 
-        {/* Section 2 — The Comparison */}
-        {comparison && (
+        {/* Section 2 — Cost of Inaction */}
+        {costOfInaction && (
           <section className="mb-14 funnel-card-stagger" style={{ animationDelay: "100ms" }}>
-            <p className="text-xs font-bold uppercase tracking-[0.15em] text-zinc-400 text-center mb-4">What you&rsquo;ve tried vs. what Acuity costs</p>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-red-400 mb-2">What didn&rsquo;t work</p>
-                <p className="text-sm font-semibold text-zinc-800 mb-1">{comparison.label}</p>
-                <p className="text-xs text-zinc-500">{comparison.cost}</p>
-                <p className="text-xs text-red-400 font-medium mt-2">{comparison.result}</p>
-              </div>
-              <div className="rounded-xl border-2 border-[#7C5CFC] bg-[#7C5CFC]/5 p-4">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-[#7C5CFC] mb-2">Acuity</p>
-                <p className="text-sm font-semibold text-zinc-800 mb-1">60 seconds a day</p>
-                <p className="text-xs text-zinc-500">{formatDollars(MONTHLY_PRICE_CENTS)}/month</p>
-                <p className="text-xs text-emerald-500 font-medium mt-2">Patterns visible in 7 days</p>
-              </div>
+            <div className="rounded-xl bg-zinc-50 border border-zinc-200 px-5 py-5">
+              <p className="text-sm text-zinc-600 leading-relaxed">{costOfInaction}</p>
             </div>
           </section>
         )}
 
-        {/* Section 3 — What $4.99/month gets you (outcomes, not features) */}
-        <section className="mb-14">
-          <p className="text-sm text-zinc-600 text-center mb-5">Every month for less than one coffee, you get:</p>
-          <div className="space-y-3">
-            {[
-              { num: "~30", label: "debriefs captured", desc: "Everything you said, organized, searchable." },
-              { num: "4", label: "weekly reports", desc: "A 400-word narrative of your week that reads like a therapy session." },
-              { num: "1", label: "monthly memoir", desc: "A PDF of your month you\u2019ll actually want to read." },
-              { num: "\u221E", label: "pattern detection", desc: "Connections between your days you\u2019d never see alone." },
-              { num: "6", label: "Life Matrix domains", desc: "Health, Career, Relationships, Growth, Fun, Purpose \u2014 scored by your own words." },
-            ].map((item, i) => (
-              <div key={i} className="flex items-start gap-4 funnel-card-stagger" style={{ animationDelay: `${200 + i * 80}ms` }}>
-                <span className="text-lg font-bold text-[#7C5CFC] w-8 shrink-0 text-right tabular-nums">{item.num}</span>
-                <div>
-                  <p className="text-sm font-semibold text-zinc-900">{item.label}</p>
-                  <p className="text-xs text-zinc-500 leading-relaxed">{item.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="mt-8 rounded-xl bg-zinc-50 border border-zinc-200 px-5 py-4 text-center">
-            <p className="text-sm text-zinc-700 leading-relaxed">
-              <span className="font-semibold">One therapy session: $150.</span>{" "}
-              <span className="font-semibold">One month of Acuity: {formatDollars(MONTHLY_PRICE_CENTS)}.</span>{" "}
-              The insight is the same &mdash; except Acuity never forgets what you said last week.
-            </p>
-          </div>
-        </section>
-
-        {/* Section 4 — Social Proof */}
+        {/* Section 3 — Social Proof (above pricing) */}
         <section className="mb-14">
           <p className="text-sm font-semibold text-zinc-500 text-center mb-4">
             4.9 <span className="text-amber-400">&#9733;&#9733;&#9733;&#9733;&#9733;</span> from 127+ users
           </p>
           <div className="space-y-3">
             {PAYWALL_TESTIMONIALS_V2.map((t, i) => (
-              <div key={i} className="rounded-xl border border-zinc-200 bg-white px-5 py-4 funnel-card-stagger" style={{ animationDelay: `${300 + i * 100}ms` }}>
+              <div key={i} className="rounded-xl border border-zinc-200 bg-white px-5 py-4 funnel-card-stagger" style={{ animationDelay: `${200 + i * 100}ms` }}>
                 <p className="text-xs text-zinc-600 leading-relaxed italic">&ldquo;{t.quote}&rdquo;</p>
                 <p className="text-[11px] text-zinc-400 font-medium mt-2">&mdash; {t.name}</p>
               </div>
@@ -1256,33 +1216,60 @@ function PaywallScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
           </div>
         </section>
 
-        {/* Section 5 — Pricing */}
+        {/* Section 4 — What Your First Month Looks Like (timeline, not features) */}
         <section className="mb-14">
-          <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-center mb-5">
-            <p className="text-sm text-emerald-800 font-medium">You&rsquo;re early. Lock in the founding rate before it&rsquo;s gone.</p>
+          <p className="text-xs font-bold uppercase tracking-[0.15em] text-zinc-400 text-center mb-5">Your first 30 days</p>
+          <div className="space-y-3">
+            {[
+              { week: "Week 1", text: "Tasks extracted daily. Mood tracked. Your days have a record for the first time.", badge: "Starting now" },
+              { week: "Week 2", text: "First patterns surface. Your weekly report arrives \u2014 400 words connecting dots you couldn\u2019t see." },
+              { week: "Week 3", text: "Your Life Matrix takes shape. Six domains scored by your own words. Where your life actually goes becomes visible." },
+              { week: "Week 4", text: "Your first monthly memoir. A story of your month you\u2019ll actually want to read." },
+            ].map((item, i) => (
+              <div key={i} className="flex items-start gap-4 funnel-card-stagger" style={{ animationDelay: `${300 + i * 80}ms` }}>
+                <div className="flex flex-col items-center shrink-0 w-8">
+                  <div className={`w-3 h-3 rounded-full ${i === 0 ? "bg-[#7C5CFC]" : "border-2 border-zinc-300"}`} />
+                  {i < 3 && <div className="w-px h-full bg-zinc-200 mt-1" />}
+                </div>
+                <div className="pb-4">
+                  <p className="text-sm font-semibold text-zinc-900">
+                    {item.week}
+                    {item.badge && <span className="ml-2 rounded-full bg-[#7C5CFC]/10 text-[#7C5CFC] px-2 py-0.5 text-[10px] font-bold">{item.badge}</span>}
+                  </p>
+                  <p className="text-xs text-zinc-500 leading-relaxed mt-1">{item.text}</p>
+                </div>
+              </div>
+            ))}
           </div>
+        </section>
+
+        {/* Section 5 — Price Anchoring Line */}
+        <section className="mb-10">
+          <p className="text-sm text-zinc-600 text-center">Less than a cup of coffee. Every month.</p>
+        </section>
+
+        {/* Section 6 — Pricing */}
+        <section className="mb-14">
           <div className="grid grid-cols-2 gap-3">
             <button onClick={() => onPlanChange("monthly")}
-              className={`rounded-xl border-2 p-4 text-center transition ${selectedPlan === "monthly" ? "border-[#7C5CFC] bg-[#7C5CFC]/5" : "border-zinc-200 bg-white"}`}>
+              className={`rounded-xl border-2 p-4 text-center transition relative ${selectedPlan === "monthly" ? "border-[#7C5CFC] bg-[#7C5CFC]/5 shadow-[0_0_16px_rgba(124,92,252,0.15)]" : "border-zinc-200 bg-white"}`}>
               <p className="text-xs text-zinc-500 mb-1">Monthly</p>
-              <p className="text-sm text-zinc-400 line-through">$14.99/mo</p>
+              <p className="text-sm text-zinc-400 line-through">$19.99/mo</p>
               <p className="text-xl font-bold">{formatDollars(MONTHLY_PRICE_CENTS)}<span className="text-sm font-normal text-zinc-400">/mo</span></p>
               <span className="inline-block mt-1.5 rounded-full bg-emerald-100 text-emerald-700 px-2 py-0.5 text-[10px] font-bold">Founding Member Rate</span>
               <p className="text-[10px] text-zinc-400 mt-1">Billed monthly</p>
             </button>
             <button onClick={() => onPlanChange("yearly")}
               className={`rounded-xl border-2 p-4 text-center transition relative ${selectedPlan === "yearly" ? "border-[#7C5CFC] bg-[#7C5CFC]/5 shadow-[0_0_16px_rgba(124,92,252,0.15)]" : "border-zinc-200 bg-white"}`}>
-              <span className="absolute -top-2.5 right-3 rounded-full bg-emerald-500 px-2 py-0.5 text-[10px] font-bold text-white">SAVE 73%</span>
+              <span className="absolute -top-2.5 right-3 rounded-full bg-emerald-500 px-2 py-0.5 text-[10px] font-bold text-white">SAVE {PRICING.annual.savingsVsMonthly}</span>
               <p className="text-xs text-zinc-500 mb-1">Annual</p>
-              <p className="text-sm text-zinc-400 line-through">$149/year</p>
               <p className="text-xl font-bold">{formatDollars(annualMonthly)}<span className="text-sm font-normal text-zinc-400">/mo</span></p>
               <p className="text-[10px] text-zinc-400 mt-0.5">{formatDollars(ANNUAL_PRICE_CENTS)}/year</p>
             </button>
           </div>
-          <p className="text-sm text-zinc-600 text-center mt-6 leading-relaxed">
-            Regular price: $14.99/mo. Founding members pay {formatDollars(MONTHLY_PRICE_CENTS)} &mdash; less than a coffee a week.
-            <span className="font-semibold text-zinc-800"> This rate locks in for life</span> as long as your subscription stays active.
-          </p>
+          <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-center mt-4">
+            <p className="text-sm text-emerald-800 font-medium">You&rsquo;re early. Lock in the founding rate before it&rsquo;s gone.</p>
+          </div>
         </section>
 
         {/* Section 7 — FAQ */}
@@ -1306,7 +1293,7 @@ function PaywallScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
         </section>
       </div>
 
-      {/* Section 6 — Sticky CTA */}
+      {/* Sticky CTA */}
       <div className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur border-t border-zinc-100 px-6 py-4 safe-area-pb">
         <div className="max-w-lg mx-auto">
           {error && <p className="text-xs text-red-500 text-center mb-2">{error}</p>}
@@ -1314,8 +1301,8 @@ function PaywallScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
             className="w-full rounded-full bg-[#7C5CFC] py-4 text-[15px] font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98] disabled:opacity-50 animate-[funnel-glow_2s_ease-in-out_infinite]">
             {loading ? "Loading\u2026" : "Start My Free Trial"}
           </button>
-          <p className="text-xs text-zinc-700 font-medium text-center mt-2">Your patterns are already running. The only question is whether you&rsquo;ll see them.</p>
-          <p className="text-[10px] text-zinc-400 text-center mt-1">14-day free trial. Cancel anytime. You won&rsquo;t be charged today.</p>
+          <p className="text-[10px] text-zinc-500 text-center mt-2">14-day free trial. Cancel anytime. You won&rsquo;t be charged today.</p>
+          <p className="text-xs text-zinc-700 font-medium text-center mt-1">Your patterns are already running. The only question is whether you&rsquo;ll see them.</p>
         </div>
       </div>
 

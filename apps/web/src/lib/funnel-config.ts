@@ -639,15 +639,33 @@ export const PROCESSING_STAGES: { text: string; endSec: number }[] = [
 
 export function getPaywallHeadline(branch: Branch, answers: Record<string, string | string[]>): string {
   const dur = lc(String(answers.shared_q5 ?? "too long"));
-  const q2 = String(answers.branch_q2 ?? "");
-  const q3 = String(answers.branch_q3 ?? "");
   switch (branch) {
-    case "blur": return `You\u2019ve been losing days for ${dur}. What\u2019s that worth?`;
-    case "patterns": return `The same cycle has been running for ${dur}. What\u2019s one more year of it cost?`;
-    case "rumination": return `Your brain has been keeping you up for ${dur}. What would you pay to sleep?`;
-    case "graveyard": return `You\u2019ve spent money on ${lc(q2 || "things")} that lasted ${lc(q3 || "a while")}. This costs less.`;
-    case "mask": return `You hold it together for ${lc(q2 || "everyone")} every day. Who holds it together for you?`;
-    case "drift": return `${String(answers.shared_q5 ?? "Months")} of drifting. How many more years before you do something?`;
+    case "blur": return `You\u2019ve been losing days for ${dur}. Here\u2019s what the next 7 days look like instead.`;
+    case "patterns": return `The same cycle has been running for ${dur}. Here\u2019s what it looks like when you can finally see it.`;
+    case "rumination": return `Your brain has been running for ${dur} without anywhere to put it. Here\u2019s what changes in 7 days.`;
+    case "graveyard": return `You\u2019ve been trying to fix this for ${dur}. Here\u2019s the thing that\u2019s different this time.`;
+    case "mask": return `You\u2019ve been carrying this for ${dur}. Here\u2019s what it looks like when something actually sees it.`;
+    case "drift": return `You\u2019ve felt this for ${dur}. Here\u2019s what the next 30 days look like when you start paying attention.`;
+  }
+}
+
+// ─── Paywall Cost of Inaction (Screen 15, Section 2) ────────────────────────
+
+export function getCostOfInaction(branch: Branch, answers: Record<string, string | string[]>): string {
+  const dur = lc(String(answers.shared_q5 ?? "a long time"));
+  switch (branch) {
+    case "blur":
+      return `Without something catching it, the next 6 months look like the last 6. Same overwhelm. Same forgetting. Same feeling like the days blur together.`;
+    case "patterns":
+      return `The cycle you described has been running for ${dur}. It ran last month. It\u2019ll run next month. Nothing changes until something sees it.`;
+    case "rumination":
+      return `The thoughts that kept you up last night will keep you up tonight. And tomorrow night. That\u2019s what no visibility looks like.`;
+    case "graveyard":
+      return `The goals you mentioned \u2014 they\u2019ll still be sitting there in 6 months. Not because you don\u2019t care, but because nothing is tracking them.`;
+    case "mask":
+      return `You told us things look fine on the outside. Six months from now, they\u2019ll still look fine on the outside. The gap between what people see and what you carry just gets wider.`;
+    case "drift":
+      return `You described a feeling of drifting. Without something anchoring the days, next month feels exactly like this one.`;
   }
 }
 
