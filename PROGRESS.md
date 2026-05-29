@@ -41,6 +41,63 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-29] — Paywall button fix + annual subscription tier + onboarding reset for build 51
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** f4966a9
+
+### In plain English (for Keenan)
+
+Three pre-submission fixes shipped as one slice for App Store build 51:
+
+**1. Subscribe button now looks active.** It was rendering as muted brown with near-invisible text. The active orange returns to match the feature icons. Disabled-while-loading state is still visible but no longer aggressively faded — the label stays legible.
+
+**2. Annual subscription tier added.** The paywall now shows two stacked cards — Monthly ($4.99/month) and Annual ($39.99/year with a "Best value" badge and "save 33%" framing). Tap a card to select; the Subscribe button at the bottom updates to reflect the chosen tier. Until Jim creates the Annual product in App Store Connect, the Annual card stays hidden automatically — no broken purchase path is shown to users.
+
+**3. Onboarding reset actually works now.** Jim was resetting `UserOnboarding.completedAt = NULL` in Supabase, signing out, signing back in — and getting routed straight to home instead of back through onboarding. The mobile side was correct; the bug was server-side. A "smart-skip" feature in `/api/user/me` was silently re-completing onboarding for any account >30 days old whose completedAt was null, treating it as an abandoned signup. Now it only fires when the row never existed at all — an explicit reset is respected.
+
+### Technical changes (for Jimmy)
+
+**apps/mobile/lib/iap-config.ts:** added `IAP_ANNUAL_PRODUCT_ID = "com.heelerdigital.acuity.pro.annual"`, `IAP_ALL_PRODUCT_IDS` const, `IapProductId` type, `isIapProductId()` guard.
+
+**apps/mobile/lib/iap.ts:** generalized monthly-only API surface.
+- `getMonthlyProduct()` → `getProducts()` returning `{ monthly, annual }` in one StoreKit fetchProducts roundtrip.
+- `purchaseMonthly()` → `purchaseProduct(productId: IapProductId)`. Listener filter and `requestPurchase` use the parameter.
+- `verifyAndFinish` input gained a required `productId` field, forwarded to `/api/iap/verify-receipt`.
+- `restorePurchases` filter uses `isIapProductId()` and extracts each purchase's productId for verify.
+
+**apps/mobile/app/subscribe.tsx:**
+- Replaced `tokens.glowPrimary` style-array spread (the `{color, radius, opacity}` token was being treated as a top-level view `opacity` override → button rendered at ~40% alpha → muted brown). Now applied as proper iOS `shadowColor/Offset/Radius/Opacity` + Android `elevation`. Button background and opacity behave as intended.
+- Disabled-state opacity 0.6 → 0.7 for label legibility.
+- Replaced single product card with two stacked `TierCard` components. Selection drives Subscribe label, fallback price (`$4.99` / `$39.99`), period word, and the 3.1.2(a) disclosure copy.
+- Annual `TierCard` shows "Best value" pill + "≈ $3.33/mo — save 33%" framing. TODO marked for computing the badge dynamically from real ASC prices once `IapProduct.price` numeric is added.
+- New imports: `getProducts`, `purchaseProduct`, `IAP_MONTHLY_PRODUCT_ID`, `IAP_ANNUAL_PRODUCT_ID`.
+
+**apps/web/src/lib/apple-iap.ts:** added `"com.heelerdigital.acuity.pro.annual"` to `ALLOWED_PRODUCT_IDS`. Header comment updated to v1.2 framing.
+
+**apps/web/src/lib/apple-iap.test.ts:** updated both ALLOWED_PRODUCT_IDS assertions; swapped the BAD_PRODUCT test fixture to a fake `.lifetime` SKU so it still tests rejection. 35/35 tests pass.
+
+**apps/web/src/app/api/user/me/route.ts:** smart-skip branch gated on `!user.onboarding` (row absent) instead of `!effectiveCompletedAt` (row may exist with null). Since the row-exists case no longer flows through, switched `upsert` → `create`.
+
+### Manual steps needed
+
+- [ ] Create `com.heelerdigital.acuity.pro.annual` in App Store Connect — price = $39.99/year. Until this exists, Annual card is auto-hidden (Jimmy).
+- [ ] Trigger EAS build 51 from main (Jimmy).
+- [ ] Verify in TestFlight: Subscribe button is vibrant orange with legible white text; Monthly + Annual cards both render; tapping a card switches selection; Subscribe label updates with selected tier (Jimmy).
+- [ ] After ASC product exists, verify Annual purchase end-to-end against sandbox (Jimmy).
+- [ ] To re-test Issue 1 acceptance: set `UserOnboarding.completedAt = NULL` in Supabase, sign out + sign in on TestFlight build 51 — should route to onboarding step 1 (Jimmy).
+
+### Notes
+
+- The button-styling bug had been latent since `tokens.glowPrimary` was added to the design tokens. The token's `{color, radius, opacity}` shape is intentional — it just needs to feed RN's iOS shadow props, not be spread directly. Same care needed for any other surface using `glowPrimary` / `glowSecondary` / `glowSoft` / `shadowSoft` / `shadowLift` (search the codebase if styling looks washed out elsewhere).
+- Annual product gracefully degrades when StoreKit can't fetch it (ASC missing). `getProducts()` returns `{ monthly: <real>, annual: null }` and the UI hides the Annual card. So this slice is safe to merge even before the ASC product exists.
+- `verifyAndFinish` now takes `productId` from the client side. The backend `/api/iap/verify-receipt` checks against `ALLOWED_PRODUCT_IDS` so any forged value is rejected at the gate — no new attack surface.
+- The "smart-skip" fix in `/api/user/me` is strictly a narrowing — users who genuinely abandoned signup >30 days ago still get skipped through. Only the explicit-reset case (row exists with null completedAt) is now respected.
+- Pre-existing TypeScript errors in `app/entry/[id].tsx`, `components/acuity/*` (LinearGradient overload), and `app.config.ts` (entryPoint) are unchanged by this slice; they predate this work.
+
+---
+
 ## [2026-05-29] — Revamp all email templates to light mode, add 5 recovery emails + orchestrator
 
 **Requested by:** Keenan
