@@ -32,7 +32,7 @@ const YEARLY_SAVINGS_DOLLARS_ROUNDED = (() => {
   return formatDollars(savings);
 })();
 export function UpgradePlanPicker() {
-  const [interval, setInterval] = useState<Interval>("yearly");
+  const [interval, setInterval] = useState<Interval>("monthly");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

@@ -19,7 +19,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 
 import { useAuth } from "@/contexts/auth-context";
-import { useOnboardingState } from "@/contexts/onboarding-context";
+import { useOnboardingState, type Q1Answer, type Q2Answer } from "@/contexts/onboarding-context";
 import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
 import { trackOnboardingEvent } from "@/lib/onboarding-events";
@@ -68,6 +68,41 @@ const EASE_CUBIC_OUT = Easing.bezier(0.215, 0.61, 0.355, 1);
 const CARD_DURATION_MS = 500;
 const CARD_STAGGER_MS = 300;
 const PAYWALL_SRC = "onboarding_paywall";
+const PURPLE_LIGHT = "#F0ECFF";
+
+// ─── Branch + duration mapping for cost-of-inaction ────────────────
+
+type PaywallBranch = "blur" | "patterns" | "rumination" | "graveyard" | "mask" | "drift";
+
+function q1ToBranch(q1: Q1Answer | null): PaywallBranch {
+  switch (q1) {
+    case "same_fights": return "patterns";
+    case "goals_not_real": return "drift";
+    case "blurry_days": return "blur";
+    case "work_bleeds": return "blur";
+    case "something_else":
+    default: return "blur";
+  }
+}
+
+function q2ToDuration(q2: Q2Answer | null): string {
+  switch (q2) {
+    case "few_weeks": return "weeks";
+    case "few_months": return "months";
+    case "over_a_year": return "over a year";
+    case "cant_remember": return "longer than you can remember";
+    default: return "a long time";
+  }
+}
+
+const COST_HEADLINES: Record<PaywallBranch, string> = {
+  blur: "Every week you wait is another week you won\u2019t remember.",
+  patterns: "The cycle ran last week. It\u2019s running right now. It\u2019ll run next week too \u2014 unless you see it.",
+  rumination: "Tonight your brain will replay today. Tomorrow it\u2019ll replay tonight. It doesn\u2019t stop on its own.",
+  graveyard: "How much longer?",
+  mask: "You held it together again today. How many more days before something gives?",
+  drift: "A year from now you\u2019ll wish you started today. You thought that a year ago too.",
+};
 
 interface TimelineCard {
   week: string;
@@ -106,6 +141,12 @@ export default function PaywallScreen() {
 
   const [reduceMotion, setReduceMotion] = useState<boolean | null>(null);
   const inflightRef = useRef(false);
+
+  const branch = q1ToBranch(q1);
+  const duration = q2ToDuration(q2);
+  const costHeadline = branch === "graveyard"
+    ? `You\u2019ve already spent ${duration} trying to fix this. How much longer?`
+    : COST_HEADLINES[branch];
 
   // Compute the funnel metadata up front — used in both the
   // paywall_viewed mount event and any subsequent trial_started
@@ -257,26 +298,70 @@ export default function PaywallScreen() {
             flexGrow: 1,
           }}
         >
+          {/* ── Cost of inaction (above the fold) ── */}
           <Text
             style={{
               fontFamily: tokens.fontDisplay,
-              fontSize: 28,
-              lineHeight: 34,
+              fontSize: 24,
+              lineHeight: 31,
               fontWeight: "700",
               letterSpacing: -0.3,
               color: tokens.text,
             }}
           >
-            You&apos;ve already started. Keep going.
+            {costHeadline}
           </Text>
           <Text
             style={{
               fontFamily: tokens.fontSans,
               fontSize: 15,
               lineHeight: 22,
-              color: tokens.textTer,
-              marginTop: 8,
+              fontWeight: "600",
+              color: tokens.textSec,
+              marginTop: 12,
+            }}
+          >
+            You&apos;ve been carrying this for {duration}. Acuity shows you the
+            pattern in 7 days.
+          </Text>
+
+          {/* ── Trial framing ── */}
+          <Text
+            style={{
+              fontFamily: tokens.fontSans,
+              fontSize: 13,
+              lineHeight: 19,
+              color: tokens.textSec,
+              marginTop: 16,
+            }}
+          >
+            Most people see their first pattern by Day 3. Your weekly report
+            arrives Day 7. You&apos;ll know if it&apos;s worth it long before the
+            trial ends.
+          </Text>
+          <Text
+            style={{
+              fontFamily: tokens.fontDisplay,
+              fontSize: 17,
+              lineHeight: 24,
+              fontWeight: "700",
+              color: PURPLE,
+              marginTop: 12,
               marginBottom: 28,
+            }}
+          >
+            14-day free trial. Cancel anytime.{"\n"}You won&apos;t be charged
+            today.
+          </Text>
+
+          {/* ── Timeline ── */}
+          <Text
+            style={{
+              fontFamily: tokens.fontSans,
+              fontSize: 14,
+              lineHeight: 20,
+              color: tokens.textTer,
+              marginBottom: 12,
             }}
           >
             Here&apos;s what your next 30 days look like:
@@ -297,26 +382,14 @@ export default function PaywallScreen() {
             <Text
               style={{
                 fontFamily: tokens.fontSans,
-                fontSize: 14,
-                lineHeight: 20,
-                color: tokens.textSec,
-                textAlign: "center",
-              }}
-            >
-              All of this is free for 30 days.
-            </Text>
-            <Text
-              style={{
-                fontFamily: tokens.fontSans,
                 fontSize: 12,
                 lineHeight: 17,
                 color: tokens.textTer,
                 textAlign: "center",
-                marginTop: 4,
               }}
             >
-              {formatDollars(MONTHLY_PRICE_CENTS)}/month after your trial.
-              Cancel anytime.
+              {formatDollars(MONTHLY_PRICE_CENTS)}/month after your 14-day
+              trial. Cancel anytime.
             </Text>
           </Animated.View>
 
