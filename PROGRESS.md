@@ -41,6 +41,32 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-29] — AdLab OpenAI key switched to ACUITY_ADLAB_OPENAI_KEY
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** dca6269
+
+### In plain English (for Keenan)
+
+AdLab's image generation was using the wrong OpenAI API key. Switched all three files that talk to OpenAI to use the `ACUITY_ADLAB_OPENAI_KEY` environment variable, which is already set in Vercel.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/api/admin/adlab/creatives/generate/route.ts`: `OPENAI_API_KEY` → `ACUITY_ADLAB_OPENAI_KEY` (3 references)
+- `apps/web/src/app/api/admin/adlab/creatives/generate-more/route.ts`: same swap (2 references)
+- `apps/web/src/app/api/admin/adlab/settings/status/route.ts`: status check key name updated
+
+### Manual steps needed
+
+None — `ACUITY_ADLAB_OPENAI_KEY` is already set in Vercel.
+
+### Notes
+
+- No other files outside AdLab reference `OPENAI_API_KEY`.
+
+---
+
 ## [2026-05-29] — Paywall fixes: headline bug, $199/yr annual, tighter layout, visual pop
 
 **Requested by:** Keenan
