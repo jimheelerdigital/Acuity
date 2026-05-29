@@ -41,6 +41,31 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-29] — Mechanism screen Continue button visible immediately on mount
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 4f95fc9
+
+### In plain English (for Keenan)
+
+The Continue button on the mechanism screen at /start was hidden for 5 seconds while animations played, causing users to wait and bounce. The button is now visible and tappable the instant the screen appears. Animations still cascade in the background but the button is completely decoupled from them — no timer, no gate, no delay.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/components/onboarding-funnel.tsx`: Removed `showCta` state and the `useEffect` 5-second `setTimeout` that controlled it. The `{showCta && ...}` conditional render replaced with an always-rendered button. No animation delay on the button wrapper.
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- This is the web mechanism screen at /start, not the mobile one (which has its own timing in how-it-works.tsx).
+- The button was previously gated behind `setTimeout(() => setShowCta(true), 5000)`. That entire pattern is removed. The button is now a static part of the DOM from first render.
+
+---
+
 ## [2026-05-29] — P0: unblock onboarding step 9 + global API timeouts
 
 **Requested by:** Jimmy
