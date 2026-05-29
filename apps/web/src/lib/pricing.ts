@@ -64,7 +64,7 @@ export const PRICING = {
     price: ANNUAL_PRICE_CENTS / 100,
     cents: ANNUAL_PRICE_CENTS,
     stripeId:
-      process.env.STRIPE_PRICE_YEARLY ?? "price_1Tb33YD9XJakJqj5KmfpYrGJ",
+      process.env.STRIPE_PRICE_YEARLY ?? "price_1TcSPvD9XJakJqj5C2dITYrR",
     savingsVsMonthly: `${annualSavingsPct}%`,
     savingsCents: annualSavingsCents,
   },
