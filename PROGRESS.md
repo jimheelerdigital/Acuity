@@ -41,6 +41,46 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-29] — P0: unblock onboarding step 9 + global API timeouts
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** b898beb
+
+### In plain English (for Keenan)
+
+Users were getting stuck on step 9 of onboarding ("How the trial works" — pick a daily commitment cadence). Tap Continue → spinner forever, user trapped, cannot finish signup. Same trap was lurking on the final Finish step too if its API call hung. Fixed for build 52: onboarding now advances **instantly** when you tap Continue — the save-to-server happens in the background, and even if the server hangs the user is already on the next step. Every other Continue button across onboarding now feels snappier for the same reason (no more waiting on the save before advancing). Plus a global 10-second timeout on every mobile API call so nothing in the app can ever hang forever again.
+
+### Technical changes (for Jimmy)
+
+**`apps/mobile/lib/api.ts`:**
+- Added `AbortController`-based timeout on `request<T>()` — default 10s, override via `timeoutMs` option.
+- Same pattern on `upload()` with a 60s default (audio payloads over cellular).
+- Timeout errors come back as `Error & { timeout: true }` so call sites can branch on the cause if needed.
+
+**`apps/mobile/components/onboarding/shell.tsx`:**
+- `goNext()` is now synchronous: `void persist()` fire-and-forget, then `router.replace`. No more `await` blocking nav.
+- `complete()` flips `onboardingCompleted: true` in local user state via `setAuthenticatedUser` synchronously, then `router.replace("/(tabs)")`, then fires `persist`, `/api/onboarding/complete`, and `refresh` as three independent background calls — each with its own `.catch(console.error)`.
+- `persist()` catch block: silent → `console.error("[onboarding/persist] failed:", err)` so TestFlight logs capture the actual server failure mode.
+- Added `inFlightRef` (300ms window) to debounce rapid double-taps on Continue.
+- `submitting` React state is no longer set anywhere — its initial `false` value is now permanent. The Continue button no longer shows `ActivityIndicator` since nav is instant. State declaration left in place to keep the diff tight; can be GC'd in a follow-up.
+
+### Manual steps needed
+
+- [ ] Trigger EAS build 52 from main (Jimmy).
+- [ ] On TestFlight: walk through onboarding to step 9, pick a cadence, tap Continue — should advance instantly to step 10 regardless of server state (Jimmy).
+- [ ] After step 11 Finish, should land on `/(tabs)` immediately even if the server is slow (Jimmy).
+- [ ] Pull TestFlight console logs and grep for `[onboarding/persist] failed` — the error there will tell us what's actually broken on the server-side path for step 9. Most likely candidates: `targetCadence` Prisma write, Upstash rate limiter timeout, connection-pool exhaustion. Once we know, fix server-side in a follow-up slice (Jimmy / Claude).
+- [ ] Follow-up: decide whether to add `targetCadence` to `apps/web/prisma/schema.prisma` and run `npx prisma db push`, or drop it from the mobile payload + remove `safeUpdateUser` (Jimmy).
+
+### Notes
+
+- The `safeUpdateUser` fallback in `/api/onboarding/update:407-434` exists exactly to catch the "column doesn't exist" failure — but `targetCadence` is not in `schema.prisma` today, so the fallback's regex SHOULD match Prisma's "Unknown argument" error and short-circuit with 200. If step 9 is reliably hanging, the failure mode is upstream of that catch (rate limiter, prisma import, or a different Prisma error format than the regex matches). Console.error in TestFlight will name it.
+- This is the second hang-trap we've fixed in the same pattern: prior bearer-attach race (2026-05-05) similarly trapped users on `/api/onboarding/complete`. Same shape, same fix philosophy: never await server response when local state alone is sufficient to advance the user. Worth a broader audit pass for any other `await api.*` in a navigation path.
+- 10s default timeout was chosen to cover cold-Lambda + region-failover edge cases without making the user wait an obviously-broken-feeling time. Easy to tune downward later if cold starts have settled in production.
+
+---
+
 ## [2026-05-29] — Swap Acuity Pro Annual Stripe Price ID to correct yearly price
 
 **Requested by:** Jimmy
