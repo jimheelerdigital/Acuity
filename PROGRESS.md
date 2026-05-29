@@ -109,6 +109,37 @@ The hardcoded fallback Price ID for the Annual plan was pointing at a Stripe pri
 
 ---
 
+## [2026-05-29] — Revamp /start paywall — cost of inaction, monthly default, new structure
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 07a9da2
+
+### In plain English (for Keenan)
+
+The web paywall at /start — the screen where 50% of people were dropping off — has been completely restructured. The page now opens with a headline that references how long the user has been dealing with their problem and what the next 7-30 days look like instead. Right below that, before any pricing or testimonials, there's a "cost of inaction" paragraph that's personalized per branch — what the next 6 months look like if they close the tab and go back to the same cycle. This reads like a mirror, not a guilt trip.
+
+Testimonials from Sarah M., James K., and Priya R. now appear above the pricing (social proof before the ask). The old feature list (30 debriefs, 4 reports, etc.) is replaced with a Week 1-4 momentum timeline showing what their first month actually looks like. A simple "Less than a cup of coffee. Every month." line sits right before the pricing cards.
+
+Monthly ($4.99/mo) is now the default selected plan with the purple highlight. The strikethrough anchor is $19.99 (not $14.99). Annual plan is still available but not pre-selected. "Founding rate" urgency banner sits below the pricing cards. The sticky CTA shows "14-day free trial. Cancel anytime. You won't be charged today." with the cost-of-inaction closer below.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/components/onboarding-funnel.tsx`: changed `selectedPlan` default from `"yearly"` to `"monthly"`. Rewrote entire PaywallScreen JSX — removed comparison card section, added cost-of-inaction section, moved testimonials above pricing, replaced feature list with timeline, updated pricing card strikethrough from $14.99 to $19.99, reordered founding rate banner below cards, updated sticky CTA copy order. Added `getCostOfInaction` to imports.
+- `apps/web/src/lib/funnel-config.ts`: new `getCostOfInaction(branch, answers)` function with per-branch mirror-voice copy. Rewrote `getPaywallHeadline()` — removed rhetorical cost questions, replaced with forward-looking "here's what changes" framing that references their duration answer.
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- The $19.99 strikethrough on monthly is a price anchor — the "regular price" that makes $4.99 feel like a steal. This is the founding member framing.
+- Cost of inaction copy follows the mirror voice rule: reflects the user's own quiz answers back, doesn't project emotions. "You described a feeling of drifting" not "You feel lost."
+- `getComparisonLeft` is no longer used by the paywall but is still exported from funnel-config.ts in case other surfaces reference it.
+
+---
+
 ## [2026-05-29] — Paywall button fix + annual subscription tier + onboarding reset for build 51
 
 **Requested by:** Jimmy

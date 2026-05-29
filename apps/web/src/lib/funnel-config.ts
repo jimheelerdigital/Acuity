@@ -318,11 +318,11 @@ const BLUR_LINE1: Record<string, string> = {
   "Autopilot \u2014 I don\u2019t remember half of it":
     "Your days run on autopilot. You get to the end of the week and can\u2019t name a single moment that mattered \u2014 not because nothing happened, but because you weren\u2019t really there for any of it.",
   "Busy but empty":
-    "You\u2019re busy every single day. And at the end of every single day, you feel like you did nothing. The calendar is full. The feeling is empty.",
+    "You described your days as busy but empty. Full calendar. Nothing to show for it. That\u2019s what you told us \u2014 and the pattern is more common than you\u2019d think.",
   "Fine on the surface, foggy underneath":
-    "On the surface, you\u2019re fine. Functioning. Showing up. But underneath there\u2019s a fog you can\u2019t name \u2014 and the scariest part is you\u2019re getting used to it.",
+    "You said it\u2019s fine on the surface but foggy underneath. Functioning. Showing up. But there\u2019s a fog you can\u2019t name \u2014 and your answers suggest it\u2019s been building for a while.",
   "Like I\u2019m watching someone else live my life":
-    "You feel like you\u2019re watching your own life from the outside. Going through the motions. Present but not there. And nobody notices because you\u2019ve gotten so good at pretending.",
+    "You said it\u2019s like watching someone else live your life. Going through the motions. Present but not there. And your other answers suggest nobody around you sees it.",
 };
 
 const PATTERNS_LINE1: Record<string, string> = {
@@ -381,7 +381,7 @@ const DRIFT_LINE1: Record<string, string> = {
   "Years \u2014 I just didn\u2019t want to admit it":
     "You\u2019ve known for years. You just didn\u2019t want to name it because naming it would mean you have to do something about it. So you let another year pass. And another. And now you\u2019re here.",
   "I\u2019m not sure it ever wasn\u2019t there":
-    "You\u2019re not even sure when you started drifting \u2014 which is the scariest part. It\u2019s not that you lost yourself. It\u2019s that the losing happened so gradually you didn\u2019t notice until you tried to find yourself and couldn\u2019t.",
+    "You said you\u2019re not even sure when it started. That tracks with the rest of your answers \u2014 the drift happened so gradually that there\u2019s no clear before and after. Just a slow fade.",
 };
 
 function getLine1(branch: Branch, answers: Record<string, string | string[]>): string {
@@ -443,13 +443,13 @@ const BRAIN_REWRITES: Record<string, string> = {
 
 const DESIRE_REWRITES: Record<string, string> = {
   "Why I keep repeating the same mistakes":
-    "Deep down, you already know what you\u2019d want to see: why you keep ending up here. The same mistakes. The same patterns. The same version of stuck.",
+    "You told us the thing you\u2019d most want to see is why you keep ending up here. The same mistakes. The same patterns. The same version of stuck. That\u2019s the pattern Acuity tracks.",
   "What\u2019s actually stressing me out":
-    "You want to know what\u2019s actually stressing you out \u2014 not the surface reasons you tell people, but the real thing underneath that you can\u2019t quite name.",
+    "You said you\u2019d want to know what\u2019s actually stressing you out \u2014 not the surface reasons, but the real thing underneath. Your other answers point to where it might be hiding.",
   "Where my time and energy go":
-    "You want to know where it all goes. The time. The energy. You start every week with plans and end every week wondering what happened to them.",
+    "You said you\u2019d want to know where it all goes. The time. The energy. Your answers describe someone who starts every week with plans and ends every week wondering what happened to them.",
   "What I really want but won\u2019t admit":
-    "There\u2019s something you want that you won\u2019t say out loud. Maybe you\u2019re afraid it\u2019s too late. Maybe you\u2019re afraid it\u2019s not. Either way, it\u2019s there \u2014 and it\u2019s not going away.",
+    "You said there\u2019s something you want but won\u2019t admit. Your other answers paint a picture of someone holding back. That tension between what you said and what you didn\u2019t is exactly what shows up in the data.",
 };
 
 // ─── Build Mirror Lines ─────────────────────────────────────────────────────
@@ -500,7 +500,7 @@ export function getSnapshotInsight(branch: Branch, a: Record<string, string | st
     case "blur":
       return `You described your days as ${q2}. But you also said you want to know ${q9}. That gap \u2014 between how you\u2019re living and what you\u2019re looking for \u2014 is the pattern. Acuity tracks it daily until you can see it yourself.`;
     case "patterns":
-      return `You said ${q2} keeps repeating. You feel ${q3} every time. There\u2019s a trigger hiding in the 48 hours before it happens. Acuity finds it.`;
+      return `You said ${q2} keeps repeating. You described the feeling as ${q3}. There\u2019s a trigger hiding in the 48 hours before it happens \u2014 your answers suggest a pattern worth tracking.`;
     case "rumination":
       return `Your brain turns on ${q2}. It runs through ${q3}. There\u2019s a pattern in WHEN it starts \u2014 a specific moment earlier in your day that lights the fuse. Acuity catches that moment.`;
     case "graveyard":
@@ -543,7 +543,7 @@ export const SNAPSHOT_PREVIEWS: Record<Branch, string[]> = {
   drift: [
     "You mentioned who you used to be twice. You mentioned who you want to become zero times. That ratio is the drift.",
     "Your highest energy was Sunday morning. By Monday evening it was gone. Every week resets to zero because nothing captures the spark.",
-    "One week of data and Acuity already knows: the drift isn\u2019t random. It follows your calendar.",
+    "One week of data and the pattern is visible: the drift isn\u2019t random. It follows your calendar.",
   ],
 };
 

@@ -36,24 +36,24 @@ const PURPLE_MID = "#B8A9FE";
 const EASE_CUBIC_OUT = Easing.bezier(0.215, 0.61, 0.355, 1);
 
 // ─── Timing (ms from mount) ─────────────────────────────────────────
-// HARD REQUIREMENT: Continue button visible within 4s of mount.
-// Headline: 0ms start, 300ms fade, 400ms pause
-// Step 1: 700ms start, 400ms fade, 500ms pause
-// Step 2: 1600ms start, 400ms fade, cards 4×150ms stagger, 500ms pause
-// Step 3: 3100ms start, 400ms fade, dots 7×80ms, insight 300ms
-// Closing + CTA: 4000ms start, 300ms fade, SIMULTANEOUS
-const HEADLINE_DUR = 300;
-const STEP1_START = 700;
-const STEP1_DUR = 400;
-const STEP2_START = 1600;
-const STEP2_DUR = 400;
-const CARD_STAGGER = 150;
-const STEP3_START = 3100;
-const STEP3_DUR = 400;
-const DOT_STAGGER = 80;
-const INSIGHT_DELAY = 300;
-const CLOSING_START = 4000;
-const CTA_START = 4000;
+// HARD REQUIREMENT: Continue button visible within 2.5s of mount.
+// Headline: 0ms start, 200ms fade
+// Step 1: 300ms start, 250ms fade
+// Step 2: 750ms start, 250ms fade, cards 4×100ms stagger
+// Step 3: 1500ms start, 250ms fade, dots 7×50ms, insight 200ms
+// Closing + CTA: 2300ms start, 200ms fade, SIMULTANEOUS
+const HEADLINE_DUR = 200;
+const STEP1_START = 300;
+const STEP1_DUR = 250;
+const STEP2_START = 750;
+const STEP2_DUR = 250;
+const CARD_STAGGER = 100;
+const STEP3_START = 1500;
+const STEP3_DUR = 250;
+const DOT_STAGGER = 50;
+const INSIGHT_DELAY = 200;
+const CLOSING_START = 2300;
+const CTA_START = 2300;
 
 // ─── Branch mapping ─────────────────────────────────────────────────
 
