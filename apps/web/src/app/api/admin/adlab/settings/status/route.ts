@@ -17,7 +17,7 @@ export async function GET() {
     META_AD_ACCOUNT_ID: !!process.env.META_AD_ACCOUNT_ID,
     META_API_VERSION: !!process.env.META_API_VERSION,
     CRON_SECRET: !!process.env.CRON_SECRET,
-    OPENAI_API_KEY: !!process.env.OPENAI_API_KEY,
+    ACUITY_ADLAB_OPENAI_KEY: !!process.env.ACUITY_ADLAB_OPENAI_KEY,
     ANTHROPIC_API_KEY: !!process.env.ANTHROPIC_API_KEY,
   });
 }

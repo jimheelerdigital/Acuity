@@ -32,15 +32,15 @@ const CreativesArraySchema = z.array(CreativeSchema).length(3);
 let _openai: OpenAI | null = null;
 function openai(): OpenAI {
   if (!_openai) {
-    _openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY, timeout: 120_000 });
+    _openai = new OpenAI({ apiKey: process.env.ACUITY_ADLAB_OPENAI_KEY, timeout: 120_000 });
   }
   return _openai;
 }
 
 async function generateImage(prompt: string, referenceImageUrl?: string): Promise<{ imageBuffer: Buffer } | { error: string } | null> {
-  if (!process.env.OPENAI_API_KEY) {
-    console.warn("[adlab] OPENAI_API_KEY not set, skipping image generation");
-    return { error: "OPENAI_API_KEY not configured" };
+  if (!process.env.ACUITY_ADLAB_OPENAI_KEY) {
+    console.warn("[adlab] ACUITY_ADLAB_OPENAI_KEY not set, skipping image generation");
+    return { error: "ACUITY_ADLAB_OPENAI_KEY not configured" };
   }
 
   try {
