@@ -26,11 +26,16 @@ export async function notifyFoundersOfSignup(params: {
   signupMethod: string;
   timestamp: Date;
   campaign?: string | null;
+  branch?: string | null;
+  paymentStatus?: string | null;
+  utmSource?: string | null;
+  utmMedium?: string | null;
+  utmCampaign?: string | null;
 }): Promise<void> {
   // Env toggle — default enabled
   if (process.env.FOUNDER_NOTIFICATIONS_ENABLED === "false") return;
 
-  const { userId, name, email, signupMethod, timestamp, campaign } = params;
+  const { userId, name, email, signupMethod, timestamp, campaign, branch, paymentStatus, utmSource, utmMedium, utmCampaign } = params;
 
   const { prisma } = await import("@/lib/prisma");
   const { getResendClient } = await import("@/lib/resend");
@@ -41,7 +46,18 @@ export async function notifyFoundersOfSignup(params: {
 
   const firstName = (name ?? "").trim().split(/\s+/)[0] || email.split("@")[0];
 
-  const vars = { firstName, email, signupMethod, timestamp, campaign: campaign ?? null };
+  const vars = {
+    firstName,
+    email,
+    signupMethod,
+    timestamp,
+    campaign: campaign ?? null,
+    branch: branch ?? null,
+    paymentStatus: paymentStatus ?? null,
+    utmSource: utmSource ?? null,
+    utmMedium: utmMedium ?? null,
+    utmCampaign: utmCampaign ?? null,
+  };
 
   let success = false;
   let errorMessage: string | null = null;

@@ -27,8 +27,8 @@ export function buildWaitlistActivationEmail(
   return `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/></head>
-<body style="margin:0;padding:0;background-color:#0A0A0F;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0A0A0F;">
+<body style="margin:0;padding:0;background-color:#FFFFFF;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#FFFFFF;">
     <tr>
       <td align="center" style="padding:40px 20px;">
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;">
@@ -36,14 +36,14 @@ export function buildWaitlistActivationEmail(
           <!-- Logo -->
           <tr>
             <td style="padding-bottom:32px;">
-              <img src="https://www.getacuity.io/AcuityLogo.png" alt="Acuity" width="40" height="40" style="display:block;" />
+              <img src="https://www.getacuity.io/AcuityLogoDark.png" alt="Acuity" width="36" height="36" style="display:block;" />
             </td>
           </tr>
 
           <!-- Heading -->
           <tr>
             <td style="padding-bottom:24px;">
-              <h1 style="margin:0;font-size:28px;font-weight:800;color:#FFFFFF;letter-spacing:-0.5px;line-height:1.3;">
+              <h1 style="margin:0;font-size:28px;font-weight:800;color:#1a1a1a;letter-spacing:-0.5px;line-height:1.3;">
                 ${safeName}, you're in.
               </h1>
             </td>
@@ -65,7 +65,7 @@ export function buildWaitlistActivationEmail(
           <!-- Body -->
           <tr>
             <td style="padding-bottom:24px;">
-              <p style="margin:0;font-size:16px;color:#A0A0B8;line-height:1.7;">
+              <p style="margin:0;font-size:16px;color:#374151;line-height:1.7;">
                 Acuity is live. You were one of the first people to sign up for the waitlist, and we kept a spot for you.
               </p>
             </td>
@@ -73,7 +73,7 @@ export function buildWaitlistActivationEmail(
 
           <tr>
             <td style="padding-bottom:24px;">
-              <p style="margin:0;font-size:16px;color:#A0A0B8;line-height:1.7;">
+              <p style="margin:0;font-size:16px;color:#374151;line-height:1.7;">
                 As Founding Member #${foundingMemberNumber}, here's what you get:
               </p>
             </td>
@@ -84,14 +84,14 @@ export function buildWaitlistActivationEmail(
             <td style="padding-bottom:24px;">
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                 <tr>
-                  <td style="background-color:#13131F;border-radius:12px;padding:24px;border-left:4px solid #7C5CFC;">
-                    <p style="margin:0 0 8px;font-size:15px;color:#FFFFFF;line-height:1.7;">
+                  <td style="background-color:#F9FAFB;border-radius:12px;padding:24px;border-left:4px solid #7C5CFC;border:1px solid #E5E7EB;border-left:4px solid #7C5CFC;">
+                    <p style="margin:0 0 8px;font-size:15px;color:#1a1a1a;line-height:1.7;">
                       <strong>14-day free trial</strong>
                     </p>
-                    <p style="margin:0 0 8px;font-size:15px;color:#FFFFFF;line-height:1.7;">
+                    <p style="margin:0 0 8px;font-size:15px;color:#1a1a1a;line-height:1.7;">
                       <strong>$12.99/month locked in forever</strong> (price goes up after the first 100)
                     </p>
-                    <p style="margin:0;font-size:15px;color:#FFFFFF;line-height:1.7;">
+                    <p style="margin:0;font-size:15px;color:#1a1a1a;line-height:1.7;">
                       <strong>Founding Member badge</strong> on your account, permanently
                     </p>
                   </td>
@@ -103,10 +103,10 @@ export function buildWaitlistActivationEmail(
           <!-- CTA Button -->
           <tr>
             <td style="padding-bottom:24px;">
-              <table role="presentation" cellpadding="0" cellspacing="0">
+              <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
                 <tr>
-                  <td style="background-color:#7C5CFC;border-radius:999px;padding:16px 32px;">
-                    <a href="${SIGNUP_URL}" style="font-size:16px;font-weight:700;color:#FFFFFF;text-decoration:none;display:block;">
+                  <td style="background-color:#7C5CFC;border-radius:8px;text-align:center;">
+                    <a href="${SIGNUP_URL}" style="font-size:16px;font-weight:700;color:#FFFFFF;text-decoration:none;display:block;padding:14px 32px;">
                       Create your account
                     </a>
                   </td>
@@ -117,7 +117,7 @@ export function buildWaitlistActivationEmail(
 
           <tr>
             <td style="padding-bottom:24px;">
-              <p style="margin:0;font-size:16px;color:#A0A0B8;line-height:1.7;">
+              <p style="margin:0;font-size:16px;color:#374151;line-height:1.7;">
                 Your first brain dump takes 60 seconds. Talk about whatever is on your mind. By morning, your tasks are on a list, your mood is scored, and your goals are tracked.
               </p>
             </td>
@@ -125,7 +125,7 @@ export function buildWaitlistActivationEmail(
 
           <tr>
             <td style="padding-bottom:24px;">
-              <p style="margin:0;font-size:16px;color:#A0A0B8;line-height:1.7;">
+              <p style="margin:0;font-size:16px;color:#374151;line-height:1.7;">
                 Every Sunday, a 400-word story of your week lands on your phone.
               </p>
             </td>
@@ -133,7 +133,7 @@ export function buildWaitlistActivationEmail(
 
           <tr>
             <td style="padding-bottom:0;">
-              <p style="margin:0;font-size:16px;color:#FFFFFF;font-weight:600;">
+              <p style="margin:0;font-size:16px;color:#1a1a1a;font-weight:600;">
                 — Keenan & the Acuity Team
               </p>
             </td>
@@ -141,8 +141,8 @@ export function buildWaitlistActivationEmail(
 
           <!-- Footer -->
           <tr>
-            <td style="padding-top:40px;border-top:1px solid rgba(255,255,255,0.1);margin-top:40px;">
-              <p style="margin:0;font-size:12px;color:#666;">
+            <td style="padding-top:40px;border-top:1px solid #E5E7EB;margin-top:40px;">
+              <p style="margin:0;font-size:12px;color:#9ca3af;">
                 You're receiving this because you joined the Acuity waitlist.
                 <a href="https://www.getacuity.io" style="color:#7C5CFC;">getacuity.io</a>
               </p>

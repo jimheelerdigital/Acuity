@@ -223,6 +223,10 @@ export async function bootstrapNewUser(params: {
         signupMethod: signupMethod ?? "unknown",
         timestamp: new Date(),
         campaign: attribution?.utmCampaign ?? null,
+        paymentStatus: "TRIAL",
+        utmSource: attribution?.utmSource ?? null,
+        utmMedium: attribution?.utmMedium ?? null,
+        utmCampaign: attribution?.utmCampaign ?? null,
       });
     } catch (err) {
       // eslint-disable-next-line no-console

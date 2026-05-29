@@ -17,11 +17,11 @@ function escapeHtml(s: string): string {
 }
 
 function p(text: string): string {
-  return `<tr><td style="padding-bottom:20px;"><p style="margin:0;font-size:16px;color:#A0A0B8;line-height:1.7;">${text}</p></td></tr>`;
+  return `<tr><td style="padding-bottom:20px;"><p style="margin:0;font-size:16px;color:#6b7280;line-height:1.7;">${text}</p></td></tr>`;
 }
 
 function sig(): string {
-  return `<tr><td style="padding-bottom:0;"><p style="margin:0;font-size:16px;color:#FFFFFF;font-weight:600;">— Jim &amp; Keenan</p><p style="margin:4px 0 0;font-size:14px;color:#A0A0B8;">Cofounders, Acuity</p></td></tr>`;
+  return `<tr><td style="padding-bottom:0;"><p style="margin:0;font-size:16px;color:#1a1a1a;font-weight:600;">— Jim &amp; Keenan</p><p style="margin:4px 0 0;font-size:14px;color:#6b7280;">Cofounders, Acuity</p></td></tr>`;
 }
 
 // ─── Email 1 ────────────────────────────────────────────────────────
@@ -50,7 +50,7 @@ export function waitlistReactivation1Html(opts: {
     <tr><td style="padding-bottom:24px;">${trialButton(opts.signupUrl, "Claim Your 14-Day Trial")}</td></tr>
     ${sig()}
     ${p(
-      `<span style="font-size:14px;color:#666;">P.S. Founding Members get early access and locked-in pricing. There are still spots left, but they're going fast.</span>`
+      `<span style="font-size:14px;color:#9ca3af;">P.S. Founding Members get early access and locked-in pricing. There are still spots left, but they're going fast.</span>`
     )}
   `;
 
@@ -87,7 +87,7 @@ export function waitlistReactivation2Html(opts: {
     <tr><td style="padding-bottom:24px;">${trialButton(opts.signupUrl, "Start My 14-Day Trial")}</td></tr>
     ${sig()}
     ${p(
-      `<span style="font-size:14px;color:#666;">P.S. If you reply and tell me what's holding you back, I read every one. Sometimes it helps me fix something. Sometimes it helps you decide.</span>`
+      `<span style="font-size:14px;color:#9ca3af;">P.S. If you reply and tell me what's holding you back, I read every one. Sometimes it helps me fix something. Sometimes it helps you decide.</span>`
     )}
   `;
 

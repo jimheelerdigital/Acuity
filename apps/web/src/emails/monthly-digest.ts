@@ -47,7 +47,7 @@ export async function sendMonthlyDigest(input: MonthlyDigestInput) {
     section(
       "This month, in numbers",
       `<p style="margin:0;">${escapeHtml(firstName)} — ${input.entryCount} entr${input.entryCount === 1 ? "y" : "ies"}, longest streak ${input.longestStreak} day${input.longestStreak === 1 ? "" : "s"}.</p>
-       <p style="margin:8px 0 0;color:#A1A1AA;">${escapeHtml(input.moodDistribution)}</p>`
+       <p style="margin:8px 0 0;color:#6b7280;">${escapeHtml(input.moodDistribution)}</p>`
     )
   );
 
@@ -59,7 +59,7 @@ export async function sendMonthlyDigest(input: MonthlyDigestInput) {
       .map((d) => {
         const up = d.delta > 0;
         return `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;">
-          <span style="color:#E4E4E7;font-size:13px;">${escapeHtml(d.area)}</span>
+          <span style="color:#374151;font-size:13px;">${escapeHtml(d.area)}</span>
           <span style="color:${up ? "#5DCAA5" : "#F59E0B"};font-size:13px;font-weight:600;">${up ? "↑" : "↓"} ${Math.abs(d.delta)}</span>
         </div>`;
       })
@@ -72,7 +72,7 @@ export async function sendMonthlyDigest(input: MonthlyDigestInput) {
       .slice(0, 5)
       .map(
         (t) =>
-          `<span style="display:inline-block;background:#27272A;color:#E4E4E7;border-radius:999px;padding:4px 10px;font-size:12px;margin-right:6px;margin-top:4px;">${escapeHtml(t.name)} · ${t.mentions}</span>`
+          `<span style="display:inline-block;background:#E5E7EB;color:#374151;border-radius:999px;padding:4px 10px;font-size:12px;margin-right:6px;margin-top:4px;">${escapeHtml(t.name)} · ${t.mentions}</span>`
       )
       .join("");
     parts.push(section("What you wrote about most", chips));

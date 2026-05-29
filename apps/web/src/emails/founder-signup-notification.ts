@@ -16,8 +16,8 @@ function esc(s: string | null | undefined): string {
 
 function row(label: string, value: string): string {
   return `<tr>
-    <td style="padding:6px 12px 6px 0;font-size:14px;color:#A0A0B8;white-space:nowrap;vertical-align:top;">${label}</td>
-    <td style="padding:6px 0;font-size:14px;color:#FFFFFF;font-weight:500;">${value}</td>
+    <td style="padding:6px 12px 6px 0;font-size:14px;color:#6b7280;white-space:nowrap;vertical-align:top;">${label}</td>
+    <td style="padding:6px 0;font-size:14px;color:#1a1a1a;font-weight:500;">${value}</td>
   </tr>`;
 }
 
@@ -27,6 +27,11 @@ export interface FounderNotificationVars {
   signupMethod: string;
   timestamp: Date;
   campaign?: string | null;
+  branch?: string | null;
+  paymentStatus?: string | null;
+  utmSource?: string | null;
+  utmMedium?: string | null;
+  utmCampaign?: string | null;
 }
 
 export function founderNotificationSubject(v: FounderNotificationVars): string {
@@ -49,7 +54,7 @@ export function founderNotificationHtml(v: FounderNotificationVars): string {
   const content = `
     <tr>
       <td style="padding-bottom:20px;">
-        <p style="margin:0;font-size:16px;color:#D8D8E8;line-height:1.7;">
+        <p style="margin:0;font-size:16px;color:#374151;line-height:1.7;">
           A new user just signed up for Acuity.
         </p>
       </td>
@@ -62,6 +67,11 @@ export function founderNotificationHtml(v: FounderNotificationVars): string {
             ${row("Email", esc(v.email))}
             ${row("Signup method", esc(v.signupMethod))}
             ${row("Campaign", v.campaign ? esc(v.campaign) : "direct / organic")}
+            ${row("Branch", v.branch ? esc(v.branch) : "unknown")}
+            ${row("Payment", v.paymentStatus ? esc(v.paymentStatus) : "TRIAL")}
+            ${v.utmSource ? row("UTM Source", esc(v.utmSource)) : ""}
+            ${v.utmMedium ? row("UTM Medium", esc(v.utmMedium)) : ""}
+            ${v.utmCampaign ? row("UTM Campaign", esc(v.utmCampaign)) : ""}
             ${row("Signed up at", signedUpAt)}
           </table>
         `)}
@@ -69,7 +79,7 @@ export function founderNotificationHtml(v: FounderNotificationVars): string {
     </tr>
     <tr>
       <td>
-        <p style="margin:0;font-size:14px;color:#666;">\u2014 Acuity bot</p>
+        <p style="margin:0;font-size:14px;color:#9ca3af;">\u2014 Acuity bot</p>
       </td>
     </tr>
   `;

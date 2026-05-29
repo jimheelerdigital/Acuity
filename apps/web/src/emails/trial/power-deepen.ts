@@ -12,14 +12,14 @@ export const powerDeepen: TrialEmailTemplate = {
     const content = `
       <tr>
         <td style="padding-bottom:24px;">
-          <h1 style="margin:0;font-size:26px;font-weight:800;color:#FFFFFF;line-height:1.3;letter-spacing:-0.4px;">
+          <h1 style="margin:0;font-size:26px;font-weight:800;color:#1a1a1a;line-height:1.3;letter-spacing:-0.4px;">
             ${name}, you're already a daily user.
           </h1>
         </td>
       </tr>
       <tr>
         <td style="padding-bottom:20px;">
-          <p style="margin:0;font-size:16px;color:#D8D8E8;line-height:1.7;">
+          <p style="margin:0;font-size:16px;color:#374151;line-height:1.7;">
             ${v.totalRecordings} debriefs in. You've already done more than most trial users do in the full 14 days. Skipping ahead.
           </p>
         </td>
@@ -28,7 +28,7 @@ export const powerDeepen: TrialEmailTemplate = {
         <td style="padding-bottom:24px;">
           ${trialCard(`
             <p style="margin:0 0 10px;font-size:12px;color:#7C5CFC;text-transform:uppercase;letter-spacing:1px;font-weight:700;">What most people miss</p>
-            <p style="margin:0;font-size:15px;color:#D8D8E8;line-height:1.7;">
+            <p style="margin:0;font-size:15px;color:#374151;line-height:1.7;">
               Acuity catches goals in every debrief — even the ones you mention in passing. They stack up in the Goals tab. Go in, pick one, and tap "Record about this goal" — your next debrief gets anchored to it and the AI contextualizes the transcript around it.
             </p>
           `)}
@@ -36,7 +36,7 @@ export const powerDeepen: TrialEmailTemplate = {
       </tr>
       <tr>
         <td style="padding-bottom:28px;">
-          <p style="margin:0;font-size:16px;color:#D8D8E8;line-height:1.7;">
+          <p style="margin:0;font-size:16px;color:#374151;line-height:1.7;">
             One tip. Worth a minute.
           </p>
         </td>
@@ -48,7 +48,7 @@ export const powerDeepen: TrialEmailTemplate = {
       </tr>
       <tr>
         <td style="padding-top:16px;">
-          <p style="margin:0;font-size:16px;color:#FFFFFF;font-weight:600;">— Jim &amp; Keenan</p>
+          <p style="margin:0;font-size:16px;color:#1a1a1a;font-weight:600;">— Jim &amp; Keenan</p>
         </td>
       </tr>
     `;

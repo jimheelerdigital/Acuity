@@ -30,14 +30,14 @@ export const trialEndedDay14: TrialEmailTemplate = {
     const content = `
       <tr>
         <td style="padding-bottom:24px;">
-          <h1 style="margin:0;font-size:26px;font-weight:800;color:#FFFFFF;line-height:1.3;letter-spacing:-0.4px;">
+          <h1 style="margin:0;font-size:26px;font-weight:800;color:#1a1a1a;line-height:1.3;letter-spacing:-0.4px;">
             Your Acuity trial just ended, ${name}.
           </h1>
         </td>
       </tr>
       <tr>
         <td style="padding-bottom:20px;">
-          <p style="margin:0;font-size:16px;color:#D8D8E8;line-height:1.7;">
+          <p style="margin:0;font-size:16px;color:#374151;line-height:1.7;">
             Acuity isn&rsquo;t going anywhere. Recording stays free forever &mdash; you can keep capturing your daily debriefs and we&rsquo;ll keep transcribing them.
           </p>
         </td>
@@ -45,10 +45,10 @@ export const trialEndedDay14: TrialEmailTemplate = {
       <tr>
         <td style="padding-bottom:24px;">
           ${trialCard(`
-            <p style="margin:0 0 12px 0;font-size:14px;font-weight:700;color:#FFFFFF;letter-spacing:0.2px;text-transform:uppercase;">
+            <p style="margin:0 0 12px 0;font-size:14px;font-weight:700;color:#1a1a1a;letter-spacing:0.2px;text-transform:uppercase;">
               What changed
             </p>
-            <p style="margin:0;font-size:15px;color:#D8D8E8;line-height:1.7;">
+            <p style="margin:0;font-size:15px;color:#374151;line-height:1.7;">
               New entries land as transcripts and a short summary. Themes, weekly insights, and your Life Matrix are on Pro &mdash; everything you generated during your trial stays where you left it.
             </p>
           `)}
@@ -61,14 +61,14 @@ export const trialEndedDay14: TrialEmailTemplate = {
       </tr>
       <tr>
         <td style="padding-top:24px;padding-bottom:24px;">
-          <p style="margin:0;font-size:15px;color:#A0A0B8;line-height:1.7;">
+          <p style="margin:0;font-size:15px;color:#6b7280;line-height:1.7;">
             Questions or feedback? Hit reply &mdash; I read every one.
           </p>
         </td>
       </tr>
       <tr>
         <td>
-          <p style="margin:0;font-size:16px;color:#FFFFFF;font-weight:600;">&mdash; Jim &amp; Keenan</p>
+          <p style="margin:0;font-size:16px;color:#1a1a1a;font-weight:600;">&mdash; Jim &amp; Keenan</p>
         </td>
       </tr>
     `;

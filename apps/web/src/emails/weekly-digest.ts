@@ -69,7 +69,7 @@ export async function sendWeeklyDigest(input: WeeklyDigestInput) {
       `<p style="margin:0;">Hi ${escapeHtml(firstName)} — you recorded ${input.entryCount} debrief${input.entryCount === 1 ? "" : "s"} this week${
         input.streak >= 2 ? `, and you're on a ${input.streak}-day streak 🔥` : "."
       }</p>
-       <p style="margin:8px 0 0;color:#A1A1AA;">${escapeHtml(input.moodSummary)}</p>`
+       <p style="margin:8px 0 0;color:#6b7280;">${escapeHtml(input.moodSummary)}</p>`
     )
   );
 
@@ -78,7 +78,7 @@ export async function sendWeeklyDigest(input: WeeklyDigestInput) {
       .slice(0, 3)
       .map(
         (t) =>
-          `<span style="display:inline-block;background:#27272A;color:#E4E4E7;border-radius:999px;padding:4px 10px;font-size:12px;margin-right:6px;margin-top:4px;">${escapeHtml(t.name)} · ${t.mentions}</span>`
+          `<span style="display:inline-block;background:#E5E7EB;color:#374151;border-radius:999px;padding:4px 10px;font-size:12px;margin-right:6px;margin-top:4px;">${escapeHtml(t.name)} · ${t.mentions}</span>`
       )
       .join("");
     parts.push(section("Top themes", chips));
@@ -90,7 +90,7 @@ export async function sendWeeklyDigest(input: WeeklyDigestInput) {
       .map(
         (o) =>
           `<li style="margin:6px 0;list-style:none;padding-left:16px;position:relative;">
-             <span style="position:absolute;left:0;color:#A78BFA;">→</span>
+             <span style="position:absolute;left:0;color:#7C5CFC;">→</span>
              ${escapeHtml(o)}
            </li>`
       )
@@ -102,15 +102,15 @@ export async function sendWeeklyDigest(input: WeeklyDigestInput) {
     const rows = input.goalUpdates
       .slice(0, 3)
       .map((g) => {
-        const bar = `<div style="height:4px;background:#27272A;border-radius:2px;margin-top:4px;">
-          <div style="height:4px;background:#7C3AED;border-radius:2px;width:${Math.max(0, Math.min(100, g.progress))}%;"></div>
+        const bar = `<div style="height:4px;background:#E5E7EB;border-radius:2px;margin-top:4px;">
+          <div style="height:4px;background:#7C5CFC;border-radius:2px;width:${Math.max(0, Math.min(100, g.progress))}%;"></div>
         </div>`;
         const deltaLabel =
           typeof g.delta === "number" && g.delta !== 0
             ? `<span style="color:${g.delta > 0 ? "#5DCAA5" : "#F59E0B"};margin-left:8px;font-size:11px;">${g.delta > 0 ? "↑" : "↓"} ${Math.abs(g.delta)}%</span>`
             : "";
         return `<div style="margin:10px 0;">
-          <p style="margin:0;color:#FAFAFA;font-size:13px;">${escapeHtml(g.title)}${deltaLabel}</p>
+          <p style="margin:0;color:#1a1a1a;font-size:13px;">${escapeHtml(g.title)}${deltaLabel}</p>
           ${bar}
         </div>`;
       })

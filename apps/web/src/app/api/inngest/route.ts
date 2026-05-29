@@ -38,6 +38,7 @@ import {
 } from "@/inngest/functions/auto-blog";
 import { waitlistReactivationFn } from "@/inngest/functions/waitlist-reactivation";
 import { cleanupTrySessionsFn } from "@/inngest/functions/cleanup-try-sessions";
+import { recoveryEmailOrchestratorFn } from "@/inngest/functions/recovery-email-orchestrator";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -81,6 +82,7 @@ const handler = serve({
     backfillExtractionsFn,
     freeCapEvaluatorFn,
     cleanupTrySessionsFn,
+    recoveryEmailOrchestratorFn,
   ],
 });
 

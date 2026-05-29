@@ -20,28 +20,28 @@ export const powerReferralTease: TrialEmailTemplate = {
     const content = `
       <tr>
         <td style="padding-bottom:24px;">
-          <h1 style="margin:0;font-size:26px;font-weight:800;color:#FFFFFF;line-height:1.3;letter-spacing:-0.4px;">
+          <h1 style="margin:0;font-size:26px;font-weight:800;color:#1a1a1a;line-height:1.3;letter-spacing:-0.4px;">
             ${v.totalRecordings} debriefs would have otherwise been lost.
           </h1>
         </td>
       </tr>
       <tr>
         <td style="padding-bottom:20px;">
-          <p style="margin:0;font-size:16px;color:#D8D8E8;line-height:1.7;">
+          <p style="margin:0;font-size:16px;color:#374151;line-height:1.7;">
             ${name}, every one of those is a block of your interior that would've evaporated by the next morning. They're yours now.
           </p>
         </td>
       </tr>
       <tr>
         <td style="padding-bottom:20px;">
-          <p style="margin:0;font-size:16px;color:#D8D8E8;line-height:1.7;">
+          <p style="margin:0;font-size:16px;color:#374151;line-height:1.7;">
             If you know another founder (or anyone who thinks too much) who'd benefit from this — forward this email to them. Tell them to hit record tonight.
           </p>
         </td>
       </tr>
       <tr>
         <td style="padding-bottom:28px;">
-          <p style="margin:0;font-size:16px;color:#D8D8E8;line-height:1.7;">
+          <p style="margin:0;font-size:16px;color:#374151;line-height:1.7;">
             Word-of-mouth from someone who actually uses it is how Acuity grows. I appreciate it.
           </p>
         </td>
@@ -53,7 +53,7 @@ export const powerReferralTease: TrialEmailTemplate = {
       </tr>
       <tr>
         <td style="padding-top:16px;">
-          <p style="margin:0;font-size:16px;color:#FFFFFF;font-weight:600;">— Jim &amp; Keenan</p>
+          <p style="margin:0;font-size:16px;color:#1a1a1a;font-weight:600;">— Jim &amp; Keenan</p>
         </td>
       </tr>
     `;

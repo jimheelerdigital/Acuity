@@ -45,12 +45,12 @@ export function welcomeVerifyEmail(
     : `14 days free, no card required. If you're not into it in a week, delete the app and I'll buy your next coffee.`;
 
   const para = (text: string) =>
-    `<tr><td style="padding-bottom:20px;"><p style="margin:0;font-size:16px;color:#D8D8E8;line-height:1.7;">${text}</p></td></tr>`;
+    `<tr><td style="padding-bottom:20px;"><p style="margin:0;font-size:16px;color:#374151;line-height:1.7;">${text}</p></td></tr>`;
 
   const content = `
       <tr>
         <td style="padding-bottom:20px;">
-          <p style="margin:0;font-size:16px;color:#D8D8E8;line-height:1.7;">Hey ${name} —</p>
+          <p style="margin:0;font-size:16px;color:#374151;line-height:1.7;">Hey ${name} —</p>
         </td>
       </tr>
       ${para("You're in. One quick step before you start: verify your email so you can sign in.")}
@@ -65,17 +65,17 @@ export function welcomeVerifyEmail(
       ${para("Quick setup, then your first debrief.")}
       <tr>
         <td style="padding-bottom:4px;">
-          <p style="margin:0;font-size:16px;color:#FFFFFF;font-weight:600;">— Jim &amp; Keenan</p>
+          <p style="margin:0;font-size:16px;color:#1a1a1a;font-weight:600;">— Jim &amp; Keenan</p>
         </td>
       </tr>
       <tr>
         <td style="padding-bottom:24px;">
-          <p style="margin:0;font-size:13px;color:#A0A0B8;">Cofounders, Acuity</p>
+          <p style="margin:0;font-size:13px;color:#6b7280;">Cofounders, Acuity</p>
         </td>
       </tr>
       <tr>
         <td>
-          <p style="margin:0;font-size:14px;color:#A0A0B8;line-height:1.7;font-style:italic;">
+          <p style="margin:0;font-size:14px;color:#6b7280;line-height:1.7;font-style:italic;">
             P.S. ${escapeHtml(fmLine)}
           </p>
         </td>

@@ -3,7 +3,7 @@ import { trialButton, trialLayout } from "./layout";
 import type { TrialEmailTemplate, TrialVars } from "./types";
 
 function para(text: string): string {
-  return `<tr><td style="padding-bottom:20px;"><p style="margin:0;font-size:16px;color:#D8D8E8;line-height:1.7;">${text}</p></td></tr>`;
+  return `<tr><td style="padding-bottom:20px;"><p style="margin:0;font-size:16px;color:#374151;line-height:1.7;">${text}</p></td></tr>`;
 }
 
 export const welcomeDay0: TrialEmailTemplate = {
@@ -20,7 +20,7 @@ export const welcomeDay0: TrialEmailTemplate = {
     const content = `
       <tr>
         <td style="padding-bottom:20px;">
-          <p style="margin:0;font-size:16px;color:#D8D8E8;line-height:1.7;">Hey ${name} —</p>
+          <p style="margin:0;font-size:16px;color:#374151;line-height:1.7;">Hey ${name} —</p>
         </td>
       </tr>
       ${para("You just signed up for Acuity. Here's the short version of what happens next.")}
@@ -34,17 +34,17 @@ export const welcomeDay0: TrialEmailTemplate = {
       </tr>
       <tr>
         <td style="padding-bottom:4px;">
-          <p style="margin:0;font-size:16px;color:#FFFFFF;font-weight:600;">— Jim &amp; Keenan</p>
+          <p style="margin:0;font-size:16px;color:#1a1a1a;font-weight:600;">— Jim &amp; Keenan</p>
         </td>
       </tr>
       <tr>
         <td style="padding-bottom:24px;">
-          <p style="margin:0;font-size:13px;color:#A0A0B8;">Cofounders, Acuity</p>
+          <p style="margin:0;font-size:13px;color:#6b7280;">Cofounders, Acuity</p>
         </td>
       </tr>
       <tr>
         <td>
-          <p style="margin:0;font-size:14px;color:#A0A0B8;line-height:1.7;font-style:italic;">
+          <p style="margin:0;font-size:14px;color:#6b7280;line-height:1.7;font-style:italic;">
             P.S. ${escapeHtml(psLine)}
           </p>
         </td>

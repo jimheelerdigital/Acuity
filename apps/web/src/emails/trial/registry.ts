@@ -24,6 +24,11 @@ import { trialEndingDay13 } from "./trial-ending-day13";
 import { userStory } from "./user-story";
 import { valueRecap } from "./value-recap";
 import { weeklyReportCheckin } from "./weekly-report-checkin";
+import { recoveryCheckoutAbandoned } from "./recovery-checkout-abandoned";
+import { recoveryDay6Nudge } from "./recovery-day6-nudge";
+import { recoveryPaidNoApp } from "./recovery-paid-no-app";
+import { recoveryRecordedOnce } from "./recovery-recorded-once";
+import { recoverySignupNoCheckout } from "./recovery-signup-no-checkout";
 import { welcomeDay0 } from "./welcome-day0";
 
 export const TRIAL_EMAIL_TEMPLATES: Record<TrialEmailKey, TrialEmailTemplate> =
@@ -43,6 +48,11 @@ export const TRIAL_EMAIL_TEMPLATES: Record<TrialEmailKey, TrialEmailTemplate> =
     reactivation_final: reactivationFinal,
     power_deepen: powerDeepen,
     power_referral_tease: powerReferralTease,
+    recovery_checkout_abandoned: recoveryCheckoutAbandoned,
+    recovery_signup_no_checkout: recoverySignupNoCheckout,
+    recovery_paid_no_app: recoveryPaidNoApp,
+    recovery_recorded_once: recoveryRecordedOnce,
+    recovery_day6_nudge: recoveryDay6Nudge,
   };
 
 export type { TrialEmailKey, TrialEmailTemplate } from "./types";

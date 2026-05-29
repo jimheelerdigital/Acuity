@@ -44,4 +44,9 @@ export type TrialEmailKey =
   | "reactivation_social"
   | "reactivation_final"
   | "power_deepen"
-  | "power_referral_tease";
+  | "power_referral_tease"
+  | "recovery_checkout_abandoned"
+  | "recovery_signup_no_checkout"
+  | "recovery_paid_no_app"
+  | "recovery_recorded_once"
+  | "recovery_day6_nudge";

@@ -11,14 +11,14 @@ export const reactivationFriction: TrialEmailTemplate = {
     const content = `
       <tr>
         <td style="padding-bottom:24px;">
-          <h1 style="margin:0;font-size:26px;font-weight:800;color:#FFFFFF;line-height:1.3;letter-spacing:-0.4px;">
+          <h1 style="margin:0;font-size:26px;font-weight:800;color:#1a1a1a;line-height:1.3;letter-spacing:-0.4px;">
             ${name}, what's in the way?
           </h1>
         </td>
       </tr>
       <tr>
         <td style="padding-bottom:20px;">
-          <p style="margin:0;font-size:16px;color:#D8D8E8;line-height:1.7;">
+          <p style="margin:0;font-size:16px;color:#374151;line-height:1.7;">
             You signed up for Acuity but haven't done your first debrief yet. That's 100% normal — most people hesitate the first time.
           </p>
         </td>
@@ -27,10 +27,10 @@ export const reactivationFriction: TrialEmailTemplate = {
         <td style="padding-bottom:24px;">
           ${trialCard(`
             <p style="margin:0 0 10px;font-size:12px;color:#7C5CFC;text-transform:uppercase;letter-spacing:1px;font-weight:700;">The #1 reason people stall</p>
-            <p style="margin:0;font-size:15px;color:#D8D8E8;line-height:1.7;">
+            <p style="margin:0;font-size:15px;color:#374151;line-height:1.7;">
               They don't know what to say. Here's a starter question you can literally just answer out loud:
             </p>
-            <p style="margin:14px 0 0;font-size:17px;color:#FFFFFF;font-style:italic;line-height:1.5;">
+            <p style="margin:14px 0 0;font-size:17px;color:#1a1a1a;font-style:italic;line-height:1.5;">
               "What's on my mind right now that I haven't told anyone?"
             </p>
           `)}
@@ -38,7 +38,7 @@ export const reactivationFriction: TrialEmailTemplate = {
       </tr>
       <tr>
         <td style="padding-bottom:20px;">
-          <p style="margin:0;font-size:16px;color:#D8D8E8;line-height:1.7;">
+          <p style="margin:0;font-size:16px;color:#374151;line-height:1.7;">
             That's your first debrief. No rules.
           </p>
         </td>
@@ -50,7 +50,7 @@ export const reactivationFriction: TrialEmailTemplate = {
       </tr>
       <tr>
         <td style="padding-top:16px;">
-          <p style="margin:0;font-size:16px;color:#FFFFFF;font-weight:600;">— Jim &amp; Keenan</p>
+          <p style="margin:0;font-size:16px;color:#1a1a1a;font-weight:600;">— Jim &amp; Keenan</p>
         </td>
       </tr>
     `;

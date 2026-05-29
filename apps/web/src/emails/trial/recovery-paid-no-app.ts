@@ -1,0 +1,76 @@
+/**
+ * Recovery Email 3 — Paid But Never Opened App
+ *
+ * Trigger: User has active subscription but firstRecordingAt IS NULL.
+ *          2 hours after signup.
+ * Subject: "Your trial started — one step left"
+ * From: Keenan at Acuity <hello@getacuity.io>
+ */
+
+import { escapeHtml } from "@/lib/escape-html";
+import { trialButton, trialLayout } from "./layout";
+import type { TrialEmailTemplate, TrialVars } from "./types";
+
+const APP_STORE_URL = "https://apps.apple.com/app/acuity-daily-debrief/id6738030875";
+
+function para(text: string): string {
+  return `<tr><td style="padding-bottom:20px;"><p style="margin:0;font-size:16px;color:#374151;line-height:1.7;">${text}</p></td></tr>`;
+}
+
+export const recoveryPaidNoApp: TrialEmailTemplate = {
+  subject: () => "Your trial started \u2014 one step left",
+  html: (v: TrialVars) => {
+    const name = escapeHtml(v.firstName);
+
+    const content = `
+      <tr>
+        <td style="padding-bottom:24px;">
+          <h1 style="margin:0;font-size:26px;font-weight:800;color:#1a1a1a;line-height:1.3;letter-spacing:-0.4px;">
+            Your trial started. One step left.
+          </h1>
+        </td>
+      </tr>
+      ${para(`Hey ${name},`)}
+      ${para(`Your 14-day trial is live. Here\u2019s your first step:`)}
+      <tr>
+        <td style="padding-bottom:20px;">
+          <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+            <tr>
+              <td style="padding:8px 0;font-size:16px;color:#374151;line-height:1.7;">
+                <strong style="color:#7C5CFC;">1.</strong> Download the app
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:8px 0;font-size:16px;color:#374151;line-height:1.7;">
+                <strong style="color:#7C5CFC;">2.</strong> Open it. Tap Record.
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:8px 0;font-size:16px;color:#374151;line-height:1.7;">
+                <strong style="color:#7C5CFC;">3.</strong> Talk for 60 seconds about whatever\u2019s on your mind.
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+      ${para(`That\u2019s it. AI handles the rest \u2014 pulls your tasks, tracks your goals, maps your mood.`)}
+      ${para(`Your first weekly report arrives Sunday. It needs a few entries to build. Most people start with \u201Ctoday was...\u201D and go from there.`)}
+      <tr>
+        <td style="padding-bottom:28px;">
+          ${trialButton(APP_STORE_URL, "Download Acuity")}
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <p style="margin:0;font-size:16px;color:#1a1a1a;font-weight:600;">\u2014 Keenan</p>
+        </td>
+      </tr>
+    `;
+
+    return trialLayout({
+      content,
+      unsubscribeUrl: v.unsubscribeUrl,
+      preheader: "Your trial is live. Download the app and record your first entry.",
+    });
+  },
+};
