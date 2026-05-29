@@ -22,8 +22,13 @@ import { inngest } from "@/inngest/client";
 import type { TrialEmailKey } from "@/emails/trial/types";
 
 export const recoveryEmailOrchestratorFn = inngest.createFunction(
-  { id: "recovery-email-orchestrator", concurrency: { limit: 1 } },
-  { cron: "*/15 * * * *" },
+  {
+    id: "recovery-email-orchestrator",
+    name: "Recovery email orchestrator",
+    triggers: [{ cron: "*/15 * * * *" }],
+    concurrency: { limit: 1 },
+    retries: 2,
+  },
   async ({ step }) => {
     const stats = await step.run("evaluate-and-send", async () => {
       const { prisma } = await import("@/lib/prisma");
