@@ -212,11 +212,22 @@ export default function EntryDetailScreen() {
 
   const headerRight = useCallback(
     () => (
+      // Fixed-size 32×32 wrapper so UIBarButtonItem lays the custom
+      // view out on the header's vertical center line — matches the
+      // native back chevron's geometry. The previous bare Pressable
+      // sized itself to the icon's intrinsic 22pt and read as offset
+      // relative to the back button (2026-05-29 P0 polish).
       <Pressable
         onPress={openMenu}
-        hitSlop={12}
+        hitSlop={8}
         accessibilityRole="button"
         accessibilityLabel="Entry options"
+        style={{
+          width: 32,
+          height: 32,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
       >
         <Ionicons
           name="ellipsis-horizontal"
