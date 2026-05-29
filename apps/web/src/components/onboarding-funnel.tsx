@@ -745,18 +745,11 @@ const MECH_CONTENT: Record<Branch, MechBranchContent> = {
 function MechanismScreen({ branch, answers, onContinue }: {
   branch: Branch; answers: Record<string, string | string[]>; onContinue: () => void;
 }) {
-  const [showCta, setShowCta] = useState(false);
   const prefersReducedMotion = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   const content = MECH_CONTENT[branch];
   const q2 = typeof answers.branch_q2 === "string" ? answers.branch_q2 : "";
   const cards = content.cards(q2);
-
-  // Faster timing: closing at 6200ms, CTA at 6400ms
-  useEffect(() => {
-    const t = setTimeout(() => setShowCta(true), prefersReducedMotion ? 0 : 5000);
-    return () => clearTimeout(t);
-  }, [prefersReducedMotion]);
 
   const mechanismStyles = `
     @keyframes mech-wave {
@@ -856,15 +849,13 @@ function MechanismScreen({ branch, answers, onContinue }: {
         You already think about your life every day. Acuity just makes sure it counts.
       </p>
 
-      {/* ── Continue button (200ms after closing — never make user wait) ── */}
-      {showCta && (
-        <div className="text-center" style={fadeUpShort(prefersReducedMotion ? 0 : 5000)}>
-          <button onClick={onContinue}
-            className="rounded-full bg-[#7C5CFC] px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]">
-            Continue
-          </button>
-        </div>
-      )}
+      {/* ── Continue button — always visible from mount, never gated behind animations ── */}
+      <div className="text-center">
+        <button onClick={onContinue}
+          className="rounded-full bg-[#7C5CFC] px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]">
+          Continue
+        </button>
+      </div>
     </div>
   );
 }
