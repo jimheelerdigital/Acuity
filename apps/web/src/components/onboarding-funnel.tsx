@@ -1239,10 +1239,10 @@ function PaywallScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
             {/* Annual */}
             <button onClick={() => onPlanChange("yearly")}
               className={`rounded-xl p-4 text-center transition relative ${selectedPlan === "yearly" ? "border-2 border-[#7C5CFC] bg-gradient-to-b from-[#7C5CFC]/10 to-[#7C5CFC]/5 shadow-[0_4px_24px_rgba(124,92,252,0.25)]" : "border border-zinc-200 bg-white"}`}>
-              <span className="absolute -top-2.5 right-3 rounded-full bg-emerald-500 px-2 py-0.5 text-[10px] font-bold text-white">SAVE {PRICING.annual.savingsVsMonthly}</span>
               <p className="text-xs text-zinc-500 mb-1">Annual</p>
-              <p className="text-2xl font-extrabold text-zinc-900">{formatDollars(annualMonthly)}<span className="text-sm font-normal text-zinc-400">/mo</span></p>
-              <p className="text-[10px] text-zinc-400 mt-0.5">{formatDollars(ANNUAL_PRICE_CENTS)}/year</p>
+              <p className="text-base text-red-400 line-through font-semibold">$199<span className="text-xs font-normal">/yr</span></p>
+              <p className="text-2xl font-extrabold text-zinc-900">{formatDollars(ANNUAL_PRICE_CENTS)}<span className="text-sm font-normal text-zinc-400">/yr</span></p>
+              <p className="text-[10px] text-zinc-400 mt-0.5">{formatDollars(annualMonthly)}/mo billed annually</p>
             </button>
           </div>
           <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2 text-center">
