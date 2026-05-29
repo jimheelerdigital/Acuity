@@ -58,17 +58,20 @@ function userNotif(
 }
 
 describe("ALLOWED_PRODUCT_IDS", () => {
-  it("contains the Phase 1 monthly product", () => {
+  it("contains the v1.2 monthly and annual products", () => {
     expect(
       ALLOWED_PRODUCT_IDS.has("com.heelerdigital.acuity.pro.monthly")
     ).toBe(true);
-  });
-
-  it("does not yet include annual or other products", () => {
     expect(
       ALLOWED_PRODUCT_IDS.has("com.heelerdigital.acuity.pro.annual")
-    ).toBe(false);
+    ).toBe(true);
+  });
+
+  it("rejects unknown product ids", () => {
     expect(ALLOWED_PRODUCT_IDS.has("anything.else")).toBe(false);
+    expect(
+      ALLOWED_PRODUCT_IDS.has("com.heelerdigital.acuity.pro.lifetime")
+    ).toBe(false);
   });
 });
 
@@ -80,7 +83,7 @@ describe("decideReceiptVerify", () => {
 
   it("rejects unknown product (BAD_PRODUCT)", () => {
     const d = decideReceiptVerify(
-      info({ productId: "com.heelerdigital.acuity.pro.annual" }),
+      info({ productId: "com.heelerdigital.acuity.pro.lifetime" }),
       userVerify(),
       null
     );

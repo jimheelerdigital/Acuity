@@ -119,23 +119,34 @@ export async function GET(req: NextRequest) {
     })
     .catch(() => {});
 
-  // Smart-skip: a user who signed up 30+ days ago and STILL hasn't
-  // finished onboarding is effectively a returning user. Don't force
-  // them through 10 steps on return. Silently mark onboarding complete;
-  // demographics + reminders remain editable from /account.
+  // Smart-skip: a user who signed up 30+ days ago and never started
+  // onboarding (no UserOnboarding row at all) is effectively a
+  // returning user. Don't force them through 10 steps on return;
+  // silently mark onboarding complete. Demographics + reminders
+  // remain editable from /account.
+  //
+  // CRITICAL: only apply when the row DOESN'T EXIST (`user.onboarding`
+  // is null). A row with `completedAt = null` is a *deliberate* reset
+  // (admin / QA / Jim resetting in Supabase to re-trigger onboarding),
+  // not an abandoned-signup signal. Treating the two cases identically
+  // silently reverses the reset on the next /api/user/me hit and
+  // routes the user to /(tabs) instead of /onboarding — bug surfaced
+  // 2026-05-29 when Jim's TestFlight reset wouldn't take.
   const ABANDON_THRESHOLD_MS = 30 * 24 * 60 * 60 * 1000;
   const ageMs = Date.now() - user.createdAt.getTime();
   let effectiveCompletedAt = user.onboarding?.completedAt ?? null;
-  if (!effectiveCompletedAt && ageMs > ABANDON_THRESHOLD_MS) {
+  if (!user.onboarding && ageMs > ABANDON_THRESHOLD_MS) {
     try {
-      await prisma.userOnboarding.upsert({
-        where: { userId },
-        create: {
+      // Row doesn't exist (guarded above) so a plain create is
+      // sufficient. The upsert was carried over from when this branch
+      // also handled the row-exists-with-null case, which is now
+      // intentionally excluded (respect explicit resets).
+      await prisma.userOnboarding.create({
+        data: {
           userId,
           completedAt: new Date(),
-          currentStep: user.onboarding?.currentStep ?? 1,
+          currentStep: 1,
         },
-        update: { completedAt: new Date() },
       });
       effectiveCompletedAt = new Date();
     } catch (err) {

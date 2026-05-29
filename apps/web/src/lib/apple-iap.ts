@@ -38,15 +38,17 @@ import {
 
 // ─── Allowed product IDs ──────────────────────────────────────
 //
-// The iOS app may only have ONE active product ID at v1.1 launch
-// (com.heelerdigital.acuity.pro.monthly). Annual lands in v1.2 per
-// the §4 recommendation in iap-app-store-connect-setup.md.
+// v1.2 launch ships both monthly and annual. Mirrors
+// apps/mobile/lib/iap-config.ts IAP_ALL_PRODUCT_IDS — both files
+// must update in lockstep, and the matching App Store Connect
+// products must exist for receipts to verify.
 //
 // Both endpoints check `productId in ALLOWED_PRODUCT_IDS` before
 // touching User state — a forged or future-product receipt is
 // rejected at the gate.
 export const ALLOWED_PRODUCT_IDS = new Set([
   "com.heelerdigital.acuity.pro.monthly",
+  "com.heelerdigital.acuity.pro.annual",
 ]);
 
 // ─── Bundle ID for JWT bid claim ──────────────────────────────

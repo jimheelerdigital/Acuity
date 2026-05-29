@@ -16,6 +16,15 @@
  *   - API renames: `getSubscriptions` → `fetchProducts({type:'subs'})`,
  *     `requestSubscription({sku})` → `requestPurchase({request:{apple:
  *     {sku}}, type:'subs'})`.
+ *
+ * v1.2 (2026-05-29): generalized monthly-only API to monthly + annual.
+ *   getMonthlyProduct() → getProducts() returning both.
+ *   purchaseMonthly()   → purchaseProduct(productId).
+ *   verifyAndFinish() now takes productId so it can forward the right
+ *   value to /api/iap/verify-receipt. restorePurchases handles either
+ *   tier. App Store Connect must have both products configured AND
+ *   apps/web/src/lib/apple-iap.ts ALLOWED_PRODUCT_IDS must include
+ *   both SKUs — see apps/mobile/lib/iap-config.ts.
  *   - Product field renames: `productId` → `id`, `localizedPrice` →
  *     `displayPrice`. Our `IapProduct` wrapper shape is preserved at
  *     the public boundary so call sites (subscribe.tsx,
@@ -33,11 +42,13 @@
  *   - iOS deployment target ≥ 15 required by Nitro's openiap dep.
  *     Current Podfile target is 15.1 — fine.
  *
- * Lifecycle (unchanged at public surface):
+ * Lifecycle (public surface — v1.2 generalized for monthly + annual):
  *   initIap()              — connect to StoreKit (call lazily on
  *                             Subscribe-sheet mount).
- *   getMonthlyProduct()    — fetch the v1.1 product info from Apple.
- *   purchaseMonthly()      — present Apple's purchase sheet.
+ *   getProducts()          — fetch both monthly + annual product info
+ *                             from Apple in one StoreKit roundtrip.
+ *   purchaseProduct(id)    — present Apple's purchase sheet for the
+ *                             given product id (monthly or annual).
  *   verifyAndFinish(...)   — POST receipt to backend, finalize tx.
  *   restorePurchases()     — re-fetch user's existing subs (Apple
  *                             requires this affordance for App Review).
@@ -67,7 +78,14 @@ import {
 } from "@acuity/shared";
 
 import { api } from "@/lib/api";
-import { IAP_MONTHLY_PRODUCT_ID, isIapEnabled } from "@/lib/iap-config";
+import {
+  IAP_ALL_PRODUCT_IDS,
+  IAP_ANNUAL_PRODUCT_ID,
+  IAP_MONTHLY_PRODUCT_ID,
+  isIapEnabled,
+  isIapProductId,
+  type IapProductId,
+} from "@/lib/iap-config";
 
 /**
  * react-native-iap dynamic import. Imported lazily so a build that
@@ -185,7 +203,7 @@ export async function disconnectIap(): Promise<void> {
  * v15's `finishTransaction` requires the full Purchase object, not
  * just a transactionId. To preserve `verifyAndFinish({ transactionId,
  * receipt })`'s public signature, we cache every Purchase we observe
- * (from purchaseMonthly's return value, getAvailablePurchases during
+ * (from purchaseProduct's return value, getAvailablePurchases during
  * restore, and the purchase-updated listener) keyed by transactionId.
  * `finishCachedTransaction` looks up the Purchase and calls
  * RNIap.finishTransaction with it.
@@ -264,33 +282,49 @@ export interface IapProduct {
 }
 
 /**
- * Fetch the v1.1 monthly product from Apple. Returns null if the
- * flag is off, the user is non-iOS, or Apple returned no product
- * (unconfigured product ID = empty array).
+ * Fetch both monthly + annual products from Apple in a single
+ * StoreKit roundtrip. Returns `{ monthly, annual }` where either
+ * may be null when the corresponding App Store Connect product is
+ * unconfigured, the flag is off, or the user is non-iOS. A null
+ * entry is the signal to hide that tier in the paywall UI rather
+ * than render a broken purchase path.
  */
-export async function getMonthlyProduct(): Promise<IapProduct | null> {
-  if (!(await initIap())) return null;
+export async function getProducts(): Promise<{
+  monthly: IapProduct | null;
+  annual: IapProduct | null;
+}> {
+  const empty = { monthly: null, annual: null };
+  if (!(await initIap())) return empty;
   const RNIap = await loadIapModule();
-  if (!RNIap) return null;
+  if (!RNIap) return empty;
   try {
     const result = await RNIap.fetchProducts({
-      skus: [IAP_MONTHLY_PRODUCT_ID],
+      skus: [...IAP_ALL_PRODUCT_IDS],
       type: "subs",
     });
-    if (!result || !Array.isArray(result) || result.length === 0) return null;
-    const p = result[0] as Record<string, unknown>;
-    return {
+    if (!result || !Array.isArray(result)) return empty;
+    const byId = new Map<string, IapProduct>();
+    for (const raw of result) {
+      const p = raw as Record<string, unknown>;
       // v15 uses `id` instead of `productId` at the field level.
-      productId: stringField(p.id) ?? IAP_MONTHLY_PRODUCT_ID,
-      title: stringField(p.title) ?? "Acuity Pro",
-      description: stringField(p.description) ?? "",
-      // v15 uses `displayPrice` instead of `localizedPrice`.
-      localizedPrice: stringField(p.displayPrice) ?? "",
-      currency: stringField(p.currency) ?? "USD",
+      const id = stringField(p.id);
+      if (!id || !isIapProductId(id)) continue;
+      byId.set(id, {
+        productId: id,
+        title: stringField(p.title) ?? "Acuity Pro",
+        description: stringField(p.description) ?? "",
+        // v15 uses `displayPrice` instead of `localizedPrice`.
+        localizedPrice: stringField(p.displayPrice) ?? "",
+        currency: stringField(p.currency) ?? "USD",
+      });
+    }
+    return {
+      monthly: byId.get(IAP_MONTHLY_PRODUCT_ID) ?? null,
+      annual: byId.get(IAP_ANNUAL_PRODUCT_ID) ?? null,
     };
   } catch (err) {
     console.warn("[iap] fetchProducts failed:", err);
-    return null;
+    return empty;
   }
 }
 
@@ -344,7 +378,9 @@ let purchaseInFlight = false;
 
 const PURCHASE_LISTENER_TIMEOUT_MS = 90_000;
 
-export async function purchaseMonthly(): Promise<PurchaseResult> {
+export async function purchaseProduct(
+  productId: IapProductId
+): Promise<PurchaseResult> {
   if (purchaseInFlight) {
     // Concurrent attempt — silent bail. Apple's UX prevents real
     // double-tap; this catches programmatic re-entry only.
@@ -398,12 +434,10 @@ export async function purchaseMonthly(): Promise<PurchaseResult> {
       try {
         // Filter listener by productId so any other queued
         // unfinished transactions Apple delivers concurrently don't
-        // settle our promise. Only OUR sku (IAP_MONTHLY_PRODUCT_ID)
+        // settle our promise. Only the sku the caller asked for
         // counts as the answer.
         updateSub = RNIap.purchaseUpdatedListener((purchase) => {
-          if (
-            stringField(purchase.productId) !== IAP_MONTHLY_PRODUCT_ID
-          ) {
+          if (stringField(purchase.productId) !== productId) {
             return; // not ours, keep waiting
           }
           cachePurchase(purchase);
@@ -482,7 +516,7 @@ export async function purchaseMonthly(): Promise<PurchaseResult> {
       // .catch() handles those. .then() is intentionally absent —
       // we don't process the returned value at all.
       RNIap.requestPurchase({
-        request: { apple: { sku: IAP_MONTHLY_PRODUCT_ID } },
+        request: { apple: { sku: productId } },
         type: "subs",
       }).catch((err) => {
         const c = classifyPurchaseError(err as never);
@@ -513,6 +547,7 @@ export async function purchaseMonthly(): Promise<PurchaseResult> {
 export async function verifyAndFinish(input: {
   transactionId: string;
   receipt: string;
+  productId: IapProductId;
 }): Promise<VerifyReceiptOutcome> {
   type VerifyResponseBody = {
     ok?: unknown;
@@ -528,7 +563,7 @@ export async function verifyAndFinish(input: {
       headers: await iapPostHeaders(),
       body: JSON.stringify({
         receipt: input.receipt,
-        productId: IAP_MONTHLY_PRODUCT_ID,
+        productId: input.productId,
         transactionId: input.transactionId,
       }),
     });
@@ -659,15 +694,15 @@ export async function restorePurchases(): Promise<RestoreOutcome> {
   // calls can finish them via the cache lookup.
   for (const p of availableList) cachePurchase(p);
 
-  // Filter to subscription products we care about. v15 uses `productId`
-  // on Purchase (PurchaseCommon line 1109), not `id`.
-  const ours = availableList.filter(
-    (p) =>
-      typeof p === "object" &&
-      p !== null &&
-      stringField((p as Record<string, unknown>).productId) ===
-        IAP_MONTHLY_PRODUCT_ID
-  );
+  // Filter to subscription products we care about (either tier).
+  // v15 uses `productId` on Purchase (PurchaseCommon line 1109), not
+  // `id`. isIapProductId narrows to the IapProductId union so we can
+  // pass productId straight to verifyAndFinish.
+  const ours = availableList.filter((p) => {
+    if (typeof p !== "object" || p === null) return false;
+    const pid = stringField((p as Record<string, unknown>).productId);
+    return pid !== null && isIapProductId(pid);
+  });
 
   let successfulVerifies = 0;
   const errors: string[] = [];
@@ -677,10 +712,12 @@ export async function restorePurchases(): Promise<RestoreOutcome> {
     const pRec = p as unknown as Record<string, unknown>;
     const transactionId = stringField(pRec.transactionId);
     const receipt = stringField(pRec.purchaseToken);
-    if (!transactionId) continue;
+    const productId = stringField(pRec.productId);
+    if (!transactionId || !productId || !isIapProductId(productId)) continue;
     const outcome = await verifyAndFinish({
       transactionId,
       receipt: receipt ?? "",
+      productId,
     });
     if (
       outcome.kind === "success" ||

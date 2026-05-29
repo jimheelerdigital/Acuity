@@ -18,15 +18,27 @@ import { useAuth } from "@/contexts/auth-context";
 import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
 import {
-  getMonthlyProduct,
+  getProducts,
   initIap,
-  purchaseMonthly,
+  purchaseProduct,
   recoverPurchasesIfNeeded,
   verifyAndFinish,
   type IapProduct,
 } from "@/lib/iap";
-import { isIapEnabled } from "@/lib/iap-config";
+import {
+  IAP_ANNUAL_PRODUCT_ID,
+  IAP_MONTHLY_PRODUCT_ID,
+  isIapEnabled,
+} from "@/lib/iap-config";
 import type { AcuityTokens } from "@/lib/theme/tokens";
+
+type Tier = "monthly" | "annual";
+
+// Fallback display strings used only during the brief window between
+// screen mount and StoreKit returning. Once `products.{monthly|annual}`
+// is populated, the real Apple-localized price replaces these.
+const MONTHLY_FALLBACK_PRICE = "$4.99";
+const ANNUAL_FALLBACK_PRICE = "$39.99";
 
 /**
  * Phase 3a — Subscribe screen. Modal-style native paywall that
@@ -57,7 +69,11 @@ export default function SubscribeScreen() {
   const router = useRouter();
   const { tokens } = useTheme();
   const { user, refresh } = useAuth();
-  const [product, setProduct] = useState<IapProduct | null>(null);
+  const [products, setProducts] = useState<{
+    monthly: IapProduct | null;
+    annual: IapProduct | null;
+  }>({ monthly: null, annual: null });
+  const [selectedTier, setSelectedTier] = useState<Tier>("monthly");
   const [loadState, setLoadState] = useState<"idle" | "loading" | "error">(
     "loading"
   );
@@ -67,7 +83,15 @@ export default function SubscribeScreen() {
   const flagOn = isIapEnabled();
   const isIos = Platform.OS === "ios";
 
-  const loadProduct = useCallback(async () => {
+  const selectedProduct =
+    selectedTier === "monthly" ? products.monthly : products.annual;
+  const selectedFallbackPrice =
+    selectedTier === "monthly"
+      ? MONTHLY_FALLBACK_PRICE
+      : ANNUAL_FALLBACK_PRICE;
+  const selectedPeriodLabel = selectedTier === "monthly" ? "month" : "year";
+
+  const loadProducts = useCallback(async () => {
     setLoadState("loading");
     setErrorMsg(null);
     try {
@@ -76,12 +100,21 @@ export default function SubscribeScreen() {
         setLoadState("error");
         return;
       }
-      const p = await getMonthlyProduct();
-      if (!p) {
+      const fetched = await getProducts();
+      if (!fetched.monthly && !fetched.annual) {
+        // Neither tier resolved — App Store Connect misconfigured or
+        // sandbox unreachable. Surface the retry path.
         setLoadState("error");
         return;
       }
-      setProduct(p);
+      setProducts(fetched);
+      // If the previously-selected tier didn't load, fall back to the
+      // one that did so the Subscribe CTA stays actionable.
+      setSelectedTier((current) => {
+        if (current === "annual" && !fetched.annual) return "monthly";
+        if (current === "monthly" && !fetched.monthly) return "annual";
+        return current;
+      });
       setLoadState("idle");
     } catch (err) {
       console.warn("[subscribe] load failed:", err);
@@ -91,8 +124,8 @@ export default function SubscribeScreen() {
 
   useEffect(() => {
     if (!flagOn || !isIos) return;
-    void loadProduct();
-  }, [flagOn, isIos, loadProduct]);
+    void loadProducts();
+  }, [flagOn, isIos, loadProducts]);
 
   useEffect(() => {
     if (!flagOn || !isIos) return;
@@ -117,10 +150,19 @@ export default function SubscribeScreen() {
 
   const handlePurchase = async () => {
     if (purchasing) return;
+    if (!selectedProduct) {
+      // Defensive — the button is disabled when this is true, but
+      // guard the entry point in case stale state slips through.
+      return;
+    }
+    const productId =
+      selectedTier === "monthly"
+        ? IAP_MONTHLY_PRODUCT_ID
+        : IAP_ANNUAL_PRODUCT_ID;
     setPurchasing(true);
     setErrorMsg(null);
     try {
-      const result = await purchaseMonthly();
+      const result = await purchaseProduct(productId);
       if (result.kind === "error") {
         if (result.message) setErrorMsg(result.message);
         return;
@@ -128,6 +170,7 @@ export default function SubscribeScreen() {
       const verify = await verifyAndFinish({
         transactionId: result.transactionId,
         receipt: result.receipt,
+        productId,
       });
       if (verify.kind === "success" || verify.kind === "idempotent-success") {
         setErrorMsg(null);
@@ -247,27 +290,36 @@ export default function SubscribeScreen() {
           entries, surfaced.
         </Text>
 
-        {/* Product card */}
-        <View
-          className="mt-8 rounded-2xl border p-5"
-          style={{
-            borderColor: `${tokens.primary}55`,
-            backgroundColor: `${tokens.primary}0D`,
-          }}
-        >
+        {/* Tier cards — stacked. Tap to select; selection drives
+            the Subscribe button below and the Apple disclosure copy. */}
+        <View className="mt-8 gap-3">
           {loadState === "loading" && (
-            <View className="flex-row items-center justify-center py-3">
-              <ActivityIndicator color={tokens.primary} />
+            <View
+              className="rounded-2xl border p-5"
+              style={{
+                borderColor: `${tokens.primary}55`,
+                backgroundColor: `${tokens.primary}0D`,
+              }}
+            >
+              <View className="flex-row items-center justify-center py-3">
+                <ActivityIndicator color={tokens.primary} />
+              </View>
             </View>
           )}
           {loadState === "error" && (
-            <View>
+            <View
+              className="rounded-2xl border p-5"
+              style={{
+                borderColor: `${tokens.primary}55`,
+                backgroundColor: `${tokens.primary}0D`,
+              }}
+            >
               <Text className="text-sm" style={{ color: tokens.text }}>
                 Couldn&apos;t load Acuity Pro. The App Store may be
                 temporarily unreachable.
               </Text>
               <Pressable
-                onPress={loadProduct}
+                onPress={loadProducts}
                 className="mt-3 self-start rounded-md px-3 py-1.5"
                 style={{ backgroundColor: `${tokens.primary}55` }}
               >
@@ -280,34 +332,23 @@ export default function SubscribeScreen() {
               </Pressable>
             </View>
           )}
-          {loadState === "idle" && product && (
-            <View>
-              <Text
-                className="text-xs font-semibold uppercase tracking-widest"
-                style={{ color: tokens.primary }}
-              >
-                Monthly
-              </Text>
-              <Text
-                className="mt-1 text-3xl font-bold"
-                style={{ color: tokens.text }}
-              >
-                {product.localizedPrice}
-                <Text
-                  className="text-base font-normal"
-                  style={{ color: tokens.textTer }}
-                >
-                  {" "}/ month
-                </Text>
-              </Text>
-              <Text
-                className="mt-3 text-xs leading-relaxed"
-                style={{ color: tokens.textTer }}
-              >
-                Auto-renews monthly. Cancel any time in iOS Settings →
-                Apple ID → Subscriptions.
-              </Text>
-            </View>
+          {loadState === "idle" && products.monthly && (
+            <TierCard
+              tier="monthly"
+              product={products.monthly}
+              selected={selectedTier === "monthly"}
+              onSelect={() => setSelectedTier("monthly")}
+              tokens={tokens}
+            />
+          )}
+          {loadState === "idle" && products.annual && (
+            <TierCard
+              tier="annual"
+              product={products.annual}
+              selected={selectedTier === "annual"}
+              onSelect={() => setSelectedTier("annual")}
+              tokens={tokens}
+            />
           )}
         </View>
 
@@ -352,17 +393,28 @@ export default function SubscribeScreen() {
         )}
 
         <View className="mt-auto pt-10 gap-3">
+          {/* Apply tokens.glowPrimary as proper iOS shadow props +
+              Android elevation. The previous version spread
+              `tokens.glowPrimary` (`{color, radius, opacity}`) into
+              the style array, which RN flatten interpreted as a
+              top-level `opacity` override — the button rendered at
+              glow-opacity (~40%), alpha-blended orange against the
+              dark bg muted to brown, and the white label went near
+              invisible. shadowOpacity/shadowRadius/shadowColor is
+              the RN shape this token was always intended to feed. */}
           <Pressable
             onPress={handlePurchase}
-            disabled={purchasing || loadState !== "idle" || !product}
+            disabled={purchasing || loadState !== "idle" || !selectedProduct}
             className="rounded-full py-4 items-center"
-            style={[
-              {
-                backgroundColor: tokens.primary,
-                opacity: purchasing || !product ? 0.6 : 1,
-              },
-              tokens.glowPrimary,
-            ]}
+            style={{
+              backgroundColor: tokens.primary,
+              opacity: purchasing || !selectedProduct ? 0.7 : 1,
+              shadowColor: tokens.glowPrimary.color,
+              shadowOffset: { width: 0, height: 0 },
+              shadowRadius: tokens.glowPrimary.radius,
+              shadowOpacity: tokens.glowPrimary.opacity,
+              elevation: Math.round(tokens.glowPrimary.radius / 2),
+            }}
           >
             {purchasing ? (
               <ActivityIndicator color="#fff" />
@@ -371,7 +423,9 @@ export default function SubscribeScreen() {
                 className="text-sm font-semibold"
                 style={{ color: "#FFFFFF" }}
               >
-                Subscribe — {product?.localizedPrice ?? "$4.99"}/month
+                Subscribe —{" "}
+                {selectedProduct?.localizedPrice ?? selectedFallbackPrice}/
+                {selectedPeriodLabel}
               </Text>
             )}
           </Pressable>
@@ -395,7 +449,8 @@ export default function SubscribeScreen() {
             router.back();
           }} />
 
-          {/* App Store Guideline 3.1.2(a) disclosure — verbatim. */}
+          {/* App Store Guideline 3.1.2(a) disclosure — verbatim
+              except price + period, which reflect the selected tier. */}
           <Text
             className="text-[11px] text-center mt-6 leading-relaxed"
             style={{ color: tokens.textTer }}
@@ -405,10 +460,11 @@ export default function SubscribeScreen() {
             renews unless it is canceled at least 24 hours before the
             end of the current period. Your account will be charged
             for renewal within 24 hours prior to the end of the
-            current period at {product?.localizedPrice ?? "$4.99"}
-            /month. You can manage and cancel your subscriptions by
-            going to your account settings on the App Store after
-            purchase.
+            current period at{" "}
+            {selectedProduct?.localizedPrice ?? selectedFallbackPrice}/
+            {selectedPeriodLabel}. You can manage and cancel your
+            subscriptions by going to your account settings on the
+            App Store after purchase.
           </Text>
           <View className="flex-row justify-center gap-3 mt-3">
             <Text
@@ -450,6 +506,94 @@ export default function SubscribeScreen() {
         </View>
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function TierCard({
+  tier,
+  product,
+  selected,
+  onSelect,
+  tokens,
+}: {
+  tier: Tier;
+  product: IapProduct;
+  selected: boolean;
+  onSelect: () => void;
+  tokens: AcuityTokens;
+}) {
+  const isAnnual = tier === "annual";
+  const periodLabel = isAnnual ? "year" : "month";
+  const autoRenewLabel = isAnnual ? "Auto-renews yearly" : "Auto-renews monthly";
+  // Static "save 33%" framing matches the placeholder $39.99/year vs
+  // $4.99/month × 12 = $59.88 default. TODO(jim): once ASC has real
+  // prices configured, compute the badge dynamically from
+  // products.monthly.price * 12 vs products.annual.price (requires
+  // adding `price: number` to IapProduct in lib/iap.ts).
+  const annualEquivLabel = isAnnual ? "≈ $3.33/mo — save 33%" : null;
+  return (
+    <Pressable
+      onPress={onSelect}
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      className="rounded-2xl p-5"
+      style={{
+        borderWidth: selected ? 2 : 1,
+        borderColor: selected ? `${tokens.primary}AA` : `${tokens.primary}33`,
+        backgroundColor: selected
+          ? `${tokens.primary}1A`
+          : `${tokens.primary}08`,
+      }}
+    >
+      <View className="flex-row items-center justify-between">
+        <Text
+          className="text-xs font-semibold uppercase tracking-widest"
+          style={{ color: tokens.primary }}
+        >
+          {isAnnual ? "Annual" : "Monthly"}
+        </Text>
+        {isAnnual && (
+          <View
+            className="rounded-full px-2 py-0.5"
+            style={{ backgroundColor: tokens.primary }}
+          >
+            <Text
+              className="text-[10px] font-bold uppercase tracking-widest"
+              style={{ color: "#FFFFFF" }}
+            >
+              Best value
+            </Text>
+          </View>
+        )}
+      </View>
+      <Text
+        className="mt-1 text-3xl font-bold"
+        style={{ color: tokens.text }}
+      >
+        {product.localizedPrice}
+        <Text
+          className="text-base font-normal"
+          style={{ color: tokens.textTer }}
+        >
+          {" "}/ {periodLabel}
+        </Text>
+      </Text>
+      {annualEquivLabel && (
+        <Text
+          className="mt-1 text-xs font-semibold"
+          style={{ color: tokens.primaryHi }}
+        >
+          {annualEquivLabel}
+        </Text>
+      )}
+      <Text
+        className="mt-3 text-xs leading-relaxed"
+        style={{ color: tokens.textTer }}
+      >
+        {autoRenewLabel}. Cancel any time in iOS Settings → Apple ID →
+        Subscriptions.
+      </Text>
+    </Pressable>
   );
 }
 
