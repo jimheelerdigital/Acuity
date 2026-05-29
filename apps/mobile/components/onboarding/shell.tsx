@@ -149,10 +149,12 @@ export function OnboardingShell({
     if (!data) return;
     try {
       await api.post("/api/onboarding/update", { step, data });
-    } catch {
-      // Non-fatal — the user can re-answer on a retry. Alerting here
-      // would break the perceived "tap → move on" rhythm; if it
-      // matters, the next step's own write will surface the error.
+    } catch (err) {
+      // Non-fatal — the user has already navigated by the time this
+      // resolves (goNext fires this as fire-and-forget). 2026-05-29
+      // P0: previously silent; now log via console.error so TestFlight
+      // captures the failure mode that caused the step-9 hang.
+      console.error("[onboarding/persist] failed:", err);
     }
 
     // Side-effect: if this step captured reminder prefs, apply them to
@@ -183,10 +185,25 @@ export function OnboardingShell({
     }
   }, [step]);
 
-  const goNext = useCallback(async () => {
-    setSubmitting(true);
-    await persist();
-    setSubmitting(false);
+  // Debounce ref — guards against accidental double-taps overshooting
+  // to step+2 before the new step's UI has rendered. 300ms is short
+  // enough to be invisible to a single-tap user, long enough to dedupe
+  // bounce taps.
+  const inFlightRef = useRef(false);
+
+  const goNext = useCallback(() => {
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
+    setTimeout(() => {
+      inFlightRef.current = false;
+    }, 300);
+    // 2026-05-29 P0: navigation no longer waits on the API write.
+    // The write was already best-effort (catch in persist() doesn't
+    // gate nav since 2026-05-14); now it's also decoupled from the
+    // spinner so a hung /api/onboarding/update can't trap the user
+    // mid-onboarding. The 10s timeout in lib/api.ts is the safety net
+    // for the persist itself.
+    void persist();
     if (step < totalSteps) {
       router.replace(`/onboarding?step=${step + 1}`);
     }
@@ -201,56 +218,41 @@ export function OnboardingShell({
     router.replace(`/onboarding?step=${step - 1}`);
   }, [router, step]);
 
-  const complete = useCallback(
-    async () => {
-      setSubmitting(true);
-      try {
-        // Persist last step's captured data — best-effort, never blocks nav.
-        try {
-          await persist();
-        } catch (err) {
-          console.warn("[onboarding-complete] persist failed:", err);
-        }
-        // Tell the server we're done — best-effort, never blocks nav.
-        // If this throws (auth race, network, server hiccup) the user
-        // stays trapped in onboarding under the old behavior. Now we
-        // log + continue, and the local AuthGate-routing fallback
-        // below ensures the user reaches /(tabs).
-        // skipped: false always — the skip-all and per-step skip UI
-        // were removed 2026-05-14; preserving the server contract by
-        // continuing to send the field.
-        try {
-          await api.post("/api/onboarding/complete", {
-            skipped: false,
-          });
-        } catch (err) {
-          console.warn("[onboarding-complete] API failed:", err);
-        }
-        // Patch the in-memory user state so the AuthGate
-        // (apps/mobile/app/_layout.tsx) sees onboardingCompleted=true
-        // immediately, routing to /(tabs) on the next render. Belt-
-        // and-suspenders: also explicit router.replace below.
-        // Critical-path bugfix 2026-05-05 — without this, Jim was
-        // locked in onboarding because /api/onboarding/complete was
-        // failing (likely the same bearer-attach race the OAuth fix
-        // bypassed) and the function bailed before refresh+navigate.
-        if (user) {
-          setAuthenticatedUser({ ...user, onboardingCompleted: true });
-        }
-        // Best-effort refresh to align with server state. Failure here
-        // is fine — local state already says "done."
-        try {
-          await refresh();
-        } catch (err) {
-          console.warn("[onboarding-complete] refresh failed:", err);
-        }
-        router.replace("/(tabs)");
-      } finally {
-        setSubmitting(false);
-      }
-    },
-    [persist, refresh, router, setAuthenticatedUser, user]
-  );
+  const complete = useCallback(() => {
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
+    setTimeout(() => {
+      inFlightRef.current = false;
+    }, 300);
+    // 2026-05-29 P0: optimistic flip + immediate nav. The local user
+    // state is flipped to onboardingCompleted=true synchronously so
+    // the AuthGate routes past onboarding on the very next render;
+    // router.replace also fires immediately. Server writes (persist,
+    // /api/onboarding/complete, refresh) run in the background — any
+    // failure is surfaced via console.error but does NOT block the
+    // user, who has already arrived at /(tabs). The next refresh tick
+    // reconciles server state.
+    //
+    // Build-42 had this awaiting all three APIs serially; if /complete
+    // hung the Finish-step user got trapped exactly the same way the
+    // step-9 spinner trapped users on /update. Same defensive pattern
+    // as goNext above.
+    if (user) {
+      setAuthenticatedUser({ ...user, onboardingCompleted: true });
+    }
+    router.replace("/(tabs)");
+    void persist().catch((err) =>
+      console.error("[onboarding-complete] persist failed:", err)
+    );
+    void api
+      .post("/api/onboarding/complete", { skipped: false })
+      .catch((err) =>
+        console.error("[onboarding-complete] /complete failed:", err)
+      );
+    void refresh().catch((err) =>
+      console.error("[onboarding-complete] refresh failed:", err)
+    );
+  }, [persist, refresh, router, setAuthenticatedUser, user]);
 
   const isLastStep = step >= totalSteps;
 

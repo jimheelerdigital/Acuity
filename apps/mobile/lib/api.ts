@@ -58,27 +58,64 @@ async function buildHeaders(
   return headers;
 }
 
+/**
+ * Default per-request timeout. RN's `fetch` has no built-in timeout —
+ * if the server hangs (or the function exceeds Vercel's 300s limit
+ * without sending an early response) the await waits forever. Without
+ * this, an awaited api.* call in any UI flow (notably onboarding
+ * step 9 — 2026-05-29 P0) traps the user with a spinner.
+ *
+ * 10s covers the slow-but-legitimate cases (cold Lambda, region
+ * failover) while still being short enough that the user gets an
+ * error path instead of an indefinite wait. Callers that need a
+ * different value can pass `timeoutMs` via the options object.
+ */
+const DEFAULT_TIMEOUT_MS = 10_000;
+
 async function request<T>(
   path: string,
   opts: RequestInit = {},
-  { hasBody = true }: { hasBody?: boolean } = {}
+  {
+    hasBody = true,
+    timeoutMs = DEFAULT_TIMEOUT_MS,
+  }: { hasBody?: boolean; timeoutMs?: number } = {}
 ): Promise<T> {
   const headers = await buildHeaders(opts.headers, hasBody);
-  const res = await fetch(`${apiBaseUrl()}${path}`, {
-    ...opts,
-    headers,
-  });
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch(`${apiBaseUrl()}${path}`, {
+      ...opts,
+      headers,
+      signal: opts.signal ?? ctrl.signal,
+    });
 
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    const err = new Error(
-      (body as { error?: string }).error ?? `HTTP ${res.status}`
-    ) as Error & { status?: number };
-    err.status = res.status;
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      const err = new Error(
+        (body as { error?: string }).error ?? `HTTP ${res.status}`
+      ) as Error & { status?: number };
+      err.status = res.status;
+      throw err;
+    }
+
+    return res.json() as Promise<T>;
+  } catch (err) {
+    if (
+      err instanceof Error &&
+      (err.name === "AbortError" ||
+        (err as { code?: string }).code === "ABORT_ERR")
+    ) {
+      const e = new Error(
+        `Request to ${path} timed out after ${timeoutMs}ms`
+      ) as Error & { timeout?: boolean };
+      e.timeout = true;
+      throw e;
+    }
     throw err;
+  } finally {
+    clearTimeout(timer);
   }
-
-  return res.json() as Promise<T>;
 }
 
 export const api = {
@@ -113,28 +150,56 @@ export const api = {
    * Upload multipart/form-data (audio files). Manually attaches the
    * Bearer token since we skip the JSON Content-Type header — fetch
    * auto-sets multipart boundary when it sees a FormData body.
+   *
+   * Uses a longer 60s timeout because audio uploads are payload-bound
+   * (typically 200KB-2MB over cellular) — the 10s JSON default would
+   * abort mid-upload on a flaky connection.
    */
-  upload: async <T>(path: string, formData: FormData): Promise<T> => {
+  upload: async <T>(
+    path: string,
+    formData: FormData,
+    { timeoutMs = 60_000 }: { timeoutMs?: number } = {}
+  ): Promise<T> => {
     const token = tokenBridge.get() ?? (await getToken());
     const headers: HeadersInit = {
       "X-Platform": devicePlatform,
       "X-App-Version": appVersion,
     };
     if (token) headers["Authorization"] = `Bearer ${token}`;
-    const res = await fetch(`${apiBaseUrl()}${path}`, {
-      method: "POST",
-      headers,
-      body: formData,
-    });
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      const err = new Error(
-        (body as { error?: string }).error ?? `HTTP ${res.status}`
-      ) as Error & { status?: number };
-      err.status = res.status;
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    try {
+      const res = await fetch(`${apiBaseUrl()}${path}`, {
+        method: "POST",
+        headers,
+        body: formData,
+        signal: ctrl.signal,
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        const err = new Error(
+          (body as { error?: string }).error ?? `HTTP ${res.status}`
+        ) as Error & { status?: number };
+        err.status = res.status;
+        throw err;
+      }
+      return res.json() as Promise<T>;
+    } catch (err) {
+      if (
+        err instanceof Error &&
+        (err.name === "AbortError" ||
+          (err as { code?: string }).code === "ABORT_ERR")
+      ) {
+        const e = new Error(
+          `Upload to ${path} timed out after ${timeoutMs}ms`
+        ) as Error & { timeout?: boolean };
+        e.timeout = true;
+        throw e;
+      }
       throw err;
+    } finally {
+      clearTimeout(timer);
     }
-    return res.json() as Promise<T>;
   },
 
   /** Resolved base URL. Useful when a call site needs to construct a
