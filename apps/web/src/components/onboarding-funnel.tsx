@@ -1175,106 +1175,93 @@ function PaywallScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
   };
 
   return (
-    <div className="min-h-screen bg-white text-zinc-900 pb-32">
-      <div className="max-w-lg mx-auto px-6 pt-16">
+    <div className="min-h-screen bg-zinc-50 text-zinc-900 pb-32">
+      <div className="max-w-lg mx-auto px-6 pt-12">
 
         {/* Section 1 — Pain Recap Headline */}
-        <section className="text-center mb-10 funnel-screen">
-          <h2 className="text-[26px] sm:text-[34px] font-bold tracking-tight leading-tight">{headline}</h2>
+        <section className="text-center mb-6 funnel-screen">
+          <h2 className="text-[24px] sm:text-[30px] font-bold tracking-tight leading-snug">{headline}</h2>
         </section>
 
-        {/* Section 2 — Cost of Inaction */}
+        {/* Section 2 — Cost of Inaction (heavier bg for weight) */}
         {costOfInaction && (
-          <section className="mb-14 funnel-card-stagger" style={{ animationDelay: "100ms" }}>
-            <div className="rounded-xl bg-zinc-50 border border-zinc-200 px-5 py-5">
-              <p className="text-sm text-zinc-600 leading-relaxed">{costOfInaction}</p>
+          <section className="mb-8 funnel-card-stagger" style={{ animationDelay: "100ms" }}>
+            <div className="rounded-xl bg-zinc-900 px-5 py-5">
+              <p className="text-sm text-zinc-300 leading-relaxed">{costOfInaction}</p>
             </div>
           </section>
         )}
 
-        {/* Section 3 — Social Proof (above pricing) */}
-        <section className="mb-14">
-          <p className="text-sm font-semibold text-zinc-500 text-center mb-4">
+        {/* Section 3 — Social Proof (transition: weight → hope) */}
+        <section className="mb-8">
+          <p className="text-xs font-semibold text-zinc-400 text-center mb-3">
             4.9 <span className="text-amber-400">&#9733;&#9733;&#9733;&#9733;&#9733;</span> from 127+ users
           </p>
-          <div className="space-y-3">
+          <div className="space-y-2">
             {PAYWALL_TESTIMONIALS_V2.map((t, i) => (
-              <div key={i} className="rounded-xl border border-zinc-200 bg-white px-5 py-4 funnel-card-stagger" style={{ animationDelay: `${200 + i * 100}ms` }}>
+              <div key={i} className="rounded-lg border border-zinc-200 bg-white px-4 py-3 funnel-card-stagger" style={{ animationDelay: `${200 + i * 80}ms` }}>
                 <p className="text-xs text-zinc-600 leading-relaxed italic">&ldquo;{t.quote}&rdquo;</p>
-                <p className="text-[11px] text-zinc-400 font-medium mt-2">&mdash; {t.name}</p>
+                <p className="text-[10px] text-zinc-400 font-medium mt-1.5">&mdash; {t.name}</p>
               </div>
             ))}
           </div>
         </section>
 
-        {/* Section 4 — What Your First Month Looks Like (timeline, not features) */}
-        <section className="mb-14">
-          <p className="text-xs font-bold uppercase tracking-[0.15em] text-zinc-400 text-center mb-5">Your first 30 days</p>
-          <div className="space-y-3">
-            {[
-              { week: "Week 1", text: "Tasks extracted daily. Mood tracked. Your days have a record for the first time.", badge: "Starting now" },
-              { week: "Week 2", text: "First patterns surface. Your weekly report arrives \u2014 400 words connecting dots you couldn\u2019t see." },
-              { week: "Week 3", text: "Your Life Matrix takes shape. Six domains scored by your own words. Where your life actually goes becomes visible." },
-              { week: "Week 4", text: "Your first monthly memoir. A story of your month you\u2019ll actually want to read." },
-            ].map((item, i) => (
-              <div key={i} className="flex items-start gap-4 funnel-card-stagger" style={{ animationDelay: `${300 + i * 80}ms` }}>
-                <div className="flex flex-col items-center shrink-0 w-8">
-                  <div className={`w-3 h-3 rounded-full ${i === 0 ? "bg-[#7C5CFC]" : "border-2 border-zinc-300"}`} />
-                  {i < 3 && <div className="w-px h-full bg-zinc-200 mt-1" />}
-                </div>
-                <div className="pb-4">
-                  <p className="text-sm font-semibold text-zinc-900">
-                    {item.week}
-                    {item.badge && <span className="ml-2 rounded-full bg-[#7C5CFC]/10 text-[#7C5CFC] px-2 py-0.5 text-[10px] font-bold">{item.badge}</span>}
-                  </p>
-                  <p className="text-xs text-zinc-500 leading-relaxed mt-1">{item.text}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+        {/* Section 4 — First 30 Days (condensed timeline → momentum) */}
+        <section className="mb-8 rounded-xl bg-white border border-zinc-200 px-5 py-5">
+          <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#7C5CFC] mb-3">Your first 30 days</p>
+          {[
+            { week: "Week 1", text: "Tasks extracted. Mood tracked. Your days have a record.", now: true },
+            { week: "Week 2", text: "Patterns surface. Your first weekly report \u2014 400 words connecting the dots." },
+            { week: "Week 3", text: "Life Matrix takes shape. Six domains scored by your own words." },
+            { week: "Week 4", text: "Your first monthly memoir arrives." },
+          ].map((item, i) => (
+            <div key={i} className="flex items-start gap-3 mb-2 last:mb-0">
+              <div className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${item.now ? "bg-[#7C5CFC]" : "bg-zinc-300"}`} />
+              <p className="text-xs text-zinc-600 leading-relaxed"><span className="font-semibold text-zinc-900">{item.week}:</span> {item.text}</p>
+            </div>
+          ))}
         </section>
 
-        {/* Section 5 — Price Anchoring Line */}
-        <section className="mb-10">
-          <p className="text-sm text-zinc-600 text-center">Less than a cup of coffee. Every month.</p>
-        </section>
-
-        {/* Section 6 — Pricing */}
-        <section className="mb-14">
-          <div className="grid grid-cols-2 gap-3">
+        {/* Section 5 — Price anchor + Pricing (single visual block) */}
+        <section className="mb-8 rounded-xl bg-white border border-zinc-200 px-5 py-5 shadow-sm">
+          <p className="text-sm text-zinc-500 text-center mb-4">One coffee. That&rsquo;s what a month of clarity costs.</p>
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            {/* Monthly — premium feel when selected */}
             <button onClick={() => onPlanChange("monthly")}
-              className={`rounded-xl border-2 p-4 text-center transition relative ${selectedPlan === "monthly" ? "border-[#7C5CFC] bg-[#7C5CFC]/5 shadow-[0_0_16px_rgba(124,92,252,0.15)]" : "border-zinc-200 bg-white"}`}>
+              className={`rounded-xl p-4 text-center transition relative ${selectedPlan === "monthly" ? "border-2 border-[#7C5CFC] bg-gradient-to-b from-[#7C5CFC]/10 to-[#7C5CFC]/5 shadow-[0_4px_24px_rgba(124,92,252,0.25)]" : "border border-zinc-200 bg-white"}`}>
               <p className="text-xs text-zinc-500 mb-1">Monthly</p>
-              <p className="text-sm text-zinc-400 line-through">$19.99/mo</p>
-              <p className="text-xl font-bold">{formatDollars(MONTHLY_PRICE_CENTS)}<span className="text-sm font-normal text-zinc-400">/mo</span></p>
-              <span className="inline-block mt-1.5 rounded-full bg-emerald-100 text-emerald-700 px-2 py-0.5 text-[10px] font-bold">Founding Member Rate</span>
+              <p className="text-base text-red-400 line-through font-semibold">$19.99<span className="text-xs font-normal">/mo</span></p>
+              <p className="text-2xl font-extrabold text-zinc-900">{formatDollars(MONTHLY_PRICE_CENTS)}<span className="text-sm font-normal text-zinc-400">/mo</span></p>
+              <span className="inline-block mt-2 rounded-full bg-[#7C5CFC] text-white px-3 py-1 text-[10px] font-bold tracking-wide shadow-sm">FOUNDING RATE</span>
               <p className="text-[10px] text-zinc-400 mt-1">Billed monthly</p>
             </button>
+            {/* Annual */}
             <button onClick={() => onPlanChange("yearly")}
-              className={`rounded-xl border-2 p-4 text-center transition relative ${selectedPlan === "yearly" ? "border-[#7C5CFC] bg-[#7C5CFC]/5 shadow-[0_0_16px_rgba(124,92,252,0.15)]" : "border-zinc-200 bg-white"}`}>
+              className={`rounded-xl p-4 text-center transition relative ${selectedPlan === "yearly" ? "border-2 border-[#7C5CFC] bg-gradient-to-b from-[#7C5CFC]/10 to-[#7C5CFC]/5 shadow-[0_4px_24px_rgba(124,92,252,0.25)]" : "border border-zinc-200 bg-white"}`}>
               <span className="absolute -top-2.5 right-3 rounded-full bg-emerald-500 px-2 py-0.5 text-[10px] font-bold text-white">SAVE {PRICING.annual.savingsVsMonthly}</span>
               <p className="text-xs text-zinc-500 mb-1">Annual</p>
-              <p className="text-xl font-bold">{formatDollars(annualMonthly)}<span className="text-sm font-normal text-zinc-400">/mo</span></p>
+              <p className="text-2xl font-extrabold text-zinc-900">{formatDollars(annualMonthly)}<span className="text-sm font-normal text-zinc-400">/mo</span></p>
               <p className="text-[10px] text-zinc-400 mt-0.5">{formatDollars(ANNUAL_PRICE_CENTS)}/year</p>
             </button>
           </div>
-          <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-center mt-4">
-            <p className="text-sm text-emerald-800 font-medium">You&rsquo;re early. Lock in the founding rate before it&rsquo;s gone.</p>
+          <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2 text-center">
+            <p className="text-xs text-emerald-700 font-medium">You&rsquo;re early. Lock in the founding rate before it&rsquo;s gone.</p>
           </div>
         </section>
 
-        {/* Section 7 — FAQ */}
-        <section className="mb-16">
-          <div className="space-y-2">
+        {/* Section 6 — FAQ */}
+        <section className="mb-12">
+          <div className="space-y-1.5">
             {PAYWALL_FAQ.map((faq, i) => (
-              <div key={i} className="rounded-xl border border-zinc-200 overflow-hidden">
+              <div key={i} className="rounded-lg border border-zinc-200 bg-white overflow-hidden">
                 <button onClick={() => setOpenFaq(openFaq === i ? null : i)}
-                  className="w-full flex items-center justify-between px-5 py-3.5 text-left text-sm font-medium text-zinc-900">
+                  className="w-full flex items-center justify-between px-4 py-3 text-left text-sm font-medium text-zinc-900">
                   {faq.q}
                   <span className={`text-zinc-400 transition-transform shrink-0 ml-2 ${openFaq === i ? "rotate-180" : ""}`}>&#9662;</span>
                 </button>
                 {openFaq === i && (
-                  <div className="px-5 pb-4">
+                  <div className="px-4 pb-3">
                     <p className="text-xs text-zinc-500 leading-relaxed">{faq.a}</p>
                   </div>
                 )}
@@ -1285,15 +1272,14 @@ function PaywallScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
       </div>
 
       {/* Sticky CTA */}
-      <div className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur border-t border-zinc-100 px-6 py-4 safe-area-pb">
+      <div className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur border-t border-zinc-100 px-6 py-3 safe-area-pb">
         <div className="max-w-lg mx-auto">
-          {error && <p className="text-xs text-red-500 text-center mb-2">{error}</p>}
+          {error && <p className="text-xs text-red-500 text-center mb-1">{error}</p>}
           <button onClick={handleCTA} disabled={loading}
-            className="w-full rounded-full bg-[#7C5CFC] py-4 text-[15px] font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98] disabled:opacity-50 animate-[funnel-glow_2s_ease-in-out_infinite]">
+            className="w-full rounded-full bg-[#7C5CFC] py-3.5 text-[15px] font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98] disabled:opacity-50 shadow-[0_4px_20px_rgba(124,92,252,0.3)] animate-[funnel-glow_2s_ease-in-out_infinite]">
             {loading ? "Loading\u2026" : "Start My Free Trial"}
           </button>
-          <p className="text-[10px] text-zinc-500 text-center mt-2">14-day free trial. Cancel anytime. You won&rsquo;t be charged today.</p>
-          <p className="text-xs text-zinc-700 font-medium text-center mt-1">Your patterns are already running. The only question is whether you&rsquo;ll see them.</p>
+          <p className="text-[10px] text-zinc-500 text-center mt-1.5">14-day free trial &middot; Cancel anytime &middot; No charge today</p>
         </div>
       </div>
 

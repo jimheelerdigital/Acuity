@@ -637,22 +637,54 @@ export const PROCESSING_STAGES: { text: string; endSec: number }[] = [
 
 // ─── Paywall Dynamic Headlines (Screen 15, Section 1) ───────────────────────
 
+/** Map raw Q5 answer to a natural-language duration phrase per branch context. */
+function durPhrase(raw: string, style: "losing" | "running" | "carrying"): string {
+  const v = raw.trim();
+  switch (v) {
+    case "A few weeks": return style === "losing" ? "weeks of lost days" : style === "running" ? "weeks" : "weeks";
+    case "A few months": return "months";
+    case "Over a year": return "over a year";
+    case "I can\u2019t remember when it started": return style === "losing" ? "longer than you can count" : "so long you can\u2019t remember when it started";
+    default: return "too long";
+  }
+}
+
 export function getPaywallHeadline(branch: Branch, answers: Record<string, string | string[]>): string {
-  const dur = lc(String(answers.shared_q5 ?? "too long"));
+  const raw = String(answers.shared_q5 ?? "");
+  const noMemory = raw === "I can\u2019t remember when it started";
   switch (branch) {
-    case "blur": return `You\u2019ve been losing days for ${dur}. Here\u2019s what the next 7 days look like instead.`;
-    case "patterns": return `The same cycle has been running for ${dur}. Here\u2019s what it looks like when you can finally see it.`;
-    case "rumination": return `Your brain has been running for ${dur} without anywhere to put it. Here\u2019s what changes in 7 days.`;
-    case "graveyard": return `You\u2019ve been trying to fix this for ${dur}. Here\u2019s the thing that\u2019s different this time.`;
-    case "mask": return `You\u2019ve been carrying this for ${dur}. Here\u2019s what it looks like when something actually sees it.`;
-    case "drift": return `You\u2019ve felt this for ${dur}. Here\u2019s what the next 30 days look like when you start paying attention.`;
+    case "blur":
+      return noMemory
+        ? "Your days have been disappearing for so long you stopped counting. Here\u2019s what the next 7 look like instead."
+        : `${durPhrase(raw, "losing")} of days you can\u2019t remember. Here\u2019s what the next 7 look like instead.`;
+    case "patterns":
+      return noMemory
+        ? "The same cycle has been running for as long as you can remember. Here\u2019s what it looks like when you finally see it."
+        : `The same cycle has been running for ${durPhrase(raw, "running")}. Here\u2019s what it looks like when you finally see it.`;
+    case "rumination":
+      return noMemory
+        ? "Your brain has been doing this for as long as you can remember. Here\u2019s what changes in 7 days."
+        : `Your brain has been doing this for ${durPhrase(raw, "running")}. Here\u2019s what changes in 7 days.`;
+    case "graveyard":
+      return noMemory
+        ? "You\u2019ve been trying to fix this for longer than you can remember. Here\u2019s the thing that\u2019s different."
+        : `You\u2019ve been trying to fix this for ${durPhrase(raw, "carrying")}. Here\u2019s the thing that\u2019s different.`;
+    case "mask":
+      return noMemory
+        ? "You\u2019ve been carrying this for so long it feels normal. Here\u2019s what it looks like when something actually sees it."
+        : `You\u2019ve been carrying this for ${durPhrase(raw, "carrying")}. Here\u2019s what it looks like when something actually sees it.`;
+    case "drift":
+      return noMemory
+        ? "You\u2019ve been drifting for longer than you can pin down. Here\u2019s what 30 days of paying attention looks like."
+        : `You\u2019ve been drifting for ${durPhrase(raw, "carrying")}. Here\u2019s what 30 days of paying attention looks like.`;
   }
 }
 
 // ─── Paywall Cost of Inaction (Screen 15, Section 2) ────────────────────────
 
 export function getCostOfInaction(branch: Branch, answers: Record<string, string | string[]>): string {
-  const dur = lc(String(answers.shared_q5 ?? "a long time"));
+  const raw = String(answers.shared_q5 ?? "");
+  const dur = durPhrase(raw, "running");
   switch (branch) {
     case "blur":
       return `Without something catching it, the next 6 months look like the last 6. Same overwhelm. Same forgetting. Same feeling like the days blur together.`;

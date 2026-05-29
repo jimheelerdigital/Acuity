@@ -19,7 +19,7 @@
 
 // ── Active prices ───────────────────────────────────────────────────
 export const MONTHLY_PRICE_CENTS = 499;
-export const ANNUAL_PRICE_CENTS = 3999;
+export const ANNUAL_PRICE_CENTS = 19900;
 export const ANNUAL_AS_MONTHLY_CENTS = Math.round(ANNUAL_PRICE_CENTS / 12);
 
 // ── Rollback reference ──────────────────────────────────────────────
