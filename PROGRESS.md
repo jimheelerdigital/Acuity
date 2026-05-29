@@ -109,6 +109,32 @@ The hardcoded fallback Price ID for the Annual plan was pointing at a Stripe pri
 
 ---
 
+## [2026-05-29] — Fix copy voice violations + mechanism screen 2.5s timing
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (rebased)
+
+### In plain English (for Keenan)
+
+Two fixes. First, the copy on the mirror, snapshot, and timeline screens was breaking voice rules — Acuity was telling users how they feel ("you feel like you did nothing") instead of reflecting their own quiz answers back ("you described your days as busy but empty"), and speaking as if it "knows" things ("Deep down, you already know"). Fixed 7 violations. All dynamic copy now uses "you said" / "you described" / "your answers suggest" framing. Second, the mechanism screen Continue button now appears at 2.5 seconds (down from 4s).
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/lib/funnel-config.ts`: Fixed BLUR_LINE1 (3 entries), DRIFT_LINE1 (1 entry), DESIRE_REWRITES (4 entries), getSnapshotInsight patterns branch, SNAPSHOT_PREVIEWS drift branch.
+- `apps/mobile/app/onboarding-new/how-it-works.tsx`: All timing constants compressed — CTA_START 4000→2300ms, steps cascade through 300→750→1500ms.
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- Quiz question prompts that say "you feel..." are fine — those ask the user to complete a sentence, not project emotions.
+- Mechanism timing: headline at 0ms, steps at 300/750/1500ms, closing + CTA simultaneous at 2300ms with 200ms fade = button visible at 2.5s.
+
+---
+
 ## [2026-05-29] — Revamp /start paywall — cost of inaction, monthly default, new structure
 
 **Requested by:** Keenan
