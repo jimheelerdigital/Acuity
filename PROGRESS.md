@@ -41,6 +41,38 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-29] — Paywall conversion overhaul: price anchor, before/after split, scarcity, tight testimonials
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 427c43d
+
+### In plain English (for Keenan)
+
+The paywall screen on /start now follows a stronger emotional arc designed to convert. Instead of a dark paragraph and three long testimonial blocks, users now see: (1) a clean price comparison showing therapy at $150, a life coach at $200, and Acuity at $4.99 — making the price feel tiny without saying Acuity replaces therapy, (2) a side-by-side visual split showing "without visibility" (same overwhelm, same patterns, same loop) vs "with Acuity" (patterns in 2 weeks, Life Matrix in 3, memoir in 4), (3) three punchy one-line testimonials in compact cards instead of full paragraphs, and (4) a specific founding-member scarcity indicator showing "47 of 100 spots left" with a progress bar instead of the generic "lock in the founding rate before it's gone."
+
+### Technical changes (for Jimmy)
+
+- Modified `apps/web/src/components/onboarding-funnel.tsx`:
+  - Replaced Section 2 (dark cost-of-inaction paragraph) with a 3-item horizontal price comparison anchor ($150 / $200 / $4.99)
+  - Replaced Section 3 (stacked paragraph testimonials) + Section 4 (First 30 Days timeline) with a 2-column before/after grid (dark left, purple-tinted right) and a compact 3-column testimonial grid with one-line quotes
+  - Replaced the scarcity banner in Section 5 with a progress bar showing "47 of 100 spots remaining" with specific founding-member language
+  - Removed unused imports: `getCostOfInaction`, `getComparisonLeft`, `PAYWALL_TESTIMONIALS_V2`
+- No schema changes, no new API routes, no env vars needed
+- Build verified clean
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- The "47 of 100 spots" count is hardcoded. If you want this to be dynamic (decrementing as real signups happen), that would need a separate API endpoint and database counter — flag for future work if conversion improves.
+- The full-length testimonials still exist in `PAYWALL_TESTIMONIALS_V2` in funnel-config.ts (not deleted, just no longer imported). Can be reused elsewhere or removed later.
+- The `getCostOfInaction` function and branch-specific cost-of-inaction copy still exist in funnel-config.ts — kept in case they're useful for other surfaces.
+
+---
+
 ## [2026-05-29] — AdLab OpenAI key switched to ACUITY_ADLAB_OPENAI_KEY
 
 **Requested by:** Keenan
