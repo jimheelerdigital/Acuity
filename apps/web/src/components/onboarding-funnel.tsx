@@ -27,10 +27,7 @@ import {
   PAYWALL_HOOKS,
   PRICING_COPY,
   getPaywallHeadline,
-  getComparisonLeft,
-  getCostOfInaction,
   PAYWALL_FAQ,
-  PAYWALL_TESTIMONIALS_V2,
 } from "@/lib/funnel-config";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -1130,7 +1127,6 @@ function PaywallScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
   const isAuthenticated = status === "authenticated";
 
   const headline = branch ? getPaywallHeadline(branch, answers) : "You\u2019ve already taken the first step.";
-  const costOfInaction = branch ? getCostOfInaction(branch, answers) : null;
   const annualMonthly = Math.round(ANNUAL_PRICE_CENTS / 12);
 
   const handleCTA = () => {
@@ -1183,49 +1179,72 @@ function PaywallScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
           <h2 className="text-[24px] sm:text-[30px] font-bold tracking-tight leading-snug">{headline}</h2>
         </section>
 
-        {/* Section 2 — Cost of Inaction (heavier bg for weight) */}
-        {costOfInaction && (
-          <section className="mb-8 funnel-card-stagger" style={{ animationDelay: "100ms" }}>
-            <div className="rounded-xl bg-zinc-900 px-5 py-5">
-              <p className="text-sm text-zinc-300 leading-relaxed">{costOfInaction}</p>
+        {/* Section 2 — Cost Comparison Anchor */}
+        <section className="mb-8 funnel-card-stagger" style={{ animationDelay: "100ms" }}>
+          <div className="flex items-center justify-center gap-4 sm:gap-6">
+            <div className="text-center">
+              <p className="text-lg sm:text-xl font-bold text-zinc-300">$150</p>
+              <p className="text-[10px] text-zinc-400 mt-0.5">Therapy session</p>
             </div>
-          </section>
-        )}
+            <div className="text-zinc-200 text-lg select-none">&middot;</div>
+            <div className="text-center">
+              <p className="text-lg sm:text-xl font-bold text-zinc-300">$200</p>
+              <p className="text-[10px] text-zinc-400 mt-0.5">Life coach / mo</p>
+            </div>
+            <div className="text-zinc-200 text-lg select-none">&middot;</div>
+            <div className="text-center">
+              <p className="text-lg sm:text-xl font-extrabold text-zinc-900">$4.99</p>
+              <p className="text-[10px] text-[#7C5CFC] font-semibold mt-0.5">Acuity / mo</p>
+            </div>
+          </div>
+        </section>
 
-        {/* Section 3 — Social Proof (transition: weight → hope) */}
+        {/* Section 3 — Before / After Split */}
+        <section className="mb-8 funnel-card-stagger" style={{ animationDelay: "180ms" }}>
+          <div className="grid grid-cols-2 gap-0 rounded-xl overflow-hidden">
+            {/* Without — dark, heavy */}
+            <div className="bg-zinc-900 px-4 py-5">
+              <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-zinc-500 mb-3">Without visibility</p>
+              <div className="space-y-2.5">
+                <p className="text-xs text-zinc-400 leading-relaxed">Same overwhelm next month.</p>
+                <p className="text-xs text-zinc-400 leading-relaxed">Same patterns running unseen.</p>
+                <p className="text-xs text-zinc-400 leading-relaxed">Same &ldquo;I should change something&rdquo; on repeat.</p>
+              </div>
+            </div>
+            {/* With Acuity — light, relief */}
+            <div className="bg-[#7C5CFC]/[0.08] px-4 py-5">
+              <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#7C5CFC] mb-3">With Acuity</p>
+              <div className="space-y-2.5">
+                <p className="text-xs text-zinc-700 leading-relaxed"><span className="font-semibold">Week 2:</span> Patterns surface.</p>
+                <p className="text-xs text-zinc-700 leading-relaxed"><span className="font-semibold">Week 3:</span> Life Matrix scored.</p>
+                <p className="text-xs text-zinc-700 leading-relaxed"><span className="font-semibold">Week 4:</span> First memoir arrives.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Section 4 — Tight Testimonials (one-liners) */}
         <section className="mb-8">
           <p className="text-xs font-semibold text-zinc-400 text-center mb-3">
             4.9 <span className="text-amber-400">&#9733;&#9733;&#9733;&#9733;&#9733;</span> from 127+ users
           </p>
-          <div className="space-y-2">
-            {PAYWALL_TESTIMONIALS_V2.map((t, i) => (
-              <div key={i} className="rounded-lg border border-zinc-200 bg-white px-4 py-3 funnel-card-stagger" style={{ animationDelay: `${200 + i * 80}ms` }}>
-                <p className="text-xs text-zinc-600 leading-relaxed italic">&ldquo;{t.quote}&rdquo;</p>
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { quote: "One pattern changed everything.", name: "Sarah M." },
+              { quote: "My therapist asked what changed.", name: "James K." },
+              { quote: "I never connected those.", name: "Priya R." },
+            ].map((t, i) => (
+              <div key={i} className="rounded-lg border border-zinc-200 bg-white px-3 py-3 text-center funnel-card-stagger" style={{ animationDelay: `${260 + i * 80}ms` }}>
+                <p className="text-[11px] text-zinc-700 leading-snug italic font-medium">&ldquo;{t.quote}&rdquo;</p>
                 <p className="text-[10px] text-zinc-400 font-medium mt-1.5">&mdash; {t.name}</p>
               </div>
             ))}
           </div>
         </section>
 
-        {/* Section 4 — First 30 Days (condensed timeline → momentum) */}
-        <section className="mb-8 rounded-xl bg-white border border-zinc-200 px-5 py-5">
-          <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#7C5CFC] mb-3">Your first 30 days</p>
-          {[
-            { week: "Week 1", text: "Tasks extracted. Mood tracked. Your days have a record.", now: true },
-            { week: "Week 2", text: "Patterns surface. Your first weekly report \u2014 400 words connecting the dots." },
-            { week: "Week 3", text: "Life Matrix takes shape. Six domains scored by your own words." },
-            { week: "Week 4", text: "Your first monthly memoir arrives." },
-          ].map((item, i) => (
-            <div key={i} className="flex items-start gap-3 mb-2 last:mb-0">
-              <div className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${item.now ? "bg-[#7C5CFC]" : "bg-zinc-300"}`} />
-              <p className="text-xs text-zinc-600 leading-relaxed"><span className="font-semibold text-zinc-900">{item.week}:</span> {item.text}</p>
-            </div>
-          ))}
-        </section>
-
-        {/* Section 5 — Price anchor + Pricing (single visual block) */}
+        {/* Section 5 — Pricing + Founding Rate Scarcity */}
         <section className="mb-8 rounded-xl bg-white border border-zinc-200 px-5 py-5 shadow-sm">
-          <p className="text-sm text-zinc-500 text-center mb-4">One coffee. That&rsquo;s what a month of clarity costs.</p>
+          <p className="text-sm text-zinc-500 text-center mb-4 font-semibold">One coffee. That&rsquo;s what a month of clarity costs.</p>
           <div className="grid grid-cols-2 gap-3 mb-4">
             {/* Monthly — premium feel when selected */}
             <button onClick={() => onPlanChange("monthly")}
@@ -1245,8 +1264,16 @@ function PaywallScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
               <p className="text-[10px] text-zinc-400 mt-0.5">{formatDollars(annualMonthly)}/mo billed annually</p>
             </button>
           </div>
-          <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2 text-center">
-            <p className="text-xs text-emerald-700 font-medium">You&rsquo;re early. Lock in the founding rate before it&rsquo;s gone.</p>
+          {/* Founding rate scarcity — specific counter */}
+          <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2.5">
+            <div className="flex items-center justify-between mb-1.5">
+              <p className="text-xs text-emerald-800 font-semibold">Founding member pricing</p>
+              <p className="text-xs text-emerald-700 font-bold">47 of 100 spots left</p>
+            </div>
+            <div className="w-full h-1.5 bg-emerald-200 rounded-full overflow-hidden">
+              <div className="h-full bg-emerald-500 rounded-full" style={{ width: "53%" }} />
+            </div>
+            <p className="text-[10px] text-emerald-600 mt-1.5 text-center">$4.99/mo locked in for life &mdash; price increases when spots fill</p>
           </div>
         </section>
 
