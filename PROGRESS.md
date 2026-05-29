@@ -41,6 +41,34 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-29] — Paywall cost-of-inaction rewrite, default to monthly pricing, mechanism screen 4s timing
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 834faaa
+
+### In plain English (for Keenan)
+
+Three changes to improve conversion through the paywall and speed up the mechanism screen. First, the web upgrade page now defaults to showing the monthly plan ($4.99/mo) as selected instead of annual — removes a decision and makes the price feel like nothing. Second, the mobile paywall now opens with a "cost of inaction" headline that's personalized to whatever the user told us is bothering them (e.g., "Every week you wait is another week you won't remember" for blur users), plus a stat line referencing how long they've been dealing with it, followed by clear trial framing ("14-day free trial. Cancel anytime. You won't be charged today.") before any pricing appears. Third, the mechanism screen Continue button now appears at 4 seconds instead of 5+ — all animation timings were compressed so the user isn't waiting around.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/upgrade/upgrade-plan-picker.tsx`: changed default `interval` state from `"yearly"` to `"monthly"`
+- `apps/mobile/app/onboarding-new/paywall.tsx`: added `q1ToBranch()` and `q2ToDuration()` mappers, `COST_HEADLINES` record keyed by branch, dynamic cost-of-inaction headline + duration stat line + trial framing copy above the timeline cards. Imported `Q1Answer` and `Q2Answer` types from onboarding context. Graveyard branch interpolates Q2 duration into its headline.
+- `apps/mobile/app/onboarding-new/how-it-works.tsx`: rewrote all timing constants — `HEADLINE_DUR` 400→300, `STEP1_START` 800→700, `STEP1_DUR` 600→400, `STEP2_START` 2200→1600, `STEP2_DUR` 600→400, `CARD_STAGGER` 200→150, `STEP3_START` 3800→3100, `STEP3_DUR` 600→400, `DOT_STAGGER` 100→80, `INSIGHT_DELAY` 500→300, `CLOSING_START` 5000→4000, `CTA_START` 5000→4000. Closing line fade duration 500→300ms.
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- The graveyard branch headline dynamically inserts the user's Q2 duration answer (e.g., "You've already spent months trying to fix this. How much longer?"). All other branches use static headlines.
+- Mechanism screen total animation timeline: headline fades 0–300ms, step 1 at 700ms, step 2 at 1600ms, step 3 at 3100ms, closing + CTA simultaneously at 4000ms with 300ms fade = button fully visible at 4.3s. This is the hard max.
+- This is the THIRD time mechanism timing has been flagged. Comments now document the hard requirement inline so future edits don't regress it.
+
+---
+
 ## [2026-05-28] — Fix payment tracking: verify Stripe before marking paid, fix admin status labels
 
 **Requested by:** Keenan
