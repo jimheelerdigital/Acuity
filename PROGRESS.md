@@ -96,6 +96,46 @@ None — `ACUITY_ADLAB_OPENAI_KEY` is already set in Vercel.
 ### Notes
 
 - No other files outside AdLab reference `OPENAI_API_KEY`.
+## [2026-05-29] — Mobile UI polish: retire "Brain Dump", align Entry detail header
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hashes:** ba8d5de (brain-dump), 71510ec (header alignment)
+
+### In plain English (for Keenan)
+
+Two pre-submission UI polishes:
+
+**1. "Brain Dump" is gone everywhere in the mobile app.** The phrase showed up 12 places — the home CTA ("Record your brain dump"), the recording screen header, sign-in subtitle, push notifications, empty states, accessibility labels. Replaced with context-appropriate framing: the primary CTA is now "Record what's on your mind", the recording screen header is "Recording", and references to saved items use "entry" (matches what the API and Entries tab already call them). Nothing else changes — no behavior, no API contracts.
+
+**2. Entry detail header is aligned.** The three-dot menu button at the top right of an entry was visually offset from the back button — read as misplaced. Fixed by wrapping the icon in a properly-sized button container so the iOS navigation bar centers both icons on the same baseline.
+
+### Technical changes (for Jimmy)
+
+**Brain-dump terminology (8 files):**
+- `apps/mobile/app/record.tsx`: orb instructional text + header-title comment
+- `apps/mobile/app/_layout.tsx`: Stack.Screen title for `record` (was "Brain dump")
+- `apps/mobile/app/(auth)/sign-in.tsx`: auth subtitle
+- `apps/mobile/app/(tabs)/index.tsx` + `components/home/tonight-cta.tsx`: primary CTA label
+- `apps/mobile/app/(tabs)/entries.tsx`: empty-state copy
+- `apps/mobile/app/(tabs)/_layout.tsx`: tab-bar mic a11y labels (×2)
+- `apps/mobile/lib/notifications.ts`: evening push body + random nudge variant + doc comment
+
+**Entry detail header alignment:**
+- `apps/mobile/app/entry/[id].tsx`: headerRight Pressable now has explicit `width: 32, height: 32, alignItems: "center", justifyContent: "center"`. UIBarButtonItem positions the wrapper on the navbar centerline; icon centers inside it. Previously the bare 22pt Ionicons inherited its own intrinsic-size padding and read as offset relative to the native back chevron.
+
+### Manual steps needed
+
+- [ ] Trigger EAS build 53 from main (Jimmy).
+- [ ] On TestFlight: verify Home → "Record what's on your mind" CTA renders; recording screen header reads "Recording"; Entries tab empty-state mentions "entry"; sign-in subtitle says "nightly recording"; push notifications fired in the evening read "Your nightly recording is waiting." (Jimmy).
+- [ ] On Entry detail screen: confirm three-dot button is vertically aligned with the back chevron. Tap three-dot — confirm native bottom-sheet ActionSheet appears with "Delete entry" (red) + Cancel. Tap Delete — confirm "Delete this entry? This cannot be undone." alert appears. Confirm → returns to entries list (Jimmy).
+- [ ] If the "Delete entry appears as a small floating pill" symptom persists in build 53, share a screenshot — the current code uses `ActionSheetIOS.showActionSheetWithOptions` which renders as a bottom sheet on iPhone; the symptom doesn't match this code path so we'd need more info (Jimmy).
+
+### Notes
+
+- The delete-flow code in entry detail was already correct before this slice (`ActionSheetIOS.showActionSheetWithOptions` for the menu + `Alert.alert` confirmation + `router.back()` on confirm). The user-reported "floating pill" symptom doesn't match what this code path produces on iPhone. If the symptom persists after the header alignment fix lands, it may be a device-specific iOS rendering edge case (e.g., iPad compatibility mode, even with `supportsTablet: false`) — would need a screenshot to diagnose further.
+- Brain-dump terminology kill is intentionally string-only — no variable names, no AsyncStorage keys, no API field names. Backend payloads and any DB columns mentioning "brain" / "dump" / etc. are untouched. The Entries tab name, the `EntryDTO` type, the `/api/entries` endpoint — all unchanged.
+- TonightCTA's `title` prop default updated alongside the home CTA call site so any other consumer of TonightCTA (none today, but the default matters if anyone adds one) gets the new copy automatically.
 
 ---
 
