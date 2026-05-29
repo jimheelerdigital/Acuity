@@ -27,7 +27,7 @@ interface TonightCTAProps {
 
 export function TonightCTA({
   eyebrow,
-  title = "Record your brain dump",
+  title = "Record what's on your mind",
   helper,
   onPress,
 }: TonightCTAProps) {

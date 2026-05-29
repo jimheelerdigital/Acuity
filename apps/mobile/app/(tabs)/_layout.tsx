@@ -150,7 +150,7 @@ function CustomTabBar({
               accessibilityRole="tab"
               accessibilityLabel={
                 isCenter
-                  ? "Open Home to record a brain dump"
+                  ? "Open Home to record an entry"
                   : meta.label
               }
               onPress={() => {
@@ -287,7 +287,7 @@ function RecordOverlayButton({
       >
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Open Home to record a brain dump"
+          accessibilityLabel="Open Home to record an entry"
           onPress={onPress}
           onPressIn={() => setPressed(true)}
           onPressOut={() => setPressed(false)}

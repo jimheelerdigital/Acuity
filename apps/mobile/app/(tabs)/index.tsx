@@ -262,7 +262,7 @@ export default function DashboardTab() {
 
         {/* Tonight CTA — gradient mic card, → /record */}
         <TonightCTA
-          title="Record your brain dump"
+          title="Record what's on your mind"
           helper={
             weekCount === 0
               ? "Start your first session of the week."

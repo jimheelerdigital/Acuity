@@ -276,7 +276,7 @@ function ThemedApp() {
             headerStyle: { backgroundColor: headerBg },
             headerTintColor: headerFg,
             headerTitleStyle: { fontWeight: "600" },
-            title: "Brain dump",
+            title: "Recording",
             presentation: "modal",
           }}
         />

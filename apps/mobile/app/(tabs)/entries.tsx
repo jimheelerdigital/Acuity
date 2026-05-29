@@ -333,7 +333,7 @@ export default function EntriesTab() {
                 style={{ color: tokens.textTer }}
               >
                 {entries.length === 0
-                  ? "Tap the mic at the center of the tab bar to record your first brain dump."
+                  ? "Tap the mic at the center of the tab bar to record your first entry."
                   : "Try a different search or clear the mood filter."}
               </Text>
             </View>

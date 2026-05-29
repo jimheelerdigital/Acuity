@@ -748,7 +748,7 @@ export default function RecordScreen() {
   // headerLeft slot (Slice Q5 polish 5, 2026-05-20). The prior cut
   // had a custom in-content Pressable positioned via insets.top —
   // which lands below the modal header, visually detached from the
-  // "Brain dump" title. headerLeft sits inside the header bar,
+  // "Recording" title. headerLeft sits inside the header bar,
   // auto-aligned with the title baseline.
   //
   // Visibility: idle + recording only. Upload/processing/error/timeout
@@ -956,7 +956,7 @@ function RecordSurface({
           ? remainingWarning
             ? `${MAX_SECONDS - elapsed}s left`
             : "Tap the orb to stop"
-          : "Tap the orb to start your brain dump"}
+          : "Tap the orb to start your recording"}
       </Text>
     </View>
   );

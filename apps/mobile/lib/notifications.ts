@@ -32,7 +32,7 @@ const ID_PREFIX = "acuity:reminder:";
 // sees variety without back-to-back repeats.
 //
 // 2026-05-20 fix: time-aware pools. The legacy single string pool
-// was nightly-only ("Your nightly brain dump is waiting..."), which
+// was nightly-only ("Your nightly recording is waiting..."), which
 // was fine when the only reminder slot was an evening one. Slice C
 // (2026-05-09) added multi-reminder support — users can configure
 // reminders at any hour. The nightly copy fired at 11am for Keenan
@@ -65,7 +65,7 @@ const MIDDAY_BODIES = [
 ];
 
 const EVENING_BODIES = [
-  "Your nightly brain dump is waiting.",
+  "Your nightly recording is waiting.",
   "Take 60 seconds. What's on your mind?",
   "How was today, really?",
   "Say it out loud. You'll feel lighter.",
@@ -406,7 +406,7 @@ const RANDOM_BODY_VARIATIONS = [
   "How are you actually doing?",
   "Got something to get off your chest?",
   "Two sentences. What's loud in your head?",
-  "Mini brain dump — go.",
+  "Quick entry — go.",
 ];
 
 export interface RandomNudgeScheduleInput {

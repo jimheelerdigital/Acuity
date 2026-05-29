@@ -261,7 +261,7 @@ export default function SignInScreen() {
           className="text-sm mb-8 text-center"
           style={{ color: tokens.textTer }}
         >
-          Your nightly brain dump, pattern recognition across your own words.
+          Your nightly recording, pattern recognition across your own words.
         </Text>
 
         {/* Apple — iOS only. Required by App Store Guideline 4.8
