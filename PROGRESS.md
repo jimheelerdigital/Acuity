@@ -41,6 +41,34 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-29] — Swap Acuity Pro Annual Stripe Price ID to correct yearly price
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** 7b91d3e
+
+### In plain English (for Keenan)
+
+The hardcoded fallback Price ID for the Annual plan was pointing at a Stripe price that was misconfigured as monthly. Anyone who hit the fallback path (env var unset) would have been charged $39.99 monthly instead of yearly. Swapped to the correct $39.99/year Price ID Jim provided. Users who go through the normal env-driven path are unaffected.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/lib/pricing.ts:67` — `PRICING.annual.stripeId` fallback: `price_1Tb33YD9XJakJqj5KmfpYrGJ` → `price_1TcSPvD9XJakJqj5C2dITYrR`
+- No other code references to the old ID anywhere in `apps/web/**`
+- No `.env*` files contained the old ID (local `.env.local` has `STRIPE_PRICE_YEARLY=""` and falls back to the constant)
+
+### Manual steps needed
+
+- [ ] If `STRIPE_PRICE_YEARLY` is set in Vercel Production / Preview env, update it to `price_1TcSPvD9XJakJqj5C2dITYrR` (Jimmy). If it's unset, the new fallback ships automatically on next deploy.
+- [ ] Audit any active Stripe Checkout sessions or pending invoices created against the old Price ID (Jimmy / Keenan if customer hit during the buggy window).
+
+### Notes
+
+- The buggy old Price ID is left as a historical note in this entry only; do NOT keep it visible in any user-facing UI or docs.
+- Backend-only change. No mobile / IAP / monthly Stripe code touched.
+
+---
+
 ## [2026-05-29] — Paywall button fix + annual subscription tier + onboarding reset for build 51
 
 **Requested by:** Jimmy
