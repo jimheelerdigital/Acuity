@@ -41,6 +41,34 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-29] — Paywall fixes: headline bug, $199/yr annual, tighter layout, visual pop
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 0dd7dac
+
+### In plain English (for Keenan)
+
+Five fixes to the /start paywall. First, the headline was producing broken copy like "You've been carrying this for i can't remember when it started" — the raw quiz answer was being jammed into the sentence. Now every possible duration answer produces a natural headline (e.g., "You've been carrying this for so long it feels normal"). Second, annual price is now $199/year (was $39.99). Monthly stays $4.99/mo with $19.99 strikethrough, still default selected. Third, the page scrolls shorter — reduced spacing between all sections and condensed the Week 1-4 timeline into a compact card. Fourth, the page has visual energy now: page background is light gray instead of flat white, cost-of-inaction section uses a dark background for emotional weight, the monthly pricing card has a gradient and deeper shadow when selected, the founding rate badge is solid purple, and the $19.99 strikethrough is red and larger to make the discount visceral. Fifth, sticky CTA has a shadow and the trust line is condensed to one line.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/lib/funnel-config.ts`: New `durPhrase(raw, style)` function maps each Q5 answer to natural phrasing. Rewrote `getPaywallHeadline()` with dedicated `noMemory` branches for "I can't remember when it started". Fixed same bug in `getCostOfInaction()`.
+- `apps/web/src/lib/pricing.ts`: `ANNUAL_PRICE_CENTS` changed from 3999 to 19900 ($199/yr). This affects all surfaces that read from PRICING — /upgrade page, onboarding paywall, email templates. Stripe Price ID in env var must match.
+- `apps/web/src/components/onboarding-funnel.tsx`: PaywallScreen JSX rewritten — page bg zinc-50, cost-of-inaction dark card (zinc-900), timeline condensed into single bordered card, pricing section merged into one visual block with gradient cards, founding rate badge solid purple, strikethrough red, FAQ compacted, CTA shadow added.
+
+### Manual steps needed
+
+- [ ] Update `STRIPE_PRICE_YEARLY` env var in Vercel to point to a $199/year Stripe Price ID (Jimmy — create new price in Stripe dashboard if needed)
+
+### Notes
+
+- The $199/year price is a significant increase from $39.99/year. The monthly at $4.99 is where we want signups — annual is the upsell, not the default.
+- The durPhrase mapper handles all 4 Q5 options: "A few weeks" → "weeks", "A few months" → "months", "Over a year" → "over a year", "I can't remember when it started" → fully rewritten sentence per branch.
+- Cost of inaction dark card (zinc-900 bg, zinc-300 text) creates emotional weight before the hope transition into testimonials. This is the "what doing nothing looks like" beat.
+
+---
+
 ## [2026-05-29] — Mechanism screen Continue button visible immediately on mount
 
 **Requested by:** Keenan
