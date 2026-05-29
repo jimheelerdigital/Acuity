@@ -41,6 +41,46 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-29] — Revamp all email templates to light mode, add 5 recovery emails + orchestrator
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 843799f
+
+### In plain English (for Keenan)
+
+Every email Acuity sends — welcome emails, trial sequence, weekly and monthly digests, admin notifications, and waitlist activation — now uses a clean light-mode design instead of the old dark theme. White background, dark text, small logo top-left, purple buttons. Looks like a personal email from a real person, not a marketing blast.
+
+Five new recovery emails were added to catch users who drop off at different stages: (1) "You were almost there" — 30 minutes after someone abandons checkout, referencing what they told us in the quiz, (2) "Your insight profile is waiting" — 1 hour after signup with no checkout, (3) "Your trial started — one step left" — 2 hours after paying but never downloading the app, (4) "Your second entry changes everything" — 48 hours after recording once and never coming back, (5) "Your first report arrives tomorrow" — Saturday nudge for users with 3+ recordings whose weekly report generates Sunday. All signed "— Keenan" and personalized per branch where applicable. Each email can only be sent once per user and won't fire if the user received any other email in the last 24 hours.
+
+Admin signup notification now includes the user's quiz branch, payment status, and UTM campaign data so you can see at a glance where someone came from and how far they got.
+
+### Technical changes (for Jimmy)
+
+- Rewrote 3 shared email layout files: `apps/web/src/emails/layout.ts`, `trial/layout.ts`, `digest-layout.ts` — all dark-mode colors flipped to light-mode palette (#FFFFFF canvas, #F9FAFB cards, #374151 body text, #7C5CFC accent). Logo switched from AcuityLogo.png to AcuityLogoDark.png. CTA buttons changed from gradient to solid purple, full-width, 8px radius.
+- Updated inline colors in all 15 trial email templates, plus welcome-verify, founder-signup-notification, waitlist-reactivation, weekly-digest, monthly-digest, and waitlist-activation.tsx. ~116 inline color references replaced.
+- New `FounderNotificationVars` fields: `branch`, `paymentStatus`, `utmSource`, `utmMedium`, `utmCampaign`. Caller in `bootstrap-user.ts` passes UTM data from attribution cookie.
+- 5 new recovery email templates in `apps/web/src/emails/trial/recovery-*.ts`
+- Extended `TrialEmailKey` type with 5 new keys: `recovery_checkout_abandoned`, `recovery_signup_no_checkout`, `recovery_paid_no_app`, `recovery_recorded_once`, `recovery_day6_nudge`
+- Updated `apps/web/src/emails/trial/registry.ts` with all 5 new templates
+- New Inngest cron function: `apps/web/src/inngest/functions/recovery-email-orchestrator.ts` — runs every 15 minutes, queries OnboardingEvent + User tables, reuses sendTrialEmail() for dedup via TrialEmailLog
+- Registered `recoveryEmailOrchestratorFn` in `apps/web/src/app/api/inngest/route.ts`
+
+### Manual steps needed
+
+- [ ] Verify AcuityLogoDark.png renders well on white backgrounds in Gmail/Apple Mail (Keenan — send yourself a test email after deploy)
+- [ ] Inngest will auto-register the new recovery-email-orchestrator cron on next deploy — verify it appears in the Inngest Cloud dashboard (Jimmy)
+
+### Notes
+
+- No Prisma schema changes needed. Recovery emails reuse the existing TrialEmailLog table with its (userId, emailKey) unique constraint for deduplication. No `npx prisma db push` required.
+- Recovery email checkout_abandoned and signup_no_checkout only target users who have a User row (completed signup). Pre-signup session-only users are not targeted — they don't have an email address in the system.
+- 24h global throttle: before sending any recovery email, the orchestrator checks if ANY TrialEmailLog row exists for that user with sentAt in the last 24 hours. This prevents piling recovery emails on top of trial emails.
+- Day 6 nudge only fires on Saturdays (UTC). For timezone edge cases (user in UTC+12 where it's already Sunday), the nudge may arrive slightly late. Acceptable tradeoff vs. adding timezone-aware scheduling.
+- Pre-existing TS errors in adlab/experiments pages — unrelated to this change.
+
+---
+
 ## [2026-05-29] — Paywall cost-of-inaction rewrite, default to monthly pricing, mechanism screen 4s timing
 
 **Requested by:** Keenan
