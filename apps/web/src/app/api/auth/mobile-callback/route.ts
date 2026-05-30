@@ -47,23 +47,30 @@ export const runtime = "nodejs";
 const TOKEN_INFO_URL = "https://oauth2.googleapis.com/tokeninfo";
 
 /**
- * Expected audience claims on the Google ID token. iOS OAuth clients
- * use the reversed-DNS client ID as the `aud` claim. Jim populates
- * GOOGLE_IOS_CLIENT_ID in Vercel Production after creating the iOS
- * OAuth client in Google Cloud Console.
+ * Expected audience claims on the Google ID token. Each platform's
+ * OAuth client produces a different `aud` claim — iOS uses the
+ * reversed-DNS client ID, Android uses the package-name-bound client
+ * ID, web uses the standard URL-bound client. We accept all three so
+ * the same endpoint serves the iOS app, the Android app, and any
+ * Expo Go dev-build path that signs against the web client.
  *
- * If we later ship an Android app, add the Android client ID to this
- * list. Google returns the audience on tokeninfo, so we just need
- * exact-match membership.
+ * Env vars populated in Vercel:
+ *   - GOOGLE_IOS_CLIENT_ID — required for iOS App Store builds.
+ *   - GOOGLE_ANDROID_CLIENT_ID — required for Android Play Store
+ *     builds (2026-05-30, Closed Testing prep).
+ *   - GOOGLE_CLIENT_ID — web client, also covers Expo Go dev paths.
+ *
+ * Adding a new platform = add an env var + reference it here; no
+ * other code changes. The filter drops undefined / empty values so
+ * a missing env var doesn't widen the allowlist by accident.
  */
 function expectedAudiences(): string[] {
   const iosId = process.env.GOOGLE_IOS_CLIENT_ID;
+  const androidId = process.env.GOOGLE_ANDROID_CLIENT_ID;
   const webId = process.env.GOOGLE_CLIENT_ID;
-  // We accept the web client ID too because some Expo configurations
-  // (especially Expo Go during development) sign tokens against the
-  // web client. For production App Store builds the iOS client is
-  // authoritative.
-  return [iosId, webId].filter((x): x is string => Boolean(x));
+  return [iosId, androidId, webId].filter(
+    (x): x is string => Boolean(x)
+  );
 }
 
 type TokenInfo = {
