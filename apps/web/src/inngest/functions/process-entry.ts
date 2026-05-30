@@ -449,43 +449,46 @@ export const processEntryFn = inngest.createFunction(
       return { entryId, free: true };
     }
 
-    // ── PRO/TRIAL path (existing pipeline, unchanged) ─────────────────
+    // ── PRO/TRIAL path ───────────────────────────────────────────────
 
-    // Step 3: build memory context (Prisma read; sub-second).
-    const memoryContext = await step.run("build-memory-context", async () => {
-      const { buildMemoryContext } = await import("@/lib/memory");
-      return buildMemoryContext(userId);
-    });
-
-    // Slice 3 v1.2 Calendar Integration — pull events from the local
-    // mirror around the recording's createdAt and pass them to the
-    // extractor. Connected-calendar users only; everyone else gets a
-    // no-op (empty events + empty promptBlock). The result is held in
-    // closure so the post-extraction linkedEventIds matcher (below)
-    // can score the same events against the persisted summary.
-    const calendarContext = await step.run("fetch-calendar-context", async () => {
-      const { fetchCalendarContext } = await import("@/lib/calendar/context");
-      const entry = await prisma.entry.findUnique({
-        where: { id: entryId },
-        select: { createdAt: true },
-      });
-      if (!entry) return { events: [], promptBlock: "" };
-      return fetchCalendarContext(userId, entry.createdAt);
-    });
-
-    // Read the V5 prompt-variant flag once, captured in the closure so
-    // both step.run("extract") AND step.run("persist-extraction") can
-    // reference it. Idempotent feature-flag read — recomputed on
-    // Inngest replay, no side effects, sub-millisecond. Lifted out of
-    // the extract step (W-B, 2026-05-03) so the persist step can write
-    // Entry.themePromptVersion without re-reading.
-    const useDispositional = await step.run(
-      "read-dispositional-flag",
-      async () => {
-        const { isEnabled } = await import("@/lib/feature-flags");
-        return isEnabled(userId, "v1_1_dispositional_themes");
-      }
-    );
+    // Step 3: pre-extract context reads. All three are independent
+    // (different tables, no shared mutation), so they fan out via
+    // Promise.all. Inngest supports Promise.all of step.run() — each
+    // sub-step is checkpointed independently, retries are per-step.
+    // Speed: was ~3 × sub-second serial → now max(individual latencies)
+    // ≈ 1 × sub-second. Modest absolute win but a quick latency-floor
+    // reduction with zero behavioral change.
+    //
+    //   - buildMemoryContext: UserMemory rows + recent entries summary
+    //     used to ground the extraction prompt.
+    //   - fetchCalendarContext: events around the recording's
+    //     createdAt for connected-calendar users; no-op otherwise.
+    //     Held in closure for the post-extract linkedEventIds matcher.
+    //   - readDispositionalFlag: V5 theme prompt-variant gate. Lifted
+    //     out of step.run("extract") W-B 2026-05-03 so persist can
+    //     write Entry.themePromptVersion without re-reading.
+    const [memoryContext, calendarContext, useDispositional] =
+      await Promise.all([
+        step.run("build-memory-context", async () => {
+          const { buildMemoryContext } = await import("@/lib/memory");
+          return buildMemoryContext(userId);
+        }),
+        step.run("fetch-calendar-context", async () => {
+          const { fetchCalendarContext } = await import(
+            "@/lib/calendar/context"
+          );
+          const entry = await prisma.entry.findUnique({
+            where: { id: entryId },
+            select: { createdAt: true },
+          });
+          if (!entry) return { events: [], promptBlock: "" };
+          return fetchCalendarContext(userId, entry.createdAt);
+        }),
+        step.run("read-dispositional-flag", async () => {
+          const { isEnabled } = await import("@/lib/feature-flags");
+          return isEnabled(userId, "v1_1_dispositional_themes");
+        }),
+      ]);
 
     // Cancellation gate before Claude extract (Slice C Stage 3,
     // 2026-05-16). Claude is the most expensive call in the pipeline.
@@ -520,6 +523,19 @@ export const processEntryFn = inngest.createFunction(
     if (canceledBeforeExtract) {
       return { entryId, canceled: true, canceledAt: "before-extract" };
     }
+
+    // Flip status to EXTRACTING so the client polling
+    // /api/entries/:id sees the actual phase the pipeline is in
+    // instead of "TRANSCRIBING" for the entire Claude window. Was
+    // previously left as TRANSCRIBING until persist-extraction
+    // (line ~615) wrote PERSISTING. Lying about the phase made the
+    // UI feel slower than the underlying pipeline (2026-05-30 P0).
+    await step.run("set-extracting-status", async () => {
+      await prisma.entry.update({
+        where: { id: entryId },
+        data: { status: "EXTRACTING" },
+      });
+    });
 
     // Step 4: extract structured data via Claude. Uses the exact same
     // prompt + parser as the sync pipeline (`lib/pipeline.ts`). When
@@ -754,19 +770,40 @@ export const processEntryFn = inngest.createFunction(
       });
     });
 
-    // Slice 3 v1.2 Calendar Integration — auto-link CalendarEvent
-    // rows whose titles substring-match the persisted summary or
-    // transcript. Conservative matcher (>=4 char title or first-
-    // name match in 1-3 attendee meeting). Slice 6's manual link/
-    // unlink UI handles the long tail. Fail-soft: a missing link
-    // is not a broken entry. No-op when calendar isn't connected
-    // (calendarContext.events is empty).
-    // Edit reprocess: preserve the user's manual link/unlink choices
-    // through the edit. The auto-linker would otherwise re-add events
-    // they had explicitly unlinked. Manual linking via the slice 6 UI
-    // remains available after reprocess completes.
-    if (calendarContext.events.length > 0 && !skipTranscribe) {
-      await step.run("link-calendar-events", async () => {
+    // Post-persist enrichment, parallelized. Four substeps —
+    // link-calendar-events, extract-people, update-recording-stats,
+    // embed-entry — are independent (different DB rows / different
+    // external APIs, no shared mutation), each has its own
+    // fail-soft handler, and none feed the next. Promise.all
+    // collapses what was ~4 sequential round trips into one
+    // max(latency) wait. Largest individual contributor is
+    // embed-entry's OpenAI call (~1-3s); extract-people's Claude
+    // Haiku NER is the next at ~2-5s for chatty transcripts. Net
+    // savings on a typical entry: ~3-5s shaved off the post-persist
+    // tail (2026-05-30 P0 win).
+    //
+    // Inngest semantics: `step.run()` returns a checkpoint-aware
+    // Promise. Wrapping multiple in Promise.all preserves per-step
+    // retry isolation — a failure in one substep doesn't re-run
+    // the others on replay; each is its own retriable unit.
+    //
+    // update-user-memory + update-life-map (below this block) stay
+    // sequential because both can downgrade Entry.status to PARTIAL,
+    // and update-life-map's "only-if-currently-COMPLETE" guard is
+    // race-sensitive. update-streak (further below) is left in its
+    // original end-of-function slot — moving it here is correct
+    // architecturally but the marginal gain is sub-second.
+    await Promise.all([
+      // Slice 3 v1.2 Calendar Integration — auto-link CalendarEvent
+      // rows whose titles substring-match the persisted summary or
+      // transcript. Conservative matcher (>=4 char title or first-
+      // name match in 1-3 attendee meeting). Slice 6's manual link/
+      // unlink UI handles the long tail. Fail-soft. No-op when
+      // calendar isn't connected. Edit reprocess: preserve manual
+      // link/unlink choices through the edit by skipping the
+      // auto-linker entirely.
+      calendarContext.events.length > 0 && !skipTranscribe
+        ? step.run("link-calendar-events", async () => {
         try {
           const { inferLinkedEventIds } = await import("@/lib/calendar/context");
           const entry = await prisma.entry.findUnique({
@@ -789,16 +826,16 @@ export const processEntryFn = inngest.createFunction(
             err: err instanceof Error ? err.message : String(err),
           });
         }
-      });
-    }
+      })
+        : Promise.resolve(),
 
-    // Anchor People — Claude Haiku NER over the persisted transcript.
-    // Slice 2 v1.2. Fail-soft per the embedding pattern; a missed
-    // pass doesn't fail the entry, and the slice 7 backfill cron
-    // catches misses. Idempotent on Entry.peopleExtractedAt IS NULL.
-    // Skipped for FREE users — entitlement.canExtractEntries gates
-    // the whole branch above so we only get here on PRO/TRIAL.
-    await step.run("extract-people", async () => {
+      // Anchor People — Claude Haiku NER over the persisted transcript.
+      // Slice 2 v1.2. Fail-soft per the embedding pattern; a missed
+      // pass doesn't fail the entry, and the slice 7 backfill cron
+      // catches misses. Idempotent on Entry.peopleExtractedAt IS NULL.
+      // Skipped for FREE users — entitlement.canExtractEntries gates
+      // the whole branch above so we only get here on PRO/TRIAL.
+      step.run("extract-people", async () => {
       try {
         const entry = await prisma.entry.findUnique({
           where: { id: entryId },
@@ -906,15 +943,15 @@ export const processEntryFn = inngest.createFunction(
           err: err instanceof Error ? err.message : String(err),
         });
       }
-    });
+      }),
 
-    // Recording stats — drives the trial onboarding orchestrator.
-    // Runs right after the persist transaction so firstRecordingAt
-    // lands before the next hour's trialEmailOrchestrator tick. We
-    // only stamp on COMPLETE entries (not PARTIAL / FAILED), which is
-    // the state a successful persist puts the row in. Fail-soft:
-    // a stats update failure shouldn't fail the entry.
-    await step.run("update-recording-stats", async () => {
+      // Recording stats — drives the trial onboarding orchestrator.
+      // Runs right after the persist transaction so firstRecordingAt
+      // lands before the next hour's trialEmailOrchestrator tick. We
+      // only stamp on COMPLETE entries (not PARTIAL / FAILED), which
+      // is the state a successful persist puts the row in. Fail-soft:
+      // a stats update failure shouldn't fail the entry.
+      step.run("update-recording-stats", async () => {
       const entry = await prisma.entry.findUnique({
         where: { id: entryId },
         select: { status: true, createdAt: true },
@@ -962,18 +999,19 @@ export const processEntryFn = inngest.createFunction(
           // PostHog failure is non-fatal
         }
       }
-    }).catch((err) => {
-      logger.error(
-        "[process-entry] update-recording-stats failed (non-fatal)",
-        { err }
-      );
-    });
+      }).catch((err) => {
+        logger.error(
+          "[process-entry] update-recording-stats failed (non-fatal)",
+          { err }
+        );
+      }),
 
-    // Embedding generation — fail-soft. Runs outside the transaction
-    // because OpenAI latency shouldn't block entry persistence; a
-    // missed embedding just means this entry won't show up in
-    // Ask-Your-Past-Self results until the backfill script catches it.
-    await step.run("embed-entry", async () => {
+      // Embedding generation — fail-soft. Runs outside the persist
+      // transaction because OpenAI latency shouldn't block entry
+      // persistence; a missed embedding just means this entry won't
+      // show up in Ask-Your-Past-Self results until the backfill
+      // script catches it.
+      step.run("embed-entry", async () => {
       try {
         const { buildEmbedText, embedText } = await import("@/lib/embeddings");
         const entry = await prisma.entry.findUnique({
@@ -999,7 +1037,8 @@ export const processEntryFn = inngest.createFunction(
           err: err instanceof Error ? err.message : String(err),
         });
       }
-    });
+      }),
+    ]);
 
     // Steps 6 + 7: memory + lifemap enrichment. These fail-soft: a
     // downstream failure downgrades Entry to PARTIAL rather than FAILED
