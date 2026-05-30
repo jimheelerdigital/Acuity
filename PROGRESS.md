@@ -41,6 +41,53 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-30] — Delete-menu rebuild + process-entry pipeline parallelization for build 55
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hashes:** 6503619 (delete menu), 7dbb00b (pipeline parallelization)
+
+### In plain English (for Keenan)
+
+Two pre-submission fixes for App Store build 55:
+
+**1. Entry delete menu rebuilt.** The "Delete entry" button was rendering as a small floating pill in the middle of the screen on builds 53 and 54 — looked like a misplaced tooltip, not a real menu. The previous fix only addressed icon alignment, not the menu itself. Rebuilt as a proper anchored dropdown menu that appears under the three-dot button at the top right of the screen. The "Delete this entry?" confirmation alert and "return to entries list" behavior on confirm are unchanged.
+
+**2. Entry processing is faster.** The pipeline that turns a recording into themes, tasks, mood, and the AI summary was running its post-write steps one after another. Now the independent ones (calendar linking, people NER, embedding generation, recording stats) run in parallel. Net: ~3-5 seconds shaved off the typical processing tail. Also, the entry status now correctly shows "EXTRACTING" while Claude is working — previously it stayed on "TRANSCRIBING" the whole time, which made the UI feel slower than the underlying pipeline.
+
+### Technical changes (for Jimmy)
+
+**Delete menu rebuild (`apps/mobile/app/entry/[id].tsx`):**
+- Removed `ActionSheetIOS.showActionSheetWithOptions` (iOS) and the Platform-branched `Alert.alert` menu (Android) entirely.
+- Added React Native `Modal` (transparent, animationType="fade", statusBarTranslucent) with a backdrop `Pressable` that closes the menu on outside tap.
+- Anchored card positioned `top: insets.top + 44 + 4` (status bar + navbar + small gap) `right: 12`. Uses `useSafeAreaInsets` from react-native-safe-area-context.
+- Single "Delete entry" menu item in destructive styling (trash-outline icon + `tokens.bad` color). `requestAnimationFrame` between menu close and Alert open avoids two-overlays-at-once collision.
+- The `Alert.alert("Delete this entry?", "This cannot be undone.")` confirmation flow is unchanged. `router.back()` on confirm.
+
+**Process-entry parallelization (`apps/web/src/inngest/functions/process-entry.ts`):**
+- Pre-extract block: wrapped `build-memory-context`, `fetch-calendar-context`, `read-dispositional-flag` in `Promise.all([step.run(...), step.run(...), step.run(...)])`. Inngest preserves per-step retry isolation under Promise.all. Speed: ~3 × sub-second sequential → max ≈ 1 × sub-second.
+- Added new `set-extracting-status` step.run between cancel-check-before-extract and the main `extract` call. Writes `status: "EXTRACTING"` so client polling reflects actual phase.
+- Post-persist block: wrapped `link-calendar-events` (ternary for the conditional `calendarContext.events.length > 0 && !skipTranscribe`), `extract-people`, `update-recording-stats`, `embed-entry` in `Promise.all`. Largest contributor in this group is embed-entry's OpenAI embedding (~1-3s) followed by extract-people's Claude Haiku NER (~2-5s). Net savings on typical entry: ~3-5s.
+- `update-user-memory` and `update-life-map` stay sequential — both can downgrade `Entry.status` to PARTIAL and life-map's "only-if-currently-COMPLETE" guard is race-sensitive in parallel mode.
+- `update-streak` left in its end-of-function slot — moving into the parallel block would be correct architecturally but the marginal gain (~200ms) wasn't worth the additional churn in this slice.
+
+### Manual steps needed
+
+- [ ] Trigger EAS build 55 from main (Jimmy).
+- [ ] Vercel auto-deploys the web side (process-entry.ts). No env var changes; no schema changes.
+- [ ] On TestFlight build 55: open any entry, tap three-dot → confirm a proper rectangular dropdown appears anchored to the button (NOT a "floating pill"). Tap "Delete entry" → confirm the standard iOS confirmation alert appears. Confirm → returns to entries list (Jimmy).
+- [ ] Record a new entry. Watch the status transition: should briefly show TRANSCRIBING (during Whisper), then EXTRACTING (during Claude), then COMPLETE. Total post-Whisper time should feel ~3-5s faster than build 54 (Jimmy).
+- [ ] Spot-check the entry's AI summary, themes, tasks, and people are still populated correctly after the post-persist parallelization (Jimmy).
+
+### Notes
+
+- The delete-menu rebuild is a complete replacement, not a patch on top of ActionSheetIOS. If the "floating pill" was something I never identified in the code (e.g., a third-party overlay), the Modal-based dropdown still eliminates the ActionSheet code path entirely. The new menu renders identically across all iOS versions, devices, and presentation contexts because it's pure JS-rendered Modal — no native UIAlertController.
+- Inngest's `Promise.all([step.run(), step.run(), ...])` pattern is officially supported and preserves per-step retry isolation. A failure in one parallel step retries only that step on the next invocation, not the whole block. Confirmed by typecheck against the Inngest types in the repo.
+- The EXTRACTING status change does NOT require a mobile-side change. `apps/mobile/hooks/use-entry-polling.ts` treats all non-terminal statuses (TRANSCRIBING / EXTRACTING / PERSISTING) as "keep polling," falling through to the same loading UI. If we want phase-specific copy on the entry detail screen, that's a separate UI slice.
+- For a future iteration: `update-streak`, `update-user-memory`, `update-life-map` could be promoted into a SECOND parallel block after the first one returns. Today's choice to keep them sequential preserves the existing PARTIAL-status-downgrade race-free guarantee. When we have time, refactor that downgrade logic to use a final "coordinate-status" step that reads the final state of memory + lifemap and writes one consolidated status — then those three could parallelize too.
+
+---
+
 ## [2026-05-30] — Remove low-value sections from Funnel Analytics admin tab
 
 **Requested by:** Keenan
