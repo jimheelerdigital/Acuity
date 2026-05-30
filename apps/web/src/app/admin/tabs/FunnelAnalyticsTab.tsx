@@ -34,10 +34,7 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
   const sessions = data.sessions || [];
   const campaigns = data.campaignFunnels || [];
   const branches = data.branchBreakdown || [];
-  const timePerStep = data.timePerStep || [];
-  const answers = data.answerDistribution || [];
   const dropOffs = data.dropOffAnalysis || [];
-  const dailyRates = data.dailyRates || [];
   const names = data.campaignNames || {};
 
   const diag = data.diagnostics || {};
@@ -140,21 +137,6 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
         ))}
       </div>
 
-      {/* Daily Rate */}
-      {dailyRates.length > 0 && (
-        <div style={S}>
-          <div style={H}>Daily Completion Rate</div>
-          <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 80 }}>
-            {dailyRates.slice(-30).map((d: any, i: number) => (
-              <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", height: "100%" }} title={`${d.date}: ${d.rate}%`}>
-                {d.rate > 0 && <span style={{ fontSize: 8, color: "rgba(255,255,255,0.25)" }}>{d.rate}%</span>}
-                <div style={{ width: "100%", borderRadius: "3px 3px 0 0", background: d.rate >= 5 ? "#22c55e" : d.rate > 0 ? "#f59e0b" : "rgba(255,255,255,0.05)", height: Math.max(2, d.rate * 2) }} />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Conversion Funnel */}
       <div style={S}>
         <div style={H}>Conversion Funnel</div>
@@ -177,43 +159,6 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
           );
         })}
       </div>
-
-      {/* Time Per Step */}
-      {timePerStep.length > 0 && timePerStep.some((t: any) => t.samples > 0) && (
-        <div style={S}>
-          <div style={H}>Time Per Step (Median)</div>
-          {timePerStep.filter((t: any) => t.samples > 0).map((t: any) => (
-            <div key={t.key} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-              <span style={{ width: 80, textAlign: "right", fontSize: 11, color: "rgba(255,255,255,0.4)" }}>{t.step}</span>
-              <div style={{ flex: 1, background: "rgba(255,255,255,0.04)", borderRadius: 4, height: 18 }}>
-                <div style={{ width: `${Math.min(100, Math.max(3, (t.medianSec / 60) * 100))}%`, background: t.medianSec <= 10 ? "#22c55e" : t.medianSec <= 30 ? "#f59e0b" : "#ef4444", borderRadius: 4, height: "100%" }} />
-              </div>
-              <span style={{ width: 40, fontSize: 11, color: "rgba(255,255,255,0.4)", textAlign: "right" }}>{t.medianSec}s</span>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Answer Distribution */}
-      {answers.length > 0 && (
-        <div style={S}>
-          <div style={H}>Answer Distribution</div>
-          {answers.map((q: any) => (
-            <div key={q.question} style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginBottom: 6 }}>{q.question}</div>
-              {q.answers.map((a: any) => (
-                <div key={a.answer} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
-                  <div style={{ flex: 1, background: "rgba(255,255,255,0.04)", borderRadius: 3, height: 16, position: "relative", overflow: "hidden" }}>
-                    <div style={{ width: `${a.pct}%`, background: "rgba(124,92,252,0.5)", borderRadius: 3, height: "100%" }} />
-                    <span style={{ position: "absolute", left: 6, top: 0, bottom: 0, display: "flex", alignItems: "center", fontSize: 9, color: "rgba(255,255,255,0.6)" }}>{a.answer}</span>
-                  </div>
-                  <span style={{ width: 50, fontSize: 10, color: "rgba(255,255,255,0.3)", textAlign: "right" }}>{a.count} ({a.pct}%)</span>
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
-      )}
 
       {/* Drop-off Analysis */}
       {dropOffs.length > 0 && (
