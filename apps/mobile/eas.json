@@ -13,6 +13,9 @@
       },
       "ios": {
         "simulator": true
+      },
+      "android": {
+        "buildType": "apk"
       }
     },
     "preview": {
@@ -26,6 +29,9 @@
       },
       "ios": {
         "resourceClass": "m-medium"
+      },
+      "android": {
+        "buildType": "apk"
       }
     },
     "production": {
@@ -39,6 +45,9 @@
       },
       "ios": {
         "resourceClass": "m-medium"
+      },
+      "android": {
+        "buildType": "app-bundle"
       }
     }
   },
@@ -48,6 +57,9 @@
         "appleId": "jim@heelerdigital.com",
         "ascAppId": "6762633410",
         "bundleIdentifier": "com.heelerdigital.acuity"
+      },
+      "android": {
+        "track": "internal"
       }
     },
     "production": {
@@ -55,6 +67,10 @@
         "appleId": "jim@heelerdigital.com",
         "ascAppId": "6762633410",
         "bundleIdentifier": "com.heelerdigital.acuity"
+      },
+      "android": {
+        "track": "internal",
+        "releaseStatus": "draft"
       }
     }
   }
