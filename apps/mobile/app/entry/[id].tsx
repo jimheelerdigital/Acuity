@@ -3,15 +3,15 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ActionSheetIOS,
   ActivityIndicator,
   Alert,
-  Platform,
+  Modal,
   Pressable,
   ScrollView,
   Text,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { MOOD_LABELS, type EntryDTO, type TaskDTO } from "@acuity/shared";
 
@@ -97,6 +97,7 @@ export default function EntryDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { tokens } = useTheme();
+  const insets = useSafeAreaInsets();
   const cacheKey = id ? entryDetailKey(id) : null;
   const initialCached = cacheKey
     ? getCached<EntryDetailResponse>(cacheKey)
@@ -106,6 +107,7 @@ export default function EntryDetailScreen() {
     () => initialCached?.entry ?? null
   );
   const [loading, setLoading] = useState(() => !initialCached);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const requestDelete = useCallback(() => {
     if (!id) return;
@@ -135,34 +137,18 @@ export default function EntryDetailScreen() {
     );
   }, [id, router]);
 
-  const openMenu = useCallback(() => {
-    if (Platform.OS === "ios") {
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          options: ["Cancel", "Delete entry"],
-          destructiveButtonIndex: 1,
-          cancelButtonIndex: 0,
-        },
-        (idx) => {
-          if (idx === 1) requestDelete();
-        }
-      );
-    } else {
-      Alert.alert(
-        "Entry options",
-        undefined,
-        [
-          { text: "Cancel", style: "cancel" },
-          {
-            text: "Delete entry",
-            style: "destructive",
-            onPress: requestDelete,
-          },
-        ],
-        { cancelable: true }
-      );
-    }
-  }, [requestDelete]);
+  // 2026-05-30: replaced the previous ActionSheetIOS/Alert.alert hybrid
+  // with a custom Modal-based anchored dropdown. Build 54 reproducibly
+  // rendered ActionSheet as a "small floating pill in the middle of the
+  // screen" — root cause never pinned down (likely UIAlertController
+  // .actionSheet style picking up popover presentation when invoked
+  // from a UIBarButtonItem custom view in a specific iOS context).
+  // Switching to a JS-rendered Modal eliminates all platform/version
+  // variance: the menu renders identically on every device, anchored
+  // top-right under the navigation header. Scales for future items
+  // (just add more Pressables inside the menu card).
+  const openMenu = useCallback(() => setMenuOpen(true), []);
+  const closeMenu = useCallback(() => setMenuOpen(false), []);
 
   const reload = useCallback(() => {
     if (!cacheKey) return;
@@ -645,6 +631,79 @@ export default function EntryDetailScreen() {
           events in the window, so disconnected users see no extra
           chrome on this screen. */}
       <CalendarEventsSection entryId={entry.id} />
+
+      {/* Header overflow menu — custom anchored dropdown. Modal
+          renders portal-style so its absolute positioning is screen-
+          relative; tap-anywhere-outside dismisses via the full-screen
+          backdrop Pressable. Anchored top-right under the navigation
+          header (insets.top + 44pt navbar + 4pt gap). */}
+      <Modal
+        visible={menuOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={closeMenu}
+        statusBarTranslucent
+      >
+        <Pressable
+          accessibilityLabel="Dismiss menu"
+          onPress={closeMenu}
+          style={{ flex: 1 }}
+        >
+          <View
+            accessibilityRole="menu"
+            style={{
+              position: "absolute",
+              top: insets.top + 44 + 4,
+              right: 12,
+              minWidth: 200,
+              borderRadius: 14,
+              borderWidth: 1,
+              borderColor: tokens.line,
+              backgroundColor: tokens.bgSub,
+              overflow: "hidden",
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 4 },
+              shadowRadius: 12,
+              shadowOpacity: 0.18,
+              elevation: 6,
+            }}
+          >
+            <Pressable
+              onPress={() => {
+                closeMenu();
+                // Yield one frame so the Modal close animation can
+                // start before the Alert opens — avoids the two-
+                // overlays-at-once visual collision.
+                requestAnimationFrame(() => requestDelete());
+              }}
+              accessibilityRole="menuitem"
+              accessibilityLabel="Delete entry"
+              style={({ pressed }) => ({
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 12,
+                paddingHorizontal: 16,
+                paddingVertical: 12,
+                backgroundColor: pressed
+                  ? `${tokens.bad}1F`
+                  : "transparent",
+              })}
+            >
+              <Ionicons name="trash-outline" size={18} color={tokens.bad} />
+              <Text
+                style={{
+                  color: tokens.bad,
+                  fontFamily: tokens.fontSans,
+                  fontSize: 15,
+                  fontWeight: "600",
+                }}
+              >
+                Delete entry
+              </Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
     </ScrollView>
   );
 }
