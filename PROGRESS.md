@@ -41,6 +41,28 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-30] — Remove low-value sections from Funnel Analytics admin tab
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** f9a9508
+
+### In plain English (for Keenan)
+The Funnel Analytics tab in the admin dashboard was showing three sections that aren't useful yet at current user volume: a daily completion rate chart, a time-per-step breakdown, and an answer distribution view. These have been removed to keep the dashboard focused on what matters — the conversion funnel, drop-off analysis, campaign performance, and session details are all still there.
+
+### Technical changes (for Jimmy)
+- Removed "Daily Completion Rate" bar chart, "Time Per Step (Median)" section, and "Answer Distribution" section from `apps/web/src/app/admin/tabs/FunnelAnalyticsTab.tsx`
+- Cleaned up 3 unused variable declarations (`dailyRates`, `timePerStep`, `answers`) that were only consumed by the removed sections
+- 55 lines removed total, no new code added
+
+### Manual steps needed
+None
+
+### Notes
+- The API endpoint still returns this data — only the frontend rendering was removed. If volume grows and these sections become useful again, they can be re-added from git history.
+
+---
+
 ## [2026-05-29] — Paywall conversion overhaul: price anchor, before/after split, scarcity, tight testimonials
 
 **Requested by:** Keenan
