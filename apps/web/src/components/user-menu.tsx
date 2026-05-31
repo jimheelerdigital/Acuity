@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { BookOpen, ChevronDown, LifeBuoy, LogOut, Settings } from "lucide-react";
+import { Award, BookOpen, ChevronDown, LifeBuoy, LogOut, Settings } from "lucide-react";
 
 type UserMenuProps = {
   name: string | null | undefined;
@@ -173,8 +173,19 @@ export function UserMenu({ name, email, image, initials }: UserMenuProps) {
             <Settings className="h-4 w-4 text-zinc-500 dark:text-zinc-400" aria-hidden="true" />
             Settings
           </Link>
-          <a
+          <Link
             ref={setItemRef(1)}
+            role="menuitem"
+            tabIndex={-1}
+            href="/achievements"
+            onClick={close}
+            className="flex items-center gap-3 px-4 py-2 text-sm text-zinc-700 dark:text-zinc-200 hover:bg-white/60 dark:hover:bg-white/5 focus:bg-white/60 dark:focus:bg-white/5 focus:outline-none transition-colors"
+          >
+            <Award className="h-4 w-4 text-zinc-500 dark:text-zinc-400" aria-hidden="true" />
+            Achievements
+          </Link>
+          <a
+            ref={setItemRef(2)}
             role="menuitem"
             tabIndex={-1}
             href="https://docs.getacuity.io"
@@ -187,7 +198,7 @@ export function UserMenu({ name, email, image, initials }: UserMenuProps) {
             Documentation
           </a>
           <a
-            ref={setItemRef(2)}
+            ref={setItemRef(3)}
             role="menuitem"
             tabIndex={-1}
             href="mailto:support@getacuity.io"

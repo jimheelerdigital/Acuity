@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useState } from "react";
 import {
+  Award,
   BarChart3,
   BookOpen,
   CheckSquare,
@@ -125,6 +126,19 @@ const SECTIONS: NavSection[] = [
         label: "People",
         icon: Users,
         matchPrefix: "/insights/people",
+      },
+      {
+        // v1.3 achievements entry (2026-05-31). Lands in Reflect
+        // alongside Insights / Life Matrix / Theme Map / People as
+        // a "personal progress" surface — the catalog of earned
+        // badges across Consistency, Reflection, Moment families.
+        // Discovered via this sidebar item OR the Settings dropdown
+        // (apps/web/src/components/user-menu.tsx) OR the celebration
+        // modal that fires the moment a badge is earned.
+        href: "/achievements",
+        label: "Achievements",
+        icon: Award,
+        matchPrefix: "/achievements",
       },
     ],
   },

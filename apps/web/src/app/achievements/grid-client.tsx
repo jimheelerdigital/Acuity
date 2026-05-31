@@ -5,9 +5,15 @@
  * fetches the catalog + the user's earned rows and passes them in
  * already-shaped. This component owns selection state + the
  * detail-side-panel UI.
+ *
+ * Page chrome (PageContainer + AppShell wrapper) matches the rest of
+ * the authenticated app — same sidebar, same DesktopTopbar, same
+ * mobile-width rules as /goals, /insights, etc.
  */
 
 import { useMemo, useState } from "react";
+
+import { PageContainer } from "@/components/page-container";
 
 export type CatalogItem = {
   id: string;
@@ -69,15 +75,15 @@ export function AchievementsGrid({
   }, [items]);
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
-      <header className="mb-10">
-        <p className="font-mono text-[10px] font-bold uppercase tracking-[1.6px] text-[color:var(--text-tertiary,#A7AEC4)]">
-          Lifetime
+    <PageContainer>
+      <header className="mb-10 pt-6 lg:pt-10">
+        <p className="font-mono text-[10px] font-bold uppercase tracking-[1.6px] text-acuity-text-ter">
+          Achievements — Lifetime
         </p>
-        <h1 className="mt-2 text-4xl font-bold tracking-tight text-[color:var(--text,#F4F1EA)]">
+        <h1 className="mt-2 text-4xl font-bold tracking-tight text-acuity-text">
           {totals.points} pts
         </h1>
-        <p className="mt-1 text-sm text-[color:var(--text-secondary,#A7AEC4)]">
+        <p className="mt-1 text-sm text-acuity-text-sec">
           {totals.earned} of {totals.total} earned
         </p>
       </header>
@@ -85,12 +91,10 @@ export function AchievementsGrid({
       {grouped.map((section) => (
         <section key={section.key} className="mb-12">
           <div className="mb-5">
-            <h2 className="font-mono text-[10px] font-bold uppercase tracking-[1.6px] text-[color:var(--text-tertiary,#A7AEC4)]">
+            <h2 className="font-mono text-[10px] font-bold uppercase tracking-[1.6px] text-acuity-text-ter">
               {section.title}
             </h2>
-            <p className="mt-1 text-sm text-[color:var(--text-secondary,#A7AEC4)]">
-              {section.blurb}
-            </p>
+            <p className="mt-1 text-sm text-acuity-text-sec">{section.blurb}</p>
           </div>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             {section.items.map((item) => (
@@ -98,7 +102,7 @@ export function AchievementsGrid({
                 key={item.id}
                 type="button"
                 onClick={() => setSelected(item)}
-                className="group flex flex-col items-center rounded-2xl border border-white/5 bg-white/[0.02] p-4 text-left transition hover:border-white/15 hover:bg-white/[0.04]"
+                className="group flex flex-col items-center rounded-2xl border border-acuity-line bg-acuity-bg-sub p-4 text-left transition hover:border-acuity-primary/40 hover:bg-acuity-bg-sub/70"
                 aria-label={item.title}
               >
                 <img
@@ -110,9 +114,7 @@ export function AchievementsGrid({
                 />
                 <p
                   className={`text-center text-sm font-semibold ${
-                    item.earned
-                      ? "text-[color:var(--text,#F4F1EA)]"
-                      : "text-[color:var(--text-tertiary,#A7AEC4)]"
+                    item.earned ? "text-acuity-text" : "text-acuity-text-ter"
                   }`}
                 >
                   {item.title}
@@ -132,14 +134,14 @@ export function AchievementsGrid({
           }}
         >
           <aside
-            className="absolute right-0 top-0 h-full w-full max-w-md overflow-y-auto bg-[color:var(--bg-sub,#181826)] p-8"
+            className="absolute right-0 top-0 h-full w-full max-w-md overflow-y-auto bg-acuity-bg-sub p-8"
             role="dialog"
             aria-modal="true"
           >
             <button
               type="button"
               onClick={() => setSelected(null)}
-              className="mb-6 text-sm text-[color:var(--text-tertiary,#A7AEC4)] hover:text-[color:var(--text,#F4F1EA)]"
+              className="mb-6 text-sm text-acuity-text-ter hover:text-acuity-text"
             >
               ← Close
             </button>
@@ -151,10 +153,10 @@ export function AchievementsGrid({
                 height={160}
                 className="mb-6"
               />
-              <h3 className="text-2xl font-bold text-[color:var(--text,#F4F1EA)]">
+              <h3 className="text-2xl font-bold text-acuity-text">
                 {selected.title}
               </h3>
-              <p className="mt-3 max-w-sm text-sm leading-relaxed text-[color:var(--text-secondary,#A7AEC4)]">
+              <p className="mt-3 max-w-sm text-sm leading-relaxed text-acuity-text-sec">
                 {selected.description}
               </p>
               <div className="mt-6 flex flex-wrap justify-center gap-2">
@@ -172,7 +174,7 @@ export function AchievementsGrid({
                 />
               </div>
               {selected.earned && selected.earnedAt && (
-                <p className="mt-4 font-mono text-[11px] uppercase tracking-[1.2px] text-[color:var(--text-tertiary,#A7AEC4)]">
+                <p className="mt-4 font-mono text-[11px] uppercase tracking-[1.2px] text-acuity-text-ter">
                   Earned {new Date(selected.earnedAt).toLocaleDateString()}
                 </p>
               )}
@@ -180,7 +182,7 @@ export function AchievementsGrid({
           </aside>
         </div>
       )}
-    </main>
+    </PageContainer>
   );
 }
 
@@ -193,8 +195,8 @@ function Chip({
 }) {
   const palette = {
     good: "bg-emerald-500/15 text-emerald-300",
-    muted: "bg-white/5 text-[color:var(--text-secondary,#A7AEC4)]",
-    brand: "bg-orange-500/15 text-orange-300",
+    muted: "bg-acuity-bg-inset text-acuity-text-sec",
+    brand: "bg-acuity-primary/15 text-acuity-primary",
   }[variant];
   return (
     <span
