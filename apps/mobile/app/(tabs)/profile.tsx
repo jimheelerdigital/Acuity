@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Avatar, SubscriptionPill } from "@/components/acuity";
+import { fetchCatalog, type CatalogResponse } from "@/lib/achievements-api";
 import { AppearanceCard } from "@/components/appearance/appearance-card";
 import { TrialStatusCard } from "@/components/TrialStatusCard";
 import { HapticsRow } from "@/components/appearance/haptics-row";
@@ -303,6 +304,14 @@ export default function ProfileTab() {
           <RestorePurchasesButton onRestored={refresh} />
         </View>
 
+        {/* ACTIVITY group — v1.3 achievements entry point. The summary
+            row reads count + total points from /api/achievements so
+            the visible state stays accurate without a second polled
+            counter on this screen. */}
+        <SettingsGroup label="Activity">
+          <AchievementsRow />
+        </SettingsGroup>
+
         {/* PREFERENCES group */}
         <SettingsGroup label="Preferences">
           <AppearanceCard />
@@ -534,5 +543,45 @@ function MenuItem({
       </View>
       <Ionicons name="chevron-forward" size={16} color={tokens.textTer} />
     </Pressable>
+  );
+}
+
+/**
+ * v1.3 Achievements entry point in the Activity group on Profile.
+ * Polls /api/achievements on mount for the sublabel counts so the
+ * row reads "5 of 26 earned · 180 pts" even on first render. Falls
+ * back to a generic sublabel while loading. Tap routes to the full
+ * grid screen at /achievements.
+ */
+function AchievementsRow() {
+  const router = useRouter();
+  const [totals, setTotals] = useState<CatalogResponse["totals"] | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetchCatalog()
+      .then((res) => {
+        if (!cancelled) setTotals(res.totals);
+      })
+      .catch(() => {
+        /* sublabel just shows the generic copy */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const sublabel = totals
+    ? `${totals.earned} of ${totals.total} earned · ${totals.points} pts`
+    : "Badges for streaks, depth, and special moments";
+  return (
+    <MenuItem
+      icon="medal-outline"
+      label="Achievements"
+      sublabel={sublabel}
+      // expo-router's typed-routes union doesn't include the new
+      // /achievements route until the next `expo start` regenerates
+      // expo-env.d.ts. `as never` is the established escape hatch
+      // used elsewhere in the codebase for the same situation.
+      onPress={() => router.push("/achievements" as never)}
+    />
   );
 }

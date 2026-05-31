@@ -13,6 +13,7 @@ const NAV_LINKS = [
   { href: "/tasks", label: "Tasks" },
   { href: "/goals", label: "Goals" },
   { href: "/insights", label: "Insights" },
+  { href: "/achievements", label: "Achievements" },
 ];
 
 const DROPDOWN_ITEMS = [

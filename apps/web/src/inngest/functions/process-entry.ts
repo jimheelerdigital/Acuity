@@ -1140,6 +1140,31 @@ export const processEntryFn = inngest.createFunction(
       });
     });
 
+    // v1.3 achievements — evaluate after streak update so badges like
+    // STREAK_DAYS see the freshly-incremented value. Non-fatal: a bad
+    // trigger config or evaluator throw can't degrade the entry. The
+    // evaluator's per-trigger try/catch handles individual failures;
+    // this outer catch covers connection / Prisma-level explosions.
+    await step
+      .run("check-achievements", async () => {
+        const { evaluateRealtime } = await import("@/lib/achievements");
+        const awarded = await evaluateRealtime(prisma, { userId, entryId });
+        if (awarded.length > 0) {
+          logger.info("[process-entry] achievements awarded", {
+            entryId,
+            userId,
+            awarded: awarded.map((a) => a.slug),
+          });
+        }
+        return { awardedCount: awarded.length };
+      })
+      .catch((err) => {
+        logger.error(
+          "[process-entry] check-achievements failed (non-fatal)",
+          { err }
+        );
+      });
+
     return {
       entryId,
       memoryOk,

@@ -408,6 +408,7 @@ model User {
 
   trySessions                   TrySession[]
   onboardingEvents              OnboardingEvent[]
+  userAchievements              UserAchievement[]
 
   updatedAt DateTime @default(now()) @updatedAt
 
@@ -2341,4 +2342,55 @@ model EntityMention {
 
   @@index([entryId])
   @@index([personId])
+}
+
+// ─── Achievements ──────────────────────────────────────────────────────────
+//
+// v1.3 achievement system. 26 badges live in the Achievement table
+// (seeded via Supabase — DO NOT modify the rows from the app).
+// UserAchievement is the join table — one row per (user, achievement)
+// the user has earned. shownToUser=false means the celebration modal
+// hasn't fired yet; the mobile app polls /api/achievements/pending,
+// displays the modal, then POSTs /api/achievements/:id/seen to flip
+// the flag. pointsAwarded snapshots Achievement.points at award time
+// so future re-tuning of points doesn't retroactively change history.
+
+model Achievement {
+  id           String   @id
+  slug         String   @unique
+  title        String
+  description  String
+  category     String   // CONSISTENCY | REFLECTION | MOMENT
+  tier         Int      // 1-5 (bronze..diamond)
+  emblem       String
+  points       Int
+  iconKey      String
+  triggerType  String
+  triggerConfig Json
+  isActive     Boolean  @default(true)
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  userAchievements UserAchievement[]
+
+  @@index([category, sortOrder])
+  @@index([isActive, triggerType])
+}
+
+model UserAchievement {
+  id              String      @id @default(cuid())
+  userId          String
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievementId   String
+  achievement     Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+  earnedAt        DateTime    @default(now())
+  shownToUser     Boolean     @default(false)
+  shownAt         DateTime?
+  pointsAwarded   Int
+  createdAt       DateTime    @default(now())
+
+  @@unique([userId, achievementId])
+  @@index([userId, shownToUser])
+  @@index([userId, earnedAt])
 }

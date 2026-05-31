@@ -29,6 +29,8 @@ import { ThemeProvider, useTheme } from "@/contexts/theme-context";
 import { LockScreenOverlay } from "@/components/lock-screen-overlay";
 import { UniversalLinkHandler } from "@/components/universal-link-handler";
 import { UpdatePromptOverlay } from "@/components/UpdatePromptOverlay";
+import { CelebrationModal } from "@/components/achievements/CelebrationModal";
+import { useAchievementQueue } from "@/hooks/use-achievement-queue";
 import { isNewOnboardingEnabled } from "@/lib/feature-flags";
 import { initMetaSdk, setMetaUserId } from "@/lib/meta-sdk";
 import { reapplyRemindersIfNeeded } from "@/lib/notifications-boot";
@@ -313,6 +315,10 @@ function ThemedApp() {
           name="insights/state-of-me"
           options={{ headerShown: false }}
         />
+        <Stack.Screen
+          name="achievements"
+          options={{ headerShown: true }}
+        />
       </Stack>
       {/* Universal Links handler — listens for incoming verify-email
           deep-links and routes them to the existing endpoint. Render
@@ -325,11 +331,40 @@ function ThemedApp() {
           the Stack so it covers any route, BELOW the lock overlay so
           a locked app can't be bypassed by tapping through. */}
       <UpdatePromptOverlay />
+      {/* v1.3 achievements celebration. Polls /pending on app
+          foreground + cold launch; renders the CelebrationModal
+          sequentially for each unseen UserAchievement row. Sits
+          inside <AuthProvider> via parent — the hook gates on auth
+          to avoid 401-polling on the sign-in screen. */}
+      <AchievementsCelebrationMount />
       {/* App-level lock overlay. Mounted AFTER <Stack/> so its
           absolute-positioned full-screen view sits above the route
           tree's content. Renders nothing when lock is disabled or
           user is signed out. */}
       <LockScreenOverlay />
     </>
+  );
+}
+
+/**
+ * Glues the achievement queue hook to the CelebrationModal. Gated
+ * on auth so it doesn't 401-poll on the sign-in screen. Re-fetches
+ * pending on AppState foreground transitions inside the hook
+ * itself; mounting here puts the modal above every screen, including
+ * (tabs) routes.
+ */
+function AchievementsCelebrationMount() {
+  const { user, loading } = useAuth();
+  const queue = useAchievementQueue({ enabled: !loading && !!user });
+  if (!queue.current) return null;
+  const a = queue.current.achievement;
+  return (
+    <CelebrationModal
+      visible
+      slug={a.slug}
+      title={a.title}
+      description={a.description}
+      onContinue={queue.dismiss}
+    />
   );
 }

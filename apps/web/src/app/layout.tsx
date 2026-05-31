@@ -8,6 +8,7 @@ import "./globals.css";
 import { Providers } from "@/components/providers";
 import { AppShell } from "@/components/app-shell";
 import { NavBar } from "@/components/nav-bar";
+import { CelebrationMount } from "@/components/achievements/celebration-mount";
 import { GoogleAnalytics } from "@/components/google-analytics";
 import { CookieConsentBanner } from "@/components/cookie-consent";
 import { ConsentGatedTrackers } from "@/components/consent-gated-trackers";
@@ -203,6 +204,12 @@ export default function RootLayout({
           <NavBar />
           <KeyboardShortcuts />
           <AppShell>{children}</AppShell>
+          {/* v1.3 achievements — polls /api/achievements/pending on
+              mount + window focus; renders the celebration modal over
+              the current page when there's an unseen UserAchievement.
+              Self-gates on next-auth session (renders null when
+              unauthenticated) so anonymous landing pages don't poll. */}
+          <CelebrationMount />
           <CrisisFooter />
           <CookieConsentBanner />
         </Providers>
