@@ -39,6 +39,7 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { BadgeSvg } from "./BadgeSvg";
+import { ConfettiBurst } from "./ConfettiBurst";
 
 const COLORS = {
   navyDeep: "#0F0F1A",
@@ -144,6 +145,12 @@ export function CelebrationModal({
       statusBarTranslucent
     >
       <View style={styles.backdrop}>
+        {/* Skia-rendered confetti — fresh 120-particle burst each time
+            the modal opens. Sits behind the card via absoluteFill +
+            pointerEvents none so it doesn't intercept the Continue
+            tap. The burst remounts when `visible` toggles, so closing
+            and re-opening the modal replays from frame 0. */}
+        <ConfettiBurst key={slug} visible={visible} />
         <Animated.View style={[styles.card, cardStyle]}>
           <View style={styles.orb}>
             <Animated.View style={[styles.halo, haloStyle]} />

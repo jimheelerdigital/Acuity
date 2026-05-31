@@ -140,16 +140,35 @@ export function useEntryPolling(
         const body = (await res.json()) as { entry: PolledEntry };
         const entry = body.entry;
 
+        const wasTerminalBefore = state.status !== "idle" && state.status !== "polling";
+        const isTerminalNow = isTerminal(entry.status);
+
         setState((prev) => ({
           ...prev,
-          status: isTerminal(entry.status)
-            ? mapTerminalToPollStatus(entry.status)
-            : "polling",
+          status: isTerminalNow ? mapTerminalToPollStatus(entry.status) : "polling",
           entry,
           phase: entry.status,
         }));
 
-        if (isTerminal(entry.status)) return;
+        if (isTerminalNow) {
+          // First transition into a terminal state — kick the
+          // achievement queue so the celebration modal pops
+          // immediately rather than waiting for the next AppState
+          // foreground transition. Idempotent: the queue's refresh()
+          // has its own 2s debounce, so a flap into the same status
+          // (or our own re-emit on a retry) collapses to one fetch.
+          // 2026-05-31 polish — post-record gap was the v1.3 ship UX
+          // regression flagged in the follow-up bug.
+          if (!wasTerminalBefore && entry.status === "COMPLETE") {
+            void (async () => {
+              const { requestAchievementCheck } = await import(
+                "@/lib/achievement-bus"
+              );
+              requestAchievementCheck();
+            })();
+          }
+          return;
+        }
       } catch {
         if (cancelled.current) return;
         attempt++;

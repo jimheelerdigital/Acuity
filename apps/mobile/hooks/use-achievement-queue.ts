@@ -20,6 +20,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppState, type AppStateStatus } from "react-native";
 
+import { subscribeToAchievementChecks } from "@/lib/achievement-bus";
 import {
   fetchPending,
   markAchievementSeen,
@@ -60,14 +61,28 @@ export function useAchievementQueue(opts: { enabled: boolean }) {
     }
   }, [enabled]);
 
-  // Mount + foreground transitions
+  // Mount + foreground transitions + cross-module ping bus.
+  // The bus subscription lets non-React callers (notably
+  // use-entry-polling, which fires when an entry's status first
+  // flips to COMPLETE) trigger a re-fetch without going through a
+  // context provider. refresh() debounces internally so a burst of
+  // pings collapses into one network call.
   useEffect(() => {
     if (!enabled) return;
     void refresh();
-    const sub = AppState.addEventListener("change", (next: AppStateStatus) => {
-      if (next === "active") void refresh();
+    const appStateSub = AppState.addEventListener(
+      "change",
+      (next: AppStateStatus) => {
+        if (next === "active") void refresh();
+      }
+    );
+    const busUnsub = subscribeToAchievementChecks(() => {
+      void refresh();
     });
-    return () => sub.remove();
+    return () => {
+      appStateSub.remove();
+      busUnsub();
+    };
   }, [enabled, refresh]);
 
   const current = queue[0] ?? null;
