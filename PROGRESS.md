@@ -41,6 +41,82 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-05-31] — v1.3 Achievements system end-to-end (26 badges, celebration UX, mobile + web)
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** a3a0120
+
+### In plain English (for Keenan)
+
+Acuity now has 26 earnable badges across three families — Consistency (streaks, volume), Reflection (depth, growth, features), Moment (special / surprising one-offs). When a user earns a badge, a full-screen "Achievement unlocked" modal pops up with a rotating badge, a coral halo, the badge's name and description, and a Continue pill. The whole catalog is browsable from a new Profile → Activity → Achievements row on mobile and a new "Achievements" link in the top nav on web. Both surfaces show the user's current point total and earned count.
+
+The 26 badges live in Supabase already (seeded externally). This slice is everything ELSE: the evaluator that decides who's earned what after each entry, the API that the apps poll, the celebration modal, the grid screen on both apps, the nightly cron for badges that can't be evaluated per-entry, and the global mount that fires the celebration whenever there's an unseen badge in the queue.
+
+### Technical changes (for Jimmy)
+
+**Schema (`prisma/schema.prisma`):**
+- Added `Achievement` model (catalog, seeded externally — DO NOT modify rows from the app).
+- Added `UserAchievement` model: unique `(userId, achievementId)`, `pointsAwarded` snapshots `Achievement.points` at award time so retuning points doesn't retroactively change history. `shownToUser` boolean + `shownAt` timestamp drive the celebration queue.
+- Added `userAchievements` relation field to `User`.
+- ⚠️ NOT MIGRATED. Tables already exist live in Supabase; this slice only syncs `schema.prisma` so the generated Prisma client matches the live shape. **DO NOT run `prisma db push` against prod** — it would no-op but is unnecessary risk.
+
+**Evaluator library (`apps/web/src/lib/achievements.ts`):**
+- `evaluateRealtime(prisma, { userId, entryId })` — called from process-entry. Loads active Achievement rows whose `triggerType` is in the real-time set, evaluates each per-user, upserts UserAchievement on match. Per-trigger try/catch so one bad config doesn't kill the pass. Idempotent via the unique constraint.
+- `evaluateBackground(prisma, userId)` — called from the nightly cron. Same shape for the background trigger set.
+- Real-time triggers implemented: STREAK_DAYS, ENTRY_COUNT, FIRST_ACTION (entry / goal_set / goal_completed), TIME_OF_DAY (DST-safe via `Intl.DateTimeFormat`), COMEBACK, THEMES_SURFACED, TASKS_DAY_CLEAR (counts Task rows with `dueDate` falling in today's local-tz window where every row has status DONE), ENTRY_DURATION_SECONDS, TOTAL_SPEECH_MINUTES.
+- Background triggers implemented: LIFE_AREA_LIFT (scans LifeMapAreaHistory for `max-min ≥ amount`), LIFE_AREAS_THRESHOLD (count of LifeMapArea rows with `score100 ≥ threshold`), SEASONAL_COVERAGE (distinct meteorological seasons across all entries), SPECIAL_DATE newyears + anniversary. Birthday stubbed (UserDemographics has no birthday field yet).
+- Deferred: FIRST_ACTION insight_read (no `openedAt` on UserInsight today), INSIGHTS_CONSECUTIVE (same), TASKS_WEEK_CLEAR_STREAK (7-day sweep — easy add when needed).
+
+**`apps/web/src/inngest/functions/process-entry.ts`:**
+- New `check-achievements` step.run wrapped in `.catch` — runs after `update-streak` so STREAK_DAYS evaluators see the freshly-incremented value. ⚠️ HIGH RISK: this is the live recording pipeline used by every iOS user. Wrapped so a bad evaluator cannot degrade an entry.
+
+**`apps/web/src/inngest/functions/achievements-nightly.ts` (NEW):**
+- Cron `0 4 * * *` (daily 04:00 UTC, after weekly-report Saturday cron + before US-east-coast wake). Scans users active in the last 30 days, runs `evaluateBackground` for each, per-user errors logged + swallowed. Registered in `apps/web/src/app/api/inngest/route.ts`.
+
+**API routes (`apps/web/src/app/api/achievements/*`):**
+- `GET /api/achievements` — catalog joined with user's earned rows. Returns `{ items, totals: { earned, total, points } }`. Sorted by category then sortOrder.
+- `GET /api/achievements/pending` — UserAchievement rows where `shownToUser = false`, joined with Achievement metadata, ordered by `earnedAt` ascending so the queue plays in earn order.
+- `POST /api/achievements/[id]/seen` — flips `shownToUser` + sets `shownAt`. Idempotent. Returns 404 for foreign rows (no existence leak).
+
+**Mobile pieces (`apps/mobile/`):**
+- `lib/badge-xml.ts` — auto-generated 52-entry map of badge slug+state → SVG XML string. Inlined into the JS bundle (~289KB raw, ~80KB gzipped) so SvgXml renders without a runtime asset fetch.
+- `lib/achievements-api.ts` — typed wrappers over `api.get/post` for the three endpoints.
+- `components/achievements/BadgeSvg.tsx` — SvgXml renderer by slug + state + size.
+- `components/achievements/CelebrationModal.tsx` — react-native-reanimated for 16s linear badge rotation + 3s ease-in-out halo pulse + 550ms cubic-bezier card rise. Manrope display title + Geist Mono kicker + coral-gradient Continue pill (LinearGradient). Confetti DEFERRED for this slice — RN canvas requires Skia or Lottie, which we'd add as a polish-pass follow-up.
+- `hooks/use-achievement-queue.ts` — fetches `/pending` on mount + AppState foreground transitions. Debounced (2s minimum between fetches). `dismiss()` is fire-and-forget POST + dequeue; a failed `/seen` would resurface on the next `/pending` and re-show, which is recoverable.
+- `app/achievements.tsx` — 3-section grid (Consistency / Reflection / Moment), 3-column badge layout, bottom-sheet detail with title / description / earned-state chip / tier chip / points / earnedAt.
+- `app/(tabs)/profile.tsx` — new `AchievementsRow` in a new "Activity" SettingsGroup. Polls `/api/achievements` on mount for live sublabel `"5 of 26 earned · 180 pts"`.
+- `app/_layout.tsx` — `<AchievementsCelebrationMount />` mounted sibling to LockScreenOverlay. Self-gates on `!loading && !!user` so it doesn't poll on the sign-in screen. Stack.Screen for `achievements` registered.
+
+**Web pieces (`apps/web/`):**
+- `public/badges/` — duplicate of the mobile 52-asset set served as static `<img src>`. Same files, separate hosting — cleaner than a symlink for a Next.js public folder.
+- `src/components/achievements/CelebrationModal.tsx` — full canvas confetti port from `celebration-card.html` (120 particles, gravity 0.16, ~150-frame life, mixed circles + rects, gradient pill Continue). styled-jsx for animation parity (radial backdrop, halo pulse, badge spin, card rise). Escape-key + backdrop-click + Continue all dismiss.
+- `src/components/achievements/celebration-mount.tsx` — client component, polls `/api/achievements/pending` on mount + window focus. Self-gates on `useSession().status === "authenticated"` so anonymous landing pages don't 401-poll.
+- `src/app/achievements/page.tsx` — server component, fetches catalog + earned via Prisma directly (no API roundtrip for the SSR path).
+- `src/app/achievements/grid-client.tsx` — client component, 3-section grid (responsive 2-col mobile-web / 3-col sm / 4-col lg), badge-click opens right-side detail panel with title / description / state chip / tier chip / points / earnedAt.
+- `src/components/nav-bar.tsx` — "Achievements" link added to NAV_LINKS between Insights and the user menu.
+- `src/app/layout.tsx` — `<CelebrationMount />` mounted globally inside `<Providers>` alongside NavBar.
+
+### Manual steps needed
+
+- [ ] Trigger EAS build 56 from main to ship the mobile achievement UI to TestFlight (Jimmy).
+- [ ] Web auto-deploys via Vercel (Jimmy verifies on next push).
+- [ ] On TestFlight: sign in, record a fresh entry, watch the status transition. Once it lands at COMPLETE, the CelebrationMount should fire if any new badge was earned. Validate the modal appears, Continue dismisses it, and a re-foreground doesn't re-show it (shownToUser flag persisted) (Jimmy).
+- [ ] On web (after Vercel deploy): sign in, open the new "Achievements" link in nav, verify the catalog renders with the right earned/locked state. Click a badge → detail panel slides in (Jimmy).
+- [ ] If `evaluateRealtime` logs errors in Vercel for unknown trigger configs, audit the Supabase Achievement rows' `triggerConfig` JSON to confirm the seeded values match the documented shapes (Jimmy).
+
+### Notes
+
+- Achievement seed rows in Supabase are out of scope for this slice — the evaluator assumes the `triggerType` and `triggerConfig` fields match the contract documented in the task prompt. Mismatched configs return `false` silently (per-trigger try/catch + unknown-type fallthrough) so a bad row can't kill the pass for other badges.
+- The check-achievements step in process-entry sits AFTER update-streak intentionally so STREAK_DAYS sees the new currentStreak value. If a future refactor moves either step, that ordering must be preserved.
+- Mobile inlines 52 SVGs (~289KB raw / ~80KB gzipped). Acceptable bundle bloat for a feature this central; an asset-fetch alternative (`expo-asset` + `fetch().text()`) would add per-badge latency to the celebration modal and complicate offline rendering.
+- The CelebrationMount on mobile fires on cold launch + AppState foreground transitions but NOT explicitly post-entry-processing today. The next entry's status polling already triggers a foreground-style refresh via the existing use-entry-polling, and the 2s debounce inside the queue hook keeps duplicate fetches cheap. If the gap between entry completion and the modal feels too long in practice, wire a `queue.notify()` call into the entry success path.
+- The achievements nightly cron sweeps users active in the last 30 days. Long-dormant users still get their badges retroactively on next entry (realtime evaluator is unconditional), so we don't pay the LIFE_AREA_LIFT scan cost for cohorts who can't see the result.
+- ⚠️ HIGH RISK note: edits process-entry.ts. The new step is wrapped in step.run + outer .catch — a bad evaluator cannot degrade an entry. Verified by typecheck.
+
+---
+
 ## [2026-05-30] — Android Closed Testing build configs + web OAuth allowlist
 
 **Requested by:** Jimmy
