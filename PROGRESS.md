@@ -41,6 +41,61 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-06-01] — P0: Pro-bypass for web-Stripe paid users in mobile onboarding + paywall
+
+**Requested by:** Jimmy (escalated by Polly Leung)
+**Committed by:** Claude Code
+**Commit hash:** 95e8748
+
+### In plain English (for Keenan)
+
+A real customer (Polly Leung) signed up via the getacuity.io web funnel, paid via Stripe for Acuity Pro, then downloaded the iOS app. The app routed her through the pain-first onboarding funnel and dropped her on the mobile paywall asking her to subscribe AGAIN via Stripe checkout. She read it as "non-transparent pricing / fake urgency builder" and reported it as a bug. She was already a paying Pro user the entire time.
+
+The data model was fine — the Stripe webhook correctly marked her as Pro, /api/user/me correctly returned that to the iOS app, and the mobile app correctly knew it. The bug was that the mobile onboarding funnel never looked at the field at three specific gates, so it treated her like a brand-new lead and shoved her into the conversion flow.
+
+Three layered fixes shipped together:
+1. After sign-in, if the user is already Pro, skip the paywall and route to home.
+2. If a Pro user lands on the paywall screen anyway, immediately route them away (defense in depth).
+3. If a Pro user hits the AuthGate without a "mobile onboarding completed" marker (because web signup never wrote that), short-circuit to home instead of forcing them through 11 screens of mobile onboarding.
+
+Apple Guideline 3.1.3(b) (Multiplatform Services) explicitly permits this — a user who pays on one platform of yours doesn't have to pay again on another.
+
+### Technical changes (for Jimmy)
+
+**`apps/mobile/app/onboarding-new/account.tsx` (Fix A):**
+- `claimAndRoute()` signature gained a third arg: `subscriptionStatus: string | undefined`.
+- Inside, after `refresh()`, if `subscriptionStatus === "PRO"` → fire-and-forget POST to `/api/onboarding/complete`, then `router.replace("/(tabs)")` and return BEFORE the existing `router.replace("/onboarding-new/paywall")`.
+- Three call sites updated: `onApplePress`, `onGooglePress`, `onEmailContinue` — each now passes `result.user.subscriptionStatus` (Apple/Google) or `loginResult.user.subscriptionStatus` (email).
+- Critical detail in the comment: we trust the sign-in API response's subscriptionStatus, NOT the post-refresh useAuth() user value, because `refresh()` updates the context via setState but the `user` from useAuth() in the claimAndRoute closure is the pre-refresh value (React state propagation lag).
+
+**`apps/mobile/app/onboarding-new/paywall.tsx` (Fix B):**
+- New `useEffect` at the top of the component, deps `[user?.subscriptionStatus, router]`. If Pro, fire-and-forget POST `/api/onboarding/complete` and `router.replace("/(tabs)")`.
+- The existing analytics + onboarding-complete useEffect now short-circuits on `user?.subscriptionStatus === "PRO"` so `funnel_paywall_viewed` doesn't fire (keeps conversion-rate denominator honest) and the duplicate onboarding-complete POST doesn't double-fire.
+
+**`apps/mobile/app/_layout.tsx` (Fix C):**
+- New `import { api } from "@/lib/api"`.
+- AuthGate's `!user.onboardingCompleted` redirect branch (the one that routes to `/onboarding?step=N`) now checks `user.subscriptionStatus === "PRO"` first. If Pro: fire-and-forget POST `/api/onboarding/complete`, `router.replace("/(tabs)")`, return.
+- Catches the flag-OFF path (new-onboarding feature flag disabled → user signs in via `/(auth)/sign-in` → AuthGate sees `onboardingCompleted=false` → without this fix would route through 11 screens of mobile onboarding as a paying customer).
+
+All three fixes use the same fire-and-forget POST to `/api/onboarding/complete`. The `/api/user/me` smart-skip fix (2026-05-29) covers any of those POSTs that happen to drop — this just makes the truth land sooner.
+
+### Manual steps needed
+
+- [ ] Trigger EAS build 56 from main. Already includes the Skia confetti + post-entry notify slice (57fd95a) + this P0 fix (95e8748) (Jimmy).
+- [ ] On TestFlight build 56: have Polly (or a test account with `User.subscriptionStatus = "PRO"` set via a manual Stripe sub) sign in. Confirm she lands on `/(tabs)`, NOT on `/onboarding-new/paywall` or `/onboarding?step=1` (Jimmy).
+- [ ] Validate all three sign-in methods (Apple, Google, email/password) route Pro users to home (Jimmy).
+- [ ] Send Polly a personal follow-up acknowledging the fix is in the next TestFlight build — convert the bug report into a goodwill moment (Keenan).
+
+### Notes
+
+- The data model is unchanged. `User.subscriptionStatus` is and was the canonical Pro flag. Stripe webhook + /api/iap/verify-receipt both write it; /api/user/me returns it; six existing mobile call sites already branch on it correctly. The bug was three missing checks in the pain-first funnel, nothing more.
+- Closure-staleness footgun in account.tsx: I chose to read subscriptionStatus from the sign-in API response (`result.user.subscriptionStatus`) rather than the post-`refresh()` useAuth() user. The reason is in the code comment but worth flagging here too — `refresh()` updates the context via `setUser()` which queues a re-render; the `user` reference inside the `claimAndRoute` closure was captured at definition time and won't see the post-refresh value. The sign-in-response field IS the source of truth at that moment.
+- ⚠️ HIGH RISK: this slice touches the live mobile launch path. Three files; each fix is bounded and reviewed in the diff. Apple 3.1.3(b) permits the bypass.
+- **Follow-up slice (recommended, not for build 56):** in `apps/web/src/app/api/stripe/webhook/route.ts` `checkout.session.completed` handler, also `upsert` a `UserOnboarding` row with `completedAt: new Date()` for the user being marked Pro. That makes the data model truthful at the schema layer for the long tail of web-paid mobile installs and removes the need for any of the three fire-and-forget `/api/onboarding/complete` POSTs in this slice. Fix C becomes a defense-in-depth net rather than a load-bearing patch. Should be a small backend slice — 10-20 lines, no schema change.
+- The /api/user/me smart-skip we fixed on 2026-05-29 is the safety net underneath all three fixes. If any of the fire-and-forget POSTs drop, the next /api/user/me hit reads `user.onboarding == null` for accounts >30 days old and auto-completes onboarding. For accounts under 30 days, AuthGate's Fix C catches them on the next tick. So even with a transient network failure, the user converges to the correct state within a few seconds.
+
+---
+
 ## [2026-05-31] — v1.3 Achievements system end-to-end (26 badges, celebration UX, mobile + web)
 
 **Requested by:** Jimmy
