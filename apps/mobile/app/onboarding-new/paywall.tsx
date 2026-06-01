@@ -165,8 +165,31 @@ export default function PaywallScreen() {
 
   const cardProgresses = [card1, card2, card3, card4];
 
+  // Pro-bypass (2026-06-01 P0 — Polly): defense-in-depth for the
+  // Fix-A guard upstream in account.tsx. If a returning Pro user
+  // ends up on this screen anyway (deep link, direct nav, future
+  // path we haven't accounted for), don't render the subscribe UI
+  // — mark onboarding complete fire-and-forget and bounce to /(tabs).
+  // The deps array on subscriptionStatus means this re-fires if the
+  // refresh() inside the second useEffect below flips us to PRO
+  // mid-mount.
+  useEffect(() => {
+    if (user?.subscriptionStatus !== "PRO") return;
+    void api
+      .post<{ ok: boolean }>("/api/onboarding/complete", { skipped: false })
+      .catch(() => {
+        /* AuthGate's Fix-C bypass catches this on the next tick */
+      });
+    router.replace("/(tabs)" as never);
+  }, [user?.subscriptionStatus, router]);
+
   // Fire paywall_viewed + mark onboarding complete + probe reduce-motion.
   useEffect(() => {
+    // Skip the analytics + onboarding-complete dance for Pro users —
+    // the bypass effect above already routed them away. Guarding
+    // here too keeps funnel_paywall_viewed honest (we don't want a
+    // Pro re-sign-in to skew the conversion-rate denominator).
+    if (user?.subscriptionStatus === "PRO") return;
     let cancelled = false;
     void trackOnboardingEvent("funnel_paywall_viewed", {
       metadata: {

@@ -125,7 +125,11 @@ export default function AccountScreen() {
   // can't fire two signup attempts on top of each other.
   const inflightRef = useRef(false);
 
-  const claimAndRoute = async (method: SignupMethod, isFirst100: boolean) => {
+  const claimAndRoute = async (
+    method: SignupMethod,
+    isFirst100: boolean,
+    subscriptionStatus: string | undefined
+  ) => {
     // Claim TrySession → real Entry. Bearer auth is now set by the
     // OAuth lib helpers (setToken). The claim endpoint accepts the
     // token in body and uses getAnySessionUserId for the user
@@ -166,6 +170,35 @@ export default function AccountScreen() {
     // authenticated session.
     await refresh();
 
+    // Pro-bypass (2026-06-01 P0 — Polly): a returning user signing
+    // in with an existing Stripe-paid web account should NOT see the
+    // mobile paywall. Apple 3.1.3(b) Multiplatform Services rule
+    // permits this — the user already has an active subscription on
+    // our platform; the iOS app is just another client. Skip the
+    // funnel-paywall, mark onboarding complete server-side (so
+    // AuthGate doesn't bounce them back into /onboarding the next
+    // tick), and drop them on /(tabs).
+    //
+    // We trust the subscriptionStatus from the sign-in API response
+    // (callers pass result.user.subscriptionStatus) rather than the
+    // post-refresh useAuth() value — the refresh() above updates the
+    // context via setState, but `user` from useAuth() in this
+    // closure is the pre-refresh value (React state propagation).
+    // The signup-response field is the source of truth at this
+    // moment and avoids the closure-staleness footgun.
+    if (subscriptionStatus === "PRO") {
+      try {
+        await api.post<{ ok: boolean }>("/api/onboarding/complete", {
+          skipped: false,
+        });
+      } catch {
+        // Non-fatal — AuthGate's own Pro-bypass (Fix C) catches the
+        // user on the next AuthGate tick even if this POST drops.
+      }
+      router.replace("/(tabs)" as never);
+      return;
+    }
+
     router.replace("/onboarding-new/paywall" as never);
   };
 
@@ -197,7 +230,7 @@ export default function AccountScreen() {
         return;
       }
       const isFirst100 = isFirst100From(result.user.trialEndsAt);
-      await claimAndRoute("apple", isFirst100);
+      await claimAndRoute("apple", isFirst100, result.user.subscriptionStatus);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "unknown";
       setError("Couldn't sign in with Apple. Try again.");
@@ -232,7 +265,7 @@ export default function AccountScreen() {
         return;
       }
       const isFirst100 = isFirst100From(result.user.trialEndsAt);
-      await claimAndRoute("google", isFirst100);
+      await claimAndRoute("google", isFirst100, result.user.subscriptionStatus);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "unknown";
       setError("Couldn't sign in with Google. Try again.");
@@ -281,7 +314,11 @@ export default function AccountScreen() {
         return;
       }
       const isFirst100 = isFirst100From(loginResult.user.trialEndsAt);
-      await claimAndRoute("email", isFirst100);
+      await claimAndRoute(
+        "email",
+        isFirst100,
+        loginResult.user.subscriptionStatus
+      );
     } catch (err) {
       const msg = err instanceof Error ? err.message : "unknown";
       setError("Couldn't create your account. Try again.");

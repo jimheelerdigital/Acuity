@@ -24,6 +24,7 @@ import {
 } from "@expo-google-fonts/geist-mono";
 
 import { AuthProvider, useAuth } from "@/contexts/auth-context";
+import { api } from "@/lib/api";
 import { LockProvider } from "@/contexts/lock-context";
 import { ThemeProvider, useTheme } from "@/contexts/theme-context";
 import { LockScreenOverlay } from "@/components/lock-screen-overlay";
@@ -173,6 +174,31 @@ function AuthGate() {
       !inOnboardingNew &&
       !inAuthCallback
     ) {
+      // Pro-bypass (2026-06-01 P0 — Polly): a user who's already
+      // paid (typically via the web Stripe flow) should NEVER be
+      // routed through mobile onboarding on iOS. Apple Guideline
+      // 3.1.3(b) Multiplatform Services permits honoring their
+      // existing entitlement; we land them on /(tabs) and write
+      // onboardingCompleted=true fire-and-forget so the next
+      // /api/user/me reflects the same state. Onboarding artifacts
+      // (mood baseline, life areas) get captured opportunistically
+      // post-signup — they don't gate access for a paying customer.
+      //
+      // This is layered behind Fix A (account.tsx Pro-bypass) and
+      // Fix B (paywall.tsx mount guard). Hit when:
+      //   - User signs in via /(auth)/sign-in (the legacy path)
+      //     with new-onboarding flag OFF
+      //   - User cold-launches with stored auth from a prior
+      //     install that pre-dated the Stripe webhook firing
+      if (user.subscriptionStatus === "PRO") {
+        void api
+          .post("/api/onboarding/complete", { skipped: false })
+          .catch(() => {
+            /* next AuthGate tick re-evaluates */
+          });
+        router.replace("/(tabs)");
+        return;
+      }
       // Fresh signup OR a user who existed before the onboarding
       // schema landed (no row → completedAt is falsy). Drop them at
       // the step they last reached so re-launches resume cleanly.
