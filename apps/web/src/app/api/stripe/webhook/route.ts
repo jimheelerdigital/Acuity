@@ -3,8 +3,15 @@ import { NextRequest, NextResponse } from "next/server";
 import type Stripe from "stripe";
 
 import { stripe } from "@/lib/stripe";
+import { safeLog } from "@/lib/safe-log";
 
 export const dynamic = "force-dynamic";
+// Explicit Node.js runtime. Stripe signature verification requires the
+// raw request body (Buffer / bytes-faithful string). The Edge runtime
+// can mangle that via its body-parsing layer; pinning Node here means
+// a future Next.js / Vercel default flip can't silently break us.
+// 2026-06-01: webhook silent-fail diagnosis hardening.
+export const runtime = "nodejs";
 
 /**
  * Stripe webhook dispatcher.
@@ -13,12 +20,35 @@ export const dynamic = "force-dynamic";
  * model — Stripe retries at-least-once), and routes to per-event
  * handlers. Each handler is idempotent on its own so a surprise
  * re-delivery after the StripeEvent write succeeded is still safe.
+ *
+ * 2026-06-01 hardening (38-day silence diagnosis):
+ *   - Top-of-handler log fires BEFORE signature verification so
+ *     Vercel logs prove Stripe is even reaching this code path.
+ *   - safeLog (Sentry-routing) replaces silent `break`s on
+ *     unhandled-event / missing-metadata paths so a future
+ *     misconfiguration surfaces in observability instead of
+ *     vanishing into a 200 OK.
+ *   - The User update inside each handler is wrapped in try/catch
+ *     with safeLog.error so a Prisma failure surfaces explicitly
+ *     instead of bubbling to Next.js's 500 + Stripe's retry +
+ *     eventual give-up.
  */
 export async function POST(req: NextRequest) {
+  // First line: prove the function is invoked. Independent of body,
+  // signature, env. If Vercel logs don't show this for an event
+  // Stripe Dashboard says was delivered, the route isn't reachable
+  // (deployment / function-not-found / middleware redirect).
+  safeLog.info("stripe-webhook.received", {
+    ts: new Date().toISOString(),
+  });
+
   const body = await req.text();
   const sig = headers().get("stripe-signature");
 
   if (!sig) {
+    safeLog.warn("stripe-webhook.missing-signature-header", {
+      bodyLength: body.length,
+    });
     return NextResponse.json({ error: "Missing signature" }, { status: 400 });
   }
 
@@ -36,13 +66,23 @@ export async function POST(req: NextRequest) {
     // matching the expected signature for payload" vs "timestamp
     // outside the tolerance zone" tells them which guard to bypass
     // next).
-    const message = err instanceof Error ? err.message : "Unknown error";
-    console.error("[stripe-webhook] signature verification failed:", message);
+    safeLog.error("stripe-webhook.signature-verification-failed", err, {
+      hasSecret: Boolean(process.env.STRIPE_WEBHOOK_SECRET),
+      secretLength: process.env.STRIPE_WEBHOOK_SECRET?.length ?? 0,
+      bodyLength: body.length,
+      sigPrefix: sig.slice(0, 16),
+    });
     return NextResponse.json(
       { error: "Invalid webhook signature" },
       { status: 400 }
     );
   }
+
+  safeLog.info("stripe-webhook.event", {
+    id: event.id,
+    type: event.type,
+    livemode: event.livemode,
+  });
 
   const { prisma } = await import("@/lib/prisma");
 
@@ -57,31 +97,68 @@ export async function POST(req: NextRequest) {
     });
   } catch (err) {
     // Unique violation (P2002) on StripeEvent.id means we've seen this.
-    // Any other error — log but don't retry the whole event.
+    // Any other error — log + fall through (a StripeEvent write failure
+    // shouldn't drop the actual payload handling).
     const code = (err as { code?: string } | null)?.code;
     if (code === "P2002") {
+      safeLog.info("stripe-webhook.duplicate", { id: event.id });
       return NextResponse.json({ received: true, duplicate: true });
     }
-    console.error("[stripe-webhook] StripeEvent write failed:", err);
-    // Fall through to handling anyway — idempotency guard failure
-    // shouldn't drop the event payload.
+    safeLog.error("stripe-webhook.stripe-event-write-failed", err, {
+      id: event.id,
+      type: event.type,
+    });
+    // Fall through to handling anyway.
   }
 
   switch (event.type) {
     case "checkout.session.completed": {
       const session = event.data.object as Stripe.Checkout.Session;
       const userId = session.metadata?.userId;
-      if (!userId) break;
+      if (!userId) {
+        // Was a silent `break` before 2026-06-01. Now surfaces so a
+        // future checkout-creation path that forgets metadata.userId
+        // is visible in Sentry the first time it hits production.
+        safeLog.warn("stripe-webhook.checkout-session-missing-user-id", {
+          sessionId: session.id,
+          customerEmail: session.customer_email ?? null,
+          customerId:
+            typeof session.customer === "string" ? session.customer : null,
+          hasMetadata: Boolean(session.metadata),
+        });
+        break;
+      }
 
-      const user = await prisma.user.update({
-        where: { id: userId },
-        data: {
-          stripeCustomerId: session.customer as string,
-          stripeSubscriptionId: session.subscription as string,
-          subscriptionStatus: "PRO",
-        },
-        select: { createdAt: true, trialEndsAt: true, email: true },
-      });
+      let user: {
+        createdAt: Date;
+        trialEndsAt: Date | null;
+        email: string | null;
+      } | null = null;
+      try {
+        user = await prisma.user.update({
+          where: { id: userId },
+          data: {
+            stripeCustomerId: session.customer as string,
+            stripeSubscriptionId: session.subscription as string,
+            subscriptionStatus: "PRO",
+            subscriptionSource: "stripe",
+          },
+          select: { createdAt: true, trialEndsAt: true, email: true },
+        });
+      } catch (err) {
+        // Was an uncaught throw before 2026-06-01 — propagated to a
+        // 500 response, Stripe retried, eventually gave up. Now
+        // logged explicitly so the failure mode is visible. Stripe
+        // still 2xx-acks so retries stop (the eventual give-up is
+        // worse than a logged failure — it abandons the event).
+        safeLog.error("stripe-webhook.checkout-session-user-update-failed", err, {
+          sessionId: session.id,
+          userId,
+          customerId:
+            typeof session.customer === "string" ? session.customer : null,
+        });
+        break;
+      }
 
       // Analytics event (IMPLEMENTATION_PLAN_PAYWALL §8.3). Days-since-
       // signup + days-into-trial are the retention signals we need to
@@ -105,7 +182,9 @@ export async function POST(req: NextRequest) {
           source: session.metadata?.src ?? "direct",
         });
       } catch (err) {
-        console.warn("[stripe-webhook] subscription_started track failed:", err);
+        safeLog.warn("stripe-webhook.subscription-started-track-failed", {
+          err: err instanceof Error ? err.message : String(err),
+        });
       }
 
       // Notify founders of new payment
@@ -119,7 +198,9 @@ export async function POST(req: NextRequest) {
           timestamp: new Date(),
         });
       } catch (err) {
-        console.warn("[stripe-webhook] payment notification failed:", err);
+        safeLog.warn("stripe-webhook.payment-notification-failed", {
+          err: err instanceof Error ? err.message : String(err),
+        });
       }
 
       // Fire referral conversion if this user was referred. Stub
@@ -128,7 +209,9 @@ export async function POST(req: NextRequest) {
         const { recordReferralConversion } = await import("@/lib/referrals");
         await recordReferralConversion(userId);
       } catch (err) {
-        console.warn("[stripe-webhook] referral conversion failed:", err);
+        safeLog.warn("stripe-webhook.referral-conversion-failed", {
+          err: err instanceof Error ? err.message : String(err),
+        });
       }
       break;
     }
@@ -136,7 +219,12 @@ export async function POST(req: NextRequest) {
     case "invoice.payment_succeeded": {
       const invoice = event.data.object as Stripe.Invoice;
       const customerId = invoice.customer as string;
-      if (!customerId) break;
+      if (!customerId) {
+        safeLog.warn("stripe-webhook.invoice-missing-customer", {
+          invoiceId: invoice.id,
+        });
+        break;
+      }
 
       const sub = invoice.subscription as string | null;
 
@@ -147,30 +235,49 @@ export async function POST(req: NextRequest) {
       // The WHERE filter makes the no-op atomic — no read/write race.
       // PAST_DUE → PRO is the intended dunning recovery path, so
       // it's allowed (FREE is the only excluded state).
-      await prisma.user.updateMany({
-        where: {
-          stripeCustomerId: customerId,
-          subscriptionStatus: { not: "FREE" },
-        },
-        data: {
-          subscriptionStatus: "PRO",
-          ...(sub ? { stripeSubscriptionId: sub } : {}),
-          ...(invoice.lines.data[0]?.period?.end
-            ? {
-                stripeCurrentPeriodEnd: new Date(
-                  invoice.lines.data[0].period.end * 1000
-                ),
-              }
-            : {}),
-        },
-      });
+      try {
+        const result = await prisma.user.updateMany({
+          where: {
+            stripeCustomerId: customerId,
+            subscriptionStatus: { not: "FREE" },
+          },
+          data: {
+            subscriptionStatus: "PRO",
+            subscriptionSource: "stripe",
+            ...(sub ? { stripeSubscriptionId: sub } : {}),
+            ...(invoice.lines.data[0]?.period?.end
+              ? {
+                  stripeCurrentPeriodEnd: new Date(
+                    invoice.lines.data[0].period.end * 1000
+                  ),
+                }
+              : {}),
+          },
+        });
+        if (result.count === 0) {
+          safeLog.warn("stripe-webhook.invoice-success-no-user-found", {
+            customerId,
+            invoiceId: invoice.id,
+          });
+        }
+      } catch (err) {
+        safeLog.error("stripe-webhook.invoice-success-update-failed", err, {
+          customerId,
+          invoiceId: invoice.id,
+        });
+      }
       break;
     }
 
     case "invoice.payment_failed": {
       const invoice = event.data.object as Stripe.Invoice;
       const customerId = invoice.customer as string;
-      if (!customerId) break;
+      if (!customerId) {
+        safeLog.warn("stripe-webhook.invoice-failed-missing-customer", {
+          invoiceId: invoice.id,
+        });
+        break;
+      }
 
       // Downgrade to PAST_DUE. The UI surfaces a soft banner on the
       // dashboard keyed on this status. Stripe's own retry schedule
@@ -187,32 +294,41 @@ export async function POST(req: NextRequest) {
       // still 200-ack the webhook so Stripe stops retrying.
       // The findMany also adds the same guard so we don't email a
       // canceled user about a card that's no longer on file.
-      const users = await prisma.user.findMany({
-        where: {
-          stripeCustomerId: customerId,
-          subscriptionStatus: { not: "FREE" },
-        },
-        select: { id: true, email: true, name: true },
-      });
-      await prisma.user.updateMany({
-        where: {
-          stripeCustomerId: customerId,
-          subscriptionStatus: { not: "FREE" },
-        },
-        data: { subscriptionStatus: "PAST_DUE" },
-      });
-
-      // Best-effort email nudge so the user knows to update their
-      // payment method before Stripe's dunning period ends. Only
-      // sent to users we actually downgraded — canceled users
-      // were filtered out by the findMany above.
       try {
-        const { sendPaymentFailedEmail } = await import("@/emails/payment-failed");
-        for (const u of users) {
-          if (u.email) await sendPaymentFailedEmail({ to: u.email, name: u.name });
+        const users = await prisma.user.findMany({
+          where: {
+            stripeCustomerId: customerId,
+            subscriptionStatus: { not: "FREE" },
+          },
+          select: { id: true, email: true, name: true },
+        });
+        await prisma.user.updateMany({
+          where: {
+            stripeCustomerId: customerId,
+            subscriptionStatus: { not: "FREE" },
+          },
+          data: { subscriptionStatus: "PAST_DUE" },
+        });
+
+        // Best-effort email nudge so the user knows to update their
+        // payment method before Stripe's dunning period ends. Only
+        // sent to users we actually downgraded — canceled users
+        // were filtered out by the findMany above.
+        try {
+          const { sendPaymentFailedEmail } = await import("@/emails/payment-failed");
+          for (const u of users) {
+            if (u.email) await sendPaymentFailedEmail({ to: u.email, name: u.name });
+          }
+        } catch (err) {
+          safeLog.warn("stripe-webhook.payment-failed-email-failed", {
+            err: err instanceof Error ? err.message : String(err),
+          });
         }
       } catch (err) {
-        console.warn("[stripe-webhook] payment-failed email failed:", err);
+        safeLog.error("stripe-webhook.invoice-failed-update-failed", err, {
+          customerId,
+          invoiceId: invoice.id,
+        });
       }
       break;
     }
@@ -224,7 +340,12 @@ export async function POST(req: NextRequest) {
       // what it tells us.
       const sub = event.data.object as Stripe.Subscription;
       const customerId = sub.customer as string;
-      if (!customerId) break;
+      if (!customerId) {
+        safeLog.warn("stripe-webhook.sub-updated-missing-customer", {
+          subscriptionId: sub.id,
+        });
+        break;
+      }
 
       const status = sub.status;
       // Map Stripe's granular statuses onto our 4-value vocab.
@@ -248,19 +369,41 @@ export async function POST(req: NextRequest) {
           nextStatus === "FREE"
             ? { stripeCustomerId: customerId }
             : { stripeCustomerId: customerId, subscriptionStatus: { not: "FREE" } };
-        await prisma.user.updateMany({
-          where,
-          data: {
-            subscriptionStatus: nextStatus,
-            stripeSubscriptionId: sub.id,
-            ...(sub.current_period_end
-              ? {
-                  stripeCurrentPeriodEnd: new Date(
-                    sub.current_period_end * 1000
-                  ),
-                }
-              : {}),
-          },
+        try {
+          const result = await prisma.user.updateMany({
+            where,
+            data: {
+              subscriptionStatus: nextStatus,
+              subscriptionSource: "stripe",
+              stripeSubscriptionId: sub.id,
+              ...(sub.current_period_end
+                ? {
+                    stripeCurrentPeriodEnd: new Date(
+                      sub.current_period_end * 1000
+                    ),
+                  }
+                : {}),
+            },
+          });
+          if (result.count === 0) {
+            safeLog.warn("stripe-webhook.sub-updated-no-user-found", {
+              customerId,
+              subscriptionId: sub.id,
+              stripeStatus: status,
+              mappedStatus: nextStatus,
+            });
+          }
+        } catch (err) {
+          safeLog.error("stripe-webhook.sub-updated-update-failed", err, {
+            customerId,
+            subscriptionId: sub.id,
+          });
+        }
+      } else {
+        safeLog.info("stripe-webhook.sub-updated-unmapped-status", {
+          customerId,
+          subscriptionId: sub.id,
+          stripeStatus: status,
         });
       }
       break;
@@ -268,18 +411,26 @@ export async function POST(req: NextRequest) {
 
     case "customer.subscription.deleted": {
       const sub = event.data.object as Stripe.Subscription;
-      await prisma.user.updateMany({
-        where: { stripeCustomerId: sub.customer as string },
-        data: {
-          subscriptionStatus: "FREE",
-          stripeSubscriptionId: null,
-          stripeCurrentPeriodEnd: null,
-        },
-      });
+      try {
+        await prisma.user.updateMany({
+          where: { stripeCustomerId: sub.customer as string },
+          data: {
+            subscriptionStatus: "FREE",
+            stripeSubscriptionId: null,
+            stripeCurrentPeriodEnd: null,
+          },
+        });
+      } catch (err) {
+        safeLog.error("stripe-webhook.sub-deleted-update-failed", err, {
+          customerId: sub.customer,
+          subscriptionId: sub.id,
+        });
+      }
       break;
     }
 
     default:
+      safeLog.info("stripe-webhook.unhandled-event-type", { type: event.type });
       break;
   }
 
