@@ -41,6 +41,35 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-06-02] — Fix Vercel build: pin @sentry/nextjs to 10.50.0
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 577f2b7
+
+### In plain English (for Keenan)
+
+Vercel deploys have been failing since May 31st. The error ("Export encountered errors on /_error: /404 and /500") looked like a code issue, but was actually caused by a Sentry dependency auto-upgrading from version 10.50.0 to 10.55.0 when `@shopify/react-native-skia` was added to the mobile app. The newer Sentry version has a bug that breaks Next.js's static generation of error pages. Pinning back to 10.50.0 fixes the build.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/package.json`: Changed `@sentry/nextjs` from `^10.50.0` (caret = auto-upgrades) to `10.50.0` (exact pin)
+- `package-lock.json`: Regenerated to lock `@sentry/nextjs` at 10.50.0 instead of 10.55.0
+- `apps/web/src/app/api/auth/signup/route.ts`: Removed unnecessary `import { headers } from "next/headers"` — uses `req.headers` instead (cleaner pattern for route handlers)
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- The root cause was commit `57fd95a` (May 31st, Skia confetti). Adding `@shopify/react-native-skia` to the mobile app triggered a full `npm install` that reshuffled `package-lock.json` (21k lines changed). This pulled `@sentry/nextjs` from 10.50.0 to 10.55.0 via the caret range
+- Every deploy since May 31st has failed — the live site has been running on the last successful deploy (`99c04cd` from May 31st)
+- Sentry 10.55.0 breaks the static export of the Pages Router `_error.js` compatibility page that Next.js auto-generates. This is a known issue pattern with Sentry's `withSentryConfig` wrapper
+- The pin should be revisited when Sentry releases a fix (check their changelog for `_error` page static export issues)
+
+---
+
 ## [2026-06-02] — Fix AdLab silent-fail: validate Meta API responses before marking campaigns live
 
 **Requested by:** Keenan
