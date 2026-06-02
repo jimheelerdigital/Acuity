@@ -41,6 +41,75 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-06-02] — Fix AdLab silent-fail: validate Meta API responses before marking campaigns live
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** a2a4a05
+
+### In plain English (for Keenan)
+
+AdLab was telling you "Campaign is live" even when Meta never actually created the campaign. The Meta API calls were failing silently — AdLab updated its own internal state to "live" without confirming Meta accepted the request. Now every Meta API call (create campaign, create ad set, create ad, activate) is verified before AdLab updates its status. If Meta rejects something, you see the actual error message instead of a false green light. There's also a new "Verify on Meta" button on any live campaign that checks Meta's servers to confirm everything actually exists.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/lib/adlab/meta.ts`: All create functions (createCampaign, createAdSet, createAdCreative, createAd) now validate the response contains a valid ID before returning — throws if Meta returns undefined/null
+- `apps/web/src/lib/adlab/meta.ts`: New `verifyObjectOnMeta()` function — reads a campaign/ad set/ad from Meta's API to confirm it exists and returns its effective_status
+- `apps/web/src/app/api/admin/adlab/ads/activate/route.ts`: Complete rewrite — verifies campaign exists before activation, verifies campaign status after activation, individually activates and verifies each ad, marks failed ads as "killed" instead of "live"
+- `apps/web/src/app/api/admin/adlab/ads/verify/route.ts`: New endpoint — checks all Meta objects for an experiment, updates local status for any that don't exist on Meta
+- `apps/web/src/app/admin/adlab/experiments/[id]/page.tsx`: Added "Verify on Meta" button on live campaigns, shows per-object verification results, activation errors now display Meta's error detail
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- The Prisma enum `AdLabAdStatus` doesn't have an "error" value, so ads that fail verification are marked as "killed" with a decisionReason explaining why
+- Pre-existing type errors in `reactivate/route.ts` and the experiment detail page were not introduced by this change
+
+---
+
+## [2026-06-02] — Meta Conversions API (CAPI) for server-side conversion tracking
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** a2a4a05
+
+### In plain English (for Keenan)
+
+Meta now receives conversion events from two sources: the browser pixel (which can be blocked by ad blockers and iOS privacy features) AND directly from our servers. This means Meta gets more reliable data about who signed up and who paid, which improves ad targeting and attribution accuracy. The same event fires from both places, and Meta automatically deduplicates them using a matching event_id.
+
+Three events are now sent server-side:
+1. **CompleteRegistration** — when someone signs up (fires from the signup API)
+2. **Purchase** — when someone pays (fires from the Stripe webhook)
+3. **PageView on /start** — when someone enters the funnel (fires from a new lightweight API)
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/lib/meta-capi.ts`: New library — SHA256 hashing for PII, event_id generation, `sendConversionEvent()` that POSTs to Meta's Conversions API via `graph.facebook.com/v25.0/{pixelId}/events`
+- `apps/web/src/app/api/auth/signup/route.ts`: Fires CAPI CompleteRegistration on new user creation, returns `capiEventId` in response for browser pixel dedup
+- `apps/web/src/app/api/stripe/webhook/route.ts`: Fires CAPI Purchase on `checkout.session.completed` with value based on plan interval
+- `apps/web/src/app/api/capi/pageview/route.ts`: New lightweight endpoint — fires CAPI PageView, returns `eventId` for dedup
+- `apps/web/src/app/start/client.tsx`: Calls `/api/capi/pageview` on mount with fbclid from URL params
+- `apps/web/src/components/meta-pixel-events.tsx`: `fireFbq()` now accepts optional `eventId` parameter, passes it as `{ eventID }` options to fbq for dedup
+- `apps/web/src/components/onboarding-funnel.tsx`: Email signup path passes `capiEventId` from signup response to `fireFbq("CompleteRegistration")`
+
+### Manual steps needed
+
+- [ ] Verify META_ACCESS_TOKEN and META_PIXEL_ID env vars are set in Vercel (Keenan — should already be there from AdLab)
+- [ ] After deploy, test by signing up a test user and checking Meta Events Manager for deduplicated server+browser events (Keenan)
+
+### Notes
+
+- All CAPI calls are fire-and-forget — they never block the API response. Failures log to console and Sentry but don't affect the user experience
+- User data (email, name) is SHA256-hashed before sending to Meta per their API requirements
+- The Purchase CAPI event fires from the Stripe webhook which doesn't have client IP/user agent — Meta will match on hashed email instead. This is the standard approach for webhook-triggered purchases
+- OAuth signups (Google/Apple) redirect to `/start?step=paywall` and fire CompleteRegistration from the browser pixel only — CAPI fires on the email signup path where the server has the user's data in the same request
+- fbclid and _fbp/_fbc cookies are forwarded to CAPI when available for improved attribution matching
+
+---
+
 ## [2026-06-01] — P0: Pro-bypass for web-Stripe paid users in mobile onboarding + paywall
 
 **Requested by:** Jimmy (escalated by Polly Leung)
@@ -3340,7 +3409,7 @@ Visitors can now try a full debrief recording without signing up. A "Try it now 
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** _pending_
+**Commit hash:** a2a4a05
 
 ### In plain English (for Keenan)
 
@@ -3384,7 +3453,7 @@ All three are queued for follow-up. The autonomous parity sequence (slices 1, 2-
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** _pending_
+**Commit hash:** a2a4a05
 
 ### In plain English (for Keenan)
 
@@ -3417,7 +3486,7 @@ The Insights pages — theme map, theme detail, life matrix, ask, state of me, w
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** _pending_
+**Commit hash:** a2a4a05
 
 ### In plain English (for Keenan)
 
@@ -3452,7 +3521,7 @@ The signed-in pages a daily user actually uses — Home, Entries, the entry deta
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** _pending_
+**Commit hash:** a2a4a05
 
 ### In plain English (for Keenan)
 
@@ -3491,7 +3560,7 @@ The web onboarding flow now has the same look as the rest of the app (dark canon
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** _pending_
+**Commit hash:** a2a4a05
 
 ### In plain English (for Keenan)
 
@@ -3524,7 +3593,7 @@ The sign-in and sign-up pages now look like the rest of the app's new visual dir
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** _pending_
+**Commit hash:** a2a4a05
 
 ### In plain English (for Keenan)
 
@@ -3925,7 +3994,7 @@ None
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** _pending_
+**Commit hash:** a2a4a05
 
 ### In plain English (for Keenan)
 
