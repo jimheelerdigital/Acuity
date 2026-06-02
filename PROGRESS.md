@@ -41,6 +41,34 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-06-02] — Fix Vercel _error page static export failure
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** _pending_
+
+### In plain English (for Keenan)
+
+Vercel builds were failing with "Export encountered errors on /_error: /404 and /500." The build passes locally in every configuration but fails on Vercel because Vercel's environment has database access and Sentry credentials that trigger code paths during static page generation that don't exist locally.
+
+The fix: added an explicit `pages/_error.tsx` file. Next.js auto-generates a Pages Router `_error.js` even in App Router projects, and Sentry's build wrapper makes the auto-generated version fail during static export. By providing our own simple version, the static export has a trivially renderable page and succeeds.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/pages/_error.tsx`: New explicit Pages Router error page. Renders a minimal error UI (status code + "Go home" link). Prevents the auto-generated `_error.js` from being wrapped by Sentry's `withSentryConfig` in a way that fails during static export.
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- The build passes locally in all configurations (plain, turbo, Sentry-wrapped). The failure is Vercel-specific because Vercel has `SENTRY_ORG`/`SENTRY_PROJECT`/`SENTRY_AUTH_TOKEN` + `DATABASE_URL` set, which triggers code paths during static rendering that don't exist locally
+- The App Router's `not-found.tsx` and `global-error.tsx` still handle the actual error UI for users — this Pages Router `_error.tsx` is only used during the static export build step
+- The Sentry pin to 10.50.0 was necessary but not sufficient — the `_error` page static export issue exists even at 10.50.0 when all Vercel env vars are present
+
+---
+
 ## [2026-06-02] — Restructure /start funnel: account-first flow + fix admin "Paid" bug
 
 **Requested by:** Keenan
