@@ -41,6 +41,45 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-06-02] — Restructure /start funnel: account-first flow + fix admin "Paid" bug
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** _pending_
+
+### In plain English (for Keenan)
+
+The /start funnel no longer requires payment before account creation. The flow is now: quiz screens (unchanged) -> create free account -> optional "Lock In Your Savings" screen -> app download. Users who want to pay can lock in the founding rate immediately. Users who don't are welcome to continue with their 14-day free trial — no guilt, no friction. Both paths land on the download screen.
+
+Also fixed a bug where the admin dashboard was marking users as "Paid" when they merely started checkout (before actually paying). Now "Paid" only shows when Stripe confirms successful payment.
+
+The admin user table now shows accurate payment badges: Active (green) for paid users, Trial (yellow) for trial users, Expired (orange) for expired trials, Churned (red) for cancelled subscriptions. A "Trial Ends" column shows when each trial user's trial expires.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/components/onboarding-funnel.tsx`: Replaced PaywallScreen (combined signup+payment) with three new screens — CreateAccountScreen (pure email signup), SavingsScreen (optional paywall with skip), DownloadScreen (adapts based on paid vs trial). Updated Step type, STEP_ORDER, URL parameter handling for `?step=create-account`, `?step=savings`, `?step=download&payment=success`
+- `apps/web/src/lib/funnel-config.ts`: Added `getCreateAccountHeadline()`, `getSavingsCostRecap()`, `SAVINGS_TIMELINE` for branch-specific copy on new screens
+- `apps/web/src/app/api/onboarding/create-checkout/route.ts`: Updated success_url to include `&payment=success`, cancel_url changed from `/start?step=paywall` to `/start?step=savings`, added `client_reference_id`
+- `apps/web/src/app/api/onboarding-events/route.ts`: Added 6 new valid events (funnel_create_account_viewed, funnel_account_created, funnel_savings_viewed, funnel_savings_locked_in, funnel_trial_continued, funnel_download_screen_viewed)
+- `apps/web/src/app/api/admin/metrics/route.ts`: **BUG FIX** — removed `funnel_checkout_started` from the `paid` check (line 1672). Updated FUNNEL_STEPS, WEB_FUNNEL_STEPS, STEP_PROGRESS, STEP_LABELS for new flow. Added legacy fallbacks so historical data still renders.
+- `apps/web/src/app/api/admin/users/route.ts`: Updated `computeOnboardingStatus()` with new v3 statuses. Updated `computePaymentStatus()` to return Trial/Expired/Churned/Past Due/Active based on subscription status + trialEndsAt
+- `apps/web/src/app/admin/tabs/UsersTab.tsx`: Added Trial Ends column, updated PaymentPill with Trial (yellow), Expired (orange), Churned (red) badge colors, added new OnboardingPill statuses
+- `apps/web/src/app/admin/tabs/FunnelAnalyticsTab.tsx`: Added 4 new conversion metric cards (Account Creation Rate, Immediate Pay Rate, Trial Skip Rate, Download Rate)
+
+### Manual steps needed
+
+None — no schema changes required. All existing user data is preserved. The new funnel flow uses the same User model fields that already exist.
+
+### Notes
+
+- The founding member spots counter is hardcoded at 47/100 per Keenan's request — real tracking deferred
+- OAuth (Google/Apple) signup buttons are not on the create-account screen — pure email signup only as specified. OAuth can be added later
+- Legacy URLs (`?step=paywall`) are gracefully redirected to `?step=create-account`
+- The "Stalled" (10min) and "Dropped" (60min) session status thresholds in the funnel analytics are unchanged — they were correct. The bug was only in the "paid" status leaking from checkout_started
+- Existing paid users (10+) are unaffected — their subscriptionStatus remains PRO and they correctly show "Active" payment badge
+
+---
+
 ## [2026-06-02] — Fix Vercel build: pin @sentry/nextjs to 10.50.0
 
 **Requested by:** Keenan

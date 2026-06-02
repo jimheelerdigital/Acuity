@@ -99,7 +99,7 @@ export async function GET(req: NextRequest) {
         u.subscriptionStatus,
         u.stripeSubscriptionId
       ),
-      paymentStatus: computePaymentStatus(u.subscriptionStatus, u.stripeCustomerId, u.stripeSubscriptionId),
+      paymentStatus: computePaymentStatus(u.subscriptionStatus, u.stripeCustomerId, u.stripeSubscriptionId, u.trialEndsAt),
     })),
     nextCursor: hasMore ? page[page.length - 1].id : null,
     ...(totalCount !== undefined ? { totalCount } : {}),
@@ -122,9 +122,14 @@ function computeOnboardingStatus(
   // Payment status — check actual Stripe state, not just events
   if (subscriptionStatus === "PRO" || subscriptionStatus === "TRIALING") return "Paid";
   if (stripeSubscriptionId && subscriptionStatus !== "PRO" && subscriptionStatus !== "TRIALING") return "Payment failed";
+  // v3 account-first flow statuses
+  if (has("funnel_savings_locked_in") || has("funnel_payment_completed")) return "Paid";
+  if (has("funnel_trial_continued")) return "Trial (skipped payment)";
+  if (has("funnel_account_created")) return "Account created";
+  if (has("funnel_create_account_viewed")) return "Reached signup";
+  // v2 legacy compat
   if (has("funnel_checkout_started") && !stripeSubscriptionId) return "Checkout abandoned";
   if (has("funnel_signup_completed") && !has("funnel_checkout_started")) return "Signed up (no checkout)";
-
   if (has("funnel_paywall_viewed")) return "Reached paywall";
   if (has("onboarding_extraction_viewed")) return "Saw extraction";
   if (has("onboarding_recording_completed")) return "Recorded";
@@ -142,10 +147,22 @@ function computeOnboardingStatus(
 function computePaymentStatus(
   subscriptionStatus: string | null,
   stripeCustomerId: string | null,
-  stripeSubscriptionId: string | null
+  stripeSubscriptionId: string | null,
+  trialEndsAt: Date | null
 ): string {
-  if (subscriptionStatus === "PRO" || subscriptionStatus === "TRIALING") return "Active";
-  if (stripeCustomerId && !stripeSubscriptionId) return "Failed";
-  if (stripeSubscriptionId) return "Failed"; // has sub but not active
+  if (subscriptionStatus === "PRO") return "Active";
+  if (subscriptionStatus === "PAST_DUE") return "Past Due";
+  // Had a Stripe subscription that was cancelled or expired
+  if (stripeSubscriptionId && subscriptionStatus === "FREE") return "Churned";
+  if (stripeCustomerId && !stripeSubscriptionId && subscriptionStatus === "FREE") return "Churned";
+  // Trial status
+  if (subscriptionStatus === "TRIAL") {
+    if (trialEndsAt && new Date(trialEndsAt) < new Date()) return "Expired";
+    return "Trial";
+  }
+  if (subscriptionStatus === "FREE") {
+    if (trialEndsAt) return "Expired";
+    return "None";
+  }
   return "None";
 }

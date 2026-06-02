@@ -69,13 +69,14 @@ export async function POST(req: NextRequest) {
       payment_method_types: ["card"],
       customer: user?.stripeCustomerId ?? undefined,
       customer_email: user?.stripeCustomerId ? undefined : (user?.email ?? undefined),
+      client_reference_id: session.user.id,
       line_items: [{ price: priceId, quantity: 1 }],
       subscription_data: {
         trial_period_days: trialDays,
         metadata: { userId: session.user.id, interval, source: "onboarding_funnel" },
       },
-      success_url: `${process.env.NEXTAUTH_URL}/start?step=download&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.NEXTAUTH_URL}/start?step=paywall`,
+      success_url: `${process.env.NEXTAUTH_URL}/start?step=download&payment=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.NEXTAUTH_URL}/start?step=savings`,
       metadata: { userId: session.user.id, interval, source: "onboarding_funnel" },
     });
 

@@ -701,6 +701,39 @@ export function getCostOfInaction(branch: Branch, answers: Record<string, string
   }
 }
 
+// ─── Create Account Screen (v3 flow — Screen 16) ──────────────────────────
+
+export function getCreateAccountHeadline(branch: Branch): string {
+  switch (branch) {
+    case "blur": return "Your patterns are already forming. Create your free account to see them.";
+    case "patterns": return "Your cycles are already mapped. Create your free account to see them.";
+    case "rumination": return "Your thought patterns are taking shape. Create your free account to see them.";
+    case "graveyard": return "Your goals are already tracked. Create your free account to see them.";
+    case "mask": return "Your real story is already being written. Create your free account to see it.";
+    case "drift": return "Your direction is already becoming clearer. Create your free account to see it.";
+  }
+}
+
+// ─── Savings Screen (v3 flow — Screen 17) ──────────────────────────────────
+
+export function getSavingsCostRecap(branch: Branch): string {
+  switch (branch) {
+    case "blur": return "You told us the days blur together. Without visibility, they\u2019ll keep blurring.";
+    case "patterns": return "The cycle you described has been running for a while. This is how you see it.";
+    case "rumination": return "The thoughts that kept you up aren\u2019t going away. This is how you catch them.";
+    case "graveyard": return "The goals you mentioned are sitting untouched. This is how they move.";
+    case "mask": return "The gap between what people see and what you carry \u2014 this is how it closes.";
+    case "drift": return "The drifting you described doesn\u2019t stop on its own. This is how you anchor it.";
+  }
+}
+
+export const SAVINGS_TIMELINE = [
+  { week: "Week 1", text: "Tasks extracted, mood tracked daily" },
+  { week: "Week 2", text: "First patterns surface in your weekly report" },
+  { week: "Week 3", text: "Life Matrix maps 6 domains of your life" },
+  { week: "Week 4", text: "Your first monthly memoir arrives" },
+] as const;
+
 // ─── Paywall Comparison (Section 2 — what didn't work vs Acuity) ────────────
 
 export function getComparisonLeft(branch: Branch, answers: Record<string, string | string[]>): { label: string; cost: string; result: string } {

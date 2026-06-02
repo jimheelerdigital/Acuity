@@ -1277,10 +1277,15 @@ const WEB_FUNNEL_STEPS = [
   { event: "funnel_mirror_viewed", label: "Mirror viewed" },
   { event: "funnel_commit_completed", label: "Commit completed" },
   { event: "funnel_snapshot_viewed", label: "Snapshot viewed" },
-  { event: "funnel_paywall_viewed", label: "Paywall viewed" },
-  { event: "funnel_signup_completed", label: "Signup completed" },
-  { event: "funnel_payment_completed", label: "Payment completed" },
-  { event: "funnel_download_viewed", label: "Download viewed" },
+  { event: "funnel_create_account_viewed", label: "Create Account" },
+  { event: "funnel_account_created", label: "Account Created" },
+  { event: "funnel_savings_viewed", label: "Savings Offered" },
+  { event: "funnel_savings_locked_in", label: "Paid" },
+  { event: "funnel_download_viewed", label: "Download" },
+  // Legacy v2 (kept for historical data)
+  { event: "funnel_paywall_viewed", label: "Paywall (legacy)" },
+  { event: "funnel_signup_completed", label: "Signup (legacy)" },
+  { event: "funnel_payment_completed", label: "Payment (legacy)" },
 ];
 
 const DIAGNOSTIC_EVENTS = [
@@ -1297,6 +1302,12 @@ const DROP_OFF_FIXES: Record<string, string> = {
   "Mirror viewed": "Mirror didn\u2019t resonate. Review emotional copy.",
   "Commit completed": "Won\u2019t commit. Check hold button on mobile.",
   "Snapshot viewed": "Snapshot not compelling. Personalize more.",
+  "Create Account": "Create account drop. Simplify form or reduce perceived effort.",
+  "Account Created": "Account screen viewed but form not submitted. Check validation UX.",
+  "Savings Offered": "Saw savings screen but didn\u2019t engage. Review copy or pricing.",
+  "Paid": "Didn\u2019t lock in savings. Price resistance or trial confidence high.",
+  "Download": "Signed up but didn\u2019t download. Improve download urgency.",
+  // Legacy v2
   "Paywall viewed": "Paywall drop. Test pricing or copy.",
   "Signup completed": "Won\u2019t create account. Simplify auth options.",
   "Payment completed": "Won\u2019t pay. Test pricing or extend trial.",
@@ -1419,10 +1430,16 @@ async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date) {
       funnel_processing_viewed: 12,
       funnel_snapshot_viewed: 13,
       funnel_timeline_viewed: 14,
+      // v3 account-first flow
+      funnel_create_account_viewed: 15,
+      funnel_account_created: 16,
+      funnel_savings_viewed: 17,
+      funnel_savings_locked_in: 18, funnel_trial_continued: 18,
+      funnel_download_viewed: 19, funnel_download_screen_viewed: 19, funnel_app_store_clicked: 19,
+      // v2 legacy compat
       funnel_paywall_viewed: 15,
       funnel_signup_attempted: 16, funnel_signup_completed: 16,
-      funnel_checkout_started: 17, funnel_payment_completed: 17,
-      funnel_download_viewed: 18, funnel_app_store_clicked: 18,
+      funnel_checkout_started: 17, funnel_payment_completed: 18,
       // v1 compat
       funnel_pain_hook_viewed: 1,
       funnel_diagnostic_loop_viewed: 2, funnel_diagnostic_loop: 2,
@@ -1440,8 +1457,8 @@ async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date) {
     const STEP_LABELS: Record<number, string> = {
       1: "Entry", 2: "Q2", 3: "Q3", 4: "Q4", 5: "Q5", 6: "Q6", 7: "Q7",
       8: "Q8", 9: "Q9", 10: "Mirror", 11: "Mechanism", 12: "Commit",
-      13: "Processing", 14: "Snapshot", 15: "Timeline", 16: "Paywall",
-      17: "Signup", 18: "Checkout", 19: "Paid", 20: "Download",
+      13: "Processing", 14: "Snapshot", 15: "Create Account", 16: "Account Created",
+      17: "Savings", 18: "Paid/Skipped", 19: "Download",
     };
 
     const sessions = [...sessionMap.entries()]
@@ -1583,10 +1600,12 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     { key: "processing", event: "funnel_processing_viewed", label: "Processing" },
     { key: "snapshot", event: "funnel_snapshot_viewed", label: "Snapshot", fallback: "funnel_extraction_viewed" },
     { key: "timeline", event: "funnel_timeline_viewed", label: "Timeline", fallback: "funnel_journey_viewed" },
-    { key: "paywall", event: "funnel_paywall_viewed", label: "Paywall" },
-    { key: "signup", event: "funnel_signup_completed", label: "Signup" },
-    { key: "checkout_started", event: "funnel_checkout_started", label: "Checkout" },
-    { key: "paid", event: "funnel_payment_completed", label: "Paid" },
+    // v3 account-first flow
+    { key: "create_account", event: "funnel_create_account_viewed", label: "Create Account", fallback: "funnel_paywall_viewed" },
+    { key: "account_created", event: "funnel_account_created", label: "Account Created", fallback: "funnel_signup_completed" },
+    { key: "savings_offered", event: "funnel_savings_viewed", label: "Savings Offered" },
+    { key: "paid", event: "funnel_savings_locked_in", label: "Paid", fallback: "funnel_payment_completed" },
+    { key: "trial_continued", event: "funnel_trial_continued", label: "Trial Continued" },
     { key: "download", event: "funnel_download_viewed", label: "Download", fallback: "funnel_app_store_clicked" },
   ];
 
@@ -1669,13 +1688,14 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
 
     const minutesSinceLast = (Date.now() - new Date(last.createdAt).getTime()) / 60000;
     const completed = eventNames.has("funnel_app_store_clicked") || eventNames.has("funnel_download_viewed");
-    const paid = eventNames.has("funnel_payment_completed") || eventNames.has("funnel_checkout_started");
-    const signedup = eventNames.has("funnel_signup_completed");
+    const paid = eventNames.has("funnel_payment_completed") || eventNames.has("funnel_savings_locked_in");
+    const signedup = eventNames.has("funnel_signup_completed") || eventNames.has("funnel_account_created");
 
-    // Payment and signup are terminal success states — never show as dropped
+    // Payment, signup, and trial continuation are terminal success states — never show as dropped
     let status: string;
     if (completed) status = "completed";
     else if (paid) status = "paid";
+    else if (eventNames.has("funnel_trial_continued")) status = "signed_up";
     else if (signedup) status = "signed_up";
     else if (minutesSinceLast < 10) status = "active";
     else if (minutesSinceLast < 60) status = "stalled";

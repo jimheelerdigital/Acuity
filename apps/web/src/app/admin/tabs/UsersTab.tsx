@@ -181,6 +181,7 @@ export default function UsersTab() {
                 <th className="px-4 py-3">Last active</th>
                 <th className="px-4 py-3">Onboarding</th>
                 <th className="px-4 py-3">Payment</th>
+                <th className="px-4 py-3">Trial Ends</th>
                 <th className="px-4 py-3 text-right">Entries</th>
                 <th className="px-4 py-3" />
               </tr>
@@ -243,6 +244,11 @@ export default function UsersTab() {
                   </td>
                   <td className="px-4 py-3">
                     <PaymentPill status={u.paymentStatus} />
+                  </td>
+                  <td className="px-4 py-3 text-xs text-white/50">
+                    {u.trialEndsAt && u.subscriptionStatus === "TRIAL"
+                      ? new Date(u.trialEndsAt).toLocaleDateString()
+                      : "—"}
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums">
                     {u.entryCount}
@@ -344,6 +350,9 @@ function OnboardingPill({ status }: { status: string }) {
     "Paid": "bg-green-500/20 text-green-300",
     "Payment failed": "bg-red-500/20 text-red-300",
     "Checkout abandoned": "bg-amber-500/20 text-amber-300",
+    "Account created": "bg-blue-500/20 text-blue-300",
+    "Trial (skipped payment)": "bg-amber-500/20 text-amber-300",
+    "Reached signup": "bg-violet-500/20 text-violet-300",
     "Signed up (no checkout)": "bg-blue-500/20 text-blue-300",
     "Reached paywall": "bg-blue-500/20 text-blue-300",
     "Saw extraction": "bg-blue-500/20 text-blue-300",
@@ -370,6 +379,10 @@ function OnboardingPill({ status }: { status: string }) {
 function PaymentPill({ status }: { status: string }) {
   const styles: Record<string, string> = {
     Active: "bg-green-500/20 text-green-300",
+    Trial: "bg-yellow-500/20 text-yellow-300",
+    Expired: "bg-orange-500/20 text-orange-300",
+    Churned: "bg-red-500/20 text-red-300",
+    "Past Due": "bg-amber-500/20 text-amber-300",
     Failed: "bg-red-500/20 text-red-300",
     None: "bg-white/5 text-white/40",
   };

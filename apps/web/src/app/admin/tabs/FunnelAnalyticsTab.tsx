@@ -137,6 +137,22 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
         ))}
       </div>
 
+      {/* Conversion Rates */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+        {[
+          { label: "Account Creation", value: `${km.accountCreationRate ?? 0}%`, sub: "timeline → account" },
+          { label: "Immediate Pay", value: `${km.immediatePayRate ?? 0}%`, sub: "account → paid" },
+          { label: "Trial Skip", value: `${km.trialSkipRate ?? 0}%`, sub: "account → trial" },
+          { label: "Download", value: `${km.downloadRate ?? 0}%`, sub: "account → download" },
+        ].map((m, i) => (
+          <div key={i} style={S}>
+            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: "0.1em" }}>{m.label}</div>
+            <div style={{ fontSize: 22, fontWeight: 700, color: "#fff", marginTop: 4 }}>{m.value}</div>
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.25)", marginTop: 2 }}>{m.sub}</div>
+          </div>
+        ))}
+      </div>
+
       {/* Conversion Funnel */}
       <div style={S}>
         <div style={H}>Conversion Funnel</div>

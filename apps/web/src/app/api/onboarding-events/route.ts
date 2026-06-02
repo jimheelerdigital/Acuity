@@ -68,7 +68,7 @@ const VALID_EVENTS = new Set([
   "funnel_processing_viewed",
   "funnel_snapshot_viewed",
   "funnel_timeline_viewed",
-  // Paywall + Signup + Payment + Download
+  // Paywall + Signup + Payment + Download (v2 — kept for legacy data)
   "funnel_paywall_viewed",
   "funnel_signup_attempted",
   "funnel_signup_completed",
@@ -77,6 +77,13 @@ const VALID_EVENTS = new Set([
   "funnel_payment_completed",
   "funnel_download_viewed",
   "funnel_app_store_clicked",
+  // ─── Web onboarding funnel v3 (account-first flow) ───
+  "funnel_create_account_viewed",
+  "funnel_account_created",
+  "funnel_savings_viewed",
+  "funnel_savings_locked_in",
+  "funnel_trial_continued",
+  "funnel_download_screen_viewed",
   // ─── Legacy v1 events (kept for historical queries) ───
   "funnel_pain_hook_viewed",
   "funnel_diagnostic_loop_viewed",

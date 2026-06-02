@@ -28,6 +28,10 @@ import {
   PRICING_COPY,
   getPaywallHeadline,
   PAYWALL_FAQ,
+  getCreateAccountHeadline,
+  getSavingsCostRecap,
+  SAVINGS_TIMELINE,
+  PAYWALL_TESTIMONIALS_V2,
 } from "@/lib/funnel-config";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -42,14 +46,15 @@ type Step =
   | "processing"
   | "snapshot"
   | "timeline"
-  | "paywall"
+  | "create-account"
+  | "savings"
   | "download";
 
 const STEP_ORDER: Step[] = [
   "entry", "branch-q2", "branch-q3", "branch-q4",
   "shared-q5", "shared-q6", "shared-q7", "shared-q8", "shared-q9",
   "mirror", "mechanism", "commit", "processing", "snapshot", "timeline",
-  "paywall", "download",
+  "create-account", "savings", "download",
 ];
 
 const TOTAL_STEPS = STEP_ORDER.length;
@@ -134,69 +139,66 @@ export function OnboardingFunnel() {
   const [selectedPlan, setSelectedPlan] = useState<"monthly" | "yearly">("monthly");
   const track = useFunnelTracker();
 
-  // Handle return from OAuth / Stripe
-  const oauthReturnTracked = useRef(false);
+  // Payment confirmation state — true when Stripe checkout completed successfully
+  const [paymentConfirmed, setPaymentConfirmed] = useState(false);
+
+  // Handle return from Stripe Checkout
   const paymentVerified = useRef(false);
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("step") === "download") {
+    const stepParam = params.get("step");
+
+    if (stepParam === "download") {
       const sessionId = params.get("session_id");
-      if (sessionId && !paymentVerified.current) {
+      const paymentSuccess = params.get("payment") === "success";
+      if (sessionId && paymentSuccess && !paymentVerified.current) {
         paymentVerified.current = true;
-        // Verify payment server-side before firing completion event
         fetch(`/api/onboarding/verify-payment?session_id=${encodeURIComponent(sessionId)}`)
           .then((r) => r.json())
           .then((data) => {
             if (data.paid) {
+              setPaymentConfirmed(true);
               setStep("download");
+              track("funnel_savings_locked_in", { value: selectedPlan });
               track("funnel_payment_completed", { value: "stripe_verified" });
-              fireFbq("Purchase", { value: 4.99, currency: "USD", content_name: "Free Trial Subscription" });
+              fireFbq("Purchase", { value: selectedPlan === "yearly" ? 39.99 : 4.99, currency: "USD", content_name: "Acuity Pro Subscription" });
             } else {
-              // Payment not confirmed — send back to paywall with error
-              setStep("paywall");
-              setApiError("Payment incomplete. Try again.");
+              setStep("savings");
+              setApiError("Payment incomplete. Try again or continue with your free trial.");
             }
           })
           .catch(() => {
-            // Verification failed — show download anyway (fail-open)
-            // but don't fire the payment event
             setStep("download");
           });
       } else if (!sessionId) {
+        // Trial user returning to download (skipped payment)
         setStep("download");
       }
-    } else if (params.get("step") === "paywall") {
-      setStep("paywall");
-      if (authStatus === "authenticated" && !oauthReturnTracked.current) {
-        oauthReturnTracked.current = true;
-        track("funnel_signup_completed", { value: "oauth_return" });
-        fireFbq("CompleteRegistration", { content_name: "Free Trial Signup", currency: "USD", value: 0 });
-        fireFbq("StartTrial", { value: 4.99, currency: "USD", predicted_ltv: 39.99 });
-      }
+    } else if (stepParam === "savings") {
+      // Return from cancelled Stripe checkout
+      setStep("savings");
+    } else if (stepParam === "create-account") {
+      setStep("create-account");
+    } else if (stepParam === "paywall") {
+      // Legacy compat — redirect old paywall URLs to create-account
+      setStep("create-account");
     }
   }, []);
 
-  // Track OAuth return when auth status resolves async
+  // If already logged in with active subscription, skip to download
   useEffect(() => {
-    if (authStatus === "authenticated" && !oauthReturnTracked.current) {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get("step") === "paywall") {
-        oauthReturnTracked.current = true;
-        track("funnel_signup_completed", { value: "oauth_return" });
-        fireFbq("CompleteRegistration", { content_name: "Free Trial Signup", currency: "USD", value: 0 });
-        fireFbq("StartTrial", { value: 4.99, currency: "USD", predicted_ltv: 39.99 });
-      }
-    }
-    // If already logged in with active subscription, skip to download
     if (authStatus === "authenticated" && session?.user) {
       fetch("/api/user/me")
         .then((r) => r.ok ? r.json() : null)
         .then((data) => {
-          if (data?.user?.subscriptionStatus === "PRO") setStep("download");
+          if (data?.user?.subscriptionStatus === "PRO") {
+            setPaymentConfirmed(true);
+            setStep("download");
+          }
         })
         .catch(() => {});
     }
-  }, [authStatus, session, track]);
+  }, [authStatus, session]);
 
   // Sync UTM attribution to User record after OAuth signup in the funnel.
   // OAuth users never visit /auth/signup/success (where SyncAttribution runs),
@@ -259,12 +261,13 @@ export function OnboardingFunnel() {
       processing: "funnel_processing_viewed",
       snapshot: "funnel_snapshot_viewed",
       timeline: "funnel_timeline_viewed",
-      paywall: "funnel_paywall_viewed",
+      "create-account": "funnel_create_account_viewed",
+      savings: "funnel_savings_viewed",
       download: "funnel_download_viewed",
     };
     if (eventMap[step]) {
       track(eventMap[step]);
-      if (step === "paywall") fireFbq("Lead", { content_name: "Funnel Paywall Reached" });
+      if (step === "create-account") fireFbq("Lead", { content_name: "Funnel Create Account Reached" });
     }
   }, [step, track]);
 
@@ -463,27 +466,49 @@ export function OnboardingFunnel() {
 
       {/* ── Personalized Timeline (Screen 14) ── */}
       {step === "timeline" && branch && (
-        <TimelineScreen key="timeline" branch={branch} answers={answers} onContinue={() => setStep("paywall")} />
+        <TimelineScreen key="timeline" branch={branch} answers={answers} onContinue={() => setStep("create-account")} />
       )}
 
-      {/* ── Paywall + Inline Signup (Screen 15) ── */}
-      {step === "paywall" && (
-        <PaywallScreen
-          key="paywall"
+      {/* ── Create Account (Screen 16 — v3 account-first flow) ── */}
+      {step === "create-account" && (
+        <CreateAccountScreen
+          key="create-account"
+          branch={branch}
+          answers={answers}
+          track={track}
+          onAccountCreated={() => {
+            track("funnel_account_created");
+            fireFbq("StartTrial", { value: 4.99, currency: "USD", predicted_ltv: 39.99 });
+            if (typeof window !== "undefined" && "gtag" in window) {
+              (window as unknown as { gtag: (...args: unknown[]) => void }).gtag("event", "sign_up", { method: "email" });
+            }
+            setStep("savings");
+          }}
+        />
+      )}
+
+      {/* ── Lock In Your Savings (Screen 17 — optional paywall) ── */}
+      {step === "savings" && (
+        <SavingsScreen
+          key="savings"
           branch={branch}
           answers={answers}
           track={track}
           selectedPlan={selectedPlan}
           onPlanChange={setSelectedPlan}
           onCheckout={handleCheckout}
+          onSkip={() => {
+            track("funnel_trial_continued");
+            setStep("download");
+          }}
           loading={checkoutLoading}
           error={apiError}
         />
       )}
 
-      {/* ── Download (Screen 16) ── */}
+      {/* ── Download (Screen 18) ── */}
       {step === "download" && (
-        <DownloadScreen key="download" track={track} />
+        <DownloadScreen key="download" track={track} paymentConfirmed={paymentConfirmed} selectedPlan={selectedPlan} />
       )}
     </div>
   );
@@ -1104,43 +1129,33 @@ function TimelineScreen({ branch, answers, onContinue }: { branch: Branch; answe
   );
 }
 
-// ─── Paywall + Inline Signup (Screen 15) ────────────────────────────────────
+// ─── Create Account Screen (Screen 16 — v3 account-first flow) ────────────
 
-function PaywallScreen({ branch, answers, track, selectedPlan, onPlanChange, onCheckout, loading, error }: {
+function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
   branch: Branch | null;
   answers: Record<string, string | string[]>;
   track: (event: string, props?: Record<string, unknown>) => void;
-  selectedPlan: "monthly" | "yearly"; onPlanChange: (p: "monthly" | "yearly") => void;
-  onCheckout: () => void; loading: boolean; error: string | null;
+  onAccountCreated: () => void;
 }) {
-  const { status } = useSession();
-  const [showAuth, setShowAuth] = useState(false);
-  const [authLoading, setAuthLoading] = useState<"google" | "apple" | "email" | null>(null);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
-  const [authError, setAuthError] = useState<string | null>(null);
-  const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [signupName, setSignupName] = useState("");
+  const [signupEmail, setSignupEmail] = useState("");
+  const [signupPassword, setSignupPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [signupLoading, setSignupLoading] = useState(false);
+  const [signupError, setSignupError] = useState<string | null>(null);
 
-  const browserEnv = typeof window !== "undefined" ? detectBrowserEnv() : { isWebView: false, label: "ssr", ua: "" };
-  const isWebView = browserEnv.isWebView;
-  const isAuthenticated = status === "authenticated";
+  const headline = branch ? getCreateAccountHeadline(branch) : "Your patterns are already forming. Create your free account to see them.";
 
-  const headline = branch ? getPaywallHeadline(branch, answers) : "You\u2019ve already taken the first step.";
-  const annualMonthly = Math.round(ANNUAL_PRICE_CENTS / 12);
-
-  const handleCTA = () => {
-    if (isAuthenticated) { onCheckout(); } else { setShowAuth(true); }
-  };
-  const handleGoogle = async () => { setAuthLoading("google"); track("funnel_signup_attempted", { value: "google" }); await signIn("google", { callbackUrl: "/start?step=paywall" }); };
-  const handleApple = async () => { setAuthLoading("apple"); track("funnel_signup_attempted", { value: "apple" }); await signIn("apple", { callbackUrl: "/start?step=paywall" }); };
-  const handleEmail = async (e: React.FormEvent) => {
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    setAuthError(null);
-    if (password.length < 8) { setAuthError("Password must be at least 8 characters."); return; }
-    setAuthLoading("email");
+    setSignupError(null);
+
+    if (!signupName.trim()) { setSignupError("Please enter your name."); return; }
+    if (!signupEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(signupEmail.trim())) { setSignupError("Please enter a valid email."); return; }
+    if (signupPassword.length < 8) { setSignupError("Password must be at least 8 characters."); return; }
+
+    setSignupLoading(true);
     try {
-      // Read funnel UTMs to pass as attribution
       let funnelUtm: Record<string, string> = {};
       try { const s = sessionStorage.getItem("acuity_funnel_utm"); if (s) funnelUtm = JSON.parse(s); } catch {}
       const attribution = {
@@ -1152,121 +1167,170 @@ function PaywallScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
       };
       const res = await fetch("/api/auth/signup", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), password, name: name.trim() || null, attribution }),
+        body: JSON.stringify({ email: signupEmail.trim(), password: signupPassword, name: signupName.trim(), attribution }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        setAuthError(body.error === "AlreadyRegistered" ? "Account exists. Try signing in." : body.message || "Something went wrong.");
+        if (body.error === "AlreadyRegistered") {
+          setSignupError("This email already has an account. Sign in instead.");
+        } else {
+          setSignupError(body.message || "Something went wrong. Please try again.");
+        }
         track("funnel_signup_failed", { value: body.error || "unknown" });
+        setSignupLoading(false);
         return;
       }
       const signupData = await res.json().catch(() => ({}));
       track("funnel_signup_completed", { value: "email" });
-      // Pass capiEventId for CAPI deduplication — server already fired CompleteRegistration
       fireFbq("CompleteRegistration", { content_name: "Free Trial Signup", currency: "USD", value: 0 }, signupData.capiEventId);
-      fireFbq("StartTrial", { value: 4.99, currency: "USD", predicted_ltv: 39.99 });
-      const result = await signIn("credentials", { email: email.trim(), password, redirect: false });
-      if (result?.ok) { setShowAuth(false); setTimeout(onCheckout, 500); }
-      else { window.location.href = "/start?step=paywall"; }
-    } catch { setAuthError("Something went wrong. Please try again."); }
-    finally { setAuthLoading(null); }
+
+      const result = await signIn("credentials", { email: signupEmail.trim(), password: signupPassword, redirect: false });
+      if (result?.ok) {
+        onAccountCreated();
+      } else {
+        window.location.href = "/start?step=savings";
+      }
+    } catch {
+      setSignupError("Something went wrong. Please try again.");
+    } finally {
+      setSignupLoading(false);
+    }
   };
 
   return (
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-white text-zinc-900">
+      <div className="max-w-md w-full funnel-screen">
+        <section className="text-center mb-8">
+          <h2 className="text-[22px] sm:text-[28px] font-bold tracking-tight leading-snug">{headline}</h2>
+          <p className="text-sm text-zinc-500 mt-3">Free. No credit card required. Takes 10 seconds.</p>
+        </section>
+
+        <form onSubmit={handleSignup} className="space-y-3">
+          <input type="text" value={signupName} onChange={(e) => setSignupName(e.target.value)} placeholder="Full name" autoComplete="name"
+            className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3.5 text-sm text-zinc-900 placeholder:text-zinc-400 outline-none focus:border-[#7C5CFC] focus:ring-2 focus:ring-[#7C5CFC]/20" />
+          <input type="email" value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)} placeholder="Email address" autoComplete="email"
+            className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3.5 text-sm text-zinc-900 placeholder:text-zinc-400 outline-none focus:border-[#7C5CFC] focus:ring-2 focus:ring-[#7C5CFC]/20" />
+          <div className="relative">
+            <input type={showPassword ? "text" : "password"} value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)} placeholder="Password (8+ characters)" autoComplete="new-password"
+              className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3.5 pr-16 text-sm text-zinc-900 placeholder:text-zinc-400 outline-none focus:border-[#7C5CFC] focus:ring-2 focus:ring-[#7C5CFC]/20" />
+            <button type="button" onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-400 hover:text-zinc-600 font-medium">
+              {showPassword ? "Hide" : "Show"}
+            </button>
+          </div>
+
+          {signupError && (
+            <p className="text-xs text-red-500 px-1">
+              {signupError}
+              {signupError.includes("Sign in") && (
+                <button type="button" onClick={() => signIn(undefined, { callbackUrl: "/start?step=savings" })} className="text-[#7C5CFC] font-semibold ml-1 underline">Sign in</button>
+              )}
+            </p>
+          )}
+
+          <button type="submit" disabled={signupLoading}
+            className="w-full rounded-full bg-[#7C5CFC] py-3.5 text-[15px] font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98] disabled:opacity-50 shadow-[0_4px_20px_rgba(124,92,252,0.3)] animate-[funnel-glow_2s_ease-in-out_infinite]">
+            {signupLoading ? (
+              <span className="flex items-center justify-center gap-2">
+                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                Creating your account...
+              </span>
+            ) : "Create My Free Account"}
+          </button>
+        </form>
+
+        <p className="text-xs text-zinc-400 text-center mt-6">
+          Already have an account?{" "}
+          <button onClick={() => signIn(undefined, { callbackUrl: "/start?step=savings" })} className="text-[#7C5CFC] font-semibold underline">Sign in</button>
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ─── Lock In Your Savings (Screen 17 — optional paywall) ──────────────────
+
+function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onCheckout, onSkip, loading, error }: {
+  branch: Branch | null;
+  answers: Record<string, string | string[]>;
+  track: (event: string, props?: Record<string, unknown>) => void;
+  selectedPlan: "monthly" | "yearly"; onPlanChange: (p: "monthly" | "yearly") => void;
+  onCheckout: () => void; onSkip: () => void; loading: boolean; error: string | null;
+}) {
+  const annualMonthly = Math.round(ANNUAL_PRICE_CENTS / 12);
+  const costRecap = branch ? getSavingsCostRecap(branch) : null;
+
+  return (
     <div className="min-h-screen bg-zinc-50 text-zinc-900 pb-32">
-      <div className="max-w-lg mx-auto px-6 pt-12">
+      <div className="max-w-lg mx-auto px-6 pt-10">
 
-        {/* Section 1 — Pain Recap Headline */}
+        {/* Section 1 — Confirmation header */}
         <section className="text-center mb-6 funnel-screen">
-          <h2 className="text-[24px] sm:text-[30px] font-bold tracking-tight leading-snug">{headline}</h2>
-        </section>
-
-        {/* Section 2 — Cost Comparison Anchor */}
-        <section className="mb-8 funnel-card-stagger" style={{ animationDelay: "100ms" }}>
-          <div className="flex items-center justify-center gap-4 sm:gap-6">
-            <div className="text-center">
-              <p className="text-lg sm:text-xl font-bold text-zinc-300">$150</p>
-              <p className="text-[10px] text-zinc-400 mt-0.5">Therapy session</p>
-            </div>
-            <div className="text-zinc-200 text-lg select-none">&middot;</div>
-            <div className="text-center">
-              <p className="text-lg sm:text-xl font-bold text-zinc-300">$200</p>
-              <p className="text-[10px] text-zinc-400 mt-0.5">Life coach / mo</p>
-            </div>
-            <div className="text-zinc-200 text-lg select-none">&middot;</div>
-            <div className="text-center">
-              <p className="text-lg sm:text-xl font-extrabold text-zinc-900">$4.99</p>
-              <p className="text-[10px] text-[#7C5CFC] font-semibold mt-0.5">Acuity / mo</p>
-            </div>
+          <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 border border-emerald-200 px-4 py-1.5 mb-4">
+            <svg className="h-4 w-4 text-emerald-500" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+            <span className="text-sm font-medium text-emerald-700">Account created</span>
           </div>
+          <h2 className="text-[22px] sm:text-[28px] font-bold tracking-tight leading-snug">You&rsquo;re in. Now lock in a rate that won&rsquo;t last.</h2>
+          <p className="text-sm text-zinc-500 mt-2">As a founding member, you get Acuity at a price we&rsquo;ll never offer again.</p>
         </section>
 
-        {/* Section 3 — Before / After Split */}
-        <section className="mb-8 funnel-card-stagger" style={{ animationDelay: "180ms" }}>
-          <div className="grid grid-cols-2 gap-0 rounded-xl overflow-hidden">
-            {/* Without — dark, heavy */}
-            <div className="bg-zinc-900 px-4 py-5">
-              <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-zinc-500 mb-3">Without visibility</p>
-              <div className="space-y-2.5">
-                <p className="text-xs text-zinc-400 leading-relaxed">Same overwhelm next month.</p>
-                <p className="text-xs text-zinc-400 leading-relaxed">Same patterns running unseen.</p>
-                <p className="text-xs text-zinc-400 leading-relaxed">Same &ldquo;I should change something&rdquo; on repeat.</p>
-              </div>
-            </div>
-            {/* With Acuity — light, relief */}
-            <div className="bg-[#7C5CFC]/[0.08] px-4 py-5">
-              <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#7C5CFC] mb-3">With Acuity</p>
-              <div className="space-y-2.5">
-                <p className="text-xs text-zinc-700 leading-relaxed"><span className="font-semibold">Week 2:</span> Patterns surface.</p>
-                <p className="text-xs text-zinc-700 leading-relaxed"><span className="font-semibold">Week 3:</span> Life Matrix scored.</p>
-                <p className="text-xs text-zinc-700 leading-relaxed"><span className="font-semibold">Week 4:</span> First memoir arrives.</p>
-              </div>
-            </div>
-          </div>
-        </section>
+        {/* Section 2 — Cost of inaction recap */}
+        {costRecap && (
+          <section className="mb-6 funnel-card-stagger" style={{ animationDelay: "80ms" }}>
+            <p className="text-sm text-zinc-600 text-center italic leading-relaxed">{costRecap}</p>
+          </section>
+        )}
 
-        {/* Section 4 — Tight Testimonials (one-liners) */}
-        <section className="mb-8">
-          <p className="text-xs font-semibold text-zinc-400 text-center mb-3">
-            4.9 <span className="text-amber-400">&#9733;&#9733;&#9733;&#9733;&#9733;</span> from 127+ users
-          </p>
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              { quote: "One pattern changed everything.", name: "Sarah M." },
-              { quote: "My therapist asked what changed.", name: "James K." },
-              { quote: "I never connected those.", name: "Priya R." },
-            ].map((t, i) => (
-              <div key={i} className="rounded-lg border border-zinc-200 bg-white px-3 py-3 text-center funnel-card-stagger" style={{ animationDelay: `${260 + i * 80}ms` }}>
-                <p className="text-[11px] text-zinc-700 leading-snug italic font-medium">&ldquo;{t.quote}&rdquo;</p>
-                <p className="text-[10px] text-zinc-400 font-medium mt-1.5">&mdash; {t.name}</p>
+        {/* Section 3 — Your first 30 days timeline */}
+        <section className="mb-6 funnel-card-stagger" style={{ animationDelay: "140ms" }}>
+          <p className="text-xs font-bold uppercase tracking-[0.15em] text-zinc-400 mb-3 text-center">Your first 30 days</p>
+          <div className="space-y-3">
+            {SAVINGS_TIMELINE.map((item, i) => (
+              <div key={i} className="flex items-start gap-3">
+                <div className="flex flex-col items-center shrink-0">
+                  <div className="w-2 h-2 rounded-full bg-[#7C5CFC] mt-1" />
+                  {i < SAVINGS_TIMELINE.length - 1 && <div className="w-px h-6 bg-zinc-200" />}
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-zinc-700">{item.week}</p>
+                  <p className="text-xs text-zinc-500">{item.text}</p>
+                </div>
               </div>
             ))}
           </div>
         </section>
 
-        {/* Section 5 — Pricing + Founding Rate Scarcity */}
-        <section className="mb-8 rounded-xl bg-white border border-zinc-200 px-5 py-5 shadow-sm">
-          <p className="text-sm text-zinc-500 text-center mb-4 font-semibold">One coffee. That&rsquo;s what a month of clarity costs.</p>
+        {/* Section 4 — Cost comparison */}
+        <section className="mb-6 text-center funnel-card-stagger" style={{ animationDelay: "200ms" }}>
+          <p className="text-sm text-zinc-600 font-semibold">
+            <span className="text-zinc-400">Therapy: $150/session.</span>{" "}
+            <span className="text-zinc-400">A life coach: $200/month.</span>{" "}
+            <span className="text-zinc-900">Acuity: less than a coffee.</span>
+          </p>
+        </section>
+
+        {/* Section 5 — Pricing cards */}
+        <section className="mb-6 rounded-xl bg-white border border-zinc-200 px-5 py-5 shadow-sm funnel-card-stagger" style={{ animationDelay: "260ms" }}>
           <div className="grid grid-cols-2 gap-3 mb-4">
-            {/* Monthly — premium feel when selected */}
             <button onClick={() => onPlanChange("monthly")}
               className={`rounded-xl p-4 text-center transition relative ${selectedPlan === "monthly" ? "border-2 border-[#7C5CFC] bg-gradient-to-b from-[#7C5CFC]/10 to-[#7C5CFC]/5 shadow-[0_4px_24px_rgba(124,92,252,0.25)]" : "border border-zinc-200 bg-white"}`}>
               <p className="text-xs text-zinc-500 mb-1">Monthly</p>
-              <p className="text-base text-red-400 line-through font-semibold">$19.99<span className="text-xs font-normal">/mo</span></p>
+              <p className="text-sm text-red-400 line-through font-semibold">$19.99<span className="text-xs font-normal">/mo</span></p>
               <p className="text-2xl font-extrabold text-zinc-900">{formatDollars(MONTHLY_PRICE_CENTS)}<span className="text-sm font-normal text-zinc-400">/mo</span></p>
               <span className="inline-block mt-2 rounded-full bg-[#7C5CFC] text-white px-3 py-1 text-[10px] font-bold tracking-wide shadow-sm">FOUNDING RATE</span>
               <p className="text-[10px] text-zinc-400 mt-1">Billed monthly</p>
             </button>
-            {/* Annual */}
             <button onClick={() => onPlanChange("yearly")}
               className={`rounded-xl p-4 text-center transition relative ${selectedPlan === "yearly" ? "border-2 border-[#7C5CFC] bg-gradient-to-b from-[#7C5CFC]/10 to-[#7C5CFC]/5 shadow-[0_4px_24px_rgba(124,92,252,0.25)]" : "border border-zinc-200 bg-white"}`}>
               <p className="text-xs text-zinc-500 mb-1">Annual</p>
-              <p className="text-base text-red-400 line-through font-semibold">$199<span className="text-xs font-normal">/yr</span></p>
+              <p className="text-sm text-red-400 line-through font-semibold">$199<span className="text-xs font-normal">/yr</span></p>
               <p className="text-2xl font-extrabold text-zinc-900">{formatDollars(ANNUAL_PRICE_CENTS)}<span className="text-sm font-normal text-zinc-400">/yr</span></p>
-              <p className="text-[10px] text-zinc-400 mt-0.5">{formatDollars(annualMonthly)}/mo billed annually</p>
+              <span className="inline-block mt-1 rounded-full bg-emerald-100 text-emerald-700 px-2.5 py-0.5 text-[10px] font-bold">SAVE {PRICING.annual.savingsVsMonthly}</span>
+              <p className="text-[10px] text-zinc-400 mt-1">{formatDollars(annualMonthly)}/mo billed annually</p>
             </button>
           </div>
-          {/* Founding rate scarcity — specific counter */}
+
+          {/* Scarcity counter */}
           <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2.5">
             <div className="flex items-center justify-between mb-1.5">
               <p className="text-xs text-emerald-800 font-semibold">Founding member pricing</p>
@@ -1275,98 +1339,44 @@ function PaywallScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
             <div className="w-full h-1.5 bg-emerald-200 rounded-full overflow-hidden">
               <div className="h-full bg-emerald-500 rounded-full" style={{ width: "53%" }} />
             </div>
-            <p className="text-[10px] text-emerald-600 mt-1.5 text-center">$4.99/mo locked in for life &mdash; price increases when spots fill</p>
-          </div>
-        </section>
-
-        {/* Section 6 — FAQ */}
-        <section className="mb-12">
-          <div className="space-y-1.5">
-            {PAYWALL_FAQ.map((faq, i) => (
-              <div key={i} className="rounded-lg border border-zinc-200 bg-white overflow-hidden">
-                <button onClick={() => setOpenFaq(openFaq === i ? null : i)}
-                  className="w-full flex items-center justify-between px-4 py-3 text-left text-sm font-medium text-zinc-900">
-                  {faq.q}
-                  <span className={`text-zinc-400 transition-transform shrink-0 ml-2 ${openFaq === i ? "rotate-180" : ""}`}>&#9662;</span>
-                </button>
-                {openFaq === i && (
-                  <div className="px-4 pb-3">
-                    <p className="text-xs text-zinc-500 leading-relaxed">{faq.a}</p>
-                  </div>
-                )}
-              </div>
-            ))}
           </div>
         </section>
       </div>
 
-      {/* Sticky CTA */}
+      {/* Sticky CTA + skip */}
       <div className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur border-t border-zinc-100 px-6 py-3 safe-area-pb">
         <div className="max-w-lg mx-auto">
           {error && <p className="text-xs text-red-500 text-center mb-1">{error}</p>}
-          <button onClick={handleCTA} disabled={loading}
+          <button onClick={onCheckout} disabled={loading}
             className="w-full rounded-full bg-[#7C5CFC] py-3.5 text-[15px] font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98] disabled:opacity-50 shadow-[0_4px_20px_rgba(124,92,252,0.3)] animate-[funnel-glow_2s_ease-in-out_infinite]">
-            {loading ? "Loading\u2026" : "Start My Free Trial"}
+            {loading ? "Loading\u2026" : "Lock In My Savings"}
           </button>
-          <p className="text-[10px] text-zinc-500 text-center mt-1.5">14-day free trial &middot; Cancel anytime &middot; No charge today</p>
+          <button onClick={onSkip} className="w-full py-3 text-sm text-zinc-500 hover:text-zinc-700 transition font-medium">
+            Continue with my free trial &rarr;
+          </button>
+          <p className="text-[10px] text-zinc-400 text-center">14-day free trial included with all plans. Cancel anytime. You won&rsquo;t be charged today.</p>
         </div>
       </div>
-
-      {/* Auth slide-up panel */}
-      {showAuth && !isAuthenticated && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={(e) => { if (e.target === e.currentTarget) setShowAuth(false); }}>
-          <div className="absolute inset-0 bg-black/40" />
-          <div className="relative w-full max-w-lg bg-white rounded-t-2xl px-6 pt-6 pb-10 safe-area-pb animate-[funnel-slide-up_0.3s_ease-out]">
-            <div className="w-10 h-1 rounded-full bg-zinc-200 mx-auto mb-6" />
-            <h3 className="text-lg font-bold text-center mb-6">Create your account</h3>
-            {isWebView && (
-              <div className="mb-4 rounded-lg bg-amber-50 border border-amber-200 px-4 py-3">
-                <p className="text-xs text-amber-700">Open in Safari or Chrome for Google/Apple sign in.</p>
-              </div>
-            )}
-            <div className="space-y-3 mb-4">
-              <button onClick={handleGoogle} disabled={authLoading !== null || isWebView}
-                className="flex w-full items-center justify-center gap-3 rounded-full border border-zinc-200 bg-white px-6 py-3.5 text-[15px] font-semibold text-zinc-700 transition hover:bg-zinc-50 active:scale-[0.98] disabled:opacity-50">
-                <GoogleLogo />{authLoading === "google" ? "Redirecting\u2026" : "Continue with Google"}
-              </button>
-              <button onClick={handleApple} disabled={authLoading !== null || isWebView}
-                className="flex w-full items-center justify-center gap-3 rounded-full bg-black px-6 py-3.5 text-[15px] font-semibold text-white transition hover:bg-zinc-800 active:scale-[0.98] disabled:opacity-50">
-                <AppleLogo />{authLoading === "apple" ? "Redirecting\u2026" : "Continue with Apple"}
-              </button>
-            </div>
-            <div className="my-4 flex items-center gap-3">
-              <div className="h-px flex-1 bg-zinc-200" />
-              <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-400">or</span>
-              <div className="h-px flex-1 bg-zinc-200" />
-            </div>
-            <form onSubmit={handleEmail} className="space-y-3">
-              <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name (optional)" autoComplete="name"
-                className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 outline-none focus:border-[#7C5CFC] focus:ring-2 focus:ring-[#7C5CFC]/20" />
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" required
-                className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 outline-none focus:border-[#7C5CFC] focus:ring-2 focus:ring-[#7C5CFC]/20" />
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password (8+ characters)" autoComplete="new-password" required minLength={8}
-                className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 outline-none focus:border-[#7C5CFC] focus:ring-2 focus:ring-[#7C5CFC]/20" />
-              {authError && <p className="text-xs text-red-500">{authError}</p>}
-              <button type="submit" disabled={authLoading !== null || !email.trim() || password.length < 8}
-                className="w-full rounded-full bg-[#7C5CFC] py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98] disabled:opacity-40">
-                {authLoading === "email" ? "Creating account\u2026" : "Create Account"}
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
 
-// ─── Download Screen (Screen 16) ────────────────────────────────────────────
+// ─── Download Screen (Screen 18) ────────────────────────────────────────────
 
-function DownloadScreen({ track }: { track: (event: string) => void }) {
+function DownloadScreen({ track, paymentConfirmed, selectedPlan }: {
+  track: (event: string, props?: Record<string, unknown>) => void;
+  paymentConfirmed: boolean;
+  selectedPlan: "monthly" | "yearly";
+}) {
   const [testimonialIdx, setTestimonialIdx] = useState(0);
   const celebratedRef = useRef(false);
 
   useEffect(() => {
-    if (!celebratedRef.current) {
+    track("funnel_download_screen_viewed");
+  }, [track]);
+
+  useEffect(() => {
+    if (paymentConfirmed && !celebratedRef.current) {
       celebratedRef.current = true;
       import("canvas-confetti").then((mod) => {
         const confetti = mod.default;
@@ -1375,19 +1385,30 @@ function DownloadScreen({ track }: { track: (event: string) => void }) {
         setTimeout(() => confetti({ particleCount: 60, spread: 120, origin: { y: 0.35, x: 0.7 } }), 400);
       });
     }
-  }, []);
+  }, [paymentConfirmed]);
 
   useEffect(() => {
     const interval = setInterval(() => setTestimonialIdx((i) => (i + 1) % DOWNLOAD_TESTIMONIALS.length), 4000);
     return () => clearInterval(interval);
   }, []);
 
+  const planPrice = selectedPlan === "yearly" ? formatDollars(ANNUAL_PRICE_CENTS) + "/yr" : formatDollars(MONTHLY_PRICE_CENTS) + "/mo";
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-white text-zinc-900">
       <div className="max-w-sm w-full text-center funnel-screen">
-        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-3">Welcome to Acuity.</h2>
-        <p className="text-sm text-zinc-500 mb-2">Your 14-day free trial has started.</p>
-        <p className="text-sm text-zinc-500 mb-10">Open the app to record your first debrief.</p>
+        {paymentConfirmed ? (
+          <>
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-3">You&rsquo;re locked in at {planPrice}. Welcome to Acuity.</h2>
+            <p className="text-sm text-zinc-500 mb-10">Download the app to record your first debrief.</p>
+          </>
+        ) : (
+          <>
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-3">Your free trial is active.</h2>
+            <p className="text-sm text-zinc-500 mb-2">You have 14 days to explore everything Acuity offers.</p>
+            <p className="text-sm text-zinc-500 mb-10">Download the app to record your first debrief.</p>
+          </>
+        )}
 
         <a href={APP_STORE_URL} onClick={() => track("funnel_app_store_clicked")}
           className="relative inline-block w-full rounded-full px-8 py-4 text-[15px] font-semibold text-white transition hover:brightness-110 active:scale-[0.98] overflow-hidden funnel-bounce"
@@ -1402,9 +1423,11 @@ function DownloadScreen({ track }: { track: (event: string) => void }) {
             alt="QR code" width={140} height={140} className="mx-auto rounded-lg" />
         </div>
 
-        <p className="mt-10 text-sm text-[#7C5CFC] font-medium">
-          Your 14-day free trial is active. No charge until {formatTrialEndDate()}.
-        </p>
+        {!paymentConfirmed && (
+          <p className="mt-8 text-xs text-zinc-400">
+            You can lock in founding member pricing anytime in the app before your trial ends.
+          </p>
+        )}
 
         <div className="mt-8">
           <p className="text-sm font-semibold text-zinc-500 mb-1">
