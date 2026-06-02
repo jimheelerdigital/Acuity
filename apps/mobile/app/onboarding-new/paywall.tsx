@@ -174,7 +174,14 @@ export default function PaywallScreen() {
   // refresh() inside the second useEffect below flips us to PRO
   // mid-mount.
   useEffect(() => {
-    if (user?.subscriptionStatus !== "PRO") return;
+    // 2026-06-01: TRIAL users also bypass — same access semantics
+    // as PRO during the trial window. See _layout.tsx and
+    // account.tsx for the same expansion.
+    if (
+      user?.subscriptionStatus !== "PRO" &&
+      user?.subscriptionStatus !== "TRIAL"
+    )
+      return;
     void api
       .post<{ ok: boolean }>("/api/onboarding/complete", { skipped: false })
       .catch(() => {
@@ -189,7 +196,11 @@ export default function PaywallScreen() {
     // the bypass effect above already routed them away. Guarding
     // here too keeps funnel_paywall_viewed honest (we don't want a
     // Pro re-sign-in to skew the conversion-rate denominator).
-    if (user?.subscriptionStatus === "PRO") return;
+    if (
+      user?.subscriptionStatus === "PRO" ||
+      user?.subscriptionStatus === "TRIAL"
+    )
+      return;
     let cancelled = false;
     void trackOnboardingEvent("funnel_paywall_viewed", {
       metadata: {

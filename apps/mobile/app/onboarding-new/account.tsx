@@ -186,7 +186,13 @@ export default function AccountScreen() {
     // closure is the pre-refresh value (React state propagation).
     // The signup-response field is the source of truth at this
     // moment and avoids the closure-staleness footgun.
-    if (subscriptionStatus === "PRO") {
+    // 2026-06-01 expansion: TRIAL users get full access during their
+    // trial window and should also bypass the paywall — Jim's call
+    // after the webhook investigation surfaced that ~all live signups
+    // are TRIAL, not PRO. The signup flow already creates them in
+    // TRIAL state on the server; landing them on /(tabs) is the
+    // honest experience.
+    if (subscriptionStatus === "PRO" || subscriptionStatus === "TRIAL") {
       try {
         await api.post<{ ok: boolean }>("/api/onboarding/complete", {
           skipped: false,

@@ -190,7 +190,14 @@ function AuthGate() {
       //     with new-onboarding flag OFF
       //   - User cold-launches with stored auth from a prior
       //     install that pre-dated the Stripe webhook firing
-      if (user.subscriptionStatus === "PRO") {
+      // 2026-06-01: TRIAL users also bypass the mobile onboarding
+      // redirect — same logic as PRO, they have full access during
+      // the trial window. Expanded after the webhook diagnosis
+      // surfaced that nearly all live signups are TRIAL, not PRO.
+      if (
+        user.subscriptionStatus === "PRO" ||
+        user.subscriptionStatus === "TRIAL"
+      ) {
         void api
           .post("/api/onboarding/complete", { skipped: false })
           .catch(() => {
