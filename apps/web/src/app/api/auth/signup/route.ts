@@ -20,7 +20,6 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { headers } from "next/headers";
 
 import { welcomeVerifyEmail } from "@/emails/welcome-verify";
 import { randomToken } from "@/lib/auth-tokens";
@@ -223,7 +222,7 @@ export async function POST(req: NextRequest) {
   // Fire Meta CAPI CompleteRegistration for new signups (best-effort, non-blocking)
   if (wasCreated) {
     const eventId = generateEventId("CompleteRegistration");
-    const reqHeaders = headers();
+    const reqHeaders = req.headers;
     const nameParts = (name ?? "").trim().split(/\s+/);
 
     sendConversionEvent({
