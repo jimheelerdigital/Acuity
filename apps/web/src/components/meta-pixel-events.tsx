@@ -16,7 +16,12 @@ function getStoredUtm(): Record<string, string> {
   return {};
 }
 
-export function fireFbq(event: string, params?: Record<string, unknown>) {
+/**
+ * Fire a Meta pixel event with optional event_id for CAPI deduplication.
+ * When eventId is provided, Meta will deduplicate this browser event
+ * against the matching server-side CAPI event.
+ */
+export function fireFbq(event: string, params?: Record<string, unknown>, eventId?: string) {
   if (typeof window !== "undefined" && typeof window.fbq === "function") {
     // Enrich pixel events with UTM attribution from the funnel session
     const utm = getStoredUtm();
@@ -25,8 +30,12 @@ export function fireFbq(event: string, params?: Record<string, unknown>) {
       ...(utm.utmCampaign ? { content_name: utm.utmCampaign } : {}),
       ...(utm.utmContent ? { content_category: utm.utmContent } : {}),
     };
-    console.log(`[meta-pixel] Firing ${event}`, enriched);
-    window.fbq("track", event, enriched);
+    console.log(`[meta-pixel] Firing ${event}`, enriched, eventId ? `(event_id: ${eventId})` : "");
+    if (eventId) {
+      window.fbq("track", event, enriched, { eventID: eventId });
+    } else {
+      window.fbq("track", event, enriched);
+    }
   }
 }
 

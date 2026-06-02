@@ -4,6 +4,10 @@ import type Stripe from "stripe";
 
 import { stripe } from "@/lib/stripe";
 import { safeLog } from "@/lib/safe-log";
+import {
+  sendConversionEvent,
+  generateEventId,
+} from "@/lib/meta-capi";
 
 export const dynamic = "force-dynamic";
 // Explicit Node.js runtime. Stripe signature verification requires the
@@ -183,6 +187,32 @@ export async function POST(req: NextRequest) {
         });
       } catch (err) {
         safeLog.warn("stripe-webhook.subscription-started-track-failed", {
+          err: err instanceof Error ? err.message : String(err),
+        });
+      }
+
+      // Fire Meta CAPI Purchase event (best-effort, non-blocking)
+      try {
+        const interval = session.metadata?.interval ?? "monthly";
+        const purchaseValue = interval === "yearly" ? 39.99 : 4.99;
+        const capiEventId = generateEventId("Purchase");
+        sendConversionEvent({
+          eventName: "Purchase",
+          eventId: capiEventId,
+          eventSourceUrl: "https://getacuity.io/start",
+          userData: {
+            email: user.email ?? undefined,
+          },
+          customData: {
+            currency: "USD",
+            value: purchaseValue,
+            content_name: `Acuity Pro ${interval}`,
+            content_type: "product",
+            content_ids: [session.subscription as string],
+          },
+        }).catch(() => {});
+      } catch (err) {
+        safeLog.warn("stripe-webhook.meta-capi-purchase-failed", {
           err: err instanceof Error ? err.message : String(err),
         });
       }

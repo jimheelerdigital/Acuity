@@ -172,6 +172,8 @@ export default function ExperimentDetailPage() {
   const [validationPassed, setValidationPassed] = useState(false);
   const [validationSkipped, setValidationSkipped] = useState(false);
   const [showPostLaunchReminder, setShowPostLaunchReminder] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [verifyResult, setVerifyResult] = useState<{ verified: boolean; summary: string; statusUpdates: number; results: { objectId: string; type: string; exists: boolean; metaStatus?: string; error?: string }[] } | null>(null);
 
   const loadExperiment = useCallback(async () => {
     const res = await fetch(`/api/admin/adlab/experiments/${id}`);
@@ -334,14 +336,17 @@ export default function ExperimentDetailPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ experimentId: experiment.id }),
       });
+      const data = await res.json();
       if (res.ok) {
         setLaunchResult(null);
         setValidationChecks(null);
         setShowPostLaunchReminder(true);
+        if (data.errors?.length > 0) {
+          setLaunchError(`${data.activated} ads activated, ${data.errors.length} failed — use "Verify on Meta" to check`);
+        }
         await loadExperiment();
       } else {
-        const data = await res.json();
-        setLaunchError(data.error || "Activation failed");
+        setLaunchError(data.detail ? `${data.error}: ${data.detail}` : (data.error || "Activation failed"));
       }
     } catch {
       setLaunchError("Network error during activation");
@@ -368,6 +373,27 @@ export default function ExperimentDetailPage() {
       setLaunchError("Cancel failed");
     }
     setCancelling(false);
+  }
+
+  async function verifyCampaignOnMeta() {
+    if (!experiment) return;
+    setVerifying(true);
+    setVerifyResult(null);
+    try {
+      const res = await fetch("/api/admin/adlab/ads/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ experimentId: experiment.id }),
+      });
+      const data = await res.json();
+      setVerifyResult(data);
+      if (data.statusUpdates > 0) {
+        await loadExperiment();
+      }
+    } catch {
+      setVerifyResult({ verified: false, summary: "Network error during verification", statusUpdates: 0, results: [] });
+    }
+    setVerifying(false);
   }
 
   async function uploadReferenceImages(files: FileList | File[]) {
@@ -1260,13 +1286,55 @@ export default function ExperimentDetailPage() {
         </div>
       )}
 
-      {/* Live experiment indicator */}
+      {/* Live experiment indicator + verify */}
       {experiment.status === "live" && (
-        <div className="mb-6 rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-5 py-4">
-          <div className="flex items-center gap-2">
-            <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-sm font-medium text-emerald-400">Campaign is live</span>
+        <div className={`mb-6 rounded-xl border ${verifyResult && !verifyResult.verified ? "border-red-500/30 bg-red-500/5" : "border-emerald-500/30 bg-emerald-500/5"} px-5 py-4`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className={`h-2 w-2 rounded-full ${verifyResult && !verifyResult.verified ? "bg-red-400" : "bg-emerald-400 animate-pulse"}`} />
+              <span className={`text-sm font-medium ${verifyResult && !verifyResult.verified ? "text-red-400" : "text-emerald-400"}`}>
+                {verifyResult && !verifyResult.verified ? "Campaign has issues on Meta" : "Campaign is live"}
+              </span>
+            </div>
+            <button
+              onClick={verifyCampaignOnMeta}
+              disabled={verifying}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-[#A0A0B8] hover:text-white hover:bg-white/10 transition disabled:opacity-50"
+            >
+              {verifying ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+              {verifying ? "Verifying..." : "Verify on Meta"}
+            </button>
           </div>
+          {verifyResult && (
+            <div className={`mt-3 rounded-lg border ${verifyResult.verified ? "border-emerald-500/20 bg-emerald-500/5" : "border-red-500/20 bg-red-500/5"} p-3`}>
+              <p className={`text-xs font-medium ${verifyResult.verified ? "text-emerald-400" : "text-red-400"} mb-1`}>
+                {verifyResult.summary}
+              </p>
+              {verifyResult.results.filter((r) => !r.exists).length > 0 && (
+                <div className="space-y-1 mt-2">
+                  {verifyResult.results.filter((r) => !r.exists).map((r, i) => (
+                    <p key={i} className="text-[10px] text-red-400/80">
+                      {r.type} {r.objectId.slice(0, 12)}… — {r.error || "not found"}
+                    </p>
+                  ))}
+                </div>
+              )}
+              {verifyResult.results.filter((r) => r.exists).length > 0 && (
+                <div className="space-y-1 mt-2">
+                  {verifyResult.results.filter((r) => r.exists).map((r, i) => (
+                    <p key={i} className="text-[10px] text-emerald-400/80">
+                      {r.type} {r.objectId.slice(0, 12)}… — {r.metaStatus}
+                    </p>
+                  ))}
+                </div>
+              )}
+              {verifyResult.statusUpdates > 0 && (
+                <p className="text-[10px] text-amber-400 mt-2">
+                  {verifyResult.statusUpdates} local status{verifyResult.statusUpdates > 1 ? "es" : ""} updated to reflect Meta state
+                </p>
+              )}
+            </div>
+          )}
         </div>
       )}
 

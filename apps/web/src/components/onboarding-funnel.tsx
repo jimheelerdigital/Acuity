@@ -1160,8 +1160,10 @@ function PaywallScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
         track("funnel_signup_failed", { value: body.error || "unknown" });
         return;
       }
+      const signupData = await res.json().catch(() => ({}));
       track("funnel_signup_completed", { value: "email" });
-      fireFbq("CompleteRegistration", { content_name: "Free Trial Signup", currency: "USD", value: 0 });
+      // Pass capiEventId for CAPI deduplication — server already fired CompleteRegistration
+      fireFbq("CompleteRegistration", { content_name: "Free Trial Signup", currency: "USD", value: 0 }, signupData.capiEventId);
       fireFbq("StartTrial", { value: 4.99, currency: "USD", predicted_ltv: 39.99 });
       const result = await signIn("credentials", { email: email.trim(), password, redirect: false });
       if (result?.ok) { setShowAuth(false); setTimeout(onCheckout, 500); }

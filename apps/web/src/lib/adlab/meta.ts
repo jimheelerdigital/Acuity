@@ -75,7 +75,13 @@ export async function createCampaign(params: CampaignParams) {
 
   const campaign = await account.createCampaign([], payload);
 
-  return campaign.id;
+  const id = campaign?.id ?? campaign?._data?.id;
+  if (!id) {
+    console.error("[adlab-meta] Campaign creation returned no ID:", JSON.stringify(campaign));
+    throw new Error("Meta API returned no campaign ID — campaign was not created");
+  }
+
+  return id;
 }
 
 // Meta uses ISO 3166-1 alpha-2 codes. Map common mistakes.
@@ -196,7 +202,13 @@ export async function createAdSet(params: AdSetParams) {
 
   const adset = await account.createAdSet([], payload);
 
-  return adset.id;
+  const id = adset?.id ?? adset?._data?.id;
+  if (!id) {
+    console.error("[adlab-meta] Ad set creation returned no ID:", JSON.stringify(adset));
+    throw new Error("Meta API returned no ad set ID — ad set was not created");
+  }
+
+  return id;
 }
 
 // ─── CTA type mapping ──────────────────────────────────────────────────────
@@ -328,7 +340,13 @@ export async function createAdCreative(params: AdCreativeParams) {
 
   const creative = await account.createAdCreative([], payload);
 
-  return creative.id;
+  const id = creative?.id ?? creative?._data?.id;
+  if (!id) {
+    console.error("[adlab-meta] Ad creative creation returned no ID:", JSON.stringify(creative));
+    throw new Error("Meta API returned no creative ID — creative was not created");
+  }
+
+  return id;
 }
 
 interface CreateAdParams {
@@ -351,7 +369,13 @@ export async function createAd(params: CreateAdParams) {
 
   const ad = await account.createAd([], payload);
 
-  return ad.id;
+  const id = ad?.id ?? ad?._data?.id;
+  if (!id) {
+    console.error("[adlab-meta] Ad creation returned no ID:", JSON.stringify(ad));
+    throw new Error("Meta API returned no ad ID — ad was not created");
+  }
+
+  return id;
 }
 
 export async function setStatus(objectId: string, type: "campaign" | "adset" | "ad", status: "ACTIVE" | "PAUSED") {
@@ -404,6 +428,42 @@ export async function getAdInsights(adId: string, since: string, until: string) 
  * Check ad account status and billing health.
  * Returns { accountStatus, disableReason, isActive } or throws.
  */
+/**
+ * Verify a campaign/ad set/ad actually exists on Meta.
+ * Returns { exists, status, name } or { exists: false, error }.
+ */
+export async function verifyObjectOnMeta(
+  objectId: string,
+  type: "campaign" | "adset" | "ad"
+): Promise<{ exists: boolean; status?: string; name?: string; error?: string }> {
+  const bizSdk = await getBizSdk();
+  await getApi();
+
+  try {
+    let result: { status?: string; name?: string; effective_status?: string };
+    if (type === "campaign") {
+      const obj = new bizSdk.Campaign(objectId);
+      result = await obj.get(["name", "status", "effective_status"]);
+    } else if (type === "adset") {
+      const obj = new bizSdk.AdSet(objectId);
+      result = await obj.get(["name", "status", "effective_status"]);
+    } else {
+      const obj = new bizSdk.Ad(objectId);
+      result = await obj.get(["name", "status", "effective_status"]);
+    }
+
+    return {
+      exists: true,
+      status: result.effective_status || result.status,
+      name: result.name,
+    };
+  } catch (err) {
+    const errMsg = err instanceof Error ? err.message : String(err);
+    // Meta returns "Unsupported get request" or 404-like errors for non-existent objects
+    return { exists: false, error: redactAccessToken(errMsg) };
+  }
+}
+
 export async function getAdAccountStatus(): Promise<{
   accountStatus: number;
   disableReason: number;

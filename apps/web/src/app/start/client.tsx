@@ -25,6 +25,19 @@ export function StartPageClient({ skipSSR }: { skipSSR?: boolean }) {
         const { setAttributionCookie } = require("@/lib/attribution");
         setAttributionCookie();
       } catch {}
+
+      // Fire server-side Meta CAPI PageView for /start (bypasses ad blockers)
+      try {
+        const params = new URLSearchParams(window.location.search);
+        fetch("/api/capi/pageview", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            url: window.location.href,
+            fbclid: params.get("fbclid") || undefined,
+          }),
+        }).catch(() => {});
+      } catch {}
     }
   }, []);
 

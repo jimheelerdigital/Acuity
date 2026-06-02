@@ -20,6 +20,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { headers } from "next/headers";
 
 import { welcomeVerifyEmail } from "@/emails/welcome-verify";
 import { randomToken } from "@/lib/auth-tokens";
@@ -31,6 +32,12 @@ import {
   limiters,
   rateLimitedResponse,
 } from "@/lib/rate-limit";
+import {
+  sendConversionEvent,
+  generateEventId,
+  getClientIp,
+  extractFbCookies,
+} from "@/lib/meta-capi";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -211,6 +218,40 @@ export async function POST(req: NextRequest) {
       } catch {}
       // Don't block signup — user was already created successfully
     }
+  }
+
+  // Fire Meta CAPI CompleteRegistration for new signups (best-effort, non-blocking)
+  if (wasCreated) {
+    const eventId = generateEventId("CompleteRegistration");
+    const reqHeaders = headers();
+    const nameParts = (name ?? "").trim().split(/\s+/);
+
+    sendConversionEvent({
+      eventName: "CompleteRegistration",
+      eventId,
+      eventSourceUrl: `${req.nextUrl.origin}/auth/signup`,
+      userData: {
+        email,
+        firstName: nameParts[0] || undefined,
+        lastName: nameParts.length > 1 ? nameParts[nameParts.length - 1] : undefined,
+        ip: getClientIp(reqHeaders),
+        userAgent: reqHeaders.get("user-agent") || undefined,
+        fbclid: body?.attribution?.fbclid || undefined,
+        ...extractFbCookies(reqHeaders.get("cookie")),
+      },
+      customData: {
+        content_name: "Free Trial Signup",
+        currency: "USD",
+        value: 0,
+      },
+    }).catch(() => {}); // fire-and-forget
+
+    return NextResponse.json({
+      ok: true,
+      requiresVerification: !existing || !existing.emailVerified,
+      wasCreated,
+      capiEventId: eventId, // returned so browser pixel can use same event_id for dedup
+    });
   }
 
   return NextResponse.json({
