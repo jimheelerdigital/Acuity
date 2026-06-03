@@ -324,28 +324,6 @@ export default function ProfileTab() {
               void Linking.openURL(`${base}/account#calendar`);
             }}
           />
-          <MenuItem
-            icon="heart-outline"
-            label="Connect Apple Health"
-            sublabel={
-              Platform.OS === "ios"
-                ? "Arriving in the next app update"
-                : "iOS only"
-            }
-            onPress={() => {
-              if (Platform.OS === "ios") {
-                Alert.alert(
-                  "Coming soon",
-                  "Apple Health integration ships in the next mobile release. The data model + Insights correlation card are already running on web — you'll see correlations once sync is live."
-                );
-              } else {
-                Alert.alert(
-                  "iOS only",
-                  "Apple Health is an iOS-only feature. Android support is on the roadmap."
-                );
-              }
-            }}
-          />
         </SettingsGroup>
 
         {/* SUPPORT group */}

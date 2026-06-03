@@ -72,10 +72,15 @@ export default function IntegrationsScreen() {
       edges={["top"]}
     >
       <Stack.Screen options={{ headerShown: false }} />
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
-        <StickyBackButton accessibilityLabel="Back to Profile" />
-
-        <View className="mb-6 mt-6">
+      <StickyBackButton accessibilityLabel="Back to Profile" />
+      <ScrollView
+        contentContainerStyle={{
+          paddingHorizontal: 20,
+          paddingTop: 80,
+          paddingBottom: 40,
+        }}
+      >
+        <View className="mb-6">
           <Text
             className="text-2xl font-bold"
             style={{ color: tokens.text }}
@@ -228,6 +233,28 @@ function ConnectPlaceholderCard({ tokens }: { tokens: AcuityTokens }) {
           Calendar connect ships in the next mobile release. Acuity
           will request iOS calendar access only when you tap Connect
           here — never at app launch.
+        </Text>
+      </View>
+
+      {/* v1.3.x device-calendars hint. iOS Calendar already aggregates
+          Google + Outlook when the user adds those accounts in
+          system Settings — once the EventKit connect ships, those
+          calendars surface automatically without a separate OAuth
+          per provider. */}
+      <View
+        className="mt-3 rounded-lg px-3 py-2"
+        style={{ backgroundColor: tokens.bgInset }}
+      >
+        <Text
+          className="text-[11px] leading-relaxed"
+          style={{ color: tokens.textSec }}
+        >
+          <Text style={{ fontWeight: "600", color: tokens.text }}>
+            Using Google Calendar?
+          </Text>{" "}
+          Add it in iOS Settings &rarr; Calendar &rarr; Accounts. Once
+          Apple Calendar is connected here, your Google events surface
+          automatically alongside iCloud.
         </Text>
       </View>
 
