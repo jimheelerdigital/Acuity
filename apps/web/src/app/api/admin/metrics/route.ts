@@ -94,7 +94,8 @@ export async function GET(req: NextRequest) {
   const ttl = TAB_TTLS[tab] ?? 5 * 60_000;
   const showBotsParam = req.nextUrl.searchParams.get("showBots") === "true";
   const resetParam = req.nextUrl.searchParams.get("resetAfter") ?? "";
-  const extraParams = `${showBotsParam ? ":bots" : ""}${resetParam ? `:r${resetParam}` : ""}`;
+  const flowParam = req.nextUrl.searchParams.get("flow") ?? "";
+  const extraParams = `${showBotsParam ? ":bots" : ""}${resetParam ? `:r${resetParam}` : ""}${flowParam ? `:f${flowParam}` : ""}`;
   const cacheKey = `tab:${tab}:${startStr}:${endStr}${extraParams}`;
   const t0 = Date.now();
 
