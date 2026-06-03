@@ -1,9 +1,8 @@
 /**
  * Recovery email: Download Reminder
  *
- * Sent 1 hour after account creation if the user never clicked
- * "Download on the App Store" or opened the app. Feels like a
- * personal note from Keenan, not a marketing blast.
+ * Sent 1 hour after account creation if the user hasn't opened
+ * the app or recorded their first debrief.
  */
 
 import { escapeHtml } from "@/lib/escape-html";
@@ -18,39 +17,42 @@ function para(text: string): string {
 }
 
 export const recoveryDownloadReminder: TrialEmailTemplate = {
-  subject: () => "Start your Acuity trial \u2014 no card required",
+  subject: () => "Your Acuity app is waiting for you",
   html: (v: TrialVars) => {
-    const name = escapeHtml(v.firstName);
     const content = `
       <tr><td style="padding-bottom:20px;">
         <p style="margin:0;font-size:16px;color:#374151;line-height:1.7;">
-          Hey ${name},
+          Hi friend,
         </p>
       </td></tr>
       ${para(
-        "We noticed you created your account but haven\u2019t downloaded the app yet. Here\u2019s your links for easy access \u2014 no card required."
+        "It looks like you signed up but still haven\u2019t downloaded the app or recorded your first debrief..."
       )}
-      ${para("Your trial is active and ready to go.")}
-      <tr><td style="padding-bottom:12px;">
+      ${para(
+        "Here\u2019s the link to download the app in the App Store:"
+      )}
+      <tr><td style="padding-bottom:16px;">
         ${trialButton(APP_STORE_URL, "Download on the App Store")}
       </td></tr>
-      <tr><td style="padding-bottom:24px;">
-        ${trialButton("https://getacuity.io/auth/signin", "Sign in on the web")}
+      ${para(
+        "If you don\u2019t have iPhone, our Android app is coming soon. You can use our web app here:"
+      )}
+      <tr><td style="padding-bottom:20px;">
+        ${trialButton("https://getacuity.io/home", "Use the web app")}
       </td></tr>
-      <tr><td style="padding-bottom:28px;">
-        <p style="margin:0;font-size:13px;color:#9ca3af;line-height:1.6;">
-          Android app coming soon. Use the web app in the meantime.
-        </p>
-      </td></tr>
-      <tr><td>
-        <p style="margin:0;font-size:16px;color:#1a1a1a;font-weight:600;">&mdash; Keenan, Acuity founder</p>
+      ${para(
+        "Feel free to reach out with any questions! Make sure you use your 14 day trial \u2014 there\u2019s a ton of insights that you can get with Acuity, even in the first two weeks :)"
+      )}
+      <tr><td style="padding-top:8px;">
+        <p style="margin:0;font-size:16px;color:#1a1a1a;">Kindly,</p>
+        <p style="margin:0;font-size:16px;color:#1a1a1a;font-weight:600;">Keenan - Founder, Acuity</p>
       </td></tr>
     `;
     return trialLayout({
       content,
       unsubscribeUrl: v.unsubscribeUrl,
       preheader:
-        "Your trial is active. Download the app to get started.",
+        "You signed up but haven\u2019t downloaded the app yet. Here\u2019s your link.",
     });
   },
 };

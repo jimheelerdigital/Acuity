@@ -2,13 +2,10 @@
  * Download Reminder Email
  *
  * Cron: every 15 minutes. Finds users who created an account 1–4 hours ago
- * but never clicked the App Store link or opened the app. Sends a single
- * recovery email with download links.
+ * but haven't opened the app or recorded a debrief. Sends a recovery email.
  *
  * Deduplication: User.downloadReminderSentAt column — only sends once.
- * Cancellation: if the user has a funnel_app_store_clicked or
- * funnel_download_viewed event, OR has opened the app (appFirstOpenedAt),
- * the email is skipped.
+ * Skip if: user opened the app (appFirstOpenedAt set) or has recordings.
  */
 
 import { inngest } from "@/inngest/client";
@@ -30,8 +27,8 @@ export const downloadReminderEmailFn = inngest.createFunction(
       let sent = 0;
       let skipped = 0;
 
-      // Users who created an account 1–4 hours ago, haven't downloaded,
-      // and haven't already received this email.
+      // Users who created an account 1–4 hours ago, haven't opened the app,
+      // have no recordings, and haven't already received this email.
       const candidates = await prisma.user.findMany({
         where: {
           createdAt: {
@@ -40,54 +37,29 @@ export const downloadReminderEmailFn = inngest.createFunction(
           },
           downloadReminderSentAt: null,
           onboardingUnsubscribed: false,
-          // Only users who have NOT opened the app
           appFirstOpenedAt: null,
-          email: { not: null },
+          firstRecordingAt: null,
         },
         select: { id: true, email: true },
       });
 
       for (const user of candidates) {
         if (!user.email) continue;
-
-        // Check if user clicked App Store link or viewed download screen
-        const downloaded = await prisma.onboardingEvent.findFirst({
-          where: {
-            userId: user.id,
-            event: { in: ["funnel_app_store_clicked", "funnel_download_viewed", "funnel_download_screen_viewed"] },
-          },
-          select: { id: true },
-        });
-
-        if (downloaded) {
-          skipped++;
-          continue;
-        }
-
-        // Check 24h throttle — don't send if any email was sent recently
-        const recentEmail = await prisma.trialEmailLog.findFirst({
-          where: {
-            userId: user.id,
-            sentAt: { gte: new Date(now.getTime() - 24 * 60 * 60 * 1000) },
-          },
-          select: { id: true },
-        });
-        if (recentEmail) {
-          skipped++;
-          continue;
-        }
+        // Skip founder/test accounts
+        if (user.email.includes("heelerdigital.com")) continue;
 
         try {
           const result = await sendTrialEmail(user.id, "recovery_download_reminder");
           if (result.sent) {
-            // Stamp the user so this never fires again
             await prisma.user.update({
               where: { id: user.id },
               data: { downloadReminderSentAt: now },
             });
             sent++;
+            console.log("[download-reminder] sent to", user.email);
           } else {
             skipped++;
+            console.log("[download-reminder] skipped", user.email, result.reason);
           }
         } catch (err) {
           console.error("[download-reminder] send failed", {
