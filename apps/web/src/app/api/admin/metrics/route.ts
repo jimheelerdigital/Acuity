@@ -1271,8 +1271,8 @@ async function getBusinessMetrics(prisma: P, monthStart: Date) {
 
 // ── Web Onboarding Funnel (/start) ──────────────────────────────────────────
 
-// v3 deploy timestamp — the account-first funnel went live at this point
-const FUNNEL_V3_EPOCH = new Date("2026-06-02T23:41:14Z");
+// v3 deploy timestamp — the account-first funnel went live at this point.
+const FUNNEL_V3_EPOCH = new Date("2026-06-02T18:41:00Z");
 
 // v3 funnel steps (account-first flow)
 const WEB_FUNNEL_STEPS_V3 = [
@@ -1360,10 +1360,8 @@ async function countDistinctSessions(prisma: P, event: string, start: Date, end:
 
 async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date, flowVersion: "v2" | "v1" | "all" = "v2") {
   try {
-    // Date-based epoch clamping
     let effectiveStart = start;
     let effectiveEnd = end;
-    if (flowVersion === "v2" && effectiveStart < FUNNEL_V3_EPOCH) effectiveStart = FUNNEL_V3_EPOCH;
     if (flowVersion === "v1" && effectiveEnd > FUNNEL_V3_EPOCH) effectiveEnd = FUNNEL_V3_EPOCH;
 
     const WEB_FUNNEL_STEPS = flowVersion === "v2" ? WEB_FUNNEL_STEPS_V3
@@ -1622,15 +1620,17 @@ const FUNNEL_V2_EPOCH = new Date("2026-05-28T02:35:00Z");
 
 async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, showBots = false, resetAfter: string | null = null, flowVersion: "v2" | "v1" | "all" = "v2") {
  try {
-  // Date-based epoch clamping to separate flows
+  // Date-based epoch clamping — only used for v1 (cap end at v3 deploy)
+  // and "all" (floor at v2 epoch to exclude ancient v1 diagnostic events).
+  // v2 needs NO epoch clamping because its unique event names
+  // (funnel_create_account_viewed, funnel_savings_locked_in, etc.) don't
+  // exist in old data, and shared events (funnel_entry_viewed) are fine
+  // to include from the user's selected date range.
   let effectiveStart = start;
   let effectiveEnd = end;
-  if (flowVersion === "v2") {
-    if (effectiveStart < FUNNEL_V3_EPOCH) effectiveStart = FUNNEL_V3_EPOCH;
-  } else if (flowVersion === "v1") {
+  if (flowVersion === "v1") {
     if (effectiveEnd > FUNNEL_V3_EPOCH) effectiveEnd = FUNNEL_V3_EPOCH;
-  } else {
-    // "all" — use v2 epoch as floor to exclude ancient v1 diagnostic events
+  } else if (flowVersion === "all") {
     const epoch = resetAfter ? new Date(resetAfter) : FUNNEL_V2_EPOCH;
     if (effectiveStart < epoch) effectiveStart = epoch;
   }
