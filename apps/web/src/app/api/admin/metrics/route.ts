@@ -1885,7 +1885,7 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
   const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
   const todaySessions = interactedSessionsList.filter((s) => new Date(s.started) >= todayStart).length;
   const entryCountTotal = stepReach["entry"].size;
-  const paidCount = stepReach["paid"].size;
+  const paidCount = stepReach["paid"]?.size ?? 0;
   const completionRate = entryCountTotal > 0 ? Math.round((paidCount / entryCountTotal) * 100) : 0;
 
   // Account & trial summary from funnel events
