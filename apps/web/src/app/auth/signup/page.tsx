@@ -199,15 +199,17 @@ function SignUpForm() {
         }
         return;
       }
+      const signupData = await res.json().catch(() => ({}));
       if (typeof window !== "undefined" && typeof window.fbq === "function") {
         console.log(
           "[meta-pixel] Firing CompleteRegistration — email signup success"
         );
+        const pixelOpts = signupData.capiEventId ? { eventID: signupData.capiEventId } : {};
         window.fbq("track", "CompleteRegistration", {
           content_name: "Free Trial Signup",
           currency: "USD",
           value: 0,
-        });
+        }, pixelOpts);
         console.log("[meta-pixel] Firing StartTrial — email signup success");
         window.fbq("track", "StartTrial", { value: 4.99, currency: "USD", predicted_ltv: 39.99 });
       }
