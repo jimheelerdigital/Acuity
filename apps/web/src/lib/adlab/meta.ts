@@ -141,11 +141,11 @@ export async function createAdSet(params: AdSetParams) {
   const useAdvantageAudience = true; // matches targeting_automation below
   const ageMax = params.targetAudience.ageMax;
   if (ageMax) targeting.age_max = useAdvantageAudience ? Math.max(ageMax, 65) : ageMax;
-  if (params.targetAudience.geo?.length) {
-    targeting.geo_locations = {
-      countries: normalizeCountryCodes(params.targetAudience.geo),
-    };
-  }
+  // Always target US. Additional countries can be added via geo param.
+  const geoCountries = params.targetAudience.geo?.length
+    ? normalizeCountryCodes(params.targetAudience.geo)
+    : ["US"];
+  targeting.geo_locations = { countries: geoCountries };
   if (params.targetInterests?.length) {
     targeting.flexible_spec = [
       { interests: params.targetInterests.map((i) => ({ id: i.id, name: i.name })) },
