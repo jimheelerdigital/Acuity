@@ -2186,11 +2186,11 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
       pageLoadCount,
       interactedCount,
       accountCreationRate: (stepReach["timeline"]?.size ?? 0) > 0
-        ? Math.round(((stepReach["account_created"]?.size ?? stepReach["signup"]?.size ?? 0) / stepReach["timeline"].size) * 100) : 0,
+        ? Math.round(((stepReach["account_created"]?.size ?? stepReach["signup"]?.size ?? 0) / (stepReach["timeline"]?.size ?? 1)) * 100) : 0,
       immediatePayRate: (stepReach["account_created"]?.size ?? stepReach["signup"]?.size ?? 0) > 0
         ? Math.round(((stepReach["paid"]?.size ?? 0) / (stepReach["account_created"]?.size ?? stepReach["signup"]?.size ?? 1)) * 100) : 0,
       trialSkipRate: (stepReach["account_created"]?.size ?? 0) > 0
-        ? Math.round(((stepReach["trial_continued"]?.size ?? 0) / stepReach["account_created"].size) * 100) : 0,
+        ? Math.round(((stepReach["trial_continued"]?.size ?? 0) / (stepReach["account_created"]?.size ?? 1)) * 100) : 0,
       downloadRate: (stepReach["account_created"]?.size ?? stepReach["signup"]?.size ?? 0) > 0
         ? Math.round(((stepReach["download"]?.size ?? 0) / (stepReach["account_created"]?.size ?? stepReach["signup"]?.size ?? 1)) * 100) : 0,
       totalAccounts: accountCreatedCount,

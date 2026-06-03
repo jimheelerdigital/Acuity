@@ -101,8 +101,8 @@ export async function GET(req: NextRequest) {
 
   const q = req.nextUrl.searchParams.get("q")?.trim().toLowerCase() ?? "";
   const cursor = req.nextUrl.searchParams.get("cursor") ?? undefined;
-  const limitRaw = Number(req.nextUrl.searchParams.get("limit") ?? 50);
-  const limit = Math.min(Math.max(isFinite(limitRaw) ? limitRaw : 50, 1), 100);
+  const limitRaw = Number(req.nextUrl.searchParams.get("limit") ?? 200);
+  const limit = Math.min(Math.max(isFinite(limitRaw) ? limitRaw : 200, 1), 500);
   const lifecycleFilter = req.nextUrl.searchParams.get("lifecycle")?.split(",").filter(Boolean) ?? [];
   const sortField = req.nextUrl.searchParams.get("sort") ?? "createdAt";
   const sortDir = req.nextUrl.searchParams.get("dir") === "asc" ? "asc" as const : "desc" as const;
