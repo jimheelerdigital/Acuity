@@ -41,6 +41,33 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-06-02] — Remove silent trial user notification spam from admin dashboard
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 59be902
+
+### In plain English (for Keenan)
+
+The admin dashboard overview was flooded with 20+ stacked "X silent trial user(s)" warning cards. The system was creating a new warning every 6 hours, and they never went away because the count kept changing (so de-duplication didn't catch them). These notifications are now completely removed. The next time the cron runs, it will also auto-resolve any existing ones in the database. The silent trial user data is still available in the metrics API if you ever want to surface it differently.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/inngest/functions/scan-red-flags.ts`: Removed the silent trial detection query and flag creation (lines 62-86). Added a `updateMany` call at the start of each scan to bulk-resolve any remaining `category: "trial"` flags.
+- `apps/web/src/app/admin/tabs/OverviewTab.tsx`: Added client-side filter to exclude `category === "trial"` flags from visible alerts, so the dashboard clears immediately without waiting for the cron.
+- The `silentTrialUsers` query in `/api/admin/metrics` is untouched — the data is still fetched and returned if needed for a future summary line.
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- The root cause was the de-duplication logic checking `title + category` within a 6-hour window, but the title included the count (e.g., "23 silent trial user(s)"), which changed every run. Combined with the 6-hour cron interval matching the 6-hour de-dup window, a new flag was created on nearly every run.
+- The cleanup `updateMany` will fire on the next cron run (within 6 hours of deploy) and resolve all old trial flags. The client-side filter provides immediate relief.
+
+---
+
 ## [2026-06-02] — Add Apple/Google sign-in and Android options to /start funnel
 
 **Requested by:** Keenan
