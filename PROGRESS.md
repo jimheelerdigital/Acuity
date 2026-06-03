@@ -41,6 +41,92 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-06-03] — User Data Audit (read-only)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code (no code changes — audit only)
+**Commit hash:** N/A
+
+### In plain English (for Keenan)
+
+Audited the entire user database against Stripe and identified accuracy issues. Summary: we have 74 total users, only 1 real Stripe subscriber (jwcunningham525 — and his period ended May 24, so it may have lapsed), 14 users who opened the app, 17 with at least 1 entry, and the `totalRecordings` counter on User rows is wrong for 8 users (it drifts from the actual entry count in the database). Two test accounts (jim+slice2pro, jim+applereview) show PRO status with no Stripe subscription — these are manually set test accounts, not real customers.
+
+### Audit Results
+
+**1. USER TOTALS**
+- Total users: 74
+- With active Stripe subscription: 1 (jwcunningham525@gmail.com — but period ended 2026-05-24, may be lapsed)
+- PRO status in DB: 3 (1 real + 2 test accounts)
+- Downloaded/opened app: 14
+- At least 1 completed entry: 17
+- Signed up via Meta ads (utm_source=meta): 30+
+
+**2. ENTRY COUNT BREAKDOWN**
+- 0 entries: 57 users (77%)
+- 1-5 entries: 11 users
+- 6-10 entries: 3 users
+- 10+ entries: 3 users (keenan=23, jim+applereview=38, jim@heelerdigital=18)
+
+**3. MISMATCHES FOUND**
+
+**3a. PRO status without Stripe subscription (test accounts):**
+- jim+slice2pro@heelerdigital.com — PRO, no Stripe sub, no subscription source
+- jim+applereview@heelerdigital.com — PRO, no Stripe sub (Apple review account)
+
+**3b. Stripe subscription with expired period:**
+- jwcunningham525@gmail.com — PRO status, Stripe sub exists, but periodEnd=2026-05-24 (9 days ago). If Stripe cancelled this, the DB status is stale.
+
+**3c. totalRecordings counter drift (8 users):**
+The `User.totalRecordings` field doesn't match the actual count of COMPLETE entries. This counter is updated during entry processing but can drift from edits, re-processing, or race conditions.
+- keenan@heelerdigital.com: counter=20, actual=23 (+3)
+- jim@heelerdigital.com: counter=2, actual=18 (+16 — significant)
+- jim+applereview@heelerdigital.com: counter=33, actual=38 (+5)
+- erinkate826@gmail.com: counter=8, actual=10 (+2)
+- mostdaysnicole@gmail.com: counter=6, actual=5 (-1)
+- kaiberworks@gmail.com: counter=5, actual=3 (-2)
+- sgb6c6wbdd@privaterelay.appleid.com: counter=2, actual=0 (-2)
+- jim+slice2trial@heelerdigital.com: counter=1, actual=3 (+2)
+
+**4. APP OPEN vs ENTRIES ANOMALIES**
+
+**Users with entries but NO app open (12 users):** These are web-only users who recorded via the browser try flow or web interface. The `appFirstOpenedAt` field only tracks native mobile app opens, not web usage. Notable: kaiberworks@gmail.com has 3 completed entries, programmingnyc@gmail.com has 10.
+
+**Users who opened app but 0 entries (8 users):** They downloaded and opened the app but never recorded. This is the "downloaded but didn't activate" cohort — the download reminder email targets this gap.
+
+**5. WHAT WE TRACK vs DON'T TRACK**
+
+**We track well:**
+- Signup method and attribution (UTM, referrer, landing path)
+- Funnel progression via OnboardingEvent (every screen view)
+- Entry recordings (full audio, transcript, extraction, mood, themes, tasks)
+- App opens, device platform, app version
+- Stripe subscription lifecycle
+- Trial countdown and email sends
+- Streaks, weekly reports, life matrix scores
+
+**Gaps identified:**
+- `totalRecordings` counter drifts from actual entry count — should derive from COUNT(entries) not an increment counter
+- `appFirstOpenedAt` only captures mobile opens, not web app sessions — users recording via web show as "never opened app"
+- No explicit "downloaded from App Store" tracking — we track `funnel_app_store_clicked` (link click) and `appFirstOpenedAt` (first API call from mobile), but there's a gap between clicking the link and actually downloading
+- `lastSeenAt` is null for some users with entries, meaning the last-seen middleware doesn't catch all request types
+- No session duration tracking — we know WHEN users are active but not HOW LONG
+- `signupMethod` is null for all users created before May 20 (field was added later)
+- `jwcunningham525` has Stripe period end in the past — webhook may not have fired to downgrade status
+
+### Manual steps needed
+
+- [ ] Check Stripe dashboard for jwcunningham525@gmail.com — is the subscription still active or cancelled? If cancelled, manually update DB status to FREE (Keenan)
+- [ ] Consider running a one-time backfill to sync `totalRecordings` with actual COMPLETE entry count (Jimmy)
+
+### Notes
+
+- The 2 PRO test accounts (jim+slice2pro, jim+applereview) are expected — they were manually set for testing.
+- The 12 web-only users with entries prove there's a real use case for the web app, supporting the "Use the web app" link we added to the Download screen.
+- The 8 users who opened the app but never recorded are the exact cohort the download reminder email targets.
+- 77% of users (57/74) have never recorded a single entry — funnel optimization should focus on the Create Account → First Recording activation gap.
+
+---
+
 ## [2026-06-02] — Replace Savings Locked In with Stripe-verified Paid + download reminder email
 
 **Requested by:** Keenan
