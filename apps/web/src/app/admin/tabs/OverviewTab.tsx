@@ -168,7 +168,7 @@ export default function OverviewTab({ start, end }: { start: string; end: string
   const webFunnelData = data.webFunnel;
   const tryMet = data.tryMet ?? { today: 0, thisWeek: 0, allTime: 0, conversions: 0, conversionRate: 0, dailyCapUsed: 0, dailyCap: 100 };
 
-  const visibleFlags = redFlagsData.filter((f) => !dismissed.has(f.id));
+  const visibleFlags = redFlagsData.filter((f) => !dismissed.has(f.id) && f.category !== "trial");
   const signupSparkline = signupsOverTimeData.map((d) => ({ v: d.count }));
   const maxFunnelCount = Math.max(...(funnelStepsData.length > 0 ? funnelStepsData.map((s) => s.count) : [1]), 1);
 

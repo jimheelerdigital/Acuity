@@ -14,6 +14,12 @@ export const scanRedFlagsFn = inngest.createFunction(
     const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
+    // Clean up old silent trial flags — these are no longer generated
+    await prisma.redFlag.updateMany({
+      where: { category: "trial", resolved: false },
+      data: { resolved: true, resolvedAt: now },
+    });
+
     const flags: {
       severity: "CRITICAL" | "WARNING" | "INFO";
       category: string;
@@ -56,32 +62,6 @@ export const scanRedFlagsFn = inngest.createFunction(
         description:
           "These users have failed payments and may churn without intervention.",
         affectedUserIds: pastDueUsers.map((u: { id: string }) => u.id),
-      });
-    }
-
-    // WARNING: Trial users with 0 recordings in 3+ days
-    const silentTrials = await prisma
-      .$queryRaw<{ id: string }[]>`
-      SELECT u.id
-      FROM "User" u
-      WHERE u."subscriptionStatus" = 'TRIAL'
-      AND u."createdAt" < ${threeDaysAgo}
-      AND NOT EXISTS (
-        SELECT 1 FROM "Entry" e
-        WHERE e."userId" = u.id
-        AND e."createdAt" >= ${threeDaysAgo}
-      )
-      LIMIT 50
-    `
-      .catch(() => []);
-    if (silentTrials.length > 0) {
-      flags.push({
-        severity: "WARNING",
-        category: "trial",
-        title: `${silentTrials.length} silent trial user(s)`,
-        description:
-          "Trial users with no recordings in 3+ days — at risk of churning.",
-        affectedUserIds: silentTrials.map((u: { id: string }) => u.id),
       });
     }
 
