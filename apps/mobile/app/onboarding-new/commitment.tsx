@@ -125,7 +125,11 @@ export default function CommitmentScreen() {
       // 800ms breath, then transition. Match web's
       // post-confetti-burst timing for a familiar pace.
       transitionTimerRef.current = setTimeout(() => {
-        router.push("/onboarding-new/record" as never);
+        // v1.3 (2026-06-03): route through /disclosure before /record
+        // so users see the AI subprocessor disclosure BEFORE the
+        // anonymous try-recording upload to OpenAI / Anthropic.
+        // Apple Guideline 5.1.1(i) / 5.1.2(i).
+        router.push("/onboarding-new/disclosure" as never);
       }, POST_COMPLETION_DELAY_MS);
     }, HOLD_DURATION_MS);
   };

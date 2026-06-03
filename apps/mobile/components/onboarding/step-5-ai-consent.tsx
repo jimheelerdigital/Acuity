@@ -86,25 +86,26 @@ export function Step5AiConsent() {
       <Text
         className="text-3xl font-semibold tracking-tight"
         style={{ color: tokens.text }}
-        numberOfLines={1}
         adjustsFontSizeToFit
         minimumFontScale={0.75}
       >
-        How Acuity uses AI
+        How Acuity processes your voice
       </Text>
       <Text
         className="mt-3 text-base leading-relaxed"
         style={{ color: tokens.textSec }}
       >
-        Acuity sends your voice transcripts to{" "}
+        Acuity sends your voice recordings to{" "}
         <Text className="font-semibold" style={{ color: tokens.text }}>
-          OpenAI
+          OpenAI (Whisper)
         </Text>{" "}
-        (for transcription) and{" "}
+        for transcription and{" "}
         <Text className="font-semibold" style={{ color: tokens.text }}>
-          Anthropic&rsquo;s Claude
+          Anthropic (Claude)
         </Text>{" "}
-        (for themes, tasks, and your Sunday narrative).
+        for themes, tasks, and your weekly narrative. Recordings are
+        encrypted in transit, never sold, and never used to train AI
+        models.
       </Text>
 
       <View

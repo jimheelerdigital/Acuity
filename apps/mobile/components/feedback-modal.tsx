@@ -93,6 +93,11 @@ export function FeedbackModal({ visible, onClose }: Props) {
       <View className="flex-1" style={{ backgroundColor: tokens.bg }}>
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : undefined}
+          // pageSheet presentation has a top inset (~10pt) that
+          // KeyboardAvoidingView doesn't auto-account for. Without
+          // this offset the Send button stays buried under the
+          // keyboard on iOS even though padding fires correctly.
+          keyboardVerticalOffset={Platform.OS === "ios" ? 12 : 0}
           className="flex-1"
         >
           {/* Header */}

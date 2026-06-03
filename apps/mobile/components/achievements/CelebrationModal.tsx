@@ -5,14 +5,10 @@
  *   - Backdrop: 300ms fade in
  *   - Card: rises 20px + fades over 550ms with cubic-bezier(.16,.9,.3,1)
  *   - Badge: 240×240, 16s linear rotation loop
- *   - Halo: radial pulse 3s ease-in-out loop (opacity .35..0.6 + scale 1..1.06)
  *   - Kicker / title / description / Continue pill — same typography
  *
- * Confetti is INTENTIONALLY DEFERRED for v1.3 ship. The web canvas
- * confetti pattern doesn't translate to RN without a Skia / Lottie
- * dependency we haven't installed yet. A flat coral-glow halo is a
- * reasonable substitute for the moment; confetti is a polish-pass
- * follow-up tracked in PROGRESS.md.
+ * v1.3 (2026-06-03): Halo glow removed. Badge sits directly on the
+ * dark navy backdrop with the Skia confetti burst behind it.
  */
 
 import { Ionicons } from "@expo/vector-icons";
@@ -23,7 +19,6 @@ import { useFonts } from "expo-font";
 import { useEffect } from "react";
 import {
   Modal,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -71,10 +66,8 @@ export function CelebrationModal({
     GeistMono_500Medium,
   });
 
-  // Shared values for badge rotation + halo pulse + card rise.
+  // Shared values for badge rotation + card rise.
   const rotation = useSharedValue(0);
-  const haloOpacity = useSharedValue(0.35);
-  const haloScale = useSharedValue(1);
   const cardOpacity = useSharedValue(0);
   const cardTranslate = useSharedValue(20);
 
@@ -98,38 +91,15 @@ export function CelebrationModal({
       -1,
       false
     );
-    // Halo pulse: 3s ease-in-out, both opacity + scale.
-    haloOpacity.value = withRepeat(
-      withTiming(0.6, {
-        duration: 1500,
-        easing: Easing.inOut(Easing.ease),
-      }),
-      -1,
-      true
-    );
-    haloScale.value = withRepeat(
-      withTiming(1.06, {
-        duration: 1500,
-        easing: Easing.inOut(Easing.ease),
-      }),
-      -1,
-      true
-    );
     return () => {
       cancelAnimation(rotation);
-      cancelAnimation(haloOpacity);
-      cancelAnimation(haloScale);
       cancelAnimation(cardOpacity);
       cancelAnimation(cardTranslate);
     };
-  }, [visible, rotation, haloOpacity, haloScale, cardOpacity, cardTranslate]);
+  }, [visible, rotation, cardOpacity, cardTranslate]);
 
   const badgeStyle = useAnimatedStyle(() => ({
     transform: [{ rotate: `${rotation.value}deg` }],
-  }));
-  const haloStyle = useAnimatedStyle(() => ({
-    opacity: haloOpacity.value,
-    transform: [{ scale: haloScale.value }],
   }));
   const cardStyle = useAnimatedStyle(() => ({
     opacity: cardOpacity.value,
@@ -152,12 +122,9 @@ export function CelebrationModal({
             and re-opening the modal replays from frame 0. */}
         <ConfettiBurst key={slug} visible={visible} />
         <Animated.View style={[styles.card, cardStyle]}>
-          <View style={styles.orb}>
-            <Animated.View style={[styles.halo, haloStyle]} />
-            <Animated.View style={[styles.spin, badgeStyle]}>
-              <BadgeSvg slug={slug} state="earned" size={BADGE_SIZE} />
-            </Animated.View>
-          </View>
+          <Animated.View style={[styles.spin, badgeStyle]}>
+            <BadgeSvg slug={slug} state="earned" size={BADGE_SIZE} />
+          </Animated.View>
           <Text style={styles.kicker}>Achievement unlocked</Text>
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.description}>{description}</Text>
@@ -197,33 +164,12 @@ const styles = StyleSheet.create({
   card: {
     alignItems: "center",
   },
-  orb: {
-    width: BADGE_SIZE,
-    height: BADGE_SIZE,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 8,
-  },
-  halo: {
-    position: "absolute",
-    width: BADGE_SIZE + 40,
-    height: BADGE_SIZE + 40,
-    borderRadius: (BADGE_SIZE + 40) / 2,
-    backgroundColor: "rgba(244,161,78,0.30)",
-    // RN doesn't support CSS filter:blur — approximate with the
-    // gradient-via-opacity-falloff trick. The visual is softer than
-    // the web 34px blur but reads as a coral glow at runtime.
-    shadowColor: "#F4A14E",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.7,
-    shadowRadius: 34,
-    elevation: Platform.OS === "android" ? 12 : 0,
-  },
   spin: {
     width: BADGE_SIZE,
     height: BADGE_SIZE,
     alignItems: "center",
     justifyContent: "center",
+    marginBottom: 8,
   },
   kicker: {
     fontFamily: "GeistMono_500Medium",

@@ -32,7 +32,6 @@ import { UniversalLinkHandler } from "@/components/universal-link-handler";
 import { UpdatePromptOverlay } from "@/components/UpdatePromptOverlay";
 import { CelebrationModal } from "@/components/achievements/CelebrationModal";
 import { useAchievementQueue } from "@/hooks/use-achievement-queue";
-import { isNewOnboardingEnabled } from "@/lib/feature-flags";
 import { initMetaSdk, setMetaUserId } from "@/lib/meta-sdk";
 import { reapplyRemindersIfNeeded } from "@/lib/notifications-boot";
 import { refreshPushTokenOnLaunch } from "@/lib/push-token";
@@ -153,17 +152,12 @@ function AuthGate() {
     const inAuthCallback = segments[0] === "auth-callback";
 
     if (!user && !inAuth && !inAuthCallback && !inOnboardingNew) {
-      // Slice 13 (2026-05-26) — when the onboarding-v2 feature flag
-      // is on, cold-launches with no session route into the new
-      // pain-first flow. Flag-off keeps the existing /(auth)/sign-in
-      // path so prod is unaffected until Jim flips it. The flag is
-      // read once per AuthGate render — the underlying env var is
-      // bundle-time-baked by Metro.
-      if (isNewOnboardingEnabled()) {
-        router.replace("/onboarding-new/pain" as never);
-      } else {
-        router.replace("/(auth)/sign-in");
-      }
+      // v1.3 (2026-06-03): the EXPO_PUBLIC_NEW_ONBOARDING_ENABLED
+      // feature flag was removed. Unsigned cold-launches always go
+      // to /(auth)/sign-in. The /onboarding-new/* pre-auth funnel
+      // is still reachable via Meta-ad deep links — AuthGate stays
+      // out of the way once segments[0] === "onboarding-new".
+      router.replace("/(auth)/sign-in");
       return;
     }
 

@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -11,28 +11,50 @@ import { useTheme } from "@/contexts/theme-context";
  * lock is engaged. Mounted in _layout.tsx ThemedApp so it sits
  * above <Stack/>.
  *
- * Auto-prompts Face ID on mount (locked state entry) so users don't
- * have to tap to start — the OS dialog appears immediately. If they
- * cancel, the overlay stays up with a "Unlock" CTA so they can retry.
+ * Auto-prompts Face ID ONCE on entry into "locked". If the user
+ * cancels, the overlay stays up with a retry button — we do NOT
+ * re-fire the OS prompt automatically (that was the v1.2 bug:
+ * useEffect dep churn re-triggered the dialog endlessly when paired
+ * with the lock-context loop).
  *
- * "checking" status renders the same neutral dark background as the
+ * After 3 consecutive cancels/failures we surface a "Use your device
+ * passcode" hint — the iOS biometric prompt auto-falls-back to the
+ * device passcode after 3 biometry failures, but if the user keeps
+ * cancelling the prompt itself they need to know that retrying will
+ * give them that fallback. v1.3 (2026-06-03).
+ *
+ * "checking" status renders the same neutral background as the
  * locked state, but without the unlock CTA, to avoid a flash of
  * content during the SecureStore read on cold launch.
  */
 export function LockScreenOverlay() {
   const { status, unlock } = useLock();
   const { tokens } = useTheme();
+  const promptedFor = useRef<"locked" | null>(null);
+  const [attempts, setAttempts] = useState(0);
 
-  // Auto-prompt biometric on first enter into "locked" — saves the
-  // user a tap. If they cancel the OS dialog, they can re-trigger
-  // via the on-screen button.
+  // Auto-prompt biometric exactly ONCE per locked entry. Tracked via
+  // a ref keyed on the status — when we leave "locked" the ref
+  // clears so the next time the lock engages we re-prompt fresh.
   useEffect(() => {
-    if (status === "locked") {
+    if (status === "locked" && promptedFor.current !== "locked") {
+      promptedFor.current = "locked";
       void unlock();
     }
-  }, [status, unlock]);
+    if (status === "unlocked") {
+      promptedFor.current = null;
+      if (attempts !== 0) setAttempts(0);
+    }
+  }, [status, unlock, attempts]);
+
+  const handleRetry = async () => {
+    setAttempts((n) => n + 1);
+    await unlock();
+  };
 
   if (status === "unlocked") return null;
+
+  const showPasscodeHint = attempts >= 3 && status === "locked";
 
   return (
     <View
@@ -71,7 +93,7 @@ export function LockScreenOverlay() {
           </Text>
           {status === "locked" && (
             <Pressable
-              onPress={() => void unlock()}
+              onPress={() => void handleRetry()}
               className="mt-10 rounded-full px-8 py-3.5"
               style={{ backgroundColor: tokens.primary }}
             >
@@ -82,6 +104,15 @@ export function LockScreenOverlay() {
                 Unlock
               </Text>
             </Pressable>
+          )}
+          {showPasscodeHint && (
+            <Text
+              className="mt-6 text-xs text-center leading-relaxed px-2"
+              style={{ color: tokens.textTer }}
+            >
+              Trouble with Face ID? Tap Unlock and choose
+              &ldquo;Use Passcode&rdquo; on the system prompt.
+            </Text>
           )}
         </View>
       </SafeAreaView>

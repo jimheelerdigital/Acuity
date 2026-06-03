@@ -42,6 +42,7 @@ export type OnboardingEventName =
   | "funnel_commitment_started"
   | "funnel_commitment_completed"
   | "funnel_commitment_abandoned"
+  | "funnel_disclosure_continued"
   | "funnel_recording_started"
   | "funnel_recording_completed"
   | "funnel_processing_viewed"

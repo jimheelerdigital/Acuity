@@ -34,8 +34,18 @@ import { useAuth } from "@/contexts/auth-context";
  * Triggers that move "locked" → "unlocked":
  *   Only authenticate() returning success.
  *
- * The overlay component reads `locked` and renders a full-screen gate
- * on top of the route tree when true.
+ * v1.3 lock-loop fix (2026-06-03, mostdaysnicole repro):
+ *   The cold-launch effect previously depended on `user`, so any
+ *   identity-change of the user object (which happens every time
+ *   useAuth re-fetches /api/user/me) would re-run the lock check
+ *   and re-lock immediately after a successful unlock. Symptom:
+ *   infinite lock/unlock loop with Face ID re-prompting forever.
+ *
+ *   Fix: initializedRef guards the cold-launch check to fire EXACTLY
+ *   ONCE per app launch. Subsequent re-locks happen only via the
+ *   AppState handler when the user backgrounds for > LOCK_TIMEOUT_MS.
+ *   unlockedThisSessionRef remembers the unlocked state across user
+ *   identity changes so /me refetches don't re-trigger anything.
  */
 
 interface LockState {
@@ -62,26 +72,34 @@ export function LockProvider({ children }: { children: ReactNode }) {
   // changes (which happens via setLockEnabled from the Settings UI,
   // which then calls refreshEnabled()).
   const lockEnabled = useRef<boolean>(false);
+  // Cold-launch lock check runs ONCE per app launch. Prevents
+  // re-lock on user-object identity changes (e.g., /me refetches).
+  const initializedRef = useRef<boolean>(false);
+  // Tracks whether the user has authenticated this session. Reset
+  // only on signout or AppState backgrounded > LOCK_TIMEOUT_MS.
+  const unlockedThisSessionRef = useRef<boolean>(false);
 
   const refreshEnabled = useCallback(async () => {
     lockEnabled.current = await isLockEnabled();
   }, []);
 
   // Cold-launch sequence: wait for auth to resolve, then check the
-  // SecureStore flag. If lock is enabled + user signed in → start
-  // locked. Otherwise → start unlocked. "checking" is the intermediate
-  // state so the overlay can render a neutral background instead of
-  // flashing content underneath.
+  // SecureStore flag ONCE. If lock is enabled + user signed in →
+  // start locked. Otherwise → start unlocked. Subsequent user-object
+  // identity changes (e.g., /me refetches) do NOT re-run this check.
   useEffect(() => {
     if (authLoading) return;
+    if (initializedRef.current) return;
     let cancelled = false;
     (async () => {
       await refreshEnabled();
       if (cancelled) return;
+      initializedRef.current = true;
       if (lockEnabled.current && user) {
         setStatus("locked");
       } else {
         setStatus("unlocked");
+        unlockedThisSessionRef.current = true;
       }
     })();
     return () => {
@@ -113,6 +131,7 @@ export function LockProvider({ children }: { children: ReactNode }) {
           if (status === "locked") return; // already locked, no-op
           const bg = backgroundedAt.current;
           if (bg && Date.now() - bg > LOCK_TIMEOUT_MS) {
+            unlockedThisSessionRef.current = false;
             setStatus("locked");
           }
         }
@@ -122,10 +141,12 @@ export function LockProvider({ children }: { children: ReactNode }) {
   }, [status, user]);
 
   // Signed out → never locked. Drops the overlay if user signs out
-  // while locked. Also re-reads enabled flag in case Settings flipped
-  // it between renders.
+  // while locked. Also resets the session-unlocked + initialized
+  // markers so the next sign-in re-runs the cold-launch check.
   useEffect(() => {
     if (!user && status !== "checking") {
+      unlockedThisSessionRef.current = false;
+      initializedRef.current = false;
       setStatus("unlocked");
     }
   }, [user, status]);
@@ -133,16 +154,21 @@ export function LockProvider({ children }: { children: ReactNode }) {
   const unlock = useCallback(async () => {
     const res = await authenticate();
     if (res.success) {
+      unlockedThisSessionRef.current = true;
       setStatus("unlocked");
       backgroundedAt.current = null;
     }
-    // On failure, leave status locked — user can tap the overlay
-    // again to retry.
+    // On failure (cancel, lockout, etc.) — leave status locked. The
+    // overlay surfaces a button so the user can retry; after 3 fails
+    // it shows a fallback hint. Persistent biometric lockouts are an
+    // OS-level state and resolve when the user uses the device
+    // passcode at the OS prompt.
   }, []);
 
   const lockNow = useCallback(async () => {
     await refreshEnabled();
     if (!lockEnabled.current || !user) return;
+    unlockedThisSessionRef.current = false;
     setStatus("locked");
   }, [refreshEnabled, user]);
 

@@ -92,8 +92,8 @@ const DEFAULT_TOKENS = makeAcuityTokens({
 });
 
 const ThemeContext = createContext<ThemeContextValue>({
-  preference: "system",
-  resolved: "dark",
+  preference: "light",
+  resolved: "light",
   setPreference: () => {},
   palette: DEFAULT_PALETTE,
   setPalette: () => {},
@@ -102,7 +102,11 @@ const ThemeContext = createContext<ThemeContextValue>({
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const { colorScheme, setColorScheme } = useNativewindColorScheme();
-  const [preference, setPreferenceState] = useState<ThemeChoice>("system");
+  // v1.3 (2026-06-03): default to "light" for net-new users with no
+  // stored preference. Existing users (any AsyncStorage value, or a
+  // server-side User.theme) keep what they had — see hydrate effect
+  // below for the precedence order.
+  const [preference, setPreferenceState] = useState<ThemeChoice>("light");
   const [palette, setPaletteState] =
     useState<AcuityAccent>(DEFAULT_PALETTE);
 
@@ -132,6 +136,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         if (resolvedPref) {
           setPreferenceState(resolvedPref);
           setColorScheme(resolvedPref);
+        } else {
+          // No stored preference anywhere — net-new install. v1.3
+          // defaults to light. Apply but do NOT persist, so a user
+          // who later picks "system" from settings still has system
+          // win over the default.
+          setColorScheme("light");
         }
 
         // ─── Palette: new key only (no legacy to migrate from) ──

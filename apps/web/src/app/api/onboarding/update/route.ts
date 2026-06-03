@@ -290,6 +290,22 @@ export async function POST(req: NextRequest) {
     userUpdates.targetCadence = raw.targetCadence;
   }
 
+  // v1.3 (2026-06-03): capture User.timezone from the device on the
+  // reminders step. The notifications-twice-daily cron uses this to
+  // figure out which UTC hour maps to a given user's 9 AM / 8 PM.
+  // IANA-format strings only (e.g. "America/Chicago", "Europe/Berlin").
+  // Rough sanity check: must contain a slash and only ASCII chars in
+  // an IANA tz; rejects anything obviously malformed to keep the
+  // string column hygienic.
+  if (
+    typeof raw.timezone === "string" &&
+    raw.timezone.length > 1 &&
+    raw.timezone.length <= 64 &&
+    /^[A-Za-z_]+(?:\/[A-Za-z0-9_+\-]+){1,2}$/.test(raw.timezone)
+  ) {
+    userUpdates.timezone = raw.timezone;
+  }
+
   const { prisma } = await import("@/lib/prisma");
 
   const existing = await prisma.userOnboarding.findUnique({

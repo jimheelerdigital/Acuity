@@ -41,6 +41,7 @@ import { cleanupTrySessionsFn } from "@/inngest/functions/cleanup-try-sessions";
 import { recoveryEmailOrchestratorFn } from "@/inngest/functions/recovery-email-orchestrator";
 import { downloadReminderEmailFn } from "@/inngest/functions/download-reminder-email";
 import { achievementsNightlyFn } from "@/inngest/functions/achievements-nightly";
+import { notificationsTwiceDailyFn } from "@/inngest/functions/notifications-twice-daily";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -87,6 +88,7 @@ const handler = serve({
     recoveryEmailOrchestratorFn,
     downloadReminderEmailFn,
     achievementsNightlyFn,
+    notificationsTwiceDailyFn,
   ],
 });
 
