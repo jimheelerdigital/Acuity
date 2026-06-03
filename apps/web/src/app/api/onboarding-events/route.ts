@@ -126,7 +126,7 @@ export async function POST(req: NextRequest) {
     event?: string; sessionToken?: string; userId?: string; value?: string;
     utmSource?: string; utmMedium?: string; utmCampaign?: string;
     utmContent?: string; utmTerm?: string; fbclid?: string;
-    browser?: string;
+    browser?: string; flowVersion?: string;
   };
   try {
     body = await req.json();
@@ -180,6 +180,7 @@ export async function POST(req: NextRequest) {
         fbclid: body.fbclid ?? null,
         browser: ua,
         isBot: false,
+        flowVersion: body.flowVersion ?? null,
       },
     });
   } catch (err) {

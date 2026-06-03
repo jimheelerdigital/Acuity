@@ -2283,6 +2283,9 @@ model OnboardingEvent {
   // so we can identify in-app browsers (Facebook WebView, Instagram, etc.)
   browser      String?
   isBot        Boolean  @default(false)
+  // Flow version tag — "v1" for old paywall flow, "v2" for account-first flow.
+  // Null for events created before this column was added (treated as v1 by queries).
+  flowVersion  String?
   createdAt    DateTime @default(now())
 
   @@index([userId, createdAt])
@@ -2290,6 +2293,7 @@ model OnboardingEvent {
   @@index([event, createdAt])
   @@index([utmContent, createdAt])
   @@index([isBot, createdAt])
+  @@index([flowVersion, createdAt])
 }
 
 // Anchor People — named-entity extraction + relationship tracking.

@@ -143,8 +143,8 @@ export async function GET(req: NextRequest) {
         case "funnel-analytics": {
           const showBots = req.nextUrl.searchParams.get("showBots") === "true";
           const resetAfter = req.nextUrl.searchParams.get("resetAfter") ?? null;
-          const flow = req.nextUrl.searchParams.get("flow") as "v3" | "v1" | "all" | null;
-          return getFunnelAnalytics(prisma, start, end, showBots, resetAfter, flow ?? "v3");
+          const flow = req.nextUrl.searchParams.get("flow") as "v2" | "v1" | "all" | null;
+          return getFunnelAnalytics(prisma, start, end, showBots, resetAfter, flow ?? "v2");
         }
         case "guide":
           return getGuide();
@@ -1346,29 +1346,30 @@ const DROP_OFF_FIXES: Record<string, string> = {
   "Payment": "Won\u2019t pay. Test pricing or extend trial.",
 };
 
-async function countDistinctSessions(prisma: P, event: string, start: Date, end: Date) {
+async function countDistinctSessions(prisma: P, event: string, start: Date, end: Date, flowVersion?: string) {
+  const flowFilter = flowVersion ? { flowVersion } : {};
   const bySession = await prisma.onboardingEvent.groupBy({
     by: ["sessionToken"],
-    where: { event, createdAt: { gte: start, lte: end }, sessionToken: { not: null }, isBot: false },
+    where: { event, createdAt: { gte: start, lte: end }, sessionToken: { not: null }, isBot: false, ...flowFilter },
   });
   const byUser = await prisma.onboardingEvent.groupBy({
     by: ["userId"],
-    where: { event, createdAt: { gte: start, lte: end }, userId: { not: null }, sessionToken: null, isBot: false },
+    where: { event, createdAt: { gte: start, lte: end }, userId: { not: null }, sessionToken: null, isBot: false, ...flowFilter },
   });
   return bySession.length + byUser.length;
 }
 
-async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date, flowVersion: "v3" | "v1" | "all" = "v3") {
+async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date, flowVersion: "v2" | "v1" | "all" = "v2") {
   try {
-    // Apply epoch clamping based on flow version
-    let effectiveStart = start;
-    let effectiveEnd = end;
-    if (flowVersion === "v3" && start < FUNNEL_V3_EPOCH) effectiveStart = FUNNEL_V3_EPOCH;
-    if (flowVersion === "v1" && end > FUNNEL_V3_EPOCH) effectiveEnd = FUNNEL_V3_EPOCH;
+    const effectiveStart = start;
+    const effectiveEnd = end;
 
-    const WEB_FUNNEL_STEPS = flowVersion === "v3" ? WEB_FUNNEL_STEPS_V3
+    const WEB_FUNNEL_STEPS = flowVersion === "v2" ? WEB_FUNNEL_STEPS_V3
       : flowVersion === "v1" ? WEB_FUNNEL_STEPS_V1
       : WEB_FUNNEL_STEPS_ALL;
+
+    const flowFilter = flowVersion === "all" ? {} : { flowVersion };
+    const flowVersionStr = flowVersion === "all" ? undefined : flowVersion;
 
     // ── Funnel steps ────────────────────────────────────
     const steps = await Promise.all(
@@ -1378,7 +1379,7 @@ async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date, flowVer
           const sessionSets = await Promise.all(
             DIAGNOSTIC_EVENTS.map(async (de) => {
               const rows = await prisma.onboardingEvent.findMany({
-                where: { event: de, createdAt: { gte: effectiveStart, lte: effectiveEnd }, sessionToken: { not: null }, isBot: false },
+                where: { event: de, createdAt: { gte: effectiveStart, lte: effectiveEnd }, sessionToken: { not: null }, isBot: false, ...flowFilter },
                 select: { sessionToken: true },
               });
               return new Set(rows.map((r) => r.sessionToken));
@@ -1391,7 +1392,7 @@ async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date, flowVer
           }
           return { label: s.label, count: intersection.size };
         }
-        return { label: s.label, count: await countDistinctSessions(prisma, s.event, effectiveStart, effectiveEnd) };
+        return { label: s.label, count: await countDistinctSessions(prisma, s.event, effectiveStart, effectiveEnd, flowVersionStr) };
       })
     );
 
@@ -1412,7 +1413,7 @@ async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date, flowVer
     for (const de of DIAGNOSTIC_EVENTS) {
       const rows = await prisma.onboardingEvent.groupBy({
         by: ["value"],
-        where: { event: de, createdAt: { gte: effectiveStart, lte: effectiveEnd }, value: { not: null }, isBot: false },
+        where: { event: de, createdAt: { gte: effectiveStart, lte: effectiveEnd }, value: { not: null }, isBot: false, ...flowFilter },
         _count: true,
       });
       const label = de.replace("funnel_", "").replace("_selected", "");
@@ -1422,8 +1423,8 @@ async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date, flowVer
     }
 
     // ── Commitment stats ────────────────────────────────
-    const commitCompleted = await countDistinctSessions(prisma, "funnel_commit_completed", effectiveStart, effectiveEnd);
-    const commitAbandoned = await countDistinctSessions(prisma, "funnel_commit_abandoned", effectiveStart, effectiveEnd);
+    const commitCompleted = await countDistinctSessions(prisma, "funnel_commit_completed", effectiveStart, effectiveEnd, flowVersionStr);
+    const commitAbandoned = await countDistinctSessions(prisma, "funnel_commit_abandoned", effectiveStart, effectiveEnd, flowVersionStr);
     const commitmentStats = {
       completed: commitCompleted,
       abandoned: commitAbandoned,
@@ -1439,6 +1440,7 @@ async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date, flowVer
         createdAt: { gte: effectiveStart, lte: effectiveEnd },
         sessionToken: { not: null },
         isBot: false,
+        ...flowFilter,
       },
       orderBy: { createdAt: "desc" },
       take: 5000, // cap for aggregation
@@ -1619,21 +1621,10 @@ async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date, flowVer
 // Pain Hook / diagnostic events polluting the new branching quiz metrics.
 const FUNNEL_V2_EPOCH = new Date("2026-05-28T02:35:00Z");
 
-async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, showBots = false, resetAfter: string | null = null, flowVersion: "v3" | "v1" | "all" = "v3") {
+async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, showBots = false, resetAfter: string | null = null, flowVersion: "v2" | "v1" | "all" = "v2") {
  try {
-  // Clamp dates based on flow version
-  let effectiveStart = start;
-  let effectiveEnd = end;
-  if (flowVersion === "v3") {
-    const epoch = resetAfter ? new Date(resetAfter) : FUNNEL_V3_EPOCH;
-    if (effectiveStart < epoch) effectiveStart = epoch;
-  } else if (flowVersion === "v1") {
-    if (effectiveEnd > FUNNEL_V3_EPOCH) effectiveEnd = FUNNEL_V3_EPOCH;
-  } else {
-    // "all" — use v2 epoch as floor to exclude ancient v1 diagnostic events
-    const epoch = resetAfter ? new Date(resetAfter) : FUNNEL_V2_EPOCH;
-    if (effectiveStart < epoch) effectiveStart = epoch;
-  }
+  const effectiveStart = start;
+  const effectiveEnd = end;
 
   // v3 funnel steps — account-first flow (no fallbacks — clean separation)
   const FUNNEL_STEPS_V3 = [
@@ -1686,6 +1677,9 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
 
   const FUNNEL_STEPS = flowVersion === "v1" ? FUNNEL_STEPS_V1 : FUNNEL_STEPS_V3;
 
+  // Build flowVersion filter for the DB query
+  const flowFilter = flowVersion === "all" ? {} : { flowVersion: flowVersion };
+
   // Fetch all funnel events in range (exclude bots unless showBots is true)
   const events = await prisma.onboardingEvent.findMany({
     where: {
@@ -1693,6 +1687,7 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
       createdAt: { gte: effectiveStart, lte: effectiveEnd },
       sessionToken: { not: null },
       ...(showBots ? {} : { isBot: false }),
+      ...flowFilter,
     },
     orderBy: { createdAt: "asc" },
     take: 50000,
@@ -2211,7 +2206,7 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
       recentPayments: [],
       campaignNames: {},
       campaignObjectives: {},
-      effectiveStart: FUNNEL_V3_EPOCH.toISOString(),
+      effectiveStart: start.toISOString(),
       sessions: [],
       totalSessionCount: 0,
     };

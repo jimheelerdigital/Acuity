@@ -25,10 +25,12 @@ export function trackOnboardingEvent(
     values?: unknown;
     utm?: UtmParams;
     browser?: string | null;
+    flowVersion?: string | null;
   }
 ): void {
   try {
     const body: Record<string, string> = { event };
+    if (opts?.flowVersion) body.flowVersion = opts.flowVersion;
     if (opts?.sessionToken) body.sessionToken = opts.sessionToken;
     if (opts?.userId) body.userId = opts.userId;
     // Store diagnostic answer values — flatten arrays to comma-separated string

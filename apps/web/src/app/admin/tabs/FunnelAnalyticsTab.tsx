@@ -10,7 +10,7 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
   const [sortDir, setSortDir] = useState(-1);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [showPageLoadOnly, setShowPageLoadOnly] = useState(false);
-  const [flowVersion, setFlowVersion] = useState<"v3" | "v1" | "all">("v3");
+  const [flowVersion, setFlowVersion] = useState<"v2" | "v1" | "all">("v2");
 
   useEffect(() => {
     setLoading(true);
@@ -90,7 +90,7 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
       {/* Flow version toggle */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", gap: 0, background: "rgba(255,255,255,0.05)", borderRadius: 8, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)" }}>
-          {([["v3", "New Flow"], ["v1", "Old Flow"], ["all", "All Time"]] as const).map(([val, label]) => (
+          {([["v2", "New Flow"], ["v1", "Old Flow"], ["all", "All Time"]] as const).map(([val, label]) => (
             <button
               key={val}
               onClick={() => setFlowVersion(val)}
