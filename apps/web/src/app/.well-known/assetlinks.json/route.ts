@@ -39,14 +39,22 @@ export const dynamic = "force-static";
 
 const ANDROID_PACKAGE = "com.heelerdigital.acuity";
 
-// TODO(jim): replace with the real SHA-256 cert fingerprint from
-// Play Console → App integrity → App signing key certificate, after
-// the first AAB has been uploaded to Internal Testing. Until then,
-// Android App Links won't verify and the OS will fall back to the
-// "Open with…" picker. Format: uppercase hex bytes separated by
-// colons (`AB:CD:EF:...`).
+// SHA-256 cert fingerprint of the EAS-managed Android signing
+// keystore for com.heelerdigital.acuity. Populated 2026-06-03 from
+// the eas credentials output ahead of the first Internal Testing
+// build.
+//
+// Important next step (track for v1.3.x or v1.4): once Play App
+// Signing takes over (which happens automatically when the AAB is
+// uploaded), Play Console can re-sign artifacts with a different
+// upload key + app signing key. If that re-sign happens, add the
+// Play-Console-issued SHA-256 to this array. Both fingerprints can
+// coexist — Google verifies a deep link against ANY entry. Failing
+// to add the Play-issued fingerprint means production-installed
+// Android users hit the "Open with…" picker on verify-email links
+// even though Internal Testing builds work.
 const SHA256_FINGERPRINTS: string[] = [
-  // "00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00",
+  "37:DA:A1:B5:85:66:A7:29:4B:2E:23:70:5C:F4:C8:F9:39:82:F5:46:82:3C:EF:37:4F:D1:12:A4:47:39:E8:71",
 ];
 
 const assetlinks = [
