@@ -10,15 +10,16 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
   const [sortDir, setSortDir] = useState(-1);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [showPageLoadOnly, setShowPageLoadOnly] = useState(false);
+  const [flowVersion, setFlowVersion] = useState<"v3" | "v1" | "all">("v3");
 
   useEffect(() => {
     setLoading(true);
     setError(null);
-    fetch(`/api/admin/metrics?tab=funnel-analytics&start=${start}&end=${end}`)
+    fetch(`/api/admin/metrics?tab=funnel-analytics&start=${start}&end=${end}&flow=${flowVersion}`)
       .then((r) => { if (!r.ok) throw new Error(`${r.status}`); return r.json(); })
       .then((d) => { setData(d); setLoading(false); })
       .catch((e) => { setError(e.message); setLoading(false); });
-  }, [start, end]);
+  }, [start, end, flowVersion]);
 
   if (loading) return <div style={{ color: "#888", padding: 40, textAlign: "center" }}>Loading funnel data...</div>;
   if (error) return (
@@ -86,12 +87,29 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
-      {/* Metrics since label */}
-      {data.effectiveStart && (
-        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.25)", textAlign: "right" }}>
-          Metrics since {new Date(data.effectiveStart).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" })}
+      {/* Flow version toggle */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", gap: 0, background: "rgba(255,255,255,0.05)", borderRadius: 8, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)" }}>
+          {([["v3", "New Flow"], ["v1", "Old Flow"], ["all", "All Time"]] as const).map(([val, label]) => (
+            <button
+              key={val}
+              onClick={() => setFlowVersion(val)}
+              style={{
+                padding: "6px 16px", fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer", transition: "all 0.15s",
+                background: flowVersion === val ? "#7C5CFC" : "transparent",
+                color: flowVersion === val ? "#fff" : "rgba(255,255,255,0.4)",
+              }}
+            >
+              {label}
+            </button>
+          ))}
         </div>
-      )}
+        {data.effectiveStart && (
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.25)" }}>
+            Metrics since {new Date(data.effectiveStart).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" })}
+          </div>
+        )}
+      </div>
 
       {/* Page Load → First Tap funnel */}
       {(km.pageLoadCount ?? 0) > 0 && (
@@ -204,7 +222,7 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
           <div style={H}>Branch Conversion</div>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead><tr>
-              {["Branch", "Sessions", "E→Q4", "Q4→M", "M→Mech", "Mech→C", "C→PW", "PW→$", "Overall"].map((h) => (
+              {["Branch", "Sessions", "E→Q4", "Q4→M", "M→Mech", "Mech→C", "C→Acct", "Acct→$", "Overall"].map((h) => (
                 <th key={h} style={{ ...TH, textAlign: h === "Branch" ? "left" : "right" }}>{h}</th>
               ))}
             </tr></thead>
@@ -219,8 +237,8 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
                     <td style={{ ...TD, textAlign: "right" }}>{p(b.q4ToMirror, b.entryToQ4)}</td>
                     <td style={{ ...TD, textAlign: "right" }}>{p(b.mirrorToMechanism, b.q4ToMirror)}</td>
                     <td style={{ ...TD, textAlign: "right" }}>{p(b.mechanismToCommit, b.mirrorToMechanism)}</td>
-                    <td style={{ ...TD, textAlign: "right" }}>{p(b.commitToPaywall, b.mechanismToCommit)}</td>
-                    <td style={{ ...TD, textAlign: "right" }}>{p(b.paywallToPaid, b.commitToPaywall)}</td>
+                    <td style={{ ...TD, textAlign: "right" }}>{p(b.commitToAccount, b.mechanismToCommit)}</td>
+                    <td style={{ ...TD, textAlign: "right" }}>{p(b.accountToPaid, b.commitToAccount)}</td>
                     <td style={{ ...TD, textAlign: "right", fontWeight: 600, color: b.overallRate >= 5 ? "#22c55e" : b.overallRate > 0 ? "#f59e0b" : "#ef4444" }}>{b.overallRate}%</td>
                   </tr>
                 );
@@ -235,7 +253,7 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
         <div style={H}>Campaign Funnels</div>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead><tr>
-            {["Campaign", "Sessions", "Q2", "Mirror", "Mech", "Commit", "Signup", "Checkout", "Paid", "Rate"].map((h) => (
+            {["Campaign", "Sessions", "Q2", "Mirror", "Commit", "Account", "Paid", "Rate"].map((h) => (
               <th key={h} style={{ ...TH, textAlign: h === "Campaign" ? "left" : "right" }}>{h}</th>
             ))}
           </tr></thead>
@@ -246,10 +264,8 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
                 <td style={{ ...TD, textAlign: "right" }}>{cf.sessions}</td>
                 <td style={{ ...TD, textAlign: "right" }}>{cf.steps?.branch_q2 ?? 0}</td>
                 <td style={{ ...TD, textAlign: "right" }}>{cf.steps?.mirror ?? 0}</td>
-                <td style={{ ...TD, textAlign: "right" }}>{cf.steps?.mechanism ?? 0}</td>
                 <td style={{ ...TD, textAlign: "right" }}>{cf.steps?.commit ?? 0}</td>
-                <td style={{ ...TD, textAlign: "right" }}>{cf.steps?.signup ?? 0}</td>
-                <td style={{ ...TD, textAlign: "right" }}>{cf.steps?.checkout_started ?? 0}</td>
+                <td style={{ ...TD, textAlign: "right" }}>{cf.steps?.account ?? 0}</td>
                 <td style={{ ...TD, textAlign: "right" }}>{cf.steps?.paid ?? 0}</td>
                 <td style={{ ...TD, textAlign: "right", fontWeight: 600, color: cf.conversionRate >= 5 ? "#22c55e" : cf.conversionRate > 0 ? "#f59e0b" : "#ef4444" }}>{cf.conversionRate}%</td>
               </tr>

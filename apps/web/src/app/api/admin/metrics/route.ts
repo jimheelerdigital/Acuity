@@ -143,7 +143,8 @@ export async function GET(req: NextRequest) {
         case "funnel-analytics": {
           const showBots = req.nextUrl.searchParams.get("showBots") === "true";
           const resetAfter = req.nextUrl.searchParams.get("resetAfter") ?? null;
-          return getFunnelAnalytics(prisma, start, end, showBots, resetAfter);
+          const flow = req.nextUrl.searchParams.get("flow") as "v3" | "v1" | "all" | null;
+          return getFunnelAnalytics(prisma, start, end, showBots, resetAfter, flow ?? "v3");
         }
         case "guide":
           return getGuide();
@@ -1270,8 +1271,11 @@ async function getBusinessMetrics(prisma: P, monthStart: Date) {
 
 // ── Web Onboarding Funnel (/start) ──────────────────────────────────────────
 
-// v2 funnel steps for the Overview tab web funnel widget
-const WEB_FUNNEL_STEPS = [
+// v3 deploy timestamp — the account-first funnel went live at this point
+const FUNNEL_V3_EPOCH = new Date("2026-06-02T23:41:14Z");
+
+// v3 funnel steps (account-first flow)
+const WEB_FUNNEL_STEPS_V3 = [
   { event: "funnel_entry_viewed", label: "Entry viewed" },
   { event: "funnel_branch_q2_viewed", label: "Branch Q2" },
   { event: "funnel_mirror_viewed", label: "Mirror viewed" },
@@ -1281,11 +1285,39 @@ const WEB_FUNNEL_STEPS = [
   { event: "funnel_account_created", label: "Account Created" },
   { event: "funnel_savings_viewed", label: "Savings Offered" },
   { event: "funnel_savings_locked_in", label: "Paid" },
+  { event: "funnel_trial_continued", label: "Trial Continued" },
   { event: "funnel_download_viewed", label: "Download" },
-  // Legacy v2 (kept for historical data)
-  { event: "funnel_paywall_viewed", label: "Paywall (legacy)" },
-  { event: "funnel_signup_completed", label: "Signup (legacy)" },
-  { event: "funnel_payment_completed", label: "Payment (legacy)" },
+];
+
+// v1 funnel steps (old paywall flow)
+const WEB_FUNNEL_STEPS_V1 = [
+  { event: "funnel_entry_viewed", label: "Entry viewed" },
+  { event: "funnel_branch_q2_viewed", label: "Branch Q2" },
+  { event: "funnel_mirror_viewed", label: "Mirror viewed" },
+  { event: "funnel_commit_completed", label: "Commit completed" },
+  { event: "funnel_snapshot_viewed", label: "Snapshot viewed" },
+  { event: "funnel_paywall_viewed", label: "Paywall" },
+  { event: "funnel_signup_completed", label: "Signup" },
+  { event: "funnel_payment_completed", label: "Payment" },
+  { event: "funnel_download_viewed", label: "Download" },
+];
+
+// All steps combined (for "all time" view)
+const WEB_FUNNEL_STEPS_ALL = [
+  { event: "funnel_entry_viewed", label: "Entry viewed" },
+  { event: "funnel_branch_q2_viewed", label: "Branch Q2" },
+  { event: "funnel_mirror_viewed", label: "Mirror viewed" },
+  { event: "funnel_commit_completed", label: "Commit completed" },
+  { event: "funnel_snapshot_viewed", label: "Snapshot viewed" },
+  { event: "funnel_create_account_viewed", label: "Create Account (v3)" },
+  { event: "funnel_account_created", label: "Account Created (v3)" },
+  { event: "funnel_savings_viewed", label: "Savings Offered (v3)" },
+  { event: "funnel_savings_locked_in", label: "Paid (v3)" },
+  { event: "funnel_trial_continued", label: "Trial Continued (v3)" },
+  { event: "funnel_paywall_viewed", label: "Paywall (v1)" },
+  { event: "funnel_signup_completed", label: "Signup (v1)" },
+  { event: "funnel_payment_completed", label: "Payment (v1)" },
+  { event: "funnel_download_viewed", label: "Download" },
 ];
 
 const DIAGNOSTIC_EVENTS = [
@@ -1306,12 +1338,12 @@ const DROP_OFF_FIXES: Record<string, string> = {
   "Account Created": "Account screen viewed but form not submitted. Check validation UX.",
   "Savings Offered": "Saw savings screen but didn\u2019t engage. Review copy or pricing.",
   "Paid": "Didn\u2019t lock in savings. Price resistance or trial confidence high.",
+  "Trial Continued": "Skipped payment. Trial confidence high — not necessarily bad.",
   "Download": "Signed up but didn\u2019t download. Improve download urgency.",
-  // Legacy v2
-  "Paywall viewed": "Paywall drop. Test pricing or copy.",
-  "Signup completed": "Won\u2019t create account. Simplify auth options.",
-  "Payment completed": "Won\u2019t pay. Test pricing or extend trial.",
-  "Download viewed": "Paid but didn\u2019t download. Improve download urgency.",
+  // v1 labels
+  "Paywall": "Paywall drop. Test pricing or copy.",
+  "Signup": "Won\u2019t create account. Simplify auth options.",
+  "Payment": "Won\u2019t pay. Test pricing or extend trial.",
 };
 
 async function countDistinctSessions(prisma: P, event: string, start: Date, end: Date) {
@@ -1326,8 +1358,18 @@ async function countDistinctSessions(prisma: P, event: string, start: Date, end:
   return bySession.length + byUser.length;
 }
 
-async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date) {
+async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date, flowVersion: "v3" | "v1" | "all" = "v3") {
   try {
+    // Apply epoch clamping based on flow version
+    let effectiveStart = start;
+    let effectiveEnd = end;
+    if (flowVersion === "v3" && start < FUNNEL_V3_EPOCH) effectiveStart = FUNNEL_V3_EPOCH;
+    if (flowVersion === "v1" && end > FUNNEL_V3_EPOCH) effectiveEnd = FUNNEL_V3_EPOCH;
+
+    const WEB_FUNNEL_STEPS = flowVersion === "v3" ? WEB_FUNNEL_STEPS_V3
+      : flowVersion === "v1" ? WEB_FUNNEL_STEPS_V1
+      : WEB_FUNNEL_STEPS_ALL;
+
     // ── Funnel steps ────────────────────────────────────
     const steps = await Promise.all(
       WEB_FUNNEL_STEPS.map(async (s) => {
@@ -1336,7 +1378,7 @@ async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date) {
           const sessionSets = await Promise.all(
             DIAGNOSTIC_EVENTS.map(async (de) => {
               const rows = await prisma.onboardingEvent.findMany({
-                where: { event: de, createdAt: { gte: start, lte: end }, sessionToken: { not: null }, isBot: false },
+                where: { event: de, createdAt: { gte: effectiveStart, lte: effectiveEnd }, sessionToken: { not: null }, isBot: false },
                 select: { sessionToken: true },
               });
               return new Set(rows.map((r) => r.sessionToken));
@@ -1349,7 +1391,7 @@ async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date) {
           }
           return { label: s.label, count: intersection.size };
         }
-        return { label: s.label, count: await countDistinctSessions(prisma, s.event, start, end) };
+        return { label: s.label, count: await countDistinctSessions(prisma, s.event, effectiveStart, effectiveEnd) };
       })
     );
 
@@ -1370,7 +1412,7 @@ async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date) {
     for (const de of DIAGNOSTIC_EVENTS) {
       const rows = await prisma.onboardingEvent.groupBy({
         by: ["value"],
-        where: { event: de, createdAt: { gte: start, lte: end }, value: { not: null }, isBot: false },
+        where: { event: de, createdAt: { gte: effectiveStart, lte: effectiveEnd }, value: { not: null }, isBot: false },
         _count: true,
       });
       const label = de.replace("funnel_", "").replace("_selected", "");
@@ -1380,8 +1422,8 @@ async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date) {
     }
 
     // ── Commitment stats ────────────────────────────────
-    const commitCompleted = await countDistinctSessions(prisma, "funnel_commit_completed", start, end);
-    const commitAbandoned = await countDistinctSessions(prisma, "funnel_commit_abandoned", start, end);
+    const commitCompleted = await countDistinctSessions(prisma, "funnel_commit_completed", effectiveStart, effectiveEnd);
+    const commitAbandoned = await countDistinctSessions(prisma, "funnel_commit_abandoned", effectiveStart, effectiveEnd);
     const commitmentStats = {
       completed: commitCompleted,
       abandoned: commitAbandoned,
@@ -1394,7 +1436,7 @@ async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date) {
     const recentEvents = await prisma.onboardingEvent.findMany({
       where: {
         event: { startsWith: "funnel_" },
-        createdAt: { gte: start, lte: end },
+        createdAt: { gte: effectiveStart, lte: effectiveEnd },
         sessionToken: { not: null },
         isBot: false,
       },
@@ -1468,8 +1510,8 @@ async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date) {
         const last = sorted[sorted.length - 1];
         const maxStep = Math.max(...events.map((e) => STEP_PROGRESS[e.event] ?? 0));
         const minutesSinceLast = (Date.now() - new Date(last.createdAt).getTime()) / 60000;
-        const completed = events.some((e) => e.event === "funnel_app_store_clicked");
-        const paid = events.some((e) => e.event === "funnel_payment_completed");
+        const completed = events.some((e) => e.event === "funnel_app_store_clicked" || e.event === "funnel_download_viewed");
+        const paid = events.some((e) => e.event === "funnel_savings_locked_in" || e.event === "funnel_payment_completed");
 
         let status: "completed" | "paid" | "active" | "stalled" | "dropped";
         if (completed) status = "completed";
@@ -1577,16 +1619,26 @@ async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date) {
 // Pain Hook / diagnostic events polluting the new branching quiz metrics.
 const FUNNEL_V2_EPOCH = new Date("2026-05-28T02:35:00Z");
 
-async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, showBots = false, resetAfter: string | null = null) {
+async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, showBots = false, resetAfter: string | null = null, flowVersion: "v3" | "v1" | "all" = "v3") {
  try {
-  // Clamp start to v2 epoch (or user-set reset timestamp) so old events don't pollute metrics
-  const epoch = resetAfter ? new Date(resetAfter) : FUNNEL_V2_EPOCH;
-  const effectiveStart = start > epoch ? start : epoch;
+  // Clamp dates based on flow version
+  let effectiveStart = start;
+  let effectiveEnd = end;
+  if (flowVersion === "v3") {
+    const epoch = resetAfter ? new Date(resetAfter) : FUNNEL_V3_EPOCH;
+    if (effectiveStart < epoch) effectiveStart = epoch;
+  } else if (flowVersion === "v1") {
+    if (effectiveEnd > FUNNEL_V3_EPOCH) effectiveEnd = FUNNEL_V3_EPOCH;
+  } else {
+    // "all" — use v2 epoch as floor to exclude ancient v1 diagnostic events
+    const epoch = resetAfter ? new Date(resetAfter) : FUNNEL_V2_EPOCH;
+    if (effectiveStart < epoch) effectiveStart = epoch;
+  }
 
-  // v2 funnel steps — branching quiz flow
-  const FUNNEL_STEPS = [
-    { key: "entry", event: "funnel_entry_viewed", label: "Entry", fallback: "funnel_pain_hook_viewed" },
-    { key: "branch_q2", event: "funnel_branch_q2_viewed", label: "Branch Q2", fallback: "funnel_diagnostic_loop_viewed" },
+  // v3 funnel steps — account-first flow (no fallbacks — clean separation)
+  const FUNNEL_STEPS_V3 = [
+    { key: "entry", event: "funnel_entry_viewed", label: "Entry" },
+    { key: "branch_q2", event: "funnel_branch_q2_viewed", label: "Branch Q2" },
     { key: "branch_q3", event: "funnel_branch_q3_viewed", label: "Q3" },
     { key: "branch_q4", event: "funnel_branch_q4_viewed", label: "Q4" },
     { key: "shared_q5", event: "funnel_shared_q5_viewed", label: "Q5" },
@@ -1596,24 +1648,49 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     { key: "shared_q9", event: "funnel_shared_q9_viewed", label: "Q9" },
     { key: "mirror", event: "funnel_mirror_viewed", label: "Mirror" },
     { key: "mechanism", event: "funnel_mechanism_viewed", label: "Mechanism" },
-    { key: "commit", event: "funnel_commit_viewed", label: "Commit", fallback: "funnel_commitment_viewed" },
+    { key: "commit", event: "funnel_commit_viewed", label: "Commit" },
     { key: "processing", event: "funnel_processing_viewed", label: "Processing" },
-    { key: "snapshot", event: "funnel_snapshot_viewed", label: "Snapshot", fallback: "funnel_extraction_viewed" },
-    { key: "timeline", event: "funnel_timeline_viewed", label: "Timeline", fallback: "funnel_journey_viewed" },
-    // v3 account-first flow
-    { key: "create_account", event: "funnel_create_account_viewed", label: "Create Account", fallback: "funnel_paywall_viewed" },
-    { key: "account_created", event: "funnel_account_created", label: "Account Created", fallback: "funnel_signup_completed" },
+    { key: "snapshot", event: "funnel_snapshot_viewed", label: "Snapshot" },
+    { key: "timeline", event: "funnel_timeline_viewed", label: "Timeline" },
+    { key: "create_account", event: "funnel_create_account_viewed", label: "Create Account" },
+    { key: "account_created", event: "funnel_account_created", label: "Account Created" },
     { key: "savings_offered", event: "funnel_savings_viewed", label: "Savings Offered" },
-    { key: "paid", event: "funnel_savings_locked_in", label: "Paid", fallback: "funnel_payment_completed" },
+    { key: "paid", event: "funnel_savings_locked_in", label: "Savings Locked In" },
     { key: "trial_continued", event: "funnel_trial_continued", label: "Trial Continued" },
-    { key: "download", event: "funnel_download_viewed", label: "Download", fallback: "funnel_app_store_clicked" },
+    { key: "download", event: "funnel_download_viewed", label: "Download" },
   ];
+
+  // v1 funnel steps — old paywall flow
+  const FUNNEL_STEPS_V1 = [
+    { key: "entry", event: "funnel_entry_viewed", label: "Entry" },
+    { key: "branch_q2", event: "funnel_branch_q2_viewed", label: "Branch Q2" },
+    { key: "branch_q3", event: "funnel_branch_q3_viewed", label: "Q3" },
+    { key: "branch_q4", event: "funnel_branch_q4_viewed", label: "Q4" },
+    { key: "shared_q5", event: "funnel_shared_q5_viewed", label: "Q5" },
+    { key: "shared_q6", event: "funnel_shared_q6_viewed", label: "Q6 (Cost)" },
+    { key: "shared_q7", event: "funnel_shared_q7_viewed", label: "Q7" },
+    { key: "shared_q8", event: "funnel_shared_q8_viewed", label: "Q8" },
+    { key: "shared_q9", event: "funnel_shared_q9_viewed", label: "Q9" },
+    { key: "mirror", event: "funnel_mirror_viewed", label: "Mirror" },
+    { key: "mechanism", event: "funnel_mechanism_viewed", label: "Mechanism" },
+    { key: "commit", event: "funnel_commit_viewed", label: "Commit" },
+    { key: "processing", event: "funnel_processing_viewed", label: "Processing" },
+    { key: "snapshot", event: "funnel_snapshot_viewed", label: "Snapshot" },
+    { key: "timeline", event: "funnel_timeline_viewed", label: "Timeline" },
+    { key: "paywall", event: "funnel_paywall_viewed", label: "Paywall" },
+    { key: "signup", event: "funnel_signup_completed", label: "Signup" },
+    { key: "checkout", event: "funnel_checkout_started", label: "Checkout" },
+    { key: "paid", event: "funnel_payment_completed", label: "Paid" },
+    { key: "download", event: "funnel_download_viewed", label: "Download" },
+  ];
+
+  const FUNNEL_STEPS = flowVersion === "v1" ? FUNNEL_STEPS_V1 : FUNNEL_STEPS_V3;
 
   // Fetch all funnel events in range (exclude bots unless showBots is true)
   const events = await prisma.onboardingEvent.findMany({
     where: {
       event: { startsWith: "funnel_" },
-      createdAt: { gte: effectiveStart, lte: end },
+      createdAt: { gte: effectiveStart, lte: effectiveEnd },
       sessionToken: { not: null },
       ...(showBots ? {} : { isBot: false }),
     },
@@ -1674,7 +1751,7 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     let maxStepLabel = "Unknown";
     for (let i = 0; i < FUNNEL_STEPS.length; i++) {
       const s = FUNNEL_STEPS[i];
-      if (eventNames.has(s.event) || (s.fallback && eventNames.has(s.fallback))) {
+      if (eventNames.has(s.event)) {
         maxStep = i + 1;
         maxStepLabel = s.label;
         // Only count interacted sessions in step reach (excludes bot prefetches)
@@ -1775,11 +1852,16 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     processing: "Processing theater drop. Users leaving during wait.",
     snapshot: "Snapshot not compelling. Personalize more.",
     timeline: "Timeline not motivating. Review copy per branch.",
+    create_account: "Create account drop. Simplify form or add social sign-in.",
+    account_created: "Account screen viewed but form not submitted. Check validation UX.",
+    savings_offered: "Saw savings screen but didn\u2019t engage. Review copy or pricing.",
+    paid: "Didn\u2019t lock in savings. Price resistance or trial confidence high.",
+    trial_continued: "Skipped payment. Trial confidence high \u2014 not necessarily bad.",
+    download: "Signed up but didn\u2019t download. Improve download urgency.",
+    // v1 keys
     paywall: "Paywall drop. Test pricing or copy.",
     signup: "Won\u2019t create account. Simplify auth options.",
-    checkout_started: "Signed up but didn\u2019t start checkout. Review paywall copy.",
-    paid: "Started checkout but didn\u2019t pay. Card declines or abandoned.",
-    download: "Paid but didn\u2019t download. Improve download urgency.",
+    checkout: "Signed up but didn\u2019t start checkout. Review paywall copy.",
   };
 
   const alerts = funnelSteps
@@ -1833,7 +1915,7 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
       let maxIdx = -1;
       for (let i = 0; i < FUNNEL_STEPS.length; i++) {
         const fs = FUNNEL_STEPS[i];
-        if (eventNames.has(fs.event) || (fs.fallback && eventNames.has(fs.fallback))) {
+        if (eventNames.has(fs.event)) {
           maxIdx = i;
         }
       }
@@ -1877,7 +1959,7 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
         branch_q2: cStepReach["branch_q2"] ?? 0,
         mirror: cStepReach["mirror"] ?? 0,
         commit: cStepReach["commit"] ?? 0,
-        signup: cStepReach["signup"] ?? 0,
+        account: cStepReach["account_created"] ?? cStepReach["signup"] ?? 0,
         paid: paidC,
       },
       conversionRate: convRate,
@@ -1911,8 +1993,9 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
       const q4ToMirror = bSessions.filter((s) => s.stepNumber >= 10).length;
       const mirrorToMechanism = bSessions.filter((s) => s.stepNumber >= 11).length;
       const mechanismToCommit = bSessions.filter((s) => s.stepNumber >= 12).length;
-      const commitToPaywall = bSessions.filter((s) => s.stepNumber >= 17).length;
-      const paywallToPaid = bSessions.filter((s) => s.status === "paid" || s.status === "completed").length;
+      // In v3: step 16 = Create Account; in v1: step 16 = Paywall
+      const commitToAccount = bSessions.filter((s) => s.stepNumber >= 16).length;
+      const accountToPaid = bSessions.filter((s) => s.status === "paid" || s.status === "completed" || s.status === "signed_up").length;
       return {
         branch: branchKey,
         sessions: total,
@@ -1920,9 +2003,9 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
         q4ToMirror,
         mirrorToMechanism,
         mechanismToCommit,
-        commitToPaywall,
-        paywallToPaid,
-        overallRate: total > 0 ? Math.round((paywallToPaid / total) * 100) : 0,
+        commitToAccount,
+        accountToPaid,
+        overallRate: total > 0 ? Math.round((accountToPaid / total) * 100) : 0,
       };
     })
     .sort((a, b) => b.sessions - a.sessions);
@@ -2081,6 +2164,14 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
       avgFunnelTimeSec,
       pageLoadCount,
       interactedCount,
+      accountCreationRate: (stepReach["timeline"]?.size ?? 0) > 0
+        ? Math.round(((stepReach["account_created"]?.size ?? stepReach["signup"]?.size ?? 0) / stepReach["timeline"].size) * 100) : 0,
+      immediatePayRate: (stepReach["account_created"]?.size ?? stepReach["signup"]?.size ?? 0) > 0
+        ? Math.round(((stepReach["paid"]?.size ?? 0) / (stepReach["account_created"]?.size ?? stepReach["signup"]?.size ?? 1)) * 100) : 0,
+      trialSkipRate: (stepReach["account_created"]?.size ?? 0) > 0
+        ? Math.round(((stepReach["trial_continued"]?.size ?? 0) / stepReach["account_created"].size) * 100) : 0,
+      downloadRate: (stepReach["account_created"]?.size ?? stepReach["signup"]?.size ?? 0) > 0
+        ? Math.round(((stepReach["download"]?.size ?? 0) / (stepReach["account_created"]?.size ?? stepReach["signup"]?.size ?? 1)) * 100) : 0,
     },
     diagnostics: {
       entryViewedEvents: entryViewedCount,
@@ -2120,7 +2211,7 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
       recentPayments: [],
       campaignNames: {},
       campaignObjectives: {},
-      effectiveStart: FUNNEL_V2_EPOCH.toISOString(),
+      effectiveStart: FUNNEL_V3_EPOCH.toISOString(),
       sessions: [],
       totalSessionCount: 0,
     };

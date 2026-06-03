@@ -160,7 +160,6 @@ export function OnboardingFunnel() {
               setPaymentConfirmed(true);
               setStep("download");
               track("funnel_savings_locked_in", { value: selectedPlan });
-              track("funnel_payment_completed", { value: "stripe_verified" });
               fireFbq("Purchase", { value: selectedPlan === "yearly" ? 39.99 : 4.99, currency: "USD", content_name: "Acuity Pro Subscription" });
             } else {
               setStep("savings");
@@ -1181,7 +1180,6 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
         return;
       }
       const signupData = await res.json().catch(() => ({}));
-      track("funnel_signup_completed", { value: "email" });
       fireFbq("CompleteRegistration", { content_name: "Free Trial Signup", currency: "USD", value: 0 }, signupData.capiEventId);
 
       const result = await signIn("credentials", { email: signupEmail.trim(), password: signupPassword, redirect: false });
