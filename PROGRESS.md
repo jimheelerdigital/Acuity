@@ -41,6 +41,39 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-06-02] — Fix funnel flow filter to use DB column instead of date clamping
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 4d7fba8
+
+### In plain English (for Keenan)
+
+The Old Flow / New Flow / All Time toggle on the Funnel Analytics tab was showing the same data for all three options. The filter wasn't actually working because it was trying to separate flows by date range clipping, which broke when you were viewing dates that fell entirely within one flow period. Now every funnel event has a `flowVersion` tag in the database ("v1" for old flow, "v2" for new flow), and the filter queries by that tag directly. A backfill endpoint will tag all existing events on first run.
+
+### Technical changes (for Jimmy)
+
+- `prisma/schema.prisma`: Added `flowVersion String?` column + index on `OnboardingEvent`
+- `apps/web/src/lib/track-onboarding.ts`: Added `flowVersion` to the opts interface
+- `apps/web/src/app/api/onboarding-events/route.ts`: Accepts and stores `flowVersion` from request body
+- `apps/web/src/components/onboarding-funnel.tsx`: `useFunnelTracker()` now passes `flowVersion: "v2"` on every event
+- `apps/web/src/app/api/admin/metrics/route.ts`: Both `getWebOnboardingFunnel()` and `getFunnelAnalytics()` now filter by `flowVersion` column via WHERE clause instead of date clamping. `countDistinctSessions()` accepts optional `flowVersion` param. All sub-queries (diagnostics, commitment, sessions) pass the flow filter through.
+- `apps/web/src/app/admin/tabs/FunnelAnalyticsTab.tsx`: Toggle values changed from v3/v1/all to v2/v1/all
+- `apps/web/src/app/api/admin/backfill-flow-version/route.ts`: New admin-only POST endpoint that tags existing events — events before v3 epoch → "v1", events after → "v2"
+
+### Manual steps needed
+
+- [ ] Run `npx prisma db push` to add the `flowVersion` column (Keenan — from home network)
+- [ ] After deploy, hit `POST /api/admin/backfill-flow-version` once to tag all existing events (Keenan — from admin dashboard or curl)
+
+### Notes
+
+- The date-clamping approach failed because when the user's date picker range fell entirely after the v3 epoch (e.g., "today"), all three filter options returned the same date range — they all showed "today's" events.
+- The backfill is idempotent — safe to run multiple times. It only touches rows where `flowVersion IS NULL`.
+- Future events are tagged automatically at creation time via the updated `useFunnelTracker()`.
+
+---
+
 ## [2026-06-02] — Fix funnel chart mixing old and new flow data
 
 **Requested by:** Keenan
