@@ -21,13 +21,10 @@ import { DeleteAccountModal } from "@/components/delete-account-modal";
 import { FeedbackModal } from "@/components/feedback-modal";
 import { RestorePurchasesButton } from "@/components/restore-purchases-button";
 import { useAuth } from "@/contexts/auth-context";
-import { useLock } from "@/contexts/lock-context";
 import { useTheme } from "@/contexts/theme-context";
 import {
-  authenticate,
   isLocalAuthCapable,
   isLockEnabled,
-  setLockEnabled,
 } from "@/lib/app-lock";
 import { isIapEnabled } from "@/lib/iap-config";
 import { openSubscriptionPortal } from "@/lib/subscription";
@@ -35,11 +32,12 @@ import { openSubscriptionPortal } from "@/lib/subscription";
 export default function ProfileTab() {
   const router = useRouter();
   const { user, signOut, deleteAccount, refresh } = useAuth();
-  const { lockNow } = useLock();
   const { tokens } = useTheme();
   const [signingOut, setSigningOut] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  // Just-enough state to drive the Security row's sublabel + visibility.
+  // The actual toggle + auto-lock picker live on /security.
   const [lockEnabled, setLockEnabledLocal] = useState<boolean | null>(null);
   const [lockCapable, setLockCapable] = useState<boolean>(false);
 
@@ -57,44 +55,6 @@ export default function ProfileTab() {
       cancelled = true;
     };
   }, []);
-
-  const handleToggleLock = async () => {
-    if (lockEnabled === null) return;
-    if (lockEnabled) {
-      // Turning OFF — confirm so users don't tap it by accident.
-      Alert.alert(
-        "Turn off app lock?",
-        "Your entries will no longer require Face ID to view.",
-        [
-          { text: "Cancel", style: "cancel" },
-          {
-            text: "Turn off",
-            style: "destructive",
-            onPress: async () => {
-              await setLockEnabled(false);
-              setLockEnabledLocal(false);
-            },
-          },
-        ]
-      );
-      return;
-    }
-    // Turning ON — require the user to authenticate first so we
-    // never enable the lock for a stolen unlocked phone.
-    const res = await authenticate("Confirm to enable app lock");
-    if (!res.success) {
-      Alert.alert(
-        "Couldn't enable lock",
-        "Face ID / passcode wasn't confirmed. Try again."
-      );
-      return;
-    }
-    await setLockEnabled(true);
-    setLockEnabledLocal(true);
-    // Refresh the in-memory lock cache + engage immediately so the
-    // user sees the lock take effect.
-    void lockNow();
-  };
 
   const handleSignOut = () => {
     Alert.alert("Sign out", "Are you sure you want to sign out?", [
@@ -322,20 +282,24 @@ export default function ProfileTab() {
             sublabel="When to nudge you to journal"
             onPress={() => router.push("/reminders")}
           />
-          {/* App lock toggle — only renders on iOS devices with
-              biometry or passcode enrolled. Default OFF. Tapping
-              requires the user to authenticate before flipping on
-              (prevents enabling on a stolen unlocked phone). */}
-          {lockCapable && lockEnabled !== null && (
+          {/* Security — Face ID / app lock + auto-lock interval.
+              Lives on its own screen so the picker (Immediately /
+              1m / 2m / 5m / 15m / Never) has room. The picker was
+              the v1.3.x ask — users hated the 30s in-app re-lock
+              the v1.3 build shipped with. Self-hides on devices
+              without biometry or passcode enrolled. */}
+          {lockCapable && (
             <MenuItem
               icon="lock-closed-outline"
-              label={lockEnabled ? "App lock: On" : "Require Face ID to open"}
+              label="Security"
               sublabel={
-                lockEnabled
-                  ? "Face ID required after 30s in background"
-                  : "Lock Acuity with Face ID, Touch ID, or device passcode"
+                lockEnabled === null
+                  ? "Face ID, app lock, auto-lock interval"
+                  : lockEnabled
+                    ? "App lock on"
+                    : "Lock Acuity with Face ID or device passcode"
               }
-              onPress={() => void handleToggleLock()}
+              onPress={() => router.push("/security" as never)}
             />
           )}
           <MenuItem

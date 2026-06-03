@@ -56,6 +56,11 @@ export async function GET(req: NextRequest) {
       // vs "Upgrade" without needing the underlying id.
       stripeCustomerId: true,
       timezone: true,
+      // v1.3.x biometric auto-lock threshold (encoding in
+      // apps/mobile/lib/app-lock.ts). Surfaced here for cross-device
+      // sync — mobile reads this on cold launch and hydrates the
+      // local AsyncStorage value when stored locally diverges.
+      autoLockMinutes: true,
       currentStreak: true,
       longestStreak: true,
       // Surfaced for mobile slice 9b — push-token registration triggers

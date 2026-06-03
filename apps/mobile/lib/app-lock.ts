@@ -25,10 +25,12 @@
  * configurable.
  */
 
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as LocalAuthentication from "expo-local-authentication";
 import * as SecureStore from "expo-secure-store";
 
 const LOCK_ENABLED_KEY = "acuity_app_lock_enabled";
+const AUTO_LOCK_MINUTES_KEY = "acuity.app_lock.auto_lock_minutes";
 
 // Match the session-token's accessibility tier (see lib/auth.ts).
 // AFTER_FIRST_UNLOCK survives reboot and remains readable while the
@@ -39,8 +41,70 @@ const KEYCHAIN_OPTIONS: SecureStore.SecureStoreOptions = {
   keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK,
 };
 
-/** Background→foreground gap that triggers a re-lock. */
-export const LOCK_TIMEOUT_MS = 30_000;
+/**
+ * DEPRECATED — kept exported only for type-compat with any old import.
+ * The runtime threshold is now derived per-resume from
+ * `getAutoLockMinutes()`; see `autoLockThresholdMs()` below.
+ *
+ * @deprecated Use `autoLockThresholdMs(await getAutoLockMinutes())`.
+ */
+export const LOCK_TIMEOUT_MS = 120_000;
+
+/**
+ * Allowed auto-lock minute values. Mirrors the picker options in
+ * the Security screen.
+ *
+ * Encoding:
+ *   0  → lock immediately when app backgrounds
+ *   1  → 1 minute background → re-lock
+ *   2  → 2 minutes (default — banking-app norm)
+ *   5  → 5 minutes
+ *   15 → 15 minutes
+ *  -1  → never re-lock on resume; only cold-launch re-locks
+ */
+export const AUTO_LOCK_OPTIONS = [0, 1, 2, 5, 15, -1] as const;
+export type AutoLockMinutes = (typeof AUTO_LOCK_OPTIONS)[number];
+
+const DEFAULT_AUTO_LOCK_MINUTES: AutoLockMinutes = 2;
+// Sentinel: "Never re-lock on resume." The lock-context treats this
+// as Infinity so the background-elapsed comparison never trips.
+const NEVER_SENTINEL: AutoLockMinutes = -1;
+
+/** Convert an `autoLockMinutes` value to its millisecond threshold. */
+export function autoLockThresholdMs(minutes: AutoLockMinutes): number {
+  if (minutes === NEVER_SENTINEL) return Number.POSITIVE_INFINITY;
+  if (minutes <= 0) return 0;
+  return minutes * 60_000;
+}
+
+function isValidAutoLockMinutes(n: unknown): n is AutoLockMinutes {
+  return (
+    typeof n === "number" &&
+    (AUTO_LOCK_OPTIONS as readonly number[]).includes(n)
+  );
+}
+
+export async function getAutoLockMinutes(): Promise<AutoLockMinutes> {
+  try {
+    const raw = await AsyncStorage.getItem(AUTO_LOCK_MINUTES_KEY);
+    if (raw === null) return DEFAULT_AUTO_LOCK_MINUTES;
+    const parsed = Number(raw);
+    if (isValidAutoLockMinutes(parsed)) return parsed;
+    return DEFAULT_AUTO_LOCK_MINUTES;
+  } catch {
+    // AsyncStorage failure is non-fatal — fall back to default.
+    return DEFAULT_AUTO_LOCK_MINUTES;
+  }
+}
+
+export async function setAutoLockMinutes(minutes: AutoLockMinutes): Promise<void> {
+  if (!isValidAutoLockMinutes(minutes)) return;
+  try {
+    await AsyncStorage.setItem(AUTO_LOCK_MINUTES_KEY, String(minutes));
+  } catch {
+    // Swallow — caller's local state still reflects intent.
+  }
+}
 
 /**
  * Is the device capable of biometric or device-passcode local auth?

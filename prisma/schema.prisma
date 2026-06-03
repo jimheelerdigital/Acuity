@@ -127,6 +127,17 @@ model User {
   // raw structure rather than projecting it column-by-column.
   appleLatestReceiptInfo        Json?
   timezone                      String               @default("America/Chicago")
+  // Slice v1.3.x (2026-06-03) — biometric auto-lock threshold.
+  // Encoding: 0 = lock immediately on background, 1/2/5/15 = minutes
+  // of background time before re-lock, -1 = never (only cold-launch
+  // re-locks). Default 2 minutes matches the banking-app /
+  // 1Password / Apple-pattern UX target.
+  //
+  // Mirrored to AsyncStorage on the device for synchronous read by
+  // the lock-context AppState handler. Server column is the source
+  // of truth for cross-device sync (a setting toggled on iPhone
+  // should land on iPad after the next /api/user/me fetch).
+  autoLockMinutes               Int                  @default(2)
   // DEPRECATED: superseded by notificationTime + notificationDays +
   // notificationsEnabled (added 2026-04-20 alongside the onboarding
   // notifications step). Left in place because a fresh schema diff

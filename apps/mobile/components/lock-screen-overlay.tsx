@@ -5,6 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useLock } from "@/contexts/lock-context";
 import { useTheme } from "@/contexts/theme-context";
+import { isLocalAuthCapable } from "@/lib/app-lock";
 
 /**
  * Full-screen overlay rendered above the route tree when the app
@@ -17,11 +18,17 @@ import { useTheme } from "@/contexts/theme-context";
  * useEffect dep churn re-triggered the dialog endlessly when paired
  * with the lock-context loop).
  *
- * After 3 consecutive cancels/failures we surface a "Use your device
- * passcode" hint — the iOS biometric prompt auto-falls-back to the
- * device passcode after 3 biometry failures, but if the user keeps
- * cancelling the prompt itself they need to know that retrying will
- * give them that fallback. v1.3 (2026-06-03).
+ * After 3 consecutive cancels/failures we surface a "Use device
+ * passcode" hint — `authenticate()` passes `disableDeviceFallback:
+ * false`, so tapping Unlock again after 3 biometry failures lets
+ * iOS auto-fall-back to the OS passcode prompt. We tell the user
+ * that explicitly so they don't think they're trapped.
+ *
+ * v1.3.x (2026-06-03): if `isLocalAuthCapable()` returns false at
+ * mount (covered camera, recently disabled biometry, hardware
+ * issue), surface a recovery message instead of leaving the user
+ * on a blank locked screen. They can still tap Unlock — iOS will
+ * fall through to the device passcode if biometry's unavailable.
  *
  * "checking" status renders the same neutral background as the
  * locked state, but without the unlock CTA, to avoid a flash of
@@ -32,6 +39,20 @@ export function LockScreenOverlay() {
   const { tokens } = useTheme();
   const promptedFor = useRef<"locked" | null>(null);
   const [attempts, setAttempts] = useState(0);
+  // null = haven't probed yet; once resolved, stays stable for the
+  // life of the overlay. Used purely for the messaging — Unlock
+  // still tries authenticate() because iOS handles the fallback.
+  const [capable, setCapable] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void isLocalAuthCapable().then((c) => {
+      if (!cancelled) setCapable(c);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Auto-prompt biometric exactly ONCE per locked entry. Tracked via
   // a ref keyed on the status — when we leave "locked" the ref
@@ -55,6 +76,7 @@ export function LockScreenOverlay() {
   if (status === "unlocked") return null;
 
   const showPasscodeHint = attempts >= 3 && status === "locked";
+  const showCapabilityHint = capable === false && status === "locked";
 
   return (
     <View
@@ -105,7 +127,16 @@ export function LockScreenOverlay() {
               </Text>
             </Pressable>
           )}
-          {showPasscodeHint && (
+          {showCapabilityHint && (
+            <Text
+              className="mt-6 text-xs text-center leading-relaxed px-2"
+              style={{ color: tokens.textTer }}
+            >
+              Face ID isn&rsquo;t available right now. Tap Unlock and
+              use your device passcode instead.
+            </Text>
+          )}
+          {showPasscodeHint && !showCapabilityHint && (
             <Text
               className="mt-6 text-xs text-center leading-relaxed px-2"
               style={{ color: tokens.textTer }}
