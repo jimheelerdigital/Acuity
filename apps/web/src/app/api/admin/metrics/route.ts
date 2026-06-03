@@ -1284,7 +1284,6 @@ const WEB_FUNNEL_STEPS_V3 = [
   { event: "funnel_create_account_viewed", label: "Create Account" },
   { event: "funnel_account_created", label: "Account Created" },
   { event: "funnel_savings_viewed", label: "Savings Offered" },
-  { event: "funnel_savings_locked_in", label: "Paid" },
   { event: "funnel_trial_continued", label: "Trial Continued" },
   { event: "funnel_download_viewed", label: "Download" },
 ];
@@ -1312,7 +1311,6 @@ const WEB_FUNNEL_STEPS_ALL = [
   { event: "funnel_create_account_viewed", label: "Create Account (v3)" },
   { event: "funnel_account_created", label: "Account Created (v3)" },
   { event: "funnel_savings_viewed", label: "Savings Offered (v3)" },
-  { event: "funnel_savings_locked_in", label: "Paid (v3)" },
   { event: "funnel_trial_continued", label: "Trial Continued (v3)" },
   { event: "funnel_paywall_viewed", label: "Paywall (v1)" },
   { event: "funnel_signup_completed", label: "Signup (v1)" },
@@ -1655,7 +1653,6 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     { key: "create_account", event: "funnel_create_account_viewed", label: "Create Account" },
     { key: "account_created", event: "funnel_account_created", label: "Account Created" },
     { key: "savings_offered", event: "funnel_savings_viewed", label: "Savings Offered" },
-    { key: "paid", event: "funnel_savings_locked_in", label: "Savings Locked In" },
     { key: "trial_continued", event: "funnel_trial_continued", label: "Trial Continued" },
     { key: "download", event: "funnel_download_viewed", label: "Download" },
   ];
@@ -1890,12 +1887,9 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
   const paidCount = stepReach["paid"].size;
   const completionRate = entryCountTotal > 0 ? Math.round((paidCount / entryCountTotal) * 100) : 0;
 
-  // Account & paid summary (from DB, not events) — for v2 flow only
+  // Account & trial summary from funnel events
   const accountCreatedCount = stepReach["account_created"]?.size ?? 0;
   const trialContinuedCount = stepReach["trial_continued"]?.size ?? 0;
-  const savingsLockedCount = stepReach["paid"]?.size ?? 0;
-  const newFlowPaidConversion = accountCreatedCount > 0
-    ? Math.round((savingsLockedCount / accountCreatedCount) * 100) : 0;
 
   // Biggest drop-off
   let biggestDrop = { step: "N/A", dropPct: 0 };
@@ -2167,6 +2161,16 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     } catch { /* non-fatal */ }
   }
 
+  // ── Stripe-verified paid count (actual subscriptions, not funnel events) ──
+  const stripePaid = await prisma.user.findMany({
+    where: {
+      subscriptionStatus: "PRO",
+      stripeSubscriptionId: { not: null },
+      createdAt: { gte: effectiveStart, lte: effectiveEnd },
+    },
+    select: { id: true, email: true, createdAt: true, signupMethod: true },
+  });
+
   // Diagnostic: raw event counts for page loads vs taps
   const entryViewedCount = events.filter((e) => e.event === "funnel_entry_viewed").length;
   const entrySelectedCount = events.filter((e) => e.event === "funnel_entry_selected").length;
@@ -2189,9 +2193,9 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
       downloadRate: (stepReach["account_created"]?.size ?? stepReach["signup"]?.size ?? 0) > 0
         ? Math.round(((stepReach["download"]?.size ?? 0) / (stepReach["account_created"]?.size ?? stepReach["signup"]?.size ?? 1)) * 100) : 0,
       totalAccounts: accountCreatedCount,
-      totalPaid: savingsLockedCount,
+      totalPaid: stripePaid.length,
       totalTrialContinued: trialContinuedCount,
-      paidConversion: newFlowPaidConversion,
+      paidConversion: accountCreatedCount > 0 ? Math.round((stripePaid.length / accountCreatedCount) * 100) : 0,
     },
     diagnostics: {
       entryViewedEvents: entryViewedCount,
@@ -2214,6 +2218,12 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     effectiveStart: effectiveStart.toISOString(),
     sessions: sessions.slice(0, 200),
     totalSessionCount: interactedSessionsList.length,
+    stripePaid: stripePaid.map((u) => ({
+      id: u.id,
+      email: u.email,
+      createdAt: u.createdAt.toISOString(),
+      signupMethod: u.signupMethod,
+    })),
   };
  } catch (err) {
     console.error("[getFunnelAnalytics] Query failed:", err);

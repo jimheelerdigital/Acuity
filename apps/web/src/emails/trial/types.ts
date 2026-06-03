@@ -49,4 +49,5 @@ export type TrialEmailKey =
   | "recovery_signup_no_checkout"
   | "recovery_paid_no_app"
   | "recovery_recorded_once"
-  | "recovery_day6_nudge";
+  | "recovery_day6_nudge"
+  | "recovery_download_reminder";

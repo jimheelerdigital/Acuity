@@ -39,6 +39,7 @@ import {
 import { waitlistReactivationFn } from "@/inngest/functions/waitlist-reactivation";
 import { cleanupTrySessionsFn } from "@/inngest/functions/cleanup-try-sessions";
 import { recoveryEmailOrchestratorFn } from "@/inngest/functions/recovery-email-orchestrator";
+import { downloadReminderEmailFn } from "@/inngest/functions/download-reminder-email";
 import { achievementsNightlyFn } from "@/inngest/functions/achievements-nightly";
 
 export const dynamic = "force-dynamic";
@@ -84,6 +85,7 @@ const handler = serve({
     freeCapEvaluatorFn,
     cleanupTrySessionsFn,
     recoveryEmailOrchestratorFn,
+    downloadReminderEmailFn,
     achievementsNightlyFn,
   ],
 });

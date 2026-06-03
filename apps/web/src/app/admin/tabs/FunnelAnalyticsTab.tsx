@@ -117,7 +117,7 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
           <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.3)" }}>Total Accounts:</span>
           <span style={{ fontSize: 20, fontWeight: 700, color: "#fff" }}>{km.totalAccounts}</span>
           <span style={{ fontSize: 16, color: "rgba(255,255,255,0.2)" }}>→</span>
-          <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.3)" }}>Total Paid:</span>
+          <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.3)" }}>Paid (Stripe):</span>
           <span style={{ fontSize: 20, fontWeight: 700, color: "#22c55e" }}>{km.totalPaid}</span>
           <span style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", fontWeight: 600 }}>
             ({km.paidConversion ?? 0}% of new accounts have paid)
@@ -210,6 +210,27 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
             </div>
           );
         })}
+
+        {/* Paid (Stripe-verified) — below funnel bars */}
+        {(data.stripePaid ?? []).length > 0 && (
+          <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 8, padding: "10px 0", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+            <span style={{ width: 80, textAlign: "right", fontSize: 11, color: "#22c55e", fontWeight: 700 }}>Paid (Stripe)</span>
+            <div style={{ flex: 1, background: "rgba(255,255,255,0.04)", borderRadius: 4, height: 26, position: "relative", overflow: "hidden" }}>
+              <div style={{ width: `${Math.max(2, ((data.stripePaid?.length ?? 0) / (steps[0]?.count || 1)) * 100)}%`, background: "#22c55e", borderRadius: 4, height: "100%", display: "flex", alignItems: "center", paddingLeft: 8 }}>
+                <span style={{ color: "#fff", fontSize: 11, fontWeight: 600 }}>{data.stripePaid?.length ?? 0}</span>
+              </div>
+            </div>
+            <span style={{ width: 80, textAlign: "right", fontSize: 11, color: "rgba(255,255,255,0.3)" }}>
+              {steps[0]?.count > 0 ? `${Math.round(((data.stripePaid?.length ?? 0) / steps[0].count) * 100)}%` : ""}
+            </span>
+          </div>
+        )}
+        {(data.stripePaid ?? []).length === 0 && (
+          <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 8, padding: "10px 0", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+            <span style={{ width: 80, textAlign: "right", fontSize: 11, color: "rgba(255,255,255,0.3)", fontWeight: 700 }}>Paid (Stripe)</span>
+            <span style={{ fontSize: 11, color: "rgba(255,255,255,0.25)" }}>0 — no Stripe subscriptions in this period</span>
+          </div>
+        )}
       </div>
 
       {/* Drop-off Analysis */}

@@ -49,6 +49,7 @@ export async function GET(req: NextRequest) {
       devicePlatform: true,
       appVersion: true,
       appFirstOpenedAt: true,
+      downloadReminderSentAt: true,
       signupUtmSource: true,
       signupUtmMedium: true,
       signupLandingPath: true,
@@ -100,6 +101,9 @@ export async function GET(req: NextRequest) {
         u.stripeSubscriptionId
       ),
       paymentStatus: computePaymentStatus(u.subscriptionStatus, u.stripeCustomerId, u.stripeSubscriptionId, u.trialEndsAt),
+      downloadReminder: u.downloadReminderSentAt
+        ? `Sent ${new Date(u.downloadReminderSentAt).toLocaleDateString()}`
+        : u.appFirstOpenedAt ? "Not needed" : "Pending",
     })),
     nextCursor: hasMore ? page[page.length - 1].id : null,
     ...(totalCount !== undefined ? { totalCount } : {}),

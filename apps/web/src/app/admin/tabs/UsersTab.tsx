@@ -19,6 +19,7 @@ type ListUser = {
   signupLandingPath: string | null;
   onboardingStatus: string;
   paymentStatus: string;
+  downloadReminder: string;
 };
 
 type DetailUser = ListUser & {
@@ -181,6 +182,7 @@ export default function UsersTab() {
                 <th className="px-4 py-3">Last active</th>
                 <th className="px-4 py-3">Onboarding</th>
                 <th className="px-4 py-3">Payment</th>
+                <th className="px-4 py-3">Recovery</th>
                 <th className="px-4 py-3">Trial Ends</th>
                 <th className="px-4 py-3 text-right">Entries</th>
                 <th className="px-4 py-3" />
@@ -244,6 +246,9 @@ export default function UsersTab() {
                   </td>
                   <td className="px-4 py-3">
                     <PaymentPill status={u.paymentStatus} />
+                  </td>
+                  <td className="px-4 py-3 text-xs text-white/50">
+                    {u.downloadReminder}
                   </td>
                   <td className="px-4 py-3 text-xs text-white/50">
                     {u.trialEndsAt && u.subscriptionStatus === "TRIAL"
