@@ -216,6 +216,12 @@ export default function UsersTab() {
         </div>
       )}
 
+      {nextCursor && (
+        <button onClick={() => load()} className="text-sm text-[#A78BFA] hover:underline">
+          Load more…
+        </button>
+      )}
+
       {/* ── Table ── */}
       {users === null ? (
         <p className="text-sm text-white/40">Loading…</p>
@@ -325,12 +331,6 @@ export default function UsersTab() {
             </tbody>
           </table>
         </div>
-      )}
-
-      {nextCursor && (
-        <button onClick={() => load()} className="text-sm text-[#A78BFA] hover:underline">
-          Load more…
-        </button>
       )}
 
       {selected && (
