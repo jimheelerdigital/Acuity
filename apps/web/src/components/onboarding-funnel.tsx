@@ -1453,46 +1453,41 @@ function DownloadScreen({ track, paymentConfirmed, selectedPlan }: {
           </>
         )}
 
-        {/* In-app browser warning + escape hatch */}
-        {browserEnv.isWebView && (
-          <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-center">
-            <p className="text-sm font-semibold text-amber-800 mb-2">
-              You&rsquo;re in {browserEnv.label === "facebook" ? "Facebook" : browserEnv.label === "instagram" ? "Instagram" : "an in-app"}&rsquo;s browser
-            </p>
-            <p className="text-xs text-amber-700 mb-3">
-              The App Store works best in Safari. Tap below to open in Safari, or copy the link.
-            </p>
-            <a
-              href={`x-safari-${APP_STORE_URL}`}
-              onClick={(e) => {
-                // Try Safari deep link first; if it fails, fall back to window.open
-                track("funnel_open_in_safari_clicked");
-                setTimeout(() => {
-                  window.open(APP_STORE_URL, "_blank");
-                }, 500);
-              }}
-              className="inline-block rounded-full bg-amber-600 px-6 py-3 text-sm font-semibold text-white hover:bg-amber-700 active:scale-[0.98] transition"
-            >
-              Open in Safari
+        {browserEnv.isWebView ? (
+          <>
+            {/* In-app browser: use itms-apps:// to open App Store directly */}
+            <a href={APP_STORE_URL.replace("https://", "itms-apps://")}
+              onClick={() => track("funnel_app_store_clicked", { value: "itms_apps" })}
+              className="relative inline-block w-full rounded-full px-8 py-4 text-[15px] font-semibold text-white transition hover:brightness-110 active:scale-[0.98] overflow-hidden funnel-bounce"
+              style={{ background: "linear-gradient(135deg, #7C5CFC 0%, #9F7AEA 50%, #6D28D9 100%)", boxShadow: "0 4px 24px rgba(124,92,252,0.4)" }}>
+              <span className="absolute inset-0 rounded-full" style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)", backgroundSize: "200% 100%", animation: "funnel-shimmer 2s ease-in-out infinite" }} />
+              <span className="relative">Download on the App Store</span>
             </a>
-            <button
-              onClick={() => {
-                navigator.clipboard.writeText(APP_STORE_URL).then(() => setCopied(true)).catch(() => {});
-                track("funnel_copy_app_link_clicked");
-              }}
-              className="block mx-auto mt-2 text-xs text-amber-600 underline hover:text-amber-800"
-            >
-              {copied ? "Copied!" : "Copy App Store link"}
-            </button>
-          </div>
-        )}
 
-        <a href={APP_STORE_URL} onClick={() => track("funnel_app_store_clicked")}
-          className="relative inline-block w-full rounded-full px-8 py-4 text-[15px] font-semibold text-white transition hover:brightness-110 active:scale-[0.98] overflow-hidden funnel-bounce"
-          style={{ background: "linear-gradient(135deg, #7C5CFC 0%, #9F7AEA 50%, #6D28D9 100%)", boxShadow: "0 4px 24px rgba(124,92,252,0.4)" }}>
-          <span className="absolute inset-0 rounded-full" style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)", backgroundSize: "200% 100%", animation: "funnel-shimmer 2s ease-in-out infinite" }} />
-          <span className="relative">Download on the App Store</span>
-        </a>
+            <p className="mt-3 text-xs text-zinc-400 text-center">
+              Didn&rsquo;t work?{" "}
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(APP_STORE_URL).then(() => setCopied(true)).catch(() => {});
+                  track("funnel_copy_app_link_clicked");
+                }}
+                className="text-[#7C5CFC] font-medium underline"
+              >
+                {copied ? "Link copied! Paste in Safari." : "Copy link and open in Safari"}
+              </button>
+            </p>
+          </>
+        ) : (
+          <>
+            {/* Normal browser: standard App Store link */}
+            <a href={APP_STORE_URL} onClick={() => track("funnel_app_store_clicked")}
+              className="relative inline-block w-full rounded-full px-8 py-4 text-[15px] font-semibold text-white transition hover:brightness-110 active:scale-[0.98] overflow-hidden funnel-bounce"
+              style={{ background: "linear-gradient(135deg, #7C5CFC 0%, #9F7AEA 50%, #6D28D9 100%)", boxShadow: "0 4px 24px rgba(124,92,252,0.4)" }}>
+              <span className="absolute inset-0 rounded-full" style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)", backgroundSize: "200% 100%", animation: "funnel-shimmer 2s ease-in-out infinite" }} />
+              <span className="relative">Download on the App Store</span>
+            </a>
+          </>
+        )}
 
         <button disabled
           className="w-full mt-3 rounded-full border border-zinc-200 bg-zinc-100 px-8 py-3.5 text-[15px] font-semibold text-zinc-400 cursor-not-allowed">
@@ -1506,9 +1501,9 @@ function DownloadScreen({ track, paymentConfirmed, selectedPlan }: {
           </a>
         </p>
 
-        {/* QR code — show on desktop AND in-app browsers (users can screenshot) */}
-        <div className={`mt-8 ${browserEnv.isWebView ? "block" : "hidden sm:block"}`}>
-          <p className="text-xs text-zinc-400 mb-3">{browserEnv.isWebView ? "Or screenshot this QR code and scan it" : "Or scan with your phone"}</p>
+        {/* QR code — desktop only */}
+        <div className="mt-8 hidden sm:block">
+          <p className="text-xs text-zinc-400 mb-3">Or scan with your phone</p>
           <img src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(APP_STORE_URL)}&bgcolor=ffffff&color=181614`}
             alt="QR code" width={140} height={140} className="mx-auto rounded-lg" />
         </div>
