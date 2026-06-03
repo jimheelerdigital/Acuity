@@ -1408,10 +1408,15 @@ function DownloadScreen({ track, paymentConfirmed, selectedPlan }: {
 }) {
   const [testimonialIdx, setTestimonialIdx] = useState(0);
   const celebratedRef = useRef(false);
+  const [copied, setCopied] = useState(false);
+  const browserEnv = typeof window !== "undefined" ? detectBrowserEnv() : { isWebView: false, label: "ssr", ua: "" };
 
   useEffect(() => {
     track("funnel_download_screen_viewed");
-  }, [track]);
+    if (browserEnv.isWebView) {
+      track("funnel_inapp_browser_detected", { value: browserEnv.label });
+    }
+  }, [track, browserEnv.isWebView, browserEnv.label]);
 
   useEffect(() => {
     if (paymentConfirmed && !celebratedRef.current) {
@@ -1448,6 +1453,40 @@ function DownloadScreen({ track, paymentConfirmed, selectedPlan }: {
           </>
         )}
 
+        {/* In-app browser warning + escape hatch */}
+        {browserEnv.isWebView && (
+          <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-center">
+            <p className="text-sm font-semibold text-amber-800 mb-2">
+              You&rsquo;re in {browserEnv.label === "facebook" ? "Facebook" : browserEnv.label === "instagram" ? "Instagram" : "an in-app"}&rsquo;s browser
+            </p>
+            <p className="text-xs text-amber-700 mb-3">
+              The App Store works best in Safari. Tap below to open in Safari, or copy the link.
+            </p>
+            <a
+              href={`x-safari-${APP_STORE_URL}`}
+              onClick={(e) => {
+                // Try Safari deep link first; if it fails, fall back to window.open
+                track("funnel_open_in_safari_clicked");
+                setTimeout(() => {
+                  window.open(APP_STORE_URL, "_blank");
+                }, 500);
+              }}
+              className="inline-block rounded-full bg-amber-600 px-6 py-3 text-sm font-semibold text-white hover:bg-amber-700 active:scale-[0.98] transition"
+            >
+              Open in Safari
+            </a>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(APP_STORE_URL).then(() => setCopied(true)).catch(() => {});
+                track("funnel_copy_app_link_clicked");
+              }}
+              className="block mx-auto mt-2 text-xs text-amber-600 underline hover:text-amber-800"
+            >
+              {copied ? "Copied!" : "Copy App Store link"}
+            </button>
+          </div>
+        )}
+
         <a href={APP_STORE_URL} onClick={() => track("funnel_app_store_clicked")}
           className="relative inline-block w-full rounded-full px-8 py-4 text-[15px] font-semibold text-white transition hover:brightness-110 active:scale-[0.98] overflow-hidden funnel-bounce"
           style={{ background: "linear-gradient(135deg, #7C5CFC 0%, #9F7AEA 50%, #6D28D9 100%)", boxShadow: "0 4px 24px rgba(124,92,252,0.4)" }}>
@@ -1467,8 +1506,9 @@ function DownloadScreen({ track, paymentConfirmed, selectedPlan }: {
           </a>
         </p>
 
-        <div className="mt-8 hidden sm:block">
-          <p className="text-xs text-zinc-400 mb-3">Or scan with your phone</p>
+        {/* QR code — show on desktop AND in-app browsers (users can screenshot) */}
+        <div className={`mt-8 ${browserEnv.isWebView ? "block" : "hidden sm:block"}`}>
+          <p className="text-xs text-zinc-400 mb-3">{browserEnv.isWebView ? "Or screenshot this QR code and scan it" : "Or scan with your phone"}</p>
           <img src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(APP_STORE_URL)}&bgcolor=ffffff&color=181614`}
             alt="QR code" width={140} height={140} className="mx-auto rounded-lg" />
         </div>
