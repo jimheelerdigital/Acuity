@@ -70,6 +70,30 @@ const DEFAULT_AUTO_LOCK_MINUTES: AutoLockMinutes = 2;
 // as Infinity so the background-elapsed comparison never trips.
 const NEVER_SENTINEL: AutoLockMinutes = -1;
 
+/**
+ * Synchronously-readable cache of the user's chosen auto-lock minutes.
+ * Critical: the AppState background→foreground handler in
+ * lock-context must read this WITHOUT awaiting AsyncStorage —
+ * an async read inside the handler races against fast wake-ups
+ * (Cmd-H + immediate reopen in the simulator finishes in <100ms
+ * but the AsyncStorage round-trip is ~200ms), so the handler would
+ * compare against a stale threshold.
+ *
+ * Updated:
+ *   1. On boot, populate from AsyncStorage via primeAutoLockCache().
+ *   2. When the Security screen calls setAutoLockMinutes(), update
+ *      this synchronously THEN persist to AsyncStorage. The user-
+ *      visible change takes effect on the very next background event.
+ *   3. When the lock-context observes a new user.autoLockMinutes
+ *      from /api/user/me, it calls primeAutoLockCacheFromServer() to
+ *      reconcile.
+ *
+ * The cache lives at module scope (not React state) because lock-
+ * context's AppState handler is a closure registered once-per-effect
+ * and cannot await React state updates between renders.
+ */
+let cachedAutoLockMinutes: AutoLockMinutes = DEFAULT_AUTO_LOCK_MINUTES;
+
 /** Convert an `autoLockMinutes` value to its millisecond threshold. */
 export function autoLockThresholdMs(minutes: AutoLockMinutes): number {
   if (minutes === NEVER_SENTINEL) return Number.POSITIVE_INFINITY;
@@ -84,12 +108,29 @@ function isValidAutoLockMinutes(n: unknown): n is AutoLockMinutes {
   );
 }
 
+/**
+ * Synchronous read of the in-memory cached value. Returns the default
+ * (2 minutes) until primeAutoLockCache() has populated from storage.
+ * The lock-context AppState handler uses this — see comment on
+ * `cachedAutoLockMinutes`.
+ */
+export function getCachedAutoLockMinutes(): AutoLockMinutes {
+  return cachedAutoLockMinutes;
+}
+
 export async function getAutoLockMinutes(): Promise<AutoLockMinutes> {
   try {
     const raw = await AsyncStorage.getItem(AUTO_LOCK_MINUTES_KEY);
-    if (raw === null) return DEFAULT_AUTO_LOCK_MINUTES;
+    if (raw === null) {
+      cachedAutoLockMinutes = DEFAULT_AUTO_LOCK_MINUTES;
+      return DEFAULT_AUTO_LOCK_MINUTES;
+    }
     const parsed = Number(raw);
-    if (isValidAutoLockMinutes(parsed)) return parsed;
+    if (isValidAutoLockMinutes(parsed)) {
+      cachedAutoLockMinutes = parsed;
+      return parsed;
+    }
+    cachedAutoLockMinutes = DEFAULT_AUTO_LOCK_MINUTES;
     return DEFAULT_AUTO_LOCK_MINUTES;
   } catch {
     // AsyncStorage failure is non-fatal — fall back to default.
@@ -97,8 +138,47 @@ export async function getAutoLockMinutes(): Promise<AutoLockMinutes> {
   }
 }
 
+/**
+ * Boot-time priming. Call once from lock-context's cold-launch
+ * effect to populate the cache before the user can background the
+ * app. After this resolves, `getCachedAutoLockMinutes()` returns
+ * the persisted value.
+ */
+export async function primeAutoLockCache(): Promise<void> {
+  await getAutoLockMinutes();
+}
+
+/**
+ * Reconcile the cache against a value just returned from
+ * `/api/user/me`. Use the server value as the source of truth when:
+ *   - AsyncStorage is empty (fresh install, signed-in elsewhere)
+ *   - The server value differs from local AND AsyncStorage hasn't
+ *     been touched since last reconcile (no local-pending write)
+ * For now, the simplest rule is: if AsyncStorage has any value, that
+ * wins (most-recent-local-action is authoritative). If AsyncStorage
+ * is empty, hydrate from server.
+ */
+export async function primeAutoLockCacheFromServer(
+  serverValue: AutoLockMinutes | null | undefined
+): Promise<void> {
+  if (!isValidAutoLockMinutes(serverValue)) return;
+  try {
+    const local = await AsyncStorage.getItem(AUTO_LOCK_MINUTES_KEY);
+    if (local !== null) return; // local wins
+    cachedAutoLockMinutes = serverValue;
+    await AsyncStorage.setItem(AUTO_LOCK_MINUTES_KEY, String(serverValue));
+  } catch {
+    // Non-fatal.
+  }
+}
+
 export async function setAutoLockMinutes(minutes: AutoLockMinutes): Promise<void> {
   if (!isValidAutoLockMinutes(minutes)) return;
+  // Update the synchronously-readable cache FIRST so the next
+  // AppState transition uses the new value even if the AsyncStorage
+  // write is still in flight. Per the comment on `cachedAutoLockMinutes`,
+  // this is the load-bearing fix for Bug 1.
+  cachedAutoLockMinutes = minutes;
   try {
     await AsyncStorage.setItem(AUTO_LOCK_MINUTES_KEY, String(minutes));
   } catch {
@@ -166,9 +246,22 @@ export interface AuthenticateResult {
  * lock-out (too many failed attempts), or device-side errors return
  * success=false with the error code surfaced for caller diagnostics.
  *
- * Passing `disableDeviceFallback: false` lets iOS auto-fall-back to
- * the device passcode if biometry fails three times — desirable for
- * the unlock flow so the user has a recovery path.
+ * Policy choice — `LAPolicy.deviceOwnerAuthentication`:
+ *   `disableDeviceFallback: false` (Expo's mapping for
+ *   `deviceOwnerAuthentication` instead of
+ *   `deviceOwnerAuthenticationWithBiometrics`) — biometry preferred,
+ *   passcode fallback armed on every prompt. Critical: passing the
+ *   `fallbackLabel` makes iOS render the passcode-fallback button
+ *   immediately. Without it, iOS only surfaces the fallback button
+ *   after three failed biometric attempts, which feels broken on
+ *   devices where the user has covered the camera / their finger is
+ *   wet / etc. The labeled fallback gives them an immediate escape.
+ *
+ * Works on:
+ *   - iPhones with Face ID (X+) — biometry first, "Use Passcode" fallback
+ *   - iPhones with Touch ID (8/SE) — biometry first, "Use Passcode" fallback
+ *   - iPhones with no biometry enrolled — passcode prompt direct
+ *   - iPads with the same matrix
  */
 export async function authenticate(
   promptMessage = "Unlock Acuity"
@@ -178,6 +271,7 @@ export async function authenticate(
       promptMessage,
       cancelLabel: "Cancel",
       disableDeviceFallback: false,
+      fallbackLabel: "Use Passcode",
     });
     if (res.success) return { success: true, error: null };
     return {

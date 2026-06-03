@@ -59,14 +59,23 @@ export default function ProfileTab() {
   }, []);
 
   const handleReplayTour = async () => {
-    // Clear the local marker first so use-tour-trigger doesn't see
-    // it on the next mount. Server clear is fire-and-forget — worst
-    // case the next /me reads the stale tourCompletedAt and the tour
-    // skips; the user can tap Replay again.
+    // 1. Clear the local marker first so use-tour-trigger doesn't see
+    //    it on the next home mount.
     await AsyncStorage.removeItem("acuity.tour.completed").catch(() => {});
-    void api.post("/api/user/tour-reset", {}).catch(() => {});
-    // Bounce to Home so the trigger evaluates fresh after the local
-    // clear lands.
+    // 2. Await the server POST. Hardened 2026-06-03 P0 pass — the
+    //    prior fire-and-forget left auth-context's user.tourCompletedAt
+    //    stale at home mount, so use-tour-trigger short-circuited on
+    //    the still-truthy server value and the tour silently didn't
+    //    fire. Awaiting + refresh() guarantees /me returns
+    //    tourCompletedAt: null before we navigate.
+    try {
+      await api.post("/api/user/tour-reset", {});
+    } catch {
+      // Non-fatal — local marker is cleared so the tour CAN still fire,
+      // but we'll refresh anyway to give the gate the best info.
+    }
+    await refresh();
+    // 3. Bounce to Home so the trigger evaluates against fresh state.
     router.replace("/(tabs)" as never);
   };
 

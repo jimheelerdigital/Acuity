@@ -12,8 +12,10 @@ import { AppState, type AppStateStatus } from "react-native";
 import {
   authenticate,
   autoLockThresholdMs,
-  getAutoLockMinutes,
+  getCachedAutoLockMinutes,
   isLockEnabled,
+  primeAutoLockCache,
+  primeAutoLockCacheFromServer,
   type AutoLockMinutes,
 } from "@/lib/app-lock";
 import { useAuth } from "@/contexts/auth-context";
@@ -29,31 +31,39 @@ import { useAuth } from "@/contexts/auth-context";
  *
  * Triggers that move "unlocked" → "locked":
  *   1. Cold launch when lock enabled and user signed in
- *   2. Foreground after backgrounded > user's autoLockMinutes
+ *   2. Foreground after backgrounded ≥ user's autoLockMinutes
  *
  * Triggers that move "locked" → "unlocked":
  *   Only authenticate() returning success.
  *
- * v1.3.x Face ID UX rewrite (2026-06-03):
- *   - NO in-app inactivity timer. While the app is foregrounded
- *     and the user is interacting, the lock never engages. This
- *     was the headline complaint: "App re-locks after 30 seconds
- *     of in-app inactivity." The previous code stamped
- *     `backgroundedAt` whenever AppState went `active → inactive`,
- *     so a Control Center pull, a notification banner, or even
- *     iOS auto-dim could make the user feel like they were being
- *     re-locked while still using the app.
- *   - We now ONLY react to `background` state (not `inactive`).
- *     "inactive" is a transient OS interruption — banners, system
- *     dialogs, Face ID prompts themselves, screen lock peeks. We
- *     ignore it entirely.
- *   - Threshold is user-configurable via Settings → Security:
- *     Immediately (0), 1, 2 (default), 5, 15 min, or Never on
- *     resume. Reading the stored value on every relevant AppState
- *     transition means a setting change takes effect on the very
- *     next background → foreground cycle.
+ * v1.3.x Face ID UX rewrite (2026-06-03), HARDENED 2026-06-03 P0 pass:
  *
- * v1.3 (2026-06-03) initialization-loop fix preserved:
+ *   Bug 1 root cause: iOS's AppState transitions for the home button
+ *   go `active → inactive → background` — not `active → background`
+ *   directly. The original v1.3.x code gated stamping on
+ *   `prev === "active" && next === "background"`, which never matched
+ *   the iOS reality (prev was always "inactive" by the time
+ *   next === "background"). So `backgroundedAt.current` stayed null,
+ *   and on resume the elapsed check short-circuited. Symptom: app
+ *   NEVER locked on background no matter the threshold.
+ *
+ *   Fix: stamp whenever we LAND on "background" (any prev),
+ *   un-stamp on any return to "active". Control-Center pulls etc
+ *   stay ignored because they fire "active → inactive → active"
+ *   without ever passing through "background".
+ *
+ *   Bug 1 secondary cause: the threshold was read async on every
+ *   background event. A fast Cmd-H + reopen (<200ms) finished
+ *   before the AsyncStorage read resolved, so the foreground check
+ *   used the stale prior threshold. Symptom: setting "Immediately"
+ *   in Settings, backgrounding, and quickly returning didn't lock.
+ *
+ *   Fix: read the threshold synchronously via
+ *   `getCachedAutoLockMinutes()`. The cache is updated synchronously
+ *   in `setAutoLockMinutes()` so a Settings change takes effect on
+ *   the next AppState event without any awaits.
+ *
+ * Initialization-loop fix preserved:
  *   `initializedRef` keeps the cold-launch lock check from re-firing
  *   on user-object identity changes (every /api/user/me refetch).
  */
@@ -76,21 +86,15 @@ export function LockProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<LockState["status"]>("checking");
   const appState = useRef(AppState.currentState);
   const backgroundedAt = useRef<number | null>(null);
+  // Cache the enabled flag in memory so foreground transitions don't
+  // hit SecureStore on every wake.
   const lockEnabled = useRef<boolean>(false);
-  // Threshold cached in ms. Refreshed on cold-launch + on every
-  // background transition so a Settings change takes effect on the
-  // next relevant AppState event without needing a remount.
-  const autoLockMs = useRef<number>(2 * 60_000);
+  // Cold-launch lock check runs ONCE per app launch. Prevents
+  // re-lock on user-object identity changes (e.g., /me refetches).
   const initializedRef = useRef<boolean>(false);
-  const unlockedThisSessionRef = useRef<boolean>(false);
 
   const refreshEnabled = useCallback(async () => {
     lockEnabled.current = await isLockEnabled();
-  }, []);
-
-  const refreshAutoLockThreshold = useCallback(async () => {
-    const minutes: AutoLockMinutes = await getAutoLockMinutes();
-    autoLockMs.current = autoLockThresholdMs(minutes);
   }, []);
 
   // Cold-launch sequence: wait for auth, then check the lock flag
@@ -101,70 +105,91 @@ export function LockProvider({ children }: { children: ReactNode }) {
     if (initializedRef.current) return;
     let cancelled = false;
     (async () => {
-      await Promise.all([refreshEnabled(), refreshAutoLockThreshold()]);
+      // Prime the synchronous threshold cache + lock-enabled flag
+      // before we touch state. After these resolve, the AppState
+      // handler below will read the right values on the first wake.
+      await Promise.all([refreshEnabled(), primeAutoLockCache()]);
       if (cancelled) return;
       initializedRef.current = true;
       if (lockEnabled.current && user) {
         setStatus("locked");
       } else {
         setStatus("unlocked");
-        unlockedThisSessionRef.current = true;
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [authLoading, user, refreshEnabled, refreshAutoLockThreshold]);
+  }, [authLoading, user, refreshEnabled]);
 
-  // AppState transitions — track when we went to background and
-  // re-lock on return if the gap exceeds the user's threshold.
+  // Reconcile the threshold cache against the server value every
+  // time /api/user/me returns. AsyncStorage local writes still win
+  // (most-recent-local-action is authoritative) — see
+  // primeAutoLockCacheFromServer for the merge rule.
+  useEffect(() => {
+    if (!user) return;
+    const serverValue = (user as unknown as { autoLockMinutes?: AutoLockMinutes })
+      .autoLockMinutes;
+    if (typeof serverValue !== "number") return;
+    void primeAutoLockCacheFromServer(serverValue as AutoLockMinutes);
+  }, [user]);
+
+  // AppState transitions — track when the app actually backgrounds
+  // (NOT just becomes inactive) and re-lock on return if the gap
+  // exceeds the user's threshold.
   //
-  // CRITICAL: we only react to `background`, NOT `inactive`. iOS
-  // fires `inactive` for transient interruptions (Control Center,
-  // notifications, Face ID prompts, system dialogs) — none of
-  // those should re-lock the app.
+  // iOS state machine on home button / app-switcher dismiss:
+  //   active → inactive → background → (later) inactive → active
+  // iOS state machine on Control Center / notification pull-down:
+  //   active → inactive → active  (background never reached)
+  //
+  // So we gate on "did we ever land on background" rather than on
+  // a specific prev→next pair. This was Bug 1.
   useEffect(() => {
     const sub = AppState.addEventListener(
       "change",
       (next: AppStateStatus) => {
-        const prev = appState.current;
         appState.current = next;
-        // active → background: stamp the time. Treat the moment
-        // we lose focus to the home screen / app switcher / OS lock
-        // as the start of "user is not looking at us".
-        if (prev === "active" && next === "background") {
-          backgroundedAt.current = Date.now();
-          // Re-read the threshold now so a setting change made
-          // mid-session takes effect on the next return-to-foreground.
-          void refreshAutoLockThreshold();
+        if (next === "background") {
+          // Stamp once. If we somehow re-enter "background" without
+          // going through "active" first, keep the older stamp so
+          // total backgrounded time is correctly measured.
+          if (backgroundedAt.current === null) {
+            backgroundedAt.current = Date.now();
+          }
+          return;
         }
-        // background → active: maybe re-lock.
-        if (prev === "background" && next === "active") {
-          if (!lockEnabled.current || !user) return;
-          if (status === "locked") return;
+        if (next === "active") {
+          // Return from any prior state. If we'd been backgrounded,
+          // compute the elapsed gap synchronously against the cached
+          // threshold and re-lock if it crossed.
           const bg = backgroundedAt.current;
-          // "Immediately on background" sets the threshold to 0,
-          // so any background→active transition re-locks. "Never on
-          // resume" sets the threshold to Infinity, so the
-          // comparison is never true. Regular values (1, 2, 5, 15
-          // minutes) fall in between.
-          if (bg !== null && Date.now() - bg >= autoLockMs.current) {
-            unlockedThisSessionRef.current = false;
+          backgroundedAt.current = null;
+          if (bg === null) return; // we never actually backgrounded
+          if (!lockEnabled.current || !user) return;
+          if (status === "locked") return; // already locked, no-op
+          const minutes = getCachedAutoLockMinutes();
+          const thresholdMs = autoLockThresholdMs(minutes);
+          // Use >= so threshold 0 ("Immediately") triggers reliably
+          // on any wall-clock advance, however small. Threshold
+          // Infinity ("Never") never trips because elapsed is finite.
+          if (Date.now() - bg >= thresholdMs) {
             setStatus("locked");
           }
         }
+        // "inactive" — transient OS interruption. Ignore.
       }
     );
     return () => sub.remove();
-  }, [status, user, refreshAutoLockThreshold]);
+  }, [status, user]);
 
   // Signed out → never locked. Drops overlay if user signs out
-  // while locked. Resets initialized + session-unlocked markers
-  // so the next sign-in re-runs the cold-launch check clean.
+  // while locked. Resets initialized marker so the next sign-in
+  // re-runs the cold-launch check clean.
   useEffect(() => {
     if (!user && status !== "checking") {
-      unlockedThisSessionRef.current = false;
       initializedRef.current = false;
+      backgroundedAt.current = null;
       setStatus("unlocked");
     }
   }, [user, status]);
@@ -172,22 +197,21 @@ export function LockProvider({ children }: { children: ReactNode }) {
   const unlock = useCallback(async () => {
     const res = await authenticate();
     if (res.success) {
-      unlockedThisSessionRef.current = true;
       setStatus("unlocked");
       backgroundedAt.current = null;
     }
     // On failure (cancel / lockout / hardware unavailable) — leave
     // status locked. The overlay surfaces a retry button and after
-    // 3 fails shows the "Use device passcode" hint. Persistent
-    // biometric lockouts resolve via OS passcode at the system prompt
-    // (authenticate() passes disableDeviceFallback:false so the
-    // passcode fallback is offered automatically).
+    // 3 fails shows the "Use Passcode" hint. Persistent biometric
+    // lockouts resolve via OS passcode at the system prompt
+    // (authenticate() passes both disableDeviceFallback:false AND
+    // fallbackLabel:"Use Passcode" so the passcode escape is one
+    // tap away on every prompt).
   }, []);
 
   const lockNow = useCallback(async () => {
     await refreshEnabled();
     if (!lockEnabled.current || !user) return;
-    unlockedThisSessionRef.current = false;
     setStatus("locked");
   }, [refreshEnabled, user]);
 

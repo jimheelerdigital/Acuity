@@ -1,9 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Stack, useRouter } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { useAuth } from "@/contexts/auth-context";
 import { useLock, useRefreshLockEnabled } from "@/contexts/lock-context";
 import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
@@ -25,11 +26,24 @@ import {
  *
  * Mounts at /security. Reached from Profile → Preferences → Security.
  *
+ * Hardened 2026-06-03 (P0 pass):
+ *   - Bug 3 (state desync) — the prior version had `[status]` in the
+ *     hydration useEffect's dep array. Every time the lock state
+ *     changed (background → foreground → re-lock → unlock cycle), it
+ *     re-ran the AsyncStorage read and overwrote the local picker
+ *     state. If the in-flight setAutoLockMinutes write hadn't yet
+ *     flushed to AsyncStorage, the picker snapped back to the
+ *     pre-pick value. Fix: hydrate once on mount only; track a
+ *     "dirty" flag so subsequent re-renders don't overwrite a
+ *     user-initiated pick.
+ *   - Prefer the server value (User.autoLockMinutes from useAuth)
+ *     when AsyncStorage is empty (fresh install on a returning user).
+ *
  * Auto-lock value is persisted to AsyncStorage (the lock-context
- * reads from there synchronously on every relevant AppState event)
- * AND mirrored to User.autoLockMinutes via /api/user/auto-lock so the
- * preference survives reinstall and follows the user across devices
- * (next /api/user/me re-hydrates the device value).
+ * reads its synchronous cache from there on every relevant AppState
+ * event) AND mirrored to User.autoLockMinutes via /api/user/auto-lock
+ * so the preference survives reinstall and follows the user across
+ * devices.
  *
  * The toggle requires the user to authenticate before flipping on —
  * prevents an attacker who picked up an unlocked phone from enabling
@@ -54,6 +68,7 @@ const AUTO_LOCK_LABELS: Record<AutoLockMinutes, AutoLockOption> = {
 export default function SecurityScreen() {
   const router = useRouter();
   const { tokens } = useTheme();
+  const { user } = useAuth();
   const refreshLockNow = useRefreshLockEnabled();
   const { status } = useLock();
   const [lockEnabledLocal, setLockEnabledLocal] = useState<boolean | null>(
@@ -62,26 +77,46 @@ export default function SecurityScreen() {
   const [autoLock, setAutoLock] = useState<AutoLockMinutes>(2);
   const [capable, setCapable] = useState<boolean>(false);
   const [busy, setBusy] = useState(false);
+  // Dirty flag — once the user has picked an option here, ignore any
+  // late-arriving hydration from server / storage. Prevents Bug 3.
+  const dirtyRef = useRef(false);
 
-  // Hydrate on mount — both the lock-enabled flag and the picker
-  // value need to reflect persisted state before the user touches
-  // anything.
+  // Hydrate ONCE on mount. The prior version depended on `status` and
+  // re-fired on every lock-state transition, which trampled the user's
+  // picker selection. Empty dep array = mount-only.
   useEffect(() => {
     let cancelled = false;
     void Promise.all([
       isLockEnabled(),
       isLocalAuthCapable(),
       getAutoLockMinutes(),
-    ]).then(([enabled, isCapable, minutes]) => {
+    ]).then(([enabled, isCapable, storedMinutes]) => {
       if (cancelled) return;
       setLockEnabledLocal(enabled);
       setCapable(isCapable);
-      setAutoLock(minutes);
+      if (!dirtyRef.current) {
+        // Prefer the server value if it exists AND local storage is
+        // the default. This handles the case where the user picked
+        // an interval on another device — we shouldn't show a stale
+        // "After 2 minutes" before /me's value lands.
+        const serverValue = (user as { autoLockMinutes?: number } | null)
+          ?.autoLockMinutes;
+        if (
+          typeof serverValue === "number" &&
+          AUTO_LOCK_OPTIONS.includes(serverValue as AutoLockMinutes) &&
+          storedMinutes === 2 // local is default — server likely fresher
+        ) {
+          setAutoLock(serverValue as AutoLockMinutes);
+        } else {
+          setAutoLock(storedMinutes);
+        }
+      }
     });
     return () => {
       cancelled = true;
     };
-  }, [status]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleToggleLock = useCallback(async () => {
     if (lockEnabledLocal === null || busy) return;
@@ -129,6 +164,7 @@ export default function SecurityScreen() {
   }, [lockEnabledLocal, busy, refreshLockNow]);
 
   const handlePickAutoLock = useCallback(async (value: AutoLockMinutes) => {
+    dirtyRef.current = true;
     setAutoLock(value);
     await setAutoLockMinutes(value);
     // Mirror to server. Fire-and-forget — local AsyncStorage is the
@@ -141,7 +177,9 @@ export default function SecurityScreen() {
       });
   }, []);
 
-  const headerColor = tokens.text;
+  // Avoid unused-var warning on `status` — it's read implicitly by
+  // useLock to keep the hook subscribed. Profile-pattern parity.
+  void status;
 
   return (
     <View style={{ flex: 1, backgroundColor: tokens.bg }}>
@@ -150,103 +188,41 @@ export default function SecurityScreen() {
           headerShown: true,
           title: "Security",
           headerStyle: { backgroundColor: tokens.bg },
-          headerTintColor: headerColor,
-          headerTitleStyle: { color: headerColor, fontWeight: "600" },
+          headerTintColor: tokens.text,
+          headerTitleStyle: { color: tokens.text, fontWeight: "600" },
         }}
       />
       <SafeAreaView style={{ flex: 1 }} edges={["bottom"]}>
-        <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 40 }}>
-          {/* App Lock toggle */}
-          <View
-            style={{
-              borderRadius: 14,
-              borderWidth: 1,
-              borderColor: tokens.line,
-              backgroundColor: tokens.cardBg,
-              padding: 16,
-              marginTop: 8,
-            }}
-          >
-            <View
-              style={{ flexDirection: "row", alignItems: "center", gap: 12 }}
-            >
-              <View
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 18,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  backgroundColor: `${tokens.primary}22`,
-                }}
-              >
-                <Ionicons name="lock-closed" size={18} color={tokens.primary} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text
-                  style={{ color: tokens.text, fontSize: 16, fontWeight: "600" }}
-                >
-                  Require Face ID to unlock
-                </Text>
-                <Text
-                  style={{ color: tokens.textSec, fontSize: 13, marginTop: 2 }}
-                >
-                  {capable
-                    ? "Use Face ID, Touch ID, or device passcode."
-                    : "No biometry or passcode is set up on this device."}
-                </Text>
-              </View>
-              <Pressable
-                onPress={() => void handleToggleLock()}
-                disabled={!capable || lockEnabledLocal === null || busy}
-                accessibilityRole="switch"
-                accessibilityState={{ checked: !!lockEnabledLocal }}
-                style={{
-                  height: 28,
-                  width: 48,
-                  borderRadius: 14,
-                  justifyContent: "center",
-                  backgroundColor: lockEnabledLocal
-                    ? tokens.primary
-                    : tokens.bgInset,
-                  opacity: capable && lockEnabledLocal !== null ? 1 : 0.4,
-                }}
-              >
-                <View
-                  style={{
-                    height: 24,
-                    width: 24,
-                    borderRadius: 12,
-                    backgroundColor: "#FFFFFF",
-                    transform: [{ translateX: lockEnabledLocal ? 22 : 2 }],
-                  }}
-                />
-              </Pressable>
-            </View>
-          </View>
+        <ScrollView
+          contentContainerStyle={{
+            paddingHorizontal: 16,
+            paddingTop: 16,
+            paddingBottom: 40,
+          }}
+        >
+          {/* APP LOCK group */}
+          <SectionLabel tokens={tokens} text="App lock" />
+          <ToggleRow
+            tokens={tokens}
+            icon="lock-closed-outline"
+            label="Require Face ID to unlock"
+            sublabel={
+              capable
+                ? "Use Face ID, Touch ID, or device passcode."
+                : "No biometry or passcode is set up on this device."
+            }
+            value={!!lockEnabledLocal}
+            disabled={!capable || lockEnabledLocal === null || busy}
+            onToggle={() => void handleToggleLock()}
+          />
 
-          {/* Auto-lock picker — only meaningful when app lock is on,
-              but we keep it visible (disabled) when off so users see
-              the choices they'll get on enabling. */}
-          <Text
-            style={{
-              color: tokens.textTer,
-              fontSize: 12,
-              fontWeight: "600",
-              letterSpacing: 0.5,
-              textTransform: "uppercase",
-              marginTop: 24,
-              marginLeft: 4,
-              marginBottom: 8,
-            }}
-          >
-            Auto-lock after
-          </Text>
+          {/* AUTO-LOCK group */}
+          <SectionLabel tokens={tokens} text="Auto-lock after" />
           <View
             style={{
               borderRadius: 14,
               borderWidth: 1,
-              borderColor: tokens.line,
+              borderColor: tokens.cardBorder,
               backgroundColor: tokens.cardBg,
               overflow: "hidden",
               opacity: lockEnabledLocal ? 1 : 0.5,
@@ -257,49 +233,15 @@ export default function SecurityScreen() {
               const meta = AUTO_LOCK_LABELS[opt];
               const selected = autoLock === opt;
               return (
-                <Pressable
+                <PickerRow
                   key={opt}
+                  tokens={tokens}
+                  label={meta.label}
+                  sublabel={meta.sublabel}
+                  selected={selected}
+                  isFirst={idx === 0}
                   onPress={() => void handlePickAutoLock(opt)}
-                  style={({ pressed }) => ({
-                    flexDirection: "row",
-                    alignItems: "center",
-                    paddingHorizontal: 16,
-                    paddingVertical: 14,
-                    borderTopWidth: idx === 0 ? 0 : 1,
-                    borderTopColor: tokens.line,
-                    backgroundColor: pressed ? tokens.bgInset : "transparent",
-                  })}
-                >
-                  <View style={{ flex: 1 }}>
-                    <Text
-                      style={{
-                        color: tokens.text,
-                        fontSize: 15,
-                        fontWeight: selected ? "600" : "400",
-                      }}
-                    >
-                      {meta.label}
-                    </Text>
-                    {meta.sublabel && (
-                      <Text
-                        style={{
-                          color: tokens.textSec,
-                          fontSize: 12,
-                          marginTop: 2,
-                        }}
-                      >
-                        {meta.sublabel}
-                      </Text>
-                    )}
-                  </View>
-                  {selected && (
-                    <Ionicons
-                      name="checkmark"
-                      size={20}
-                      color={tokens.primary}
-                    />
-                  )}
-                </Pressable>
+                />
               );
             })}
           </View>
@@ -318,9 +260,9 @@ export default function SecurityScreen() {
             the interval above.
           </Text>
 
-          {/* Back affordance for parity with screens that don't get
-              the OS back gesture. The header's chevron is the primary
-              path. */}
+          {/* Done — back affordance for parity with screens that
+              don't get the OS back gesture. The header's chevron is
+              the primary path. */}
           <Pressable
             onPress={() => router.back()}
             style={{
@@ -335,5 +277,190 @@ export default function SecurityScreen() {
         </ScrollView>
       </SafeAreaView>
     </View>
+  );
+}
+
+// ─── Sub-components ──────────────────────────────────────────────────
+
+function SectionLabel({
+  tokens,
+  text,
+}: {
+  tokens: ReturnType<typeof useTheme>["tokens"];
+  text: string;
+}) {
+  return (
+    <Text
+      style={{
+        fontFamily: tokens.fontMono,
+        fontSize: 10,
+        fontWeight: "700",
+        letterSpacing: 1.4,
+        color: tokens.textTer,
+        paddingHorizontal: 4,
+        textTransform: "uppercase",
+        marginTop: 16,
+        marginBottom: 8,
+      }}
+    >
+      {text}
+    </Text>
+  );
+}
+
+function ToggleRow({
+  tokens,
+  icon,
+  label,
+  sublabel,
+  value,
+  disabled,
+  onToggle,
+}: {
+  tokens: ReturnType<typeof useTheme>["tokens"];
+  icon: React.ComponentProps<typeof Ionicons>["name"];
+  label: string;
+  sublabel?: string;
+  value: boolean;
+  disabled: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onToggle}
+      disabled={disabled}
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 14,
+        borderRadius: tokens.radius.lg,
+        backgroundColor: tokens.cardBg,
+        borderWidth: 1,
+        borderColor: tokens.cardBorder,
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        opacity: disabled ? 0.5 : 1,
+      }}
+    >
+      <Ionicons name={icon} size={20} color={tokens.textSec} />
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text
+          style={{
+            fontFamily: tokens.fontSans,
+            fontSize: 15,
+            fontWeight: "500",
+            color: tokens.text,
+          }}
+        >
+          {label}
+        </Text>
+        {sublabel && (
+          <Text
+            style={{
+              fontFamily: tokens.fontSans,
+              fontSize: 13,
+              fontWeight: "400",
+              color: tokens.textTer,
+            }}
+          >
+            {sublabel}
+          </Text>
+        )}
+      </View>
+      <View
+        style={{
+          height: 28,
+          width: 48,
+          borderRadius: 14,
+          justifyContent: "center",
+          backgroundColor: value ? tokens.primary : tokens.bgInset,
+        }}
+      >
+        <View
+          style={{
+            height: 24,
+            width: 24,
+            borderRadius: 12,
+            backgroundColor: "#FFFFFF",
+            transform: [{ translateX: value ? 22 : 2 }],
+          }}
+        />
+      </View>
+    </Pressable>
+  );
+}
+
+function PickerRow({
+  tokens,
+  label,
+  sublabel,
+  selected,
+  isFirst,
+  onPress,
+}: {
+  tokens: ReturnType<typeof useTheme>["tokens"];
+  label: string;
+  sublabel?: string;
+  selected: boolean;
+  isFirst: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => ({
+        flexDirection: "row",
+        alignItems: "center",
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        borderTopWidth: isFirst ? 0 : 1,
+        borderTopColor: tokens.cardBorder,
+        backgroundColor: pressed ? tokens.bgInset : "transparent",
+      })}
+    >
+      <View style={{ flex: 1 }}>
+        <Text
+          style={{
+            color: tokens.text,
+            fontSize: 15,
+            fontWeight: selected ? "600" : "400",
+            fontFamily: tokens.fontSans,
+          }}
+        >
+          {label}
+        </Text>
+        {sublabel && (
+          <Text
+            style={{
+              color: tokens.textSec,
+              fontSize: 12,
+              marginTop: 2,
+              fontFamily: tokens.fontSans,
+            }}
+          >
+            {sublabel}
+          </Text>
+        )}
+      </View>
+      {/* Unambiguous right-side checkmark on the chosen row. Larger
+          tap-target ring + bolder coral stroke than the v1 dim glyph
+          so the selection state reads at a glance, especially on
+          dense lists. */}
+      {selected && (
+        <View
+          style={{
+            width: 28,
+            height: 28,
+            borderRadius: 14,
+            backgroundColor: `${tokens.primary}1f`,
+            alignItems: "center",
+            justifyContent: "center",
+            marginLeft: 8,
+          }}
+        >
+          <Ionicons name="checkmark" size={18} color={tokens.primary} />
+        </View>
+      )}
+    </Pressable>
   );
 }
