@@ -41,6 +41,35 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-06-02] — Add Apple/Google sign-in and Android options to /start funnel
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 9339364
+
+### In plain English (for Keenan)
+
+The Create Account screen on /start now has "Continue with Apple" and "Continue with Google" buttons above the email form, making it faster for users to sign up without typing a password. The Download screen now also shows Android users that Google Play is coming soon, and gives them a link to use the web app in the meantime.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/components/onboarding-funnel.tsx`: `CreateAccountScreen` — added Apple and Google OAuth buttons using the existing `AppleLogo`/`GoogleLogo` components and `signIn()` from NextAuth. Loading state changed from `boolean` to `"email" | "google" | "apple" | null` union type. OAuth callback URL set to `/start?step=savings` so users land on the paywall screen after sign-in, same as email flow.
+- `apps/web/src/components/onboarding-funnel.tsx`: `DownloadScreen` — added disabled "Google Play — Coming soon!" button and "Have an Android? Use the web app →" text link pointing to `/auth/signin`.
+- OAuth signup reuses the existing `events.createUser` handler in `auth.ts` which already calls `bootstrapNewUser()` and sets `signupMethod` to `"google"` or `"apple"`. UTM attribution sync for OAuth users is already handled by the existing `useEffect` in the main funnel component.
+
+### Manual steps needed
+
+- [ ] Ensure Apple OAuth provider is configured in the NextAuth environment (APPLE_CLIENT_ID, APPLE_CLIENT_SECRET env vars in Vercel) — the provider is conditionally loaded only if these vars exist (Keenan / Jimmy)
+- [ ] Ensure Google OAuth provider is configured (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET env vars in Vercel) (Keenan / Jimmy)
+
+### Notes
+
+- Apple and Google providers were already fully set up in `auth.ts` with `allowDangerousEmailAccountLinking: true`, so existing email/password users who later sign in via OAuth will be linked automatically.
+- The OAuth flow redirects away from the page and back — the `onAccountCreated` callback and CompleteRegistration pixel only fire for email signups. For OAuth signups, the `events.createUser` handler in NextAuth handles trial bootstrapping server-side, and the funnel detects the authenticated session on return.
+- Button styling: Apple = black pill (`bg-zinc-900`), Google = white pill with border — consistent with the existing `try-debrief-flow.tsx` social auth buttons.
+
+---
+
 ## [2026-06-02] — Fix Vercel _error page static export failure
 
 **Requested by:** Keenan
