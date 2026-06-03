@@ -7,7 +7,7 @@ export const metadata = {
   robots: { index: true, follow: true },
 };
 
-const LAST_UPDATED = "May 12, 2026";
+const LAST_UPDATED = "June 3, 2026";
 
 export default function TermsPage() {
   return (
@@ -204,6 +204,63 @@ export default function TermsPage() {
                 ends and you&rsquo;ll be moved to read-only access.
               </li>
             </ul>
+          </Section>
+
+          <Section
+            id="eu-uk-consumer-rights"
+            title="5b. EU / UK / EEA consumer rights"
+          >
+            <p>
+              If you are a consumer resident in the EU, UK, or EEA,
+              you have a statutory right to withdraw from a distance
+              subscription contract within 14 days of starting it,
+              without giving any reason and without penalty, under
+              Directive 2011/83/EU and the UK Consumer Contracts
+              (Information, Cancellation and Additional Charges)
+              Regulations 2013.
+            </p>
+            <p className="mt-3">
+              <strong className="text-white">How the 14-day right works for Acuity.</strong>{" "}
+              Acuity is a digital service. Once you start using
+              paid features (for example, recording an entry that the
+              paid plan would unlock, or reading a Weekly Report that
+              the paid plan would deliver), you are expressly
+              consenting to immediate performance of the contract.
+              Under Article 16(m) of Directive 2011/83/EU, this means
+              the right of withdrawal does not apply once paid
+              performance has begun with your express consent and your
+              acknowledgement that you lose the right of withdrawal.
+            </p>
+            <p className="mt-3">
+              If you have NOT yet used any paid feature, you can
+              exercise the 14-day right by emailing{" "}
+              <a
+                href="mailto:privacy@heelerdigital.com"
+                className="underline hover:text-white"
+              >
+                privacy@heelerdigital.com
+              </a>{" "}
+              within 14 days of your first paid charge. We will refund
+              the charge in full within 14 days of receiving your
+              notice, using the same payment method you used to pay.
+            </p>
+            <p className="mt-3">
+              <strong className="text-white">Free trial.</strong>{" "}
+              The 14-day free trial begins before any charge. If you
+              cancel during the trial you are not charged and the
+              14-day withdrawal right is not engaged. If you keep the
+              subscription past the trial, the considerations above
+              apply.
+            </p>
+            <p className="mt-3">
+              <strong className="text-white">Statutory rights preserved.</strong>{" "}
+              Nothing in these Terms limits your statutory consumer
+              rights under applicable law, including (where relevant)
+              the UK Consumer Rights Act 2015, the Australian
+              Consumer Law in Schedule 2 of the Competition and
+              Consumer Act 2010 (Cth), or the New Zealand Consumer
+              Guarantees Act 1993.
+            </p>
           </Section>
 
           <Section id="ownership" title="6. Content ownership">

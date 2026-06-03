@@ -164,35 +164,22 @@ export default function RootLayout({
         {GOOGLE_SITE_VERIFICATION && (
           <meta name="google-site-verification" content={GOOGLE_SITE_VERIFICATION} />
         )}
-        {/* Meta Pixel — deferred to avoid blocking first paint.
-            Previously loaded synchronously in <head>; moved to
-            afterInteractive so hero content renders first. */}
-        <noscript>
-          <img height="1" width="1" style={{ display: "none" }}
-            src="https://www.facebook.com/tr?id=869829585445303&ev=PageView&noscript=1"
-          />
-        </noscript>
+        {/* Meta Pixel — moved to consent-gated-trackers.tsx in v1.4
+            (2026-06-03) Phase 1 international launch. The Pixel now
+            loads only after the user grants marketing consent on the
+            cookie banner. The <noscript> tracking image is also
+            removed: without JS the consent banner can't appear, so
+            firing the Pixel anyway would defeat the consent gate. */}
         <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
         <link rel="shortcut icon" href="/favicon.ico" />
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
         <link rel="manifest" href="/site.webmanifest" />
       </head>
       <body className="bg-acuity-bg text-acuity-text antialiased">
-        {/* Meta Pixel — loaded after first paint, not blocking render */}
-        <Script id="meta-pixel" strategy="afterInteractive">
-          {`
-            !function(f,b,e,v,n,t,s)
-            {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-            n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-            if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-            n.queue=[];t=b.createElement(e);t.async=!0;
-            t.src=v;s=b.getElementsByTagName(e)[0];
-            s.parentNode.insertBefore(t,s)}(window, document,'script',
-            'https://connect.facebook.net/en_US/fbevents.js');
-            fbq('init', '869829585445303');
-            fbq('track', 'PageView');
-          `}
-        </Script>
+        {/* Meta Pixel + GA4 are mounted by ConsentGatedTrackers below,
+            inside <Providers>. Loads only after the user grants
+            cookie consent on the banner. Centralised there so both
+            trackers obey the same consent record. */}
         <Providers
           initialThemePreference={appearance.preference}
           initialPalette={appearance.palette}

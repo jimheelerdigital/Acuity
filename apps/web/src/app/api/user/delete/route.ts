@@ -170,6 +170,27 @@ export async function POST(req: NextRequest) {
       await tx.verificationToken.deleteMany({
         where: { identifier: user.email },
       });
+      // GDPR Art. 17 cascade-gap cleanup. The schema's onDelete FK
+      // cascades don't reach these tables — they store userId
+      // without a User relation, so the User row delete leaves them
+      // orphaned with personal-data references. Hard-delete them
+      // before the user row so the transaction is a single
+      // atomic wipe. Verified 2026-06-03 audit; remove these lines
+      // when the schema-level FK fix lands in a future migration.
+      stage = "cascade-gap-cleanup";
+      await Promise.all([
+        tx.experimentAssignment.deleteMany({ where: { userId } }),
+        tx.userFeatureOverride.deleteMany({ where: { userId } }),
+        tx.lifeMapAreaHistory.deleteMany({ where: { userId } }),
+        tx.goalSuggestion.deleteMany({ where: { userId } }),
+        tx.founderNotificationLog.deleteMany({ where: { userId } }),
+        // ProgressSuggestion cascades via its Goal FK (Goal is
+        // User-cascaded), so no explicit cleanup needed. ClaudeCallLog
+        // is intentionally SetNull on user delete to preserve
+        // aggregate cost telemetry; per the column comment in
+        // prisma/schema.prisma. OnboardingEvent, TrialEmailLog,
+        // and IapNotificationLog already have onDelete:Cascade.
+      ]);
       stage = "user-delete";
       const result = await tx.user.deleteMany({ where: { id: userId } });
       if (result.count === 0) {
