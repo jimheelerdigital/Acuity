@@ -1,11 +1,16 @@
 /**
  * GET /api/admin/users
- *   ?q=<substring>      optional — matches email (case-insensitive)
- *   ?cursor=<userId>    optional — keyset pagination cursor
- *   ?limit=<1..100>     default 50
+ *   ?q=<substring>           optional — matches email (case-insensitive)
+ *   ?cursor=<userId>         optional — keyset pagination cursor
+ *   ?limit=<1..100>          default 50
+ *   ?lifecycle=<csv>         optional — filter by lifecycle stage(s)
+ *   ?plan=<csv>              optional — filter by subscription status(es)
+ *   ?platform=<csv>          optional — filter by platform (ios,web,both,none)
+ *   ?sort=<field>&dir=<asc|desc>  optional — sort by field
  *
- * METADATA ONLY. No entries, transcripts, goals, tasks, audio, or
- * observations. Entry count is a bare integer.
+ * Returns enriched user list with lifecycle stage, accurate entry counts
+ * (from COUNT, not totalRecordings), platform detection (web + mobile),
+ * and summary stats on first page.
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -16,6 +21,80 @@ import { prisma } from "@/lib/prisma";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+// ── Lifecycle stage computation ──────────────────────────────────
+
+type LifecycleStage =
+  | "Signed up"
+  | "Downloaded"
+  | "First debrief"
+  | "Exploring"
+  | "Building habit"
+  | "Active user"
+  | "At risk"
+  | "Churned";
+
+function computeLifecycle(
+  entryCount: number,
+  lastEntryAt: Date | null,
+  appFirstOpenedAt: Date | null,
+  now: Date
+): LifecycleStage {
+  // Users with entries check recency first
+  if (entryCount > 0 && lastEntryAt) {
+    const daysSince = (now.getTime() - lastEntryAt.getTime()) / 86400000;
+    if (daysSince > 14) return "Churned";
+    if (daysSince > 7) return "At risk";
+    if (entryCount >= 15) return "Active user";
+    if (entryCount >= 6) return "Building habit";
+    if (entryCount >= 2) return "Exploring";
+    return "First debrief";
+  }
+  // No entries
+  if (appFirstOpenedAt) return "Downloaded";
+  return "Signed up";
+}
+
+// ── Platform computation ─────────────────────────────────────────
+
+function computePlatform(
+  appFirstOpenedAt: Date | null,
+  entryCount: number,
+  devicePlatform: string | null
+): "iOS" | "Web" | "Both" | "None" {
+  const hasApp = !!appFirstOpenedAt;
+  const hasWebEntries = entryCount > 0 && !devicePlatform;
+  if (hasApp && hasWebEntries) return "Both";
+  if (hasApp) return "iOS";
+  if (entryCount > 0 && !hasApp) return "Web";
+  return "None";
+}
+
+// ── Plan status with trial days ──────────────────────────────────
+
+function computePlanStatus(
+  subscriptionStatus: string | null,
+  trialEndsAt: Date | null,
+  stripeSubscriptionId: string | null,
+  stripeCustomerId: string | null,
+  now: Date
+): string {
+  if (subscriptionStatus === "PRO") return "Paid";
+  if (subscriptionStatus === "PAST_DUE") return "Past Due";
+  if (stripeSubscriptionId && subscriptionStatus === "FREE") return "Churned";
+  if (stripeCustomerId && !stripeSubscriptionId && subscriptionStatus === "FREE") return "Churned";
+  if (subscriptionStatus === "TRIAL" && trialEndsAt) {
+    const daysLeft = Math.ceil((trialEndsAt.getTime() - now.getTime()) / 86400000);
+    if (daysLeft <= 0) return `Trial — Expired ${Math.abs(daysLeft)}d ago`;
+    return `Trial — ${daysLeft}d left`;
+  }
+  if (subscriptionStatus === "TRIAL") return "Trial";
+  if (subscriptionStatus === "FREE" && trialEndsAt) {
+    const daysAgo = Math.floor((now.getTime() - trialEndsAt.getTime()) / 86400000);
+    return `Expired ${daysAgo}d ago`;
+  }
+  return "None";
+}
+
 export async function GET(req: NextRequest) {
   const guard = await requireAdmin();
   if (!guard.ok) return guard.response;
@@ -24,22 +103,99 @@ export async function GET(req: NextRequest) {
   const cursor = req.nextUrl.searchParams.get("cursor") ?? undefined;
   const limitRaw = Number(req.nextUrl.searchParams.get("limit") ?? 50);
   const limit = Math.min(Math.max(isFinite(limitRaw) ? limitRaw : 50, 1), 100);
+  const lifecycleFilter = req.nextUrl.searchParams.get("lifecycle")?.split(",").filter(Boolean) ?? [];
+  const sortField = req.nextUrl.searchParams.get("sort") ?? "createdAt";
+  const sortDir = req.nextUrl.searchParams.get("dir") === "asc" ? "asc" as const : "desc" as const;
 
   const where = q
     ? { email: { contains: q, mode: "insensitive" as const } }
     : {};
 
-  // Total count for the summary card (only on first page load, not paginated requests)
-  const totalCount = !cursor ? await prisma.user.count({ where }) : undefined;
+  const now = new Date();
+  const weekAgo = new Date(now.getTime() - 7 * 86400000);
 
+  // ── Summary stats (only on first page) ──
+  let summaryStats = undefined;
+  if (!cursor) {
+    const allUsers = await prisma.user.findMany({
+      where,
+      select: {
+        id: true,
+        subscriptionStatus: true,
+        stripeSubscriptionId: true,
+        appFirstOpenedAt: true,
+        devicePlatform: true,
+        lastSeenAt: true,
+        currentStreak: true,
+        _count: { select: {
+          entries: { where: { status: "COMPLETE" } },
+        }},
+        entries: {
+          where: { status: "COMPLETE", createdAt: { gte: weekAgo } },
+          select: { id: true },
+        },
+      },
+    });
+
+    // Find users with latest entry for recency check
+    const latestEntries = await prisma.entry.groupBy({
+      by: ["userId"],
+      where: { status: "COMPLETE" },
+      _max: { createdAt: true },
+    });
+    const lastEntryMap = new Map(latestEntries.map(e => [e.userId, e._max.createdAt]));
+
+    let totalUsers = 0, downloadedOrWeb = 0, recordedAtLeast1 = 0;
+    let activeThisWeek = 0, atRisk = 0, neverRecorded = 0, paying = 0;
+    let totalEntriesThisWeek = 0, activeUsersThisWeek = 0;
+
+    for (const u of allUsers) {
+      totalUsers++;
+      const ec = u._count.entries;
+      const etw = u.entries.length;
+      const lastEntry = lastEntryMap.get(u.id) ?? null;
+
+      if (u.appFirstOpenedAt || ec > 0) downloadedOrWeb++;
+      if (ec > 0) recordedAtLeast1++;
+      if (ec === 0) neverRecorded++;
+      if (u.subscriptionStatus === "PRO" && u.stripeSubscriptionId) paying++;
+      if (etw > 0) { activeThisWeek++; totalEntriesThisWeek += etw; activeUsersThisWeek++; }
+
+      const lifecycle = computeLifecycle(ec, lastEntry, u.appFirstOpenedAt, now);
+      if (lifecycle === "At risk") atRisk++;
+    }
+
+    summaryStats = {
+      totalUsers,
+      downloadedOrWeb,
+      recordedAtLeast1,
+      activeThisWeek,
+      atRisk,
+      neverRecorded,
+      paying,
+      avgEntriesPerActiveUser: activeUsersThisWeek > 0 ? Math.round((totalEntriesThisWeek / activeUsersThisWeek) * 10) / 10 : 0,
+    };
+  }
+
+  // ── Sort mapping ──
+  const orderBy = sortField === "entries"
+    ? { entries: { _count: sortDir } as const }
+    : sortField === "lastEntry"
+      ? { lastRecordingAt: sortDir }
+      : sortField === "lastActive"
+        ? { lastSeenAt: sortDir }
+        : { createdAt: sortDir };
+
+  // ── Main query ──
   const users = await prisma.user.findMany({
     where,
-    orderBy: { createdAt: "desc" },
+    orderBy: orderBy as Record<string, unknown>,
     take: limit + 1,
     ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
     select: {
       id: true,
       email: true,
+      name: true,
       createdAt: true,
       lastSeenAt: true,
       subscriptionStatus: true,
@@ -53,120 +209,78 @@ export async function GET(req: NextRequest) {
       signupUtmSource: true,
       signupUtmMedium: true,
       signupLandingPath: true,
-      onboarding: { select: { completedAt: true, currentStep: true } },
-      _count: { select: { entries: { where: { status: "COMPLETE" } } } },
+      currentStreak: true,
+      lastRecordingAt: true,
+      _count: {
+        select: {
+          entries: { where: { status: "COMPLETE" } },
+          weeklyReports: true,
+        },
+      },
+      entries: {
+        where: { status: "COMPLETE", createdAt: { gte: weekAgo } },
+        select: { id: true },
+      },
     },
   });
 
   const hasMore = users.length > limit;
   const page = hasMore ? users.slice(0, limit) : users;
 
-  // Batch-fetch onboarding + funnel events per user for the status column
-  const userIds = page.map((u) => u.id);
-  let eventsByUser: Record<string, string[]> = {};
-  try {
-    const events = await prisma.onboardingEvent.findMany({
-      where: { userId: { in: userIds }, isBot: false },
-      select: { userId: true, event: true },
-    });
-    for (const e of events) {
-      if (!e.userId) continue;
-      if (!eventsByUser[e.userId]) eventsByUser[e.userId] = [];
-      eventsByUser[e.userId].push(e.event);
-    }
-  } catch {
-    // OnboardingEvent table may not exist yet
-  }
+  // Get latest entry dates for the page users
+  const userIds = page.map(u => u.id);
+  const latestEntries = await prisma.entry.groupBy({
+    by: ["userId"],
+    where: { userId: { in: userIds }, status: "COMPLETE" },
+    _max: { createdAt: true },
+  });
+  const lastEntryMap = new Map(latestEntries.map(e => [e.userId, e._max.createdAt]));
 
-  return NextResponse.json({
-    users: page.map((u) => ({
+  const mappedUsers = page.map((u) => {
+    const entryCount = u._count.entries;
+    const entriesThisWeek = u.entries.length;
+    const lastEntryAt = lastEntryMap.get(u.id) ?? u.lastRecordingAt;
+    const platform = computePlatform(u.appFirstOpenedAt, entryCount, u.devicePlatform);
+    const lifecycle = computeLifecycle(entryCount, lastEntryAt, u.appFirstOpenedAt, now);
+    const planStatus = computePlanStatus(u.subscriptionStatus, u.trialEndsAt, u.stripeSubscriptionId, u.stripeCustomerId, now);
+
+    // Last active: most recent of lastSeenAt, lastEntryAt, appFirstOpenedAt
+    const candidates = [u.lastSeenAt, lastEntryAt, u.appFirstOpenedAt].filter(Boolean) as Date[];
+    const lastActive = candidates.length > 0 ? new Date(Math.max(...candidates.map(d => d.getTime()))) : null;
+
+    return {
       id: u.id,
       email: u.email,
+      name: u.name,
       createdAt: u.createdAt,
-      lastSeenAt: u.lastSeenAt,
-      subscriptionStatus: u.subscriptionStatus,
-      trialEndsAt: u.trialEndsAt,
-      entryCount: u._count.entries,
-      devicePlatform: u.devicePlatform,
-      appVersion: u.appVersion,
-      appFirstOpenedAt: u.appFirstOpenedAt,
       signupUtmSource: u.signupUtmSource,
       signupUtmMedium: u.signupUtmMedium,
       signupLandingPath: u.signupLandingPath,
-      onboardingStatus: computeOnboardingStatus(
-        eventsByUser[u.id] ?? [],
-        u.appFirstOpenedAt,
-        u.onboarding?.completedAt ?? null,
-        u.subscriptionStatus,
-        u.stripeSubscriptionId
-      ),
-      paymentStatus: computePaymentStatus(u.subscriptionStatus, u.stripeCustomerId, u.stripeSubscriptionId, u.trialEndsAt),
+      subscriptionStatus: u.subscriptionStatus,
+      planStatus,
+      platform,
+      lifecycle,
+      entryCount,
+      entriesThisWeek,
+      lastEntryAt,
+      streak: u.currentStreak ?? 0,
+      weeklyReportCount: u._count.weeklyReports,
+      lastActive,
+      trialEndsAt: u.trialEndsAt,
       downloadReminder: u.downloadReminderSentAt
         ? `Sent ${new Date(u.downloadReminderSentAt).toLocaleDateString()}`
         : u.appFirstOpenedAt ? "Not needed" : "Pending",
-    })),
-    nextCursor: hasMore ? page[page.length - 1].id : null,
-    ...(totalCount !== undefined ? { totalCount } : {}),
+    };
   });
-}
 
-function computeOnboardingStatus(
-  events: string[],
-  appFirstOpenedAt: Date | null,
-  legacyCompletedAt: Date | null,
-  subscriptionStatus: string | null,
-  stripeSubscriptionId: string | null
-): string {
-  const has = (e: string) => events.includes(e);
-  // Most advanced state wins — check both old onboarding_* and new funnel_* events
-  if (appFirstOpenedAt || has("onboarding_app_store_clicked") || has("funnel_app_store_clicked")) return "Downloaded app";
-  if (has("onboarding_continue_browser_clicked")) return "Using browser";
-  if (has("onboarding_download_screen_viewed") || has("funnel_download_viewed")) return "Reached download";
+  // Apply lifecycle filter client-side (after computation)
+  const filtered = lifecycleFilter.length > 0
+    ? mappedUsers.filter(u => lifecycleFilter.includes(u.lifecycle))
+    : mappedUsers;
 
-  // Payment status — check actual Stripe state, not just events
-  if (subscriptionStatus === "PRO" || subscriptionStatus === "TRIALING") return "Paid";
-  if (stripeSubscriptionId && subscriptionStatus !== "PRO" && subscriptionStatus !== "TRIALING") return "Payment failed";
-  // v3 account-first flow statuses
-  if (has("funnel_savings_locked_in") || has("funnel_payment_completed")) return "Paid";
-  if (has("funnel_trial_continued")) return "Trial (skipped payment)";
-  if (has("funnel_account_created")) return "Account created";
-  if (has("funnel_create_account_viewed")) return "Reached signup";
-  // v2 legacy compat
-  if (has("funnel_checkout_started") && !stripeSubscriptionId) return "Checkout abandoned";
-  if (has("funnel_signup_completed") && !has("funnel_checkout_started")) return "Signed up (no checkout)";
-  if (has("funnel_paywall_viewed")) return "Reached paywall";
-  if (has("onboarding_extraction_viewed")) return "Saw extraction";
-  if (has("onboarding_recording_completed")) return "Recorded";
-  if (has("onboarding_recording_started")) return "Started recording";
-  if (has("onboarding_skipped")) return "Skipped recording";
-  if (has("onboarding_recording_screen_viewed")) return "Saw recording screen";
-  if (has("funnel_mirror_viewed")) return "Funnel: mirror";
-  if (has("funnel_entry_selected")) return "Funnel: started quiz";
-  if (has("funnel_entry_viewed")) return "Funnel: page loaded";
-  // Fallback to legacy if no new events
-  if (legacyCompletedAt) return "Downloaded app";
-  return "Not started";
-}
-
-function computePaymentStatus(
-  subscriptionStatus: string | null,
-  stripeCustomerId: string | null,
-  stripeSubscriptionId: string | null,
-  trialEndsAt: Date | null
-): string {
-  if (subscriptionStatus === "PRO") return "Active";
-  if (subscriptionStatus === "PAST_DUE") return "Past Due";
-  // Had a Stripe subscription that was cancelled or expired
-  if (stripeSubscriptionId && subscriptionStatus === "FREE") return "Churned";
-  if (stripeCustomerId && !stripeSubscriptionId && subscriptionStatus === "FREE") return "Churned";
-  // Trial status
-  if (subscriptionStatus === "TRIAL") {
-    if (trialEndsAt && new Date(trialEndsAt) < new Date()) return "Expired";
-    return "Trial";
-  }
-  if (subscriptionStatus === "FREE") {
-    if (trialEndsAt) return "Expired";
-    return "None";
-  }
-  return "None";
+  return NextResponse.json({
+    users: filtered,
+    nextCursor: hasMore ? page[page.length - 1].id : null,
+    ...(summaryStats ? { summary: summaryStats } : {}),
+  });
 }
