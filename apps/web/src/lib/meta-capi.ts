@@ -10,7 +10,7 @@
 
 import { createHash, randomUUID } from "crypto";
 
-const GRAPH_API_VERSION = "v21.0";
+const GRAPH_API_VERSION = process.env.META_API_VERSION || "v25.0";
 
 // ─── Hashing ────────────────────────────────────────────────────────
 
