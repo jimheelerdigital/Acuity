@@ -117,6 +117,7 @@ export async function GET(req: NextRequest) {
   // ── Summary stats (only on first page) ──
   let summaryStats = undefined;
   if (!cursor) {
+    try {
     const allUsers = await prisma.user.findMany({
       where,
       select: {
@@ -175,6 +176,9 @@ export async function GET(req: NextRequest) {
       paying,
       avgEntriesPerActiveUser: activeUsersThisWeek > 0 ? Math.round((totalEntriesThisWeek / activeUsersThisWeek) * 10) / 10 : 0,
     };
+    } catch (err) {
+      console.error("[admin/users] Summary query failed:", err);
+    }
   }
 
   // ── Sort mapping ──
@@ -187,42 +191,84 @@ export async function GET(req: NextRequest) {
         : { createdAt: sortDir };
 
   // ── Main query ──
-  const users = await prisma.user.findMany({
-    where,
-    orderBy: orderBy as Record<string, unknown>,
-    take: limit + 1,
-    ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
-    select: {
-      id: true,
-      email: true,
-      name: true,
-      createdAt: true,
-      lastSeenAt: true,
-      subscriptionStatus: true,
-      stripeCustomerId: true,
-      stripeSubscriptionId: true,
-      trialEndsAt: true,
-      devicePlatform: true,
-      appVersion: true,
-      appFirstOpenedAt: true,
-      downloadReminderSentAt: true,
-      signupUtmSource: true,
-      signupUtmMedium: true,
-      signupLandingPath: true,
-      currentStreak: true,
-      lastRecordingAt: true,
-      _count: {
-        select: {
-          entries: { where: { status: "COMPLETE" } },
-          weeklyReports: true,
+  let users;
+  try {
+    users = await prisma.user.findMany({
+      where,
+      orderBy: orderBy as Record<string, unknown>,
+      take: limit + 1,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        createdAt: true,
+        lastSeenAt: true,
+        subscriptionStatus: true,
+        stripeCustomerId: true,
+        stripeSubscriptionId: true,
+        trialEndsAt: true,
+        devicePlatform: true,
+        appVersion: true,
+        appFirstOpenedAt: true,
+        downloadReminderSentAt: true,
+        signupUtmSource: true,
+        signupUtmMedium: true,
+        signupLandingPath: true,
+        currentStreak: true,
+        lastRecordingAt: true,
+        _count: {
+          select: {
+            entries: { where: { status: "COMPLETE" } },
+            weeklyReports: true,
+          },
+        },
+        entries: {
+          where: { status: "COMPLETE", createdAt: { gte: weekAgo } },
+          select: { id: true },
         },
       },
-      entries: {
-        where: { status: "COMPLETE", createdAt: { gte: weekAgo } },
-        select: { id: true },
+    });
+  } catch (err) {
+    // Fallback: if downloadReminderSentAt column doesn't exist yet (needs db push),
+    // retry without it to prevent the entire dashboard from breaking
+    console.error("[admin/users] Main query failed, retrying without new columns:", err);
+    users = await prisma.user.findMany({
+      where,
+      orderBy: { createdAt: sortDir },
+      take: limit + 1,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        createdAt: true,
+        lastSeenAt: true,
+        subscriptionStatus: true,
+        stripeCustomerId: true,
+        stripeSubscriptionId: true,
+        trialEndsAt: true,
+        devicePlatform: true,
+        appVersion: true,
+        appFirstOpenedAt: true,
+        signupUtmSource: true,
+        signupUtmMedium: true,
+        signupLandingPath: true,
+        currentStreak: true,
+        lastRecordingAt: true,
+        _count: {
+          select: {
+            entries: { where: { status: "COMPLETE" } },
+            weeklyReports: true,
+          },
+        },
+        entries: {
+          where: { status: "COMPLETE", createdAt: { gte: weekAgo } },
+          select: { id: true },
+        },
       },
-    },
-  });
+    });
+  }
 
   const hasMore = users.length > limit;
   const page = hasMore ? users.slice(0, limit) : users;
@@ -267,8 +313,8 @@ export async function GET(req: NextRequest) {
       weeklyReportCount: u._count.weeklyReports,
       lastActive,
       trialEndsAt: u.trialEndsAt,
-      downloadReminder: u.downloadReminderSentAt
-        ? `Sent ${new Date(u.downloadReminderSentAt).toLocaleDateString()}`
+      downloadReminder: (u as Record<string, unknown>).downloadReminderSentAt
+        ? `Sent ${new Date((u as Record<string, unknown>).downloadReminderSentAt as string).toLocaleDateString()}`
         : u.appFirstOpenedAt ? "Not needed" : "Pending",
     };
   });
