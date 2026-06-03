@@ -53,7 +53,12 @@ export type OnboardingEventName =
   | "funnel_signup_failed"
   | "funnel_paywall_viewed"
   | "funnel_trial_started"
-  | "funnel_paywall_dismissed";
+  | "funnel_paywall_dismissed"
+  // v1.3.x first-login product tour
+  | "tour_started"
+  | "tour_step_viewed"
+  | "tour_skipped"
+  | "tour_completed";
 
 export interface TrackOptions {
   /** Single-select answer key, signup method, error code, etc. */

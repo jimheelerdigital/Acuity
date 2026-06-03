@@ -31,6 +31,7 @@ import { LockScreenOverlay } from "@/components/lock-screen-overlay";
 import { UniversalLinkHandler } from "@/components/universal-link-handler";
 import { UpdatePromptOverlay } from "@/components/UpdatePromptOverlay";
 import { CelebrationModal } from "@/components/achievements/CelebrationModal";
+import { TourProvider } from "@/components/tour/TourProvider";
 import { useAchievementQueue } from "@/hooks/use-achievement-queue";
 import { initMetaSdk, setMetaUserId } from "@/lib/meta-sdk";
 import { reapplyRemindersIfNeeded } from "@/lib/notifications-boot";
@@ -248,7 +249,13 @@ function RootLayout() {
         <ThemeProvider>
           <AuthProvider>
             <LockProvider>
-              <ThemedApp />
+              {/* TourProvider wraps the Stack so a single CopilotProvider
+                  sees every CopilotStep registered across tab screens.
+                  Above ThemedApp = above <Stack/>. Below LockProvider so
+                  a locked app's overlay covers any in-flight tour. */}
+              <TourProvider>
+                <ThemedApp />
+              </TourProvider>
             </LockProvider>
           </AuthProvider>
         </ThemeProvider>

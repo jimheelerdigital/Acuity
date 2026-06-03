@@ -69,6 +69,12 @@ export type User = {
   // read it for streaks / stats UI.
   totalRecordings?: number;
   lastStreakMilestone?: number | null;
+  // v1.3.x first-login product tour. null/undefined = not yet
+  // completed; ISO timestamp = completed or skipped. Read by the
+  // tour orchestrator to gate the auto-fire on first home mount.
+  tourCompletedAt?: string | null;
+  // v1.3.x biometric auto-lock threshold mirror.
+  autoLockMinutes?: number;
   // Flags flattened from UserOnboarding relation by /api/user/me.
   // `false` when the row doesn't exist OR completedAt is null — both
   // states route the user into the onboarding flow. `true` lets the

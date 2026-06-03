@@ -3,6 +3,7 @@ import * as Linking from "expo-linking";
 import { useFocusEffect, useRouter } from "expo-router";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
+import { CopilotStep } from "react-native-copilot";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { GradientText, HeroCard } from "@/components/acuity";
@@ -28,6 +29,8 @@ import { ProgressionChecklist } from "@/components/progression-checklist";
 import { Skeleton, SkeletonCard } from "@/components/skeleton";
 import { ProLockedCard } from "@/components/pro-locked-card";
 import { RecommendedActivity } from "@/components/recommended-activity";
+import { TourTarget } from "@/components/tour/TourTarget";
+import { useTourTrigger } from "@/hooks/use-tour-trigger";
 import { useAuth } from "@/contexts/auth-context";
 import { useTheme } from "@/contexts/theme-context";
 import { isFreeTierUser } from "@/lib/free-tier";
@@ -103,6 +106,11 @@ export default function DashboardTab() {
   const { user } = useAuth();
   const { tokens } = useTheme();
   const router = useRouter();
+  // v1.3.x — auto-fire the first-login product tour when the user
+  // lands here for the first time post-onboarding. Internal gates
+  // skip the trigger for users who've already recorded an entry or
+  // already completed / skipped the tour.
+  useTourTrigger();
   const [entries, setEntries] = useState<EntryDTO[] | null>(
     () =>
       getCached<{ entries: EntryDTO[] }>(HOME_ENTRIES_KEY)?.entries ?? null
@@ -248,14 +256,24 @@ export default function DashboardTab() {
       edges={["top"]}
     >
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
-        {/* Identity hero — avatar + greeting + name + tier pill */}
-        <IdentityHero
-          initials={initials}
-          greeting={greeting}
-          firstName={firstName}
-          currentStreak={user?.currentStreak ?? 0}
-          onSettingsPress={handleSettingsPress}
-        />
+        {/* Identity hero — avatar + greeting + name + tier pill.
+            v1.3.x: wrapped in CopilotStep order=2 so the first-login
+            tour explains the dashboard right after the mic step. */}
+        <CopilotStep
+          name="dashboard"
+          order={2}
+          text="Your home screen reflects your reflections. Patterns surface as you record."
+        >
+          <TourTarget>
+            <IdentityHero
+              initials={initials}
+              greeting={greeting}
+              firstName={firstName}
+              currentStreak={user?.currentStreak ?? 0}
+              onSettingsPress={handleSettingsPress}
+            />
+          </TourTarget>
+        </CopilotStep>
 
         <View style={{ height: 16 }} />
         <TrialBanner />

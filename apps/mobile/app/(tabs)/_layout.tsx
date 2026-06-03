@@ -1,10 +1,45 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Tabs, useRouter } from "expo-router";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
-import { useEffect, useRef, useState } from "react";
+import { forwardRef, useEffect, useRef, useState } from "react";
 import * as Haptics from "expo-haptics";
 import { Animated, Pressable, Text, View } from "react-native";
+import { CopilotStep } from "react-native-copilot";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+import { TourTarget } from "@/components/tour/TourTarget";
+
+// v1.3.x first-login tour step copy. Order numbers match the
+// orchestrator's expected sequence (1: mic → 2: dashboard → 3-6:
+// tabs → 7: avatar/settings). Centralizing here keeps the wrapping
+// JSX clean.
+const TOUR_STEPS = {
+  mic: {
+    order: 1,
+    name: "mic",
+    text: "Tap here anytime to capture what's on your mind. Sixty seconds is enough.",
+  },
+  entries: {
+    order: 3,
+    name: "entries",
+    text: "Every voice note lives here, processed into transcript + themes + mood.",
+  },
+  tasks: {
+    order: 4,
+    name: "tasks",
+    text: "Acuity extracts to-dos from what you say — they land here.",
+  },
+  insights: {
+    order: 5,
+    name: "insights",
+    text: "Patterns, themes, and your weekly report. The longer you use it, the sharper this gets.",
+  },
+  goals: {
+    order: 6,
+    name: "goals",
+    text: "Set what you're working toward; Acuity nudges you when entries touch it.",
+  },
+} as const;
 
 import { useTheme } from "@/contexts/theme-context";
 import type { AcuityTokens } from "@/lib/theme/tokens";
@@ -144,7 +179,23 @@ function CustomTabBar({
             focusedName === tabKey;
           const meta = TAB_META[tabKey];
           const tint = active ? activeTint : inactiveTint;
-          return (
+          // Step lookup — center slot uses the mic step (its label
+          // says "Home" but the highlighted target IS the mic). The
+          // visible mic overlay below is decorative; we anchor the
+          // step on this slot so the cutout aligns with the row.
+          const tourStep =
+            tabKey === "record-placeholder"
+              ? null // mic gets its CopilotStep on the overlay button
+              : tabKey === "entries"
+                ? TOUR_STEPS.entries
+                : tabKey === "tasks"
+                  ? TOUR_STEPS.tasks
+                  : tabKey === "insights"
+                    ? TOUR_STEPS.insights
+                    : tabKey === "goals"
+                      ? TOUR_STEPS.goals
+                      : null;
+          const slotJsx = (
             <Pressable
               key={tabKey}
               accessibilityRole="tab"
@@ -204,31 +255,53 @@ function CustomTabBar({
               </Text>
             </Pressable>
           );
+          if (!tourStep) return slotJsx;
+          return (
+            <CopilotStep
+              key={tabKey}
+              name={tourStep.name}
+              order={tourStep.order}
+              text={tourStep.text}
+            >
+              <TourTarget style={{ flex: 1 }}>{slotJsx}</TourTarget>
+            </CopilotStep>
+          );
         })}
       </View>
 
       {/* Raised mic button overlay. Positioned absolutely so it has
           zero influence on the tab row's flex layout. `left: 50%` +
           `marginLeft: -32` horizontally centers a 64pt-wide circle.
-          `top: -26` raises it 26pt above the tab bar's top edge. */}
-      <RecordOverlayButton
-        tokens={tokens}
-        active={isOnHome}
-        onPress={() => router.navigate("/(tabs)")}
-      />
+          `top: -26` raises it 26pt above the tab bar's top edge.
+          v1.3.x: wrapped in CopilotStep so the first-login tour
+          starts on the mic — the primary action of the app.
+          RecordOverlayButton owns its own absolute positioning, so
+          CopilotStep wraps it directly without an extra positioned
+          TourTarget. The child IS the RecordOverlayButton's outer
+          View — copilot's cloneElement attaches its ref to that. */}
+      <CopilotStep
+        name={TOUR_STEPS.mic.name}
+        order={TOUR_STEPS.mic.order}
+        text={TOUR_STEPS.mic.text}
+      >
+        <RecordOverlayButton
+          tokens={tokens}
+          active={isOnHome}
+          onPress={() => router.navigate("/(tabs)")}
+        />
+      </CopilotStep>
     </View>
   );
 }
 
-function RecordOverlayButton({
-  tokens,
-  active,
-  onPress,
-}: {
-  tokens: AcuityTokens;
-  active: boolean;
-  onPress: () => void;
-}) {
+const RecordOverlayButton = forwardRef<
+  View,
+  {
+    tokens: AcuityTokens;
+    active: boolean;
+    onPress: () => void;
+  }
+>(function RecordOverlayButton({ tokens, active, onPress }, ref) {
   const [pressed, setPressed] = useState(false);
   const targetColorValue = pressed || active ? 1 : 0;
   const colorAnim = useRef(new Animated.Value(active ? 1 : 0)).current;
@@ -255,8 +328,13 @@ function RecordOverlayButton({
   // (label occupies y=33-44 in the 52pt content area with a 22pt icon
   // slot + 3pt gap + 11pt label centered). The prior `top: -26` had
   // the button bottom at y=38, eating the top of the label.
+  //
+  // v1.3.x: forwarded ref so react-native-copilot can measure this
+  // outer View when the first-login tour highlights the mic.
   return (
     <View
+      ref={ref}
+      collapsable={false}
       pointerEvents="box-none"
       style={{
         position: "absolute",
@@ -305,4 +383,4 @@ function RecordOverlayButton({
       </Animated.View>
     </View>
   );
-}
+});

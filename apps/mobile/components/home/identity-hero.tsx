@@ -1,7 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Pressable, Text, View } from "react-native";
 
+import { CopilotStep } from "react-native-copilot";
+
 import { Avatar, TierPill } from "@/components/acuity";
+import { TourTarget } from "@/components/tour/TourTarget";
 import { useTheme } from "@/contexts/theme-context";
 
 /**
@@ -93,24 +96,40 @@ export function IdentityHero({
       </View>
 
       {onSettingsPress && (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Open settings"
-          onPress={onSettingsPress}
-          hitSlop={12}
-          style={{
-            width: 44,
-            height: 44,
-            alignItems: "center",
-            justifyContent: "center",
-            borderRadius: 22,
-            borderWidth: 0.5,
-            borderColor: tokens.line,
-            backgroundColor: tokens.cardBg,
-          }}
+        // v1.3.x first-login tour, step 7. Highlights the path into
+        // Profile so users find themes, reminders, security, and the
+        // "Replay product tour" row. CopilotStep wraps via TourTarget
+        // so the ref attaches to a measurable native View.
+        <CopilotStep
+          name="settings"
+          order={7}
+          text="Tap the gear icon to open Profile — themes, reminders, security, and replay-tour all live there."
         >
-          <Ionicons name="settings-outline" size={18} color={tokens.textSec} />
-        </Pressable>
+          <TourTarget>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Open settings"
+              onPress={onSettingsPress}
+              hitSlop={12}
+              style={{
+                width: 44,
+                height: 44,
+                alignItems: "center",
+                justifyContent: "center",
+                borderRadius: 22,
+                borderWidth: 0.5,
+                borderColor: tokens.line,
+                backgroundColor: tokens.cardBg,
+              }}
+            >
+              <Ionicons
+                name="settings-outline"
+                size={18}
+                color={tokens.textSec}
+              />
+            </Pressable>
+          </TourTarget>
+        </CopilotStep>
       )}
     </View>
   );

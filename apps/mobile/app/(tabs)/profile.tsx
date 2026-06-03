@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Linking from "expo-linking";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
@@ -14,6 +15,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Avatar, SubscriptionPill } from "@/components/acuity";
 import { fetchCatalog, type CatalogResponse } from "@/lib/achievements-api";
+import { api } from "@/lib/api";
 import { AppearanceCard } from "@/components/appearance/appearance-card";
 import { TrialStatusCard } from "@/components/TrialStatusCard";
 import { HapticsRow } from "@/components/appearance/haptics-row";
@@ -55,6 +57,18 @@ export default function ProfileTab() {
       cancelled = true;
     };
   }, []);
+
+  const handleReplayTour = async () => {
+    // Clear the local marker first so use-tour-trigger doesn't see
+    // it on the next mount. Server clear is fire-and-forget — worst
+    // case the next /me reads the stale tourCompletedAt and the tour
+    // skips; the user can tap Replay again.
+    await AsyncStorage.removeItem("acuity.tour.completed").catch(() => {});
+    void api.post("/api/user/tour-reset", {}).catch(() => {});
+    // Bounce to Home so the trigger evaluates fresh after the local
+    // clear lands.
+    router.replace("/(tabs)" as never);
+  };
 
   const handleSignOut = () => {
     Alert.alert("Sign out", "Are you sure you want to sign out?", [
@@ -281,6 +295,16 @@ export default function ProfileTab() {
             label="Reminders"
             sublabel="When to nudge you to journal"
             onPress={() => router.push("/reminders")}
+          />
+          {/* Replay product tour — clears User.tourCompletedAt + the
+              local AsyncStorage marker, then bounces to home so the
+              tour fires on the next mount. Keeps the guided_start
+              achievement (once earned, stays earned). v1.3.x. */}
+          <MenuItem
+            icon="compass-outline"
+            label="Replay product tour"
+            sublabel="Walk through the app again from the beginning"
+            onPress={() => void handleReplayTour()}
           />
           {/* Security — Face ID / app lock + auto-lock interval.
               Lives on its own screen so the picker (Immediately /

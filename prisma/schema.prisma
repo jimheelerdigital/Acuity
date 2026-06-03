@@ -138,6 +138,16 @@ model User {
   // of truth for cross-device sync (a setting toggled on iPhone
   // should land on iPad after the next /api/user/me fetch).
   autoLockMinutes               Int                  @default(2)
+  // Slice v1.3.x (2026-06-03) — first-login product tour.
+  // NULL = user has not completed (or has reset) the tour, so it
+  // fires on next home mount (subject to additional gates). Set to
+  // now() when the tour finishes OR is skipped at any step — we
+  // don't want to keep nagging users who said no.
+  //
+  // Mirrored client-side via AsyncStorage so the trigger evaluator
+  // can run synchronously on home mount; server column is authoritative
+  // for cross-device + replay-tour.
+  tourCompletedAt               DateTime?
   // DEPRECATED: superseded by notificationTime + notificationDays +
   // notificationsEnabled (added 2026-04-20 alongside the onboarding
   // notifications step). Left in place because a fresh schema diff

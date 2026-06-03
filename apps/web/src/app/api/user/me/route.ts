@@ -61,6 +61,10 @@ export async function GET(req: NextRequest) {
       // sync — mobile reads this on cold launch and hydrates the
       // local AsyncStorage value when stored locally diverges.
       autoLockMinutes: true,
+      // v1.3.x first-login product tour. Null = not yet completed;
+      // ISO timestamp = completed or skipped. Read by the mobile
+      // tour orchestrator to gate auto-fire on first home mount.
+      tourCompletedAt: true,
       currentStreak: true,
       longestStreak: true,
       // Surfaced for mobile slice 9b — push-token registration triggers
