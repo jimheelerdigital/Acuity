@@ -224,6 +224,14 @@ model User {
   // the banner or logged-in-from-another-device. Mirror of the
   // localStorage record on the client.
   cookieConsent                 Json?
+  // Product-analytics opt-out (v1.4 GDPR slice). Controls whether
+  // POST-AUTH product/funnel events are logged for this user. Default
+  // true: existing users stay measured (they accepted the prior policy);
+  // anyone can opt out in-app via Settings → Privacy → Product analytics.
+  // Enforced server-side in /api/onboarding-events. Anonymous pre-signup
+  // funnel events have no userId and are NOT gated by this (legitimate
+  // interest, ad attribution).
+  productAnalyticsEnabled       Boolean              @default(true)
   // Last-computed UserProgression snapshot, used to diff `recentlyUnlocked`
   // across sessions (see packages/shared/src/userProgression.ts). Shape is
   // the full UserProgression JSON. Null on users who've never hit the
@@ -432,6 +440,7 @@ model User {
   trySessions                   TrySession[]
   onboardingEvents              OnboardingEvent[]
   userAchievements              UserAchievement[]
+  consentRecords                ConsentRecord[]
 
   updatedAt DateTime @default(now()) @updatedAt
 
@@ -2317,6 +2326,43 @@ model OnboardingEvent {
   @@index([utmContent, createdAt])
   @@index([isBot, createdAt])
   @@index([flowVersion, createdAt])
+}
+
+// ConsentRecord — append-only ledger of explicit consents we must be
+// able to evidence under UK/EU GDPR Art. 7(1). v1.4 (2026-06-03).
+//
+// Two consent surfaces write here today:
+//   - "special_category_processing"            (Art. 9(2)(a) — onboarding)
+//   - "distance_contract_immediate_performance" (Consumer Contracts Regs
+//     2013 Reg. 36–37 / EU Dir. 2011/83 Art. 16(m) — checkout / IAP)
+// "marketing" / "cookies" may also be written here in future; the
+// canonical cookie/marketing state still lives on User.cookieConsent.
+//
+// APPEND-ONLY. A withdrawal/decline inserts a new row with granted=false;
+// it never updates or deletes the original grant. Current state for a
+// (userId, consentType) pair = the latest row by createdAt.
+//
+// Survives account deletion intentionally (compliance tombstone): it
+// stores only the wording + metadata the user saw, never transcript or
+// audio content — see Privacy §6. (No FK cascade is declared in SQL for
+// that reason; the relation here is logical for Prisma's client only.)
+model ConsentRecord {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id])
+  // 'special_category_processing' | 'distance_contract_immediate_performance' | 'marketing' | 'cookies'
+  consentType    String
+  granted        Boolean // true = grant, false = withdrawal/decline
+  consentText    String // exact wording shown to the user
+  wordingVersion String // e.g. 'art9-v1', 'withdrawal-v1'
+  policyVersion  String // privacy/terms version in effect, e.g. '2026-06-03'
+  platform       String // 'ios' | 'android' | 'web'
+  appVersion     String?
+  plan           String? // checkout only: 'monthly' | 'annual'
+  region         String? // best-effort: 'GB' | 'IE' | 'AU' | 'NZ' | ...
+  createdAt      DateTime @default(now())
+
+  @@index([userId, consentType, createdAt])
 }
 
 // Anchor People — named-entity extraction + relationship tracking.

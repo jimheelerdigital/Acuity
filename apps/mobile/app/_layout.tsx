@@ -353,6 +353,16 @@ function ThemedApp() {
           name="achievements"
           options={{ headerShown: true }}
         />
+        <Stack.Screen
+          name="privacy"
+          options={{
+            headerShown: true,
+            headerStyle: { backgroundColor: headerBg },
+            headerTintColor: headerFg,
+            headerTitleStyle: { fontWeight: "600" },
+            title: "Privacy",
+          }}
+        />
       </Stack>
       {/* Universal Links handler — listens for incoming verify-email
           deep-links and routes them to the existing endpoint. Render

@@ -1,45 +1,73 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Alert, Pressable, Text, View } from "react-native";
 
+import { GradientCheckbox } from "@/components/acuity/GradientCheckbox";
 import { useAuth } from "@/contexts/auth-context";
 import { useTheme } from "@/contexts/theme-context";
+import {
+  ART9_CONSENT_TEXT,
+  ART9_WORDING_VERSION,
+  recordConsent,
+} from "@/lib/consent";
 
 import { useOnboarding } from "./context";
 
 /**
- * Step 5 — AI processing consent. Required by App Store Review
- * Guidelines 5.1.1(i) and 5.1.2(i) (build-40 rejection).
+ * Step 5 — AI processing + Article 9 explicit consent.
  *
- * Apple requires explicit in-app user consent before any voice data
- * leaves the device for third-party AI processing. The Privacy Policy
- * already names Anthropic + OpenAI as subprocessors (see
- * apps/web/src/app/privacy/page.tsx §3), but a privacy-policy mention
- * alone isn't sufficient — we need an explicit "I consent" action.
+ * Serves two requirements at once:
  *
- * Decline path is intentionally narrow for v1.1: Alert dialog with
- * [Try again | Delete account]. The "free-tier with no AI" degraded
- * mode is a v1.2 backlog item — it requires User.aiProcessingConsent
- * column + server-side pipeline gating + multiple UI states. For
- * launch, gating decline to "delete-or-retry" is sufficient because
- * Apple's reject reason is the consent-gate's EXISTENCE, not the
- * post-decline UX. Users who decline never complete onboarding, so
- * they never reach the recording surface, so no AI calls fire.
+ *  1. App Store Review Guidelines 5.1.1(i) / 5.1.2(i) (build-40
+ *     rejection): explicit in-app consent before any voice data leaves
+ *     the device for third-party AI processing (OpenAI / Anthropic).
  *
- * Placement (after mic permission, before practice recording): the
- * practice recording at the next step is local-only, but for UX
- * clarity the consent lands here so the user's mental model is "OS
- * permission → AI processing consent → first recording attempt".
+ *  2. UK/EU GDPR Art. 9(2)(a) (v1.4 GDPR slice): voice entries may
+ *     contain special-category data (health, beliefs, sexuality), which
+ *     needs SEPARATE, EXPLICIT consent — a dedicated, affirmative,
+ *     unticked confirmation, not consent inferred from the act of
+ *     recording. The checkbox below is that affirmative act; ticking it
+ *     writes an append-only ConsentRecord we can later evidence.
+ *
+ * Decline path stays narrow (Alert: [Try again | Delete account]) — the
+ * "free tier with no AI" degraded mode is still a backlog item. Users
+ * who decline never reach the recorder, so no AI calls fire and no
+ * special-category content is processed.
+ *
+ * Placement (after mic permission, before the practice recording): the
+ * user's mental model is "OS permission → AI + special-category consent
+ * → first recording attempt".
  */
 export function Step5AiConsent() {
   const { tokens } = useTheme();
   const { setCanContinue, setCapturedData } = useOnboarding();
   const { deleteAccount, signOut } = useAuth();
   const [accepted, setAccepted] = useState(false);
+  // Write the ConsentRecord exactly once per grant. Fail-soft: a network
+  // error must not trap the user in onboarding — the captured
+  // aiProcessingConsent flag still persists through the normal flow, and
+  // we reconcile the ledger on the next consent touchpoint.
+  const recordedRef = useRef(false);
 
   useEffect(() => {
     setCanContinue(accepted);
     setCapturedData({ aiProcessingConsent: accepted });
+    if (accepted && !recordedRef.current) {
+      recordedRef.current = true;
+      void recordConsent({
+        consentType: "special_category_processing",
+        granted: true,
+        consentText: ART9_CONSENT_TEXT,
+        wordingVersion: ART9_WORDING_VERSION,
+      }).catch((err) => {
+        // Allow a retry on a later tick if the write failed.
+        recordedRef.current = false;
+        if (__DEV__) {
+          // eslint-disable-next-line no-console
+          console.warn("[art9-consent] record failed:", err);
+        }
+      });
+    }
   }, [accepted, setCanContinue, setCapturedData]);
 
   const handleDecline = () => {
@@ -89,7 +117,7 @@ export function Step5AiConsent() {
         adjustsFontSizeToFit
         minimumFontScale={0.75}
       >
-        How Acuity processes your voice
+        Before your first entry
       </Text>
       <Text
         className="mt-3 text-base leading-relaxed"
@@ -107,33 +135,48 @@ export function Step5AiConsent() {
         encrypted in transit, never sold, and never used to train AI
         models.
       </Text>
+      <Text
+        className="mt-3 text-base leading-relaxed"
+        style={{ color: tokens.textSec }}
+      >
+        Because you&rsquo;re speaking freely, your entries may include
+        sensitive personal information &mdash; things like your health,
+        your beliefs, or your relationships. UK and EU data-protection
+        law treats that as a special category that needs your explicit
+        consent.
+      </Text>
 
-      <View
-        className="mt-6 rounded-xl border p-4"
+      <Pressable
+        onPress={() => setAccepted((v) => !v)}
+        className="mt-6 flex-row gap-3 rounded-xl border p-4"
         style={{ borderColor: tokens.line, backgroundColor: tokens.bgInset }}
       >
+        <GradientCheckbox
+          checked={accepted}
+          onPress={() => setAccepted((v) => !v)}
+          accessibilityLabel="I explicitly consent to Acuity transcribing and analysing voice entries that may contain special-category information"
+        />
         <Text
-          className="text-sm leading-relaxed"
+          className="flex-1 text-sm leading-relaxed"
           style={{ color: tokens.textSec }}
         >
-          Your transcripts are{" "}
-          <Text className="font-semibold" style={{ color: tokens.text }}>
-            not used to train AI models
-          </Text>
-          . Both providers offer privacy protections at least
-          equivalent to ours. Full details in our{" "}
-          <Text
-            className="font-semibold underline"
-            style={{ color: tokens.text }}
-          >
-            Privacy Policy
-          </Text>
-          .
+          I understand my voice entries may contain special-category
+          information (such as health, religious or political beliefs,
+          or sexuality), and I explicitly consent to Acuity transcribing
+          and analysing that content to provide the service. I can
+          withdraw this consent at any time by deleting entries or my
+          account.
         </Text>
-      </View>
+      </Pressable>
+
+      <Text className="mt-3 text-xs leading-relaxed" style={{ color: tokens.textTer }}>
+        You choose what to say. You can use Acuity without sharing
+        sensitive details, and you can withdraw consent anytime in
+        Profile &rarr; Privacy.
+      </Text>
 
       {accepted && (
-        <View className="mt-6 flex-row gap-2 items-center">
+        <View className="mt-4 flex-row gap-2 items-center">
           <Ionicons name="checkmark-circle" size={20} color={tokens.good} />
           <Text className="text-sm" style={{ color: tokens.good }}>
             Consent recorded. Tap Continue to proceed.
@@ -141,30 +184,9 @@ export function Step5AiConsent() {
         </View>
       )}
 
-      <View className="mt-auto pt-6 gap-3">
-        <Pressable
-          onPress={() => setAccepted(true)}
-          className="rounded-full px-4 py-3.5 items-center"
-          style={{
-            backgroundColor: accepted ? tokens.bgInset : tokens.primary,
-          }}
-        >
-          <Text
-            className="text-sm font-semibold"
-            style={{ color: accepted ? tokens.textSec : "#FFFFFF" }}
-          >
-            {accepted ? "Consent given ✓" : "I consent"}
-          </Text>
-        </Pressable>
-        <Pressable
-          onPress={handleDecline}
-          className="rounded-full px-4 py-3.5 items-center border"
-          style={{ borderColor: tokens.line }}
-        >
-          <Text
-            className="text-sm font-medium"
-            style={{ color: tokens.textSec }}
-          >
+      <View className="mt-auto pt-6">
+        <Pressable onPress={handleDecline} className="py-3 items-center">
+          <Text className="text-sm font-medium" style={{ color: tokens.textTer }}>
             I don&rsquo;t consent
           </Text>
         </Pressable>

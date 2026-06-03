@@ -24,6 +24,7 @@ BlogTopicQueue rls
 CalendarConnection rls
 CalendarEvent rls    # user calendar events fetched via the EventKit / Google integration; has userId
 ClaudeCallLog rls
+ConsentRecord rls    # v1.4 append-only GDPR consent ledger (Art. 9 + 14-day withdrawal); has userId, written only via service-role Prisma
 ContentBriefing rls
 ContentPiece rls
 DashboardSnapshot rls

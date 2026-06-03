@@ -165,6 +165,20 @@ export default function TermsPage() {
                 also apply to in-app purchases.
               </li>
               <li>
+                <strong className="text-white">In-app purchase (Android).</strong>{" "}
+                If you subscribe through our Android app, the
+                transaction is processed by Google and billed to your
+                Google account under Google Play&rsquo;s terms. The
+                subscription renews automatically unless you cancel at
+                least 24 hours before the end of the current period. You
+                can manage or cancel it any time in the Google Play
+                Store under Payments &amp; subscriptions &rarr;
+                Subscriptions. Refunds for Google Play purchases are
+                governed by Google&rsquo;s policy and requested through
+                Google Play; Acuity cannot process Play Store refunds
+                directly.
+              </li>
+              <li>
                 <strong className="text-white">Cancellation.</strong>{" "}
                 For web subscriptions, you can cancel any time from
                 your account settings or the Stripe billing portal.
@@ -211,55 +225,78 @@ export default function TermsPage() {
             title="5b. EU / UK / EEA consumer rights"
           >
             <p>
-              If you are a consumer resident in the EU, UK, or EEA,
-              you have a statutory right to withdraw from a distance
-              subscription contract within 14 days of starting it,
-              without giving any reason and without penalty, under
-              Directive 2011/83/EU and the UK Consumer Contracts
-              (Information, Cancellation and Additional Charges)
-              Regulations 2013.
+              If you are a consumer resident in the UK, the EU, or the
+              EEA, you have a statutory right to withdraw from a
+              distance subscription contract within 14 days of entering
+              into it, without giving any reason and without penalty.
+              For UK consumers this right is set by the Consumer
+              Contracts (Information, Cancellation and Additional
+              Charges) Regulations 2013 (in particular Regulations
+              29&ndash;38, including Reg. 36 for services and Reg. 37
+              for digital content). For EU/EEA consumers, Directive
+              2011/83/EU applies.
             </p>
             <p className="mt-3">
-              <strong className="text-white">How the 14-day right works for Acuity.</strong>{" "}
-              Acuity is a digital service. Once you start using
-              paid features (for example, recording an entry that the
-              paid plan would unlock, or reading a Weekly Report that
-              the paid plan would deliver), you are expressly
-              consenting to immediate performance of the contract.
-              Under Article 16(m) of Directive 2011/83/EU, this means
-              the right of withdrawal does not apply once paid
-              performance has begun with your express consent and your
-              acknowledgement that you lose the right of withdrawal.
+              <strong className="text-white">When the 14-day clock starts.</strong>{" "}
+              Your free trial is separate from this right. The 14-day
+              cancellation period runs from the day your paid
+              subscription begins (your first charge), not from when
+              the trial started.
             </p>
             <p className="mt-3">
-              If you have NOT yet used any paid feature, you can
-              exercise the 14-day right by emailing{" "}
+              <strong className="text-white">Starting paid features early.</strong>{" "}
+              When you subscribe, we ask you to confirm that you want
+              your paid features to start immediately and that you
+              understand the effect on your cancellation right. If you
+              give that consent and we begin supplying the service:
+            </p>
+            <ul className="mt-3 list-disc space-y-2 pl-6">
+              <li>
+                for digital content fully supplied during the period
+                (for example, a Weekly Report we generate and deliver),
+                you lose the right to cancel that content; and
+              </li>
+              <li>
+                for the ongoing service, if you cancel during the 14
+                days you will not lose the right outright &mdash; we
+                will refund you, less a proportionate amount for the
+                service actually supplied up to the moment you told us
+                you wanted to cancel.
+              </li>
+            </ul>
+            <p className="mt-3">
+              If you have NOT asked us to begin immediately, or have not
+              used any paid feature, you keep the full 14-day right and
+              we will refund your charge in full within 14 days of
+              receiving your notice, using the same payment method you
+              paid with.
+            </p>
+            <p className="mt-3">
+              <strong className="text-white">How to cancel.</strong>{" "}
+              To exercise the right, tell us clearly within the 14 days
+              &mdash; email{" "}
               <a
                 href="mailto:privacy@heelerdigital.com"
                 className="underline hover:text-white"
               >
                 privacy@heelerdigital.com
               </a>{" "}
-              within 14 days of your first paid charge. We will refund
-              the charge in full within 14 days of receiving your
-              notice, using the same payment method you used to pay.
+              or use the model cancellation form below. You may use this
+              wording (completing the bracketed parts):
             </p>
-            <p className="mt-3">
-              <strong className="text-white">Free trial.</strong>{" "}
-              The 14-day free trial begins before any charge. If you
-              cancel during the trial you are not charged and the
-              14-day withdrawal right is not engaged. If you keep the
-              subscription past the trial, the considerations above
-              apply.
-            </p>
+            <blockquote className="mt-3 border-l-2 border-white/15 pl-4 text-[#A0A0B8]">
+              &ldquo;To Heeler Digital, LLC: I hereby give notice that I
+              withdraw from my contract for the Acuity subscription.
+              Ordered on [date] / my account email is [email]. [Your
+              name]. [Date].&rdquo;
+            </blockquote>
             <p className="mt-3">
               <strong className="text-white">Statutory rights preserved.</strong>{" "}
               Nothing in these Terms limits your statutory consumer
               rights under applicable law, including (where relevant)
-              the UK Consumer Rights Act 2015, the Australian
-              Consumer Law in Schedule 2 of the Competition and
-              Consumer Act 2010 (Cth), or the New Zealand Consumer
-              Guarantees Act 1993.
+              the UK Consumer Rights Act 2015, the Australian Consumer
+              Law in Schedule 2 of the Competition and Consumer Act 2010
+              (Cth), or the New Zealand Consumer Guarantees Act 1993.
             </p>
           </Section>
 
@@ -326,6 +363,16 @@ export default function TermsPage() {
           </Section>
 
           <Section id="warranty" title="8. Service is provided &ldquo;as is&rdquo;">
+            <p className="mb-4">
+              <strong className="text-white">Consumers first.</strong>{" "}
+              Nothing in this section excludes or limits any rights you
+              have as a consumer that cannot be excluded or limited
+              under applicable law &mdash; including the statutory
+              guarantees under the UK Consumer Rights Act 2015, the
+              Australian Consumer Law, and the New Zealand Consumer
+              Guarantees Act 1993. The disclaimers below apply only to
+              the extent permitted by law.
+            </p>
             <p>
               The service is provided on an &ldquo;as is&rdquo; and
               &ldquo;as available&rdquo; basis, without warranties of
@@ -344,6 +391,16 @@ export default function TermsPage() {
           </Section>
 
           <Section id="liability" title="9. Limitation of liability">
+            <p className="mb-4">
+              Nothing in these Terms excludes or limits our liability
+              for death or personal injury caused by our negligence,
+              for fraud or fraudulent misrepresentation, or for any
+              other liability that cannot be excluded or limited under
+              applicable law. If you are a consumer, the exclusions and
+              the cap below apply only to the extent permitted by the
+              consumer-protection law of the country where you live,
+              and do not reduce your non-excludable statutory rights.
+            </p>
             <p>
               To the maximum extent permitted by law, Acuity, Heeler
               Digital, and our officers, employees, agents, and
@@ -395,11 +452,18 @@ export default function TermsPage() {
 
           <Section id="law" title="11. Governing law">
             <p>
-              These Terms are governed by the laws of{" "}
-              {`{{JURISDICTION}}`}, without regard to its conflict-of-laws
-              rules. Any disputes that can&rsquo;t be resolved informally
-              will be brought in the courts of that jurisdiction, and you
-              consent to their personal jurisdiction.
+              These Terms are governed by the laws of the Commonwealth
+              of Massachusetts, United States, without regard to its
+              conflict-of-laws rules. Any disputes that can&rsquo;t be
+              resolved informally will be brought in the courts of that
+              jurisdiction, and you consent to their personal
+              jurisdiction.
+            </p>
+            <p className="mt-4">
+              If you are a consumer, this choice of law does not deprive
+              you of the protection of the mandatory consumer-protection
+              rules of the country where you live, and you may be able
+              to bring proceedings in your local courts.
             </p>
           </Section>
 

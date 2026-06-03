@@ -74,8 +74,9 @@ export default function PrivacyPage() {
               <strong className="text-white">Data controller.</strong>{" "}
               Heeler Digital, LLC (&ldquo;Acuity&rdquo;, &ldquo;we&rdquo;,
               &ldquo;us&rdquo;) is the data controller for personal data
-              processed via the Acuity service. Contact details for our
-              privacy contact appear in Section 12.
+              processed via the Acuity service. We are established in the
+              United States. Contact details for our privacy contact
+              appear in Section 12.
             </p>
           </section>
 
@@ -117,17 +118,27 @@ export default function PrivacyPage() {
               <li>
                 <strong className="text-white">Device + technical data.</strong>{" "}
                 Push notification token (if you opt in), app version,
-                operating system, anonymised crash + diagnostic data
-                from Sentry.
+                operating system, and scrubbed crash + diagnostic data
+                from Sentry with personal identifiers removed before
+                upload.
               </li>
               <li>
                 <strong className="text-white">Usage analytics.</strong>{" "}
                 Sanitised, aggregate product events sent to PostHog
                 (e.g. &ldquo;recorded an entry&rdquo;,
-                &ldquo;viewed paywall&rdquo;). Your email is sent as a
-                SHA-256 hash; transcripts, audio, and free-text content
-                are never included. Loaded only after you grant cookie
-                consent on the web.
+                &ldquo;viewed paywall&rdquo;). Your account is
+                identified only by a pseudonymised one-way (SHA-256)
+                hash of your email &mdash; this is pseudonymisation, not
+                anonymisation, and the hash remains personal data.
+                Transcripts, audio, and free-text content are never
+                included. On the web these load only after you grant
+                cookie consent. In the app we measure how features are
+                used to improve them; you can opt out at any time via
+                Settings &rarr; Privacy &rarr; Product analytics.
+                Pre-signup funnel measurement (anonymous, used for ad
+                attribution) is conducted under our legitimate interest
+                and is not controlled by that toggle &mdash; see
+                Section 2.
               </li>
               <li>
                 <strong className="text-white">Consent records.</strong>{" "}
@@ -197,10 +208,15 @@ export default function PrivacyPage() {
                       Art. 9(2)(a) &mdash; explicit consent
                     </td>
                     <td className="py-2 align-top">
-                      When you record an entry, you give explicit
-                      consent for that content to be transcribed and
-                      analysed. You can withdraw consent for future
-                      entries at any time by stopping recording.
+                      When you first set up Acuity we ask you to give
+                      separate, explicit consent (an affirmative,
+                      unticked confirmation) to transcribe and analyse
+                      voice entries that may contain special-category
+                      information. You choose what to say, you can
+                      journal without disclosing such information, and
+                      you can withdraw consent at any time by deleting
+                      entries or your account. We keep a record of this
+                      consent.
                     </td>
                   </tr>
                   <tr className="border-b border-white/5">
@@ -229,14 +245,47 @@ export default function PrivacyPage() {
                   </tr>
                   <tr className="border-b border-white/5">
                     <td className="py-2 pr-4 align-top">
-                      Product analytics (PostHog, sanitised events)
+                      Product analytics on the web (PostHog, sanitised
+                      events)
                     </td>
                     <td className="py-2 pr-4 align-top">
                       Art. 6(1)(a) &mdash; consent
                     </td>
                     <td className="py-2 align-top">
-                      Loaded only after you accept cookies on the web.
-                      Mobile analytics use the same consent record.
+                      Loaded only after you accept analytics cookies on
+                      the web.
+                    </td>
+                  </tr>
+                  <tr className="border-b border-white/5">
+                    <td className="py-2 pr-4 align-top">
+                      In-app product analytics (how you use features,
+                      after sign-in)
+                    </td>
+                    <td className="py-2 pr-4 align-top">
+                      Art. 6(1)(f) &mdash; legitimate interest
+                    </td>
+                    <td className="py-2 align-top">
+                      We measure how the app is used to improve it. You
+                      can opt out at any time in Settings &rarr; Privacy
+                      &rarr; Product analytics. We never sell this data
+                      or share it for advertising.
+                    </td>
+                  </tr>
+                  <tr className="border-b border-white/5">
+                    <td className="py-2 pr-4 align-top">
+                      Pre-signup funnel measurement + ad attribution
+                      (anonymous)
+                    </td>
+                    <td className="py-2 pr-4 align-top">
+                      Art. 6(1)(f) &mdash; legitimate interest
+                    </td>
+                    <td className="py-2 align-top">
+                      Before you create an account, anonymous funnel
+                      events let us attribute installs to ads and
+                      improve the sign-up flow. This is not controlled
+                      by the in-app toggle; to avoid it, don&rsquo;t
+                      install the app, or use a tracking-blocking
+                      browser on our website.
                     </td>
                   </tr>
                   <tr className="border-b border-white/5">
@@ -352,7 +401,7 @@ export default function PrivacyPage() {
                       Voice transcription (Whisper API)
                     </td>
                     <td className="py-2 pr-4 align-top">US</td>
-                    <td className="py-2 align-top">SCCs + DPF</td>
+                    <td className="py-2 align-top">SCCs + UK IDTA</td>
                   </tr>
                   <tr className="border-b border-white/5">
                     <td className="py-2 pr-4 align-top">Anthropic</td>
@@ -360,7 +409,7 @@ export default function PrivacyPage() {
                       AI extraction + weekly report (Claude API)
                     </td>
                     <td className="py-2 pr-4 align-top">US</td>
-                    <td className="py-2 align-top">SCCs + DPF</td>
+                    <td className="py-2 align-top">SCCs + UK IDTA</td>
                   </tr>
                   <tr className="border-b border-white/5">
                     <td className="py-2 pr-4 align-top">Stripe</td>
@@ -370,7 +419,7 @@ export default function PrivacyPage() {
                     <td className="py-2 pr-4 align-top">
                       US / Ireland (EU customers)
                     </td>
-                    <td className="py-2 align-top">SCCs + DPF</td>
+                    <td className="py-2 align-top">SCCs + UK IDTA</td>
                   </tr>
                   <tr className="border-b border-white/5">
                     <td className="py-2 pr-4 align-top">Supabase</td>
@@ -378,7 +427,7 @@ export default function PrivacyPage() {
                       Database hosting + voice file storage
                     </td>
                     <td className="py-2 pr-4 align-top">US (us-west-2)</td>
-                    <td className="py-2 align-top">SCCs</td>
+                    <td className="py-2 align-top">SCCs + UK IDTA</td>
                   </tr>
                   <tr className="border-b border-white/5">
                     <td className="py-2 pr-4 align-top">Vercel</td>
@@ -386,7 +435,26 @@ export default function PrivacyPage() {
                       Web and API hosting
                     </td>
                     <td className="py-2 pr-4 align-top">US</td>
-                    <td className="py-2 align-top">SCCs + DPF</td>
+                    <td className="py-2 align-top">SCCs + UK IDTA</td>
+                  </tr>
+                  <tr className="border-b border-white/5">
+                    <td className="py-2 pr-4 align-top">Expo</td>
+                    <td className="py-2 pr-4 align-top">
+                      Push token relay + notification delivery
+                    </td>
+                    <td className="py-2 pr-4 align-top">US</td>
+                    <td className="py-2 align-top">SCCs + UK IDTA</td>
+                  </tr>
+                  <tr className="border-b border-white/5">
+                    <td className="py-2 pr-4 align-top">
+                      Google (FCM, OAuth, Analytics)
+                    </td>
+                    <td className="py-2 pr-4 align-top">
+                      Android push delivery; sign-in; analytics on
+                      consenting visitors only
+                    </td>
+                    <td className="py-2 pr-4 align-top">US</td>
+                    <td className="py-2 align-top">SCCs + UK IDTA + DPF</td>
                   </tr>
                   <tr className="border-b border-white/5">
                     <td className="py-2 pr-4 align-top">Resend</td>
@@ -394,7 +462,7 @@ export default function PrivacyPage() {
                       Transactional + marketing email
                     </td>
                     <td className="py-2 pr-4 align-top">US</td>
-                    <td className="py-2 align-top">SCCs</td>
+                    <td className="py-2 align-top">SCCs + UK IDTA</td>
                   </tr>
                   <tr className="border-b border-white/5">
                     <td className="py-2 pr-4 align-top">Inngest</td>
@@ -402,7 +470,7 @@ export default function PrivacyPage() {
                       Background job orchestration
                     </td>
                     <td className="py-2 pr-4 align-top">US</td>
-                    <td className="py-2 align-top">SCCs</td>
+                    <td className="py-2 align-top">SCCs + UK IDTA</td>
                   </tr>
                   <tr className="border-b border-white/5">
                     <td className="py-2 pr-4 align-top">PostHog</td>
@@ -410,7 +478,7 @@ export default function PrivacyPage() {
                       Product analytics (consent-gated)
                     </td>
                     <td className="py-2 pr-4 align-top">US</td>
-                    <td className="py-2 align-top">SCCs + DPF</td>
+                    <td className="py-2 align-top">SCCs + UK IDTA</td>
                   </tr>
                   <tr className="border-b border-white/5">
                     <td className="py-2 pr-4 align-top">Sentry</td>
@@ -418,17 +486,7 @@ export default function PrivacyPage() {
                       Crash + error monitoring (scrubbed)
                     </td>
                     <td className="py-2 pr-4 align-top">US</td>
-                    <td className="py-2 align-top">SCCs + DPF</td>
-                  </tr>
-                  <tr className="border-b border-white/5">
-                    <td className="py-2 pr-4 align-top">
-                      Google (OAuth, Analytics)
-                    </td>
-                    <td className="py-2 pr-4 align-top">
-                      Sign-in; analytics on consenting visitors only
-                    </td>
-                    <td className="py-2 pr-4 align-top">US</td>
-                    <td className="py-2 align-top">SCCs + DPF</td>
+                    <td className="py-2 align-top">SCCs + UK IDTA</td>
                   </tr>
                   <tr className="border-b border-white/5">
                     <td className="py-2 pr-4 align-top">
@@ -438,7 +496,7 @@ export default function PrivacyPage() {
                       Marketing attribution on consenting visitors only
                     </td>
                     <td className="py-2 pr-4 align-top">US / Ireland</td>
-                    <td className="py-2 align-top">SCCs + DPF</td>
+                    <td className="py-2 align-top">SCCs + UK IDTA + DPF</td>
                   </tr>
                   <tr>
                     <td className="py-2 pr-4 align-top">
@@ -448,11 +506,28 @@ export default function PrivacyPage() {
                       Sign-in; push delivery on iOS
                     </td>
                     <td className="py-2 pr-4 align-top">US / Ireland</td>
-                    <td className="py-2 align-top">SCCs + DPF</td>
+                    <td className="py-2 align-top">SCCs + UK IDTA + DPF</td>
                   </tr>
                 </tbody>
               </table>
             </div>
+            <p className="mt-4">
+              Where we rely on SCCs or the UK IDTA for transfers to the
+              United States, we have carried out transfer risk
+              assessments taking account of US surveillance law, and we
+              apply supplementary measures including encryption in
+              transit and at rest, data minimisation, and short
+              audio-retention windows. You can obtain a copy of the
+              relevant Standard Contractual Clauses or UK IDTA by
+              emailing{" "}
+              <a
+                href="mailto:privacy@heelerdigital.com"
+                className="underline hover:text-white"
+              >
+                privacy@heelerdigital.com
+              </a>
+              .
+            </p>
             <p className="mt-4">
               The full per-subprocessor disclosure, including links to
               each provider&rsquo;s public DPA and SCC documents, is
@@ -502,9 +577,13 @@ export default function PrivacyPage() {
               <li>
                 <strong className="text-white">Right to erasure / right to be forgotten (Art. 17).</strong>{" "}
                 Delete your account and all associated personal data
-                via Profile &rarr; Delete account. This is a
-                hard delete: we do not retain a hidden copy. Anonymous
-                aggregate cost data may survive (see Section 6).
+                via Profile &rarr; Delete account. We erase your data
+                from our live systems immediately and from rolling
+                backups within 7 days, except a minimal email-hash
+                tombstone retained up to 6 months for anti-abuse,
+                consent records we must keep to evidence lawful
+                processing, and billing records held by Stripe for
+                legally required periods (see Section 6).
               </li>
               <li>
                 <strong className="text-white">Right to restrict processing (Art. 18).</strong>{" "}
@@ -528,6 +607,19 @@ export default function PrivacyPage() {
                 stays lawful.
               </li>
               <li>
+                <strong className="text-white">Right to complain to us directly.</strong>{" "}
+                You can raise a data-protection complaint with us at{" "}
+                <a
+                  href="mailto:privacy@heelerdigital.com"
+                  className="underline hover:text-white"
+                >
+                  privacy@heelerdigital.com
+                </a>
+                . We will acknowledge it within 30 days and respond
+                without undue delay. You can still escalate to a
+                supervisory authority at any time.
+              </li>
+              <li>
                 <strong className="text-white">Right to lodge a complaint.</strong>{" "}
                 You can complain to your local data protection
                 authority. In the UK, the Information Commissioner&rsquo;s
@@ -544,6 +636,12 @@ export default function PrivacyPage() {
               30 days. Where requests are complex or numerous, we may
               extend by up to a further 60 days and will tell you why
               (Art. 12(3) GDPR).
+            </p>
+            <p className="mt-4">
+              We verify rights requests against your signed-in account;
+              for requests made by email we may ask you to confirm from
+              your registered email address before we disclose any
+              data, to protect your account.
             </p>
           </Section>
 
@@ -568,6 +666,18 @@ export default function PrivacyPage() {
                 we retain a minimal anti-abuse tombstone (email hash
                 only) for up to 6 months to prevent free-trial
                 cycling. No content, no name, no profile data.
+              </li>
+              <li>
+                <strong className="text-white">Consent records.</strong>{" "}
+                The record of any explicit consent you give (for
+                example, to processing special-category content, or
+                your 14-day-withdrawal acknowledgement at checkout) is
+                retained while your account is active and for the
+                relevant limitation period after deletion, so we can
+                evidence that our processing was lawful if challenged.
+                It stores only the wording you saw and the surrounding
+                metadata &mdash; never transcripts, audio, or free-text
+                content.
               </li>
               <li>
                 <strong className="text-white">Billing records.</strong>{" "}
@@ -601,13 +711,15 @@ export default function PrivacyPage() {
 
           <Section id="security" title="7. Security">
             <p>
-              We use industry-standard safeguards to protect your data,
+              We use appropriate safeguards to protect your data,
               including TLS 1.2+ for all data in transit, encryption at
-              rest for the database and voice file storage, rate
-              limiting and abuse detection on authentication, principle-
-              of-least-privilege access controls for our team, regular
-              security audits, and Row Level Security policies on every
-              user-data table.
+              rest for the database and voice file storage, Row Level
+              Security policies on user-data tables, least-privilege
+              access controls for the small number of team members with
+              access, rate limiting and abuse detection on
+              authentication, encrypted rolling backups so we can
+              restore the service after an incident, and periodic
+              internal review of our security practices.
             </p>
             <p className="mt-4">
               No system is perfectly secure. If you suspect a security
@@ -625,9 +737,11 @@ export default function PrivacyPage() {
           <Section id="breach" title="8. Breach notification">
             <p>
               If a personal data breach is likely to result in a risk
-              to your rights and freedoms, we will notify our lead
-              supervisory authority within 72 hours of becoming aware
-              of it (Art. 33 GDPR) and, where the risk is high, notify
+              to your rights and freedoms, we will notify the UK
+              Information Commissioner&rsquo;s Office and each relevant
+              supervisory authority in the EU/EEA where affected users
+              are located, within 72 hours of becoming aware of it
+              (Art. 33 UK/EU GDPR), and, where the risk is high, notify
               affected users without undue delay (Art. 34).
               Notifications will describe the nature of the breach,
               the categories and approximate number of data subjects
@@ -655,9 +769,11 @@ export default function PrivacyPage() {
 
           <Section id="children" title="10. Children">
             <p>
-              Acuity is not directed to children under 16, and we do
-              not knowingly collect data from children under 16. If
-              you believe a child has provided us with personal data,
+              Acuity is intended for adults and is not directed to
+              anyone under 18. We do not knowingly collect personal
+              data from anyone under 18, and we design the service with
+              the ICO&rsquo;s Children&rsquo;s Code in mind. If you
+              believe a minor has provided us with personal data,
               email{" "}
               <a
                 href="mailto:privacy@heelerdigital.com"

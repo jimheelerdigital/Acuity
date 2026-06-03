@@ -341,6 +341,15 @@ export default function ProfileTab() {
             sublabel="Send tasks to your iOS calendar"
             onPress={() => router.push("/integrations")}
           />
+          {/* Privacy — product-analytics opt-out + withdraw the
+              special-category (Art. 9) consent given at onboarding.
+              v1.4 GDPR slice. */}
+          <MenuItem
+            icon="shield-checkmark-outline"
+            label="Privacy"
+            sublabel="Product analytics + data-processing consent"
+            onPress={() => router.push("/privacy" as never)}
+          />
           {/* Slice 7 v1.2 Calendar Integration (inbound) — opens
               Acuity on web to complete the Google Calendar OAuth
               flow. We open the web /account#calendar anchor so the

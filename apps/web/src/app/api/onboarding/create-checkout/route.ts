@@ -20,6 +20,11 @@ export const dynamic = "force-dynamic";
 type Interval = "monthly" | "yearly";
 
 export async function POST(req: NextRequest) {
+  // TODO: v1.4 GDPR — If this checkout ever switches from deferred
+  // (trial) to immediate charge, add the 14-day withdrawal
+  // acknowledgement checkbox per the /upgrade flow (see
+  // app/upgrade/upgrade-plan-picker.tsx + the consent gate in
+  // /api/stripe/checkout/route.ts).
   const session = await getServerSession(getAuthOptions());
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

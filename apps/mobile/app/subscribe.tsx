@@ -13,10 +13,16 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { GradientCheckbox } from "@/components/acuity/GradientCheckbox";
 import { RestorePurchasesButton } from "@/components/restore-purchases-button";
 import { useAuth } from "@/contexts/auth-context";
 import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
+import {
+  recordConsent,
+  WITHDRAWAL_CONSENT_TEXT,
+  WITHDRAWAL_WORDING_VERSION,
+} from "@/lib/consent";
 import {
   getProducts,
   initIap,
@@ -79,6 +85,11 @@ export default function SubscribeScreen() {
   );
   const [purchasing, setPurchasing] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  // 14-day-withdrawal acknowledgement (Consumer Contracts Regs 2013
+  // Reg. 36–37 / EU Dir. 2011/83 Art. 16(m)). Unticked by default;
+  // blocks the purchase until ticked, and we write a ConsentRecord
+  // before initiating the StoreKit flow.
+  const [acknowledged, setAcknowledged] = useState(false);
 
   const flagOn = isIapEnabled();
   const isIos = Platform.OS === "ios";
@@ -155,12 +166,34 @@ export default function SubscribeScreen() {
       // guard the entry point in case stale state slips through.
       return;
     }
+    if (!acknowledged) {
+      // Button is disabled in this state; guard the entry point too.
+      return;
+    }
     const productId =
       selectedTier === "monthly"
         ? IAP_MONTHLY_PRODUCT_ID
         : IAP_ANNUAL_PRODUCT_ID;
     setPurchasing(true);
     setErrorMsg(null);
+    // Record the 14-day-withdrawal acknowledgement BEFORE launching the
+    // StoreKit purchase. If we can't evidence it, abort rather than take
+    // money without the acknowledgement on file.
+    try {
+      await recordConsent({
+        consentType: "distance_contract_immediate_performance",
+        granted: true,
+        consentText: WITHDRAWAL_CONSENT_TEXT,
+        wordingVersion: WITHDRAWAL_WORDING_VERSION,
+        plan: selectedTier,
+      });
+    } catch {
+      setErrorMsg(
+        "Couldn't record your acknowledgement. Check your connection and try again."
+      );
+      setPurchasing(false);
+      return;
+    }
     try {
       const result = await purchaseProduct(productId);
       if (result.kind === "error") {
@@ -393,6 +426,35 @@ export default function SubscribeScreen() {
         )}
 
         <View className="mt-auto pt-10 gap-3">
+          {/* 14-day-withdrawal acknowledgement — unticked by default,
+              blocks Subscribe until ticked (Consumer Contracts Regs
+              2013 Reg. 36–37). A ConsentRecord is written before the
+              StoreKit flow launches. */}
+          <Pressable
+            onPress={() => setAcknowledged((v) => !v)}
+            className="flex-row gap-3 rounded-xl border p-3.5"
+            style={{
+              borderColor: tokens.line,
+              backgroundColor: tokens.bgInset,
+            }}
+          >
+            <GradientCheckbox
+              checked={acknowledged}
+              onPress={() => setAcknowledged((v) => !v)}
+              accessibilityLabel="I want my paid features to start now and understand the effect on my 14-day cancellation right"
+            />
+            <Text
+              className="flex-1 text-xs leading-relaxed"
+              style={{ color: tokens.textSec }}
+            >
+              I want my paid Acuity features to start now, and I
+              understand that by starting immediately I lose my 14-day
+              right to cancel for any content fully delivered, and that
+              if I cancel within 14 days I&rsquo;ll be refunded less a
+              proportionate amount for the service already provided.
+            </Text>
+          </Pressable>
+
           {/* Apply tokens.glowPrimary as proper iOS shadow props +
               Android elevation. The previous version spread
               `tokens.glowPrimary` (`{color, radius, opacity}`) into
@@ -404,11 +466,17 @@ export default function SubscribeScreen() {
               the RN shape this token was always intended to feed. */}
           <Pressable
             onPress={handlePurchase}
-            disabled={purchasing || loadState !== "idle" || !selectedProduct}
+            disabled={
+              purchasing ||
+              loadState !== "idle" ||
+              !selectedProduct ||
+              !acknowledged
+            }
             className="rounded-full py-4 items-center"
             style={{
               backgroundColor: tokens.primary,
-              opacity: purchasing || !selectedProduct ? 0.7 : 1,
+              opacity:
+                purchasing || !selectedProduct || !acknowledged ? 0.7 : 1,
               shadowColor: tokens.glowPrimary.color,
               shadowOffset: { width: 0, height: 0 },
               shadowRadius: tokens.glowPrimary.radius,

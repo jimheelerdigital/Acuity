@@ -157,14 +157,23 @@ export async function POST(req: NextRequest) {
   try {
     const { prisma } = await import("@/lib/prisma");
     // Verify userId exists in User table to avoid FK constraint violation
-    // (stale sessions can reference deleted/non-existent users)
+    // (stale sessions can reference deleted/non-existent users), and
+    // honor the per-user product-analytics opt-out (v1.4 GDPR slice).
     let verifiedUserId = userId;
     if (verifiedUserId) {
-      const userExists = await prisma.user.findUnique({
+      const userRow = await prisma.user.findUnique({
         where: { id: verifiedUserId },
-        select: { id: true },
+        select: { id: true, productAnalyticsEnabled: true },
       });
-      if (!userExists) verifiedUserId = null;
+      if (!userRow) {
+        verifiedUserId = null;
+      } else if (userRow.productAnalyticsEnabled === false) {
+        // User opted out of post-auth product analytics. Drop the event
+        // entirely (server-side enforcement — not just a client toggle).
+        // Anonymous pre-signup funnel events have no userId and never
+        // reach this branch.
+        return new Response(null, { status: 204 });
+      }
     }
     await prisma.onboardingEvent.create({
       data: {

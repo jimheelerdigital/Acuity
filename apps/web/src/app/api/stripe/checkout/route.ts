@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 
 import { getAuthOptions } from "@/lib/auth";
+import { hasRecentGrant } from "@/lib/consent";
 import { PRICING } from "@/lib/pricing";
 import { stripe } from "@/lib/stripe";
 
@@ -46,6 +47,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       { error: "Pricing misconfigured" },
       { status: 500 }
+    );
+  }
+
+  // 14-day-withdrawal acknowledgement gate (Consumer Contracts Regs 2013
+  // Reg. 36–37). The /upgrade pre-checkout checkbox writes a fresh
+  // `distance_contract_immediate_performance` grant via /api/consent/record
+  // immediately before this call. Without a recent grant we refuse to
+  // create the session so the acknowledgement can't be bypassed.
+  const acknowledged = await hasRecentGrant(
+    session.user.id,
+    "distance_contract_immediate_performance"
+  );
+  if (!acknowledged) {
+    return NextResponse.json(
+      { error: "ConsentRequired", requiresAcknowledgement: true },
+      { status: 409 }
     );
   }
 
