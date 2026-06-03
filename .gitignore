@@ -22,6 +22,10 @@ credentials.json
 token.json
 google-services.json
 GoogleService-Info.plist
+# Per-app secret stashes — never commit any file under apps/*/secrets/.
+# Currently used by apps/mobile/secrets/play-service-account.json
+# (Google Play Console submission credential).
+apps/*/secrets/
 
 # Terraform state with secrets
 *.tfvars
