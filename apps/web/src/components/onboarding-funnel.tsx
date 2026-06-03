@@ -1453,40 +1453,38 @@ function DownloadScreen({ track, paymentConfirmed, selectedPlan }: {
           </>
         )}
 
-        {browserEnv.isWebView ? (
-          <>
-            {/* In-app browser: use itms-apps:// to open App Store directly */}
-            <a href={APP_STORE_URL.replace("https://", "itms-apps://")}
-              onClick={() => track("funnel_app_store_clicked", { value: "itms_apps" })}
-              className="relative inline-block w-full rounded-full px-8 py-4 text-[15px] font-semibold text-white transition hover:brightness-110 active:scale-[0.98] overflow-hidden funnel-bounce"
-              style={{ background: "linear-gradient(135deg, #7C5CFC 0%, #9F7AEA 50%, #6D28D9 100%)", boxShadow: "0 4px 24px rgba(124,92,252,0.4)" }}>
-              <span className="absolute inset-0 rounded-full" style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)", backgroundSize: "200% 100%", animation: "funnel-shimmer 2s ease-in-out infinite" }} />
-              <span className="relative">Download on the App Store</span>
-            </a>
+        <button
+          onClick={() => {
+            track("funnel_app_store_clicked", { value: browserEnv.isWebView ? "webview" : "browser" });
+            if (browserEnv.isWebView) {
+              // In Facebook/Instagram WebView: try itms-apps:// first (opens App Store app directly),
+              // then fall back to https:// with _blank, then window.location as last resort
+              const itmsUrl = APP_STORE_URL.replace("https://", "itms-apps://");
+              window.location.href = itmsUrl;
+              setTimeout(() => { window.open(APP_STORE_URL, "_blank"); }, 1000);
+            } else {
+              window.open(APP_STORE_URL, "_blank");
+            }
+          }}
+          className="relative w-full rounded-full px-8 py-4 text-[15px] font-semibold text-white transition hover:brightness-110 active:scale-[0.98] overflow-hidden funnel-bounce"
+          style={{ background: "linear-gradient(135deg, #7C5CFC 0%, #9F7AEA 50%, #6D28D9 100%)", boxShadow: "0 4px 24px rgba(124,92,252,0.4)" }}>
+          <span className="absolute inset-0 rounded-full" style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)", backgroundSize: "200% 100%", animation: "funnel-shimmer 2s ease-in-out infinite" }} />
+          <span className="relative">Download on the App Store</span>
+        </button>
 
-            <p className="mt-3 text-xs text-zinc-400 text-center">
-              Didn&rsquo;t work?{" "}
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(APP_STORE_URL).then(() => setCopied(true)).catch(() => {});
-                  track("funnel_copy_app_link_clicked");
-                }}
-                className="text-[#7C5CFC] font-medium underline"
-              >
-                {copied ? "Link copied! Paste in Safari." : "Copy link and open in Safari"}
-              </button>
-            </p>
-          </>
-        ) : (
-          <>
-            {/* Normal browser: standard App Store link */}
-            <a href={APP_STORE_URL} onClick={() => track("funnel_app_store_clicked")}
-              className="relative inline-block w-full rounded-full px-8 py-4 text-[15px] font-semibold text-white transition hover:brightness-110 active:scale-[0.98] overflow-hidden funnel-bounce"
-              style={{ background: "linear-gradient(135deg, #7C5CFC 0%, #9F7AEA 50%, #6D28D9 100%)", boxShadow: "0 4px 24px rgba(124,92,252,0.4)" }}>
-              <span className="absolute inset-0 rounded-full" style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)", backgroundSize: "200% 100%", animation: "funnel-shimmer 2s ease-in-out infinite" }} />
-              <span className="relative">Download on the App Store</span>
-            </a>
-          </>
+        {browserEnv.isWebView && (
+          <p className="mt-3 text-xs text-zinc-400 text-center">
+            Didn&rsquo;t work?{" "}
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(APP_STORE_URL).then(() => setCopied(true)).catch(() => {});
+                track("funnel_copy_app_link_clicked");
+              }}
+              className="text-[#7C5CFC] font-medium underline"
+            >
+              {copied ? "Link copied! Paste in Safari." : "Copy link and open in Safari"}
+            </button>
+          </p>
         )}
 
         <button disabled
