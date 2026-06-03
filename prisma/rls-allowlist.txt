@@ -17,16 +17,19 @@
 # .github/workflows/rls-check.yml CI workflow.
 
 Account rls
+Achievement rls    # v1.3 catalog of achievement definitions; signed-in users read via /api/achievements
 AdminAuditLog rls
 BlogPrunerRun no-rls    # operational logging table for blog pruner cron, no PII — only stores blog post slugs, URLs, GSC coverage states, and timestamps
 BlogTopicQueue rls
 CalendarConnection rls
+CalendarEvent rls    # user calendar events fetched via the EventKit / Google integration; has userId
 ClaudeCallLog rls
 ContentBriefing rls
 ContentPiece rls
 DashboardSnapshot rls
 DataExport rls
 DeletedUser rls
+EntityMention no-rls    # admin processing pipeline — internal extraction artifacts, no direct user access
 Entry rls
 ExperimentAssignment rls
 FeatureFlag rls
@@ -43,6 +46,8 @@ LifeAudit rls
 LifeMapArea rls
 LifeMapAreaHistory rls
 MetaSpend rls
+OnboardingEvent rls    # funnel analytics rows; nullable userId for pre-auth funnel + bound userId post-signup
+Person rls    # people the user mentions across entries; has userId
 ProgressSuggestion rls
 PruneLog no-rls    # legacy operational logging table from initial pruner implementation (commit c93ee17), no PII — superseded by BlogPrunerRun, kept for backwards compatibility, candidate for removal
 RedFlag rls
@@ -55,7 +60,9 @@ TaskGroup rls
 Theme rls
 ThemeMention rls
 TrialEmailLog rls
+TrySession no-rls    # anonymous pre-auth try-recording sessions, no userId, joined to a User on /api/try-recording/claim
 User rls
+UserAchievement rls    # join row tracking which achievements each user has earned; has userId
 UserDemographics rls
 UserFeatureOverride rls
 UserInsight rls
