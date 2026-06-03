@@ -7,6 +7,52 @@
 
 ---
 
+## [2026-06-03] — v1.3 onboarding rewrite, biometric lock fix, automated reminders, halo removed
+
+- **Requested by:** Jimmy
+- **Committed by:** Claude Code
+- **Commit hash:** 92a74d7
+
+### In plain English (for Keenan)
+
+New users now see a much shorter onboarding — five short screens instead of eleven, with the AI privacy explanation as the very first thing they see after creating an account. That AI explanation also now names OpenAI and Anthropic by name, which Apple requires before any audio leaves the device. Users who had Face ID lock enabled were getting stuck in an infinite re-prompt loop; that's fixed. Reminders no longer ask the user to pick a time during onboarding — they just tap "Enable" and the server sends a morning nudge at 9 AM and an evening nudge at 8 PM in their local time, picked from a rotating pool of twelve different copy variants so they don't get the same message every day. The achievement celebration's glowy halo around the badge is gone (badge now sits directly on the dark background with confetti behind it), and new users land on light mode by default.
+
+### Technical changes (for Jimmy)
+
+- `apps/mobile/components/onboarding/index.tsx`: `ONBOARDING_STEPS` collapsed from 11 → 5 (AI disclosure → mic → practice → reminders → ready). Welcome / value-prop / demographics / mood / trial intentionally unimported but left in tree.
+- `apps/mobile/components/onboarding/step-5-ai-consent.tsx`: headline "How Acuity processes your voice", explicit "OpenAI (Whisper)" + "Anthropic (Claude)" + encrypted / never-sold / no-training copy.
+- `apps/mobile/components/onboarding/step-9-reminders.tsx`: time picker + cadence picker removed; single Enable toggle; captures `Intl.DateTimeFormat().resolvedOptions().timeZone` into `User.timezone`.
+- `apps/mobile/app/onboarding-new/disclosure.tsx` (new) + `commitment.tsx` reroute: pre-auth Meta-ad funnel now shows the AI disclosure between `/commitment` and `/record` so the anonymous try-recording upload to OpenAI/Anthropic is also consent-gated.
+- `apps/mobile/contexts/lock-context.tsx`: `initializedRef` makes the cold-launch lock check fire once per launch instead of on every `user` object identity change (which is what caused the `mostdaysnicole@gmail.com` infinite Face ID loop — every `/api/user/me` refetch was re-locking the app).
+- `apps/mobile/components/lock-screen-overlay.tsx`: auto-prompt fires once per locked entry via `promptedFor` ref; after 3 cancels surfaces "Use device passcode" hint.
+- `apps/mobile/components/feedback-modal.tsx`: `keyboardVerticalOffset={12}` on iOS to push the Send button above keyboard with pageSheet presentation.
+- `apps/mobile/components/achievements/CelebrationModal.tsx`: removed `haloOpacity` / `haloScale` shared values, halo `Animated.View`, halo styles. Badge sits on dark navy + Skia confetti only.
+- `apps/mobile/contexts/theme-context.tsx`: default preference state `system` → `light`; existing AsyncStorage / server `User.theme` overrides win.
+- `apps/mobile/lib/feature-flags.ts` + `apps/mobile/app/_layout.tsx`: `isNewOnboardingEnabled` deleted; cold-launches always go to `/(auth)/sign-in`; `/onboarding-new/*` remains reachable via deep link.
+- `apps/web/src/inngest/functions/notifications-twice-daily.ts` (new) — hourly Inngest cron, sweeps users with `notificationsEnabled=true` + `pushToken IS NOT NULL`, computes local hour from `User.timezone`, sends Expo push when local hour is 9 or 20. Six morning + six evening copy variants cycled by `Date().getUTCDate() % 6`.
+- `apps/web/src/app/api/inngest/route.ts`: register `notificationsTwiceDailyFn`.
+- `apps/web/src/app/api/onboarding/update/route.ts`: accept `timezone` field on the User update path (IANA regex validation).
+
+Co-authored with Keenan's `download-reminder-email` commits (rebased cleanly on top — both Inngest registrations preserved).
+
+### Manual steps needed
+
+- [ ] Jim — confirm `notifications-twice-daily` shows up in Inngest Cloud dashboard after next Vercel deploy. If not visible after ~2 minutes, `curl https://getacuity.io/api/inngest` to force resync.
+- [ ] Jim — `EXPO_PUBLIC_NEW_ONBOARDING_ENABLED` env var in Vercel + EAS is now dead, can be removed at leisure.
+- [ ] Jim — cut build 57 from `main` for App Store submission. Note: `apps/mobile/app.json` still untracked in working tree (leftover from prior session) — verify versionCode / buildNumber before EAS submit.
+- [ ] No `prisma db push` required. `User.timezone` (line 127) and the `UserOnboarding` nullable fields all already exist.
+
+### Notes
+
+- The Face ID loop reproducer (`mostdaysnicole@gmail.com`, v1.1.0 iOS 26.4.2, TRIAL, 4 entries) was caused by `lock-context.tsx`'s cold-launch effect having `user` in its dependency array. Every `/api/user/me` refetch by `auth-context` allocated a new user object → effect re-ran → status set to "locked" → overlay re-prompted Face ID. Even a successful unlock would re-lock the moment auth refetched. Fix is `initializedRef.current` gate.
+- The onboarding rewrite intentionally leaves `step-1-welcome.tsx`, `step-2-value-prop.tsx`, `step-3-demographics.tsx`, `step-6-mood-slider.tsx`, `step-8-trial.tsx`, `step-9-life-matrix-baselines.tsx` in-tree but unimported. Reverting a single step back into the flow is a one-line registry change.
+- Apple compliance: AI disclosure shown BEFORE first audio upload on both paths (post-auth shell step 1, pre-auth funnel via `/onboarding-new/disclosure`). Mic step still says "Continue" / "Try again" / "Open Settings" — no "Grant access", no "Skip" (5.1.1(iv)).
+- Existing-user safety: `clampStep` in `apps/mobile/app/onboarding.tsx` already clips `onboardingStep > ONBOARDING_STEPS.length` to the last step, so users mid-old-flow land on Ready and finish with one tap.
+- Push copy avoids "Subscribe", "$", "/mo" — Apple Option-C-clean. Pool is intentionally journaling-voice ("60 seconds", "Wind down", "What deserves a name before you sleep?") rather than generic productivity-app language.
+- Lockfile poisoning incident from earlier this week didn't recur — gitleaks pre-commit hook passed cleanly.
+
+---
+
 ## Live App Operating Rules (effective 2026-05-15)
 
 Real users are running build 42 on the App Store. The mobile binary cannot be re-shipped instantly; rollback is expensive. Every slice must respect the following gate.
