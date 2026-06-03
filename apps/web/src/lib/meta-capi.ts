@@ -10,7 +10,7 @@
 
 import { createHash, randomUUID } from "crypto";
 
-const GRAPH_API_VERSION = "v25.0";
+const GRAPH_API_VERSION = "v21.0";
 
 // ─── Hashing ────────────────────────────────────────────────────────
 
@@ -108,6 +108,8 @@ export async function sendConversionEvent(event: ConversionEvent): Promise<void>
 
   const url = `https://graph.facebook.com/${GRAPH_API_VERSION}/${pixelId}/events?access_token=${accessToken}`;
 
+  console.log(`[meta-capi] SENDING ${event.eventName} to pixel ${pixelId} | event_id: ${event.eventId} | user_data keys: ${Object.keys(userData).join(",")}`);
+
   try {
     const res = await fetch(url, {
       method: "POST",
@@ -115,21 +117,21 @@ export async function sendConversionEvent(event: ConversionEvent): Promise<void>
       body: JSON.stringify(payload),
     });
 
+    const responseBody = await res.text();
     if (!res.ok) {
-      const body = await res.text();
-      console.error(`[meta-capi] ${event.eventName} failed (${res.status}):`, body);
+      console.error(`[meta-capi] ${event.eventName} FAILED (${res.status}):`, responseBody);
       try {
         const Sentry = await import("@sentry/nextjs");
         Sentry.captureMessage(`Meta CAPI ${event.eventName} failed: ${res.status}`, {
           level: "warning",
-          extra: { eventId: event.eventId, status: res.status, body },
+          extra: { eventId: event.eventId, status: res.status, body: responseBody },
         });
       } catch {}
     } else {
-      console.log(`[meta-capi] ${event.eventName} sent (event_id: ${event.eventId})`);
+      console.log(`[meta-capi] ${event.eventName} SUCCESS (${res.status}):`, responseBody);
     }
   } catch (err) {
-    console.error(`[meta-capi] ${event.eventName} network error:`, err);
+    console.error(`[meta-capi] ${event.eventName} NETWORK ERROR:`, err);
     try {
       const Sentry = await import("@sentry/nextjs");
       Sentry.captureException(err, {
