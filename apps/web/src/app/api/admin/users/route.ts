@@ -25,6 +25,7 @@ export const runtime = "nodejs";
 
 type LifecycleStage =
   | "Signed up"
+  | "App downloaded"
   | "Downloaded"
   | "First debrief"
   | "Exploring"
@@ -37,6 +38,7 @@ function computeLifecycle(
   entryCount: number,
   lastEntryAt: Date | null,
   appFirstOpenedAt: Date | null,
+  clickedDownload: boolean,
   now: Date
 ): LifecycleStage {
   // Users with entries check recency first
@@ -49,8 +51,9 @@ function computeLifecycle(
     if (entryCount >= 2) return "Exploring";
     return "First debrief";
   }
-  // No entries
-  if (appFirstOpenedAt) return "Downloaded";
+  // No entries — check app/download status
+  if (appFirstOpenedAt) return "App downloaded";
+  if (clickedDownload) return "Downloaded";
   return "Signed up";
 }
 
@@ -162,7 +165,7 @@ export async function GET(req: NextRequest) {
       if (u.subscriptionStatus === "PRO" && u.stripeSubscriptionId) paying++;
       if (etw > 0) { activeThisWeek++; totalEntriesThisWeek += etw; activeUsersThisWeek++; }
 
-      const lifecycle = computeLifecycle(ec, lastEntry, u.appFirstOpenedAt, now);
+      const lifecycle = computeLifecycle(ec, lastEntry, u.appFirstOpenedAt, false, now);
       if (lifecycle === "At risk") atRisk++;
     }
 
@@ -282,12 +285,24 @@ export async function GET(req: NextRequest) {
   });
   const lastEntryMap = new Map(latestEntries.map(e => [e.userId, e._max.createdAt]));
 
+  // Check which users clicked the download/app store link
+  const downloadEvents = await prisma.onboardingEvent.findMany({
+    where: {
+      userId: { in: userIds },
+      event: { in: ["funnel_app_store_clicked", "funnel_download_viewed", "funnel_download_screen_viewed", "onboarding_app_store_clicked"] },
+    },
+    select: { userId: true },
+    distinct: ["userId"],
+  });
+  const clickedDownloadSet = new Set(downloadEvents.map(e => e.userId));
+
   const mappedUsers = page.map((u) => {
     const entryCount = u._count.entries;
     const entriesThisWeek = u.entries.length;
     const lastEntryAt = lastEntryMap.get(u.id) ?? u.lastRecordingAt;
     const platform = computePlatform(u.appFirstOpenedAt, entryCount, u.devicePlatform);
-    const lifecycle = computeLifecycle(entryCount, lastEntryAt, u.appFirstOpenedAt, now);
+    const clickedDownload = clickedDownloadSet.has(u.id);
+    const lifecycle = computeLifecycle(entryCount, lastEntryAt, u.appFirstOpenedAt, clickedDownload, now);
     const planStatus = computePlanStatus(u.subscriptionStatus, u.trialEndsAt, u.stripeSubscriptionId, u.stripeCustomerId, now);
 
     // Last active: most recent of lastSeenAt, lastEntryAt, appFirstOpenedAt
