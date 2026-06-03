@@ -18,6 +18,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { Suspense, useEffect, useRef, useState } from "react";
 
+import { MobileAppBanner } from "@/components/mobile-app-banner";
 import { SOCIAL_PROOF } from "@/lib/social-proof";
 
 const PASSWORD_MIN = 8;
@@ -235,6 +236,7 @@ function SignUpForm() {
 
   return (
     <div className="min-h-screen bg-white">
+      <MobileAppBanner />
       {/* ─── MOBILE STICKY CTA (appears after scrolling past form) ─── */}
       <div
         className={`fixed top-0 inset-x-0 z-50 lg:hidden transition-transform duration-300 ${showStickyCta ? "translate-y-0" : "-translate-y-full"}`}
@@ -243,8 +245,15 @@ function SignUpForm() {
           <span className="text-sm font-semibold text-zinc-900">Start your free trial</span>
           <button
             onClick={scrollToForm}
-            className="rounded-full px-5 py-2 text-xs font-semibold text-white"
-            style={{ background: "linear-gradient(135deg, #7C5CFC 0%, #9F7AEA 50%, #6D28D9 100%)" }}
+            className="rounded-full px-5 py-2.5 text-xs font-semibold text-white"
+            style={{
+              background:
+                "linear-gradient(135deg, #7C5CFC 0%, #9F7AEA 50%, #6D28D9 100%)",
+              // v1.4 mobile responsiveness pass: bump tap target to
+              // 44pt minimum so iOS doesn't dock the chevron over it
+              // and so users can hit it reliably one-handed.
+              minHeight: 44,
+            }}
           >
             Sign up
           </button>
