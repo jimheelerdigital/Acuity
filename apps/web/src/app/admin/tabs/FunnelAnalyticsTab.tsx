@@ -10,16 +10,15 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
   const [sortDir, setSortDir] = useState(-1);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [showPageLoadOnly, setShowPageLoadOnly] = useState(false);
-  const [flowVersion, setFlowVersion] = useState<"v2" | "v1" | "all">("v2");
 
   useEffect(() => {
     setLoading(true);
     setError(null);
-    fetch(`/api/admin/metrics?tab=funnel-analytics&start=${start}&end=${end}&flow=${flowVersion}`)
+    fetch(`/api/admin/metrics?tab=funnel-analytics&start=${start}&end=${end}&flow=all`)
       .then((r) => { if (!r.ok) throw new Error(`${r.status}`); return r.json(); })
       .then((d) => { setData(d); setLoading(false); })
       .catch((e) => { setError(e.message); setLoading(false); });
-  }, [start, end, flowVersion]);
+  }, [start, end]);
 
   if (loading) return <div style={{ color: "#888", padding: 40, textAlign: "center" }}>Loading funnel data...</div>;
   if (error) return (
@@ -87,32 +86,14 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
-      {/* Flow version toggle */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div style={{ display: "flex", gap: 0, background: "rgba(255,255,255,0.05)", borderRadius: 8, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)" }}>
-          {([["v2", "New Flow"], ["v1", "Old Flow"], ["all", "All Time"]] as const).map(([val, label]) => (
-            <button
-              key={val}
-              onClick={() => setFlowVersion(val)}
-              style={{
-                padding: "6px 16px", fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer", transition: "all 0.15s",
-                background: flowVersion === val ? "#7C5CFC" : "transparent",
-                color: flowVersion === val ? "#fff" : "rgba(255,255,255,0.4)",
-              }}
-            >
-              {label}
-            </button>
-          ))}
+      {data.effectiveStart && (
+        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.25)", textAlign: "right" }}>
+          Metrics since {new Date(data.effectiveStart).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" })}
         </div>
-        {data.effectiveStart && (
-          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.25)" }}>
-            Metrics since {new Date(data.effectiveStart).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" })}
-          </div>
-        )}
-      </div>
+      )}
 
       {/* Account → Paid summary */}
-      {flowVersion === "v2" && (km.totalAccounts ?? 0) > 0 && (
+      {(km.totalAccounts ?? 0) > 0 && (
         <div style={{ ...S, display: "flex", alignItems: "center", gap: 16, padding: "14px 20px" }}>
           <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.3)" }}>Total Accounts:</span>
           <span style={{ fontSize: 20, fontWeight: 700, color: "#fff" }}>{km.totalAccounts}</span>
