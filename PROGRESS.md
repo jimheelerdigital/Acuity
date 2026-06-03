@@ -41,6 +41,42 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-06-02] — Replace Savings Locked In with Stripe-verified Paid + download reminder email
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 6b422c4
+
+### In plain English (for Keenan)
+
+Two changes: (1) The "Savings Locked In" bar in the funnel chart was showing wrong paid numbers from old event data. It's been replaced with a "Paid (Stripe)" bar below the funnel that shows the actual number of users with an active Stripe subscription — pulled directly from the database, not from funnel events. (2) A new automated email sends 1 hour after someone creates an account but doesn't download the app. It includes download links for iOS and web, feels like a personal note from Keenan, and only sends once per user.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/api/admin/metrics/route.ts`: Removed `funnel_savings_locked_in` from all funnel step lists. Added `stripePaid` query that finds users with `subscriptionStatus = "PRO"` and `stripeSubscriptionId != null` created in the date range. Returns list with id, email, createdAt, signupMethod.
+- `apps/web/src/app/admin/tabs/FunnelAnalyticsTab.tsx`: Added green "Paid (Stripe)" bar below the funnel chart. Updated summary bar to say "Paid (Stripe)".
+- `prisma/schema.prisma`: Added `downloadReminderSentAt DateTime?` to User model.
+- `apps/web/src/emails/trial/recovery-download-reminder.ts`: New email template — subject "Start your Acuity trial — no card required", two CTA buttons (App Store + web login), signed by Keenan.
+- `apps/web/src/emails/trial/types.ts`: Added `recovery_download_reminder` key.
+- `apps/web/src/emails/trial/registry.ts`: Registered the new template.
+- `apps/web/src/inngest/functions/download-reminder-email.ts`: 15-min cron. Finds users created 1-4hr ago with `downloadReminderSentAt = null`, `appFirstOpenedAt = null`, no `funnel_app_store_clicked` event, no email in last 24h. Sends via `sendTrialEmail()`, stamps `downloadReminderSentAt`.
+- `apps/web/src/app/api/inngest/route.ts`: Registered `downloadReminderEmailFn`.
+- `apps/web/src/app/api/admin/users/route.ts`: Added `downloadReminder` field ("Sent [date]" / "Not needed" / "Pending").
+- `apps/web/src/app/admin/tabs/UsersTab.tsx`: Added "Recovery" column.
+
+### Manual steps needed
+
+- [ ] Run `npx prisma db push` to add the `downloadReminderSentAt` column (Keenan — from home network)
+- [ ] After deploy, visit `/api/inngest` once to trigger Inngest function sync (usually automatic)
+
+### Notes
+
+- The "Paid (Stripe)" metric is authoritative — it queries the User table directly for active Stripe subscriptions, not funnel events. This eliminates all the legacy event contamination issues.
+- The download reminder email reuses the existing `sendTrialEmail()` + `TrialEmailLog` system for deduplication and unsubscribe handling. Respects the 24h global cooldown throttle.
+- The email only targets users who created accounts but never interacted with the download screen or opened the app. Users who downloaded are automatically excluded.
+
+---
+
 ## [2026-06-02] — Fix Savings Locked In count + add account summary to funnel
 
 **Requested by:** Keenan
