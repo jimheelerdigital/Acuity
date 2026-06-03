@@ -111,6 +111,24 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
         )}
       </div>
 
+      {/* Account → Paid summary */}
+      {flowVersion === "v2" && (km.totalAccounts ?? 0) > 0 && (
+        <div style={{ ...S, display: "flex", alignItems: "center", gap: 16, padding: "14px 20px" }}>
+          <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.3)" }}>Total Accounts:</span>
+          <span style={{ fontSize: 20, fontWeight: 700, color: "#fff" }}>{km.totalAccounts}</span>
+          <span style={{ fontSize: 16, color: "rgba(255,255,255,0.2)" }}>→</span>
+          <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.3)" }}>Total Paid:</span>
+          <span style={{ fontSize: 20, fontWeight: 700, color: "#22c55e" }}>{km.totalPaid}</span>
+          <span style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", fontWeight: 600 }}>
+            ({km.paidConversion ?? 0}% of new accounts have paid)
+          </span>
+          <span style={{ flex: 1 }} />
+          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.25)" }}>
+            {km.totalTrialContinued ?? 0} continued on trial
+          </span>
+        </div>
+      )}
+
       {/* Page Load → First Tap funnel */}
       {(km.pageLoadCount ?? 0) > 0 && (
         <div style={{ ...S, display: "flex", alignItems: "center", gap: 16, padding: "14px 20px" }}>

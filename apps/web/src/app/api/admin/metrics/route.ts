@@ -1346,30 +1346,29 @@ const DROP_OFF_FIXES: Record<string, string> = {
   "Payment": "Won\u2019t pay. Test pricing or extend trial.",
 };
 
-async function countDistinctSessions(prisma: P, event: string, start: Date, end: Date, flowVersion?: string) {
-  const flowFilter = flowVersion ? { flowVersion } : {};
+async function countDistinctSessions(prisma: P, event: string, start: Date, end: Date) {
   const bySession = await prisma.onboardingEvent.groupBy({
     by: ["sessionToken"],
-    where: { event, createdAt: { gte: start, lte: end }, sessionToken: { not: null }, isBot: false, ...flowFilter },
+    where: { event, createdAt: { gte: start, lte: end }, sessionToken: { not: null }, isBot: false },
   });
   const byUser = await prisma.onboardingEvent.groupBy({
     by: ["userId"],
-    where: { event, createdAt: { gte: start, lte: end }, userId: { not: null }, sessionToken: null, isBot: false, ...flowFilter },
+    where: { event, createdAt: { gte: start, lte: end }, userId: { not: null }, sessionToken: null, isBot: false },
   });
   return bySession.length + byUser.length;
 }
 
 async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date, flowVersion: "v2" | "v1" | "all" = "v2") {
   try {
-    const effectiveStart = start;
-    const effectiveEnd = end;
+    // Date-based epoch clamping
+    let effectiveStart = start;
+    let effectiveEnd = end;
+    if (flowVersion === "v2" && effectiveStart < FUNNEL_V3_EPOCH) effectiveStart = FUNNEL_V3_EPOCH;
+    if (flowVersion === "v1" && effectiveEnd > FUNNEL_V3_EPOCH) effectiveEnd = FUNNEL_V3_EPOCH;
 
     const WEB_FUNNEL_STEPS = flowVersion === "v2" ? WEB_FUNNEL_STEPS_V3
       : flowVersion === "v1" ? WEB_FUNNEL_STEPS_V1
       : WEB_FUNNEL_STEPS_ALL;
-
-    const flowFilter = flowVersion === "all" ? {} : { flowVersion };
-    const flowVersionStr = flowVersion === "all" ? undefined : flowVersion;
 
     // ── Funnel steps ────────────────────────────────────
     const steps = await Promise.all(
@@ -1379,7 +1378,7 @@ async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date, flowVer
           const sessionSets = await Promise.all(
             DIAGNOSTIC_EVENTS.map(async (de) => {
               const rows = await prisma.onboardingEvent.findMany({
-                where: { event: de, createdAt: { gte: effectiveStart, lte: effectiveEnd }, sessionToken: { not: null }, isBot: false, ...flowFilter },
+                where: { event: de, createdAt: { gte: effectiveStart, lte: effectiveEnd }, sessionToken: { not: null }, isBot: false },
                 select: { sessionToken: true },
               });
               return new Set(rows.map((r) => r.sessionToken));
@@ -1392,7 +1391,7 @@ async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date, flowVer
           }
           return { label: s.label, count: intersection.size };
         }
-        return { label: s.label, count: await countDistinctSessions(prisma, s.event, effectiveStart, effectiveEnd, flowVersionStr) };
+        return { label: s.label, count: await countDistinctSessions(prisma, s.event, effectiveStart, effectiveEnd) };
       })
     );
 
@@ -1413,7 +1412,7 @@ async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date, flowVer
     for (const de of DIAGNOSTIC_EVENTS) {
       const rows = await prisma.onboardingEvent.groupBy({
         by: ["value"],
-        where: { event: de, createdAt: { gte: effectiveStart, lte: effectiveEnd }, value: { not: null }, isBot: false, ...flowFilter },
+        where: { event: de, createdAt: { gte: effectiveStart, lte: effectiveEnd }, value: { not: null }, isBot: false },
         _count: true,
       });
       const label = de.replace("funnel_", "").replace("_selected", "");
@@ -1423,8 +1422,8 @@ async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date, flowVer
     }
 
     // ── Commitment stats ────────────────────────────────
-    const commitCompleted = await countDistinctSessions(prisma, "funnel_commit_completed", effectiveStart, effectiveEnd, flowVersionStr);
-    const commitAbandoned = await countDistinctSessions(prisma, "funnel_commit_abandoned", effectiveStart, effectiveEnd, flowVersionStr);
+    const commitCompleted = await countDistinctSessions(prisma, "funnel_commit_completed", effectiveStart, effectiveEnd);
+    const commitAbandoned = await countDistinctSessions(prisma, "funnel_commit_abandoned", effectiveStart, effectiveEnd);
     const commitmentStats = {
       completed: commitCompleted,
       abandoned: commitAbandoned,
@@ -1440,7 +1439,6 @@ async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date, flowVer
         createdAt: { gte: effectiveStart, lte: effectiveEnd },
         sessionToken: { not: null },
         isBot: false,
-        ...flowFilter,
       },
       orderBy: { createdAt: "desc" },
       take: 5000, // cap for aggregation
@@ -1513,7 +1511,8 @@ async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date, flowVer
         const maxStep = Math.max(...events.map((e) => STEP_PROGRESS[e.event] ?? 0));
         const minutesSinceLast = (Date.now() - new Date(last.createdAt).getTime()) / 60000;
         const completed = events.some((e) => e.event === "funnel_app_store_clicked" || e.event === "funnel_download_viewed");
-        const paid = events.some((e) => e.event === "funnel_savings_locked_in" || e.event === "funnel_payment_completed");
+        // v2 default: only count savings_locked_in as paid (not legacy payment_completed)
+        const paid = events.some((e) => e.event === "funnel_savings_locked_in");
 
         let status: "completed" | "paid" | "active" | "stalled" | "dropped";
         if (completed) status = "completed";
@@ -1623,8 +1622,18 @@ const FUNNEL_V2_EPOCH = new Date("2026-05-28T02:35:00Z");
 
 async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, showBots = false, resetAfter: string | null = null, flowVersion: "v2" | "v1" | "all" = "v2") {
  try {
-  const effectiveStart = start;
-  const effectiveEnd = end;
+  // Date-based epoch clamping to separate flows
+  let effectiveStart = start;
+  let effectiveEnd = end;
+  if (flowVersion === "v2") {
+    if (effectiveStart < FUNNEL_V3_EPOCH) effectiveStart = FUNNEL_V3_EPOCH;
+  } else if (flowVersion === "v1") {
+    if (effectiveEnd > FUNNEL_V3_EPOCH) effectiveEnd = FUNNEL_V3_EPOCH;
+  } else {
+    // "all" — use v2 epoch as floor to exclude ancient v1 diagnostic events
+    const epoch = resetAfter ? new Date(resetAfter) : FUNNEL_V2_EPOCH;
+    if (effectiveStart < epoch) effectiveStart = epoch;
+  }
 
   // v3 funnel steps — account-first flow (no fallbacks — clean separation)
   const FUNNEL_STEPS_V3 = [
@@ -1677,9 +1686,6 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
 
   const FUNNEL_STEPS = flowVersion === "v1" ? FUNNEL_STEPS_V1 : FUNNEL_STEPS_V3;
 
-  // Build flowVersion filter for the DB query
-  const flowFilter = flowVersion === "all" ? {} : { flowVersion: flowVersion };
-
   // Fetch all funnel events in range (exclude bots unless showBots is true)
   const events = await prisma.onboardingEvent.findMany({
     where: {
@@ -1687,7 +1693,6 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
       createdAt: { gte: effectiveStart, lte: effectiveEnd },
       sessionToken: { not: null },
       ...(showBots ? {} : { isBot: false }),
-      ...flowFilter,
     },
     orderBy: { createdAt: "asc" },
     take: 50000,
@@ -1760,8 +1765,17 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
 
     const minutesSinceLast = (Date.now() - new Date(last.createdAt).getTime()) / 60000;
     const completed = eventNames.has("funnel_app_store_clicked") || eventNames.has("funnel_download_viewed");
-    const paid = eventNames.has("funnel_payment_completed") || eventNames.has("funnel_savings_locked_in");
-    const signedup = eventNames.has("funnel_signup_completed") || eventNames.has("funnel_account_created");
+    // Flow-aware paid detection: v2 only counts savings_locked_in, v1 only counts payment_completed
+    const paid = flowVersion === "v1"
+      ? eventNames.has("funnel_payment_completed")
+      : flowVersion === "v2"
+        ? eventNames.has("funnel_savings_locked_in")
+        : eventNames.has("funnel_payment_completed") || eventNames.has("funnel_savings_locked_in");
+    const signedup = flowVersion === "v1"
+      ? eventNames.has("funnel_signup_completed")
+      : flowVersion === "v2"
+        ? eventNames.has("funnel_account_created")
+        : eventNames.has("funnel_signup_completed") || eventNames.has("funnel_account_created");
 
     // Payment, signup, and trial continuation are terminal success states — never show as dropped
     let status: string;
@@ -1875,6 +1889,13 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
   const entryCountTotal = stepReach["entry"].size;
   const paidCount = stepReach["paid"].size;
   const completionRate = entryCountTotal > 0 ? Math.round((paidCount / entryCountTotal) * 100) : 0;
+
+  // Account & paid summary (from DB, not events) — for v2 flow only
+  const accountCreatedCount = stepReach["account_created"]?.size ?? 0;
+  const trialContinuedCount = stepReach["trial_continued"]?.size ?? 0;
+  const savingsLockedCount = stepReach["paid"]?.size ?? 0;
+  const newFlowPaidConversion = accountCreatedCount > 0
+    ? Math.round((savingsLockedCount / accountCreatedCount) * 100) : 0;
 
   // Biggest drop-off
   let biggestDrop = { step: "N/A", dropPct: 0 };
@@ -2167,6 +2188,10 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
         ? Math.round(((stepReach["trial_continued"]?.size ?? 0) / stepReach["account_created"].size) * 100) : 0,
       downloadRate: (stepReach["account_created"]?.size ?? stepReach["signup"]?.size ?? 0) > 0
         ? Math.round(((stepReach["download"]?.size ?? 0) / (stepReach["account_created"]?.size ?? stepReach["signup"]?.size ?? 1)) * 100) : 0,
+      totalAccounts: accountCreatedCount,
+      totalPaid: savingsLockedCount,
+      totalTrialContinued: trialContinuedCount,
+      paidConversion: newFlowPaidConversion,
     },
     diagnostics: {
       entryViewedEvents: entryViewedCount,
