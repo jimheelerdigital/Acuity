@@ -41,6 +41,37 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-06-02] — Fix Savings Locked In count + add account summary to funnel
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** ba3ed2a
+
+### In plain English (for Keenan)
+
+The "Savings Locked In" count was showing 4 paid users who actually paid through the old paywall flow, not the new savings screen. Now each flow only counts its own payment events: the new flow only counts `funnel_savings_locked_in`, and the old flow only counts `funnel_payment_completed`. Also added a summary bar at the top of the Funnel Analytics tab: "Total Accounts: X → Total Paid: X (Y% of new accounts have paid)". The previous commit's flowVersion DB column approach broke all queries (column didn't exist yet) — reverted to date-based epoch clamping which works without a schema change.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/api/admin/metrics/route.ts`:
+  - Removed all `flowVersion` DB column filtering (the column hasn't been added via `db push` yet, so queries with `{ flowVersion: "v2" }` returned zero results)
+  - Restored date-based epoch clamping: v2 clamps start to FUNNEL_V3_EPOCH, v1 clamps end to FUNNEL_V3_EPOCH
+  - Made `paid` and `signedup` status detection flow-version-aware in both `getFunnelAnalytics()` and `getWebOnboardingFunnel()`
+  - Added `totalAccounts`, `totalPaid`, `totalTrialContinued`, `paidConversion` to keyMetrics return
+- `apps/web/src/app/admin/tabs/FunnelAnalyticsTab.tsx`: Added "Total Accounts → Total Paid (X% conversion)" summary bar, visible in New Flow view only
+
+### Manual steps needed
+
+- [ ] Run `npx prisma db push` to add the flowVersion column (Keenan — from home network). This is for future use; the current queries work without it.
+- [ ] After db push, hit `POST /api/admin/backfill-flow-version` to tag existing events (Keenan)
+
+### Notes
+
+- The flowVersion DB column + backfill route still exist in the schema and codebase from the previous commit. They'll start working once `prisma db push` runs and the backfill is triggered. Until then, date-based clamping handles the separation.
+- The epoch clamping approach works correctly now because the v3-only event names (`funnel_savings_locked_in`, `funnel_account_created`) simply don't exist in old data, and the v1-only event names (`funnel_payment_completed`, `funnel_signup_completed`) are no longer fired by the new flow code (removed in commit 27bf9d5).
+
+---
+
 ## [2026-06-02] — Fix Meta CompleteRegistration underreporting
 
 **Requested by:** Keenan
