@@ -1141,7 +1141,7 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [signupLoading, setSignupLoading] = useState(false);
+  const [signupLoading, setSignupLoading] = useState<"email" | "google" | "apple" | null>(null);
   const [signupError, setSignupError] = useState<string | null>(null);
 
   const headline = branch ? getCreateAccountHeadline(branch) : "Your patterns are already forming. Create your free account to see them.";
@@ -1154,7 +1154,7 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
     if (!signupEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(signupEmail.trim())) { setSignupError("Please enter a valid email."); return; }
     if (signupPassword.length < 8) { setSignupError("Password must be at least 8 characters."); return; }
 
-    setSignupLoading(true);
+    setSignupLoading("email");
     try {
       let funnelUtm: Record<string, string> = {};
       try { const s = sessionStorage.getItem("acuity_funnel_utm"); if (s) funnelUtm = JSON.parse(s); } catch {}
@@ -1177,7 +1177,7 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
           setSignupError(body.message || "Something went wrong. Please try again.");
         }
         track("funnel_signup_failed", { value: body.error || "unknown" });
-        setSignupLoading(false);
+        setSignupLoading(null);
         return;
       }
       const signupData = await res.json().catch(() => ({}));
@@ -1193,8 +1193,14 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
     } catch {
       setSignupError("Something went wrong. Please try again.");
     } finally {
-      setSignupLoading(false);
+      setSignupLoading(null);
     }
+  };
+
+  const handleOAuthSignup = async (provider: "google" | "apple") => {
+    track("funnel_signup_started", { value: provider });
+    setSignupLoading(provider);
+    await signIn(provider, { callbackUrl: "/start?step=savings" });
   };
 
   return (
@@ -1204,6 +1210,40 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
           <h2 className="text-[22px] sm:text-[28px] font-bold tracking-tight leading-snug">{headline}</h2>
           <p className="text-sm text-zinc-500 mt-3">Free. No credit card required. Takes 10 seconds.</p>
         </section>
+
+        <div className="space-y-3 mb-6">
+          <button
+            onClick={() => handleOAuthSignup("apple")}
+            disabled={signupLoading !== null}
+            className="w-full flex items-center justify-center gap-3 rounded-full bg-zinc-900 px-4 py-3.5 text-[15px] font-semibold text-white transition hover:bg-zinc-800 active:scale-[0.98] disabled:opacity-50"
+          >
+            {signupLoading === "apple" ? (
+              <span className="h-5 w-5 animate-spin rounded-full border-2 border-zinc-600 border-t-white" />
+            ) : (
+              <AppleLogo />
+            )}
+            Continue with Apple
+          </button>
+
+          <button
+            onClick={() => handleOAuthSignup("google")}
+            disabled={signupLoading !== null}
+            className="w-full flex items-center justify-center gap-3 rounded-full bg-white border border-zinc-200 px-4 py-3.5 text-[15px] font-semibold text-zinc-700 transition hover:bg-zinc-50 hover:border-zinc-300 active:scale-[0.98] disabled:opacity-50"
+          >
+            {signupLoading === "google" ? (
+              <span className="h-5 w-5 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-600" />
+            ) : (
+              <GoogleLogo />
+            )}
+            Continue with Google
+          </button>
+        </div>
+
+        <div className="flex items-center gap-3 mb-6">
+          <div className="flex-1 h-px bg-zinc-200" />
+          <span className="text-xs text-zinc-400">or</span>
+          <div className="flex-1 h-px bg-zinc-200" />
+        </div>
 
         <form onSubmit={handleSignup} className="space-y-3">
           <input type="text" value={signupName} onChange={(e) => setSignupName(e.target.value)} placeholder="Full name" autoComplete="name"
@@ -1228,9 +1268,9 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
             </p>
           )}
 
-          <button type="submit" disabled={signupLoading}
+          <button type="submit" disabled={signupLoading !== null}
             className="w-full rounded-full bg-[#7C5CFC] py-3.5 text-[15px] font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98] disabled:opacity-50 shadow-[0_4px_20px_rgba(124,92,252,0.3)] animate-[funnel-glow_2s_ease-in-out_infinite]">
-            {signupLoading ? (
+            {signupLoading === "email" ? (
               <span className="flex items-center justify-center gap-2">
                 <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
                 Creating your account...
@@ -1416,6 +1456,18 @@ function DownloadScreen({ track, paymentConfirmed, selectedPlan }: {
           <span className="absolute inset-0 rounded-full" style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)", backgroundSize: "200% 100%", animation: "funnel-shimmer 2s ease-in-out infinite" }} />
           <span className="relative">Download on the App Store</span>
         </a>
+
+        <button disabled
+          className="w-full mt-3 rounded-full border border-zinc-200 bg-zinc-100 px-8 py-3.5 text-[15px] font-semibold text-zinc-400 cursor-not-allowed">
+          Google Play — Coming soon!
+        </button>
+
+        <p className="mt-3 text-xs text-zinc-400">
+          Have an Android?{" "}
+          <a href="/auth/signin" className="text-[#7C5CFC] font-medium underline hover:text-[#6B4FE0] transition">
+            Use the web app &rarr;
+          </a>
+        </p>
 
         <div className="mt-8 hidden sm:block">
           <p className="text-xs text-zinc-400 mb-3">Or scan with your phone</p>
