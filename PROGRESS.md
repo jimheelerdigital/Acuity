@@ -41,6 +41,42 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-06-02] — Fix funnel chart mixing old and new flow data
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 27bf9d5
+
+### In plain English (for Keenan)
+
+The conversion funnel chart was showing wrong numbers because it was mixing data from the old paywall-first flow and the new account-first flow. Now there's a toggle at the top of the Funnel Analytics tab: "New Flow" (default), "Old Flow", and "All Time". Each view shows only the stages that belong to that flow, so the numbers actually make sense. The old stages (Paywall, Signup, Checkout) only appear when viewing old flow data.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/api/admin/metrics/route.ts`:
+  - Added `FUNNEL_V3_EPOCH` (2026-06-02T23:41:14Z) — the account-first deploy timestamp
+  - Split `WEB_FUNNEL_STEPS` into `_V3`, `_V1`, and `_ALL` variants
+  - `getWebOnboardingFunnel()` now accepts `flowVersion` param with date-based epoch clamping
+  - `getFunnelAnalytics()` now accepts `flowVersion` param; **removed all `fallback` event mappings** which were the primary source of old events inflating new step counts
+  - Added computed key metrics: `accountCreationRate`, `immediatePayRate`, `trialSkipRate`, `downloadRate`
+  - Branch breakdown renamed: `commitToPaywall` → `commitToAccount`, `paywallToPaid` → `accountToPaid`
+  - Campaign funnel steps: `signup` → `account`
+- `apps/web/src/app/admin/tabs/FunnelAnalyticsTab.tsx`: Added 3-way segmented toggle (New Flow / Old Flow / All Time), passes `&flow=v3|v1|all` to API. Updated branch table headers and campaign table columns.
+- `apps/web/src/components/onboarding-funnel.tsx`: Removed `track("funnel_payment_completed")` and `track("funnel_signup_completed")` — these legacy events were firing alongside v3 events, causing double-counting. The v3 equivalents (`funnel_savings_locked_in` and `funnel_account_created`) already fire.
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- The separation is date-based, not DB-column-based — avoids needing a Prisma migration / `db push`. Events before the v3 epoch are v1, events after are v3.
+- The "All Time" view still uses `FUNNEL_V2_EPOCH` (2026-05-28) as a floor to exclude ancient v1 diagnostic events.
+- The Overview tab's web funnel widget defaults to v3 automatically — no toggle needed there since it's a summary.
+- Math invariants should now hold: removing fallback events means `funnel_paywall_viewed` no longer inflates `Create Account` counts, and `funnel_payment_completed` no longer inflates `Paid` counts.
+
+---
+
 ## [2026-06-02] — Remove silent trial user notification spam from admin dashboard
 
 **Requested by:** Keenan
