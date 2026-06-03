@@ -41,6 +41,37 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-06-03] — Revamp admin Users tab with accurate data + lifecycle stages + Stripe sync
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** c6758b2
+
+### In plain English (for Keenan)
+
+Complete rewrite of the admin Users section. Fixed all the data accuracy issues from the audit: entry counts now come from the actual database (not the drifting counter), web-only users show as "Web" platform instead of "Never opened app", and plan status shows trial days remaining. Added lifecycle stages so you can instantly see where each user is in their journey (Signed up → Downloaded → First debrief → Exploring → Building habit → Active user → At risk → Churned). Added a "Sync with Stripe" button that queries Stripe directly and fixes any DB mismatches. Summary cards at the top show the metrics that matter: total users, active this week, at risk, never recorded, paying.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/api/admin/users/route.ts`: Complete rewrite. Entry counts from `_count.entries WHERE status=COMPLETE`, not `totalRecordings`. New computed fields: `lifecycle` (8 stages based on entry count + recency), `platform` (iOS/Web/Both/None from appFirstOpenedAt + entries), `planStatus` (with trial days remaining), `entriesThisWeek`, `lastEntryAt`, `weeklyReportCount`, `lastActive`. Summary stats computed on first page load. Supports `?lifecycle=`, `?sort=`, `?dir=` query params.
+- `apps/web/src/app/api/admin/stripe-sync/route.ts`: New admin-only endpoint. POST paginates all Stripe customers, matches by email, reconciles subscriptionStatus/stripeCustomerId/stripeSubscriptionId/stripeCurrentPeriodEnd. Returns detailed report.
+- `apps/web/src/app/admin/tabs/UsersTab.tsx`: Complete rewrite. 8 summary cards, 13-column table with lifecycle badges, plan pills, platform pills, entry counts with weekly breakdown, streaks, weekly report counts. Sortable columns, lifecycle filter dropdown, "Needs attention" quick filter, "Sync with Stripe" button. At risk/Churned rows get subtle background highlights. All existing modals preserved.
+
+### Manual steps needed
+
+- [ ] After deploy, click "Sync with Stripe" on the admin Users tab to reconcile all Stripe data (Keenan)
+
+### Notes
+
+- Entry counts are now always from `COUNT(entries WHERE status=COMPLETE)` — the `totalRecordings` field is no longer used in the admin UI. It still exists on the User model for the mobile app but isn't the source of truth for the dashboard.
+- Lifecycle stages are computed server-side based on: entry count, days since last entry, and whether app was opened. "At risk" = had entries but none in 7+ days. "Churned" = had entries but none in 14+ days.
+- Platform detection: `appFirstOpenedAt` = mobile, entries without `appFirstOpenedAt` = web, both = "Both".
+- The Stripe sync endpoint reuses the same status mapping as the webhook handler (active/trialing → PRO, past_due → PAST_DUE, canceled → FREE).
+- Click-to-expand for user rows is noted as a future enhancement — the existing "view" link to the user detail modal covers this use case.
+- Weekly report open tracking is not yet implemented — column shows "X sent" but not open rates. Noted for future enhancement.
+
+---
+
 ## [2026-06-03] — User Data Audit (read-only)
 
 **Requested by:** Keenan
