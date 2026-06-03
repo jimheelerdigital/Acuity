@@ -73,7 +73,7 @@ type SentEmail = {
 };
 
 const LIFECYCLE_OPTIONS = [
-  "Signed up", "Downloaded", "App downloaded", "First debrief", "Exploring",
+  "Signed up", "Attempted download", "App downloaded", "First debrief", "Exploring",
   "Building habit", "Active user", "At risk", "Churned",
 ];
 
@@ -386,7 +386,7 @@ function PlatformPill({ platform }: { platform: string }) {
 function LifecyclePill({ stage }: { stage: string }) {
   const STYLES: Record<string, string> = {
     "Signed up": "bg-white/10 text-white/50",
-    "Downloaded": "bg-sky-500/20 text-sky-300",
+    "Attempted download": "bg-sky-500/20 text-sky-300",
     "App downloaded": "bg-blue-500/20 text-blue-300",
     "First debrief": "bg-teal-500/20 text-teal-300",
     "Exploring": "bg-lime-500/20 text-lime-300",

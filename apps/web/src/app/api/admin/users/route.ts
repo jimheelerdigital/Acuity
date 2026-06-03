@@ -53,7 +53,7 @@ function computeLifecycle(
   }
   // No entries — check app/download status
   if (appFirstOpenedAt) return "App downloaded";
-  if (clickedDownload) return "Downloaded";
+  if (clickedDownload) return "Attempted download";
   return "Signed up";
 }
 
