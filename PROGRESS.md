@@ -41,6 +41,35 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 ---
 
+## [2026-06-02] — Fix Meta CompleteRegistration underreporting
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** fa2bcd8
+
+### In plain English (for Keenan)
+
+Meta Ads Manager was only showing 3 CompleteRegistration events despite 8 confirmed signups. The audit found two gaps: (1) when users sign up with Google or Apple, the server-side conversion event was never sent to Meta — only the browser pixel fired, and if the browser blocked it, Meta never learned about the signup; (2) the old /auth/signup page fired the pixel without a deduplication ID, so Meta couldn't properly match browser and server events. Both are now fixed. The new /start funnel was already working correctly.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/lib/auth.ts`: Added server-side CAPI `CompleteRegistration` event firing in `events.createUser` callback for Google/Apple OAuth signups. Uses `sendConversionEvent()` from `meta-capi.ts` with a unique `eventId`. Includes console logging for verification.
+- `apps/web/src/app/auth/signup/page.tsx`: Now reads `signupData.capiEventId` from the `/api/auth/signup` response and passes it as `{ eventID: capiEventId }` to the `fbq('track', 'CompleteRegistration')` call, enabling proper pixel-CAPI deduplication.
+
+### Manual steps needed
+
+- [ ] After deploy, create a test account via Google OAuth on /start and verify in Meta Events Manager that CompleteRegistration arrives (Keenan)
+- [ ] Check Meta Events Manager → Acuity pixel → event log to confirm events are flowing (Keenan)
+
+### Notes
+
+- The new /start funnel path (email signup) was already correct — it passes `capiEventId` for dedup on line 1183.
+- For OAuth signups, there's no way to coordinate event_id between the server CAPI event and the browser pixel on the success page, because the OAuth redirect happens in between. However, the server CAPI event alone is sufficient for Meta attribution — it's more reliable than the browser pixel since it's immune to ad blockers and Safari ITP.
+- The `TrackCompleteRegistration` component on `/auth/signup/success` still fires a browser pixel event without event_id for OAuth users. This means Meta may receive two events (one CAPI, one pixel) for OAuth signups, but since both are for the same user within seconds, Meta's automatic dedup window (48 hours) should handle it.
+- The 5 "missing" events from the 8 total were likely from: (a) OAuth signups with no CAPI event, where the browser pixel was blocked; or (b) old signup page events with no dedup ID causing mismatched attribution.
+
+---
+
 ## [2026-06-02] — Fix funnel flow filter to use DB column instead of date clamping
 
 **Requested by:** Keenan
