@@ -247,7 +247,7 @@ export async function bootstrapNewUser(params: {
       const firstName =
         (userName ?? "").trim().split(/\s+/)[0] || null;
 
-      const { subject, text } = founderWelcomeEmail({
+      const { subject, html } = founderWelcomeEmail({
         firstName,
         foundingMemberNumber,
       });
@@ -257,7 +257,7 @@ export async function bootstrapNewUser(params: {
         replyTo: "keenan@getacuity.io",
         to: email,
         subject,
-        text,
+        html,
       });
     } catch (err) {
       // eslint-disable-next-line no-console
