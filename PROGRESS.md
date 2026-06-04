@@ -7,6 +7,31 @@
 
 ---
 
+## [2026-06-04] — Add Signup Method column to admin users table
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** c4b6d73
+
+### In plain English (for Keenan)
+
+The admin dashboard Users table now shows how each person signed up — Email, Google, or Apple — in a new "Method" column right after the Source column. This lets you see both where they came from (Meta ad, direct, organic) and how they created their account in one glance. Users who signed up before May 20 (before we started tracking this) show "Unknown" in gray.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/admin/tabs/UsersTab.tsx`: Added `signupMethod` to `ListUser` type. New "Method" table header + cell after Source column. Renders color-coded text: "Email" (white/60), "Google" (blue-300), "Apple" (white/80), "Unknown" (white/25).
+- `apps/web/src/app/api/admin/users/route.ts`: Added `signupMethod: true` to both main and fallback Prisma select queries. Added `signupMethod` to response mapping.
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- The `signupMethod` field already exists on the User model (added around May 20). All users created after that date have it populated by the signup and OAuth flows. Older users show null → "Unknown".
+
+---
+
 ## [2026-06-04] — Fix Meta pixel: CompleteRegistration for all signup paths + Lead cleanup
 
 - **Requested by:** Keenan
