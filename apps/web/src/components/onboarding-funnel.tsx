@@ -11,7 +11,7 @@ import {
 import { trackOnboardingEvent, captureUtmParams, type UtmParams } from "@/lib/track-onboarding";
 import { PRIORITY_COLOR } from "@acuity/shared";
 import { MoodDot, AppleLogo, GoogleLogo } from "@/components/debrief-shared";
-import { fireFbq } from "@/components/meta-pixel-events";
+import { fireFbq, TrackCompleteRegistration } from "@/components/meta-pixel-events";
 import {
   type Branch,
   type Question,
@@ -266,7 +266,10 @@ export function OnboardingFunnel() {
     };
     if (eventMap[step]) {
       track(eventMap[step]);
-      if (step === "create-account") fireFbq("Lead", { content_name: "Funnel Create Account Reached" });
+      // Lead fires on the timeline step — a mid-funnel signal showing the
+      // user reached the value-reveal screens. Moved from create-account
+      // (which inflated Lead count for users who merely saw the form).
+      if (step === "timeline") fireFbq("Lead", { content_name: "Funnel Timeline Reached" });
     }
   }, [step, track]);
 
@@ -487,6 +490,10 @@ export function OnboardingFunnel() {
       )}
 
       {/* ── Lock In Your Savings (Screen 17 — optional paywall) ── */}
+      {/* TrackCompleteRegistration handles OAuth returnees who land here
+          after Google/Apple redirect. For email/password the sessionStorage
+          guard prevents double-fire. Component self-guards via CAPI 5-min check. */}
+      {step === "savings" && <TrackCompleteRegistration />}
       {step === "savings" && (
         <SavingsScreen
           key="savings"
@@ -1181,6 +1188,8 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
       }
       const signupData = await res.json().catch(() => ({}));
       fireFbq("CompleteRegistration", { content_name: "Free Trial Signup", currency: "USD", value: 0 }, signupData.capiEventId);
+      // Guard so TrackCompleteRegistration on the savings step doesn't double-fire
+      try { sessionStorage.setItem("acuity_reg_pixel_fired", "1"); } catch {}
 
       const result = await signIn("credentials", { email: signupEmail.trim(), password: signupPassword, redirect: false });
       if (result?.ok) {

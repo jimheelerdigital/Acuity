@@ -125,20 +125,12 @@ function SignUpForm() {
   const handleGoogle = async () => {
     setError(null);
     setLoading("google");
-    if (typeof window !== "undefined" && typeof window.fbq === "function") {
-      console.log("[meta-pixel] Firing Lead — Google signup click");
-      window.fbq("track", "Lead", { content_name: "Start Free Trial Click" });
-    }
     await signIn("google", { callbackUrl: "/auth/signup/success" });
   };
 
   const handleApple = async () => {
     setError(null);
     setLoading("apple");
-    if (typeof window !== "undefined" && typeof window.fbq === "function") {
-      console.log("[meta-pixel] Firing Lead — Apple signup click");
-      window.fbq("track", "Lead", { content_name: "Start Free Trial Click" });
-    }
     await signIn("apple", { callbackUrl: "/auth/signup/success" });
   };
 
@@ -150,10 +142,6 @@ function SignUpForm() {
       return;
     }
     setLoading("password");
-    if (typeof window !== "undefined" && typeof window.fbq === "function") {
-      console.log("[meta-pixel] Firing Lead — email signup submit");
-      window.fbq("track", "Lead", { content_name: "Start Free Trial Click" });
-    }
     try {
       let attribution: Record<string, string> | undefined;
       try {
@@ -213,6 +201,8 @@ function SignUpForm() {
         }, pixelOpts);
         console.log("[meta-pixel] Firing StartTrial — email signup success");
         window.fbq("track", "StartTrial", { value: 4.99, currency: "USD", predicted_ltv: 39.99 });
+        // Guard so TrackCompleteRegistration on the success page doesn't double-fire
+        try { sessionStorage.setItem("acuity_reg_pixel_fired", "1"); } catch {}
       }
       if (attribution) {
         fetch("/api/auth/set-attribution", {

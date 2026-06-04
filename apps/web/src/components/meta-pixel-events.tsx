@@ -71,11 +71,16 @@ export function MetaPixelAdvancedMatching() {
 }
 
 /**
- * Only fires CompleteRegistration + StartTrial if the current session user
- * was created within the last 5 minutes. This prevents:
- *   1. Firing on repeat visits to the success page
- *   2. Firing for returning users who hit this page via direct URL
- *   3. Double-firing (OAuth buttons no longer fire these events)
+ * Fires CompleteRegistration + StartTrial for genuinely new signups.
+ *
+ * Flow:
+ *   1. POSTs to /api/capi/complete-registration — fires CAPI with full
+ *      request context (IP, UA, cookies) and returns an event_id.
+ *   2. Fires the browser pixel with the same event_id for dedup.
+ *   3. Sets a sessionStorage guard so it never double-fires.
+ *
+ * The CAPI endpoint rejects users created >5 min ago, so this is safe
+ * against page refreshes and direct-URL visits.
  */
 export function TrackCompleteRegistration() {
   const { status } = useSession();
@@ -90,23 +95,22 @@ export function TrackCompleteRegistration() {
       return;
     }
 
-    // Check user createdAt to confirm this is a genuinely new signup
-    fetch("/api/user/me")
+    // Fire CAPI first (has its own 5-min guard), then browser pixel with
+    // the returned eventId for deduplication.
+    fetch("/api/capi/complete-registration", { method: "POST" })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        if (!data?.user?.createdAt) return;
-        const createdAt = new Date(data.user.createdAt).getTime();
-        const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
-        if (createdAt >= fiveMinutesAgo) {
-          fireFbq("CompleteRegistration", { content_name: "Free Trial Signup", currency: "USD", value: 0 });
-          fireFbq("StartTrial", { value: 4.99, currency: "USD", predicted_ltv: 39.99 });
-          sessionStorage.setItem(key, "1");
-        } else {
-          console.log("[meta-pixel] User created >5min ago, skipping CompleteRegistration");
+        if (!data?.eventId) {
+          console.log("[meta-pixel] CAPI returned no eventId (not a new signup or error), skipping browser pixel");
+          return;
         }
+        console.log(`[meta-pixel] CAPI CompleteRegistration fired, eventId=${data.eventId}`);
+        fireFbq("CompleteRegistration", { content_name: "Free Trial Signup", currency: "USD", value: 0 }, data.eventId);
+        fireFbq("StartTrial", { value: 4.99, currency: "USD", predicted_ltv: 39.99 });
+        sessionStorage.setItem(key, "1");
       })
       .catch((err) => {
-        console.error("[meta-pixel] Failed to verify new signup:", err);
+        console.error("[meta-pixel] CAPI complete-registration call failed:", err);
       });
   }, [status]);
 

@@ -254,24 +254,11 @@ export function getAuthOptions(): NextAuthOptions {
             signupMethod: method,
           });
 
-          // Fire server-side CAPI CompleteRegistration for OAuth signups.
-          // Email/password signups fire this in /api/auth/signup instead.
-          if (method === "google" || method === "apple") {
-            try {
-              const { sendConversionEvent, generateEventId } = await import("@/lib/meta-capi");
-              const eventId = generateEventId("CompleteRegistration");
-              await sendConversionEvent({
-                eventName: "CompleteRegistration",
-                eventId,
-                eventSourceUrl: "https://getacuity.io/start",
-                userData: { email: user.email ?? undefined },
-                customData: { content_name: "Free Trial Signup", currency: "USD", value: 0 },
-              });
-              console.log(`[auth.createUser] CAPI CompleteRegistration fired for ${method} signup, eventId=${eventId}`);
-            } catch (capiErr) {
-              console.error("[auth.createUser] CAPI CompleteRegistration failed:", capiErr);
-            }
-          }
+          // CAPI CompleteRegistration for OAuth signups is handled by
+          // TrackCompleteRegistration → /api/capi/complete-registration
+          // which has access to the browser request context (IP, UA,
+          // cookies) needed for Meta matching. The old auth.ts call only
+          // had the email hash, resulting in low match quality.
         } catch (err) {
           // Lazy import so Sentry isn't pulled into contexts that
           // don't have it initialized.

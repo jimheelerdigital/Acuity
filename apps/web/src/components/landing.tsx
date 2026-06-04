@@ -876,10 +876,10 @@ function FeatureIcon({ iconKey }: { iconKey: string }) {
    ═══════════════════════════════════════════ */
 
 function trackInitiateCheckout() {
-  if (typeof window !== "undefined" && typeof window.fbq === "function") {
-    console.log('[meta-pixel] Firing Lead — Start Free Trial Click');
-    window.fbq("track", "Lead", { content_name: "Start Free Trial Click" });
-  }
+  // Lead pixel removed — Lead now fires once in the /start funnel at
+  // the timeline step as a clean mid-funnel signal. Firing Lead here
+  // on the landing page CTA inflated the count and confused attribution.
+  //
   // PostHog CTA click tracking for acquisition funnel
   try {
     const { getClientAttribution } = require("@/lib/attribution");
