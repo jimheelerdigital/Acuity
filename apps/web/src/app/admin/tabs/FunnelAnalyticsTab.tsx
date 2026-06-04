@@ -53,8 +53,15 @@ export default function FunnelAnalyticsTab({ start: _parentStart, end: _parentEn
   const [datePreset, setDatePreset] = useState<DatePreset>("7d");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
+  // Compute dates once and store them — avoids re-render loop from new Date() on every render
+  const [dateRange, setDateRange] = useState(() => getPresetRange("7d", "", ""));
 
-  const { start, end } = getPresetRange(datePreset, customStart, customEnd);
+  const { start, end } = dateRange;
+
+  // Update date range when preset or custom dates change
+  useEffect(() => {
+    setDateRange(getPresetRange(datePreset, customStart, customEnd));
+  }, [datePreset, customStart, customEnd]);
 
   useEffect(() => {
     setLoading(true);
