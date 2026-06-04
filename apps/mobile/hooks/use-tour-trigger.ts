@@ -34,6 +34,13 @@ import { trackOnboardingEvent } from "@/lib/onboarding-events";
  */
 
 const ASYNC_STORAGE_KEY = "acuity.tour.completed";
+/**
+ * Set by the "Replay product tour" button in Profile before it navigates
+ * home. When present, the trigger fires the tour even for users who have
+ * recordings and a prior completion — the first-login gates below are for
+ * the AUTO-fire, not for an explicit replay.
+ */
+export const TOUR_FORCE_REPLAY_KEY = "acuity.tour.forceReplay";
 const POST_MOUNT_DELAY_MS = 500;
 const FIRST_STEP_NAME = "mic";
 
@@ -115,22 +122,43 @@ export function useTourTrigger({ queueHasItem = false }: Options = {}) {
     };
   }, [copilotEvents, refresh, totalStepsNumber]);
 
-  // Auto-fire on home mount when all gates pass.
+  // Fire on home mount. Two paths:
+  //   - manual replay (TOUR_FORCE_REPLAY_KEY set) → bypass the
+  //     first-login gates; the user explicitly asked for it.
+  //   - first-login auto-fire → all gates must pass.
+  // The gate checks live INSIDE the async body (after reading the force
+  // flag) so a replaying user — who has recordings and a prior
+  // completion — isn't short-circuited before we can honor the flag.
   useEffect(() => {
-    if (firedRef.current) return;
     if (!user) return;
-    if (!user.onboardingCompleted) return;
-    if ((user.totalRecordings ?? 0) > 0) return;
-    if (user.tourCompletedAt != null) return;
     if (queueHasItem) return;
 
     let cancelled = false;
     void (async () => {
-      // Double-check the AsyncStorage marker — the user may have
-      // completed the tour just now on this same device but the /me
-      // refresh hasn't landed yet.
-      const localMarker = await AsyncStorage.getItem(ASYNC_STORAGE_KEY);
-      if (cancelled || localMarker) return;
+      const forceReplay =
+        (await AsyncStorage.getItem(TOUR_FORCE_REPLAY_KEY)) != null;
+
+      if (forceReplay) {
+        // Consume the flag + clear the completion marker so we don't
+        // loop, and reset the per-mount guard so replay works even if
+        // the auto-tour already fired earlier this session.
+        await AsyncStorage.removeItem(TOUR_FORCE_REPLAY_KEY);
+        await AsyncStorage.removeItem(ASYNC_STORAGE_KEY);
+        firedRef.current = false;
+      } else {
+        // First-login auto-fire gates.
+        if (firedRef.current) return;
+        if (!user.onboardingCompleted) return;
+        if ((user.totalRecordings ?? 0) > 0) return;
+        if (user.tourCompletedAt != null) return;
+        // Double-check the AsyncStorage marker — the user may have
+        // completed the tour just now on this same device but the /me
+        // refresh hasn't landed yet.
+        const localMarker = await AsyncStorage.getItem(ASYNC_STORAGE_KEY);
+        if (localMarker) return;
+      }
+
+      if (cancelled) return;
       // 500ms after mount so the celebration modal wins if it was
       // going to fire.
       await new Promise((r) => setTimeout(r, POST_MOUNT_DELAY_MS));

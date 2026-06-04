@@ -28,6 +28,7 @@ import {
   isLocalAuthCapable,
   isLockEnabled,
 } from "@/lib/app-lock";
+import { TOUR_FORCE_REPLAY_KEY } from "@/hooks/use-tour-trigger";
 import { isIapEnabled } from "@/lib/iap-config";
 import { openSubscriptionPortal } from "@/lib/subscription";
 
@@ -59,23 +60,31 @@ export default function ProfileTab() {
   }, []);
 
   const handleReplayTour = async () => {
-    // 1. Clear the local marker first so use-tour-trigger doesn't see
-    //    it on the next home mount.
+    // 1. Set the force-replay flag BEFORE refresh()/navigate. The home
+    //    trigger (use-tour-trigger) bypasses its first-login gates when
+    //    it sees this — without it, the `totalRecordings === 0` gate
+    //    silently blocks replay for anyone who has ever recorded (i.e.
+    //    everyone who'd tap this button). This was the bug: reset +
+    //    navigate happened, but the tour never started.
+    await AsyncStorage.setItem(
+      TOUR_FORCE_REPLAY_KEY,
+      new Date().toISOString()
+    ).catch(() => {});
+    // 2. Clear the local completion marker too (defense-in-depth; the
+    //    trigger also clears it on the force path).
     await AsyncStorage.removeItem("acuity.tour.completed").catch(() => {});
-    // 2. Await the server POST. Hardened 2026-06-03 P0 pass — the
-    //    prior fire-and-forget left auth-context's user.tourCompletedAt
-    //    stale at home mount, so use-tour-trigger short-circuited on
-    //    the still-truthy server value and the tour silently didn't
-    //    fire. Awaiting + refresh() guarantees /me returns
-    //    tourCompletedAt: null before we navigate.
+    // 3. Await the server POST so /me returns tourCompletedAt: null,
+    //    keeping the data model honest (the force flag fires the tour
+    //    regardless, but we don't want a stale truthy value lingering).
     try {
       await api.post("/api/user/tour-reset", {});
     } catch {
-      // Non-fatal — local marker is cleared so the tour CAN still fire,
-      // but we'll refresh anyway to give the gate the best info.
+      // Non-fatal — the force flag still fires the tour locally.
     }
+    // 4. refresh() changes the auth-context user, which re-runs the
+    //    home trigger effect; it reads the force flag and fires.
     await refresh();
-    // 3. Bounce to Home so the trigger evaluates against fresh state.
+    // 5. Bounce to Home so the trigger evaluates against fresh state.
     router.replace("/(tabs)" as never);
   };
 
