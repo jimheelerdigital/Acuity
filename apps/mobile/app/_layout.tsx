@@ -3,7 +3,7 @@ import "../global.css";
 import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AppState, Text as RNText } from "react-native";
@@ -68,6 +68,10 @@ function AuthGate() {
   const { user, loading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+  // Tracks the userId we've already run once-per-session boot effects
+  // for (push-token refresh, Meta SDK init), so user-object churn from
+  // refresh() doesn't re-fire them. See the effect below.
+  const pushBootedForRef = useRef<string | null>(null);
 
   // Hide the native splash once auth has resolved. We block on
   // `loading` rather than `user` because a signed-out user should see
@@ -104,18 +108,24 @@ function AuthGate() {
     if (loading || !user) return;
     const userId = user.id;
     void reapplyRemindersIfNeeded(userId);
-    // Slice 9b — refresh Expo push token on every authenticated cold
-    // launch. No-op when the user has never registered or permission
-    // is currently denied; only writes when Expo's current token
-    // differs from whatever's on the device-local registered marker.
-    void refreshPushTokenOnLaunch();
-    // Meta SDK (2026-05-25, Keenan request) — initialize on the
-    // first authenticated render so the ATT prompt appears with
-    // context (the user has signed in, has seen the app's value,
-    // and the iOS system prompt now reads as "this app you just
-    // used wants to attribute its install" rather than a cold
-    // demand at splash. Idempotent — subsequent calls are no-ops.
-    void initMetaSdk();
+    // Run the once-per-session boot side effects only when the signed-in
+    // userId actually changes — NOT on every `user` object-identity churn.
+    // auth-context's refresh() allocates a new user object on each
+    // /api/user/me (and refresh fires on mount, foreground, IAP check),
+    // so without this guard refreshPushTokenOnLaunch() re-POSTed
+    // /api/user/push-token 3x per login. Keyed on userId so a genuine
+    // user switch (sign out → sign in as someone else) still re-runs.
+    if (pushBootedForRef.current !== userId) {
+      pushBootedForRef.current = userId;
+      // Slice 9b — refresh Expo push token on authenticated launch.
+      // No-op when never registered or permission denied; only writes
+      // when Expo's current token differs from the device-local marker.
+      void refreshPushTokenOnLaunch();
+      // Meta SDK (2026-05-25, Keenan request) — initialize on first
+      // authenticated render so the ATT prompt appears with context.
+      // Idempotent — subsequent calls are no-ops.
+      void initMetaSdk();
+    }
     setMetaUserId(userId);
     const sub = AppState.addEventListener("change", (next) => {
       if (next === "active") {
@@ -185,19 +195,24 @@ function AuthGate() {
       //     with new-onboarding flag OFF
       //   - User cold-launches with stored auth from a prior
       //     install that pre-dated the Stripe webhook firing
-      // 2026-06-01: TRIAL users also bypass the mobile onboarding
-      // redirect — same logic as PRO, they have full access during
-      // the trial window. Expanded after the webhook diagnosis
-      // surfaced that nearly all live signups are TRIAL, not PRO.
-      if (
-        user.subscriptionStatus === "PRO" ||
-        user.subscriptionStatus === "TRIAL"
-      ) {
-        void api
-          .post("/api/onboarding/complete", { skipped: false })
-          .catch(() => {
-            /* next AuthGate tick re-evaluates */
-          });
+      // PRO-ONLY. A genuinely-paid (returning, web-Stripe) user should
+      // skip mobile onboarding under Guideline 3.1.3(b). TRIAL must NOT
+      // bypass: every fresh signup is created in TRIAL state, so the
+      // 2026-06-01 expansion to `|| TRIAL` auto-completed onboarding for
+      // EVERY new user — the AuthGate fired, POSTed /api/onboarding/
+      // complete (currentStep=10, completedAt=now), and dropped them on
+      // /(tabs), so the 5-step onboarding + first-login tour never ran.
+      // Trial users get full access without being PAYwalled, but they
+      // still go through onboarding. (Paywall-skip for TRIAL is handled
+      // separately by the paywall screens, not here.)
+      if (user.subscriptionStatus === "PRO") {
+        // Route a paid, returning user straight into the app. Do NOT
+        // POST /api/onboarding/complete here — that endpoint is hit
+        // ONLY by an explicit action on the final onboarding step,
+        // never on login/launch. It was being fired (twice, on every
+        // AuthGate tick) and force-completing onboarding rows the user
+        // had just reset. AuthGate routes PRO users on subscriptionStatus
+        // alone, so no completedAt write is needed here.
         router.replace("/(tabs)");
         return;
       }
