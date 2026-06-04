@@ -4,7 +4,10 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 
-const PASSWORD_MIN = 12;
+// Must match the server policy in @/lib/passwords (PASSWORD_MIN_LENGTH = 8).
+// Was previously 12 here, which silently rejected valid 8–11 char
+// passwords client-side (the submit button was disabled with no message).
+const PASSWORD_MIN = 8;
 
 function ResetPasswordForm() {
   const params = useSearchParams();
@@ -15,6 +18,7 @@ function ResetPasswordForm() {
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pwError, setPwError] = useState<string | null>(null);
 
   if (!token) {
     return (
@@ -38,12 +42,13 @@ function ResetPasswordForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (password !== confirm) {
-      setError("Passwords don't match.");
+    setPwError(null);
+    if (password.length < PASSWORD_MIN) {
+      setPwError(`Password must be at least ${PASSWORD_MIN} characters.`);
       return;
     }
-    if (password.length < PASSWORD_MIN) {
-      setError(`Password must be at least ${PASSWORD_MIN} characters.`);
+    if (password !== confirm) {
+      setError("Passwords don't match.");
       return;
     }
     setLoading(true);
@@ -58,7 +63,7 @@ function ResetPasswordForm() {
         if (body.error === "InvalidToken") setError("This reset link is invalid.");
         else if (body.error === "ExpiredToken")
           setError("This reset link has expired. Request a new one.");
-        else if (body.error === "WeakPassword") setError(body.message ?? "Password too short.");
+        else if (body.error === "WeakPassword") setPwError(body.message ?? `Password must be at least ${PASSWORD_MIN} characters.`);
         else if (res.status === 429)
           setError("Too many attempts. Wait and try again.");
         else setError("Something went wrong. Please try again.");
@@ -109,16 +114,31 @@ function ResetPasswordForm() {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-3">
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="New password"
-          autoComplete="new-password"
-          required
-          minLength={PASSWORD_MIN}
-          className="w-full rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg px-4 py-3 text-sm text-zinc-900 dark:text-zinc-50 placeholder-zinc-400 outline-none focus:border-acuity-primary focus:ring-2 focus:ring-violet-500/20 transition"
-        />
+        <div>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              if (pwError) setPwError(null);
+            }}
+            placeholder={`New password (at least ${PASSWORD_MIN} characters)`}
+            autoComplete="new-password"
+            required
+            aria-invalid={pwError ? true : undefined}
+            aria-describedby={pwError ? "reset-pw-error" : undefined}
+            className={`w-full rounded-xl border bg-white dark:bg-acuity-card-bg px-4 py-3 text-sm text-zinc-900 dark:text-zinc-50 placeholder-zinc-400 outline-none focus:ring-2 transition ${
+              pwError
+                ? "border-red-400 focus:border-red-400 focus:ring-red-200"
+                : "border-zinc-200 dark:border-white/10 focus:border-acuity-primary focus:ring-violet-500/20"
+            }`}
+          />
+          {pwError && (
+            <p id="reset-pw-error" role="alert" className="mt-1.5 text-xs text-red-600 dark:text-red-400">
+              {pwError}
+            </p>
+          )}
+        </div>
         <input
           type="password"
           value={confirm}
@@ -130,7 +150,7 @@ function ResetPasswordForm() {
         />
         <button
           type="submit"
-          disabled={loading || password.length < PASSWORD_MIN || password !== confirm}
+          disabled={loading}
           className="w-full rounded-xl bg-zinc-900 px-4 py-3 text-sm font-semibold text-white transition-all duration-200 hover:bg-zinc-700 disabled:opacity-50 active:scale-[0.98]"
         >
           {loading ? "Setting password..." : "Set new password"}

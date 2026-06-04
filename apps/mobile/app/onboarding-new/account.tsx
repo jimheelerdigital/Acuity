@@ -475,10 +475,23 @@ export default function AccountScreen() {
                     color: tokens.text,
                   }}
                 />
+                <Text
+                  style={{
+                    fontFamily: tokens.fontSans,
+                    fontSize: 12,
+                    color: tokens.textTer,
+                    marginLeft: 2,
+                  }}
+                >
+                  Password — at least 8 characters.
+                </Text>
                 <TextInput
                   value={password}
-                  onChangeText={setPassword}
-                  placeholder="Password (8+ characters)"
+                  onChangeText={(t) => {
+                    setPassword(t);
+                    if (error) setError(null);
+                  }}
+                  placeholder="At least 8 characters"
                   placeholderTextColor={tokens.textTer}
                   autoCapitalize="none"
                   autoComplete="new-password"

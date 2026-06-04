@@ -54,6 +54,7 @@ function SignUpForm() {
     "google" | "apple" | "password" | null
   >(null);
   const [error, setError] = useState<string | null>(null);
+  const [pwError, setPwError] = useState<string | null>(null);
   const [testimonialIdx, setTestimonialIdx] = useState(0);
   const [showStickyCta, setShowStickyCta] = useState(false);
   const formRef = useRef<HTMLDivElement>(null);
@@ -137,8 +138,13 @@ function SignUpForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setPwError(null);
+    if (!email.trim()) {
+      setError("Enter your email to continue.");
+      return;
+    }
     if (password.length < PASSWORD_MIN) {
-      setError(`Password must be at least ${PASSWORD_MIN} characters.`);
+      setPwError(`Password must be at least ${PASSWORD_MIN} characters.`);
       return;
     }
     setLoading("password");
@@ -177,7 +183,7 @@ function SignUpForm() {
             "An account with that email already exists. Try signing in instead."
           );
         } else if (body.error === "WeakPassword") {
-          setError(
+          setPwError(
             body.message ??
               `Password must be at least ${PASSWORD_MIN} characters.`
           );
@@ -388,23 +394,40 @@ function SignUpForm() {
                   required
                   className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 outline-none transition focus:border-[#7C5CFC] focus:ring-2 focus:ring-[#7C5CFC]/20"
                 />
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Password (8+ characters)"
-                  autoComplete="new-password"
-                  required
-                  minLength={PASSWORD_MIN}
-                  className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 outline-none transition focus:border-[#7C5CFC] focus:ring-2 focus:ring-[#7C5CFC]/20"
-                />
+                <div>
+                  <p className="mb-1.5 text-xs text-zinc-500">
+                    Password &mdash; at least {PASSWORD_MIN} characters.
+                  </p>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      if (pwError) setPwError(null);
+                    }}
+                    placeholder={`At least ${PASSWORD_MIN} characters`}
+                    autoComplete="new-password"
+                    aria-invalid={pwError ? true : undefined}
+                    aria-describedby={pwError ? "signup-pw-error" : undefined}
+                    className={`w-full rounded-lg border bg-zinc-50 px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 outline-none transition focus:ring-2 ${
+                      pwError
+                        ? "border-red-400 focus:border-red-400 focus:ring-red-200"
+                        : "border-zinc-200 focus:border-[#7C5CFC] focus:ring-[#7C5CFC]/20"
+                    }`}
+                  />
+                  {pwError && (
+                    <p
+                      id="signup-pw-error"
+                      role="alert"
+                      className="mt-1.5 text-xs text-red-600"
+                    >
+                      {pwError}
+                    </p>
+                  )}
+                </div>
                 <button
                   type="submit"
-                  disabled={
-                    loading !== null ||
-                    !email.trim() ||
-                    password.length < PASSWORD_MIN
-                  }
+                  disabled={loading !== null}
                   className="w-full rounded-full px-6 py-3.5 text-[15px] font-semibold text-white transition hover:brightness-110 active:scale-[0.98] disabled:opacity-50"
                   style={{
                     background: "linear-gradient(135deg, #7C5CFC 0%, #9F7AEA 50%, #6D28D9 100%)",
