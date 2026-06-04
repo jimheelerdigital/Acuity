@@ -7,6 +7,46 @@
 
 ---
 
+## [2026-06-03] — v1.4 GDPR slice: explicit consent capture + policy corrections
+
+- **Requested by:** Jimmy
+- **Committed by:** Claude Code
+- **Commit hash:** 5eeb6db
+
+### In plain English (for Keenan)
+
+We closed the legal gaps a privacy review found in our Privacy Policy and Terms before the UK/EU launch. The big ones: when someone signs up, they now tick an explicit box agreeing that their voice notes (which can mention health, beliefs, etc.) can be transcribed and analysed — instead of us just assuming it. When someone subscribes (web or in-app), they tick a box acknowledging that starting paid features right away affects their 14-day cancel-and-refund right — required by UK/EU consumer law. We added an in-app "Product analytics" switch in Settings → Privacy so users can opt out of usage tracking (it stays ON by default so we don't lose our metrics, and anonymous ad-attribution before sign-up keeps working). We also fixed wording: the data-transfer claims, the security claims (removed "regular audits" we don't run), the breach-notice authority, the minimum age (now consistently 18+), filled the blank "governing law" with Massachusetts, added Google Play billing terms, and corrected which vendors are certified under the EU-US data framework. One item — appointing UK/EU legal representatives — is deliberately deferred until we hit 100+ UK/EU users or €1k/month of UK/EU revenue, and that's written down.
+
+### Technical changes (for Jimmy)
+
+- **DB:** new `ConsentRecord` model in `prisma/schema.prisma` (append-only ledger: consentType, granted, consentText, wordingVersion, policyVersion, platform, appVersion, plan, region; cuid id, no FK cascade so it survives account deletion as a compliance tombstone). New `User.productAnalyticsEnabled Boolean @default(true)`. SQL in `supabase/migrations/2026-06-03_consent_record.sql` (table + deny-all RLS). `prisma/rls-allowlist.txt` updated (`ConsentRecord rls`). RLS coverage check passes.
+- **Web consent infra:** `apps/web/src/lib/consent.ts` (constants + `writeConsentRecord` + `hasRecentGrant`); `POST /api/consent/record` (unified web-cookie/mobile-bearer auth, validates type/platform/text); `/api/stripe/checkout` now returns 409 `ConsentRequired` unless a fresh (≤30 min) `distance_contract_immediate_performance` grant exists; `upgrade-plan-picker.tsx` adds the unticked acknowledgement checkbox + writes the grant before creating the session. Only `/upgrade` calls that route (verified). The trial-based `/api/onboarding/create-checkout` is intentionally untouched (charge deferred → no acknowledgement needed yet).
+- **Analytics opt-out:** `POST/GET /api/user/product-analytics`; `/api/onboarding-events` now drops post-auth events when `User.productAnalyticsEnabled === false` (server-side enforcement). Anonymous pre-signup funnel events (no userId) are never gated.
+- **Mobile (Expo):** `apps/mobile/lib/consent.ts` (`recordConsent` + canonical wording); `step-5-ai-consent.tsx` rewritten to capture explicit Art. 9 consent via an unticked `GradientCheckbox` + ConsentRecord write (fail-soft, keeps the Apple-required AI-processing disclosure + decline path); `subscribe.tsx` adds the 14-day acknowledgement checkbox, blocks purchase until ticked, writes the grant before StoreKit (aborts purchase if the write fails); new `app/privacy.tsx` (Settings → Privacy) with the analytics `Switch` + withdraw-consent flow; `profile.tsx` gets a Privacy row; `_layout.tsx` registers the route with a native header.
+- **Policy docs:** `privacy/page.tsx` §1/§2 (analytics model: web=consent, app=LI opt-out, pre-signup funnel=LI), §4 (SCCs+UK IDTA lead; DPF only on Google/Meta/Apple; Expo+Google FCM added; TIA paragraph), §5 (erasure aligned to retention, direct-complaint right, ID verification), §6 (consent-record retention), §7 (security rewrite), §8 (breach authorities), §10 (18+). `terms/page.tsx` §5 (Google Play billing), §5b (UK Regs cite + proportionate refund + model cancellation form), §8/§9 (consumer carve-outs), §11 (Massachusetts + consumer carve-out). `docs/compliance/`: `subprocessors.md` (DPF corrections, Expo+FCM, TIA note), new `deferred-items.md` + `complaint-procedure.md`.
+- Web + mobile typecheck: all new/edited files clean (pre-existing unrelated tsc errors untouched).
+
+### Manual steps needed
+
+- [ ] **Jim — run `npx prisma db push` from home network BEFORE the web deploy.** The checkout gate and `/api/onboarding-events` read `ConsentRecord` / `User.productAnalyticsEnabled`; deploying web before the push would 500 the paywall + funnel logging. Ordering is mandatory.
+- [ ] Jim — go/no-go on push. ⚠️ HIGH RISK surfaces touched: mobile onboarding (step-5), mobile IAP (subscribe.tsx, currently flag-off), web `/api/stripe/checkout` contract (now 409s without a grant). Push is held per your instruction.
+- [ ] Jim — after web deploy, smoke-test `/upgrade`: checkbox gates the button, consent records, checkout proceeds.
+- [ ] Jim — cut a new EAS build to ship the mobile consent screens (onboarding Art. 9 + Settings → Privacy + IAP checkbox). They do not reach users until a build is promoted to the App Store.
+- [ ] Jim/Keenan — verify each US subprocessor on dataprivacyframework.gov/list and add "+ DPF" back to rows confirmed certified (OpenAI/Stripe/Vercel/PostHog/Sentry currently shown SCCs+UK IDTA only). See subprocessors.md.
+- [ ] Jim — stand up the complaint-procedure intake (tracked queue + ack template) per `docs/compliance/complaint-procedure.md` — UK duty in force 19 Jun 2026.
+- [ ] Both — Art. 27 representative deferred; appoint when 100+ EU/UK users OR €1k/mo EU/UK revenue (see `docs/compliance/deferred-items.md`).
+
+### Notes
+
+- **Requester:** prompt didn't state Keenan/Jimmy; logged as Jimmy (technical compliance slice, Jim's session). Flag if wrong.
+- **Spec vs. repo conventions:** the reviewer's ConsentRecord spec used a `cr_` text PK + `gen_random_uuid`. The actual repo convention is cuid via Prisma + `prisma db push`, so I matched the repo (cuid, deny-all RLS, schema-tracked) to keep `prisma db push` and the RLS CI check working. Append-only behavior is enforced in app code, not SQL.
+- **DPF posture:** the review's core finding was "don't claim DPF you haven't verified." I couldn't verify the live DPF list here, so I led every US row with SCCs+UK IDTA and kept DPF only on Google/Meta/Apple (well-known certified). Anthropic explicitly corrected to NOT certified. The rest are flagged for verification rather than asserted — both the policy page and subprocessors.md were made consistent on this.
+- **Analytics default (Jim's call, Option 1):** post-auth product analytics default ON, opt-out via `User.productAnalyticsEnabled`, enforced server-side; anonymous pre-signup funnel always on under legitimate interest. Policy text describes this exactly (incl. "to opt out of funnel measurement, don't install / use a tracking-blocking browser").
+- **Art. 9 step:** folded into the existing Apple-required AI-disclosure step rather than adding a second back-to-back consent screen. Heading changed to "Before your first entry"; the affirmative is now an unticked checkbox (not a button), satisfying the "explicit, unticked" bar. Decline still routes to delete/retry.
+- The trial-based onboarding checkout path defers the charge, so the 14-day clock (and thus the acknowledgement) doesn't engage until conversion — left for a follow-up if/when that path charges immediately.
+
+---
+
 ## [2026-06-03] — v1.3 onboarding rewrite, biometric lock fix, automated reminders, halo removed
 
 - **Requested by:** Jimmy
