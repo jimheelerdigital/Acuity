@@ -7,6 +7,46 @@
 
 ---
 
+## [2026-06-04] — Fix Meta pixel: CompleteRegistration for all signup paths + Lead cleanup
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** 0d3dc34
+
+### In plain English (for Keenan)
+
+Meta was showing 5 Lead events but only 1 CompleteRegistration, meaning 4 out of 5 signups were invisible to Meta's attribution. The problem was twofold: (1) people who signed up via Google or Apple through the /start funnel were redirected back to a page that had no pixel code, so Meta never knew they signed up, and (2) the server-side backup event only sent the user's email to Meta without any browser fingerprint data (IP, browser type, cookies), so Meta couldn't match it to a real person and silently dropped it. On top of that, the "Lead" event was firing the moment someone saw the signup form — even if they bounced without signing up — which inflated the Lead count and confused Meta's conversion attribution.
+
+Now: CompleteRegistration fires (both browser pixel AND server-side) for 100% of signups regardless of method (email, Google, Apple). Lead fires once, earlier in the funnel at the timeline step, serving as a clean mid-funnel signal that means "this person engaged with the value screens."
+
+### Technical changes (for Jimmy)
+
+- **New endpoint:** `apps/web/src/app/api/capi/complete-registration/route.ts` — POST endpoint that fires server-side CAPI CompleteRegistration with full request context (IP, user agent, Meta cookies). Authenticates via session, guards against users created >5 min ago. Returns `eventId` for browser pixel deduplication.
+- **`apps/web/src/components/meta-pixel-events.tsx`:** `TrackCompleteRegistration` now POSTs to `/api/capi/complete-registration` first, gets back `eventId`, then fires the browser pixel with that same `eventId` for Meta dedup. Previously it only fired browser pixel (no CAPI, no dedup).
+- **`apps/web/src/components/onboarding-funnel.tsx`:**
+  - Renders `<TrackCompleteRegistration />` on the `savings` step — catches OAuth returnees who redirect to `/start?step=savings` after Google/Apple signup.
+  - Added `sessionStorage.setItem("acuity_reg_pixel_fired", "1")` after the inline email/password CompleteRegistration pixel (line 1188) to prevent double-fire with the component.
+  - Moved `fireFbq("Lead")` from `create-account` step VIEW → `timeline` step VIEW. Content name changed from "Funnel Create Account Reached" to "Funnel Timeline Reached".
+- **`apps/web/src/app/auth/signup/page.tsx`:**
+  - Removed 3 Lead events (Google click, Apple click, email submit) — these were noisy duplicates.
+  - Added `sessionStorage.setItem("acuity_reg_pixel_fired", "1")` after inline CompleteRegistration pixel to prevent double-fire with `TrackCompleteRegistration` on the success page.
+- **`apps/web/src/lib/auth.ts`:** Removed CAPI CompleteRegistration from `events.createUser` — it only had the email hash (no IP, UA, cookies) resulting in low Meta match quality. Replaced by the new `/api/capi/complete-registration` endpoint which has full browser request context.
+- **`apps/web/src/components/landing.tsx`:** Removed Lead event from `trackInitiateCheckout()` — Lead now fires only in the /start funnel at the timeline step.
+
+### Manual steps needed
+
+- [ ] Keenan — after deploy, test all 3 signup methods and check Vercel logs for `[meta-capi] CompleteRegistration SUCCESS` for each one
+- [ ] Keenan — verify in Meta Events Manager that CompleteRegistration count matches new signups within 24 hours
+- [ ] Keenan — verify Lead count drops (now fires once per funnel user at timeline, not on every signup form view + button click)
+
+### Notes
+
+- The email/password signup path in `/api/auth/signup` still fires its own CAPI call with full request data (it has direct access to the request object). The new `/api/capi/complete-registration` endpoint primarily serves the OAuth path where the NextAuth callback lacks request context.
+- For OAuth signups, CAPI now fires when the browser component loads after redirect (not during the OAuth callback). This means there's a ~2-3 second delay vs. the old approach, but the data quality is dramatically better (Meta gets IP + UA + cookies for matching).
+- The `acuity_reg_pixel_fired` sessionStorage key is the single dedup mechanism across all paths. Email/password sets it inline; OAuth sets it via `TrackCompleteRegistration`. The CAPI endpoint has its own 5-minute guard as a server-side backstop.
+
+---
+
 ## [2026-06-03] — v1.4 GDPR slice: explicit consent capture + policy corrections
 
 - **Requested by:** Jimmy
