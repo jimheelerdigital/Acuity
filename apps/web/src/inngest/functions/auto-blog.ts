@@ -169,16 +169,19 @@ async function verifyExternalLinks(
 
 function validateBlogPost(
   post: AutoBlogResult,
-  validBlogSlugs: string[] = []
+  validBlogSlugs: string[] = [],
+  searchIntent: string = "informational"
 ): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
   const warnings: string[] = [];
   const textBody = post.body.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
   const wordCount = textBody.split(/\s+/).filter(Boolean).length;
 
-  // Word count: 600-1050 target with 10% tolerance on both ends (540-1155)
-  if (wordCount < 540 || wordCount > 1155) {
-    errors.push(`Word count ${wordCount} outside 540-1155 range (target 600-1050)`);
+  // Comparison posts need more words (feature table + multiple sections)
+  const minWords = searchIntent === "comparison" ? 800 : 540;
+  const maxWords = searchIntent === "comparison" ? 2000 : 1155;
+  if (wordCount < minWords || wordCount > maxWords) {
+    errors.push(`Word count ${wordCount} outside ${minWords}-${maxWords} range`);
   }
 
   // Keyword in H1 — soft warning, not a hard failure
@@ -627,7 +630,7 @@ async function callClaudeForBlog(
     });
 
     const parsed = JSON.parse(extractJson(raw)) as AutoBlogResult;
-    const validation = validateBlogPost(parsed, blogSlugs);
+    const validation = validateBlogPost(parsed, blogSlugs, topic.searchIntent);
 
     if (!validation.valid) {
       console.warn(
@@ -1263,10 +1266,21 @@ goal tracking, pattern detection, weekly reports, Life Matrix, mood scoring.
 
 CTA POLICY:
 ${
-    topic.searchIntent === "informational" ||
-    topic.searchIntent === "problem-solving"
-      ? `INCLUDE a CTA around 2/3 of the way down. Phrase as natural next step. Example: "If you've read this far, Acuity is basically what this article describes — a voice entry that pulls out your tasks and tracks the goals you keep circling. First 100 members get early access. ${spotsLeft} spots left." Never CTA in first 40% of post.`
-      : `NO CTA — this topic is a loose tangent. End with 2-3 internal links to related posts.`
+    topic.searchIntent === "comparison"
+      ? `This is a COMPARISON post. Follow this exact structure:
+1. Short intro (2-3 sentences: who both apps are for)
+2. Feature comparison TABLE in HTML: side-by-side columns comparing voice input, AI extraction, task tracking, mood tracking, pattern detection, weekly reports, pricing, free trial, platforms. Use <table> with clear headers.
+3. Section "Where [Competitor] wins" — be honest and fair. Never trash them. This builds trust.
+4. Section "Where Acuity wins" — highlight voice-first input, 60-second brain dumps, automatic task extraction, weekly narrative report, Life Matrix, pattern detection.
+5. Section "Who should choose [Competitor]" — be genuine about their strengths
+6. Section "Who should choose Acuity" — people who quit journaling because writing felt like work, people who want patterns surfaced automatically
+7. CTA at bottom: "Try Acuity free for 14 days — no card required" with link to /start
+8. FAQ section with 3-4 comparison questions
+IMPORTANT: Do NOT fabricate competitor features or pricing. If unsure, say "check their website for current pricing." Be fair and honest — readers respect balanced comparisons.`
+      : topic.searchIntent === "informational" ||
+        topic.searchIntent === "problem-solving"
+        ? `INCLUDE a CTA around 2/3 of the way down. Phrase as natural next step. Example: "If you've read this far, Acuity is basically what this article describes — a voice entry that pulls out your tasks and tracks the goals you keep circling. First 100 members get early access. ${spotsLeft} spots left." Never CTA in first 40% of post.`
+        : `NO CTA — this topic is a loose tangent. End with 2-3 internal links to related posts.`
   }
 
 Every post (CTA or not) ends with 2-3 internal links to related posts.
