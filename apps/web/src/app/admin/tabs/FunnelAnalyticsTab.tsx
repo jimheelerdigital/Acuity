@@ -2,47 +2,7 @@
 
 import { useState, useEffect } from "react";
 
-type DatePreset = "today" | "yesterday" | "3d" | "7d" | "14d" | "30d" | "all" | "custom";
-
-const DATE_PRESETS: { key: DatePreset; label: string }[] = [
-  { key: "today", label: "Today" },
-  { key: "yesterday", label: "Yesterday" },
-  { key: "3d", label: "3 Days" },
-  { key: "7d", label: "7 Days" },
-  { key: "14d", label: "14 Days" },
-  { key: "30d", label: "30 Days" },
-  { key: "all", label: "All Time" },
-  { key: "custom", label: "Custom" },
-];
-
-function getPresetRange(preset: DatePreset, customStart: string, customEnd: string): { start: string; end: string } {
-  const now = new Date();
-  const endOfDay = new Date(now); endOfDay.setHours(23, 59, 59, 999);
-  const startOfToday = new Date(now); startOfToday.setHours(0, 0, 0, 0);
-
-  switch (preset) {
-    case "today":
-      return { start: startOfToday.toISOString(), end: endOfDay.toISOString() };
-    case "yesterday": {
-      const ys = new Date(startOfToday); ys.setDate(ys.getDate() - 1);
-      return { start: ys.toISOString(), end: startOfToday.toISOString() };
-    }
-    case "3d":
-      return { start: new Date(now.getTime() - 3 * 86400000).toISOString(), end: endOfDay.toISOString() };
-    case "7d":
-      return { start: new Date(now.getTime() - 7 * 86400000).toISOString(), end: endOfDay.toISOString() };
-    case "14d":
-      return { start: new Date(now.getTime() - 14 * 86400000).toISOString(), end: endOfDay.toISOString() };
-    case "30d":
-      return { start: new Date(now.getTime() - 30 * 86400000).toISOString(), end: endOfDay.toISOString() };
-    case "all":
-      return { start: new Date("2026-04-01").toISOString(), end: endOfDay.toISOString() };
-    case "custom":
-      return { start: customStart || startOfToday.toISOString(), end: customEnd || endOfDay.toISOString() };
-  }
-}
-
-export default function FunnelAnalyticsTab({ start: _parentStart, end: _parentEnd }: { start: string; end: string }) {
+export default function FunnelAnalyticsTab({ start, end }: { start: string; end: string }) {
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -50,18 +10,6 @@ export default function FunnelAnalyticsTab({ start: _parentStart, end: _parentEn
   const [sortDir, setSortDir] = useState(-1);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [showPageLoadOnly, setShowPageLoadOnly] = useState(false);
-  const [datePreset, setDatePreset] = useState<DatePreset>("7d");
-  const [customStart, setCustomStart] = useState("");
-  const [customEnd, setCustomEnd] = useState("");
-  // Compute dates once and store them — avoids re-render loop from new Date() on every render
-  const [dateRange, setDateRange] = useState(() => getPresetRange("7d", "", ""));
-
-  const { start, end } = dateRange;
-
-  // Update date range when preset or custom dates change
-  useEffect(() => {
-    setDateRange(getPresetRange(datePreset, customStart, customEnd));
-  }, [datePreset, customStart, customEnd]);
 
   useEffect(() => {
     setLoading(true);
@@ -138,37 +86,8 @@ export default function FunnelAnalyticsTab({ start: _parentStart, end: _parentEn
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
-      {/* Date range selector */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-        <div style={{ display: "flex", gap: 0, background: "rgba(255,255,255,0.05)", borderRadius: 8, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)" }}>
-          {DATE_PRESETS.map(({ key, label }) => (
-            <button
-              key={key}
-              onClick={() => setDatePreset(key)}
-              style={{
-                padding: "6px 14px", fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer", transition: "all 0.15s",
-                background: datePreset === key ? "#7C5CFC" : "transparent",
-                color: datePreset === key ? "#fff" : "rgba(255,255,255,0.4)",
-              }}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        {datePreset === "custom" && (
-          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-            <input type="date" value={customStart.slice(0, 10)} onChange={(e) => setCustomStart(new Date(e.target.value + "T00:00:00").toISOString())}
-              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 6, padding: "5px 10px", fontSize: 12, color: "#fff", colorScheme: "dark" }} />
-            <span style={{ color: "rgba(255,255,255,0.3)", fontSize: 12 }}>to</span>
-            <input type="date" value={customEnd.slice(0, 10)} onChange={(e) => setCustomEnd(new Date(e.target.value + "T23:59:59").toISOString())}
-              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 6, padding: "5px 10px", fontSize: 12, color: "#fff", colorScheme: "dark" }} />
-          </div>
-        )}
-        {data.effectiveStart && (
-          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.2)", marginLeft: "auto" }}>
-            {new Date(start).toLocaleDateString("en-US", { month: "short", day: "numeric" })} — {new Date(end).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-          </span>
-        )}
+      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.25)", textAlign: "right" }}>
+        {new Date(start).toLocaleDateString("en-US", { month: "short", day: "numeric" })} — {new Date(end).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
       </div>
 
       {/* Account → Paid summary */}
