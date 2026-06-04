@@ -11,6 +11,7 @@ type ListUser = {
   signupUtmSource: string | null;
   signupUtmMedium: string | null;
   signupLandingPath: string | null;
+  signupMethod: string | null;
   subscriptionStatus: string;
   planStatus: string;
   platform: "iOS" | "Web" | "Both" | "None";
@@ -234,6 +235,7 @@ export default function UsersTab() {
               <tr className="text-left text-[11px] uppercase tracking-wider text-white/40">
                 <th className="px-3 py-3">Email</th>
                 <th className="px-3 py-3">Source</th>
+                <th className="px-3 py-3">Method</th>
                 <SortHeader label="Signup" field="createdAt" current={sortField} dir={sortDir} onClick={toggleSort} />
                 <th className="px-3 py-3">Plan</th>
                 <th className="px-3 py-3">Platform</th>
@@ -262,6 +264,19 @@ export default function UsersTab() {
                   {/* Source */}
                   <td className="px-3 py-2.5 text-[11px] text-white/50">
                     {u.signupUtmSource ? `${u.signupUtmSource}${u.signupUtmMedium ? ` / ${u.signupUtmMedium}` : ""}` : "direct"}
+                  </td>
+
+                  {/* Signup Method */}
+                  <td className="px-3 py-2.5 text-[11px]">
+                    {u.signupMethod === "email" ? (
+                      <span className="text-white/60">Email</span>
+                    ) : u.signupMethod === "google" ? (
+                      <span className="text-blue-300">Google</span>
+                    ) : u.signupMethod === "apple" ? (
+                      <span className="text-white/80">Apple</span>
+                    ) : (
+                      <span className="text-white/25">Unknown</span>
+                    )}
                   </td>
 
                   {/* Signup */}

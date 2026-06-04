@@ -218,6 +218,7 @@ export async function GET(req: NextRequest) {
         signupUtmSource: true,
         signupUtmMedium: true,
         signupLandingPath: true,
+        signupMethod: true,
         currentStreak: true,
         lastRecordingAt: true,
         _count: {
@@ -257,6 +258,7 @@ export async function GET(req: NextRequest) {
         signupUtmSource: true,
         signupUtmMedium: true,
         signupLandingPath: true,
+        signupMethod: true,
         currentStreak: true,
         lastRecordingAt: true,
         _count: {
@@ -317,6 +319,7 @@ export async function GET(req: NextRequest) {
       signupUtmSource: u.signupUtmSource,
       signupUtmMedium: u.signupUtmMedium,
       signupLandingPath: u.signupLandingPath,
+      signupMethod: (u as Record<string, unknown>).signupMethod as string | null ?? null,
       subscriptionStatus: u.subscriptionStatus,
       planStatus,
       platform,
