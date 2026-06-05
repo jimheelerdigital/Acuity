@@ -1510,12 +1510,14 @@ function DownloadScreen({ track, paymentConfirmed, selectedPlan }: {
           Google Play — Coming soon!
         </button>
 
-        <p className="mt-3 text-xs text-zinc-400">
-          Have an Android?{" "}
-          <a href="/auth/signin" className="text-[#7C5CFC] font-medium underline hover:text-[#6B4FE0] transition">
-            Use the web app &rarr;
-          </a>
-        </p>
+        <a
+          href="/auth/signin"
+          onClick={() => track("funnel_web_app_clicked")}
+          className="block w-full mt-3 rounded-full border-2 border-[#7C5CFC] px-8 py-3 text-[14px] font-semibold text-[#7C5CFC] text-center transition hover:bg-[#7C5CFC]/5 active:scale-[0.98]"
+        >
+          Use the Web App
+          <span className="block text-[11px] font-normal text-zinc-400 mt-0.5">Works on any device</span>
+        </a>
 
         {/* QR code — desktop only */}
         <div className="mt-8 hidden sm:block">
