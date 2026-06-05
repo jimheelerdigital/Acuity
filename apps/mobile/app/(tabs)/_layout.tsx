@@ -7,9 +7,9 @@ import { Animated, Pressable, Text, View } from "react-native";
 import { AttachStep } from "react-native-spotlight-tour";
 
 import { TOUR_STEP_INDEX } from "@/components/tour/steps";
+import { TourTarget } from "@/components/tour/TourTarget";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { TourTarget } from "@/components/tour/TourTarget";
 
 // v1.3.x first-login tour step copy. Order numbers match the
 // orchestrator's expected sequence (1: mic → 2: dashboard → 3-6:
@@ -156,22 +156,20 @@ function CustomTabBar({
             focusedName === tabKey;
           const meta = TAB_META[tabKey];
           const tint = active ? activeTint : inactiveTint;
-          // Step lookup — center slot uses the mic step (its label
-          // says "Home" but the highlighted target IS the mic). The
-          // visible mic overlay below is decorative; we anchor the
-          // step on this slot so the cutout aligns with the row.
+          // Tour anchor: steps 3-6 spotlight the bottom-tab item for that
+          // section (the tour navigates to the page, then highlights its
+          // tab so users learn where it lives). The center/mic slot has
+          // its own AttachStep on the raised button below.
           const tourIndex =
-            tabKey === "record-placeholder"
-              ? null // mic attaches its step on the overlay button
-              : tabKey === "entries"
-                ? TOUR_STEP_INDEX.entries
-                : tabKey === "tasks"
-                  ? TOUR_STEP_INDEX.tasks
-                  : tabKey === "insights"
-                    ? TOUR_STEP_INDEX.insights
-                    : tabKey === "goals"
-                      ? TOUR_STEP_INDEX.goals
-                      : null;
+            tabKey === "entries"
+              ? TOUR_STEP_INDEX.entries
+              : tabKey === "tasks"
+                ? TOUR_STEP_INDEX.tasks
+                : tabKey === "insights"
+                  ? TOUR_STEP_INDEX.insights
+                  : tabKey === "goals"
+                    ? TOUR_STEP_INDEX.goals
+                    : null;
           const slotJsx = (
             <Pressable
               key={tabKey}
@@ -233,29 +231,52 @@ function CustomTabBar({
             </Pressable>
           );
           if (tourIndex == null) return slotJsx;
+          // AttachStep adds its own wrapper View (default alignSelf:
+          // flex-start, no flex) — without fill + flex:1 the tab slots
+          // collapse and pack left ("GoalsTasks"). fill = stretch height;
+          // flex:1 = equal width in the row.
           return (
-            <AttachStep key={tabKey} index={tourIndex}>
+            <AttachStep key={tabKey} index={tourIndex} fill style={{ flex: 1 }}>
               <TourTarget style={{ flex: 1 }}>{slotJsx}</TourTarget>
             </AttachStep>
           );
         })}
       </View>
 
-      {/* Raised mic button overlay. Positioned absolutely so it has
-          zero influence on the tab row's flex layout. `left: 50%` +
-          `marginLeft: -32` horizontally centers a 64pt-wide circle.
-          `top: -26` raises it 26pt above the tab bar's top edge.
-          v1.3.x: wrapped in CopilotStep so the first-login tour
-          starts on the mic — the primary action of the app.
-          RecordOverlayButton owns its own absolute positioning, so
-          CopilotStep wraps it directly without an extra positioned
-          TourTarget. The child IS the RecordOverlayButton's outer
-          View — copilot's cloneElement attaches its ref to that. */}
-      <AttachStep index={TOUR_STEP_INDEX.mic}>
+      {/* Raised mic button overlay. The ABSOLUTE positioning now lives
+          on the AttachStep wrapper (below), not RecordOverlayButton —
+          spotlight measures its own wrapper via measureInWindow, so the
+          positioned, sized wrapper is what gets the spotlight cutout.
+          (Build-68 bug: AttachStep wrapped the absolutely-positioned
+          button, so the in-flow 0×0 wrapper measured the wrong rect and
+          the mic cutout landed in the wrong place.) RecordOverlayButton
+          now renders a relative 64×64 button that fills the wrapper. */}
+      <AttachStep
+        index={TOUR_STEP_INDEX.mic}
+        style={{
+          position: "absolute",
+          left: "50%",
+          top: -36,
+          marginLeft: -32,
+          width: 64,
+          height: 64,
+          zIndex: 10,
+        }}
+      >
         <RecordOverlayButton
           tokens={tokens}
           active={isOnHome}
           onPress={() => router.navigate("/(tabs)")}
+          onLongPress={() => {
+            // Product change (Option A): long-press starts a new entry
+            // directly (skips Home), with a heavy haptic to signal it
+            // does more than navigate. Single tap keeps the old behavior
+            // (navigate to Home).
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(
+              () => {}
+            );
+            router.push("/record");
+          }}
         />
       </AttachStep>
     </View>
@@ -268,8 +289,9 @@ const RecordOverlayButton = forwardRef<
     tokens: AcuityTokens;
     active: boolean;
     onPress: () => void;
+    onLongPress?: () => void;
   }
->(function RecordOverlayButton({ tokens, active, onPress }, ref) {
+>(function RecordOverlayButton({ tokens, active, onPress, onLongPress }, ref) {
   const [pressed, setPressed] = useState(false);
   const targetColorValue = pressed || active ? 1 : 0;
   const colorAnim = useRef(new Animated.Value(active ? 1 : 0)).current;
@@ -305,13 +327,10 @@ const RecordOverlayButton = forwardRef<
       collapsable={false}
       pointerEvents="box-none"
       style={{
-        position: "absolute",
-        left: "50%",
-        top: -36,
-        marginLeft: -32,
+        // Positioning moved to the AttachStep wrapper so the spotlight
+        // measures the right rect; this View just fills the 64×64 wrapper.
         width: 64,
         height: 64,
-        zIndex: 10,
       }}
     >
       <Animated.View
@@ -333,8 +352,9 @@ const RecordOverlayButton = forwardRef<
       >
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Open Home to record an entry"
+          accessibilityLabel="Record an entry. Long-press to start now, or tap to open Home."
           onPress={onPress}
+          onLongPress={onLongPress}
           onPressIn={() => setPressed(true)}
           onPressOut={() => setPressed(false)}
           hitSlop={12}

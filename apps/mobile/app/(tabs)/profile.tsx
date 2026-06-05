@@ -1,8 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Linking from "expo-linking";
-import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   Platform,
@@ -543,19 +543,26 @@ function MenuItem({
 function AchievementsRow() {
   const router = useRouter();
   const [totals, setTotals] = useState<CatalogResponse["totals"] | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    fetchCatalog()
-      .then((res) => {
-        if (!cancelled) setTotals(res.totals);
-      })
-      .catch(() => {
-        /* sublabel just shows the generic copy */
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  // Refetch on FOCUS, not just mount — the Settings tab is kept alive, so a
+  // mount-only fetch showed a stale "0 of 27" after the user earned
+  // guided_start mid-session. Focus refetch picks up new achievements when
+  // the user returns to Settings. (fetchCatalog is uncached, so this is
+  // always fresh.)
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      fetchCatalog()
+        .then((res) => {
+          if (!cancelled) setTotals(res.totals);
+        })
+        .catch(() => {
+          /* sublabel just shows the generic copy */
+        });
+      return () => {
+        cancelled = true;
+      };
+    }, [])
+  );
   const sublabel = totals
     ? `${totals.earned} of ${totals.total} earned · ${totals.points} pts`
     : "Badges for streaks, depth, and special moments";

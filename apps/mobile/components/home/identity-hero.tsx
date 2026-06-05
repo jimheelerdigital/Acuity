@@ -1,12 +1,12 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Pressable, Text, View } from "react-native";
 
-import { AttachStep } from "react-native-spotlight-tour";
 
-import { TOUR_STEP_INDEX } from "@/components/tour/steps";
+import { AttachStep } from "react-native-spotlight-tour";
 
 import { Avatar, TierPill } from "@/components/acuity";
 import { TourTarget } from "@/components/tour/TourTarget";
+import { TOUR_STEP_INDEX } from "@/components/tour/steps";
 import { useTheme } from "@/contexts/theme-context";
 
 /**
@@ -27,7 +27,7 @@ import { useTheme } from "@/contexts/theme-context";
 interface IdentityHeroProps {
   initials: string;
   greeting: string;
-  firstName: string;
+  firstName: string | null;
   /** Optional — derives a tier name from streak count if provided. */
   currentStreak?: number;
   /** Called when user taps the settings cog. */
@@ -75,33 +75,34 @@ export function IdentityHero({
             color: tokens.textTer,
           }}
         >
-          {greeting},
+          {firstName ? `${greeting},` : greeting}
         </Text>
-        <Text
-          numberOfLines={1}
-          adjustsFontSizeToFit
-          minimumFontScale={0.75}
-          style={{
-            fontFamily: tokens.fontDisplay,
-            fontSize: 22,
-            fontWeight: "700",
-            letterSpacing: -0.4,
-            lineHeight: 26,
-            color: tokens.text,
-          }}
-        >
-          {firstName}.
-        </Text>
+        {firstName && (
+          <Text
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.75}
+            style={{
+              fontFamily: tokens.fontDisplay,
+              fontSize: 22,
+              fontWeight: "700",
+              letterSpacing: -0.4,
+              lineHeight: 26,
+              color: tokens.text,
+            }}
+          >
+            {firstName}.
+          </Text>
+        )}
         <View style={{ marginTop: 6 }}>
           <TierPill level={tier.level} name={tier.name} />
         </View>
       </View>
 
       {onSettingsPress && (
-        // v1.3.x first-login tour, step 7. Highlights the path into
-        // Profile so users find themes, reminders, security, and the
-        // "Replay product tour" row. CopilotStep wraps via TourTarget
-        // so the ref attaches to a measurable native View.
+        // Settings gear → opens Profile. Tour step 7 spotlights THIS gear
+        // (Settings has no bottom tab), so the tour returns home for the
+        // final step and anchors here.
         <AttachStep index={TOUR_STEP_INDEX.settings}>
           <TourTarget>
             <Pressable

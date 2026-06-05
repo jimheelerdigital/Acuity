@@ -166,17 +166,19 @@ export default function DashboardTab() {
     if (entries === null) load();
   }, [entries, load]);
 
-  const firstName = user?.name?.split(" ")[0] ?? "there";
+  // null when the user has no name (the shortened onboarding doesn't
+  // capture one) — the greeting drops the "there" placeholder + comma.
+  const firstName = user?.name?.split(" ")[0] ?? null;
   const initials = useMemo(() => {
-    const name = user?.name ?? firstName;
-    return name
-      .split(" ")
+    const src = user?.name ?? user?.email ?? "";
+    return src
+      .split(/[\s@.]+/)
       .map((n) => n[0])
       .filter(Boolean)
       .join("")
       .slice(0, 2)
       .toUpperCase();
-  }, [user?.name, firstName]);
+  }, [user?.name, user?.email]);
   const greeting = useMemo(() => greetingFor(new Date()), []);
 
   // Derive the 7-day entry counts (oldest → newest) for the sparkbar.
@@ -262,7 +264,7 @@ export default function DashboardTab() {
         {/* Identity hero — avatar + greeting + name + tier pill.
             Tour step 2 (dashboard): attached by index; the tour explains
             the dashboard right after the mic step. */}
-        <AttachStep index={TOUR_STEP_INDEX.dashboard}>
+        <AttachStep index={TOUR_STEP_INDEX.dashboard} fill>
           <TourTarget>
             <IdentityHero
               initials={initials}

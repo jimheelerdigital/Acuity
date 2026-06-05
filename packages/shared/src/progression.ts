@@ -32,7 +32,7 @@ export const PROGRESSION_ITEMS: ProgressionItem[] = [
   {
     key: "day1",
     unlockAfterDays: 0,
-    title: "Record your first brain dump",
+    title: "Record your first debrief",
     description: "Tap the mic. Talk for sixty seconds.",
     href: "/record",
     autoComplete: "entry-exists",

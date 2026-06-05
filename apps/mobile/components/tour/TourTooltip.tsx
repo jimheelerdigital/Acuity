@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import * as Sentry from "@sentry/react-native";
 import { type RenderProps } from "react-native-spotlight-tour";
 import { Pressable, Text, View } from "react-native";
@@ -123,15 +124,7 @@ export function TourTooltip(
                 opacity: pressed ? 0.7 : 1,
               })}
             >
-              <Text
-                style={{
-                  fontFamily: "Manrope_500Medium",
-                  fontSize: 13,
-                  color: tokens.textSec,
-                }}
-              >
-                Back
-              </Text>
+              <Ionicons name="chevron-back" size={18} color={tokens.textSec} />
             </Pressable>
           )}
 
@@ -147,16 +140,20 @@ export function TourTooltip(
               opacity: pressed ? 0.85 : 1,
             })}
           >
-            <Text
-              style={{
-                fontFamily: "Manrope_700Bold",
-                fontSize: 13,
-                color: "#FFFFFF",
-                letterSpacing: -0.1,
-              }}
-            >
-              {isLast ? "Get started" : "Next"}
-            </Text>
+            {isLast ? (
+              <Text
+                style={{
+                  fontFamily: "Manrope_700Bold",
+                  fontSize: 13,
+                  color: "#FFFFFF",
+                  letterSpacing: -0.1,
+                }}
+              >
+                Get started
+              </Text>
+            ) : (
+              <Ionicons name="chevron-forward" size={18} color="#FFFFFF" />
+            )}
           </Pressable>
         </View>
       </View>

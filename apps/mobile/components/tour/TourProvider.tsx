@@ -1,11 +1,13 @@
-import { useCallback, useMemo, type ReactNode } from "react";
+import { useCallback, useMemo, useRef, type ReactNode } from "react";
 import {
   SpotlightTourProvider,
   type TourStep,
   type TourState,
 } from "react-native-spotlight-tour";
+import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+import { requestAchievementCheck } from "@/lib/achievement-bus";
 import { useAuth } from "@/contexts/auth-context";
 import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
@@ -20,6 +22,32 @@ import {
 // Matches use-tour-trigger's ASYNC_STORAGE_KEY — written here on stop so
 // a network failure can't re-fire the tour locally on the next launch.
 const TOUR_COMPLETED_MARKER_KEY = "acuity.tour.completed";
+
+// The home route the tour opens on (mic + dashboard steps live here).
+const HOME_PATH = "/(tabs)" as const;
+
+// Each step now lives on its OWN screen and spotlights a real element
+// label. The per-step `before` navigates to this route so the user sees
+// the real page; the spotlight then anchors on that section's BOTTOM TAB
+// BAR item (always mounted + measurable), teaching where the tab lives.
+// Settings has no bottom tab, so step 7 returns HOME and spotlights the
+// gear in the home header.
+// Indexed by TOUR_STEP_INDEX order: mic, dashboard, entries, tasks,
+// insights, goals, settings.
+const TOUR_STEP_PATHS: string[] = [
+  HOME_PATH, // mic
+  HOME_PATH, // dashboard
+  "/(tabs)/entries",
+  "/(tabs)/tasks",
+  "/(tabs)/insights",
+  "/(tabs)/goals",
+  HOME_PATH, // settings → home (spotlight the header gear, not a tab)
+];
+
+// How long to wait after switching tabs before the spotlight measures the
+// target — lets the tab become visible + lay out. Tune in sim if a cutout
+// lands before its screen settles.
+const NAV_SETTLE_MS = 450;
 
 /**
  * Wraps the app's navigator with react-native-spotlight-tour, replacing
@@ -41,6 +69,11 @@ const TOUR_COMPLETED_MARKER_KEY = "acuity.tour.completed";
 export function TourProvider({ children }: { children: ReactNode }) {
   const { tokens } = useTheme();
   const { refresh } = useAuth();
+  const router = useRouter();
+  // The route the tour currently has on-screen. Seeded to home (the tour
+  // opens there); used to skip a redundant navigate+settle when the next
+  // step is on the same screen (mic → dashboard are both home).
+  const lastPathRef = useRef<string>(HOME_PATH);
 
   const steps = useMemo<TourStep[]>(
     () =>
@@ -51,22 +84,44 @@ export function TourProvider({ children }: { children: ReactNode }) {
           i === TOUR_STEP_INDEX.mic
             ? { type: "circle", padding: 10 }
             : { type: "rectangle", padding: 8 },
-        before: () => {
+        // Targets in the BOTTOM tab bar (mic + the four tab items) get the
+        // tooltip ABOVE ("top"); targets in the home header (dashboard
+        // hero, settings gear) get it BELOW ("bottom"). Keeps the tooltip
+        // fully on-screen (build-68: step 7 was clipped off the bottom).
+        placement:
+          i === TOUR_STEP_INDEX.dashboard || i === TOUR_STEP_INDEX.settings
+            ? "bottom"
+            : "top",
+        // Navigate to this step's screen before it renders, so the spotlight
+        // measures a visible target. Awaited by spotlight, so the step waits
+        // for the tab to settle. Same-screen transitions skip the delay.
+        before: async () => {
           void trackOnboardingEvent("tour_step_viewed", {
             value: String(i + 1),
           });
+          const path = TOUR_STEP_PATHS[i] ?? HOME_PATH;
+          if (path !== lastPathRef.current) {
+            lastPathRef.current = path;
+            router.navigate(path as never);
+            await new Promise((r) => setTimeout(r, NAV_SETTLE_MS));
+          }
         },
         render: (props) => (
           <TourTooltip {...props} content={content} total={TOUR_TOTAL_STEPS} />
         ),
       })),
-    []
+    [router]
   );
 
   const handleStop = useCallback(
     (state: TourState) => {
       // Reaching the last step = completion; stopping earlier = skip.
       const finished = state.isLast;
+      // The tour now walks across tabs (ending on /profile). Return the
+      // user home when it ends (finish or skip), and reset the path ref
+      // so a later replay starts cleanly from home.
+      router.navigate(HOME_PATH as never);
+      lastPathRef.current = HOME_PATH;
       void trackOnboardingEvent(
         finished ? "tour_completed" : "tour_skipped",
         { value: String(state.index + 1) }
@@ -77,15 +132,24 @@ export function TourProvider({ children }: { children: ReactNode }) {
         new Date().toISOString()
       ).catch(() => {});
       // Server persistence — fire-and-forget; refresh() pulls the new
-      // tourCompletedAt afterward.
+      // tourCompletedAt afterward. `completed` gates the guided_start
+      // achievement server-side: only a genuine finish (last step)
+      // awards it; a skip stamps tourCompletedAt without the achievement.
       void api
-        .post("/api/user/tour-complete", {})
+        .post("/api/user/tour-complete", { completed: finished })
         .catch(() => {})
         .finally(() => {
           void refresh();
+          // On genuine completion the server granted guided_start
+          // (shownToUser=false). The celebration queue only re-polls on
+          // mount/foreground/bus-ping — none of which fire here (user is
+          // already on home, app foreground) — so ping the bus to make
+          // the celebration modal appear. (Was: achievement granted but
+          // modal never showed.)
+          if (finished) requestAchievementCheck();
         });
     },
-    [refresh]
+    [refresh, router]
   );
 
   return (
@@ -94,7 +158,11 @@ export function TourProvider({ children }: { children: ReactNode }) {
       overlayColor="rgb(8, 8, 16)"
       overlayOpacity={0.78}
       motion="fade"
-      onBackdropPress="stop"
+      // Tapping the overlay (incl. the highlighted target area) advances
+      // to the next step rather than doing nothing — so a tap on the
+      // spotlit element feels responsive. Explicit Skip (in the tooltip)
+      // is the exit. On the last step, "continue" stops the tour.
+      onBackdropPress="continue"
       arrow={{ color: tokens.cardBg }}
       shape={{ type: "rectangle", padding: 8 }}
       onStop={handleStop}

@@ -7,6 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AppState, type AppStateStatus } from "react-native";
 
 import { api } from "@/lib/api";
@@ -309,6 +310,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await clearSession();
     tokenBridge.set(null);
     setUser(null);
+    // Clear device-local product-tour markers so a DIFFERENT user
+    // signing in on the same device gets a clean first-login auto-fire.
+    // The completion marker is device-scoped (not user-scoped); it was
+    // set by the prior user's tour onStop and would otherwise block the
+    // next fresh signup's auto-fire (the tour appeared to never fire).
+    // Literal keys (not imported) to avoid a circular dep with
+    // use-tour-trigger, which imports this context.
+    await AsyncStorage.multiRemove([
+      "acuity.tour.completed",
+      "acuity.tour.forceReplay",
+    ]).catch(() => {});
     // Reset IAP recovery debounce so a subsequent sign-in (possibly
     // by a different user on the same device) gets a fresh recovery
     // pass. Without this, the same-session sign-out → sign-in cycle
