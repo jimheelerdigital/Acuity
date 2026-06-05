@@ -7,6 +7,37 @@
 
 ---
 
+## [2026-06-05] — Build 68: tour engine swap (copilot→spotlight-tour) + onboarding state fixes
+
+- **Requested by:** Jimmy
+- **Committed by:** Claude Code
+- **Commit hash:** 3898ff2, 67dc2bd, c6d53c0, eb0df14
+
+### In plain English (for Keenan)
+
+The first-login product tour has been silently broken for ~30 days — it never appeared for anyone (99 users) because the library we used can't draw its highlight bubbles on the newer phone-rendering engine Apple/Expo now default to. We confirmed it with logging in build 67 (the tour tried to start 244 times and drew zero bubbles), then swapped in a replacement library that works on the new engine, keeping the exact same 7-step walkthrough and copy. Also fixed two onboarding glitches: new users briefly bouncing back to "step 4" right after finishing onboarding, and a gap where some signups had no onboarding record at all. v1.3 will NOT be submitted to the App Store until build 68 confirms (via logging) that the tour actually renders for real users.
+
+### Technical changes (for Jimmy)
+
+- **Tour migration (eb0df14 + c6d53c0):** replaced `react-native-copilot` (legacy `findNodeHandle` measurement → null under Fabric/New Arch) with `react-native-spotlight-tour@4` (`measureInWindow`, Fabric-safe). New `components/tour/steps.ts` (TOUR_STEP_INDEX + 7-step content, copy verbatim). `TourProvider`: `SpotlightTourProvider` + steps[]; per-step `before` → `tour_step_viewed`; `onStop` → `tour_completed/skipped` + POST `/api/user/tour-complete` + refresh. `TourTooltip`: spotlight `RenderProps` + content props (was `useCopilot`); keeps `tour.tooltip.rendered` Sentry instrument. `use-tour-trigger`: `useSpotlightTour().start()` + gates + focus-replay + `tour.start.called` instrument. `CopilotStep`→`AttachStep index=` on all 7 targets in `(tabs)/_layout`, `(tabs)/index`, `home/identity-hero`. copilot removed from source (dep left installed, unused). 0 new tsc errors.
+- **BUG A (3898ff2):** `onboarding/shell.tsx complete()` chained `refresh()` off `/complete`'s `.finally()` (was parallel) — stale `/me` no longer overwrites the optimistic flip → no glitch back to step 4.
+- **BUG B forward-fix (67dc2bd):** `bootstrapNewUser` upserts `UserOnboarding {currentStep:0, completedAt:null}` at signup. New signups only.
+
+### Manual steps needed
+
+- [ ] Jim — build 68 cut + auto-submitted; on TestFlight, trigger the tour (fresh signup and/or Settings → Replay) and confirm `tour.tooltip.rendered` appears in Sentry. **Gate for v1.3 App Store submission.**
+- [ ] Jim — BUG B existing-NULL backfill: **validated as NOT needed** (41 NULL rows, 0 recordings, 1 ever opened the app; NULL and currentStep:0 route identically; backfill would disable the 30-day auto-skip). Skipped. No DB op.
+- [ ] No `prisma db push` — no schema changes (UserOnboarding row created via existing columns).
+
+### Notes
+
+- Root cause proven, not assumed: build-67 Sentry showed `tour.start.called` 244 / `tour.tooltip.rendered` 0 across 14 days.
+- spotlight-tour validated at code level: peers only on `react-native-svg` (installed), measures via `measureInWindow`. First-build Sentry signal still gates the release.
+- `react-native-copilot` dep left installed (unused) — safe to remove in a later cleanup.
+- Backfill safety audit (5 questions) done against live Acuity DB read-only via Supabase MCP — see prior session notes; conclusion = skip.
+
+---
+
 ## [2026-06-05] — Fix "Continue in the Web App" to skip login and onboarding, land on /home
 
 - **Requested by:** Keenan
