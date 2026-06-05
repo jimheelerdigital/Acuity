@@ -1,48 +1,37 @@
 import * as Sentry from "@sentry/react-native";
+import { type RenderProps } from "react-native-spotlight-tour";
 import { Pressable, Text, View } from "react-native";
-import { useCopilot } from "react-native-copilot";
 
 import { useTheme } from "@/contexts/theme-context";
+import { type TourStepContent } from "./steps";
 
-// Build-67 instrumentation: prove whether copilot ever reaches the
-// tooltip render path. If "tour.start.called" appears in Sentry but
-// this does NOT, copilot started but couldn't position/measure a step
-// (the New-Architecture / Fabric incompatibility suspect). Fires once.
+// Build-67/68 instrumentation: prove whether the tour ever reaches the
+// tooltip render path. If "tour.start.called" appears in Sentry but this
+// does NOT, the overlay started but couldn't position/measure a step.
+// With copilot (legacy findNodeHandle) this never fired under Fabric;
+// with spotlight-tour (measureInWindow) it should. Fires once per launch.
 let tooltipRenderLogged = false;
 
 /**
  * Tooltip card rendered above the spotlight cutout. Matches Acuity's
- * design language:
- *   - tokens.cardBg background, 14pt corner radius (parity with
- *     Security card, ConnectPlaceholderCard, etc.)
- *   - GeistMono counter "1/7" at top in textTer
- *   - Manrope_700Bold title, Manrope_400Regular body
- *   - Coral primary CTA for Next / Get started (final)
- *   - Ghost button for Skip + Previous
+ * design language (tokens.cardBg, 14pt radius, GeistMono counter,
+ * Manrope title/body, coral primary CTA, ghost Skip/Back).
  *
- * react-native-copilot calls this component with its `labels` prop
- * but no other props. The walkthrough state (current step, position,
- * isLastStep) is read via the useCopilot() hook, same as DefaultUI
- * does internally.
+ * react-native-spotlight-tour calls each step's `render` with
+ * {@link RenderProps}; TourProvider also passes the step `content` +
+ * `total` count. (Copilot read this via useCopilot(); spotlight passes
+ * it as props instead.)
  */
-export function TourTooltip() {
+export function TourTooltip(
+  props: RenderProps & { content: TourStepContent; total: number }
+) {
   if (!tooltipRenderLogged) {
     tooltipRenderLogged = true;
     Sentry.captureMessage("tour.tooltip.rendered", "info");
   }
   const { tokens } = useTheme();
-  const {
-    currentStep,
-    currentStepNumber,
-    totalStepsNumber,
-    isFirstStep,
-    isLastStep,
-    goToNext,
-    goToPrev,
-    stop,
-  } = useCopilot();
-
-  if (!currentStep) return null;
+  const { current, isFirst, isLast, next, previous, stop, content, total } =
+    props;
 
   return (
     <View
@@ -52,9 +41,7 @@ export function TourTooltip() {
         borderWidth: 1,
         borderColor: tokens.line,
         padding: 16,
-        // copilot positions this container with its own inline styles;
-        // the only thing we need to do is paint a card that looks right
-        // and content that reads well.
+        maxWidth: 320,
       }}
     >
       <Text
@@ -66,7 +53,7 @@ export function TourTooltip() {
           marginBottom: 8,
         }}
       >
-        {currentStepNumber}/{totalStepsNumber}
+        {current + 1}/{total}
       </Text>
 
       <Text
@@ -78,7 +65,7 @@ export function TourTooltip() {
           letterSpacing: -0.2,
         }}
       >
-        {currentStep.name}
+        {content.title}
       </Text>
 
       <Text
@@ -90,7 +77,7 @@ export function TourTooltip() {
           marginBottom: 14,
         }}
       >
-        {currentStep.text}
+        {content.text}
       </Text>
 
       <View
@@ -101,12 +88,11 @@ export function TourTooltip() {
           gap: 8,
         }}
       >
-        {/* Skip lives on the LEFT, dimmer than Previous, so users can
-            always escape regardless of step. Calling stop() routes
-            through copilotEvents.emit("stop") which our orchestrator
-            handles as the skip path (writes tourCompletedAt either way). */}
+        {/* Skip on the LEFT, dimmer, so users can always escape. stop()
+            triggers the provider's onStop, which our orchestrator treats
+            as the skip path (writes tourCompletedAt either way). */}
         <Pressable
-          onPress={() => void stop()}
+          onPress={() => stop()}
           accessibilityRole="button"
           accessibilityLabel="Skip tour"
           hitSlop={6}
@@ -123,9 +109,9 @@ export function TourTooltip() {
         </Pressable>
 
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-          {!isFirstStep && (
+          {!isFirst && (
             <Pressable
-              onPress={() => void goToPrev()}
+              onPress={() => previous()}
               accessibilityRole="button"
               accessibilityLabel="Previous step"
               style={({ pressed }) => ({
@@ -150,9 +136,9 @@ export function TourTooltip() {
           )}
 
           <Pressable
-            onPress={() => (isLastStep ? void stop() : void goToNext())}
+            onPress={() => (isLast ? stop() : next())}
             accessibilityRole="button"
-            accessibilityLabel={isLastStep ? "Finish tour" : "Next step"}
+            accessibilityLabel={isLast ? "Finish tour" : "Next step"}
             style={({ pressed }) => ({
               paddingHorizontal: 18,
               paddingVertical: 9,
@@ -169,7 +155,7 @@ export function TourTooltip() {
                 letterSpacing: -0.1,
               }}
             >
-              {isLastStep ? "Get started" : "Next"}
+              {isLast ? "Get started" : "Next"}
             </Text>
           </Pressable>
         </View>

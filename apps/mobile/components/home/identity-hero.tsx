@@ -1,7 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Pressable, Text, View } from "react-native";
 
-import { CopilotStep } from "react-native-copilot";
+import { AttachStep } from "react-native-spotlight-tour";
+
+import { TOUR_STEP_INDEX } from "@/components/tour/steps";
 
 import { Avatar, TierPill } from "@/components/acuity";
 import { TourTarget } from "@/components/tour/TourTarget";
@@ -100,11 +102,7 @@ export function IdentityHero({
         // Profile so users find themes, reminders, security, and the
         // "Replay product tour" row. CopilotStep wraps via TourTarget
         // so the ref attaches to a measurable native View.
-        <CopilotStep
-          name="settings"
-          order={7}
-          text="Tap the gear icon to open Profile — themes, reminders, security, and replay-tour all live there."
-        >
+        <AttachStep index={TOUR_STEP_INDEX.settings}>
           <TourTarget>
             <Pressable
               accessibilityRole="button"
@@ -129,7 +127,7 @@ export function IdentityHero({
               />
             </Pressable>
           </TourTarget>
-        </CopilotStep>
+        </AttachStep>
       )}
     </View>
   );

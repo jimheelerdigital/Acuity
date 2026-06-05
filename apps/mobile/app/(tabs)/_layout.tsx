@@ -4,7 +4,9 @@ import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { forwardRef, useEffect, useRef, useState } from "react";
 import * as Haptics from "expo-haptics";
 import { Animated, Pressable, Text, View } from "react-native";
-import { CopilotStep } from "react-native-copilot";
+import { AttachStep } from "react-native-spotlight-tour";
+
+import { TOUR_STEP_INDEX } from "@/components/tour/steps";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { TourTarget } from "@/components/tour/TourTarget";
@@ -13,33 +15,8 @@ import { TourTarget } from "@/components/tour/TourTarget";
 // orchestrator's expected sequence (1: mic → 2: dashboard → 3-6:
 // tabs → 7: avatar/settings). Centralizing here keeps the wrapping
 // JSX clean.
-const TOUR_STEPS = {
-  mic: {
-    order: 1,
-    name: "mic",
-    text: "Tap here anytime to capture what's on your mind. Sixty seconds is enough.",
-  },
-  entries: {
-    order: 3,
-    name: "entries",
-    text: "Every voice note lives here, processed into transcript + themes + mood.",
-  },
-  tasks: {
-    order: 4,
-    name: "tasks",
-    text: "Acuity extracts to-dos from what you say — they land here.",
-  },
-  insights: {
-    order: 5,
-    name: "insights",
-    text: "Patterns, themes, and your weekly report. The longer you use it, the sharper this gets.",
-  },
-  goals: {
-    order: 6,
-    name: "goals",
-    text: "Set what you're working toward; Acuity nudges you when entries touch it.",
-  },
-} as const;
+// Tour step content + indices now live in @/components/tour/steps and
+// are rendered by TourProvider; here we only attach targets by index.
 
 import { useTheme } from "@/contexts/theme-context";
 import type { AcuityTokens } from "@/lib/theme/tokens";
@@ -183,17 +160,17 @@ function CustomTabBar({
           // says "Home" but the highlighted target IS the mic). The
           // visible mic overlay below is decorative; we anchor the
           // step on this slot so the cutout aligns with the row.
-          const tourStep =
+          const tourIndex =
             tabKey === "record-placeholder"
-              ? null // mic gets its CopilotStep on the overlay button
+              ? null // mic attaches its step on the overlay button
               : tabKey === "entries"
-                ? TOUR_STEPS.entries
+                ? TOUR_STEP_INDEX.entries
                 : tabKey === "tasks"
-                  ? TOUR_STEPS.tasks
+                  ? TOUR_STEP_INDEX.tasks
                   : tabKey === "insights"
-                    ? TOUR_STEPS.insights
+                    ? TOUR_STEP_INDEX.insights
                     : tabKey === "goals"
-                      ? TOUR_STEPS.goals
+                      ? TOUR_STEP_INDEX.goals
                       : null;
           const slotJsx = (
             <Pressable
@@ -255,16 +232,11 @@ function CustomTabBar({
               </Text>
             </Pressable>
           );
-          if (!tourStep) return slotJsx;
+          if (tourIndex == null) return slotJsx;
           return (
-            <CopilotStep
-              key={tabKey}
-              name={tourStep.name}
-              order={tourStep.order}
-              text={tourStep.text}
-            >
+            <AttachStep key={tabKey} index={tourIndex}>
               <TourTarget style={{ flex: 1 }}>{slotJsx}</TourTarget>
-            </CopilotStep>
+            </AttachStep>
           );
         })}
       </View>
@@ -279,17 +251,13 @@ function CustomTabBar({
           CopilotStep wraps it directly without an extra positioned
           TourTarget. The child IS the RecordOverlayButton's outer
           View — copilot's cloneElement attaches its ref to that. */}
-      <CopilotStep
-        name={TOUR_STEPS.mic.name}
-        order={TOUR_STEPS.mic.order}
-        text={TOUR_STEPS.mic.text}
-      >
+      <AttachStep index={TOUR_STEP_INDEX.mic}>
         <RecordOverlayButton
           tokens={tokens}
           active={isOnHome}
           onPress={() => router.navigate("/(tabs)")}
         />
-      </CopilotStep>
+      </AttachStep>
     </View>
   );
 }

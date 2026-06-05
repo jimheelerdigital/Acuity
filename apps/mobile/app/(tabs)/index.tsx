@@ -3,7 +3,9 @@ import * as Linking from "expo-linking";
 import { useFocusEffect, useRouter } from "expo-router";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
-import { CopilotStep } from "react-native-copilot";
+import { AttachStep } from "react-native-spotlight-tour";
+
+import { TOUR_STEP_INDEX } from "@/components/tour/steps";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { GradientText, HeroCard } from "@/components/acuity";
@@ -258,13 +260,9 @@ export default function DashboardTab() {
     >
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
         {/* Identity hero — avatar + greeting + name + tier pill.
-            v1.3.x: wrapped in CopilotStep order=2 so the first-login
-            tour explains the dashboard right after the mic step. */}
-        <CopilotStep
-          name="dashboard"
-          order={2}
-          text="Your home screen reflects your reflections. Patterns surface as you record."
-        >
+            Tour step 2 (dashboard): attached by index; the tour explains
+            the dashboard right after the mic step. */}
+        <AttachStep index={TOUR_STEP_INDEX.dashboard}>
           <TourTarget>
             <IdentityHero
               initials={initials}
@@ -274,7 +272,7 @@ export default function DashboardTab() {
               onSettingsPress={handleSettingsPress}
             />
           </TourTarget>
-        </CopilotStep>
+        </AttachStep>
 
         <View style={{ height: 16 }} />
         <TrialBanner />
