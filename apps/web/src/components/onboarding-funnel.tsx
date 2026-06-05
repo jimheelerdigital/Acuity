@@ -74,6 +74,47 @@ const DOWNLOAD_TESTIMONIALS = [
 
 const SESSION_STORAGE_KEY = "acuity_funnel_session";
 const SESSION_LOCALSTORAGE_KEY = "acuity_funnel_session_persist";
+const FUNNEL_STATE_KEY = "acuity_funnel_state";
+
+// ─── Funnel State Persistence ───────────────────────────────────────────────
+// Saves step + branch + answers + selectedPlan to sessionStorage so the user
+// can refresh or use browser back without losing their place.
+
+const STEP_SET = new Set<string>(STEP_ORDER);
+
+interface FunnelState {
+  step: Step;
+  branch: Branch | null;
+  answers: Record<string, string | string[]>;
+  selectedPlan: "monthly" | "yearly";
+}
+
+function saveFunnelState(state: FunnelState): void {
+  try { sessionStorage.setItem(FUNNEL_STATE_KEY, JSON.stringify(state)); } catch {}
+}
+
+function loadFunnelState(): FunnelState | null {
+  try {
+    const raw = sessionStorage.getItem(FUNNEL_STATE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && STEP_SET.has(parsed.step)) return parsed as FunnelState;
+  } catch {}
+  return null;
+}
+
+function buildStepUrl(step: Step): string {
+  const url = new URL(window.location.href);
+  if (step === "entry") {
+    url.searchParams.delete("step");
+  } else {
+    url.searchParams.set("step", step);
+  }
+  // Strip Stripe/OAuth one-time params so they don't replay on refresh
+  url.searchParams.delete("session_id");
+  url.searchParams.delete("payment");
+  return url.toString();
+}
 
 function getOrCreateSessionId(): string {
   if (typeof sessionStorage !== "undefined") {
@@ -131,22 +172,71 @@ function formatTrialEndDate(): string {
 
 export function OnboardingFunnel() {
   const { data: session, status: authStatus } = useSession();
-  const [step, setStep] = useState<Step>("entry");
-  const [branch, setBranch] = useState<Branch | null>(null);
-  const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
+  // Restore persisted state from sessionStorage so refresh doesn't lose progress.
+  // URL ?step= params (OAuth/Stripe returns) take priority over stored state.
+  const saved = typeof window !== "undefined" ? loadFunnelState() : null;
+  const [step, setStepRaw] = useState<Step>(saved?.step ?? "entry");
+  const [branch, setBranch] = useState<Branch | null>(saved?.branch ?? null);
+  const [answers, setAnswers] = useState<Record<string, string | string[]>>(saved?.answers ?? {});
   const [apiError, setApiError] = useState<string | null>(null);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<"monthly" | "yearly">("monthly");
+  const [selectedPlan, setSelectedPlan] = useState<"monthly" | "yearly">(saved?.selectedPlan ?? "monthly");
   const track = useFunnelTracker();
+
+  // Wrap setStep to persist state + push browser history on every transition.
+  // This makes both refresh AND browser-back work correctly.
+  const isPopstateNav = useRef(false);
+  const setStep = useCallback((next: Step) => {
+    setStepRaw(next);
+    if (typeof window === "undefined") return;
+    // If this setStep was triggered by popstate (browser back), don't push again
+    if (isPopstateNav.current) {
+      isPopstateNav.current = false;
+      return;
+    }
+    window.history.pushState({ funnelStep: next }, "", buildStepUrl(next));
+  }, []);
+
+  // Listen for browser back/forward button
+  useEffect(() => {
+    const onPopState = (e: PopStateEvent) => {
+      const targetStep = e.state?.funnelStep as Step | undefined;
+      if (targetStep && STEP_SET.has(targetStep)) {
+        isPopstateNav.current = true;
+        setStepRaw(targetStep);
+      } else {
+        // Fallback: read step from URL
+        const params = new URLSearchParams(window.location.search);
+        const urlStep = params.get("step");
+        if (urlStep && STEP_SET.has(urlStep)) {
+          isPopstateNav.current = true;
+          setStepRaw(urlStep as Step);
+        } else {
+          isPopstateNav.current = true;
+          setStepRaw("entry");
+        }
+      }
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
+  // Persist full state to sessionStorage whenever step/branch/answers/plan change
+  useEffect(() => {
+    saveFunnelState({ step, branch, answers, selectedPlan });
+  }, [step, branch, answers, selectedPlan]);
 
   // Payment confirmation state — true when Stripe checkout completed successfully
   const [paymentConfirmed, setPaymentConfirmed] = useState(false);
 
-  // Handle return from Stripe Checkout
+  // Handle return from Stripe Checkout, OAuth redirect, or restored session.
+  // On mount, determine the correct step from URL params (priority) or sessionStorage
+  // (already restored via useState initializer), then seed browser history.
   const paymentVerified = useRef(false);
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const stepParam = params.get("step");
+    let resolvedStep: Step = step; // default: whatever was restored from sessionStorage
 
     if (stepParam === "download") {
       const sessionId = params.get("session_id");
@@ -170,20 +260,27 @@ export function OnboardingFunnel() {
             setStep("download");
           });
       } else if (!sessionId) {
-        // Trial user returning to download (skipped payment)
-        setStep("download");
+        resolvedStep = "download";
+        setStepRaw("download");
       }
     } else if (stepParam === "savings") {
       // OAuth returnees land here after Google/Apple signup redirect.
-      // Fire funnel_account_created so the funnel dashboard counts them as signed up.
       track("funnel_account_created");
-      setStep("savings");
+      resolvedStep = "savings";
+      setStepRaw("savings");
     } else if (stepParam === "create-account") {
-      setStep("create-account");
+      resolvedStep = "create-account";
+      setStepRaw("create-account");
     } else if (stepParam === "paywall") {
-      // Legacy compat — redirect old paywall URLs to create-account
-      setStep("create-account");
+      resolvedStep = "create-account";
+      setStepRaw("create-account");
+    } else if (stepParam && STEP_SET.has(stepParam)) {
+      resolvedStep = stepParam as Step;
+      setStepRaw(stepParam as Step);
     }
+
+    // Seed the initial history entry so popstate has something to land on
+    window.history.replaceState({ funnelStep: resolvedStep }, "", buildStepUrl(resolvedStep));
   }, []);
 
   // If already logged in with active subscription, skip to download

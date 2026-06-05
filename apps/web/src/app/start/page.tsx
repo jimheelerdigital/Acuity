@@ -25,8 +25,8 @@ export default async function StartPage({
 }) {
   const step = typeof searchParams.step === "string" ? searchParams.step : null;
 
-  // If returning from OAuth or Stripe, skip SSR — let client handle
-  if (step === "paywall" || step === "download") {
+  // If returning to a specific step (refresh, OAuth, Stripe), skip SSR — let client handle
+  if (step) {
     return (
       <>
         <MobileAppBanner />
