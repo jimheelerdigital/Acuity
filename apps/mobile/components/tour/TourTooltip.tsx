@@ -1,7 +1,14 @@
+import * as Sentry from "@sentry/react-native";
 import { Pressable, Text, View } from "react-native";
 import { useCopilot } from "react-native-copilot";
 
 import { useTheme } from "@/contexts/theme-context";
+
+// Build-67 instrumentation: prove whether copilot ever reaches the
+// tooltip render path. If "tour.start.called" appears in Sentry but
+// this does NOT, copilot started but couldn't position/measure a step
+// (the New-Architecture / Fabric incompatibility suspect). Fires once.
+let tooltipRenderLogged = false;
 
 /**
  * Tooltip card rendered above the spotlight cutout. Matches Acuity's
@@ -19,6 +26,10 @@ import { useTheme } from "@/contexts/theme-context";
  * does internally.
  */
 export function TourTooltip() {
+  if (!tooltipRenderLogged) {
+    tooltipRenderLogged = true;
+    Sentry.captureMessage("tour.tooltip.rendered", "info");
+  }
   const { tokens } = useTheme();
   const {
     currentStep,

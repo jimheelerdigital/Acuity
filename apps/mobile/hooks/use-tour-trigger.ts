@@ -1,7 +1,35 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Sentry from "@sentry/react-native";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useRef } from "react";
 import { useCopilot } from "react-native-copilot";
+
+/**
+ * Build-67 instrumentation. TestFlight has no Metro console, so we emit
+ * Sentry messages to prove WHERE the tour path breaks: did start() get
+ * called, did it throw/reject, and did the tooltip ever render (see
+ * TourTooltip). Root-cause suspect: react-native-copilot 3.3.3 can't
+ * measure targets under the New Architecture (Fabric, default on SDK 54),
+ * so start() runs but nothing positions. These logs confirm or refute it.
+ */
+function fireTourStart(
+  path: "auto" | "replay",
+  start: (name?: string) => unknown,
+  stepName: string,
+  totalSteps: number
+): void {
+  Sentry.captureMessage(
+    `tour.start.called path=${path} firstStep=${stepName} totalSteps=${totalSteps}`,
+    "info"
+  );
+  try {
+    void Promise.resolve(start(stepName)).catch((e) =>
+      Sentry.captureMessage(`tour.start.rejected ${String(e)}`, "warning")
+    );
+  } catch (e) {
+    Sentry.captureMessage(`tour.start.threw ${String(e)}`, "warning");
+  }
+}
 
 import { useAuth } from "@/contexts/auth-context";
 import { api } from "@/lib/api";
@@ -145,13 +173,13 @@ export function useTourTrigger({ queueHasItem = false }: Options = {}) {
       await new Promise((r) => setTimeout(r, POST_MOUNT_DELAY_MS));
       if (cancelled) return;
       firedRef.current = true;
-      void start(FIRST_STEP_NAME);
+      fireTourStart("auto", start, FIRST_STEP_NAME, totalStepsNumber);
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [user, queueHasItem, start]);
+  }, [user, queueHasItem, start, totalStepsNumber]);
 
   // Manual replay — fires when the Home tab gains FOCUS and the force
   // flag is set (the "Replay product tour" button sets it, then
@@ -178,11 +206,12 @@ export function useTourTrigger({ queueHasItem = false }: Options = {}) {
         // before anchoring the first tooltip.
         await new Promise((r) => setTimeout(r, POST_MOUNT_DELAY_MS));
         if (cancelled) return;
-        void start(FIRST_STEP_NAME);
+        Sentry.captureMessage("tour.replay.flagConsumed firing start()", "info");
+        fireTourStart("replay", start, FIRST_STEP_NAME, totalStepsNumber);
       })();
       return () => {
         cancelled = true;
       };
-    }, [start])
+    }, [start, totalStepsNumber])
   );
 }
