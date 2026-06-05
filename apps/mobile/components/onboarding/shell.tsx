@@ -244,14 +244,23 @@ export function OnboardingShell({
     void persist().catch((err) =>
       console.error("[onboarding-complete] persist failed:", err)
     );
+    // BUG A fix: chain refresh AFTER /complete resolves, not in parallel.
+    // Previously both fired fire-and-forget; if refresh()'s GET /me landed
+    // before /complete committed, /me returned the pre-completion state
+    // (onboardingCompleted=false, currentStep=4) and overwrote the
+    // optimistic flip above → AuthGate briefly routed to /onboarding?step=4
+    // (the "glitch back to step 4"). Sequencing guarantees /me reflects
+    // completion before it can replace local state.
     void api
       .post("/api/onboarding/complete", { skipped: false })
       .catch((err) =>
         console.error("[onboarding-complete] /complete failed:", err)
-      );
-    void refresh().catch((err) =>
-      console.error("[onboarding-complete] refresh failed:", err)
-    );
+      )
+      .finally(() => {
+        void refresh().catch((err) =>
+          console.error("[onboarding-complete] refresh failed:", err)
+        );
+      });
   }, [persist, refresh, router, setAuthenticatedUser, user]);
 
   const isLastStep = step >= totalSteps;
