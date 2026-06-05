@@ -7,6 +7,40 @@
 
 ---
 
+## [2026-06-04] — Fix Meta pixel and funnel tracking broken by consent timing
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** 37efa79
+
+### In plain English (for Keenan)
+
+The GDPR consent work from yesterday accidentally broke Meta pixel tracking for about half of signups. The problem: the Meta Pixel now only loads after someone clicks "Accept" on the cookie banner, but most users reach the signup/savings screens before the banner even appears (it has a 5-second delay). So when the code tried to fire CompleteRegistration, the pixel wasn't loaded yet and the event silently disappeared. This is why you saw 6 signups but only 3 CompleteRegistrations in Meta.
+
+On top of that, the funnel dashboard wasn't counting some signups as "signed up" — users who came back from Google/Apple OAuth were landing on the savings screen without the "account created" event ever firing, making them invisible in the funnel.
+
+Now: (1) the pixel waits up to 5 seconds for consent before giving up, (2) the server-side CAPI event now looks up the user's `fbclid` from their funnel data so Meta can match the conversion even without the browser pixel, and (3) OAuth returnees properly fire the account_created funnel event.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/components/meta-pixel-events.tsx`: New `waitForFbq()` helper polls for `window.fbq` every 200ms for up to 5s. `TrackCompleteRegistration` now awaits this before firing browser pixel (CAPI fires immediately as before). Exported for use in onboarding funnel.
+- `apps/web/src/components/onboarding-funnel.tsx`: Email signup path now uses `waitForFbq()` instead of immediate `fireFbq()`. OAuth returnees to `?step=savings` now fire `track("funnel_account_created")`. `fbclid` from sessionStorage now passed in signup attribution payload.
+- `apps/web/src/app/api/capi/complete-registration/route.ts`: Parallel query for user's most recent `OnboardingEvent` with `fbclid`. Passes it to `sendConversionEvent` so `meta-capi.ts` can construct `_fbc` cookie format (`fb.1.{ts}.{fbclid}`) for high-quality Meta matching — even when the browser pixel never loaded.
+
+### Manual steps needed
+
+- [ ] Keenan — after deploy, do a test signup and check Vercel logs for `[meta-capi] CompleteRegistration SUCCESS` with `fbc` in user_data keys
+- [ ] Keenan — verify in Meta Events Manager that CompleteRegistration count matches signups over the next 24 hours
+- [ ] Keenan — check funnel dashboard: new signups should show as "Signed up" or "Savings Offered" (not "Dropped")
+
+### Notes
+
+- The 5-second poll is a best-effort fix — if a user never interacts with the cookie banner, `fbq` won't load and only the server-side CAPI event fires. But CAPI now has `fbclid` → `_fbc` construction, so Meta should be able to match it. Previously CAPI had no fbclid and no `_fbc`/`_fbp` cookies, giving Meta nothing to match against.
+- The duplicate `funnel_account_created` event for users returning from cancelled Stripe checkout is harmless — the funnel dashboard uses `Set.has()` so duplicates don't affect counts.
+- Root cause: the GDPR consent-gating (commit 5eeb6db) and the pixel fix (commit 0d3dc34) were tested independently but the interaction wasn't caught — consent gates the pixel, and the pixel fix assumed the pixel was always available.
+
+---
+
 ## [2026-06-04] — Add Signup Method column to admin users table
 
 - **Requested by:** Keenan
