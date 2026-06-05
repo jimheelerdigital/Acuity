@@ -1408,7 +1408,7 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
             {loading ? "Loading\u2026" : "Lock In My Savings"}
           </button>
           <button onClick={onSkip} className="w-full py-3 text-sm text-zinc-500 hover:text-zinc-700 transition font-medium">
-            Continue with my free trial &rarr;
+            Continue without paying &rarr;
           </button>
           <p className="text-[10px] text-zinc-400 text-center">14-day free trial included with all plans. Cancel anytime. You won&rsquo;t be charged today.</p>
         </div>
