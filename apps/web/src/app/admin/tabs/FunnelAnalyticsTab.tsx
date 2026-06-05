@@ -49,10 +49,12 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
     const av = sortCol === "started" ? new Date(a.started).getTime()
       : sortCol === "step" ? a.stepNumber
       : sortCol === "time" ? a.timeInFunnelSec
+      : sortCol === "click" ? (a.click ?? "")
       : String(a[sortCol] || "");
     const bv = sortCol === "started" ? new Date(b.started).getTime()
       : sortCol === "step" ? b.stepNumber
       : sortCol === "time" ? b.timeInFunnelSec
+      : sortCol === "click" ? (b.click ?? "")
       : String(b[sortCol] || "");
     return typeof av === "number" ? sortDir * (av - bv) : sortDir * String(av).localeCompare(String(bv));
   });
@@ -69,9 +71,9 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
 
   // CSV export
   const downloadCsv = () => {
-    const rows = [["Session", "Started", "Source", "Campaign", "Step", "Status", "Time (s)", "Interacted"]];
+    const rows = [["Session", "Started", "Source", "Campaign", "Step", "Click", "Status", "Time (s)", "Interacted"]];
     for (const s of filteredSessions) {
-      rows.push([s.sessionId, s.started, s.source, cn(s.campaign), s.currentStep, s.status, String(s.timeInFunnelSec), s.hasInteracted ? "yes" : "no"]);
+      rows.push([s.sessionId, s.started, s.source, cn(s.campaign), s.currentStep, s.click ?? "", s.status, String(s.timeInFunnelSec), s.hasInteracted ? "yes" : "no"]);
     }
     const csv = rows.map((r: string[]) => r.map((c: string) => `"${(c ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
@@ -314,13 +316,14 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead><tr>
-              {[["sessionId","Session"],["started","Started"],["source","Source"],["campaign","Campaign"],["step","Step"],["status","Status"],["time","Time"]].map(([col, label]) => (
+              {[["sessionId","Session"],["started","Started"],["source","Source"],["campaign","Campaign"],["step","Step"],["click","Click"],["status","Status"],["time","Time"]].map(([col, label]) => (
                 <th key={col} onClick={() => toggleSort(col)} style={TH}>{label}{sortCol === col ? (sortDir === 1 ? " ▲" : " ▼") : ""}</th>
               ))}
             </tr></thead>
             <tbody>
               {sorted.slice(0, 100).map((s: any) => {
-                const sc: Record<string, string> = { completed: "#22c55e", paid: "#22c55e", signed_up: "#3b82f6", active: "#3b82f6", stalled: "#f59e0b", dropped: "#ef4444" };
+                const sc: Record<string, string> = { completed: "#22c55e", paid: "#22c55e", signed_up: "#3b82f6", active: "#3b82f6", stalled: "#f59e0b", dropped: "#ef4444", lost: "#f97316" };
+                const cc: Record<string, string> = { "App Store": "#a78bfa", "Web App": "#38bdf8" };
                 return (
                   <tr key={s.sessionId} onClick={() => setExpanded(expanded === s.sessionId ? null : s.sessionId)} style={{ cursor: "pointer" }}>
                     <td style={{ ...TD, fontFamily: "monospace", fontSize: 11 }}>{s.sessionId}</td>
@@ -328,6 +331,7 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
                     <td style={TD}>{s.source}</td>
                     <td style={{ ...TD, maxWidth: 100 }} title={s.campaign}>{cn(s.campaign)}</td>
                     <td style={TD}>{s.currentStep}</td>
+                    <td style={{ ...TD, color: cc[s.click] || "rgba(255,255,255,0.2)", fontSize: 11 }}>{s.click ?? "—"}</td>
                     <td style={{ ...TD, color: sc[s.status] || "#888", fontWeight: 500, textTransform: "capitalize" }}>{s.status}</td>
                     <td style={{ ...TD, fontVariantNumeric: "tabular-nums" }}>{fmt(s.timeInFunnelSec)}</td>
                   </tr>

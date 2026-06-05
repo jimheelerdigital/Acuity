@@ -1474,7 +1474,7 @@ async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date, flowVer
       funnel_account_created: 16,
       funnel_savings_viewed: 17,
       funnel_savings_locked_in: 18, funnel_trial_continued: 18,
-      funnel_download_viewed: 19, funnel_download_screen_viewed: 19, funnel_app_store_clicked: 19,
+      funnel_download_viewed: 19, funnel_download_screen_viewed: 19, funnel_app_store_clicked: 19, funnel_continue_web_app_clicked: 19, funnel_web_app_clicked: 19,
       // v2 legacy compat
       funnel_paywall_viewed: 15,
       funnel_signup_attempted: 16, funnel_signup_completed: 16,
@@ -1507,13 +1507,22 @@ async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date, flowVer
         const last = sorted[sorted.length - 1];
         const maxStep = Math.max(...events.map((e) => STEP_PROGRESS[e.event] ?? 0));
         const minutesSinceLast = (Date.now() - new Date(last.createdAt).getTime()) / 60000;
-        const completed = events.some((e) => e.event === "funnel_app_store_clicked" || e.event === "funnel_download_viewed");
+        const clickedAppStore = events.some((e) => e.event === "funnel_app_store_clicked");
+        const clickedWebApp = events.some((e) => e.event === "funnel_continue_web_app_clicked" || e.event === "funnel_web_app_clicked");
+        const completed = clickedAppStore || clickedWebApp || events.some((e) => e.event === "funnel_download_viewed");
         // v2 default: only count savings_locked_in as paid (not legacy payment_completed)
         const paid = events.some((e) => e.event === "funnel_savings_locked_in");
+        const click: string | null = clickedAppStore ? "App Store" : clickedWebApp ? "Web App" : null;
 
-        let status: "completed" | "paid" | "active" | "stalled" | "dropped";
+        // Users who created an account but never clicked a download/web-app CTA are "lost"
+        const reachedDownload = maxStep >= 19;
+        const createdAccount = events.some((e) => e.event === "funnel_account_created" || e.event === "funnel_signup_completed");
+
+        let status: "completed" | "paid" | "active" | "stalled" | "dropped" | "lost";
         if (completed) status = "completed";
         else if (paid) status = "paid";
+        else if (createdAccount && !click && minutesSinceLast >= 60) status = "lost";
+        else if (reachedDownload && !click && minutesSinceLast >= 60) status = "lost";
         else if (minutesSinceLast < 10) status = "active";
         else if (minutesSinceLast < 60) status = "stalled";
         else status = "dropped";
@@ -1544,6 +1553,7 @@ async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date, flowVer
           currentStep: STEP_LABELS[maxStep] ?? "Unknown",
           stepNumber: maxStep,
           totalSteps: 16,
+          click,
           status,
           timeInFunnelSec: Math.round((new Date(last.createdAt).getTime() - new Date(first.createdAt).getTime()) / 1000),
           timeInFunnel: Math.round((new Date(last.createdAt).getTime() - new Date(first.createdAt).getTime()) / 60000),
@@ -1729,6 +1739,7 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
   // Build session rows
   const sessions: {
     sessionId: string; started: string; lastEvent: string; status: string;
+    click: string | null;
     currentStep: string; stepNumber: number; timeInFunnelSec: number;
     source: string; campaign: string | null; creative: string | null;
     diagnosticAnswers: Record<string, string>;
@@ -1762,7 +1773,9 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     }
 
     const minutesSinceLast = (Date.now() - new Date(last.createdAt).getTime()) / 60000;
-    const completed = eventNames.has("funnel_app_store_clicked") || eventNames.has("funnel_download_viewed");
+    const clickedAppStore = eventNames.has("funnel_app_store_clicked");
+    const clickedWebApp = eventNames.has("funnel_continue_web_app_clicked") || eventNames.has("funnel_web_app_clicked");
+    const completed = clickedAppStore || clickedWebApp || eventNames.has("funnel_download_viewed");
     // Flow-aware paid detection: v2 only counts savings_locked_in, v1 only counts payment_completed
     const paid = flowVersion === "v1"
       ? eventNames.has("funnel_payment_completed")
@@ -1774,11 +1787,16 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
       : flowVersion === "v2"
         ? eventNames.has("funnel_account_created")
         : eventNames.has("funnel_signup_completed") || eventNames.has("funnel_account_created");
+    const click: string | null = clickedAppStore ? "App Store" : clickedWebApp ? "Web App" : null;
+
+    // Users who created an account but never clicked a CTA are "lost"
+    const createdAccount = signedup || eventNames.has("funnel_trial_continued");
 
     // Payment, signup, and trial continuation are terminal success states — never show as dropped
     let status: string;
     if (completed) status = "completed";
     else if (paid) status = "paid";
+    else if (createdAccount && !click && minutesSinceLast >= 60) status = "lost";
     else if (eventNames.has("funnel_trial_continued")) status = "signed_up";
     else if (signedup) status = "signed_up";
     else if (minutesSinceLast < 10) status = "active";
@@ -1811,6 +1829,7 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
       started: first.createdAt.toISOString(),
       lastEvent: last.createdAt.toISOString(),
       status,
+      click,
       currentStep: maxStepLabel,
       stepNumber: maxStep,
       timeInFunnelSec: Math.round((new Date(last.createdAt).getTime() - new Date(first.createdAt).getTime()) / 1000),
