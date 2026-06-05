@@ -240,11 +240,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Default 14-day trial set at create time as a safety net.
-    // bootstrapNewUser overwrites with the real value (referral bonus,
-    // etc.) — but if bootstrap fails, the user at least has a working
-    // trial instead of NULL trialEndsAt.
-    const defaultTrialEnd = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+    // Single source of truth for trial length: trialDaysForEmail (14
+    // standard, 3 for re-signups within 90d — anti-abuse). Safety-net value
+    // at create; bootstrapNewUser re-derives the same base + bonuses below.
+    const { trialDaysForEmail } = await import("@/lib/bootstrap-user");
+    const defaultTrialEnd = new Date(
+      Date.now() + (await trialDaysForEmail(email)) * 24 * 60 * 60 * 1000
+    );
     user = await prisma.user.create({
       data: {
         email,

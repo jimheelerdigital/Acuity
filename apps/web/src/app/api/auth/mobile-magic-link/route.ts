@@ -67,7 +67,13 @@ export async function POST(req: NextRequest) {
     select: { id: true },
   });
   if (!user) {
-    const defaultTrialEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    // Single source of truth for trial length: trialDaysForEmail (14
+    // standard, 3 for re-signups within 90d — anti-abuse). bootstrapNewUser
+    // re-derives the same base below + adds founding/referral bonuses.
+    const { trialDaysForEmail } = await import("@/lib/bootstrap-user");
+    const defaultTrialEnd = new Date(
+      Date.now() + (await trialDaysForEmail(email)) * 24 * 60 * 60 * 1000
+    );
     user = await prisma.user.create({
       data: { email, subscriptionStatus: "TRIAL", trialEndsAt: defaultTrialEnd, signupMethod: "magic-link" },
       select: { id: true },

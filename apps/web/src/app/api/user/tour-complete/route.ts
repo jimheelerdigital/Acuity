@@ -36,37 +36,49 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // `completed` = tour reached its last step (vs. a mid-tour skip).
+  // Both paths stamp tourCompletedAt (don't keep nagging), but
+  // guided_start is awarded ONLY on genuine completion — a partial/skip
+  // must NOT fire the achievement (it was firing after step 1).
+  const body = (await req.json().catch(() => ({}))) as
+    | { completed?: boolean }
+    | null;
+  const completed = body?.completed === true;
+
   const { prisma } = await import("@/lib/prisma");
 
-  // 1) Stamp tourCompletedAt if not already set. updateMany with the
-  //    IS NULL re-assert is the idempotent pattern.
-  await prisma.user.updateMany({
-    where: { id: userId, tourCompletedAt: null },
-    data: { tourCompletedAt: new Date() },
-  });
-
-  // 2) Award guided_start if not already awarded. Look up the
-  //    Achievement row (seeded via Supabase migration) and insert
-  //    UserAchievement. skipDuplicates handles the race against
-  //    a parallel call.
-  const ach = await prisma.achievement.findUnique({
-    where: { slug: GUIDED_START_SLUG },
-    select: { id: true, points: true, isActive: true },
-  });
-
+  // Stamp tourCompletedAt AND (on genuine completion) award guided_start in
+  // a SINGLE transaction, so the achievement and the completion timestamp
+  // can never diverge (don't grant the badge without recording the tour as
+  // done, and vice-versa).
   let awarded = false;
-  if (ach && ach.isActive) {
-    const result = await prisma.userAchievement.createMany({
-      data: {
-        userId,
-        achievementId: ach.id,
-        pointsAwarded: ach.points,
-        shownToUser: false,
-      },
-      skipDuplicates: true,
+  await prisma.$transaction(async (tx) => {
+    // 1) Stamp tourCompletedAt if not already set (idempotent IS NULL).
+    await tx.user.updateMany({
+      where: { id: userId, tourCompletedAt: null },
+      data: { tourCompletedAt: new Date() },
     });
-    awarded = result.count > 0;
-  }
+
+    // 2) Award guided_start ONLY on genuine completion. skipDuplicates
+    //    handles a race against a parallel call.
+    if (!completed) return;
+    const ach = await tx.achievement.findUnique({
+      where: { slug: GUIDED_START_SLUG },
+      select: { id: true, points: true, isActive: true },
+    });
+    if (ach && ach.isActive) {
+      const result = await tx.userAchievement.createMany({
+        data: {
+          userId,
+          achievementId: ach.id,
+          pointsAwarded: ach.points,
+          shownToUser: false,
+        },
+        skipDuplicates: true,
+      });
+      awarded = result.count > 0;
+    }
+  });
 
   return NextResponse.json({ ok: true, awarded });
 }
