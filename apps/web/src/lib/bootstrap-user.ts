@@ -174,6 +174,24 @@ export async function bootstrapNewUser(params: {
       // Ignore if already exists (UserMemory has a unique userId).
     });
 
+  // Create the UserOnboarding row up front so every user has a
+  // deterministic row from signup (BUG B forward-fix). Previously the
+  // row was created lazily on the first /api/onboarding/update or
+  // /complete, so users who signed up but never traversed the flow had
+  // a NULL row. Starts at currentStep:0, completedAt:null — only the
+  // explicit /api/onboarding/complete sets completedAt (per the
+  // onboarding-completion contract). Upsert + update:{} so a bootstrap
+  // re-run never clobbers a real in-progress/completed row.
+  await prisma.userOnboarding
+    .upsert({
+      where: { userId },
+      create: { userId, currentStep: 0, completedAt: null },
+      update: {},
+    })
+    .catch(() => {
+      // Idempotent — ignore if it already exists.
+    });
+
   // Send welcome_day0 inline (spec: within 60 seconds of signup, not
   // from the hourly orchestrator). Fail-soft — a send failure must not
   // brick signup. The TrialEmailLog unique constraint makes this safe
