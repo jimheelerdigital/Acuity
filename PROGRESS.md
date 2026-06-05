@@ -7,6 +7,36 @@
 
 ---
 
+## [2026-06-05] — v1.3 ship candidate: working product tour + trial cleanup
+
+- **Requested by:** Jimmy
+- **Committed by:** Claude Code
+- **Commit hash:** 7fdebe9, ce4cbf7
+
+### In plain English (for Keenan)
+
+The first-login product tour now actually works. New users get a guided 7-step walkthrough that opens each section (Entries, Tasks, Insights, Goals, Settings) and points out where things live, ending with a "Guided Start" achievement and a silver badge. It had been silently broken for ~30 days because the old tour library couldn't draw on newer phones; we swapped the engine and fixed everything found across four rounds of on-device testing. Also: the home greeting no longer says an awkward "Good afternoon, there" when we don't know your name, the mic now starts a recording on long-press, and we cleaned up a trial-length inconsistency so every new signup gets a clean 14-day trial (re-signups on a recently-deleted email still get the 3-day anti-abuse trial, by design). This is the build we'll smoke-test and submit to the App Store for v1.3.
+
+### Technical changes (for Jimmy)
+
+- **Mobile tour (7fdebe9):** spotlight-tour fully wired — per-step `before` navigation, tab-bar/gear anchors, on-screen tooltip placement, chevron Next/Back, auto-fire + focus replay, signOut marker clear, guided_start celebration via the achievement bus, SILVER flag badge, Settings count focus-refetch, mic long-press→/record, greeting null-name handling, retired "brain dump" copy. Files: TourProvider, TourTooltip, steps, BadgeSvg, badge-xml, identity-hero, (tabs)/_layout|index|profile, auth-context, packages/shared/progression.
+- **Web (ce4cbf7):** all 5 signup routes derive trialEndsAt from `trialDaysForEmail` (14 std / 3 anti-abuse), removing dead 30/14-day route hardcodes; `/api/user/tour-complete` wraps tourCompletedAt + guided_start in one `$transaction`. No DB writes.
+- Squashed the tour-fix-spotlight branch (revert→reapply→rounds 1-4) into these two commits.
+
+### Manual steps needed
+
+- [ ] Jim — smoke-test build 69 on TestFlight (main account), then submit v1.3 to App Store review.
+- [ ] Web auth/trial + tour-complete changes deploy to production on this push (Vercel auto-deploy) — affects live signups (behavior-preserving).
+- [ ] No `prisma db push` — no schema changes. No DB normalization (trial audit returned only the expected anti-abuse row).
+
+### Notes
+
+- The migration engine landed in build 68; this candidate makes it work (rounds 1-4 were all sim-gated). Root cause of the original breakage: copilot used legacy bridge measurement (null under Fabric); spotlight-tour uses measureInWindow.
+- test6's 3-day trial was the existing anti-abuse rule (re-used a deleted test email), not a regression from cd46870b (which was onboarding-routing only).
+- `NAV_SETTLE_MS` (450ms) governs the per-tab spotlight settle delay — tune if a cutout lands early.
+
+---
+
 ## [2026-06-05] — Build 68: tour engine swap (copilot→spotlight-tour) + onboarding state fixes
 
 - **Requested by:** Jimmy
