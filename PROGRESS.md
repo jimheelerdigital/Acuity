@@ -7,6 +7,32 @@
 
 ---
 
+## [2026-06-05] — Promote "Use the Web App" to a visible button on download screen
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** 8cfc55e
+
+### In plain English (for Keenan)
+
+On the download screen at the end of the /start funnel, the "Use the web app" option was a tiny text link that most people scrolled right past. It's now a clearly visible outlined button — smaller than the App Store button but unmistakably tappable — with "Works on any device" as a subtitle. The old "Have an Android?" framing is gone since the web app works for anyone, not just Android users.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/components/onboarding-funnel.tsx`: replaced the `<p>` text link with a styled `<a>` button (rounded-full, border-2 in brand purple, hover state, active scale)
+- Added `funnel_web_app_clicked` tracking event so we can measure tap-through on the new button
+- Visual hierarchy preserved: App Store (primary gradient) → Google Play (disabled gray) → Web App (outlined purple) → QR code
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- No layout or spacing changes to surrounding elements — the new button uses the same `mt-3` gap and `w-full` width as the Google Play button, so it slots in cleanly.
+
+---
+
 ## [2026-06-04] — v1.3 signup/onboarding/login bug-fix batch (4 fixes for build 66)
 
 - **Requested by:** Jimmy
