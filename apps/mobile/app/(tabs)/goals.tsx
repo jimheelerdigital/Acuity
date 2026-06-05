@@ -48,7 +48,7 @@ import { Skeleton, SkeletonCard } from "@/components/skeleton";
 import { useAuth } from "@/contexts/auth-context";
 import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
-import { getCached, isStale, setCached } from "@/lib/cache";
+import { cachedGet, getCached, isStale } from "@/lib/cache";
 import { isFreeTierUser } from "@/lib/free-tier";
 import { toneColor, type StatusTone } from "@/lib/tone-colors";
 import { fetchUserProgression } from "@/lib/userProgression";
@@ -327,16 +327,17 @@ export default function GoalsTab() {
   const pendingTaskMutationsRef = useRef<Set<string>>(new Set());
 
   const fetchTree = useCallback(
-    async (withArchived: boolean, silent: boolean) => {
+    async (withArchived: boolean, silent: boolean, force = false) => {
       if (!silent) setLoading(true);
       try {
         const key = treeCacheKey(withArchived);
+        // Shared cache + in-flight dedupe. /api/user/progression is also
+        // fetched by Home, so fetchUserProgression coalesces them;
+        // cachedGet writes the tree cache. Pull-to-refresh forces fresh.
         const [res, prog] = await Promise.all([
-          api.get<GoalsTreeResponse>(key),
-          fetchUserProgression().catch(() => null),
+          cachedGet<GoalsTreeResponse>(key, { force }),
+          fetchUserProgression({ force }).catch(() => null),
         ]);
-        setCached(key, res);
-        if (prog) setCached(GOALS_PROGRESSION_KEY, prog);
 
         // Merge server state with anything still locally-pending. We
         // can't know from the server response which tasks/goals the
@@ -410,7 +411,7 @@ export default function GoalsTab() {
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    fetchTree(includeArchived, true);
+    fetchTree(includeArchived, true, true);
   }, [fetchTree, includeArchived]);
 
   const toggleExpanded = useCallback((id: string) => {

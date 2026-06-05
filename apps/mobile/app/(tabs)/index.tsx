@@ -35,7 +35,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { useTheme } from "@/contexts/theme-context";
 import { isFreeTierUser } from "@/lib/free-tier";
 import { api } from "@/lib/api";
-import { getCached, isStale, setCached } from "@/lib/cache";
+import { cachedGet, getCached, isStale } from "@/lib/cache";
 import { fetchUserProgression } from "@/lib/userProgression";
 
 const HOME_ENTRY_LIMIT = 5;
@@ -130,14 +130,15 @@ export default function DashboardTab() {
     if (loadInFlightRef.current) return;
     loadInFlightRef.current = true;
     try {
+      // Shared cache + in-flight dedupe across screens: /api/entries is
+      // also fetched by the Entries tab and /api/user/progression by the
+      // Goals tab — cachedGet/fetchUserProgression collapse the concurrent
+      // post-login loads into one request each (and reuse fresh cache).
       const [entriesData, home, prog] = await Promise.all([
-        api.get<{ entries: EntryDTO[] }>(HOME_ENTRIES_KEY),
-        api.get<HomePayload>(HOME_DATA_KEY).catch(() => null),
+        cachedGet<{ entries: EntryDTO[] }>(HOME_ENTRIES_KEY),
+        cachedGet<HomePayload>(HOME_DATA_KEY).catch(() => null),
         fetchUserProgression().catch(() => null),
       ]);
-      setCached(HOME_ENTRIES_KEY, entriesData);
-      if (home) setCached(HOME_DATA_KEY, home);
-      if (prog) setCached(HOME_PROGRESSION_KEY, prog);
       setEntries(entriesData.entries ?? []);
       setHomeData(home);
       setProgression(prog);

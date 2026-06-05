@@ -28,7 +28,7 @@ import { MoodIcon } from "@/components/mood-icon";
 import { Skeleton, SkeletonCard } from "@/components/skeleton";
 import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
-import { getCached, isStale, setCached } from "@/lib/cache";
+import { cachedGet, getCached, isStale, setCached } from "@/lib/cache";
 import { WARN_AMBER } from "@/lib/tone-colors";
 
 const ENTRIES_CACHE_KEY = "/api/entries";
@@ -52,10 +52,14 @@ export default function EntriesTab() {
   const [query, setQuery] = useState("");
   const [moodFilter, setMoodFilter] = useState<Mood | null>(null);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (force = false) => {
     try {
-      const data = await api.get<{ entries: EntryDTO[] }>(ENTRIES_CACHE_KEY);
-      setCached(ENTRIES_CACHE_KEY, data);
+      // Shared cache + in-flight dedupe: Home also fetches /api/entries,
+      // so concurrent post-login loads collapse to one request. cachedGet
+      // writes the cache; pull-to-refresh forces a fresh fetch.
+      const data = await cachedGet<{ entries: EntryDTO[] }>(ENTRIES_CACHE_KEY, {
+        force,
+      });
       setEntries(data.entries ?? []);
     } catch {
       // Keep existing cached entries on failure.
@@ -75,7 +79,7 @@ export default function EntriesTab() {
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    load();
+    load(true);
   }, [load]);
 
   // Shared confirmation + DELETE flow used by all three input methods

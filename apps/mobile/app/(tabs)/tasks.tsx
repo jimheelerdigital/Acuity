@@ -22,7 +22,7 @@ import { Confetti } from "@/components/tasks/confetti";
 import { useAuth } from "@/contexts/auth-context";
 import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
-import { getCached, setCached } from "@/lib/cache";
+import { cachedGet, getCached } from "@/lib/cache";
 import { isFreeTierUser } from "@/lib/free-tier";
 import { priorityToneColor, WARN_AMBER } from "@/lib/tone-colors";
 
@@ -132,15 +132,16 @@ export default function TasksTab() {
   // optimistic UI before the server has acknowledged the write.
   const pendingMutationsRef = useRef<Set<string>>(new Set());
 
-  const fetchAll = useCallback(async (silent: boolean) => {
+  const fetchAll = useCallback(async (silent: boolean, force = false) => {
     if (!silent) setLoading(true);
     try {
+      // Shared cache + in-flight dedupe (cachedGet writes the cache).
+      // Collapses the repeated /api/task-groups + /api/tasks calls seen
+      // on login; pull-to-refresh passes force to bypass the TTL.
       const [tasksData, groupsData] = await Promise.all([
-        api.get<{ tasks: Task[] }>(TASKS_CACHE_KEY),
-        api.get<{ groups: TaskGroup[] }>(GROUPS_CACHE_KEY),
+        cachedGet<{ tasks: Task[] }>(TASKS_CACHE_KEY, { force }),
+        cachedGet<{ groups: TaskGroup[] }>(GROUPS_CACHE_KEY, { force }),
       ]);
-      setCached(TASKS_CACHE_KEY, tasksData);
-      setCached(GROUPS_CACHE_KEY, groupsData);
       // Merge server response with any locally-pending optimistic
       // overrides. Without this, a focus-driven refetch that returns
       // mid-mutation would revert the user's just-toggled task.
@@ -197,7 +198,7 @@ export default function TasksTab() {
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    fetchAll(true);
+    fetchAll(true, true);
   }, [fetchAll]);
 
   const act = useCallback(

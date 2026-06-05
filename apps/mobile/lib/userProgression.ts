@@ -1,6 +1,8 @@
 import type { UserProgression } from "@acuity/shared";
 
-import { api } from "@/lib/api";
+import { dedupedGet, getCached, isStale, setCached } from "@/lib/cache";
+
+const PROGRESSION_KEY = "/api/user/progression";
 
 /**
  * Mobile fetch for UserProgression. Hits the shared web endpoint
@@ -10,17 +12,30 @@ import { api } from "@/lib/api";
  * surface on mobile — focus card on Home, tip bubbles, locked empty
  * states, streak UI.
  *
- * Pair with useFocusEffect on screens that care about the current
- * state — progression can change after a recording completes, so a
- * refetch on focus keeps empty states honest.
+ * Stale-while-revalidate + cross-screen dedupe: Home and Goals both
+ * call this on focus; routing through the shared cache means a fresh
+ * result is reused (no network) and concurrent calls share one request
+ * — previously this fired /api/user/progression twice on every login.
+ * The rehydrated (Date) object is cached under the path key, so screens
+ * reading getCached("/api/user/progression") get the same shape.
+ *
+ * Pass `force: true` for pull-to-refresh.
  */
-export async function fetchUserProgression(): Promise<UserProgression> {
-  const raw = await api.get<SerializedProgression>("/api/user/progression");
-  return {
+export async function fetchUserProgression(
+  { force = false }: { force?: boolean } = {}
+): Promise<UserProgression> {
+  if (!force && !isStale(PROGRESSION_KEY)) {
+    const cached = getCached<UserProgression>(PROGRESSION_KEY);
+    if (cached) return cached;
+  }
+  const raw = await dedupedGet<SerializedProgression>(PROGRESSION_KEY);
+  const result: UserProgression = {
     ...raw,
     trialEndsAt: new Date(raw.trialEndsAt),
     lastEntryAt: raw.lastEntryAt ? new Date(raw.lastEntryAt) : null,
   };
+  setCached(PROGRESSION_KEY, result);
+  return result;
 }
 
 type SerializedProgression = Omit<

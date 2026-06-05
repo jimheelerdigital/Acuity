@@ -29,7 +29,12 @@ export function isStale(key: string, ttlMs = DEFAULT_TTL_MS): boolean {
   return Date.now() - entry.fetchedAt > ttlMs;
 }
 
-async function dedupedGet<T>(path: string): Promise<T> {
+/**
+ * In-flight de-duplication: concurrent callers for the same path share
+ * one network request. Does NOT read/write the TTL cache — pair with
+ * setCached, or use cachedGet for the full read-or-fetch flow.
+ */
+export async function dedupedGet<T>(path: string): Promise<T> {
   const existing = inflight.get(path);
   if (existing) return existing as Promise<T>;
   const p = api.get<T>(path).finally(() => {
@@ -37,6 +42,27 @@ async function dedupedGet<T>(path: string): Promise<T> {
   });
   inflight.set(path, p);
   return p;
+}
+
+/**
+ * Imperative stale-while-revalidate GET for Promise.all flows where the
+ * declarative useCachedResource hook doesn't fit. Returns fresh cached
+ * data with no network call; otherwise performs a single in-flight-
+ * deduped fetch, stores it, and returns it. Cross-screen: two screens
+ * requesting the same path within the TTL (or concurrently) share one
+ * fetch + one cache entry — this is what collapses the post-login
+ * duplicate-fetch storm. Pass `force: true` for pull-to-refresh.
+ */
+export async function cachedGet<T>(
+  path: string,
+  { ttlMs = DEFAULT_TTL_MS, force = false }: { ttlMs?: number; force?: boolean } = {}
+): Promise<T> {
+  if (!force && cache.has(path) && !isStale(path, ttlMs)) {
+    return getCached<T>(path) as T;
+  }
+  const data = await dedupedGet<T>(path);
+  setCached(path, data);
+  return data;
 }
 
 /**
