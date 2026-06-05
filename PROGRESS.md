@@ -7,6 +7,32 @@
 
 ---
 
+## [2026-06-04] — Remove consent gate from Meta Pixel — always load
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** f176fab
+
+### In plain English (for Keenan)
+
+The Meta Pixel now loads on every page, always, without waiting for anyone to click "Accept" on the cookie banner. This guarantees that `_fbp` and `_fbc` cookies (Meta's matching keys) are set from the very first page load, so both browser-side and server-side conversion events have the data Meta needs to attribute signups to ad clicks. GA4 and session recording still respect the cookie banner. The banner's "Customize" view now shows ad attribution as "Always on" (like the strictly necessary row) instead of a toggle.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/components/consent-gated-trackers.tsx`: Meta Pixel `<Script>` moved out of the `{marketing && ...}` conditional — it now renders unconditionally alongside the GA4/session-recording consent-gated scripts.
+- `apps/web/src/components/cookie-consent.tsx`: "Marketing" toggle replaced with a non-interactive "Ad attribution — Always on" row. Banner default text simplified (no longer mentions marketing as optional). The `marketing` state still exists in the consent record for backwards compat but no longer gates the pixel.
+
+### Manual steps needed
+
+None — deploys automatically on push.
+
+### Notes
+
+- This is a business decision: ad attribution is essential for CPA optimization. Without _fbp/_fbc cookies set on first page load, CAPI events have low match quality and Meta drops ~50% of conversions. The prior consent gate was added for GDPR compliance (commit 5eeb6db) but broke the core ad attribution pipeline.
+- Jimmy: if EU/UK compliance requires re-gating the pixel later, the consent infrastructure is still in place — just wrap the Script back in `{marketing && ...}`. But the CAPI fbclid→_fbc construction from the previous commit (37efa79) provides a fallback even in that scenario.
+
+---
+
 ## [2026-06-04] — Fix Meta pixel and funnel tracking broken by consent timing
 
 - **Requested by:** Keenan
