@@ -7,6 +7,33 @@
 
 ---
 
+## [2026-06-05] — Add "Continue in the Web App" button to funnel download screen
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** 175629f
+
+### In plain English (for Keenan)
+
+The download screen at the end of the /start funnel now has a third clearly visible button: "Continue in the Web App — Record your first debrief right now, no download needed." It sits below the App Store and Google Play buttons as a full-width outlined purple button that's clearly tappable (not grayed out like Google Play). Since the user already created their account earlier in the funnel, tapping it takes them straight into the web app recording screen — no sign-in page, no download. If their session somehow expired, it falls back to sign-in and redirects them to /home after. The screen copy also no longer says "download the app to record" — it now says "Record your first debrief — in the app or right here on the web."
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/components/onboarding-funnel.tsx`: Replaced the old "Use the Web App" `<a>` link with a `<button>` ("Continue in the Web App"). Uses `useSession()` to check auth status — routes to `/home` if authenticated, `/auth/signin?callbackUrl=/home` as fallback. Updated subcopy on both paid and trial heading variants. All three buttons (App Store, Google Play, Web App) now share `py-3.5 text-[15px]` sizing for consistent height.
+- `apps/web/src/app/api/onboarding-events/route.ts`: Added `funnel_continue_web_app_clicked` to VALID_EVENTS allowlist. Kept `funnel_web_app_clicked` in the list for historical query compat (no longer emitted).
+
+### Manual steps needed
+
+None — no schema changes, no env vars, deploys automatically on push.
+
+### Notes
+
+- No `prisma db push` needed — purely frontend + event allowlist.
+- The old `funnel_web_app_clicked` event is no longer emitted but kept in the API allowlist so historical admin queries don't break.
+- Session check uses NextAuth's `useSession()` which is already imported and available in the funnel component. At this point in the flow the user just created their account, so `authStatus` should always be "authenticated" — the `/auth/signin` fallback is a safety net only.
+
+---
+
 ## [2026-06-05] — Fix funnel losing progress on refresh or browser back
 
 - **Requested by:** Keenan
