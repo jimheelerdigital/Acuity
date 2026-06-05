@@ -54,12 +54,14 @@ interface AutoLockOption {
   value: AutoLockMinutes;
   label: string;
   sublabel?: string;
+  /** Renders a small inline "Recommended" pill next to the title. */
+  recommended?: boolean;
 }
 
 const AUTO_LOCK_LABELS: Record<AutoLockMinutes, AutoLockOption> = {
   0: { value: 0, label: "Immediately", sublabel: "Lock the moment you leave the app" },
   1: { value: 1, label: "After 1 minute" },
-  2: { value: 2, label: "After 2 minutes", sublabel: "Recommended" },
+  2: { value: 2, label: "After 2 minutes", recommended: true },
   5: { value: 5, label: "After 5 minutes" },
   15: { value: 15, label: "After 15 minutes" },
   [-1]: { value: -1, label: "Never", sublabel: "Only re-lock on a fresh launch" },
@@ -220,7 +222,8 @@ export default function SecurityScreen() {
           <SectionLabel tokens={tokens} text="Auto-lock after" />
           <View
             style={{
-              borderRadius: 14,
+              // Match the Face ID toggle card above (same radius/border/bg).
+              borderRadius: tokens.radius.lg,
               borderWidth: 1,
               borderColor: tokens.cardBorder,
               backgroundColor: tokens.cardBg,
@@ -238,6 +241,7 @@ export default function SecurityScreen() {
                   tokens={tokens}
                   label={meta.label}
                   sublabel={meta.sublabel}
+                  recommended={meta.recommended}
                   selected={selected}
                   isFirst={idx === 0}
                   onPress={() => void handlePickAutoLock(opt)}
@@ -394,6 +398,7 @@ function PickerRow({
   tokens,
   label,
   sublabel,
+  recommended,
   selected,
   isFirst,
   onPress,
@@ -401,6 +406,7 @@ function PickerRow({
   tokens: ReturnType<typeof useTheme>["tokens"];
   label: string;
   sublabel?: string;
+  recommended?: boolean;
   selected: boolean;
   isFirst: boolean;
   onPress: () => void;
@@ -415,20 +421,53 @@ function PickerRow({
         paddingVertical: 14,
         borderTopWidth: isFirst ? 0 : 1,
         borderTopColor: tokens.cardBorder,
-        backgroundColor: pressed ? tokens.bgInset : "transparent",
+        // Selected row gets a subtly elevated background — the same
+        // pattern AppearanceCard uses for the active mode chip
+        // (cardBgRaised). Pressed (unselected) rows flash bgInset.
+        backgroundColor: selected
+          ? tokens.cardBgRaised
+          : pressed
+            ? tokens.bgInset
+            : "transparent",
       })}
     >
       <View style={{ flex: 1 }}>
-        <Text
-          style={{
-            color: tokens.text,
-            fontSize: 15,
-            fontWeight: selected ? "600" : "400",
-            fontFamily: tokens.fontSans,
-          }}
-        >
-          {label}
-        </Text>
+        {/* Title + inline "Recommended" pill on one line. */}
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <Text
+            style={{
+              color: tokens.text,
+              fontSize: 15,
+              fontWeight: selected ? "600" : "400",
+              fontFamily: tokens.fontSans,
+            }}
+          >
+            {label}
+          </Text>
+          {recommended && (
+            <View
+              style={{
+                paddingHorizontal: 7,
+                paddingVertical: 2,
+                borderRadius: tokens.radius.pill,
+                backgroundColor: `${tokens.primary}1f`,
+              }}
+            >
+              <Text
+                style={{
+                  fontFamily: tokens.fontMono,
+                  fontSize: 9,
+                  fontWeight: "700",
+                  letterSpacing: 0.8,
+                  textTransform: "uppercase",
+                  color: tokens.primary,
+                }}
+              >
+                Recommended
+              </Text>
+            </View>
+          )}
+        </View>
         {sublabel && (
           <Text
             style={{
@@ -442,10 +481,7 @@ function PickerRow({
           </Text>
         )}
       </View>
-      {/* Unambiguous right-side checkmark on the chosen row. Larger
-          tap-target ring + bolder coral stroke than the v1 dim glyph
-          so the selection state reads at a glance, especially on
-          dense lists. */}
+      {/* Unambiguous right-aligned checkmark on the chosen row. */}
       {selected && (
         <View
           style={{
