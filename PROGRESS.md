@@ -7,6 +7,33 @@
 
 ---
 
+## [2026-06-05] — Fix "Continue in the Web App" to skip login and onboarding, land on /home
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** 2ecb500
+
+### In plain English (for Keenan)
+
+When someone finished the /start funnel and tapped "Continue in the Web App," they were getting bounced to a sign-in screen even though they just created an account seconds ago. Even if they signed in again, they'd then hit a second wall — a 10-step web onboarding flow — before ever reaching the recording screen. Now: tapping the button marks web onboarding as complete behind the scenes and drops the user straight onto /home where they can immediately record their first debrief. No login screen, no onboarding, just the record button.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/components/onboarding-funnel.tsx` (DownloadScreen): button handler now `await`s `POST /api/onboarding/complete` with `{ skipped: true, skippedAtStep: 0 }` before navigating. This upserts `UserOnboarding.completedAt` so `/home`'s server-side gate (line 73 of `home/page.tsx`) won't redirect to `/onboarding`. The call is fire-and-forget on failure (try/catch, still routes). Session check flipped from `=== "authenticated"` to `!== "unauthenticated"` so the "loading" state from `useSession()` (which occurs before the session API resolves) correctly routes to `/home` instead of `/auth/signin`.
+
+### Manual steps needed
+
+None — no schema changes, no env vars, deploys automatically on push.
+
+### Notes
+
+- **Diagnosis:** The user DOES have a live NextAuth session at the Download screen (established by `signIn("credentials")` at line 1300 or by the OAuth callback). The two issues were: (1) `useSession()` returns `"loading"` before resolving, and the old `=== "authenticated"` check treated that as unauthenticated; (2) `/home/page.tsx` line 73 redirects to `/onboarding` when `UserOnboarding.completedAt` is null, and the funnel never created that row.
+- No new schema columns — uses the existing `UserOnboarding.completedAt` field and the existing `/api/onboarding/complete` endpoint (which does an upsert and is idempotent).
+- The `/api/onboarding/complete` call uses `getAnySessionUserId` which reads the NextAuth session cookie — same session the user already has.
+- Edge case: if the session genuinely doesn't exist (e.g., `signIn("credentials")` failed silently during account creation), the user falls back to `/auth/signin?callbackUrl=/home`. This is the same behavior as before but now only triggers for truly unauthenticated users.
+
+---
+
 ## [2026-06-05] — Add Click column and "lost" status to admin funnel sessions table
 
 - **Requested by:** Keenan
