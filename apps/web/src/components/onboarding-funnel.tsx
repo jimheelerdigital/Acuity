@@ -1609,11 +1609,33 @@ function DownloadScreen({ track, paymentConfirmed, selectedPlan }: {
         </button>
 
         <button
-          onClick={() => {
+          onClick={async () => {
             track("funnel_continue_web_app_clicked");
-            // User created their account earlier in the funnel — route straight
-            // to the authenticated recording screen if session is live.
-            window.location.href = authStatus === "authenticated" ? "/home" : "/auth/signin?callbackUrl=/home";
+
+            // Mark web onboarding complete so /home doesn't bounce them into
+            // the 10-step web onboarding flow. This user just finished the
+            // entire /start funnel — they don't need onboarding again.
+            // Fire-and-forget: if it fails, still route them (they'll just
+            // hit onboarding, which is better than being stuck).
+            try {
+              await fetch("/api/onboarding/complete", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ skipped: true, skippedAtStep: 0 }),
+              });
+            } catch {}
+
+            // Route to /home. The user's session was established during
+            // account creation (signIn("credentials") or OAuth callback).
+            // authStatus may still be "loading" if useSession hasn't
+            // resolved yet, so treat anything other than explicit
+            // "unauthenticated" as having a session — the middleware will
+            // handle the edge case of a truly missing token.
+            if (authStatus === "unauthenticated") {
+              window.location.href = "/auth/signin?callbackUrl=/home";
+            } else {
+              window.location.href = "/home";
+            }
           }}
           className="w-full mt-3 rounded-full border-2 border-[#7C5CFC] px-8 py-3.5 text-[15px] font-semibold text-[#7C5CFC] text-center transition hover:bg-[#7C5CFC]/5 active:scale-[0.98]"
         >
