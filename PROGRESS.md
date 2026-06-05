@@ -7,6 +7,33 @@
 
 ---
 
+## [2026-06-05] — Fix funnel losing progress on refresh or browser back
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** ca69834
+
+### In plain English (for Keenan)
+
+If someone was partway through the /start quiz and refreshed the page or tapped the browser back button, they got dumped all the way back to question 1 and had to start over. Now the funnel remembers where they are — refreshing picks up right where they left off, and tapping back goes to the previous question instead of leaving the funnel entirely. Their quiz answers, selected branch, and plan choice all survive a refresh too.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/components/onboarding-funnel.tsx`: Added `saveFunnelState`/`loadFunnelState` (sessionStorage) + `buildStepUrl` helpers. `setStep` now calls `history.pushState` with `?step=` in the URL on every transition. `popstate` listener handles browser back/forward by reading the step from history state. On mount, `useState` initializers pull from sessionStorage; the existing URL-param effect (OAuth/Stripe returns) still takes priority. Full quiz state (step, branch, answers, selectedPlan) persisted to sessionStorage on every change.
+- `apps/web/src/app/start/page.tsx`: SSR entry screen now skips for ANY `?step=` param (was only `paywall`/`download`). This prevents the SSR markup from flashing when returning to a mid-funnel step.
+
+### Manual steps needed
+
+None
+
+### Notes
+
+- Edge case: if a user refreshes mid-funnel in a private/incognito window that clears sessionStorage, the URL `?step=` param still restores the correct step, but `branch` and `answers` will be empty. Personalized screens (mirror, mechanism, snapshot, timeline) guard with `branch &&` so they render nothing — user can tap back to re-answer. This is better than the old behavior of total reset.
+- The Stripe `session_id` and `payment` params are stripped from the URL after the initial load via `buildStepUrl`, preventing stale payment verification on refresh.
+- Browser back from the entry step behaves normally (leaves /start) since no history entry is pushed before the first step.
+
+---
+
 ## [2026-06-05] — Promote "Use the Web App" to a visible button on download screen
 
 - **Requested by:** Keenan
