@@ -60,32 +60,26 @@ export default function ProfileTab() {
   }, []);
 
   const handleReplayTour = async () => {
-    // 1. Set the force-replay flag BEFORE refresh()/navigate. The home
-    //    trigger (use-tour-trigger) bypasses its first-login gates when
-    //    it sees this — without it, the `totalRecordings === 0` gate
-    //    silently blocks replay for anyone who has ever recorded (i.e.
-    //    everyone who'd tap this button). This was the bug: reset +
-    //    navigate happened, but the tour never started.
-    await AsyncStorage.setItem(
-      TOUR_FORCE_REPLAY_KEY,
-      new Date().toISOString()
-    ).catch(() => {});
-    // 2. Clear the local completion marker too (defense-in-depth; the
-    //    trigger also clears it on the force path).
+    // 1. Set the force-replay flag + clear the local completion marker
+    //    FIRST. The Home tab's focus trigger (use-tour-trigger) reads
+    //    this flag on focus and fires the tour, bypassing the
+    //    first-login gates (totalRecordings/tourCompletedAt).
+    await AsyncStorage.setItem(TOUR_FORCE_REPLAY_KEY, "1").catch(() => {});
     await AsyncStorage.removeItem("acuity.tour.completed").catch(() => {});
-    // 3. Await the server POST so /me returns tourCompletedAt: null,
-    //    keeping the data model honest (the force flag fires the tour
-    //    regardless, but we don't want a stale truthy value lingering).
-    try {
-      await api.post("/api/user/tour-reset", {});
-    } catch {
-      // Non-fatal — the force flag still fires the tour locally.
-    }
-    // 4. refresh() changes the auth-context user, which re-runs the
-    //    home trigger effect; it reads the force flag and fires.
-    await refresh();
-    // 5. Bounce to Home so the trigger evaluates against fresh state.
+    // 2. Navigate to Home NOW — synchronously, before any network await.
+    //    The previous version awaited refresh() first, so a slow/failed
+    //    /me call blocked navigation entirely (no nav, no tour). Landing
+    //    on Home focuses it → the focus trigger fires the walkthrough.
     router.replace("/(tabs)" as never);
+    // 3. Reset server state + refresh in the background — non-blocking,
+    //    so it can't prevent navigation or the tour. Keeps /me's
+    //    tourCompletedAt honest for the next session.
+    void api
+      .post("/api/user/tour-reset", {})
+      .catch(() => {})
+      .finally(() => {
+        void refresh();
+      });
   };
 
   const handleSignOut = () => {

@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useEffect, useRef } from "react";
+import { useFocusEffect } from "expo-router";
+import { useCallback, useEffect, useRef } from "react";
 import { useCopilot } from "react-native-copilot";
 
 import { useAuth } from "@/contexts/auth-context";
@@ -122,43 +123,23 @@ export function useTourTrigger({ queueHasItem = false }: Options = {}) {
     };
   }, [copilotEvents, refresh, totalStepsNumber]);
 
-  // Fire on home mount. Two paths:
-  //   - manual replay (TOUR_FORCE_REPLAY_KEY set) → bypass the
-  //     first-login gates; the user explicitly asked for it.
-  //   - first-login auto-fire → all gates must pass.
-  // The gate checks live INSIDE the async body (after reading the force
-  // flag) so a replaying user — who has recordings and a prior
-  // completion — isn't short-circuited before we can honor the flag.
+  // First-login AUTO-fire on home mount. All gates must pass. (Manual
+  // replay is handled by the focus effect below, which bypasses these.)
   useEffect(() => {
+    if (firedRef.current) return;
     if (!user) return;
+    if (!user.onboardingCompleted) return;
+    if ((user.totalRecordings ?? 0) > 0) return;
+    if (user.tourCompletedAt != null) return;
     if (queueHasItem) return;
 
     let cancelled = false;
     void (async () => {
-      const forceReplay =
-        (await AsyncStorage.getItem(TOUR_FORCE_REPLAY_KEY)) != null;
-
-      if (forceReplay) {
-        // Consume the flag + clear the completion marker so we don't
-        // loop, and reset the per-mount guard so replay works even if
-        // the auto-tour already fired earlier this session.
-        await AsyncStorage.removeItem(TOUR_FORCE_REPLAY_KEY);
-        await AsyncStorage.removeItem(ASYNC_STORAGE_KEY);
-        firedRef.current = false;
-      } else {
-        // First-login auto-fire gates.
-        if (firedRef.current) return;
-        if (!user.onboardingCompleted) return;
-        if ((user.totalRecordings ?? 0) > 0) return;
-        if (user.tourCompletedAt != null) return;
-        // Double-check the AsyncStorage marker — the user may have
-        // completed the tour just now on this same device but the /me
-        // refresh hasn't landed yet.
-        const localMarker = await AsyncStorage.getItem(ASYNC_STORAGE_KEY);
-        if (localMarker) return;
-      }
-
-      if (cancelled) return;
+      // Double-check the AsyncStorage marker — the user may have
+      // completed the tour just now on this same device but the /me
+      // refresh hasn't landed yet.
+      const localMarker = await AsyncStorage.getItem(ASYNC_STORAGE_KEY);
+      if (cancelled || localMarker) return;
       // 500ms after mount so the celebration modal wins if it was
       // going to fire.
       await new Promise((r) => setTimeout(r, POST_MOUNT_DELAY_MS));
@@ -171,4 +152,37 @@ export function useTourTrigger({ queueHasItem = false }: Options = {}) {
       cancelled = true;
     };
   }, [user, queueHasItem, start]);
+
+  // Manual replay — fires when the Home tab gains FOCUS and the force
+  // flag is set (the "Replay product tour" button sets it, then
+  // navigates here). Focus-based on purpose:
+  //   - it runs only once Home is actually visible, so the "mic"
+  //     CopilotStep target is mounted + measurable (the old code fired
+  //     from a background effect while the user was still on Settings);
+  //   - it isn't tied to the `user` object, so refresh()-driven churn
+  //     can't cancel the run that would have called start() and eat the
+  //     flag before the tour shows.
+  // The flag is consumed here (not by any background effect), and the
+  // first-login gates are bypassed entirely — replay is an explicit,
+  // user-initiated override.
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      void (async () => {
+        const flag = await AsyncStorage.getItem(TOUR_FORCE_REPLAY_KEY);
+        if (cancelled || !flag) return;
+        await AsyncStorage.removeItem(TOUR_FORCE_REPLAY_KEY);
+        await AsyncStorage.removeItem(ASYNC_STORAGE_KEY);
+        firedRef.current = true;
+        // Let the freshly-focused Home lay out its CopilotStep targets
+        // before anchoring the first tooltip.
+        await new Promise((r) => setTimeout(r, POST_MOUNT_DELAY_MS));
+        if (cancelled) return;
+        void start(FIRST_STEP_NAME);
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }, [start])
+  );
 }
