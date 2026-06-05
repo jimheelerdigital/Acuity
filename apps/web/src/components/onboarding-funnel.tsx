@@ -11,7 +11,7 @@ import {
 import { trackOnboardingEvent, captureUtmParams, type UtmParams } from "@/lib/track-onboarding";
 import { PRIORITY_COLOR } from "@acuity/shared";
 import { MoodDot, AppleLogo, GoogleLogo } from "@/components/debrief-shared";
-import { fireFbq, TrackCompleteRegistration } from "@/components/meta-pixel-events";
+import { fireFbq, waitForFbq, TrackCompleteRegistration } from "@/components/meta-pixel-events";
 import {
   type Branch,
   type Question,
@@ -174,7 +174,9 @@ export function OnboardingFunnel() {
         setStep("download");
       }
     } else if (stepParam === "savings") {
-      // Return from cancelled Stripe checkout
+      // OAuth returnees land here after Google/Apple signup redirect.
+      // Fire funnel_account_created so the funnel dashboard counts them as signed up.
+      track("funnel_account_created");
       setStep("savings");
     } else if (stepParam === "create-account") {
       setStep("create-account");
@@ -1169,6 +1171,7 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
         ...(funnelUtm.utmMedium ? { utm_medium: funnelUtm.utmMedium } : {}),
         ...(funnelUtm.utmCampaign ? { utm_campaign: funnelUtm.utmCampaign } : {}),
         ...(funnelUtm.utmContent ? { utm_content: funnelUtm.utmContent } : {}),
+        ...(funnelUtm.fbclid ? { fbclid: funnelUtm.fbclid } : {}),
         landingPath: "/start",
       };
       const res = await fetch("/api/auth/signup", {
@@ -1187,7 +1190,13 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
         return;
       }
       const signupData = await res.json().catch(() => ({}));
-      fireFbq("CompleteRegistration", { content_name: "Free Trial Signup", currency: "USD", value: 0 }, signupData.capiEventId);
+      // Fire browser pixel — wait for fbq to load (consent-gated, may not be available yet)
+      waitForFbq().then((ready) => {
+        if (ready) {
+          fireFbq("CompleteRegistration", { content_name: "Free Trial Signup", currency: "USD", value: 0 }, signupData.capiEventId);
+          fireFbq("StartTrial", { value: 4.99, currency: "USD", predicted_ltv: 39.99 });
+        }
+      });
       // Guard so TrackCompleteRegistration on the savings step doesn't double-fire
       try { sessionStorage.setItem("acuity_reg_pixel_fired", "1"); } catch {}
 

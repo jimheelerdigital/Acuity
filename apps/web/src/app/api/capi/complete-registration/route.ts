@@ -31,10 +31,18 @@ export async function POST(req: NextRequest) {
 
   // Verify this is a genuinely new signup (created within last 5 minutes)
   const { prisma } = await import("@/lib/prisma");
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { createdAt: true, email: true, name: true },
-  });
+  const [user, fbclidEvent] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { createdAt: true, email: true, name: true },
+    }),
+    // Look up fbclid from the user's funnel events (stored on OnboardingEvent)
+    prisma.onboardingEvent.findFirst({
+      where: { userId: session.user.id, fbclid: { not: null } },
+      orderBy: { createdAt: "desc" },
+      select: { fbclid: true },
+    }),
+  ]);
 
   if (!user) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -59,6 +67,7 @@ export async function POST(req: NextRequest) {
       lastName: nameParts.length > 1 ? nameParts[nameParts.length - 1] : undefined,
       ip: getClientIp(reqHeaders),
       userAgent: reqHeaders.get("user-agent") || undefined,
+      fbclid: fbclidEvent?.fbclid ?? undefined,
       ...extractFbCookies(reqHeaders.get("cookie")),
     },
     customData: {

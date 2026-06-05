@@ -40,6 +40,30 @@ export function fireFbq(event: string, params?: Record<string, unknown>, eventId
 }
 
 /**
+ * Wait for window.fbq to become available (consent-gated pixel may load
+ * after the component mounts). Polls every 200ms, gives up after 5s.
+ */
+export function waitForFbq(): Promise<boolean> {
+  return new Promise((resolve) => {
+    if (typeof window !== "undefined" && typeof window.fbq === "function") {
+      resolve(true);
+      return;
+    }
+    let elapsed = 0;
+    const interval = setInterval(() => {
+      elapsed += 200;
+      if (typeof window !== "undefined" && typeof window.fbq === "function") {
+        clearInterval(interval);
+        resolve(true);
+      } else if (elapsed >= 5000) {
+        clearInterval(interval);
+        resolve(false);
+      }
+    }, 200);
+  });
+}
+
+/**
  * Re-initializes the Meta Pixel with Advanced Matching parameters when
  * a user session is available. This passes hashed email/name to Meta for
  * better ad attribution. Safe to call after the initial anonymous init —
@@ -95,18 +119,27 @@ export function TrackCompleteRegistration() {
       return;
     }
 
-    // Fire CAPI first (has its own 5-min guard), then browser pixel with
-    // the returned eventId for deduplication.
+    // Fire CAPI first (has its own 5-min guard), then wait for the
+    // consent-gated pixel to load before firing the browser event.
+    // OAuth users often land here before cookie consent is granted,
+    // so we poll for up to 5s for fbq to become available.
     fetch("/api/capi/complete-registration", { method: "POST" })
       .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
+      .then(async (data) => {
         if (!data?.eventId) {
           console.log("[meta-pixel] CAPI returned no eventId (not a new signup or error), skipping browser pixel");
           return;
         }
         console.log(`[meta-pixel] CAPI CompleteRegistration fired, eventId=${data.eventId}`);
-        fireFbq("CompleteRegistration", { content_name: "Free Trial Signup", currency: "USD", value: 0 }, data.eventId);
-        fireFbq("StartTrial", { value: 4.99, currency: "USD", predicted_ltv: 39.99 });
+
+        // Wait for fbq to load (consent-gated — may not be available yet)
+        const fbqReady = await waitForFbq();
+        if (fbqReady) {
+          fireFbq("CompleteRegistration", { content_name: "Free Trial Signup", currency: "USD", value: 0 }, data.eventId);
+          fireFbq("StartTrial", { value: 4.99, currency: "USD", predicted_ltv: 39.99 });
+        } else {
+          console.warn("[meta-pixel] fbq not available after 5s (no marketing consent?), CAPI-only for this signup");
+        }
         sessionStorage.setItem(key, "1");
       })
       .catch((err) => {
