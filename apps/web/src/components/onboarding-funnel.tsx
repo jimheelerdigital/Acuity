@@ -1521,6 +1521,7 @@ function DownloadScreen({ track, paymentConfirmed, selectedPlan }: {
   paymentConfirmed: boolean;
   selectedPlan: "monthly" | "yearly";
 }) {
+  const { status: authStatus } = useSession();
   const [testimonialIdx, setTestimonialIdx] = useState(0);
   const celebratedRef = useRef(false);
   const [copied, setCopied] = useState(false);
@@ -1558,13 +1559,13 @@ function DownloadScreen({ track, paymentConfirmed, selectedPlan }: {
         {paymentConfirmed ? (
           <>
             <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-3">You&rsquo;re locked in at {planPrice}. Welcome to Acuity.</h2>
-            <p className="text-sm text-zinc-500 mb-10">Download the app to record your first debrief.</p>
+            <p className="text-sm text-zinc-500 mb-10">Record your first debrief &mdash; in the app or right here on the web.</p>
           </>
         ) : (
           <>
             <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-3">Your free trial is active.</h2>
             <p className="text-sm text-zinc-500 mb-2">You have 14 days to explore everything Acuity offers.</p>
-            <p className="text-sm text-zinc-500 mb-10">Download the app to record your first debrief.</p>
+            <p className="text-sm text-zinc-500 mb-10">Record your first debrief &mdash; in the app or right here on the web.</p>
           </>
         )}
 
@@ -1581,7 +1582,7 @@ function DownloadScreen({ track, paymentConfirmed, selectedPlan }: {
               window.open(APP_STORE_URL, "_blank");
             }
           }}
-          className="relative w-full rounded-full px-8 py-4 text-[15px] font-semibold text-white transition hover:brightness-110 active:scale-[0.98] overflow-hidden funnel-bounce"
+          className="relative w-full rounded-full px-8 py-3.5 text-[15px] font-semibold text-white transition hover:brightness-110 active:scale-[0.98] overflow-hidden funnel-bounce"
           style={{ background: "linear-gradient(135deg, #7C5CFC 0%, #9F7AEA 50%, #6D28D9 100%)", boxShadow: "0 4px 24px rgba(124,92,252,0.4)" }}>
           <span className="absolute inset-0 rounded-full" style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)", backgroundSize: "200% 100%", animation: "funnel-shimmer 2s ease-in-out infinite" }} />
           <span className="relative">Download on the App Store</span>
@@ -1607,14 +1608,18 @@ function DownloadScreen({ track, paymentConfirmed, selectedPlan }: {
           Google Play — Coming soon!
         </button>
 
-        <a
-          href="/auth/signin"
-          onClick={() => track("funnel_web_app_clicked")}
-          className="block w-full mt-3 rounded-full border-2 border-[#7C5CFC] px-8 py-3 text-[14px] font-semibold text-[#7C5CFC] text-center transition hover:bg-[#7C5CFC]/5 active:scale-[0.98]"
+        <button
+          onClick={() => {
+            track("funnel_continue_web_app_clicked");
+            // User created their account earlier in the funnel — route straight
+            // to the authenticated recording screen if session is live.
+            window.location.href = authStatus === "authenticated" ? "/home" : "/auth/signin?callbackUrl=/home";
+          }}
+          className="w-full mt-3 rounded-full border-2 border-[#7C5CFC] px-8 py-3.5 text-[15px] font-semibold text-[#7C5CFC] text-center transition hover:bg-[#7C5CFC]/5 active:scale-[0.98]"
         >
-          Use the Web App
-          <span className="block text-[11px] font-normal text-zinc-400 mt-0.5">Works on any device</span>
-        </a>
+          Continue in the Web App
+          <span className="block text-[11px] font-normal text-zinc-400 mt-0.5">Record your first debrief right now &mdash; no download needed.</span>
+        </button>
 
         {/* QR code — desktop only */}
         <div className="mt-8 hidden sm:block">

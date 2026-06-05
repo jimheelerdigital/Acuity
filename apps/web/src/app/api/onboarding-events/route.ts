@@ -84,6 +84,8 @@ const VALID_EVENTS = new Set([
   "funnel_savings_locked_in",
   "funnel_trial_continued",
   "funnel_download_screen_viewed",
+  "funnel_continue_web_app_clicked",
+  "funnel_web_app_clicked", // legacy — kept for historical queries
   // ─── Legacy v1 events (kept for historical queries) ───
   "funnel_pain_hook_viewed",
   "funnel_diagnostic_loop_viewed",
