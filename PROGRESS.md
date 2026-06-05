@@ -7,6 +7,38 @@
 
 ---
 
+## [2026-06-04] — v1.3 signup/onboarding/login bug-fix batch (4 fixes for build 66)
+
+- **Requested by:** Jimmy
+- **Committed by:** Claude Code
+- **Commit hash:** 33d47e3, 66f05e8, 1df9a81, ca8e271
+
+### In plain English (for Keenan)
+
+Four bugs found while testing the v1.3 flows, all fixed and going out in the next iOS build. (1) The "Replay product tour" button took you home but never actually started the tour — now it does. (2) On the signup and password-reset screens, entering a too-short password did nothing at all — no error, the button just sat there dead; now the screen says "at least 8 characters" up front and shows a clear error if it's too short. (The app was also wrongly demanding 12 characters in two places while the server only requires 8.) (3) Brand-new signups were being skipped straight past the onboarding and tour because the app was auto-marking onboarding "done" the instant they logged in — fixed so new users actually see the 5-step onboarding. (4) After login the app was hammering the server with duplicate requests (the same data fetched 3–6 times), causing a slow 30–90 second "everything appears one piece at a time" load — now those are coalesced so the home screen fills in fast.
+
+### Technical changes (for Jimmy)
+
+- `apps/mobile/hooks/use-tour-trigger.ts` + `apps/mobile/app/(tabs)/profile.tsx` (33d47e3): `TOUR_FORCE_REPLAY_KEY` flag; replay bypasses the first-login `totalRecordings===0` gate.
+- `apps/web/src/app/auth/signup/page.tsx` + `auth/reset-password/page.tsx` (66f05e8): inline `pwError` under the field, requirements hint, button enabled so submit always runs; `PASSWORD_MIN` 12→8 on reset (and mobile sign-up) to match server `lib/passwords` (8, no upper/number/special).
+- `apps/mobile/app/_layout.tsx` (1df9a81): AuthGate onboarding bypass is PRO-only (was PRO||TRIAL → every fresh TRIAL signup auto-completed); PRO bypass no longer POSTs `/api/onboarding/complete` on login; push-token + Meta SDK init guarded to once per `userId`.
+- `apps/mobile/lib/cache.ts` (`cachedGet`/`dedupedGet` exports), `lib/userProgression.ts`, and `(tabs)/{index,tasks,goals,entries}.tsx` (ca8e271): tab fetches routed through the existing SWR cache + in-flight dedupe; pull-to-refresh forces fresh.
+
+### Manual steps needed
+
+- [ ] Jim — validate all 4 on TestFlight (build 66) on a real device (sim skipped — Circles & Squares dev-client cross-contamination).
+- [ ] Jim — App Store release stays MANUAL; build auto-submitted to TestFlight only.
+- [ ] No `prisma db push` — no schema changes in this batch.
+
+### Notes
+
+- Not runtime-tested locally (no RN sim run); typecheck clean on web + mobile.
+- AuthGate fix is status-agnostic — works whether the test account is PRO or TRIAL (verified by reasoning, not assumed).
+- Ad-funnel `account.tsx`/`paywall.tsx` also POST `/complete` programmatically — left untouched pending Jim's decision (different flow; ad-funnel users have recordings so no tour anyway).
+- Sentry optional-module console warnings (ExpoDevice/RNViewShot/etc.) are unrelated pre-existing noise — not real deps, not a linking break.
+
+---
+
 ## [2026-06-04] — Remove consent gate from Meta Pixel — always load
 
 - **Requested by:** Keenan
