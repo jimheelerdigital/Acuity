@@ -7,6 +7,32 @@
 
 ---
 
+## [2026-06-05] — Add Click column and "lost" status to admin funnel sessions table
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** fc8ff20
+
+### In plain English (for Keenan)
+
+The funnel sessions table in the admin dashboard now has a new "Click" column between Step and Status showing exactly which button each user tapped on the download screen — "App Store" (purple) or "Web App" (blue), or a dash if they never clicked either. Users who created an account but never tapped a CTA now show as "Lost" (orange) instead of "Completed," so you can see exactly how many people are falling into the dead zone between account creation and activation. The CSV export includes the new column too.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/api/admin/metrics/route.ts`: Added `click` field (string | null) to session objects in both the funnel-analytics pass and the main session-building pass. Checks for `funnel_app_store_clicked` → "App Store", `funnel_continue_web_app_clicked` / `funnel_web_app_clicked` → "Web App". Added "lost" status: fires when user has `funnel_account_created` or `funnel_trial_continued` but no CTA click and 60+ min since last event. Added new web app click events to `STEP_PROGRESS` map at step 19.
+- `apps/web/src/app/admin/tabs/FunnelAnalyticsTab.tsx`: New "Click" column with color coding (purple = App Store, blue = Web App, dim dash = none). Orange color for "lost" status. Updated CSV header/rows and sort logic.
+
+### Manual steps needed
+
+None — no schema changes, deploys automatically on push.
+
+### Notes
+
+- "Lost" only applies to sessions where an account was created (via `funnel_account_created`, `funnel_signup_completed`, or `funnel_trial_continued`) but no CTA was clicked and 60+ min have elapsed. Sessions that dropped before account creation still show as "Dropped."
+- Both the legacy `funnel_web_app_clicked` and the new `funnel_continue_web_app_clicked` events map to "Web App" in the Click column for historical compat.
+
+---
+
 ## [2026-06-05] — Add "Continue in the Web App" button to funnel download screen
 
 - **Requested by:** Keenan
