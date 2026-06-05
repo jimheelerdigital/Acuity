@@ -160,10 +160,9 @@ export function CookieConsentBanner() {
         {state === "default" ? (
           <>
             <div className="text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
-              Acuity uses cookies + similar tech for essential app function,
-              analytics (how the product is used), and attribution of paid
-              marketing. You can choose which categories you&rsquo;re okay with.
-              See our{" "}
+              Acuity uses cookies for essential app function and analytics
+              (how the product is used). You can choose which categories
+              you&rsquo;re okay with. See our{" "}
               <a href="/privacy" className="underline hover:no-underline">
                 privacy policy
               </a>
@@ -226,23 +225,20 @@ export function CookieConsentBanner() {
                   className="h-4 w-4"
                 />
               </label>
-              <label className="flex items-center justify-between gap-3 rounded-md border border-zinc-200 px-3 py-2 dark:border-white/10">
+              <div className="flex items-center justify-between gap-3 rounded-md border border-zinc-200 px-3 py-2 dark:border-white/10">
                 <div>
                   <p className="font-medium text-zinc-900 dark:text-zinc-50">
-                    Marketing
+                    Ad attribution
                   </p>
                   <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                    Meta Pixel + Google Analytics attribution. Helps us see
-                    which ads actually send interested users.
+                    Measures which ads bring interested users. Required for
+                    keeping the service free during trial.
                   </p>
                 </div>
-                <input
-                  type="checkbox"
-                  checked={marketing}
-                  onChange={(e) => setMarketing(e.target.checked)}
-                  className="h-4 w-4"
-                />
-              </label>
+                <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600 dark:bg-white/10 dark:text-zinc-300">
+                  Always on
+                </span>
+              </div>
             </div>
             <div className="mt-4 flex flex-wrap justify-end gap-2">
               <button
