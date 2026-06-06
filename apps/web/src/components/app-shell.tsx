@@ -28,6 +28,8 @@ type NavItem = {
   icon: LucideIcon;
   accent?: boolean;
   matchPrefix?: string;
+  /** Web product tour anchor id (data-tour="<tourId>") for this item. */
+  tourId?: string;
   /** Optional list of additional path prefixes that also mark this
    *  nav item active. Used so Insights stays highlighted when the
    *  user drills into /life-matrix (which is a featured destination
@@ -85,9 +87,16 @@ const SECTIONS: NavSection[] = [
         // means a deeper route can still override (e.g., if a
         // future /entries/foo got its own sidebar item).
         matchPrefix: "/entries",
+        tourId: "entries",
       },
-      { href: "/tasks", label: "Tasks", icon: CheckSquare },
-      { href: "/goals", label: "Goals", icon: Target, matchPrefix: "/goals" },
+      { href: "/tasks", label: "Tasks", icon: CheckSquare, tourId: "tasks" },
+      {
+        href: "/goals",
+        label: "Goals",
+        icon: Target,
+        matchPrefix: "/goals",
+        tourId: "goals",
+      },
     ],
   },
   {
@@ -98,6 +107,7 @@ const SECTIONS: NavSection[] = [
         label: "Insights",
         icon: BarChart3,
         matchPrefix: "/insights",
+        tourId: "insights",
       },
       {
         href: "/life-matrix",
@@ -197,6 +207,7 @@ function SidebarLink({ item, active }: { item: NavItem; active: boolean }) {
   return (
     <Link
       href={item.href}
+      data-tour={item.tourId}
       className={`group relative flex items-center gap-3 rounded-lg px-3 transition-colors ${
         active
           ? "bg-acuity-bg-sub text-acuity-text"
@@ -263,6 +274,7 @@ function Sidebar({ onOpenRecord }: { onOpenRecord: () => void }) {
         <button
           type="button"
           onClick={onOpenRecord}
+          data-tour="record"
           className="flex w-full items-center justify-center gap-2 rounded-lg bg-acuity-grad-primary px-3 text-white shadow-acuity-glow-primary transition hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-acuity-primary focus-visible:ring-offset-2 focus-visible:ring-offset-acuity-bg"
           style={{ paddingTop: 16, paddingBottom: 16, fontSize: 17, fontWeight: 500 }}
         >

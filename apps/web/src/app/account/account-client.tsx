@@ -226,12 +226,22 @@ export default function AccountClient({
             support. If you&rsquo;re in crisis, please reach out to a hotline or
             emergency service.
           </p>
-          <a
-            href="/support/crisis"
-            className="mt-4 inline-flex rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-white/10 dark:bg-acuity-card-bg dark:text-zinc-200 dark:hover:bg-white/5"
-          >
-            Crisis resources
-          </a>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <a
+              href="/support/crisis"
+              className="inline-flex rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-white/10 dark:bg-acuity-card-bg dark:text-zinc-200 dark:hover:bg-white/5"
+            >
+              Crisis resources
+            </a>
+            {/* Replays the first-login product tour. ?replayTour=1 is
+                consumed by WebTourController on /home. */}
+            <a
+              href="/home?replayTour=1"
+              className="inline-flex rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-white/10 dark:bg-acuity-card-bg dark:text-zinc-200 dark:hover:bg-white/5"
+            >
+              Replay product tour
+            </a>
+          </div>
         </section>
 
         {/* Appearance — slice 22 (2026-05-24) replaced the minimal

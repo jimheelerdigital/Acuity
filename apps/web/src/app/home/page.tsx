@@ -16,6 +16,7 @@ import { computeProgressionState, type ProgressionState } from "@/lib/progressio
 import { getUserProgression } from "@/lib/userProgression";
 import { BackfillBanner } from "@/components/backfill-banner";
 import { PageContainer } from "@/components/page-container";
+import { WebTourController } from "@/components/web-tour-controller";
 import { ProLockedCard } from "@/components/pro-locked-card";
 import { Avatar } from "@/components/acuity";
 import { RecordButton } from "./record-button";
@@ -93,6 +94,8 @@ export default async function DashboardPage() {
       // least one eligible entry (counted below).
       backfillPromptDismissedAt: true,
       backfillStartedAt: true,
+      // Gates the first-login web product tour (auto-fires when null).
+      tourCompletedAt: true,
       onboarding: { select: { progressionChecklist: true } },
     },
   });
@@ -239,11 +242,21 @@ export default async function DashboardPage() {
           </section>
         )}
 
+        {/* First-login web product tour — auto-fires when tourCompletedAt
+            is null, replayable via ?replayTour=1 from Settings. Renders
+            null; just drives driver.js. */}
+        <WebTourController
+          tourCompletedAt={user?.tourCompletedAt?.toISOString() ?? null}
+        />
+
         <div className="mb-8">
           <HomeFocusStack progression={userProg} />
         </div>
 
-        <div className="mb-6 flex items-center gap-4 text-left">
+        <div
+          data-tour="dashboard"
+          className="mb-6 flex items-center gap-4 text-left"
+        >
           <Avatar
             initials={
               session.user.name
@@ -274,7 +287,11 @@ export default async function DashboardPage() {
             sidebar Record button. The id="record" anchor is kept
             on the wrapper so the sidebar #record hash still has
             a target on desktop (scroll-jumps to top, harmless). */}
-        <div id="record" className="mb-8 mx-auto max-w-lg lg:hidden">
+        <div
+          id="record"
+          data-tour="record"
+          className="mb-8 mx-auto max-w-lg lg:hidden"
+        >
           <RecordButton />
         </div>
 

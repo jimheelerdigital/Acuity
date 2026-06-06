@@ -263,6 +263,19 @@ export function NavBar() {
                 <Link
                   key={link.href}
                   href={link.href}
+                  // Web product tour anchors (mobile viewport). Mirror of
+                  // the desktop sidebar data-tour ids; the tour resolves
+                  // whichever is visible. Entries isn't in the mobile nav,
+                  // so that step is desktop-only.
+                  data-tour={
+                    link.href === "/tasks"
+                      ? "tasks"
+                      : link.href === "/goals"
+                        ? "goals"
+                        : link.href === "/insights"
+                          ? "insights"
+                          : undefined
+                  }
                   className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-all duration-200 ${
                     isActive
                       ? "bg-white dark:bg-[#1E1E2E] text-zinc-900 dark:text-zinc-50 shadow-sm"
