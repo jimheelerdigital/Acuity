@@ -48,13 +48,30 @@ export function WebTourController({
 
     firedRef.current = true;
 
-    // Let the shell + nav settle (layout/measure) before driver.js reads
-    // anchor rects — same rationale as the mobile NAV_SETTLE delay.
-    const timer = window.setTimeout(() => {
-      try {
-        sessionStorage.setItem(SESSION_FLAG, "1");
-      } catch {
-        /* non-fatal */
+    // POLL until the shell is actually mounted before firing. On a fresh
+    // signup, AppShell bypasses to a no-sidebar view while useSession() is
+    // still "loading", so the Record/nav anchors don't exist yet. A single
+    // fixed delay raced that and fired into an empty DOM (0 anchors). We
+    // wait for a VISIBLE record anchor (sidebar on desktop / #record on
+    // mobile) — its presence means the authenticated shell has rendered —
+    // and only mark the tour "fired" once it actually starts, so a missed
+    // attempt retries on the next load instead of being silently consumed.
+    let cancelled = false;
+    let timer: number;
+    let attempts = 0;
+    const MAX_ATTEMPTS = 20; // ~6s at 300ms
+
+    const shellReady = () =>
+      Array.from(
+        document.querySelectorAll<HTMLElement>('[data-tour="record"]')
+      ).some((el) => el.offsetParent !== null);
+
+    const tryFire = () => {
+      if (cancelled) return;
+      if (!shellReady() && attempts < MAX_ATTEMPTS) {
+        attempts += 1;
+        timer = window.setTimeout(tryFire, 300);
+        return;
       }
       const ran = runWebTour({
         onEnd: (completed) => {
@@ -69,12 +86,25 @@ export function WebTourController({
           if (replay) router.replace("/home");
         },
       });
-      // No anchors resolved (shouldn't happen on /home) — clear the replay
-      // param so a refresh doesn't strand the user mid-trigger.
-      if (!ran && replay) router.replace("/home");
-    }, 600);
+      if (ran) {
+        // Mark fired ONLY on a successful start, so a failed attempt
+        // (anchors never appeared) can retry on a later load.
+        try {
+          sessionStorage.setItem(SESSION_FLAG, "1");
+        } catch {
+          /* non-fatal */
+        }
+      } else {
+        firedRef.current = false;
+        if (replay) router.replace("/home");
+      }
+    };
 
-    return () => window.clearTimeout(timer);
+    timer = window.setTimeout(tryFire, 300);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
   }, [tourCompletedAt, router]);
 
   return null;
