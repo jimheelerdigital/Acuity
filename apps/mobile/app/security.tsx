@@ -236,16 +236,28 @@ export default function SecurityScreen() {
               const meta = AUTO_LOCK_LABELS[opt];
               const selected = autoLock === opt;
               return (
-                <PickerRow
-                  key={opt}
-                  tokens={tokens}
-                  label={meta.label}
-                  sublabel={meta.sublabel}
-                  recommended={meta.recommended}
-                  selected={selected}
-                  isFirst={idx === 0}
-                  onPress={() => void handlePickAutoLock(opt)}
-                />
+                <View key={opt}>
+                  {idx > 0 && (
+                    // Explicit 1px divider, inset to match the card's
+                    // horizontal padding (16). Rendered as its own element
+                    // rather than a row borderTop so it always shows.
+                    <View
+                      style={{
+                        height: 1,
+                        marginHorizontal: 16,
+                        backgroundColor: tokens.line,
+                      }}
+                    />
+                  )}
+                  <PickerRow
+                    tokens={tokens}
+                    label={meta.label}
+                    sublabel={meta.sublabel}
+                    recommended={meta.recommended}
+                    selected={selected}
+                    onPress={() => void handlePickAutoLock(opt)}
+                  />
+                </View>
               );
             })}
           </View>
@@ -400,7 +412,6 @@ function PickerRow({
   sublabel,
   recommended,
   selected,
-  isFirst,
   onPress,
 }: {
   tokens: ReturnType<typeof useTheme>["tokens"];
@@ -408,31 +419,30 @@ function PickerRow({
   sublabel?: string;
   recommended?: boolean;
   selected: boolean;
-  isFirst: boolean;
   onPress: () => void;
 }) {
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => ({
+      // Plain style OBJECT (not a function) so the row layout always
+      // applies — the function form was rendering as a padding-less
+      // column (title clipped at the card edge, checkmark stacked below).
+      // space-between pins the title left + checkmark right on one line.
+      style={{
         flexDirection: "row",
         alignItems: "center",
+        justifyContent: "space-between",
         paddingHorizontal: 16,
         paddingVertical: 14,
-        borderTopWidth: isFirst ? 0 : 1,
-        borderTopColor: tokens.cardBorder,
-        // Selected row gets a subtly elevated background — the same
-        // pattern AppearanceCard uses for the active mode chip
-        // (cardBgRaised). Pressed (unselected) rows flash bgInset.
-        backgroundColor: selected
-          ? tokens.cardBgRaised
-          : pressed
-            ? tokens.bgInset
-            : "transparent",
-      })}
+        // Selected row gets the elevated background AppearanceCard uses
+        // for its active mode chip (cardBgRaised).
+        backgroundColor: selected ? tokens.cardBgRaised : "transparent",
+      }}
     >
-      <View style={{ flex: 1 }}>
-        {/* Title + inline "Recommended" pill on one line. */}
+      {/* Left: title (+ inline pill) over optional subtitle. flex:1 (the
+          canonical settings-row pattern) claims the row's free width and
+          pushes the checkmark to the right edge. */}
+      <View style={{ flex: 1, marginRight: 12 }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
           <Text
             style={{
