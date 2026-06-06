@@ -10,8 +10,28 @@ import { Step6WeeklyReportPriming } from "./step-6-weekly-report-priming";
 import { Step7TrialExplanation } from "./step-7-trial-explanation";
 import { Step8FirstEntryCta } from "./step-8-first-entry-cta";
 import { Step9Notifications } from "./step-9-notifications";
+import { StepAiConsent } from "./step-ai-consent";
 
-export type OnboardingStepNumber = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
+export type OnboardingStepNumber =
+  | 1
+  | 2
+  | 3
+  | 4
+  | 5
+  | 6
+  | 7
+  | 8
+  | 9
+  | 10
+  | 11;
+
+/**
+ * The Art. 9 special-category consent step's number. The onboarding
+ * shell hides "Skip for now" on this step so it's a HARD gate — no path
+ * to the recorder without an explicit grant. Keep in sync with the
+ * ONBOARDING_STEPS array below.
+ */
+export const AI_CONSENT_STEP = 4;
 
 export interface OnboardingStep {
   step: OnboardingStepNumber;
@@ -44,11 +64,14 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
   { step: 1, title: "Welcome", Component: Step1Welcome },
   { step: 2, title: "What Acuity does", Component: Step2ValueProp },
   { step: 3, title: "A few quick things", Component: Step3Demographics },
-  { step: 4, title: "Microphone access", Component: Step3MicrophonePermission },
-  { step: 5, title: "Practice round", Component: Step4PracticeRecording },
-  { step: 6, title: "Mood baseline", Component: Step5MoodBaseline },
-  { step: 7, title: "Your Sunday report", Component: Step6WeeklyReportPriming },
-  { step: 8, title: "How the trial works", Component: Step7TrialExplanation },
-  { step: 9, title: "Reminders", Component: Step9Notifications },
-  { step: 10, title: "Ready when you are", Component: Step8FirstEntryCta },
+  // Art. 9 consent — hard gate, immediately before the mic/recording
+  // steps so no special-category audio is processed without consent.
+  { step: 4, title: "AI processing consent", Component: StepAiConsent },
+  { step: 5, title: "Microphone access", Component: Step3MicrophonePermission },
+  { step: 6, title: "Practice round", Component: Step4PracticeRecording },
+  { step: 7, title: "Mood baseline", Component: Step5MoodBaseline },
+  { step: 8, title: "Your Sunday report", Component: Step6WeeklyReportPriming },
+  { step: 9, title: "How the trial works", Component: Step7TrialExplanation },
+  { step: 10, title: "Reminders", Component: Step9Notifications },
+  { step: 11, title: "Ready when you are", Component: Step8FirstEntryCta },
 ];

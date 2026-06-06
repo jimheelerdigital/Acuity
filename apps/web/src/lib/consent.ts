@@ -50,6 +50,22 @@ export const CONSENT_WORDING = {
 } as const;
 
 /**
+ * Art. 9(2)(a) special-category consent wording. Kept byte-for-byte
+ * identical to the mobile copy (apps/mobile/lib/consent.ts) so the same
+ * `art9-v1` version maps to the same text across platforms. The web
+ * onboarding consent step displays this and stores it verbatim in the
+ * ConsentRecord ledger.
+ */
+export const ART9_WORDING_VERSION =
+  WORDING_VERSIONS.special_category_processing; // "art9-v1"
+export const ART9_CONSENT_TEXT =
+  "I understand my voice entries may contain special-category " +
+  "information (such as health, religious or political beliefs, or " +
+  "sexuality), and I explicitly consent to Acuity transcribing and " +
+  "analysing that content to provide the service. I can withdraw this " +
+  "consent at any time by deleting entries or my account.";
+
+/**
  * How recent a grant must be to gate a checkout attempt. Ties the stored
  * acknowledgement to the purchase the user is making right now rather
  * than reusing a stale grant from a previous, abandoned session.
