@@ -23,18 +23,14 @@ interface Props {
   step: number;
   totalSteps: number;
   /**
-   * Step numbers (1-11) where the user may bypass the step's answer
-   * without filling it in. After the Art. 9 consent insert at step 4
-   * (11-step flow):
-   *   - step 3 (demographics — all optional)
-   *   - step 5 (microphone — permission-granted is soft)
-   *   - step 7 (mood baseline)
-   *   - step 10 (notifications — "Not now" is fine)
-   * Step 4 (Art. 9 consent) is a HARD gate — never skippable. Others are
-   * interaction-forced (step 6 practice recording) or read-only display
-   * surfaces (1, 2, 8 weekly-report priming, 9 trial explanation, 11
-   * first-entry CTA) where Continue is sufficient and a Skip link would
-   * be noise.
+   * Step numbers the user may bypass without answering. In the 5-step
+   * flow (iOS parity, 2026-06-06):
+   *   - step 3 (practice recording — "do it later" is fine)
+   *   - step 4 (reminders — "Not now" is fine)
+   * Step 1 (Art. 9 consent) is a HARD gate (never skippable; "Skip for
+   * now" is also hidden — see AI_CONSENT_STEP). Step 2 (microphone)
+   * mirrors iOS: Continue unlocks once a permission result is known, so
+   * it's not a free "skip". Step 5 (Ready) is the terminal step.
    */
   skippableSteps?: number[];
   children: React.ReactNode;
@@ -44,7 +40,7 @@ interface Props {
 // the Art. 9 consent step was inserted at position 4: Demographics(3),
 // Microphone(5), Mood baseline(7), Reminders(10). The Art. 9 step (4) is
 // deliberately absent — it's a hard gate (see AI_CONSENT_STEP handling).
-const DEFAULT_SKIPPABLE = [3, 5, 7, 10];
+const DEFAULT_SKIPPABLE = [3, 4];
 
 /**
  * Shared chrome for the onboarding flow. Owns:

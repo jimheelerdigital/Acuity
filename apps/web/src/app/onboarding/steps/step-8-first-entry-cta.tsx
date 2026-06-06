@@ -55,7 +55,7 @@ export function Step8FirstEntryCta() {
         // retry rather than silently redirecting.
         throw new Error(`Completion failed (HTTP ${res.status})`);
       }
-      trackClient("onboarding_completed", { finalStep: 8 });
+      trackClient("onboarding_completed", { finalStep: 5 });
       router.push(`/home${withRecord ? "?onboarded=1" : "?onboarded=done"}`);
     } catch (err) {
       setIsSubmitting(false);
