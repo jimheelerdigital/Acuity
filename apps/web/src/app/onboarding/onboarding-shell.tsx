@@ -40,7 +40,7 @@ interface Props {
 // the Art. 9 consent step was inserted at position 4: Demographics(3),
 // Microphone(5), Mood baseline(7), Reminders(10). The Art. 9 step (4) is
 // deliberately absent — it's a hard gate (see AI_CONSENT_STEP handling).
-const DEFAULT_SKIPPABLE = [3, 4];
+const DEFAULT_SKIPPABLE = [3];
 
 /**
  * Shared chrome for the onboarding flow. Owns:

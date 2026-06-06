@@ -5,51 +5,41 @@ import { useEffect, useState } from "react";
 import { useOnboarding } from "../onboarding-context";
 
 /**
- * Step 9 — Notifications / reminders.
+ * Reminders step — web parity with iOS
+ * (apps/mobile/components/onboarding/step-9-reminders.tsx).
  *
- * Captures three things: when to remind (HH:MM in user's local time),
- * which days to fire on, and whether the preference is actually on.
- * Web saves the preference; mobile (when we ship the parallel flow)
- * will also request OS-level notification permission here via
- * expo-notifications. For now the web flow is preference-only — the
- * backend dispatcher that actually sends emails / pushes from these
- * values is a follow-up shipped alongside the mobile onboarding.
+ * iOS ships ONE decision in onboarding: "yes I want reminders / no I
+ * don't" — a single master toggle (default OFF), no time picker, no
+ * cadence picker. The backend sends two pushes/day (9 AM + 8 PM in the
+ * user's timezone) to everyone with notificationsEnabled = true; time +
+ * cadence customization lives in Settings, post-onboarding. We mirror
+ * that here. Toggling ON requests the browser Notification permission
+ * (the web equivalent of iOS's OS prompt — fired only on the explicit
+ * toggle, never pre-triggered). Continue is always enabled (the user can
+ * proceed with reminders off); there's no Skip.
  *
- * Skippable: "Not now" submits notificationsEnabled=false and advances
- * the same way as Continue. The shell's Skip button covers this too —
- * we call it out explicitly in copy so the user doesn't feel cornered.
+ * Persists exactly what iOS persists: notificationsEnabled + timezone.
+ * It does NOT write notificationTime / notificationDays (those keep their
+ * DB defaults and are only set if the user customizes in Settings).
+ *
+ * NOTE: the web reminders dispatcher is a v1.4 follow-up. To honor the
+ * "two nudges a day" copy it must fan out 9 AM + 8 PM from
+ * (notificationsEnabled + timezone) like the iOS `notifications-twice-
+ * daily` cron — not the single notificationTime the Settings picker
+ * still exposes. Flagged for that slice.
  */
-
-const DEFAULT_TIME = "21:00";
-const DAYS: Array<{ i: number; label: string }> = [
-  { i: 0, label: "S" },
-  { i: 1, label: "M" },
-  { i: 2, label: "T" },
-  { i: 3, label: "W" },
-  { i: 4, label: "T" },
-  { i: 5, label: "F" },
-  { i: 6, label: "S" },
-];
-
-type Frequency = "DAILY" | "WEEKDAYS" | "CUSTOM";
-
 export function Step9Notifications() {
   const { setCanContinue, setCapturedData } = useOnboarding();
-  const [frequency, setFrequency] = useState<Frequency>("DAILY");
-  const [time, setTime] = useState(DEFAULT_TIME);
-  const [custom, setCustom] = useState<number[]>([1, 2, 3, 4, 5]); // default = weekdays
-  // Default OFF — we only flip to true after the browser's
-  // Notification API grants permission. This prevents "toggle says ON
-  // but we never asked for permission" mismatch where the user thinks
-  // reminders are wired up but no notification can ever fire.
+  // Default OFF — matches iOS. We only flip ON after the browser grants
+  // notification permission, so "on" never drifts from what can deliver.
   const [enabled, setEnabled] = useState(false);
   const [permissionError, setPermissionError] = useState<string | null>(null);
 
   const requestAndEnable = async () => {
     setPermissionError(null);
     if (typeof window === "undefined" || typeof Notification === "undefined") {
-      // SSR or a browser without the Notification API — fall through
-      // and just flip the preference on. Email fallback still works.
+      // No Notification API (SSR / unsupported browser) — flip the
+      // preference on; the email fallback still applies.
       setEnabled(true);
       return;
     }
@@ -59,7 +49,7 @@ export function Step9Notifications() {
     }
     if (Notification.permission === "denied") {
       setPermissionError(
-        "Acuity can't send reminders without notification permission. Enable it in your browser settings, then toggle this back on."
+        "Notifications are blocked in your browser. Turn them on in your browser settings, then toggle this back on."
       );
       return;
     }
@@ -69,7 +59,7 @@ export function Step9Notifications() {
         setEnabled(true);
       } else {
         setPermissionError(
-          "No problem — Acuity can't send reminders without permission, so we'll skip for now. Toggle this back on anytime."
+          "No problem — we can't send reminders without permission. Toggle this back on anytime."
         );
       }
     } catch {
@@ -79,39 +69,36 @@ export function Step9Notifications() {
     }
   };
 
-  const days =
-    frequency === "DAILY"
-      ? [0, 1, 2, 3, 4, 5, 6]
-      : frequency === "WEEKDAYS"
-        ? [1, 2, 3, 4, 5]
-        : custom;
-
   useEffect(() => {
     setCanContinue(true);
+    // Capture the device timezone so the (v1.4) backend knows which UTC
+    // hour maps to the user's 9 AM / 8 PM — same as iOS.
+    let timezone: string | undefined;
+    try {
+      timezone =
+        Intl.DateTimeFormat().resolvedOptions().timeZone || undefined;
+    } catch {
+      /* server default applies if Intl misfires */
+    }
     setCapturedData({
-      notificationTime: time,
-      notificationDays: enabled ? days : [],
       notificationsEnabled: enabled,
+      ...(timezone ? { timezone } : {}),
     });
-  }, [time, frequency, custom, enabled, setCanContinue, setCapturedData, days]);
-
-  const toggleCustomDay = (i: number) => {
-    setCustom((prev) =>
-      prev.includes(i) ? prev.filter((d) => d !== i) : [...prev, i].sort()
-    );
-  };
+  }, [enabled, setCanContinue, setCapturedData]);
 
   return (
     <div className="flex flex-col">
       <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-4xl">
-        When do you want to journal?
+        Two gentle nudges a day
       </h1>
       <p className="mt-4 text-base leading-relaxed text-zinc-600 dark:text-zinc-300">
-        A gentle reminder at the time that fits your day. Turn it off
-        anytime from Settings.
+        We&rsquo;ll send a check-in at 9 AM and a wind-down at 8 PM in your
+        local time zone. You can change the timing, or turn them off,
+        anytime in Settings.
       </p>
 
-      {/* Enabled master toggle */}
+      {/* Master toggle — the only control. Default off; toggling on
+          requests browser notification permission. */}
       <div className="mt-8 flex items-center gap-3">
         <button
           type="button"
@@ -123,9 +110,10 @@ export function Step9Notifications() {
               void requestAndEnable();
             }
           }}
-          aria-pressed={enabled}
+          role="switch"
+          aria-checked={enabled}
           className={`relative h-7 w-12 rounded-full transition ${
-            enabled ? "bg-violet-600" : "bg-zinc-300 dark:bg-white/10"
+            enabled ? "bg-acuity-primary" : "bg-zinc-300 dark:bg-white/10"
           }`}
         >
           <span
@@ -138,85 +126,19 @@ export function Step9Notifications() {
           {enabled ? "Reminders on" : "Reminders off"}
         </span>
       </div>
+
       {permissionError && (
         <p
           role="alert"
-          className="mt-2 text-xs text-amber-700 dark:text-amber-300"
+          className="mt-3 text-xs text-amber-700 dark:text-amber-300"
         >
           {permissionError}
         </p>
       )}
 
-      {/* Time + frequency (only relevant when enabled) */}
-      <div
-        className={`mt-8 space-y-6 transition-opacity ${
-          enabled ? "opacity-100" : "opacity-40 pointer-events-none"
-        }`}
-      >
-        <section>
-          <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-100 mb-3">
-            Time
-          </p>
-          <input
-            type="time"
-            value={time}
-            onChange={(e) => setTime(e.target.value || DEFAULT_TIME)}
-            className="rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg px-3 py-2 text-lg font-mono tabular-nums text-zinc-900 dark:text-zinc-100 outline-none focus:border-acuity-primary"
-          />
-          <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">
-            In your local timezone.
-          </p>
-        </section>
-
-        <section>
-          <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-100 mb-3">
-            Frequency
-          </p>
-          <div className="flex gap-2">
-            {(["DAILY", "WEEKDAYS", "CUSTOM"] as Frequency[]).map((f) => (
-              <button
-                key={f}
-                type="button"
-                onClick={() => setFrequency(f)}
-                aria-pressed={frequency === f}
-                className={`rounded-full border px-3 py-1.5 text-sm transition ${
-                  frequency === f
-                    ? "border-acuity-primary bg-acuity-primary-soft text-acuity-primary dark:bg-acuity-primary-soft dark:text-acuity-primary dark:border-acuity-primary"
-                    : "border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-300 hover:border-zinc-300 dark:hover:border-white/20"
-                }`}
-              >
-                {f === "DAILY" ? "Daily" : f === "WEEKDAYS" ? "Weekdays" : "Custom"}
-              </button>
-            ))}
-          </div>
-
-          {frequency === "CUSTOM" && (
-            <div className="mt-4 flex gap-1.5">
-              {DAYS.map((d) => {
-                const on = custom.includes(d.i);
-                return (
-                  <button
-                    key={d.i}
-                    type="button"
-                    onClick={() => toggleCustomDay(d.i)}
-                    aria-pressed={on}
-                    className={`h-9 w-9 rounded-full text-xs font-semibold transition ${
-                      on
-                        ? "bg-violet-600 text-white"
-                        : "bg-zinc-100 dark:bg-white/5 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-white/10"
-                    }`}
-                  >
-                    {d.label}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </section>
-      </div>
-
       <p className="mt-8 text-xs text-zinc-400 dark:text-zinc-500">
-        &ldquo;Not now&rdquo; is a fine answer too — nothing breaks if you skip.
+        Need a different time, more nudges, or quiet weekends? Adjust them
+        in Settings after onboarding.
       </p>
     </div>
   );
