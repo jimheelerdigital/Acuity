@@ -92,7 +92,8 @@ export default async function OnboardingPage({
 }
 
 function clampStep(n: number): OnboardingStepNumber {
+  const maxStep = ONBOARDING_STEPS.length; // 11 after the Art. 9 insert
   if (!Number.isFinite(n) || n < 1) return 1;
-  if (n > 10) return 10;
+  if (n > maxStep) return maxStep as OnboardingStepNumber;
   return n as OnboardingStepNumber;
 }
