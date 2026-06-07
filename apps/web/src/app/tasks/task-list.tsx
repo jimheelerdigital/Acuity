@@ -44,6 +44,7 @@ export function TaskList({ isLocked = false }: { isLocked?: boolean }) {
   const [activeTab, setActiveTab] = useState<Tab>("open");
   const [acting, setActing] = useState<Set<string>>(new Set());
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [creating, setCreating] = useState(false);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
     new Set()
   );
@@ -166,19 +167,32 @@ export function TaskList({ isLocked = false }: { isLocked?: boolean }) {
 
   return (
     <>
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-50 mb-1">
-          Tasks
-          {grouped.open.length > 0 && (
-            <span className="ml-2 align-middle text-base font-normal text-zinc-400 dark:text-zinc-500">
-              {grouped.open.length} open
-            </span>
-          )}
-        </h1>
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">
-          Click a task to edit, click the circle to complete. Groups are
-          AI-inferred — hover a row to change.
-        </p>
+      <div
+        data-tour="tasks-page"
+        className="mb-6 flex items-start justify-between gap-4"
+      >
+        <div>
+          <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-50 mb-1">
+            Tasks
+            {grouped.open.length > 0 && (
+              <span className="ml-2 align-middle text-base font-normal text-zinc-400 dark:text-zinc-500">
+                {grouped.open.length} open
+              </span>
+            )}
+          </h1>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+            Click a task to edit, click the circle to complete. Groups are
+            AI-inferred — hover a row to change.
+          </p>
+        </div>
+        {/* Manual task creation — parity with the iOS add-task affordance. */}
+        <button
+          type="button"
+          onClick={() => setCreating(true)}
+          className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-acuity-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-110"
+        >
+          <span className="text-base leading-none">+</span> Add task
+        </button>
       </div>
 
       <div className="flex gap-1 rounded-xl bg-zinc-100 dark:bg-white/10 p-1 mb-4">
@@ -295,7 +309,175 @@ export function TaskList({ isLocked = false }: { isLocked?: boolean }) {
           }}
         />
       )}
+
+      {creating && (
+        <TaskCreateModal
+          groups={sortedGroups}
+          onClose={() => setCreating(false)}
+          onSaved={async () => {
+            setCreating(false);
+            await fetchAll();
+          }}
+        />
+      )}
     </>
+  );
+}
+
+/**
+ * Manual task creation modal — web parity with the iOS add-task flow.
+ * Mirrors TaskEditModal's fields (title, description, priority, due date,
+ * group) but POSTs a new task to /api/tasks instead of PATCHing. Title is
+ * required; the due date is sent as a YYYY-MM-DD string (the API parses it
+ * to a date — rendered back in UTC so it doesn't shift a day, see DueRow).
+ */
+function TaskCreateModal({
+  groups,
+  onClose,
+  onSaved,
+}: {
+  groups: TaskGroup[];
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [priority, setPriority] = useState("MEDIUM");
+  const [due, setDue] = useState("");
+  const [groupId, setGroupId] = useState<string | "">("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const canSave = title.trim().length > 0 && !saving;
+
+  const save = async () => {
+    if (!canSave) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: title.trim(),
+          description: description.trim() || null,
+          priority,
+          dueDate: due || null,
+          groupId: groupId || null,
+        }),
+      });
+      if (!res.ok) throw new Error(`Create failed (HTTP ${res.status})`);
+      onSaved();
+    } catch (err) {
+      setSaving(false);
+      setError(err instanceof Error ? err.message : "Couldn't add the task");
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 acuity-fade-up"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md rounded-2xl bg-white dark:bg-acuity-card-bg border border-zinc-200 dark:border-white/10 p-6 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50 mb-4">
+          New task
+        </h2>
+
+        <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+          Title
+        </label>
+        <input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          autoFocus
+          placeholder="What needs doing?"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && canSave) void save();
+          }}
+          className="w-full rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#13131F] px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-acuity-primary"
+        />
+
+        <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mt-3 mb-1">
+          Notes
+        </label>
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          rows={3}
+          className="w-full rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#13131F] px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-acuity-primary resize-none"
+        />
+
+        <div className="mt-3 grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+              Priority
+            </label>
+            <select
+              value={priority}
+              onChange={(e) => setPriority(e.target.value)}
+              className="w-full rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#13131F] px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-acuity-primary"
+            >
+              <option value="URGENT">Urgent</option>
+              <option value="HIGH">High</option>
+              <option value="MEDIUM">Medium</option>
+              <option value="LOW">Low</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+              Due date
+            </label>
+            <input
+              type="date"
+              value={due}
+              onChange={(e) => setDue(e.target.value)}
+              className="w-full rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#13131F] px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-acuity-primary"
+            />
+          </div>
+        </div>
+
+        <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mt-3 mb-1">
+          Group
+        </label>
+        <select
+          value={groupId}
+          onChange={(e) => setGroupId(e.target.value)}
+          className="w-full rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#13131F] px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-acuity-primary"
+        >
+          <option value="">Ungrouped</option>
+          {groups.map((g) => (
+            <option key={g.id} value={g.id}>
+              {g.name}
+            </option>
+          ))}
+        </select>
+
+        {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+
+        <div className="mt-6 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="rounded-lg px-4 py-2 text-sm font-medium text-zinc-600 dark:text-zinc-300 transition hover:bg-zinc-100 dark:hover:bg-white/10 disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => void save()}
+            disabled={!canSave}
+            className="rounded-lg bg-acuity-primary px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {saving ? "Adding…" : "Add task"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -449,10 +631,15 @@ function TaskRow({
     PRIORITY_COLOR[task.priority] ?? PRIORITY_COLOR.MEDIUM;
   const showPriorityChip =
     task.priority === "URGENT" || task.priority === "HIGH";
+  // dueDate is stored as UTC midnight (the API parses the YYYY-MM-DD the
+  // picker sends via `new Date("YYYY-MM-DD")`). Render it in UTC so a
+  // user behind UTC doesn't see the day BEFORE the one they picked
+  // (the off-by-one bug).
   const dueDate = task.dueDate
     ? new Date(task.dueDate).toLocaleDateString("en-US", {
         month: "short",
         day: "numeric",
+        timeZone: "UTC",
       })
     : null;
 

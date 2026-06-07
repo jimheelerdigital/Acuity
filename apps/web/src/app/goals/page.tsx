@@ -164,10 +164,12 @@ export default async function GoalsPage() {
             </div>
           )
         )}
-        <GoalList
-          initialFocusGoalId={focusGoalId}
-          initialFocusDetail={initialFocusDetail}
-        />
+        <div data-tour="goals-page">
+          <GoalList
+            initialFocusGoalId={focusGoalId}
+            initialFocusDetail={initialFocusDetail}
+          />
+        </div>
       </PageContainer>
     </div>
   );

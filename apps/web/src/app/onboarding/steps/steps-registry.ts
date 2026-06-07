@@ -1,17 +1,20 @@
 import type { ComponentType } from "react";
 
-import { Step1Welcome } from "./step-1-welcome";
-import { Step2ValueProp } from "./step-2-value-prop";
-import { Step3Demographics } from "./step-3-demographics";
 import { Step3MicrophonePermission } from "./step-3-microphone-permission";
 import { Step4PracticeRecording } from "./step-4-practice-recording";
-import { Step5MoodBaseline } from "./step-5-mood-baseline";
-import { Step6WeeklyReportPriming } from "./step-6-weekly-report-priming";
-import { Step7TrialExplanation } from "./step-7-trial-explanation";
 import { Step8FirstEntryCta } from "./step-8-first-entry-cta";
 import { Step9Notifications } from "./step-9-notifications";
+import { StepAiConsent } from "./step-ai-consent";
 
-export type OnboardingStepNumber = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
+export type OnboardingStepNumber = 1 | 2 | 3 | 4 | 5;
+
+/**
+ * The Art. 9 special-category consent step's number. The onboarding
+ * shell hides "Skip for now" on this step so it's a HARD gate — no path
+ * to the recorder without an explicit grant. Keep in sync with the
+ * ONBOARDING_STEPS array below.
+ */
+export const AI_CONSENT_STEP = 1;
 
 export interface OnboardingStep {
   step: OnboardingStepNumber;
@@ -20,35 +23,27 @@ export interface OnboardingStep {
 }
 
 /**
- * Single source of truth for the onboarding flow order. Changing the
- * order (or renumbering) requires a one-line migration for existing
- * UserOnboarding.currentStep values if any users are mid-flow, but
- * that's rare — the dashboard redirect reads completedAt (null vs
- * not-null), not the specific step value.
+ * Single source of truth for the onboarding flow order. The dashboard
+ * redirect reads completedAt (null vs not-null), not the specific step
+ * value, so renumbering is safe for in-flight users.
  *
- * Component file names keep their original "step-N-" prefixes from
- * before the 2026-04-20 reordering. The number in the filename is a
- * historical convention, not an authoritative link to the current
- * step number — the registry below is the source of truth. Filename
- * renames would ripple through git history and imports for zero
- * runtime benefit.
+ * 2026-06-06: cut from 11 → 5 steps for literal iOS 5-step parity
+ * (Jim + Keenan decision — funnel drop-off). Welcome, value-prop,
+ * demographics, mood baseline, weekly-report priming, and trial
+ * explanation were UNWIRED here (their component files are retained in
+ * this directory). To restore one, re-add its import + an array entry
+ * and renumber. Full reversion record:
+ * docs/web-onboarding-removed-steps.md.
  *
- * Slice 4 (2026-05-22): step 7 was "What matters most" (life-area
- * priorities multi-select). Per the parity-audit verdict + audit of
- * downstream consumers, that field was write-only metadata — nothing
- * read it. Step replaced in-place with weekly-report priming so the
- * step count stays 10 and any in-flight users (currentStep = 7)
- * resume at the same slot instead of an off-by-one error.
+ * Component file names keep their original "step-N-" prefixes — the
+ * number in the filename is historical, not the current step number;
+ * this array is authoritative.
  */
 export const ONBOARDING_STEPS: OnboardingStep[] = [
-  { step: 1, title: "Welcome", Component: Step1Welcome },
-  { step: 2, title: "What Acuity does", Component: Step2ValueProp },
-  { step: 3, title: "A few quick things", Component: Step3Demographics },
-  { step: 4, title: "Microphone access", Component: Step3MicrophonePermission },
-  { step: 5, title: "Practice round", Component: Step4PracticeRecording },
-  { step: 6, title: "Mood baseline", Component: Step5MoodBaseline },
-  { step: 7, title: "Your Sunday report", Component: Step6WeeklyReportPriming },
-  { step: 8, title: "How the trial works", Component: Step7TrialExplanation },
-  { step: 9, title: "Reminders", Component: Step9Notifications },
-  { step: 10, title: "Ready when you are", Component: Step8FirstEntryCta },
+  // 1 — Art. 9 consent FIRST (hard gate, before any audio is processed).
+  { step: 1, title: "AI processing consent", Component: StepAiConsent },
+  { step: 2, title: "Microphone access", Component: Step3MicrophonePermission },
+  { step: 3, title: "Practice round", Component: Step4PracticeRecording },
+  { step: 4, title: "Reminders", Component: Step9Notifications },
+  { step: 5, title: "Ready when you are", Component: Step8FirstEntryCta },
 ];

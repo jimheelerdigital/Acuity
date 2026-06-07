@@ -100,7 +100,10 @@ export default function AccountClient({
         <SettingsSubNav />
 
         <div className="lg:min-w-0">
-        <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 lg:text-3xl">
+        <h1
+          data-tour="settings-page"
+          className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 lg:text-3xl"
+        >
           Account
         </h1>
         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
@@ -231,6 +234,29 @@ export default function AccountClient({
             className="mt-4 inline-flex rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-white/10 dark:bg-acuity-card-bg dark:text-zinc-200 dark:hover:bg-white/5"
           >
             Crisis resources
+          </a>
+        </section>
+
+        {/* Help & onboarding — kept separate from Support & safety (crisis
+            intervention) since a tutorial replay is unrelated. */}
+        <section
+          id="help"
+          className="mt-8 scroll-mt-24 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg p-6"
+        >
+          <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
+            Help &amp; onboarding
+          </h2>
+          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+            New to Acuity, or want a refresher? Walk through the product tour
+            again.
+          </p>
+          {/* Replays the first-login product tour. ?replayTour=1 is
+              consumed by WebTourController on /home. */}
+          <a
+            href="/home?replayTour=1"
+            className="mt-4 inline-flex rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-white/10 dark:bg-acuity-card-bg dark:text-zinc-200 dark:hover:bg-white/5"
+          >
+            Replay product tour
           </a>
         </section>
 

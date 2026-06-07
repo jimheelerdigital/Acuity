@@ -55,13 +55,21 @@ export function CelebrationMount() {
     }
   }, [status]);
 
-  // Mount + window focus.
+  // Mount + window focus + an explicit check event. The event lets code
+  // that just granted an achievement (e.g. the web product tour on
+  // completion) trigger an immediate re-poll — otherwise a fresh
+  // guided_start wouldn't surface until the next mount/focus.
   useEffect(() => {
     if (status !== "authenticated") return;
     void refresh();
     const onFocus = () => void refresh();
+    const onCheck = () => void refresh();
     window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
+    window.addEventListener("acuity:achievement-check", onCheck);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      window.removeEventListener("acuity:achievement-check", onCheck);
+    };
   }, [status, refresh]);
 
   const current = queue[0] ?? null;

@@ -17,27 +17,30 @@ import {
   OnboardingContext,
   type OnboardingContextValue,
 } from "./onboarding-context";
+import { AI_CONSENT_STEP } from "./steps/steps-registry";
 
 interface Props {
   step: number;
   totalSteps: number;
   /**
-   * Step numbers (1-10) where the user may bypass the step's answer
-   * without filling it in. After the 2026-04-20 10-step reorder:
-   *   - step 3 (demographics — all optional)
-   *   - step 4 (microphone — permission-granted is soft)
-   *   - step 6 (mood baseline)
-   *   - step 9 (notifications — "Not now" is fine)
-   * Others are interaction-forced (step 5 practice recording) or
-   * read-only display surfaces (1, 2, 7 weekly-report priming, 8
-   * trial explanation, 10 first-entry CTA) where the Continue
-   * button is sufficient and a Skip link would be noise.
+   * Step numbers the user may bypass without answering. In the 5-step
+   * flow (iOS parity, 2026-06-06):
+   *   - step 3 (practice recording — "do it later" is fine)
+   *   - step 4 (reminders — "Not now" is fine)
+   * Step 1 (Art. 9 consent) is a HARD gate (never skippable; "Skip for
+   * now" is also hidden — see AI_CONSENT_STEP). Step 2 (microphone)
+   * mirrors iOS: Continue unlocks once a permission result is known, so
+   * it's not a free "skip". Step 5 (Ready) is the terminal step.
    */
   skippableSteps?: number[];
   children: React.ReactNode;
 }
 
-const DEFAULT_SKIPPABLE = [3, 4, 6, 9];
+// Step indices the user may skip. Recomputed for the 11-step flow after
+// the Art. 9 consent step was inserted at position 4: Demographics(3),
+// Microphone(5), Mood baseline(7), Reminders(10). The Art. 9 step (4) is
+// deliberately absent — it's a hard gate (see AI_CONSENT_STEP handling).
+const DEFAULT_SKIPPABLE = [3];
 
 /**
  * Shared chrome for the onboarding flow. Owns:
@@ -200,12 +203,19 @@ export function OnboardingShell({
               {step} of {totalSteps}
             </span>
           </div>
-          <button
-            onClick={() => setShowSkipModal(true)}
-            className="rounded-acuity-sm px-2 py-1 text-xs text-acuity-text-ter transition hover:text-acuity-text-sec"
-          >
-            Skip for now
-          </button>
+          {/* Art. 9 consent is a hard gate — no "Skip for now" escape on
+              that step, so the user can't reach the recorder without an
+              explicit grant. Placeholder keeps the header layout stable. */}
+          {step === AI_CONSENT_STEP ? (
+            <span />
+          ) : (
+            <button
+              onClick={() => setShowSkipModal(true)}
+              className="rounded-acuity-sm px-2 py-1 text-xs text-acuity-text-ter transition hover:text-acuity-text-sec"
+            >
+              Skip for now
+            </button>
+          )}
         </header>
 
         {/* Step content */}

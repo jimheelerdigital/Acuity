@@ -111,6 +111,7 @@ export function UserMenu({ name, email, image, initials }: UserMenuProps) {
       <button
         ref={triggerRef}
         type="button"
+        data-tour="settings"
         onClick={() => setOpen((o) => !o)}
         onKeyDown={onTriggerKeyDown}
         aria-haspopup="menu"
