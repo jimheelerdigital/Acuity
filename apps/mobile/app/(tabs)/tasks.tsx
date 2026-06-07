@@ -492,21 +492,34 @@ export default function TasksTab() {
         }
       >
         <View className="px-5 pt-4 pb-2">
-          <View className="flex-row items-baseline gap-2">
-            <Text
-              className="text-4xl font-bold"
-              style={{ color: tokens.text }}
-              numberOfLines={1}
-              adjustsFontSizeToFit
-              minimumFontScale={0.75}
-            >
-              Tasks
-            </Text>
-            {grouped.open.length > 0 && (
-              <Text className="text-sm" style={{ color: tokens.textSec }}>
-                {grouped.open.length} open
+          <View className="flex-row items-center justify-between">
+            <View className="flex-row items-baseline gap-2 flex-1">
+              <Text
+                className="text-4xl font-bold"
+                style={{ color: tokens.text }}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.75}
+              >
+                Tasks
               </Text>
-            )}
+              {grouped.open.length > 0 && (
+                <Text className="text-sm" style={{ color: tokens.textSec }}>
+                  {grouped.open.length} open
+                </Text>
+              )}
+            </View>
+            {/* Manual task creation — opens the /task/new create modal. */}
+            <Pressable
+              onPress={() => router.push("/task/new")}
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel="Add task"
+              className="ml-3 h-9 w-9 items-center justify-center rounded-full"
+              style={{ backgroundColor: tokens.bgInset }}
+            >
+              <Ionicons name="add" size={24} color={tokens.primary} />
+            </Pressable>
           </View>
           <Text
             className="text-sm mt-1"
@@ -757,6 +770,9 @@ const TaskRow = memo(
       ? new Date(task.dueDate).toLocaleDateString("en-US", {
           month: "short",
           day: "numeric",
+          // dueDate is stored as UTC midnight; render in UTC so users
+          // behind UTC don't see the day BEFORE the one they set.
+          timeZone: "UTC",
         })
       : null;
 
