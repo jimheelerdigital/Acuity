@@ -80,10 +80,20 @@ export function WebTourController({
             method: "POST",
             headers: { "content-type": "application/json" },
             body: JSON.stringify({ completed }),
-          }).catch(() => {
-            /* idempotent server-side; a failed post just means the next
-               session may re-fire until tourCompletedAt is stamped */
-          });
+          })
+            .then(() => {
+              // On genuine completion the server granted guided_start
+              // (shownToUser:false). Nudge the global celebration queue to
+              // re-poll so the modal fires now (it otherwise only polls on
+              // mount/focus). Mirrors the mobile bus ping.
+              if (completed) {
+                window.dispatchEvent(new Event("acuity:achievement-check"));
+              }
+            })
+            .catch(() => {
+              /* idempotent server-side; a failed post just means the next
+                 session may re-fire until tourCompletedAt is stamped */
+            });
           // runWebTour already navigates back to /home on end (which drops
           // the ?replayTour param), so no extra cleanup needed here.
         },

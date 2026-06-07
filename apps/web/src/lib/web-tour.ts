@@ -129,6 +129,12 @@ export function runWebTour(opts: {
   }));
 
   const lastIndex = steps.length - 1;
+  // "completed" = the user actually reached the final step. Tracked via a
+  // flag set when the last step highlights, NOT read from getActiveIndex()
+  // at destroy time — the cross-page navigation made that unreliable, so
+  // genuine completions were posting completed:false and the server
+  // (correctly) skipped the guided_start grant.
+  let reachedLast = false;
   let completed = false;
 
   // Navigate (if the route changes) then run the driver mover after the
@@ -155,6 +161,9 @@ export function runWebTour(opts: {
     doneBtnText: "Get started",
     popoverClass: "acuity-web-tour",
     steps,
+    onHighlighted: () => {
+      if ((d.getActiveIndex() ?? -1) >= lastIndex) reachedLast = true;
+    },
     onNextClick: () => {
       const cur = d.getActiveIndex() ?? 0;
       if (cur >= lastIndex) {
@@ -169,7 +178,7 @@ export function runWebTour(opts: {
       step(cur, cur - 1, () => d.movePrevious());
     },
     onDestroyStarted: () => {
-      completed = (d.getActiveIndex() ?? 0) === lastIndex;
+      completed = reachedLast;
       d.destroy();
     },
     onDestroyed: () => {
