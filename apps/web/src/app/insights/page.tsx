@@ -49,7 +49,10 @@ export default async function InsightsPage() {
           <p className="font-mono text-[11px] font-bold uppercase tracking-[1.4px] text-acuity-text-ter">
             Insights
           </p>
-          <h1 className="mt-2 font-display text-4xl font-bold leading-[1.05] tracking-tight text-acuity-text lg:text-5xl">
+          <h1
+            data-tour="insights-page"
+            className="mt-2 font-display text-4xl font-bold leading-[1.05] tracking-tight text-acuity-text lg:text-5xl"
+          >
             Insights
           </h1>
           <p className="mt-3 max-w-2xl text-base leading-relaxed text-acuity-text-sec">

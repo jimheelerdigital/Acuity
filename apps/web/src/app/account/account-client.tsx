@@ -100,7 +100,10 @@ export default function AccountClient({
         <SettingsSubNav />
 
         <div className="lg:min-w-0">
-        <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 lg:text-3xl">
+        <h1
+          data-tour="settings-page"
+          className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 lg:text-3xl"
+        >
           Account
         </h1>
         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">

@@ -3,73 +3,90 @@ import "driver.js/dist/driver.css";
 
 /**
  * Web product tour (driver.js) — the web equivalent of the iOS 7-step
- * first-login spotlight tour. Single responsive flow (Option A): each
- * step resolves its anchor at runtime to whichever element is VISIBLE at
- * the current viewport (desktop sidebar vs mobile top-nav), and steps
- * whose anchor isn't present at this width are skipped.
+ * first-login tour. Like iOS, each step NAVIGATES to that section's page
+ * and spotlights an element on the real page (not the sidebar), so the
+ * user sees actual content while the popover explains it.
  *
- * Anchors are `data-tour="<tourId>"` attributes placed on the real nav
- * elements (app-shell sidebar, mobile nav-bar, home hero, user menu).
- * Copy mirrors the mobile tour (apps/mobile/components/tour/steps.ts),
- * adapted for click (web) vs long-press (mobile).
+ * Cross-page mechanics: driver doesn't natively await async navigation
+ * between steps, so we override its Next/Back buttons (onNextClick /
+ * onPrevClick) — push the router to the next step's route, wait
+ * NAV_SETTLE_MS for the page to render, then moveNext/movePrevious.
+ * driver re-queries each step's selector at highlight time, so the
+ * just-navigated page's element is found. On end (Done or close) the tour
+ * returns the user to /home.
  *
- * Completion semantics match mobile: reaching the last step = completed
- * (grants guided_start via /api/user/tour-complete); closing early = skip.
+ * Responsive: steps 3-7 anchor on PAGE CONTENT (one element per page →
+ * viewport-agnostic). Only step 1 (Record) has desktop-sidebar vs
+ * mobile-#record variants, so it's resolved to the visible element at
+ * start. Navigation (router.push) is identical on both.
  */
 
-interface WebTourStepContent {
-  tourId: string;
+const HOME = "/home";
+
+/** Delay after navigating before driver measures the new page's anchor. */
+export const NAV_SETTLE_MS = 450;
+
+interface WebTourStep {
+  /** Route this step lives on; navigated to via the router before highlight. */
+  route: string;
+  /** data-tour selector for the anchor (omitted for step 1 — resolved live). */
+  selector?: string;
   title: string;
   description: string;
-  /** driver.js popover side relative to the anchor. */
   side?: "top" | "bottom" | "left" | "right";
 }
 
-export const WEB_TOUR_STEPS: WebTourStepContent[] = [
+const WEB_TOUR_STEPS: WebTourStep[] = [
   {
-    tourId: "record",
+    route: HOME, // Record — resolved to the visible element (sidebar / #record)
     title: "Record",
     description:
       "Click Record anytime to capture what's on your mind. Sixty seconds is enough.",
     side: "right",
   },
   {
-    tourId: "dashboard",
+    route: HOME,
+    selector: '[data-tour="dashboard"]',
     title: "Your dashboard",
     description:
       "Your home reflects your reflections. Patterns surface as you record.",
     side: "bottom",
   },
   {
-    tourId: "entries",
+    route: "/entries",
+    selector: '[data-tour="entries-page"]',
     title: "Entries",
     description:
       "Every voice note lives here, processed into transcript + themes + mood.",
-    side: "right",
+    side: "bottom",
   },
   {
-    tourId: "tasks",
+    route: "/tasks",
+    selector: '[data-tour="tasks-page"]',
     title: "Tasks",
     description:
       "Acuity extracts to-dos from what you say — they land here.",
-    side: "right",
+    side: "bottom",
   },
   {
-    tourId: "insights",
+    route: "/insights",
+    selector: '[data-tour="insights-page"]',
     title: "Insights",
     description:
       "Patterns, themes, and your weekly report. The longer you use it, the sharper this gets.",
-    side: "right",
+    side: "bottom",
   },
   {
-    tourId: "goals",
+    route: "/goals",
+    selector: '[data-tour="goals-page"]',
     title: "Goals",
     description:
       "Set what you're working toward; Acuity nudges you when entries touch it.",
-    side: "right",
+    side: "bottom",
   },
   {
-    tourId: "settings",
+    route: "/account", // the web Settings route is /account
+    selector: '[data-tour="settings-page"]',
     title: "Settings",
     description:
       "Themes, reminders, privacy, and replay-tour all live here.",
@@ -77,13 +94,7 @@ export const WEB_TOUR_STEPS: WebTourStepContent[] = [
   },
 ];
 
-/**
- * Find the VISIBLE element for a tourId. Both the desktop sidebar and the
- * mobile nav can carry the same `data-tour` attribute; only one is
- * displayed at a given viewport (the other is `display:none` via Tailwind
- * `lg:` classes → `offsetParent === null`). Returns null if no anchor is
- * mounted/visible at this width (that step is then skipped).
- */
+/** Visible anchor for a tourId (handles desktop/mobile variants of Record). */
 function resolveVisibleAnchor(tourId: string): HTMLElement | null {
   const els = Array.from(
     document.querySelectorAll<HTMLElement>(`[data-tour="${tourId}"]`)
@@ -92,31 +103,46 @@ function resolveVisibleAnchor(tourId: string): HTMLElement | null {
 }
 
 /**
- * Build + run the tour. Calls `onEnd(completed)` once when the tour
- * finishes (completed=true if the user reached the last step) or is
- * dismissed early (completed=false). Returns false if no anchors resolved
- * (nothing to show) — caller should treat that as a no-op, not a skip.
+ * Build + run the navigating tour. `navigate` pushes a route; `onEnd` is
+ * called once when the tour finishes (completed = last step reached) or is
+ * dismissed. Returns false if /home anchors aren't present yet (caller
+ * retries). The tour routes the user back to /home on end.
  */
-export function runWebTour(opts: { onEnd: (completed: boolean) => void }): boolean {
-  const steps: DriveStep[] = [];
-  for (const s of WEB_TOUR_STEPS) {
-    const el = resolveVisibleAnchor(s.tourId);
-    if (!el) continue;
-    steps.push({
-      element: el,
-      popover: {
-        title: s.title,
-        description: s.description,
-        side: s.side ?? "bottom",
-        align: "start",
-      },
-    });
+export function runWebTour(opts: {
+  navigate: (path: string) => void;
+  onEnd: (completed: boolean) => void;
+}): boolean {
+  const recordEl = resolveVisibleAnchor("record");
+  if (!recordEl && !document.querySelector('[data-tour="dashboard"]')) {
+    return false; // home shell not ready
   }
 
-  if (steps.length === 0) return false;
+  const steps: DriveStep[] = WEB_TOUR_STEPS.map((s, i) => ({
+    element:
+      i === 0 ? recordEl ?? '[data-tour="record"]' : (s.selector as string),
+    popover: {
+      title: s.title,
+      description: s.description,
+      side: s.side ?? "bottom",
+      align: "start",
+    },
+  }));
 
-  let completed = false;
   const lastIndex = steps.length - 1;
+  let completed = false;
+
+  // Navigate (if the route changes) then run the driver mover after the
+  // page settles.
+  const step = (from: number, to: number, mover: () => void) => {
+    const fromRoute = WEB_TOUR_STEPS[from]?.route;
+    const toRoute = WEB_TOUR_STEPS[to]?.route;
+    if (toRoute && toRoute !== fromRoute) {
+      opts.navigate(toRoute);
+      window.setTimeout(mover, NAV_SETTLE_MS);
+    } else {
+      mover();
+    }
+  };
 
   const d = driver({
     showProgress: true,
@@ -129,14 +155,25 @@ export function runWebTour(opts: { onEnd: (completed: boolean) => void }): boole
     doneBtnText: "Get started",
     popoverClass: "acuity-web-tour",
     steps,
-    // Fires on any close request (Done on last step, ESC, X, overlay
-    // click). We must call destroy() ourselves when this is defined.
-    // Treat a close from the last step as completion.
+    onNextClick: () => {
+      const cur = d.getActiveIndex() ?? 0;
+      if (cur >= lastIndex) {
+        d.destroy(); // last step "Get started" → finish
+        return;
+      }
+      step(cur, cur + 1, () => d.moveNext());
+    },
+    onPrevClick: () => {
+      const cur = d.getActiveIndex() ?? 0;
+      if (cur <= 0) return;
+      step(cur, cur - 1, () => d.movePrevious());
+    },
     onDestroyStarted: () => {
-      completed = d.getActiveIndex() === lastIndex;
+      completed = (d.getActiveIndex() ?? 0) === lastIndex;
       d.destroy();
     },
     onDestroyed: () => {
+      opts.navigate(HOME); // always land back on home after the tour
       opts.onEnd(completed);
     },
   });

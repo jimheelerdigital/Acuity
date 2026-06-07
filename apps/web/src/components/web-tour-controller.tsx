@@ -74,6 +74,7 @@ export function WebTourController({
         return;
       }
       const ran = runWebTour({
+        navigate: (path) => router.push(path),
         onEnd: (completed) => {
           void fetch("/api/user/tour-complete", {
             method: "POST",
@@ -83,7 +84,8 @@ export function WebTourController({
             /* idempotent server-side; a failed post just means the next
                session may re-fire until tourCompletedAt is stamped */
           });
-          if (replay) router.replace("/home");
+          // runWebTour already navigates back to /home on end (which drops
+          // the ?replayTour param), so no extra cleanup needed here.
         },
       });
       if (ran) {

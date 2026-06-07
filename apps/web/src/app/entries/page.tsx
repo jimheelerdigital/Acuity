@@ -42,7 +42,7 @@ export default async function EntriesPage() {
           at 2xl: inside entries-list.tsx — pre-2026-04-29 the page
           was hard-capped at max-w-3xl regardless of viewport. */}
       <PageContainer mobileWidth="3xl" className="acuity-fade-up">
-        <div className="mb-6">
+        <div className="mb-6" data-tour="entries-page">
           <BackButton className="mb-4" ariaLabel="Back to Home" />
           <h1 className="text-4xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
             All entries

@@ -167,7 +167,10 @@ export function TaskList({ isLocked = false }: { isLocked?: boolean }) {
 
   return (
     <>
-      <div className="mb-6 flex items-start justify-between gap-4">
+      <div
+        data-tour="tasks-page"
+        className="mb-6 flex items-start justify-between gap-4"
+      >
         <div>
           <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-50 mb-1">
             Tasks
