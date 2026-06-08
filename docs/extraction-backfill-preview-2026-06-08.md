@@ -96,3 +96,58 @@ DATABASE_URL=<prod> npx tsx apps/web/scripts/backfill-extraction-commit.ts --com
 3. Approve → I (or you, from home) run dry-run first, paste the output for a final check, then `--commit`.
 
 **No rows will be created until you approve.**
+
+---
+
+# DRY-RUN OUTPUT (2026-06-08) — read-only, nothing written
+
+**Filters applied (per your decisions):** `createdAt > now() − 30 days` **AND** email NOT ending in `@heelerdigital.com`. Computed via read-only SQL that mirrors the script's exact `where` clause + the helper's empty-title skip + goal dedup (the `tsx` script can't reach Supabase from this environment — blocked ports per CLAUDE.md — so this is the SQL-equivalent of `--since=2026-05-09` dry-run; the script run from your home network will produce the same task/goal counts).
+
+## Totals (would create)
+| Metric | All-time (prior) | **30d + founders excluded (this run)** |
+|---|---|---|
+| Entries | 75 | **57** |
+| Users | 21 | **18** |
+| **Tasks created** | 179 | **138** |
+| Goals created (new) | ≤61 | **≤45** (45 candidates, 0 match an existing goal title → all new; intra-batch title dupes may net slightly fewer) |
+| Tasks skipped (empty title) | — | **0** |
+| Errors | — | **0** |
+
+## Per-user breakdown (18 users, after filters)
+| Email | Plan | Entries | Tasks |
+|---|---|---|---|
+| midnightoilandtincture@gmail.com | TRIAL | 7 | 22 |
+| cazdavies060@gmail.com | PRO | 12 | 22 |
+| programmingnyc@gmail.com | PRO | 8 | 19 |
+| kaiberworks@gmail.com | PRO | 5 | 13 |
+| erinkate826@gmail.com | TRIAL | 6 | 11 |
+| stefanie@stefaniemullen.com | PRO | 4 | 10 |
+| tomwebster@gmail.com | TRIAL | 1 | 6 |
+| becky69clark@gmail.com | TRIAL | 1 | 6 |
+| only1honeybrown@gmail.com | TRIAL | 3 | 5 |
+| mostdaysnicole@gmail.com | TRIAL | 2 | 4 |
+| heatherjackson0047@gmail.com | TRIAL | 1 | 4 |
+| **thelmabowlen@gmail.com** (reported) | TRIAL | 1 | 4 |
+| mergler95@gmail.com | TRIAL | 1 | 3 |
+| emily101infante@gmail.com | TRIAL | 1 | 3 |
+| mreddit9095@gmail.com | TRIAL | 1 | 3 |
+| author.mpokocky@gmail.com | TRIAL | 1 | 1 |
+| kitter1022@gmail.com | TRIAL | 1 | 1 |
+| bachillerchasity@gmail.com | TRIAL | 1 | 1 |
+| **Total** | | **57** | **138** |
+
+Founders excluded as instructed: `jim@heelerdigital.com` (was 20 tasks), `keenan@heelerdigital.com` (20), `jim+slice2pro@heelerdigital.com` (1) — gone. Stefanie's 3 older `rawAnalysis`-null entries are *not* here (no candidates to commit; they need re-extraction, optional).
+
+## Errors / skips
+- **0 tasks skipped** for empty/whitespace titles (all 138 have valid titles).
+- **0 errors** anticipated — every candidate row is well-formed; group resolution falls back to the user's "Other" group (or null) when `groupName` doesn't match.
+
+## Idempotency — confirmed
+The affected set is defined by **`NOT EXISTS (Task WHERE entryId = entry.id)`**, re-checked inside each per-entry transaction. After a `--commit` run those 57 entries each have ≥1 Task row, so a **second run's candidate set is empty → 0 tasks, 0 goals created.** Goals additionally dedupe by case-insensitive title (existing → bump, not duplicate). Safe to re-run.
+
+**Script command for the approved run** (from your home network):
+```
+DATABASE_URL=<prod> npx tsx apps/web/scripts/backfill-extraction-commit.ts --since=2026-05-09            # dry-run
+DATABASE_URL=<prod> npx tsx apps/web/scripts/backfill-extraction-commit.ts --since=2026-05-09 --commit   # writes
+```
+(The script now defaults to a 30-day window and always excludes `@heelerdigital.com`, so a bare run == this; `--since` shown for explicitness.)

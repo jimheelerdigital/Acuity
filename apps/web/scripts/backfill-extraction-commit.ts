@@ -26,13 +26,23 @@ import type { ExtractedGoal, ExtractedTask } from "@acuity/shared";
 async function main() {
   const commit = process.argv.includes("--commit");
   const sinceArg = process.argv.find((a) => a.startsWith("--since="));
-  const since = sinceArg ? new Date(sinceArg.split("=")[1]) : undefined;
+  const allTime = process.argv.includes("--all-time");
+  // Default window: last 30 days (2026-06-08 decision — older entries are
+  // left unrecovered; surfacing 2-month-old tasks is worse than the gap).
+  // --since=YYYY-MM-DD overrides; --all-time removes the window.
+  const since = sinceArg
+    ? new Date(sinceArg.split("=")[1])
+    : allTime
+      ? undefined
+      : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
   const candidates = await prisma.entry.findMany({
     where: {
       status: "COMPLETE",
       rawAnalysis: { not: Prisma.JsonNull },
       tasks: { none: {} }, // idempotency: skip entries that already have Task rows
+      // Skip founder/test accounts (2026-06-08 decision).
+      user: { email: { not: { endsWith: "@heelerdigital.com" } } },
       ...(since ? { createdAt: { gte: since } } : {}),
     },
     select: {
@@ -41,6 +51,7 @@ async function main() {
       rawAnalysis: true,
       createdAt: true,
       extractionCommittedAt: true,
+      user: { select: { email: true } },
     },
     orderBy: { createdAt: "asc" },
   });
