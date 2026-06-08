@@ -646,6 +646,13 @@ export const processEntryFn = inngest.createFunction(
             blockers: extraction.blockers,
             rawAnalysis: extraction as unknown as object,
             status: "COMPLETE",
+            // Auto-commit (2026-06-08): extraction now materializes tasks
+            // + goals into rows immediately (see commitExtractedItems
+            // below), so the entry is extracted + committed in the same
+            // write. The `extracted` flag was previously never set by this
+            // pipeline — only try-claim + backfill set it.
+            extracted: true,
+            extractionCommittedAt: new Date(),
             // W-B (2026-05-03): persist which prompt produced
             // this entry's themes so theme-distribution.ts can
             // split V5 vs legacy cohorts. Read from the closure
@@ -670,37 +677,22 @@ export const processEntryFn = inngest.createFunction(
           extraction.themesDetailed
         );
 
-        // Tasks: extracted but NOT persisted yet. User reviews + commits
-        // via /api/entries/[id]/commit-extraction. Raw list survives on
-        // Entry.rawAnalysis.tasks; extractionCommittedAt stays null
-        // until the user decides. Mirror of the sync pipeline.
-
-        // Goals: existing-goal re-mentions still bump lastMentionedAt +
-        // entryRefs (observational metadata, no new row). NEW goals
-        // surface in the review banner on the entry detail page.
-        for (const g of extraction.goals) {
-          const existing = await tx.goal.findFirst({
-            where: {
-              userId,
-              title: { equals: g.title, mode: "insensitive" },
-            },
-          });
-          if (existing) {
-            const refs = Array.from(new Set([...(existing.entryRefs ?? []), entryId]));
-            await tx.goal.update({
-              where: { id: existing.id },
-              data: {
-                lastMentionedAt: new Date(),
-                entryRefs: refs,
-                ...(!existing.editedByUser && g.description
-                  ? { description: g.description }
-                  : {}),
-              },
-            });
-          }
-          // else: NEW goals surface in the review banner — see
-          // /api/entries/[id]/extraction GET route.
-        }
+        // Auto-commit (2026-06-08): materialize extracted tasks + goals
+        // into Task/Goal rows immediately. The old review gate (park in
+        // rawAnalysis.tasks until the user manually commits) broke the
+        // core promise — 80% of extractions never got committed. The
+        // helper creates tasks, bumps existing goals, and creates new
+        // ones. Users edit/delete unwanted items from the lists post-hoc.
+        const { commitExtractedItems } = await import(
+          "@/lib/commit-extraction"
+        );
+        await commitExtractedItems(
+          tx,
+          userId,
+          entryId,
+          extraction.tasks,
+          extraction.goals
+        );
 
         // Anchor-goal bump — when the user recorded "Add a reflection" on
         // a specific goal, Entry.goalId is set. The extraction.goals loop
