@@ -683,6 +683,11 @@ export async function processEntry({
           blockers: extraction.blockers,
           rawAnalysis: extraction as unknown as object,
           status: "COMPLETE",
+          // Auto-commit (2026-06-08) — mark extracted + committed in the
+          // same write; tasks/goals are materialized just below. Mirror
+          // of the async pipeline.
+          extracted: true,
+          extractionCommittedAt: new Date(),
           // W-B (2026-05-03): the sync pipeline never opts into the
           // V5 dispositional prompt — extractFromTranscript is called
           // above (line 613) without the useDispositionalThemes flag,
@@ -705,37 +710,20 @@ export async function processEntry({
         extraction.themesDetailed
       );
 
-      // Tasks: extracted but NOT persisted yet. User reviews + commits
-      // via /api/entries/[id]/commit-extraction. The raw list lives on
-      // Entry.rawAnalysis.tasks and is rendered by the review banner on
-      // the entry detail page. extractionCommittedAt stays null until
-      // the user decides.
-      const tasksCreated = 0;
-
-      // Goals: matching re-mentions of EXISTING user goals still bump
-      // lastMentionedAt + entryRefs (observational metadata, no new
-      // row). NEW goals from the extraction are NOT auto-created —
-      // they're surfaced in the review banner for the user to confirm.
-      for (const g of extraction.goals) {
-        const existing = await tx.goal.findFirst({
-          where: { userId, title: { equals: g.title, mode: "insensitive" } },
-        });
-        if (existing) {
-          const refs = Array.from(new Set([...(existing.entryRefs ?? []), entryId]));
-          await tx.goal.update({
-            where: { id: existing.id },
-            data: {
-              lastMentionedAt: new Date(),
-              entryRefs: refs,
-              ...(!existing.editedByUser && g.description
-                ? { description: g.description }
-                : {}),
-            },
-          });
-        }
-        // else: NEW goals surface in the review banner — see
-        // /api/entries/[id]/extraction GET route.
-      }
+      // Auto-commit (2026-06-08): materialize extracted tasks + goals
+      // immediately (review gate dropped — see process-entry.ts + the
+      // commitExtractedItems helper). Mirror of the async pipeline so
+      // both paths behave identically.
+      const { commitExtractedItems } = await import(
+        "@/lib/commit-extraction"
+      );
+      const { tasksCreated } = await commitExtractedItems(
+        tx,
+        userId,
+        entryId,
+        extraction.tasks,
+        extraction.goals
+      );
 
       // Anchor-goal bump — when the user recorded "Add a reflection" on
       // a specific goal, Entry.goalId is set. The extraction.goals loop
