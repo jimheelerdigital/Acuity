@@ -581,21 +581,34 @@ export default function GoalsTab() {
           />
         }
       >
-        <View className="flex-row items-baseline gap-2 mb-1">
-          <Text
-            className="text-4xl font-bold"
-            style={{ color: tokens.text }}
-            numberOfLines={1}
-            adjustsFontSizeToFit
-            minimumFontScale={0.75}
-          >
-            Goals
-          </Text>
-          {inProgressCount > 0 && (
-            <Text className="text-sm" style={{ color: tokens.textSec }}>
-              {inProgressCount} in progress
+        <View className="flex-row items-center justify-between mb-1">
+          <View className="flex-row items-baseline gap-2 flex-1">
+            <Text
+              className="text-4xl font-bold"
+              style={{ color: tokens.text }}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.75}
+            >
+              Goals
             </Text>
-          )}
+            {inProgressCount > 0 && (
+              <Text className="text-sm" style={{ color: tokens.textSec }}>
+                {inProgressCount} in progress
+              </Text>
+            )}
+          </View>
+          {/* Manual goal creation — opens the /goal/new create modal. */}
+          <Pressable
+            onPress={() => router.push("/goal/new")}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel="Add goal"
+            className="ml-3 h-9 w-9 items-center justify-center rounded-full"
+            style={{ backgroundColor: tokens.bgInset }}
+          >
+            <Ionicons name="add" size={24} color={tokens.primary} />
+          </Pressable>
         </View>
         <Text
           className="text-sm mb-4"

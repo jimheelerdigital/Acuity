@@ -15,6 +15,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { api } from "@/lib/api";
 import { getCached, invalidate, setCached } from "@/lib/cache";
 import { useTheme } from "@/contexts/theme-context";
+import { DueDateField } from "@/components/due-date-field";
 
 const TASKS_CACHE_KEY = "/api/tasks?all=1";
 const GROUPS_CACHE_KEY = "/api/task-groups";
@@ -214,30 +215,16 @@ export default function TaskCreateScreen() {
             })}
           </View>
 
-          {/* Due date — text input matching the edit screen (no native
-              picker dependency). Sent as YYYY-MM-DD; the server stores it
-              as a date and the Tasks list renders it in UTC. */}
+          {/* Due date — native iOS calendar picker, US-format display. */}
           <Text
             className="text-xs font-medium mb-1"
             style={{ color: tokens.textSec }}
           >
-            Due date (optional, YYYY-MM-DD)
+            Due date (optional)
           </Text>
-          <TextInput
-            value={due}
-            onChangeText={setDue}
-            placeholder="YYYY-MM-DD"
-            placeholderTextColor={tokens.textTer}
-            autoCapitalize="none"
-            autoCorrect={false}
-            className="rounded-lg border px-3 py-2.5 text-sm mb-4"
-            style={{
-              borderColor: tokens.line,
-              backgroundColor: tokens.bgInset,
-              color: tokens.text,
-              minHeight: 42,
-            }}
-          />
+          <View className="mb-4">
+            <DueDateField value={due} onChange={setDue} />
+          </View>
 
           {/* Group picker */}
           <Text

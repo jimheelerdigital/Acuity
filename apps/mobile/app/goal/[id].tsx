@@ -17,6 +17,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { formatRelativeDate, lifeAreaDisplayLabel } from "@acuity/shared";
 
 import { StickyBackButton } from "@/components/back-button";
+import { DueDateField } from "@/components/due-date-field";
 import { ProgressSuggestionBanner } from "@/components/progress-suggestion-banner";
 import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
@@ -323,6 +324,32 @@ export default function GoalDetailScreen() {
                 );
               })}
             </View>
+          </View>
+
+          {/* Target date — native calendar picker, US-format display.
+              Net-new editor (was display-only); PATCHes targetDate. */}
+          <View className="mt-6">
+            <Text
+              className="text-xs font-semibold uppercase tracking-widest mb-2"
+              style={{ color: tokens.textTer }}
+            >
+              Target date
+            </Text>
+            <DueDateField
+              value={
+                goal.targetDate
+                  ? new Date(goal.targetDate).toISOString().slice(0, 10)
+                  : ""
+              }
+              onChange={(v) => {
+                // Optimistic UI; store as UTC-midnight ISO to mirror the
+                // server (new Date("YYYY-MM-DD")). patch() reconciles from
+                // the response.
+                const iso = v ? new Date(v).toISOString() : null;
+                setGoal((g) => (g ? { ...g, targetDate: iso } : g));
+                void patch({ targetDate: v || null });
+              }}
+            />
           </View>
 
           {/* Progress — tap-to-step. Slider would need an extra dep and
