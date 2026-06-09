@@ -151,7 +151,7 @@ export default async function BlogIndex() {
                 <h2 className="text-lg font-bold leading-snug mb-3 group-hover:text-acuity-primary transition-colors">
                   {post.title}
                 </h2>
-                <p className="text-sm text-acuity-text-sec leading-relaxed line-clamp-3">
+                <p className="text-sm text-acuity-text leading-relaxed line-clamp-3">
                   {post.excerpt}
                 </p>
               </div>
