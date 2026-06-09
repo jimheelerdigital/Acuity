@@ -1,5 +1,17 @@
+import { DEFAULT_LIFE_AREAS } from "@acuity/shared";
+
 import { AccountDeletedBanner } from "@/components/account-deleted-banner";
 import { MarketingHome } from "@/components/marketing/MarketingHome";
+
+// Life Matrix FAQ copy derived from the canonical DEFAULT_LIFE_AREAS so it
+// can't drift from the live app. Was stale at "6 key areas — Health,
+// Wealth, Relationships, Spirituality, Career, Growth"; the app renders 10
+// (2026-06-09). Deriving count + example labels means a future axis change
+// updates this answer automatically.
+const lifeAreaNames = DEFAULT_LIFE_AREAS.map((a) => a.shortName);
+const lifeMatrixFaqAnswer = `The Life Matrix scores your life across ${lifeAreaNames.length} areas — including ${lifeAreaNames
+  .slice(0, 3)
+  .join(", ")}, and more — and tracks them over time so you can see which areas are thriving and which need attention.`;
 
 // ISR: regenerate every 60 seconds. Auth redirect for logged-in users
 // is handled by middleware (not getServerSession here) so this page
@@ -68,7 +80,7 @@ const jsonLd = {
           name: "What is the Life Matrix?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "The Life Matrix scores your life across 6 key areas — Health, Wealth, Relationships, Spirituality, Career, and Growth — and tracks them over time so you can see which areas are thriving and which need attention.",
+            text: lifeMatrixFaqAnswer,
           },
         },
       ],
