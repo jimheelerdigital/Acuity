@@ -1,11 +1,7 @@
 /**
- * Marketing hero — gradient headline, real Home phone (fixed dark), 3
- * floating "extraction" chips. Ported from the handoff
- * (`marketing.jsx → Hero`).
- *
- * Page chrome uses the Tailwind acuity-* tokens (follows data-theme); the
- * phone is the live ported HomeDashboard at a FIXED dark token mode
- * (matches the prototype — the hero phone doesn't follow the page theme).
+ * Marketing hero — gradient headline, dual phone layout (Home + Recording).
+ * Left phone shows the live HomeDashboard, right shows the Recording screen.
+ * Both drift gently on a staggered float animation.
  */
 import { makeAcuityTokens } from "@acuity/shared";
 
@@ -14,34 +10,7 @@ import { Reveal } from "@/components/landing-shared";
 
 import { PhoneFrame } from "./PhoneFrame";
 import { HomeDashboard } from "./screens/home";
-
-// [top%, left%, hue, floatDelay(s)] — positions a chip around the phone.
-const CHIPS: { label: string; hue: number; top: string; left: string; delay: number }[] = [
-  { label: "Task → Career", hue: 295, top: "14%", left: "-4%", delay: 0.4 },
-  { label: "Mood +5", hue: 165, top: "62%", left: "-8%", delay: 1.1 },
-  { label: "14-day streak", hue: 38, top: "40%", left: "86%", delay: 0.8 },
-];
-
-function Chip({ label, hue, top, left, delay }: (typeof CHIPS)[number]) {
-  return (
-    <div
-      className="acuity-float absolute z-[3] inline-flex items-center gap-2 rounded-full border border-acuity-line-strong px-[14px] py-[9px] font-sans text-[13px] font-semibold text-acuity-text shadow-acuity-lift backdrop-blur-[12px]"
-      style={{
-        top,
-        left,
-        background: "color-mix(in oklch, var(--acuity-card-bg-raised), transparent 8%)",
-        animationDuration: `${5 + delay}s`,
-        animationDelay: `${delay}s`,
-      }}
-    >
-      <span
-        className="h-2 w-2 rounded-[5px]"
-        style={{ background: `linear-gradient(135deg, oklch(0.78 0.16 ${hue}), oklch(0.55 0.16 ${hue}))` }}
-      />
-      {label}
-    </div>
-  );
-}
+import { RecordingScreen } from "./screens/recording";
 
 export function Hero() {
   const tDark = makeAcuityTokens({ dark: true, accent: "coral" });
@@ -52,10 +21,7 @@ export function Hero() {
         {/* copy */}
         <Reveal>
           <div>
-            {/* Real App Store rating (5.0 from 4 reviews, 2026-06-09).
-                Source + count live in the JSON-LD AggregateRating in
-                app/page.tsx — keep both in sync. Count intentionally not
-                shown until 30+ reviews. */}
+            {/* Real App Store rating (5.0 from 4 reviews, 2026-06-09). */}
             <div
               className="mb-[22px] inline-flex items-center gap-2.5 rounded-full border border-acuity-line-strong py-[7px] pl-2 pr-[14px] shadow-acuity-soft"
               style={{ background: "color-mix(in oklch, var(--acuity-bg), transparent 30%)" }}
@@ -74,7 +40,6 @@ export function Hero() {
               <GradientText variant="mix">A life of clarity.</GradientText>
             </h1>
 
-            {/* TODO(copy): placeholder hero subcopy. */}
             <p className="m-0 mb-8 max-w-[480px] font-sans text-[19px] leading-[1.55] text-acuity-text-sec text-pretty">
               Acuity is the voice journal that listens. Talk through your day — it catches your
               tasks, tracks your goals, and surfaces the patterns you can&rsquo;t see on your own.
@@ -104,15 +69,21 @@ export function Hero() {
           </div>
         </Reveal>
 
-        {/* phone */}
+        {/* dual phones */}
         <Reveal delay={1}>
-          <div className="relative flex justify-center">
-            <PhoneFrame t={tDark} scale={0.66}>
-              <HomeDashboard t={tDark} />
-            </PhoneFrame>
-            {CHIPS.map((c) => (
-              <Chip key={c.label} {...c} />
-            ))}
+          <div className="relative flex items-end justify-center gap-5 min-[900px]:gap-6">
+            {/* Recording phone — slightly behind and shorter */}
+            <div className="acuity-float hidden min-[900px]:block" style={{ animationDuration: "6.2s", animationDelay: "0.6s" }}>
+              <PhoneFrame t={tDark} scale={0.52}>
+                <RecordingScreen t={tDark} />
+              </PhoneFrame>
+            </div>
+            {/* Home phone — primary, taller */}
+            <div className="acuity-float" style={{ animationDuration: "5.6s", animationDelay: "0s" }}>
+              <PhoneFrame t={tDark} scale={0.62}>
+                <HomeDashboard t={tDark} />
+              </PhoneFrame>
+            </div>
           </div>
         </Reveal>
       </div>

@@ -50,7 +50,7 @@ const HOME_DATA = {
     { id: "matrix-7", label: "Matrix 70+", hue: 80, icon: "matrix", unlocked: false, progress: 0.95 },
   ] as Achievement[],
   lastEntry: {
-    when: "Last night",
+    when: "Latest",
     durationLabel: "1m 47s",
     summary: "You came back to the Marcus 1:1 you keep deferring, mentioned Mira’s call about Dad, and noticed the run never happened — again.",
     pull: "The thing I keep avoiding is the conversation, not the work.",
@@ -145,7 +145,7 @@ export function HomeDashboard({ t }: { t: AcuityTokens }) {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
               <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "5px 10px 5px 8px", borderRadius: 999, background: t.gradMixSoft }}>
                 <span style={{ width: 6, height: 6, borderRadius: 3, background: t.primary }} />
-                <span style={{ fontFamily: t.mono, fontSize: 10, fontWeight: 700, letterSpacing: 1.0, color: t.text, textTransform: "uppercase" }}>Last night</span>
+                <span style={{ fontFamily: t.mono, fontSize: 10, fontWeight: 700, letterSpacing: 1.0, color: t.text, textTransform: "uppercase" }}>{d.lastEntry.when}</span>
               </div>
               <span style={{ fontFamily: t.mono, fontSize: 11, color: t.textTer }}>{d.lastEntry.durationLabel}</span>
             </div>
@@ -245,7 +245,7 @@ function TodayStatsRow({ t, d }: { t: AcuityTokens; d: HomeData }) {
         <RingProgress value={ringValue} size={72} stroke={6} t={t}>
           <div style={{ ...num, lineHeight: "26px" }}>{d.streak}</div>
         </RingProgress>
-        <div style={label}>Streak · {d.streak === 1 ? "night" : "nights"}</div>
+        <div style={label}>Streak · {d.streak === 1 ? "day" : "days"}</div>
       </div>
       {/* Entries this week */}
       <div style={{ ...tile, justifyContent: "space-between" }}>
