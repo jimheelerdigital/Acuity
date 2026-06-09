@@ -73,12 +73,6 @@ export function Hero() {
         {/* step-flow phones */}
         <Reveal delay={1}>
           <div className="relative flex flex-col items-center gap-6">
-            {/* Step labels row — desktop only */}
-            <div className="hidden w-full items-end justify-around min-[900px]:flex" style={{ paddingLeft: 20, paddingRight: 12 }}>
-              <StepLabel step={1} label="Record" />
-              <StepLabel step={2} label="Your dashboard" />
-            </div>
-
             {/* Phones + connector */}
             <div className="relative flex items-end justify-center gap-4 min-[900px]:gap-5">
               {/* Step 1 — Recording phone */}
@@ -106,22 +100,6 @@ export function Hero() {
         </Reveal>
       </div>
     </section>
-  );
-}
-
-/** Step number badge + label above each phone. */
-function StepLabel({ step, label }: { step: number; label: string }) {
-  return (
-    <div className="flex items-center gap-2.5 mb-2">
-      <span
-        className="flex h-[22px] w-[22px] items-center justify-center rounded-full bg-acuity-grad-primary font-mono text-[10px] font-bold text-white"
-      >
-        {step}
-      </span>
-      <span className="font-sans text-[13px] font-semibold text-acuity-text-sec tracking-[-0.1px]">
-        {label}
-      </span>
-    </div>
   );
 }
 
