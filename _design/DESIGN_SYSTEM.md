@@ -12,7 +12,7 @@ This is the single source of truth for tokens, type, spacing, motion, primitives
 
 Three reading modes:
 - **Building a new surface** — read §1 brand vision, §5 primitives, §6 motion, §9 surface inventory.
-- **Editing copy** — read §1 brand vision, §7 voice & copy, §8 anti-patterns. Also read `docs/Acuity_SalesCopy.md` (linked).
+- **Editing copy** — read §1 brand vision, §7 voice & copy, §8 anti-patterns. Also read `docs/acuity-positioning.md` (linked).
 - **Tweaking visuals** — read §2 color, §3 type, §4 spacing/radii/shadows, §8 anti-patterns.
 
 When in doubt: pick the quieter, more restrained option. The brand fails by being loud, not by being too quiet.
@@ -467,7 +467,7 @@ Honor `prefers-reduced-motion: reduce` on web. When set:
 
 ## 7. Voice & copy guidelines
 
-Acuity copy is governed by the **sales-copy rubric** in `docs/Acuity_SalesCopy.md`. Read it before writing or editing any customer-facing copy. The summary below captures the rules every contributor must internalize — but the rubric is the spec.
+Acuity copy is governed by the **sales-copy rubric** in `docs/acuity-positioning.md`. Read it before writing or editing any customer-facing copy. The summary below captures the rules every contributor must internalize — but the rubric is the spec.
 
 ### 7.1 Voice — four characteristics
 
@@ -624,7 +624,7 @@ When asked "should this surface have X", read this table:
 - **Theme palette (mobile):** `apps/mobile/app/insights/_theme-map/types.ts`
 - **Design handoff (source of truth):** `_design/design_handoff_acuity_v2/README.md`
 - **Motion gallery:** `_design/design_handoff_acuity_v2/Acuity Motion Gallery.html`
-- **Sales copy rubric:** `docs/Acuity_SalesCopy.md`
+- **Sales copy rubric:** `docs/acuity-positioning.md`
 - **Web tokens:** _not yet ported — Phase 2 work._
 
 ---
