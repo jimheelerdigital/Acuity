@@ -325,3 +325,34 @@ export function AcuityDevice({ children, t, width = 402, height = 874 }: {
     </div>
   );
 }
+
+// Round 36px glass icon button (top-bar back/more). Ported from
+// screen-entry.jsx → pillBtn.
+export function pillBtn(t: AcuityTokens): CSSProperties {
+  return {
+    width: 36, height: 36, borderRadius: 18, border: "none", cursor: "pointer",
+    background: t.mode === "dark" ? "oklch(1 0 0 / 0.10)" : "oklch(0 0 0 / 0.05)",
+    backdropFilter: "blur(20px) saturate(180%)",
+    display: "flex", alignItems: "center", justifyContent: "center",
+  };
+}
+
+// Section header (label + count/sub + optional action). Ported from
+// screen-entry.jsx → SectionHead.
+export function SectionHead({ t, label, count, sub, action }: {
+  t: AcuityTokens; label: string; count?: number; sub?: string; action?: string;
+}) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 12 }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+        <h2 style={{ fontFamily: t.display, fontSize: 15, fontWeight: 700, color: t.text, letterSpacing: -0.2, margin: 0 }}>{label}</h2>
+        {(count !== undefined || sub) && (
+          <span style={{ fontFamily: t.mono, fontSize: 11, color: t.textTer }}>{count !== undefined ? count : sub}</span>
+        )}
+      </div>
+      {action && (
+        <span style={{ fontFamily: t.sans, fontSize: 13, fontWeight: 600, color: t.primary, cursor: "pointer" }}>{action}</span>
+      )}
+    </div>
+  );
+}
