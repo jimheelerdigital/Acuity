@@ -536,7 +536,7 @@ function GroupSection({
   setMoveMenuTaskId: (id: string | null) => void;
 }) {
   return (
-    <div className="rounded-xl bg-white dark:bg-[#13131F] border border-zinc-200 dark:border-white/10 border-l-[3px] border-l-acuity-primary overflow-visible shadow-sm">
+    <div className="rounded-xl bg-white dark:bg-[#13131F] border border-zinc-200 dark:border-white/10 border-l-4 border-l-acuity-primary overflow-visible shadow-sm">
       {/* Section header — design polish 2026-06-08: the 3px primary
           left-border on the card (see container) is the section accent,
           matching mobile. Dropped the group-color glow dot (glow is
@@ -545,11 +545,11 @@ function GroupSection({
       <button
         type="button"
         onClick={onToggle}
-        className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-zinc-50 dark:hover:bg-white/5 transition border-b border-zinc-200 dark:border-white/10"
+        className="w-full flex items-center justify-between px-5 py-4 text-left bg-acuity-primary-soft hover:brightness-95 transition border-b border-zinc-200 dark:border-white/10"
       >
         <div className="flex items-center gap-2.5">
           <span
-            className="font-semibold uppercase text-zinc-700 dark:text-zinc-200"
+            className="font-semibold uppercase text-acuity-primary"
             style={{ fontSize: 13, letterSpacing: "0.18em" }}
           >
             {group.name}

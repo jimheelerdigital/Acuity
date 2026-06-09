@@ -542,7 +542,11 @@ function GoalTreeNode({
       <div
         className={`rounded-2xl border bg-white dark:bg-acuity-card-bg px-4 py-3 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.04)] transition-all hover:shadow-[0_1px_3px_rgba(0,0,0,0.06),0_8px_20px_rgba(0,0,0,0.08)] dark:shadow-none dark:ring-1 dark:ring-white/5 ${
           isSelected
-            ? "border-acuity-primary dark:border-acuity-primary ring-1 ring-acuity-primary-soft dark:ring-acuity-primary-soft"
+            ? // The focus goal is pre-selected for the 2xl rail. Only show
+              // the accent ring at 2xl (where the rail is visible) — below
+              // that there's no rail, so a ring on the first goal reads as
+              // a spurious outline.
+              "border-zinc-200 dark:border-white/10 2xl:border-acuity-primary 2xl:ring-1 2xl:ring-acuity-primary-soft"
             : "border-zinc-200 dark:border-white/10"
         }`}
       >
