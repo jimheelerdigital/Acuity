@@ -43,10 +43,10 @@ const HOME_DATA = {
   tier: { level: 4, name: "Reflective", xpInLevel: 14, xpToLevel: 21, nextName: "Devoted" },
   achievements: [
     { id: "first", label: "First entry", hue: 60, icon: "trophy", unlocked: true, unlockedAgo: "2mo" },
-    { id: "week", label: "7-night chain", hue: 165, icon: "moon", unlocked: true, unlockedAgo: "6w" },
+    { id: "week", label: "7-day chain", hue: 165, icon: "moon", unlocked: true, unlockedAgo: "6w" },
     { id: "goal", label: "Set first goal", hue: 295, icon: "goal", unlocked: true, unlockedAgo: "7w" },
-    { id: "two-wk", label: "14 nights", hue: 25, icon: "flame", unlocked: true, unlockedAgo: "today" },
-    { id: "three-wk", label: "21 nights", hue: 195, icon: "star", unlocked: false, progress: 0.66 },
+    { id: "two-wk", label: "14 days", hue: 38, icon: "flame", unlocked: true, unlockedAgo: "today" },
+    { id: "three-wk", label: "21 days", hue: 195, icon: "star", unlocked: false, progress: 0.66 },
     { id: "matrix-7", label: "Matrix 70+", hue: 80, icon: "matrix", unlocked: false, progress: 0.95 },
   ] as Achievement[],
   lastEntry: {

@@ -19,7 +19,7 @@ import { HomeDashboard } from "./screens/home";
 const CHIPS: { label: string; hue: number; top: string; left: string; delay: number }[] = [
   { label: "Task → Career", hue: 295, top: "14%", left: "-4%", delay: 0.4 },
   { label: "Mood +5", hue: 165, top: "62%", left: "-8%", delay: 1.1 },
-  { label: "14-night streak", hue: 25, top: "40%", left: "86%", delay: 0.8 },
+  { label: "14-day streak", hue: 38, top: "40%", left: "86%", delay: 0.8 },
 ];
 
 function Chip({ label, hue, top, left, delay }: (typeof CHIPS)[number]) {

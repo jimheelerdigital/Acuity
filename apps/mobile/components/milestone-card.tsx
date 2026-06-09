@@ -255,18 +255,18 @@ function Particle({
 const MILESTONE_COPY: Record<number, { title: string; body: string }> = {
   3: {
     title: "It's starting to stick.",
-    body: "Three nights in a row. Momentum isn't magic — it's the third day looking like the first.",
+    body: "Three days in a row. Momentum isn't magic — it's the third day looking like the first.",
   },
   7: {
     title: "A full week.",
-    body: "You've shown up seven nights. Acuity has enough to start noticing things about you.",
+    body: "You've shown up seven days. Acuity has enough to start noticing things about you.",
   },
   14: {
     title: "Two weeks of showing up.",
     body: "This is where most people quit. You didn't. Your Day 14 Life Audit is ready whenever you are.",
   },
   30: {
-    title: "A month of nightly debriefs.",
+    title: "A month of daily debriefs.",
     body: "Thirty days of data is when patterns stop being noise. Acuity's Life Matrix is actually tracking your life now — not extrapolating.",
   },
   60: {
@@ -278,8 +278,8 @@ const MILESTONE_COPY: Record<number, { title: string; body: string }> = {
     body: "Most apps never see a number like this from most users. The only person who built it is you.",
   },
   365: {
-    title: "A full year of nightly reflections.",
-    body: "Three hundred and sixty-five nights. Nobody can take that back. Your first annual review is already writing itself.",
+    title: "A full year of daily reflections.",
+    body: "Three hundred and sixty-five days. Nobody can take that back. Your first annual review is already writing itself.",
   },
 };
 

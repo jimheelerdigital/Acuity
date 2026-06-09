@@ -179,7 +179,7 @@ export function TodayStatsRow({
             color: tokens.textTer,
           }}
         >
-          Streak · {currentStreak === 1 ? "night" : "nights"}
+          Streak · {currentStreak === 1 ? "day" : "days"}
         </Text>
       </View>
 
