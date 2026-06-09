@@ -7,6 +7,31 @@
 
 ---
 
+## [2026-06-09] — Show user first name in admin Users table
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** 37e9118
+
+### In plain English (for Keenan)
+
+The admin Users table now shows each person's first name above their email address, so you can see "Sarah" instead of just "sarah.mitchell@gmail.com". If someone signed up via Google or Apple, their full name is already on file — we just show the first name. The rare user with no name on file shows a dash.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/admin/tabs/UsersTab.tsx`: Email cell now renders the first name (split from `User.name` on the first space) on top, email beneath. Added `firstName()` helper with null/empty fallback to "—". The API already selected the `name` field — no backend change needed.
+
+### Manual steps needed
+
+None — deploys automatically on push.
+
+### Notes
+
+- `User.name` is `String?` — populated by OAuth providers (Google, Apple). Email/password signups may have null names. The "—" fallback handles this.
+- No schema change. No new API field. Pure frontend display change.
+
+---
+
 ## [2026-06-09] — Remove night/nightly framing from home screen + fix streak chip dot
 
 - **Requested by:** Keenan
