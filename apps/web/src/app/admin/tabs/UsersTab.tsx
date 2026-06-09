@@ -258,8 +258,11 @@ export default function UsersTab() {
                     u.lifecycle === "Churned" ? "bg-red-500/[0.03]" : ""
                   }`}
                 >
-                  {/* Email */}
-                  <td className="px-3 py-2.5 text-xs text-white/80 max-w-[200px] truncate">{u.email}</td>
+                  {/* Name + Email */}
+                  <td className="px-3 py-2.5 max-w-[200px]">
+                    <div className="text-xs font-medium text-white/90 truncate">{firstName(u.name)}</div>
+                    <div className="text-[11px] text-white/50 truncate">{u.email}</div>
+                  </td>
 
                   {/* Source */}
                   <td className="px-3 py-2.5 text-[11px] text-white/50">
@@ -411,6 +414,11 @@ function LifecyclePill({ stage }: { stage: string }) {
     "Churned": "bg-red-500/20 text-red-300",
   };
   return <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium whitespace-nowrap ${STYLES[stage] ?? "bg-white/5 text-white/40"}`}>{stage}</span>;
+}
+
+function firstName(name: string | null): string {
+  if (!name || !name.trim()) return "—";
+  return name.trim().split(/\s+/)[0];
 }
 
 function daysSince(dateStr: string): number {
