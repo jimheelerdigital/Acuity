@@ -387,9 +387,32 @@
   animation-delay: 300ms;
 }
 
+/* Marketing: floating hero chips + scrollbar-hide for the phone-mockup
+   scroll areas (ported from the design handoff). */
+@keyframes acuity-float-chip {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-9px);
+  }
+}
+.acuity-float {
+  animation: acuity-float-chip 5s ease-in-out infinite;
+}
+.acuity-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.acuity-scroll::-webkit-scrollbar {
+  display: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .acuity-fade-up,
   .acuity-fade-in,
+  .acuity-float,
   .acuity-stagger > [data-stagger] {
     animation: none;
   }
