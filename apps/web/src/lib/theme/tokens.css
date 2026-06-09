@@ -439,6 +439,41 @@
   }
 }
 
+/* ─── Blog prose table overrides ───────────────────────────────── */
+
+/*
+ * Autoblog-generated HTML sometimes includes <thead> with dark
+ * background inline styles or classes. Force table headers to match
+ * the acuity theme regardless of what the generated HTML carries.
+ */
+.acuity-blog-prose thead,
+.acuity-blog-prose thead tr,
+.acuity-blog-prose thead th {
+  background: var(--acuity-bg-sub) !important;
+  color: var(--acuity-text) !important;
+  border-color: var(--acuity-line-strong);
+}
+
+.acuity-blog-prose tbody td {
+  border-color: var(--acuity-line);
+}
+
+.acuity-blog-prose table {
+  border-collapse: collapse;
+}
+
+.acuity-blog-prose thead th {
+  padding: 12px 16px;
+  font-weight: 700;
+  font-size: 14px;
+  text-align: left;
+}
+
+.acuity-blog-prose tbody td {
+  padding: 12px 16px;
+  font-size: 15px;
+}
+
 /* ─── HeroCard corner blob opacity ──────────────────────────────── */
 
 /*

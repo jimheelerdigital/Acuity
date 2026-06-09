@@ -414,7 +414,7 @@ export default async function BlogPostPage({ params }: Props) {
             <div className="h-px bg-acuity-line mb-12" />
           )}
           <div
-            className="prose prose-base max-w-none prose-headings:text-acuity-text prose-headings:font-bold prose-h2:text-2xl prose-h2:tracking-tight prose-h2:mt-12 prose-h2:mb-4 prose-h3:text-xl prose-h3:mt-8 prose-h3:mb-3 prose-p:text-acuity-text prose-p:text-base prose-p:leading-[1.8] prose-p:mb-5 prose-a:text-acuity-primary prose-strong:text-acuity-text prose-li:text-acuity-text prose-li:text-base prose-blockquote:border-acuity-primary/40 prose-blockquote:text-acuity-text-sec prose-th:text-acuity-text prose-td:text-acuity-text prose-table:text-acuity-text"
+            className="acuity-blog-prose prose prose-base max-w-none prose-headings:text-acuity-text prose-headings:font-bold prose-h2:text-2xl prose-h2:tracking-tight prose-h2:mt-12 prose-h2:mb-4 prose-h3:text-xl prose-h3:mt-8 prose-h3:mb-3 prose-p:text-acuity-text prose-p:text-base prose-p:leading-[1.8] prose-p:mb-5 prose-a:text-acuity-primary prose-strong:text-acuity-text prose-li:text-acuity-text prose-li:text-base prose-blockquote:border-acuity-primary/40 prose-blockquote:text-acuity-text-sec prose-th:text-acuity-text prose-td:text-acuity-text prose-table:text-acuity-text"
             dangerouslySetInnerHTML={{ __html: htmlBody }}
           />
           <BlogCta />
