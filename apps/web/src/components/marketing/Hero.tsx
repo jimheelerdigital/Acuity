@@ -1,7 +1,8 @@
 /**
- * Marketing hero — gradient headline, dual phone layout (Home + Recording).
- * Left phone shows the live HomeDashboard, right shows the Recording screen.
- * Both drift gently on a staggered float animation.
+ * Marketing hero — gradient headline, step-flow dual phone layout.
+ * Step 1 (Record) on the left with animated orb + waveform,
+ * Step 2 (Your dashboard) on the right showing the Home screen.
+ * A connecting arrow between them reinforces the input→output flow.
  */
 import { makeAcuityTokens } from "@acuity/shared";
 
@@ -69,25 +70,58 @@ export function Hero() {
           </div>
         </Reveal>
 
-        {/* dual phones */}
+        {/* step-flow phones */}
         <Reveal delay={1}>
-          <div className="relative flex items-end justify-center gap-5 min-[900px]:gap-6">
-            {/* Recording phone — slightly behind and shorter */}
-            <div className="acuity-float hidden min-[900px]:block" style={{ animationDuration: "6.2s", animationDelay: "0.6s" }}>
-              <PhoneFrame t={tDark} scale={0.52}>
-                <RecordingScreen t={tDark} />
-              </PhoneFrame>
+          <div className="relative flex flex-col items-center gap-6">
+            {/* Step labels row — desktop only */}
+            <div className="hidden w-full items-end justify-around min-[900px]:flex" style={{ paddingLeft: 20, paddingRight: 12 }}>
+              <StepLabel step={1} label="Record" />
+              <StepLabel step={2} label="Your dashboard" />
             </div>
-            {/* Home phone — primary, taller */}
-            <div className="acuity-float" style={{ animationDuration: "5.6s", animationDelay: "0s" }}>
-              <PhoneFrame t={tDark} scale={0.62}>
-                <HomeDashboard t={tDark} />
-              </PhoneFrame>
+
+            {/* Phones + connector */}
+            <div className="relative flex items-end justify-center gap-4 min-[900px]:gap-5">
+              {/* Step 1 — Recording phone */}
+              <div className="acuity-float hidden min-[900px]:block" style={{ animationDuration: "6.2s", animationDelay: "0.6s" }}>
+                <PhoneFrame t={tDark} scale={0.50}>
+                  <RecordingScreen t={tDark} />
+                </PhoneFrame>
+              </div>
+
+              {/* Connector arrow — desktop only */}
+              <div className="hidden min-[900px]:flex items-center self-center -mx-1">
+                <svg width="44" height="24" viewBox="0 0 44 24" fill="none" className="text-acuity-text-ter">
+                  <path d="M2 12h32M28 6l8 6-8 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.5" />
+                </svg>
+              </div>
+
+              {/* Step 2 — Home dashboard phone */}
+              <div className="acuity-float" style={{ animationDuration: "5.6s", animationDelay: "0s" }}>
+                <PhoneFrame t={tDark} scale={0.58}>
+                  <HomeDashboard t={tDark} />
+                </PhoneFrame>
+              </div>
             </div>
           </div>
         </Reveal>
       </div>
     </section>
+  );
+}
+
+/** Step number badge + label above each phone. */
+function StepLabel({ step, label }: { step: number; label: string }) {
+  return (
+    <div className="flex items-center gap-2.5 mb-2">
+      <span
+        className="flex h-[22px] w-[22px] items-center justify-center rounded-full bg-acuity-grad-primary font-mono text-[10px] font-bold text-white"
+      >
+        {step}
+      </span>
+      <span className="font-sans text-[13px] font-semibold text-acuity-text-sec tracking-[-0.1px]">
+        {label}
+      </span>
+    </div>
   );
 }
 

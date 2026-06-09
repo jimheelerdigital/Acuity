@@ -409,10 +409,31 @@
   display: none;
 }
 
+/* Hero recording orb — gentle breath pulse on the glow halo */
+@keyframes acuity-orb-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.18; }
+  50%      { transform: scale(1.18); opacity: 0.35; }
+}
+.acuity-orb-pulse {
+  animation: acuity-orb-pulse 2.6s ease-in-out infinite;
+}
+
+/* Hero waveform bars — staggered bounce to simulate voice input */
+@keyframes acuity-wave {
+  0%, 100% { transform: scaleY(0.4); }
+  50%      { transform: scaleY(1); }
+}
+.acuity-wave-bar {
+  animation: acuity-wave 1.2s ease-in-out infinite;
+  transform-origin: center bottom;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .acuity-fade-up,
   .acuity-fade-in,
   .acuity-float,
+  .acuity-orb-pulse,
+  .acuity-wave-bar,
   .acuity-stagger > [data-stagger] {
     animation: none;
   }

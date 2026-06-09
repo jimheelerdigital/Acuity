@@ -1,7 +1,8 @@
 /**
- * Marketing Recording phone-mockup — static representation of the
- * in-app recording screen. Shows the mic orb, timer, waveform bars,
- * and a glass "REC" pill. Token-object driven (fixed dark mode).
+ * Marketing Recording phone-mockup — animated representation of the
+ * in-app recording screen. The mic orb pulses gently and the waveform
+ * bars bounce with staggered delays to simulate live voice input.
+ * Token-object driven (fixed dark mode).
  */
 import type { AcuityTokens } from "@acuity/shared";
 
@@ -45,7 +46,7 @@ export function RecordingScreen({ t }: { t: AcuityTokens }) {
             borderRadius: 999,
             background: "oklch(1 0 0 / 0.08)",
             backdropFilter: "blur(20px) saturate(180%)",
-            border: `0.5px solid oklch(1 0 0 / 0.12)`,
+            border: "0.5px solid oklch(1 0 0 / 0.12)",
           }}
         >
           <span
@@ -71,13 +72,14 @@ export function RecordingScreen({ t }: { t: AcuityTokens }) {
           </span>
         </div>
 
-        {/* Mic orb */}
+        {/* Mic orb with pulsating glow */}
         <div style={{ position: "relative" }}>
-          {/* Outer glow halo */}
+          {/* Animated outer glow halo */}
           <div
+            className="acuity-orb-pulse"
             style={{
               position: "absolute",
-              inset: -20,
+              inset: -24,
               borderRadius: "50%",
               background: `radial-gradient(circle, ${t.primary} 0%, transparent 70%)`,
               opacity: 0.18,
@@ -128,27 +130,32 @@ export function RecordingScreen({ t }: { t: AcuityTokens }) {
           0:47
         </div>
 
-        {/* Waveform bars */}
+        {/* Animated waveform bars */}
         <div
           style={{
             display: "flex",
-            alignItems: "center",
+            alignItems: "flex-end",
+            justifyContent: "center",
             gap: 3,
-            height: 40,
-            padding: "0 40px",
+            height: 48,
+            padding: "0 30px",
+            width: "100%",
           }}
         >
           {WAVE_BARS.map((h, i) => (
             <div
               key={i}
+              className="acuity-wave-bar"
               style={{
                 width: 3,
                 height: `${h}%`,
                 borderRadius: 2,
                 background:
-                  i >= WAVE_BARS.length - 4
+                  i >= WAVE_BARS.length - 6
                     ? `linear-gradient(180deg, ${t.primaryHi}, ${t.primary})`
-                    : `oklch(1 0 0 / ${0.15 + (h / 100) * 0.25})`,
+                    : `oklch(1 0 0 / ${0.18 + (h / 100) * 0.3})`,
+                animationDelay: `${(i * 0.08) % 1.2}s`,
+                animationDuration: `${0.8 + (i % 5) * 0.15}s`,
               }}
             />
           ))}
@@ -172,8 +179,10 @@ export function RecordingScreen({ t }: { t: AcuityTokens }) {
   );
 }
 
-// Static waveform bar heights — mimics a voice-reactive pattern.
+// Static waveform bar heights — baseline heights that the animation
+// scales from. Each bar bounces between scaleY(0.4) and scaleY(1)
+// with a staggered delay to simulate live voice input.
 const WAVE_BARS = [
-  20, 35, 25, 50, 40, 65, 45, 75, 55, 85, 60, 70, 50, 90, 65, 80, 55, 95,
-  70, 60, 85, 75, 55, 40, 70, 80, 65, 90, 75, 85,
+  30, 50, 35, 65, 45, 80, 55, 90, 60, 75, 50, 85, 65, 95, 70, 60,
+  80, 45, 70, 90, 55, 75, 40, 65, 85, 50, 70, 80, 60, 90,
 ];

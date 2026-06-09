@@ -152,7 +152,7 @@ export function CookieConsentBanner() {
 
   return (
     <div
-      className="fixed inset-x-0 bottom-0 z-[1000] border-t border-zinc-200 bg-white/95 px-4 py-4 shadow-2xl backdrop-blur dark:border-white/10 dark:bg-[#0B0B12]/95"
+      className="fixed inset-x-0 bottom-0 z-[1000] border-t border-zinc-200 bg-white/95 px-4 py-4 shadow-2xl backdrop-blur dark:border-white/10 dark:bg-acuity-bg/95"
       role="dialog"
       aria-label="Cookie consent"
     >
@@ -171,19 +171,19 @@ export function CookieConsentBanner() {
             <div className="flex flex-wrap gap-2 shrink-0">
               <button
                 onClick={() => setState("customize")}
-                className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-white/10 dark:bg-[#1E1E2E] dark:text-zinc-200 dark:hover:bg-white/5"
+                className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-white/10 dark:bg-acuity-card-bg dark:text-zinc-200 dark:hover:bg-white/5"
               >
                 Customize
               </button>
               <button
                 onClick={() => accept(false, false)}
-                className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-white/10 dark:bg-[#1E1E2E] dark:text-zinc-200 dark:hover:bg-white/5"
+                className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-white/10 dark:bg-acuity-card-bg dark:text-zinc-200 dark:hover:bg-white/5"
               >
                 Reject all
               </button>
               <button
                 onClick={() => accept(true, true)}
-                className="rounded-lg bg-violet-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-violet-700"
+                className="rounded-lg bg-acuity-primary px-3 py-2 text-xs font-semibold text-white transition hover:bg-acuity-primary-lo"
               >
                 Accept all
               </button>
@@ -243,13 +243,13 @@ export function CookieConsentBanner() {
             <div className="mt-4 flex flex-wrap justify-end gap-2">
               <button
                 onClick={() => setState("default")}
-                className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-white/10 dark:bg-[#1E1E2E] dark:text-zinc-200 dark:hover:bg-white/5"
+                className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-white/10 dark:bg-acuity-card-bg dark:text-zinc-200 dark:hover:bg-white/5"
               >
                 Back
               </button>
               <button
                 onClick={() => accept(analytics, marketing)}
-                className="rounded-lg bg-violet-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-violet-700"
+                className="rounded-lg bg-acuity-primary px-3 py-2 text-xs font-semibold text-white transition hover:bg-acuity-primary-lo"
               >
                 Save preferences
               </button>
