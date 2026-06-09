@@ -163,6 +163,11 @@ const config: Config = {
         "acuity-grad-secondary": "var(--acuity-grad-secondary)",
         "acuity-grad-mix": "var(--acuity-grad-mix)",
         "acuity-grad-mix-soft": "var(--acuity-grad-mix-soft)",
+        // Atmospheric gradients + grain overlay (marketing + app screens).
+        "acuity-hero-grad": "var(--acuity-hero-grad)",
+        "acuity-cosmos-grad": "var(--acuity-cosmos-grad)",
+        "acuity-record-grad": "var(--acuity-record-grad)",
+        "acuity-grain": "var(--acuity-grain)",
       },
       transitionTimingFunction: {
         "acuity-standard": "var(--acuity-ease-standard)",
