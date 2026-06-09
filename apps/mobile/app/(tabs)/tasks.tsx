@@ -661,11 +661,15 @@ const GroupSection = memo(function GroupSection({
           marginBottom: 6,
           paddingHorizontal: 16,
           paddingVertical: 10,
-          // Section-header accent (design polish 2026-06-08): a 3px
-          // primary left-border. Replaces the old glowing primary dot
-          // (glow is ceremonial-only per design-system §4.4).
-          borderLeftWidth: 3,
+          // Section-header accent (design polish 2026-06-08, strengthened
+          // after QA): 4px primary left-border + soft primary background
+          // tint + primary-tinted name (below) so the header clearly reads
+          // as colored. Replaces the old glowing dot (glow is ceremonial-
+          // only per design-system §4.4). `${primary}1A` = ~10% alpha
+          // (tokens are hex at runtime).
+          borderLeftWidth: 4,
           borderLeftColor: tokens.primary,
+          backgroundColor: `${tokens.primary}1A`,
           borderTopWidth: 0.5,
           borderTopColor: tokens.line,
           borderBottomWidth: 1,
@@ -687,7 +691,7 @@ const GroupSection = memo(function GroupSection({
               fontWeight: "700",
               letterSpacing: 1.6,
               textTransform: "uppercase",
-              color: tokens.text,
+              color: tokens.primary,
             }}
           >
             {group.name}
