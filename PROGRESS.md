@@ -7,6 +7,36 @@
 
 ---
 
+## [2026-06-09] — Remove night/nightly framing from home screen + fix streak chip dot
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** 13d1ecf
+
+### In plain English (for Keenan)
+
+The home screen no longer says "nights" anywhere — the streak ring now says "Streak · 14 days" instead of "Streak · 14 nights", and all the milestone celebration cards ("Three nights in a row", "A month of nightly debriefs", etc.) now say "days" and "daily" instead. This matches the brand rule that debriefs can happen any time, not just at night. The streak counter measures consecutive calendar days with at least one recording — so "day" is the accurate label. Also fixed the floating "14-night streak" chip on the marketing homepage: renamed to "14-day streak" and changed its red dot to coral (the brand primary) so it no longer looks like a stray error indicator.
+
+### Technical changes (for Jimmy)
+
+- `apps/mobile/components/home/today-stats-row.tsx`: `"night" : "nights"` → `"day" : "days"`
+- `apps/mobile/components/milestone-card.tsx`: 5 milestone copy changes (nights→days, nightly→daily)
+- `apps/web/src/components/marketing/Hero.tsx`: chip label "14-night streak"→"14-day streak", hue 25→38
+- `apps/web/src/components/marketing/screens/home.tsx`: mockup achievement labels "7-night chain"→"7-day chain", "14/21 nights"→"14/21 days", hue 25→38
+- No changes to streak logic, backend, or schema
+
+### Manual steps needed
+
+None — mobile requires a new build for copy changes to ship to TestFlight. Web deploys on push.
+
+### Notes
+
+- Streak logic (`apps/web/src/lib/streak.ts`) counts consecutive calendar days with ≥1 recording. "Day" is accurate.
+- `TonightCTA` and `LastNightCard` component names still say "tonight"/"night" but rendered copy is already time-agnostic. Internal naming left for future cleanup.
+- The streak chip dot hue changed from 25 (red-ember = `bad` status color) to 38 (coral = brand primary). The old hue was the same as the design system's "danger" color — looked like an error.
+
+---
+
 ## [2026-06-09] — Sitewide theme migration: all public pages on acuity-* design tokens + CTA link fixes
 
 - **Requested by:** Keenan
