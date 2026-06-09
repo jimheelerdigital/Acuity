@@ -7,6 +7,51 @@
 
 ---
 
+## [2026-06-09] — Sitewide theme migration: all public pages on acuity-* design tokens + CTA link fixes
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** 8e6f71e
+
+### In plain English (for Keenan)
+
+Every public page on the site now matches the new marketing homepage look — same coral-and-violet palette, same fonts, same button styles, same light-mode-default behavior. Before this, the blog, /start funnel, all the /for/* landing pages (therapy, sleep, founders, etc.), signup, support, privacy, terms, voice-journaling guide, and the 404 page were still using the old dark-only look with hardcoded violet hex colors. Now they all read from the same design token system the homepage uses, so when you toggle light/dark mode on the homepage, every page responds the same way. The blog also now has a "Blog" link in the top navigation so visitors can actually find it. Five "Start free trial" buttons across the marketing site were broken (linking to page anchors or nowhere instead of the /start funnel) — all five now go to /start.
+
+### Technical changes (for Jimmy)
+
+- 29 files changed, ~586 insertions / 585 deletions (pure find-and-replace of hex values with acuity-* Tailwind token classes)
+- `apps/web/src/components/landing-shared.tsx`: ~100 hex-to-token replacements across all shared landing components (LandingNav, Footer, PulsingCTA, PricingSection, TestimonialsSection, ComparisonTable, FeatureGrid, HowItWorksSection, etc.)
+- `apps/web/src/components/onboarding-funnel.tsx`: ~50 hex-to-token replacements (the /start funnel). All `#7C5CFC` violet replaced with `acuity-primary`, progress bars, buttons, inputs, selection states, plan cards. Copy and branching logic untouched.
+- `/for/therapy`, `/for/sleep`, `/for/founders`, `/for/weekly-report`, `/for/decoded`: page wrappers migrated from `bg-[#181614]` to `bg-acuity-bg`
+- `/for/[slug]/dynamic-landing-client.tsx` + `static-persona-client.tsx`: dynamic landing pages migrated
+- `/blog/layout.tsx`: switched from `LandingNav`+`Footer` (landing-shared) to `MarketingNav`+`Footer` (marketing components) — blog now matches homepage chrome
+- `/blog/page.tsx`, `/blog/[slug]/page.tsx`: all `text-[#A0A0B8]`, `bg-[#13131F]`, `border-white/10` replaced with acuity tokens
+- `/auth/signup/page.tsx` + 3 success screens: gradient and accent hex values replaced
+- `/privacy`, `/terms`: `bg-[#0A0A0F]` + `text-[#E5E5EC]` + `text-[#C5C5D2]` replaced with acuity-bg/text/text-ter
+- `/support`, `/support/crisis`: `bg-[#13131F]` + `text-[#A78BFA]` links replaced with acuity tokens
+- `/voice-journaling/page.tsx`: all hex replaced
+- `/not-found.tsx`: accent + link colors migrated
+- `MarketingNav.tsx`: added "Blog" link to nav, CTA href `#start` changed to `/start`
+- `Hero.tsx`, `Pricing.tsx`, `FinalCTA.tsx`, `Footer.tsx`: CTA hrefs fixed from `#start` or `#` to `/start`
+- `blog-try-button.tsx`: hardcoded `#B8A5FF` in conic-gradient replaced with `var(--acuity-primary-hi)`
+- Confetti color arrays in onboarding-funnel.tsx left as hex (the canvas-confetti library requires runtime hex values, not CSS vars)
+- No schema changes. No new dependencies. No logic changes.
+
+### Manual steps needed
+
+None — deploys automatically on push. No `prisma db push` needed.
+
+### Notes
+
+- The blog layout now uses the marketing homepage's `MarketingNav` instead of the old `LandingNav`. This means blog pages get the theme toggle (light/dark) and the same nav links as the homepage. The anchor links (#features, #how, #pricing) only work on the homepage — on blog pages they become no-ops, which is standard behavior for a persistent nav.
+- Five CTA links were broken before this change: Hero CTA (`#start`), Nav CTA (`#start`), Pricing CTA (`#start`), FinalCTA button (`#` — went nowhere), Footer "Download" (`#start`). All now point to `/start`.
+- Admin pages (`/admin/*`) were explicitly excluded from this migration (internal-only).
+- Authenticated app pages (`/home/*`, `/goals/*`, `/insights/*`, `/onboarding/*`) were explicitly excluded — already partially migrated in earlier work.
+- Life-area chart hex colors in `/goals` were excluded per DESIGN_SYSTEM.md §2.9 (intentional fixed chart colors).
+- Pre-existing TypeScript errors in admin/adlab and achievements files are unrelated to this change.
+
+---
+
 ## [2026-06-05] — v1.3 ship candidate: working product tour + trial cleanup
 
 - **Requested by:** Jimmy
