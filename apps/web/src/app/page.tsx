@@ -36,9 +36,18 @@ const jsonLd = {
         name: "Pro",
         description: "14-day free trial. Unlimited voice entries, AI analysis, weekly reports, and Life Matrix.",
       },
-      // aggregateRating removed — Keenan must provide a verifiable public
-      // review source (App Store, G2, Trustpilot) before re-adding.
-      // Google penalizes unverifiable aggregate ratings.
+      // Re-added 2026-06-09 with REAL App Store data (4 × 5-star). sameAs
+      // + the rating url point Google at the verifiable source. Bump
+      // ratingValue/reviewCount here (and the hero badge) as reviews grow.
+      sameAs: "https://apps.apple.com/app/id6762633410",
+      aggregateRating: {
+        "@type": "AggregateRating",
+        ratingValue: "5.0",
+        reviewCount: "4",
+        bestRating: "5",
+        worstRating: "1",
+        url: "https://apps.apple.com/app/id6762633410",
+      },
     },
     {
       "@type": "FAQPage",

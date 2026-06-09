@@ -52,7 +52,10 @@ export function Hero() {
         {/* copy */}
         <Reveal>
           <div>
-            {/* TODO(copy): 4.9 rating + tagline are placeholders — swap real values before publish. */}
+            {/* Real App Store rating (5.0 from 4 reviews, 2026-06-09).
+                Source + count live in the JSON-LD AggregateRating in
+                app/page.tsx — keep both in sync. Count intentionally not
+                shown until 30+ reviews. */}
             <div
               className="mb-[22px] inline-flex items-center gap-2.5 rounded-full border border-acuity-line-strong py-[7px] pl-2 pr-[14px] shadow-acuity-soft"
               style={{ background: "color-mix(in oklch, var(--acuity-bg), transparent 30%)" }}
@@ -61,7 +64,7 @@ export function Hero() {
                 <Stars />
               </span>
               <span className="font-sans text-[13px] font-semibold text-acuity-text-sec">
-                4.9 · The AI voice journal
+                5.0 · on the App Store
               </span>
             </div>
 
