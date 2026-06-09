@@ -14,7 +14,7 @@
  * HomeRitual + MiniStat from the prototype are not ported (unused by
  * the marketing page).
  */
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 import type { AcuityTokens } from "@acuity/shared";
 
@@ -127,62 +127,13 @@ export function HomeDashboard({ t }: { t: AcuityTokens }) {
           </div>
         </div>
 
-        {/* HERO — Life Matrix ring + week sparkbar */}
+        {/* Today stats — streak ring + entries sparkbar + minutes.
+            Matches the LIVE app Home (components/home/today-stats-row).
+            Replaces the prototype's "Life Matrix · 67" ring hero, which
+            showed a score the app doesn't surface on Home (Life Matrix
+            lives in Insights) — live app is source of truth (2026-06-09). */}
         <div style={{ padding: "16px 16px 0" }}>
-          <div style={{
-            position: "relative", borderRadius: 28, padding: "20px 20px 18px",
-            background: t.mode === "dark"
-              ? `linear-gradient(135deg, oklch(0.26 0.08 ${t._primary[2]} / 0.5) 0%, oklch(0.24 0.08 ${t._secondary[2]} / 0.5) 100%), ${t.cardBg}`
-              : `linear-gradient(135deg, oklch(0.95 0.07 ${t._primary[2]}) 0%, oklch(0.95 0.06 ${t._secondary[2]}) 100%)`,
-            border: `0.5px solid ${t.lineStrong}`, boxShadow: t.shadowLift, overflow: "hidden",
-          }}>
-            <div style={{
-              position: "absolute", right: -50, top: -50, width: 200, height: 200, borderRadius: "50%",
-              background: `radial-gradient(circle, ${t.primary} 0%, transparent 70%)`,
-              opacity: t.mode === "dark" ? 0.16 : 0.26, filter: "blur(28px)", pointerEvents: "none",
-            }} />
-            <div style={{ display: "flex", gap: 18, alignItems: "center", position: "relative" }}>
-              <RingProgress value={d.matrixScore / 100} size={108} stroke={9} t={t}>
-                <div style={{ textAlign: "center" }}>
-                  <div style={{ fontFamily: t.display, fontSize: 36, fontWeight: 800, color: t.text, letterSpacing: -1.4, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{d.matrixScore}</div>
-                  <div style={{ fontFamily: t.mono, fontSize: 9, letterSpacing: 1.2, color: t.textTer, textTransform: "uppercase", marginTop: 2 }}>OVERALL</div>
-                </div>
-              </RingProgress>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontFamily: t.mono, fontSize: 10, letterSpacing: 1.4, textTransform: "uppercase", color: t.textTer }}>Life Matrix</div>
-                <div style={{ fontFamily: t.display, fontSize: 17, fontWeight: 700, color: t.text, letterSpacing: -0.3, lineHeight: 1.2, marginTop: 4, textWrap: "pretty" }}>Climbing this week.</div>
-                <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-                  <span style={{
-                    display: "inline-flex", alignItems: "center", gap: 3, padding: "3px 8px", borderRadius: 999,
-                    background: t.goodSoft, fontFamily: t.mono, fontSize: 11, fontWeight: 700, color: t.good,
-                  }}>
-                    <span style={{ fontSize: 10 }}>{"↗"}</span>+{d.matrixDelta} wk
-                  </span>
-                  <span style={{
-                    padding: "3px 8px", borderRadius: 999,
-                    background: t.mode === "dark" ? "oklch(1 0 0 / 0.05)" : "oklch(0 0 0 / 0.05)",
-                    fontFamily: t.mono, fontSize: 11, fontWeight: 700, color: t.textSec, letterSpacing: 0.2,
-                  }}>+12 / 30d</span>
-                </div>
-              </div>
-            </div>
-            <div style={{ marginTop: 16, paddingTop: 14, borderTop: `0.5px solid ${t.line}`, display: "flex", alignItems: "center", gap: 14 }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontFamily: t.mono, fontSize: 10, letterSpacing: 1.2, color: t.textTer, textTransform: "uppercase", marginBottom: 6 }}>Entries · last 7 days</div>
-                <Sparkbar values={d.weekBars} t={t} height={28} />
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 0 }}>
-                <div style={{ fontFamily: t.display, fontSize: 22, fontWeight: 800, color: t.text, letterSpacing: -0.6, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>32</div>
-                <div style={{ fontFamily: t.sans, fontSize: 11, color: t.textTer, marginTop: 4 }}>this week</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Stat tiles */}
-        <div style={{ padding: "12px 16px 0", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          <StreakTile t={t} d={d} />
-          <ThemesTile t={t} d={d} />
+          <TodayStatsRow t={t} d={d} />
         </div>
 
         {/* Achievements horizontal scroll */}
@@ -264,75 +215,50 @@ export function HomeDashboard({ t }: { t: AcuityTokens }) {
   );
 }
 
-function StreakTile({ t, d }: { t: AcuityTokens; d: HomeData }) {
-  const pct = d.tier.xpInLevel / d.tier.xpToLevel;
-  return (
-    <div style={{
-      padding: "14px 14px 12px", borderRadius: 22,
-      background: t.mode === "dark"
-        ? `linear-gradient(160deg, oklch(0.30 0.10 ${t._primary[2]} / 0.32) 0%, ${t.cardBg} 75%)`
-        : `linear-gradient(160deg, oklch(0.96 0.07 ${t._primary[2]}) 0%, ${t.cardBg} 75%)`,
-      border: `0.5px solid ${t.line}`, boxShadow: t.shadowSoft, position: "relative", overflow: "hidden",
-    }}>
-      <div style={{ position: "absolute", top: -30, right: -30, width: 90, height: 90, borderRadius: "50%", background: `radial-gradient(circle, ${t.primary} 0%, transparent 70%)`, opacity: t.mode === "dark" ? 0.2 : 0.3, filter: "blur(20px)" }} />
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <div style={{ width: 32, height: 32, borderRadius: 16, background: t.gradPrimary, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          {AcuityIcons.flame({ color: "#fff", size: 17 })}
-        </div>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontFamily: t.sans, fontSize: 11, color: t.textTer, letterSpacing: 0.3, textTransform: "uppercase", fontWeight: 700 }}>Streak</div>
-          <div style={{ fontFamily: t.sans, fontSize: 10.5, color: t.textTer, marginTop: 2 }}>longest: {d.longest}</div>
-        </div>
-      </div>
-      <div style={{ fontFamily: t.display, fontSize: 38, fontWeight: 800, color: t.text, letterSpacing: -1.4, lineHeight: 1, fontVariantNumeric: "tabular-nums", marginTop: 12 }}>
-        {d.streak}
-        <span style={{ fontFamily: t.sans, fontSize: 13, fontWeight: 500, color: t.textTer, letterSpacing: -0.1, marginLeft: 4 }}>nights</span>
-      </div>
-      <div style={{ marginTop: 10 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", fontFamily: t.mono, fontSize: 9, fontWeight: 700, letterSpacing: 0.5, color: t.textTer, textTransform: "uppercase", marginBottom: 4 }}>
-          <span>Lv {d.tier.level} · {d.tier.name}</span>
-          <span>{d.tier.xpInLevel}/{d.tier.xpToLevel}</span>
-        </div>
-        <div style={{ height: 5, borderRadius: 3, overflow: "hidden", background: t.mode === "dark" ? "oklch(1 0 0 / 0.08)" : "oklch(0 0 0 / 0.06)" }}>
-          <div style={{ height: "100%", width: `${pct * 100}%`, background: t.gradMix, borderRadius: 3 }} />
-        </div>
-        <div style={{ fontFamily: t.sans, fontSize: 10.5, color: t.textSec, marginTop: 4, letterSpacing: -0.1 }}>
-          7 more for <span style={{ color: t.text, fontWeight: 600 }}>{d.tier.nextName}</span>
-        </div>
-      </div>
-    </div>
-  );
-}
+// Mirrors the live app Home's TodayStatsRow
+// (apps/mobile/components/home/today-stats-row.tsx): three tiles —
+// streak ring, entries-this-week sparkbar, minutes. Static (no count-up
+// / streak-floater animation — those are live-app-only).
+function TodayStatsRow({ t, d }: { t: AcuityTokens; d: HomeData }) {
+  // Ring fills "progress to your best": streak / max(longest, 7).
+  const ringMax = Math.max(d.longest, 7);
+  const ringValue = Math.min(1, d.streak / ringMax);
+  const entries = d.weekBars.reduce((a, b) => a + b, 0);
 
-function ThemesTile({ t, d }: { t: AcuityTokens; d: HomeData }) {
-  const top = d.lastEntry.themes;
+  const tile: CSSProperties = {
+    flex: 1, padding: 14, borderRadius: 22, background: t.cardBg,
+    border: `0.5px solid ${t.line}`, display: "flex", flexDirection: "column", gap: 8,
+  };
+  const num: CSSProperties = {
+    fontFamily: t.display, fontSize: 26, fontWeight: 800, letterSpacing: -0.6,
+    lineHeight: "28px", color: t.text, fontVariantNumeric: "tabular-nums",
+  };
+  const label: CSSProperties = {
+    fontFamily: t.mono, fontSize: 10, fontWeight: 700, letterSpacing: 1.2,
+    textTransform: "uppercase", color: t.textTer,
+  };
+
   return (
-    <div style={{
-      padding: "14px 14px 12px", borderRadius: 22,
-      background: t.mode === "dark"
-        ? `linear-gradient(160deg, oklch(0.28 0.10 ${t._secondary[2]} / 0.32) 0%, ${t.cardBg} 75%)`
-        : `linear-gradient(160deg, oklch(0.96 0.05 ${t._secondary[2]}) 0%, ${t.cardBg} 75%)`,
-      border: `0.5px solid ${t.line}`, boxShadow: t.shadowSoft, position: "relative", overflow: "hidden",
-    }}>
-      <div style={{ position: "absolute", top: -30, right: -30, width: 90, height: 90, borderRadius: "50%", background: `radial-gradient(circle, ${t.secondary} 0%, transparent 70%)`, opacity: t.mode === "dark" ? 0.2 : 0.3, filter: "blur(20px)" }} />
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <div style={{ width: 32, height: 32, borderRadius: 16, background: t.gradSecondary, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          {AcuityIcons.sparkle({ color: "#fff", size: 17 })}
-        </div>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontFamily: t.sans, fontSize: 11, color: t.textTer, letterSpacing: 0.3, textTransform: "uppercase", fontWeight: 700 }}>On your mind</div>
-          <div style={{ fontFamily: t.sans, fontSize: 10.5, color: t.textTer, marginTop: 2 }}>this week</div>
-        </div>
+    <div style={{ display: "flex", gap: 10, alignItems: "stretch" }}>
+      {/* Streak ring */}
+      <div style={{ ...tile, alignItems: "center" }}>
+        <RingProgress value={ringValue} size={72} stroke={6} t={t}>
+          <div style={{ ...num, lineHeight: "26px" }}>{d.streak}</div>
+        </RingProgress>
+        <div style={label}>Streak · {d.streak === 1 ? "night" : "nights"}</div>
       </div>
-      <div style={{ fontFamily: t.display, fontSize: 38, fontWeight: 800, color: t.text, letterSpacing: -1.4, lineHeight: 1, fontVariantNumeric: "tabular-nums", marginTop: 12 }}>
-        {d.themesThisWeek}
-        <span style={{ fontFamily: t.sans, fontSize: 13, fontWeight: 500, color: t.textTer, letterSpacing: -0.1, marginLeft: 4 }}>themes</span>
+      {/* Entries this week */}
+      <div style={{ ...tile, justifyContent: "space-between" }}>
+        <div>
+          <div style={num}>{entries}</div>
+          <div style={{ ...label, marginTop: 2 }}>Entries · 7d</div>
+        </div>
+        <Sparkbar values={d.weekBars} t={t} height={28} />
       </div>
-      <div style={{ display: "flex", gap: 6, marginTop: 12, alignItems: "center" }}>
-        {top.map((th) => (
-          <div key={th.label} style={{ width: 16, height: 16, borderRadius: 8, background: `linear-gradient(135deg, oklch(0.78 0.16 ${th.hue}), oklch(0.55 0.16 ${th.hue}))`, border: `2px solid ${t.cardBg}`, marginLeft: -6 }} />
-        ))}
-        <span style={{ fontFamily: t.sans, fontSize: 11, color: t.textSec, marginLeft: 6, letterSpacing: -0.1 }}>Career, Family, Health…</span>
+      {/* Minutes */}
+      <div style={{ ...tile, justifyContent: "center", alignItems: "center" }}>
+        <div style={num}>{d.minutesSpoken}</div>
+        <div style={{ ...label, textAlign: "center" }}>minutes</div>
       </div>
     </div>
   );
