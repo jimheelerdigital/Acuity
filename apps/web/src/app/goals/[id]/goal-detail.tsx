@@ -197,6 +197,21 @@ export function GoalDetail({
           </select>
         </div>
 
+        {/* Target date — editable (was display-only). Stored as UTC
+            midnight; the date input shows it in the browser's locale. */}
+        <div className="mt-5 flex items-center justify-between gap-4">
+          <label className="text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
+            Target date
+          </label>
+          <input
+            type="date"
+            value={goal.targetDate ? goal.targetDate.slice(0, 10) : ""}
+            onChange={(e) => patch({ targetDate: e.target.value || null })}
+            disabled={saving}
+            className="rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#13131F] px-3 py-1.5 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-acuity-primary"
+          />
+        </div>
+
         <div className="mt-5">
           <div className="flex justify-between items-center mb-2">
             <label className="text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">

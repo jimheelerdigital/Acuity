@@ -20,6 +20,8 @@ import {
 import {
   GOAL_GROUPS,
   goalGroupForArea,
+  LIFE_AREAS,
+  lifeAreaDisplayLabel,
   type GoalGroupMeta,
 } from "@acuity/shared";
 
@@ -121,6 +123,7 @@ export function GoalList({
     new Set()
   );
   const [addSubgoalFor, setAddSubgoalFor] = useState<Goal | null>(null);
+  const [creating, setCreating] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
   // 2xl: rail state. selectedGoalId always reflects the currently-
@@ -327,15 +330,24 @@ export function GoalList({
             use the +&nbsp;button to add a sub-step.
           </p>
         </div>
-        <label className="flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
-          <input
-            type="checkbox"
-            checked={includeArchived}
-            onChange={(e) => setIncludeArchived(e.target.checked)}
-            className="rounded"
-          />
-          Show archived
-        </label>
+        <div className="flex items-center gap-3">
+          <label className="flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
+            <input
+              type="checkbox"
+              checked={includeArchived}
+              onChange={(e) => setIncludeArchived(e.target.checked)}
+              className="rounded"
+            />
+            Show archived
+          </label>
+          <button
+            type="button"
+            onClick={() => setCreating(true)}
+            className="inline-flex items-center gap-1.5 rounded-full bg-acuity-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-110"
+          >
+            <span className="text-base leading-none">+</span> New goal
+          </button>
+        </div>
       </div>
 
       {pendingSuggestions > 0 && (
@@ -358,8 +370,15 @@ export function GoalList({
           <div className="text-3xl mb-3">🎯</div>
           <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">No goals yet</p>
           <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">
-            Mention a goal in your daily debrief and we&apos;ll track it here.
+            Mention a goal in your daily debrief, or add one yourself.
           </p>
+          <button
+            type="button"
+            onClick={() => setCreating(true)}
+            className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-acuity-primary px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110"
+          >
+            <span className="text-base leading-none">+</span> New goal
+          </button>
         </div>
       ) : (
         // space-y-8 (was space-y-6) so each life-area block has clearer
@@ -375,21 +394,29 @@ export function GoalList({
                 <button
                   type="button"
                   onClick={() => toggleGroupCollapse(group.id)}
-                  className="w-full flex items-center gap-3 mb-4 group pb-3 border-b"
-                  style={{ borderBottomColor: `${group.color}33` }}
+                  className="w-full flex items-center gap-3 mb-4 group px-3 py-2.5 border-b border-l-4 rounded-r-lg"
+                  style={{
+                    // Life-area-colored header (2026-06-08 QA): 4px bar +
+                    // soft bg + colored label, all from group.color
+                    // (GOAL_GROUPS, §2.9). Mirrors the Tasks treatment.
+                    borderLeftColor: group.color,
+                    backgroundColor: `${group.color}1A`,
+                    borderBottomColor: `${group.color}33`,
+                  }}
                 >
                   <span
                     className="h-8 w-8 rounded-full flex items-center justify-center shrink-0"
-                    style={{
-                      backgroundColor: group.color + "1A",
-                      boxShadow: `0 0 12px ${group.color}33`,
-                    }}
+                    style={{ backgroundColor: `${group.color}22` }}
                   >
                     <GoalGroupIcon name={group.icon} color={group.color} />
                   </span>
                   <span
-                    className="font-semibold uppercase text-zinc-700 dark:text-zinc-200"
-                    style={{ fontSize: 13, letterSpacing: "0.18em" }}
+                    className="font-semibold uppercase"
+                    style={{
+                      fontSize: 13,
+                      letterSpacing: "0.18em",
+                      color: group.color,
+                    }}
                   >
                     {group.label}
                   </span>
@@ -455,6 +482,16 @@ export function GoalList({
         />
       )}
 
+      {creating && (
+        <NewGoalModal
+          onClose={() => setCreating(false)}
+          onSaved={async () => {
+            setCreating(false);
+            await fetchTree(includeArchived);
+          }}
+        />
+      )}
+
       {showSuggestions && (
         <SuggestionsModal
           onClose={() => setShowSuggestions(false)}
@@ -513,7 +550,11 @@ function GoalTreeNode({
       <div
         className={`rounded-2xl border bg-white dark:bg-acuity-card-bg px-4 py-3 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.04)] transition-all hover:shadow-[0_1px_3px_rgba(0,0,0,0.06),0_8px_20px_rgba(0,0,0,0.08)] dark:shadow-none dark:ring-1 dark:ring-white/5 ${
           isSelected
-            ? "border-acuity-primary dark:border-acuity-primary ring-1 ring-acuity-primary-soft dark:ring-acuity-primary-soft"
+            ? // The focus goal is pre-selected for the 2xl rail. Only show
+              // the accent ring at 2xl (where the rail is visible) — below
+              // that there's no rail, so a ring on the first goal reads as
+              // a spurious outline.
+              "border-zinc-200 dark:border-white/10 2xl:border-acuity-primary 2xl:ring-1 2xl:ring-acuity-primary-soft"
             : "border-zinc-200 dark:border-white/10"
         }`}
       >
@@ -903,6 +944,154 @@ function AddSubgoalModal({
             className="rounded-lg bg-acuity-primary px-4 py-2 text-sm font-semibold text-white hover:bg-acuity-primary disabled:opacity-40"
           >
             {saving ? "Adding…" : "Add sub-goal"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Manual top-level goal creation — web parity with the iOS goal/new
+ * screen. POSTs to /api/goals (one shared contract: title, description,
+ * targetDate, lifeArea; lifeArea defaults GROWTH server-side, but we
+ * always send it). Target date uses a native HTML date input.
+ */
+function NewGoalModal({
+  onClose,
+  onSaved,
+}: {
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [targetDate, setTargetDate] = useState("");
+  const [lifeArea, setLifeArea] = useState("GROWTH"); // = server default
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const canSave = title.trim().length > 0 && !saving;
+
+  const save = async () => {
+    if (!canSave) return;
+    setSaving(true);
+    setErr(null);
+    try {
+      const res = await fetch("/api/goals", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: title.trim(),
+          description: description.trim() || null,
+          targetDate: targetDate || null,
+          lifeArea,
+        }),
+      });
+      if (res.ok) {
+        onSaved();
+      } else {
+        const body = await res.json().catch(() => ({}));
+        setErr(
+          body.detail ??
+            body.error ??
+            (res.status >= 500
+              ? "Something went wrong on our end — please try again."
+              : "We couldn't save that — please check your input and retry.")
+        );
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md rounded-2xl bg-white dark:bg-acuity-card-bg border border-zinc-200 dark:border-white/10 p-6 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50 mb-4">
+          New goal
+        </h2>
+
+        <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+          Title
+        </label>
+        <input
+          autoFocus
+          value={title}
+          maxLength={200}
+          onChange={(e) => setTitle(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && canSave) void save();
+            if (e.key === "Escape") onClose();
+          }}
+          placeholder="What are you working toward?"
+          className="w-full rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#13131F] px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-acuity-primary"
+        />
+
+        <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mt-3 mb-1">
+          Description
+        </label>
+        <textarea
+          value={description}
+          maxLength={2000}
+          rows={3}
+          onChange={(e) => setDescription(e.target.value)}
+          className="w-full rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#13131F] px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-acuity-primary resize-none"
+        />
+
+        <div className="mt-3 grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+              Target date
+            </label>
+            <input
+              type="date"
+              value={targetDate}
+              onChange={(e) => setTargetDate(e.target.value)}
+              className="w-full rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#13131F] px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-acuity-primary"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+              Life area
+            </label>
+            <select
+              value={lifeArea}
+              onChange={(e) => setLifeArea(e.target.value)}
+              className="w-full rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#13131F] px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-acuity-primary"
+            >
+              {LIFE_AREAS.map((a) => (
+                <option key={a} value={a}>
+                  {lifeAreaDisplayLabel(a)}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {err && (
+          <p className="mt-3 text-xs text-red-600 dark:text-red-400">{err}</p>
+        )}
+
+        <div className="mt-5 flex justify-end gap-2">
+          <button
+            onClick={onClose}
+            className="rounded-lg px-4 py-2 text-sm font-medium text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-white/5"
+          >
+            Cancel
+          </button>
+          <button
+            disabled={!canSave}
+            onClick={() => void save()}
+            className="rounded-lg bg-acuity-primary px-4 py-2 text-sm font-semibold text-white hover:brightness-110 disabled:opacity-40"
+          >
+            {saving ? "Adding…" : "Add goal"}
           </button>
         </div>
       </div>

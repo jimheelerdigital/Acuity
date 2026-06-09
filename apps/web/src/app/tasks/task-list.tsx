@@ -37,6 +37,29 @@ type Tab = "open" | "snoozed" | "completed";
 
 const UNGROUPED_KEY = "__ungrouped__";
 
+/**
+ * Due-date tone (web parity with mobile's dueDateToneColor): overdue →
+ * acuity-bad (red), due today/tomorrow → acuity-warn (amber), future →
+ * acuity-text-sec (neutral). Themed CSS-variable colors. dueDate is
+ * stored UTC-midnight, so compare its UTC date to the local today.
+ */
+function dueDateToneClass(dueDate: string | null): string {
+  if (!dueDate) return "text-acuity-text-sec";
+  const due = new Date(dueDate);
+  if (Number.isNaN(due.getTime())) return "text-acuity-text-sec";
+  const dueLocal = new Date(
+    due.getUTCFullYear(),
+    due.getUTCMonth(),
+    due.getUTCDate()
+  );
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const diff = Math.round((dueLocal.getTime() - today.getTime()) / 86_400_000);
+  if (diff < 0) return "text-acuity-bad";
+  if (diff <= 1) return "text-acuity-warn";
+  return "text-acuity-text-sec";
+}
+
 export function TaskList({ isLocked = false }: { isLocked?: boolean }) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [groups, setGroups] = useState<TaskGroup[]>([]);
@@ -513,28 +536,20 @@ function GroupSection({
   setMoveMenuTaskId: (id: string | null) => void;
 }) {
   return (
-    <div className="rounded-xl bg-white dark:bg-[#13131F] border border-zinc-200 dark:border-white/10 overflow-visible shadow-sm">
-      {/* Section header — bumped 2026-04-28 to match the dashboard's
-          shared eyebrow rhythm: 13px / 0.18em tracking, 9px dot with a
-          soft glow in the group color, colored bottom-underline so each
-          section reads as its own block. Was 12px / tracking-wider with
-          a flat 2px dot — too quiet next to the rich row content. */}
+    <div className="rounded-xl bg-white dark:bg-[#13131F] border border-zinc-200 dark:border-white/10 border-l-4 border-l-acuity-primary overflow-visible shadow-sm">
+      {/* Section header — design polish 2026-06-08: the 3px primary
+          left-border on the card (see container) is the section accent,
+          matching mobile. Dropped the group-color glow dot (glow is
+          ceremonial-only per design-system §4.4) + the colored underline;
+          task groups don't carry per-group chrome (goal life-areas do). */}
       <button
         type="button"
         onClick={onToggle}
-        className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-zinc-50 dark:hover:bg-white/5 transition border-b"
-        style={{ borderBottomColor: `${group.color}33` }}
+        className="w-full flex items-center justify-between px-5 py-4 text-left bg-acuity-primary-soft hover:brightness-95 transition border-b border-zinc-200 dark:border-white/10"
       >
         <div className="flex items-center gap-2.5">
           <span
-            className="block h-2.5 w-2.5 rounded-full"
-            style={{
-              backgroundColor: group.color,
-              boxShadow: `0 0 8px ${group.color}66`,
-            }}
-          />
-          <span
-            className="font-semibold uppercase text-zinc-700 dark:text-zinc-200"
+            className="font-semibold uppercase text-acuity-primary"
             style={{ fontSize: 13, letterSpacing: "0.18em" }}
           >
             {group.name}
@@ -681,7 +696,11 @@ function TaskRow({
                 {task.priority}
               </span>
             )}
-            {dueDate && <span className="text-amber-600">Due {dueDate}</span>}
+            {dueDate && (
+              <span className={`font-semibold ${dueDateToneClass(task.dueDate)}`}>
+                Due {dueDate}
+              </span>
+            )}
             {task.description && (
               <span className="line-clamp-1 flex-1 min-w-0">
                 {task.description}
