@@ -24,7 +24,7 @@ import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
 import { cachedGet, getCached } from "@/lib/cache";
 import { isFreeTierUser } from "@/lib/free-tier";
-import { priorityToneColor, WARN_AMBER } from "@/lib/tone-colors";
+import { dueDateToneColor, priorityToneColor } from "@/lib/tone-colors";
 
 // Q8 — finish-day confetti throttle. AsyncStorage stores YYYY-MM-DD;
 // burst only fires when the stored value !== today.
@@ -515,10 +515,10 @@ export default function TasksTab() {
               hitSlop={10}
               accessibilityRole="button"
               accessibilityLabel="Add task"
-              className="ml-3 h-9 w-9 items-center justify-center rounded-full"
-              style={{ backgroundColor: tokens.bgInset }}
+              className="ml-3 h-11 w-11 items-center justify-center rounded-full"
+              style={{ backgroundColor: tokens.primary }}
             >
-              <Ionicons name="add" size={24} color={tokens.primary} />
+              <Ionicons name="add" size={26} color="#FFFFFF" />
             </Pressable>
           </View>
           <Text
@@ -661,28 +661,21 @@ const GroupSection = memo(function GroupSection({
           marginBottom: 6,
           paddingHorizontal: 16,
           paddingVertical: 10,
+          // Section-header accent (design polish 2026-06-08): a 3px
+          // primary left-border. Replaces the old glowing primary dot
+          // (glow is ceremonial-only per design-system §4.4).
+          borderLeftWidth: 3,
+          borderLeftColor: tokens.primary,
           borderTopWidth: 0.5,
           borderTopColor: tokens.line,
           borderBottomWidth: 1,
-          borderBottomColor: `${tokens.primary}33`,
+          borderBottomColor: tokens.line,
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-between",
         }}
       >
         <View className="flex-row items-center gap-2.5">
-          <View
-            style={{
-              width: 9,
-              height: 9,
-              borderRadius: 999,
-              backgroundColor: tokens.primary,
-              shadowColor: tokens.primary,
-              shadowOpacity: 0.6,
-              shadowRadius: 6,
-              shadowOffset: { width: 0, height: 0 },
-            }}
-          />
           <Ionicons
             name={group.icon as never}
             size={14}
@@ -835,11 +828,14 @@ const TaskRow = memo(
                   </Text>
                 </View>
               )}
-              {/* Due-date label uses WARN_AMBER from lib/tone-colors —
-                  same warning-amber accent convention as ON_HOLD goals,
-                  HIGH priority, LOW mood, PARTIAL badge, Q8 confetti. */}
+              {/* Due-date label tone: overdue → bad (red), today/tomorrow
+                  → amber, future → textSec. Semibold for contrast.
+                  Single source: dueDateToneColor in lib/tone-colors. */}
               {dueDate && (
-                <Text className="text-xs" style={{ color: WARN_AMBER }}>
+                <Text
+                  className="text-xs font-semibold"
+                  style={{ color: dueDateToneColor(task.dueDate, tokens) }}
+                >
                   Due {dueDate}
                 </Text>
               )}

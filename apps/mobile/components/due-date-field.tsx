@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Modal, Pressable, Text, View } from "react-native";
 
 import { useTheme } from "@/contexts/theme-context";
+import { dueDateToneColor } from "@/lib/tone-colors";
 
 /**
  * Due-date field for the task create + edit screens. Shows the selected
@@ -70,8 +71,10 @@ export function DueDateField({
           }}
         >
           <Text
-            className="text-sm"
-            style={{ color: selected ? tokens.text : tokens.textTer }}
+            className={selected ? "text-sm font-semibold" : "text-sm"}
+            style={{
+              color: selected ? dueDateToneColor(value, tokens) : tokens.textTer,
+            }}
           >
             {selected ? usLabel(selected) : "No due date"}
           </Text>

@@ -604,10 +604,10 @@ export default function GoalsTab() {
             hitSlop={10}
             accessibilityRole="button"
             accessibilityLabel="Add goal"
-            className="ml-3 h-9 w-9 items-center justify-center rounded-full"
-            style={{ backgroundColor: tokens.bgInset }}
+            className="ml-3 h-11 w-11 items-center justify-center rounded-full"
+            style={{ backgroundColor: tokens.primary }}
           >
-            <Ionicons name="add" size={24} color={tokens.primary} />
+            <Ionicons name="add" size={26} color="#FFFFFF" />
           </Pressable>
         </View>
         <Text
