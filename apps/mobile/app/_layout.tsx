@@ -346,6 +346,20 @@ function ThemedApp() {
           }}
         />
         <Stack.Screen
+          name="task/new"
+          options={{
+            headerShown: false,
+            presentation: "modal",
+          }}
+        />
+        <Stack.Screen
+          name="goal/new"
+          options={{
+            headerShown: false,
+            presentation: "modal",
+          }}
+        />
+        <Stack.Screen
           name="paywall"
           options={{
             headerShown: false,

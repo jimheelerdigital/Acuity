@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as Sentry from "@sentry/react-native";
 import { Audio, InterruptionModeIOS } from "expo-av";
+import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -116,6 +117,10 @@ export default function RecordScreen() {
   const [error, setError] = useState<string | null>(null);
   const [polledEntryId, setPolledEntryId] = useState<string | null>(null);
   const [canceling, setCanceling] = useState(false);
+  // Set when iOS backgrounds the app mid-recording (e.g. a manual
+  // screen lock) despite the wake lock — drives the "interrupted"
+  // recovery copy instead of a silent stop.
+  const [interrupted, setInterrupted] = useState(false);
 
   const recordingRef = useRef<Audio.Recording | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -223,9 +228,24 @@ export default function RecordScreen() {
           (next === "background" || next === "inactive") &&
           state === "recording"
         ) {
-          // Stop and upload whatever we have so far — losing a
-          // backgrounded session would be worse than a short take.
-          stopRecording().catch(() => {});
+          // With keep-awake the screen no longer auto-locks mid-record,
+          // so this now only fires on a deliberate lock or app-switch.
+          // Discard the cut-off take (don't upload a junk partial) and
+          // surface why on return — not a silent stop.
+          try {
+            deactivateKeepAwake("acuity-recording");
+          } catch {
+            // no-op
+          }
+          cleanupTimer();
+          const rec = recordingRef.current;
+          recordingRef.current = null;
+          if (rec) rec.stopAndUnloadAsync().catch(() => {});
+          setInterrupted(true);
+          setError(
+            "Your screen locked and interrupted the recording. Tap Try again to record again."
+          );
+          setState("error");
         }
       }
     );
@@ -246,6 +266,11 @@ export default function RecordScreen() {
   useEffect(() => {
     return () => {
       cleanupTimer();
+      try {
+        deactivateKeepAwake("acuity-recording");
+      } catch {
+        // no-op
+      }
       const rec = recordingRef.current;
       if (rec) {
         rec.stopAndUnloadAsync().catch(() => {});
@@ -256,6 +281,7 @@ export default function RecordScreen() {
 
   const startRecording = async () => {
     setError(null);
+    setInterrupted(false);
     setPolledEntryId(null);
     const perm = await Audio.getPermissionsAsync();
     if (!perm.granted) {
@@ -299,6 +325,11 @@ export default function RecordScreen() {
       recordingRef.current = recording;
       setElapsed(0);
       setState("recording");
+      // Keep iOS from auto-locking mid-recording — the v1.3.2 fix for
+      // takes getting cut off when the user holds the phone and talks
+      // without touching the screen. Released on stop / cap / unmount /
+      // interrupt below.
+      activateKeepAwakeAsync("acuity-recording").catch(() => {});
 
       timerRef.current = setInterval(() => {
         setElapsed((s) => {
@@ -346,6 +377,11 @@ export default function RecordScreen() {
 
   const stopRecording = async () => {
     cleanupTimer();
+    try {
+      deactivateKeepAwake("acuity-recording");
+    } catch {
+      // no-op — tag may already be released
+    }
     const recording = recordingRef.current;
     if (!recording) return;
     recordingRef.current = null;
@@ -567,6 +603,7 @@ export default function RecordScreen() {
     else if (state === "recording") stopRecording();
     else if (state === "error") {
       setError(null);
+      setInterrupted(false);
       setState("idle");
     }
   };
@@ -825,7 +862,7 @@ export default function RecordScreen() {
           <View className="items-center gap-4 px-4">
             <Ionicons name="alert-circle-outline" size={48} color="#EF4444" />
             <Text className="text-zinc-800 dark:text-zinc-100 text-lg font-semibold text-center">
-              Upload failed.
+              {interrupted ? "Recording interrupted" : "Upload failed."}
             </Text>
             <Text className="text-zinc-400 dark:text-zinc-500 text-sm text-center">
               {error}

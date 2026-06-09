@@ -16,6 +16,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { api } from "@/lib/api";
 import { getCached, isStale, setCached } from "@/lib/cache";
 import { useTheme } from "@/contexts/theme-context";
+import { DueDateField } from "@/components/due-date-field";
 
 const TASKS_CACHE_KEY = "/api/tasks?all=1";
 const GROUPS_CACHE_KEY = "/api/task-groups";
@@ -311,30 +312,16 @@ export default function TaskEditScreen() {
               })}
             </View>
 
-            {/* Due date — simple YYYY-MM-DD text input. A native date
-                picker is nicer but needs @react-native-community/datetimepicker
-                which isn't in the bundle; this ships with what's here. */}
+            {/* Due date — native iOS calendar picker, US-format display. */}
             <Text
               className="text-xs font-medium mb-1"
               style={{ color: tokens.textSec }}
             >
-              Due date (optional, YYYY-MM-DD)
+              Due date (optional)
             </Text>
-            <TextInput
-              value={due}
-              onChangeText={setDue}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor={tokens.textTer}
-              autoCapitalize="none"
-              autoCorrect={false}
-              className="rounded-lg border px-3 py-2.5 text-sm mb-4"
-              style={{
-                borderColor: tokens.line,
-                backgroundColor: tokens.bgInset,
-                color: tokens.text,
-                minHeight: 42,
-              }}
-            />
+            <View className="mb-4">
+              <DueDateField value={due} onChange={setDue} />
+            </View>
 
             {/* Group picker. Q11d-2: group.color (server task-group
                 data color) no longer drives mobile chrome; uses

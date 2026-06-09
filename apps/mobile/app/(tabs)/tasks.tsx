@@ -24,7 +24,7 @@ import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
 import { cachedGet, getCached } from "@/lib/cache";
 import { isFreeTierUser } from "@/lib/free-tier";
-import { priorityToneColor, WARN_AMBER } from "@/lib/tone-colors";
+import { dueDateToneColor, priorityToneColor } from "@/lib/tone-colors";
 
 // Q8 — finish-day confetti throttle. AsyncStorage stores YYYY-MM-DD;
 // burst only fires when the stored value !== today.
@@ -492,21 +492,34 @@ export default function TasksTab() {
         }
       >
         <View className="px-5 pt-4 pb-2">
-          <View className="flex-row items-baseline gap-2">
-            <Text
-              className="text-4xl font-bold"
-              style={{ color: tokens.text }}
-              numberOfLines={1}
-              adjustsFontSizeToFit
-              minimumFontScale={0.75}
-            >
-              Tasks
-            </Text>
-            {grouped.open.length > 0 && (
-              <Text className="text-sm" style={{ color: tokens.textSec }}>
-                {grouped.open.length} open
+          <View className="flex-row items-center justify-between">
+            <View className="flex-row items-baseline gap-2 flex-1">
+              <Text
+                className="text-4xl font-bold"
+                style={{ color: tokens.text }}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.75}
+              >
+                Tasks
               </Text>
-            )}
+              {grouped.open.length > 0 && (
+                <Text className="text-sm" style={{ color: tokens.textSec }}>
+                  {grouped.open.length} open
+                </Text>
+              )}
+            </View>
+            {/* Manual task creation — opens the /task/new create modal. */}
+            <Pressable
+              onPress={() => router.push("/task/new")}
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel="Add task"
+              className="ml-3 h-11 w-11 items-center justify-center rounded-full"
+              style={{ backgroundColor: tokens.primary }}
+            >
+              <Ionicons name="add" size={26} color="#FFFFFF" />
+            </Pressable>
           </View>
           <Text
             className="text-sm mt-1"
@@ -648,28 +661,25 @@ const GroupSection = memo(function GroupSection({
           marginBottom: 6,
           paddingHorizontal: 16,
           paddingVertical: 10,
+          // Section-header accent (design polish 2026-06-08, strengthened
+          // after QA): 4px primary left-border + soft primary background
+          // tint + primary-tinted name (below) so the header clearly reads
+          // as colored. Replaces the old glowing dot (glow is ceremonial-
+          // only per design-system §4.4). `${primary}1A` = ~10% alpha
+          // (tokens are hex at runtime).
+          borderLeftWidth: 4,
+          borderLeftColor: tokens.primary,
+          backgroundColor: `${tokens.primary}1A`,
           borderTopWidth: 0.5,
           borderTopColor: tokens.line,
           borderBottomWidth: 1,
-          borderBottomColor: `${tokens.primary}33`,
+          borderBottomColor: tokens.line,
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-between",
         }}
       >
         <View className="flex-row items-center gap-2.5">
-          <View
-            style={{
-              width: 9,
-              height: 9,
-              borderRadius: 999,
-              backgroundColor: tokens.primary,
-              shadowColor: tokens.primary,
-              shadowOpacity: 0.6,
-              shadowRadius: 6,
-              shadowOffset: { width: 0, height: 0 },
-            }}
-          />
           <Ionicons
             name={group.icon as never}
             size={14}
@@ -681,7 +691,7 @@ const GroupSection = memo(function GroupSection({
               fontWeight: "700",
               letterSpacing: 1.6,
               textTransform: "uppercase",
-              color: tokens.text,
+              color: tokens.primary,
             }}
           >
             {group.name}
@@ -757,6 +767,9 @@ const TaskRow = memo(
       ? new Date(task.dueDate).toLocaleDateString("en-US", {
           month: "short",
           day: "numeric",
+          // dueDate is stored as UTC midnight; render in UTC so users
+          // behind UTC don't see the day BEFORE the one they set.
+          timeZone: "UTC",
         })
       : null;
 
@@ -819,11 +832,14 @@ const TaskRow = memo(
                   </Text>
                 </View>
               )}
-              {/* Due-date label uses WARN_AMBER from lib/tone-colors —
-                  same warning-amber accent convention as ON_HOLD goals,
-                  HIGH priority, LOW mood, PARTIAL badge, Q8 confetti. */}
+              {/* Due-date label tone: overdue → bad (red), today/tomorrow
+                  → amber, future → textSec. Semibold for contrast.
+                  Single source: dueDateToneColor in lib/tone-colors. */}
               {dueDate && (
-                <Text className="text-xs" style={{ color: WARN_AMBER }}>
+                <Text
+                  className="text-xs font-semibold"
+                  style={{ color: dueDateToneColor(task.dueDate, tokens) }}
+                >
                   Due {dueDate}
                 </Text>
               )}

@@ -581,21 +581,34 @@ export default function GoalsTab() {
           />
         }
       >
-        <View className="flex-row items-baseline gap-2 mb-1">
-          <Text
-            className="text-4xl font-bold"
-            style={{ color: tokens.text }}
-            numberOfLines={1}
-            adjustsFontSizeToFit
-            minimumFontScale={0.75}
-          >
-            Goals
-          </Text>
-          {inProgressCount > 0 && (
-            <Text className="text-sm" style={{ color: tokens.textSec }}>
-              {inProgressCount} in progress
+        <View className="flex-row items-center justify-between mb-1">
+          <View className="flex-row items-baseline gap-2 flex-1">
+            <Text
+              className="text-4xl font-bold"
+              style={{ color: tokens.text }}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.75}
+            >
+              Goals
             </Text>
-          )}
+            {inProgressCount > 0 && (
+              <Text className="text-sm" style={{ color: tokens.textSec }}>
+                {inProgressCount} in progress
+              </Text>
+            )}
+          </View>
+          {/* Manual goal creation — opens the /goal/new create modal. */}
+          <Pressable
+            onPress={() => router.push("/goal/new")}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel="Add goal"
+            className="ml-3 h-11 w-11 items-center justify-center rounded-full"
+            style={{ backgroundColor: tokens.primary }}
+          >
+            <Ionicons name="add" size={26} color="#FFFFFF" />
+          </Pressable>
         </View>
         <Text
           className="text-sm mb-4"
@@ -714,11 +727,13 @@ export default function GoalsTab() {
                       reads as its own block. Eyebrow bumped 11px →
                       13px / tracking 1.6 to match the dashboard's
                       shared eyebrow rhythm. */}
-                  {/* Q11 Phase C: group.color comes from
-                      @acuity/shared GOAL_GROUPS — data color used by
-                      web ThemeMap. Mobile surfaces now ignore it and
-                      tint with tokens.primary for palette consistency
-                      (same convention as Q11a-1's area pill). */}
+                  {/* Life-area-colored group header (2026-06-08 QA): 4px
+                      bar + soft background + colored label, all sourced
+                      from group.color (@acuity/shared GOAL_GROUPS, §2.9
+                      Life Matrix palette) — NOT theme primary. Mirrors the
+                      Tasks section-header treatment so both read as
+                      strongly colored. group.color is hex at runtime, so
+                      `${color}1A` / `${color}22` = alpha tints. */}
                   <Pressable
                     onPress={() => toggleGroupCollapse(group.id)}
                     style={{
@@ -726,11 +741,15 @@ export default function GoalsTab() {
                       alignItems: "center",
                       gap: 10,
                       paddingVertical: 10,
+                      paddingHorizontal: 12,
                       marginBottom: 12,
+                      borderLeftWidth: 4,
+                      borderLeftColor: group.color,
+                      backgroundColor: `${group.color}1A`,
                       borderTopWidth: 0.5,
                       borderTopColor: tokens.line,
                       borderBottomWidth: 1,
-                      borderBottomColor: `${tokens.primary}33`,
+                      borderBottomColor: tokens.line,
                     }}
                   >
                     <View
@@ -738,12 +757,12 @@ export default function GoalsTab() {
                         height: 32,
                         width: 32,
                         borderRadius: 16,
-                        backgroundColor: `${tokens.primary}22`,
+                        backgroundColor: `${group.color}22`,
                         alignItems: "center",
                         justifyContent: "center",
                       }}
                     >
-                      <GoalGroupIcon name={group.icon} color={tokens.primary} />
+                      <GoalGroupIcon name={group.icon} color={group.color} />
                     </View>
                     <Text
                       style={{
@@ -751,7 +770,7 @@ export default function GoalsTab() {
                         fontWeight: "700",
                         letterSpacing: 1.6,
                         textTransform: "uppercase",
-                        color: tokens.text,
+                        color: group.color,
                       }}
                     >
                       {group.label}

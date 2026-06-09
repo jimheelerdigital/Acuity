@@ -235,3 +235,39 @@ export function priorityToneColor(
       return tokens.textTer;
   }
 }
+
+/**
+ * Resolves a due / target date to a palette-aware tone for ANY surface
+ * that renders one (task list, task/goal detail, the due-date field).
+ * Single source of truth so the whole app shares one urgency vocabulary
+ * instead of the old faint always-amber:
+ *
+ *   overdue (before today)   → tokens.bad (red ember)
+ *   due today or tomorrow    → WARN_AMBER (amber)
+ *   future (> tomorrow)/unset → tokens.textSec (neutral, readable)
+ *
+ * Dates are stored UTC-midnight (the API parses "YYYY-MM-DD" via
+ * `new Date`), so we read the UTC Y/M/D and compare to the device's
+ * LOCAL today — matches how the date is displayed (in UTC).
+ */
+export function dueDateToneColor(
+  dueDate: string | null | undefined,
+  tokens: AcuityTokens
+): string {
+  if (!dueDate) return tokens.textSec;
+  const due = new Date(dueDate);
+  if (Number.isNaN(due.getTime())) return tokens.textSec;
+  const dueLocal = new Date(
+    due.getUTCFullYear(),
+    due.getUTCMonth(),
+    due.getUTCDate()
+  );
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const diffDays = Math.round(
+    (dueLocal.getTime() - today.getTime()) / 86_400_000
+  );
+  if (diffDays < 0) return tokens.bad; // overdue
+  if (diffDays <= 1) return WARN_AMBER; // today or tomorrow
+  return tokens.textSec; // future
+}
