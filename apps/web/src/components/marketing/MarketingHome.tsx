@@ -13,11 +13,15 @@
  */
 import { makeAcuityTokens } from "@acuity/shared";
 
+import { Consistency } from "./Consistency";
 import { FeatureRow } from "./FeatureRow";
+import { FinalCTA } from "./FinalCTA";
+import { Footer } from "./Footer";
 import { Hero } from "./Hero";
 import { HowItWorks } from "./HowItWorks";
 import { MarketingNav } from "./MarketingNav";
 import { PhoneFrame } from "./PhoneFrame";
+import { Pricing } from "./Pricing";
 import { HomeDashboard } from "./screens/home";
 import { LifeMatrix } from "./screens/life-matrix";
 import { ThemeMap } from "./screens/theme-map";
@@ -90,7 +94,10 @@ export function MarketingHome() {
         }
       />
 
-      {/* Batch C — Consistency, Pricing, FinalCTA, Footer */}
+      <Consistency />
+      <Pricing />
+      <FinalCTA />
+      <Footer />
     </div>
   );
 }
