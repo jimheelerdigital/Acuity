@@ -60,6 +60,26 @@ export function RecordSheet({
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  // Screen Wake Lock — keeps the screen from locking mid-recording on
+  // mobile web (parity with the iOS keep-awake fix). Released on stop /
+  // close; re-acquired on tab re-show (wake locks auto-release when the
+  // tab is hidden). Feature-detected — recording still works without it.
+  const wakeLockRef = useRef<WakeLockSentinel | null>(null);
+
+  const requestWakeLock = useCallback(async () => {
+    try {
+      if ("wakeLock" in navigator) {
+        wakeLockRef.current = await navigator.wakeLock.request("screen");
+      }
+    } catch {
+      // unsupported or denied — non-fatal
+    }
+  }, []);
+
+  const releaseWakeLock = useCallback(() => {
+    wakeLockRef.current?.release().catch(() => {});
+    wakeLockRef.current = null;
+  }, []);
 
   // Reset on close so re-opening for a different dimension starts clean.
   useEffect(() => {
@@ -73,8 +93,21 @@ export function RecordSheet({
         streamRef.current.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
       }
+      releaseWakeLock();
     }
-  }, [open]);
+  }, [open, releaseWakeLock]);
+
+  // Wake locks auto-release when the tab is hidden (e.g. the user
+  // switches away and back). Re-acquire on return if still recording.
+  useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState === "visible" && phase === "recording") {
+        void requestWakeLock();
+      }
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, [phase, requestWakeLock]);
 
   const startRecording = useCallback(async () => {
     try {
@@ -101,11 +134,13 @@ export function RecordSheet({
           streamRef.current.getTracks().forEach((t) => t.stop());
           streamRef.current = null;
         }
+        releaseWakeLock();
         await upload(blob, duration, mimeType);
       };
 
       mr.start();
       setPhase("recording");
+      void requestWakeLock();
       setElapsed(0);
       elapsedRef.current = 0;
       timerRef.current = setInterval(() => {
