@@ -394,21 +394,29 @@ export function GoalList({
                 <button
                   type="button"
                   onClick={() => toggleGroupCollapse(group.id)}
-                  className="w-full flex items-center gap-3 mb-4 group pb-3 border-b"
-                  style={{ borderBottomColor: `${group.color}33` }}
+                  className="w-full flex items-center gap-3 mb-4 group px-3 py-2.5 border-b border-l-4 rounded-r-lg"
+                  style={{
+                    // Life-area-colored header (2026-06-08 QA): 4px bar +
+                    // soft bg + colored label, all from group.color
+                    // (GOAL_GROUPS, §2.9). Mirrors the Tasks treatment.
+                    borderLeftColor: group.color,
+                    backgroundColor: `${group.color}1A`,
+                    borderBottomColor: `${group.color}33`,
+                  }}
                 >
                   <span
                     className="h-8 w-8 rounded-full flex items-center justify-center shrink-0"
-                    style={{
-                      backgroundColor: group.color + "1A",
-                      boxShadow: `0 0 12px ${group.color}33`,
-                    }}
+                    style={{ backgroundColor: `${group.color}22` }}
                   >
                     <GoalGroupIcon name={group.icon} color={group.color} />
                   </span>
                   <span
-                    className="font-semibold uppercase text-zinc-700 dark:text-zinc-200"
-                    style={{ fontSize: 13, letterSpacing: "0.18em" }}
+                    className="font-semibold uppercase"
+                    style={{
+                      fontSize: 13,
+                      letterSpacing: "0.18em",
+                      color: group.color,
+                    }}
                   >
                     {group.label}
                   </span>
