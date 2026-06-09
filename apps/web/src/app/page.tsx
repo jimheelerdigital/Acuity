@@ -1,14 +1,17 @@
-import Link from "next/link";
-import nextDynamic from "next/dynamic";
+import { DEFAULT_LIFE_AREAS } from "@acuity/shared";
 
 import { AccountDeletedBanner } from "@/components/account-deleted-banner";
+import { MarketingHome } from "@/components/marketing/MarketingHome";
 
-// Full interactive landing page loads AFTER first paint — not blocking
-// hydration. The static hero below provides instant above-the-fold content.
-const LandingPage = nextDynamic(
-  () => import("@/components/landing").then((m) => m.LandingPage),
-  { ssr: false },
-);
+// Life Matrix FAQ copy derived from the canonical DEFAULT_LIFE_AREAS so it
+// can't drift from the live app. Was stale at "6 key areas — Health,
+// Wealth, Relationships, Spirituality, Career, Growth"; the app renders 10
+// (2026-06-09). Deriving count + example labels means a future axis change
+// updates this answer automatically.
+const lifeAreaNames = DEFAULT_LIFE_AREAS.map((a) => a.shortName);
+const lifeMatrixFaqAnswer = `The Life Matrix scores your life across ${lifeAreaNames.length} areas — including ${lifeAreaNames
+  .slice(0, 3)
+  .join(", ")}, and more — and tracks them over time so you can see which areas are thriving and which need attention.`;
 
 // ISR: regenerate every 60 seconds. Auth redirect for logged-in users
 // is handled by middleware (not getServerSession here) so this page
@@ -77,7 +80,7 @@ const jsonLd = {
           name: "What is the Life Matrix?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "The Life Matrix scores your life across 6 key areas — Health, Wealth, Relationships, Spirituality, Career, and Growth — and tracks them over time so you can see which areas are thriving and which need attention.",
+            text: lifeMatrixFaqAnswer,
           },
         },
       ],
@@ -92,56 +95,11 @@ export default function HomePage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      {/* ─── Static hero — renders instantly with ZERO client JS ─── */}
-      {/* This is the above-the-fold content users see in <240ms. The full
-          interactive LandingPage loads over it once JS arrives. The
-          [data-landing-loaded] selector hides this shell. */}
-      <div id="static-hero" className="min-h-screen bg-[#0B0B12] text-white overflow-hidden peer-[.landing-loaded]:hidden">
-        {/* Nav placeholder */}
-        <nav className="flex items-center justify-between px-6 py-5 max-w-7xl mx-auto">
-          <span className="font-bold text-lg tracking-tight">Acuity</span>
-          <Link
-            href="/start"
-            className="rounded-full bg-[#7C5CFC] px-5 py-2.5 text-sm font-semibold text-white"
-          >
-            Start Free Trial
-          </Link>
-        </nav>
-
-        {/* Hero content */}
-        <section className="pt-24 pb-16 sm:pt-32 px-6 max-w-4xl mx-auto text-center">
-          <h1 className="font-black tracking-tight">
-            <span className="block text-4xl sm:text-5xl lg:text-[3.75rem] leading-[1.1] mb-3">One minute a day.</span>
-            <span className="block bg-gradient-to-r from-[#B8A5FF] to-[#7C5CFC] bg-clip-text text-transparent text-4xl sm:text-5xl lg:text-[3.75rem] leading-[1.2]">A life of clarity.</span>
-          </h1>
-          <p className="mt-8 text-base text-[#C0C0D0] leading-relaxed max-w-lg mx-auto">
-            Acuity is the AI voice journal that turns your daily debrief into action. Talk any time of day — it catches your tasks, tracks your goals, and surfaces the patterns you can&rsquo;t see on your own.
-          </p>
-          <div className="mt-10 flex flex-col items-center gap-3">
-            <Link
-              href="/start"
-              className="group relative rounded-full p-[2px] transition active:scale-95 hover:scale-[1.02] overflow-hidden"
-            >
-              <span className="absolute inset-[-100%] animate-cta-shine" style={{ background: 'conic-gradient(from 0deg, transparent 0%, transparent 60%, #ffffff 75%, #B8A5FF 85%, transparent 100%)' }} />
-              <span className="relative flex items-center justify-center rounded-full bg-[#7C5CFC] px-8 py-3.5 text-sm font-semibold text-white">
-                Start Free Trial
-              </span>
-            </Link>
-          </div>
-          <p className="mt-4 text-xs text-[#A0A0B8]">No credit card. Quick setup.</p>
-        </section>
-
-        {/* SEO content for crawlers */}
-        <div className="sr-only">
-          <h2>How Acuity Works</h2>
-          <p>Step 1: Record your day. Step 2: AI extracts tasks, goals, and mood. Step 3: Get your weekly report every Sunday.</p>
-          <h2>Pricing</h2>
-          <p>$4.99/month after a 14-day free trial. No credit card required. Cancel anytime.</p>
-        </div>
-      </div>
-
       <AccountDeletedBanner />
-      <LandingPage />
+      {/* Marketing home rebuilt on the app design system. Built in batches
+          (A: nav + hero; B: how-it-works + features; C: pricing + footer).
+          The old LandingPage is retained only for /for/* persona pages. */}
+      <MarketingHome />
     </>
   );
 }
